@@ -454,25 +454,32 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     /**
-     * 키보드 창 아래쪽을 가리는 하단 바 높이만큼 자판을 띄운다. 두 값 중 큰 쪽을 쓴다:
-     * 1) 창 관리자에게 직접 물은 시스템 바(내비게이션 바·작업 표시줄) 높이 (API 30 이상). 물을 때마다 새로 계산되어,
-     *    탐색 방법을 제스처에서 버튼으로 바꾼 직후처럼 이미 떠 있는 키보드 창에 인셋 콜백이 안 오거나 옛 값이 올 때도 맞다.
-     * 2) 인셋 콜백이 마지막으로 준 값. 일부 기기(Vivo의 '입력 방법 빠른 전환' 하단 바 등)가 키보드 창에만 더하는 영역은
-     *    이 값에만 들어 있다.
+     * 키보드 창 아래쪽을 가리는 하단 바 높이만큼 자판을 띄운다: 창 관리자에게 직접 물은 시스템 바 높이 + 키보드 창에만 붙는 영역.
+     * 1) 시스템 바(내비게이션 바·작업 표시줄) 높이는 물을 때마다 새로 계산되어, 탐색 방법을 바꾼 직후처럼 이미 떠 있는
+     *    키보드 창에 인셋 콜백이 안 오거나 옛 값이 올 때도 맞다 (API 30 이상).
+     * 2) 일부 기기(Vivo의 '입력 방법 빠른 전환' 하단 바 등)가 키보드 창에만 더하는 영역은 인셋 콜백 값에만 들어 있다.
+     *    콜백이 올 때 '콜백 값이 창 관리자 값보다 얼마나 큰지'만 따로 기억해 둔다. 콜백 값을 통째로 기억하면 탐색 방법을
+     *    버튼에서 제스처로 바꾼 직후 옛(큰) 값이 남아 자판 아래에 빈 띠가 생긴다.
      * 호출하는 때: 키보드가 올라올 때, 화면 설정이 바뀔 때, 인셋 콜백이 올 때.
      *
      * @param callbackInsets 인셋 콜백이 방금 준 값. 콜백에서 부른 것이 아니면 null.
      */
     private void refreshBottomInset(WindowInsets callbackInsets) {
         if (root == null) return;
-        if (callbackInsets != null) callbackBottom = legacyBottomInset(callbackInsets);
         int fresh = freshBottomInset();
-        int bottom = Math.max(fresh, callbackBottom);
+        if (callbackInsets != null) {
+            int callback = legacyBottomInset(callbackInsets);
+            if (fresh >= 0) windowOnlyBottom = Math.max(0, callback - fresh);
+            else callbackBottom = callback;   // 창 관리자에게 물을 수 없는 기기: 콜백 값을 그대로 쓴다
+        }
+        int bottom = fresh >= 0 ? fresh + windowOnlyBottom : callbackBottom;
         if (bottom < 0) return;   // 어느 값도 모른다: 지금 그대로 둔다
         if (root.getPaddingBottom() != bottom) root.setPadding(0, 0, 0, bottom);
     }
 
-    /** 인셋 콜백이 마지막으로 준 하단 높이. 키보드가 내려가면 비운다(-1). */
+    /** 키보드 창에만 붙는 하단 영역의 높이 (인셋 콜백 값 - 창 관리자 값). 키보드가 내려가면 0으로 비운다. */
+    private int windowOnlyBottom;
+    /** 창 관리자에게 물을 수 없는 기기에서 인셋 콜백이 마지막으로 준 하단 높이 (-1 = 아직 모른다). */
     private int callbackBottom = -1;
 
     /** 창 관리자가 지금 알려 주는 하단 바 높이. 알 수 없으면 -1. */
@@ -509,7 +516,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     public void onWindowHidden() {
         super.onWindowHidden();
         windowHidden = true;
-        callbackBottom = -1;   // 옛 값이 남아 다음에 올라올 때 자판 아래에 빈 띠가 생기지 않게 한다
+        windowOnlyBottom = 0;   // 옛 값이 남아 다음에 올라올 때 자판 아래에 빈 띠가 생기지 않게 한다
+        callbackBottom = -1;
         main.removeCallbacks(suggestRunnable);
         main.removeCallbacks(releaseWhileHidden);
         main.postDelayed(releaseWhileHidden, RELEASE_DELAY_MS);
