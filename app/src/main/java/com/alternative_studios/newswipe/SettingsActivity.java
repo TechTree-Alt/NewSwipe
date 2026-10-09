@@ -200,10 +200,9 @@ public final class SettingsActivity extends Activity {
         if (hasReset(id)) addResetButton(id);
     }
 
-    /** 기본값으로 되돌릴 설정이 있는 메뉴인지 (정보·설정 메뉴와 키 위치·폭, 가로 모드·대화면 키보드 사용자화 화면. 사용법·가져오기 및 내보내기·학습한 단어 등은 제외). */
+    /** 기본값으로 되돌릴 설정이 있는 메뉴인지 (설정 메뉴와 키 위치·폭, 가로 모드·대화면 키보드 사용자화 화면. 정보·사용법·가져오기 및 내보내기·학습한 단어 등은 제외). */
     private static boolean hasReset(String id) {
-        if (APP[0].equals(id) || KEY_AREA.equals(id) || LANDSCAPE_AREA.equals(id)
-                || LARGE_AREA.equals(id)) return true;
+        if (KEY_AREA.equals(id) || LANDSCAPE_AREA.equals(id) || LARGE_AREA.equals(id)) return true;
         for (String[] sec : SECTIONS) if (sec[0].equals(id) && !"backup".equals(id)) return true;
         return false;
     }
@@ -222,7 +221,6 @@ public final class SettingsActivity extends Activity {
             prefs.profileEditView(Prefs.PROFILE_LARGE_LANDSCAPE).resetProfileArea();
         }
         else prefs.resetSection(id);
-        if (APP[0].equals(id)) SettingsBackup.setLauncherShown(this, true);
         importGeneration++;   // 뒤에 쌓인 설정 화면도 돌아오면 기본값으로 다시 그린다
         recreate();
         Toast.makeText(this, "기본값으로 되돌렸습니다", Toast.LENGTH_SHORT).show();
