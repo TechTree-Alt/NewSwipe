@@ -172,6 +172,44 @@ public class SplitBottomRowTest {
     }
 
     @Test
+    public void gAndVAreOnBothHalvesOfTheSplitEnglishKeyboard() throws Exception {
+        for (int[] s : SETTINGS) {
+            KeyboardLayout l = KeyboardLayout.english(prefsFor(s, false));
+            for (int[] spec : new int[][]{{1, 'g', 'h'}, {2, 'v', 'b'}}) {
+                Key[] keys = l.rows[spec[0]].keys;
+                float x = 0f, leftOfFirst = -1f;
+                int count = 0, indexOfPartner = -1, indexOfCopy = -1, i = 0;
+                java.util.List<Key> real = new java.util.ArrayList<>();
+                for (Key k : keys) if (k.type != Key.GAP) real.add(k);
+                for (Key k : real) {
+                    if (k.type == Key.CHAR && k.label.charAt(0) == spec[1]) {
+                        count++;
+                        if (count == 2) indexOfCopy = i;
+                    }
+                    if (k.type == Key.CHAR && k.label.charAt(0) == spec[2]) indexOfPartner = i;
+                    i++;
+                }
+                assertEquals("글자 " + (char) spec[1] + "가 두 번 있어야 합니다", 2, count);
+                assertEquals("오른쪽 복사본은 " + (char) spec[2] + " 바로 왼쪽에 있어야 합니다", indexOfPartner - 1, indexOfCopy);
+                // 두 키는 글자·길게 누르기·밀기가 같다.
+                Key a = null, b = null;
+                for (Key k : real) {
+                    if (k.type == Key.CHAR && k.label.charAt(0) == spec[1]) {
+                        if (a == null) a = k;
+                        else b = k;
+                    }
+                }
+                assertEquals(a.output, b.output);
+                assertEquals(a.shifted, b.shifted);
+                assertEquals(java.util.Arrays.toString(a.popup), java.util.Arrays.toString(b.popup));
+            }
+            float total = 0f;
+            for (Key k : l.rows[1].keys) total += k.weight;
+            assertEquals(10f, total, 0.001f);
+        }
+    }
+
+    @Test
     public void bottomRowStillFillsItsSpanWithTheSpaceBar() throws Exception {
         FakeSp sp = new FakeSp();
         Prefs p = landscapeEditView(sp);

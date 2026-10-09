@@ -374,8 +374,9 @@ public final class KeyboardLayout {
     }
 
     /**
-     * 분리 키보드 영어 자판의 글자 줄 세 개. 둘째 줄(a~l)은 일반 자판처럼 첫 줄(q~p)보다 양쪽을 반 칸씩 들여,
+     * 분리 키보드 영어 자판의 글자 줄 세 개. 둘째 줄(a~l)은 일반 자판처럼 첫 줄(q~p)보다 양쪽을 들여,
      * a의 왼쪽과 l의 오른쪽에 여백을 둔다.
+     * g와 v는 왼손으로도 오른손으로도 칠 수 있게 오른쪽 절반에도 한 번 더 놓는다 (h 왼쪽에 g, b 왼쪽에 v).
      */
     private static List<Row> englishSplitRows(Prefs prefs) {
         List<Row> letterRows = new ArrayList<>();
@@ -385,6 +386,7 @@ public final class KeyboardLayout {
             List<Key> left = new ArrayList<>(), right = new ArrayList<>();
             if (r == 2) left.add(fn(Key.SHIFT, "", 1f));
             for (int i = 0; i < letters.length; i++) (i < leftCount[r] ? left : right).add(letters[i]);
+            if (r > 0) right.add(0, copyOf(letters[leftCount[r] - 1]));   // 왼쪽 절반 맨 오른쪽 키(g, v)를 오른쪽 절반 맨 왼쪽에도
             if (r == 2) right.add(fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1f));
             letterRows.add(r == 1 ? indentedSplitRow(left, right, 1f, BALANCED_HALF / 5f, 1000, prefs, 0.5f)
                     : splitRow(left, right, 1f, BALANCED_HALF / 5f, 1000, prefs));
@@ -392,10 +394,21 @@ public final class KeyboardLayout {
         return letterRows;
     }
 
+    /** 같은 글자·길게 누르기·밀기를 가진 키를 하나 더 만든다 (설정은 글자 이름으로 저장되어 두 키가 함께 따른다). */
+    private static Key copyOf(Key k) {
+        Key c = new Key(k.type, k.label, k.output, k.shifted, k.swipeDown, k.popup, k.weight);
+        c.swipeUp = k.swipeUp;
+        c.swipeLeft = k.swipeLeft;
+        c.swipeRight = k.swipeRight;
+        c.grayStyle = k.grayStyle;
+        c.slot = k.slot;
+        return c;
+    }
+
     /**
-     * 오른쪽 키가 왼쪽보다 하나 적은 줄(a~l)을 splitRow와 같은 폭·위치 설정으로 놓되,
-     * 왼쪽 끝은 왼쪽 키 폭의 indent배, 오른쪽 끝은 5개짜리 줄(y~p)의 오른쪽 끝에서 오른쪽 키 폭의 indent배만큼 들인다.
-     * 가운데에서 두 무리가 겹치게 되면 그만큼 왼쪽 들임을 줄인다.
+     * 열 개짜리 줄(a~l과 g)을 splitRow와 같은 폭·위치 설정으로 놓되, 양 끝을 5개짜리 줄(q~p)보다 안쪽으로 들인다:
+     * 왼쪽 끝은 자음 키 폭의 indent배, 오른쪽 끝은 첫 줄의 오른쪽 끝에서 모음 키 폭의 indent배만큼.
+     * 열 개가 그 안에 다 들어가지 않으면 키 폭을 같은 비율로 줄이고, 남는 폭은 가운데 간격이 된다.
      */
     private static Row indentedSplitRow(List<Key> consonants, List<Key> vowels, float height, float baseW, int maxPct,
                                         Prefs prefs, float indent) {
@@ -407,31 +420,26 @@ public final class KeyboardLayout {
         float raw = baseW * Math.min(pct, maxPct) / 100f;
         float v = Math.min(raw, BALANCED_HALF / vowels.size());
         float pos = (prefs == null ? 50 : prefs.balancedVowelPos()) / 100f;
-        // 기준이 되는 5개짜리 줄(y~p)의 오른쪽 여백
+        // 기준이 되는 5개짜리 줄(y~p)의 오른쪽 끝
         float v5 = Math.min(raw, BALANCED_HALF / 5f);
-        float gapRight5 = Math.max(0f, BALANCED_HALF - 5 * v5) * (1f - pos);
-        float start = cgapLeft + indent * cw;
-        float end = SPACE_ROW_UNITS - gapRight5 - indent * v;
-        float rightStart = end - vowels.size() * v;
-        float middle = rightStart - (start + consonants.size() * cw);
-        if (middle < 0f) {   // 가운데에서 겹치면 왼쪽 들임을 줄인다
-            start = Math.max(cgapLeft, start + middle);
-            middle = Math.max(0f, rightStart - (start + consonants.size() * cw));
-            rightStart = start + consonants.size() * cw + middle;
-        }
+        float rightEdge = SPACE_ROW_UNITS - Math.max(0f, BALANCED_HALF - 5 * v5) * (1f - pos);
+        float start = cgapLeft + indent * cw, end = rightEdge - indent * v;
+        float natural = consonants.size() * cw + vowels.size() * v;
+        float scale = Math.min(1f, (end - start) / natural);
+        float kc = cw * scale, kv = v * scale;
         List<Key> keys = new ArrayList<>();
         if (start > 0.001f) keys.add(fn(Key.GAP, "", start));
         for (Key k : consonants) {
-            k.weight = cw;
+            k.weight = kc;
             keys.add(k);
         }
+        float middle = end - start - consonants.size() * kc - vowels.size() * kv;
         if (middle > 0.001f) keys.add(fn(Key.GAP, "", middle));
         for (Key k : vowels) {
-            k.weight = v;
+            k.weight = kv;
             keys.add(k);
         }
-        float tail = SPACE_ROW_UNITS - rightStart - vowels.size() * v;
-        if (tail > 0.001f) keys.add(fn(Key.GAP, "", tail));
+        if (SPACE_ROW_UNITS - end > 0.001f) keys.add(fn(Key.GAP, "", SPACE_ROW_UNITS - end));
         return new Row(height, keys.toArray(new Key[0]));
     }
 
