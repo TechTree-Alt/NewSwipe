@@ -1,13 +1,10 @@
 package com.alternative_studios.newswipe.clipboard;
 
 import android.annotation.SuppressLint;
-import android.app.AlertDialog;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Outline;
 import android.graphics.drawable.Drawable;
-import android.view.ContextThemeWrapper;
-import android.view.WindowManager;
 import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -59,6 +56,8 @@ public final class ClipboardPanel extends LinearLayout {
     private final Listener listener;
     private final LinearLayout list;
     private final TextView clear;
+    /** 맨 위 줄(뒤로·제목·모두 지우기)과, 모두 지우기를 누르면 그 자리에 대신 보이는 확인 줄. */
+    private final LinearLayout header, confirmRow;
     /** 고정·삭제를 누른 뒤 다음 show()에서 항목이 새 자리로 움직이는 애니메이션을 보여 준다. */
     private boolean animateNext;
     private static final long MOVE_MS = 200;
@@ -80,7 +79,7 @@ public final class ClipboardPanel extends LinearLayout {
         setOrientation(VERTICAL);
         setBackgroundColor(theme.background);
 
-        LinearLayout header = new LinearLayout(context);
+        header = new LinearLayout(context);
         header.setGravity(Gravity.CENTER_VERTICAL);
         header.setPadding(Ui.dp(context, 4), 0, Ui.dp(context, 8), 0);
         IconButton back = new IconButton(context, Icons.BACK, theme.text, theme.keyPressed, "키보드로 돌아가기");
@@ -100,6 +99,30 @@ public final class ClipboardPanel extends LinearLayout {
         clear.setOnClickListener(v -> confirmClear());
         header.addView(clear);
         addView(header, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, topBarHeight));
+
+        // 모두 지우기 확인: 따로 창(대화상자)을 띄우지 않고 맨 위 줄을 확인 줄로 바꾼다.
+        // 키보드 창에 붙인 대화상자는 뜨는 순간 포커스가 옮겨 가면서 시스템이 키보드를 닫아 버리는 일이 있었다.
+        confirmRow = new LinearLayout(context);
+        confirmRow.setGravity(Gravity.CENTER_VERTICAL);
+        confirmRow.setPadding(Ui.dp(context, 14), 0, Ui.dp(context, 8), 0);
+        TextView ask = new TextView(context);
+        ask.setText("고정하지 않은 기록을 모두 지울까요?");
+        ask.setTextColor(theme.text);
+        ask.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        ask.setMaxLines(2);
+        ask.setEllipsize(TextUtils.TruncateAt.END);
+        confirmRow.addView(ask, new LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView cancel = rowButton(context, "취소", theme.text);
+        cancel.setOnClickListener(v -> dismissDialog());
+        confirmRow.addView(cancel);
+        TextView ok = rowButton(context, "지우기", theme.accent);
+        ok.setOnClickListener(v -> {
+            dismissDialog();
+            listener.onClipClear();
+        });
+        confirmRow.addView(ok);
+        confirmRow.setVisibility(GONE);
+        addView(confirmRow, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, topBarHeight));
 
         ScrollView scroll = new ScrollView(context);
         scroll.setVerticalScrollBarEnabled(false);
@@ -127,6 +150,7 @@ public final class ClipboardPanel extends LinearLayout {
         for (ClipboardHistory.Item item : items) if (item.isImage()) shown.add(item.text);
         thumbs.keySet().retainAll(shown);
         clear.setVisibility(enabled && !items.isEmpty() ? VISIBLE : GONE);
+        if (!enabled || items.isEmpty()) dismissDialog();   // 지울 것이 없어졌으면 확인 줄도 닫는다
         if (!enabled) {
             if (current != null && !current.isEmpty()) {
                 View card = itemView(current, null);
@@ -349,21 +373,21 @@ public final class ClipboardPanel extends LinearLayout {
         return t;
     }
 
-    /** 지우기 전에 확인 창을 띄운다. 키보드 창에 붙은 대화상자로 보여 준다. */
-    private AlertDialog confirmDialog;
+    private TextView rowButton(Context context, String text, int color) {
+        TextView b = new TextView(context);
+        b.setBackground(Ui.ripple(theme.keyPressed, null, Ui.dp(context, 16)));
+        b.setText(text);
+        b.setTextColor(color);
+        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        b.setPadding(Ui.dp(context, 12), Ui.dp(context, 8), Ui.dp(context, 12), Ui.dp(context, 8));
+        return b;
+    }
 
-    /** 키보드가 숨겨지거나 패널이 사라질 때 확인 창도 닫는다 (창이 남아 패널을 붙잡지 않게). */
+    /** 모두 지우기 확인 줄을 닫고 원래 맨 위 줄로 돌아간다 (키보드가 숨겨지거나 패널이 사라질 때도 부른다). */
     public void dismissDialog() {
-        if (confirmDialog != null) {
-            if (confirmDialog.isShowing()) {
-                try {
-                    confirmDialog.dismiss();
-                } catch (RuntimeException ignored) {
-                    // 키보드 창이 이미 사라진 경우
-                }
-            }
-            confirmDialog = null;
-        }
+        if (confirmRow.getVisibility() != VISIBLE) return;
+        confirmRow.setVisibility(GONE);
+        header.setVisibility(VISIBLE);
     }
 
     @Override
@@ -372,29 +396,9 @@ public final class ClipboardPanel extends LinearLayout {
         dismissDialog();
     }
 
+    /** 지우기 전에 맨 위 줄을 확인 줄로 바꾼다. */
     private void confirmClear() {
-        dismissDialog();
-        Context themed = new ContextThemeWrapper(getContext(), theme.dark
-                ? android.R.style.Theme_DeviceDefault_Dialog_Alert
-                : android.R.style.Theme_DeviceDefault_Light_Dialog_Alert);
-        AlertDialog dialog = com.alternative_studios.newswipe.AppTheme.accentBuilder(themed)
-                .setTitle("클립보드 기록 지우기")
-                .setMessage("고정하지 않은 클립보드 기록을 모두 지웁니다. 되돌릴 수 없습니다.")
-                .setPositiveButton("모두 지우기", (d, w) -> listener.onClipClear())
-                .setNegativeButton("취소", null)
-                .create();
-        android.view.Window window = dialog.getWindow();
-        if (window != null) {
-            WindowManager.LayoutParams lp = window.getAttributes();
-            lp.token = getWindowToken();
-            lp.type = WindowManager.LayoutParams.TYPE_APPLICATION_ATTACHED_DIALOG;
-            window.setAttributes(lp);
-            window.addFlags(WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM);
-        }
-        dialog.setOnDismissListener(d -> {
-            if (confirmDialog == d) confirmDialog = null;
-        });
-        confirmDialog = dialog;
-        dialog.show();
+        header.setVisibility(GONE);
+        confirmRow.setVisibility(VISIBLE);
     }
 }

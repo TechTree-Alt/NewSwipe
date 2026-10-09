@@ -351,16 +351,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         root.setClipChildren(false);
         root.setClipToPadding(false);
         // 키보드 창이 내비게이션 바(비보 등의 키보드 하단 바 포함) 뒤까지 그려질 수 있으므로
-        // 시스템이 알려 주는 하단 인셋만큼 키보드를 위로 띄운다.
+        // 창 관리자에 직접 물은 시스템 바 높이와 인셋 콜백 값 중 큰 쪽만큼 키보드를 위로 띄운다 (refreshBottomInset).
         root.setOnApplyWindowInsetsListener((v, insets) -> {
-            int bottom;
-            if (Build.VERSION.SDK_INT >= 30) {
-                bottom = Math.max(insets.getInsets(WindowInsets.Type.navigationBars()).bottom,
-                        insets.getInsets(WindowInsets.Type.tappableElement()).bottom);
-            } else {
-                bottom = insets.getSystemWindowInsetBottom();
-            }
-            if (v.getPaddingBottom() != bottom) v.setPadding(0, 0, 0, bottom);
+            refreshBottomInset(insets);
             return insets;
         });
         root.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
@@ -394,6 +387,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         searchBar = buildSearchBar();
         searchBar.setVisibility(View.GONE);
         topSlot.addView(searchBar);
+        forgetBar = null;   // 학습한 단어 삭제 확인 줄은 필요할 때 만든다 (새 화면에는 아직 없다)
         column.addView(topSlot, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, toolbarHeight));
 
         resultViews.clear();   // 예전 색으로 만든 칸은 버린다
@@ -456,12 +450,97 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         windowHidden = false;
         main.removeCallbacks(releaseWhileHidden);
         applyNavigationBarStyle();
+        refreshBottomInset(null);
+        if (root != null) root.requestApplyInsets();   // 마지막으로 받은 인셋을 다시 받아 콜백 값을 채운다
+    }
+
+    /**
+     * 키보드 창 아래쪽을 가리는 하단 바 높이만큼 자판을 띄운다: 창 관리자에게 직접 물은 시스템 바 높이 + 키보드 창에만 붙는 영역.
+     * 1) 시스템 바(내비게이션 바·작업 표시줄) 높이는 물을 때마다 새로 계산되어, 탐색 방법을 바꾼 직후처럼 이미 떠 있는
+     *    키보드 창에 인셋 콜백이 안 오거나 옛 값이 올 때도 맞다 (API 30 이상).
+     * 2) 일부 기기(Vivo의 '입력 방법 빠른 전환' 하단 바 등)가 키보드 창에만 더하는 영역은 인셋 콜백 값에만 들어 있다.
+     *    콜백이 올 때 '콜백 값이 창 관리자 값보다 얼마나 큰지'만 따로 기억해 둔다. 콜백 값을 통째로 기억하면 탐색 방법을
+     *    버튼에서 제스처로 바꾼 직후 옛(큰) 값이 남아 자판 아래에 빈 띠가 생긴다. 탐색 방법을 바꾼 직후에는 콜백이
+     *    바꾸기 전의 값을 다시 보내기도 해서, 콜백과 창 관리자 값의 탐색 방법(제스처인지)이 다르면 그 콜백은 버린다.
+     * 호출하는 때: 키보드가 올라올 때, 화면 설정이 바뀔 때, 인셋 콜백이 올 때.
+     *
+     * @param callbackInsets 인셋 콜백이 방금 준 값. 콜백에서 부른 것이 아니면 null.
+     */
+    private void refreshBottomInset(WindowInsets callbackInsets) {
+        if (root == null) return;
+        WindowInsets freshInsets = freshInsets();
+        int fresh = freshInsets == null ? -1 : legacyBottomInset(freshInsets);
+        if (callbackInsets != null) {
+            int callback = legacyBottomInset(callbackInsets);
+            if (fresh < 0) {
+                callbackBottom = callback;   // 창 관리자에게 물을 수 없는 기기: 콜백 값을 그대로 쓴다
+            } else if (gestureNavigation(callbackInsets) != gestureNavigation(freshInsets)) {
+                // 콜백이 탐색 방법을 바꾸기 전의 옛 값이다 (버튼 → 제스처 직후에 버튼 시절의 큰 값이 다시 오는 경우 등).
+                // 이 값으로 차이를 재면 자판 아래에 빈 띠가 생기므로 버린다.
+                windowOnlyBottom = 0;
+            } else {
+                windowOnlyBottom = Math.max(0, callback - fresh);
+            }
+        }
+        int bottom = fresh >= 0 ? fresh + windowOnlyBottom : callbackBottom;
+        if (bottom < 0) return;   // 어느 값도 모른다: 지금 그대로 둔다
+        if (root.getPaddingBottom() != bottom) root.setPadding(0, 0, 0, bottom);
+    }
+
+    /** 키보드 창에만 붙는 하단 영역의 높이 (인셋 콜백 값 - 창 관리자 값). 키보드가 내려가면 0으로 비운다. */
+    private int windowOnlyBottom;
+    /** 창 관리자에게 물을 수 없는 기기에서 인셋 콜백이 마지막으로 준 하단 높이 (-1 = 아직 모른다). */
+    private int callbackBottom = -1;
+
+    /** 창 관리자가 지금 알려 주는 하단 바 높이. 알 수 없으면 -1. */
+    private int freshBottomInset() {
+        WindowInsets insets = freshInsets();
+        return insets == null ? -1 : legacyBottomInset(insets);
+    }
+
+    /** 창 관리자가 지금 새로 계산해 주는 이 창의 인셋. 물을 수 없으면 null. */
+    private WindowInsets freshInsets() {
+        if (Build.VERSION.SDK_INT < 30) return null;
+        try {
+            android.view.WindowManager wm = getWindow() != null && getWindow().getWindow() != null
+                    ? getWindow().getWindow().getWindowManager() : null;
+            if (wm == null) wm = getSystemService(android.view.WindowManager.class);
+            return wm == null ? null : wm.getCurrentWindowMetrics().getWindowInsets();
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    /**
+     * 이 인셋이 제스처 탐색 상태에서 나온 것인지: 제스처 탐색은 화면 왼쪽·오른쪽 가장자리에 뒤로 가기 손짓 영역이 있고,
+     * 버튼 탐색에는 없다. 키보드 창 전용 하단 영역과 상관없이 탐색 방법만 보여 주는 신호다.
+     */
+    private static boolean gestureNavigation(WindowInsets insets) {
+        if (Build.VERSION.SDK_INT < 30) return false;
+        android.graphics.Insets g = insets.getInsets(WindowInsets.Type.systemGestures());
+        return g.left > 0 || g.right > 0;
+    }
+
+    private static int legacyBottomInset(WindowInsets insets) {
+        if (Build.VERSION.SDK_INT >= 30) {
+            return Math.max(insets.getInsets(WindowInsets.Type.navigationBars()).bottom,
+                    insets.getInsets(WindowInsets.Type.tappableElement()).bottom);
+        }
+        return insets.getSystemWindowInsetBottom();
+    }
+
+    @Override
+    public void onConfigurationChanged(android.content.res.Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        refreshBottomInset(null);   // 폴더블을 접고 펴거나 탐색 방법을 바꾸면 하단 바가 달라진다
     }
 
     @Override
     public void onWindowHidden() {
         super.onWindowHidden();
         windowHidden = true;
+        windowOnlyBottom = 0;   // 옛 값이 남아 다음에 올라올 때 자판 아래에 빈 띠가 생기지 않게 한다
+        callbackBottom = -1;
         main.removeCallbacks(suggestRunnable);
         main.removeCallbacks(releaseWhileHidden);
         main.postDelayed(releaseWhileHidden, RELEASE_DELAY_MS);
@@ -1010,6 +1089,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     private void showPanel(int p) {
+        dismissForgetDialog();   // 삭제 확인 줄이 다른 화면(검색창 등) 위에 남지 않게
         if (p != PANEL_SEARCH && panel == PANEL_SEARCH) {
             composer.reset();
             search.setLength(0);
@@ -1823,8 +1903,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             scheduleSuggest();
             return;
         }
-        // 설정의 '추천 단어 뒤에 공백 포함'을 따른다 (한글·영어 모두).
-        boolean withSpace = prefs.suggestSpace();
+        // 설정의 '추천 단어 뒤에 공백 포함'을 따른다 (한글·영어 모두). 단축어의 문장은 늘 공백 없이 넣는다.
+        boolean withSpace = prefs.suggestSpace() && !shortcutShown;
         String inserted = withSpace ? replacement + " " : replacement;
         ic.beginBatchEdit();
         ic.deleteSurroundingText(word.length(), 0);
@@ -1864,60 +1944,59 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     /** 추천 막대에서 학습한 단어를 지울지 묻는 창. 키보드 창에 붙여 띄운다. */
-    private android.app.AlertDialog forgetDialog;
+    /**
+     * 학습한 단어 삭제 확인 줄. 따로 창(대화상자)을 띄우지 않고 도구 막대(추천란) 자리 위에 덮어 보여 준다.
+     * 키보드 창에 붙인 대화상자는 뜨는 순간 포커스가 옮겨 가면서 시스템이 키보드를 닫아 버리는 일이 있었다.
+     */
+    private LinearLayout forgetBar;
+    private TextView forgetText;
+    private Runnable forgetAction;
 
     private void confirmForget(String word, Runnable delete) {
-        dismissForgetDialog();
-        if (suggestBar == null || suggestBar.getWindowToken() == null) return;
-        android.content.Context themed = new android.view.ContextThemeWrapper(this, theme.dark
-                ? android.R.style.Theme_DeviceDefault_Dialog_Alert
-                : android.R.style.Theme_DeviceDefault_Light_Dialog_Alert);
-        android.widget.CheckBox dontAsk = new android.widget.CheckBox(themed);
-        dontAsk.setText("다시 보지 않음");
-        dontAsk.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        FrameLayout box = new FrameLayout(themed);
-        int pad = Ui.dp(this, 20);
-        box.setPadding(pad, Ui.dp(this, 4), pad, 0);
-        box.addView(dontAsk);
-        android.app.AlertDialog dialog = com.alternative_studios.newswipe.AppTheme.accentBuilder(themed)
-                .setTitle("학습한 단어 삭제")
-                .setMessage("'" + word + "'" + WordSuggester.objectParticle(word) + " 삭제하시겠습니까?")
-                .setView(box)
-                .setPositiveButton("삭제", (d, w) -> {
-                    // 취소할 때는 체크해도 저장하지 않는다.
-                    if (dontAsk.isChecked()) prefs.raw().edit().putBoolean(Prefs.CONFIRM_LEARNED_DELETE, false).apply();
-                    delete.run();
-                })
-                .setNegativeButton("취소", null)
-                .create();
-        android.view.Window window = dialog.getWindow();
-        if (window != null) {
-            android.view.WindowManager.LayoutParams lp = window.getAttributes();
-            lp.token = suggestBar.getWindowToken();
-            lp.type = android.view.WindowManager.LayoutParams.TYPE_APPLICATION_ATTACHED_DIALOG;
-            window.setAttributes(lp);
-            window.addFlags(android.view.WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM);
+        if (topSlot == null) return;
+        if (forgetBar == null) {
+            forgetBar = new LinearLayout(this);
+            forgetBar.setGravity(Gravity.CENTER_VERTICAL);
+            forgetBar.setBackgroundColor(theme.background);
+            forgetBar.setClickable(true);   // 아래의 도구 막대·추천이 눌리지 않게
+            forgetBar.setPadding(Ui.dp(this, 12), 0, Ui.dp(this, 4), 0);
+            forgetText = new TextView(this);
+            forgetText.setTextColor(theme.text);
+            forgetText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+            forgetText.setSingleLine(true);
+            forgetText.setEllipsize(TextUtils.TruncateAt.MIDDLE);
+            forgetBar.addView(forgetText, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+            forgetBar.addView(forgetButton("취소", theme.text, v -> dismissForgetDialog()));
+            forgetBar.addView(forgetButton("삭제", theme.accent, v -> {
+                Runnable action = forgetAction;
+                dismissForgetDialog();
+                if (action != null) action.run();
+            }));
+            topSlot.addView(forgetBar, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT));
         }
-        dialog.setOnDismissListener(d -> {
-            if (forgetDialog == d) forgetDialog = null;
-        });
-        forgetDialog = dialog;
-        try {
-            dialog.show();
-        } catch (RuntimeException e) {
-            forgetDialog = null;   // 키보드 창이 막 사라진 경우
-        }
+        forgetAction = delete;
+        forgetText.setText("'" + word + "'" + WordSuggester.objectParticle(word) + " 삭제할까요?");
+        forgetBar.setVisibility(View.VISIBLE);
+        forgetBar.bringToFront();
     }
 
-    /** 키보드가 내려가거나 다시 만들어질 때 창도 닫는다 (남아서 키보드 화면을 붙잡지 않게). */
+    private TextView forgetButton(String label, int color, View.OnClickListener l) {
+        TextView b = new TextView(this);
+        b.setText(label);
+        b.setTextColor(color);
+        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        int h = Ui.dp(this, 12), v = Ui.dp(this, 8);
+        b.setPadding(h, v, h, v);
+        b.setBackground(Ui.ripple(theme.keyPressed, null, Ui.dp(this, 16)));
+        b.setOnClickListener(l);
+        return b;
+    }
+
+    /** 삭제 확인 줄을 닫는다 (키보드가 내려가거나 다시 만들어질 때도 부른다). */
     private void dismissForgetDialog() {
-        if (forgetDialog == null) return;
-        try {
-            if (forgetDialog.isShowing()) forgetDialog.dismiss();
-        } catch (RuntimeException ignored) {
-            // 키보드 창이 이미 사라진 경우
-        }
-        forgetDialog = null;
+        forgetAction = null;
+        if (forgetBar != null) forgetBar.setVisibility(View.GONE);
     }
 
     /**

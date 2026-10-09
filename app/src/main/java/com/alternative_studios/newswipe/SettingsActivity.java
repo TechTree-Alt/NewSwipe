@@ -1142,8 +1142,7 @@ public final class SettingsActivity extends Activity {
 
         LinearLayout shortcut = section("단축어");
         View shortcutGroup = subGroup(button("단축어 편집", v -> startActivity(new Intent(this, ShortcutEditorActivity.class))));
-        shortcut.addView(toggle("단축어 사용", "'ㅈㄱㅈ' 같은 줄임말을 입력하면 정해 둔 문장('지금 가는 중')을 추천란 전체에 보여 줍니다. "
-                + "누르면 줄임말이 그 문장으로 바뀝니다. 단어 추천을 꺼 둬도, 이메일 입력란에서도 쓸 수 있고, 비밀번호 입력란에서는 쓰지 않습니다.",
+        shortcut.addView(toggle("단축어 사용", "사용자가 정한 줄임말을 입력하면 정해 둔 문장을 추천란에 보여 줍니다 (예: ㅈㄱㅈ → 지금 가는 중)",
                 Prefs.SHORTCUTS_ENABLED, prefs.shortcutsEnabled(), shortcutGroup));
         shortcut.addView(shortcutGroup);
 

@@ -1222,7 +1222,10 @@ public final class KeyboardView extends View {
     private void openPopup(Pointer p) {
         String[] items = p.key.popup.clone();
         if (shiftState != 0 && layout.kind == KeyboardLayout.ENGLISH) {
-            for (int i = 0; i < items.length; i++) items[i] = items[i].toUpperCase(Locale.ROOT);
+            // 한 글자(é 같은 악센트 문자)만 Shift를 따른다. 두 글자 이상(단어)은 정해 둔 그대로 입력한다.
+            for (int i = 0; i < items.length; i++) {
+                if (Key.isSingleChar(items[i])) items[i] = items[i].toUpperCase(Locale.ROOT);
+            }
         }
         popupItems = items;
         popupPointer = p;

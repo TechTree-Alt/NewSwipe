@@ -92,10 +92,23 @@ public final class Key {
         return grayStyle || (type != CHAR && type != SPACE);
     }
 
-    /** 첫 번째 길게 누르기 글자 (키 위에 작게 표시). */
+    /**
+     * 첫 번째 길게 누르기 글자 (키 위에 작게 표시). 첫 번째 항목이 단어처럼 길면 그 첫 글자 하나만 보인다.
+     * 그릴 때마다 새 문자열을 만들지 않도록 길게 누르기 문자가 바뀔 때만 다시 만든다.
+     */
     public String hint() {
-        return !grayStyle && popup != null && popup.length > 0 ? popup[0] : null;
+        if (grayStyle || popup == null || popup.length == 0) return null;
+        String first = popup[0];
+        if (first == null || first.isEmpty()) return null;
+        if (hintSource != first) {
+            hintSource = first;
+            hintFirst = first.substring(0, first.offsetByCodePoints(0, 1));   // 이모지처럼 두 칸짜리 글자도 한 글자로
+            hintUpper = null;
+        }
+        return hintFirst;
     }
+
+    private String hintSource, hintFirst;
 
     /** hint()의 대문자 (영어 자판 Shift 상태). 그릴 때마다 새 문자열을 만들지 않도록 처음 쓸 때 만들어 둔다. */
     private String hintUpper;
@@ -103,7 +116,13 @@ public final class Key {
     public String hintUpper() {
         String h = hint();
         if (h == null) return null;
+        if (!isSingleChar(popup[0])) return h;   // 단어는 Shift를 켜도 그대로 입력되므로 힌트도 그대로다
         if (hintUpper == null) hintUpper = h.toUpperCase(java.util.Locale.ROOT);
         return hintUpper;
+    }
+
+    /** 글자 하나(코드 포인트 하나)인지. 길게 눌러 입력하는 항목 중 Shift를 따르는 것은 이런 것뿐이다. */
+    static boolean isSingleChar(String s) {
+        return s != null && !s.isEmpty() && s.codePointCount(0, s.length()) == 1;
     }
 }
