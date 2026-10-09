@@ -25,7 +25,7 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v6
 
-      # Secrets에 키스토어가 있으면 그 키로 릴리스 APK에 서명한다.
+      # Secrets에 키스토어가 있으면 그 키로 릴리스 APK·AAB에 서명한다.
       - name: Prepare signing key
         if: ${{ env.KEYSTORE_BASE64 != '' }}
         run: |
@@ -40,21 +40,33 @@ jobs:
           NEWSWIPE_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           NEWSWIPE_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           NEWSWIPE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: ./gradlew --no-daemon testDebugUnitTest assembleRelease
+        run: ./gradlew --no-daemon testDebugUnitTest assembleRelease bundleRelease
 
-      - name: Rename APK
+      - name: Warn if built without the release key
+        if: ${{ env.KEYSTORE_BASE64 == '' }}
+        run: echo "::warning::KEYSTORE_BASE64 시크릿이 없어 디버그 키로 서명했습니다. 이 APK/AAB는 배포하거나 Play에 올리지 마세요."
+
+      - name: Collect APK and AAB
         run: |
-          mkdir -p out
+          mkdir -p out aab-out
           cp app/build/outputs/apk/release/app-release.apk "out/NewSwipe-${GITHUB_REF_NAME//\//-}.apk"
-          ls -la out
+          cp app/build/outputs/bundle/release/app-release.aab "aab-out/NewSwipe-${GITHUB_REF_NAME//\//-}.aab"
+          ls -la out aab-out
 
       - uses: actions/upload-artifact@v7
         with:
           name: NewSwipe-apk
           path: out/*.apk
 
+      # Google Play에 올리는 파일. GitHub 릴리스에는 붙이지 않는다.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: NewSwipe-aab
+          path: aab-out/*.aab
+
+      # 릴리스 키로 서명했을 때만 게시한다 (디버그 키로 서명된 APK가 릴리스로 나가지 않게).
       - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: ${{ startsWith(github.ref, 'refs/tags/v') && env.KEYSTORE_BASE64 != '' }}
         uses: softprops/action-gh-release@v3
         with:
           files: out/*.apk
