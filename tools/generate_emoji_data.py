@@ -92,6 +92,56 @@ def words(names, keywords, emoji):
     return "|".join(out)
 
 
+# 나라 국기: CLDR 이름은 '깃발: 일본'뿐이라 '일본'으로 찾으면 맨 뒤로 밀리고, 흔히 부르는 이름(한국, 우리나라)으로는
+# 찾을 수 없다. 나라 이름과 다른 이름을 '깃발: …' 앞에 둔다. 앱은 '깃발: …'까지를 모두 이름으로 보아 먼저 보여 준다.
+# 영어의 두 글자 약어(us, un, eu)는 평범한 단어와 겹쳐 추천이 잘못 뜨므로 넣지 않는다.
+FLAG_ALIASES = {
+    "🇰🇷": (["한국", "우리나라", "남한", "코리아"], ["korea"]),
+    "🇺🇸": (["미합중국", "아메리카"], ["usa", "america"]),
+    "🇰🇵": (["조선", "북조선"], ["dprk"]),
+    "🇬🇧": ([], ["uk", "britain", "great britain"]),
+    "🇨🇳": (["중화인민공화국"], []),
+    "🇦🇺": (["호주"], []),
+    "🇹🇷": (["터키"], ["turkey"]),
+    "🇬🇪": (["그루지야"], []),
+    "🇳🇱": (["홀란드"], ["holland"]),
+    "🇨🇿": (["체코 공화국"], ["czech"]),
+    "🇹🇼": (["타이완"], []),
+    "🇹🇭": (["타이"], []),
+    "🇮🇳": (["인디아"], []),
+    "🇦🇪": (["아랍 에미리트"], ["uae"]),
+    "🇿🇦": (["남아공", "남아프리카 공화국"], []),
+    "🇸🇦": (["사우디"], []),
+    "🇻🇦": (["바티칸"], ["vatican"]),
+    "🇩🇪": (["도이칠란트"], ["deutschland"]),
+    "🇪🇺": (["유럽"], ["europe"]),
+    "🇺🇳": (["유엔"], []),
+}
+
+
+def flag_words(emoji, line, prefix, lang):
+    """나라 국기의 키워드 줄에 나라 이름과 다른 이름을 이름('깃발: …') 앞에 넣는다. 국기가 아니면 그대로."""
+    kw = line.split("|") if line else []
+    if not kw or not kw[0].startswith(prefix):
+        return line
+    country = kw[0][len(prefix):].strip()
+    names = [country]
+    short = re.sub(r"\s*\(.*\)\s*$", "", country)   # 홍콩(중국 특별행정구) → 홍콩, myanmar (burma) → myanmar
+    if short != country:
+        names.append(short)
+        inner = re.search(r"\(([^()]*)\)\s*$", country)
+        if inner and lang == "en":
+            names.append(inner.group(1).strip())   # burma
+    names += FLAG_ALIASES.get(emoji, ([], []))[0 if lang == "ko" else 1]
+    extra = ["국기"] if lang == "ko" else []
+    out = []
+    for w in names + kw[:1] + extra + kw[1:]:
+        w = w.strip().lower()
+        if w and w not in out:
+            out.append(w)
+    return "|".join(out)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--emoji", default=EMOJI_VERSION)
@@ -139,7 +189,8 @@ def main():
         for group, _, _, emoji, k in bases:
             f.write("\t".join([
                 group, emoji, " ".join(variants.get(k, [])),
-                words(ko_names, ko_kw, emoji), words(en_names, en_kw, emoji),
+                flag_words(emoji, words(ko_names, ko_kw, emoji), "깃발: ", "ko"),
+                flag_words(emoji, words(en_names, en_kw, emoji), "flag: ", "en"),
             ]) + "\n")
     print("wrote %d emoji to %s" % (len(bases), OUT), file=sys.stderr)
 
