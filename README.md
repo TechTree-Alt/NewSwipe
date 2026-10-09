@@ -6,7 +6,7 @@ NewSwipe는 가볍고 현대적이며 편안한 한글 입력 시스템입니다
 <br />
 <br />
 <p align="left">
-  <a href="https://github.com/TechTree-Alt/NewSwipe/releases/latest"><img src="docs/get-apk-github.svg" alt="Get it on GitHub" height="72" /></a>
+  <a href="https://github.com/TechTree-Alt/NewSwipe/releases/latest"><img src="docs/get-apk-github.svg" alt="Get it on GitHub" height="50" /></a>
 </p>
 <br />
 
