@@ -115,12 +115,15 @@ NewSwipe의 자판과 입력 방식은 아래 작업들에서 아이디어를 �
 <br />
 
 ## 고지사항
+
 <p align="left">
-  <img src="docs/claude_code.png" alt="Claude Code logo" height="200" /></a>
+  <img src="docs/claude_code.png" alt="Claude Code logo" height="150" /></a>
 </p>
-NewSwipe는 비전공자가 Claude Code(Sonnet 5.5, Opus 5.5)를 사용해 만든 프로젝트입니다.  
-모든 아이디어와 검수는 개발자가 했으며, Claude Code를 통해 주요 기능을 구현하였습니다.  
+NewSwipe는 비전공자가 Claude Code(Sonnet 5.5, Opus 5.5)를 사용해 만든 프로젝트입니다.
+모든 아이디어와 검수는 개발자가 했으며, Claude Code를 통해 주요 기능을 구현하였습니다.
 <br />
+<br />
+
 
 ## 라이선스
 
