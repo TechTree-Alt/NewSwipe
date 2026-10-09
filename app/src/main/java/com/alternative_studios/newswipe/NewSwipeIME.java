@@ -457,16 +457,26 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
      * 키보드 창 아래쪽의 하단 바(내비게이션 바·작업 표시줄) 높이.
      * 일부 기기는 키보드가 올라오는 순간 하단 바가 '보이는' 상태인데도 높이를 0으로 알려 주고, 그대로 두면 자판이
      * 하단 바 뒤로 들어가 겹친다 (키보드를 내렸다 올리면 제대로 알려 준다). 보이는 상태라면 가려지는 높이를 대신 쓴다.
-     * 몰입 모드처럼 하단 바가 정말 숨어 있으면 0이다.
+     * 그것도 0이면 같은 화면 방향에서 마지막으로 받은 높이를 쓴다. 몰입 모드처럼 하단 바가 정말 숨어 있으면 0이다.
      */
-    private static int navigationBarBottom(WindowInsets insets) {
+    private int navigationBarBottom(WindowInsets insets) {
         if (Build.VERSION.SDK_INT < 30) return insets.getSystemWindowInsetBottom();
         int nav = WindowInsets.Type.navigationBars();
         int bottom = Math.max(insets.getInsets(nav).bottom,
                 insets.getInsets(WindowInsets.Type.tappableElement()).bottom);
-        if (bottom == 0 && insets.isVisible(nav)) bottom = insets.getInsetsIgnoringVisibility(nav).bottom;
+        if (bottom == 0 && insets.isVisible(nav)) {
+            bottom = insets.getInsetsIgnoringVisibility(nav).bottom;
+            if (bottom == 0 && lastNavOrientation == getResources().getConfiguration().orientation) bottom = lastNavBottom;
+        }
+        if (bottom > 0) {
+            lastNavBottom = bottom;
+            lastNavOrientation = getResources().getConfiguration().orientation;
+        }
         return bottom;
     }
+
+    /** 마지막으로 받은 하단 바 높이와 그때의 화면 방향 (높이를 0으로 잘못 알려 주는 기기를 위해 기억해 둔다). */
+    private int lastNavBottom, lastNavOrientation = -1;
 
     private final Runnable reapplyInsets = () -> {
         if (root != null && !windowHidden) root.requestApplyInsets();
