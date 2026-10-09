@@ -387,6 +387,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         searchBar = buildSearchBar();
         searchBar.setVisibility(View.GONE);
         topSlot.addView(searchBar);
+        forgetBar = null;   // 학습한 단어 삭제 확인 줄은 필요할 때 만든다 (새 화면에는 아직 없다)
         column.addView(topSlot, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, toolbarHeight));
 
         resultViews.clear();   // 예전 색으로 만든 칸은 버린다
@@ -1088,6 +1089,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     private void showPanel(int p) {
+        dismissForgetDialog();   // 삭제 확인 줄이 다른 화면(검색창 등) 위에 남지 않게
         if (p != PANEL_SEARCH && panel == PANEL_SEARCH) {
             composer.reset();
             search.setLength(0);
@@ -1942,60 +1944,69 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     /** 추천 막대에서 학습한 단어를 지울지 묻는 창. 키보드 창에 붙여 띄운다. */
-    private android.app.AlertDialog forgetDialog;
+    /**
+     * 학습한 단어 삭제 확인 줄. 따로 창(대화상자)을 띄우지 않고 도구 막대(추천란) 자리 위에 덮어 보여 준다.
+     * 키보드 창에 붙인 대화상자는 뜨는 순간 포커스가 옮겨 가면서 시스템이 키보드를 닫아 버리는 일이 있었다.
+     */
+    private LinearLayout forgetBar;
+    private TextView forgetText;
+    private android.widget.CheckBox forgetDontAsk;
+    private Runnable forgetAction;
 
     private void confirmForget(String word, Runnable delete) {
-        dismissForgetDialog();
-        if (suggestBar == null || suggestBar.getWindowToken() == null) return;
-        android.content.Context themed = new android.view.ContextThemeWrapper(this, theme.dark
-                ? android.R.style.Theme_DeviceDefault_Dialog_Alert
-                : android.R.style.Theme_DeviceDefault_Light_Dialog_Alert);
-        android.widget.CheckBox dontAsk = new android.widget.CheckBox(themed);
-        dontAsk.setText("다시 보지 않음");
-        dontAsk.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        FrameLayout box = new FrameLayout(themed);
-        int pad = Ui.dp(this, 20);
-        box.setPadding(pad, Ui.dp(this, 4), pad, 0);
-        box.addView(dontAsk);
-        android.app.AlertDialog dialog = com.alternative_studios.newswipe.AppTheme.accentBuilder(themed)
-                .setTitle("학습한 단어 삭제")
-                .setMessage("'" + word + "'" + WordSuggester.objectParticle(word) + " 삭제하시겠습니까?")
-                .setView(box)
-                .setPositiveButton("삭제", (d, w) -> {
-                    // 취소할 때는 체크해도 저장하지 않는다.
-                    if (dontAsk.isChecked()) prefs.raw().edit().putBoolean(Prefs.CONFIRM_LEARNED_DELETE, false).apply();
-                    delete.run();
-                })
-                .setNegativeButton("취소", null)
-                .create();
-        android.view.Window window = dialog.getWindow();
-        if (window != null) {
-            android.view.WindowManager.LayoutParams lp = window.getAttributes();
-            lp.token = suggestBar.getWindowToken();
-            lp.type = android.view.WindowManager.LayoutParams.TYPE_APPLICATION_ATTACHED_DIALOG;
-            window.setAttributes(lp);
-            window.addFlags(android.view.WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM);
+        if (topSlot == null) return;
+        if (forgetBar == null) {
+            forgetBar = new LinearLayout(this);
+            forgetBar.setGravity(Gravity.CENTER_VERTICAL);
+            forgetBar.setBackgroundColor(theme.background);
+            forgetBar.setClickable(true);   // 아래의 도구 막대·추천이 눌리지 않게
+            forgetBar.setPadding(Ui.dp(this, 12), 0, Ui.dp(this, 4), 0);
+            forgetText = new TextView(this);
+            forgetText.setTextColor(theme.text);
+            forgetText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+            forgetText.setSingleLine(true);
+            forgetText.setEllipsize(TextUtils.TruncateAt.MIDDLE);
+            forgetBar.addView(forgetText, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+            forgetDontAsk = new android.widget.CheckBox(this);
+            forgetDontAsk.setText("다시 묻지 않음");
+            forgetDontAsk.setTextColor(theme.hint);
+            forgetDontAsk.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+            forgetDontAsk.setButtonTintList(android.content.res.ColorStateList.valueOf(theme.accent));
+            forgetBar.addView(forgetDontAsk);
+            forgetBar.addView(forgetButton("취소", theme.text, v -> dismissForgetDialog()));
+            forgetBar.addView(forgetButton("삭제", theme.accent, v -> {
+                Runnable action = forgetAction;
+                // 취소할 때는 체크해도 저장하지 않는다.
+                if (forgetDontAsk.isChecked()) prefs.raw().edit().putBoolean(Prefs.CONFIRM_LEARNED_DELETE, false).apply();
+                dismissForgetDialog();
+                if (action != null) action.run();
+            }));
+            topSlot.addView(forgetBar, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT));
         }
-        dialog.setOnDismissListener(d -> {
-            if (forgetDialog == d) forgetDialog = null;
-        });
-        forgetDialog = dialog;
-        try {
-            dialog.show();
-        } catch (RuntimeException e) {
-            forgetDialog = null;   // 키보드 창이 막 사라진 경우
-        }
+        forgetAction = delete;
+        forgetText.setText("'" + word + "'" + WordSuggester.objectParticle(word) + " 삭제할까요?");
+        forgetDontAsk.setChecked(false);
+        forgetBar.setVisibility(View.VISIBLE);
+        forgetBar.bringToFront();
     }
 
-    /** 키보드가 내려가거나 다시 만들어질 때 창도 닫는다 (남아서 키보드 화면을 붙잡지 않게). */
+    private TextView forgetButton(String label, int color, View.OnClickListener l) {
+        TextView b = new TextView(this);
+        b.setText(label);
+        b.setTextColor(color);
+        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        int h = Ui.dp(this, 12), v = Ui.dp(this, 8);
+        b.setPadding(h, v, h, v);
+        b.setBackground(Ui.ripple(theme.keyPressed, null, Ui.dp(this, 16)));
+        b.setOnClickListener(l);
+        return b;
+    }
+
+    /** 삭제 확인 줄을 닫는다 (키보드가 내려가거나 다시 만들어질 때도 부른다). */
     private void dismissForgetDialog() {
-        if (forgetDialog == null) return;
-        try {
-            if (forgetDialog.isShowing()) forgetDialog.dismiss();
-        } catch (RuntimeException ignored) {
-            // 키보드 창이 이미 사라진 경우
-        }
-        forgetDialog = null;
+        forgetAction = null;
+        if (forgetBar != null) forgetBar.setVisibility(View.GONE);
     }
 
     /**
