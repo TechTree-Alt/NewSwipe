@@ -1901,8 +1901,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             scheduleSuggest();
             return;
         }
-        // 설정의 '추천 단어 뒤에 공백 포함'을 따른다 (한글·영어 모두).
-        boolean withSpace = prefs.suggestSpace();
+        // 설정의 '추천 단어 뒤에 공백 포함'을 따른다 (한글·영어 모두). 단축어의 문장은 늘 공백 없이 넣는다.
+        boolean withSpace = prefs.suggestSpace() && !shortcutShown;
         String inserted = withSpace ? replacement + " " : replacement;
         ic.beginBatchEdit();
         ic.deleteSurroundingText(word.length(), 0);
