@@ -38,6 +38,8 @@ public final class Prefs {
     public static final String PAD_BOTTOM = "pad_bottom";             // dp, 0~48
     public static final String COMMA_CHAR = "bottom_comma_char";           // 하단 쉼표 키가 입력하는 한 글자 (기본 ",")
     public static final String PERIOD_CHAR = "bottom_period_char";         // 하단 온점 키가 입력하는 한 글자 (기본 ".")
+    public static final String SHORTCUTS_ENABLED = "shortcuts_enabled";   // 단축어 사용
+    public static final String SHORTCUT_PREFIX = "shortcut_";              // 단축어 하나는 "shortcut_<줄임말>" = 문장
     public static final String PERIOD_COMMA = "period_comma";         // 쉼표 키 대신 온점 길게 누르기
     /** 한글 자판의 Shift 키를 없앤다 (켜짐 = Shift 키 없음, 그 자리는 빈칸). */
     public static final String KOREAN_SHIFT_HIDDEN = "korean_shift_hidden";
@@ -319,7 +321,7 @@ public final class Prefs {
         MENU_KEYS.put("feedback", keys(VIBRATE, VIBRATE_MS, SOUND, SOUND_VOLUME));
         MENU_KEYS.put("tools", keys(TOOLBAR, TOOLBAR_BOTTOM, TOOLBAR_HEIGHT, TOOL_BUTTON_SIZE, CLIPBOARD_HISTORY, CLIPBOARD_IMAGES, TOOL_ORDER, TOOL_CLIPBOARD,
                 TOOL_EMOJI, VOICE_KEY, TOOL_UNDO, TOOL_SETTINGS, TOOL_ONE_HAND, TOOL_HIDE));
-        MENU_KEYS.put("words", keys(SUGGEST_WORDS, SUGGEST_FULL_BAR, SUGGEST_SPACE, AUTO_CORRECT, LEARN_WORDS,
+        MENU_KEYS.put("words", keys(SHORTCUTS_ENABLED, SUGGEST_WORDS, SUGGEST_FULL_BAR, SUGGEST_SPACE, AUTO_CORRECT, LEARN_WORDS,
                 CONFIRM_LEARNED_DELETE));
         // 실험실: 대화면 별도 레이아웃과 대화면 키보드 사용자화의 값은 모두 large_로 시작한다.
         MENU_KEYS.put("lab", keys(SWIPE_DOWN_RATIO, SWIPE_UP_RATIO));
@@ -452,6 +454,32 @@ public final class Prefs {
     public int padTopDp() { return sp.getInt(PAD_TOP, 0); }
     public int padBottomDp() { return sp.getInt(PAD_BOTTOM, 4); }
     public boolean periodComma() { return sp.getBoolean(PERIOD_COMMA, true); }
+
+    public boolean shortcutsEnabled() { return sp.getBoolean(SHORTCUTS_ENABLED, true); }
+
+    /** 정해 둔 단축어 (줄임말 → 문장), 줄임말 순. 단축어마다 키를 따로 저장해 설정 내보내기의 값 길이 제한에 걸리지 않는다. */
+    public java.util.Map<String, String> shortcuts() {
+        java.util.Map<String, String> out = new java.util.TreeMap<>();
+        for (java.util.Map.Entry<String, ?> e : sp.getAll().entrySet()) {
+            if (e.getKey().startsWith(SHORTCUT_PREFIX) && e.getValue() instanceof String) {
+                out.put(e.getKey().substring(SHORTCUT_PREFIX.length()), (String) e.getValue());
+            }
+        }
+        return out;
+    }
+
+    public void setShortcut(String key, String phrase) {
+        sp.edit().putString(SHORTCUT_PREFIX + com.alternative_studios.newswipe.suggest.Shortcuts.normalize(key),
+                com.alternative_studios.newswipe.suggest.Shortcuts.cleanPhrase(phrase)).apply();
+    }
+
+    public void removeShortcut(String key) {
+        sp.edit().remove(SHORTCUT_PREFIX + key).apply();
+    }
+
+    public void clearShortcuts() {
+        removeKeys(NONE, new String[]{SHORTCUT_PREFIX});
+    }
 
     /**
      * 하단 쉼표(",")·온점(".") 키가 입력하는 글자. 다른 글자로 바꾸지 않았으면 그대로 돌려준다.

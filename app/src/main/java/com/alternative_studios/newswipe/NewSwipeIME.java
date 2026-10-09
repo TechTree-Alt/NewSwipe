@@ -54,6 +54,7 @@ import com.alternative_studios.newswipe.keyboard.SwipeAction;
 import com.alternative_studios.newswipe.ui.IconButton;
 import com.alternative_studios.newswipe.ui.SwipeVertical;
 import com.alternative_studios.newswipe.ui.SwipeStrip;
+import com.alternative_studios.newswipe.suggest.Shortcuts;
 import com.alternative_studios.newswipe.suggest.TextMirror;
 import com.alternative_studios.newswipe.suggest.UserDictionary;
 import com.alternative_studios.newswipe.suggest.WordSuggester;
@@ -147,6 +148,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private WordSuggester suggester;
     private UserDictionary userWords;
     private String[] suggestions = new String[0];
+    /** 지금 추천란에 보이는 것이 단축어의 문장인지 (추천란 전체를 이 문장 하나가 채운다). */
+    private boolean shortcutShown;
+    private Shortcuts shortcuts = Shortcuts.of(null);
+    private boolean cfgShortcuts;
     private String correctedFrom, correctedTo;   // 방금 자동 수정한 단어 (지우기 키로 되돌리기 위해)
     private final java.util.HashSet<String> correctionIgnored = new java.util.HashSet<>();
     /** correctionIgnored를 채울 때의 학습한 단어 편집 번호. 설정에서 단어를 지우면 바뀌어 비운다. */
@@ -626,6 +631,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     private LinearLayout buildSuggestBar() {
         suggestions = new String[0];   // 새 막대는 비어 있다 (예전 막대의 내용과 비교하지 않도록)
+        shortcutShown = false;
         suggestWord = "";
         LinearLayout bar = new LinearLayout(this);
         bar.setGravity(Gravity.CENTER_VERTICAL);
@@ -680,6 +686,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private void applySettings() {
         boolean wasWords = cfgWords, wasLearn = cfgLearn;
         cfgSuggest = prefs.suggestWords();
+        cfgShortcuts = prefs.shortcutsEnabled();
+        shortcuts = cfgShortcuts ? Shortcuts.of(prefs.shortcuts()) : Shortcuts.of(null);
         cfgAutoCorrect = prefs.autoCorrect();   // 단어 추천과 따로 켜고 끈다
         cfgWords = cfgSuggest || cfgAutoCorrect;
         cfgLearn = cfgWords && prefs.learnWords();
@@ -740,6 +748,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             clearSuggestions();
             suggester.release();
             warmingKo = warmingEn = false;
+            if (panel == PANEL_KEYBOARD) scheduleSuggest();   // 단축어는 단어 추천을 꺼도 쓴다
         }
         if (wasLearn && !cfgLearn) runIo(userWords::release);   // 학습을 끄면 학습한 단어도 메모리에서 내린다
         float rows = 4 + (prefs.numberRow() ? 0.78f : 0f);
@@ -1035,7 +1044,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /** 도구 막대를 끈 상태로 자판을 보여 주는 중인지. 검색 패널은 도구 막대 자리에 검색창이 있어 해당하지 않는다. */
     private boolean toolbarGone() {
-        return !prefs.toolbar() && !(cfgSuggest && suggestAllowed) && panel == PANEL_KEYBOARD;
+        return !prefs.toolbar() && !((cfgSuggest || !shortcuts.isEmpty()) && suggestAllowed) && panel == PANEL_KEYBOARD;
     }
 
     private void updatePanelSizes() {
@@ -1549,6 +1558,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return cfgSuggest && suggestAllowed && panel == PANEL_KEYBOARD;
     }
 
+    /** 지금 입력란에서 단축어를 쓰는지 (정해 둔 단축어가 있을 때). */
+    private boolean shortcutsOn() {
+        return cfgShortcuts && !shortcuts.isEmpty() && suggestAllowed && panel == PANEL_KEYBOARD;
+    }
+
     /** 지금 입력란에서 사전을 쓰는 기능(추천·자동 수정·학습)을 쓰는지. */
     private boolean wordsOn() {
         return cfgWords && suggestAllowed && panel == PANEL_KEYBOARD;
@@ -1594,7 +1608,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private void scheduleSuggest() {
         if (suggester == null || keyboard == null) return;
         main.removeCallbacks(suggestRunnable);
-        if (!suggestOn() || !lettersLayout()) {
+        if ((!suggestOn() && !shortcutsOn()) || !lettersLayout()) {
             if (suggestions.length > 0 || !suggestWord.isEmpty()) clearSuggestions();   // 꺼져 있으면 키마다 하는 일이 없다
             return;
         }
@@ -1612,10 +1626,20 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     private void updateSuggestions() {
-        if (!suggestOn() || windowHidden || !lettersLayout()) return;
+        if ((!suggestOn() && !shortcutsOn()) || windowHidden || !lettersLayout()) return;
         InputConnection ic = getCurrentInputConnection();
         if (ic == null) return;
         String word = wordBeforeCursor(ic);
+        // 입력 중인 단어가 정해 둔 단축어면 기존 추천은 모두 숨기고 그 문장이 추천란 전체를 채운다.
+        String phrase = shortcutsOn() ? shortcuts.lookup(word) : null;
+        if (phrase != null) {
+            applySuggestions(word, new String[]{phrase}, true);
+            return;
+        }
+        if (!suggestOn()) {
+            showSuggestions(word, new String[0]);
+            return;
+        }
         if (word.isEmpty()) {
             showSuggestions(word, new String[0]);
             return;
@@ -1631,10 +1655,25 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     private void showSuggestions(String word, String[] found) {
+        applySuggestions(word, found, false);
+    }
+
+    /** 단축어의 문장이 추천란 전체를 채울 때는 첫 칸만 보이고 길면 뒤를 …로 줄인다. 아니면 칸 모두 같은 폭이고 길면 앞을 줄인다. */
+    private void setShortcutLook(boolean on) {
+        if (suggestBar == null) return;
+        suggestViews[0].setEllipsize(on ? TextUtils.TruncateAt.END : TextUtils.TruncateAt.START);
+        for (int i = 1; i < suggestViews.length; i++) suggestViews[i].setVisibility(on ? View.GONE : View.VISIBLE);
+    }
+
+    private void applySuggestions(String word, String[] found, boolean shortcut) {
         suggestWord = word;
-        if (java.util.Arrays.equals(found, suggestions)) return;   // 그대로면 다시 그리지 않는다
+        if (shortcut == shortcutShown && java.util.Arrays.equals(found, suggestions)) return;   // 그대로면 다시 그리지 않는다
         boolean wasShowing = suggestions.length > 0;
         suggestions = found;
+        if (shortcut != shortcutShown) {
+            shortcutShown = shortcut;
+            setShortcutLook(shortcut);
+        }
         if (suggestBar == null) return;
         for (int i = 0; i < suggestViews.length; i++) {
             TextView t = suggestViews[i];
@@ -1654,6 +1693,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         suggestWord = "";
         if (suggestions.length == 0) return;
         suggestions = new String[0];
+        if (shortcutShown) {
+            shortcutShown = false;
+            setShortcutLook(false);
+        }
         if (suggestBar != null) {
             for (TextView t : suggestViews) t.setText("");
             suggestBar.setVisibility(View.GONE);
@@ -1710,7 +1753,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         ic.commitText(inserted, 1);
         ic.endBatchEdit();
         mirror.replaceTail(word.length(), inserted);
-        learnWord(replacement, false);
+        if (!shortcutShown) learnWord(replacement, false);   // 단축어의 문장은 학습하지 않는다
         lastWasSpace = withSpace;
         if (withSpace) lastSpaceTime = SystemClock.uptimeMillis();
         composer.reset();
@@ -1721,7 +1764,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /** 추천을 길게 누르면: 학습한 단어면 학습한 단어에서 지운다. */
     private boolean forgetSuggestion(int index) {
-        if (index >= suggestions.length || !cfgLearn) return false;
+        if (index >= suggestions.length || !cfgLearn || shortcutShown) return false;
         final String word = suggestions[index];
         final boolean lang = korean;
         if (!userWords.isKnownIfLoaded(word, lang)) {

@@ -134,7 +134,7 @@ public final class SettingsActivity extends Activity {
             {"swipefn", "밀어서 기능", "기능키·도구 막대 밀기, 완전 사용자화"},
             {"feedback", "소리 및 진동", "키를 누를 때의 진동과 소리"},
             {"tools", "도구 막대와 클립보드", "도구 막대 버튼·위치·높이, 클립보드 기록"},
-            {"words", "단어 추천", "단어 추천, 자동 수정, 입력한 단어 학습"},
+            {"words", "단어 추천", "단어 추천, 단축어, 자동 수정, 입력한 단어 학습"},
             {"onehand", "한 손 모드", "자판 폭·키 높이, 세로 위치"},
             {"backup", "설정 가져오기 및 내보내기", "모든 설정을 파일로 저장하거나 불러오기"},
             {"lab", "실험실", "대화면 별도 레이아웃, 스와이프 방향 판정"},
@@ -1136,6 +1136,13 @@ public final class SettingsActivity extends Activity {
                 + "누르면 그 단어로 바꾸고, 학습한 단어를 길게 누르면 학습한 단어에서 지웁니다.",
                 Prefs.SUGGEST_WORDS, prefs.suggestWords(), fullBar));
         suggest.addView(fullBar);
+
+        LinearLayout shortcut = section("단축어");
+        View shortcutGroup = subGroup(button("단축어 편집", v -> startActivity(new Intent(this, ShortcutEditorActivity.class))));
+        shortcut.addView(toggle("단축어 사용", "'ㅈㄱㅈ' 같은 줄임말을 입력하면 정해 둔 문장('지금 가는 중')을 추천란 전체에 보여 줍니다. "
+                + "누르면 줄임말이 그 문장으로 바뀝니다. 단어 추천을 꺼 둬도 쓸 수 있고, 비밀번호·이메일 입력란에서는 쓰지 않습니다.",
+                Prefs.SHORTCUTS_ENABLED, prefs.shortcutsEnabled(), shortcutGroup));
+        shortcut.addView(shortcutGroup);
 
         LinearLayout correct = section("자동 수정");
         correct.addView(toggle("자동 수정", "스페이스바를 누를 때 사전에 없는 단어를 한 글자만 고치면 되는 흔한 단어로 바꿉니다. "
