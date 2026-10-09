@@ -217,6 +217,8 @@ public final class KeyboardView extends View {
     /** 팝업이 열린 뒤 손가락이 실제로 움직였는지. 움직이기 전에는 첫 번째 문자를 유지한다. */
     private boolean popupMoved;
     private float popupLeft, popupTop, popupCellW, popupCellH;
+    /** 말풍선 글자 배율: 칸보다 넓은 글자(.co.kr 같은 여러 글자)는 칸 안에 들어가도록 줄인다. */
+    private float popupTextScale = 1f;
 
     public KeyboardView(Context context) {
         super(context);
@@ -718,7 +720,7 @@ public final class KeyboardView extends View {
         fill.setColor(theme.popup);
         c.drawRoundRect(tmp, radius, radius, fill);
         text.setTypeface(Typeface.DEFAULT);
-        text.setTextSize(spChar);
+        text.setTextSize(spChar * popupTextScale);
         for (int i = 0; i < popupItems.length; i++) {
             float l = popupLeft + (i % popupCols) * popupCellW;
             float t = popupTop + (i / popupCols) * popupCellH;
@@ -1226,6 +1228,14 @@ public final class KeyboardView extends View {
         popupPointer = p;
         popupCellW = Math.max(dp(40), Math.min(p.key.rect.width(), dp(52)));
         popupCellH = Math.min(p.key.rect.height(), dp(54));
+        // 여러 글자로 된 항목(.com, .co.kr 등)은 칸을 조금 넓히고, 그래도 넘치면 글자를 줄여 칸 안에 넣는다.
+        text.setTypeface(Typeface.DEFAULT);
+        text.setTextSize(spChar);
+        float widest = 0f;
+        for (String item : items) widest = Math.max(widest, text.measureText(item));
+        float pad = dp(10);
+        popupCellW = Math.max(popupCellW, Math.min(widest + pad, dp(64)));
+        popupTextScale = widest + pad > popupCellW ? Math.max(0.3f, (popupCellW - pad) / widest) : 1f;
         float margin = dp(4);
         popupCols = Math.max(1, Math.min(items.length, (int) ((getWidth() - 2 * margin) / popupCellW)));
         int rows = (items.length + popupCols - 1) / popupCols;
