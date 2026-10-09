@@ -274,6 +274,8 @@ public final class PopupEditorActivity extends Activity {
         rows.setOrientation(LinearLayout.VERTICAL);
         box.addView(rows);
         for (String item : current(label)) addRow(rows, item, false);
+        // 입력란이 하나도 없는 채로 대화상자를 띄우면 시스템이 '글자를 칠 수 없는 창'으로 보고 키보드를 막는다.
+        if (rows.getChildCount() == 0) addRow(rows, "", true);
         TextView add = text("+ 문자 추가", 15, accentColor);
         add.setGravity(Gravity.CENTER_VERTICAL);
         add.setPadding(Ui.dp(this, 4), Ui.dp(this, 12), Ui.dp(this, 4), Ui.dp(this, 12));
@@ -301,10 +303,12 @@ public final class PopupEditorActivity extends Activity {
                 })
                 .setNegativeButton("취소", null)
                 .show();
-        if (rows.getChildCount() == 0) addRow(rows, "", true);
-        // 칸을 새로 추가하면 키보드가 올라와도 칸이 가려지지 않게 창 크기를 맞춘다.
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+        android.view.Window window = dialog.getWindow();
+        if (window != null) {
+            // 칸을 더한 뒤에도 키보드가 올라오게 하고, 올라와도 칸이 가려지지 않게 창 크기를 맞춘다.
+            window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM);
+            window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+                    | android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
         }
     }
 
