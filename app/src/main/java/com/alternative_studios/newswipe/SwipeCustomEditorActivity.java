@@ -203,7 +203,7 @@ public final class SwipeCustomEditorActivity extends Activity {
         String key = (korean ? "ko:" : "en:") + label;
         boolean was = shown.containsKey(key) ? shown.get(key) : custom;
         shown.put(key, custom);
-        ExpressiveChoiceButton cell = new ExpressiveChoiceButton(this, label, was, false, false,
+        ExpressiveChoiceButton cell = new ExpressiveChoiceButton(this, KeyboardLayout.displayLabel(prefs, label), was, false, false,
                 keyboardTheme.accent, keyboardTheme.onAccent, keyboardTheme.text, keyboardTheme.hint);
         cell.setIdleColors(keyboardTheme.key, keyboardTheme.keyPressed);
         cell.setLabelSize(18);
@@ -261,7 +261,7 @@ public final class SwipeCustomEditorActivity extends Activity {
         ScrollView sv = new ScrollView(this);
         sv.addView(box);
         AppTheme.dialogBuilder(this)
-                .setTitle("'" + label + "' 밀어서 글자 입력")
+                .setTitle("'" + KeyboardLayout.displayLabel(prefs, label) + "' 밀어서 글자 입력")
                 .setView(sv)
                 .setPositiveButton("저장", (d, w) -> {
                     for (int i = 0; i < inputs.length; i++) {

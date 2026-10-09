@@ -41,6 +41,12 @@ public final class KeyboardView extends View {
 
         void onPopupChar(Key key, String text);
 
+        /**
+         * 길게 눌러 연속 입력으로 정한 글자 키를 누르고 있는 동안 반복해서 입력한다.
+         * 탭이 아니므로 '자음 연속 탭으로 쌍자음' 같은 연속 탭 판단에 들어가지 않는다.
+         */
+        void onKeyRepeat(Key key);
+
         /** 기능키를 길게 눌렀다 (지구본 → 입력기 선택, 기호 키 → 이모지 열기). */
         void onKeyLongPress(Key key);
 
@@ -79,6 +85,8 @@ public final class KeyboardView extends View {
     private static final int EMOJI_SWIPE = 7;
     /** 밀어서 기능 완전 사용자화로 정한 기능을 실행하려고 키를 밀고 있는 중 (손을 떼면 실행한다). */
     private static final int FN_SWIPE = 8;
+    /** 길게 눌러 연속 입력하는 글자 키를 누르고 있는 중 (손을 뗄 때까지 계속 입력한다). */
+    private static final int CHAR_REPEAT = 10;
 
     private static final class Pointer {
         int id;
@@ -179,6 +187,29 @@ public final class KeyboardView extends View {
         }
     };
 
+    /** 길게 누르면 팝업 대신 계속 입력하는 글자 ("<자판>_<글자>", 설정의 '길게 눌러 연속 입력'). */
+    private java.util.Set<String> repeatChars = java.util.Collections.emptySet();
+    private Pointer charRepeatPointer;
+    private final Runnable charRepeatRunnable = new Runnable() {
+        @Override
+        public void run() {
+            Pointer p = charRepeatPointer;
+            if (p == null || !pointers.contains(p) || listener == null) return;
+            listener.onKeyRepeat(p.key);
+            handler.postDelayed(this, 60);
+        }
+    };
+
+    public void setRepeatChars(java.util.Set<String> chars) {
+        repeatChars = chars;
+        invalidate();
+    }
+
+    private boolean isRepeatChar(Key k) {
+        return k.type == Key.CHAR && !k.noRepeat && !repeatChars.isEmpty() && layout != null
+                && repeatChars.contains(KeyboardLayout.groupOf(layout.kind == KeyboardLayout.KOREAN, k.slot()) + "_" + k.slot());
+    }
+
     // 팝업 (길게 누르기 문자 선택)
     private Pointer popupPointer;
     private String[] popupItems;
@@ -186,6 +217,8 @@ public final class KeyboardView extends View {
     /** 팝업이 열린 뒤 손가락이 실제로 움직였는지. 움직이기 전에는 첫 번째 문자를 유지한다. */
     private boolean popupMoved;
     private float popupLeft, popupTop, popupCellW, popupCellH;
+    /** 말풍선 글자 배율: 칸보다 넓은 글자(.co.kr 같은 여러 글자)는 칸 안에 들어가도록 줄인다. */
+    private float popupTextScale = 1f;
 
     public KeyboardView(Context context) {
         super(context);
@@ -645,7 +678,7 @@ public final class KeyboardView extends View {
         drawCentered(c, label, cx, cy);
 
         String hint = shiftState != 0 && layout.kind == KeyboardLayout.ENGLISH ? k.hintUpper() : k.hint();
-        if (showHints && hint != null && layout.kind != KeyboardLayout.NUMBER) {
+        if (showHints && hint != null && layout.kind != KeyboardLayout.NUMBER && !isRepeatChar(k)) {
             text.setColor(theme.hint);
             text.setTypeface(Typeface.DEFAULT);
             text.setTextSize(spHint);
@@ -687,7 +720,7 @@ public final class KeyboardView extends View {
         fill.setColor(theme.popup);
         c.drawRoundRect(tmp, radius, radius, fill);
         text.setTypeface(Typeface.DEFAULT);
-        text.setTextSize(spChar);
+        text.setTextSize(spChar * popupTextScale);
         for (int i = 0; i < popupItems.length; i++) {
             float l = popupLeft + (i % popupCols) * popupCellW;
             float t = popupTop + (i / popupCols) * popupCellH;
@@ -837,7 +870,7 @@ public final class KeyboardView extends View {
             lang = k.type == Key.LANGUAGE
                     || (modeKeyLongPress && (k.type == Key.TO_SYMBOLS || k.type == Key.TO_LETTERS));
         }
-        boolean chars = k.type == Key.CHAR && k.popup != null && longPressChars;
+        boolean chars = k.type == Key.CHAR && (k.popup != null && longPressChars || isRepeatChar(k));
         if (del || lang || chars) {
             longPressTarget = p;
             // 기능키는 모두 '기능키 길게 누르기 시간'을, 문자 키는 '문자 길게 누르기 시간'을 따른다.
@@ -866,6 +899,7 @@ public final class KeyboardView extends View {
         for (Pointer p : new Pointer[]{deferred, second}) {
             cancelLongPress(p);
             if (p.mode == REPEAT) handler.removeCallbacks(repeatRunnable);
+            if (p.mode == CHAR_REPEAT) stopCharRepeat();
             if (p == popupPointer) closePopup();
             p.mode = CONSUMED;
         }
@@ -1073,6 +1107,9 @@ public final class KeyboardView extends View {
             case REPEAT:
                 handler.removeCallbacks(repeatRunnable);
                 break;
+            case CHAR_REPEAT:
+                stopCharRepeat();
+                break;
             case CONSUMED:
                 if (p.key.type == Key.SHIFT && p.chord) listener.onShiftChordEnd();
                 break;
@@ -1131,6 +1168,11 @@ public final class KeyboardView extends View {
         }
     }
 
+    private void stopCharRepeat() {
+        handler.removeCallbacks(charRepeatRunnable);
+        charRepeatPointer = null;
+    }
+
     private void cancelLongPress(Pointer p) {
         if (longPressTarget == p) {
             handler.removeCallbacks(longPressRunnable);
@@ -1165,7 +1207,12 @@ public final class KeyboardView extends View {
         } else if (k.type == Key.LANGUAGE || k.type == Key.TO_SYMBOLS || k.type == Key.TO_LETTERS) {
             p.mode = CONSUMED;
             if (listener != null) listener.onKeyLongPress(k);
-        } else if (k.popup != null) {
+        } else if (isRepeatChar(k)) {
+            p.mode = CHAR_REPEAT;
+            charRepeatPointer = p;
+            charRepeatRunnable.run();
+            markChord();
+        } else if (k.popup != null && longPressChars) {
             p.mode = POPUP;
             openPopup(p);
         }
@@ -1181,6 +1228,14 @@ public final class KeyboardView extends View {
         popupPointer = p;
         popupCellW = Math.max(dp(40), Math.min(p.key.rect.width(), dp(52)));
         popupCellH = Math.min(p.key.rect.height(), dp(54));
+        // 여러 글자로 된 항목(.com, .co.kr 등)은 칸을 조금 넓히고, 그래도 넘치면 글자를 줄여 칸 안에 넣는다.
+        text.setTypeface(Typeface.DEFAULT);
+        text.setTextSize(spChar);
+        float widest = 0f;
+        for (String item : items) widest = Math.max(widest, text.measureText(item));
+        float pad = dp(10);
+        popupCellW = Math.max(popupCellW, Math.min(widest + pad, dp(64)));
+        popupTextScale = widest + pad > popupCellW ? Math.max(0.3f, (popupCellW - pad) / widest) : 1f;
         float margin = dp(4);
         popupCols = Math.max(1, Math.min(items.length, (int) ((getWidth() - 2 * margin) / popupCellW)));
         int rows = (items.length + popupCols - 1) / popupCols;
@@ -1225,6 +1280,7 @@ public final class KeyboardView extends View {
     public void cancelAll() {
         handler.removeCallbacks(longPressRunnable);
         handler.removeCallbacks(repeatRunnable);
+        stopCharRepeat();
         longPressTarget = null;
         pointers.clear();
         deferred = second = null;

@@ -11,7 +11,7 @@ import java.util.function.IntPredicate;
 import java.util.function.IntSupplier;
 
 /**
- * 버튼을 위나 아래로 밀었을 때 한 번 실행하는 동작을 붙인다. 평소의 누르기(클릭)는 그대로 동작하고,
+ * 버튼을 밀었을 때 한 번 실행하는 동작을 붙인다. 평소의 누르기(클릭)는 그대로 동작하고,
  * 동작이 있는 방향으로 충분히 밀면 버튼의 누르기는 취소하고 동작만 실행한다.
  */
 public final class SwipeVertical {

@@ -54,6 +54,7 @@ import com.alternative_studios.newswipe.keyboard.SwipeAction;
 import com.alternative_studios.newswipe.ui.IconButton;
 import com.alternative_studios.newswipe.ui.SwipeVertical;
 import com.alternative_studios.newswipe.ui.SwipeStrip;
+import com.alternative_studios.newswipe.suggest.Shortcuts;
 import com.alternative_studios.newswipe.suggest.TextMirror;
 import com.alternative_studios.newswipe.suggest.UserDictionary;
 import com.alternative_studios.newswipe.suggest.WordSuggester;
@@ -147,11 +148,17 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private WordSuggester suggester;
     private UserDictionary userWords;
     private String[] suggestions = new String[0];
+    /** 지금 추천란에 보이는 것이 단축어의 문장인지 (추천란 전체를 이 문장 하나가 채운다). */
+    private boolean shortcutShown;
+    private Shortcuts shortcuts = Shortcuts.of(null);
+    private boolean cfgShortcuts;
     private String correctedFrom, correctedTo;   // 방금 자동 수정한 단어 (지우기 키로 되돌리기 위해)
     private final java.util.HashSet<String> correctionIgnored = new java.util.HashSet<>();
     /** correctionIgnored를 채울 때의 학습한 단어 편집 번호. 설정에서 단어를 지우면 바뀌어 비운다. */
     private int ignoredEditVersion;
     private String suggestWord = "";
+    private boolean domainField;   // 이메일 주소·인터넷 주소 입력란: 온점 키를 길게 누르면 .com 등이 나온다
+    private boolean shortcutAllowed;   // 현재 입력란에서 단축어를 쓸 수 있는지 (비밀번호만 제외, 이메일 입력란은 허용)
     private boolean suggestAllowed;   // 현재 입력란에서 추천을 쓸 수 있는지 (비밀번호·이메일 등은 제외, 인터넷 주소 입력란은 허용)
     /** 설정값 (applySettings에서 읽어 둔다. 키마다 설정 파일을 읽지 않기 위해). */
     private boolean cfgSuggest, cfgAutoCorrect, cfgLearn;
@@ -334,6 +341,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         theme = KeyboardTheme.of(this);
         emojiPanel = null;
         clipPanel = null;
+        messageView = null;
         panel = PANEL_KEYBOARD;
         toolbarHeight = toolbarHeightPx();
 
@@ -484,27 +492,17 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         bar.addView(settingsButton);
         hideButton = toolButton(Icons.HIDE, "키보드 숨기기", v -> requestHideSelf(0));
         bar.addView(hideButton);
-        // 버튼을 위·아래로 밀면 정해 둔 기능을 실행한다 (기본: 아래로 밀기만 클립보드 = 붙여넣기, 이모지 = 최근 이모지,
-        // 실행 취소 = 다시 실행).
+        // 버튼을 위·아래·왼쪽·오른쪽으로 밀면 정해 둔 기능을 실행한다 (기본: 클립보드 위 = 복사·아래 = 붙여넣기,
+        // 이모지 아래 = 최근 이모지, 실행 취소 아래 = 다시 실행, 한 손 모드 왼쪽·오른쪽 = 그쪽 한 손 모드).
         attachToolSwipe(clipboardButton, ToolbarSwipes.CLIPBOARD);
         attachToolSwipe(emojiButton, ToolbarSwipes.EMOJI);
         attachToolSwipe(voiceButton, ToolbarSwipes.VOICE);
         attachToolSwipe(undoButton, ToolbarSwipes.UNDO);
         attachToolSwipe(settingsButton, ToolbarSwipes.SETTINGS);
         attachToolSwipe(hideButton, ToolbarSwipes.HIDE);
-        // 한 손 모드 버튼: 왼쪽·오른쪽으로 밀면 그쪽 한 손 모드, 위·아래는 다른 버튼처럼 정해 둔 기능.
-        SwipeVertical.attachFourWay(oneHandButton,
-                dir -> dir == Key.SWIPE_LEFT || dir == Key.SWIPE_RIGHT
-                        || !SwipeAction.NONE.equals(toolButtonAction(ToolbarSwipes.ONE_HAND, dir)),
-                () -> Ui.dp(this, prefs.swipeThresholdDp()), dir -> {
-                    feedback.onKey(null);
-                    if (dir == Key.SWIPE_LEFT) setOneHand(Prefs.ONE_HAND_LEFT);
-                    else if (dir == Key.SWIPE_RIGHT) setOneHand(Prefs.ONE_HAND_RIGHT);
-                    else onKeyFunction(null, toolButtonAction(ToolbarSwipes.ONE_HAND, dir));
-                });
-        bar.setHorizontalOwner(v -> v == oneHandButton);
+        attachToolSwipe(oneHandButton, ToolbarSwipes.ONE_HAND);
         // 기능이 있는 방향은 버튼이 처리하고, 없는 방향은 도구 막대를 그 방향으로 민 것으로 본다.
-        bar.setVerticalOwner((v, dir) -> !SwipeAction.NONE.equals(toolButtonAction(toolSlotOf(v), dir)));
+        bar.setSwipeOwner((v, dir) -> !SwipeAction.NONE.equals(toolButtonAction(toolSlotOf(v), dir)));
         return bar;
     }
 
@@ -540,10 +538,20 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     private void attachToolSwipe(View button, int slot) {
-        SwipeVertical.attach(button, dir -> !SwipeAction.NONE.equals(toolButtonAction(slot, dir)),
-                () -> Ui.dp(this, prefs.fnSwipeThresholdDp()), dir -> {
+        SwipeVertical.attachFourWay(button, dir -> !SwipeAction.NONE.equals(toolButtonAction(slot, dir)),
+                () -> Ui.dp(this, prefs.fnSwipeThresholdDp()),
+                dir -> {
                     feedback.onKey(null);
-                    onKeyFunction(null, toolButtonAction(slot, dir));
+                    String action = toolButtonAction(slot, dir);
+                    // 한 손 모드 버튼의 기본 좌우 밀기는 그쪽 한 손 모드로 바꾼다 (이미 그쪽이어도 끄지 않는다).
+                    if (slot == ToolbarSwipes.ONE_HAND && dir == Key.SWIPE_LEFT && SwipeAction.ONE_HAND_LEFT.equals(action)) {
+                        setOneHand(Prefs.ONE_HAND_LEFT);
+                    } else if (slot == ToolbarSwipes.ONE_HAND && dir == Key.SWIPE_RIGHT
+                            && SwipeAction.ONE_HAND_RIGHT.equals(action)) {
+                        setOneHand(Prefs.ONE_HAND_RIGHT);
+                    } else {
+                        onKeyFunction(null, action);
+                    }
                 });
     }
 
@@ -559,9 +567,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return -1;
     }
 
-    /** 도구 막대 버튼을 위·아래로 밀 때 실행할 기능. */
+    /** 도구 막대 버튼을 이 방향으로 밀 때 실행할 기능. */
     private String toolButtonAction(int slot, int dir) {
-        if (slot < 0 || (dir != Key.SWIPE_UP && dir != Key.SWIPE_DOWN)) return SwipeAction.NONE;
+        if (slot < 0) return SwipeAction.NONE;
         return toolbarSwipes.action(slot, dir);
     }
 
@@ -625,6 +633,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     private LinearLayout buildSuggestBar() {
         suggestions = new String[0];   // 새 막대는 비어 있다 (예전 막대의 내용과 비교하지 않도록)
+        shortcutShown = false;
         suggestWord = "";
         LinearLayout bar = new LinearLayout(this);
         bar.setGravity(Gravity.CENTER_VERTICAL);
@@ -679,6 +688,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private void applySettings() {
         boolean wasWords = cfgWords, wasLearn = cfgLearn;
         cfgSuggest = prefs.suggestWords();
+        cfgShortcuts = prefs.shortcutsEnabled();
+        shortcuts = cfgShortcuts ? Shortcuts.of(prefs.shortcuts()) : Shortcuts.of(null);
         cfgAutoCorrect = prefs.autoCorrect();   // 단어 추천과 따로 켜고 끈다
         cfgWords = cfgSuggest || cfgAutoCorrect;
         cfgLearn = cfgWords && prefs.learnWords();
@@ -708,6 +719,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         keyboard.setDeleteWordSwipe(prefs.deleteWordSwipe());
         // 키보드 밀기 완전 사용자화를 켜면 문자 키 커서 이동은 편집 화면의 '커서 자유 이동'을 따른다.
         keyboard.setPopupHints(prefs.longPressChars() && !prefs.popupHintHidden());
+        keyboard.setRepeatChars(prefs.repeatChars());
         keyboard.setHitShrink(prefs.deleteHitShrink() ? prefs.deleteHitShrinkPct() / 100f : 0f,
                 prefs.spaceHitShrink() ? prefs.spaceHitShrinkPct() / 100f : 0f);
         keyboard.setCharCursor(!prefs.swipeKeyboardCustom() && prefs.charCursor(),
@@ -738,6 +750,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             clearSuggestions();
             suggester.release();
             warmingKo = warmingEn = false;
+            if (panel == PANEL_KEYBOARD) scheduleSuggest();   // 단축어는 단어 추천을 꺼도 쓴다
         }
         if (wasLearn && !cfgLearn) runIo(userWords::release);   // 학습을 끄면 학습한 단어도 메모리에서 내린다
         float rows = 4 + (prefs.numberRow() ? 0.78f : 0f);
@@ -877,6 +890,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (!restarting || panel == PANEL_SEARCH) showPanel(PANEL_KEYBOARD);
         int cls = info.inputType & InputType.TYPE_MASK_CLASS;
         suggestAllowed = suggestAllowedFor(info);
+        shortcutAllowed = shortcutAllowedFor(info);
+        domainField = domainFieldFor(info);
         // 시크릿 모드 등 앱이 학습하지 말라고 표시한 입력란에서는 단어를 학습하지 않는다 (추천은 그대로).
         learnAllowed = (info.imeOptions & EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) == 0;
         mirror.start(info.initialSelStart, info.initialSelEnd);
@@ -982,6 +997,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 l = KeyboardLayout.korean(prefs);
                 break;
         }
+        if (domainField && kind != KeyboardLayout.NUMBER) KeyboardLayout.useDomainPeriodPopup(l);
         keyboard.setLayout(l);
         if (kind != KeyboardLayout.ENGLISH && shiftState != 0) setShift(0);
     }
@@ -1033,7 +1049,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /** 도구 막대를 끈 상태로 자판을 보여 주는 중인지. 검색 패널은 도구 막대 자리에 검색창이 있어 해당하지 않는다. */
     private boolean toolbarGone() {
-        return !prefs.toolbar() && !(cfgSuggest && suggestAllowed) && panel == PANEL_KEYBOARD;
+        return !prefs.toolbar() && !((cfgSuggest && suggestAllowed) || (!shortcuts.isEmpty() && shortcutAllowed))
+                && panel == PANEL_KEYBOARD;
     }
 
     private void updatePanelSizes() {
@@ -1088,6 +1105,13 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     public void onKeyPress(Key key) {
         deleteRepeatChecked = false;
         feedback.onKey(key);
+    }
+
+    @Override
+    public void onKeyRepeat(Key key) {
+        lastWasSpace = false;
+        // 탭이 아니라 길게 눌러 입력하는 것이라 연속 탭(쌍자음·이중모음) 판단에서 빠진다.
+        typeText(shiftState != 0 && lettersLayout() ? key.shifted : key.output, false);
     }
 
     @Override
@@ -1533,11 +1557,40 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
     }
 
+    /** 이메일 주소나 인터넷 주소(웹 브라우저의 주소창 등)를 적는 입력란인지. */
+    private static boolean domainFieldFor(EditorInfo info) {
+        int type = info.inputType;
+        if ((type & InputType.TYPE_MASK_CLASS) != InputType.TYPE_CLASS_TEXT) return false;
+        int variation = type & InputType.TYPE_MASK_VARIATION;
+        return variation == InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+                || variation == InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS
+                || variation == InputType.TYPE_TEXT_VARIATION_URI;
+    }
+
+    /** 단축어는 비밀번호 입력란만 빼고 쓴다 (이메일 주소 입력란에서도 쓴다). */
+    private static boolean shortcutAllowedFor(EditorInfo info) {
+        int type = info.inputType;
+        if ((type & InputType.TYPE_MASK_CLASS) != InputType.TYPE_CLASS_TEXT) return false;
+        switch (type & InputType.TYPE_MASK_VARIATION) {
+            case InputType.TYPE_TEXT_VARIATION_PASSWORD:
+            case InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD:
+            case InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD:
+                return false;
+            default:
+                return true;
+        }
+    }
+
     private final Runnable suggestRunnable = this::updateSuggestions;
 
     /** 지금 입력란에서 단어 추천을 쓰는지. */
     private boolean suggestOn() {
         return cfgSuggest && suggestAllowed && panel == PANEL_KEYBOARD;
+    }
+
+    /** 지금 입력란에서 단축어를 쓰는지 (정해 둔 단축어가 있을 때). */
+    private boolean shortcutsOn() {
+        return cfgShortcuts && !shortcuts.isEmpty() && shortcutAllowed && panel == PANEL_KEYBOARD;
     }
 
     /** 지금 입력란에서 사전을 쓰는 기능(추천·자동 수정·학습)을 쓰는지. */
@@ -1585,7 +1638,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private void scheduleSuggest() {
         if (suggester == null || keyboard == null) return;
         main.removeCallbacks(suggestRunnable);
-        if (!suggestOn() || !lettersLayout()) {
+        if ((!suggestOn() && !shortcutsOn()) || !lettersLayout()) {
             if (suggestions.length > 0 || !suggestWord.isEmpty()) clearSuggestions();   // 꺼져 있으면 키마다 하는 일이 없다
             return;
         }
@@ -1603,10 +1656,20 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     private void updateSuggestions() {
-        if (!suggestOn() || windowHidden || !lettersLayout()) return;
+        if ((!suggestOn() && !shortcutsOn()) || windowHidden || !lettersLayout()) return;
         InputConnection ic = getCurrentInputConnection();
         if (ic == null) return;
         String word = wordBeforeCursor(ic);
+        // 입력 중인 단어가 정해 둔 단축어면 기존 추천은 모두 숨기고 그 문장이 추천란 전체를 채운다.
+        String phrase = shortcutsOn() ? shortcuts.lookup(word) : null;
+        if (phrase != null) {
+            applySuggestions(word, new String[]{phrase}, true);
+            return;
+        }
+        if (!suggestOn()) {
+            showSuggestions(word, new String[0]);
+            return;
+        }
         if (word.isEmpty()) {
             showSuggestions(word, new String[0]);
             return;
@@ -1622,10 +1685,25 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     private void showSuggestions(String word, String[] found) {
+        applySuggestions(word, found, false);
+    }
+
+    /** 단축어의 문장이 추천란 전체를 채울 때는 첫 칸만 보이고 길면 뒤를 …로 줄인다. 아니면 칸 모두 같은 폭이고 길면 앞을 줄인다. */
+    private void setShortcutLook(boolean on) {
+        if (suggestBar == null) return;
+        suggestViews[0].setEllipsize(on ? TextUtils.TruncateAt.END : TextUtils.TruncateAt.START);
+        for (int i = 1; i < suggestViews.length; i++) suggestViews[i].setVisibility(on ? View.GONE : View.VISIBLE);
+    }
+
+    private void applySuggestions(String word, String[] found, boolean shortcut) {
         suggestWord = word;
-        if (java.util.Arrays.equals(found, suggestions)) return;   // 그대로면 다시 그리지 않는다
+        if (shortcut == shortcutShown && java.util.Arrays.equals(found, suggestions)) return;   // 그대로면 다시 그리지 않는다
         boolean wasShowing = suggestions.length > 0;
         suggestions = found;
+        if (shortcut != shortcutShown) {
+            shortcutShown = shortcut;
+            setShortcutLook(shortcut);
+        }
         if (suggestBar == null) return;
         for (int i = 0; i < suggestViews.length; i++) {
             TextView t = suggestViews[i];
@@ -1645,6 +1723,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         suggestWord = "";
         if (suggestions.length == 0) return;
         suggestions = new String[0];
+        if (shortcutShown) {
+            shortcutShown = false;
+            setShortcutLook(false);
+        }
         if (suggestBar != null) {
             for (TextView t : suggestViews) t.setText("");
             suggestBar.setVisibility(View.GONE);
@@ -1701,7 +1783,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         ic.commitText(inserted, 1);
         ic.endBatchEdit();
         mirror.replaceTail(word.length(), inserted);
-        learnWord(replacement, false);
+        if (!shortcutShown) learnWord(replacement, false);   // 단축어의 문장은 학습하지 않는다
         lastWasSpace = withSpace;
         if (withSpace) lastSpaceTime = SystemClock.uptimeMillis();
         composer.reset();
@@ -1712,7 +1794,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /** 추천을 길게 누르면: 학습한 단어면 학습한 단어에서 지운다. */
     private boolean forgetSuggestion(int index) {
-        if (index >= suggestions.length || !cfgLearn) return false;
+        if (index >= suggestions.length || !cfgLearn || shortcutShown) return false;
         final String word = suggestions[index];
         final boolean lang = korean;
         if (!userWords.isKnownIfLoaded(word, lang)) {
@@ -2099,8 +2181,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             case SwipeAction.SELECT_ALL:
                 contextAction(android.R.id.selectAll);
                 break;
+            case SwipeAction.SELECT_ALL_COPY:
+                copySelection(true);
+                break;
             case SwipeAction.COPY:
-                contextAction(android.R.id.copy);
+                copySelection(false);
                 break;
             case SwipeAction.CUT:
                 contextAction(android.R.id.cut);
@@ -2155,6 +2240,57 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (!beginEdit()) return;
         getCurrentInputConnection().performContextMenuAction(id);
         endEdit();
+    }
+
+    /** 선택한 글자를 복사하고, 실제로 복사했으면 키보드 위에 알린다 (선택한 글자가 없으면 아무것도 보이지 않는다). */
+    private void copySelection(boolean selectAllFirst) {
+        if (!beginEdit()) return;
+        InputConnection ic = getCurrentInputConnection();
+        if (selectAllFirst) ic.performContextMenuAction(android.R.id.selectAll);
+        CharSequence selected = ic.getSelectedText(0);   // 복사하면 앱이 선택을 풀 수 있어 먼저 읽는다
+        ic.performContextMenuAction(android.R.id.copy);
+        endEdit();
+        if (selected != null && selected.length() > 0) showMessage("복사했습니다");
+    }
+
+    /** 안내 문구를 보여 주는 칸 (키보드 위쪽 가운데). */
+    private TextView messageView;
+    private final Runnable hideMessage = () -> {
+        if (messageView != null) messageView.animate().alpha(0f).setDuration(150)
+                .withEndAction(() -> { if (messageView != null) messageView.setVisibility(View.GONE); }).start();
+    };
+
+    /**
+     * 키보드 위에 짧은 안내 문구를 잠깐 보여 준다. 시스템 토스트는 다른 앱 위에서 보이지 않는 경우가 있어
+     * (알림·토스트 설정, 기기 정책) 키보드 창 안에 직접 그린다.
+     */
+    private void showMessage(String text) {
+        if (content == null) return;
+        if (messageView == null || messageView.getParent() != content) {
+            TextView v = new TextView(this);
+            v.setTextColor(0xFFFFFFFF);
+            v.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+            v.setGravity(Gravity.CENTER);
+            int h = Ui.dp(this, 16), vv = Ui.dp(this, 9);
+            v.setPadding(h, vv, h, vv);
+            android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+            bg.setColor(0xE6202124);
+            bg.setCornerRadius(Ui.dp(this, 20));
+            v.setBackground(bg);
+            v.setVisibility(View.GONE);
+            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+            lp.topMargin = Ui.dp(this, 10);
+            content.addView(v, lp);
+            messageView = v;
+        }
+        main.removeCallbacks(hideMessage);
+        messageView.animate().cancel();
+        messageView.setText(text);
+        messageView.setAlpha(1f);
+        messageView.setVisibility(View.VISIBLE);
+        messageView.bringToFront();
+        main.postDelayed(hideMessage, 1200);
     }
 
     /**

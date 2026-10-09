@@ -134,7 +134,7 @@ public final class SettingsActivity extends Activity {
             {"swipefn", "밀어서 기능", "기능키·도구 막대 밀기, 완전 사용자화"},
             {"feedback", "소리 및 진동", "키를 누를 때의 진동과 소리"},
             {"tools", "도구 막대와 클립보드", "도구 막대 버튼·위치·높이, 클립보드 기록"},
-            {"words", "단어 추천", "단어 추천, 자동 수정, 입력한 단어 학습"},
+            {"words", "단어 추천", "단어 추천, 단축어, 자동 수정, 입력한 단어 학습"},
             {"onehand", "한 손 모드", "자판 폭·키 높이, 세로 위치"},
             {"backup", "설정 가져오기 및 내보내기", "모든 설정을 파일로 저장하거나 불러오기"},
             {"lab", "실험실", "대화면 별도 레이아웃, 스와이프 방향 판정"},
@@ -849,13 +849,19 @@ public final class SettingsActivity extends Activity {
 
     private void buildKeys() {
         LinearLayout chars = section("문자 입력");
+        // 길게 눌러 문자 입력과 길게 눌러 연속 입력이 함께 쓰는 시간이라 두 토글 위에 둔다.
+        chars.addView(slider("문자 길게 누르기 시간", Prefs.LONG_PRESS_MS, prefs.longPressMs(), 100, 800, 20, "ms"));
         View editPopup = button("길게 눌러 입력할 문자 편집", v ->
                 startActivity(new Intent(this, PopupEditorActivity.class)));
-        View charTime = slider("문자 길게 누르기 시간", Prefs.LONG_PRESS_MS, prefs.longPressMs(), 100, 800, 20, "ms");
-        View charGroup = subGroup(editPopup, charTime);
+        View charGroup = subGroup(editPopup);
         chars.addView(toggle("길게 눌러 문자 입력", "키를 길게 눌러 특수문자를 입력합니다.",
                 Prefs.LONG_PRESS_CHARS, prefs.longPressChars(), charGroup));
         chars.addView(charGroup);
+        View repeatGroup = subGroup(button("길게 눌러 연속 입력 편집", v ->
+                startActivity(PopupEditorActivity.repeatIntent(this))));
+        chars.addView(toggle("길게 눌러 연속 입력", "고른 글자를 길게 누르고 있으면 계속 입력합니다.",
+                Prefs.LONG_PRESS_REPEAT, prefs.longPressRepeat(), repeatGroup));
+        chars.addView(repeatGroup);
 
         LinearLayout fn = section("기능키");
         // 모든 기능키(⌫·기호 키·🌐︎·Shift 키·엔터 키·Fn 키)가 같은 시간을 쓴다. 기본 설정·완전 사용자화 모두 같다.
@@ -1063,8 +1069,7 @@ public final class SettingsActivity extends Activity {
         barCustomEdit.setVisibility(barCustom ? View.VISIBLE : View.GONE);
         bar.addView(barStandard);
         bar.addView(toggle("도구 막대 밀어서 기능 완전 사용자화",
-                "도구 막대를 위·아래·왼쪽·오른쪽으로 밀 때와, 도구 막대의 버튼을 위·아래로 밀 때 "
-                        + "실행할 기능을 직접 정합니다.",
+                "도구 막대와 도구 막대의 버튼을 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 직접 정합니다.",
                 barCustom, on -> {
                     prefs.raw().edit().putBoolean(Prefs.SWIPE_TOOLBAR_CUSTOM, on).apply();
                     Ui.setVisibleAnimated(barStandard, !on);
@@ -1131,6 +1136,13 @@ public final class SettingsActivity extends Activity {
                 + "누르면 그 단어로 바꾸고, 학습한 단어를 길게 누르면 학습한 단어에서 지웁니다.",
                 Prefs.SUGGEST_WORDS, prefs.suggestWords(), fullBar));
         suggest.addView(fullBar);
+
+        LinearLayout shortcut = section("단축어");
+        View shortcutGroup = subGroup(button("단축어 편집", v -> startActivity(new Intent(this, ShortcutEditorActivity.class))));
+        shortcut.addView(toggle("단축어 사용", "'ㅈㄱㅈ' 같은 줄임말을 입력하면 정해 둔 문장('지금 가는 중')을 추천란 전체에 보여 줍니다. "
+                + "누르면 줄임말이 그 문장으로 바뀝니다. 단어 추천을 꺼 둬도, 이메일 입력란에서도 쓸 수 있고, 비밀번호 입력란에서는 쓰지 않습니다.",
+                Prefs.SHORTCUTS_ENABLED, prefs.shortcutsEnabled(), shortcutGroup));
+        shortcut.addView(shortcutGroup);
 
         LinearLayout correct = section("자동 수정");
         correct.addView(toggle("자동 수정", "스페이스바를 누를 때 사전에 없는 단어를 한 글자만 고치면 되는 흔한 단어로 바꿉니다. "

@@ -14,7 +14,7 @@ import java.util.function.BiPredicate;
 /**
  * 위·아래·왼쪽·오른쪽으로 미는 손짓을 알아채는 가로 줄(도구 막대). 안에 있는 버튼이나 추천 위에서 시작해도
  * 충분히 밀면 손짓으로 받고, 안쪽 버튼의 누르기는 취소한다. 켜지 않은 방향은 터치를 건드리지 않고 그대로 안쪽에 전달한다.
- * 위·아래로 밀기를 직접 처리하는 버튼({@link #setVerticalOwner}) 위에서 시작한 그 방향 밀기는 그 버튼에 맡긴다.
+ * 밀기를 직접 처리하는 버튼({@link #setSwipeOwner}) 위에서 시작한 그 방향 밀기는 그 버튼에 맡긴다.
  */
 @SuppressLint("ViewConstructor")
 public final class SwipeStrip extends LinearLayout {
@@ -28,14 +28,11 @@ public final class SwipeStrip extends LinearLayout {
     /** Key.SWIPE_* 순서로, 그 방향 밀기를 받는지. */
     private final boolean[] dirs = new boolean[4];
     private float distance;
-    private BiPredicate<View, Integer> verticalOwner = (v, dir) -> false;
-    private java.util.function.Predicate<View> horizontalOwner = v -> false;
-    /** 이번 터치를 시작한 버튼이 좌우 밀기를 직접 처리하는지. */
-    private boolean ownedHorizontal;
+    private BiPredicate<View, Integer> swipeOwner = (v, dir) -> false;
     private float downX, downY;
     private boolean tracking, captured, fired;
-    /** 이번 터치를 시작한 버튼이 위(0)·아래(1) 밀기를 직접 처리하는지. */
-    private final boolean[] owned = new boolean[2];
+    /** 이번 터치를 시작한 버튼이 Key.SWIPE_* 방향 밀기를 직접 처리하는지. */
+    private final boolean[] owned = new boolean[4];
 
     public SwipeStrip(Context context) {
         super(context);
@@ -47,14 +44,9 @@ public final class SwipeStrip extends LinearLayout {
         listener = l;
     }
 
-    /** 이 버튼이 이 방향(Key.SWIPE_UP·SWIPE_DOWN) 밀기를 직접 처리하는지 (터치할 때마다 묻는다). */
-    public void setVerticalOwner(BiPredicate<View, Integer> owner) {
-        verticalOwner = owner == null ? (v, dir) -> false : owner;
-    }
-
-    /** 이 버튼이 좌우 밀기를 직접 처리하는지 (한 손 모드 버튼). 그 버튼 위에서 시작한 좌우 밀기는 버튼에 맡긴다. */
-    public void setHorizontalOwner(java.util.function.Predicate<View> owner) {
-        horizontalOwner = owner == null ? v -> false : owner;
+    /** 이 버튼이 이 방향(Key.SWIPE_*) 밀기를 직접 처리하는지 (터치할 때마다 묻는다). */
+    public void setSwipeOwner(BiPredicate<View, Integer> owner) {
+        swipeOwner = owner == null ? (v, dir) -> false : owner;
     }
 
     /** @param distancePx 이만큼 밀면 한 번 알린다 */
@@ -80,9 +72,7 @@ public final class SwipeStrip extends LinearLayout {
     /** 이번 터치에서 이 방향 밀기를 받는지. */
     private boolean accepts(int dir) {
         if (dir < 0 || !dirs[dir]) return false;
-        if (dir == Key.SWIPE_UP) return !owned[0];
-        if (dir == Key.SWIPE_DOWN) return !owned[1];
-        return !ownedHorizontal;   // 좌우 밀기는 버튼 위에서 시작해도 도구 막대가 받는다 (좌우를 직접 처리하는 버튼은 빼고)
+        return !owned[dir];   // 버튼 위에서 시작해도 도구 막대가 받는다 (그 방향을 직접 처리하는 버튼은 빼고)
     }
 
     @Override
@@ -144,9 +134,7 @@ public final class SwipeStrip extends LinearLayout {
         captured = false;
         fired = false;
         View child = childAt(downX, downY);
-        owned[0] = child != null && verticalOwner.test(child, Key.SWIPE_UP);
-        owned[1] = child != null && verticalOwner.test(child, Key.SWIPE_DOWN);
-        ownedHorizontal = child != null && horizontalOwner.test(child);
+        for (int dir = 0; dir < 4; dir++) owned[dir] = child != null && swipeOwner.test(child, dir);
     }
 
     private View childAt(float x, float y) {
@@ -164,7 +152,6 @@ public final class SwipeStrip extends LinearLayout {
         tracking = false;
         captured = false;
         fired = false;
-        owned[0] = owned[1] = false;
-        ownedHorizontal = false;
+        java.util.Arrays.fill(owned, false);
     }
 }

@@ -178,6 +178,81 @@ public final class BottomKeysEditorActivity extends Activity {
         }));
     }
 
+    /** 쉼표·온점 키의 줄 이름: 다른 글자로 바꿨으면 그 글자를 괄호 안에 보여 준다. */
+    private String rowName(String id) {
+        if (BottomKeys.COMMA.equals(id)) return "쉼표 키 (" + prefs.keyChar(",") + ")";
+        if (BottomKeys.PERIOD.equals(id)) return "온점 키 (" + prefs.keyChar(".") + ")";
+        return BottomKeys.label(id);
+    }
+
+    /** 쉼표·온점 키가 입력할 글자를 정하는 하위 버튼. 오른쪽에 지금 글자를 보여 준다. */
+    private View charButton(String id, TextView nameView) {
+        String slot = BottomKeys.COMMA.equals(id) ? "," : ".";
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        int h = Ui.dp(this, 14);
+        row.setPadding(h, Ui.dp(this, 12), h, Ui.dp(this, 12));
+        row.setBackground(Ui.ripple(accentColor & 0x00FFFFFF | 0x33000000,
+                Ui.round(accentColor & 0x00FFFFFF | 0x1F000000, Ui.dp(this, 12)), Ui.dp(this, 12)));
+        row.addView(text("다른 키로 설정", 15, accentColor),
+                new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView current = text(prefs.keyChar(slot), 15, accentColor);
+        current.setPadding(0, 0, Ui.dp(this, 8), 0);
+        row.addView(current);
+        row.addView(new Chevron(this, accentColor));
+        row.setClickable(true);
+        row.setFocusable(true);
+        row.setOnClickListener(v -> editChar(slot, () -> {
+            current.setText(prefs.keyChar(slot));
+            nameView.setText(rowName(id));
+            updatePreview();
+        }));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(0, Ui.dp(this, 6), Ui.dp(this, 10), Ui.dp(this, 6));
+        row.setLayoutParams(lp);
+        return row;
+    }
+
+    /** 쉼표·온점 키가 입력할 한 글자를 적는 대화상자. */
+    private void editChar(String slot, Runnable done) {
+        android.widget.EditText input = new android.widget.EditText(this);
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        input.setSingleLine(true);
+        input.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(2)});   // 코드 포인트 하나는 최대 두 칸
+        input.setText(prefs.keyChar(slot));
+        input.setSelection(input.getText().length());
+        input.setGravity(Gravity.CENTER);
+        input.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
+        int pad = Ui.dp(this, 20);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(pad, Ui.dp(this, 8), pad, 0);
+        box.addView(text("이 키가 입력할 글자를 한 글자만 적어 주세요 (예: ? ! …). 길게 누르기·밀기 설정은 그대로 이어집니다.", 13, hintColor));
+        box.addView(input);
+        android.app.AlertDialog d = AppTheme.dialogBuilder(this)
+                .setTitle(slot.equals(",") ? "쉼표 키 다른 키로 설정" : "온점 키 다른 키로 설정")
+                .setView(box)
+                .setPositiveButton("저장", null)
+                .setNeutralButton("기본값", (dlg, w) -> {
+                    prefs.setKeyChar(slot, slot);
+                    done.run();
+                })
+                .setNegativeButton("취소", null)
+                .create();
+        d.setOnShowListener(x -> d.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String s = input.getText().toString();
+            if (s.isEmpty() || s.codePointCount(0, s.length()) != 1 || Character.isWhitespace(s.codePointAt(0))) {
+                Toast.makeText(this, "공백이 아닌 한 글자만 적어 주세요", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            prefs.setKeyChar(slot, s);
+            done.run();
+            d.dismiss();
+        }));
+        d.show();
+    }
+
     /** Fn 키의 탭·길게 누르기·밀기 기능을 정하는 화면으로 가는 버튼. 설정 화면의 하위 버튼과 같은 모양이다. */
     private View fnEditButton() {
         LinearLayout row = new LinearLayout(this);
@@ -270,14 +345,26 @@ public final class BottomKeysEditorActivity extends Activity {
         row.setBackground(Ui.round(card, Ui.dp(this, 12)));   // 끌어 올렸을 때 아래 줄이 비치지 않게
         LinearLayout texts = new LinearLayout(this);
         texts.setOrientation(LinearLayout.VERTICAL);
-        texts.addView(text(BottomKeys.label(id), 16, textColor));
+        TextView nameView = text(rowName(id), 16, textColor);
+        texts.addView(nameView);
         String hint = BottomKeys.hint(id);
         if (hint != null) texts.addView(text(hint, 12, hintColor));
+        // 쉼표·온점 키는 켜면 하위 항목으로 다른 글자로 바꾸는 버튼이 나온다 (설정 화면의 하위 항목과 같은 모양).
+        View charGroup = null;
+        if (BottomKeys.COMMA.equals(id) || BottomKeys.PERIOD.equals(id)) {
+            LinearLayout edit = new LinearLayout(this);
+            edit.setOrientation(LinearLayout.VERTICAL);
+            edit.addView(charButton(id, nameView));
+            charGroup = subGroup(0, edit);
+            charGroup.setVisibility(prefs.bottomKeyShown(id) ? View.VISIBLE : View.GONE);
+            texts.addView(charGroup);
+        }
         row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
         ExpressiveSwitch sw = new ExpressiveSwitch(this, accentColor, onAccentColor, hintColor, card);
         sw.setCheckedImmediately(prefs.bottomKeyShown(id));
         sw.setContentDescription(BottomKeys.label(id) + " 표시");
+        final View group = charGroup;
         sw.setOnCheckedChangeListener(checked -> {
             if (!checked && shownCount() <= 1) {
                 // 맨 아래 줄이 비지 않도록 마지막 키는 끌 수 없다.
@@ -286,6 +373,7 @@ public final class BottomKeysEditorActivity extends Activity {
                 return;
             }
             prefs.setBottomKeyShown(id, checked);
+            if (group != null) Ui.setVisibleAnimated(group, checked);
             updatePreview();
         });
         LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,

@@ -30,16 +30,20 @@ public class ToolbarSwipesTest {
         assertEquals(SwipeAction.NONE, t.action(ToolbarSwipes.HIDE, Key.SWIPE_DOWN));
         assertEquals(SwipeAction.NONE, t.action(ToolbarSwipes.ONE_HAND, Key.SWIPE_UP));
         assertEquals(SwipeAction.NONE, t.action(ToolbarSwipes.ONE_HAND, Key.SWIPE_DOWN));
+        assertEquals(SwipeAction.ONE_HAND_LEFT, t.action(ToolbarSwipes.ONE_HAND, Key.SWIPE_LEFT));
+        assertEquals(SwipeAction.ONE_HAND_RIGHT, t.action(ToolbarSwipes.ONE_HAND, Key.SWIPE_RIGHT));
     }
 
     @Test
-    public void oneHandButtonUpDownCanBeCustomized() {
+    public void oneHandButtonCanBeCustomizedInEveryDirection() {
         Map<String, String> m = new HashMap<>();
         m.put("onehand_down", SwipeAction.HIDE_KEYBOARD);
-        m.put("onehand_left", SwipeAction.UNDO);   // 좌우는 한 손 모드 방향이라 정할 수 없다
+        m.put("onehand_left", SwipeAction.UNDO);
+        m.put("onehand_right", SwipeAction.NONE);
         ToolbarSwipes t = with(m);
         assertEquals(SwipeAction.HIDE_KEYBOARD, t.action(ToolbarSwipes.ONE_HAND, Key.SWIPE_DOWN));
-        assertEquals(SwipeAction.NONE, t.action(ToolbarSwipes.ONE_HAND, Key.SWIPE_LEFT));
+        assertEquals(SwipeAction.UNDO, t.action(ToolbarSwipes.ONE_HAND, Key.SWIPE_LEFT));
+        assertEquals(SwipeAction.NONE, t.action(ToolbarSwipes.ONE_HAND, Key.SWIPE_RIGHT));
     }
 
     @Test
@@ -69,7 +73,7 @@ public class ToolbarSwipesTest {
     }
 
     @Test
-    public void buttonsUseUpAndDownOnly() {
+    public void buttonsCanUseAllFourDirections() {
         Map<String, String> m = new HashMap<>();
         m.put("emoji_up", SwipeAction.COPY);
         m.put("undo_left", SwipeAction.PASTE);
@@ -78,10 +82,9 @@ public class ToolbarSwipesTest {
         assertEquals(SwipeAction.EMOJI_LATEST, t.action(ToolbarSwipes.EMOJI, Key.SWIPE_DOWN));
         assertEquals(SwipeAction.COPY, t.action(ToolbarSwipes.CLIPBOARD, Key.SWIPE_UP));   // 클립보드 위쪽 기본값은 복사
         assertEquals(SwipeAction.NONE, t.action(ToolbarSwipes.UNDO, Key.SWIPE_UP));        // 다른 버튼의 위쪽 기본값은 없음
-        assertEquals(SwipeAction.NONE, t.action(ToolbarSwipes.UNDO, Key.SWIPE_LEFT));
-        assertFalse(ToolbarSwipes.usesDir(ToolbarSwipes.VOICE, Key.SWIPE_RIGHT));
-        assertTrue(ToolbarSwipes.usesDir(ToolbarSwipes.VOICE, Key.SWIPE_UP));
-        assertTrue(ToolbarSwipes.usesDir(ToolbarSwipes.BAR, Key.SWIPE_UP));
+        assertEquals(SwipeAction.PASTE, t.action(ToolbarSwipes.UNDO, Key.SWIPE_LEFT));   // 좌우도 정할 수 있다
+        assertEquals(SwipeAction.NONE, t.action(ToolbarSwipes.UNDO, Key.SWIPE_RIGHT));  // 정하지 않은 좌우는 도구 막대 밀기
+        assertEquals(4, ToolbarSwipes.SPEC.dirs(ToolbarSwipes.VOICE).length);
     }
 
     @Test
@@ -105,8 +108,14 @@ public class ToolbarSwipesTest {
         assertEquals(SwipeAction.REDO, all.action(ToolbarSwipes.UNDO, Key.SWIPE_DOWN));
         ToolbarSwipes none = ToolbarSwipes.standard(false, false, false, false);
         for (int slot = 0; slot < ToolbarSwipes.SPEC.slotCount(); slot++) {
-            for (int dir = 0; dir < 4; dir++) assertEquals(SwipeAction.NONE, none.action(slot, dir));
+            for (int dir = 0; dir < 4; dir++) {
+                if (slot == ToolbarSwipes.ONE_HAND && dir == Key.SWIPE_LEFT) continue;   // 한 손 모드 버튼의 좌우는 늘 켜져 있다
+                if (slot == ToolbarSwipes.ONE_HAND && dir == Key.SWIPE_RIGHT) continue;
+                assertEquals(SwipeAction.NONE, none.action(slot, dir));
+            }
         }
+        assertEquals(SwipeAction.ONE_HAND_LEFT, none.action(ToolbarSwipes.ONE_HAND, Key.SWIPE_LEFT));
+        assertEquals(SwipeAction.ONE_HAND_RIGHT, none.action(ToolbarSwipes.ONE_HAND, Key.SWIPE_RIGHT));
         ToolbarSwipes clipOnly = ToolbarSwipes.standard(false, true, false, false);
         assertEquals(SwipeAction.COPY, clipOnly.action(ToolbarSwipes.CLIPBOARD, Key.SWIPE_UP));
         assertEquals(SwipeAction.NONE, clipOnly.action(ToolbarSwipes.EMOJI, Key.SWIPE_DOWN));

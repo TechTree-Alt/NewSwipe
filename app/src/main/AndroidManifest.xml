@@ -49,6 +49,12 @@
         </activity-alias>
 
         <activity
+            android:name=".ShortcutEditorActivity"
+            android:screenOrientation="portrait"
+            android:exported="false"
+            android:label="@string/app_name" />
+
+        <activity
             android:name=".PopupEditorActivity"
             android:screenOrientation="portrait"
             android:exported="false"

@@ -19,6 +19,7 @@ public final class Prefs {
     public static final String KEY_PREVIEW = "key_preview";
     public static final String NUMBER_ROW = "number_row";
     public static final String LONG_PRESS_CHARS = "long_press_chars";   // 키를 길게 눌러 문자 입력
+    public static final String LONG_PRESS_REPEAT = "long_press_repeat";   // 고른 글자 키를 길게 눌러 연속 입력
     public static final String AUTO_CAP = "auto_cap";
     public static final String DOUBLE_SPACE_PERIOD = "double_space_period";
     public static final String VOICE_KEY = "voice_key";
@@ -35,6 +36,10 @@ public final class Prefs {
     public static final String KEY_GAP_X = "key_gap_x";               // 키 좌우 여백 dp, 0~12
     public static final String KEY_GAP_Y = "key_gap_y";               // 키 상하 여백 dp, 0~20
     public static final String PAD_BOTTOM = "pad_bottom";             // dp, 0~48
+    public static final String COMMA_CHAR = "bottom_comma_char";           // 하단 쉼표 키가 입력하는 한 글자 (기본 ",")
+    public static final String PERIOD_CHAR = "bottom_period_char";         // 하단 온점 키가 입력하는 한 글자 (기본 ".")
+    public static final String SHORTCUTS_ENABLED = "shortcuts_enabled";   // 단축어 사용
+    public static final String SHORTCUT_PREFIX = "shortcut_";              // 단축어 하나는 "shortcut_<줄임말>" = 문장
     public static final String PERIOD_COMMA = "period_comma";         // 쉼표 키 대신 온점 길게 누르기
     /** 한글 자판의 Shift 키를 없앤다 (켜짐 = Shift 키 없음, 그 자리는 빈칸). */
     public static final String KOREAN_SHIFT_HIDDEN = "korean_shift_hidden";
@@ -292,7 +297,7 @@ public final class Prefs {
     static {
         MENU_KEYS.put("layout", keys(KOREAN_LAYOUT, GRID_LAYOUT, NUMBER_ROW, LANDSCAPE_SPLIT, LANDSCAPE_SIZE,
                 KEYBOARD_HEIGHT_LAND, KEY_TEXT_SIZE_LAND,
-                BOTTOM_KEY_ORDER, MODE_KEY_HIDDEN, PERIOD_COMMA, LANGUAGE_KEY_HIDDEN, SPACE_KEY_HIDDEN,
+                BOTTOM_KEY_ORDER, COMMA_CHAR, PERIOD_CHAR, MODE_KEY_HIDDEN, PERIOD_COMMA, LANGUAGE_KEY_HIDDEN, SPACE_KEY_HIDDEN,
                 PERIOD_KEY_HIDDEN, ENTER_KEY_HIDDEN, DELETE_KEY_HIDDEN, KOREAN_SHIFT_HIDDEN, KOREAN_SHIFT_FN));
         MENU_PREFIXES.put("layout", keys("balanced_", LANDSCAPE_SPLIT + "_", "swipe_fk_"));
         MENU_KEYS.put("theme", keys(THEME_MODE, ACCENT_MODE, ACCENT_COLOR, GRID_COLORS));
@@ -301,9 +306,9 @@ public final class Prefs {
         MENU_KEYS.put("input", keys(AUTO_CAP, DOUBLE_SPACE_PERIOD, DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT,
                 DOUBLE_TAP_CONSONANT_MS, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, SPACE_HIT_SHRINK,
                 SPACE_HIT_SHRINK_PCT));
-        MENU_KEYS.put("keys", keys(LONG_PRESS_CHARS, LONG_PRESS_MS, LONG_PRESS_DELETE, DELETE_PRESS_MS,
+        MENU_KEYS.put("keys", keys(LONG_PRESS_CHARS, LONG_PRESS_REPEAT, LONG_PRESS_MS, LONG_PRESS_DELETE, DELETE_PRESS_MS,
                 MODE_KEY_LONG_PRESS, LONG_PRESS_CUSTOM));
-        MENU_PREFIXES.put("keys", keys("popup_", "swipe_lp_"));
+        MENU_PREFIXES.put("keys", keys("popup_", "repeat_", "swipe_lp_"));
         MENU_KEYS.put("swipe", keys(SWIPE_THRESHOLD, SWIPE_DOUBLE, D7_SS_UP, SWIPE_IOTIZED, SWIPE_COMPOUND_VOWEL,
                 SWIPE_FINAL, PERIOD_SWIPE_COMMA, SWIPE_CUSTOM));
         MENU_PREFIXES.put("swipe", keys("swipe_custom_", "swipe_final_", "swipe_vowel_"));
@@ -316,7 +321,7 @@ public final class Prefs {
         MENU_KEYS.put("feedback", keys(VIBRATE, VIBRATE_MS, SOUND, SOUND_VOLUME));
         MENU_KEYS.put("tools", keys(TOOLBAR, TOOLBAR_BOTTOM, TOOLBAR_HEIGHT, TOOL_BUTTON_SIZE, CLIPBOARD_HISTORY, CLIPBOARD_IMAGES, TOOL_ORDER, TOOL_CLIPBOARD,
                 TOOL_EMOJI, VOICE_KEY, TOOL_UNDO, TOOL_SETTINGS, TOOL_ONE_HAND, TOOL_HIDE));
-        MENU_KEYS.put("words", keys(SUGGEST_WORDS, SUGGEST_FULL_BAR, SUGGEST_SPACE, AUTO_CORRECT, LEARN_WORDS,
+        MENU_KEYS.put("words", keys(SHORTCUTS_ENABLED, SUGGEST_WORDS, SUGGEST_FULL_BAR, SUGGEST_SPACE, AUTO_CORRECT, LEARN_WORDS,
                 CONFIRM_LEARNED_DELETE));
         // 실험실: 대화면 별도 레이아웃과 대화면 키보드 사용자화의 값은 모두 large_로 시작한다.
         MENU_KEYS.put("lab", keys(SWIPE_DOWN_RATIO, SWIPE_UP_RATIO));
@@ -375,7 +380,7 @@ public final class Prefs {
 
     /** '기능키 순서·유무 사용자화' 화면의 값. */
     public void resetBottomKeys() {
-        removeKeys(new String[]{BOTTOM_KEY_ORDER, MODE_KEY_HIDDEN, PERIOD_COMMA, LANGUAGE_KEY_HIDDEN,
+        removeKeys(new String[]{BOTTOM_KEY_ORDER, COMMA_CHAR, PERIOD_CHAR, MODE_KEY_HIDDEN, PERIOD_COMMA, LANGUAGE_KEY_HIDDEN,
                 SPACE_KEY_HIDDEN, PERIOD_KEY_HIDDEN, ENTER_KEY_HIDDEN, DELETE_KEY_HIDDEN, KOREAN_SHIFT_HIDDEN,
                 KOREAN_SHIFT_FN}, NONE);
     }
@@ -388,6 +393,7 @@ public final class Prefs {
 
     /** '길게 누르기 문자 편집' 화면의 값. */
     public void resetPopups() { removeKeys(NONE, new String[]{"popup_"}); }
+    public void resetRepeatChars() { removeKeys(NONE, new String[]{"repeat_"}); }
 
     /** 기능 편집 화면(기능키·도구 막대·키보드 밀기·길게 누르기·Fn 키)의 값. 같은 이름으로 시작하는 '완전 사용자화' 스위치는 그대로 둔다. */
     public void resetSwipeActions(String group) {
@@ -428,6 +434,7 @@ public final class Prefs {
     public boolean keyPreview() { return sp.getBoolean(KEY_PREVIEW, true); }
     public boolean numberRow() { return sp.getBoolean(NUMBER_ROW, false); }
     public boolean longPressChars() { return sp.getBoolean(LONG_PRESS_CHARS, true); }
+    public boolean longPressRepeat() { return sp.getBoolean(LONG_PRESS_REPEAT, false); }
     public boolean autoCap() { return sp.getBoolean(AUTO_CAP, true); }
     public boolean doubleSpacePeriod() { return sp.getBoolean(DOUBLE_SPACE_PERIOD, true); }
     public boolean voiceKey() { return sp.getBoolean(VOICE_KEY, true); }
@@ -447,6 +454,50 @@ public final class Prefs {
     public int padTopDp() { return sp.getInt(PAD_TOP, 0); }
     public int padBottomDp() { return sp.getInt(PAD_BOTTOM, 4); }
     public boolean periodComma() { return sp.getBoolean(PERIOD_COMMA, true); }
+
+    public boolean shortcutsEnabled() { return sp.getBoolean(SHORTCUTS_ENABLED, true); }
+
+    /** 정해 둔 단축어 (줄임말 → 문장), 줄임말 순. 단축어마다 키를 따로 저장해 설정 내보내기의 값 길이 제한에 걸리지 않는다. */
+    public java.util.Map<String, String> shortcuts() {
+        java.util.Map<String, String> out = new java.util.TreeMap<>();
+        for (java.util.Map.Entry<String, ?> e : sp.getAll().entrySet()) {
+            if (e.getKey().startsWith(SHORTCUT_PREFIX) && e.getValue() instanceof String) {
+                out.put(e.getKey().substring(SHORTCUT_PREFIX.length()), (String) e.getValue());
+            }
+        }
+        return out;
+    }
+
+    public void setShortcut(String key, String phrase) {
+        sp.edit().putString(SHORTCUT_PREFIX + com.alternative_studios.newswipe.suggest.Shortcuts.normalize(key),
+                com.alternative_studios.newswipe.suggest.Shortcuts.cleanPhrase(phrase)).apply();
+    }
+
+    public void removeShortcut(String key) {
+        sp.edit().remove(SHORTCUT_PREFIX + key).apply();
+    }
+
+    public void clearShortcuts() {
+        removeKeys(NONE, new String[]{SHORTCUT_PREFIX});
+    }
+
+    /**
+     * 하단 쉼표(",")·온점(".") 키가 입력하는 글자. 다른 글자로 바꾸지 않았으면 그대로 돌려준다.
+     * 길게 누르기·밀기·연속 입력 설정은 바뀐 글자가 아니라 원래 자리(",", ".")에 저장되어 있다.
+     */
+    public String keyChar(String label) {
+        if (",".equals(label)) return sp.getString(COMMA_CHAR, ",");
+        if (".".equals(label)) return sp.getString(PERIOD_CHAR, ".");
+        return label;
+    }
+
+    /** 쉼표·온점 키가 입력할 글자를 정한다. 한 글자(코드 포인트 하나)가 아니거나 원래 글자면 기본값으로 돌린다. */
+    public void setKeyChar(String label, String c) {
+        String key = ",".equals(label) ? COMMA_CHAR : ".".equals(label) ? PERIOD_CHAR : null;
+        if (key == null) return;
+        if (c == null || c.isEmpty() || c.codePointCount(0, c.length()) != 1 || c.equals(label)) sp.edit().remove(key).apply();
+        else sp.edit().putString(key, c).apply();
+    }
     public boolean periodKeyHidden() { return sp.getBoolean(PERIOD_KEY_HIDDEN, false); }
     public boolean twoFingerUndo() { return sp.getBoolean(TWO_FINGER_UNDO, false); }
     public boolean swipeKeyboardCustom() { return sp.getBoolean(SWIPE_KEYBOARD_CUSTOM, false); }
@@ -635,6 +686,26 @@ public final class Prefs {
 
     public void setPopupOverride(String group, String label, String[] items) {
         sp.edit().putString(popupKey(group, label), String.join("\n", items)).apply();
+    }
+
+    // 길게 눌러 연속 입력할 글자. 키는 "repeat_<자판>_<글자>"이고, 켠 글자만 true로 저장한다.
+    private static String repeatKey(String group, String label) { return "repeat_" + group + "_" + label; }
+
+    public boolean repeatChar(String group, String label) { return sp.getBoolean(repeatKey(group, label), false); }
+
+    public void setRepeatChar(String group, String label, boolean on) {
+        if (on) sp.edit().putBoolean(repeatKey(group, label), true).apply();
+        else sp.edit().remove(repeatKey(group, label)).apply();
+    }
+
+    /** 연속 입력으로 정한 글자들("<자판>_<글자>"). '길게 눌러 연속 입력'을 꺼 두면 비어 있다. */
+    public java.util.Set<String> repeatChars() {
+        java.util.Set<String> out = new java.util.HashSet<>();
+        if (!longPressRepeat()) return out;
+        for (java.util.Map.Entry<String, ?> e : sp.getAll().entrySet()) {
+            if (e.getKey().startsWith("repeat_") && Boolean.TRUE.equals(e.getValue())) out.add(e.getKey().substring(7));
+        }
+        return out;
     }
 
     public void resetPopupOverride(String group, String label) {
