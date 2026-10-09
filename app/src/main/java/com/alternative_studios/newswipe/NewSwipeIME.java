@@ -459,18 +459,27 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
      *    키보드 창에 인셋 콜백이 안 오거나 옛 값이 올 때도 맞다 (API 30 이상).
      * 2) 일부 기기(Vivo의 '입력 방법 빠른 전환' 하단 바 등)가 키보드 창에만 더하는 영역은 인셋 콜백 값에만 들어 있다.
      *    콜백이 올 때 '콜백 값이 창 관리자 값보다 얼마나 큰지'만 따로 기억해 둔다. 콜백 값을 통째로 기억하면 탐색 방법을
-     *    버튼에서 제스처로 바꾼 직후 옛(큰) 값이 남아 자판 아래에 빈 띠가 생긴다.
+     *    버튼에서 제스처로 바꾼 직후 옛(큰) 값이 남아 자판 아래에 빈 띠가 생긴다. 탐색 방법을 바꾼 직후에는 콜백이
+     *    바꾸기 전의 값을 다시 보내기도 해서, 콜백과 창 관리자 값의 탐색 방법(제스처인지)이 다르면 그 콜백은 버린다.
      * 호출하는 때: 키보드가 올라올 때, 화면 설정이 바뀔 때, 인셋 콜백이 올 때.
      *
      * @param callbackInsets 인셋 콜백이 방금 준 값. 콜백에서 부른 것이 아니면 null.
      */
     private void refreshBottomInset(WindowInsets callbackInsets) {
         if (root == null) return;
-        int fresh = freshBottomInset();
+        WindowInsets freshInsets = freshInsets();
+        int fresh = freshInsets == null ? -1 : legacyBottomInset(freshInsets);
         if (callbackInsets != null) {
             int callback = legacyBottomInset(callbackInsets);
-            if (fresh >= 0) windowOnlyBottom = Math.max(0, callback - fresh);
-            else callbackBottom = callback;   // 창 관리자에게 물을 수 없는 기기: 콜백 값을 그대로 쓴다
+            if (fresh < 0) {
+                callbackBottom = callback;   // 창 관리자에게 물을 수 없는 기기: 콜백 값을 그대로 쓴다
+            } else if (gestureNavigation(callbackInsets) != gestureNavigation(freshInsets)) {
+                // 콜백이 탐색 방법을 바꾸기 전의 옛 값이다 (버튼 → 제스처 직후에 버튼 시절의 큰 값이 다시 오는 경우 등).
+                // 이 값으로 차이를 재면 자판 아래에 빈 띠가 생기므로 버린다.
+                windowOnlyBottom = 0;
+            } else {
+                windowOnlyBottom = Math.max(0, callback - fresh);
+            }
         }
         int bottom = fresh >= 0 ? fresh + windowOnlyBottom : callbackBottom;
         if (bottom < 0) return;   // 어느 값도 모른다: 지금 그대로 둔다
@@ -484,18 +493,31 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /** 창 관리자가 지금 알려 주는 하단 바 높이. 알 수 없으면 -1. */
     private int freshBottomInset() {
-        if (Build.VERSION.SDK_INT < 30) return -1;
+        WindowInsets insets = freshInsets();
+        return insets == null ? -1 : legacyBottomInset(insets);
+    }
+
+    /** 창 관리자가 지금 새로 계산해 주는 이 창의 인셋. 물을 수 없으면 null. */
+    private WindowInsets freshInsets() {
+        if (Build.VERSION.SDK_INT < 30) return null;
         try {
             android.view.WindowManager wm = getWindow() != null && getWindow().getWindow() != null
                     ? getWindow().getWindow().getWindowManager() : null;
             if (wm == null) wm = getSystemService(android.view.WindowManager.class);
-            if (wm == null) return -1;
-            WindowInsets insets = wm.getCurrentWindowMetrics().getWindowInsets();
-            return Math.max(insets.getInsets(WindowInsets.Type.navigationBars()).bottom,
-                    insets.getInsets(WindowInsets.Type.tappableElement()).bottom);
+            return wm == null ? null : wm.getCurrentWindowMetrics().getWindowInsets();
         } catch (RuntimeException e) {
-            return -1;
+            return null;
         }
+    }
+
+    /**
+     * 이 인셋이 제스처 탐색 상태에서 나온 것인지: 제스처 탐색은 화면 왼쪽·오른쪽 가장자리에 뒤로 가기 손짓 영역이 있고,
+     * 버튼 탐색에는 없다. 키보드 창 전용 하단 영역과 상관없이 탐색 방법만 보여 주는 신호다.
+     */
+    private static boolean gestureNavigation(WindowInsets insets) {
+        if (Build.VERSION.SDK_INT < 30) return false;
+        android.graphics.Insets g = insets.getInsets(WindowInsets.Type.systemGestures());
+        return g.left > 0 || g.right > 0;
     }
 
     private static int legacyBottomInset(WindowInsets insets) {
