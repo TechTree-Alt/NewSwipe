@@ -116,7 +116,13 @@ public final class Key {
     public String hintUpper() {
         String h = hint();
         if (h == null) return null;
+        if (!isSingleChar(popup[0])) return h;   // 단어는 Shift를 켜도 그대로 입력되므로 힌트도 그대로다
         if (hintUpper == null) hintUpper = h.toUpperCase(java.util.Locale.ROOT);
         return hintUpper;
+    }
+
+    /** 글자 하나(코드 포인트 하나)인지. 길게 눌러 입력하는 항목 중 Shift를 따르는 것은 이런 것뿐이다. */
+    static boolean isSingleChar(String s) {
+        return s != null && !s.isEmpty() && s.codePointCount(0, s.length()) == 1;
     }
 }
