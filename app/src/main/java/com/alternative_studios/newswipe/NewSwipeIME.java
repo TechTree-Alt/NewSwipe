@@ -1950,7 +1950,6 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
      */
     private LinearLayout forgetBar;
     private TextView forgetText;
-    private android.widget.CheckBox forgetDontAsk;
     private Runnable forgetAction;
 
     private void confirmForget(String word, Runnable delete) {
@@ -1967,17 +1966,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             forgetText.setSingleLine(true);
             forgetText.setEllipsize(TextUtils.TruncateAt.MIDDLE);
             forgetBar.addView(forgetText, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-            forgetDontAsk = new android.widget.CheckBox(this);
-            forgetDontAsk.setText("다시 묻지 않음");
-            forgetDontAsk.setTextColor(theme.hint);
-            forgetDontAsk.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-            forgetDontAsk.setButtonTintList(android.content.res.ColorStateList.valueOf(theme.accent));
-            forgetBar.addView(forgetDontAsk);
             forgetBar.addView(forgetButton("취소", theme.text, v -> dismissForgetDialog()));
             forgetBar.addView(forgetButton("삭제", theme.accent, v -> {
                 Runnable action = forgetAction;
-                // 취소할 때는 체크해도 저장하지 않는다.
-                if (forgetDontAsk.isChecked()) prefs.raw().edit().putBoolean(Prefs.CONFIRM_LEARNED_DELETE, false).apply();
                 dismissForgetDialog();
                 if (action != null) action.run();
             }));
@@ -1986,7 +1977,6 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
         forgetAction = delete;
         forgetText.setText("'" + word + "'" + WordSuggester.objectParticle(word) + " 삭제할까요?");
-        forgetDontAsk.setChecked(false);
         forgetBar.setVisibility(View.VISIBLE);
         forgetBar.bringToFront();
     }
