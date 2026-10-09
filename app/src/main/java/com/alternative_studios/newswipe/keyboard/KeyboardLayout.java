@@ -237,8 +237,8 @@ public final class KeyboardLayout {
         List<Row> rows = new ArrayList<>();
         List<Row> letters = new ArrayList<>();
         for (int r = 0; r < 3; r++) letters.add(balancedRow(r, prefs));
-        // 분리 키보드의 숫자 줄은 오른쪽 끝을 모음 키의 오른쪽 끝에 맞춘다.
-        if (numberRow) rows.add(prefs != null && prefs.splitView() ? splitNumberRow(prefs, outerRight(letters)) : numberRow());
+        // 분리 키보드의 숫자 줄은 양 끝을 글자 줄의 가장 바깥 키에 맞춘다.
+        if (numberRow) rows.add(prefs != null && prefs.splitView() ? splitNumberRow(prefs, letters) : numberRow());
         rows.addAll(letters);
         rows.add(splitBottom(prefs, letters));
         return new KeyboardLayout(KOREAN, BALANCED_COLUMNS, rows);
@@ -276,15 +276,6 @@ public final class KeyboardLayout {
      * 숫자 줄·영어 자판의 분리도 같은 규칙을 쓴다.
      */
     private static Row splitRow(List<Key> consonants, List<Key> vowels, float height, float baseW, int maxPct, Prefs prefs) {
-        return splitRow(consonants, vowels, height, baseW, maxPct, prefs, -1f);
-    }
-
-    /**
-     * @param rightEnd 0 이상이면 오른쪽 키들의 오른쪽 끝을 이 위치(칸 단위)에 맞춘다 (모음 위치 설정 대신).
-     *                 숫자 줄처럼 오른쪽 키 수가 다른 줄을 글자 줄의 오른쪽 끝에 맞출 때 쓴다.
-     */
-    private static Row splitRow(List<Key> consonants, List<Key> vowels, float height, float baseW, int maxPct, Prefs prefs,
-                                float rightEnd) {
         float cw = BALANCED_HALF / consonants.size()
                 * (prefs == null ? Prefs.BALANCED_WIDTH_DEFAULT : prefs.balancedConsonantWidth()) / 100f;
         float cpos = (prefs == null ? 50 : prefs.balancedConsonantPos()) / 100f;
@@ -293,15 +284,9 @@ public final class KeyboardLayout {
         int pct = prefs == null ? Prefs.BALANCED_WIDTH_DEFAULT : prefs.balancedVowelWidth();
         float v = baseW * Math.min(pct, maxPct) / 100f;
         if (!vowels.isEmpty()) v = Math.min(v, BALANCED_HALF / vowels.size());
-        // 오른쪽 끝을 맞춰야 하는데 키가 그 안에 다 들어가지 않으면 오른쪽 키의 폭을 줄인다.
-        if (rightEnd > BALANCED_HALF && !vowels.isEmpty()) v = Math.min(v, (rightEnd - BALANCED_HALF) / vowels.size());
         float pos = (prefs == null ? 50 : prefs.balancedVowelPos()) / 100f;
         float free = Math.max(0f, BALANCED_HALF - vowels.size() * v);
         float gapLeft = free * pos, gapRight = free - gapLeft;
-        if (rightEnd >= 0f && !vowels.isEmpty()) {
-            gapRight = Math.max(0f, Math.min(free, SPACE_ROW_UNITS - rightEnd));
-            gapLeft = free - gapRight;
-        }
         List<Key> keys = new ArrayList<>();
         if (cgapLeft > 0.001f) keys.add(fn(Key.GAP, "", cgapLeft));
         for (Key k : consonants) {
@@ -319,24 +304,51 @@ public final class KeyboardLayout {
     }
 
     /** 가로 모드 분리 키보드의 숫자 줄: 1~5는 왼쪽(자음 설정), 6~0은 오른쪽(모음 설정). */
-    private static Row splitNumberRow(Prefs prefs, float rightEnd) {
+    /**
+     * 분리 키보드의 숫자 줄: 1~5는 왼쪽, 6~0은 오른쪽. 숫자 키 열 개의 폭은 모두 같고,
+     * 왼쪽 끝은 글자 줄의 가장 왼쪽 키(자음)에, 오른쪽 끝은 가장 오른쪽 키(모음)에 맞춘다.
+     * 폭은 자음·모음 폭 설정을 넘지 않는 선에서, 두 끝 사이에 열 개가 다 들어가도록 정하고 남는 폭은 가운데에 둔다.
+     *
+     * @param letterRows 맞출 글자 줄들
+     */
+    private static Row splitNumberRow(Prefs prefs, List<Row> letterRows) {
+        float[] edges = outerEdges(letterRows);
+        float from = edges[0], to = edges[1];
         String[] n = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"};
-        List<Key> left = new ArrayList<>(), right = new ArrayList<>();
-        for (int i = 0; i < n.length; i++) (i < 5 ? left : right).add(ch(n[i], null));
-        return splitRow(left, right, 0.78f, BALANCED_HALF / 5f, 1000, prefs, rightEnd);
+        float cw = BALANCED_HALF / 5f
+                * (prefs == null ? Prefs.BALANCED_WIDTH_DEFAULT : prefs.balancedConsonantWidth()) / 100f;
+        float vw = BALANCED_HALF / 5f
+                * (prefs == null ? Prefs.BALANCED_WIDTH_DEFAULT : prefs.balancedVowelWidth()) / 100f;
+        float d = Math.min(Math.min(cw, vw), (to - from) / n.length);
+        List<Key> keys = new ArrayList<>();
+        if (from > 0.001f) keys.add(fn(Key.GAP, "", from));
+        for (int i = 0; i < n.length; i++) {
+            if (i == n.length / 2) {
+                float middle = to - from - n.length * d;
+                if (middle > 0.001f) keys.add(fn(Key.GAP, "", middle));
+            }
+            Key k = ch(n[i], null);
+            k.weight = d;
+            keys.add(k);
+        }
+        if (SPACE_ROW_UNITS - to > 0.001f) keys.add(fn(Key.GAP, "", SPACE_ROW_UNITS - to));
+        return new Row(0.78f, keys.toArray(new Key[0]));
     }
 
-    /** 글자 줄들에서 가장 오른쪽 키(빈틈 제외)의 오른쪽 끝 (칸 단위). */
-    private static float outerRight(List<Row> letterRows) {
-        float right = 0f;
+    /** 글자 줄들에서 가장 바깥 키(빈틈 제외)의 {왼쪽 끝, 오른쪽 끝} (칸 단위). */
+    private static float[] outerEdges(List<Row> letterRows) {
+        float left = SPACE_ROW_UNITS, right = 0f;
         for (Row row : letterRows) {
             float x = 0f;
             for (Key k : row.keys) {
-                if (k.type != Key.GAP) right = Math.max(right, x + k.weight);
+                if (k.type != Key.GAP) {
+                    left = Math.min(left, x);
+                    right = Math.max(right, x + k.weight);
+                }
                 x += k.weight;
             }
         }
-        return right;
+        return new float[]{left, right};
     }
 
     /**
@@ -357,7 +369,7 @@ public final class KeyboardLayout {
             letterRows.add(row);
             rows.add(row);
         }
-        if (prefs.numberRow()) rows.add(0, splitNumberRow(prefs, outerRight(letterRows)));
+        if (prefs.numberRow()) rows.add(0, splitNumberRow(prefs, letterRows));
         rows.add(splitBottom(prefs, letterRows));
         return new KeyboardLayout(ENGLISH, BALANCED_COLUMNS, rows);
     }

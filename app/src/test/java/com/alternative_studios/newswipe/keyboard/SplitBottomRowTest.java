@@ -136,6 +136,15 @@ public class SplitBottomRowTest {
                 assertTrue("숫자 줄이 글자 줄보다 오른쪽으로 나갑니다", number[1] <= letterRight + 0.001f);
                 assertEquals(letterRight, number[1], 0.001f);
                 assertEquals(extent(l.rows[1])[0], number[0], 0.001f);   // 왼쪽 끝도 그대로 맞는다
+                float width = -1f;
+                int digits = 0;
+                for (Key k : l.rows[0].keys) {
+                    if (k.type == Key.GAP) continue;
+                    if (width < 0f) width = k.weight;
+                    assertEquals("숫자 키 폭이 모두 같아야 합니다", width, k.weight, 0.001f);
+                    digits++;
+                }
+                assertEquals(10, digits);
             }
         }
     }
