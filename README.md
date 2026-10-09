@@ -1,3 +1,15 @@
+<p align="center">
+  <img src="docs/banner.svg" alt="NewSwipe — 밀어서 입력하는 한글 키보드" width="100%" />
+</p>
+
+<p align="center">
+  <a href="https://github.com/TechTree-Alt/NewSwipe/releases/latest"><img src="https://img.shields.io/badge/Download%20on-GitHub-2F62E8?style=for-the-badge&logo=github&logoColor=white" alt="Download on GitHub" /></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/TechTree-Alt/NewSwipe/releases/latest">최신 릴리스</a>의 <code>NewSwipe-v*.apk</code> 파일을 받아 설치하세요.
+</p>
+
 # NewSwipe
 
 NewSwipe는 가볍고 현대적이며 편안한 한글 입력 시스템입니다.
@@ -113,6 +125,8 @@ NewSwipe의 자판과 입력 방식은 아래 작업들에서 아이디어를 �
 - NewSwipe의 소스 코드는 [Apache License 2.0](LICENSE)을 따릅니다. Copyright 2026 Alternative.
   "NewSwipe"라는 이름과 로고를 상표로 사용할 권리는 이 라이선스에 포함되지 않습니다
   (Apache License 2.0 제6조). 이 코드로 앱을 만들 때는 다른 이름과 아이콘을 쓰세요.
+- **NewSwipe 단모음** 배열 디자인은 [CC BY-NC 4.0](LICENSE-LAYOUT.md)을 따릅니다. 비영리 목적으로는 출처를 밝히고 자유롭게 쓸 수 있고,
+  **영리적인 다른 키보드 앱에서 쓰려면 저작자의 허락이 필요합니다** (Apache License 2.0은 이 배열 디자인의 권리를 별도로 주지 않습니다).
 - 이모지 데이터는 Unicode License v3, 한국어 단어 사전은 CC BY 4.0(Leipzig Corpora Collection),
   영어 단어 사전은 MIT(SymSpell)·CC BY 3.0(Google Books Ngram)·SCOWL 라이선스를 따릅니다.
   자세한 내용은 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)를 보세요.
