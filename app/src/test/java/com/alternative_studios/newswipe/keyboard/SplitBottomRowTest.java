@@ -171,6 +171,49 @@ public class SplitBottomRowTest {
         }
     }
 
+    /** 줄에서 label 글자 키(그리는 키가 아니면 hidden)의 위치 {시작 x, 폭, 키 번호}. 없으면 null. */
+    private static float[] find(KeyboardLayout.Row row, char label, boolean hidden) {
+        float x = 0f;
+        for (int i = 0; i < row.keys.length; i++) {
+            Key k = row.keys[i];
+            if (k.type == Key.CHAR && k.label.charAt(0) == label && k.hidden == hidden) return new float[]{x, k.weight, i};
+            x += k.weight;
+        }
+        return null;
+    }
+
+    @Test
+    public void emptySpaceLeftOfHAndBTypesGAndVWithoutMovingAnyKey() throws Exception {
+        boolean seen = false;
+        for (int[] s : SETTINGS) {
+            KeyboardLayout l = KeyboardLayout.english(prefsFor(s, false));
+            for (Object[] spec : new Object[][]{{1, 'g', 'h'}, {2, 'v', 'b'}}) {
+                KeyboardLayout.Row row = l.rows[(Integer) spec[0]];
+                char hiddenLabel = (Character) spec[1], hostLabel = (Character) spec[2];
+                float[] hidden = find(row, hiddenLabel, true), host = find(row, hostLabel, false);
+                assertTrue(host != null);
+                float total = 0f;
+                for (Key k : row.keys) total += k.weight;
+                assertEquals(10f, total, 0.001f);
+                if (hidden == null) continue;   // 빈 자리가 없으면 추가하지 않는다
+                seen = true;
+                assertTrue("빈 자리 폭은 키 하나를 넘지 않습니다", hidden[1] <= host[1] + 0.001f);
+                assertEquals("host 키 바로 왼쪽", host[2] - 1f, hidden[2], 0.001f);
+                assertEquals("host 키에 붙어 있다", host[0], hidden[0] + hidden[1], 0.001f);
+                Key k = row.keys[(int) hidden[2]];
+                assertEquals(String.valueOf(hiddenLabel), k.output);
+            }
+        }
+        assertTrue("설정 중에는 빈 자리가 생기는 경우가 있어야 합니다", seen);
+    }
+
+    @Test
+    public void noHiddenKeysInTheNormalKeyboard() {
+        for (KeyboardLayout.Row row : KeyboardLayout.english(null).rows) {
+            for (Key k : row.keys) assertTrue(!k.hidden);
+        }
+    }
+
     @Test
     public void bottomRowStillFillsItsSpanWithTheSpaceBar() throws Exception {
         FakeSp sp = new FakeSp();

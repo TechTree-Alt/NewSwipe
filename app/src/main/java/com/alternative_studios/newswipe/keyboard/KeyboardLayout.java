@@ -386,10 +386,52 @@ public final class KeyboardLayout {
             if (r == 2) left.add(fn(Key.SHIFT, "", 1f));
             for (int i = 0; i < letters.length; i++) (i < leftCount[r] ? left : right).add(letters[i]);
             if (r == 2) right.add(fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1f));
-            letterRows.add(r == 1 ? indentedSplitRow(left, right, 1f, BALANCED_HALF / 5f, 1000, prefs, 0.5f)
-                    : splitRow(left, right, 1f, BALANCED_HALF / 5f, 1000, prefs));
+            Key host = right.get(0);   // 오른쪽 절반 맨 왼쪽 키: h, b
+            Row row = r == 1 ? indentedSplitRow(left, right, 1f, BALANCED_HALF / 5f, 1000, prefs, 0.5f)
+                    : splitRow(left, right, 1f, BALANCED_HALF / 5f, 1000, prefs);
+            // h 왼쪽의 빈 자리를 누르면 g가, b 왼쪽의 빈 자리를 누르면 v가 입력된다 (왼손·오른손 모두 치기 쉽게).
+            // 키를 더 그리는 것이 아니라서 줄의 폭과 열은 그대로다.
+            if (r > 0) row = withHiddenKey(row, host, hiddenCopyOf(letters[leftCount[r] - 1]));
+            letterRows.add(row);
         }
         return letterRows;
+    }
+
+    /** 같은 글자·길게 누르기·밀기를 가지고 그리지는 않는 키. 설정은 글자 이름으로 저장되어 원래 키와 함께 따른다. */
+    private static Key hiddenCopyOf(Key k) {
+        Key c = new Key(k.type, k.label, k.output, k.shifted, k.swipeDown, k.popup, k.weight);
+        c.swipeUp = k.swipeUp;
+        c.swipeLeft = k.swipeLeft;
+        c.swipeRight = k.swipeRight;
+        c.grayStyle = k.grayStyle;
+        c.slot = k.slot;
+        c.hidden = true;
+        return c;
+    }
+
+    /**
+     * host 키 바로 왼쪽의 빈 자리(이어진 빈틈) 안에 hidden 키를 놓는다: 폭은 host 키 하나 폭이고, 빈 자리가 그보다 좁으면
+     * 그 폭만큼이다. 빈 자리가 없으면 줄을 그대로 돌려준다. 줄 전체의 폭과 다른 키의 위치는 바뀌지 않는다.
+     */
+    private static Row withHiddenKey(Row row, Key host, Key hidden) {
+        int at = -1;
+        for (int i = 0; i < row.keys.length; i++) if (row.keys[i] == host) at = i;
+        if (at < 0) return row;
+        int first = at;
+        float gap = 0f;
+        while (first > 0 && row.keys[first - 1].type == Key.GAP) {
+            first--;
+            gap += row.keys[first].weight;
+        }
+        float w = Math.min(gap, host.weight);
+        if (w < 0.05f) return row;
+        List<Key> keys = new ArrayList<>();
+        for (int i = 0; i < first; i++) keys.add(row.keys[i]);
+        if (gap - w > 0.001f) keys.add(fn(Key.GAP, "", gap - w));
+        hidden.weight = w;
+        keys.add(hidden);
+        for (int i = at; i < row.keys.length; i++) keys.add(row.keys[i]);
+        return new Row(row.height, keys.toArray(new Key[0]));
     }
 
     /**
