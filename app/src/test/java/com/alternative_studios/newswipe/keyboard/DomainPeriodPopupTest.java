@@ -7,7 +7,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-public class EmailPeriodPopupTest {
+public class DomainPeriodPopupTest {
     private static Key period(KeyboardLayout l) {
         for (KeyboardLayout.Row row : l.rows) {
             for (Key k : row.keys) if (k.type == Key.CHAR && ".".equals(k.label)) return k;
@@ -16,13 +16,13 @@ public class EmailPeriodPopupTest {
     }
 
     @Test
-    public void emailFieldsReplaceThePeriodPopupWithDomains() {
+    public void emailAndUrlFieldsReplaceThePeriodPopupWithDomains() {
         for (KeyboardLayout l : new KeyboardLayout[]{KeyboardLayout.korean(null), KeyboardLayout.english(null)}) {
             Key k = period(l);
             assertTrue(k != null);
             String[] before = k.popup;
             assertNotEquals(".com", before[0]);
-            KeyboardLayout.useEmailPeriodPopup(l);
+            KeyboardLayout.useDomainPeriodPopup(l);
             assertArrayEquals(new String[]{".com", ".net", ".org", ".co.kr", ".kr", ".ac.kr"}, k.popup);
         }
     }
@@ -32,7 +32,7 @@ public class EmailPeriodPopupTest {
         KeyboardLayout l = KeyboardLayout.english(null);
         String[] aPopup = null;
         for (KeyboardLayout.Row row : l.rows) for (Key k : row.keys) if ("a".equals(k.label)) aPopup = k.popup;
-        KeyboardLayout.useEmailPeriodPopup(l);
+        KeyboardLayout.useDomainPeriodPopup(l);
         for (KeyboardLayout.Row row : l.rows) for (Key k : row.keys) if ("a".equals(k.label)) assertEquals(aPopup, k.popup);
     }
 }

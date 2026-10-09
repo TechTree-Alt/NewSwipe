@@ -124,8 +124,8 @@ public final class KeyboardLayout {
     };
 
     private static final String[] COMMA_POPUP = {";", ":", "/", "'", "\""};
-    /** 이메일 입력란에서 온점 키를 길게 누르면 나오는 도메인 (사용자가 정한 길게 누르기 문자 대신). */
-    static final String[] EMAIL_PERIOD_POPUP = {".com", ".net", ".org", ".co.kr", ".kr", ".ac.kr"};
+    /** 이메일·인터넷 주소 입력란에서 온점 키를 길게 누르면 나오는 도메인 (사용자가 정한 길게 누르기 문자 대신). */
+    static final String[] DOMAIN_PERIOD_POPUP = {".com", ".net", ".org", ".co.kr", ".kr", ".ac.kr"};
     private static final String[] PERIOD_POPUP = {"?", "!", "…", "~", "·", "'", "\"", ":", ";"};
 
     /** 길게 누르기 문자 편집 화면에서 쓰는 키 묶음 이름. */
@@ -141,14 +141,14 @@ public final class KeyboardLayout {
     }
 
     /**
-     * 이메일 입력란용: 하단 온점 키(".")를 길게 누르면 사용자가 정한 문자 대신 .com·.net·.org·.co.kr 같은 도메인이 나온다.
+     * 이메일·인터넷 주소 입력란용: 하단 온점 키(".")를 길게 누르면 사용자가 정한 문자 대신 .com·.net·.org·.co.kr 같은 도메인이 나온다.
      * 온점 키를 다른 글자로 바꿨으면 그 키는 건드리지 않는다. 숫자 자판에는 하단 온점 키가 없다.
      */
-    public static void useEmailPeriodPopup(KeyboardLayout layout) {
+    public static void useDomainPeriodPopup(KeyboardLayout layout) {
         for (Row row : layout.rows) {
             for (Key k : row.keys) {
                 if (k.type == Key.CHAR && ".".equals(k.slot()) && ".".equals(k.label)) {
-                    k.popup = EMAIL_PERIOD_POPUP;
+                    k.popup = DOMAIN_PERIOD_POPUP;
                     k.noRepeat = true;
                 }
             }
