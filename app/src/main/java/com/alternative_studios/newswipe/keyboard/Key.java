@@ -54,6 +54,8 @@ public final class Key {
      * label은 바뀐 글자이고 이 값은 원래 자리(",", ".")로 남는다. 바꾸지 않은 키는 null이다.
      */
     String slot;
+    /** 그리지 않지만 누르면 입력되는 키 (분리 키보드의 빈 자리에 두는 g, v). */
+    boolean hidden;
     /** 길게 눌러 연속 입력으로 정해 둔 글자여도 연속 입력을 쓰지 않는다 (이메일·인터넷 주소 입력란의 온점 키). */
     boolean noRepeat;
 

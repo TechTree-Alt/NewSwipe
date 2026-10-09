@@ -563,7 +563,7 @@ public final class KeyboardView extends View {
         fill.setColor(theme.background);
         c.drawRect(0, 0, getWidth(), getHeight(), fill);
         for (KeyboardLayout.Row row : layout.rows) {
-            for (Key k : row.keys) if (k.type != Key.SPACER && k.type != Key.GAP) drawKey(c, k);
+            for (Key k : row.keys) if (k.type != Key.SPACER && k.type != Key.GAP && !k.hidden) drawKey(c, k);
         }
         // 미리보기 말풍선
         if (showPreview) {

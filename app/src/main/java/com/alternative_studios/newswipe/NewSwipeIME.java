@@ -631,12 +631,17 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         else column.addView(topSlot, 0, lp);
     }
 
+    /** 추천 단어 앞의 빈 칸. 분리 키보드에서는 남는 폭을 모두 가져 추천 단어 세 개가 오른쪽 끝에 붙는다. */
+    private View suggestLead;
+
     private LinearLayout buildSuggestBar() {
         suggestions = new String[0];   // 새 막대는 비어 있다 (예전 막대의 내용과 비교하지 않도록)
         shortcutShown = false;
         suggestWord = "";
         LinearLayout bar = new LinearLayout(this);
         bar.setGravity(Gravity.CENTER_VERTICAL);
+        suggestLead = new View(this);
+        bar.addView(suggestLead, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 0f));
         for (int i = 0; i < suggestViews.length; i++) {
             final int index = i;
             TextView t = new TextView(this);
@@ -720,6 +725,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         // 키보드 밀기 완전 사용자화를 켜면 문자 키 커서 이동은 편집 화면의 '커서 자유 이동'을 따른다.
         keyboard.setPopupHints(prefs.longPressChars() && !prefs.popupHintHidden());
         keyboard.setRepeatChars(prefs.repeatChars());
+        applySuggestLead();
         keyboard.setHitShrink(prefs.deleteHitShrink() ? prefs.deleteHitShrinkPct() / 100f : 0f,
                 prefs.spaceHitShrink() ? prefs.spaceHitShrinkPct() / 100f : 0f);
         keyboard.setCharCursor(!prefs.swipeKeyboardCustom() && prefs.charCursor(),
@@ -1000,6 +1006,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (domainField && kind != KeyboardLayout.NUMBER) KeyboardLayout.useDomainPeriodPopup(l);
         keyboard.setLayout(l);
         if (kind != KeyboardLayout.ENGLISH && shiftState != 0) setShift(0);
+        applySuggestLead();   // 분리 키보드인지에 따라 추천 단어 자리가 달라진다
     }
 
     private void showPanel(int p) {
@@ -1691,8 +1698,49 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 단축어의 문장이 추천란 전체를 채울 때는 첫 칸만 보이고 길면 뒤를 …로 줄인다. 아니면 칸 모두 같은 폭이고 길면 앞을 줄인다. */
     private void setShortcutLook(boolean on) {
         if (suggestBar == null) return;
+        applySuggestLead();
         suggestViews[0].setEllipsize(on ? TextUtils.TruncateAt.END : TextUtils.TruncateAt.START);
         for (int i = 1; i < suggestViews.length; i++) suggestViews[i].setVisibility(on ? View.GONE : View.VISIBLE);
+    }
+
+    /** 분리 키보드를 쓰는 중인지 (가로 모드·대화면에서 분리를 켰고 한 손 모드가 아닐 때). */
+    private boolean splitActive() {
+        return Prefs.ONE_HAND_OFF.equals(activeOneHand()) && prefs.profileView(profile()).splitView();
+    }
+
+    /** 분리 키보드에서 추천 단어 한 칸의 폭 (dp). 추천 단어는 이 폭에서 앞이 …로 줄어든다. */
+    private static final int SPLIT_SUGGEST_DP = 104;
+
+    /**
+     * 분리 키보드에서는 추천 단어 세 개를 정해 둔 폭으로 오른쪽 끝에 붙여, 오른쪽 엄지로 고르기 쉽게 한다
+     * (앞의 빈 칸이 남는 폭을 모두 가진다). 단축어의 문장도 이 오른쪽 자리(세 칸 폭 전체)에만 나온다.
+     * 분리 키보드가 아니면 세 칸이 같은 폭이고, 단축어의 문장은 추천란 전체를 채운다.
+     */
+    private void applySuggestLead() {
+        if (suggestLead == null) return;
+        boolean split = splitActive();
+        setLeadWeight(suggestLead, split ? 1f : 0f);
+        for (int i = 0; i < suggestViews.length; i++) {
+            TextView v = suggestViews[i];
+            if (v == null) continue;
+            LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) v.getLayoutParams();
+            int one = Ui.dp(this, SPLIT_SUGGEST_DP);
+            int width = !split ? 0 : shortcutShown && i == 0 ? one * suggestViews.length : one;
+            float weight = split ? 0f : 1f;
+            if (lp.width != width || lp.weight != weight) {
+                lp.width = width;
+                lp.weight = weight;
+                v.setLayoutParams(lp);
+            }
+        }
+    }
+
+    private static void setLeadWeight(View lead, float weight) {
+        LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) lead.getLayoutParams();
+        if (lp.weight != weight) {
+            lp.weight = weight;
+            lead.setLayoutParams(lp);
+        }
     }
 
     private void applySuggestions(String word, String[] found, boolean shortcut) {
