@@ -51,32 +51,86 @@ public class SplitBottomRowTest {
         return new float[]{left, right};
     }
 
-    private static void assertBottomMatchesLetters(KeyboardLayout l) {
+    /** 줄 중 가장 바깥 키의 {왼쪽, 오른쪽} (맨 아래 줄과 숫자 줄은 빼고 글자·기호 줄만). */
+    private static float[] outer(KeyboardLayout l, int firstRow) {
         float left = Float.MAX_VALUE, right = 0f;
-        for (int r = 0; r < l.rows.length - 1; r++) {
+        for (int r = firstRow; r < l.rows.length - 1; r++) {
             float[] e = extent(l.rows[r]);
             left = Math.min(left, e[0]);
             right = Math.max(right, e[1]);
         }
-        float[] bottom = extent(l.rows[l.rows.length - 1]);
-        assertEquals(left, bottom[0], 0.001f);
-        assertEquals(right, bottom[1], 0.001f);
+        return new float[]{left, right};
+    }
+
+    private static final int[][] SETTINGS = {{100, 0, 60, 60}, {50, 50, 70, 80}, {100, 100, 50, 40}, {0, 100, 100, 100},
+            {50, 50, 100, 100}};
+
+    private static Prefs prefsFor(int[] s, boolean numberRow) throws Exception {
+        FakeSp sp = new FakeSp();
+        Prefs p = landscapeEditView(sp);
+        sp.m.put(Prefs.NUMBER_ROW, numberRow);
+        sp.m.put(p.balancedConsonantPosKey(), s[0]);
+        sp.m.put(p.balancedVowelPosKey(), s[1]);
+        sp.m.put(p.balancedConsonantWidthKey(), s[2]);
+        sp.m.put(p.balancedVowelWidthKey(), s[3]);
+        return p;
     }
 
     @Test
-    public void bottomRowEdgesFollowTheOutermostLetterKeys() throws Exception {
-        int[][] settings = {{100, 0, 60, 60}, {50, 50, 70, 80}, {100, 100, 50, 40}, {0, 100, 100, 100}};
-        for (int[] s : settings) {
-            FakeSp sp = new FakeSp();
-            Prefs p = landscapeEditView(sp);
-            sp.m.put(p.balancedConsonantPosKey(), s[0]);
-            sp.m.put(p.balancedVowelPosKey(), s[1]);
-            sp.m.put(p.balancedConsonantWidthKey(), s[2]);
-            sp.m.put(p.balancedVowelWidthKey(), s[3]);
-            assertBottomMatchesLetters(KeyboardLayout.korean(p));
-            assertBottomMatchesLetters(KeyboardLayout.english(p));
-            assertBottomMatchesLetters(KeyboardLayout.symbols(true, p));
-            assertBottomMatchesLetters(KeyboardLayout.symbols2(false, p));
+    public void bottomRowAndNumberRowShareTheSameEdgesOnEveryPage() throws Exception {
+        for (int[] s : SETTINGS) {
+            Prefs p = prefsFor(s, true);
+            KeyboardLayout korean = KeyboardLayout.korean(p), english = KeyboardLayout.english(p);
+            KeyboardLayout sym1 = KeyboardLayout.symbols(true, p), sym2 = KeyboardLayout.symbols2(false, p);
+            float[] want = extent(korean.rows[korean.rows.length - 1]);
+            for (KeyboardLayout l : new KeyboardLayout[]{english, sym1, sym2}) {
+                float[] bottom = extent(l.rows[l.rows.length - 1]);
+                assertEquals("맨 아래 줄 왼쪽 끝", want[0], bottom[0], 0.001f);
+                assertEquals("맨 아래 줄 오른쪽 끝", want[1], bottom[1], 0.001f);
+            }
+            for (KeyboardLayout l : new KeyboardLayout[]{korean, english}) {
+                float[] number = extent(l.rows[0]);   // 숫자 줄
+                assertEquals(0.78f, l.rows[0].height, 0.001f);
+                assertEquals("숫자 줄 왼쪽 끝", want[0], number[0], 0.001f);
+                assertEquals("숫자 줄 오른쪽 끝", want[1], number[1], 0.001f);
+            }
+            // 어느 자판의 글자 줄도 이 양 끝 밖으로 나가지 않는다.
+            for (KeyboardLayout l : new KeyboardLayout[]{korean, english}) {
+                float[] letters = outer(l, 1);
+                assertTrue(letters[0] >= want[0] - 0.001f);
+                assertTrue(letters[1] <= want[1] + 0.001f);
+            }
+        }
+    }
+
+    @Test
+    public void numberKeysAreAllTheSameWidth() throws Exception {
+        for (int[] s : SETTINGS) {
+            Prefs p = prefsFor(s, true);
+            for (KeyboardLayout l : new KeyboardLayout[]{KeyboardLayout.korean(p), KeyboardLayout.english(p)}) {
+                float width = -1f;
+                int digits = 0;
+                for (Key k : l.rows[0].keys) {
+                    if (k.type == Key.GAP) continue;
+                    if (width < 0f) width = k.weight;
+                    assertEquals("숫자 키 폭이 모두 같아야 합니다", width, k.weight, 0.001f);
+                    digits++;
+                }
+                assertEquals(10, digits);
+            }
+        }
+    }
+
+    @Test
+    public void englishHomeRowIsIndentedLikeThePortraitKeyboard() throws Exception {
+        for (int[] s : SETTINGS) {
+            KeyboardLayout l = KeyboardLayout.english(prefsFor(s, false));
+            float[] top = extent(l.rows[0]), home = extent(l.rows[1]);
+            assertTrue("a의 왼쪽에 여백이 있어야 합니다", home[0] > top[0] + 0.01f);
+            assertTrue("l의 오른쪽에 여백이 있어야 합니다", home[1] < top[1] - 0.01f);
+            float total = 0f;
+            for (Key k : l.rows[1].keys) total += k.weight;
+            assertEquals(10f, total, 0.001f);
         }
     }
 
@@ -114,38 +168,6 @@ public class SplitBottomRowTest {
         KeyboardLayout l = KeyboardLayout.symbols(true, null);
         for (int r = 0; r < l.rows.length - 1; r++) {
             for (Key k : l.rows[r].keys) assertTrue(k.type != Key.GAP);
-        }
-    }
-
-    @Test
-    public void numberRowRightEdgeFollowsTheVowelKeys() throws Exception {
-        int[][] settings = {{50, 50, 70, 80}, {100, 0, 60, 60}, {0, 100, 100, 100}, {100, 100, 50, 40}};
-        for (int[] s : settings) {
-            FakeSp sp = new FakeSp();
-            Prefs p = landscapeEditView(sp);
-            sp.m.put(Prefs.NUMBER_ROW, true);
-            sp.m.put(p.balancedConsonantPosKey(), s[0]);
-            sp.m.put(p.balancedVowelPosKey(), s[1]);
-            sp.m.put(p.balancedConsonantWidthKey(), s[2]);
-            sp.m.put(p.balancedVowelWidthKey(), s[3]);
-            for (KeyboardLayout l : new KeyboardLayout[]{KeyboardLayout.korean(p), KeyboardLayout.english(p)}) {
-                assertEquals(0.78f, l.rows[0].height, 0.001f);   // 숫자 줄
-                float letterRight = 0f;
-                for (int r = 1; r < l.rows.length - 1; r++) letterRight = Math.max(letterRight, extent(l.rows[r])[1]);
-                float[] number = extent(l.rows[0]);
-                assertTrue("숫자 줄이 글자 줄보다 오른쪽으로 나갑니다", number[1] <= letterRight + 0.001f);
-                assertEquals(letterRight, number[1], 0.001f);
-                assertEquals(extent(l.rows[1])[0], number[0], 0.001f);   // 왼쪽 끝도 그대로 맞는다
-                float width = -1f;
-                int digits = 0;
-                for (Key k : l.rows[0].keys) {
-                    if (k.type == Key.GAP) continue;
-                    if (width < 0f) width = k.weight;
-                    assertEquals("숫자 키 폭이 모두 같아야 합니다", width, k.weight, 0.001f);
-                    digits++;
-                }
-                assertEquals(10, digits);
-            }
         }
     }
 
