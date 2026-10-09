@@ -206,7 +206,7 @@ public final class KeyboardView extends View {
     }
 
     private boolean isRepeatChar(Key k) {
-        return k.type == Key.CHAR && !repeatChars.isEmpty() && layout != null
+        return k.type == Key.CHAR && !k.noRepeat && !repeatChars.isEmpty() && layout != null
                 && repeatChars.contains(KeyboardLayout.groupOf(layout.kind == KeyboardLayout.KOREAN, k.slot()) + "_" + k.slot());
     }
 

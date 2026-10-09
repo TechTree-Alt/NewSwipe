@@ -157,6 +157,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** correctionIgnored를 채울 때의 학습한 단어 편집 번호. 설정에서 단어를 지우면 바뀌어 비운다. */
     private int ignoredEditVersion;
     private String suggestWord = "";
+    private boolean emailField;   // 이메일 주소 입력란: 온점 키를 길게 누르면 .com 등이 나온다
     private boolean shortcutAllowed;   // 현재 입력란에서 단축어를 쓸 수 있는지 (비밀번호만 제외, 이메일 입력란은 허용)
     private boolean suggestAllowed;   // 현재 입력란에서 추천을 쓸 수 있는지 (비밀번호·이메일 등은 제외, 인터넷 주소 입력란은 허용)
     /** 설정값 (applySettings에서 읽어 둔다. 키마다 설정 파일을 읽지 않기 위해). */
@@ -890,6 +891,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         int cls = info.inputType & InputType.TYPE_MASK_CLASS;
         suggestAllowed = suggestAllowedFor(info);
         shortcutAllowed = shortcutAllowedFor(info);
+        emailField = emailFieldFor(info);
         // 시크릿 모드 등 앱이 학습하지 말라고 표시한 입력란에서는 단어를 학습하지 않는다 (추천은 그대로).
         learnAllowed = (info.imeOptions & EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) == 0;
         mirror.start(info.initialSelStart, info.initialSelEnd);
@@ -995,6 +997,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 l = KeyboardLayout.korean(prefs);
                 break;
         }
+        if (emailField && kind != KeyboardLayout.NUMBER) KeyboardLayout.useEmailPeriodPopup(l);
         keyboard.setLayout(l);
         if (kind != KeyboardLayout.ENGLISH && shiftState != 0) setShift(0);
     }
@@ -1552,6 +1555,14 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             default:
                 return true;
         }
+    }
+
+    private static boolean emailFieldFor(EditorInfo info) {
+        int type = info.inputType;
+        if ((type & InputType.TYPE_MASK_CLASS) != InputType.TYPE_CLASS_TEXT) return false;
+        int variation = type & InputType.TYPE_MASK_VARIATION;
+        return variation == InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+                || variation == InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS;
     }
 
     /** 단축어는 비밀번호 입력란만 빼고 쓴다 (이메일 주소 입력란에서도 쓴다). */

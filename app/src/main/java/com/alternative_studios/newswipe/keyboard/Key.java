@@ -43,8 +43,8 @@ public final class Key {
     String swipeDown;
     /** 위/왼쪽/오른쪽으로 스와이프했을 때 입력되는 글자 (겹받침). 없으면 null. */
     String swipeUp, swipeLeft, swipeRight;
-    /** 길게 눌렀을 때 고를 수 있는 글자들. 첫 번째가 기본값. 없으면 null. */
-    public final String[] popup;
+    /** 길게 눌렀을 때 고를 수 있는 글자들. 첫 번째가 기본값. 없으면 null. 이메일 입력란의 온점 키만 나중에 바꾼다. */
+    public String[] popup;
     /** 1.0 = 글자 키 한 칸. 자판을 만드는 동안에만 바뀐다 (스페이스바가 없는 아래 줄을 채울 때). */
     public float weight;
     /** 글자 키지만 기능키 색으로 그린다 (쉼표, 마침표). */
@@ -54,6 +54,8 @@ public final class Key {
      * label은 바뀐 글자이고 이 값은 원래 자리(",", ".")로 남는다. 바꾸지 않은 키는 null이다.
      */
     String slot;
+    /** 길게 눌러 연속 입력으로 정해 둔 글자여도 연속 입력을 쓰지 않는다 (이메일 입력란의 온점 키). */
+    boolean noRepeat;
 
     /** 설정에 저장된 이 키의 이름 (label과 다를 수 있다). */
     public String slot() {
