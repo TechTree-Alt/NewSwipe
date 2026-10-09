@@ -532,7 +532,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     private void attachToolSwipe(View button, int slot) {
         SwipeVertical.attachFourWay(button, dir -> !SwipeAction.NONE.equals(toolButtonAction(slot, dir)),
-                () -> Ui.dp(this, slot == ToolbarSwipes.ONE_HAND ? prefs.swipeThresholdDp() : prefs.fnSwipeThresholdDp()),
+                () -> Ui.dp(this, prefs.fnSwipeThresholdDp()),
                 dir -> {
                     feedback.onKey(null);
                     String action = toolButtonAction(slot, dir);
