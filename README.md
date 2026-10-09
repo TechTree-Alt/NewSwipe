@@ -1,19 +1,13 @@
+# NewSwipe
 <p align="center">
   <img src="docs/banner.svg" alt="NewSwipe — 밀어서 입력하는 한글 키보드" width="100%" />
 </p>
-
-<p align="center">
-  <a href="https://github.com/TechTree-Alt/NewSwipe/releases/latest"><img src="docs/get-apk-github.svg" alt="Get it on GitHub" height="72" /></a>
-</p>
-
-<p align="center">
-  <a href="https://github.com/TechTree-Alt/NewSwipe/releases/latest">최신 릴리스</a>의 <code>NewSwipe-v*.apk</code> 파일을 받아 설치하세요.
-</p>
-
-# NewSwipe
-
 NewSwipe는 가볍고 현대적이며 편안한 한글 입력 시스템입니다.
 <br />
+<br />
+<p align="left">
+  <a href="https://github.com/TechTree-Alt/NewSwipe/releases/latest"><img src="docs/get-apk-github.svg" alt="Get it on GitHub" height="72" /></a>
+</p>
 <br />
 
 ## 핵심 가치
@@ -118,6 +112,14 @@ NewSwipe의 자판과 입력 방식은 아래 작업들에서 아이디어를 �
 - **구글 단모음** — 2010년 'Google 한국어 입력기'에 처음 실린 단모음 자판.
 - **커키 키보드** — 단모음 자판에서 쌍자음을 키를 아래로 밀어 입력하는 방식.
 - **오쏘리니어(ortholinear) 키보드** — 격자 정렬.
+<br />
+
+## 고지사항
+<p align="left">
+  <img src="docs/claude_code.png" alt="Claude Code logo" height="200" /></a>
+</p>
+NewSwipe는 비전공자가 Claude Code(Sonnet 5.5, Opus 5.5)를 사용해 만든 프로젝트입니다.  
+모든 아이디어와 검수는 개발자가 했으며, Claude Code를 통해 주요 기능을 구현하였습니다.  
 <br />
 
 ## 라이선스
