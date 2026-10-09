@@ -96,4 +96,62 @@ public class EmojiDataTest {
             assertTrue(d.search("pickle", 5).isEmpty() || !contains(d.search("pickle", 5), "🫝"));
         }
     }
+
+    @Test
+    public void suggestMatchesWordWithEnding() throws IOException {
+        EmojiData d = load();
+        List<String> s = d.suggest("오늘 정말 축하합니다!", 16);
+        assertEquals("🥳", s.get(0));   // 이름에 '축하'가 들어간 이모지보다 키워드 순서대로, 문장 부호는 뗀다
+        assertTrue(s.contains("🎂"));
+        assertTrue(d.suggest("생일이야", 16).contains("🎂"));
+        assertTrue(d.suggest("피자 먹자", 16).contains("🍕"));
+    }
+
+    @Test
+    public void suggestInterleavesWords() throws IOException {
+        EmojiData d = load();
+        // '축하'에 맞는 이모지가 많아도 '생일'의 이모지가 앞쪽에 함께 나온다.
+        List<String> s = d.suggest("생일 축하해", 6);
+        assertEquals(6, s.size());
+        assertTrue(s.contains("💐"));
+        assertTrue(s.contains("👏"));
+        assertEquals(s.size(), new java.util.HashSet<>(s).size());   // 중복 없음
+    }
+
+    @Test
+    public void suggestEnglishTails() throws IOException {
+        EmojiData d = load();
+        assertTrue(d.suggest("I want cakes", 16).contains("🎂"));
+        assertTrue(d.suggest("partying tonight", 16).contains("🥳"));
+        assertTrue(!d.suggest("I", 16).contains("ℹ️"));   // 한 글자 키워드는 쓰지 않는다
+    }
+
+    @Test
+    public void suggestChatWords() throws IOException {
+        EmojiData d = load();
+        assertTrue(d.suggest("미안해", 16).contains("🙏"));
+        assertTrue(d.suggest("수고하셨습니다", 16).contains("👏"));
+        assertTrue(d.suggest("ㅠㅠ", 16).contains("😭"));
+    }
+
+    @Test
+    public void suggestSkipsWeakMatches() throws IOException {
+        EmojiData d = load();
+        assertTrue(d.suggest("불편해", 16).isEmpty());   // '불'(한 글자)로 🔥를 고르지 않는다
+        assertTrue(d.suggest("잘 자", 16).isEmpty());   // '자'(한 글자)로 자를 고르지 않는다
+        assertTrue(d.suggest("얼굴이", 16).isEmpty());   // 너무 흔한 키워드
+        assertTrue(d.suggest("", 16).isEmpty());
+        assertTrue(d.suggest("   ", 16).isEmpty());
+        assertTrue(d.suggest(null, 16).isEmpty());
+        assertTrue(d.suggest("축하", 0).isEmpty());
+        assertEquals(3, d.suggest("축하", 3).size());
+    }
+
+    @Test
+    public void suggestLooksAtLastWordsOnly() throws IOException {
+        EmojiData d = load();
+        // 커서에서 먼 단어(다섯 번째 앞)는 보지 않는다.
+        assertTrue(d.suggest("피자 하나 둘 셋 넷", 16).isEmpty());
+        assertTrue(d.suggest("피자 하나 둘 셋", 16).contains("🍕"));
+    }
 }

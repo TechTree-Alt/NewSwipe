@@ -6,6 +6,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.TypedValue;
@@ -65,6 +66,10 @@ public final class EmojiPanel extends LinearLayout {
     private EmojiData data;
     private List<String> recent = new ArrayList<>();
     private List<String> pinned = new ArrayList<>();
+    /** 이모지 창을 열 때 입력한 글에 맞춰 고른 추천. 최근 탭 맨 위 한 줄에 보인다. */
+    private List<String> suggestions = new ArrayList<>();
+    /** 창을 연 뒤 사용자가 아직 탭을 고르지 않았는지. 이때만 추천이 오면 최근 탭으로 옮긴다. */
+    private boolean autoGroup;
     private int group = 1;
     private PopupWindow tonePopup;
 
@@ -144,7 +149,10 @@ public final class EmojiPanel extends LinearLayout {
                 tab = t;
             }
             final int index = i;
-            tab.setOnClickListener(v -> showGroup(index));
+            tab.setOnClickListener(v -> {
+                autoGroup = false;
+                showGroup(index);
+            });
             tabs[i] = tab;
             tabRow.addView(tab, new LayoutParams(0, Ui.dp(context, 36), 1f));
         }
@@ -169,7 +177,18 @@ public final class EmojiPanel extends LinearLayout {
         data = d;
         recent = recentEmoji;
         pinned = pinnedEmoji;
-        showGroup(group == 0 && !hasRecent() ? 1 : group);
+        showGroup(group == 0 && !hasRecent() && suggestions.isEmpty() ? 1 : group);
+    }
+
+    /**
+     * 추천 이모지를 바꾼다. 창을 연 뒤 아직 탭을 고르지 않았으면 최근 탭으로 옮겨 보여 준다
+     * (최근 사용이 없어 표정 탭부터 열렸어도).
+     */
+    public void setSuggestions(List<String> list) {
+        suggestions = list;
+        if (data == null) return;
+        if (group != 0 && autoGroup && !list.isEmpty()) showGroup(0);
+        else refreshRecent();
     }
 
     public void setRecent(List<String> recentEmoji) {
@@ -194,9 +213,11 @@ public final class EmojiPanel extends LinearLayout {
         int first = grid.getFirstVisiblePosition();
         for (int i = 0; i < grid.getChildCount() && first + i < adapter.getCount(); i++) {
             View child = grid.getChildAt(i);
-            before.put(adapter.getItem(first + i), new int[]{child.getLeft(), child.getTop()});
+            if (!adapter.getItem(first + i).isEmpty()) {
+                before.put(adapter.key(first + i), new int[]{child.getLeft(), child.getTop()});
+            }
         }
-        adapter.set(itemsFor(0), 0);
+        fill(adapter, 0, true);
         page.updateNotes();
         if (before.isEmpty()) return;
         grid.getViewTreeObserver().addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
@@ -206,7 +227,8 @@ public final class EmojiPanel extends LinearLayout {
                 int top = grid.getFirstVisiblePosition();
                 for (int i = 0; i < grid.getChildCount() && top + i < adapter.getCount(); i++) {
                     View child = grid.getChildAt(i);
-                    int[] old = before.get(adapter.getItem(top + i));
+                    if (adapter.getItem(top + i).isEmpty()) continue;   // 빈칸
+                    int[] old = before.get(adapter.key(top + i));
                     child.animate().cancel();
                     if (old == null) {
                         child.setAlpha(0f);
@@ -233,8 +255,10 @@ public final class EmojiPanel extends LinearLayout {
         return !recent.isEmpty() || !pinned.isEmpty();
     }
 
-    /** 패널을 새로 열 때: 최근 사용이 있으면 그 탭부터. */
+    /** 패널을 새로 열 때: 최근 사용이 있으면 그 탭부터. 이전 추천은 지운다 (새 추천은 setSuggestions로 온다). */
     public void reset() {
+        suggestions = new ArrayList<>();
+        autoGroup = true;
         group = hasRecent() ? 0 : 1;
         if (data != null) showGroup(group);
     }
@@ -252,13 +276,37 @@ public final class EmojiPanel extends LinearLayout {
         }
     }
 
-    /** 탭에 보일 이모지 목록. 데이터를 아직 읽지 않았으면 비어 있다. */
-    private List<String> itemsFor(int index) {
+    /**
+     * index 탭의 이모지로 어댑터를 채운다. 데이터를 아직 읽지 않았으면 비어 있다.
+     * 최근 탭에서 추천이 있으면 맨 위 한 줄에 추천을 두고, 그 줄의 남은 칸과 다음 한 줄을 비운 뒤 고정·최근 이모지를 둔다.
+     * 빈칸은 ""이며 누를 수 없다.
+     */
+    private void fill(Adapter a, int index, boolean notify) {
         List<String> items = new ArrayList<>();
-        if (data == null) return items;
-        if (index == 0) return EmojiRepository.withPinned(pinned, recent);
-        for (EmojiData.Emoji e : data.group(index)) items.add(e.value);
-        return items;
+        int recentStart = 0, columns = 0;
+        if (data != null && index == 0) {
+            List<String> mine = EmojiRepository.withPinned(pinned, recent);
+            if (!suggestions.isEmpty()) {
+                columns = columns();
+                for (int i = 0; i < columns; i++) items.add(i < suggestions.size() ? suggestions.get(i) : "");
+                if (!mine.isEmpty()) for (int i = 0; i < columns; i++) items.add("");
+            }
+            recentStart = items.size();
+            items.addAll(mine);
+        } else if (data != null) {
+            for (EmojiData.Emoji e : data.group(index)) items.add(e.value);
+        }
+        if (notify) a.set(items, index, recentStart, columns);
+        else a.replace(items, index, recentStart, columns);
+    }
+
+    /** 격자 한 줄에 들어가는 칸 수. GridView가 AUTO_FIT으로 정하는 것과 같게 센다. */
+    private int columns() {
+        int w = page.grid.getWidth();
+        if (w == 0) w = getWidth();
+        if (w == 0) w = getResources().getDisplayMetrics().widthPixels;
+        int avail = w - page.grid.getPaddingLeft() - page.grid.getPaddingRight();
+        return Math.max(1, avail / Ui.dp(getContext(), 44));
     }
 
     private boolean showTones(View anchor, String value) {
@@ -348,17 +396,41 @@ public final class EmojiPanel extends LinearLayout {
         private List<String> items = new ArrayList<>();
         /** 이 목록이 어느 탭인지 (최근 탭에서만 고정 핀을 그린다). */
         private int group = -1;
+        /** 고정·최근 이모지가 시작하는 자리. 그 앞은 추천 줄과 빈칸이다. */
+        private int recentStart;
+        /** 추천 줄을 채울 때 쓴 한 줄의 칸 수 (추천이 없으면 0). 격자 너비가 바뀌면 다시 채운다. */
+        private int columns;
 
-        void set(List<String> list, int group) {
-            items = list;
-            this.group = group;
+        void set(List<String> list, int group, int recentStart, int columns) {
+            replace(list, group, recentStart, columns);
             notifyDataSetChanged();
         }
 
         /** 알리지 않고 내용만 바꾼다. 다른 탭으로 바꿀 때 격자를 처음 상태로 되돌리는 setAdapter와 함께 쓴다. */
-        void replace(List<String> list, int group) {
+        void replace(List<String> list, int group, int recentStart, int columns) {
             items = list;
             this.group = group;
+            this.recentStart = recentStart;
+            this.columns = columns;
+        }
+
+        /** 애니메이션에서 칸을 알아보는 이름. 추천 줄과 최근 줄에 같은 이모지가 있을 수 있어 둘을 나눈다. */
+        String key(int position) {
+            return (position < recentStart ? "s" : "r") + items.get(position);
+        }
+
+        boolean isRecent(int position) {
+            return group == 0 && position >= recentStart;
+        }
+
+        @Override
+        public boolean areAllItemsEnabled() {
+            return false;
+        }
+
+        @Override
+        public boolean isEnabled(int position) {
+            return !items.get(position).isEmpty();
         }
 
         @Override
@@ -385,14 +457,18 @@ public final class EmojiPanel extends LinearLayout {
                 t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 26);
                 t.setLayoutParams(new GridView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                         Ui.dp(parent.getContext(), 46)));
-                t.setBackground(Ui.ripple(theme.keyPressed, null, Ui.dp(parent.getContext(), 10)));
+                t.ripple = Ui.ripple(theme.keyPressed, null, Ui.dp(parent.getContext(), 10));
                 t.setTextColor(theme.text);
             }
             String e = items.get(position);
             t.setText(e);
-            boolean isPinned = group == 0 && pinned.contains(e);   // 이 목록(Adapter)의 탭
+            boolean blank = e.isEmpty();
+            t.setBackground(blank ? null : t.ripple);
+            t.setImportantForAccessibility(blank ? IMPORTANT_FOR_ACCESSIBILITY_NO : IMPORTANT_FOR_ACCESSIBILITY_AUTO);
+            boolean isPinned = isRecent(position) && pinned.contains(e);   // 이 목록(Adapter)의 탭
             t.setPinned(isPinned);
-            t.setContentDescription(isPinned ? e + " (고정됨)" : e);
+            t.setContentDescription(isPinned ? e + " (고정됨)" : group == 0 && !isRecent(position) && !blank
+                    ? e + " (추천)" : e);
             return t;
         }
     }
@@ -421,10 +497,12 @@ public final class EmojiPanel extends LinearLayout {
             grid.setClipToPadding(false);
             grid.setAdapter(adapter);
             grid.setOnItemClickListener((p, v, pos, id) -> {
+                if (adapter.getItem(pos).isEmpty()) return;   // 빈칸
                 listener.onEmojiKeyPress();
                 listener.onEmoji(adapter.getItem(pos));
             });
             grid.setOnItemLongClickListener((p, v, pos, id) -> {
+                if (adapter.getItem(pos).isEmpty()) return true;   // 빈칸
                 if (adapter.group != 0) return showTones(v, adapter.getItem(pos));
                 listener.onEmojiKeyPress();
                 listener.onEmojiPinToggle(adapter.getItem(pos));
@@ -452,7 +530,12 @@ public final class EmojiPanel extends LinearLayout {
                     positionHint();
                 }
             });
-            grid.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> positionHint());
+            grid.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+                positionHint();
+                // 격자 너비가 바뀌어 한 줄의 칸 수가 달라지면 추천 줄과 빈칸을 다시 맞춘다 (화면 회전 등).
+                // 레이아웃 도중에 목록을 바꾸지 않도록 다음 차례로 미룬다.
+                if (r - l != or - ol && adapter.columns > 0) post(this::refit);
+            });
             hint.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> positionHint());
             empty = new TextView(context);
             empty.setTextColor(theme.hint);
@@ -476,8 +559,14 @@ public final class EmojiPanel extends LinearLayout {
             // 다른 탭이므로 스크롤을 맨 위로 되돌린다. GridView는 데이터가 바뀌면 보던 위치를 되살리려 해서
             // setSelection(0)만으로는 덮어쓰일 수 있으므로, 어댑터를 다시 달아 스크롤 상태를 통째로 초기화한다
             // (움직이던 관성 스크롤도 함께 멈춘다).
-            adapter.replace(itemsFor(index), index);
+            fill(adapter, index, false);
             grid.setAdapter(adapter);
+            updateNotes();
+        }
+
+        private void refit() {
+            if (adapter.columns == 0 || adapter.columns == columns()) return;
+            fill(adapter, adapter.group, true);
             updateNotes();
         }
 
@@ -486,7 +575,7 @@ public final class EmojiPanel extends LinearLayout {
             boolean none = adapter.getCount() == 0;
             empty.setVisibility(none ? VISIBLE : GONE);
             empty.setText(data == null ? "불러오는 중…" : "최근 사용한 이모지가 없습니다");
-            showHint = adapter.group == 0 && !none;
+            showHint = adapter.group == 0 && adapter.recentStart < adapter.getCount();   // 고정·최근 이모지가 있을 때
             hint.setVisibility(showHint ? INVISIBLE : GONE);   // 자리는 positionHint가 정한 뒤 보인다
             positionHint();
         }
@@ -513,6 +602,8 @@ public final class EmojiPanel extends LinearLayout {
     private final class EmojiCell extends TextView {
         private final Paint pinPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private boolean pinned;
+        /** 이모지 칸의 눌림 배경. 빈칸에는 달지 않는다. */
+        Drawable ripple;
 
         EmojiCell(Context context) {
             super(context);
@@ -670,6 +761,7 @@ public final class EmojiPanel extends LinearLayout {
             // 지금 탭은 밀던 쪽으로 나가고 옆 탭이 제자리에 온다. 다 오면 지금 탭을 새 탭으로 바꾸고 peek을 숨긴다
             // (둘 다 맨 위를 보여 주고 있어 바꾸는 순간이 보이지 않는다).
             animating = true;
+            autoGroup = false;
             animateOffset(-dir * getWidth(), 200, () -> {
                 showGroup(next);
                 page.setTranslationX(0f);

@@ -1119,6 +1119,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             emojiPanel.setVisibility(View.VISIBLE);
             emojiPanel.setBackLabel(korean ? "가" : "ABC");
             emojiPanel.reset();
+            suggestEmoji();
         } else if (p == PANEL_CLIPBOARD) {
             ensureClipPanel();
             clipPanel.setVisibility(View.VISIBLE);
@@ -1176,6 +1177,41 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         emojiRepo.load(d -> {
             if (target == emojiPanel) target.setData(d, EmojiRepository.parseRecent(prefs.recentEmoji()),
                     EmojiRepository.parseRecent(prefs.pinnedEmoji()));
+        });
+    }
+
+    /** 이모지 추천에 넘기는 커서 앞 글의 길이. 마지막 몇 단어만 보므로 짧게 읽는다. */
+    private static final int EMOJI_SUGGEST_CONTEXT = 64;
+    /** 이모지 추천을 맡길 때마다 올리는 번호 (화면 스레드에서만 쓴다). 창을 다시 열면 이전 추천을 버린다. */
+    private int emojiSuggestSeq;
+
+    /**
+     * 이모지 창을 열 때 커서 앞의 글에 맞는 이모지를 골라 최근 탭 맨 위에 보여 준다.
+     * 키워드를 훑는 일은 검색과 같은 스레드에서 한다 (EmojiData는 한 스레드에서만 쓴다). 비밀번호 입력란에서는 글을 읽지 않는다.
+     */
+    private void suggestEmoji() {
+        final int seq = ++emojiSuggestSeq;
+        final EmojiPanel target = emojiPanel;
+        InputConnection ic = getCurrentInputConnection();
+        if (target == null || ic == null || !shortcutAllowed) return;
+        CharSequence before = ic.getTextBeforeCursor(EMOJI_SUGGEST_CONTEXT, 0);
+        if (before == null || before.length() == 0) return;
+        final String text = before.toString();
+        emojiRepo.load(d -> {
+            if (seq != emojiSuggestSeq || target != emojiPanel || panel != PANEL_EMOJI) return;
+            try {
+                searchIo.execute(() -> {
+                    List<String> found = d.suggest(text, 16);
+                    if (found.isEmpty()) return;
+                    main.post(() -> {
+                        if (seq == emojiSuggestSeq && target == emojiPanel && panel == PANEL_EMOJI) {
+                            target.setSuggestions(found);
+                        }
+                    });
+                });
+            } catch (java.util.concurrent.RejectedExecutionException ignored) {
+                // 서비스가 끝나는 중
+            }
         });
     }
 

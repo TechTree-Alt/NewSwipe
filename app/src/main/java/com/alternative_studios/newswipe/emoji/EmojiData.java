@@ -5,8 +5,12 @@ import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * 이모지 목록과 검색. 데이터는 assets/emoji.tsv (tools/generate_emoji_data.py가 만듦).
@@ -158,6 +162,150 @@ public final class EmojiData {
         Collections.sort(scored, (a, b) -> a[0] != b[0] ? b[0] - a[0] : a[1] - b[1]);
         for (int i = 0; i < scored.size() && out.size() < limit; i++) out.add(all.get(scored.get(i)[1]));
         return out;
+    }
+
+    // ---------------------------------------------------------------- 추천 (이모지 창을 열 때)
+
+    /** 추천에 보는 단어 수 (커서에서 가까운 쪽부터). */
+    private static final int SUGGEST_TOKENS = 4;
+    /** 이보다 많은 이모지에 붙은 키워드(얼굴·손 등)는 너무 흔해 추천에 쓰지 않는다. */
+    private static final int GENERIC_KEYWORD = 24;
+    /** 영어 단어 끝에 붙어도 같은 단어로 보는 꼬리 (cakes, partying …). */
+    private static final String[] ENGLISH_TAILS = {"s", "es", "ed", "d", "ing", "er", "ers"};
+
+    /**
+     * 사전(CLDR) 키워드에 없지만 대화에서 흔히 쓰는 말 → 이모지. 추천에만 쓴다.
+     * 키는 단어의 앞부분으로 맞추므로 어간까지만 적는다 ('고마' → 고마워·고마워요).
+     */
+    private static final String[][] CHAT_WORDS = {
+            {"미안", "🙏 🥺 😢"}, {"죄송", "🙇 🙏"}, {"고마", "🙏 🥰 😊"}, {"배고", "🍚 🤤 😋"},
+            {"배불", "😋 😌"}, {"맛있", "😋 🤤 👍"}, {"졸려", "😪 🥱 😴"}, {"졸리", "😪 🥱 😴"},
+            {"피곤", "😩 🥱 😴"}, {"잘자", "😴 🌙 💤"}, {"화이팅", "💪 🔥 👊"}, {"파이팅", "💪 🔥 👊"},
+            {"힘내", "💪 🔥 🙌"}, {"대박", "😮 🤩 👍 🔥"}, {"최고", "👍 🏆 🥇"}, {"수고", "👏 🙇 💪"},
+            {"잘했", "👏 👍 💯"}, {"웃겨", "🤣 😂"}, {"웃기", "🤣 😂"}, {"ㅋㅋ", "😆 🤣 😂"},
+            {"ㅠㅠ", "😭 😢 🥺"}, {"ㅜㅜ", "😭 😢 🥺"}, {"슬퍼", "😢 😭"}, {"슬프", "😢 😭"},
+            {"화나", "😠 😡 😤"}, {"화났", "😠 😡 😤"}, {"짜증", "😤 😠 😡"}, {"더워", "🥵 ☀️ 🔥"},
+            {"더운", "🥵 ☀️"}, {"추워", "🥶 ❄️ ⛄"}, {"추운", "🥶 ❄️"}, {"보고싶", "🥺 💕 😢"},
+            {"시험", "📝 📚 ✏️"}, {"망했", "😱 😭 🫠"}, {"오키", "👌 👍"}, {"ㅇㅋ", "👌 👍"},
+    };
+
+    /** 키워드(소문자) → 그 키워드를 가진 이모지 (데이터 순). 추천을 처음 쓸 때 만든다. 검색과 같은 스레드에서만 쓴다. */
+    private Map<String, List<Emoji>> index;
+
+    /**
+     * 글(커서 앞의 입력)에 맞는 이모지를 추천한다. 커서에 가까운 단어부터 본다.
+     * 단어의 앞부분이 키워드와 같으면 맞은 것으로 본다 (가장 긴 키워드 하나): '축하합니다!' → '축하',
+     * '생일이야' → '생일'. 한국어는 두 글자 이상 키워드만 쓰며 어미·조사가 붙어도 되고,
+     * 영어는 두 글자 이상 키워드가 단어 전체와 같거나 정해 둔 꼬리(s, ing …)만 붙은 경우에 쓴다. 너무 흔한 키워드는 건너뛴다.
+     * 여러 단어가 맞으면 커서에 가까운 단어부터 하나씩 번갈아 담아, 한 단어가 자리를 다 차지하지 않게 한다.
+     * 잠그지 않으므로 검색과 같은 한 스레드에서만 불러야 한다.
+     */
+    public List<String> suggest(CharSequence text, int limit) {
+        List<String> out = new ArrayList<>();
+        if (text == null || limit <= 0) return out;
+        if (index == null) buildIndex();
+        String[] tokens = text.toString().trim().split("\\s+");
+        List<List<Emoji>> lists = new ArrayList<>();
+        int used = 0;
+        for (int i = tokens.length - 1; i >= 0 && used < SUGGEST_TOKENS; i--) {
+            String token = clean(tokens[i]);
+            if (token.isEmpty()) continue;
+            used++;
+            String key = matchKeyword(token);
+            if (key == null) continue;
+            // 이름이 키워드 그대로인 이모지를 앞에 둔다.
+            List<Emoji> named = new ArrayList<>(), rest = new ArrayList<>();
+            for (Emoji e : index.get(key)) {
+                String[] kw = e.keywords();
+                int ko = e.koCount();
+                boolean isName = key.equals(kw[0]) || (ko < kw.length && key.equals(kw[ko]));
+                (isName ? named : rest).add(e);
+            }
+            named.addAll(rest);
+            lists.add(named);
+        }
+        Set<String> seen = new HashSet<>();
+        for (int n = 0, left = lists.size(); left > 0 && out.size() < limit; n++) {
+            left = 0;
+            for (int t = 0; t < lists.size() && out.size() < limit; t++) {
+                List<Emoji> list = lists.get(t);
+                if (n >= list.size()) continue;
+                left++;
+                String v = list.get(n).value;
+                if (seen.add(v)) out.add(v);
+            }
+        }
+        return out;
+    }
+
+    private void buildIndex() {
+        Map<String, List<Emoji>> m = new HashMap<>();
+        for (Emoji e : all) {
+            for (String k : e.keywords()) {
+                if (k.isEmpty()) continue;
+                List<Emoji> list = m.get(k);
+                if (list == null) {
+                    list = new ArrayList<>(2);
+                    m.put(k, list);
+                }
+                if (list.isEmpty() || list.get(list.size() - 1) != e) list.add(e);
+            }
+        }
+        Map<String, Emoji> byValue = new HashMap<>();
+        for (Emoji e : all) byValue.put(e.value, e);
+        for (String[] w : CHAT_WORDS) {
+            List<Emoji> list = m.get(w[0]);
+            if (list == null) {
+                list = new ArrayList<>(3);
+                m.put(w[0], list);
+            }
+            for (String v : w[1].split(" ")) {
+                Emoji e = byValue.get(v);   // 기기 글꼴에 없어 빠진 이모지는 건너뛴다
+                if (e != null && !list.contains(e)) list.add(e);
+            }
+            if (list.isEmpty()) m.remove(w[0]);
+        }
+        index = m;
+    }
+
+    /** 단어 앞뒤의 문장 부호·기호를 떼고 소문자로 바꾼다 ('축하합니다!' → '축하합니다'). */
+    private static String clean(String token) {
+        int start = 0, end = token.length();
+        while (start < end && !Character.isLetterOrDigit(token.codePointAt(start))) {
+            start += Character.charCount(token.codePointAt(start));
+        }
+        while (end > start && !Character.isLetterOrDigit(token.codePointBefore(end))) {
+            end -= Character.charCount(token.codePointBefore(end));
+        }
+        return token.substring(start, end).toLowerCase(Locale.ROOT);
+    }
+
+    /** 단어에 맞는 가장 긴 키워드. 없으면 null. */
+    private String matchKeyword(String token) {
+        boolean hangul = false;
+        for (int i = 0; i < token.length(); i++) {
+            char c = token.charAt(i);
+            if ((c >= '가' && c <= '힣') || (c >= 'ㄱ' && c <= 'ㅣ')) {
+                hangul = true;
+                break;
+            }
+        }
+        int cps = token.codePointCount(0, token.length());
+        for (int n = cps; n >= 1; n--) {
+            String key = token.substring(0, token.offsetByCodePoints(0, n));
+            List<Emoji> list = index.get(key);
+            if (list == null || list.size() > GENERIC_KEYWORD) continue;
+            if (n < 2) break;   // 한 글자 키워드('자', 'i' …)는 뜻이 너무 여러 가지라 쓰지 않는다
+            if (n == cps) return key;   // 단어 전체가 키워드
+            if (hangul) return key;   // 한국어: 어미·조사가 붙은 경우
+            if (isEnglishTail(token.substring(key.length()))) return key;
+        }
+        return null;
+    }
+
+    private static boolean isEnglishTail(String rest) {
+        for (String t : ENGLISH_TAILS) if (t.equals(rest)) return true;
+        return false;
     }
 
     private static int score(Emoji e, String t) {
