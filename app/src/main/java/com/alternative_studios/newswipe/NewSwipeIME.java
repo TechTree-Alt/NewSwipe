@@ -631,7 +631,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         else column.addView(topSlot, 0, lp);
     }
 
-    /** 추천 단어 앞의 빈 칸. 분리 키보드에서는 이 칸이 추천 폭만큼 늘어나 추천 단어 세 개가 오른쪽 절반에 모인다. */
+    /** 추천 단어 앞의 빈 칸. 분리 키보드에서는 남는 폭을 모두 가져 추천 단어 세 개가 오른쪽 끝에 붙는다. */
     private View suggestLead;
 
     private LinearLayout buildSuggestBar() {
@@ -1708,17 +1708,35 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return Prefs.ONE_HAND_OFF.equals(activeOneHand()) && prefs.profileView(profile()).splitView();
     }
 
+    /** 분리 키보드에서 추천 단어 한 칸의 폭 (dp). 추천 단어는 이 폭에서 앞이 …로 줄어든다. */
+    private static final int SPLIT_SUGGEST_DP = 104;
+
     /**
-     * 분리 키보드에서는 추천 단어를 오른쪽 절반에 모아 오른쪽 엄지로 고르기 쉽게 한다.
-     * 단축어의 문장은 추천란 전체를 채운다.
+     * 분리 키보드에서는 추천 단어 세 개를 정해 둔 폭으로 오른쪽 끝에 붙여, 오른쪽 엄지로 고르기 쉽게 한다
+     * (앞의 빈 칸이 남는 폭을 모두 가진다). 단축어의 문장은 추천란 전체를 채우고, 분리 키보드가 아니면 세 칸이 같은 폭이다.
      */
     private void applySuggestLead() {
         if (suggestLead == null) return;
-        float weight = splitActive() && !shortcutShown ? suggestViews.length : 0f;
-        LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) suggestLead.getLayoutParams();
+        boolean right = splitActive() && !shortcutShown;
+        setLeadWeight(suggestLead, right ? 1f : 0f);
+        for (TextView v : suggestViews) {
+            if (v == null) continue;
+            LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) v.getLayoutParams();
+            int width = right ? Ui.dp(this, SPLIT_SUGGEST_DP) : 0;
+            float weight = right ? 0f : 1f;
+            if (lp.width != width || lp.weight != weight) {
+                lp.width = width;
+                lp.weight = weight;
+                v.setLayoutParams(lp);
+            }
+        }
+    }
+
+    private static void setLeadWeight(View lead, float weight) {
+        LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) lead.getLayoutParams();
         if (lp.weight != weight) {
             lp.weight = weight;
-            suggestLead.setLayoutParams(lp);
+            lead.setLayoutParams(lp);
         }
     }
 
