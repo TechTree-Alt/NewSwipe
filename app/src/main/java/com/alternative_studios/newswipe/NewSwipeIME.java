@@ -485,27 +485,17 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         bar.addView(settingsButton);
         hideButton = toolButton(Icons.HIDE, "키보드 숨기기", v -> requestHideSelf(0));
         bar.addView(hideButton);
-        // 버튼을 위·아래로 밀면 정해 둔 기능을 실행한다 (기본: 아래로 밀기만 클립보드 = 붙여넣기, 이모지 = 최근 이모지,
-        // 실행 취소 = 다시 실행).
+        // 버튼을 위·아래·왼쪽·오른쪽으로 밀면 정해 둔 기능을 실행한다 (기본: 클립보드 위 = 복사·아래 = 붙여넣기,
+        // 이모지 아래 = 최근 이모지, 실행 취소 아래 = 다시 실행, 한 손 모드 왼쪽·오른쪽 = 그쪽 한 손 모드).
         attachToolSwipe(clipboardButton, ToolbarSwipes.CLIPBOARD);
         attachToolSwipe(emojiButton, ToolbarSwipes.EMOJI);
         attachToolSwipe(voiceButton, ToolbarSwipes.VOICE);
         attachToolSwipe(undoButton, ToolbarSwipes.UNDO);
         attachToolSwipe(settingsButton, ToolbarSwipes.SETTINGS);
         attachToolSwipe(hideButton, ToolbarSwipes.HIDE);
-        // 한 손 모드 버튼: 왼쪽·오른쪽으로 밀면 그쪽 한 손 모드, 위·아래는 다른 버튼처럼 정해 둔 기능.
-        SwipeVertical.attachFourWay(oneHandButton,
-                dir -> dir == Key.SWIPE_LEFT || dir == Key.SWIPE_RIGHT
-                        || !SwipeAction.NONE.equals(toolButtonAction(ToolbarSwipes.ONE_HAND, dir)),
-                () -> Ui.dp(this, prefs.swipeThresholdDp()), dir -> {
-                    feedback.onKey(null);
-                    if (dir == Key.SWIPE_LEFT) setOneHand(Prefs.ONE_HAND_LEFT);
-                    else if (dir == Key.SWIPE_RIGHT) setOneHand(Prefs.ONE_HAND_RIGHT);
-                    else onKeyFunction(null, toolButtonAction(ToolbarSwipes.ONE_HAND, dir));
-                });
-        bar.setHorizontalOwner(v -> v == oneHandButton);
+        attachToolSwipe(oneHandButton, ToolbarSwipes.ONE_HAND);
         // 기능이 있는 방향은 버튼이 처리하고, 없는 방향은 도구 막대를 그 방향으로 민 것으로 본다.
-        bar.setVerticalOwner((v, dir) -> !SwipeAction.NONE.equals(toolButtonAction(toolSlotOf(v), dir)));
+        bar.setSwipeOwner((v, dir) -> !SwipeAction.NONE.equals(toolButtonAction(toolSlotOf(v), dir)));
         return bar;
     }
 
@@ -541,10 +531,20 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     private void attachToolSwipe(View button, int slot) {
-        SwipeVertical.attach(button, dir -> !SwipeAction.NONE.equals(toolButtonAction(slot, dir)),
-                () -> Ui.dp(this, prefs.fnSwipeThresholdDp()), dir -> {
+        SwipeVertical.attachFourWay(button, dir -> !SwipeAction.NONE.equals(toolButtonAction(slot, dir)),
+                () -> Ui.dp(this, slot == ToolbarSwipes.ONE_HAND ? prefs.swipeThresholdDp() : prefs.fnSwipeThresholdDp()),
+                dir -> {
                     feedback.onKey(null);
-                    onKeyFunction(null, toolButtonAction(slot, dir));
+                    String action = toolButtonAction(slot, dir);
+                    // 한 손 모드 버튼의 기본 좌우 밀기는 그쪽 한 손 모드로 바꾼다 (이미 그쪽이어도 끄지 않는다).
+                    if (slot == ToolbarSwipes.ONE_HAND && dir == Key.SWIPE_LEFT && SwipeAction.ONE_HAND_LEFT.equals(action)) {
+                        setOneHand(Prefs.ONE_HAND_LEFT);
+                    } else if (slot == ToolbarSwipes.ONE_HAND && dir == Key.SWIPE_RIGHT
+                            && SwipeAction.ONE_HAND_RIGHT.equals(action)) {
+                        setOneHand(Prefs.ONE_HAND_RIGHT);
+                    } else {
+                        onKeyFunction(null, action);
+                    }
                 });
     }
 
@@ -560,9 +560,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return -1;
     }
 
-    /** 도구 막대 버튼을 위·아래로 밀 때 실행할 기능. */
+    /** 도구 막대 버튼을 이 방향으로 밀 때 실행할 기능. */
     private String toolButtonAction(int slot, int dir) {
-        if (slot < 0 || (dir != Key.SWIPE_UP && dir != Key.SWIPE_DOWN)) return SwipeAction.NONE;
+        if (slot < 0) return SwipeAction.NONE;
         return toolbarSwipes.action(slot, dir);
     }
 

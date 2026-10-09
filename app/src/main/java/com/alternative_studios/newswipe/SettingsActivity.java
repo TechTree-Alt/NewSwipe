@@ -1069,8 +1069,7 @@ public final class SettingsActivity extends Activity {
         barCustomEdit.setVisibility(barCustom ? View.VISIBLE : View.GONE);
         bar.addView(barStandard);
         bar.addView(toggle("도구 막대 밀어서 기능 완전 사용자화",
-                "도구 막대를 위·아래·왼쪽·오른쪽으로 밀 때와, 도구 막대의 버튼을 위·아래로 밀 때 "
-                        + "실행할 기능을 직접 정합니다.",
+                "도구 막대와 도구 막대의 버튼을 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 직접 정합니다.",
                 barCustom, on -> {
                     prefs.raw().edit().putBoolean(Prefs.SWIPE_TOOLBAR_CUSTOM, on).apply();
                     Ui.setVisibleAnimated(barStandard, !on);
