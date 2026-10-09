@@ -118,6 +118,29 @@ public class SplitBottomRowTest {
     }
 
     @Test
+    public void numberRowRightEdgeFollowsTheVowelKeys() throws Exception {
+        int[][] settings = {{50, 50, 70, 80}, {100, 0, 60, 60}, {0, 100, 100, 100}, {100, 100, 50, 40}};
+        for (int[] s : settings) {
+            FakeSp sp = new FakeSp();
+            Prefs p = landscapeEditView(sp);
+            sp.m.put(Prefs.NUMBER_ROW, true);
+            sp.m.put(p.balancedConsonantPosKey(), s[0]);
+            sp.m.put(p.balancedVowelPosKey(), s[1]);
+            sp.m.put(p.balancedConsonantWidthKey(), s[2]);
+            sp.m.put(p.balancedVowelWidthKey(), s[3]);
+            for (KeyboardLayout l : new KeyboardLayout[]{KeyboardLayout.korean(p), KeyboardLayout.english(p)}) {
+                assertEquals(0.78f, l.rows[0].height, 0.001f);   // 숫자 줄
+                float letterRight = 0f;
+                for (int r = 1; r < l.rows.length - 1; r++) letterRight = Math.max(letterRight, extent(l.rows[r])[1]);
+                float[] number = extent(l.rows[0]);
+                assertTrue("숫자 줄이 글자 줄보다 오른쪽으로 나갑니다", number[1] <= letterRight + 0.001f);
+                assertEquals(letterRight, number[1], 0.001f);
+                assertEquals(extent(l.rows[1])[0], number[0], 0.001f);   // 왼쪽 끝도 그대로 맞는다
+            }
+        }
+    }
+
+    @Test
     public void bottomRowStillFillsItsSpanWithTheSpaceBar() throws Exception {
         FakeSp sp = new FakeSp();
         Prefs p = landscapeEditView(sp);

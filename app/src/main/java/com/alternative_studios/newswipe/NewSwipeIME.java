@@ -1713,17 +1713,20 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /**
      * 분리 키보드에서는 추천 단어 세 개를 정해 둔 폭으로 오른쪽 끝에 붙여, 오른쪽 엄지로 고르기 쉽게 한다
-     * (앞의 빈 칸이 남는 폭을 모두 가진다). 단축어의 문장은 추천란 전체를 채우고, 분리 키보드가 아니면 세 칸이 같은 폭이다.
+     * (앞의 빈 칸이 남는 폭을 모두 가진다). 단축어의 문장도 이 오른쪽 자리(세 칸 폭 전체)에만 나온다.
+     * 분리 키보드가 아니면 세 칸이 같은 폭이고, 단축어의 문장은 추천란 전체를 채운다.
      */
     private void applySuggestLead() {
         if (suggestLead == null) return;
-        boolean right = splitActive() && !shortcutShown;
-        setLeadWeight(suggestLead, right ? 1f : 0f);
-        for (TextView v : suggestViews) {
+        boolean split = splitActive();
+        setLeadWeight(suggestLead, split ? 1f : 0f);
+        for (int i = 0; i < suggestViews.length; i++) {
+            TextView v = suggestViews[i];
             if (v == null) continue;
             LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) v.getLayoutParams();
-            int width = right ? Ui.dp(this, SPLIT_SUGGEST_DP) : 0;
-            float weight = right ? 0f : 1f;
+            int one = Ui.dp(this, SPLIT_SUGGEST_DP);
+            int width = !split ? 0 : shortcutShown && i == 0 ? one * suggestViews.length : one;
+            float weight = split ? 0f : 1f;
             if (lp.width != width || lp.weight != weight) {
                 lp.width = width;
                 lp.weight = weight;
