@@ -383,8 +383,8 @@ public final class KeyboardLayout {
         String[][] p3 = {{"★", "†", "‡"}, {"“", "”", "«", "»"}, {"‘", "’", "‚"}, null, null, {"¡"}, {"¿"}};
         for (int i = 0; i < s3.length; i++) r3.add(ch(s3[i], p3[i]));
         r3.add(fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1.5f));
-        rows.add(gridSides(r3, prefs));
-        rows.add(spaceRow(Key.TO_LETTERS, back, prefs, true));
+        rows.add(splitView(prefs) ? new Row(1f, r3.toArray(new Key[0])) : gridSides(r3, prefs));
+        finishSymbols(rows, back, prefs);
         return new KeyboardLayout(SYMBOLS, 10, rows);
     }
 
@@ -421,8 +421,8 @@ public final class KeyboardLayout {
             for (int i = 0; i < s3.length; i++) r3.add(ch(s3[i], p3[i]));
         }
         r3.add(fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1.5f));
-        rows.add(gridSides(r3, prefs));
-        rows.add(spaceRow(Key.TO_LETTERS, back, prefs, true));
+        rows.add(splitView(prefs) ? new Row(1f, r3.toArray(new Key[0])) : gridSides(r3, prefs));
+        finishSymbols(rows, back, prefs);
         return new KeyboardLayout(SYMBOLS_2, 10, rows);
     }
 
@@ -637,6 +637,10 @@ public final class KeyboardLayout {
      * @param letterRows 맞출 글자 줄들 (숫자 줄은 빼고 자음·모음이 있는 줄만)
      */
     private static Row alignedSpaceRow(Prefs prefs, List<Row> letterRows) {
+        return alignedSpaceRow(prefs, letterRows, Key.TO_SYMBOLS, "?123", false);
+    }
+
+    private static Row alignedSpaceRow(Prefs prefs, List<Row> letterRows, int modeType, String modeLabel, boolean emojiKey) {
         float left = SPACE_ROW_UNITS, right = 0f;
         for (Row row : letterRows) {
             float x = 0f;
@@ -648,8 +652,34 @@ public final class KeyboardLayout {
                 x += k.weight;
             }
         }
-        if (right - left < 2f) return spaceRow(Key.TO_SYMBOLS, "?123", prefs);   // 너무 좁으면 맞추지 않는다
-        return spaceRow(Key.TO_SYMBOLS, "?123", prefs, false, left, right);
+        if (right - left < 2f) return spaceRow(modeType, modeLabel, prefs, emojiKey);   // 너무 좁으면 맞추지 않는다
+        return spaceRow(modeType, modeLabel, prefs, emojiKey, left, right);
+    }
+
+    private static boolean splitView(Prefs prefs) {
+        return prefs != null && prefs.splitView();
+    }
+
+    /**
+     * 기호 자판의 맨 아래 줄 위쪽 줄들을 마무리한다. 분리 키보드(가로 모드·대화면)에서는 숫자 줄을 포함한 모든 줄을
+     * 가운데에서 반으로 나눠 왼쪽 절반과 오른쪽 절반에 놓고(글자 자판과 같은 폭·위치 설정),
+     * 맨 아래 줄도 그 양 끝에 맞춘다.
+     */
+    private static void finishSymbols(List<Row> rows, String back, Prefs prefs) {
+        if (splitView(prefs)) {
+            for (int i = 0; i < rows.size(); i++) rows.set(i, splitEven(rows.get(i), prefs));
+            rows.add(alignedSpaceRow(prefs, rows, Key.TO_LETTERS, back, true));
+        } else {
+            rows.add(spaceRow(Key.TO_LETTERS, back, prefs, true));
+        }
+    }
+
+    /** 한 줄을 반으로 나눈다: 앞쪽 절반(홀수 개면 한 개 더)은 왼쪽 절반에, 나머지는 오른쪽 절반에 놓는다. */
+    private static Row splitEven(Row row, Prefs prefs) {
+        int n = row.keys.length, leftCount = (n + 1) / 2;
+        List<Key> left = new ArrayList<>(), right = new ArrayList<>();
+        for (int i = 0; i < n; i++) (i < leftCount ? left : right).add(row.keys[i]);
+        return splitRow(left, right, row.height, BALANCED_HALF / 5f, 1000, prefs);
     }
 
     /**

@@ -53,7 +53,7 @@ public class SplitBottomRowTest {
 
     private static void assertBottomMatchesLetters(KeyboardLayout l) {
         float left = Float.MAX_VALUE, right = 0f;
-        for (int r = 0; r < 3; r++) {
+        for (int r = 0; r < l.rows.length - 1; r++) {
             float[] e = extent(l.rows[r]);
             left = Math.min(left, e[0]);
             right = Math.max(right, e[1]);
@@ -75,6 +75,45 @@ public class SplitBottomRowTest {
             sp.m.put(p.balancedVowelWidthKey(), s[3]);
             assertBottomMatchesLetters(KeyboardLayout.korean(p));
             assertBottomMatchesLetters(KeyboardLayout.english(p));
+            assertBottomMatchesLetters(KeyboardLayout.symbols(true, p));
+            assertBottomMatchesLetters(KeyboardLayout.symbols2(false, p));
+        }
+    }
+
+    @Test
+    public void symbolPagesAreSplitInHalvesIncludingTheNumberRow() throws Exception {
+        for (boolean numberRow : new boolean[]{false, true}) {
+            FakeSp sp = new FakeSp();
+            Prefs p = landscapeEditView(sp);
+            sp.m.put(p.balancedConsonantWidthKey(), 60);   // 폭을 줄이면 가운데 빈틈이 생긴다
+            sp.m.put(p.balancedVowelWidthKey(), 60);
+            sp.m.put(Prefs.NUMBER_ROW, numberRow);
+            for (KeyboardLayout l : new KeyboardLayout[]{KeyboardLayout.symbols(true, p), KeyboardLayout.symbols2(true, p)}) {
+                assertEquals(numberRow ? 5 : 4, l.rows.length);
+                for (int r = 0; r < l.rows.length - 1; r++) {
+                    // 줄 가운데(5칸)를 지나는 키가 없고, 양 절반에 키가 있다.
+                    float x = 0f;
+                    int leftKeys = 0, rightKeys = 0;
+                    for (Key k : l.rows[r].keys) {
+                        if (k.type != Key.GAP) {
+                            if (x + k.weight <= 5.001f) leftKeys++;
+                            else if (x >= 4.999f) rightKeys++;
+                            else throw new AssertionError("키가 가운데를 가로지릅니다: 줄 " + r);
+                        }
+                        x += k.weight;
+                    }
+                    assertTrue(leftKeys >= 4 && rightKeys >= 4);
+                }
+            }
+        }
+    }
+
+    @Test
+    public void symbolPagesAreNotSplitOutsideSplitView() {
+        // 세로 모드(설정 보기 없음): 맨 아래 줄 위의 줄들에는 빈틈이 없다.
+        KeyboardLayout l = KeyboardLayout.symbols(true, null);
+        for (int r = 0; r < l.rows.length - 1; r++) {
+            for (Key k : l.rows[r].keys) assertTrue(k.type != Key.GAP);
         }
     }
 
