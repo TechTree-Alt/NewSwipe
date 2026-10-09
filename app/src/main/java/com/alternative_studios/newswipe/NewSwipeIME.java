@@ -418,10 +418,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /**
      * 하단 바(내비게이션 바) 색과 아이콘 밝기를 키보드 테마에 맞춘다.
-     * 기본값은 창 테마(Theme.NewSwipe.Ime)가 시스템 화면 모드를 따라 정하므로, 설정에서 시스템과 다른 화면 모드를
-     * 골랐을 때를 위해 여기서 다시 지정한다. (예전에는 비보 등에서 하단 바 아이콘이 밝게 나오는 것을 막으려고
-     * 여러 방식을 겹쳐 지정했지만, 원인은 targetSdk 36의 edge-to-edge 강제 적용이었고 targetSdk 35 + 창 테마의
-     * windowOptOutEdgeToEdgeEnforcement로 해결되었다.)
+     * 창 테마(Theme.NewSwipe.Ime)는 시스템 화면 모드만 따르므로, 설정에서 시스템과 다른 화면 모드를 골랐을 때를 위해
+     * 여기서 다시 지정한다. targetSdk 36 이상(기본 빌드)에서는 키보드 창이 하단 바 뒤까지 그려지는 것을 끌 수 없고
+     * (windowOptOutEdgeToEdgeEnforcement 무시), 키보드가 하단 바 영역을 직접 배경색으로 채운다 (입력 뷰의 root 배경과
+     * 아래쪽 인셋 패딩). 일부 기기(비보 등)의 하단 바 아이콘 색은 기기에서 확인해야 한다 (BUILDING.md '배포 전 기기에서 확인할 것').
      */
     private void applyNavigationBarStyle() {
         if (theme == null || getWindow() == null || getWindow().getWindow() == null) return;
