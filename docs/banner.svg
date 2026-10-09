@@ -13,29 +13,29 @@
 <path d="M32 16v30M20 35l12 12 12-12" fill="none" stroke="#2F62E8" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
 </g>
 <text x="66" y="236" font-size="84" font-weight="800" letter-spacing="-2">NewSwipe</text>
-<text x="70" y="288" font-size="30" font-weight="500" fill-opacity="0.92">밀어서 입력하는 한글 키보드</text>
-<text x="70" y="336" font-size="22" fill-opacity="0.75">가볍게 · 현대적으로 · 편안하게</text>
-<rect x="524" y="96" width="708" height="234" rx="24" fill="#fff" fill-opacity="0.16" filter="url(#sh)"/>
-<rect x="546" y="118" width="88" height="58" rx="14" fill="#FFFFFF"/><text x="590.0" y="157.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅂ</text>
-<rect x="642" y="118" width="88" height="58" rx="14" fill="#FFFFFF"/><text x="686.0" y="157.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅈ</text>
-<rect x="738" y="118" width="88" height="58" rx="14" fill="#FFFFFF"/><text x="782.0" y="157.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㄷ</text>
-<rect x="834" y="118" width="88" height="58" rx="14" fill="#FFFFFF"/><text x="878.0" y="157.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㄱ</text>
-<rect x="930" y="118" width="88" height="58" rx="14" fill="#FFFFFF"/><text x="974.0" y="157.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅗ</text>
-<rect x="1026" y="118" width="88" height="58" rx="14" fill="#FFFFFF"/><text x="1070.0" y="157.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅐ</text>
-<rect x="1122" y="118" width="88" height="58" rx="14" fill="#FFFFFF"/><text x="1166.0" y="157.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅔ</text>
-<rect x="546" y="184" width="88" height="58" rx="14" fill="#FFFFFF"/><text x="590.0" y="223.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅁ</text>
-<rect x="642" y="184" width="88" height="58" rx="14" fill="#FFFFFF"/><text x="686.0" y="223.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㄴ</text>
-<rect x="738" y="184" width="88" height="58" rx="14" fill="#FFFFFF"/><text x="782.0" y="223.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅇ</text>
-<rect x="834" y="184" width="88" height="58" rx="14" fill="#FFFFFF"/><text x="878.0" y="223.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㄹ</text>
-<rect x="930" y="184" width="88" height="58" rx="14" fill="#FFFFFF"/><text x="974.0" y="223.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅓ</text>
-<rect x="1026" y="184" width="88" height="58" rx="14" fill="#FFFFFF"/><text x="1070.0" y="223.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅏ</text>
-<rect x="1122" y="184" width="88" height="58" rx="14" fill="#FFFFFF"/><text x="1166.0" y="223.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅣ</text>
-<rect x="546" y="250" width="88" height="58" rx="14" fill="#FFFFFF"/><text x="590.0" y="289.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅍ</text>
-<rect x="642" y="250" width="88" height="58" rx="14" fill="#FFFFFF"/><text x="686.0" y="289.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅋ</text>
-<rect x="738" y="250" width="88" height="58" rx="14" fill="#FFFFFF"/><text x="782.0" y="289.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅎ</text>
-<rect x="834" y="250" width="88" height="58" rx="14" fill="#FFFFFF"/><text x="878.0" y="289.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅅ</text>
-<rect x="930" y="250" width="88" height="58" rx="14" fill="#FFFFFF"/><text x="974.0" y="289.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅜ</text>
-<rect x="1026" y="250" width="88" height="58" rx="14" fill="#FFFFFF"/><text x="1070.0" y="289.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅡ</text>
-<rect x="1122" y="250" width="88" height="58" rx="14" fill="#DCE4FA"/><text x="1166.0" y="289.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">⌫</text>
-<path d="M583.0 159l7 7 7 -7" fill="none" stroke="#FF9F1C" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="70" y="288" font-size="24" font-weight="500" fill-opacity="0.92">밀어서 입력하고 조작하는 한글 입력 시스템</text>
+<text x="70" y="336" font-size="20" fill-opacity="0.75">가볍게 · 현대적으로 · 편안하게</text>
+<rect x="580" y="96" width="652" height="234" rx="24" fill="#fff" fill-opacity="0.16" filter="url(#sh)"/>
+<rect x="602" y="118" width="80" height="58" rx="14" fill="#FFFFFF"/><text x="642.0" y="157.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅂ</text>
+<rect x="690" y="118" width="80" height="58" rx="14" fill="#FFFFFF"/><text x="730.0" y="157.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅈ</text>
+<rect x="778" y="118" width="80" height="58" rx="14" fill="#FFFFFF"/><text x="818.0" y="157.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㄷ</text>
+<rect x="866" y="118" width="80" height="58" rx="14" fill="#FFFFFF"/><text x="906.0" y="157.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㄱ</text>
+<rect x="954" y="118" width="80" height="58" rx="14" fill="#FFFFFF"/><text x="994.0" y="157.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅗ</text>
+<rect x="1042" y="118" width="80" height="58" rx="14" fill="#FFFFFF"/><text x="1082.0" y="157.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅐ</text>
+<rect x="1130" y="118" width="80" height="58" rx="14" fill="#FFFFFF"/><text x="1170.0" y="157.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅔ</text>
+<rect x="602" y="184" width="80" height="58" rx="14" fill="#FFFFFF"/><text x="642.0" y="223.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅁ</text>
+<rect x="690" y="184" width="80" height="58" rx="14" fill="#FFFFFF"/><text x="730.0" y="223.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㄴ</text>
+<rect x="778" y="184" width="80" height="58" rx="14" fill="#FFFFFF"/><text x="818.0" y="223.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅇ</text>
+<rect x="866" y="184" width="80" height="58" rx="14" fill="#FFFFFF"/><text x="906.0" y="223.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㄹ</text>
+<rect x="954" y="184" width="80" height="58" rx="14" fill="#FFFFFF"/><text x="994.0" y="223.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅓ</text>
+<rect x="1042" y="184" width="80" height="58" rx="14" fill="#FFFFFF"/><text x="1082.0" y="223.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅏ</text>
+<rect x="1130" y="184" width="80" height="58" rx="14" fill="#FFFFFF"/><text x="1170.0" y="223.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅣ</text>
+<rect x="602" y="250" width="80" height="58" rx="14" fill="#FFFFFF"/><text x="642.0" y="289.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅍ</text>
+<rect x="690" y="250" width="80" height="58" rx="14" fill="#FFFFFF"/><text x="730.0" y="289.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅋ</text>
+<rect x="778" y="250" width="80" height="58" rx="14" fill="#FFFFFF"/><text x="818.0" y="289.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅎ</text>
+<rect x="866" y="250" width="80" height="58" rx="14" fill="#FFFFFF"/><text x="906.0" y="289.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅅ</text>
+<rect x="954" y="250" width="80" height="58" rx="14" fill="#FFFFFF"/><text x="994.0" y="289.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅜ</text>
+<rect x="1042" y="250" width="80" height="58" rx="14" fill="#FFFFFF"/><text x="1082.0" y="289.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">ㅡ</text>
+<rect x="1130" y="250" width="80" height="58" rx="14" fill="#DCE4FA"/><text x="1170.0" y="289.0" font-size="28" font-weight="600" text-anchor="middle" fill="#1E3FA8">⌫</text>
+<path d="M635.0 159l7 7 7 -7" fill="none" stroke="#FF9F1C" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
 </g></svg>
