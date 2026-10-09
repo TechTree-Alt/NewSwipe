@@ -334,6 +334,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         theme = KeyboardTheme.of(this);
         emojiPanel = null;
         clipPanel = null;
+        messageView = null;
         panel = PANEL_KEYBOARD;
         toolbarHeight = toolbarHeightPx();
 
@@ -2100,7 +2101,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 contextAction(android.R.id.selectAll);
                 break;
             case SwipeAction.COPY:
-                contextAction(android.R.id.copy);
+                copySelection();
                 break;
             case SwipeAction.CUT:
                 contextAction(android.R.id.cut);
@@ -2155,6 +2156,56 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (!beginEdit()) return;
         getCurrentInputConnection().performContextMenuAction(id);
         endEdit();
+    }
+
+    /** 선택한 글자를 복사하고, 실제로 복사했으면 키보드 위에 알린다. */
+    private void copySelection() {
+        if (!beginEdit()) return;
+        InputConnection ic = getCurrentInputConnection();
+        CharSequence selected = ic.getSelectedText(0);   // 복사하면 앱이 선택을 풀 수 있어 먼저 읽는다
+        ic.performContextMenuAction(android.R.id.copy);
+        endEdit();
+        if (selected != null && selected.length() > 0) showMessage("복사했습니다");
+    }
+
+    /** 안내 문구를 보여 주는 칸 (키보드 위쪽 가운데). */
+    private TextView messageView;
+    private final Runnable hideMessage = () -> {
+        if (messageView != null) messageView.animate().alpha(0f).setDuration(150)
+                .withEndAction(() -> { if (messageView != null) messageView.setVisibility(View.GONE); }).start();
+    };
+
+    /**
+     * 키보드 위에 짧은 안내 문구를 잠깐 보여 준다. 시스템 토스트는 다른 앱 위에서 보이지 않는 경우가 있어
+     * (알림·토스트 설정, 기기 정책) 키보드 창 안에 직접 그린다.
+     */
+    private void showMessage(String text) {
+        if (content == null) return;
+        if (messageView == null || messageView.getParent() != content) {
+            TextView v = new TextView(this);
+            v.setTextColor(0xFFFFFFFF);
+            v.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+            v.setGravity(Gravity.CENTER);
+            int h = Ui.dp(this, 16), vv = Ui.dp(this, 9);
+            v.setPadding(h, vv, h, vv);
+            android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+            bg.setColor(0xE6202124);
+            bg.setCornerRadius(Ui.dp(this, 20));
+            v.setBackground(bg);
+            v.setVisibility(View.GONE);
+            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+            lp.topMargin = Ui.dp(this, 10);
+            content.addView(v, lp);
+            messageView = v;
+        }
+        main.removeCallbacks(hideMessage);
+        messageView.animate().cancel();
+        messageView.setText(text);
+        messageView.setAlpha(1f);
+        messageView.setVisibility(View.VISIBLE);
+        messageView.bringToFront();
+        main.postDelayed(hideMessage, 1200);
     }
 
     /**
