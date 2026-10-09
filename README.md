@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/TechTree-Alt/NewSwipe/releases/latest"><img src="docs/get-apk-github.svg" alt="Get APK from GitHub" height="72" /></a>
+  <a href="https://github.com/TechTree-Alt/NewSwipe/releases/latest"><img src="docs/get-apk-github.svg" alt="Get it on GitHub" height="72" /></a>
 </p>
 
 <p align="center">
