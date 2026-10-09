@@ -1196,7 +1196,14 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (target == null || ic == null || !shortcutAllowed) return;
         CharSequence before = ic.getTextBeforeCursor(EMOJI_SUGGEST_CONTEXT, 0);
         if (before == null || before.length() == 0) return;
-        final String text = before.toString();
+        String read = before.toString();
+        if (read.length() >= EMOJI_SUGGEST_CONTEXT) {
+            // 앞이 잘렸을 수 있다. 잘린 첫 단어('…생일'이 아니라 '…일')로 엉뚱하게 맞추지 않도록 버린다.
+            int space = 0;
+            while (space < read.length() && !Character.isWhitespace(read.charAt(space))) space++;
+            read = read.substring(space);
+        }
+        final String text = read;
         emojiRepo.load(d -> {
             if (seq != emojiSuggestSeq || target != emojiPanel || panel != PANEL_EMOJI) return;
             try {
