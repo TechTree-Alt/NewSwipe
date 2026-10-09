@@ -238,6 +238,12 @@ public final class EmojiData {
             if (key == null) continue;
             lists.add(index.get(key));
             keys.add(key);
+            // '중국어'는 그 자체가 키워드(㊗️)라 '중국'을 건너뛴다. 한국어 단어의 앞부분이 어떤 이모지의 이름이면(🇨🇳) 함께 쓴다.
+            String shorter = shorterName(token, key);
+            if (shorter != null) {
+                lists.add(index.get(shorter));
+                keys.add(shorter);
+            }
         }
         Set<String> seen = new HashSet<>();
         // 단어가 바로 이름인 이모지('일본' → 🇯🇵, '피자' → 🍕)를 먼저 담는다.
@@ -317,14 +323,7 @@ public final class EmojiData {
 
     /** 단어에 맞는 가장 긴 키워드. 없으면 null. */
     private String matchKeyword(String token) {
-        boolean hangul = false;
-        for (int i = 0; i < token.length(); i++) {
-            char c = token.charAt(i);
-            if ((c >= '가' && c <= '힣') || (c >= 'ㄱ' && c <= 'ㅣ')) {
-                hangul = true;
-                break;
-            }
-        }
+        boolean hangul = isHangul(token);
         int cps = token.codePointCount(0, token.length());
         for (int n = cps; n >= 1; n--) {
             String key = token.substring(0, token.offsetByCodePoints(0, n));
@@ -336,6 +335,24 @@ public final class EmojiData {
             if (isEnglishTail(token.substring(key.length()))) return key;
         }
         return null;
+    }
+
+    /** 한국어 단어에서 key보다 짧은, 어떤 이모지의 이름인 가장 긴 앞부분(두 글자 이상). 없으면 null. */
+    private String shorterName(String token, String key) {
+        if (named.containsKey(key) || !isHangul(token)) return null;
+        for (int n = key.codePointCount(0, key.length()) - 1; n >= 2; n--) {
+            String k = token.substring(0, token.offsetByCodePoints(0, n));
+            if (named.containsKey(k)) return k;
+        }
+        return null;
+    }
+
+    private static boolean isHangul(String token) {
+        for (int i = 0; i < token.length(); i++) {
+            char c = token.charAt(i);
+            if ((c >= '가' && c <= '힣') || (c >= 'ㄱ' && c <= 'ㅣ')) return true;
+        }
+        return false;
     }
 
     private static boolean isEnglishTail(String rest) {

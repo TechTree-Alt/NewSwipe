@@ -169,4 +169,14 @@ public class EmojiDataTest {
         assertEquals("🇭🇰", d.search("홍콩", 5).get(0).value);   // '홍콩(중국 특별행정구)'의 괄호 앞
         assertTrue(d.suggest("us", 5).isEmpty());   // 두 글자 약어는 넣지 않는다
     }
+
+    @Test
+    public void suggestUsesCountryInsideLongerWord() throws IOException {
+        EmojiData d = load();
+        // '중국어'는 그 자체로 키워드(㊗️ ㊙️)지만 '중국' 국기도 함께 추천한다.
+        assertTrue(d.suggest("중국어 하는 사람", 16).contains("🇨🇳"));
+        assertTrue(d.suggest("중국어", 4).contains("🇨🇳"));
+        assertTrue(d.suggest("일본어", 4).contains("🇯🇵"));
+        assertTrue(d.suggest("한국어", 4).contains("🇰🇷"));
+    }
 }
