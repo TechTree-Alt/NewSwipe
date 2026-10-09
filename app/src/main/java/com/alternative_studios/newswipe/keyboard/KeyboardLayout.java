@@ -624,6 +624,12 @@ public final class KeyboardLayout {
         // 격자 정렬: 기능키를 모두 한글 글자 키 한 칸 폭으로 맞춰 한글 자판이 반듯한 격자가 되게 한다.
         boolean grid = prefs != null && prefs.gridLayout();
         float wideW = grid ? gridKey(prefs) : 1.5f, narrowW = grid ? gridKey(prefs) : 1f;
+        // 분리 키보드(가로 모드·대화면)에서는 기능키 폭을 줄일 수 있다. 줄어든 만큼 스페이스바가 넓어진다.
+        if (prefs != null) {
+            float fnScale = prefs.fnKeyWidth() / 100f;
+            wideW *= fnScale;
+            narrowW *= fnScale;
+        }
         String[] order = prefs == null ? BottomKeys.DEFAULT_ORDER : prefs.bottomKeyOrder();
         List<Key> keys = new ArrayList<>();
         int spaceAt = -1;
