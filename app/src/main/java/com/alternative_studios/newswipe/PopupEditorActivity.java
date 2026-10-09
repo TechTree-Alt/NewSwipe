@@ -15,9 +15,11 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import com.alternative_studios.newswipe.keyboard.Icons;
 import com.alternative_studios.newswipe.keyboard.KeyboardLayout;
 import com.alternative_studios.newswipe.keyboard.KeyboardTheme;
 import com.alternative_studios.newswipe.ui.ExpressiveChoiceButton;
+import com.alternative_studios.newswipe.ui.IconButton;
 import com.alternative_studios.newswipe.ui.Ui;
 
 /**
@@ -238,7 +240,7 @@ public final class PopupEditorActivity extends Activity {
             return cell;
         }
         String[] items = current(label);
-        if (items.length > 0) cell.setSubLabel(String.join("", items), 6, 16);
+        if (items.length > 0) cell.setSubLabel(String.join(singleChars(items) ? "" : " ", items), 6, 16);
         if (repeatChars.contains(group + "_" + label)) {
             cell.setEnabled(false);
             cell.setAlpha(0.38f);
@@ -248,26 +250,49 @@ public final class PopupEditorActivity extends Activity {
         return cell;
     }
 
+    /**
+     * 길게 누르기 문자를 한 줄에 하나씩 고치는 대화상자. 문자마다 입력란이 따로 있어,
+     * 띄어쓰기가 들어간 문장도 하나의 항목으로 넣을 수 있다.
+     */
+    /** 문자가 모두 한 글자(이모지 등 한 코드포인트 포함)인지. 문장이 섞이면 키에 작게 보일 때 띄어서 보여 준다. */
+    private static boolean singleChars(String[] items) {
+        for (String it : items) if (it.codePointCount(0, it.length()) != 1) return false;
+        return true;
+    }
+
     private void edit(String label) {
         String group = KeyboardLayout.groupOf(korean, label);
-        EditText input = new EditText(this);
-        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
-        input.setText(String.join(" ", current(label)));
-        input.setSelection(input.getText().length());
         int pad = Ui.dp(this, 20);
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(pad, Ui.dp(this, 8), pad, 0);
-        TextView help = text("문자를 공백으로 구분해 적어 주세요. 비워 두면 길게 누르기가 없어집니다.", 13, hintColor);
+        TextView help = text("길게 눌렀을 때 고를 문자를 한 칸에 하나씩 적어 주세요. 띄어쓰기가 있는 문장도 됩니다. "
+                + "첫 번째 칸이 키 위에 작게 표시되고, 모두 비우면 길게 누르기가 없어집니다.", 13, hintColor);
+        help.setPadding(0, 0, 0, Ui.dp(this, 8));
         box.addView(help);
-        box.addView(input);
-        AppTheme.dialogBuilder(this)
+        LinearLayout rows = new LinearLayout(this);
+        rows.setOrientation(LinearLayout.VERTICAL);
+        box.addView(rows);
+        for (String item : current(label)) addRow(rows, item, false);
+        TextView add = text("+ 문자 추가", 15, accentColor);
+        add.setGravity(Gravity.CENTER_VERTICAL);
+        add.setPadding(Ui.dp(this, 4), Ui.dp(this, 12), Ui.dp(this, 4), Ui.dp(this, 12));
+        add.setOnClickListener(v -> addRow(rows, "", true));
+        box.addView(add);
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(box);
+        android.app.AlertDialog dialog = AppTheme.dialogBuilder(this)
                 .setTitle("'" + KeyboardLayout.displayLabel(prefs, label) + "' 길게 누르기")
-                .setView(box)
+                .setView(scroll)
                 .setPositiveButton("저장", (d, w) -> {
-                    String v = input.getText().toString().trim();
-                    String[] items = v.isEmpty() ? new String[0] : v.split("\\s+");
-                    prefs.setPopupOverride(group, label, items);
+                    java.util.List<String> items = new java.util.ArrayList<>();
+                    for (int i = 0; i < rows.getChildCount(); i++) {
+                        EditText input = (EditText) ((LinearLayout) rows.getChildAt(i)).getChildAt(0);
+                        // 줄바꿈은 저장 형식의 구분자라 넣을 수 없다 (한 줄 입력란이라 보통 들어오지 않는다).
+                        String v = input.getText().toString().replace('\n', ' ').replace('\r', ' ').trim();
+                        if (!v.isEmpty()) items.add(v);
+                    }
+                    prefs.setPopupOverride(group, label, items.toArray(new String[0]));
                     render();
                 })
                 .setNeutralButton("기본값", (d, w) -> {
@@ -276,5 +301,28 @@ public final class PopupEditorActivity extends Activity {
                 })
                 .setNegativeButton("취소", null)
                 .show();
+        if (rows.getChildCount() == 0) addRow(rows, "", true);
+        // 칸을 새로 추가하면 키보드가 올라와도 칸이 가려지지 않게 창 크기를 맞춘다.
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+        }
+    }
+
+    /** 문자 한 칸(입력란 + 지우기 버튼)을 목록 끝에 더한다. */
+    private void addRow(LinearLayout rows, String text, boolean focus) {
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        EditText input = new EditText(this);
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        input.setSingleLine(true);
+        input.setHint("문자 또는 문장");
+        input.setText(text);
+        row.addView(input, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        int press = (textColor & 0x00FFFFFF) | 0x33000000;
+        IconButton remove = new IconButton(this, Icons.CLOSE, hintColor, press, "이 문자 지우기");
+        remove.setOnClickListener(v -> rows.removeView(row));
+        row.addView(remove, new LinearLayout.LayoutParams(Ui.dp(this, 40), Ui.dp(this, 40)));
+        rows.addView(row);
+        if (focus) input.requestFocus();
     }
 }
