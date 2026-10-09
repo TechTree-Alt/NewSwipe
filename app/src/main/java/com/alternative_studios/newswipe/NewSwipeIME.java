@@ -2158,14 +2158,14 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         endEdit();
     }
 
-    /** 선택한 글자를 복사하고, 복사했는지(선택한 글자가 없었는지)를 키보드 위에 알린다. */
+    /** 선택한 글자를 복사하고, 실제로 복사했으면 키보드 위에 알린다 (선택한 글자가 없으면 아무것도 보이지 않는다). */
     private void copySelection() {
         if (!beginEdit()) return;
         InputConnection ic = getCurrentInputConnection();
         CharSequence selected = ic.getSelectedText(0);   // 복사하면 앱이 선택을 풀 수 있어 먼저 읽는다
         ic.performContextMenuAction(android.R.id.copy);
         endEdit();
-        showMessage(selected != null && selected.length() > 0 ? "복사했습니다" : "선택된 내용이 없습니다");
+        if (selected != null && selected.length() > 0) showMessage("복사했습니다");
     }
 
     /** 안내 문구를 보여 주는 칸 (키보드 위쪽 가운데). */
