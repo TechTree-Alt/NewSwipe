@@ -154,4 +154,19 @@ public class EmojiDataTest {
         assertTrue(d.suggest("피자 하나 둘 셋 넷", 16).isEmpty());
         assertTrue(d.suggest("피자 하나 둘 셋", 16).contains("🍕"));
     }
+
+    @Test
+    public void countryNamesFindFlagFirst() throws IOException {
+        EmojiData d = load();
+        for (String q : new String[]{"대한민국", "한국", "우리나라", "korea"}) {
+            assertEquals(q, "🇰🇷", d.search(q, 5).get(0).value);
+            assertEquals(q, "🇰🇷", d.suggest(q + "에서", 5).get(0));
+        }
+        assertEquals("🇺🇸", d.search("미국", 5).get(0).value);
+        assertEquals("🇺🇸", d.suggest("미국 가요", 5).get(0));
+        assertEquals("🇯🇵", d.search("일본", 5).get(0).value);   // 🗾·🏯처럼 '일본' 키워드만 있는 것보다 앞
+        assertEquals("🇯🇵", d.suggest("일본 여행", 5).get(0));   // '일본'은 이모지가 많아도 국기 이름이라 쓴다
+        assertEquals("🇭🇰", d.search("홍콩", 5).get(0).value);   // '홍콩(중국 특별행정구)'의 괄호 앞
+        assertTrue(d.suggest("us", 5).isEmpty());   // 두 글자 약어는 넣지 않는다
+    }
 }
