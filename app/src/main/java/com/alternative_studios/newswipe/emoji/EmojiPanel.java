@@ -278,8 +278,8 @@ public final class EmojiPanel extends LinearLayout {
 
     /**
      * index 탭의 이모지로 어댑터를 채운다. 데이터를 아직 읽지 않았으면 비어 있다.
-     * 최근 탭에서 추천이 있으면 맨 위 한 줄에 추천을 두고, 그 줄의 남은 칸과 다음 한 줄을 비운 뒤 고정·최근 이모지를 둔다.
-     * 빈칸은 ""이며 누를 수 없다.
+     * 최근 탭에서 추천이 있으면 맨 위 한 줄에 추천을 두고 (남은 칸은 비운다) 그다음 줄부터 고정·최근 이모지를 둔다.
+     * 추천 줄은 격자가 짙은 배경으로 감싸 고정·최근 이모지와 나눈다. 빈칸은 ""이며 누를 수 없다.
      */
     private void fill(Adapter a, int index, boolean notify) {
         List<String> items = new ArrayList<>();
@@ -289,7 +289,6 @@ public final class EmojiPanel extends LinearLayout {
             if (!suggestions.isEmpty()) {
                 columns = columns();
                 for (int i = 0; i < columns; i++) items.add(i < suggestions.size() ? suggestions.get(i) : "");
-                if (!mine.isEmpty()) for (int i = 0; i < columns; i++) items.add("");
             }
             recentStart = items.size();
             items.addAll(mine);
@@ -396,7 +395,7 @@ public final class EmojiPanel extends LinearLayout {
         private List<String> items = new ArrayList<>();
         /** 이 목록이 어느 탭인지 (최근 탭에서만 고정 핀을 그린다). */
         private int group = -1;
-        /** 고정·최근 이모지가 시작하는 자리. 그 앞은 추천 줄과 빈칸이다. */
+        /** 고정·최근 이모지가 시작하는 자리. 그 앞은 추천 줄이다 (남은 칸은 빈칸). */
         private int recentStart;
         /** 추천 줄을 채울 때 쓴 한 줄의 칸 수 (추천이 없으면 0). 격자 너비가 바뀌면 다시 채운다. */
         private int columns;
@@ -484,10 +483,24 @@ public final class EmojiPanel extends LinearLayout {
         private final TextView empty;
         private final TextView hint;
         private boolean showHint;
+        private final Paint suggestPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
         Page(Context context) {
             super(context);
-            grid = new GridView(context);
+            suggestPaint.setColor(theme.functionKey);
+            grid = new GridView(context) {
+                /** 추천 줄(최근 탭 맨 위 한 줄)을 짙은 배경 하나로 감싼다. 줄과 함께 스크롤된다. */
+                @Override
+                protected void dispatchDraw(Canvas canvas) {
+                    if (adapter.columns > 0 && getFirstVisiblePosition() == 0 && getChildCount() > 0) {
+                        View first = getChildAt(0);
+                        float inset = Ui.dp(context, 2), r = Ui.dp(context, 12);
+                        canvas.drawRoundRect(getPaddingLeft(), first.getTop() + inset,
+                                getWidth() - getPaddingRight(), first.getBottom() - inset, r, r, suggestPaint);
+                    }
+                    super.dispatchDraw(canvas);
+                }
+            };
             grid.setNumColumns(GridView.AUTO_FIT);
             grid.setColumnWidth(Ui.dp(context, 44));
             grid.setStretchMode(GridView.STRETCH_COLUMN_WIDTH);
