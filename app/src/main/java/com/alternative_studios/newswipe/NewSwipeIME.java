@@ -353,13 +353,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         // 키보드 창이 내비게이션 바(비보 등의 키보드 하단 바 포함) 뒤까지 그려질 수 있으므로
         // 시스템이 알려 주는 하단 인셋만큼 키보드를 위로 띄운다.
         root.setOnApplyWindowInsetsListener((v, insets) -> {
-            int bottom;
-            if (Build.VERSION.SDK_INT >= 30) {
-                bottom = Math.max(insets.getInsets(WindowInsets.Type.navigationBars()).bottom,
-                        insets.getInsets(WindowInsets.Type.tappableElement()).bottom);
-            } else {
-                bottom = insets.getSystemWindowInsetBottom();
-            }
+            int bottom = navigationBarBottom(insets);
             if (v.getPaddingBottom() != bottom) v.setPadding(0, 0, 0, bottom);
             return insets;
         });
@@ -456,6 +450,38 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         windowHidden = false;
         main.removeCallbacks(releaseWhileHidden);
         applyNavigationBarStyle();
+        reapplyInsetsSoon();
+    }
+
+    /**
+     * 키보드 창 아래쪽의 하단 바(내비게이션 바·작업 표시줄) 높이.
+     * 일부 기기는 키보드가 올라오는 순간 하단 바가 '보이는' 상태인데도 높이를 0으로 알려 주고, 그대로 두면 자판이
+     * 하단 바 뒤로 들어가 겹친다 (키보드를 내렸다 올리면 제대로 알려 준다). 보이는 상태라면 가려지는 높이를 대신 쓴다.
+     * 몰입 모드처럼 하단 바가 정말 숨어 있으면 0이다.
+     */
+    private static int navigationBarBottom(WindowInsets insets) {
+        if (Build.VERSION.SDK_INT < 30) return insets.getSystemWindowInsetBottom();
+        int nav = WindowInsets.Type.navigationBars();
+        int bottom = Math.max(insets.getInsets(nav).bottom,
+                insets.getInsets(WindowInsets.Type.tappableElement()).bottom);
+        if (bottom == 0 && insets.isVisible(nav)) bottom = insets.getInsetsIgnoringVisibility(nav).bottom;
+        return bottom;
+    }
+
+    private final Runnable reapplyInsets = () -> {
+        if (root != null && !windowHidden) root.requestApplyInsets();
+    };
+
+    /**
+     * 키보드가 올라온 직후 하단 바 높이를 몇 번 더 다시 받는다. 일부 기기(폴더블·태블릿의 작업 표시줄 등)는
+     * 키보드가 올라온 뒤에 하단 바가 바뀌는데, 그 변화를 키보드 창에 늦게 알려 주거나 알려 주지 않는다.
+     */
+    private void reapplyInsetsSoon() {
+        if (root == null) return;
+        main.removeCallbacks(reapplyInsets);
+        root.requestApplyInsets();
+        main.postDelayed(reapplyInsets, 150);
+        main.postDelayed(reapplyInsets, 500);
     }
 
     @Override
