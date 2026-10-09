@@ -351,10 +351,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         root.setClipChildren(false);
         root.setClipToPadding(false);
         // 키보드 창이 내비게이션 바(비보 등의 키보드 하단 바 포함) 뒤까지 그려질 수 있으므로
-        // 시스템이 알려 주는 하단 인셋만큼 키보드를 위로 띄운다.
+        // 창 관리자에 직접 물은 하단 바 높이만큼 키보드를 위로 띄운다 (refreshBottomInset).
         root.setOnApplyWindowInsetsListener((v, insets) -> {
-            int bottom = navigationBarBottom(insets);
-            if (v.getPaddingBottom() != bottom) v.setPadding(0, 0, 0, bottom);
+            refreshBottomInset(insets);
             return insets;
         });
         root.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
@@ -450,55 +449,53 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         windowHidden = false;
         main.removeCallbacks(releaseWhileHidden);
         applyNavigationBarStyle();
-        reapplyInsetsSoon();
+        refreshBottomInset(null);
     }
 
     /**
-     * 키보드 창 아래쪽의 하단 바(내비게이션 바·작업 표시줄) 높이.
-     * 일부 기기는 키보드가 올라오는 순간 하단 바가 '보이는' 상태인데도 높이를 0으로 알려 주고, 그대로 두면 자판이
-     * 하단 바 뒤로 들어가 겹친다 (키보드를 내렸다 올리면 제대로 알려 준다). 보이는 상태라면 가려지는 높이를 대신 쓴다.
-     * 그것도 0이면 같은 화면(방향과 크기가 같은 화면: 폴더블은 바깥 화면과 안쪽 화면을 따로 본다)에서 마지막으로 받은 높이를 쓴다. 몰입 모드처럼 하단 바가 정말 숨어 있으면 0이다.
+     * 키보드 창 아래쪽의 하단 바(내비게이션 바·작업 표시줄) 높이를 시스템에서 직접 받아 자판을 그만큼 띄운다 (API 30 이상).
+     * 인셋 콜백이 주는 값은 쓰지 않는다: 탐색 방법을 제스처에서 버튼으로 바꾼 직후처럼 이미 떠 있는 키보드 창에는
+     * 하단 바가 바뀐 것이 알려지지 않거나 옛 값이 오는 일이 있어 자판이 하단 바와 겹쳤다.
+     * 창 관리자에 물으면 그 순간의 값을 새로 계산해 주므로, 키보드가 올라올 때·화면 설정이 바뀔 때·인셋 콜백이 올 때
+     * (콜백은 값이 아니라 '다시 확인하라'는 신호로만 쓴다) 이 함수 하나로 정한다.
+     *
+     * @param callbackInsets 인셋 콜백이 준 값. 창 관리자에게 물을 수 없을 때만 쓴다.
      */
-    private int navigationBarBottom(WindowInsets insets) {
-        if (Build.VERSION.SDK_INT < 30) return insets.getSystemWindowInsetBottom();
-        int nav = WindowInsets.Type.navigationBars();
-        int bottom = Math.max(insets.getInsets(nav).bottom,
-                insets.getInsets(WindowInsets.Type.tappableElement()).bottom);
-        if (bottom == 0 && insets.isVisible(nav)) {
-            bottom = insets.getInsetsIgnoringVisibility(nav).bottom;
-            if (bottom == 0 && lastNavScreen.equals(screenKey())) bottom = lastNavBottom;
-        }
-        if (bottom > 0) {
-            lastNavBottom = bottom;
-            lastNavScreen = screenKey();
-        }
-        return bottom;
-    }
-
-    /** 화면을 구별하는 값: 방향과 크기(dp). 폴더블의 바깥 화면과 안쪽 화면은 하단 바가 달라 따로 기억한다. */
-    private String screenKey() {
-        android.content.res.Configuration c = getResources().getConfiguration();
-        return c.orientation + ":" + c.screenWidthDp + "x" + c.screenHeightDp;
-    }
-
-    /** 마지막으로 받은 하단 바 높이와 그때의 화면 (높이를 0으로 잘못 알려 주는 기기를 위해 기억해 둔다). */
-    private int lastNavBottom;
-    private String lastNavScreen = "";
-
-    private final Runnable reapplyInsets = () -> {
-        if (root != null && !windowHidden) root.requestApplyInsets();
-    };
-
-    /**
-     * 키보드가 올라온 직후 하단 바 높이를 몇 번 더 다시 받는다. 일부 기기(폴더블·태블릿의 작업 표시줄 등)는
-     * 키보드가 올라온 뒤에 하단 바가 바뀌는데, 그 변화를 키보드 창에 늦게 알려 주거나 알려 주지 않는다.
-     */
-    private void reapplyInsetsSoon() {
+    private void refreshBottomInset(WindowInsets callbackInsets) {
         if (root == null) return;
-        main.removeCallbacks(reapplyInsets);
-        root.requestApplyInsets();
-        main.postDelayed(reapplyInsets, 150);
-        main.postDelayed(reapplyInsets, 500);
+        int bottom = freshBottomInset();
+        if (bottom < 0) bottom = callbackInsets == null ? root.getPaddingBottom() : legacyBottomInset(callbackInsets);
+        if (root.getPaddingBottom() != bottom) root.setPadding(0, 0, 0, bottom);
+    }
+
+    /** 창 관리자가 지금 알려 주는 하단 바 높이. 알 수 없으면 -1. */
+    private int freshBottomInset() {
+        if (Build.VERSION.SDK_INT < 30) return -1;
+        try {
+            android.view.WindowManager wm = getWindow() != null && getWindow().getWindow() != null
+                    ? getWindow().getWindow().getWindowManager() : null;
+            if (wm == null) wm = getSystemService(android.view.WindowManager.class);
+            if (wm == null) return -1;
+            WindowInsets insets = wm.getCurrentWindowMetrics().getWindowInsets();
+            return Math.max(insets.getInsets(WindowInsets.Type.navigationBars()).bottom,
+                    insets.getInsets(WindowInsets.Type.tappableElement()).bottom);
+        } catch (RuntimeException e) {
+            return -1;
+        }
+    }
+
+    private static int legacyBottomInset(WindowInsets insets) {
+        if (Build.VERSION.SDK_INT >= 30) {
+            return Math.max(insets.getInsets(WindowInsets.Type.navigationBars()).bottom,
+                    insets.getInsets(WindowInsets.Type.tappableElement()).bottom);
+        }
+        return insets.getSystemWindowInsetBottom();
+    }
+
+    @Override
+    public void onConfigurationChanged(android.content.res.Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        refreshBottomInset(null);   // 폴더블을 접고 펴거나 탐색 방법을 바꾸면 하단 바가 달라진다
     }
 
     @Override
