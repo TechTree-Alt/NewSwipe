@@ -3,6 +3,7 @@ package com.alternative_studios.newswipe;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.InputType;
 import android.util.TypedValue;
@@ -18,8 +19,20 @@ import com.alternative_studios.newswipe.keyboard.KeyboardLayout;
 import com.alternative_studios.newswipe.keyboard.KeyboardTheme;
 import com.alternative_studios.newswipe.ui.Ui;
 
-/** 키를 길게 눌렀을 때 고를 수 있는 문자를 한글/영어 자판별로 고치는 화면. */
+/**
+ * 키를 길게 눌렀을 때 고를 수 있는 문자를 한글/영어 자판별로 고치는 화면.
+ * 같은 화면을 '길게 눌러 연속 입력' 편집에도 쓴다: 이때는 키를 누를 때마다 그 글자의 연속 입력이 켜지고 꺼진다.
+ */
 public final class PopupEditorActivity extends Activity {
+
+    private static final String EXTRA_REPEAT = "repeat";
+
+    /** '길게 눌러 연속 입력' 편집 화면을 여는 인텐트. */
+    public static Intent repeatIntent(Context context) {
+        return new Intent(context, PopupEditorActivity.class).putExtra(EXTRA_REPEAT, true);
+    }
+
+    private boolean repeatMode;
 
     private Prefs prefs;
     private LinearLayout list;
@@ -38,6 +51,7 @@ public final class PopupEditorActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         prefs = new Prefs(this);
+        repeatMode = getIntent().getBooleanExtra(EXTRA_REPEAT, false);
         keyboardTheme = KeyboardTheme.of(this);
         korean = prefs.korean();
         AppTheme colors = AppTheme.of(this);
@@ -57,7 +71,7 @@ public final class PopupEditorActivity extends Activity {
         int pad = Ui.dp(this, 16);
         list.setPadding(pad, 0, pad, Ui.dp(this, 32));
         scroll.addView(list);
-        setContentView(new SettingsFrame(this, "길게 누르기 문자 편집", getString(R.string.app_name)).wrap(scroll));
+        setContentView(new SettingsFrame(this, repeatMode ? "길게 눌러 연속 입력 편집" : "길게 누르기 문자 편집", getString(R.string.app_name)).wrap(scroll));
         render();
     }
 
@@ -77,7 +91,9 @@ public final class PopupEditorActivity extends Activity {
 
     private void render() {
         list.removeAllViews();
-        TextView note = text("키를 길게 눌러 입력할 수 있는 문자를 고칩니다. 첫 번째 문자가 키 위에 작게 표시됩니다.", 13, hintColor);
+        TextView note = text(repeatMode
+                ? "연속으로 입력할 글자를 누르면 켜지고, 다시 누르면 꺼집니다. 켠 글자는 길게 누르고 있는 동안 계속 입력되며, 길게 눌러 입력할 문자는 나오지 않습니다."
+                : "키를 길게 눌러 입력할 수 있는 문자를 고칩니다. 첫 번째 문자가 키 위에 작게 표시됩니다.", 13, hintColor);
         note.setPadding(Ui.dp(this, 4), 0, 0, Ui.dp(this, 12));
         list.addView(note);
 
@@ -107,8 +123,9 @@ public final class PopupEditorActivity extends Activity {
         list.addView(card, clp);
         keysCard = card;
         fillKeys(card);
-        list.addView(ResetDialog.button(this, "길게 누르기 문자 편집", () -> {
-            prefs.resetPopups();
+        list.addView(ResetDialog.button(this, repeatMode ? "길게 눌러 연속 입력 편집" : "길게 누르기 문자 편집", () -> {
+            if (repeatMode) prefs.resetRepeatChars();
+            else prefs.resetPopups();
             render();
         }));
     }
@@ -175,7 +192,36 @@ public final class PopupEditorActivity extends Activity {
         return d == null ? new String[0] : d;
     }
 
+    /** 연속 입력 편집 화면의 키 칸: 켠 글자는 강조 색으로 칠하고, 누를 때마다 켜고 끈다. */
+    private View repeatCell(String label) {
+        String group = KeyboardLayout.groupOf(korean, label);
+        LinearLayout cell = new LinearLayout(this);
+        cell.setOrientation(LinearLayout.VERTICAL);
+        cell.setGravity(Gravity.CENTER);
+        TextView k = text(label, 20, keyboardTheme.text);
+        k.setGravity(Gravity.CENTER);
+        cell.addView(k);
+        TextView h = text(" ", 11, keyboardTheme.hint);
+        h.setGravity(Gravity.CENTER);
+        cell.addView(h);
+        Runnable paint = () -> {
+            boolean on = prefs.repeatChar(group, label);
+            k.setTextColor(on ? onAccentColor : keyboardTheme.text);
+            h.setTextColor(on ? onAccentColor : keyboardTheme.hint);
+            h.setText(on ? "연속" : " ");
+            cell.setBackground(Ui.ripple(keyboardTheme.keyPressed,
+                    Ui.round(on ? accentColor : keyboardTheme.key, Ui.dp(this, 7)), Ui.dp(this, 7)));
+        };
+        paint.run();
+        cell.setOnClickListener(v -> {
+            prefs.setRepeatChar(group, label, !prefs.repeatChar(group, label));
+            paint.run();
+        });
+        return cell;
+    }
+
     private View keyCell(String label) {
+        if (repeatMode) return repeatCell(label);
         LinearLayout cell = new LinearLayout(this);
         cell.setOrientation(LinearLayout.VERTICAL);
         cell.setGravity(Gravity.CENTER);

@@ -79,6 +79,8 @@ public final class KeyboardView extends View {
     private static final int EMOJI_SWIPE = 7;
     /** 밀어서 기능 완전 사용자화로 정한 기능을 실행하려고 키를 밀고 있는 중 (손을 떼면 실행한다). */
     private static final int FN_SWIPE = 8;
+    /** 길게 눌러 연속 입력하는 글자 키를 누르고 있는 중 (손을 뗄 때까지 계속 입력한다). */
+    private static final int CHAR_REPEAT = 10;
 
     private static final class Pointer {
         int id;
@@ -178,6 +180,29 @@ public final class KeyboardView extends View {
             handler.postDelayed(this, 50);
         }
     };
+
+    /** 길게 누르면 팝업 대신 계속 입력하는 글자 ("<자판>_<글자>", 설정의 '길게 눌러 연속 입력'). */
+    private java.util.Set<String> repeatChars = java.util.Collections.emptySet();
+    private Pointer charRepeatPointer;
+    private final Runnable charRepeatRunnable = new Runnable() {
+        @Override
+        public void run() {
+            Pointer p = charRepeatPointer;
+            if (p == null || !pointers.contains(p) || listener == null) return;
+            listener.onKeyTap(p.key);
+            handler.postDelayed(this, 60);
+        }
+    };
+
+    public void setRepeatChars(java.util.Set<String> chars) {
+        repeatChars = chars;
+        invalidate();
+    }
+
+    private boolean isRepeatChar(Key k) {
+        return k.type == Key.CHAR && !repeatChars.isEmpty() && layout != null
+                && repeatChars.contains(KeyboardLayout.groupOf(layout.kind == KeyboardLayout.KOREAN, k.label) + "_" + k.label);
+    }
 
     // 팝업 (길게 누르기 문자 선택)
     private Pointer popupPointer;
@@ -645,7 +670,7 @@ public final class KeyboardView extends View {
         drawCentered(c, label, cx, cy);
 
         String hint = shiftState != 0 && layout.kind == KeyboardLayout.ENGLISH ? k.hintUpper() : k.hint();
-        if (showHints && hint != null && layout.kind != KeyboardLayout.NUMBER) {
+        if (showHints && hint != null && layout.kind != KeyboardLayout.NUMBER && !isRepeatChar(k)) {
             text.setColor(theme.hint);
             text.setTypeface(Typeface.DEFAULT);
             text.setTextSize(spHint);
@@ -837,7 +862,7 @@ public final class KeyboardView extends View {
             lang = k.type == Key.LANGUAGE
                     || (modeKeyLongPress && (k.type == Key.TO_SYMBOLS || k.type == Key.TO_LETTERS));
         }
-        boolean chars = k.type == Key.CHAR && k.popup != null && longPressChars;
+        boolean chars = k.type == Key.CHAR && (k.popup != null && longPressChars || isRepeatChar(k));
         if (del || lang || chars) {
             longPressTarget = p;
             // 기능키는 모두 '기능키 길게 누르기 시간'을, 문자 키는 '문자 길게 누르기 시간'을 따른다.
@@ -866,6 +891,7 @@ public final class KeyboardView extends View {
         for (Pointer p : new Pointer[]{deferred, second}) {
             cancelLongPress(p);
             if (p.mode == REPEAT) handler.removeCallbacks(repeatRunnable);
+            if (p.mode == CHAR_REPEAT) stopCharRepeat();
             if (p == popupPointer) closePopup();
             p.mode = CONSUMED;
         }
@@ -1073,6 +1099,9 @@ public final class KeyboardView extends View {
             case REPEAT:
                 handler.removeCallbacks(repeatRunnable);
                 break;
+            case CHAR_REPEAT:
+                stopCharRepeat();
+                break;
             case CONSUMED:
                 if (p.key.type == Key.SHIFT && p.chord) listener.onShiftChordEnd();
                 break;
@@ -1131,6 +1160,11 @@ public final class KeyboardView extends View {
         }
     }
 
+    private void stopCharRepeat() {
+        handler.removeCallbacks(charRepeatRunnable);
+        charRepeatPointer = null;
+    }
+
     private void cancelLongPress(Pointer p) {
         if (longPressTarget == p) {
             handler.removeCallbacks(longPressRunnable);
@@ -1165,7 +1199,12 @@ public final class KeyboardView extends View {
         } else if (k.type == Key.LANGUAGE || k.type == Key.TO_SYMBOLS || k.type == Key.TO_LETTERS) {
             p.mode = CONSUMED;
             if (listener != null) listener.onKeyLongPress(k);
-        } else if (k.popup != null) {
+        } else if (isRepeatChar(k)) {
+            p.mode = CHAR_REPEAT;
+            charRepeatPointer = p;
+            charRepeatRunnable.run();
+            markChord();
+        } else if (k.popup != null && longPressChars) {
             p.mode = POPUP;
             openPopup(p);
         }
@@ -1225,6 +1264,7 @@ public final class KeyboardView extends View {
     public void cancelAll() {
         handler.removeCallbacks(longPressRunnable);
         handler.removeCallbacks(repeatRunnable);
+        stopCharRepeat();
         longPressTarget = null;
         pointers.clear();
         deferred = second = null;

@@ -856,6 +856,11 @@ public final class SettingsActivity extends Activity {
         chars.addView(toggle("길게 눌러 문자 입력", "키를 길게 눌러 특수문자를 입력합니다.",
                 Prefs.LONG_PRESS_CHARS, prefs.longPressChars(), charGroup));
         chars.addView(charGroup);
+        View repeatGroup = subGroup(button("길게 눌러 연속 입력 편집", v ->
+                startActivity(PopupEditorActivity.repeatIntent(this))));
+        chars.addView(toggle("길게 눌러 연속 입력", "고른 글자를 길게 누르고 있으면 계속 입력합니다.",
+                Prefs.LONG_PRESS_REPEAT, prefs.longPressRepeat(), repeatGroup));
+        chars.addView(repeatGroup);
 
         LinearLayout fn = section("기능키");
         // 모든 기능키(⌫·기호 키·🌐︎·Shift 키·엔터 키·Fn 키)가 같은 시간을 쓴다. 기본 설정·완전 사용자화 모두 같다.

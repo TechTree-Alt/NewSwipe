@@ -19,6 +19,7 @@ public final class Prefs {
     public static final String KEY_PREVIEW = "key_preview";
     public static final String NUMBER_ROW = "number_row";
     public static final String LONG_PRESS_CHARS = "long_press_chars";   // 키를 길게 눌러 문자 입력
+    public static final String LONG_PRESS_REPEAT = "long_press_repeat";   // 고른 글자 키를 길게 눌러 연속 입력
     public static final String AUTO_CAP = "auto_cap";
     public static final String DOUBLE_SPACE_PERIOD = "double_space_period";
     public static final String VOICE_KEY = "voice_key";
@@ -301,9 +302,9 @@ public final class Prefs {
         MENU_KEYS.put("input", keys(AUTO_CAP, DOUBLE_SPACE_PERIOD, DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT,
                 DOUBLE_TAP_CONSONANT_MS, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, SPACE_HIT_SHRINK,
                 SPACE_HIT_SHRINK_PCT));
-        MENU_KEYS.put("keys", keys(LONG_PRESS_CHARS, LONG_PRESS_MS, LONG_PRESS_DELETE, DELETE_PRESS_MS,
+        MENU_KEYS.put("keys", keys(LONG_PRESS_CHARS, LONG_PRESS_REPEAT, LONG_PRESS_MS, LONG_PRESS_DELETE, DELETE_PRESS_MS,
                 MODE_KEY_LONG_PRESS, LONG_PRESS_CUSTOM));
-        MENU_PREFIXES.put("keys", keys("popup_", "swipe_lp_"));
+        MENU_PREFIXES.put("keys", keys("popup_", "repeat_", "swipe_lp_"));
         MENU_KEYS.put("swipe", keys(SWIPE_THRESHOLD, SWIPE_DOUBLE, D7_SS_UP, SWIPE_IOTIZED, SWIPE_COMPOUND_VOWEL,
                 SWIPE_FINAL, PERIOD_SWIPE_COMMA, SWIPE_CUSTOM));
         MENU_PREFIXES.put("swipe", keys("swipe_custom_", "swipe_final_", "swipe_vowel_"));
@@ -388,6 +389,7 @@ public final class Prefs {
 
     /** '길게 누르기 문자 편집' 화면의 값. */
     public void resetPopups() { removeKeys(NONE, new String[]{"popup_"}); }
+    public void resetRepeatChars() { removeKeys(NONE, new String[]{"repeat_"}); }
 
     /** 기능 편집 화면(기능키·도구 막대·키보드 밀기·길게 누르기·Fn 키)의 값. 같은 이름으로 시작하는 '완전 사용자화' 스위치는 그대로 둔다. */
     public void resetSwipeActions(String group) {
@@ -428,6 +430,7 @@ public final class Prefs {
     public boolean keyPreview() { return sp.getBoolean(KEY_PREVIEW, true); }
     public boolean numberRow() { return sp.getBoolean(NUMBER_ROW, false); }
     public boolean longPressChars() { return sp.getBoolean(LONG_PRESS_CHARS, true); }
+    public boolean longPressRepeat() { return sp.getBoolean(LONG_PRESS_REPEAT, false); }
     public boolean autoCap() { return sp.getBoolean(AUTO_CAP, true); }
     public boolean doubleSpacePeriod() { return sp.getBoolean(DOUBLE_SPACE_PERIOD, true); }
     public boolean voiceKey() { return sp.getBoolean(VOICE_KEY, true); }
@@ -635,6 +638,26 @@ public final class Prefs {
 
     public void setPopupOverride(String group, String label, String[] items) {
         sp.edit().putString(popupKey(group, label), String.join("\n", items)).apply();
+    }
+
+    // 길게 눌러 연속 입력할 글자. 키는 "repeat_<자판>_<글자>"이고, 켠 글자만 true로 저장한다.
+    private static String repeatKey(String group, String label) { return "repeat_" + group + "_" + label; }
+
+    public boolean repeatChar(String group, String label) { return sp.getBoolean(repeatKey(group, label), false); }
+
+    public void setRepeatChar(String group, String label, boolean on) {
+        if (on) sp.edit().putBoolean(repeatKey(group, label), true).apply();
+        else sp.edit().remove(repeatKey(group, label)).apply();
+    }
+
+    /** 연속 입력으로 정한 글자들("<자판>_<글자>"). '길게 눌러 연속 입력'을 꺼 두면 비어 있다. */
+    public java.util.Set<String> repeatChars() {
+        java.util.Set<String> out = new java.util.HashSet<>();
+        if (!longPressRepeat()) return out;
+        for (java.util.Map.Entry<String, ?> e : sp.getAll().entrySet()) {
+            if (e.getKey().startsWith("repeat_") && Boolean.TRUE.equals(e.getValue())) out.add(e.getKey().substring(7));
+        }
+        return out;
     }
 
     public void resetPopupOverride(String group, String label) {
