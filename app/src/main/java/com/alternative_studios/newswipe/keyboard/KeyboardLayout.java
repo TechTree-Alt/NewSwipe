@@ -620,14 +620,13 @@ public final class KeyboardLayout {
                     k = fn(modeType, modeLabel, wideW);
                     break;
                 case BottomKeys.COMMA:
-                    k = customSwipes(fnChar(",", popupFor(prefs, true, ",", COMMA_POPUP), narrowW), prefs, true);
+                    k = slotChar(",", prefs, popupFor(prefs, true, ",", COMMA_POPUP), narrowW);
                     break;
                 case BottomKeys.GLOBE:
                     k = fn(emojiKey ? Key.EMOJI : Key.LANGUAGE, "", narrowW);
                     break;
                 case BottomKeys.PERIOD:
-                    k = customSwipes(fnChar(".", popupFor(prefs, true, ".", periodPopup(periodComma)), narrowW),
-                            prefs, true);
+                    k = slotChar(".", prefs, popupFor(prefs, true, ".", periodPopup(periodComma)), narrowW);
                     if (prefs == null || (!prefs.swipeCustom() && prefs.periodSwipeComma())) k.swipeUp = ",";
                     break;
                 case BottomKeys.ENTER:
@@ -651,8 +650,21 @@ public final class KeyboardLayout {
     }
 
     private static Key customSwipes(Key k, Prefs prefs, boolean korean) {
-        if (prefs != null && prefs.swipeCustom()) applyCustomSwipes(k, prefs, korean, k.label);
+        if (prefs != null && prefs.swipeCustom()) applyCustomSwipes(k, prefs, korean, k.slot());
         return k;
+    }
+
+    /** 키에 쓰는 글자: 하단 쉼표·온점 키를 다른 글자로 바꿨으면 그 글자 (설정에는 원래 자리 이름 slot으로 저장된다). */
+    public static String displayLabel(Prefs prefs, String slot) {
+        return prefs == null ? slot : prefs.keyChar(slot);
+    }
+
+    /** 하단 쉼표(",")·온점(".") 자리의 키. 사용자가 다른 글자로 바꿨으면 그 글자를 입력한다. */
+    private static Key slotChar(String slot, Prefs prefs, String[] popup, float weight) {
+        String c = displayLabel(prefs, slot);
+        Key k = fnChar(c, popup, weight);
+        k.slot = slot;
+        return customSwipes(k, prefs, true);
     }
 
     private static Key ch(String label, String[] popup) {

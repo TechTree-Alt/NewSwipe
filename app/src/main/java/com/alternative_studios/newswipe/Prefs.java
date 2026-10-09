@@ -36,6 +36,8 @@ public final class Prefs {
     public static final String KEY_GAP_X = "key_gap_x";               // 키 좌우 여백 dp, 0~12
     public static final String KEY_GAP_Y = "key_gap_y";               // 키 상하 여백 dp, 0~20
     public static final String PAD_BOTTOM = "pad_bottom";             // dp, 0~48
+    public static final String COMMA_CHAR = "bottom_comma_char";           // 하단 쉼표 키가 입력하는 한 글자 (기본 ",")
+    public static final String PERIOD_CHAR = "bottom_period_char";         // 하단 온점 키가 입력하는 한 글자 (기본 ".")
     public static final String PERIOD_COMMA = "period_comma";         // 쉼표 키 대신 온점 길게 누르기
     /** 한글 자판의 Shift 키를 없앤다 (켜짐 = Shift 키 없음, 그 자리는 빈칸). */
     public static final String KOREAN_SHIFT_HIDDEN = "korean_shift_hidden";
@@ -293,7 +295,7 @@ public final class Prefs {
     static {
         MENU_KEYS.put("layout", keys(KOREAN_LAYOUT, GRID_LAYOUT, NUMBER_ROW, LANDSCAPE_SPLIT, LANDSCAPE_SIZE,
                 KEYBOARD_HEIGHT_LAND, KEY_TEXT_SIZE_LAND,
-                BOTTOM_KEY_ORDER, MODE_KEY_HIDDEN, PERIOD_COMMA, LANGUAGE_KEY_HIDDEN, SPACE_KEY_HIDDEN,
+                BOTTOM_KEY_ORDER, COMMA_CHAR, PERIOD_CHAR, MODE_KEY_HIDDEN, PERIOD_COMMA, LANGUAGE_KEY_HIDDEN, SPACE_KEY_HIDDEN,
                 PERIOD_KEY_HIDDEN, ENTER_KEY_HIDDEN, DELETE_KEY_HIDDEN, KOREAN_SHIFT_HIDDEN, KOREAN_SHIFT_FN));
         MENU_PREFIXES.put("layout", keys("balanced_", LANDSCAPE_SPLIT + "_", "swipe_fk_"));
         MENU_KEYS.put("theme", keys(THEME_MODE, ACCENT_MODE, ACCENT_COLOR, GRID_COLORS));
@@ -376,7 +378,7 @@ public final class Prefs {
 
     /** '기능키 순서·유무 사용자화' 화면의 값. */
     public void resetBottomKeys() {
-        removeKeys(new String[]{BOTTOM_KEY_ORDER, MODE_KEY_HIDDEN, PERIOD_COMMA, LANGUAGE_KEY_HIDDEN,
+        removeKeys(new String[]{BOTTOM_KEY_ORDER, COMMA_CHAR, PERIOD_CHAR, MODE_KEY_HIDDEN, PERIOD_COMMA, LANGUAGE_KEY_HIDDEN,
                 SPACE_KEY_HIDDEN, PERIOD_KEY_HIDDEN, ENTER_KEY_HIDDEN, DELETE_KEY_HIDDEN, KOREAN_SHIFT_HIDDEN,
                 KOREAN_SHIFT_FN}, NONE);
     }
@@ -450,6 +452,24 @@ public final class Prefs {
     public int padTopDp() { return sp.getInt(PAD_TOP, 0); }
     public int padBottomDp() { return sp.getInt(PAD_BOTTOM, 4); }
     public boolean periodComma() { return sp.getBoolean(PERIOD_COMMA, true); }
+
+    /**
+     * 하단 쉼표(",")·온점(".") 키가 입력하는 글자. 다른 글자로 바꾸지 않았으면 그대로 돌려준다.
+     * 길게 누르기·밀기·연속 입력 설정은 바뀐 글자가 아니라 원래 자리(",", ".")에 저장되어 있다.
+     */
+    public String keyChar(String label) {
+        if (",".equals(label)) return sp.getString(COMMA_CHAR, ",");
+        if (".".equals(label)) return sp.getString(PERIOD_CHAR, ".");
+        return label;
+    }
+
+    /** 쉼표·온점 키가 입력할 글자를 정한다. 한 글자(코드 포인트 하나)가 아니거나 원래 글자면 기본값으로 돌린다. */
+    public void setKeyChar(String label, String c) {
+        String key = ",".equals(label) ? COMMA_CHAR : ".".equals(label) ? PERIOD_CHAR : null;
+        if (key == null) return;
+        if (c == null || c.isEmpty() || c.codePointCount(0, c.length()) != 1 || c.equals(label)) sp.edit().remove(key).apply();
+        else sp.edit().putString(key, c).apply();
+    }
     public boolean periodKeyHidden() { return sp.getBoolean(PERIOD_KEY_HIDDEN, false); }
     public boolean twoFingerUndo() { return sp.getBoolean(TWO_FINGER_UNDO, false); }
     public boolean swipeKeyboardCustom() { return sp.getBoolean(SWIPE_KEYBOARD_CUSTOM, false); }

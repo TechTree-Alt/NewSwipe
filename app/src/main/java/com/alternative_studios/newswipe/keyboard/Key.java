@@ -49,6 +49,16 @@ public final class Key {
     public float weight;
     /** 글자 키지만 기능키 색으로 그린다 (쉼표, 마침표). */
     boolean grayStyle;
+    /**
+     * 설정(길게 누르기·밀기·연속 입력)에 저장된 이 키의 자리 이름. 하단 쉼표·온점 키를 다른 글자로 바꾸면
+     * label은 바뀐 글자이고 이 값은 원래 자리(",", ".")로 남는다. 바꾸지 않은 키는 null이다.
+     */
+    String slot;
+
+    /** 설정에 저장된 이 키의 이름 (label과 다를 수 있다). */
+    public String slot() {
+        return slot != null ? slot : label;
+    }
 
     /** 자판 뷰가 배치할 때 채우는 위치. */
     public final RectF rect = new RectF();

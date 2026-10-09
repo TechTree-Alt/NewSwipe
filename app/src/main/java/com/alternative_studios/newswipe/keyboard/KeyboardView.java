@@ -207,7 +207,7 @@ public final class KeyboardView extends View {
 
     private boolean isRepeatChar(Key k) {
         return k.type == Key.CHAR && !repeatChars.isEmpty() && layout != null
-                && repeatChars.contains(KeyboardLayout.groupOf(layout.kind == KeyboardLayout.KOREAN, k.label) + "_" + k.label);
+                && repeatChars.contains(KeyboardLayout.groupOf(layout.kind == KeyboardLayout.KOREAN, k.slot()) + "_" + k.slot());
     }
 
     // 팝업 (길게 누르기 문자 선택)

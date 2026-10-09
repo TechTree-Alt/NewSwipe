@@ -222,7 +222,7 @@ public final class PopupEditorActivity extends Activity {
         String key = (korean ? "ko:" : "en:") + label;
         boolean was = repeatMode && shown.containsKey(key) ? shown.get(key) : on;
         if (repeatMode) shown.put(key, on);
-        ExpressiveChoiceButton cell = new ExpressiveChoiceButton(this, label, was, false, false,
+        ExpressiveChoiceButton cell = new ExpressiveChoiceButton(this, KeyboardLayout.displayLabel(prefs, label), was, false, false,
                 keyboardTheme.accent, keyboardTheme.onAccent, keyboardTheme.text, keyboardTheme.hint);
         cell.setIdleColors(keyboardTheme.key, keyboardTheme.keyPressed);
         cell.setLabelSize(20);
@@ -262,7 +262,7 @@ public final class PopupEditorActivity extends Activity {
         box.addView(help);
         box.addView(input);
         AppTheme.dialogBuilder(this)
-                .setTitle("'" + label + "' 길게 누르기")
+                .setTitle("'" + KeyboardLayout.displayLabel(prefs, label) + "' 길게 누르기")
                 .setView(box)
                 .setPositiveButton("저장", (d, w) -> {
                     String v = input.getText().toString().trim();

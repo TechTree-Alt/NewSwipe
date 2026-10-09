@@ -33,6 +33,8 @@ public final class SwipeAction {
     public static final String UNDO = "undo";
     public static final String REDO = "redo";
     public static final String SELECT_ALL = "select_all";
+    /** 입력란의 모든 내용을 선택하고 복사한다. */
+    public static final String SELECT_ALL_COPY = "select_all_copy";
     public static final String COPY = "copy";
     public static final String CUT = "cut";
     public static final String PASTE = "paste";
@@ -60,7 +62,8 @@ public final class SwipeAction {
             {NONE, "없음", "없음"},
             {UNDO, "실행 취소", "실행 취소"},
             {REDO, "다시 실행", "다시 실행"},
-            {SELECT_ALL, "모두 선택", "모두 선택"},
+            {SELECT_ALL, "전체 선택", "전체 선택"},
+            {SELECT_ALL_COPY, "전체 선택 후 복사", "전체 복사"},
             {COPY, "복사", "복사"},
             {CUT, "잘라내기", "잘라내기"},
             {PASTE, "붙여넣기 (지금 클립보드)", "붙여넣기"},

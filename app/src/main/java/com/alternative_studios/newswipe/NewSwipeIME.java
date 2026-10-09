@@ -2108,8 +2108,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             case SwipeAction.SELECT_ALL:
                 contextAction(android.R.id.selectAll);
                 break;
+            case SwipeAction.SELECT_ALL_COPY:
+                copySelection(true);
+                break;
             case SwipeAction.COPY:
-                copySelection();
+                copySelection(false);
                 break;
             case SwipeAction.CUT:
                 contextAction(android.R.id.cut);
@@ -2167,9 +2170,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     /** 선택한 글자를 복사하고, 실제로 복사했으면 키보드 위에 알린다 (선택한 글자가 없으면 아무것도 보이지 않는다). */
-    private void copySelection() {
+    private void copySelection(boolean selectAllFirst) {
         if (!beginEdit()) return;
         InputConnection ic = getCurrentInputConnection();
+        if (selectAllFirst) ic.performContextMenuAction(android.R.id.selectAll);
         CharSequence selected = ic.getSelectedText(0);   // 복사하면 앱이 선택을 풀 수 있어 먼저 읽는다
         ic.performContextMenuAction(android.R.id.copy);
         endEdit();
