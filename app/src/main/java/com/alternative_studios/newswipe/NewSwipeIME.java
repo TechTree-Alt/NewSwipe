@@ -1093,6 +1093,13 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     @Override
+    public void onKeyRepeat(Key key) {
+        lastWasSpace = false;
+        // 탭이 아니라 길게 눌러 입력하는 것이라 연속 탭(쌍자음·이중모음) 판단에서 빠진다.
+        typeText(shiftState != 0 && lettersLayout() ? key.shifted : key.output, false);
+    }
+
+    @Override
     public void onKeyTap(Key key) {
         if (key.type != Key.SPACE) lastWasSpace = false;
         switch (key.type) {

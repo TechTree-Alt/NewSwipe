@@ -17,6 +17,7 @@ import android.widget.TextView;
 
 import com.alternative_studios.newswipe.keyboard.KeyboardLayout;
 import com.alternative_studios.newswipe.keyboard.KeyboardTheme;
+import com.alternative_studios.newswipe.ui.ExpressiveChoiceButton;
 import com.alternative_studios.newswipe.ui.Ui;
 
 /**
@@ -33,6 +34,10 @@ public final class PopupEditorActivity extends Activity {
     }
 
     private boolean repeatMode;
+    /** 연속 입력 편집 화면에서 키 칸이 마지막으로 그려진 상태 (화면을 다시 만들어도 바뀐 칸만 스프링으로 바뀌게). */
+    private final java.util.Map<String, Boolean> shown = new java.util.HashMap<>();
+    /** 길게 눌러 문자 입력 화면에서 연속 입력으로 정해 둔 글자들 ("<자판>_<글자>"). 이 글자는 길게 눌러 입력할 문자를 쓸 수 없다. */
+    private java.util.Set<String> repeatChars = java.util.Collections.emptySet();
 
     private Prefs prefs;
     private LinearLayout list;
@@ -138,6 +143,8 @@ public final class PopupEditorActivity extends Activity {
         boolean seven = korean && KeyboardLayout.koreanColumns(prefs) == 7;   // 한 줄 7칸 (NewSwipe 단모음)
         String[][] rows = KeyboardLayout.editableRows(korean, prefs);
         int columns = korean ? KeyboardLayout.koreanColumns(prefs) : 10;
+        repeatChars = repeatMode ? java.util.Collections.emptySet() : prefs.repeatChars();
+        boolean anyDisabled = false;
         for (int r = 0; r < rows.length; r++) {
             String[] row = rows[r];
             float lead, between = 0;
@@ -153,15 +160,27 @@ public final class PopupEditorActivity extends Activity {
             float used = lead + row.length + (row.length > 1 ? between : 0);
             float trail = Math.max(0f, columns - used);
             LinearLayout line = new LinearLayout(this);
+            line.setClipChildren(false);
+            line.setBaselineAligned(false);
             if (lead > 0) line.addView(spacer(lead));
+            ExpressiveChoiceButton[] keys = new ExpressiveChoiceButton[row.length];
             for (int i = 0; i < row.length; i++) {
                 if (i > 0 && between > 0) line.addView(spacer(between));
-                line.addView(keyCell(row[i]), cellParams());
+                keys[i] = keyCell(row[i]);
+                anyDisabled |= !keys[i].isEnabled();
+                line.addView(keys[i], cellParams());
+            }
+            if (between == 0) {
+                // 이웃한 키끼리는 눌렀을 때 서로 밀어 준다 (키마다 둥근 모서리는 그대로).
+                ExpressiveChoiceButton.link(keys);
+                for (ExpressiveChoiceButton k : keys) k.setPosition(false, false);
             }
             if (trail > 0) line.addView(spacer(trail));
             card.addView(line);
         }
-        TextView extra = text("쉼표·온점 설정은 한글/영어가 함께 씁니다.", 12, hintColor);
+        TextView extra = text(anyDisabled
+                ? "쉼표·온점 설정은 한글/영어가 함께 씁니다.\n흐리게 보이는 글자는 '길게 눌러 연속 입력'으로 정해 두어 길게 눌러 입력할 문자를 쓸 수 없습니다."
+                : "쉼표·온점 설정은 한글/영어가 함께 씁니다.", 12, hintColor);
         extra.setPadding(Ui.dp(this, 4), Ui.dp(this, 8), 0, 0);
         extra.setTextColor(keyboardTheme.hint);
         card.addView(extra);
@@ -192,52 +211,40 @@ public final class PopupEditorActivity extends Activity {
         return d == null ? new String[0] : d;
     }
 
-    /** 연속 입력 편집 화면의 키 칸: 켠 글자는 강조 색으로 칠하고, 누를 때마다 켜고 끈다. */
-    private View repeatCell(String label) {
+    /**
+     * 키 칸. 연속 입력 편집 화면에서는 누를 때마다 그 글자의 연속 입력이 켜지고 꺼지며(켠 글자는 강조색 알약),
+     * 길게 눌러 문자 입력 화면에서는 길게 눌러 입력할 문자를 아래에 작게 보여 준다
+     * (연속 입력으로 정한 글자는 흐리게 보이고 누를 수 없다).
+     */
+    private ExpressiveChoiceButton keyCell(String label) {
         String group = KeyboardLayout.groupOf(korean, label);
-        LinearLayout cell = new LinearLayout(this);
-        cell.setOrientation(LinearLayout.VERTICAL);
-        cell.setGravity(Gravity.CENTER);
-        TextView k = text(label, 20, keyboardTheme.text);
-        k.setGravity(Gravity.CENTER);
-        cell.addView(k);
-        TextView h = text(" ", 11, keyboardTheme.hint);
-        h.setGravity(Gravity.CENTER);
-        cell.addView(h);
-        Runnable paint = () -> {
-            boolean on = prefs.repeatChar(group, label);
-            k.setTextColor(on ? onAccentColor : keyboardTheme.text);
-            h.setTextColor(on ? onAccentColor : keyboardTheme.hint);
-            h.setText(on ? "연속" : " ");
-            cell.setBackground(Ui.ripple(keyboardTheme.keyPressed,
-                    Ui.round(on ? accentColor : keyboardTheme.key, Ui.dp(this, 7)), Ui.dp(this, 7)));
-        };
-        paint.run();
-        cell.setOnClickListener(v -> {
-            prefs.setRepeatChar(group, label, !prefs.repeatChar(group, label));
-            paint.run();
-        });
-        return cell;
-    }
-
-    private View keyCell(String label) {
-        if (repeatMode) return repeatCell(label);
-        LinearLayout cell = new LinearLayout(this);
-        cell.setOrientation(LinearLayout.VERTICAL);
-        cell.setGravity(Gravity.CENTER);
+        boolean on = repeatMode && prefs.repeatChar(group, label);
+        String key = (korean ? "ko:" : "en:") + label;
+        boolean was = repeatMode && shown.containsKey(key) ? shown.get(key) : on;
+        if (repeatMode) shown.put(key, on);
+        ExpressiveChoiceButton cell = new ExpressiveChoiceButton(this, label, was, false, false,
+                keyboardTheme.accent, keyboardTheme.onAccent, keyboardTheme.text, keyboardTheme.hint);
+        cell.setIdleColors(keyboardTheme.key, keyboardTheme.keyPressed);
+        cell.setLabelSize(20);
+        cell.setPadding(0, 0, 0, 0);
+        if (repeatMode) {
+            cell.setOnClickListener(v -> {
+                boolean now = !prefs.repeatChar(group, label);
+                prefs.setRepeatChar(group, label, now);
+                shown.put(key, now);
+                cell.setChosen(now, true);
+            });
+            if (was != on) cell.post(() -> cell.setChosen(on, true));   // 방금 바뀐 키
+            return cell;
+        }
         String[] items = current(label);
-        TextView k = text(label, 20, keyboardTheme.text);
-        k.setGravity(Gravity.CENTER);
-        cell.addView(k);
-        // 비어 있으면 아무것도 보이지 않게 한다 ('-'를 직접 넣은 경우와 구분하기 위해).
-        TextView h = text(items.length == 0 ? " " : String.join("", items), 11, keyboardTheme.hint);
-        h.setGravity(Gravity.CENTER);
-        h.setSingleLine(true);
-        h.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        cell.addView(h);
-        cell.setBackground(Ui.ripple(keyboardTheme.keyPressed,
-                Ui.round(keyboardTheme.key, Ui.dp(this, 7)), Ui.dp(this, 7)));
-        cell.setOnClickListener(v -> edit(label));
+        if (items.length > 0) cell.setSubLabel(String.join("", items), 6, 16);
+        if (repeatChars.contains(group + "_" + label)) {
+            cell.setEnabled(false);
+            cell.setAlpha(0.38f);
+        } else {
+            cell.setOnClickListener(v -> edit(label));
+        }
         return cell;
     }
 

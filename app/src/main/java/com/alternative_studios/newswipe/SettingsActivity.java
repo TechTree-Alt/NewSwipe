@@ -849,10 +849,11 @@ public final class SettingsActivity extends Activity {
 
     private void buildKeys() {
         LinearLayout chars = section("문자 입력");
+        // 길게 눌러 문자 입력과 길게 눌러 연속 입력이 함께 쓰는 시간이라 두 토글 위에 둔다.
+        chars.addView(slider("문자 길게 누르기 시간", Prefs.LONG_PRESS_MS, prefs.longPressMs(), 100, 800, 20, "ms"));
         View editPopup = button("길게 눌러 입력할 문자 편집", v ->
                 startActivity(new Intent(this, PopupEditorActivity.class)));
-        View charTime = slider("문자 길게 누르기 시간", Prefs.LONG_PRESS_MS, prefs.longPressMs(), 100, 800, 20, "ms");
-        View charGroup = subGroup(editPopup, charTime);
+        View charGroup = subGroup(editPopup);
         chars.addView(toggle("길게 눌러 문자 입력", "키를 길게 눌러 특수문자를 입력합니다.",
                 Prefs.LONG_PRESS_CHARS, prefs.longPressChars(), charGroup));
         chars.addView(charGroup);

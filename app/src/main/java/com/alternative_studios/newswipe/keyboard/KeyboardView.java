@@ -41,6 +41,12 @@ public final class KeyboardView extends View {
 
         void onPopupChar(Key key, String text);
 
+        /**
+         * 길게 눌러 연속 입력으로 정한 글자 키를 누르고 있는 동안 반복해서 입력한다.
+         * 탭이 아니므로 '자음 연속 탭으로 쌍자음' 같은 연속 탭 판단에 들어가지 않는다.
+         */
+        void onKeyRepeat(Key key);
+
         /** 기능키를 길게 눌렀다 (지구본 → 입력기 선택, 기호 키 → 이모지 열기). */
         void onKeyLongPress(Key key);
 
@@ -189,7 +195,7 @@ public final class KeyboardView extends View {
         public void run() {
             Pointer p = charRepeatPointer;
             if (p == null || !pointers.contains(p) || listener == null) return;
-            listener.onKeyTap(p.key);
+            listener.onKeyRepeat(p.key);
             handler.postDelayed(this, 60);
         }
     };
