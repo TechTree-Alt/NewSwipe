@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 첫 시작 가이드가 나갈 때: 조금 커지며 빠르게 사라진다. -->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:interpolator="@android:interpolator/fast_out_linear_in"
+    android:shareInterpolator="true">
+    <alpha
+        android:duration="130"
+        android:fromAlpha="1"
+        android:toAlpha="0" />
+    <scale
+        android:duration="170"
+        android:fromXScale="1"
+        android:fromYScale="1"
+        android:pivotX="50%"
+        android:pivotY="50%"
+        android:toXScale="1.06"
+        android:toYScale="1.06" />
+</set>

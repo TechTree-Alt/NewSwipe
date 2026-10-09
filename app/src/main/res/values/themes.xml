@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 밝은 테마. 다크 모드에서는 values-night/themes.xml이 쓰인다. 제목은 화면 안에 직접 그린다. -->
+    <style name="Theme.NewSwipe" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:colorAccent">#2F62E8</item>
+        <item name="android:statusBarColor">#F4F5F8</item>
+        <item name="android:navigationBarColor">#F4F5F8</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:windowBackground">@color/settings_background</item>
+    </style>
+
+    <!--
+        키보드 창 테마. 하단 바(내비게이션 바) 배경을 키보드 색으로 칠하고, 밝은 배경에서는 아이콘을 어둡게 한다.
+        일부 제조사(비보 등)의 키보드 하단 바는 창의 내비게이션 바 색을 보고 아이콘 색을 정하는 것으로 보여
+        테마에서도 지정한다.
+    -->
+    <style name="Theme.NewSwipe.Ime" parent="android:Theme.DeviceDefault.InputMethod">
+        <item name="android:navigationBarColor">@color/keyboard_background</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+</resources>

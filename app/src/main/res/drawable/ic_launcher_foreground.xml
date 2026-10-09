@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 키 하나를 아래로 미는 모양: 스와이프 단모음을 나타낸다. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M40,30h28a9,9 0,0 1,9 9v30a9,9 0,0 1,-9 9h-28a9,9 0,0 1,-9 -9v-30a9,9 0,0 1,9 -9z" />
+    <path
+        android:pathData="M54,40v24M44.5,55.5L54,65L63.5,55.5"
+        android:strokeWidth="6"
+        android:strokeColor="#2F62E8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 키 진동. 이 앱이 요청하는 유일한 권한이다 (설치 시 자동 허용되는 일반 권한). -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- 음성 입력 버튼이 기기에 설치된 음성 입력기(예: Google 음성 입력)를 찾을 수 있게 한다. -->
+    <queries>
+        <intent>
+            <action android:name="android.view.InputMethod" />
+        </intent>
+    </queries>
+
+    <application
+        android:allowBackup="false"
+        android:enableOnBackInvokedCallback="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.NewSwipe">
+
+        <activity
+            android:name=".SettingsActivity"
+            android:screenOrientation="portrait"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- 첫 시작 가이드. 앱을 처음 열 때 설정 화면이 이 화면을 먼저 띄운다. -->
+        <activity
+            android:name=".OnboardingActivity"
+            android:screenOrientation="portrait"
+            android:exported="false"
+            android:label="@string/app_name"
+            android:windowSoftInputMode="adjustResize|stateHidden" />
+
+        <!-- 런처 아이콘. 이 별칭을 꺼서 런처에서 앱 아이콘을 숨긴다 (설정 화면은 키보드 설정에서도 열린다). -->
+        <activity-alias
+            android:name=".LauncherAlias"
+            android:enabled="true"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="@string/app_name"
+            android:targetActivity=".SettingsActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity
+            android:name=".PopupEditorActivity"
+            android:screenOrientation="portrait"
+            android:exported="false"
+            android:label="@string/app_name" />
+
+        <activity
+            android:name=".SwipeFinalEditorActivity"
+            android:screenOrientation="portrait"
+            android:exported="false"
+            android:label="@string/app_name" />
+
+        <activity
+            android:name=".SwipeVowelEditorActivity"
+            android:screenOrientation="portrait"
+            android:exported="false"
+            android:label="@string/app_name" />
+
+        <activity
+            android:name=".SwipeCustomEditorActivity"
+            android:screenOrientation="portrait"
+            android:exported="false"
+            android:label="@string/app_name" />
+
+        <activity
+            android:name=".SwipeActionEditorActivity"
+            android:screenOrientation="portrait"
+            android:exported="false"
+            android:label="@string/app_name" />
+
+        <activity
+            android:name=".BottomKeysEditorActivity"
+            android:screenOrientation="portrait"
+            android:exported="false"
+            android:label="@string/app_name" />
+
+        <activity
+            android:name=".ToolbarButtonsEditorActivity"
+            android:screenOrientation="portrait"
+            android:exported="false"
+            android:label="@string/app_name" />
+
+        <!-- 클립보드 기록의 이미지를 붙여 넣을 앱에만 잠깐 읽기 권한을 주어 건넨다 (외부에 공개하지 않는다). -->
+        <provider
+            android:name=".clipboard.ClipImageProvider"
+            android:authorities="${applicationId}.clipimages"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+
+        <service
+            android:name=".NewSwipeIME"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_INPUT_METHOD">
+            <intent-filter>
+                <action android:name="android.view.InputMethod" />
+            </intent-filter>
+            <meta-data
+                android:name="android.view.im"
+                android:resource="@xml/method" />
+        </service>
+    </application>
+</manifest>

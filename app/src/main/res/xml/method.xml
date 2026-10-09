@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<input-method xmlns:android="http://schemas.android.com/apk/res/android"
+    android:settingsActivity="com.alternative_studios.newswipe.SettingsActivity"
+    android:supportsSwitchingToNextInputMethod="true">
+
+    <!-- 한/영 전환은 키보드 안의 지구본 키로 하므로 시스템에는 하나의 입력 방식만 등록한다. -->
+    <subtype
+        android:imeSubtypeLocale="ko_KR"
+        android:imeSubtypeMode="keyboard"
+        android:isAsciiCapable="true"
+        android:label="@string/subtype_label"
+        android:languageTag="ko-KR" />
+</input-method>

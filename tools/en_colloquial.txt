@@ -1,0 +1,22 @@
+# 영어 구어체·축약형 보완 목록 (직접 고른 기본 표현)
+# 형식: "점수:" 다음에 공백으로 구분한 단어들. 점수는 백만 단어당 빈도로 취급한다 (클수록 먼저 추천).
+# 목록의 단어는 본 사전에 이미 있어도 이 점수가 더 크면 점수를 올려 준다.
+
+# --- 축약형 (아포스트로피 포함) ---
+900: i'm it's that's don't i'll you're we're they're i've can't didn't
+500: what's let's there's here's he's she's isn't aren't wasn't doesn't won't
+300: i'd you'll you've we'll we've they'll they've couldn't wouldn't shouldn't haven't hasn't weren't
+200: who's how's where's when's ain't y'all ma'am o'clock
+
+# --- 인사·응답·감사·사과 ---
+800: hello hi hey thanks thank please sorry okay ok yeah yes no sure
+400: yep yup nope cool great awesome nice perfect fine good morning evening night
+300: bye goodbye later welcome congrats congratulations cheers appreciate apologies
+200: lol omg btw asap fyi thx pls idk imo brb ttyl tbh
+
+# --- 일상 대화 ---
+400: tomorrow today tonight yesterday weekend lunch dinner breakfast coffee tea
+300: meeting appointment schedule available busy tired hungry excited worried
+250: where when what why how who which whatever whenever wherever
+200: maybe probably definitely absolutely actually basically seriously honestly exactly
+150: gonna wanna gotta kinda sorta dunno lemme gimme

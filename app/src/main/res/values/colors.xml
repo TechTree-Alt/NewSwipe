@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="settings_background">#F4F5F8</color>
+    <color name="ic_launcher_background">#2F62E8</color>
+    <!-- 키보드 배경(KeyboardTheme.background)과 같은 색. 하단 바 배경으로 쓴다. -->
+    <color name="keyboard_background">#E6E8EC</color>
+</resources>

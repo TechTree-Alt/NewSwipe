@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NewSwipe</string>
+    <!-- 입력 방법 선택 창에 보이는 이름. 기기에 따라 앱 이름 없이 이것만 보이므로 앱 이름을 함께 쓴다. -->
+    <string name="subtype_label">NewSwipe (Korean · English)</string>
+</resources>

@@ -1,0 +1,136 @@
+package com.alternative_studios.newswipe;
+
+import android.app.Activity;
+import android.content.Context;
+import android.text.InputType;
+import android.util.TypedValue;
+import android.view.Gravity;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+
+import com.alternative_studios.newswipe.ui.Ui;
+
+/**
+ * 설정 화면의 틀: 위에 고정되는 머리글(제목·부제와 '키보드 열기' 버튼)과 그 아래 입력 시험 창, 나머지는 스크롤 내용.
+ * 설정을 바꾸는 동안 키보드를 계속 띄워 두고 결과를 볼 수 있다. 설정 화면과 편집 화면이 함께 쓴다.
+ */
+final class SettingsFrame {
+    private final Activity activity;
+    private final AppTheme colors;
+    private final String title, subtitle;
+    private LinearLayout testBar;
+    private EditText testInput;
+    private TextView testButton;
+    /** 입력창이 열려 있어야 하는 상태. 애니메이션 중에도 버튼 글자를 바로 바꾸기 위해 따로 기억한다. */
+    private boolean testBarWanted;
+
+    SettingsFrame(Activity activity, String title, String subtitle) {
+        this.activity = activity;
+        this.colors = AppTheme.of(activity);
+        this.title = title;
+        this.subtitle = subtitle;
+    }
+
+    /** 머리글·입력 시험 창과 content(스크롤 뷰)를 한 화면으로 묶어 돌려준다. setContentView에 넘기면 된다. */
+    View wrap(View content) {
+        LinearLayout root = new LinearLayout(activity);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(colors.bg);
+        root.addView(buildHeader(), matchWrap());
+        buildTestBar();
+        root.addView(testBar, matchWrap());
+        root.addView(content, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        Ui.padForSystemBars(root);
+        return root;
+    }
+
+    private static LinearLayout.LayoutParams matchWrap() {
+        return new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+    }
+
+    private View buildHeader() {
+        Context c = activity;
+        LinearLayout header = new LinearLayout(c);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        int pad = Ui.dp(c, 16);
+        header.setPadding(pad + Ui.dp(c, 4), Ui.dp(c, 12), pad, Ui.dp(c, 8));
+        LinearLayout titles = new LinearLayout(c);
+        titles.setOrientation(LinearLayout.VERTICAL);
+        TextView titleView = new TextView(c);
+        titleView.setText(title);
+        titleView.setTextColor(colors.text);
+        titleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
+        titleView.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        titles.addView(titleView);
+        TextView sub = new TextView(c);
+        sub.setText(subtitle);
+        sub.setTextColor(colors.hint);
+        sub.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        titles.addView(sub);
+        header.addView(titles, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        testButton = new TextView(c);
+        testButton.setTextColor(colors.onAccent);
+        testButton.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        testButton.setGravity(Gravity.CENTER);
+        testButton.setPadding(Ui.dp(c, 16), Ui.dp(c, 10), Ui.dp(c, 16), Ui.dp(c, 10));
+        testButton.setBackground(Ui.ripple(0x33FFFFFF, Ui.round(colors.accent, Ui.dp(c, 20)), Ui.dp(c, 20)));
+        testButton.setClickable(true);
+        testButton.setOnClickListener(v -> toggleTestKeyboard());
+        header.addView(testButton);
+        return header;
+    }
+
+    /** 머리글 아래에 고정되는 입력창. */
+    private void buildTestBar() {
+        Context c = activity;
+        testBar = new LinearLayout(c);
+        testBar.setVisibility(View.GONE);
+        int pad = Ui.dp(c, 16);
+        testBar.setPadding(pad, 0, pad, Ui.dp(c, 8));
+        testInput = new EditText(c);
+        testInput.setHint("여기에 입력해 보세요");
+        testInput.setTextColor(colors.text);
+        testInput.setHintTextColor(colors.hint);
+        testInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+        testInput.setMaxLines(3);
+        testInput.setBackground(Ui.round(colors.card, Ui.dp(c, 12)));
+        testInput.setPadding(Ui.dp(c, 14), Ui.dp(c, 10), Ui.dp(c, 14), Ui.dp(c, 10));
+        testBar.addView(testInput, matchWrap());
+        updateTestButton();
+    }
+
+    private void updateTestButton() {
+        testButton.setText(testBarWanted ? "키보드 닫기" : "키보드 열기");
+    }
+
+    private void toggleTestKeyboard() {
+        testBarWanted = !testBarWanted;
+        InputMethodManager imm = (InputMethodManager) activity.getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (!testBarWanted) {
+            if (imm != null) imm.hideSoftInputFromWindow(testInput.getWindowToken(), 0);
+            Ui.setVisibleAnimated(testBar, false);
+            testInput.clearFocus();
+        } else {
+            // 입력창이 아직 펼쳐지는 중에는 포커스와 키보드 연결이 제대로 되지 않을 수 있어서,
+            // 화면 배치 직후와 펼침이 끝난 뒤에 다시 한 번 확인한다.
+            Ui.setVisibleAnimated(testBar, true, this::focusTestInput);
+            testBar.post(this::focusTestInput);
+        }
+        updateTestButton();
+    }
+
+    /** 입력 시험 창에 포커스를 주고 키보드를 연결한다. 이미 포커스가 있으면 키보드만 띄운다. */
+    private void focusTestInput() {
+        if (!testBarWanted || activity.isFinishing() || activity.isDestroyed()) return;
+        testInput.setCursorVisible(true);
+        if (!testInput.hasFocus()) testInput.requestFocus();
+        if (!testInput.hasFocus()) return;
+        InputMethodManager imm = (InputMethodManager) activity.getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) imm.showSoftInput(testInput, InputMethodManager.SHOW_IMPLICIT);
+    }
+}

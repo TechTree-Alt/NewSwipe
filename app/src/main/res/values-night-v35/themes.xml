@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Android 15부터는 창이 내비게이션 바 뒤까지 그려지면서 창의 내비게이션 바 색이 투명으로 바뀐다.
+        그러면 제조사 하단 바가 배경을 어둡다고 보고 밝은 아이콘을 쓰므로, 키보드 창은 이 강제 적용에서 빠진다.
+        (targetSdk를 36 이상으로 올리면 시스템이 이 설정을 무시하므로 build.gradle.kts에서 35로 둔다.)
+    -->
+    <style name="Theme.NewSwipe.Ime" parent="android:Theme.DeviceDefault.InputMethod">
+        <item name="android:navigationBarColor">@color/keyboard_background</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
+    </style>
+</resources>

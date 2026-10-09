@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.NewSwipe" parent="android:Theme.Material.NoActionBar">
+        <item name="android:colorAccent">#7FA6FF</item>
+        <item name="android:statusBarColor">#121316</item>
+        <item name="android:navigationBarColor">#121316</item>
+        <item name="android:windowBackground">@color/settings_background</item>
+    </style>
+
+    <style name="Theme.NewSwipe.Ime" parent="android:Theme.DeviceDefault.InputMethod">
+        <item name="android:navigationBarColor">@color/keyboard_background</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>
