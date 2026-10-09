@@ -125,9 +125,9 @@ public final class SettingsActivity extends Activity {
 
     /** 하위 메뉴 정의: {id, 제목, 설명}. */
     private static final String[][] SECTIONS = {
-            {"layout", "자판 레이아웃", "한글 자판 배열, 기능키 배열"},
+            {"layout", "자판 레이아웃", "한글 자판 배열, 숫자 줄, 기능키 배열"},
             {"theme", "테마", "화면 모드, 강조 색"},
-            {"look", "자판 모양", "키보드 높이, 여백, 숫자 줄"},
+            {"look", "자판 모양", "키보드 높이, 글자 크기, 여백"},
             {"input", "입력 동작", "쌍자음, 이중모음, 자동 대소문자, 마침표"},
             {"keys", "길게 누르기", "문자 입력, 기능키 길게 누르기"},
             {"swipe", "밀어서 글자 입력", "쌍자음, 이중모음, 완전 사용자화"},
@@ -279,7 +279,6 @@ public final class SettingsActivity extends Activity {
         look.addView(slider("키보드 높이", Prefs.KEYBOARD_HEIGHT, prefs.keyboardHeight(), 70, 140, 5, "%"));
         look.addView(slider("키 글자 크기", Prefs.KEY_TEXT_SIZE, prefs.keyTextSize(), 70, 140, 5, "%"));
         look.addView(slider("키 곡률", Prefs.KEY_RADIUS, prefs.keyRadiusDp(), 0, 24, 1, "dp"));
-        look.addView(toggle("숫자 줄 표시", "자판 위에 1~0 숫자 줄을 보여 줍니다.", Prefs.NUMBER_ROW, prefs.numberRow()));
         View shadowStrength = subGroup(slider("그림자 세기", Prefs.KEY_SHADOW_STRENGTH, prefs.keyShadowStrength(), 10, 100, 5, "%"));
         look.addView(toggle("키 그림자", "키 아래에 그림자를 그려 입체감을 줍니다.",
                 Prefs.KEY_SHADOW, prefs.keyShadow(), shadowStrength));
@@ -342,6 +341,12 @@ public final class SettingsActivity extends Activity {
         // 바꾸면 위의 미리보기도 바로 다시 그린다.
         keyLayout.addView(toggle("격자 정렬", GRID_DESC, prefs.gridLayout(), on -> {
             prefs.raw().edit().putBoolean(Prefs.GRID_LAYOUT, on).apply();
+            refreshLayoutPreview();
+        }));
+
+        LinearLayout numberKeys = section("숫자 키");
+        numberKeys.addView(toggle("숫자 줄 표시", "자판 위에 1~0 숫자 줄을 보여 줍니다.", prefs.numberRow(), on -> {
+            prefs.raw().edit().putBoolean(Prefs.NUMBER_ROW, on).apply();
             refreshLayoutPreview();
         }));
 
