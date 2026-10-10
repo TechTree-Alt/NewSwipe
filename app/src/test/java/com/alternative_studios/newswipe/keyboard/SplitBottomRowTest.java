@@ -603,4 +603,51 @@ public class SplitBottomRowTest {
         }
         assertTrue(KeyboardLayout.isDigit("7") && !KeyboardLayout.isDigit("a") && !KeyboardLayout.isDigit("12"));
     }
+
+    @Test
+    public void symbolPageKeysCanHaveLongPressCharacters() throws Exception {
+        assertEquals("sym", KeyboardLayout.groupOf(true, "@"));
+        assertEquals("sym", KeyboardLayout.groupOf(false, "₩"));
+        assertEquals("sym", KeyboardLayout.groupOf(true, ","));
+        assertEquals("en", KeyboardLayout.groupOf(false, "a"));
+        // 기본값: 편집 화면이 보여 줄 값은 자판에 실제로 있는 값과 같다.
+        assertEquals("€", KeyboardLayout.defaultPopup(true, null, "$", true)[0]);
+        assertTrue(KeyboardLayout.defaultPopup(true, null, "!", true)[0].equals("¡"));
+        FakeSp sp = new FakeSp();
+        Prefs p = portraitView(sp);
+        KeyboardLayout before = KeyboardLayout.symbols(true, p);
+        sp.m.put("popup_sym_@", "A\nB");
+        sp.m.put("popup_sym_!", "");
+        for (KeyboardLayout l : new KeyboardLayout[]{KeyboardLayout.symbols(true, p), KeyboardLayout.symbols(false, p)}) {
+            for (KeyboardLayout.Row row : l.rows) {
+                for (Key k : row.keys) {
+                    if (k.type != Key.CHAR) continue;
+                    if ("@".equals(k.label)) assertEquals(2, k.popup.length);
+                    if ("!".equals(k.label)) assertTrue("빈 값은 없음", k.popup == null);
+                    if ("1".equals(k.label)) assertTrue("숫자 줄은 그대로", k.popup != null && "¹".equals(k.popup[0]));
+                }
+            }
+        }
+        assertTrue(before != null);
+        // 편집 화면용 줄: 숫자 줄과 맨 아래 줄은 빼고 글자 키 이름과 폭만 돌려준다.
+        for (boolean five : new boolean[]{false, true}) {
+            FakeSp sp2 = new FakeSp();
+            Prefs p2 = portraitView(sp2);
+            sp2.m.put(Prefs.NUMBER_ROW, five);
+            for (boolean page2 : new boolean[]{false, true}) {
+                java.util.List<java.util.List<Object[]>> rows = KeyboardLayout.editableSymbolRows(page2, p2);
+                assertEquals(five ? 3 : 2, rows.size());
+                for (java.util.List<Object[]> row : rows) {
+                    float total = 0f;
+                    int keys = 0;
+                    for (Object[] c : row) {
+                        total += (Float) c[1];
+                        if (c[0] != null) keys++;
+                    }
+                    assertEquals(10f, total, 0.001f);
+                    assertTrue(keys >= 7);
+                }
+            }
+        }
+    }
 }

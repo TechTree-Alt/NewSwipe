@@ -157,11 +157,18 @@ public final class KeyboardLayout {
 
     public static String groupOf(boolean korean, String label) {
         if (isDigit(label)) return GROUP_NUM;   // 숫자 줄의 키는 한글·영어 자판이 함께 쓴다
-        return label.equals(",") || label.equals(".") ? GROUP_SYM : korean ? GROUP_KO : GROUP_EN;
+        return isSymbol(label) ? GROUP_SYM : korean ? GROUP_KO : GROUP_EN;   // 기호 키(쉼표·온점 포함)는 모든 자판이 함께 쓴다
     }
 
     /** 숫자 줄의 키 이름들. */
     public static final String[] NUMBER_KEYS = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"};
+
+    /** 글자도 숫자도 아닌 한 글자(쉼표·온점·기호)인지. */
+    static boolean isSymbol(String label) {
+        if (label == null || label.isEmpty() || isDigit(label)) return false;
+        int cp = label.codePointAt(0);
+        return !Character.isLetter(cp) && !Character.isDigit(cp);
+    }
 
     /** 숫자 한 글자인지. */
     public static boolean isDigit(String label) {
@@ -172,6 +179,8 @@ public final class KeyboardLayout {
     public static String[] defaultPopup(boolean korean, Prefs prefs, String label, boolean periodComma) {
         if (label.equals(",")) return COMMA_POPUP;
         if (label.equals(".")) return periodPopup(periodComma);
+        if (isDigit(label)) return null;   // 숫자 줄의 키는 기본 문자가 없다
+        if (isSymbol(label)) return symbolDefault(label);
         boolean ns = newSwipe(prefs);
         String[][] letters = korean ? (ns ? D7_ROWS : KOREAN_ROWS) : ENGLISH_ROWS;
         String[][][] popups = korean ? (ns ? D7_POPUPS : KOREAN_POPUPS) : ENGLISH_POPUPS;
@@ -413,10 +422,14 @@ public final class KeyboardLayout {
     }
 
     public static KeyboardLayout symbols(boolean korean, Prefs prefs) {
+        return symbols(korean, prefs, prefs != null && prefs.numberRow());
+    }
+
+    /** five: 숫자 줄을 켠 5줄 배열인지 (기본값을 찾을 때는 prefs 없이 두 배열을 모두 만든다). */
+    private static KeyboardLayout symbols(boolean korean, Prefs prefs, boolean five) {
         String back = korean ? "가" : "ABC";
         List<Row> rows = new ArrayList<>();
         // 숫자 줄을 켜면 한글/영어 자판과 같은 5줄(첫 줄 0.78)로 맞추고, 둘째 줄에 기호 줄을 더 넣는다.
-        boolean five = prefs != null && prefs.numberRow();
         rows.add(charRow(new String[]{"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"},
                 new String[][]{{"¹", "½", "⅓", "¼"}, {"²", "⅔"}, {"³", "¾"}, {"⁴"}, null, null, null, null,
                         null, {"ⁿ", "∅"}}, five ? 0.78f : 1f));
@@ -435,13 +448,17 @@ public final class KeyboardLayout {
         for (int i = 0; i < s3.length; i++) r3.add(ch(s3[i], p3[i]));
         r3.add(fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1.5f));
         rows.add(gridSides(r3, prefs));
+        applySymbolPopups(rows, prefs);
         finishSymbols(rows, back, prefs);
         return new KeyboardLayout(SYMBOLS, 10, rows);
     }
 
     public static KeyboardLayout symbols2(boolean korean, Prefs prefs) {
+        return symbols2(korean, prefs, prefs != null && prefs.numberRow());
+    }
+
+    private static KeyboardLayout symbols2(boolean korean, Prefs prefs, boolean five) {
         String back = korean ? "가" : "ABC";
-        boolean five = prefs != null && prefs.numberRow();
         List<Row> rows = new ArrayList<>();
         List<Key> r3 = new ArrayList<>();
         r3.add(fn(Key.SYMBOL_PAGE, "?123", 1.5f));
@@ -473,8 +490,55 @@ public final class KeyboardLayout {
         }
         r3.add(fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1.5f));
         rows.add(gridSides(r3, prefs));
+        applySymbolPopups(rows, prefs);
         finishSymbols(rows, back, prefs);
         return new KeyboardLayout(SYMBOLS_2, 10, rows);
+    }
+
+    /**
+     * 기호 자판의 글자 키(숫자 줄 제외)에 사용자가 정한 길게 누르기 문자를 적용한다.
+     * 같은 글자는 1쪽·2쪽과 쉼표·온점 키가 같은 설정을 쓴다.
+     */
+    private static void applySymbolPopups(List<Row> rows, Prefs prefs) {
+        if (prefs == null) return;
+        for (Row row : rows) {
+            for (Key k : row.keys) {
+                if (k.type == Key.CHAR && !k.grayStyle && !isDigit(k.label)) k.popup = popupFor(prefs, true, k.label, k.popup);
+            }
+        }
+    }
+
+    /** 기호 자판에서 label 키의 기본 길게 누르기 문자 (1쪽을 먼저, 숫자 줄을 켠 배열과 끈 배열 모두 찾는다). 없으면 null. */
+    private static String[] symbolDefault(String label) {
+        for (boolean five : new boolean[]{true, false}) {
+            for (KeyboardLayout l : new KeyboardLayout[]{symbols(true, null, five), symbols2(true, null, five)}) {
+                for (Row row : l.rows) {
+                    for (Key k : row.keys) {
+                        if (k.type == Key.CHAR && !k.grayStyle && label.equals(k.label)) return k.popup;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 길게 누르기 문자 편집 화면의 기호 탭에 놓을 키들: 지금 설정의 기호 자판 1쪽·2쪽을 그대로 줄 단위로 돌려준다
+     * (숫자 줄과 맨 아래 줄은 빼고, 글자 키가 아닌 칸은 {@code null}로 폭만 남긴다). 각 칸은 {이름, 폭} 쌍이다.
+     */
+    public static java.util.List<java.util.List<Object[]>> editableSymbolRows(boolean page2, Prefs prefs) {
+        KeyboardLayout l = page2 ? symbols2(true, prefs) : symbols(true, prefs);
+        java.util.List<java.util.List<Object[]>> out = new ArrayList<>();
+        for (int r = 1; r < l.rows.length - 1; r++) {
+            java.util.List<Object[]> line = new ArrayList<>();
+            for (Key k : l.rows[r].keys) {
+                if (k.type == Key.GAP) continue;
+                boolean editable = k.type == Key.CHAR && !k.grayStyle && !isDigit(k.label);
+                line.add(new Object[]{editable ? k.label : null, k.weight});
+            }
+            out.add(line);
+        }
+        return out;
     }
 
     /** 숫자 입력란(전화번호, 숫자)용 자판. */
