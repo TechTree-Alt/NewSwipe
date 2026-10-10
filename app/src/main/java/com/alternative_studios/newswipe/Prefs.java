@@ -20,6 +20,7 @@ public final class Prefs {
     public static final String VIBRATE_DELETE = "vibrate_delete";     // 1 약하게(틱), 2 기본(클릭), 3 강하게(강한 클릭)
     public static final String VIBRATE_SPACE = "vibrate_space";
     public static final String VIBRATE_ENTER = "vibrate_enter";
+    public static final String VIBRATE_SHIFT = "vibrate_shift";
     public static final String VIBRATE_SYMBOL = "vibrate_symbol";     // 기호 키 (?123·가/ABC·기호 1/2쪽)
     public static final String VIBRATE_LANGUAGE = "vibrate_language"; // 언어 전환 키 (지구본·이모지 열기)
     public static final String VIBRATE_TOOLBAR = "vibrate_toolbar";   // 도구 막대 버튼
@@ -335,7 +336,7 @@ public final class Prefs {
                 TOOL_EMOJI_SWIPE, TOOL_CLIPBOARD_SWIPE, TOOL_UNDO_SWIPE));
         MENU_PREFIXES.put("swipefn", keys("swipe_fn_", "swipe_toolbar_", "swipe_kb_"));
         MENU_KEYS.put("feedback", keys(VIBRATE, VIBRATE_MS, VIBRATE_STYLE, VIBRATE_AMP, VIBRATE_PER_KEY,
-                VIBRATE_DELETE, VIBRATE_SPACE, VIBRATE_ENTER, VIBRATE_SYMBOL, VIBRATE_LANGUAGE, VIBRATE_TOOLBAR,
+                VIBRATE_DELETE, VIBRATE_SPACE, VIBRATE_ENTER, VIBRATE_SHIFT, VIBRATE_SYMBOL, VIBRATE_LANGUAGE, VIBRATE_TOOLBAR,
                 VIBRATE_GESTURE_ON, VIBRATE_GESTURE_LEVEL, SOUND, SOUND_VOLUME));
         MENU_KEYS.put("tools", keys(TOOLBAR, TOOLBAR_BOTTOM, TOOLBAR_HEIGHT, TOOL_BUTTON_SIZE, CLIPBOARD_HISTORY, CLIPBOARD_IMAGES, TOOL_ORDER, TOOL_CLIPBOARD,
                 TOOL_EMOJI, VOICE_KEY, TOOL_UNDO, TOOL_SETTINGS, TOOL_ONE_HAND, TOOL_HIDE));
@@ -454,6 +455,7 @@ public final class Prefs {
     public int vibrateDelete() { return sp.getInt(VIBRATE_DELETE, 2); }
     public int vibrateSpace() { return sp.getInt(VIBRATE_SPACE, 2); }
     public int vibrateEnter() { return sp.getInt(VIBRATE_ENTER, 2); }
+    public int vibrateShift() { return sp.getInt(VIBRATE_SHIFT, 2); }
     public int vibrateSymbol() { return sp.getInt(VIBRATE_SYMBOL, 2); }
     public int vibrateLanguage() { return sp.getInt(VIBRATE_LANGUAGE, 2); }
     public int vibrateToolbar() { return sp.getInt(VIBRATE_TOOLBAR, 2); }

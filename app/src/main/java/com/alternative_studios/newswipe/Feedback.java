@@ -20,7 +20,7 @@ final class Feedback {
     private boolean vibrate, sound, perKey, gesture;
     private float volume;
     private int deleteLevel = BASE, spaceLevel = BASE, enterLevel = BASE, gestureLevel = BASE,
-            symbolLevel = BASE, languageLevel = BASE, toolbarLevel = BASE;
+            shiftLevel = BASE, symbolLevel = BASE, languageLevel = BASE, toolbarLevel = BASE;
     /** 단계별 고정 진동 (인덱스 = 단계). */
     private final VibrationEffect[] levels = new VibrationEffect[4];
     /** 일반 키를 눌렀을 때의 진동 (약하게·기본·강하게 중 하나이거나 직접 설정한 값). */
@@ -47,6 +47,7 @@ final class Feedback {
         deleteLevel = clampLevel(prefs.vibrateDelete());
         spaceLevel = clampLevel(prefs.vibrateSpace());
         enterLevel = clampLevel(prefs.vibrateEnter());
+        shiftLevel = clampLevel(prefs.vibrateShift());
         symbolLevel = clampLevel(prefs.vibrateSymbol());
         languageLevel = clampLevel(prefs.vibrateLanguage());
         toolbarLevel = clampLevel(prefs.vibrateToolbar());
@@ -127,6 +128,7 @@ final class Feedback {
                     case Key.DELETE: e = levels[deleteLevel]; break;
                     case Key.SPACE: e = levels[spaceLevel]; break;
                     case Key.ENTER: e = levels[enterLevel]; break;
+                    case Key.SHIFT: e = levels[shiftLevel]; break;
                     case Key.TO_SYMBOLS: case Key.TO_LETTERS: case Key.SYMBOL_PAGE:
                         e = levels[symbolLevel];
                         break;
