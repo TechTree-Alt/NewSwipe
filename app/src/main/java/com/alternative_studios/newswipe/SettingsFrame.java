@@ -35,12 +35,53 @@ final class SettingsFrame {
     private LinearLayout searchBar;
     private EditText searchInput;
     private boolean searchWanted;
+    /** Android 13+의 뒤로 가기 처리 (입력창이 열려 있는 동안만 등록한다). */
+    private Object backCallback;
+    /** 12 이하에서 Activity.onBackPressed가 이 틀을 찾는 데 쓴다. */
+    private static final java.util.Map<Activity, SettingsFrame> FRAMES = new java.util.WeakHashMap<>();
 
     SettingsFrame(Activity activity, String title, String subtitle) {
         this.activity = activity;
         this.colors = AppTheme.of(activity);
         this.title = title;
         this.subtitle = subtitle;
+        FRAMES.put(activity, this);
+    }
+
+    /**
+     * 뒤로 가기: 검색창이나 키보드 시험 입력창이 열려 있으면 그것부터 닫는다. 닫았으면 true.
+     * Android 12 이하에서는 화면(Activity)의 onBackPressed가 이것을 부르고, 13 이상은 입력창이 열려 있는 동안 등록한 콜백이 부른다.
+     */
+    static boolean consumeBack(Activity activity) {
+        SettingsFrame frame = FRAMES.get(activity);
+        return frame != null && frame.closeInputIfOpen();
+    }
+
+    private boolean closeInputIfOpen() {
+        if (searchWanted) {
+            toggleSearch();
+            return true;
+        }
+        if (testBarWanted) {
+            toggleTestKeyboard();
+            return true;
+        }
+        return false;
+    }
+
+    /** 입력창이 열려 있는 동안에만 Android 13+의 뒤로 가기 콜백을 등록하고, 닫히면 풀어서 평소 뒤로 가기가 그대로 되게 한다. */
+    private void updateBackCallback() {
+        if (android.os.Build.VERSION.SDK_INT < 33) return;
+        boolean needed = searchWanted || testBarWanted;
+        android.window.OnBackInvokedDispatcher dispatcher = activity.getOnBackInvokedDispatcher();
+        if (needed && backCallback == null) {
+            android.window.OnBackInvokedCallback cb = this::closeInputIfOpen;
+            backCallback = cb;
+            dispatcher.registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, cb);
+        } else if (!needed && backCallback != null) {
+            dispatcher.unregisterOnBackInvokedCallback((android.window.OnBackInvokedCallback) backCallback);
+            backCallback = null;
+        }
     }
 
     /** 키보드 열기 대신 검색 버튼과 검색창을 둔다. 검색창을 닫으면 빈 검색어로 알린다. */
@@ -163,10 +204,12 @@ final class SettingsFrame {
             searchInput.clearFocus();
             Ui.setVisibleAnimated(searchBar, false);
             onSearch.accept("");
+            updateBackCallback();
             return;
         }
         Ui.setVisibleAnimated(searchBar, true, this::focusSearch);
         searchBar.post(this::focusSearch);
+        updateBackCallback();
     }
 
     private void focusSearch() {
@@ -214,6 +257,7 @@ final class SettingsFrame {
             testBar.post(this::focusTestInput);
         }
         updateTestButton();
+        updateBackCallback();
     }
 
     /** 입력 시험 창에 포커스를 주고 키보드를 연결한다. 이미 포커스가 있으면 키보드만 띄운다. */

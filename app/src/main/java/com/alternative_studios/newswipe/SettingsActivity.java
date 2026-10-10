@@ -2692,4 +2692,10 @@ public final class SettingsActivity extends Activity {
     private static LinearLayout.LayoutParams matchWrap() {
         return new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
     }
+
+    /** 뒤로 가기: 검색창이나 키보드 시험 입력창이 열려 있으면 그것부터 닫고, 그다음에 이전 화면으로 간다 (Android 12 이하). */
+    @Override
+    public void onBackPressed() {
+        if (!SettingsFrame.consumeBack(this)) super.onBackPressed();
+    }
 }
