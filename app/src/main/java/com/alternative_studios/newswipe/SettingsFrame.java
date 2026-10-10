@@ -12,11 +12,14 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.alternative_studios.newswipe.keyboard.Icons;
+import com.alternative_studios.newswipe.ui.IconButton;
 import com.alternative_studios.newswipe.ui.Ui;
 
 /**
  * 설정 화면의 틀: 위에 고정되는 머리글(제목·부제와 '키보드 열기' 버튼)과 그 아래 입력 시험 창, 나머지는 스크롤 내용.
  * 설정을 바꾸는 동안 키보드를 계속 띄워 두고 결과를 볼 수 있다. 설정 화면과 편집 화면이 함께 쓴다.
+ * 설정 첫 화면은 withSearch()로 '키보드 열기' 대신 동그란 검색 버튼과 검색창을 둔다.
  */
 final class SettingsFrame {
     private final Activity activity;
@@ -27,6 +30,11 @@ final class SettingsFrame {
     private TextView testButton;
     /** 입력창이 열려 있어야 하는 상태. 애니메이션 중에도 버튼 글자를 바로 바꾸기 위해 따로 기억한다. */
     private boolean testBarWanted;
+    /** 설정 검색 (첫 화면 전용): 검색어가 바뀔 때마다 부른다. null이면 검색 없이 '키보드 열기'를 쓴다. */
+    private java.util.function.Consumer<String> onSearch;
+    private LinearLayout searchBar;
+    private EditText searchInput;
+    private boolean searchWanted;
 
     SettingsFrame(Activity activity, String title, String subtitle) {
         this.activity = activity;
@@ -35,14 +43,25 @@ final class SettingsFrame {
         this.subtitle = subtitle;
     }
 
+    /** 키보드 열기 대신 검색 버튼과 검색창을 둔다. 검색창을 닫으면 빈 검색어로 알린다. */
+    SettingsFrame withSearch(java.util.function.Consumer<String> onQuery) {
+        this.onSearch = onQuery;
+        return this;
+    }
+
     /** 머리글·입력 시험 창과 content(스크롤 뷰)를 한 화면으로 묶어 돌려준다. setContentView에 넘기면 된다. */
     View wrap(View content) {
         LinearLayout root = new LinearLayout(activity);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(colors.bg);
         root.addView(buildHeader(), matchWrap());
-        buildTestBar();
-        root.addView(testBar, matchWrap());
+        if (onSearch != null) {
+            buildSearchBar();
+            root.addView(searchBar, matchWrap());
+        } else {
+            buildTestBar();
+            root.addView(testBar, matchWrap());
+        }
         root.addView(content, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
         Ui.padForSystemBars(root);
         return root;
@@ -73,6 +92,15 @@ final class SettingsFrame {
         titles.addView(sub);
         header.addView(titles, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
+        if (onSearch != null) {
+            // 강조색 동그라미 안에 검색 아이콘
+            int size = Ui.dp(c, 44);
+            IconButton search = new IconButton(c, Icons.SEARCH, colors.onAccent, 0x33FFFFFF, "설정 검색");
+            search.setBackground(Ui.ripple(0x33FFFFFF, ovalOf(colors.accent), size / 2f));
+            search.setOnClickListener(v -> toggleSearch());
+            header.addView(search, new LinearLayout.LayoutParams(size, size));
+            return header;
+        }
         testButton = new TextView(c);
         testButton.setTextColor(colors.onAccent);
         testButton.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
@@ -83,6 +111,70 @@ final class SettingsFrame {
         testButton.setOnClickListener(v -> toggleTestKeyboard());
         header.addView(testButton);
         return header;
+    }
+
+    private static android.graphics.drawable.GradientDrawable ovalOf(int color) {
+        android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
+        g.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        g.setColor(color);
+        return g;
+    }
+
+    /** 머리글 아래에 고정되는 검색창. */
+    private void buildSearchBar() {
+        Context c = activity;
+        searchBar = new LinearLayout(c);
+        searchBar.setVisibility(View.GONE);
+        int pad = Ui.dp(c, 16);
+        searchBar.setPadding(pad, 0, pad, Ui.dp(c, 8));
+        searchInput = new EditText(c);
+        searchInput.setHint("설정 검색");
+        searchInput.setTextColor(colors.text);
+        searchInput.setHintTextColor(colors.hint);
+        searchInput.setSingleLine(true);
+        searchInput.setInputType(InputType.TYPE_CLASS_TEXT);
+        searchInput.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);
+        searchInput.setBackground(Ui.round(colors.card, Ui.dp(c, 12)));
+        searchInput.setPadding(Ui.dp(c, 14), Ui.dp(c, 10), Ui.dp(c, 14), Ui.dp(c, 10));
+        searchInput.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int a, int b, int n) { }
+            @Override public void onTextChanged(CharSequence s, int a, int b, int n) { }
+            @Override public void afterTextChanged(android.text.Editable e) {
+                if (searchWanted) onSearch.accept(e.toString());
+            }
+        });
+        searchInput.setOnEditorActionListener((v, action, ev) -> {
+            hideKeyboard();   // 결과를 훑어볼 수 있게 키보드만 내린다
+            return true;
+        });
+        searchBar.addView(searchInput, matchWrap());
+    }
+
+    private void hideKeyboard() {
+        InputMethodManager imm = (InputMethodManager) activity.getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) imm.hideSoftInputFromWindow(searchInput.getWindowToken(), 0);
+    }
+
+    private void toggleSearch() {
+        searchWanted = !searchWanted;
+        if (!searchWanted) {
+            hideKeyboard();
+            searchInput.setText("");
+            searchInput.clearFocus();
+            Ui.setVisibleAnimated(searchBar, false);
+            onSearch.accept("");
+            return;
+        }
+        Ui.setVisibleAnimated(searchBar, true, this::focusSearch);
+        searchBar.post(this::focusSearch);
+    }
+
+    private void focusSearch() {
+        if (!searchWanted || activity.isFinishing() || activity.isDestroyed()) return;
+        if (!searchInput.hasFocus()) searchInput.requestFocus();
+        if (!searchInput.hasFocus()) return;
+        InputMethodManager imm = (InputMethodManager) activity.getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) imm.showSoftInput(searchInput, InputMethodManager.SHOW_IMPLICIT);
     }
 
     /** 머리글 아래에 고정되는 입력창. */

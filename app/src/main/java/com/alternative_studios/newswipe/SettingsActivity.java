@@ -41,6 +41,8 @@ public final class SettingsActivity extends Activity {
 
     /** 하위 메뉴를 열 때 넘기는 값. 없으면 첫 화면이다. */
     static final String EXTRA_SECTION = "section";
+    /** 검색 결과로 열 때 스크롤해서 깜빡일 항목의 이름 (화면에 보이는 글자). */
+    static final String EXTRA_HIGHLIGHT = "highlight";
 
     private Prefs prefs;
     private LinearLayout list;
@@ -89,6 +91,7 @@ public final class SettingsActivity extends Activity {
         String sectionName = sectionId == null ? null : sectionTitle(sectionId);
         SettingsFrame frame = sectionName == null
                 ? new SettingsFrame(this, getString(R.string.app_name), "밀어서 입력하고 조작하는 한글 입력 시스템")
+                        .withSearch(this::onSearchQuery)
                 : new SettingsFrame(this, sectionName, getString(R.string.app_name));
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
@@ -100,6 +103,9 @@ public final class SettingsActivity extends Activity {
         scroll.addView(list);
         setContentView(frame.wrap(scroll));
         build();
+        // 검색 결과에서 들어왔으면 그 항목까지 스크롤하고 깜빡여 알려 준다.
+        String highlight = getIntent().getStringExtra(EXTRA_HIGHLIGHT);
+        if (highlight != null) scroll.postDelayed(() -> highlightItem(scroll, highlight), 250);
     }
 
     @Override
@@ -258,6 +264,24 @@ public final class SettingsActivity extends Activity {
             if (i > 0) menu.addView(divider());
             menu.addView(menuRow(menuIcon(sec[0]), sec[1], sec[2], v -> openSection(sec[0])));
         }
+
+        // 검색하는 동안에는 위 내용을 통째로 숨기고 검색 결과를 대신 보여 준다.
+        mainWrap = new LinearLayout(this);
+        mainWrap.setOrientation(LinearLayout.VERTICAL);
+        while (list.getChildCount() > 0) {
+            View child = list.getChildAt(0);
+            ViewGroup.LayoutParams lp = child.getLayoutParams();
+            list.removeViewAt(0);
+            mainWrap.addView(child, lp);
+        }
+        list.addView(mainWrap, matchWrap());
+        searchResults = menuCard(new LinearLayout(this));
+        searchResults.setOrientation(LinearLayout.VERTICAL);
+        searchResults.setBackground(Ui.round(cardColor, Ui.dp(this, 16)));
+        searchResults.setVisibility(View.GONE);
+        LinearLayout.LayoutParams rlp = matchWrap();
+        rlp.topMargin = Ui.dp(this, 8);
+        list.addView(searchResults, rlp);
     }
 
     /** 줄이 카드 가장자리까지 닿도록 안쪽 여백을 없애고, 리플이 둥근 모서리를 넘지 않게 자른다. */
@@ -270,6 +294,243 @@ public final class SettingsActivity extends Activity {
 
     private void openSection(String id) {
         startActivity(new Intent(this, SettingsActivity.class).putExtra(EXTRA_SECTION, id));
+    }
+
+    // ---------------------------------------------------------------- 설정 검색
+
+    private LinearLayout mainWrap, searchResults;
+
+    /**
+     * 설정 검색 목록: {화면 id, 항목 이름(그 화면에 보이는 글자 그대로), 같이 찾을 낱말}.
+     * 설정 메뉴와 정보·사용법 화면은 SECTIONS·APP·GUIDE에서 따로 더한다.
+     */
+    private static final String[][] SEARCH_INDEX = {
+            {"look", "키보드 높이", "키 높이 크기"},
+            {"look", "키 글자 크기", "폰트 글씨 크기"},
+            {"look", "키 곡률", "둥글기 모서리 라운드"},
+            {"look", "그림자 세기", "그림자"},
+            {"look", "키 그림자", "입체감"},
+            {"look", "키 누름 미리보기", "말풍선 팝업 확대"},
+            {"look", "길게 눌러 입력할 문자 힌트 없애기", "힌트 숨기기 오른쪽 위"},
+            {"look", "숫자 키 힌트 없애기", "힌트 숨기기"},
+            {"look", "왼쪽 여백", "패딩 간격"},
+            {"look", "오른쪽 여백", "패딩 간격"},
+            {"look", "위쪽 여백", "패딩 간격"},
+            {"look", "아래쪽 여백", "패딩 간격"},
+            {"look", "키 좌우 여백", "키 간격 갭"},
+            {"look", "키 상하 여백", "키 간격 갭"},
+            {"layout", "키 위치·폭 사용자화", "자음 모음 열 폭 위치 배치"},
+            {"layout", "자·모음 균형 레이아웃", "자음 모음 반반 균형"},
+            {"layout", "가로 모드 키보드 사용자화", "가로 화면 landscape"},
+            {"layout", "숫자 줄 표시", "숫자 줄 1234567890 숫자열"},
+            {"layout", "기능키 순서·유무 사용자화", "맨 아래 줄 하단 키 쉼표 지구본 온점 엔터"},
+            {"layout", "격자 정렬", "그리드 정렬 칸"},
+            {"theme", "화면 모드", "다크 라이트 어두운 밝은 야간"},
+            {"theme", "강조 색", "색상 컬러 포인트 테마 색"},
+            {"theme", "색 정렬", "키 색"},
+            {"keys", "문자 길게 누르기 시간", "롱프레스 길게 누르기 시간 지연"},
+            {"keys", "길게 눌러 입력할 문자 편집", "특수문자 팝업 롱프레스"},
+            {"keys", "길게 눌러 문자 입력", "특수문자 롱프레스"},
+            {"keys", "길게 눌러 연속 입력 편집", "반복 입력 연타"},
+            {"keys", "길게 눌러 연속 입력", "반복 입력 연타"},
+            {"keys", "기능키 길게 누르기 시간", "롱프레스 시간"},
+            {"keys", "길게 눌러 지우기", "백스페이스 연속 삭제 계속 지우기"},
+            {"keys", "기호 키를 길게 눌러 이모지 창 열기", "이모티콘 ?123"},
+            {"keys", "기능키 길게 누르기 기능 편집", "롱프레스 기능"},
+            {"keys", "기능키 길게 누르기 기능 완전 사용자화", "롱프레스 기능 커스텀"},
+            {"input", "쌍자음 인식 시간", "연속 탭 된소리 ㄲ ㅆ 시간"},
+            {"input", "자음 연속 탭으로 쌍자음", "된소리 ㄲ ㅆ ㅃ"},
+            {"input", "모음 연속 탭으로 이중모음", "ㅑ ㅛ ㅕ"},
+            {"input", "영어 자동 대문자", "대소문자 자동 대문자 shift 첫 글자"},
+            {"input", "스페이스바 두 번으로 마침표", "점 온점 더블 스페이스"},
+            {"input", "⌫ 버튼 인식 범위 좁히기", "지우기 백스페이스 오타 오입력 터치 영역"},
+            {"input", "스페이스바 인식 범위 좁히기", "스페이스 오타 오입력 터치 영역"},
+            {"swipe", "미는 거리", "스와이프 거리 민감도"},
+            {"swipe", "ㅅ을 위로 밀어서 ㅆ 입력", "쌍시옷 스와이프"},
+            {"swipe", "밀어서 쌍자음", "스와이프 된소리 ㄲ ㅃ"},
+            {"swipe", "밀어서 겹받침", "ㄺ ㄳ 받침"},
+            {"swipe", "겹받침 밀어서 글자 입력 편집", "받침 스와이프"},
+            {"swipe", "밀어서 ㅣ계 이중모음", "ㅑ ㅕ ㅛ ㅠ ㅒ ㅖ 스와이프"},
+            {"swipe", "밀어서 조합형 이중모음", "ㅘ ㅝ ㅢ 스와이프"},
+            {"swipe", "밀어서 조합형 이중모음 입력 편집", "ㅘ ㅝ ㅢ"},
+            {"swipe", "온점 키를 위로 밀어서 쉼표 입력", "마침표 콤마 쉼표 스와이프"},
+            {"swipe", "밀어서 글자 입력 편집", "스와이프 글자 커스텀"},
+            {"swipe", "밀어서 글자 입력 완전 사용자화", "스와이프 커스텀 모든 키"},
+            {"swipefn", "좌우 이동 속도", "커서 이동 속도 스페이스바 트랙패드"},
+            {"swipefn", "상하 이동 속도", "커서 이동 속도 스페이스바 트랙패드"},
+            {"swipefn", "스페이스바를 밀어서 커서 이동", "커서 트랙패드 이동"},
+            {"swipefn", "스페이스바를 밀어서 언어 전환", "한영 전환 한/영 스와이프"},
+            {"swipefn", "⌫ 밀어서 단위 삭제", "백스페이스 단어 삭제 줄 삭제 지우기"},
+            {"swipefn", "기호 키를 위로 밀어서 이모지 열기", "이모티콘 스와이프 ?123"},
+            {"swipefn", "기능키 밀어서 기능 편집", "스와이프 기능 커스텀"},
+            {"swipefn", "기능키 밀어서 기능 완전 사용자화", "스와이프 기능 커스텀"},
+            {"swipefn", "도구 막대를 밀어서 커서 이동", "툴바 커서 줄 맨 앞 맨 뒤"},
+            {"swipefn", "클립보드 버튼을 밀어서 복사·붙여넣기", "복사 붙여넣기 스와이프"},
+            {"swipefn", "이모지 버튼을 아래로 밀어서 입력", "최근 이모티콘"},
+            {"swipefn", "실행 취소 버튼을 아래로 밀어서 다시 실행", "redo undo 되돌리기"},
+            {"swipefn", "도구 막대 밀어서 기능 편집", "툴바 스와이프 기능"},
+            {"swipefn", "도구 막대 밀어서 기능 완전 사용자화", "툴바 스와이프 커스텀"},
+            {"swipefn", "문자 키를 밀어서 커서 이동", "트랙패드 커서"},
+            {"swipefn", "두 손가락으로 밀어서 실행 취소", "undo redo 되돌리기 다시 실행"},
+            {"swipefn", "키보드 밀기 편집", "자판 스와이프 기능"},
+            {"swipefn", "키보드 밀기 완전 사용자화", "자판 스와이프 커스텀"},
+            {"words", "도구 막대 전체를 쓰기", "추천 툴바 전체"},
+            {"words", "추천 단어 뒤에 공백 포함", "띄어쓰기 스페이스"},
+            {"words", "단어 추천", "자동 완성 예측 추천"},
+            {"words", "이모지 추천", "이모티콘 추천"},
+            {"words", "단축어 편집", "줄임말 약어 텍스트 확장"},
+            {"words", "단축어 사용", "줄임말 약어 텍스트 확장"},
+            {"words", "자동 수정", "오타 교정 자동 고침"},
+            {"words", "입력한 단어 학습", "사용자 사전 개인화"},
+            {"words", "단어를 지울 때 확인", "삭제 확인 학습한 단어"},
+            {"words", "학습한 단어 보기", "사용자 사전 목록"},
+            {"words", "학습한 단어 모두 지우기", "사용자 사전 초기화 삭제"},
+            {"feedback", "키 진동", "햅틱 진동 켜기 끄기"},
+            {"feedback", "진동 길이", "햅틱 ms 밀리초 진동 시간"},
+            {"feedback", "진동 강도", "햅틱 세기 진폭"},
+            {"feedback", "키 종류별로 다르게", "진동 지우기 스페이스 엔터 Shift 기호 언어 전환 도구 막대 키 햅틱"},
+            {"feedback", "밀기·길게 누르기 진동", "햅틱 스와이프 롱프레스"},
+            {"feedback", "키 소리", "클릭음 사운드 소리 켜기"},
+            {"feedback", "소리 크기", "볼륨 클릭음"},
+            {"tools", "도구 막대 표시", "툴바 켜기 끄기"},
+            {"tools", "도구 막대 버튼 순서·유무 사용자화", "툴바 버튼 순서 음성 입력 마이크 클립보드 이모지 실행 취소"},
+            {"tools", "자판 아래에 두기", "툴바 위치 아래 위"},
+            {"tools", "도구 막대 높이", "툴바 높이 크기"},
+            {"tools", "도구 버튼 크기", "툴바 아이콘 크기"},
+            {"tools", "이미지 저장", "클립보드 사진"},
+            {"tools", "클립보드 기록 저장", "복사 기록 히스토리"},
+            {"tools", "클립보드 기록 모두 지우기", "복사 기록 삭제"},
+            {"onehand", "자판 폭", "한 손 모드 너비"},
+            {"onehand", "가로 모드 자판 폭", "한 손 모드 너비 가로"},
+            {"onehand", "키 높이", "한 손 모드 높이"},
+            {"onehand", "세로 위치", "한 손 모드 위치 올리기"},
+            {"lab", "아래로 밀기 엄격도", "스와이프 방향 판정 민감도"},
+            {"lab", "위로 밀기 엄격도", "스와이프 방향 판정 민감도"},
+            {"lab", "대화면 기준", "태블릿 폴더블 큰 화면 dp"},
+            {"lab", "대화면 키보드 사용자화", "태블릿 폴더블 큰 화면"},
+            {"lab", "대화면 별도 레이아웃", "태블릿 폴더블 큰 화면"},
+            {"app", "개인정보 처리방침", "프라이버시 privacy 정보"},
+            {"app", "오픈소스 라이선스", "라이센스 license 정보"},
+            {"app", "소스 코드", "깃허브 github 정보"},
+            {"app", "문의", "이슈 버그 제보 연락 정보"},
+            {"app", "런처에 앱 아이콘 표시", "앱 아이콘 숨기기 홈 화면"},
+            {"backup", "설정 가져오기", "복원 불러오기 import"},
+            {"backup", "설정 내보내기", "백업 저장 export"},
+    };
+
+    private void onSearchQuery(String raw) {
+        if (mainWrap == null || searchResults == null) return;
+        String query = raw == null ? "" : raw.trim();
+        boolean on = !query.isEmpty();
+        mainWrap.setVisibility(on ? View.GONE : View.VISIBLE);
+        searchResults.setVisibility(on ? View.VISIBLE : View.GONE);
+        if (!on) return;
+        searchResults.removeAllViews();
+        // 설정 메뉴와 정보·사용법은 메뉴 이름과 설명으로, 나머지는 위 목록으로 찾는다.
+        java.util.List<String[]> entries = new java.util.ArrayList<>();
+        for (String[] sec : SECTIONS) entries.add(new String[]{sec[0], sec[1], sec[2]});
+        entries.add(new String[]{APP[0], APP[1], APP[2]});
+        entries.add(new String[]{USAGE, GUIDE[1], GUIDE[2]});
+        entries.addAll(java.util.Arrays.asList(SEARCH_INDEX));
+        java.util.List<String[]> hits = new java.util.ArrayList<>();   // 이름에서 찾은 것을 먼저
+        java.util.List<String[]> weak = new java.util.ArrayList<>();
+        for (String[] e : entries) {
+            if (matchesAll(query, e[1])) hits.add(e);
+            else if (matchesAll(query, e[1] + " " + e[2] + " " + sectionTitle(e[0]))) weak.add(e);
+        }
+        hits.addAll(weak);
+        boolean unlocked = prefs.setupDone();
+        int shown = 0;
+        for (String[] e : hits) {
+            if (shown >= 40) break;
+            String section = e[0];
+            boolean isMenu = e[1].equals(sectionTitle(section));
+            String title = e[1];
+            if (shown > 0) searchResults.addView(divider());
+            View row = menuRow(menuIcon(section), title, isMenu ? e[2] : sectionTitle(section),
+                    v -> openSection(section, isMenu ? null : title));
+            if (!unlocked) {   // 시작하기를 마치기 전에는 설정 메뉴처럼 누를 수 없다
+                row.setAlpha(0.38f);
+                setEnabledDeep(row, false);
+            }
+            searchResults.addView(row);
+            shown++;
+        }
+        if (shown == 0) {
+            TextView none = new TextView(this);
+            none.setText("일치하는 설정이 없습니다");
+            none.setTextColor(hintColor);
+            none.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+            none.setGravity(Gravity.CENTER);
+            none.setPadding(0, Ui.dp(this, 24), 0, Ui.dp(this, 24));
+            searchResults.addView(none);
+        }
+    }
+
+    /** 검색어의 낱말(띄어 쓴 것)이 모두 text에 들어 있는지. 낱말이 초성뿐이면 초성으로도 찾는다 (예: ㅈㄷ → 진동). */
+    private static boolean matchesAll(String query, String text) {
+        String lower = text.toLowerCase(java.util.Locale.ROOT);
+        String initials = null;
+        for (String token : query.toLowerCase(java.util.Locale.ROOT).split("\\s+")) {
+            if (token.isEmpty() || lower.contains(token)) continue;
+            if (!isInitials(token)) return false;
+            if (initials == null) initials = initialsOf(lower);
+            if (!initials.contains(token)) return false;
+        }
+        return true;
+    }
+
+    private static boolean isInitials(String s) {
+        for (int i = 0; i < s.length(); i++) if (s.charAt(i) < 'ㄱ' || s.charAt(i) > 'ㅎ') return false;
+        return true;
+    }
+
+    private static final String CHOSEONG = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
+
+    /** 한글 음절은 첫 자음(초성)으로 바꾸고 나머지 글자는 그대로 둔 문자열. */
+    private static String initialsOf(String s) {
+        StringBuilder b = new StringBuilder(s.length());
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            b.append(c >= '가' && c <= '힣' ? CHOSEONG.charAt((c - '가') / 588) : c);
+        }
+        return b.toString();
+    }
+
+    /** 검색 결과로 연 화면에서 그 항목(화면에 보이는 이름이 같은 글자)을 찾아 스크롤하고 깜빡인다. 접혀 있으면 하지 않는다. */
+    private void highlightItem(ScrollView scroll, String label) {
+        if (isFinishing() || isDestroyed()) return;
+        TextView target = findLabel(list, label);
+        if (target == null) return;
+        int y = 0;
+        View v = target;
+        while (v != null && v != list) {
+            y += v.getTop();
+            v = v.getParent() instanceof View ? (View) v.getParent() : null;
+        }
+        scroll.smoothScrollTo(0, Math.max(0, y - Ui.dp(this, 96)));
+        android.animation.ValueAnimator pulse = android.animation.ValueAnimator.ofFloat(1f, 0.15f, 1f, 0.15f, 1f);
+        pulse.setDuration(1300);
+        pulse.addUpdateListener(a -> target.setAlpha((Float) a.getAnimatedValue()));
+        pulse.start();
+    }
+
+    private static TextView findLabel(View v, String label) {
+        if (v instanceof TextView && v.isShown() && label.contentEquals(((TextView) v).getText())) return (TextView) v;
+        if (v instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) {
+                TextView found = findLabel(g.getChildAt(i), label);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    private void openSection(String id, String highlight) {
+        Intent i = new Intent(this, SettingsActivity.class).putExtra(EXTRA_SECTION, id);
+        if (highlight != null) i.putExtra(EXTRA_HIGHLIGHT, highlight);
+        startActivity(i);
     }
 
     private void buildLook() {
