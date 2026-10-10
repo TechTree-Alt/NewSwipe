@@ -180,6 +180,12 @@ public final class SettingsActivity extends Activity {
             buildMain();
             return;
         }
+        buildScreen(id);
+        if (hasReset(id)) addResetButton(id);
+    }
+
+    /** 설정 화면 하나의 내용을 지금의 list에 만든다 (설정 검색이 화면 글자를 모을 때도 이것을 쓴다). */
+    private void buildScreen(String id) {
         switch (id) {
             case "layout": buildKeyboardLayout(); break;
             case "look": buildLook(); break;
@@ -203,7 +209,6 @@ public final class SettingsActivity extends Activity {
             case LARGE_AREA: buildLargeArea(); break;
             default: buildApp(); break;
         }
-        if (hasReset(id)) addResetButton(id);
     }
 
     /** 기본값으로 되돌릴 설정이 있는 메뉴인지 (설정 메뉴와 키 위치·폭, 가로 모드·대화면 키보드 사용자화 화면. 정보·사용법·가져오기 및 내보내기·학습한 단어 등은 제외). */
@@ -301,10 +306,11 @@ public final class SettingsActivity extends Activity {
     private LinearLayout mainWrap, searchResults;
 
     /**
-     * 설정 검색 목록: {화면 id, 항목 이름(그 화면에 보이는 글자 그대로), 같이 찾을 낱말}.
-     * 설정 메뉴와 정보·사용법 화면은 SECTIONS·APP·GUIDE에서 따로 더한다.
+     * 설정 검색에서 항목 이름만으로는 못 찾는 말(줄임말·영어·같은 뜻의 다른 말)을 더해 주는 보조 사전:
+     * {화면 id, 항목 이름, 같이 찾을 낱말}. 항목 목록 자체는 설정 화면을 실제로 만들어 모으므로 여기 없는 항목도 검색된다.
+     * 이름이 바뀌어 맞는 항목이 없어진 줄은 그냥 무시된다 (검색이 깨지지 않고, 그 낱말로만 못 찾게 된다).
      */
-    private static final String[][] SEARCH_INDEX = {
+    private static final String[][] SEARCH_SYNONYMS = {
             {"look", "키보드 높이", "키 높이 크기"},
             {"look", "키 글자 크기", "폰트 글씨 크기"},
             {"look", "키 곡률", "둥글기 모서리 라운드"},
@@ -418,20 +424,32 @@ public final class SettingsActivity extends Activity {
             {"backup", "설정 내보내기", "백업 저장 export"},
     };
 
+    /** 검색 화면에 마지막으로 들어온 검색어 (검색 목록이 준비되면 그 검색어로 다시 찾는다). */
+    private String lastQuery = "";
+
     private void onSearchQuery(String raw) {
         if (mainWrap == null || searchResults == null) return;
         String query = raw == null ? "" : raw.trim();
+        lastQuery = query;
         boolean on = !query.isEmpty();
         mainWrap.setVisibility(on ? View.GONE : View.VISIBLE);
         searchResults.setVisibility(on ? View.VISIBLE : View.GONE);
         if (!on) return;
         searchResults.removeAllViews();
-        // 설정 메뉴와 정보·사용법은 메뉴 이름과 설명으로, 나머지는 위 목록으로 찾는다.
+        ensureSearchIndex();
+        if (searchEntries == null) {   // 설정 화면의 글자를 모으는 중이다 (처음 한 번만)
+            searchResults.addView(searchNote("검색 목록을 준비하는 중입니다…"));
+            return;
+        }
+        // 항목: {화면 id, 이름, 설명·같이 찾을 낱말, "m" = 설정 메뉴}. 메뉴는 상수에서, 나머지는 모아 둔 글자에서 온다.
         java.util.List<String[]> entries = new java.util.ArrayList<>();
-        for (String[] sec : SECTIONS) entries.add(new String[]{sec[0], sec[1], sec[2]});
-        entries.add(new String[]{APP[0], APP[1], APP[2]});
-        entries.add(new String[]{USAGE, GUIDE[1], GUIDE[2]});
-        entries.addAll(java.util.Arrays.asList(SEARCH_INDEX));
+        for (String[] sec : SECTIONS) entries.add(new String[]{sec[0], sec[1], sec[2], "m"});
+        entries.add(new String[]{APP[0], APP[1], APP[2], "m"});
+        entries.add(new String[]{USAGE, GUIDE[1], GUIDE[2], "m"});
+        for (String[] e : searchEntries) {
+            String extra = synonyms().get(e[0] + "\0" + e[1]);
+            entries.add(new String[]{e[0], e[1], extra == null ? e[2] : e[2] + " " + extra, ""});
+        }
         java.util.List<String[]> hits = new java.util.ArrayList<>();   // 이름에서 찾은 것을 먼저
         java.util.List<String[]> weak = new java.util.ArrayList<>();
         for (String[] e : entries) {
@@ -443,9 +461,8 @@ public final class SettingsActivity extends Activity {
         int shown = 0;
         for (String[] e : hits) {
             if (shown >= 40) break;
-            String section = e[0];
-            boolean isMenu = e[1].equals(sectionTitle(section));
-            String title = e[1];
+            String section = e[0], title = e[1];
+            boolean isMenu = "m".equals(e[3]);
             if (shown > 0) searchResults.addView(divider());
             View row = menuRow(menuIcon(section), title, isMenu ? e[2] : sectionTitle(section),
                     v -> openSection(section, isMenu ? null : title));
@@ -456,15 +473,192 @@ public final class SettingsActivity extends Activity {
             searchResults.addView(row);
             shown++;
         }
-        if (shown == 0) {
-            TextView none = new TextView(this);
-            none.setText("일치하는 설정이 없습니다");
-            none.setTextColor(hintColor);
-            none.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-            none.setGravity(Gravity.CENTER);
-            none.setPadding(0, Ui.dp(this, 24), 0, Ui.dp(this, 24));
-            searchResults.addView(none);
+        if (shown == 0) searchResults.addView(searchNote("일치하는 설정이 없습니다"));
+    }
+
+    private TextView searchNote(String text) {
+        TextView none = new TextView(this);
+        none.setText(text);
+        none.setTextColor(hintColor);
+        none.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        none.setGravity(Gravity.CENTER);
+        none.setPadding(0, Ui.dp(this, 24), 0, Ui.dp(this, 24));
+        return none;
+    }
+
+    private java.util.Map<String, String> synonymMap;
+
+    private java.util.Map<String, String> synonyms() {
+        if (synonymMap == null) {
+            synonymMap = new java.util.HashMap<>();
+            for (String[] r : SEARCH_SYNONYMS) synonymMap.put(r[0] + "\0" + r[1], r[2]);
         }
+        return synonymMap;
+    }
+
+    // ---- 검색 목록: 설정 화면을 실제로 만들어 항목 이름을 모은다
+    //
+    // 설정을 추가하거나 이름을 바꿔도 검색 목록을 따로 고칠 필요가 없다. 부담을 줄이려고
+    //  - 검색창을 처음 열어 글자를 입력할 때만 모으고,
+    //  - 화면마다 한 번씩 나눠서 (사이마다 화면이 반응하게) 만들고, 미리보기 자판처럼 무거운 부분은 건너뛰며,
+    //  - 글자만 뽑고 뷰는 곧바로 버리고, 결과는 앱 버전별 파일에 저장해 다음부터는 파일만 읽는다.
+
+    /** 모은 항목: {화면 id, 이름, 설명}. 아직 모으지 않았으면 null. */
+    private java.util.List<String[]> searchEntries;
+    private boolean harvestRunning;
+    /** 화면을 검색용으로 만드는 중인지 (무거운 미리보기를 건너뛴다). */
+    private boolean harvesting;
+    private final android.os.Handler uiHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+
+    /** 검색 목록에 넣을 화면 (정보 화면과 사용법·방침 같은 안내문, 학습한 단어는 뺀다). */
+    private static final String[] HARVEST_IDS = {"layout", "theme", "look", "input", "keys", "swipe", "swipefn",
+            "feedback", "tools", "words", "onehand", "backup", "lab", "app", KEY_AREA, LANDSCAPE_AREA, LARGE_AREA};
+
+    private void ensureSearchIndex() {
+        if (searchEntries != null || harvestRunning) return;
+        java.util.List<String[]> cached = readSearchCache();
+        if (cached != null) {
+            searchEntries = cached;
+            return;
+        }
+        harvestRunning = true;
+        stepHarvest(new java.util.ArrayList<>(), 0);
+    }
+
+    private void stepHarvest(java.util.List<String[]> out, int index) {
+        if (isFinishing() || isDestroyed()) {
+            harvestRunning = false;
+            return;
+        }
+        if (index >= HARVEST_IDS.length) {
+            // 같은 화면의 같은 이름은 하나로 합친다.
+            java.util.Map<String, String[]> unique = new java.util.LinkedHashMap<>();
+            for (String[] e : out) unique.putIfAbsent(e[0] + "\0" + e[1], e);
+            searchEntries = new java.util.ArrayList<>(unique.values());
+            harvestRunning = false;
+            writeSearchCache(searchEntries);
+            if (!lastQuery.isEmpty()) onSearchQuery(lastQuery);
+            return;
+        }
+        harvestScreen(HARVEST_IDS[index], out);
+        uiHandler.post(() -> stepHarvest(out, index + 1));
+    }
+
+    /** 화면 하나를 보이지 않는 곳에 만들어 항목 이름을 모으고 버린다. 진짜 화면이 쓰는 값은 건드리지 않게 되돌려 놓는다. */
+    private void harvestScreen(String id, java.util.List<String[]> out) {
+        LinearLayout savedList = list, savedBody = oneHandBody, savedColumn = oneHandColumn, savedSide = oneHandSide;
+        View savedLift = oneHandLift;
+        com.alternative_studios.newswipe.keyboard.KeyboardView savedKeys = oneHandKeys;
+        ExpressiveSwitch savedClipSwitch = clipImagesSwitch;
+        LinearLayout scratch = new LinearLayout(this);
+        scratch.setOrientation(LinearLayout.VERTICAL);
+        harvesting = true;
+        list = scratch;
+        try {
+            buildScreen(id);
+            collectLabels(id, scratch, out, new View[1], new String[1][]);
+        } catch (RuntimeException ignored) {
+            // 한 화면을 못 만들어도 나머지는 계속 모은다.
+        } finally {
+            harvesting = false;
+            list = savedList;
+            oneHandBody = savedBody;
+            oneHandColumn = savedColumn;
+            oneHandSide = savedSide;
+            oneHandLift = savedLift;
+            oneHandKeys = savedKeys;
+            clipImagesSwitch = savedClipSwitch;
+            scratch.removeAllViews();
+        }
+    }
+
+    /**
+     * 만들어 둔 화면의 글자를 위에서 아래로 훑는다. 크기와 색으로 구분한다:
+     * 15~18sp = 항목 이름(스위치·슬라이더·버튼), 14sp 강조색 = 소제목, 그 항목 이름 바로 아래(같은 칸)의 작은 글자 = 설명.
+     * 슬라이더 값(예: "12ms")이나 화면 아래 안내문은 모으지 않는다.
+     */
+    private void collectLabels(String id, View v, java.util.List<String[]> out, View[] lastParent, String[][] last) {
+        if (v instanceof TextView) {
+            TextView t = (TextView) v;
+            String text = t.getText().toString().trim();
+            if (!text.isEmpty()) {
+                float px = t.getTextSize();
+                boolean label = px >= spPx(15) - 0.5f && px <= spPx(18) + 0.5f;
+                boolean heading = !label && Math.abs(px - spPx(14)) < 0.5f && t.getCurrentTextColor() == accentColor;
+                if (label || heading) {
+                    last[0] = new String[]{id, singleLine(text), ""};
+                    lastParent[0] = (View) t.getParent();
+                    out.add(last[0]);
+                } else if (last[0] != null && t.getParent() == lastParent[0] && !(text.length() <= 8 && hasDigit(text))) {
+                    last[0][2] = (last[0][2].isEmpty() ? "" : last[0][2] + " ") + singleLine(text);
+                }
+            }
+        }
+        if (v instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) collectLabels(id, g.getChildAt(i), out, lastParent, last);
+        }
+    }
+
+    private float spPx(float sp) {
+        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp, getResources().getDisplayMetrics());
+    }
+
+    private static boolean hasDigit(String s) {
+        for (int i = 0; i < s.length(); i++) if (Character.isDigit(s.charAt(i))) return true;
+        return false;
+    }
+
+    private static String singleLine(String s) {
+        return s.replace('\t', ' ').replace('\n', ' ').replace('\r', ' ');
+    }
+
+    // ---- 검색 목록 파일 (앱 버전이 바뀌면 다시 모은다)
+
+    private File searchCacheFile() {
+        return new File(getFilesDir(), "settings_search.tsv");
+    }
+
+    private String searchCacheStamp() {
+        try {
+            return "v" + getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode();
+        } catch (PackageManager.NameNotFoundException e) {
+            return "v?";
+        }
+    }
+
+    private java.util.List<String[]> readSearchCache() {
+        File f = searchCacheFile();
+        if (!f.isFile()) return null;
+        try {
+            java.util.List<String> lines = java.nio.file.Files.readAllLines(f.toPath(),
+                    java.nio.charset.StandardCharsets.UTF_8);
+            if (lines.isEmpty() || !lines.get(0).equals(searchCacheStamp())) return null;
+            java.util.List<String[]> out = new java.util.ArrayList<>();
+            for (int i = 1; i < lines.size(); i++) {
+                String[] cols = lines.get(i).split("\t", -1);
+                if (cols.length == 3) out.add(cols);
+            }
+            return out.isEmpty() ? null : out;
+        } catch (java.io.IOException | RuntimeException e) {
+            return null;
+        }
+    }
+
+    private void writeSearchCache(java.util.List<String[]> entries) {
+        final String stamp = searchCacheStamp();
+        final java.util.List<String[]> copy = new java.util.ArrayList<>(entries);
+        final File f = searchCacheFile();
+        new Thread(() -> {
+            try {
+                java.util.List<String> lines = new java.util.ArrayList<>();
+                lines.add(stamp);
+                for (String[] e : copy) lines.add(e[0] + "\t" + e[1] + "\t" + e[2]);
+                java.nio.file.Files.write(f.toPath(), lines, java.nio.charset.StandardCharsets.UTF_8);
+            } catch (java.io.IOException | RuntimeException ignored) {
+                // 저장하지 못하면 다음에 다시 모은다.
+            }
+        }, "settings-search-cache").start();
     }
 
     /** 검색어의 낱말(띄어 쓴 것)이 모두 text에 들어 있는지. 낱말이 초성뿐이면 초성으로도 찾는다 (예: ㅈㄷ → 진동). */
@@ -820,6 +1014,7 @@ public final class SettingsActivity extends Activity {
 
     /** 키보드와 같은 모양으로 그린 한 손 모드 미리보기: [도구 막대 + 자판 | 빈 곳의 화살표·확장 아이콘], 아래에 띄운 높이. */
     private View oneHandPreview() {
+        if (harvesting) return new View(this);   // 설정 검색용으로 글자만 모을 때는 무거운 미리보기를 만들지 않는다
         com.alternative_studios.newswipe.keyboard.KeyboardTheme kt =
                 com.alternative_studios.newswipe.keyboard.KeyboardTheme.of(this);
         LinearLayout frame = new LinearLayout(this);
@@ -962,6 +1157,7 @@ public final class SettingsActivity extends Activity {
      * profile이 있으면 그 프로필의 키 폭·위치로 그리고, 가로 방향이면 가로로 넓은 자판처럼 키 높이와 글자 크기를 줄인다.
      */
     private View layoutPreview(String profile) {
+        if (harvesting) return new View(this);   // 설정 검색용으로 글자만 모을 때는 무거운 미리보기를 만들지 않는다
         Prefs prefs = previewPrefs(profile);
         boolean landscape = Prefs.PROFILE_LANDSCAPE.equals(profile) || Prefs.PROFILE_LARGE_LANDSCAPE.equals(profile);
         com.alternative_studios.newswipe.keyboard.KeyboardTheme kt =
