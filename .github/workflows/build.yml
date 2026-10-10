@@ -4,6 +4,22 @@ on:
   push:
     branches: [ main ]
     tags: [ 'v*' ]
+    # 앱에 영향을 주지 않는 변경(문서, 라이선스, 홍보 이미지, 데이터 생성 스크립트, Gradle 설정)만 있는 커밋은 빌드하지 않는다.
+    # 태그(릴리스)에는 적용되지 않아 릴리스는 항상 빌드된다.
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'tools/**'
+      - 'LICENSE'
+      - 'NOTICE'
+      - '.gitignore'
+      - '.gitattributes'
+      # Gradle 설정(버전업, 의존성 등). 바뀐 설정은 다음에 앱 코드가 바뀌어 빌드될 때나 릴리스 태그에서 확인된다.
+      - '**/*.gradle.kts'
+      - 'gradle.properties'
+      - 'gradle/**'
+      - 'gradlew'
+      - 'gradlew.bat'
   pull_request:
   workflow_dispatch:
 

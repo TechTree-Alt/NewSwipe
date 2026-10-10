@@ -372,7 +372,7 @@ public final class SettingsActivity extends Activity {
     private void buildKeyArea() {
         LinearLayout card = section("자음·모음 열");
         card.addView(layoutPreview(null));
-        card.addView(note("자음 키 폭은 왼쪽 절반을 꽉 채우는 폭, 모음 키 폭은 자음 키 폭에 대한 비율입니다. 가로 위치는 각 절반 안에서 키들이 놓이는 곳입니다 "
+        card.addView(note("자음 키 폭은 왼쪽 절반을, 모음 키 폭은 오른쪽 절반을 꽉 채우는 폭에 대한 비율입니다 (100%면 꽉 참). 가로 위치는 각 절반 안에서 키들이 놓이는 곳입니다 "
                 + "(0 = 왼쪽 끝, 50 = 가운데, 100 = 오른쪽 끝)."));
         addKeyAreaControls(card, prefs);
     }
@@ -451,18 +451,25 @@ public final class SettingsActivity extends Activity {
         splitBox.setVisibility(edit.profileSplit() ? View.VISIBLE : View.GONE);
         splitBox.addView(layoutPreview(profile));
         splitBox.addView(note(when + " 쓰는 값입니다. "
-                + "자음 키 폭은 왼쪽 절반을 꽉 채우는 폭, 모음 키 폭은 자음 키 폭에 대한 비율입니다. 가로 위치는 각 절반 안에서 키들이 놓이는 곳입니다 "
-                + "(0 = 왼쪽 끝, 50 = 가운데, 100 = 오른쪽 끝). "
-                + "하단 기능키 폭은 맨 아래 줄의 기호 키·쉼표·지구본 키·온점·엔터 키(스페이스바 제외)의 폭으로, 줄인 만큼 스페이스바가 넓어집니다."));
+                + "왼쪽 덩어리(자음, 숫자 1~5, 스페이스바와 그 왼쪽 키)와 오른쪽 덩어리(모음, 숫자 6~0, 스페이스바와 그 오른쪽 키)가 각각 함께 움직입니다. "
+                + "자음 키 폭·모음 키 폭은 각 덩어리의 폭으로, 100%면 자기 절반을 꽉 채웁니다. 가로 위치는 각 절반 안에서 덩어리가 놓이는 곳입니다 "
+                + "(0 = 왼쪽 끝, 50 = 가운데, 100 = 오른쪽 끝)."));
         addKeyAreaControls(splitBox, edit);
         String splitKey = edit.splitKey();
         card.addView(toggle(name + " 분리 키보드",
-                when + " 자판을 가운데에서 반으로 나눠 왼쪽 절반에는 자음을, 오른쪽 절반에는 모음 열을 놓습니다.",
+                when + " 자판을 가운데에서 반으로 나눠 왼쪽 절반에는 자음을, 오른쪽 절반에는 모음을 놓습니다. 스페이스바도 양쪽에 하나씩 나뉩니다.",
                 edit.profileSplit(), on -> {
                     prefs.raw().edit().putBoolean(splitKey, on).apply();
                     Ui.setVisibleAnimated(splitBox, on);
                 }));
         card.addView(splitBox);
+
+        // 두 덩어리 사이의 빈 공간: 프로필마다 따로 정한다.
+        LinearLayout gap = section(name + " 분리 키보드 가운데 빈 공간");
+        gap.addView(toggle("밀어서 커서 이동",
+                when + " 쓰는 값입니다. 분리 키보드의 두 덩어리 사이 빈 공간을 밀어 커서를 옮깁니다. "
+                        + "좌우·상하 이동과 속도는 스페이스바 설정('밀어서 기능')을 따르고, 끄면 빈 공간은 눌러도 밀어도 반응하지 않습니다.",
+                edit.splitGapCursorKey(), edit.splitGapCursor()));
 
         // 키보드 높이·글자 크기: 켜기 전에는 세로 모드('자판 모양')의 값을 그대로 쓴다.
         LinearLayout size = section(name + " 크기");
@@ -502,10 +509,6 @@ public final class SettingsActivity extends Activity {
                 this::refreshLayoutPreview));
         card.addView(slider("모음 가로 위치", p.balancedVowelPosKey(), p.balancedVowelPos(), 0, 100, 5, "",
                 this::refreshLayoutPreview));
-        if (!p.profile().isEmpty()) {
-            // 가로 모드·대화면 분리 키보드에서는 맨 아래 줄 기능키가 너무 넓어 오타가 나기 쉬워 폭을 줄일 수 있다.
-            card.addView(slider("하단 기능키 폭", p.fnKeyWidthKey(), p.fnKeyWidth(), 40, 100, 5, "%", this::refreshLayoutPreview));
-        }
     }
 
     // ---------------------------------------------------------------- 한 손 모드
