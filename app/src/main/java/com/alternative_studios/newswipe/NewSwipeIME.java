@@ -2524,15 +2524,24 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private void startVoiceInput() {
         InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
         if (imm != null) {
+            // 켜 둔 음성 입력기의 음성 서브타입 중 지금 자판 언어(한글 = ko, 영어 = en)와 맞는 것을 먼저 고른다.
+            // 언어별 서브타입이 없으면 처음 찾은 음성 서브타입을 쓴다.
+            InputMethodInfo firstImi = null, matchImi = null;
+            InputMethodSubtype first = null, match = null;
+            String lang = korean ? "ko" : "en";
             for (InputMethodInfo imi : imm.getEnabledInputMethodList()) {
                 if (imi.getPackageName().equals(getPackageName())) continue;
                 for (InputMethodSubtype st : imm.getEnabledInputMethodSubtypeList(imi, true)) {
-                    if ("voice".equals(st.getMode())) {
-                        commitComposing();
-                        switchInputMethod(imi.getId(), st);
-                        return;
-                    }
+                    if (!"voice".equals(st.getMode())) continue;
+                    if (first == null) { first = st; firstImi = imi; }
+                    if (match == null && subtypeLanguage(st).equals(lang)) { match = st; matchImi = imi; }
                 }
+            }
+            if (match == null) { match = first; matchImi = firstImi; }
+            if (match != null) {
+                commitComposing();
+                switchInputMethod(matchImi.getId(), match);
+                return;
             }
         }
         // 켜 둔 음성 입력기가 없다: Google 음성 입력(음성 인식 및 합성 앱)을 설치하거나 켜도록 안내한다.
@@ -2541,6 +2550,15 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         } else {
             askOnBar("Google 음성 입력을 활성화해주세요", this::openInputMethodSettings);
         }
+    }
+
+    /** 서브타입 로케일의 언어 부분 (예: "ko_KR" -> "ko"). 로케일이 비어 있으면 빈 문자열. */
+    private static String subtypeLanguage(InputMethodSubtype st) {
+        String loc = st.getLocale();
+        if (loc == null) return "";
+        int i = 0;
+        while (i < loc.length() && loc.charAt(i) != '_' && loc.charAt(i) != '-') i++;
+        return loc.substring(0, i).toLowerCase(java.util.Locale.ROOT);
     }
 
     /** Google 음성 입력을 제공하는 '음성 인식 및 합성(Speech Recognition & Synthesis)' 앱. */
