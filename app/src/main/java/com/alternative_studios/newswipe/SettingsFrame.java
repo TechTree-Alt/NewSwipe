@@ -27,7 +27,7 @@ final class SettingsFrame {
     private final String title, subtitle;
     private LinearLayout testBar;
     private EditText testInput;
-    private TextView testButton;
+    private IconButton testButton;
     /** 입력창이 열려 있어야 하는 상태. 애니메이션 중에도 버튼 글자를 바로 바꾸기 위해 따로 기억한다. */
     private boolean testBarWanted;
     /** 설정 검색 (첫 화면 전용): 검색어가 바뀔 때마다 부른다. null이면 검색 없이 '키보드 열기'를 쓴다. */
@@ -133,25 +133,25 @@ final class SettingsFrame {
         titles.addView(sub);
         header.addView(titles, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
+        int size = Ui.dp(c, 44);
         if (onSearch != null) {
             // 강조색 동그라미 안에 검색 아이콘
-            int size = Ui.dp(c, 44);
-            IconButton search = new IconButton(c, Icons.SEARCH, colors.onAccent, 0x33FFFFFF, "설정 검색");
-            search.setBackground(Ui.ripple(0x33FFFFFF, ovalOf(colors.accent), size / 2f));
-            search.setOnClickListener(v -> toggleSearch());
-            header.addView(search, new LinearLayout.LayoutParams(size, size));
+            testButton = null;
+            header.addView(circleButton(c, Icons.SEARCH, "설정 검색", v -> toggleSearch()), new LinearLayout.LayoutParams(size, size));
             return header;
         }
-        testButton = new TextView(c);
-        testButton.setTextColor(colors.onAccent);
-        testButton.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        testButton.setGravity(Gravity.CENTER);
-        testButton.setPadding(Ui.dp(c, 16), Ui.dp(c, 10), Ui.dp(c, 16), Ui.dp(c, 10));
-        testButton.setBackground(Ui.ripple(0x33FFFFFF, Ui.round(colors.accent, Ui.dp(c, 20)), Ui.dp(c, 20)));
-        testButton.setClickable(true);
-        testButton.setOnClickListener(v -> toggleTestKeyboard());
-        header.addView(testButton);
+        // 강조색 동그라미 안에 키보드 아이콘. 입력 시험 창이 열려 있으면 색을 뒤집어 알린다.
+        testButton = circleButton(c, Icons.MENU_KEYBOARD, "키보드 열기", v -> toggleTestKeyboard());
+        header.addView(testButton, new LinearLayout.LayoutParams(size, size));
         return header;
+    }
+
+    /** 강조색 동그라미 안에 아이콘 하나를 둔 버튼. */
+    private IconButton circleButton(Context c, int icon, String description, View.OnClickListener l) {
+        IconButton b = new IconButton(c, icon, colors.onAccent, 0x33FFFFFF, description);
+        b.setBackground(Ui.ripple(0x33FFFFFF, ovalOf(colors.accent), Ui.dp(c, 22)));
+        b.setOnClickListener(l);
+        return b;
     }
 
     private static android.graphics.drawable.GradientDrawable ovalOf(int color) {
@@ -240,7 +240,12 @@ final class SettingsFrame {
     }
 
     private void updateTestButton() {
-        testButton.setText(testBarWanted ? "키보드 닫기" : "키보드 열기");
+        Context c = activity;
+        // 닫혀 있으면 강조색 바탕에 흰 아이콘, 열려 있으면 옅은 바탕에 강조색 아이콘.
+        testButton.setColor(testBarWanted ? colors.accent : colors.onAccent);
+        testButton.setBackground(Ui.ripple(0x33FFFFFF, ovalOf(testBarWanted
+                ? (colors.accent & 0x00FFFFFF) | 0x33000000 : colors.accent), Ui.dp(c, 22)));
+        testButton.setContentDescription(testBarWanted ? "키보드 닫기" : "키보드 열기");
     }
 
     private void toggleTestKeyboard() {
