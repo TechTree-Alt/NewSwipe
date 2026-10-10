@@ -1418,7 +1418,7 @@ public final class SettingsActivity extends Activity {
         View perKeySub = subGroup(perKeyBox);
         View gestureSub = subGroup(levelRow(null, Prefs.VIBRATE_GESTURE_LEVEL, prefs.vibrateGestureLevel()));
         View vibrateOptions = subGroup(styleRow, customGroup,
-                toggle("키 종류별로 다르게", "지우기·스페이스·엔터·기호·언어 전환 키와 도구 막대 버튼의 진동을 따로 정합니다.",
+                toggle("키 종류별로 다르게", null,
                         Prefs.VIBRATE_PER_KEY, prefs.vibratePerKey(), perKeySub),
                 perKeySub,
                 toggle("밀기·길게 누르기 진동", "밀어서 입력하거나 길게 눌렀을 때도 진동합니다.",
