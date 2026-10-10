@@ -428,12 +428,83 @@ public class SplitBottomRowTest {
                             widthOf(third, Key.SYMBOL_PAGE, true), 0.001f);
                     assertEquals("기호 자판 ⌫ = 엔터 폭", widthOf(symBottom, Key.ENTER, false),
                             widthOf(third, Key.DELETE, false), 0.001f);
-                    halves(third);
                 }
                 float total = 0f;
                 for (Key k : letters.keys) total += k.weight;
                 assertEquals(10f, total, 0.001f);
-                halves(letters);   // 가운데를 가로지르는 키가 없다
+            }
+        }
+    }
+
+    private static Prefs portraitView(FakeSp sp) throws Exception {
+        Constructor<Prefs> c = Prefs.class.getDeclaredConstructor(SharedPreferences.class, boolean.class, String.class,
+                boolean.class);
+        c.setAccessible(true);
+        return c.newInstance(sp, false, "", false);
+    }
+
+    /** 줄의 실제 키(빈 자리·숨은 키 제외)를 "종류 글자 시작 폭"으로. 합이 10보다 짧은 줄은 일반 자판처럼 가운데에 놓는다. */
+    private static java.util.List<String> geometry(KeyboardLayout.Row row) {
+        float total = 0f;
+        for (Key k : row.keys) total += k.weight;
+        float x = Math.max(0f, (10f - total) / 2f);
+        java.util.List<String> out = new java.util.ArrayList<>();
+        for (Key k : row.keys) {
+            if (k.type != Key.GAP && k.type != Key.SPACER && !k.hidden) {
+                out.add(k.type + " " + k.label + String.format(" %.3f %.3f", x, k.weight));
+            }
+            x += k.weight;
+        }
+        return out;
+    }
+
+    @Test
+    public void englishAndSymbolRowsAreTheNormalRowsCutInTheMiddle() throws Exception {
+        for (boolean grid : new boolean[]{false, true}) {
+            FakeSp splitSp = new FakeSp(), normalSp = new FakeSp();
+            Prefs split = landscapeEditView(splitSp), normal = portraitView(normalSp);
+            splitSp.m.put(Prefs.GRID_LAYOUT, grid);
+            normalSp.m.put(Prefs.GRID_LAYOUT, grid);
+            // 격자 키 한 칸(한글 자음 키 폭)이 같도록 세로 모드도 자·모음 균형 레이아웃으로 둔다.
+            normalSp.m.put(normal.balancedLayoutKey(), true);
+            KeyboardLayout[][] pairs = {
+                    {KeyboardLayout.english(split), KeyboardLayout.english(normal)},
+                    {KeyboardLayout.symbols(true, split), KeyboardLayout.symbols(true, normal)},
+                    {KeyboardLayout.symbols2(true, split), KeyboardLayout.symbols2(true, normal)},
+            };
+            for (KeyboardLayout[] pair : pairs) {
+                assertEquals(pair[1].rows.length, pair[0].rows.length);
+                for (int r = 0; r < pair[0].rows.length - 1; r++) {   // 맨 아래 줄(스페이스바 둘)만 다르다
+                    assertEquals("격자 " + grid + " 줄 " + r, geometry(pair[1].rows[r]), geometry(pair[0].rows[r]));
+                }
+            }
+        }
+    }
+
+    @Test
+    public void splitRowsNeverOverlapAndFillTheRow() throws Exception {
+        for (boolean grid : new boolean[]{false, true}) {
+            for (int[] s : SETTINGS) {
+                for (int[] vw : new int[][]{{s[2], s[3]}, {100, 40}, {40, 100}}) {
+                    FakeSp sp = new FakeSp();
+                    Prefs p = landscapeEditView(sp);
+                    sp.m.put(Prefs.GRID_LAYOUT, grid);
+                    sp.m.put(p.balancedConsonantPosKey(), s[0]);
+                    sp.m.put(p.balancedVowelPosKey(), s[1]);
+                    sp.m.put(p.balancedConsonantWidthKey(), vw[0]);
+                    sp.m.put(p.balancedVowelWidthKey(), vw[1]);
+                    for (KeyboardLayout l : new KeyboardLayout[]{KeyboardLayout.english(p), KeyboardLayout.symbols(true, p),
+                            KeyboardLayout.symbols2(false, p)}) {
+                        for (KeyboardLayout.Row row : l.rows) {
+                            float total = 0f;
+                            for (Key k : row.keys) {
+                                assertTrue("폭이 음수인 키", k.weight >= -0.0001f);
+                                total += k.weight;
+                            }
+                            assertEquals(10f, total, 0.001f);
+                        }
+                    }
+                }
             }
         }
     }

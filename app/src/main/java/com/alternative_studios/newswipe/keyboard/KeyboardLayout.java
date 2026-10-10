@@ -269,7 +269,7 @@ public final class KeyboardLayout {
             (vowel ? vowels : consonants).add(k);
         }
         if (deleteHere) vowels.add(fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1f));
-        if (splitView(prefs)) return blockRow(consonants, vowels, 1f, balancedConsonants(prefs), BALANCED_VOWEL_COLUMNS, 0f, prefs);
+        if (splitView(prefs)) return blockRow(consonants, vowels, 1f, balancedConsonants(prefs), BALANCED_VOWEL_COLUMNS, prefs);
         return splitRow(consonants, vowels, 1f, BALANCED_HALF / balancedConsonants(prefs),
                 balancedWidthMax(prefs), prefs);
     }
@@ -320,34 +320,22 @@ public final class KeyboardLayout {
     }
 
     /**
-     * 분리 키보드 영어 자판의 글자 줄 세 개. 둘째 줄(a~l)은 일반 자판처럼 첫 줄(q~p)보다 양쪽을 반 칸씩 들여,
-     * a의 왼쪽과 l의 오른쪽에 여백을 둔다.
+     * 분리 키보드 영어 자판의 글자 줄 세 개. 일반 자판의 줄(격자 정렬 포함)을 그대로 만들어 가운데에서 나눈다
+     * ({@link #splitNormal}). 그래서 a~l 줄의 들여쓰기, 셋째 줄의 Shift·⌫ 폭과 여백이 일반 자판과 같다.
      */
     private static List<Row> englishSplitRows(Prefs prefs) {
         List<Row> letterRows = new ArrayList<>();
-        int[] leftCount = {5, 5, 4};   // 줄마다 왼쪽에 놓는 글자 수 (셋째 줄은 Shift 자리를 하나 더 둔다)
+        int[] leftCount = {5, 5, 4};   // 줄마다 왼쪽 덩어리로 가는 글자 수 (q~t, a~g, z~v)
         for (int r = 0; r < 3; r++) {
             Key[] letters = letterKeys(ENGLISH_ROWS[r], ENGLISH_POPUPS[r], false, prefs);
-            List<Key> left = new ArrayList<>(), right = new ArrayList<>();
-            // 셋째 줄은 일반 자판처럼 Shift·⌫가 글자 키의 1.5배 폭이다.
-            if (r == 2) left.add(fn(Key.SHIFT, "", 1.5f));
-            for (int i = 0; i < letters.length; i++) (i < leftCount[r] ? left : right).add(letters[i]);
-            if (r == 2) right.add(fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1.5f));
-            Key host = right.get(0);   // 오른쪽 절반 맨 왼쪽 키: h, b
-            // 둘째 줄(a~l)은 일반 자판처럼 반 칸 들인다: a~g는 오른쪽으로 반 칸, h~l은 덩어리 가운데에 놓여 양쪽에 반 칸씩 빈다.
-            Row row;
-            if (r == 2 && prefs.gridLayout()) {
-                // 격자 정렬: Shift·⌫는 맨 아래 줄 기능키(기호 키 등)와 같은 폭이다.
-                Key shift = left.remove(0), del = right.remove(right.size() - 1);
-                row = gridEdgeRow(shift, left, 5, right, 5, del, 1f, prefs);
-            } else if (r == 2) {
-                row = edgeRow(left, right, 1f, 5, prefs);
-            } else {
-                row = blockRow(left, right, 1f, 5, 5, r == 1 ? 0.5f : 0f, prefs);
-            }
+            // 일반 자판과 똑같은 줄을 만든 뒤 가운데에서 나눈다.
+            Row normal = r < 2 ? new Row(1f, letters)
+                    : prefs.gridLayout() ? gridBottomLetterRow(letters, deleteKey(prefs), prefs)
+                    : bottomLetterRow(letters, 1.5f, Key.SHIFT, deleteKey(prefs));
+            Row row = splitNormal(normal, prefs);
             // h 왼쪽의 빈 자리를 누르면 g가, b 왼쪽의 빈 자리를 누르면 v가 입력된다 (왼손·오른손 모두 치기 쉽게).
             // 키를 더 그리는 것이 아니라서 줄의 폭과 열은 그대로다.
-            if (r > 0) row = withHiddenKey(row, host, hiddenCopyOf(letters[leftCount[r] - 1]));
+            if (r > 0) row = withHiddenKey(row, letters[leftCount[r]], hiddenCopyOf(letters[leftCount[r] - 1]));
             letterRows.add(row);
         }
         return letterRows;
@@ -445,7 +433,7 @@ public final class KeyboardLayout {
         String[][] p3 = {{"★", "†", "‡"}, {"“", "”", "«", "»"}, {"‘", "’", "‚"}, null, null, {"¡"}, {"¿"}};
         for (int i = 0; i < s3.length; i++) r3.add(ch(s3[i], p3[i]));
         r3.add(fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1.5f));
-        rows.add(splitView(prefs) ? new Row(1f, r3.toArray(new Key[0])) : gridSides(r3, prefs));
+        rows.add(gridSides(r3, prefs));
         finishSymbols(rows, back, prefs);
         return new KeyboardLayout(SYMBOLS, 10, rows);
     }
@@ -483,7 +471,7 @@ public final class KeyboardLayout {
             for (int i = 0; i < s3.length; i++) r3.add(ch(s3[i], p3[i]));
         }
         r3.add(fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1.5f));
-        rows.add(splitView(prefs) ? new Row(1f, r3.toArray(new Key[0])) : gridSides(r3, prefs));
+        rows.add(gridSides(r3, prefs));
         finishSymbols(rows, back, prefs);
         return new KeyboardLayout(SYMBOLS_2, 10, rows);
     }
@@ -698,32 +686,15 @@ public final class KeyboardLayout {
 
     /**
      * 기호 자판의 맨 아래 줄 위쪽 줄들을 마무리한다. 분리 키보드(가로 모드·대화면)에서는 숫자 줄을 포함한 모든 줄을
-     * 가운데에서 반으로 나눠 왼쪽 절반과 오른쪽 절반에 놓고(글자 자판과 같은 폭·위치 설정),
-     * 맨 아래 줄도 그 양 끝에 맞춘다.
+     * 일반 자판과 같은 모양 그대로 가운데에서 나눠 왼쪽·오른쪽 덩어리에 놓는다 ({@link #splitNormal}).
      */
     private static void finishSymbols(List<Row> rows, String back, Prefs prefs) {
         if (splitView(prefs)) {
-            for (int i = 0; i < rows.size(); i++) rows.set(i, splitEven(rows.get(i), prefs));
+            for (int i = 0; i < rows.size(); i++) rows.set(i, splitNormal(rows.get(i), prefs));
             rows.add(blockSpaceRow(prefs, Key.TO_LETTERS, back, true));
         } else {
             rows.add(spaceRow(Key.TO_LETTERS, back, prefs, true));
         }
-    }
-
-    /** 한 줄을 반으로 나눈다: 앞쪽 절반(홀수 개면 한 개 더)은 왼쪽 절반에, 나머지는 오른쪽 절반에 놓는다. */
-    private static Row splitEven(Row row, Prefs prefs) {
-        int n = row.keys.length, leftCount = (n + 1) / 2;
-        Key last = row.keys[n - 1];
-        if (prefs.gridLayout() && n > 2 && row.keys[0].type == Key.SYMBOL_PAGE
-                && (last.type == Key.DELETE || last.type == Key.SPACER)) {
-            // 격자 정렬: 기호 쪽 넘김 키와 ⌫는 맨 아래 줄 기능키와 같은 폭이다.
-            List<Key> leftLetters = new ArrayList<>(), rightLetters = new ArrayList<>();
-            for (int i = 1; i < n - 1; i++) (i < leftCount ? leftLetters : rightLetters).add(row.keys[i]);
-            return gridEdgeRow(row.keys[0], leftLetters, 5, rightLetters, 5, last, row.height, prefs);
-        }
-        List<Key> left = new ArrayList<>(), right = new ArrayList<>();
-        for (int i = 0; i < n; i++) (i < leftCount ? left : right).add(row.keys[i]);
-        return blockRow(left, right, row.height, 5, 5, 0f, prefs);
     }
 
     /**
@@ -842,79 +813,74 @@ public final class KeyboardLayout {
     }
 
     /**
-     * 분리 키보드의 한 줄: left는 왼쪽 덩어리(한 줄 columns 칸 = leftColumns), right는 오른쪽 덩어리에 놓는다.
-     * 키가 덩어리보다 적으면 덩어리 가운데에 놓는다. stagger는 왼쪽 키들을 오른쪽으로 들이는 정도(키 폭의 배수)로,
-     * 영어 자판의 a~l 줄처럼 윗줄보다 반 칸 들인 줄에 쓴다 (오른쪽 키와 겹치지 않는 만큼만).
+     * 분리 키보드 한글 자판·숫자 줄의 한 줄: left는 왼쪽 덩어리(한 줄 leftColumns 칸), right는 오른쪽 덩어리를 채운다.
+     * 키가 덩어리보다 적으면 덩어리 가운데에 놓는다.
      */
     private static Row blockRow(List<Key> left, List<Key> right, float height, int leftColumns, int rightColumns,
-                                float stagger, Prefs prefs) {
+                                Prefs prefs) {
         float[] b = blocks(prefs);
         float lw = fitBlock(left, b[1], leftColumns), rw = fitBlock(right, b[3], rightColumns);
         float ls = b[0] + (b[1] - lw) / 2f, rs = b[2] + (b[3] - rw) / 2f;
-        if (stagger > 0f && !left.isEmpty()) ls += Math.max(0f, Math.min(stagger * left.get(0).weight, rs - (ls + lw)));
         return blockLine(left, ls, lw, right, rs, rw, height);
     }
 
     /**
-     * 격자 정렬을 켠 분리 키보드의 영어·기호 자판 셋째 줄: 양 끝의 기능키(leftEdge: Shift·기호 쪽 넘김, rightEdge: ⌫)는 맨 아래 줄의 기능키와
-     * 같은 폭(격자 키 한 칸 × 덩어리 폭 / 5)이고 각 덩어리의 바깥 끝에 붙는다. 글자 키는 칸 폭(덩어리 폭 / 열 수)으로
-     * 안쪽에 놓고, 기능키와 다 들어가지 않으면 줄여 덩어리 안에 넣는다. 남는 폭은 글자 키와 오른쪽 기능키 사이의
-     * 빈 자리(눌러도 반응하지 않음)로 둔다.
+     * 일반 자판의 한 줄(10칸 기준, 키 사이 빈 칸 포함)을 가운데에서 나눠 분리 키보드의 줄로 만든다.
+     * 가운데(5칸)보다 왼쪽에 중심이 있는 키(가운데에 걸친 g·v·: 등 포함)는 왼쪽 덩어리로, 나머지는 오른쪽 덩어리로 가고,
+     * 일반 자판에서의 위치와 폭을 덩어리 폭의 비율(덩어리 폭 / 5)만큼 줄이거나 늘려 그대로 옮긴다.
+     * 그래서 덩어리가 절반을 꽉 채우면(기본) 일반 자판과 키 하나하나의 자리가 똑같다.
+     * 두 덩어리의 폭이 달라 가운데에서 겹치면, 덩어리 안의 남는 폭만큼 바깥쪽으로 옮기고 그래도 겹치면 같은 비율로 줄인다.
      */
-    private static Row gridEdgeRow(Key leftEdge, List<Key> leftLetters, int leftCols, List<Key> rightLetters,
-                                   int rightCols, Key rightEdge, float height, Prefs prefs) {
-        float[] b = blocks(prefs);
+    private static Row splitNormal(Row row, Prefs prefs) {
+        float total = 0f;
+        for (Key k : row.keys) total += k.weight;
+        float scale = total > SPACE_ROW_UNITS ? SPACE_ROW_UNITS / total : 1f;
+        float x = (SPACE_ROW_UNITS - total * scale) / 2f;   // 일반 자판처럼 짧은 줄은 가운데에 놓는다
         List<Key> left = new ArrayList<>(), right = new ArrayList<>();
-        float edge = gridKey(prefs);
-        // 왼쪽: [기능키] 글자… [빈 자리]
-        float eL = leftEdge == null ? 0f : edge * b[1] / BALANCED_HALF;
-        float uL = leftLetters.isEmpty() ? 0f : Math.min(b[1] / leftCols, (b[1] - eL) / leftLetters.size());
-        if (leftEdge != null) {
-            leftEdge.weight = eL;
-            left.add(leftEdge);
+        float leftFrom = -1f, leftTo = 0f, rightFrom = -1f, rightTo = 0f;
+        for (Key k : row.keys) {
+            float w = k.weight * scale;
+            if (x + w / 2f < BALANCED_HALF + 0.001f) {
+                if (leftFrom < 0f) leftFrom = x;
+                leftTo = x + w;
+                left.add(k);
+            } else {
+                if (rightFrom < 0f) rightFrom = x;
+                rightTo = x + w;
+                right.add(k);
+            }
+            k.weight = w;
+            x += w;
         }
-        for (Key k : leftLetters) {
-            k.weight = uL;
-            left.add(k);
-        }
-        float restL = b[1] - eL - uL * leftLetters.size();
-        if (restL > 0.001f) left.add(fn(Key.SPACER, "", restL));
-        // 오른쪽: 글자… [빈 자리] [기능키]
-        float eR = edge * b[3] / BALANCED_HALF;
-        float uR = rightLetters.isEmpty() ? 0f : Math.min(b[3] / rightCols, (b[3] - eR) / rightLetters.size());
-        for (Key k : rightLetters) {
-            k.weight = uR;
-            right.add(k);
-        }
-        float restR = b[3] - eR - uR * rightLetters.size();
-        if (restR > 0.001f) right.add(fn(Key.SPACER, "", restR));
-        rightEdge.weight = eR;
-        right.add(rightEdge);
-        return blockLine(left, b[0], b[1], right, b[2], b[3], height);
-    }
-
-    /**
-     * 양 끝의 기능키(Shift, ⌫)가 있는 영어 자판 셋째 줄. 일반 자판처럼 글자 키 한 칸(덩어리 폭 / columns)을 기준으로
-     * Shift와 ⌫가 1.5칸 폭이고, Shift는 왼쪽 덩어리의 왼쪽 끝에, ⌫는 오른쪽 덩어리의 오른쪽 끝에 붙는다.
-     * 글자 키는 그 사이에서 다른 줄과 같은 칸 폭을 쓰고, 두 덩어리가 가운데에서 겹치면 같은 비율로 줄인다.
-     */
-    private static Row edgeRow(List<Key> left, List<Key> right, float height, int columns, Prefs prefs) {
         float[] b = blocks(prefs);
-        float uLeft = b[1] / columns, uRight = b[3] / columns;
-        float lw = 0f, rw = 0f;
-        for (Key k : left) lw += k.weight * uLeft;
-        for (Key k : right) rw += k.weight * uRight;
-        float end = b[2] + b[3], start = b[0];
-        float f = Math.min(1f, (end - start) / (lw + rw));
-        for (Key k : left) k.weight *= uLeft * f;
-        for (Key k : right) k.weight *= uRight * f;
-        lw *= f;
-        rw *= f;
-        return blockLine(left, start, lw, right, end - rw, rw, height);
+        float sL = b[1] / BALANCED_HALF, sR = b[3] / BALANCED_HALF;
+        for (Key k : left) k.weight *= sL;
+        for (Key k : right) k.weight *= sR;
+        float ls = left.isEmpty() ? b[0] : b[0] + leftFrom * sL, lw = left.isEmpty() ? 0f : (leftTo - leftFrom) * sL;
+        float rs = right.isEmpty() ? b[2] + b[3] : b[2] + (rightFrom - BALANCED_HALF) * sR;
+        float rw = right.isEmpty() ? 0f : (rightTo - rightFrom) * sR;
+        float overlap = ls + lw - rs;
+        if (overlap > 0.0001f) {
+            float d = Math.min(overlap, ls - b[0]);   // 왼쪽 키들을 덩어리 안에서 왼쪽으로
+            ls -= d;
+            overlap -= d;
+            d = Math.min(overlap, b[2] + b[3] - rs - rw);   // 오른쪽 키들을 덩어리 안에서 오른쪽으로
+            rs += d;
+            overlap -= d;
+            if (overlap > 0.0001f) {
+                float end = rs + rw, f = (end - ls) / (lw + rw);
+                for (Key k : left) k.weight *= f;
+                for (Key k : right) k.weight *= f;
+                lw *= f;
+                rw *= f;
+                rs = end - rw;
+            }
+        }
+        return blockLine(left, ls, lw, right, rs, rw, row.height);
     }
 
     /**
-     * 왼쪽 키들(rs부터 rw 폭)을 잇고, 앞·가운데·뒤를 빈 자리로 채워 10칸 줄을 만든다.
+     * 왼쪽 키들(ls부터 lw 폭)과 오른쪽 키들(rs부터 rw 폭)을 잇고, 앞·가운데·뒤를 빈 자리로 채워 10칸 줄을 만든다.
      * 가운데 빈 자리는 눌러도 반응하지 않는다(SPACER). 양 바깥의 빈틈은 누르면 가까운 키가 눌린다(GAP).
      */
     private static Row blockLine(List<Key> left, float ls, float lw, List<Key> right, float rs, float rw, float height) {
@@ -936,7 +902,7 @@ public final class KeyboardLayout {
         List<Key> left = new ArrayList<>(), right = new ArrayList<>();
         String[] n = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"};
         for (int i = 0; i < n.length; i++) (i < 5 ? left : right).add(ch(n[i], null));
-        return blockRow(left, right, 0.78f, 5, 5, 0f, prefs);
+        return blockRow(left, right, 0.78f, 5, 5, prefs);
     }
 
     /**
