@@ -508,4 +508,34 @@ public class SplitBottomRowTest {
             }
         }
     }
+
+    @Test
+    public void portraitBalancedVowelsFillTheRightHalfAtFullWidth() throws Exception {
+        FakeSp sp = new FakeSp();
+        Prefs p = portraitView(sp);
+        sp.m.put(p.balancedLayoutKey(), true);
+        for (int r = 0; r < 3; r++) {
+            float x = 0f, from = -1f, to = 0f;
+            for (Key k : KeyboardLayout.korean(p).rows[r].keys) {
+                if (k.type != Key.GAP && k.type != Key.SPACER && x >= 4.999f) {
+                    if (from < 0f) from = x;
+                    to = x + k.weight;
+                }
+                x += k.weight;
+            }
+            assertEquals("모음 첫 키는 오른쪽 절반의 왼쪽 끝", 5f, from, 0.001f);
+            assertEquals("모음 끝 키는 오른쪽 끝", 10f, to, 0.001f);
+        }
+        sp.m.put(p.balancedVowelWidthKey(), 60);   // 60%면 오른쪽 절반의 60%만 쓴다
+        float x = 0f, from = -1f, to = 0f;
+        for (Key k : KeyboardLayout.korean(p).rows[0].keys) {
+            if (k.type != Key.GAP && x >= 4.999f) {
+                if (from < 0f) from = x;
+                to = x + k.weight;
+            }
+            x += k.weight;
+        }
+        assertEquals(3f, to - from, 0.001f);
+        assertEquals(100, KeyboardLayout.balancedWidthMax(p));
+    }
 }

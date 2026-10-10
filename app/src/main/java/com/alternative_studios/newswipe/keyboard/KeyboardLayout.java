@@ -220,15 +220,9 @@ public final class KeyboardLayout {
         return newSwipe(prefs) ? 4 : 5;
     }
 
-    /**
-     * '모음 키 폭'의 최댓값. 세로 모드의 균형 레이아웃(자음 키 폭의 %)은 모음 열들이 오른쪽 절반을 넘지 않는 데까지
-     * (5칸 단위로 내림), 분리 키보드(오른쪽 덩어리 폭의 %)는 100이다.
-     */
+    /** '모음 키 폭'의 최댓값: 100%면 모음 키들이 오른쪽 절반을 꽉 채운다. */
     public static int balancedWidthMax(Prefs prefs) {
-        if (splitView(prefs)) return Prefs.BALANCED_CONSONANT_WIDTH_MAX;
-        float consonantW = BALANCED_HALF / balancedConsonants(prefs);
-        int max = (int) Math.floor(BALANCED_HALF / (BALANCED_VOWEL_COLUMNS * consonantW) * 100f / 5f) * 5;
-        return Math.min(Prefs.BALANCED_WIDTH_MAX, max);
+        return Prefs.BALANCED_CONSONANT_WIDTH_MAX;
     }
 
     /**
@@ -270,25 +264,23 @@ public final class KeyboardLayout {
         }
         if (deleteHere) vowels.add(fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1f));
         if (splitView(prefs)) return blockRow(consonants, vowels, 1f, balancedConsonants(prefs), BALANCED_VOWEL_COLUMNS, prefs);
-        return splitRow(consonants, vowels, 1f, BALANCED_HALF / balancedConsonants(prefs),
-                balancedWidthMax(prefs), prefs);
+        return splitRow(consonants, vowels, 1f, prefs);
     }
 
     /**
      * 가운데에서 반으로 나뉜 한 줄: 왼쪽 절반에 consonants, 오른쪽 절반에 vowels를 놓는다.
      * 자음 키는 왼쪽 절반을 꽉 채우는 폭의 '자음 폭'%이고 남는 폭 안에서 '자음 위치'에 따라 놓인다.
-     * 모음 키는 baseW(자음 키 한 칸의 폭)의 '모음 폭'%(최대 maxPct, 오른쪽 절반을 넘지 않게)이고 '모음 위치'에 따라 놓인다.
+     * 모음 키는 오른쪽 절반을 꽉 채우는 폭의 '모음 폭'%이고(100%면 모음이 오른쪽 절반을 꽉 채운다) '모음 위치'에 따라 놓인다.
      * 세로 모드의 균형 레이아웃에서 쓴다 (분리 키보드는 {@link #blockRow}).
      */
-    private static Row splitRow(List<Key> consonants, List<Key> vowels, float height, float baseW, int maxPct, Prefs prefs) {
+    private static Row splitRow(List<Key> consonants, List<Key> vowels, float height, Prefs prefs) {
         float cw = BALANCED_HALF / consonants.size()
                 * (prefs == null ? Prefs.BALANCED_WIDTH_DEFAULT : prefs.balancedConsonantWidth()) / 100f;
         float cpos = (prefs == null ? 50 : prefs.balancedConsonantPos()) / 100f;
         float cfree = Math.max(0f, BALANCED_HALF - consonants.size() * cw);
         float cgapLeft = cfree * cpos, cgapRight = cfree - cgapLeft;
         int pct = prefs == null ? Prefs.BALANCED_WIDTH_DEFAULT : prefs.balancedVowelWidth();
-        float v = baseW * Math.min(pct, maxPct) / 100f;
-        if (!vowels.isEmpty()) v = Math.min(v, BALANCED_HALF / vowels.size());
+        float v = vowels.isEmpty() ? 0f : BALANCED_HALF / vowels.size() * pct / 100f;
         float pos = (prefs == null ? 50 : prefs.balancedVowelPos()) / 100f;
         float free = Math.max(0f, BALANCED_HALF - vowels.size() * v);
         float gapLeft = free * pos, gapRight = free - gapLeft;

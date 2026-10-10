@@ -372,7 +372,7 @@ public final class SettingsActivity extends Activity {
     private void buildKeyArea() {
         LinearLayout card = section("자음·모음 열");
         card.addView(layoutPreview(null));
-        card.addView(note("자음 키 폭은 왼쪽 절반을 꽉 채우는 폭, 모음 키 폭은 자음 키 폭에 대한 비율입니다. 가로 위치는 각 절반 안에서 키들이 놓이는 곳입니다 "
+        card.addView(note("자음 키 폭은 왼쪽 절반을, 모음 키 폭은 오른쪽 절반을 꽉 채우는 폭에 대한 비율입니다 (100%면 꽉 참). 가로 위치는 각 절반 안에서 키들이 놓이는 곳입니다 "
                 + "(0 = 왼쪽 끝, 50 = 가운데, 100 = 오른쪽 끝)."));
         addKeyAreaControls(card, prefs);
     }
