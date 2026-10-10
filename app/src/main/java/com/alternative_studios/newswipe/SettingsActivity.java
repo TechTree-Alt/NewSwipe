@@ -1411,17 +1411,19 @@ public final class SettingsActivity extends Activity {
         perKeyBox.addView(levelRow("지우기 키", Prefs.VIBRATE_DELETE, prefs.vibrateDelete()));
         perKeyBox.addView(levelRow("스페이스 키", Prefs.VIBRATE_SPACE, prefs.vibrateSpace()));
         perKeyBox.addView(levelRow("엔터 키", Prefs.VIBRATE_ENTER, prefs.vibrateEnter()));
+        perKeyBox.addView(levelRow("기호 키", Prefs.VIBRATE_SYMBOL, prefs.vibrateSymbol()));
+        perKeyBox.addView(levelRow("언어 전환 키", Prefs.VIBRATE_LANGUAGE, prefs.vibrateLanguage()));
+        perKeyBox.addView(levelRow("도구 막대 키", Prefs.VIBRATE_TOOLBAR, prefs.vibrateToolbar()));
         perKeyBox.addView(note("그 밖의 키는 위에서 고른 진동을 씁니다."));
         View perKeySub = subGroup(perKeyBox);
         View gestureSub = subGroup(levelRow(null, Prefs.VIBRATE_GESTURE_LEVEL, prefs.vibrateGestureLevel()));
         View vibrateOptions = subGroup(styleRow, customGroup,
-                toggle("키 종류별로 다르게", "지우기·스페이스·엔터 키의 진동을 따로 정합니다.",
+                toggle("키 종류별로 다르게", "지우기·스페이스·엔터·기호·언어 전환 키와 도구 막대 버튼의 진동을 따로 정합니다.",
                         Prefs.VIBRATE_PER_KEY, prefs.vibratePerKey(), perKeySub),
                 perKeySub,
                 toggle("밀기·길게 누르기 진동", "밀어서 입력하거나 길게 눌렀을 때도 진동합니다.",
                         Prefs.VIBRATE_GESTURE_ON, prefs.vibrateGestureOn(), gestureSub),
-                gestureSub,
-                note("키를 길게 눌러 글자가 반복 입력되거나 연속으로 지워질 때는 한 글자마다 약한 진동(틱)이 울립니다."));
+                gestureSub);
         fb.addView(toggle("키 진동", null, Prefs.VIBRATE, prefs.vibrate(), vibrateOptions));
         fb.addView(vibrateOptions);
         View soundVolume = subGroup(slider("소리 크기", Prefs.SOUND_VOLUME, prefs.soundVolume(), 0, 100, 5, "%"));

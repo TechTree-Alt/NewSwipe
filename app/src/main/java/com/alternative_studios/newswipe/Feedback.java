@@ -19,7 +19,8 @@ final class Feedback {
     static final int WEAK = 1, BASE = 2, STRONG = 3;
     private boolean vibrate, sound, perKey, gesture;
     private float volume;
-    private int deleteLevel = BASE, spaceLevel = BASE, enterLevel = BASE, gestureLevel = BASE;
+    private int deleteLevel = BASE, spaceLevel = BASE, enterLevel = BASE, gestureLevel = BASE,
+            symbolLevel = BASE, languageLevel = BASE, toolbarLevel = BASE;
     /** 단계별 고정 진동 (인덱스 = 단계). */
     private final VibrationEffect[] levels = new VibrationEffect[4];
     /** 일반 키를 눌렀을 때의 진동 (약하게·기본·강하게 중 하나이거나 직접 설정한 값). */
@@ -46,6 +47,9 @@ final class Feedback {
         deleteLevel = clampLevel(prefs.vibrateDelete());
         spaceLevel = clampLevel(prefs.vibrateSpace());
         enterLevel = clampLevel(prefs.vibrateEnter());
+        symbolLevel = clampLevel(prefs.vibrateSymbol());
+        languageLevel = clampLevel(prefs.vibrateLanguage());
+        toolbarLevel = clampLevel(prefs.vibrateToolbar());
         gesture = prefs.vibrateGestureOn();
         gestureLevel = clampLevel(prefs.vibrateGestureLevel());
         int style = prefs.vibrateStyle(), ms = prefs.vibrateMs(), amp = prefs.vibrateAmp();
@@ -104,6 +108,12 @@ final class Feedback {
         if (vibrate && gesture) play(levels[gestureLevel]);
     }
 
+    /** 도구 막대 버튼을 눌렀거나 도구 막대를 밀었을 때의 진동 (키 종류별 설정을 켰으면 그 단계). */
+    void onToolbar() {
+        if (vibrate) play(perKey ? levels[toolbarLevel] : keyEffect);
+        playClickSound(null);
+    }
+
     /** 키를 누르고 있어 글자가 반복 입력되거나 연속으로 지워질 때, 한 글자마다 울리는 틱. */
     void onRepeat() {
         if (vibrate) play(levels[WEAK]);
@@ -117,11 +127,19 @@ final class Feedback {
                     case Key.DELETE: e = levels[deleteLevel]; break;
                     case Key.SPACE: e = levels[spaceLevel]; break;
                     case Key.ENTER: e = levels[enterLevel]; break;
+                    case Key.TO_SYMBOLS: case Key.TO_LETTERS: case Key.SYMBOL_PAGE:
+                        e = levels[symbolLevel];
+                        break;
+                    case Key.LANGUAGE: case Key.EMOJI: e = levels[languageLevel]; break;
                     default: break;
                 }
             }
             play(e);
         }
+        playClickSound(key);
+    }
+
+    private void playClickSound(Key key) {
         if (sound && audio != null && volume > 0) {
             int fx;
             switch (key == null ? Key.CHAR : key.type) {

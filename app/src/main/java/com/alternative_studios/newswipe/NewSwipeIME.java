@@ -620,7 +620,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         SwipeVertical.attachFourWay(button, dir -> !SwipeAction.NONE.equals(toolButtonAction(slot, dir)),
                 () -> Ui.dp(this, prefs.fnSwipeThresholdDp()),
                 dir -> {
-                    feedback.onKey(null);
+                    feedback.onToolbar();
                     String action = toolButtonAction(slot, dir);
                     // 한 손 모드 버튼의 기본 좌우 밀기는 그쪽 한 손 모드로 바꾼다 (이미 그쪽이어도 끄지 않는다).
                     if (slot == ToolbarSwipes.ONE_HAND && dir == Key.SWIPE_LEFT && SwipeAction.ONE_HAND_LEFT.equals(action)) {
@@ -660,7 +660,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private IconButton toolButton(int icon, String desc, View.OnClickListener l) {
         IconButton b = new IconButton(this, icon, theme.hint, theme.keyPressed, desc);
         b.setOnClickListener(v -> {
-            feedback.onKey(null);
+            feedback.onToolbar();
             l.onClick(v);
         });
         // 아이콘보다 조금 넓게만 잡아, 버튼이 많아도 추천이 쓸 공간이 넉넉하게 남게 한다. 폭은 sizeToolbar()가 설정의 버튼 크기에 맞춘다.
@@ -2254,7 +2254,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (panel != PANEL_KEYBOARD) return;
         String action = toolbarAction(dir);
         if (SwipeAction.NONE.equals(action)) return;
-        feedback.onKey(null);
+        feedback.onToolbar();
         onKeyFunction(null, action);
     }
 
