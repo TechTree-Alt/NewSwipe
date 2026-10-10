@@ -1241,6 +1241,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     @Override
     public void onKeyRepeat(Key key) {
+        feedback.onRepeat();
         lastWasSpace = false;
         // 탭이 아니라 길게 눌러 입력하는 것이라 연속 탭(쌍자음·이중모음) 판단에서 빠진다.
         typeText(shiftState != 0 && lettersLayout() ? key.shifted : key.output, false);
@@ -1323,6 +1324,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     @Override
     public void onDeleteRepeat() {
+        feedback.onRepeat();
         // 선택 영역 확인(앱에 묻고 기다리는 호출)은 연속 삭제의 첫 번째에서만 한다.
         // 첫 삭제 뒤에는 선택 영역이 사라지므로 이후에는 묻지 않아도 된다.
         handleDelete(deleteRepeatChecked);

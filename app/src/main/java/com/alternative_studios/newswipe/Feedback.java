@@ -15,13 +15,15 @@ final class Feedback {
     private final Vibrator vibrator;
     /** 진동기 유무는 바뀌지 않으므로 한 번만 확인한다. */
     private final boolean hasVibrator;
-    /** 진동 단계: 0 끔, 1 약하게, 2 기본, 3 강하게. */
-    static final int OFF = 0, WEAK = 1, BASE = 2, STRONG = 3;
-    private boolean vibrate, sound, perKey;
+    /** 진동 단계: 1 약하게(틱), 2 기본(클릭), 3 강하게(강한 클릭). 키 종류별·밀기 진동은 이 단계를 그대로 쓴다. */
+    static final int WEAK = 1, BASE = 2, STRONG = 3;
+    private boolean vibrate, sound, perKey, gesture;
     private float volume;
-    private int deleteLevel = BASE, spaceLevel = BASE, enterLevel = BASE, gestureLevel = OFF;
-    /** 단계별 진동 (인덱스 = 단계). 설정이 바뀔 때만 다시 만든다. */
-    private final VibrationEffect[] effects = new VibrationEffect[4];
+    private int deleteLevel = BASE, spaceLevel = BASE, enterLevel = BASE, gestureLevel = BASE;
+    /** 단계별 고정 진동 (인덱스 = 단계). */
+    private final VibrationEffect[] levels = new VibrationEffect[4];
+    /** 일반 키를 눌렀을 때의 진동 (약하게·기본·강하게 중 하나이거나 직접 설정한 값). */
+    private VibrationEffect keyEffect;
     private int builtSignature = Integer.MIN_VALUE;
 
     @SuppressWarnings("deprecation")
@@ -44,51 +46,54 @@ final class Feedback {
         deleteLevel = clampLevel(prefs.vibrateDelete());
         spaceLevel = clampLevel(prefs.vibrateSpace());
         enterLevel = clampLevel(prefs.vibrateEnter());
-        gestureLevel = clampLevel(prefs.vibrateGesture());
-        int mode = prefs.vibrateMode(), ms = prefs.vibrateMs(), amp = prefs.vibrateAmp();
-        int signature = (mode * 1009 + ms) * 1009 + amp;
+        gesture = prefs.vibrateGestureOn();
+        gestureLevel = clampLevel(prefs.vibrateGestureLevel());
+        int style = prefs.vibrateStyle(), ms = prefs.vibrateMs(), amp = prefs.vibrateAmp();
+        int signature = (style * 1009 + ms) * 1009 + amp;
         if (signature != builtSignature) {
             builtSignature = signature;
-            for (int level = WEAK; level <= STRONG; level++) effects[level] = build(level, mode, ms, amp);
+            for (int level = WEAK; level <= STRONG; level++) levels[level] = fixed(level, ms);
+            keyEffect = style >= 0 && style <= 2 ? levels[style + 1] : custom(ms, amp);
         }
         sound = prefs.sound();
         volume = prefs.soundVolume() / 100f;
     }
 
     private static int clampLevel(int v) {
-        return Math.max(OFF, Math.min(STRONG, v));
+        return Math.max(WEAK, Math.min(STRONG, v));
     }
 
     /**
-     * @param mode 0 직접 설정(길이 ms + 강도 %), 1 기본 클릭, 2 틱, 3 강한 클릭
-     * 시스템 효과는 Android 10부터 쓸 수 있어, 그 아래에서는 직접 설정으로 대신한다.
+     * 단계마다 정해진 진동: 약하게 = 틱, 기본 = 클릭, 강하게 = 강한 클릭 (Android 10부터).
+     * 그 아래 버전에서는 길이 ms로 비슷하게 흉내 낸다.
      */
-    private VibrationEffect build(int level, int mode, int ms, int ampPct) {
-        if (mode != 0 && Build.VERSION.SDK_INT >= 29) {
-            // 약하게 / 기본 / 강하게 에 해당하는 시스템 효과 (EFFECT_TICK = 2, EFFECT_CLICK = 0, EFFECT_HEAVY_CLICK = 5)
-            final int tick = VibrationEffect.EFFECT_TICK, click = VibrationEffect.EFFECT_CLICK,
-                    heavy = VibrationEffect.EFFECT_HEAVY_CLICK;
-            int[][] table = {{tick, click, heavy}, {tick, tick, click}, {click, heavy, heavy}};
-            return VibrationEffect.createPredefined(table[Math.max(1, Math.min(3, mode)) - 1][level - 1]);
+    private static VibrationEffect fixed(int level, int ms) {
+        if (Build.VERSION.SDK_INT >= 29) {
+            return VibrationEffect.createPredefined(level == WEAK ? VibrationEffect.EFFECT_TICK
+                    : level == STRONG ? VibrationEffect.EFFECT_HEAVY_CLICK : VibrationEffect.EFFECT_CLICK);
         }
-        float scale = level == WEAK ? 0.6f : 1f;
-        int len = Math.max(1, Math.round(ms * (level == WEAK ? 0.6f : level == STRONG ? 1.6f : 1f)));
+        return VibrationEffect.createOneShot(Math.max(1, Math.round(ms * (level == WEAK ? 0.6f : level == STRONG ? 1.6f : 1f))),
+                VibrationEffect.DEFAULT_AMPLITUDE);
+    }
+
+    /** 직접 설정: 길이 ms와 강도 %. 강도 100%는 기기 기본 강도, 강도를 조절할 수 없는 기기에서는 늘 기본 강도. */
+    private VibrationEffect custom(int ms, int ampPct) {
         int amplitude = VibrationEffect.DEFAULT_AMPLITUDE;
-        boolean controllable = vibrator != null && vibrator.hasAmplitudeControl();
-        float pct = ampPct * scale;
-        if (controllable && pct < 100f) amplitude = Math.max(1, Math.min(255, Math.round(pct * 2.55f)));
-        return VibrationEffect.createOneShot(len, amplitude);
+        if (vibrator != null && vibrator.hasAmplitudeControl() && ampPct < 100) {
+            amplitude = Math.max(1, Math.min(255, Math.round(ampPct * 2.55f)));
+        }
+        return VibrationEffect.createOneShot(Math.max(1, ms), amplitude);
     }
 
-    /** 설정 화면에서 지금 설정을 느껴 보게 한다. */
+    /** 설정 화면에서 지금 설정을 느껴 보게 한다. level 0이면 일반 키 진동. */
     void preview(int level) {
-        play(level);
+        play(level == 0 ? keyEffect : levels[clampLevel(level)]);
     }
 
-    private void play(int level) {
-        if (level <= OFF || !hasVibrator || effects[level] == null) return;
+    private void play(VibrationEffect e) {
+        if (!hasVibrator || e == null) return;
         try {
-            vibrator.vibrate(effects[level]);
+            vibrator.vibrate(e);
         } catch (RuntimeException ignored) {
             // 일부 기기는 진동 서비스 호출이 실패할 수 있다.
         }
@@ -96,21 +101,26 @@ final class Feedback {
 
     /** 밀기·길게 누르기가 끝났을 때의 진동 (설정에서 켠 경우만). */
     void onGesture() {
-        if (vibrate) play(gestureLevel);
+        if (vibrate && gesture) play(levels[gestureLevel]);
+    }
+
+    /** 키를 누르고 있어 글자가 반복 입력되거나 연속으로 지워질 때, 한 글자마다 울리는 틱. */
+    void onRepeat() {
+        if (vibrate) play(levels[WEAK]);
     }
 
     void onKey(Key key) {
         if (vibrate) {
-            int level = BASE;
+            VibrationEffect e = keyEffect;
             if (perKey && key != null) {
                 switch (key.type) {
-                    case Key.DELETE: level = deleteLevel; break;
-                    case Key.SPACE: level = spaceLevel; break;
-                    case Key.ENTER: level = enterLevel; break;
+                    case Key.DELETE: e = levels[deleteLevel]; break;
+                    case Key.SPACE: e = levels[spaceLevel]; break;
+                    case Key.ENTER: e = levels[enterLevel]; break;
                     default: break;
                 }
             }
-            play(level);
+            play(e);
         }
         if (sound && audio != null && volume > 0) {
             int fx;
