@@ -691,30 +691,85 @@ public final class SettingsActivity extends Activity {
         return b.toString();
     }
 
-    /** 검색 결과로 연 화면에서 그 항목(화면에 보이는 이름이 같은 글자)을 찾아 스크롤하고 깜빡인다. 접혀 있으면 하지 않는다. */
+    /** 항목 이름 글자 → 그 항목 전체를 감싼 줄 (깜빡일 때 줄 전체를 칠한다). 화면이 사라지면 함께 치워진다. */
+    private final java.util.Map<TextView, View> itemRow = new java.util.WeakHashMap<>();
+
+    /**
+     * 검색 결과로 연 화면에서 그 항목(화면에 보이는 이름이 같은 글자)을 찾아 스크롤하고, 항목 전체를 반투명 강조색으로 두 번 깜빡인다.
+     * 항목이 다른 설정 아래에 접혀 있으면 그것을 접어 둔 설정(접힌 칸 바로 위의 보이는 줄)을 대신 깜빡여, 무엇을 켜야 하는지 알려 준다.
+     */
     private void highlightItem(ScrollView scroll, String label) {
         if (isFinishing() || isDestroyed()) return;
-        TextView target = findLabel(list, label);
+        TextView target = findLabel(list, label, true);
+        if (target == null) target = findLabel(list, label, false);
         if (target == null) return;
+        View hidden = outermostHidden(target);
+        View box;
+        if (hidden != null) {
+            box = controllerOf(hidden);
+        } else {
+            box = itemRow.get(target);
+            if (box == null) box = target;
+        }
+        if (box == null) return;
         int y = 0;
-        View v = target;
-        while (v != null && v != list) {
+        for (View v = box; v != null && v != list; v = v.getParent() instanceof View ? (View) v.getParent() : null) {
             y += v.getTop();
-            v = v.getParent() instanceof View ? (View) v.getParent() : null;
         }
         scroll.smoothScrollTo(0, Math.max(0, y - Ui.dp(this, 96)));
-        android.animation.ValueAnimator pulse = android.animation.ValueAnimator.ofFloat(1f, 0.15f, 1f, 0.15f, 1f);
-        pulse.setDuration(1300);
-        pulse.addUpdateListener(a -> target.setAlpha((Float) a.getAnimatedValue()));
+        flash(box);
+    }
+
+    /** 반투명 강조색을 항목 위에 두 번 깔았다 걷는다 (한 번에 1초쯤, 부드럽게 나타났다 사라진다). */
+    private void flash(View box) {
+        int w = box.getWidth(), h = box.getHeight();
+        if (w == 0 || h == 0) return;
+        android.graphics.drawable.GradientDrawable d = Ui.round(accentColor, Ui.dp(this, 12));
+        d.setBounds(0, 0, w, h);
+        d.setAlpha(0);
+        box.getOverlay().add(d);
+        android.animation.ValueAnimator pulse = android.animation.ValueAnimator.ofFloat(0f, 1f);
+        pulse.setDuration(2000);
+        pulse.addUpdateListener(a -> {
+            double s = Math.sin(2 * Math.PI * (Float) a.getAnimatedValue());   // 0 → 1 → 0 → 1 → 0
+            d.setAlpha((int) Math.round(120 * s * s));
+        });
+        pulse.addListener(new android.animation.AnimatorListenerAdapter() {
+            @Override public void onAnimationEnd(android.animation.Animator animation) {
+                box.getOverlay().remove(d);
+            }
+        });
         pulse.start();
     }
 
-    private static TextView findLabel(View v, String label) {
-        if (v instanceof TextView && v.isShown() && label.contentEquals(((TextView) v).getText())) return (TextView) v;
+    /** label에서 위로 올라가며 만나는 접힌(GONE) 칸 중 가장 바깥의 것. 접힌 칸이 없으면 null. */
+    private View outermostHidden(View label) {
+        View hidden = null;
+        for (View v = label; v != null && v != list; v = v.getParent() instanceof View ? (View) v.getParent() : null) {
+            if (v.getVisibility() == View.GONE) hidden = v;
+        }
+        return hidden;
+    }
+
+    /** 접힌 칸을 열고 닫는 설정: 같은 부모 안에서 그 칸 바로 앞에 있는 보이는 줄. 없으면 null. */
+    private static View controllerOf(View hidden) {
+        if (!(hidden.getParent() instanceof ViewGroup)) return null;
+        ViewGroup parent = (ViewGroup) hidden.getParent();
+        for (int i = parent.indexOfChild(hidden) - 1; i >= 0; i--) {
+            View sibling = parent.getChildAt(i);
+            if (sibling.getVisibility() == View.VISIBLE && sibling.getHeight() > 2) return sibling;
+        }
+        return null;
+    }
+
+    private static TextView findLabel(View v, String label, boolean shownOnly) {
+        if (v instanceof TextView && (!shownOnly || v.isShown()) && label.contentEquals(((TextView) v).getText())) {
+            return (TextView) v;
+        }
         if (v instanceof ViewGroup) {
             ViewGroup g = (ViewGroup) v;
             for (int i = 0; i < g.getChildCount(); i++) {
-                TextView found = findLabel(g.getChildAt(i), label);
+                TextView found = findLabel(g.getChildAt(i), label, shownOnly);
                 if (found != null) return found;
             }
         }
@@ -1837,6 +1892,7 @@ public final class SettingsActivity extends Activity {
             t.setText(label);
             t.setTextColor(textColor);
             t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+            itemRow.put(t, box);
             box.addView(t);
         }
         box.addView(Ui.muteHaptics(choiceRowRepeat(LEVEL_LABELS, Math.max(1, Math.min(3, level)) - 1, i -> {
@@ -2424,6 +2480,7 @@ public final class SettingsActivity extends Activity {
         t.setText(label);
         t.setTextColor(textColor);
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        itemRow.put(t, row);
         texts.addView(t);
         if (desc != null) {
             TextView d = new TextView(this);
@@ -2479,6 +2536,7 @@ public final class SettingsActivity extends Activity {
         t.setText(label);
         t.setTextColor(textColor);
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        itemRow.put(t, box);
         top.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         TextView v = new TextView(this);
         v.setTextColor(hintColor);
@@ -2545,6 +2603,7 @@ public final class SettingsActivity extends Activity {
         t.setText(label);
         t.setTextColor(accentColor);
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        itemRow.put(t, row);
         row.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         row.addView(trailing);
         row.setClickable(true);
