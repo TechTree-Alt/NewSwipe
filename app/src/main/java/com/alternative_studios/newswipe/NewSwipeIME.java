@@ -387,7 +387,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         searchBar = buildSearchBar();
         searchBar.setVisibility(View.GONE);
         topSlot.addView(searchBar);
-        forgetBar = null;   // 학습한 단어 삭제 확인 줄은 필요할 때 만든다 (새 화면에는 아직 없다)
+        forgetBar = null;   // 도구 막대의 확인 줄은 필요할 때 만든다 (새 화면에는 아직 없다)
         column.addView(topSlot, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, toolbarHeight));
 
         resultViews.clear();   // 예전 색으로 만든 칸은 버린다
@@ -400,7 +400,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         resultScroll.addView(results);
         resultScroll.setVisibility(View.GONE);
         column.addView(resultScroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                Ui.dp(this, 50)));
+                resultStripHeight()));
 
         content = new FrameLayout(this);
         content.setClipChildren(false);
@@ -620,7 +620,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         SwipeVertical.attachFourWay(button, dir -> !SwipeAction.NONE.equals(toolButtonAction(slot, dir)),
                 () -> Ui.dp(this, prefs.fnSwipeThresholdDp()),
                 dir -> {
-                    feedback.onKey(null);
+                    feedback.onToolbar();
                     String action = toolButtonAction(slot, dir);
                     // 한 손 모드 버튼의 기본 좌우 밀기는 그쪽 한 손 모드로 바꾼다 (이미 그쪽이어도 끄지 않는다).
                     if (slot == ToolbarSwipes.ONE_HAND && dir == Key.SWIPE_LEFT && SwipeAction.ONE_HAND_LEFT.equals(action)) {
@@ -660,7 +660,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private IconButton toolButton(int icon, String desc, View.OnClickListener l) {
         IconButton b = new IconButton(this, icon, theme.hint, theme.keyPressed, desc);
         b.setOnClickListener(v -> {
-            feedback.onKey(null);
+            feedback.onToolbar();
             l.onClick(v);
         });
         // 아이콘보다 조금 넓게만 잡아, 버튼이 많아도 추천이 쓸 공간이 넉넉하게 남게 한다. 폭은 sizeToolbar()가 설정의 버튼 크기에 맞춘다.
@@ -779,6 +779,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         cfgLearn = cfgWords && prefs.learnWords();
         suggester.setUserEnabled(cfgLearn);
         feedback.configure(prefs);
+        if (emojiPanel != null) emojiPanel.setSizeLevel(prefs.emojiSize());
+        applyResultSize();
         composer.setDoubleTapVowel(prefs.doubleTapVowel());
         composer.setDoubleTapConsonant(prefs.doubleTapConsonant(), prefs.doubleTapConsonantMs());
         // 가로 모드·대화면에서 따로 정한 키보드 높이·글자 크기는 그 화면에서만 쓴다.
@@ -1155,7 +1157,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (emojiPanel != null) setHeight(emojiPanel, keyboardHeight + toolbarHeight);
         if (clipPanel != null) setHeight(clipPanel, keyboardHeight + toolbarHeight);
         // 자판 위에 도구 막대가 있으면 키 미리보기가 그 위까지 올라갈 수 있다 (아래에 두었거나 껐으면 자판 안에서 멈춘다).
-        keyboard.setOverflowTop(panel == PANEL_SEARCH ? toolbarHeight + Ui.dp(this, 50)
+        keyboard.setOverflowTop(panel == PANEL_SEARCH ? toolbarHeight + resultStripHeight()
                 : toolbarGone() || prefs.toolbarBottom() ? 0 : toolbarHeight);
     }
 
@@ -1170,6 +1172,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private void ensureEmojiPanel() {
         if (emojiPanel != null) return;
         emojiPanel = new EmojiPanel(this, theme, Ui.dp(this, 40), this);   // 패널 위쪽 탭 줄은 도구 막대 높이와 관계없이 기본 높이
+        emojiPanel.setSizeLevel(prefs.emojiSize());
         // 데이터를 읽는 동안 열려도 처음 탭(최근이 있으면 최근 탭)을 바로 고를 수 있게 사용 기록부터 넘긴다.
         emojiPanel.setRecent(EmojiRepository.parseRecent(prefs.recentEmoji()));
         emojiPanel.setPinned(EmojiRepository.parseRecent(prefs.pinnedEmoji()));
@@ -1239,8 +1242,15 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         feedback.onKey(key);
     }
 
+    /** 밀기·길게 누르기가 인식됐다 (KeyboardView가 알려 준다). Fn 키 탭처럼 기능을 실행하는 탭은 여기로 오지 않는다. */
+    @Override
+    public void onGesture() {
+        feedback.onGesture();
+    }
+
     @Override
     public void onKeyRepeat(Key key) {
+        feedback.onRepeat();
         lastWasSpace = false;
         // 탭이 아니라 길게 눌러 입력하는 것이라 연속 탭(쌍자음·이중모음) 판단에서 빠진다.
         typeText(shiftState != 0 && lettersLayout() ? key.shifted : key.output, false);
@@ -1320,6 +1330,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     @Override
     public void onDeleteRepeat() {
+        feedback.onRepeat();
         // 선택 영역 확인(앱에 묻고 기다리는 호출)은 연속 삭제의 첫 번째에서만 한다.
         // 첫 삭제 뒤에는 선택 영역이 사라지므로 이후에는 묻지 않아도 된다.
         handleDelete(deleteRepeatChecked);
@@ -1988,17 +1999,23 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return true;
     }
 
-    /** 추천 막대에서 학습한 단어를 지울지 묻는 창. 키보드 창에 붙여 띄운다. */
     /**
-     * 학습한 단어 삭제 확인 줄. 따로 창(대화상자)을 띄우지 않고 도구 막대(추천란) 자리 위에 덮어 보여 준다.
-     * 키보드 창에 붙인 대화상자는 뜨는 순간 포커스가 옮겨 가면서 시스템이 키보드를 닫아 버리는 일이 있었다.
+     * 도구 막대 자리 위에 덮어 보여 주는 확인 줄 (학습한 단어 삭제, 음성 입력 안내 등).
+     * 따로 창(대화상자)을 띄우지 않는다. 키보드 창에 붙인 대화상자는 뜨는 순간 포커스가 옮겨 가면서
+     * 시스템이 키보드를 닫아 버리는 일이 있었다.
      */
     private LinearLayout forgetBar;
-    private TextView forgetText;
+    private TextView forgetText, forgetOk;
     private Runnable forgetAction;
 
     private void confirmForget(String word, Runnable delete) {
-        if (topSlot == null) return;
+        confirmOnBar("'" + word + "'" + WordSuggester.objectParticle(word) + " 삭제할까요?", "삭제",
+                TextUtils.TruncateAt.MIDDLE, delete);
+    }
+
+    /** 확인 줄을 띄운다. okLabel을 누르면 action을 실행한다. 도구 막대 자리가 보이지 않으면 false. */
+    private boolean confirmOnBar(String message, String okLabel, TextUtils.TruncateAt ellipsize, Runnable action) {
+        if (topSlot == null || !topSlot.isShown()) return false;
         if (forgetBar == null) {
             forgetBar = new LinearLayout(this);
             forgetBar.setGravity(Gravity.CENTER_VERTICAL);
@@ -2009,21 +2026,24 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             forgetText.setTextColor(theme.text);
             forgetText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
             forgetText.setSingleLine(true);
-            forgetText.setEllipsize(TextUtils.TruncateAt.MIDDLE);
             forgetBar.addView(forgetText, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
             forgetBar.addView(forgetButton("취소", theme.text, v -> dismissForgetDialog()));
-            forgetBar.addView(forgetButton("삭제", theme.accent, v -> {
-                Runnable action = forgetAction;
+            forgetOk = forgetButton("", theme.accent, v -> {
+                Runnable a = forgetAction;
                 dismissForgetDialog();
-                if (action != null) action.run();
-            }));
+                if (a != null) a.run();
+            });
+            forgetBar.addView(forgetOk);
             topSlot.addView(forgetBar, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT));
         }
-        forgetAction = delete;
-        forgetText.setText("'" + word + "'" + WordSuggester.objectParticle(word) + " 삭제할까요?");
+        forgetAction = action;
+        forgetText.setEllipsize(ellipsize);
+        forgetText.setText(message);
+        forgetOk.setText(okLabel);
         forgetBar.setVisibility(View.VISIBLE);
         forgetBar.bringToFront();
+        return true;
     }
 
     private TextView forgetButton(String label, int color, View.OnClickListener l) {
@@ -2038,7 +2058,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return b;
     }
 
-    /** 삭제 확인 줄을 닫는다 (키보드가 내려가거나 다시 만들어질 때도 부른다). */
+    /** 확인 줄을 닫는다 (키보드가 내려가거나 다시 만들어질 때도 부른다). */
     private void dismissForgetDialog() {
         forgetAction = null;
         if (forgetBar != null) forgetBar.setVisibility(View.GONE);
@@ -2240,7 +2260,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (panel != PANEL_KEYBOARD) return;
         String action = toolbarAction(dir);
         if (SwipeAction.NONE.equals(action)) return;
-        feedback.onKey(null);
+        feedback.onToolbar();
         onKeyFunction(null, action);
     }
 
@@ -2515,19 +2535,89 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private void startVoiceInput() {
         InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
         if (imm != null) {
+            // 켜 둔 음성 입력기의 음성 서브타입 중 지금 자판 언어(한글 = ko, 영어 = en)와 맞는 것을 먼저 고른다.
+            // 언어별 서브타입이 없으면 처음 찾은 음성 서브타입을 쓴다.
+            InputMethodInfo firstImi = null, matchImi = null;
+            InputMethodSubtype first = null, match = null;
+            String lang = korean ? "ko" : "en";
             for (InputMethodInfo imi : imm.getEnabledInputMethodList()) {
                 if (imi.getPackageName().equals(getPackageName())) continue;
                 for (InputMethodSubtype st : imm.getEnabledInputMethodSubtypeList(imi, true)) {
-                    if ("voice".equals(st.getMode())) {
-                        commitComposing();
-                        switchInputMethod(imi.getId(), st);
-                        return;
-                    }
+                    if (!"voice".equals(st.getMode())) continue;
+                    if (first == null) { first = st; firstImi = imi; }
+                    if (match == null && subtypeLanguage(st).equals(lang)) { match = st; matchImi = imi; }
                 }
             }
+            if (match == null) { match = first; matchImi = firstImi; }
+            if (match != null) {
+                commitComposing();
+                switchInputMethod(matchImi.getId(), match);
+                return;
+            }
         }
-        Toast.makeText(this, "사용 중인 음성 입력이 없습니다. 기기 설정에서 'Google 음성 입력' 등을 켜 주세요.",
-                Toast.LENGTH_LONG).show();
+        // 켜 둔 음성 입력기가 없다: Google 음성 입력(음성 인식 및 합성 앱)을 설치하거나 켜도록 안내한다.
+        if (!installed(GOOGLE_SPEECH)) {
+            askOnBar("음성 입력 앱을 설치할까요?", this::openSpeechAppStore);
+        } else {
+            askOnBar("Google 음성 입력을 활성화해주세요", this::openInputMethodSettings);
+        }
+    }
+
+    /** 서브타입 로케일의 언어 부분 (예: "ko_KR" -> "ko"). 로케일이 비어 있으면 빈 문자열. */
+    private static String subtypeLanguage(InputMethodSubtype st) {
+        String loc = st.getLocale();
+        if (loc == null) return "";
+        int i = 0;
+        while (i < loc.length() && loc.charAt(i) != '_' && loc.charAt(i) != '-') i++;
+        return loc.substring(0, i).toLowerCase(java.util.Locale.ROOT);
+    }
+
+    /** Google 음성 입력을 제공하는 '음성 인식 및 합성(Speech Recognition & Synthesis)' 앱. */
+    private static final String GOOGLE_SPEECH = "com.google.android.tts";
+
+    /** 도구 막대에 묻고 확인을 누르면 action을 실행한다. 도구 막대 자리가 가려져 있으면 알림만 띄우고 바로 실행한다. */
+    private void askOnBar(String message, Runnable action) {
+        if (confirmOnBar(message, "확인", TextUtils.TruncateAt.END, action)) return;
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+        action.run();
+    }
+
+    private boolean installed(String pkg) {
+        try {
+            getPackageManager().getApplicationInfo(pkg, 0);
+            return true;
+        } catch (android.content.pm.PackageManager.NameNotFoundException e) {
+            return false;
+        }
+    }
+
+    /**
+     * 음성 인식 및 합성 앱의 설치 페이지를 연다. 비보 등 제조사 기기는 market:// 주소를 자체 앱스토어가 받으므로,
+     * 구글 플레이 스토어 앱을 직접 지정해 바로 거기로 보낸다. 플레이 스토어가 없으면 웹 주소로 연다.
+     */
+    private void openSpeechAppStore() {
+        Intent play = new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + GOOGLE_SPEECH));
+        play.setPackage(PLAY_STORE);
+        if (startNewTask(play)) return;
+        startNewTask(new Intent(Intent.ACTION_VIEW,
+                Uri.parse("https://play.google.com/store/apps/details?id=" + GOOGLE_SPEECH)));
+    }
+
+    private static final String PLAY_STORE = "com.android.vending";
+
+    private void openInputMethodSettings() {
+        startNewTask(new Intent(android.provider.Settings.ACTION_INPUT_METHOD_SETTINGS));
+    }
+
+    /** 키보드에서 다른 화면을 연다 (서비스에서 열므로 새 작업으로). 열 수 있는 앱이 없으면 false. */
+    private boolean startNewTask(Intent i) {
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            startActivity(i);
+            return true;
+        } catch (android.content.ActivityNotFoundException e) {
+            return false;
+        }
     }
 
     private void openSettings() {
@@ -2657,18 +2747,49 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         resultScroll.scrollTo(0, 0);
     }
 
+    /** 이모지 검색 결과 칸의 한 변. 이모지 창의 칸 높이와 같다 (기본 단계는 예전의 46dp). */
+    private int resultCellPx() {
+        return EmojiPanel.cellHeightPx(this, prefs.emojiSize());
+    }
+
+    /** 결과 줄 높이: 칸 + 위아래 2dp씩 (기본 단계는 예전의 50dp). */
+    private int resultStripHeight() {
+        return resultCellPx() + Ui.dp(this, 4);
+    }
+
+    /** 이모지 크기 설정이 바뀌면 이미 만들어 둔 결과 칸과 줄 높이를 새 크기로 맞춘다. */
+    private void applyResultSize() {
+        if (resultScroll == null) return;
+        ViewGroup.LayoutParams slp = resultScroll.getLayoutParams();
+        if (slp != null && slp.height != resultStripHeight()) {
+            slp.height = resultStripHeight();
+            resultScroll.setLayoutParams(slp);
+        }
+        float sp = EmojiPanel.textSp(prefs.emojiSize());
+        int cell = resultCellPx();
+        for (TextView t : resultViews) {
+            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);   // 같은 크기면 아무 일도 하지 않는다
+            ViewGroup.LayoutParams lp = t.getLayoutParams();
+            if (lp != null && (lp.width != cell || lp.height != cell)) {   // 설정이 바뀔 때마다 불리므로 바뀐 때만 다시 배치한다
+                lp.width = cell;
+                lp.height = cell;
+                t.setLayoutParams(lp);
+            }
+        }
+    }
+
     /** i번째 결과 칸에 emoji를 넣어 돌려준다. 모자라면 그때 만든다. */
     private View resultView(int i, String emoji) {
         while (resultViews.size() <= i) {
             TextView t = new TextView(this);
-            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 26);
+            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, EmojiPanel.textSp(prefs.emojiSize()));
             t.setGravity(Gravity.CENTER);
             t.setBackground(Ui.ripple(theme.keyPressed, null, Ui.dp(this, 10)));
             t.setOnClickListener(v -> {
                 feedback.onKey(null);
                 onEmoji(((TextView) v).getText().toString());
             });
-            t.setLayoutParams(new LinearLayout.LayoutParams(Ui.dp(this, 46), Ui.dp(this, 46)));
+            t.setLayoutParams(new LinearLayout.LayoutParams(resultCellPx(), resultCellPx()));
             resultViews.add(t);
         }
         TextView t = resultViews.get(i);

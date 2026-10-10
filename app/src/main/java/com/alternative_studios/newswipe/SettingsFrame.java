@@ -12,11 +12,14 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.alternative_studios.newswipe.keyboard.Icons;
+import com.alternative_studios.newswipe.ui.ExpressiveIconButton;
 import com.alternative_studios.newswipe.ui.Ui;
 
 /**
  * 설정 화면의 틀: 위에 고정되는 머리글(제목·부제와 '키보드 열기' 버튼)과 그 아래 입력 시험 창, 나머지는 스크롤 내용.
  * 설정을 바꾸는 동안 키보드를 계속 띄워 두고 결과를 볼 수 있다. 설정 화면과 편집 화면이 함께 쓴다.
+ * 설정 첫 화면은 withSearch()로 '키보드 열기' 대신 동그란 검색 버튼과 검색창을 둔다.
  */
 final class SettingsFrame {
     private final Activity activity;
@@ -24,15 +27,72 @@ final class SettingsFrame {
     private final String title, subtitle;
     private LinearLayout testBar;
     private EditText testInput;
-    private TextView testButton;
+    private ExpressiveIconButton testButton, searchButton;
     /** 입력창이 열려 있어야 하는 상태. 애니메이션 중에도 버튼 글자를 바로 바꾸기 위해 따로 기억한다. */
     private boolean testBarWanted;
+    /** 설정 검색 (첫 화면 전용): 검색어가 바뀔 때마다 부른다. null이면 검색 없이 '키보드 열기'를 쓴다. */
+    private java.util.function.Consumer<String> onSearch;
+    private LinearLayout searchBar;
+    private EditText searchInput;
+    private boolean searchWanted;
+    /** Android 13+의 뒤로 가기 처리 (입력창이 열려 있는 동안만 등록한다). */
+    private Object backCallback;
+    /**
+     * 12 이하에서 Activity.onBackPressed가 이 틀을 찾는 데 쓴다. 틀이 화면(Activity)을 잡고 있어서 값을 그대로 넣으면
+     * WeakHashMap의 키(화면)가 영영 풀리지 않으므로 값도 약하게 잡는다 (틀은 화면의 버튼들이 잡고 있어 살아 있다).
+     */
+    private static final java.util.Map<Activity, java.lang.ref.WeakReference<SettingsFrame>> FRAMES =
+            new java.util.WeakHashMap<>();
 
     SettingsFrame(Activity activity, String title, String subtitle) {
         this.activity = activity;
         this.colors = AppTheme.of(activity);
         this.title = title;
         this.subtitle = subtitle;
+        FRAMES.put(activity, new java.lang.ref.WeakReference<>(this));
+    }
+
+    /**
+     * 뒤로 가기: 검색창이나 키보드 시험 입력창이 열려 있으면 그것부터 닫는다. 닫았으면 true.
+     * Android 12 이하에서는 화면(Activity)의 onBackPressed가 이것을 부르고, 13 이상은 입력창이 열려 있는 동안 등록한 콜백이 부른다.
+     */
+    static boolean consumeBack(Activity activity) {
+        java.lang.ref.WeakReference<SettingsFrame> ref = FRAMES.get(activity);
+        SettingsFrame frame = ref == null ? null : ref.get();
+        return frame != null && frame.closeInputIfOpen();
+    }
+
+    private boolean closeInputIfOpen() {
+        if (searchWanted) {
+            toggleSearch();
+            return true;
+        }
+        if (testBarWanted) {
+            toggleTestKeyboard();
+            return true;
+        }
+        return false;
+    }
+
+    /** 입력창이 열려 있는 동안에만 Android 13+의 뒤로 가기 콜백을 등록하고, 닫히면 풀어서 평소 뒤로 가기가 그대로 되게 한다. */
+    private void updateBackCallback() {
+        if (android.os.Build.VERSION.SDK_INT < 33) return;
+        boolean needed = searchWanted || testBarWanted;
+        android.window.OnBackInvokedDispatcher dispatcher = activity.getOnBackInvokedDispatcher();
+        if (needed && backCallback == null) {
+            android.window.OnBackInvokedCallback cb = this::closeInputIfOpen;
+            backCallback = cb;
+            dispatcher.registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, cb);
+        } else if (!needed && backCallback != null) {
+            dispatcher.unregisterOnBackInvokedCallback((android.window.OnBackInvokedCallback) backCallback);
+            backCallback = null;
+        }
+    }
+
+    /** 키보드 열기 대신 검색 버튼과 검색창을 둔다. 검색창을 닫으면 빈 검색어로 알린다. */
+    SettingsFrame withSearch(java.util.function.Consumer<String> onQuery) {
+        this.onSearch = onQuery;
+        return this;
     }
 
     /** 머리글·입력 시험 창과 content(스크롤 뷰)를 한 화면으로 묶어 돌려준다. setContentView에 넘기면 된다. */
@@ -41,8 +101,13 @@ final class SettingsFrame {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(colors.bg);
         root.addView(buildHeader(), matchWrap());
-        buildTestBar();
-        root.addView(testBar, matchWrap());
+        if (onSearch != null) {
+            buildSearchBar();
+            root.addView(searchBar, matchWrap());
+        } else {
+            buildTestBar();
+            root.addView(testBar, matchWrap());
+        }
         root.addView(content, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
         Ui.padForSystemBars(root);
         return root;
@@ -73,16 +138,85 @@ final class SettingsFrame {
         titles.addView(sub);
         header.addView(titles, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
-        testButton = new TextView(c);
-        testButton.setTextColor(colors.onAccent);
-        testButton.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        testButton.setGravity(Gravity.CENTER);
-        testButton.setPadding(Ui.dp(c, 16), Ui.dp(c, 10), Ui.dp(c, 16), Ui.dp(c, 10));
-        testButton.setBackground(Ui.ripple(0x33FFFFFF, Ui.round(colors.accent, Ui.dp(c, 20)), Ui.dp(c, 20)));
-        testButton.setClickable(true);
-        testButton.setOnClickListener(v -> toggleTestKeyboard());
-        header.addView(testButton);
+        int size = Ui.dp(c, 44);
+        if (onSearch != null) {
+            // 강조색 동그라미 안에 검색 아이콘
+            testButton = null;
+            searchButton = circleButton(c, Icons.SEARCH, "설정 검색", v -> toggleSearch());
+            header.addView(searchButton, new LinearLayout.LayoutParams(size, size));
+            return header;
+        }
+        // 강조색 동그라미 안에 키보드 아이콘. 입력 시험 창이 열려 있으면 색을 뒤집어 알린다.
+        testButton = circleButton(c, Icons.MENU_KEYBOARD, "키보드 열기", v -> toggleTestKeyboard());
+        header.addView(testButton, new LinearLayout.LayoutParams(size, size));
         return header;
+    }
+
+    /** 강조색 동그라미 안에 아이콘 하나를 둔 버튼 (누르면 모양이 바뀌고 진동이 울린다). */
+    private ExpressiveIconButton circleButton(Context c, int icon, String description, View.OnClickListener l) {
+        ExpressiveIconButton b = new ExpressiveIconButton(c, icon, colors.accent, colors.onAccent, description);
+        b.setOnClickListener(l);
+        return b;
+    }
+
+    /** 머리글 아래에 고정되는 검색창. */
+    private void buildSearchBar() {
+        Context c = activity;
+        searchBar = new LinearLayout(c);
+        searchBar.setVisibility(View.GONE);
+        int pad = Ui.dp(c, 16);
+        searchBar.setPadding(pad, 0, pad, Ui.dp(c, 8));
+        searchInput = new EditText(c);
+        searchInput.setHint("설정 검색");
+        searchInput.setTextColor(colors.text);
+        searchInput.setHintTextColor(colors.hint);
+        searchInput.setSingleLine(true);
+        searchInput.setInputType(InputType.TYPE_CLASS_TEXT);
+        searchInput.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);
+        searchInput.setBackground(Ui.round(colors.card, Ui.dp(c, 12)));
+        searchInput.setPadding(Ui.dp(c, 14), Ui.dp(c, 10), Ui.dp(c, 14), Ui.dp(c, 10));
+        searchInput.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int a, int b, int n) { }
+            @Override public void onTextChanged(CharSequence s, int a, int b, int n) { }
+            @Override public void afterTextChanged(android.text.Editable e) {
+                if (searchWanted) onSearch.accept(e.toString());
+            }
+        });
+        searchInput.setOnEditorActionListener((v, action, ev) -> {
+            hideKeyboard();   // 결과를 훑어볼 수 있게 키보드만 내린다
+            return true;
+        });
+        searchBar.addView(searchInput, matchWrap());
+    }
+
+    private void hideKeyboard() {
+        InputMethodManager imm = (InputMethodManager) activity.getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) imm.hideSoftInputFromWindow(searchInput.getWindowToken(), 0);
+    }
+
+    private void toggleSearch() {
+        searchWanted = !searchWanted;
+        searchButton.setActive(searchWanted);   // 열려 있으면 옅은 바탕에 강조색 아이콘
+        if (!searchWanted) {
+            hideKeyboard();
+            searchInput.setText("");
+            searchInput.clearFocus();
+            Ui.setVisibleAnimated(searchBar, false);
+            onSearch.accept("");
+            updateBackCallback();
+            return;
+        }
+        Ui.setVisibleAnimated(searchBar, true, this::focusSearch);
+        searchBar.post(this::focusSearch);
+        updateBackCallback();
+    }
+
+    private void focusSearch() {
+        if (!searchWanted || activity.isFinishing() || activity.isDestroyed()) return;
+        if (!searchInput.hasFocus()) searchInput.requestFocus();
+        if (!searchInput.hasFocus()) return;
+        InputMethodManager imm = (InputMethodManager) activity.getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) imm.showSoftInput(searchInput, InputMethodManager.SHOW_IMPLICIT);
     }
 
     /** 머리글 아래에 고정되는 입력창. */
@@ -105,7 +239,9 @@ final class SettingsFrame {
     }
 
     private void updateTestButton() {
-        testButton.setText(testBarWanted ? "키보드 닫기" : "키보드 열기");
+        // 열려 있으면 옅은 바탕에 강조색 아이콘, 닫혀 있으면 강조색 바탕에 흰 아이콘.
+        testButton.setActive(testBarWanted);
+        testButton.setContentDescription(testBarWanted ? "키보드 닫기" : "키보드 열기");
     }
 
     private void toggleTestKeyboard() {
@@ -122,6 +258,7 @@ final class SettingsFrame {
             testBar.post(this::focusTestInput);
         }
         updateTestButton();
+        updateBackCallback();
     }
 
     /** 입력 시험 창에 포커스를 주고 키보드를 연결한다. 이미 포커스가 있으면 키보드만 띄운다. */

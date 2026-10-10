@@ -54,6 +54,59 @@ public final class EmojiPanel extends LinearLayout {
         void onEmojiPinToggle(String emoji);
     }
 
+    /**
+     * 이모지 크기 단계(0 기본, 1 크게, 2 더 크게)별 글자 크기(sp)와 칸의 최소 폭·높이(dp).
+     * 글자와 칸 크기는 늘 이 표 한 곳에서 정해서, 격자의 칸 폭·한 줄의 칸 수·피부색 팝업이 서로 어긋나지 않게 한다.
+     */
+    private static final float[] TEXT_SP = {26f, 32f, 38f};
+    private static final int[] CELL_W_DP = {44, 52, 60}, CELL_H_DP = {46, 54, 62};
+
+    /** 설정 화면의 미리보기가 같은 글자 크기(sp)를 쓰도록 알려 준다. */
+    public static float textSp(int level) {
+        return TEXT_SP[Math.max(0, Math.min(2, level))];
+    }
+
+    private int sizeLevel;
+
+    private static float textPx(Context c, int level) {
+        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, TEXT_SP[level], c.getResources().getDisplayMetrics());
+    }
+
+    /**
+     * 칸 폭: 단계의 기본 폭, 다만 '크게' 이상에서 시스템 글자 크기를 키워 둔 기기는 글자 폭에 맞춰 더 넓힌다 (기본 단계는 그대로).
+     * 이모지 검색 결과 줄도 같은 값을 쓰도록 공개한다.
+     */
+    public static int cellWidthPx(Context c, int level) {
+        level = Math.max(0, Math.min(2, level));
+        int w = Ui.dp(c, CELL_W_DP[level]);
+        return level == 0 ? w : Math.max(w, Math.round(textPx(c, level) * 1.2f));
+    }
+
+    public static int cellHeightPx(Context c, int level) {
+        level = Math.max(0, Math.min(2, level));
+        int h = Ui.dp(c, CELL_H_DP[level]);
+        return level == 0 ? h : Math.max(h, Math.round(textPx(c, level) * 1.3f));
+    }
+
+    private int cellWidth() {
+        return cellWidthPx(getContext(), sizeLevel);
+    }
+
+    private int cellHeight() {
+        return cellHeightPx(getContext(), sizeLevel);
+    }
+
+    /** 이모지 크기 단계를 바꾼다. 격자를 새 크기로 다시 만든다 (보던 탭은 맨 위부터 다시 보인다). */
+    public void setSizeLevel(int level) {
+        level = Math.max(0, Math.min(2, level));
+        if (level == sizeLevel) return;
+        sizeLevel = level;
+        dismissTones();
+        page.applySize();
+        if (peek != null) peek.applySize();
+        if (data != null) showGroup(group);
+    }
+
     private final KeyboardTheme theme;
     private final Listener listener;
     /** 지금 탭을 보여 주는 쪽. */
@@ -305,7 +358,7 @@ public final class EmojiPanel extends LinearLayout {
         if (w == 0) w = getWidth();
         if (w == 0) w = getResources().getDisplayMetrics().widthPixels;
         int avail = w - page.grid.getPaddingLeft() - page.grid.getPaddingRight();
-        return Math.max(1, avail / Ui.dp(getContext(), 44));
+        return Math.max(1, avail / cellWidth());
     }
 
     private boolean showTones(View anchor, String value) {
@@ -322,10 +375,11 @@ public final class EmojiPanel extends LinearLayout {
         for (String v : e.variants) all.add(v);
         final PopupWindow pw = new PopupWindow(row, ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT, false);   // 포커스를 가져가면 입력이 끊긴다
+        final int toneHeight = cellHeight() + Ui.dp(c, 2);   // 기본 단계에서는 예전의 48dp와 같다
         for (String v : all) {
             TextView t = new TextView(c);
             t.setText(v);
-            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 26);
+            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, TEXT_SP[sizeLevel]);
             t.setGravity(Gravity.CENTER);
             t.setBackground(Ui.ripple(theme.keyPressed, null, Ui.dp(c, 8)));
             t.setOnClickListener(x -> {
@@ -333,7 +387,7 @@ public final class EmojiPanel extends LinearLayout {
                 listener.onEmojiKeyPress();
                 listener.onEmoji(v);
             });
-            row.addView(t, new LayoutParams(Ui.dp(c, 44), Ui.dp(c, 48)));
+            row.addView(t, new LayoutParams(cellWidth(), toneHeight));
         }
         pw.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         pw.setOutsideTouchable(true);
@@ -341,8 +395,10 @@ public final class EmojiPanel extends LinearLayout {
         dismissTones();
         tonePopup = pw;
         try {
-            int w = Ui.dp(c, 44) * all.size() + Ui.dp(c, 8);
-            pw.showAsDropDown(anchor, (anchor.getWidth() - w) / 2, -anchor.getHeight() - Ui.dp(c, 60));
+            int w = cellWidth() * all.size() + Ui.dp(c, 8);
+            // 눌린 칸 바로 위에, 4dp 떼어서 띄운다 (팝업 높이 = 칸 높이 + 안쪽 여백 8dp).
+            pw.showAsDropDown(anchor, (anchor.getWidth() - w) / 2,
+                    -anchor.getHeight() - (toneHeight + Ui.dp(c, 8)) - Ui.dp(c, 4));
         } catch (RuntimeException ex) {
             return false;
         }
@@ -453,9 +509,8 @@ public final class EmojiPanel extends LinearLayout {
             if (t == null) {
                 t = new EmojiCell(parent.getContext());
                 t.setGravity(Gravity.CENTER);
-                t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 26);
-                t.setLayoutParams(new GridView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                        Ui.dp(parent.getContext(), 46)));
+                t.setTextSize(TypedValue.COMPLEX_UNIT_SP, TEXT_SP[sizeLevel]);
+                t.setLayoutParams(new GridView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, cellHeight()));
                 t.ripple = Ui.ripple(theme.keyPressed, null, Ui.dp(parent.getContext(), 10));
                 t.setTextColor(theme.text);
             }
@@ -502,7 +557,7 @@ public final class EmojiPanel extends LinearLayout {
                 }
             };
             grid.setNumColumns(GridView.AUTO_FIT);
-            grid.setColumnWidth(Ui.dp(context, 44));
+            grid.setColumnWidth(cellWidth());
             grid.setStretchMode(GridView.STRETCH_COLUMN_WIDTH);
             grid.setSelector(new ColorDrawable(Color.TRANSPARENT));
             grid.setVerticalScrollBarEnabled(false);
@@ -557,6 +612,11 @@ public final class EmojiPanel extends LinearLayout {
             empty.setText("불러오는 중…");
             addView(empty, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT));
+        }
+
+        /** 이모지 크기 단계가 바뀌었다: 칸 폭을 새로 정한다 (칸 뷰는 다음 show에서 어댑터를 다시 달 때 새 크기로 만든다). */
+        void applySize() {
+            grid.setColumnWidth(cellWidth());
         }
 
         /** index 탭을 맨 위부터 보여 준다. */

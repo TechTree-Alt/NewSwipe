@@ -335,7 +335,7 @@ public final class KeyboardLayout {
      */
     private static List<Row> englishSplitRows(Prefs prefs) {
         List<Row> letterRows = new ArrayList<>();
-        int[] leftCount = {5, 5, 4};   // 줄마다 왼쪽 덩어리로 가는 글자 수 (q~t, a~g, z~v)
+        int[] leftCount = {5, 5, 4};   // 줄마다 왼쪽 묶음으로 가는 글자 수 (q~t, a~g, z~v)
         for (int r = 0; r < 3; r++) {
             Key[] letters = letterKeys(ENGLISH_ROWS[r], ENGLISH_POPUPS[r], false, prefs);
             // 일반 자판과 똑같은 줄을 만든 뒤 가운데에서 나눈다.
@@ -755,7 +755,7 @@ public final class KeyboardLayout {
 
     /**
      * 기호 자판의 맨 아래 줄 위쪽 줄들을 마무리한다. 분리 키보드(가로 모드·대화면)에서는 숫자 줄을 포함한 모든 줄을
-     * 일반 자판과 같은 모양 그대로 가운데에서 나눠 왼쪽·오른쪽 덩어리에 놓는다 ({@link #splitNormal}).
+     * 일반 자판과 같은 모양 그대로 가운데에서 나눠 왼쪽·오른쪽 묶음에 놓는다 ({@link #splitNormal}).
      */
     private static void finishSymbols(List<Row> rows, String back, Prefs prefs) {
         if (splitView(prefs)) {
@@ -768,7 +768,7 @@ public final class KeyboardLayout {
 
     /**
      * 자·모음 균형 레이아웃과 분리 키보드의 맨 아래 줄. 분리 키보드(가로 모드·대화면)는 스페이스바가 둘로 나뉘어
-     * 왼쪽·오른쪽 덩어리에 하나씩 들어가고, 세로 모드의 균형 레이아웃은 늘 전체 폭을 쓴다.
+     * 왼쪽·오른쪽 묶음에 하나씩 들어가고, 세로 모드의 균형 레이아웃은 늘 전체 폭을 쓴다.
      */
     private static Row splitBottom(Prefs prefs) {
         if (splitView(prefs)) return blockSpaceRow(prefs, Key.TO_SYMBOLS, "?123", false);
@@ -854,12 +854,12 @@ public final class KeyboardLayout {
 
     // ---------------------------------------------------------------- 분리 키보드 (가로 모드·대화면)
     //
-    // 자판을 왼쪽 덩어리(자음, 숫자 1~5, 맨 아래 줄의 스페이스바 왼쪽 키와 왼쪽 스페이스바)와
-    // 오른쪽 덩어리(모음, 숫자 6~0, 오른쪽 스페이스바와 그 오른쪽 키)로 나눈다. 덩어리의 폭은 각각 자기 절반의
+    // 자판을 왼쪽 묶음(자음, 숫자 1~5, 맨 아래 줄의 스페이스바 왼쪽 키와 왼쪽 스페이스바)과
+    // 오른쪽 묶음(모음, 숫자 6~0, 오른쪽 스페이스바와 그 오른쪽 키)으로 나눈다. 묶음의 폭은 각각 자기 절반의
     // '자음 키 폭'%·'모음 키 폭'%이고(100%면 절반을 꽉 채운다), 절반 안에서 '가로 위치'에 따라 놓인다.
-    // 덩어리 안의 줄은 덩어리 폭을 고르게 나눠 가지므로, 폭을 바꾸면 덩어리 전체가 함께 줄고 는다.
+    // 묶음 안의 줄은 묶음 폭을 고르게 나눠 가지므로, 폭을 바꾸면 묶음 전체가 함께 줄고 는다.
 
-    /** 분리 키보드의 두 덩어리 {왼쪽 시작, 왼쪽 폭, 오른쪽 시작, 오른쪽 폭} (칸 단위, 줄 전체는 10칸). */
+    /** 분리 키보드의 두 묶음 {왼쪽 시작, 왼쪽 폭, 오른쪽 시작, 오른쪽 폭} (칸 단위, 줄 전체는 10칸). */
     private static float[] blocks(Prefs prefs) {
         float lw = BALANCED_HALF * prefs.balancedConsonantWidth() / 100f;
         float rw = BALANCED_HALF * prefs.balancedVowelWidth() / 100f;
@@ -869,7 +869,7 @@ public final class KeyboardLayout {
     }
 
     /**
-     * keys를 width 폭의 덩어리에 넣는다: 키 한 칸(weight 1)은 width / columns이고 키끼리의 폭 비율(예: 1.5칸 기능키)은 지킨다.
+     * keys를 width 폭의 묶음에 넣는다: 키 한 칸(weight 1)은 width / columns이고 키끼리의 폭 비율(예: 1.5칸 기능키)은 지킨다.
      * 다 들어가지 않으면 같은 비율로 줄인다. 키들이 차지한 폭을 돌려준다.
      */
     private static float fitBlock(List<Key> keys, float width, int columns) {
@@ -882,8 +882,8 @@ public final class KeyboardLayout {
     }
 
     /**
-     * 분리 키보드 한글 자판·숫자 줄의 한 줄: left는 왼쪽 덩어리(한 줄 leftColumns 칸), right는 오른쪽 덩어리를 채운다.
-     * 키가 덩어리보다 적으면 덩어리 가운데에 놓는다.
+     * 분리 키보드 한글 자판·숫자 줄의 한 줄: left는 왼쪽 묶음(한 줄 leftColumns 칸), right는 오른쪽 묶음을 채운다.
+     * 키가 묶음보다 적으면 묶음 가운데에 놓는다.
      */
     private static Row blockRow(List<Key> left, List<Key> right, float height, int leftColumns, int rightColumns,
                                 Prefs prefs) {
@@ -895,10 +895,10 @@ public final class KeyboardLayout {
 
     /**
      * 일반 자판의 한 줄(10칸 기준, 키 사이 빈 칸 포함)을 가운데에서 나눠 분리 키보드의 줄로 만든다.
-     * 가운데(5칸)보다 왼쪽에 중심이 있는 키(가운데에 걸친 g·v·: 등 포함)는 왼쪽 덩어리로, 나머지는 오른쪽 덩어리로 가고,
-     * 일반 자판에서의 위치와 폭을 덩어리 폭의 비율(덩어리 폭 / 5)만큼 줄이거나 늘려 그대로 옮긴다.
-     * 그래서 덩어리가 절반을 꽉 채우면(기본) 일반 자판과 키 하나하나의 자리가 똑같다.
-     * 두 덩어리의 폭이 달라 가운데에서 겹치면, 덩어리 안의 남는 폭만큼 바깥쪽으로 옮기고 그래도 겹치면 같은 비율로 줄인다.
+     * 가운데(5칸)보다 왼쪽에 중심이 있는 키(가운데에 걸친 g·v·: 등 포함)는 왼쪽 묶음으로, 나머지는 오른쪽 묶음으로 가고,
+     * 일반 자판에서의 위치와 폭을 묶음 폭의 비율(묶음 폭 / 5)만큼 줄이거나 늘려 그대로 옮긴다.
+     * 그래서 묶음이 절반을 꽉 채우면(기본) 일반 자판과 키 하나하나의 자리가 똑같다.
+     * 두 묶음의 폭이 달라 가운데에서 겹치면, 묶음 안의 남는 폭만큼 바깥쪽으로 옮기고 그래도 겹치면 같은 비율로 줄인다.
      */
     private static Row splitNormal(Row row, Prefs prefs) {
         float total = 0f;
@@ -930,10 +930,10 @@ public final class KeyboardLayout {
         float rw = right.isEmpty() ? 0f : (rightTo - rightFrom) * sR;
         float overlap = ls + lw - rs;
         if (overlap > 0.0001f) {
-            float d = Math.min(overlap, ls - b[0]);   // 왼쪽 키들을 덩어리 안에서 왼쪽으로
+            float d = Math.min(overlap, ls - b[0]);   // 왼쪽 키들을 묶음 안에서 왼쪽으로
             ls -= d;
             overlap -= d;
-            d = Math.min(overlap, b[2] + b[3] - rs - rw);   // 오른쪽 키들을 덩어리 안에서 오른쪽으로
+            d = Math.min(overlap, b[2] + b[3] - rs - rw);   // 오른쪽 키들을 묶음 안에서 오른쪽으로
             rs += d;
             overlap -= d;
             if (overlap > 0.0001f) {
@@ -966,7 +966,7 @@ public final class KeyboardLayout {
         return new Row(height, keys.toArray(new Key[0]));
     }
 
-    /** 분리 키보드의 숫자 줄: 1~5는 왼쪽 덩어리, 6~0은 오른쪽 덩어리를 고르게 채운다. */
+    /** 분리 키보드의 숫자 줄: 1~5는 왼쪽 묶음, 6~0은 오른쪽 묶음을 고르게 채운다. */
     private static Row splitNumberRow(Prefs prefs) {
         List<Key> left = new ArrayList<>(), right = new ArrayList<>();
         for (int i = 0; i < NUMBER_KEYS.length; i++) (i < 5 ? left : right).add(numberKey(NUMBER_KEYS[i], prefs));
@@ -975,9 +975,9 @@ public final class KeyboardLayout {
 
     /**
      * 분리 키보드의 맨 아래 줄. 스페이스바를 둘로 나눠, 하단 키 순서에서 스페이스바 왼쪽에 있는 키들과 왼쪽 스페이스바는
-     * 왼쪽 덩어리를, 오른쪽 스페이스바와 그 오른쪽 키들은 오른쪽 덩어리를 채운다. 기능키 폭은 덩어리 폭에 비례하고
-     * (덩어리가 절반을 꽉 채울 때 보통 폭), 스페이스바가 남는 폭을 모두 쓴다.
-     * 스페이스바를 없앴으면 키들을 앞쪽 절반(홀수 개면 한 개 더)과 나머지로 나눠 각 덩어리를 같은 비율로 채운다.
+     * 왼쪽 묶음을, 오른쪽 스페이스바와 그 오른쪽 키들은 오른쪽 묶음을 채운다. 기능키 폭은 묶음 폭에 비례하고
+     * (묶음이 절반을 꽉 채울 때 보통 폭), 스페이스바가 남는 폭을 모두 쓴다.
+     * 스페이스바를 없앴으면 키들을 앞쪽 절반(홀수 개면 한 개 더)과 나머지로 나눠 각 묶음을 같은 비율로 채운다.
      */
     private static Row blockSpaceRow(Prefs prefs, int modeType, String modeLabel, boolean emojiKey) {
         float[] b = blocks(prefs);
@@ -996,8 +996,8 @@ public final class KeyboardLayout {
     }
 
     /**
-     * 스페이스바를 이은 맨 아래 줄: 왼쪽 키들은 왼쪽 덩어리의 왼쪽 끝에, 오른쪽 키들은 오른쪽 덩어리의 오른쪽 끝에 놓고
-     * 그 사이를 가운데를 가로지르는 스페이스바 하나가 채운다. 기능키 폭은 덩어리 폭에 비례하고 '하단 기능키 폭'만큼 늘이거나 줄인다.
+     * 스페이스바를 이은 맨 아래 줄: 왼쪽 키들은 왼쪽 묶음의 왼쪽 끝에, 오른쪽 키들은 오른쪽 묶음의 오른쪽 끝에 놓고
+     * 그 사이를 가운데를 가로지르는 스페이스바 하나가 채운다. 기능키 폭은 묶음 폭에 비례하고 '하단 기능키 폭'만큼 늘이거나 줄인다.
      * 키들만으로 줄보다 넓어지면 같은 비율로 줄인다.
      */
     private static Row joinedSpaceRow(List<Key> left, List<Key> right, float[] b, Prefs prefs) {
@@ -1017,7 +1017,7 @@ public final class KeyboardLayout {
         return blockLine(left, b[0], lw + space, right, b[0] + lw + space, rw, 1f);
     }
 
-    /** 폭이 거의 없는 스페이스바는 빼 둔다 (기능키만으로 덩어리가 찬 경우). */
+    /** 폭이 거의 없는 스페이스바는 빼 둔다 (기능키만으로 묶음이 찬 경우). */
     private static void dropEmptySpace(List<Key> keys) {
         for (int i = keys.size() - 1; i >= 0; i--) {
             if (keys.get(i).type == Key.SPACE && keys.get(i).weight < 0.01f) keys.remove(i);

@@ -123,7 +123,7 @@ public class SplitBottomRowTest {
         return new float[]{ll, lr, rl, rr};
     }
 
-    /** 두 덩어리 사이의 빈 자리(가운데 5칸에 닿거나 걸치는 SPACER)인지. Shift 자리 같은 다른 빈 칸은 키로 센다. */
+    /** 두 묶음 사이의 빈 자리(가운데 5칸에 닿거나 걸치는 SPACER)인지. Shift 자리 같은 다른 빈 칸은 키로 센다. */
     private static boolean middleGap(Key k, float x) {
         return k.type == Key.SPACER && x <= 5.001f && x + k.weight >= 4.999f;
     }
@@ -133,16 +133,16 @@ public class SplitBottomRowTest {
         for (int[] s : SETTINGS) {
             Prefs p = prefsFor(s, true);
             KeyboardLayout korean = KeyboardLayout.korean(p);
-            float[] letters = halves(korean.rows[1]);   // 첫 글자 줄: 자음 덩어리와 모음 덩어리
+            float[] letters = halves(korean.rows[1]);   // 첫 글자 줄: 자음 묶음과 모음 묶음
             for (KeyboardLayout l : new KeyboardLayout[]{korean, KeyboardLayout.english(p)}) {
                 float[] h = halves(l.rows[0]);
-                for (int i = 0; i < 4; i++) assertEquals("숫자 줄은 덩어리와 같은 자리", letters[i], h[i], 0.001f);
+                for (int i = 0; i < 4; i++) assertEquals("숫자 줄은 묶음과 같은 자리", letters[i], h[i], 0.001f);
                 float x = 0f;
                 for (Key k : l.rows[0].keys) {
                     if (k.type != Key.GAP && !middleGap(k, x)) {
                         boolean left = x < 5f;
                         float want = left ? (h[1] - h[0]) / 5f : (h[3] - h[2]) / 5f;
-                        assertEquals("덩어리 안의 숫자 키 폭은 같습니다", want, k.weight, 0.001f);
+                        assertEquals("묶음 안의 숫자 키 폭은 같습니다", want, k.weight, 0.001f);
                     }
                     x += k.weight;
                 }
@@ -156,13 +156,13 @@ public class SplitBottomRowTest {
             Prefs p = prefsFor(s, true);
             KeyboardLayout korean = KeyboardLayout.korean(p);
             float[] want = halves(korean.rows[1]);
-            // 자음·모음 줄, 숫자 줄, 맨 아래 줄이 모두 같은 두 덩어리를 쓴다.
+            // 자음·모음 줄, 숫자 줄, 맨 아래 줄이 모두 같은 두 묶음을 쓴다.
             for (KeyboardLayout.Row row : korean.rows) {
                 float[] h = halves(row);
                 for (int i = 0; i < 4; i++) assertEquals(want[i], h[i], 0.001f);
             }
-            assertEquals("왼쪽 덩어리 폭 = 절반의 자음 키 폭%", 5f * s[2] / 100f, want[1] - want[0], 0.001f);
-            assertEquals("오른쪽 덩어리 폭 = 절반의 모음 키 폭%", 5f * s[3] / 100f, want[3] - want[2], 0.001f);
+            assertEquals("왼쪽 묶음 폭 = 절반의 자음 키 폭%", 5f * s[2] / 100f, want[1] - want[0], 0.001f);
+            assertEquals("오른쪽 묶음 폭 = 절반의 모음 키 폭%", 5f * s[3] / 100f, want[3] - want[2], 0.001f);
         }
     }
 
@@ -327,7 +327,7 @@ public class SplitBottomRowTest {
             for (KeyboardLayout l : new KeyboardLayout[]{KeyboardLayout.korean(p), KeyboardLayout.english(p),
                     KeyboardLayout.symbols(true, p)}) {
                 for (KeyboardLayout.Row row : l.rows) {
-                    // 왼쪽 덩어리의 마지막 키와 오른쪽 덩어리의 첫 키 사이에는 '가까운 키'로 가는 빈틈(GAP)이 없다.
+                    // 왼쪽 묶음의 마지막 키와 오른쪽 묶음의 첫 키 사이에는 '가까운 키'로 가는 빈틈(GAP)이 없다.
                     float x = 0f;
                     for (Key k : row.keys) {
                         if (k.type == Key.GAP) {
@@ -379,14 +379,14 @@ public class SplitBottomRowTest {
                 if (k.type == Key.SHIFT) { shiftAt = x; shiftW = k.weight; }
                 if (k.type == Key.DELETE) { delEnd = x + k.weight; delW = k.weight; }
                 if (k.type == Key.CHAR && !k.hidden && firstLetterAt < 0f) { firstLetterAt = x; letterW = k.weight; }
-                if (k.type == Key.CHAR && !k.hidden) rightLetterW = k.weight;   // 마지막 글자(m): 오른쪽 덩어리의 칸 폭
+                if (k.type == Key.CHAR && !k.hidden) rightLetterW = k.weight;   // 마지막 글자(m): 오른쪽 묶음의 칸 폭
                 x += k.weight;
             }
-            float[] top = extent(l.rows[0]);   // q ~ p (첫 글자 줄): 덩어리의 양 끝
-            assertEquals("Shift는 왼쪽 덩어리의 왼쪽 끝에", top[0], shiftAt, 0.001f);
-            assertEquals("⌫는 오른쪽 덩어리의 오른쪽 끝에", top[1], delEnd, 0.001f);
+            float[] top = extent(l.rows[0]);   // q ~ p (첫 글자 줄): 묶음의 양 끝
+            assertEquals("Shift는 왼쪽 묶음의 왼쪽 끝에", top[0], shiftAt, 0.001f);
+            assertEquals("⌫는 오른쪽 묶음의 오른쪽 끝에", top[1], delEnd, 0.001f);
             assertEquals("Shift는 글자 키의 1.5배", 1.5f * letterW, shiftW, 0.001f);
-            assertEquals("⌫도 (오른쪽 덩어리의) 글자 키의 1.5배", 1.5f * rightLetterW, delW, 0.001f);
+            assertEquals("⌫도 (오른쪽 묶음의) 글자 키의 1.5배", 1.5f * rightLetterW, delW, 0.001f);
             assertEquals("z는 Shift 바로 옆", shiftAt + shiftW, firstLetterAt, 0.001f);
             assertEquals(10f, x, 0.001f);
         }

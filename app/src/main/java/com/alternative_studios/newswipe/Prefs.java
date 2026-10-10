@@ -9,11 +9,24 @@ public final class Prefs {
 
     public static final String KEYBOARD_HEIGHT = "keyboard_height";   // %, 70~140
     public static final String KEY_TEXT_SIZE = "key_text_size";       // %, 70~140
+    public static final String EMOJI_SIZE = "emoji_size";             // 이모지 창 크기: 0 기본, 1 크게, 2 더 크게
     public static final String LONG_PRESS_MS = "long_press_ms";       // 100~800
     public static final String SWIPE_THRESHOLD = "swipe_threshold";   // 밀어서 글자 입력의 미는 거리, dp, 12~48
     public static final String FN_SWIPE_THRESHOLD = "fn_swipe_threshold";   // 밀어서 기능의 미는 거리, dp, 12~48
     public static final String VIBRATE = "vibrate";
     public static final String VIBRATE_MS = "vibrate_ms";             // 1~40
+    public static final String VIBRATE_STYLE = "vibrate_style";       // 0 약하게(틱), 1 기본(클릭), 2 강하게(강한 클릭), 3 직접 설정
+    public static final String VIBRATE_AMP = "vibrate_amp";           // 진동 강도 %, 10~100 (100 = 기기 기본)
+    public static final String VIBRATE_PER_KEY = "vibrate_per_key";   // 키 종류별로 다르게
+    public static final String VIBRATE_DELETE = "vibrate_delete";     // 1 약하게(틱), 2 기본(클릭), 3 강하게(강한 클릭)
+    public static final String VIBRATE_SPACE = "vibrate_space";
+    public static final String VIBRATE_ENTER = "vibrate_enter";
+    public static final String VIBRATE_SHIFT = "vibrate_shift";
+    public static final String VIBRATE_SYMBOL = "vibrate_symbol";     // 기호 키 (?123·가/ABC·기호 1/2쪽)
+    public static final String VIBRATE_LANGUAGE = "vibrate_language"; // 언어 전환 키 (지구본·이모지 열기)
+    public static final String VIBRATE_TOOLBAR = "vibrate_toolbar";   // 도구 막대 버튼
+    public static final String VIBRATE_GESTURE_ON = "vibrate_gesture_on";       // 밀기·길게 누르기 진동 (기본 켬)
+    public static final String VIBRATE_GESTURE_LEVEL = "vibrate_gesture_level"; // 1~3, 위와 같은 단계
     public static final String SOUND = "sound";
     public static final String SOUND_VOLUME = "sound_volume";         // %, 0~100
     public static final String KEY_PREVIEW = "key_preview";
@@ -323,10 +336,12 @@ public final class Prefs {
                 SWIPE_FN_CUSTOM, SWIPE_TOOLBAR_CUSTOM, DELETE_WORD_SWIPE, MODE_KEY_EMOJI, TOOLBAR_SWIPE,
                 TOOL_EMOJI_SWIPE, TOOL_CLIPBOARD_SWIPE, TOOL_UNDO_SWIPE));
         MENU_PREFIXES.put("swipefn", keys("swipe_fn_", "swipe_toolbar_", "swipe_kb_"));
-        MENU_KEYS.put("feedback", keys(VIBRATE, VIBRATE_MS, SOUND, SOUND_VOLUME));
+        MENU_KEYS.put("feedback", keys(VIBRATE, VIBRATE_MS, VIBRATE_STYLE, VIBRATE_AMP, VIBRATE_PER_KEY,
+                VIBRATE_DELETE, VIBRATE_SPACE, VIBRATE_ENTER, VIBRATE_SHIFT, VIBRATE_SYMBOL, VIBRATE_LANGUAGE, VIBRATE_TOOLBAR,
+                VIBRATE_GESTURE_ON, VIBRATE_GESTURE_LEVEL, SOUND, SOUND_VOLUME));
         MENU_KEYS.put("tools", keys(TOOLBAR, TOOLBAR_BOTTOM, TOOLBAR_HEIGHT, TOOL_BUTTON_SIZE, CLIPBOARD_HISTORY, CLIPBOARD_IMAGES, TOOL_ORDER, TOOL_CLIPBOARD,
-                TOOL_EMOJI, VOICE_KEY, TOOL_UNDO, TOOL_SETTINGS, TOOL_ONE_HAND, TOOL_HIDE));
-        MENU_KEYS.put("words", keys(SHORTCUTS_ENABLED, EMOJI_SUGGEST, SUGGEST_WORDS, SUGGEST_FULL_BAR, SUGGEST_SPACE, AUTO_CORRECT, LEARN_WORDS,
+                TOOL_EMOJI, VOICE_KEY, TOOL_UNDO, TOOL_SETTINGS, TOOL_ONE_HAND, TOOL_HIDE, EMOJI_SIZE, EMOJI_SUGGEST));
+        MENU_KEYS.put("words", keys(SHORTCUTS_ENABLED, SUGGEST_WORDS, SUGGEST_FULL_BAR, SUGGEST_SPACE, AUTO_CORRECT, LEARN_WORDS,
                 CONFIRM_LEARNED_DELETE));
         // 실험실: 대화면 별도 레이아웃과 대화면 키보드 사용자화의 값은 모두 large_로 시작한다.
         MENU_KEYS.put("lab", keys(SWIPE_DOWN_RATIO, SWIPE_UP_RATIO));
@@ -433,8 +448,21 @@ public final class Prefs {
     public int swipeThresholdDp() { return sp.getInt(SWIPE_THRESHOLD, 22); }
     /** '밀어서 기능'의 미는 거리. 따로 정한 적이 없으면 (나누기 전처럼) 글자 입력의 미는 거리를 따른다. */
     public int fnSwipeThresholdDp() { return sp.getInt(FN_SWIPE_THRESHOLD, swipeThresholdDp()); }
+    public int emojiSize() { return Math.max(0, Math.min(2, sp.getInt(EMOJI_SIZE, 0))); }
     public boolean vibrate() { return sp.getBoolean(VIBRATE, true); }
     public int vibrateMs() { return sp.getInt(VIBRATE_MS, 12); }
+    public int vibrateStyle() { return sp.getInt(VIBRATE_STYLE, 1); }
+    public int vibrateAmp() { return sp.getInt(VIBRATE_AMP, 100); }
+    public boolean vibratePerKey() { return sp.getBoolean(VIBRATE_PER_KEY, false); }
+    public int vibrateDelete() { return sp.getInt(VIBRATE_DELETE, 2); }
+    public int vibrateSpace() { return sp.getInt(VIBRATE_SPACE, 2); }
+    public int vibrateEnter() { return sp.getInt(VIBRATE_ENTER, 2); }
+    public int vibrateShift() { return sp.getInt(VIBRATE_SHIFT, 2); }
+    public int vibrateSymbol() { return sp.getInt(VIBRATE_SYMBOL, 2); }
+    public int vibrateLanguage() { return sp.getInt(VIBRATE_LANGUAGE, 2); }
+    public int vibrateToolbar() { return sp.getInt(VIBRATE_TOOLBAR, 2); }
+    public boolean vibrateGestureOn() { return sp.getBoolean(VIBRATE_GESTURE_ON, true); }
+    public int vibrateGestureLevel() { return sp.getInt(VIBRATE_GESTURE_LEVEL, 2); }
     public boolean sound() { return sp.getBoolean(SOUND, false); }
     public int soundVolume() { return sp.getInt(SOUND_VOLUME, 50); }
     public boolean keyPreview() { return sp.getBoolean(KEY_PREVIEW, true); }
@@ -455,12 +483,12 @@ public final class Prefs {
     public String splitSpaceJoinKey() { return large() ? LARGE_PREFIX + SPLIT_SPACE_JOIN + "_" + largeSide() : SPLIT_SPACE_JOIN; }
     public String splitFnWidthKey() { return large() ? LARGE_PREFIX + SPLIT_FN_WIDTH + "_" + largeSide() : SPLIT_FN_WIDTH; }
 
-    /** 분리 키보드에서 나뉜 스페이스바를 가운데로 이어 하나로 쓰는지 (기본은 꺼짐: 양쪽 덩어리에 하나씩). */
+    /** 분리 키보드에서 나뉜 스페이스바를 가운데로 이어 하나로 쓰는지 (기본은 꺼짐: 양쪽 묶음에 하나씩). */
     public boolean splitSpaceJoin() { return profileValues() && sp.getBoolean(splitSpaceJoinKey(), false); }
 
     /**
      * 스페이스바를 이었을 때 스페이스바·Shift·⌫를 뺀 하단 기능키(기호 키·쉼표·지구본·온점·엔터)의 폭 (보통 폭의 %, 50~200).
-     * 스페이스바를 잇지 않았으면 늘 100이다 (나뉜 스페이스바는 덩어리의 남는 폭을 모두 쓴다).
+     * 스페이스바를 잇지 않았으면 늘 100이다 (나뉜 스페이스바는 묶음의 남는 폭을 모두 쓴다).
      */
     public int splitFnWidth() { return splitSpaceJoin() ? splitFnWidthSetting() : 100; }
 
@@ -675,7 +703,7 @@ public final class Prefs {
     /** 지금 보기에서 자음·모음 키 폭의 최솟값 (%): 가로 모드·대화면 값은 30, 세로 모드는 60. */
     public int balancedWidthMin() { return profileValues() ? BALANCED_WIDTH_MIN_LANDSCAPE : BALANCED_WIDTH_MIN; }
 
-    /** 모음 키 폭: 모음 키들이 오른쪽 절반을 꽉 채우는 폭의 % (100이면 꽉 참). 분리 키보드는 오른쪽 덩어리의 폭이다. */
+    /** 모음 키 폭: 모음 키들이 오른쪽 절반을 꽉 채우는 폭의 % (100이면 꽉 참). 분리 키보드는 오른쪽 묶음의 폭이다. */
     public int balancedVowelWidth() {
         int v = perLayoutInt(balancedVowelWidthKey(), BALANCED_VOWEL_WIDTH, BALANCED_WIDTH_DEFAULT);
         return Math.max(balancedWidthMin(), Math.min(BALANCED_CONSONANT_WIDTH_MAX, v));

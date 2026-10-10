@@ -70,6 +70,13 @@ public final class KeyboardView extends View {
 
         /** Shift를 누른 채 다른 키를 친 뒤 Shift에서 손을 뗐다. */
         void onShiftChordEnd();
+
+        /**
+         * 밀기나 길게 누르기가 인식됐다 (밀기·길게 누르기 진동용). 밀기는 손을 떼어 실행할 때, 길게 누르기는 인식한 순간 한 번 부른다.
+         * 누르고 있는 동안 반복 입력·연속 지우기로 넘어가는 길게 누르기는 반복마다 따로 울리므로 부르지 않는다.
+         */
+        default void onGesture() {
+        }
     }
 
     private static final int NORMAL = 0;
@@ -925,7 +932,10 @@ public final class KeyboardView extends View {
             p.mode = CONSUMED;
         }
         deferred = second = null;
-        if (listener != null) listener.onKeyFunction(null, action);
+        if (listener != null) {
+            listener.onGesture();
+            listener.onKeyFunction(null, action);
+        }
     }
 
     /** 한 축으로 뚜렷하게 민 방향. 대각선이면 -1. */
@@ -1113,7 +1123,10 @@ public final class KeyboardView extends View {
                 break;
             case SWIPED:
                 String swiped = p.key.swipeText(p.swipeDir);
-                if (swiped != null) listener.onKeySwipe(p.key, swiped);
+                if (swiped != null) {
+                    listener.onGesture();
+                    listener.onKeySwipe(p.key, swiped);
+                }
                 markChord();
                 break;
             case POPUP:
@@ -1124,17 +1137,23 @@ public final class KeyboardView extends View {
                 closePopup();
                 break;
             case DELETE_WORD:
+                listener.onGesture();
                 listener.onDeleteWord();
                 break;
             case DELETE_LINE_START:
+                listener.onGesture();
                 listener.onDeleteToLineStart();
                 break;
             case EMOJI_SWIPE:
+                listener.onGesture();
                 listener.onModeKeySwipeUp(p.key);
                 markChord();
                 break;
             case FN_SWIPE:
-                if (p.fnAction != null) listener.onKeyFunction(p.key, p.fnAction);
+                if (p.fnAction != null) {
+                    listener.onGesture();
+                    listener.onKeyFunction(p.key, p.fnAction);
+                }
                 markChord();
                 break;
             case REPEAT:
@@ -1228,7 +1247,10 @@ public final class KeyboardView extends View {
                 repeatRunnable.run();
             } else {
                 p.mode = CONSUMED;
-                if (listener != null) listener.onKeyFunction(k, custom);
+                if (listener != null) {
+                    listener.onGesture();
+                    listener.onKeyFunction(k, custom);
+                }
             }
             invalidate();
             return;
@@ -1239,7 +1261,10 @@ public final class KeyboardView extends View {
             repeatRunnable.run();
         } else if (k.type == Key.LANGUAGE || k.type == Key.TO_SYMBOLS || k.type == Key.TO_LETTERS) {
             p.mode = CONSUMED;
-            if (listener != null) listener.onKeyLongPress(k);
+            if (listener != null) {
+                listener.onGesture();
+                listener.onKeyLongPress(k);
+            }
         } else if (isRepeatChar(k)) {
             p.mode = CHAR_REPEAT;
             charRepeatPointer = p;
@@ -1248,6 +1273,7 @@ public final class KeyboardView extends View {
         } else if (k.popup != null && longPressChars) {
             p.mode = POPUP;
             openPopup(p);
+            if (listener != null) listener.onGesture();
         }
         invalidate();
     }

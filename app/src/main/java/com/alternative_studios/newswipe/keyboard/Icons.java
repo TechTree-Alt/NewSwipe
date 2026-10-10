@@ -44,7 +44,7 @@ public final class Icons {
     public static final int MENU_MOVE = 28;       // 밀어서 기능 (사방으로 밀기)
     public static final int MENU_WORDS = 29;      // 단어 추천 (전구)
     public static final int MENU_SOUND = 30;      // 소리 및 진동
-    public static final int MENU_TOOLBAR = 31;    // 도구 막대와 클립보드
+    public static final int MENU_TOOLBAR = 31;    // 도구 막대, 클립보드, 이모지
     public static final int MENU_INFO = 32;       // 정보
     public static final int MENU_BACKUP = 33;     // 설정 가져오기 및 내보내기
     public static final int MENU_USAGE = 34;      // 사용법 (펼친 책)
