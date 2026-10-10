@@ -192,7 +192,7 @@ public final class ShortcutEditorActivity extends Activity {
         return row;
     }
 
-    /** 추가(key가 null)하거나 고치는 창. 고칠 때는 지우기도 할 수 있다. */
+    /** 추가(key가 null)하거나 고치는 창. 지우기는 목록의 휴지통 버튼으로 한다. */
     private void edit(String key) {
         boolean adding = key == null;
         EditText keyInput = new EditText(this);
@@ -220,12 +220,6 @@ public final class ShortcutEditorActivity extends Activity {
                 .setView(box)
                 .setPositiveButton("저장", null)
                 .setNegativeButton("취소", null);
-        if (!adding) {
-            b.setNeutralButton("삭제", (d, w) -> {
-                prefs.removeShortcut(key);
-                render();
-            });
-        }
         AlertDialog d = b.create();
         d.setOnShowListener(x -> d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             String newKey = keyInput.getText().toString().trim();
