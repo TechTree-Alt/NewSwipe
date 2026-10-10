@@ -692,8 +692,16 @@ public final class SettingsActivity extends Activity {
         return b.toString();
     }
 
-    /** 항목 이름 글자 → 그 항목 전체를 감싼 줄 (깜빡일 때 줄 전체를 칠한다). 화면이 사라지면 함께 치워진다. */
-    private final java.util.Map<TextView, View> itemRow = new java.util.WeakHashMap<>();
+    /**
+     * 항목 이름 글자 → 그 항목 전체를 감싼 줄 (깜빡일 때 줄 전체를 칠한다).
+     * 줄은 이름 글자를 자식으로 품고 있어서, 값을 그대로 넣으면 WeakHashMap의 키가 영영 풀리지 않는다. 그래서 값도 약하게 잡는다.
+     */
+    private final java.util.Map<TextView, java.lang.ref.WeakReference<View>> itemRow = new java.util.WeakHashMap<>();
+
+    private void markItem(TextView label, View row) {
+        if (harvesting) return;   // 검색 목록을 모으려고 잠깐 만든 화면은 기억하지 않는다
+        itemRow.put(label, new java.lang.ref.WeakReference<>(row));
+    }
 
     /**
      * 검색 결과로 연 화면에서 그 항목(화면에 보이는 이름이 같은 글자)을 찾아 스크롤하고, 항목 전체를 반투명 강조색으로 두 번 깜빡인다.
@@ -709,7 +717,8 @@ public final class SettingsActivity extends Activity {
         if (hidden != null) {
             box = controllerOf(hidden);
         } else {
-            box = itemRow.get(target);
+            java.lang.ref.WeakReference<View> ref = itemRow.get(target);
+            box = ref == null ? null : ref.get();
             if (box == null) box = target;
         }
         if (box == null) return;
@@ -851,7 +860,7 @@ public final class SettingsActivity extends Activity {
         t.setText("이모지 크기");
         t.setTextColor(textColor);
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-        itemRow.put(t, box);
+        markItem(t, box);
         box.addView(t);
         TextView sample = new TextView(this);
         sample.setText("😀 😍 👍 🎉");
@@ -1949,7 +1958,7 @@ public final class SettingsActivity extends Activity {
             t.setText(label);
             t.setTextColor(textColor);
             t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-            itemRow.put(t, box);
+            markItem(t, box);
             box.addView(t);
         }
         box.addView(Ui.muteHaptics(choiceRowRepeat(LEVEL_LABELS, Math.max(1, Math.min(3, level)) - 1, i -> {
@@ -2542,7 +2551,7 @@ public final class SettingsActivity extends Activity {
         t.setText(label);
         t.setTextColor(textColor);
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-        itemRow.put(t, row);
+        markItem(t, row);
         texts.addView(t);
         if (desc != null) {
             TextView d = new TextView(this);
@@ -2598,7 +2607,7 @@ public final class SettingsActivity extends Activity {
         t.setText(label);
         t.setTextColor(textColor);
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-        itemRow.put(t, box);
+        markItem(t, box);
         top.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         TextView v = new TextView(this);
         v.setTextColor(hintColor);
@@ -2665,7 +2674,7 @@ public final class SettingsActivity extends Activity {
         t.setText(label);
         t.setTextColor(accentColor);
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        itemRow.put(t, row);
+        markItem(t, row);
         row.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         row.addView(trailing);
         row.setClickable(true);

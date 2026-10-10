@@ -37,15 +37,19 @@ final class SettingsFrame {
     private boolean searchWanted;
     /** Android 13+의 뒤로 가기 처리 (입력창이 열려 있는 동안만 등록한다). */
     private Object backCallback;
-    /** 12 이하에서 Activity.onBackPressed가 이 틀을 찾는 데 쓴다. */
-    private static final java.util.Map<Activity, SettingsFrame> FRAMES = new java.util.WeakHashMap<>();
+    /**
+     * 12 이하에서 Activity.onBackPressed가 이 틀을 찾는 데 쓴다. 틀이 화면(Activity)을 잡고 있어서 값을 그대로 넣으면
+     * WeakHashMap의 키(화면)가 영영 풀리지 않으므로 값도 약하게 잡는다 (틀은 화면의 버튼들이 잡고 있어 살아 있다).
+     */
+    private static final java.util.Map<Activity, java.lang.ref.WeakReference<SettingsFrame>> FRAMES =
+            new java.util.WeakHashMap<>();
 
     SettingsFrame(Activity activity, String title, String subtitle) {
         this.activity = activity;
         this.colors = AppTheme.of(activity);
         this.title = title;
         this.subtitle = subtitle;
-        FRAMES.put(activity, this);
+        FRAMES.put(activity, new java.lang.ref.WeakReference<>(this));
     }
 
     /**
@@ -53,7 +57,8 @@ final class SettingsFrame {
      * Android 12 이하에서는 화면(Activity)의 onBackPressed가 이것을 부르고, 13 이상은 입력창이 열려 있는 동안 등록한 콜백이 부른다.
      */
     static boolean consumeBack(Activity activity) {
-        SettingsFrame frame = FRAMES.get(activity);
+        java.lang.ref.WeakReference<SettingsFrame> ref = FRAMES.get(activity);
+        SettingsFrame frame = ref == null ? null : ref.get();
         return frame != null && frame.closeInputIfOpen();
     }
 

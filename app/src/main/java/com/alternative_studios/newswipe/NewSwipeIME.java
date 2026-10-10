@@ -1242,6 +1242,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         feedback.onKey(key);
     }
 
+    /** 밀기·길게 누르기가 인식됐다 (KeyboardView가 알려 준다). Fn 키 탭처럼 기능을 실행하는 탭은 여기로 오지 않는다. */
+    @Override
+    public void onGesture() {
+        feedback.onGesture();
+    }
+
     @Override
     public void onKeyRepeat(Key key) {
         feedback.onRepeat();
@@ -1297,21 +1303,18 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     @Override
     public void onKeySwipe(Key key, String text) {
-        feedback.onGesture();
         lastWasSpace = false;
         typeText(text, false);
     }
 
     @Override
     public void onPopupChar(Key key, String text) {
-        feedback.onGesture();
         lastWasSpace = false;
         typeText(text, false);
     }
 
     @Override
     public void onKeyLongPress(Key key) {
-        feedback.onGesture();
         if (key.type == Key.LANGUAGE) {
             showImePicker();
         } else if (key.type == Key.TO_SYMBOLS || key.type == Key.TO_LETTERS) {
@@ -2277,7 +2280,6 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     public void onKeyFunction(Key key, String actionId) {
         if (actionId == null) return;
         if (panel == PANEL_SEARCH && !SEARCH_SAFE.contains(actionId)) return;
-        if (key != null) feedback.onGesture();   // 도구 막대 밀기(key == null)는 이미 진동했다
         switch (actionId) {
             case SwipeAction.CLIPBOARD_OPEN:
                 showPanel(PANEL_CLIPBOARD);
@@ -2764,12 +2766,13 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             resultScroll.setLayoutParams(slp);
         }
         float sp = EmojiPanel.textSp(prefs.emojiSize());
+        int cell = resultCellPx();
         for (TextView t : resultViews) {
-            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
+            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);   // 같은 크기면 아무 일도 하지 않는다
             ViewGroup.LayoutParams lp = t.getLayoutParams();
-            if (lp != null) {
-                lp.width = resultCellPx();
-                lp.height = resultCellPx();
+            if (lp != null && (lp.width != cell || lp.height != cell)) {   // 설정이 바뀔 때마다 불리므로 바뀐 때만 다시 배치한다
+                lp.width = cell;
+                lp.height = cell;
                 t.setLayoutParams(lp);
             }
         }
