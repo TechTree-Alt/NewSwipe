@@ -387,7 +387,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         searchBar = buildSearchBar();
         searchBar.setVisibility(View.GONE);
         topSlot.addView(searchBar);
-        forgetBar = null;   // 학습한 단어 삭제 확인 줄은 필요할 때 만든다 (새 화면에는 아직 없다)
+        forgetBar = null;   // 도구 막대의 확인 줄은 필요할 때 만든다 (새 화면에는 아직 없다)
         column.addView(topSlot, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, toolbarHeight));
 
         resultViews.clear();   // 예전 색으로 만든 칸은 버린다
@@ -1988,17 +1988,23 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return true;
     }
 
-    /** 추천 막대에서 학습한 단어를 지울지 묻는 창. 키보드 창에 붙여 띄운다. */
     /**
-     * 학습한 단어 삭제 확인 줄. 따로 창(대화상자)을 띄우지 않고 도구 막대(추천란) 자리 위에 덮어 보여 준다.
-     * 키보드 창에 붙인 대화상자는 뜨는 순간 포커스가 옮겨 가면서 시스템이 키보드를 닫아 버리는 일이 있었다.
+     * 도구 막대 자리 위에 덮어 보여 주는 확인 줄 (학습한 단어 삭제, 음성 입력 안내 등).
+     * 따로 창(대화상자)을 띄우지 않는다. 키보드 창에 붙인 대화상자는 뜨는 순간 포커스가 옮겨 가면서
+     * 시스템이 키보드를 닫아 버리는 일이 있었다.
      */
     private LinearLayout forgetBar;
-    private TextView forgetText;
+    private TextView forgetText, forgetOk;
     private Runnable forgetAction;
 
     private void confirmForget(String word, Runnable delete) {
-        if (topSlot == null) return;
+        confirmOnBar("'" + word + "'" + WordSuggester.objectParticle(word) + " 삭제할까요?", "삭제",
+                TextUtils.TruncateAt.MIDDLE, delete);
+    }
+
+    /** 확인 줄을 띄운다. okLabel을 누르면 action을 실행한다. 도구 막대 자리가 보이지 않으면 false. */
+    private boolean confirmOnBar(String message, String okLabel, TextUtils.TruncateAt ellipsize, Runnable action) {
+        if (topSlot == null || !topSlot.isShown()) return false;
         if (forgetBar == null) {
             forgetBar = new LinearLayout(this);
             forgetBar.setGravity(Gravity.CENTER_VERTICAL);
@@ -2009,21 +2015,24 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             forgetText.setTextColor(theme.text);
             forgetText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
             forgetText.setSingleLine(true);
-            forgetText.setEllipsize(TextUtils.TruncateAt.MIDDLE);
             forgetBar.addView(forgetText, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
             forgetBar.addView(forgetButton("취소", theme.text, v -> dismissForgetDialog()));
-            forgetBar.addView(forgetButton("삭제", theme.accent, v -> {
-                Runnable action = forgetAction;
+            forgetOk = forgetButton("", theme.accent, v -> {
+                Runnable a = forgetAction;
                 dismissForgetDialog();
-                if (action != null) action.run();
-            }));
+                if (a != null) a.run();
+            });
+            forgetBar.addView(forgetOk);
             topSlot.addView(forgetBar, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT));
         }
-        forgetAction = delete;
-        forgetText.setText("'" + word + "'" + WordSuggester.objectParticle(word) + " 삭제할까요?");
+        forgetAction = action;
+        forgetText.setEllipsize(ellipsize);
+        forgetText.setText(message);
+        forgetOk.setText(okLabel);
         forgetBar.setVisibility(View.VISIBLE);
         forgetBar.bringToFront();
+        return true;
     }
 
     private TextView forgetButton(String label, int color, View.OnClickListener l) {
@@ -2038,7 +2047,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return b;
     }
 
-    /** 삭제 확인 줄을 닫는다 (키보드가 내려가거나 다시 만들어질 때도 부른다). */
+    /** 확인 줄을 닫는다 (키보드가 내려가거나 다시 만들어질 때도 부른다). */
     private void dismissForgetDialog() {
         forgetAction = null;
         if (forgetBar != null) forgetBar.setVisibility(View.GONE);
@@ -2526,8 +2535,53 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 }
             }
         }
-        Toast.makeText(this, "사용 중인 음성 입력이 없습니다. 기기 설정에서 'Google 음성 입력' 등을 켜 주세요.",
-                Toast.LENGTH_LONG).show();
+        // 켜 둔 음성 입력기가 없다: Google 음성 입력(음성 인식 및 합성 앱)을 설치하거나 켜도록 안내한다.
+        if (!installed(GOOGLE_SPEECH)) {
+            askOnBar("음성 입력 앱을 설치할까요?", this::openSpeechAppStore);
+        } else {
+            askOnBar("Google 음성 입력을 활성화해주세요", this::openInputMethodSettings);
+        }
+    }
+
+    /** Google 음성 입력을 제공하는 '음성 인식 및 합성(Speech Recognition & Synthesis)' 앱. */
+    private static final String GOOGLE_SPEECH = "com.google.android.tts";
+
+    /** 도구 막대에 묻고 확인을 누르면 action을 실행한다. 도구 막대 자리가 가려져 있으면 알림만 띄우고 바로 실행한다. */
+    private void askOnBar(String message, Runnable action) {
+        if (confirmOnBar(message, "확인", TextUtils.TruncateAt.END, action)) return;
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+        action.run();
+    }
+
+    private boolean installed(String pkg) {
+        try {
+            getPackageManager().getApplicationInfo(pkg, 0);
+            return true;
+        } catch (android.content.pm.PackageManager.NameNotFoundException e) {
+            return false;
+        }
+    }
+
+    private void openSpeechAppStore() {
+        if (!startNewTask(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + GOOGLE_SPEECH)))) {
+            startNewTask(new Intent(Intent.ACTION_VIEW,
+                    Uri.parse("https://play.google.com/store/apps/details?id=" + GOOGLE_SPEECH)));
+        }
+    }
+
+    private void openInputMethodSettings() {
+        startNewTask(new Intent(android.provider.Settings.ACTION_INPUT_METHOD_SETTINGS));
+    }
+
+    /** 키보드에서 다른 화면을 연다 (서비스에서 열므로 새 작업으로). 열 수 있는 앱이 없으면 false. */
+    private boolean startNewTask(Intent i) {
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            startActivity(i);
+            return true;
+        } catch (android.content.ActivityNotFoundException e) {
+            return false;
+        }
     }
 
     private void openSettings() {
