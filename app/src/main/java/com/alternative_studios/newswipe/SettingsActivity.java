@@ -737,6 +737,18 @@ public final class SettingsActivity extends Activity {
         d.setBounds(bounds);
         d.setAlpha(0);
         host.getOverlay().add(d);
+        // 부모들은 자식이 자기 영역(안쪽 여백 포함) 밖에 그리지 못하게 잘라 낸다. 그대로 두면 넓힌 부분이 잘려 모서리가 각져 보이므로
+        // 깜빡이는 동안만 항목을 담은 칸들(카드 안쪽)의 자르기를 끄고 끝나면 되돌린다.
+        java.util.List<ViewGroup> unclipped = new java.util.ArrayList<>();
+        java.util.List<boolean[]> saved = new java.util.ArrayList<>();
+        for (android.view.ViewParent vp = host instanceof ViewGroup ? (ViewGroup) host : host.getParent();
+                vp instanceof ViewGroup && vp != list; vp = vp.getParent()) {
+            ViewGroup g = (ViewGroup) vp;
+            unclipped.add(g);
+            saved.add(new boolean[]{g.getClipChildren(), g.getClipToPadding()});
+            g.setClipChildren(false);
+            g.setClipToPadding(false);
+        }
         android.animation.ValueAnimator pulse = android.animation.ValueAnimator.ofFloat(0f, 1f);
         pulse.setDuration(2000);
         pulse.addUpdateListener(a -> {
@@ -746,6 +758,10 @@ public final class SettingsActivity extends Activity {
         pulse.addListener(new android.animation.AnimatorListenerAdapter() {
             @Override public void onAnimationEnd(android.animation.Animator animation) {
                 host.getOverlay().remove(d);
+                for (int i = 0; i < unclipped.size(); i++) {
+                    unclipped.get(i).setClipChildren(saved.get(i)[0]);
+                    unclipped.get(i).setClipToPadding(saved.get(i)[1]);
+                }
             }
         });
         pulse.start();
