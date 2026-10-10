@@ -9,6 +9,7 @@ public final class Prefs {
 
     public static final String KEYBOARD_HEIGHT = "keyboard_height";   // %, 70~140
     public static final String KEY_TEXT_SIZE = "key_text_size";       // %, 70~140
+    public static final String EMOJI_SIZE = "emoji_size";             // 이모지 창 크기: 0 기본, 1 크게, 2 더 크게
     public static final String LONG_PRESS_MS = "long_press_ms";       // 100~800
     public static final String SWIPE_THRESHOLD = "swipe_threshold";   // 밀어서 글자 입력의 미는 거리, dp, 12~48
     public static final String FN_SWIPE_THRESHOLD = "fn_swipe_threshold";   // 밀어서 기능의 미는 거리, dp, 12~48
@@ -319,7 +320,7 @@ public final class Prefs {
         MENU_PREFIXES.put("layout", keys("balanced_", LANDSCAPE_SPLIT + "_", "swipe_fk_"));
         MENU_KEYS.put("theme", keys(THEME_MODE, ACCENT_MODE, ACCENT_COLOR, GRID_COLORS));
         MENU_KEYS.put("look", keys(KEYBOARD_HEIGHT, KEY_TEXT_SIZE, KEY_RADIUS, KEY_SHADOW, KEY_SHADOW_STRENGTH,
-                KEY_PREVIEW, POPUP_HINT_HIDDEN, NUMBER_HINT_HIDDEN, PAD_LEFT, PAD_RIGHT, PAD_TOP, PAD_BOTTOM, KEY_GAP_X, KEY_GAP_Y));
+                KEY_PREVIEW, POPUP_HINT_HIDDEN, NUMBER_HINT_HIDDEN, EMOJI_SIZE, PAD_LEFT, PAD_RIGHT, PAD_TOP, PAD_BOTTOM, KEY_GAP_X, KEY_GAP_Y));
         MENU_KEYS.put("input", keys(AUTO_CAP, DOUBLE_SPACE_PERIOD, DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT,
                 DOUBLE_TAP_CONSONANT_MS, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, SPACE_HIT_SHRINK,
                 SPACE_HIT_SHRINK_PCT));
@@ -447,6 +448,7 @@ public final class Prefs {
     public int swipeThresholdDp() { return sp.getInt(SWIPE_THRESHOLD, 22); }
     /** '밀어서 기능'의 미는 거리. 따로 정한 적이 없으면 (나누기 전처럼) 글자 입력의 미는 거리를 따른다. */
     public int fnSwipeThresholdDp() { return sp.getInt(FN_SWIPE_THRESHOLD, swipeThresholdDp()); }
+    public int emojiSize() { return Math.max(0, Math.min(2, sp.getInt(EMOJI_SIZE, 0))); }
     public boolean vibrate() { return sp.getBoolean(VIBRATE, true); }
     public int vibrateMs() { return sp.getInt(VIBRATE_MS, 12); }
     public int vibrateStyle() { return sp.getInt(VIBRATE_STYLE, 3); }

@@ -133,7 +133,7 @@ public final class SettingsActivity extends Activity {
     private static final String[][] SECTIONS = {
             {"layout", "자판 레이아웃", "한글 자판 배열, 숫자 줄, 기능키 배열"},
             {"theme", "테마", "화면 모드, 강조 색"},
-            {"look", "자판 모양", "키보드 높이, 글자 크기, 여백"},
+            {"look", "자판 모양", "키보드 높이, 글자 크기, 여백, 이모지 크기"},
             {"input", "입력 동작", "쌍자음, 이중모음, 자동 대소문자, 마침표"},
             {"keys", "길게 누르기", "문자 입력, 기능키 길게 누르기"},
             {"swipe", "밀어서 글자 입력", "쌍자음, 이중모음, 완전 사용자화"},
@@ -325,6 +325,7 @@ public final class SettingsActivity extends Activity {
             {"look", "아래쪽 여백", "패딩 간격"},
             {"look", "키 좌우 여백", "키 간격 갭"},
             {"look", "키 상하 여백", "키 간격 갭"},
+            {"look", "이모지 크기", "이모티콘 크기 글자 키우기 크게 이모지 창"},
             {"layout", "키 위치·폭 사용자화", "자음 모음 열 폭 위치 배치"},
             {"layout", "자·모음 균형 레이아웃", "자음 모음 반반 균형"},
             {"layout", "가로 모드 키보드 사용자화", "가로 화면 landscape"},
@@ -839,6 +840,34 @@ public final class SettingsActivity extends Activity {
         pad.addView(slider("아래쪽 여백", Prefs.PAD_BOTTOM, prefs.padBottomDp(), 0, 48, 1, "dp"));
         pad.addView(slider("키 좌우 여백", Prefs.KEY_GAP_X, prefs.keyGapXDp(), 0, 12, 1, "dp"));
         pad.addView(slider("키 상하 여백", Prefs.KEY_GAP_Y, prefs.keyGapYDp(), 0, 20, 1, "dp"));
+
+        LinearLayout emoji = section("이모지 창");
+        emoji.addView(emojiSizeRow());
+    }
+
+    /** 이모지 창의 이모지 크기 (기본·크게·더 크게). 고르면 아래 견본 글자도 같은 크기로 바뀐다. */
+    private View emojiSizeRow() {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(0, Ui.dp(this, 8), 0, Ui.dp(this, 4));
+        TextView t = new TextView(this);
+        t.setText("이모지 크기");
+        t.setTextColor(textColor);
+        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        itemRow.put(t, box);
+        box.addView(t);
+        TextView sample = new TextView(this);
+        sample.setText("😀 😍 👍 🎉");
+        sample.setGravity(Gravity.CENTER);
+        sample.setTextSize(TypedValue.COMPLEX_UNIT_SP, com.alternative_studios.newswipe.emoji.EmojiPanel.textSp(prefs.emojiSize()));
+        box.addView(choiceRowNow(new String[]{"기본", "크게", "더 크게"}, prefs.emojiSize(), i -> {
+            prefs.raw().edit().putInt(Prefs.EMOJI_SIZE, i).apply();
+            sample.setTextSize(TypedValue.COMPLEX_UNIT_SP, com.alternative_studios.newswipe.emoji.EmojiPanel.textSp(i));
+        }));
+        LinearLayout.LayoutParams slp = matchWrap();
+        slp.topMargin = Ui.dp(this, 6);
+        box.addView(sample, slp);
+        return box;
     }
 
     /** 자판 레이아웃: 한글 자판 배열을 고르고, 고른 배열을 실제 키보드 뷰로 미리 보여 준다. */

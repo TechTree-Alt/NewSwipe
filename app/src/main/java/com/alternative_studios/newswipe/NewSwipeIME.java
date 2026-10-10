@@ -779,6 +779,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         cfgLearn = cfgWords && prefs.learnWords();
         suggester.setUserEnabled(cfgLearn);
         feedback.configure(prefs);
+        if (emojiPanel != null) emojiPanel.setSizeLevel(prefs.emojiSize());
         composer.setDoubleTapVowel(prefs.doubleTapVowel());
         composer.setDoubleTapConsonant(prefs.doubleTapConsonant(), prefs.doubleTapConsonantMs());
         // 가로 모드·대화면에서 따로 정한 키보드 높이·글자 크기는 그 화면에서만 쓴다.
@@ -1170,6 +1171,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private void ensureEmojiPanel() {
         if (emojiPanel != null) return;
         emojiPanel = new EmojiPanel(this, theme, Ui.dp(this, 40), this);   // 패널 위쪽 탭 줄은 도구 막대 높이와 관계없이 기본 높이
+        emojiPanel.setSizeLevel(prefs.emojiSize());
         // 데이터를 읽는 동안 열려도 처음 탭(최근이 있으면 최근 탭)을 바로 고를 수 있게 사용 기록부터 넘긴다.
         emojiPanel.setRecent(EmojiRepository.parseRecent(prefs.recentEmoji()));
         emojiPanel.setPinned(EmojiRepository.parseRecent(prefs.pinnedEmoji()));
