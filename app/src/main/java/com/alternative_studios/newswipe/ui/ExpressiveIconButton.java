@@ -15,7 +15,8 @@ import com.alternative_studios.newswipe.keyboard.Icons;
 /**
  * Material 3 Expressive 스타일의 동그란 아이콘 버튼 (ExpressiveButton의 아이콘 버튼판).
  * 평소에는 동그라미이고, 누르는 동안 모서리가 각진 둥근 네모로 바뀌며 살짝 작아졌다가, 놓으면 스프링으로 되튀며 동그라미로 돌아온다.
- * 누르는 순간 짧은 진동이 울린다. setActive(true)면 옅은 바탕에 강조색 아이콘으로 '켜짐'을 나타낸다.
+ * 누르는 순간 짧은 진동이 울린다. setActive(true)면 옅은 바탕에 강조색 아이콘의 모서리가 둥근 네모로 스프링과 함께 바뀌어
+ * '켜짐'을 나타내고, 끄면 다시 동그라미로 돌아온다.
  */
 public final class ExpressiveIconButton extends View {
     private static final long PRESS_IN_MS = 90, PRESS_OUT_MS = 480;
@@ -24,8 +25,10 @@ public final class ExpressiveIconButton extends View {
     private final RectF rect = new RectF();
     private final int icon;
     private final int accent, onAccent;
-    private final float pressedRadius;
+    private final float pressedRadius, activeRadius, activePressedRadius;
     private boolean active;
+    private float shape;   // 0 = 동그라미, 1 = 모서리가 둥근 네모 (켜짐). 스프링으로 오가므로 조금 넘을 수 있다
+    private ValueAnimator shapeAnim;
     private float press;   // 0 = 놓음, 1 = 누름 (스프링으로 0 아래로 조금 내려갈 수 있다)
     private ValueAnimator pressAnim;
     private boolean down;
@@ -40,6 +43,8 @@ public final class ExpressiveIconButton extends View {
         this.accent = accent;
         this.onAccent = onAccent;
         this.pressedRadius = Ui.dp(c, 12);
+        this.activeRadius = Ui.dp(c, 14);
+        this.activePressedRadius = Ui.dp(c, 8);
         setContentDescription(description);
         setClickable(true);
         setFocusable(true);
@@ -49,6 +54,15 @@ public final class ExpressiveIconButton extends View {
     public void setActive(boolean on) {
         if (active == on) return;
         active = on;
+        if (shapeAnim != null) shapeAnim.cancel();
+        shapeAnim = ValueAnimator.ofFloat(shape, on ? 1f : 0f);
+        shapeAnim.setDuration(PRESS_OUT_MS);
+        shapeAnim.setInterpolator(Spring.BOUNCY);
+        shapeAnim.addUpdateListener(a -> {
+            shape = (float) a.getAnimatedValue();
+            invalidate();
+        });
+        shapeAnim.start();
         invalidate();
     }
 
@@ -57,7 +71,10 @@ public final class ExpressiveIconButton extends View {
         float w = getWidth(), h = getHeight();
         float full = Math.min(w, h) / 2f;
         float p = Math.max(-0.3f, Math.min(1f, press));
-        float radius = Math.max(0f, Math.min(full, full + (pressedRadius - full) * p));
+        float sh = Math.max(-0.2f, Math.min(1.2f, shape));
+        float rest = full + (activeRadius - full) * sh;                           // 동그라미 ↔ 켜짐의 둥근 네모
+        float pressed = pressedRadius + (activePressedRadius - pressedRadius) * sh;
+        float radius = Math.max(0f, Math.min(full, rest + (pressed - rest) * p));
         // 누르면 모양이 가운데로 살짝 줄어든다 (놓을 때는 스프링으로 원래 크기를 조금 넘었다 돌아온다).
         float inset = Math.min(w, h) * 0.06f * p;
         rect.set(inset, inset, w - inset, h - inset);
@@ -118,6 +135,7 @@ public final class ExpressiveIconButton extends View {
     @Override
     protected void onDetachedFromWindow() {
         if (pressAnim != null) pressAnim.cancel();
+        if (shapeAnim != null) shapeAnim.cancel();
         super.onDetachedFromWindow();
     }
 }
