@@ -391,4 +391,45 @@ public class SplitBottomRowTest {
             assertEquals(10f, x, 0.001f);
         }
     }
+
+    private static float widthOf(KeyboardLayout.Row row, int type, boolean leftHalf) {
+        float x = 0f;
+        for (Key k : row.keys) {
+            if (k.type == type && (x < 5f) == leftHalf) return k.weight;
+            x += k.weight;
+        }
+        return -1f;
+    }
+
+    @Test
+    public void gridLayoutMatchesShiftAndDeleteToTheBottomFunctionKeys() throws Exception {
+        for (boolean d7 : new boolean[]{false, true}) {
+            for (int[] s : SETTINGS) {
+                FakeSp sp = new FakeSp();
+                Prefs p = landscapeEditView(sp);
+                sp.m.put(Prefs.GRID_LAYOUT, true);
+                if (d7) sp.m.put(Prefs.KOREAN_LAYOUT, "danmoeum7");
+                sp.m.put(p.balancedConsonantPosKey(), s[0]);
+                sp.m.put(p.balancedVowelPosKey(), s[1]);
+                sp.m.put(p.balancedConsonantWidthKey(), s[2]);
+                sp.m.put(p.balancedVowelWidthKey(), s[3]);
+                KeyboardLayout en = KeyboardLayout.english(p), ko = KeyboardLayout.korean(p);
+                KeyboardLayout.Row enBottom = en.rows[en.rows.length - 1], koBottom = ko.rows[ko.rows.length - 1];
+                float mode = widthOf(enBottom, Key.TO_SYMBOLS, true), enter = widthOf(enBottom, Key.ENTER, false);
+                KeyboardLayout.Row letters = en.rows[2];
+                assertEquals("Shift = ?123 폭", mode, widthOf(letters, Key.SHIFT, true), 0.001f);
+                assertEquals("⌫ = 엔터 폭", enter, widthOf(letters, Key.DELETE, false), 0.001f);
+                assertEquals("⌫ = 엔터 폭 (한글)", widthOf(koBottom, Key.ENTER, false),
+                        widthOf(ko.rows[2], Key.DELETE, false), 0.001f);
+                if (!d7) {
+                    assertEquals("Shift 자리 = ?123 폭 (한글)", widthOf(koBottom, Key.TO_SYMBOLS, true),
+                            ko.rows[2].keys[0].type == Key.GAP ? ko.rows[2].keys[1].weight : ko.rows[2].keys[0].weight, 0.001f);
+                }
+                float total = 0f;
+                for (Key k : letters.keys) total += k.weight;
+                assertEquals(10f, total, 0.001f);
+                halves(letters);   // 가운데를 가로지르는 키가 없다
+            }
+        }
+    }
 }

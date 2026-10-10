@@ -269,6 +269,12 @@ public final class KeyboardLayout {
             (vowel ? vowels : consonants).add(k);
         }
         if (deleteHere) vowels.add(fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1f));
+        if (splitView(prefs) && r == 2 && prefs.gridLayout()) {
+            // 격자 정렬: Shift(Fn) 자리와 ⌫는 맨 아래 줄 기능키와 같은 폭이다.
+            Key leftEdge = !ns ? consonants.remove(0) : null, rightEdge = vowels.remove(vowels.size() - 1);
+            return gridEdgeRow(leftEdge, consonants, balancedConsonants(prefs), vowels, BALANCED_VOWEL_COLUMNS, rightEdge,
+                    1f, prefs);
+        }
         if (splitView(prefs)) return blockRow(consonants, vowels, 1f, balancedConsonants(prefs), BALANCED_VOWEL_COLUMNS, 0f, prefs);
         return splitRow(consonants, vowels, 1f, BALANCED_HALF / balancedConsonants(prefs),
                 balancedWidthMax(prefs), prefs);
@@ -335,8 +341,16 @@ public final class KeyboardLayout {
             if (r == 2) right.add(fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1.5f));
             Key host = right.get(0);   // 오른쪽 절반 맨 왼쪽 키: h, b
             // 둘째 줄(a~l)은 일반 자판처럼 반 칸 들인다: a~g는 오른쪽으로 반 칸, h~l은 덩어리 가운데에 놓여 양쪽에 반 칸씩 빈다.
-            Row row = r == 2 ? edgeRow(left, right, 1f, 5, prefs)
-                    : blockRow(left, right, 1f, 5, 5, r == 1 ? 0.5f : 0f, prefs);
+            Row row;
+            if (r == 2 && prefs.gridLayout()) {
+                // 격자 정렬: Shift·⌫는 맨 아래 줄 기능키(기호 키 등)와 같은 폭이다.
+                Key shift = left.remove(0), del = right.remove(right.size() - 1);
+                row = gridEdgeRow(shift, left, 5, right, 5, del, 1f, prefs);
+            } else if (r == 2) {
+                row = edgeRow(left, right, 1f, 5, prefs);
+            } else {
+                row = blockRow(left, right, 1f, 5, 5, r == 1 ? 0.5f : 0f, prefs);
+            }
             // h 왼쪽의 빈 자리를 누르면 g가, b 왼쪽의 빈 자리를 누르면 v가 입력된다 (왼손·오른손 모두 치기 쉽게).
             // 키를 더 그리는 것이 아니라서 줄의 폭과 열은 그대로다.
             if (r > 0) row = withHiddenKey(row, host, hiddenCopyOf(letters[leftCount[r] - 1]));
@@ -837,6 +851,44 @@ public final class KeyboardLayout {
         float ls = b[0] + (b[1] - lw) / 2f, rs = b[2] + (b[3] - rw) / 2f;
         if (stagger > 0f && !left.isEmpty()) ls += Math.max(0f, Math.min(stagger * left.get(0).weight, rs - (ls + lw)));
         return blockLine(left, ls, lw, right, rs, rw, height);
+    }
+
+    /**
+     * 격자 정렬을 켠 분리 키보드의 셋째 글자 줄: 양 끝의 기능키(leftEdge: Shift·Fn, rightEdge: ⌫)는 맨 아래 줄의 기능키와
+     * 같은 폭(격자 키 한 칸 × 덩어리 폭 / 5)이고 각 덩어리의 바깥 끝에 붙는다. 글자 키는 칸 폭(덩어리 폭 / 열 수)으로
+     * 안쪽에 놓고, 기능키와 다 들어가지 않으면 줄여 덩어리 안에 넣는다. 남는 폭은 글자 키와 오른쪽 기능키 사이의
+     * 빈 자리(눌러도 반응하지 않음)로 둔다. leftEdge가 없으면(NewSwipe 단모음) 글자 키만 왼쪽 덩어리를 채운다.
+     */
+    private static Row gridEdgeRow(Key leftEdge, List<Key> leftLetters, int leftCols, List<Key> rightLetters,
+                                   int rightCols, Key rightEdge, float height, Prefs prefs) {
+        float[] b = blocks(prefs);
+        List<Key> left = new ArrayList<>(), right = new ArrayList<>();
+        float edge = gridKey(prefs);
+        // 왼쪽: [기능키] 글자… [빈 자리]
+        float eL = leftEdge == null ? 0f : edge * b[1] / BALANCED_HALF;
+        float uL = leftLetters.isEmpty() ? 0f : Math.min(b[1] / leftCols, (b[1] - eL) / leftLetters.size());
+        if (leftEdge != null) {
+            leftEdge.weight = eL;
+            left.add(leftEdge);
+        }
+        for (Key k : leftLetters) {
+            k.weight = uL;
+            left.add(k);
+        }
+        float restL = b[1] - eL - uL * leftLetters.size();
+        if (restL > 0.001f) left.add(fn(Key.SPACER, "", restL));
+        // 오른쪽: 글자… [빈 자리] [기능키]
+        float eR = edge * b[3] / BALANCED_HALF;
+        float uR = rightLetters.isEmpty() ? 0f : Math.min(b[3] / rightCols, (b[3] - eR) / rightLetters.size());
+        for (Key k : rightLetters) {
+            k.weight = uR;
+            right.add(k);
+        }
+        float restR = b[3] - eR - uR * rightLetters.size();
+        if (restR > 0.001f) right.add(fn(Key.SPACER, "", restR));
+        rightEdge.weight = eR;
+        right.add(rightEdge);
+        return blockLine(left, b[0], b[1], right, b[2], b[3], height);
     }
 
     /**
