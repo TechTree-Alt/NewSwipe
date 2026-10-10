@@ -13,7 +13,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.alternative_studios.newswipe.keyboard.Icons;
-import com.alternative_studios.newswipe.ui.IconButton;
+import com.alternative_studios.newswipe.ui.ExpressiveIconButton;
 import com.alternative_studios.newswipe.ui.Ui;
 
 /**
@@ -27,7 +27,7 @@ final class SettingsFrame {
     private final String title, subtitle;
     private LinearLayout testBar;
     private EditText testInput;
-    private IconButton testButton;
+    private ExpressiveIconButton testButton;
     /** 입력창이 열려 있어야 하는 상태. 애니메이션 중에도 버튼 글자를 바로 바꾸기 위해 따로 기억한다. */
     private boolean testBarWanted;
     /** 설정 검색 (첫 화면 전용): 검색어가 바뀔 때마다 부른다. null이면 검색 없이 '키보드 열기'를 쓴다. */
@@ -146,19 +146,11 @@ final class SettingsFrame {
         return header;
     }
 
-    /** 강조색 동그라미 안에 아이콘 하나를 둔 버튼. */
-    private IconButton circleButton(Context c, int icon, String description, View.OnClickListener l) {
-        IconButton b = new IconButton(c, icon, colors.onAccent, 0x33FFFFFF, description);
-        b.setBackground(Ui.ripple(0x33FFFFFF, ovalOf(colors.accent), Ui.dp(c, 22)));
+    /** 강조색 동그라미 안에 아이콘 하나를 둔 버튼 (누르면 모양이 바뀌고 진동이 울린다). */
+    private ExpressiveIconButton circleButton(Context c, int icon, String description, View.OnClickListener l) {
+        ExpressiveIconButton b = new ExpressiveIconButton(c, icon, colors.accent, colors.onAccent, description);
         b.setOnClickListener(l);
         return b;
-    }
-
-    private static android.graphics.drawable.GradientDrawable ovalOf(int color) {
-        android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
-        g.setShape(android.graphics.drawable.GradientDrawable.OVAL);
-        g.setColor(color);
-        return g;
     }
 
     /** 머리글 아래에 고정되는 검색창. */
@@ -240,11 +232,8 @@ final class SettingsFrame {
     }
 
     private void updateTestButton() {
-        Context c = activity;
-        // 닫혀 있으면 강조색 바탕에 흰 아이콘, 열려 있으면 옅은 바탕에 강조색 아이콘.
-        testButton.setColor(testBarWanted ? colors.accent : colors.onAccent);
-        testButton.setBackground(Ui.ripple(0x33FFFFFF, ovalOf(testBarWanted
-                ? (colors.accent & 0x00FFFFFF) | 0x33000000 : colors.accent), Ui.dp(c, 22)));
+        // 열려 있으면 옅은 바탕에 강조색 아이콘, 닫혀 있으면 강조색 바탕에 흰 아이콘.
+        testButton.setActive(testBarWanted);
         testButton.setContentDescription(testBarWanted ? "키보드 닫기" : "키보드 열기");
     }
 

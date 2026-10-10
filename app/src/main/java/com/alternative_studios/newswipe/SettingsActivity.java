@@ -1023,8 +1023,8 @@ public final class SettingsActivity extends Activity {
         splitBox.setVisibility(edit.profileSplit() ? View.VISIBLE : View.GONE);
         splitBox.addView(layoutPreview(profile));
         splitBox.addView(note(when + " 쓰는 값입니다. "
-                + "왼쪽 덩어리(자음, 숫자 1~5, 스페이스바와 그 왼쪽 키)와 오른쪽 덩어리(모음, 숫자 6~0, 스페이스바와 그 오른쪽 키)가 각각 함께 움직입니다. "
-                + "자음 키 폭·모음 키 폭은 각 덩어리의 폭으로, 100%면 자기 절반을 꽉 채웁니다. 가로 위치는 각 절반 안에서 덩어리가 놓이는 곳입니다 "
+                + "왼쪽 묶음(자음, 숫자 1~5, 스페이스바와 그 왼쪽 키)과 오른쪽 묶음(모음, 숫자 6~0, 스페이스바와 그 오른쪽 키)이 각각 함께 움직입니다. "
+                + "자음 키 폭·모음 키 폭은 각 묶음의 폭으로, 100%면 자기 절반을 꽉 채웁니다. 가로 위치는 각 절반 안에서 묶음이 놓이는 곳입니다 "
                 + "(0 = 왼쪽 끝, 50 = 가운데, 100 = 오른쪽 끝)."));
         addKeyAreaControls(splitBox, edit);
         String splitKey = edit.splitKey();
@@ -1045,7 +1045,7 @@ public final class SettingsActivity extends Activity {
         fnWidth.setVisibility(edit.splitSpaceJoin() ? View.VISIBLE : View.GONE);
         String joinKey = edit.splitSpaceJoinKey();
         bottom.addView(toggle("스페이스바 잇기",
-                when + " 쓰는 값입니다. 양쪽 덩어리에 하나씩 나뉜 스페이스바를 가운데로 이어 하나로 만듭니다.",
+                when + " 쓰는 값입니다. 양쪽 묶음에 하나씩 나뉜 스페이스바를 가운데로 이어 하나로 만듭니다.",
                 edit.splitSpaceJoin(), on -> {
                     prefs.raw().edit().putBoolean(joinKey, on).apply();
                     Ui.setVisibleAnimated(fnWidth, on);
@@ -1053,10 +1053,10 @@ public final class SettingsActivity extends Activity {
                 }));
         bottom.addView(fnWidth);
 
-        // 두 덩어리 사이의 빈 공간: 프로필마다 따로 정한다.
+        // 두 묶음 사이의 빈 공간: 프로필마다 따로 정한다.
         LinearLayout gap = section(name + " 분리 키보드 가운데 빈 공간");
         gap.addView(toggle("밀어서 커서 이동",
-                when + " 쓰는 값입니다. 분리 키보드의 두 덩어리 사이 빈 공간을 밀어 커서를 옮깁니다. "
+                when + " 쓰는 값입니다. 분리 키보드의 두 묶음 사이 빈 공간을 밀어 커서를 옮깁니다. "
                         + "좌우·상하 이동과 속도는 스페이스바 설정('밀어서 기능')을 따르고, 끄면 빈 공간은 눌러도 밀어도 반응하지 않습니다.",
                 edit.splitGapCursorKey(), edit.splitGapCursor()));
 

@@ -483,12 +483,12 @@ public final class Prefs {
     public String splitSpaceJoinKey() { return large() ? LARGE_PREFIX + SPLIT_SPACE_JOIN + "_" + largeSide() : SPLIT_SPACE_JOIN; }
     public String splitFnWidthKey() { return large() ? LARGE_PREFIX + SPLIT_FN_WIDTH + "_" + largeSide() : SPLIT_FN_WIDTH; }
 
-    /** 분리 키보드에서 나뉜 스페이스바를 가운데로 이어 하나로 쓰는지 (기본은 꺼짐: 양쪽 덩어리에 하나씩). */
+    /** 분리 키보드에서 나뉜 스페이스바를 가운데로 이어 하나로 쓰는지 (기본은 꺼짐: 양쪽 묶음에 하나씩). */
     public boolean splitSpaceJoin() { return profileValues() && sp.getBoolean(splitSpaceJoinKey(), false); }
 
     /**
      * 스페이스바를 이었을 때 스페이스바·Shift·⌫를 뺀 하단 기능키(기호 키·쉼표·지구본·온점·엔터)의 폭 (보통 폭의 %, 50~200).
-     * 스페이스바를 잇지 않았으면 늘 100이다 (나뉜 스페이스바는 덩어리의 남는 폭을 모두 쓴다).
+     * 스페이스바를 잇지 않았으면 늘 100이다 (나뉜 스페이스바는 묶음의 남는 폭을 모두 쓴다).
      */
     public int splitFnWidth() { return splitSpaceJoin() ? splitFnWidthSetting() : 100; }
 
@@ -703,7 +703,7 @@ public final class Prefs {
     /** 지금 보기에서 자음·모음 키 폭의 최솟값 (%): 가로 모드·대화면 값은 30, 세로 모드는 60. */
     public int balancedWidthMin() { return profileValues() ? BALANCED_WIDTH_MIN_LANDSCAPE : BALANCED_WIDTH_MIN; }
 
-    /** 모음 키 폭: 모음 키들이 오른쪽 절반을 꽉 채우는 폭의 % (100이면 꽉 참). 분리 키보드는 오른쪽 덩어리의 폭이다. */
+    /** 모음 키 폭: 모음 키들이 오른쪽 절반을 꽉 채우는 폭의 % (100이면 꽉 참). 분리 키보드는 오른쪽 묶음의 폭이다. */
     public int balancedVowelWidth() {
         int v = perLayoutInt(balancedVowelWidthKey(), BALANCED_VOWEL_WIDTH, BALANCED_WIDTH_DEFAULT);
         return Math.max(balancedWidthMin(), Math.min(BALANCED_CONSONANT_WIDTH_MAX, v));
