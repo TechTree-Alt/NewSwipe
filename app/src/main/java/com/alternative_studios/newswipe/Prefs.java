@@ -14,6 +14,13 @@ public final class Prefs {
     public static final String FN_SWIPE_THRESHOLD = "fn_swipe_threshold";   // 밀어서 기능의 미는 거리, dp, 12~48
     public static final String VIBRATE = "vibrate";
     public static final String VIBRATE_MS = "vibrate_ms";             // 1~40
+    public static final String VIBRATE_MODE = "vibrate_mode";         // 0 직접 설정, 1 기본 클릭, 2 틱, 3 강한 클릭
+    public static final String VIBRATE_AMP = "vibrate_amp";           // 진동 강도 %, 10~100 (100 = 기기 기본)
+    public static final String VIBRATE_PER_KEY = "vibrate_per_key";   // 키 종류별로 다르게
+    public static final String VIBRATE_DELETE = "vibrate_delete";     // 0 끔, 1 약하게, 2 기본, 3 강하게
+    public static final String VIBRATE_SPACE = "vibrate_space";
+    public static final String VIBRATE_ENTER = "vibrate_enter";
+    public static final String VIBRATE_GESTURE = "vibrate_gesture";   // 밀기·길게 누르기 진동 (같은 단계, 기본 끔)
     public static final String SOUND = "sound";
     public static final String SOUND_VOLUME = "sound_volume";         // %, 0~100
     public static final String KEY_PREVIEW = "key_preview";
@@ -323,7 +330,8 @@ public final class Prefs {
                 SWIPE_FN_CUSTOM, SWIPE_TOOLBAR_CUSTOM, DELETE_WORD_SWIPE, MODE_KEY_EMOJI, TOOLBAR_SWIPE,
                 TOOL_EMOJI_SWIPE, TOOL_CLIPBOARD_SWIPE, TOOL_UNDO_SWIPE));
         MENU_PREFIXES.put("swipefn", keys("swipe_fn_", "swipe_toolbar_", "swipe_kb_"));
-        MENU_KEYS.put("feedback", keys(VIBRATE, VIBRATE_MS, SOUND, SOUND_VOLUME));
+        MENU_KEYS.put("feedback", keys(VIBRATE, VIBRATE_MS, VIBRATE_MODE, VIBRATE_AMP, VIBRATE_PER_KEY,
+                VIBRATE_DELETE, VIBRATE_SPACE, VIBRATE_ENTER, VIBRATE_GESTURE, SOUND, SOUND_VOLUME));
         MENU_KEYS.put("tools", keys(TOOLBAR, TOOLBAR_BOTTOM, TOOLBAR_HEIGHT, TOOL_BUTTON_SIZE, CLIPBOARD_HISTORY, CLIPBOARD_IMAGES, TOOL_ORDER, TOOL_CLIPBOARD,
                 TOOL_EMOJI, VOICE_KEY, TOOL_UNDO, TOOL_SETTINGS, TOOL_ONE_HAND, TOOL_HIDE));
         MENU_KEYS.put("words", keys(SHORTCUTS_ENABLED, EMOJI_SUGGEST, SUGGEST_WORDS, SUGGEST_FULL_BAR, SUGGEST_SPACE, AUTO_CORRECT, LEARN_WORDS,
@@ -435,6 +443,13 @@ public final class Prefs {
     public int fnSwipeThresholdDp() { return sp.getInt(FN_SWIPE_THRESHOLD, swipeThresholdDp()); }
     public boolean vibrate() { return sp.getBoolean(VIBRATE, true); }
     public int vibrateMs() { return sp.getInt(VIBRATE_MS, 12); }
+    public int vibrateMode() { return sp.getInt(VIBRATE_MODE, 0); }
+    public int vibrateAmp() { return sp.getInt(VIBRATE_AMP, 100); }
+    public boolean vibratePerKey() { return sp.getBoolean(VIBRATE_PER_KEY, false); }
+    public int vibrateDelete() { return sp.getInt(VIBRATE_DELETE, 2); }
+    public int vibrateSpace() { return sp.getInt(VIBRATE_SPACE, 2); }
+    public int vibrateEnter() { return sp.getInt(VIBRATE_ENTER, 2); }
+    public int vibrateGesture() { return sp.getInt(VIBRATE_GESTURE, 0); }
     public boolean sound() { return sp.getBoolean(SOUND, false); }
     public int soundVolume() { return sp.getInt(SOUND_VOLUME, 50); }
     public boolean keyPreview() { return sp.getBoolean(KEY_PREVIEW, true); }
