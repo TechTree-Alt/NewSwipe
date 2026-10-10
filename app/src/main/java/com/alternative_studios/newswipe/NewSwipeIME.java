@@ -2562,12 +2562,19 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
     }
 
+    /**
+     * 음성 인식 및 합성 앱의 설치 페이지를 연다. 비보 등 제조사 기기는 market:// 주소를 자체 앱스토어가 받으므로,
+     * 구글 플레이 스토어 앱을 직접 지정해 바로 거기로 보낸다. 플레이 스토어가 없으면 웹 주소로 연다.
+     */
     private void openSpeechAppStore() {
-        if (!startNewTask(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + GOOGLE_SPEECH)))) {
-            startNewTask(new Intent(Intent.ACTION_VIEW,
-                    Uri.parse("https://play.google.com/store/apps/details?id=" + GOOGLE_SPEECH)));
-        }
+        Intent play = new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + GOOGLE_SPEECH));
+        play.setPackage(PLAY_STORE);
+        if (startNewTask(play)) return;
+        startNewTask(new Intent(Intent.ACTION_VIEW,
+                Uri.parse("https://play.google.com/store/apps/details?id=" + GOOGLE_SPEECH)));
     }
+
+    private static final String PLAY_STORE = "com.android.vending";
 
     private void openInputMethodSettings() {
         startNewTask(new Intent(android.provider.Settings.ACTION_INPUT_METHOD_SETTINGS));

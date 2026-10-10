@@ -11,6 +11,8 @@
         </intent>
         <!-- 음성 입력기를 켜 두지 않았을 때, Google 음성 입력 앱(음성 인식 및 합성)이 설치되어 있는지 확인한다. -->
         <package android:name="com.google.android.tts" />
+        <!-- 앱 설치 페이지를 제조사 앱스토어 대신 구글 플레이 스토어로 바로 열기 위해 필요하다. -->
+        <package android:name="com.android.vending" />
     </queries>
 
     <application
