@@ -128,7 +128,9 @@ final class Feedback {
                     case Key.DELETE: e = levels[deleteLevel]; break;
                     case Key.SPACE: e = levels[spaceLevel]; break;
                     case Key.ENTER: e = levels[enterLevel]; break;
-                    case Key.SHIFT: e = levels[shiftLevel]; break;
+                    case Key.SHIFT: case Key.FUNCTION:   // 한글 자판의 Fn 키는 Shift 자리라 Shift 키로 본다
+                        e = levels[shiftLevel];
+                        break;
                     case Key.TO_SYMBOLS: case Key.TO_LETTERS: case Key.SYMBOL_PAGE:
                         e = levels[symbolLevel];
                         break;

@@ -1411,7 +1411,7 @@ public final class SettingsActivity extends Activity {
         perKeyBox.addView(levelRow("지우기 키", Prefs.VIBRATE_DELETE, prefs.vibrateDelete()));
         perKeyBox.addView(levelRow("스페이스 키", Prefs.VIBRATE_SPACE, prefs.vibrateSpace()));
         perKeyBox.addView(levelRow("엔터 키", Prefs.VIBRATE_ENTER, prefs.vibrateEnter()));
-        perKeyBox.addView(levelRow("Shift 키", Prefs.VIBRATE_SHIFT, prefs.vibrateShift()));
+        perKeyBox.addView(levelRow("Shift 키 (한글 자판의 Fn 키 포함)", Prefs.VIBRATE_SHIFT, prefs.vibrateShift()));
         perKeyBox.addView(levelRow("기호 키", Prefs.VIBRATE_SYMBOL, prefs.vibrateSymbol()));
         perKeyBox.addView(levelRow("언어 전환 키", Prefs.VIBRATE_LANGUAGE, prefs.vibrateLanguage()));
         perKeyBox.addView(levelRow("도구 막대 키", Prefs.VIBRATE_TOOLBAR, prefs.vibrateToolbar()));
