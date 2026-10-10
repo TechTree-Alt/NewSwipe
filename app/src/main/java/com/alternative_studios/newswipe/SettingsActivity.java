@@ -451,13 +451,14 @@ public final class SettingsActivity extends Activity {
         splitBox.setVisibility(edit.profileSplit() ? View.VISIBLE : View.GONE);
         splitBox.addView(layoutPreview(profile));
         splitBox.addView(note(when + " 쓰는 값입니다. "
-                + "자음 키 폭은 왼쪽 절반을 꽉 채우는 폭, 모음 키 폭은 자음 키 폭에 대한 비율입니다. 가로 위치는 각 절반 안에서 키들이 놓이는 곳입니다 "
+                + "왼쪽 덩어리(자음, 숫자 1~5, 스페이스바와 그 왼쪽 키)와 오른쪽 덩어리(모음, 숫자 6~0, 스페이스바와 그 오른쪽 키)가 각각 함께 움직입니다. "
+                + "자음 키 폭·모음 키 폭은 각 덩어리의 폭으로, 100%면 자기 절반을 꽉 채웁니다. 가로 위치는 각 절반 안에서 덩어리가 놓이는 곳입니다 "
                 + "(0 = 왼쪽 끝, 50 = 가운데, 100 = 오른쪽 끝). "
                 + "하단 기능키 폭은 맨 아래 줄의 기호 키·쉼표·지구본 키·온점·엔터 키(스페이스바 제외)의 폭으로, 줄인 만큼 스페이스바가 넓어집니다."));
         addKeyAreaControls(splitBox, edit);
         String splitKey = edit.splitKey();
         card.addView(toggle(name + " 분리 키보드",
-                when + " 자판을 가운데에서 반으로 나눠 왼쪽 절반에는 자음을, 오른쪽 절반에는 모음 열을 놓습니다.",
+                when + " 자판을 가운데에서 반으로 나눠 왼쪽 절반에는 자음을, 오른쪽 절반에는 모음을 놓습니다. 스페이스바도 양쪽에 하나씩 나뉩니다.",
                 edit.profileSplit(), on -> {
                     prefs.raw().edit().putBoolean(splitKey, on).apply();
                     Ui.setVisibleAnimated(splitBox, on);

@@ -220,8 +220,12 @@ public final class KeyboardLayout {
         return newSwipe(prefs) ? 4 : 5;
     }
 
-    /** '모음 키 폭'(자음 키 폭의 %)의 최댓값: 모음 열들이 오른쪽 절반을 넘지 않는 데까지 (5칸 단위로 내림). */
+    /**
+     * '모음 키 폭'의 최댓값. 세로 모드의 균형 레이아웃(자음 키 폭의 %)은 모음 열들이 오른쪽 절반을 넘지 않는 데까지
+     * (5칸 단위로 내림), 분리 키보드(오른쪽 덩어리 폭의 %)는 100이다.
+     */
     public static int balancedWidthMax(Prefs prefs) {
+        if (splitView(prefs)) return Prefs.BALANCED_CONSONANT_WIDTH_MAX;
         float consonantW = BALANCED_HALF / balancedConsonants(prefs);
         int max = (int) Math.floor(BALANCED_HALF / (BALANCED_VOWEL_COLUMNS * consonantW) * 100f / 5f) * 5;
         return Math.min(Prefs.BALANCED_WIDTH_MAX, max);
@@ -238,7 +242,7 @@ public final class KeyboardLayout {
         List<Row> letters = new ArrayList<>();
         for (int r = 0; r < 3; r++) letters.add(balancedRow(r, prefs));
         // 분리 키보드의 숫자 줄과 맨 아래 줄은 한글·영어·기호 자판이 같은 양 끝을 쓴다.
-        if (numberRow) rows.add(prefs != null && prefs.splitView() ? splitNumberRow(prefs) : numberRow());
+        if (numberRow) rows.add(splitView(prefs) ? splitNumberRow(prefs) : numberRow());
         rows.addAll(letters);
         rows.add(splitBottom(prefs));
         return new KeyboardLayout(KOREAN, BALANCED_COLUMNS, rows);
@@ -265,6 +269,7 @@ public final class KeyboardLayout {
             (vowel ? vowels : consonants).add(k);
         }
         if (deleteHere) vowels.add(fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1f));
+        if (splitView(prefs)) return blockRow(consonants, vowels, 1f, balancedConsonants(prefs), BALANCED_VOWEL_COLUMNS, 0f, prefs);
         return splitRow(consonants, vowels, 1f, BALANCED_HALF / balancedConsonants(prefs),
                 balancedWidthMax(prefs), prefs);
     }
@@ -273,7 +278,7 @@ public final class KeyboardLayout {
      * 가운데에서 반으로 나뉜 한 줄: 왼쪽 절반에 consonants, 오른쪽 절반에 vowels를 놓는다.
      * 자음 키는 왼쪽 절반을 꽉 채우는 폭의 '자음 폭'%이고 남는 폭 안에서 '자음 위치'에 따라 놓인다.
      * 모음 키는 baseW(자음 키 한 칸의 폭)의 '모음 폭'%(최대 maxPct, 오른쪽 절반을 넘지 않게)이고 '모음 위치'에 따라 놓인다.
-     * 숫자 줄·영어 자판의 분리도 같은 규칙을 쓴다.
+     * 세로 모드의 균형 레이아웃에서 쓴다 (분리 키보드는 {@link #blockRow}).
      */
     private static Row splitRow(List<Key> consonants, List<Key> vowels, float height, float baseW, int maxPct, Prefs prefs) {
         float cw = BALANCED_HALF / consonants.size()
@@ -303,65 +308,6 @@ public final class KeyboardLayout {
         return new Row(height, keys.toArray(new Key[0]));
     }
 
-    /** 가로 모드 분리 키보드의 숫자 줄: 1~5는 왼쪽(자음 설정), 6~0은 오른쪽(모음 설정). */
-    /**
-     * 분리 키보드의 숫자 줄: 1~5는 왼쪽, 6~0은 오른쪽. 숫자 키 열 개의 폭은 모두 같고,
-     * 왼쪽 끝은 글자 줄의 가장 왼쪽 키(자음)에, 오른쪽 끝은 가장 오른쪽 키(모음)에 맞춘다.
-     * 폭은 자음·모음 폭 설정을 넘지 않는 선에서, 두 끝 사이에 열 개가 다 들어가도록 정하고 남는 폭은 가운데에 둔다.
-     * 양 끝은 한글·영어·기호 자판이 모두 같은 자리를 쓴다 ({@link #splitEdges}).
-     */
-    private static Row splitNumberRow(Prefs prefs) {
-        float[] edges = splitEdges(prefs);
-        float from = edges[0], to = edges[1];
-        String[] n = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"};
-        float cw = BALANCED_HALF / 5f
-                * (prefs == null ? Prefs.BALANCED_WIDTH_DEFAULT : prefs.balancedConsonantWidth()) / 100f;
-        float vw = BALANCED_HALF / 5f
-                * (prefs == null ? Prefs.BALANCED_WIDTH_DEFAULT : prefs.balancedVowelWidth()) / 100f;
-        float d = Math.min(Math.min(cw, vw), (to - from) / n.length);
-        List<Key> keys = new ArrayList<>();
-        if (from > 0.001f) keys.add(fn(Key.GAP, "", from));
-        for (int i = 0; i < n.length; i++) {
-            if (i == n.length / 2) {
-                float middle = to - from - n.length * d;
-                if (middle > 0.001f) keys.add(fn(Key.GAP, "", middle));
-            }
-            Key k = ch(n[i], null);
-            k.weight = d;
-            keys.add(k);
-        }
-        if (SPACE_ROW_UNITS - to > 0.001f) keys.add(fn(Key.GAP, "", SPACE_ROW_UNITS - to));
-        return new Row(0.78f, keys.toArray(new Key[0]));
-    }
-
-    /**
-     * 분리 키보드의 한글·영어·기호 자판이 함께 쓰는 줄의 양 끝 {왼쪽, 오른쪽} (칸 단위).
-     * 숫자 줄과 맨 아래 줄이 자판을 오가도 같은 자리에 있도록, 한글 자판의 글자 줄과 영어 자판의 글자 줄 가운데
-     * 가장 바깥에 있는 키를 따른다 (기호 자판의 줄은 영어 자판의 첫 줄과 같은 5+5칸이다).
-     */
-    private static float[] splitEdges(Prefs prefs) {
-        List<Row> all = new ArrayList<>();
-        for (int r = 0; r < 3; r++) all.add(balancedRow(r, prefs));
-        all.addAll(englishSplitRows(prefs));
-        return outerEdges(all);
-    }
-
-    /** 글자 줄들에서 가장 바깥 키(빈틈 제외)의 {왼쪽 끝, 오른쪽 끝} (칸 단위). */
-    private static float[] outerEdges(List<Row> letterRows) {
-        float left = SPACE_ROW_UNITS, right = 0f;
-        for (Row row : letterRows) {
-            float x = 0f;
-            for (Key k : row.keys) {
-                if (k.type != Key.GAP) {
-                    left = Math.min(left, x);
-                    right = Math.max(right, x + k.weight);
-                }
-                x += k.weight;
-            }
-        }
-        return new float[]{left, right};
-    }
-
     /**
      * 가로 모드 분리 키보드의 영어 자판: 줄마다 왼쪽 절반(자음 설정)과 오른쪽 절반(모음 설정)으로 나눈다.
      * 왼쪽은 q w e r t / a s d f g / Shift z x c v, 오른쪽은 y u i o p / h j k l / b n m ⌫이다.
@@ -387,8 +333,8 @@ public final class KeyboardLayout {
             for (int i = 0; i < letters.length; i++) (i < leftCount[r] ? left : right).add(letters[i]);
             if (r == 2) right.add(fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1f));
             Key host = right.get(0);   // 오른쪽 절반 맨 왼쪽 키: h, b
-            Row row = r == 1 ? indentedSplitRow(left, right, 1f, BALANCED_HALF / 5f, 1000, prefs, 0.5f)
-                    : splitRow(left, right, 1f, BALANCED_HALF / 5f, 1000, prefs);
+            // 둘째 줄(a~l)은 일반 자판처럼 반 칸 들인다: a~g는 오른쪽으로 반 칸, h~l은 덩어리 가운데에 놓여 양쪽에 반 칸씩 빈다.
+            Row row = blockRow(left, right, 1f, 5, 5, r == 1 ? 0.5f : 0f, prefs);
             // h 왼쪽의 빈 자리를 누르면 g가, b 왼쪽의 빈 자리를 누르면 v가 입력된다 (왼손·오른손 모두 치기 쉽게).
             // 키를 더 그리는 것이 아니라서 줄의 폭과 열은 그대로다.
             if (r > 0) row = withHiddenKey(row, host, hiddenCopyOf(letters[leftCount[r] - 1]));
@@ -432,49 +378,6 @@ public final class KeyboardLayout {
         keys.add(hidden);
         for (int i = at; i < row.keys.length; i++) keys.add(row.keys[i]);
         return new Row(row.height, keys.toArray(new Key[0]));
-    }
-
-    /**
-     * 오른쪽 키가 왼쪽보다 하나 적은 줄(a~l)을 splitRow와 같은 폭·위치 설정으로 놓되,
-     * 왼쪽 끝은 왼쪽 키 폭의 indent배, 오른쪽 끝은 5개짜리 줄(y~p)의 오른쪽 끝에서 오른쪽 키 폭의 indent배만큼 들인다.
-     * 가운데에서 두 무리가 겹치게 되면 그만큼 왼쪽 들임을 줄인다.
-     */
-    private static Row indentedSplitRow(List<Key> consonants, List<Key> vowels, float height, float baseW, int maxPct,
-                                        Prefs prefs, float indent) {
-        float cw = BALANCED_HALF / consonants.size()
-                * (prefs == null ? Prefs.BALANCED_WIDTH_DEFAULT : prefs.balancedConsonantWidth()) / 100f;
-        float cpos = (prefs == null ? 50 : prefs.balancedConsonantPos()) / 100f;
-        float cgapLeft = Math.max(0f, BALANCED_HALF - consonants.size() * cw) * cpos;
-        int pct = prefs == null ? Prefs.BALANCED_WIDTH_DEFAULT : prefs.balancedVowelWidth();
-        float raw = baseW * Math.min(pct, maxPct) / 100f;
-        float v = Math.min(raw, BALANCED_HALF / vowels.size());
-        float pos = (prefs == null ? 50 : prefs.balancedVowelPos()) / 100f;
-        // 기준이 되는 5개짜리 줄(y~p)의 오른쪽 여백
-        float v5 = Math.min(raw, BALANCED_HALF / 5f);
-        float gapRight5 = Math.max(0f, BALANCED_HALF - 5 * v5) * (1f - pos);
-        float start = cgapLeft + indent * cw;
-        float end = SPACE_ROW_UNITS - gapRight5 - indent * v;
-        float rightStart = end - vowels.size() * v;
-        float middle = rightStart - (start + consonants.size() * cw);
-        if (middle < 0f) {   // 가운데에서 겹치면 왼쪽 들임을 줄인다
-            start = Math.max(cgapLeft, start + middle);
-            middle = Math.max(0f, rightStart - (start + consonants.size() * cw));
-            rightStart = start + consonants.size() * cw + middle;
-        }
-        List<Key> keys = new ArrayList<>();
-        if (start > 0.001f) keys.add(fn(Key.GAP, "", start));
-        for (Key k : consonants) {
-            k.weight = cw;
-            keys.add(k);
-        }
-        if (middle > 0.001f) keys.add(fn(Key.GAP, "", middle));
-        for (Key k : vowels) {
-            k.weight = v;
-            keys.add(k);
-        }
-        float tail = SPACE_ROW_UNITS - rightStart - vowels.size() * v;
-        if (tail > 0.001f) keys.add(fn(Key.GAP, "", tail));
-        return new Row(height, keys.toArray(new Key[0]));
     }
 
     /**
@@ -774,17 +677,6 @@ public final class KeyboardLayout {
         return spaceRow(modeType, modeLabel, prefs, emojiKey, 0f, SPACE_ROW_UNITS);
     }
 
-    /**
-     * 분리 키보드(가로 모드·대화면)의 맨 아래 줄: 양 끝이 숫자 줄과 같고({@link #splitEdges}), 한글·영어·기호 자판을 오가도
-     * 같은 자리에 있다. 자음·모음 폭과 위치를 어떻게 정해도 열이 맞는다.
-     */
-    private static Row alignedSpaceRow(Prefs prefs, int modeType, String modeLabel, boolean emojiKey) {
-        float[] edges = splitEdges(prefs);
-        float left = edges[0], right = edges[1];
-        if (right - left < 2f) return spaceRow(modeType, modeLabel, prefs, emojiKey);   // 너무 좁으면 맞추지 않는다
-        return spaceRow(modeType, modeLabel, prefs, emojiKey, left, right);
-    }
-
     private static boolean splitView(Prefs prefs) {
         return prefs != null && prefs.splitView();
     }
@@ -797,7 +689,7 @@ public final class KeyboardLayout {
     private static void finishSymbols(List<Row> rows, String back, Prefs prefs) {
         if (splitView(prefs)) {
             for (int i = 0; i < rows.size(); i++) rows.set(i, splitEven(rows.get(i), prefs));
-            rows.add(alignedSpaceRow(prefs, Key.TO_LETTERS, back, true));
+            rows.add(blockSpaceRow(prefs, Key.TO_LETTERS, back, true));
         } else {
             rows.add(spaceRow(Key.TO_LETTERS, back, prefs, true));
         }
@@ -808,21 +700,25 @@ public final class KeyboardLayout {
         int n = row.keys.length, leftCount = (n + 1) / 2;
         List<Key> left = new ArrayList<>(), right = new ArrayList<>();
         for (int i = 0; i < n; i++) (i < leftCount ? left : right).add(row.keys[i]);
-        return splitRow(left, right, row.height, BALANCED_HALF / 5f, 1000, prefs);
+        return blockRow(left, right, row.height, 5, 5, 0f, prefs);
     }
 
     /**
-     * 자·모음 균형 레이아웃과 분리 키보드의 맨 아래 줄. 분리 키보드(가로 모드·대화면)는 숫자 줄과 같은 양 끝을 쓰고,
-     * 세로 모드의 균형 레이아웃은 늘 전체 폭을 쓴다.
+     * 자·모음 균형 레이아웃과 분리 키보드의 맨 아래 줄. 분리 키보드(가로 모드·대화면)는 스페이스바가 둘로 나뉘어
+     * 왼쪽·오른쪽 덩어리에 하나씩 들어가고, 세로 모드의 균형 레이아웃은 늘 전체 폭을 쓴다.
      */
     private static Row splitBottom(Prefs prefs) {
-        if (prefs != null && prefs.splitView()) return alignedSpaceRow(prefs, Key.TO_SYMBOLS, "?123", false);
+        if (splitView(prefs)) return blockSpaceRow(prefs, Key.TO_SYMBOLS, "?123", false);
         return spaceRow(Key.TO_SYMBOLS, "?123", prefs);
     }
 
-    /** from~to(칸 단위) 사이를 채우는 맨 아래 줄. 양옆은 빈틈으로 둔다. */
-    private static Row spaceRow(int modeType, String modeLabel, Prefs prefs, boolean emojiKey, float from, float to) {
-        float span = to - from;
+    /**
+     * 맨 아래 줄의 키들을 하단 키 완전 사용자화의 순서·표시 여부대로 keys에 담는다 (스페이스바 제외).
+     * 기호 키·엔터 키는 1.5칸, 나머지는 1칸이다 (격자 정렬이면 모두 한글 키 한 칸, 분리 키보드면 '하단 기능키 폭'만큼 줄인다).
+     *
+     * @return 스페이스바가 들어갈 자리 (keys 안의 번호). 스페이스바를 없앴으면 -1.
+     */
+    private static int bottomKeys(int modeType, String modeLabel, Prefs prefs, boolean emojiKey, List<Key> keys) {
         boolean periodComma = prefs == null || prefs.periodComma();
         // 격자 정렬: 기능키를 모두 한글 글자 키 한 칸 폭으로 맞춰 한글 자판이 반듯한 격자가 되게 한다.
         boolean grid = prefs != null && prefs.gridLayout();
@@ -834,9 +730,7 @@ public final class KeyboardLayout {
             narrowW *= fnScale;
         }
         String[] order = prefs == null ? BottomKeys.DEFAULT_ORDER : prefs.bottomKeyOrder();
-        List<Key> keys = new ArrayList<>();
         int spaceAt = -1;
-        float used = 0;
         for (String id : order) {
             boolean shown = prefs == null ? !BottomKeys.COMMA.equals(id) : prefs.bottomKeyShown(id);
             if (!shown) continue;
@@ -862,24 +756,139 @@ public final class KeyboardLayout {
                     spaceAt = keys.size();
                     continue;
             }
-            used += k.weight;
             keys.add(k);
         }
+        return spaceAt;
+    }
+
+    private static Key spaceKey(float weight) {
+        return new Key(Key.SPACE, "", " ", " ", null, null, weight);
+    }
+
+    /** from~to(칸 단위) 사이를 채우는 맨 아래 줄. 양옆은 빈틈으로 둔다. */
+    private static Row spaceRow(int modeType, String modeLabel, Prefs prefs, boolean emojiKey, float from, float to) {
+        float span = to - from;
+        List<Key> keys = new ArrayList<>();
+        int spaceAt = bottomKeys(modeType, modeLabel, prefs, emojiKey, keys);
+        fillSpan(keys, span, spaceAt);
+        if (from > 0.001f) keys.add(0, fn(Key.GAP, "", from));
+        if (SPACE_ROW_UNITS - to > 0.001f) keys.add(fn(Key.GAP, "", SPACE_ROW_UNITS - to));
+        return new Row(1f, keys.toArray(new Key[0]));
+    }
+
+    /**
+     * keys가 span 폭을 꼭 채우게 한다. spaceAt이 0 이상이면 그 자리에 남는 폭을 모두 가진 스페이스바를 넣고
+     * (키들만으로 span보다 넓으면 같은 비율로 줄여 맞춘다), 스페이스바가 없으면 키들을 같은 비율로 늘려(줄여) 채운다.
+     */
+    private static void fillSpan(List<Key> keys, float span, int spaceAt) {
+        float used = 0;
+        for (Key k : keys) used += k.weight;
         if (spaceAt >= 0) {
-            keys.add(spaceAt, new Key(Key.SPACE, "", " ", " ", null, null, Math.max(0f, span - used)));
+            keys.add(spaceAt, spaceKey(Math.max(0f, span - used)));
             if (used > span && used > 0) {
-                // 키들만으로 줄보다 넓으면 같은 비율로 줄여 맞춘다.
                 float scale = span / used;
                 for (Key k : keys) if (k.type != Key.SPACE) k.weight *= scale;
             }
         } else if (used > 0 && used != span) {
-            // 스페이스바가 없으면 남은 키들을 같은 비율로 늘려(줄여) 줄을 채운다.
             float scale = span / used;
             for (Key k : keys) k.weight *= scale;
         }
-        if (from > 0.001f) keys.add(0, fn(Key.GAP, "", from));
-        if (SPACE_ROW_UNITS - to > 0.001f) keys.add(fn(Key.GAP, "", SPACE_ROW_UNITS - to));
-        return new Row(1f, keys.toArray(new Key[0]));
+    }
+
+    // ---------------------------------------------------------------- 분리 키보드 (가로 모드·대화면)
+    //
+    // 자판을 왼쪽 덩어리(자음, 숫자 1~5, 맨 아래 줄의 스페이스바 왼쪽 키와 왼쪽 스페이스바)와
+    // 오른쪽 덩어리(모음, 숫자 6~0, 오른쪽 스페이스바와 그 오른쪽 키)로 나눈다. 덩어리의 폭은 각각 자기 절반의
+    // '자음 키 폭'%·'모음 키 폭'%이고(100%면 절반을 꽉 채운다), 절반 안에서 '가로 위치'에 따라 놓인다.
+    // 덩어리 안의 줄은 덩어리 폭을 고르게 나눠 가지므로, 폭을 바꾸면 덩어리 전체가 함께 줄고 는다.
+
+    /** 분리 키보드의 두 덩어리 {왼쪽 시작, 왼쪽 폭, 오른쪽 시작, 오른쪽 폭} (칸 단위, 줄 전체는 10칸). */
+    private static float[] blocks(Prefs prefs) {
+        float lw = BALANCED_HALF * prefs.balancedConsonantWidth() / 100f;
+        float rw = BALANCED_HALF * prefs.balancedVowelWidth() / 100f;
+        float ls = (BALANCED_HALF - lw) * prefs.balancedConsonantPos() / 100f;
+        float rs = BALANCED_HALF + (BALANCED_HALF - rw) * prefs.balancedVowelPos() / 100f;
+        return new float[]{ls, lw, rs, rw};
+    }
+
+    /**
+     * keys를 width 폭의 덩어리에 넣는다: 키 한 칸(weight 1)은 width / columns이고 키끼리의 폭 비율(예: 1.5칸 기능키)은 지킨다.
+     * 다 들어가지 않으면 같은 비율로 줄인다. 키들이 차지한 폭을 돌려준다.
+     */
+    private static float fitBlock(List<Key> keys, float width, int columns) {
+        float nominal = 0f;
+        for (Key k : keys) nominal += k.weight;
+        if (nominal <= 0f) return 0f;
+        float unit = Math.min(width / columns, width / nominal);
+        for (Key k : keys) k.weight *= unit;
+        return nominal * unit;
+    }
+
+    /**
+     * 분리 키보드의 한 줄: left는 왼쪽 덩어리(한 줄 columns 칸 = leftColumns), right는 오른쪽 덩어리에 놓는다.
+     * 키가 덩어리보다 적으면 덩어리 가운데에 놓는다. stagger는 왼쪽 키들을 오른쪽으로 들이는 정도(키 폭의 배수)로,
+     * 영어 자판의 a~l 줄처럼 윗줄보다 반 칸 들인 줄에 쓴다 (오른쪽 키와 겹치지 않는 만큼만).
+     */
+    private static Row blockRow(List<Key> left, List<Key> right, float height, int leftColumns, int rightColumns,
+                                float stagger, Prefs prefs) {
+        float[] b = blocks(prefs);
+        float lw = fitBlock(left, b[1], leftColumns), rw = fitBlock(right, b[3], rightColumns);
+        float ls = b[0] + (b[1] - lw) / 2f, rs = b[2] + (b[3] - rw) / 2f;
+        if (stagger > 0f && !left.isEmpty()) ls += Math.max(0f, Math.min(stagger * left.get(0).weight, rs - (ls + lw)));
+        return blockLine(left, ls, lw, right, rs, rw, height);
+    }
+
+    /** 왼쪽 키들(ls부터 lw 폭)과 오른쪽 키들(rs부터 rw 폭)을 잇고, 앞·가운데·뒤를 빈틈으로 채워 10칸 줄을 만든다. */
+    private static Row blockLine(List<Key> left, float ls, float lw, List<Key> right, float rs, float rw, float height) {
+        List<Key> keys = new ArrayList<>();
+        if (ls > 0.001f) keys.add(fn(Key.GAP, "", ls));
+        keys.addAll(left);
+        if (rs - ls - lw > 0.001f) keys.add(fn(Key.GAP, "", rs - ls - lw));
+        keys.addAll(right);
+        if (SPACE_ROW_UNITS - rs - rw > 0.001f) keys.add(fn(Key.GAP, "", SPACE_ROW_UNITS - rs - rw));
+        return new Row(height, keys.toArray(new Key[0]));
+    }
+
+    /** 분리 키보드의 숫자 줄: 1~5는 왼쪽 덩어리, 6~0은 오른쪽 덩어리를 고르게 채운다. */
+    private static Row splitNumberRow(Prefs prefs) {
+        List<Key> left = new ArrayList<>(), right = new ArrayList<>();
+        String[] n = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"};
+        for (int i = 0; i < n.length; i++) (i < 5 ? left : right).add(ch(n[i], null));
+        return blockRow(left, right, 0.78f, 5, 5, 0f, prefs);
+    }
+
+    /**
+     * 분리 키보드의 맨 아래 줄. 스페이스바를 둘로 나눠, 하단 키 순서에서 스페이스바 왼쪽에 있는 키들과 왼쪽 스페이스바는
+     * 왼쪽 덩어리를, 오른쪽 스페이스바와 그 오른쪽 키들은 오른쪽 덩어리를 채운다. 기능키 폭은 덩어리 폭에 비례하고
+     * (덩어리가 절반을 꽉 채울 때 보통 폭), 스페이스바가 남는 폭을 모두 쓴다.
+     * 스페이스바를 없앴으면 키들을 앞쪽 절반(홀수 개면 한 개 더)과 나머지로 나눠 각 덩어리를 같은 비율로 채운다.
+     */
+    private static Row blockSpaceRow(Prefs prefs, int modeType, String modeLabel, boolean emojiKey) {
+        float[] b = blocks(prefs);
+        List<Key> keys = new ArrayList<>();
+        int spaceAt = bottomKeys(modeType, modeLabel, prefs, emojiKey, keys);
+        int cut = spaceAt >= 0 ? spaceAt : (keys.size() + 1) / 2;
+        List<Key> left = new ArrayList<>(keys.subList(0, cut)), right = new ArrayList<>(keys.subList(cut, keys.size()));
+        for (Key k : left) k.weight *= b[1] / BALANCED_HALF;
+        for (Key k : right) k.weight *= b[3] / BALANCED_HALF;
+        fillSpan(left, b[1], spaceAt >= 0 ? left.size() : -1);
+        fillSpan(right, b[3], spaceAt >= 0 ? 0 : -1);
+        dropEmptySpace(left);
+        dropEmptySpace(right);
+        return blockLine(left, b[0], width(left), right, b[2], width(right), 1f);
+    }
+
+    /** 폭이 거의 없는 스페이스바는 빼 둔다 (기능키만으로 덩어리가 찬 경우). */
+    private static void dropEmptySpace(List<Key> keys) {
+        for (int i = keys.size() - 1; i >= 0; i--) {
+            if (keys.get(i).type == Key.SPACE && keys.get(i).weight < 0.01f) keys.remove(i);
+        }
+    }
+
+    private static float width(List<Key> keys) {
+        float w = 0f;
+        for (Key k : keys) w += k.weight;
+        return w;
     }
 
     private static Key customSwipes(Key k, Prefs prefs, boolean korean) {

@@ -652,13 +652,17 @@ public final class Prefs {
         return koreanNewSwipe() || profileValues() ? def : sp.getInt(legacyKey, def);
     }
 
-    /** 지금 한글 배열의 자·모음 균형 레이아웃 모음 키 폭 (자음 키 폭의 %). */
     /** 지금 보기에서 자음·모음 키 폭의 최솟값 (%): 가로 모드·대화면 값은 30, 세로 모드는 60. */
     public int balancedWidthMin() { return profileValues() ? BALANCED_WIDTH_MIN_LANDSCAPE : BALANCED_WIDTH_MIN; }
 
+    /**
+     * 모음 키 폭. 세로 모드의 균형 레이아웃은 자음 키 폭에 대한 %(최대 165), 가로 모드·대화면 분리 키보드는
+     * 오른쪽 덩어리가 오른쪽 절반을 채우는 정도의 %(최대 100)다.
+     */
     public int balancedVowelWidth() {
         int v = perLayoutInt(balancedVowelWidthKey(), BALANCED_VOWEL_WIDTH, BALANCED_WIDTH_DEFAULT);
-        return Math.max(balancedWidthMin(), Math.min(BALANCED_WIDTH_MAX, v));
+        int max = profileValues() ? BALANCED_CONSONANT_WIDTH_MAX : BALANCED_WIDTH_MAX;
+        return Math.max(balancedWidthMin(), Math.min(max, v));
     }
     /** 지금 한글 배열의 자·모음 균형 레이아웃 모음 3열 위치 (0 = 오른쪽 절반의 왼쪽 끝, 50 = 가운데, 100 = 오른쪽 끝). */
     public int balancedVowelPos() {

@@ -103,20 +103,95 @@ public class SplitBottomRowTest {
         }
     }
 
+    /** 줄에서 x칸(가운데 5칸 등)보다 왼쪽에 있는 키와 오른쪽에 있는 키의 {왼쪽 끝, 오른쪽 끝, 시작, 끝}. 가로지르면 실패. */
+    private static float[] halves(KeyboardLayout.Row row) {
+        float x = 0f, ll = -1f, lr = 0f, rl = -1f, rr = 0f;
+        for (Key k : row.keys) {
+            if (k.type != Key.GAP && !k.hidden) {
+                if (x + k.weight <= 5.001f) {
+                    if (ll < 0f) ll = x;
+                    lr = x + k.weight;
+                } else if (x >= 4.999f) {
+                    if (rl < 0f) rl = x;
+                    rr = x + k.weight;
+                } else {
+                    throw new AssertionError("키가 가운데를 가로지릅니다");
+                }
+            }
+            x += k.weight;
+        }
+        return new float[]{ll, lr, rl, rr};
+    }
+
     @Test
-    public void numberKeysAreAllTheSameWidth() throws Exception {
+    public void numberKeysFillEachBlockEvenly() throws Exception {
         for (int[] s : SETTINGS) {
             Prefs p = prefsFor(s, true);
-            for (KeyboardLayout l : new KeyboardLayout[]{KeyboardLayout.korean(p), KeyboardLayout.english(p)}) {
-                float width = -1f;
-                int digits = 0;
+            KeyboardLayout korean = KeyboardLayout.korean(p);
+            float[] letters = halves(korean.rows[1]);   // 첫 글자 줄: 자음 덩어리와 모음 덩어리
+            for (KeyboardLayout l : new KeyboardLayout[]{korean, KeyboardLayout.english(p)}) {
+                float[] h = halves(l.rows[0]);
+                for (int i = 0; i < 4; i++) assertEquals("숫자 줄은 덩어리와 같은 자리", letters[i], h[i], 0.001f);
+                float x = 0f;
                 for (Key k : l.rows[0].keys) {
-                    if (k.type == Key.GAP) continue;
-                    if (width < 0f) width = k.weight;
-                    assertEquals("숫자 키 폭이 모두 같아야 합니다", width, k.weight, 0.001f);
-                    digits++;
+                    if (k.type != Key.GAP) {
+                        boolean left = x < 5f;
+                        float want = left ? (h[1] - h[0]) / 5f : (h[3] - h[2]) / 5f;
+                        assertEquals("덩어리 안의 숫자 키 폭은 같습니다", want, k.weight, 0.001f);
+                    }
+                    x += k.weight;
                 }
-                assertEquals(10, digits);
+            }
+        }
+    }
+
+    @Test
+    public void everyRowMovesWithItsBlock() throws Exception {
+        for (int[] s : SETTINGS) {
+            Prefs p = prefsFor(s, true);
+            KeyboardLayout korean = KeyboardLayout.korean(p);
+            float[] want = halves(korean.rows[1]);
+            // 자음·모음 줄, 숫자 줄, 맨 아래 줄이 모두 같은 두 덩어리를 쓴다.
+            for (KeyboardLayout.Row row : korean.rows) {
+                float[] h = halves(row);
+                for (int i = 0; i < 4; i++) assertEquals(want[i], h[i], 0.001f);
+            }
+            assertEquals("왼쪽 덩어리 폭 = 절반의 자음 키 폭%", 5f * s[2] / 100f, want[1] - want[0], 0.001f);
+            assertEquals("오른쪽 덩어리 폭 = 절반의 모음 키 폭%", 5f * s[3] / 100f, want[3] - want[2], 0.001f);
+        }
+    }
+
+    @Test
+    public void vowelsFillTheRightHalfByDefault() throws Exception {
+        Prefs p = landscapeEditView(new FakeSp());
+        KeyboardLayout korean = KeyboardLayout.korean(p);
+        for (int r = 0; r < 3; r++) {
+            float[] h = halves(korean.rows[r]);
+            assertEquals(0f, h[0], 0.001f);
+            assertEquals(5f, h[2], 0.001f);
+            assertEquals(10f, h[3], 0.001f);
+        }
+    }
+
+    @Test
+    public void spaceBarIsSplitIntoBothBlocks() throws Exception {
+        for (int[] s : SETTINGS) {
+            Prefs p = prefsFor(s, false);
+            for (KeyboardLayout l : new KeyboardLayout[]{KeyboardLayout.korean(p), KeyboardLayout.english(p),
+                    KeyboardLayout.symbols(true, p)}) {
+                KeyboardLayout.Row bottom = l.rows[l.rows.length - 1];
+                halves(bottom);   // 가운데를 가로지르는 키(스페이스바)가 없다
+                float x = 0f;
+                int leftSpaces = 0, rightSpaces = 0;
+                for (Key k : bottom.keys) {
+                    if (k.type == Key.SPACE) {
+                        if (x < 5f) leftSpaces++;
+                        else rightSpaces++;
+                    }
+                    x += k.weight;
+                }
+                assertEquals(1, leftSpaces);
+                assertEquals(1, rightSpaces);
             }
         }
     }
@@ -229,5 +304,13 @@ public class SplitBottomRowTest {
         }
         assertEquals(10f, total, 0.001f);   // 양옆 빈틈까지 합쳐 줄 전체
         assertTrue(hasSpace);
+    }
+
+    @Test
+    public void portraitBalancedLayoutIsUnchanged() {
+        // 세로 모드(분리 키보드 아님)의 맨 아래 줄은 스페이스바 하나가 가운데를 지난다.
+        int spaces = 0;
+        for (Key k : KeyboardLayout.english(null).rows[3].keys) if (k.type == Key.SPACE) spaces++;
+        assertEquals(1, spaces);
     }
 }
