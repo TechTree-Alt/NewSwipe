@@ -650,4 +650,14 @@ public class SplitBottomRowTest {
             }
         }
     }
+
+    @Test
+    public void symbolAndNumberKeysUseTheSameRepeatGroupAsTheEditor() {
+        // 연속 입력 편집 화면이 저장하는 이름 ("<묶음>_<글자>")과 자판이 찾는 이름이 같아야 한다.
+        for (String label : new String[]{"@", "!", "₩", "1", "0", ",", "."}) {
+            String group = KeyboardLayout.groupOf(false, label);
+            assertEquals(group, KeyboardLayout.groupOf(true, label));   // 한글·영어 자판이 같은 묶음
+            assertTrue(group.equals("sym") || group.equals("num"));
+        }
+    }
 }
