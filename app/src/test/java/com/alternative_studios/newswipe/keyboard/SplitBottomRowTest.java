@@ -341,4 +341,30 @@ public class SplitBottomRowTest {
         }
         assertTrue("폭을 줄이면 가운데에 반응하지 않는 빈 자리가 생긴다", seen);
     }
+
+    @Test
+    public void middleGapCanBeDraggedToMoveTheCursor() throws Exception {
+        boolean seen = false;
+        for (Key k : concat(KeyboardLayout.korean(prefsFor(SETTINGS[1], true)))) seen |= k.dragCursor;
+        assertTrue("폭을 줄이면 끌 수 있는 가운데 빈 자리가 생긴다", seen);
+        for (Key k : concat(KeyboardLayout.korean(prefsFor(SETTINGS[1], true)))) {
+            if (k.dragCursor) assertEquals(Key.SPACER, k.type);
+        }
+        for (Key k : concat(KeyboardLayout.english(null))) assertTrue(!k.dragCursor);
+        // g·v를 입력하는 키 왼쪽에 남은 빈 자리도 가운데 빈 자리의 일부라 끌 수 있다.
+        boolean rest = false;
+        for (int[] s : SETTINGS) {
+            KeyboardLayout l = KeyboardLayout.english(prefsFor(s, false));
+            for (KeyboardLayout.Row row : l.rows) {
+                for (Key k : row.keys) rest |= k.type == Key.SPACER && k.dragCursor;
+            }
+        }
+        assertTrue(rest);
+    }
+
+    private static java.util.List<Key> concat(KeyboardLayout l) {
+        java.util.List<Key> all = new java.util.ArrayList<>();
+        for (KeyboardLayout.Row row : l.rows) java.util.Collections.addAll(all, row.keys);
+        return all;
+    }
 }

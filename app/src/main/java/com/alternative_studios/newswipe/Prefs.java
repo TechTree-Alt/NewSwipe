@@ -86,6 +86,7 @@ public final class Prefs {
     public static final String SPACE_LANG_SWIPE = "space_lang_swipe";         // 스페이스바를 좌우로 밀어 한/영 전환
     public static final String POPUP_HINT_HIDDEN = "popup_hint_hidden";       // 키 오른쪽 위의 길게 눌러 입력할 문자 힌트 없애기
     // 커서 이동 속도 (%, 100 = 기본). 스페이스바·문자 키, 좌우·상하 따로.
+    public static final String SPLIT_GAP_CURSOR = "split_gap_cursor";   // 분리 키보드 가운데 빈 공간을 밀어 커서 이동
     public static final String SPACE_CURSOR_SPEED_H = "space_cursor_speed_h";
     public static final String SPACE_CURSOR_SPEED_V = "space_cursor_speed_v";
     public static final String CHAR_CURSOR_SPEED_H = "char_cursor_speed_h";
@@ -312,7 +313,7 @@ public final class Prefs {
         MENU_KEYS.put("swipe", keys(SWIPE_THRESHOLD, SWIPE_DOUBLE, D7_SS_UP, SWIPE_IOTIZED, SWIPE_COMPOUND_VOWEL,
                 SWIPE_FINAL, PERIOD_SWIPE_COMMA, SWIPE_CUSTOM));
         MENU_PREFIXES.put("swipe", keys("swipe_custom_", "swipe_final_", "swipe_vowel_"));
-        MENU_KEYS.put("swipefn", keys(FN_SWIPE_THRESHOLD, SPACE_CURSOR, SPACE_CURSOR_H, SPACE_CURSOR_V,
+        MENU_KEYS.put("swipefn", keys(FN_SWIPE_THRESHOLD, SPACE_CURSOR, SPLIT_GAP_CURSOR, SPACE_CURSOR_H, SPACE_CURSOR_V,
                 SPACE_CURSOR_SPEED_H, SPACE_CURSOR_SPEED_V, CHAR_CURSOR, CHAR_CURSOR_H, CHAR_CURSOR_V,
                 CHAR_CURSOR_SPEED_H, CHAR_CURSOR_SPEED_V, SPACE_LANG_SWIPE, TWO_FINGER_UNDO, SWIPE_KEYBOARD_CUSTOM,
                 SWIPE_FN_CUSTOM, SWIPE_TOOLBAR_CUSTOM, DELETE_WORD_SWIPE, MODE_KEY_EMOJI, TOOLBAR_SWIPE,
@@ -445,6 +446,8 @@ public final class Prefs {
     public boolean spaceCursorH() { return sp.getBoolean(SPACE_CURSOR_H, true); }
     public boolean spaceCursorV() { return sp.getBoolean(SPACE_CURSOR_V, true); }
     public boolean spaceCursor() { return sp.getBoolean(SPACE_CURSOR, true); }
+    /** 분리 키보드(가로 모드·대화면)의 가운데 빈 공간을 밀어서 커서를 옮기는지. 좌우·상하 이동과 속도는 스페이스바 설정을 따른다. */
+    public boolean splitGapCursor() { return sp.getBoolean(SPLIT_GAP_CURSOR, true); }
     public boolean clipboardHistory() { return sp.getBoolean(CLIPBOARD_HISTORY, true); }
     public boolean clipboardImages() { return sp.getBoolean(CLIPBOARD_IMAGES, true); }
     public int keyGapXDp() { return clamp(sp.getInt(KEY_GAP_X, 5), 0, 12); }

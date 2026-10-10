@@ -984,6 +984,10 @@ public final class SettingsActivity extends Activity {
         LinearLayout common = card();
         common.addView(slider("미는 거리", Prefs.FN_SWIPE_THRESHOLD, prefs.fnSwipeThresholdDp(), 12, 48, 2, "dp"));
         common.addView(note("값이 작을수록 살짝만 밀어도 인식합니다."));
+        common.addView(toggle("분리 키보드 가운데를 밀어서 커서 이동",
+                "분리 키보드(가로 모드·대화면)의 두 덩어리 사이 빈 공간을 밀어 커서를 옮깁니다. "
+                        + "좌우·상하 이동과 속도는 스페이스바 설정을 따릅니다.",
+                Prefs.SPLIT_GAP_CURSOR, prefs.splitGapCursor()));
 
         // 기본 밀기 설정: 완전 사용자화를 켜면 쓰지 않으므로 숨기고, 편집 버튼을 보여 준다.
         LinearLayout keys = section("기능키");

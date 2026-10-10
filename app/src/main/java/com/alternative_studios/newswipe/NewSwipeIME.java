@@ -790,6 +790,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         keyboard.setDirectionRatios(prefs.swipeDownRatio(), prefs.swipeUpRatio());
         keyboard.setFunctionSwipeThreshold(prefs.fnSwipeThresholdDp());
         keyboard.setCursorAxes(prefs.spaceCursorH(), prefs.spaceCursorV());
+        keyboard.setGapCursor(prefs.splitGapCursor());
         keyboard.setCursorSpeed(prefs.spaceCursorSpeedH(), prefs.spaceCursorSpeedV(),
                 prefs.charCursorSpeedH(), prefs.charCursorSpeedV());
         keyboard.setSpaceLangSwipe(prefs.spaceLangSwipe());

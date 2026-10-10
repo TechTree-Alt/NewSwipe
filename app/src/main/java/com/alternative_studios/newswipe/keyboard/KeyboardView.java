@@ -102,6 +102,8 @@ public final class KeyboardView extends View {
         float lastX, lastY;
         /** 문자 키를 밀어 시작한 커서 이동: 스페이스바 설정 대신 이 축 설정(freeH·freeV)을 따른다. */
         boolean freeCursor, freeH, freeV;
+        /** 분리 키보드 가운데 빈 공간에서 시작한 커서 이동: 스페이스바의 좌우·상하 설정을 따른다. */
+        boolean gap;
         boolean chord;
     }
 
@@ -150,6 +152,7 @@ public final class KeyboardView extends View {
     private int keyShadowStrength = 50;
     private Paint shadowPaint;
     private boolean spaceCursor = true;
+    private boolean gapCursor = true;
     /** 문자·숫자 키를 트랙패드처럼 밀어 커서를 옮기는 기능. 그 방향에 밀어서 입력할 글자가 있으면 글자가 먼저다. */
     private boolean charCursor;
     /** 커서 이동이 시작된 뒤 손가락이 움직이는 거리당 커서가 움직이는 빠르기 (1 = 기본). 스페이스바·문자 키, 좌우·상하 따로. */
@@ -403,6 +406,11 @@ public final class KeyboardView extends View {
     public void setDeleteLongPress(boolean on, int ms) {
         longPressDelete = on;
         fnPressMs = ms;
+    }
+
+    /** 분리 키보드 가운데 빈 공간을 밀어 커서를 옮기는지. */
+    public void setGapCursor(boolean on) {
+        gapCursor = on;
     }
 
     public void setCursorAxes(boolean horizontal, boolean vertical) {
@@ -838,7 +846,8 @@ public final class KeyboardView extends View {
 
     private void down(int id, float x, float y) {
         Key k = keyAt(x, y);
-        if (k == null || k.type == Key.SPACER || k.type == Key.GAP) return;
+        boolean gap = k != null && k.type == Key.SPACER && k.dragCursor && gapCursor;
+        if (k == null || (!gap && (k.type == Key.SPACER || k.type == Key.GAP))) return;
         Pointer p = new Pointer();
         p.id = id;
         p.key = k;
@@ -850,6 +859,7 @@ public final class KeyboardView extends View {
         p.lastY = y;
         p.mode = NORMAL;
         pointers.add(p);
+        if (gap) return;   // 눌러도 아무 키도 입력되지 않고 소리·진동도 없다. 밀면 커서만 움직인다.
         if (listener != null) {
             listener.onKeyPress(k);
             if (k.type == Key.SHIFT) {
@@ -921,6 +931,17 @@ public final class KeyboardView extends View {
         switch (p.mode) {
             case NORMAL:
             case SWIPED:
+                if (p.key.type == Key.SPACER) {
+                    // 분리 키보드 가운데 빈 공간: 충분히 밀면 커서 이동 (스페이스바와 같은 거리·축 설정).
+                    if (deferred == null && ((cursorH && Math.abs(dx) > fnSwipeThreshold)
+                            || (cursorV && Math.abs(dy) > fnSwipeThreshold * 1.5f))) {
+                        p.mode = CURSOR;
+                        p.gap = true;
+                        p.cursorAnchorX = x;
+                        p.cursorAnchorY = y;
+                    }
+                    break;
+                }
                 if (p.key.type == Key.FUNCTION) {
                     moveFnKey(p, dx, dy);
                     break;
@@ -1008,8 +1029,9 @@ public final class KeyboardView extends View {
                 break;
             case CURSOR: {
                 // 완전 사용자화를 켰으면 '커서 이동'을 정한 방향의 축만 움직인다.
-                boolean curH = p.freeCursor ? p.freeH : fnSwipes != null ? fnSwipes.cursorH() : cursorH && !spaceLangSwipe;
-                boolean curV = p.freeCursor ? p.freeV : fnSwipes != null ? fnSwipes.cursorV() : cursorV;
+                boolean curH = p.gap ? cursorH : p.freeCursor ? p.freeH
+                        : fnSwipes != null ? fnSwipes.cursorH() : cursorH && !spaceLangSwipe;
+                boolean curV = p.gap ? cursorV : p.freeCursor ? p.freeV : fnSwipes != null ? fnSwipes.cursorV() : cursorV;
                 // 커서 이동 속도: 한 칸(한 줄) 움직이는 데 필요한 손가락 거리를 속도만큼 줄이거나 늘린다.
                 float stepX = cursorStep / (p.freeCursor ? charSpeedH : spaceSpeedH);
                 float stepY = cursorStepY / (p.freeCursor ? charSpeedV : spaceSpeedV);
@@ -1073,7 +1095,7 @@ public final class KeyboardView extends View {
                     String tap = fnKeyAction(FnKeyActions.I_TAP);
                     if (tap != null) listener.onKeyFunction(p.key, tap);
                     markChord();
-                } else if (p.key.type != Key.SHIFT) {
+                } else if (p.key.type != Key.SHIFT && p.key.type != Key.SPACER) {
                     listener.onKeyTap(p.key);
                     markChord();
                 }

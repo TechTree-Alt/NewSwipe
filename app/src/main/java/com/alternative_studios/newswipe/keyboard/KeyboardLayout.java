@@ -374,7 +374,11 @@ public final class KeyboardLayout {
         List<Key> keys = new ArrayList<>();
         for (int i = 0; i < first; i++) keys.add(row.keys[i]);
         // 남는 빈 자리는 원래 성질(가운데 빈 자리는 눌러도 반응하지 않음)을 지킨다.
-        if (gap - w > 0.001f) keys.add(fn(row.keys[first].type, "", gap - w));
+        if (gap - w > 0.001f) {
+            Key rest = fn(row.keys[first].type, "", gap - w);
+            rest.dragCursor = row.keys[first].dragCursor;
+            keys.add(rest);
+        }
         hidden.weight = w;
         keys.add(hidden);
         for (int i = at; i < row.keys.length; i++) keys.add(row.keys[i]);
@@ -841,7 +845,11 @@ public final class KeyboardLayout {
         List<Key> keys = new ArrayList<>();
         if (ls > 0.001f) keys.add(fn(Key.GAP, "", ls));
         keys.addAll(left);
-        if (rs - ls - lw > 0.001f) keys.add(fn(Key.SPACER, "", rs - ls - lw));
+        if (rs - ls - lw > 0.001f) {
+            Key middle = fn(Key.SPACER, "", rs - ls - lw);
+            middle.dragCursor = true;
+            keys.add(middle);
+        }
         keys.addAll(right);
         if (SPACE_ROW_UNITS - rs - rw > 0.001f) keys.add(fn(Key.GAP, "", SPACE_ROW_UNITS - rs - rw));
         return new Row(height, keys.toArray(new Key[0]));
