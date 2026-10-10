@@ -47,6 +47,14 @@ public final class Ui {
     public static android.widget.LinearLayout choiceRow(Context c, String[] labels, int selected,
                                                         int accent, int onAccent, int text, int hint, long delayMs,
                                                         java.util.function.IntConsumer onSelect) {
+        return choiceRow(c, labels, selected, accent, onAccent, text, hint, delayMs, onSelect, null);
+    }
+
+    /** @param onReselect 이미 고른 칸을 다시 눌렀을 때 그 칸의 번호로 부른다 (없으면 null: 아무 일도 없다). */
+    public static android.widget.LinearLayout choiceRow(Context c, String[] labels, int selected,
+                                                        int accent, int onAccent, int text, int hint, long delayMs,
+                                                        java.util.function.IntConsumer onSelect,
+                                                        java.util.function.IntConsumer onReselect) {
         android.widget.LinearLayout row = new android.widget.LinearLayout(c);
         android.widget.LinearLayout.LayoutParams rlp = new android.widget.LinearLayout.LayoutParams(
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -67,7 +75,11 @@ public final class Ui {
                     i == labels.length - 1, accent, onAccent, text, hint);
             cells[i] = t;
             t.setOnClickListener(v -> {
-                if (pending[0] || index == chosen[0]) return;
+                if (pending[0]) return;
+                if (index == chosen[0]) {
+                    if (onReselect != null) onReselect.accept(index);
+                    return;
+                }
                 chosen[0] = index;
                 for (int k = 0; k < cells.length; k++) cells[k].setChosen(k == index, true);
                 if (v.isHapticFeedbackEnabled()) {
