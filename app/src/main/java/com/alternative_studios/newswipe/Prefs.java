@@ -25,7 +25,7 @@ public final class Prefs {
     public static final String VIBRATE_SYMBOL = "vibrate_symbol";     // 기호 키 (?123·가/ABC·기호 1/2쪽)
     public static final String VIBRATE_LANGUAGE = "vibrate_language"; // 언어 전환 키 (지구본·이모지 열기)
     public static final String VIBRATE_TOOLBAR = "vibrate_toolbar";   // 도구 막대 버튼
-    public static final String VIBRATE_GESTURE_ON = "vibrate_gesture_on";       // 밀기·길게 누르기 진동 (기본 끔)
+    public static final String VIBRATE_GESTURE_ON = "vibrate_gesture_on";       // 밀기·길게 누르기 진동 (기본 켬)
     public static final String VIBRATE_GESTURE_LEVEL = "vibrate_gesture_level"; // 1~3, 위와 같은 단계
     public static final String SOUND = "sound";
     public static final String SOUND_VOLUME = "sound_volume";         // %, 0~100
@@ -451,7 +451,7 @@ public final class Prefs {
     public int emojiSize() { return Math.max(0, Math.min(2, sp.getInt(EMOJI_SIZE, 0))); }
     public boolean vibrate() { return sp.getBoolean(VIBRATE, true); }
     public int vibrateMs() { return sp.getInt(VIBRATE_MS, 12); }
-    public int vibrateStyle() { return sp.getInt(VIBRATE_STYLE, 3); }
+    public int vibrateStyle() { return sp.getInt(VIBRATE_STYLE, 1); }
     public int vibrateAmp() { return sp.getInt(VIBRATE_AMP, 100); }
     public boolean vibratePerKey() { return sp.getBoolean(VIBRATE_PER_KEY, false); }
     public int vibrateDelete() { return sp.getInt(VIBRATE_DELETE, 2); }
@@ -461,7 +461,7 @@ public final class Prefs {
     public int vibrateSymbol() { return sp.getInt(VIBRATE_SYMBOL, 2); }
     public int vibrateLanguage() { return sp.getInt(VIBRATE_LANGUAGE, 2); }
     public int vibrateToolbar() { return sp.getInt(VIBRATE_TOOLBAR, 2); }
-    public boolean vibrateGestureOn() { return sp.getBoolean(VIBRATE_GESTURE_ON, false); }
+    public boolean vibrateGestureOn() { return sp.getBoolean(VIBRATE_GESTURE_ON, true); }
     public int vibrateGestureLevel() { return sp.getInt(VIBRATE_GESTURE_LEVEL, 2); }
     public boolean sound() { return sp.getBoolean(SOUND, false); }
     public int soundVolume() { return sp.getInt(SOUND_VOLUME, 50); }
