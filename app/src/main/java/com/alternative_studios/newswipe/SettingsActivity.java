@@ -467,7 +467,7 @@ public final class SettingsActivity extends Activity {
         // 맨 아래 줄: 나뉜 스페이스바를 이을지, 이었을 때 하단 기능키 폭
         LinearLayout bottom = section(name + " 분리 키보드 맨 아래 줄");
         View fnWidth = subGroup(
-                slider("하단 기능키 폭", edit.splitFnWidthKey(), edit.splitFnWidthSetting(), 50, 150, 5, "%", this::refreshLayoutPreview),
+                slider("하단 기능키 폭", edit.splitFnWidthKey(), edit.splitFnWidthSetting(), 50, 200, 5, "%", this::refreshLayoutPreview),
                 note("스페이스바·Shift·⌫를 뺀 맨 아래 줄 키(기호 키·쉼표·지구본·온점·엔터)의 폭입니다. "
                         + "줄이거나 늘린 만큼 스페이스바가 늘거나 줄어듭니다."));
         fnWidth.setVisibility(edit.splitSpaceJoin() ? View.VISIBLE : View.GONE);
@@ -1159,6 +1159,8 @@ public final class SettingsActivity extends Activity {
                 + "누르면 그 단어로 바꾸고, 학습한 단어를 길게 누르면 학습한 단어에서 지웁니다.",
                 Prefs.SUGGEST_WORDS, prefs.suggestWords(), fullBar));
         suggest.addView(fullBar);
+        suggest.addView(toggle("이모지 추천", "이모지 창을 열면 커서 앞에 쓴 글(마지막 네 단어)에 맞는 이모지를 최근 탭 맨 위 한 줄에 보여 줍니다. "
+                + "비밀번호 입력란에서는 글을 읽지 않습니다.", Prefs.EMOJI_SUGGEST, prefs.emojiSuggest()));
 
         LinearLayout shortcut = section("단축어");
         View shortcutGroup = subGroup(button("단축어 편집", v -> startActivity(new Intent(this, ShortcutEditorActivity.class))));

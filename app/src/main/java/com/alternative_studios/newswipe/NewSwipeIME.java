@@ -1194,7 +1194,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         final int seq = ++emojiSuggestSeq;
         final EmojiPanel target = emojiPanel;
         InputConnection ic = getCurrentInputConnection();
-        if (target == null || ic == null || !shortcutAllowed) return;
+        if (target == null || ic == null || !shortcutAllowed || !prefs.emojiSuggest()) return;
         CharSequence before = ic.getTextBeforeCursor(EMOJI_SUGGEST_CONTEXT, 0);
         if (before == null || before.length() == 0) return;
         String read = before.toString();

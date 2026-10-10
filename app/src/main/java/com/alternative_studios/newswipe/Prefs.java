@@ -164,6 +164,7 @@ public final class Prefs {
     public static final String SWIPE_FINAL = "swipe_final";               // 밀어서 겹받침
     public static final String PERIOD_SWIPE_COMMA = "period_swipe_comma"; // 온점 키를 위로 밀어 쉼표
     public static final String SWIPE_CUSTOM = "swipe_custom";             // 스와이프 입력 완전 사용자화
+    public static final String EMOJI_SUGGEST = "emoji_suggest";           // 이모지 창을 열 때 입력한 글에 맞는 이모지 추천
     public static final String SUGGEST_WORDS = "suggest_words";           // 입력 중인 단어에 맞는 추천 단어
     public static final String SUGGEST_FULL_BAR = "suggest_full_bar";     // 추천이 뜨는 동안 도구 막대 전체를 추천에 쓴다
     public static final String AUTO_CORRECT = "auto_correct";             // 스페이스를 누를 때 오타를 고침
@@ -324,7 +325,7 @@ public final class Prefs {
         MENU_KEYS.put("feedback", keys(VIBRATE, VIBRATE_MS, SOUND, SOUND_VOLUME));
         MENU_KEYS.put("tools", keys(TOOLBAR, TOOLBAR_BOTTOM, TOOLBAR_HEIGHT, TOOL_BUTTON_SIZE, CLIPBOARD_HISTORY, CLIPBOARD_IMAGES, TOOL_ORDER, TOOL_CLIPBOARD,
                 TOOL_EMOJI, VOICE_KEY, TOOL_UNDO, TOOL_SETTINGS, TOOL_ONE_HAND, TOOL_HIDE));
-        MENU_KEYS.put("words", keys(SHORTCUTS_ENABLED, SUGGEST_WORDS, SUGGEST_FULL_BAR, SUGGEST_SPACE, AUTO_CORRECT, LEARN_WORDS,
+        MENU_KEYS.put("words", keys(SHORTCUTS_ENABLED, EMOJI_SUGGEST, SUGGEST_WORDS, SUGGEST_FULL_BAR, SUGGEST_SPACE, AUTO_CORRECT, LEARN_WORDS,
                 CONFIRM_LEARNED_DELETE));
         // 실험실: 대화면 별도 레이아웃과 대화면 키보드 사용자화의 값은 모두 large_로 시작한다.
         MENU_KEYS.put("lab", keys(SWIPE_DOWN_RATIO, SWIPE_UP_RATIO));
@@ -457,13 +458,13 @@ public final class Prefs {
     public boolean splitSpaceJoin() { return profileValues() && sp.getBoolean(splitSpaceJoinKey(), false); }
 
     /**
-     * 스페이스바를 이었을 때 스페이스바·Shift·⌫를 뺀 하단 기능키(기호 키·쉼표·지구본·온점·엔터)의 폭 (보통 폭의 %, 50~150).
+     * 스페이스바를 이었을 때 스페이스바·Shift·⌫를 뺀 하단 기능키(기호 키·쉼표·지구본·온점·엔터)의 폭 (보통 폭의 %, 50~200).
      * 스페이스바를 잇지 않았으면 늘 100이다 (나뉜 스페이스바는 덩어리의 남는 폭을 모두 쓴다).
      */
     public int splitFnWidth() { return splitSpaceJoin() ? splitFnWidthSetting() : 100; }
 
     /** 저장된 '하단 기능키 폭' 값 (스페이스바를 잇지 않아도 설정 화면이 보여 주도록). */
-    public int splitFnWidthSetting() { return Math.max(50, Math.min(150, sp.getInt(splitFnWidthKey(), 100))); }
+    public int splitFnWidthSetting() { return Math.max(50, Math.min(200, sp.getInt(splitFnWidthKey(), 100))); }
 
     /** 이 프로필(가로 모드, 대화면 세로·가로)의 '가운데 빈 공간을 밀어서 커서 이동' 설정 키. */
     public String splitGapCursorKey() { return large() ? LARGE_PREFIX + SPLIT_GAP_CURSOR + "_" + largeSide() : SPLIT_GAP_CURSOR; }
@@ -744,6 +745,8 @@ public final class Prefs {
     public int keyRadiusDp() { return clamp(sp.getInt(KEY_RADIUS, 7), 0, 24); }
     public int keyShadowStrength() { return sp.getInt(KEY_SHADOW_STRENGTH, 50); }
     public boolean suggestWords() { return sp.getBoolean(SUGGEST_WORDS, false); }
+    /** 이모지 창을 열 때 커서 앞의 글에 맞는 이모지를 최근 탭 맨 위에 추천하는지. */
+    public boolean emojiSuggest() { return sp.getBoolean(EMOJI_SUGGEST, true); }
     public boolean suggestFullBar() { return sp.getBoolean(SUGGEST_FULL_BAR, false); }
     public boolean suggestSpace() { return sp.getBoolean(SUGGEST_SPACE, true); }
     public boolean autoCorrect() { return sp.getBoolean(AUTO_CORRECT, false); }
