@@ -400,7 +400,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         resultScroll.addView(results);
         resultScroll.setVisibility(View.GONE);
         column.addView(resultScroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                Ui.dp(this, 50)));
+                resultStripHeight()));
 
         content = new FrameLayout(this);
         content.setClipChildren(false);
@@ -780,6 +780,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         suggester.setUserEnabled(cfgLearn);
         feedback.configure(prefs);
         if (emojiPanel != null) emojiPanel.setSizeLevel(prefs.emojiSize());
+        applyResultSize();
         composer.setDoubleTapVowel(prefs.doubleTapVowel());
         composer.setDoubleTapConsonant(prefs.doubleTapConsonant(), prefs.doubleTapConsonantMs());
         // 가로 모드·대화면에서 따로 정한 키보드 높이·글자 크기는 그 화면에서만 쓴다.
@@ -1156,7 +1157,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (emojiPanel != null) setHeight(emojiPanel, keyboardHeight + toolbarHeight);
         if (clipPanel != null) setHeight(clipPanel, keyboardHeight + toolbarHeight);
         // 자판 위에 도구 막대가 있으면 키 미리보기가 그 위까지 올라갈 수 있다 (아래에 두었거나 껐으면 자판 안에서 멈춘다).
-        keyboard.setOverflowTop(panel == PANEL_SEARCH ? toolbarHeight + Ui.dp(this, 50)
+        keyboard.setOverflowTop(panel == PANEL_SEARCH ? toolbarHeight + resultStripHeight()
                 : toolbarGone() || prefs.toolbarBottom() ? 0 : toolbarHeight);
     }
 
@@ -2744,18 +2745,48 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         resultScroll.scrollTo(0, 0);
     }
 
+    /** 이모지 검색 결과 칸의 한 변. 이모지 창의 칸 높이와 같다 (기본 단계는 예전의 46dp). */
+    private int resultCellPx() {
+        return EmojiPanel.cellHeightPx(this, prefs.emojiSize());
+    }
+
+    /** 결과 줄 높이: 칸 + 위아래 2dp씩 (기본 단계는 예전의 50dp). */
+    private int resultStripHeight() {
+        return resultCellPx() + Ui.dp(this, 4);
+    }
+
+    /** 이모지 크기 설정이 바뀌면 이미 만들어 둔 결과 칸과 줄 높이를 새 크기로 맞춘다. */
+    private void applyResultSize() {
+        if (resultScroll == null) return;
+        ViewGroup.LayoutParams slp = resultScroll.getLayoutParams();
+        if (slp != null && slp.height != resultStripHeight()) {
+            slp.height = resultStripHeight();
+            resultScroll.setLayoutParams(slp);
+        }
+        float sp = EmojiPanel.textSp(prefs.emojiSize());
+        for (TextView t : resultViews) {
+            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
+            ViewGroup.LayoutParams lp = t.getLayoutParams();
+            if (lp != null) {
+                lp.width = resultCellPx();
+                lp.height = resultCellPx();
+                t.setLayoutParams(lp);
+            }
+        }
+    }
+
     /** i번째 결과 칸에 emoji를 넣어 돌려준다. 모자라면 그때 만든다. */
     private View resultView(int i, String emoji) {
         while (resultViews.size() <= i) {
             TextView t = new TextView(this);
-            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 26);
+            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, EmojiPanel.textSp(prefs.emojiSize()));
             t.setGravity(Gravity.CENTER);
             t.setBackground(Ui.ripple(theme.keyPressed, null, Ui.dp(this, 10)));
             t.setOnClickListener(v -> {
                 feedback.onKey(null);
                 onEmoji(((TextView) v).getText().toString());
             });
-            t.setLayoutParams(new LinearLayout.LayoutParams(Ui.dp(this, 46), Ui.dp(this, 46)));
+            t.setLayoutParams(new LinearLayout.LayoutParams(resultCellPx(), resultCellPx()));
             resultViews.add(t);
         }
         TextView t = resultViews.get(i);

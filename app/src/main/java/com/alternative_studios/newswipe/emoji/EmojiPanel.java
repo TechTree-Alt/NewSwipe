@@ -68,22 +68,32 @@ public final class EmojiPanel extends LinearLayout {
 
     private int sizeLevel;
 
-    private float textPx() {
-        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, TEXT_SP[sizeLevel],
-                getResources().getDisplayMetrics());
+    private static float textPx(Context c, int level) {
+        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, TEXT_SP[level], c.getResources().getDisplayMetrics());
     }
 
     /**
      * 칸 폭: 단계의 기본 폭, 다만 '크게' 이상에서 시스템 글자 크기를 키워 둔 기기는 글자 폭에 맞춰 더 넓힌다 (기본 단계는 그대로).
+     * 이모지 검색 결과 줄도 같은 값을 쓰도록 공개한다.
      */
+    public static int cellWidthPx(Context c, int level) {
+        level = Math.max(0, Math.min(2, level));
+        int w = Ui.dp(c, CELL_W_DP[level]);
+        return level == 0 ? w : Math.max(w, Math.round(textPx(c, level) * 1.2f));
+    }
+
+    public static int cellHeightPx(Context c, int level) {
+        level = Math.max(0, Math.min(2, level));
+        int h = Ui.dp(c, CELL_H_DP[level]);
+        return level == 0 ? h : Math.max(h, Math.round(textPx(c, level) * 1.3f));
+    }
+
     private int cellWidth() {
-        int w = Ui.dp(getContext(), CELL_W_DP[sizeLevel]);
-        return sizeLevel == 0 ? w : Math.max(w, Math.round(textPx() * 1.2f));
+        return cellWidthPx(getContext(), sizeLevel);
     }
 
     private int cellHeight() {
-        int h = Ui.dp(getContext(), CELL_H_DP[sizeLevel]);
-        return sizeLevel == 0 ? h : Math.max(h, Math.round(textPx() * 1.3f));
+        return cellHeightPx(getContext(), sizeLevel);
     }
 
     /** 이모지 크기 단계를 바꾼다. 격자를 새 크기로 다시 만든다 (보던 탭은 맨 위부터 다시 보인다). */
