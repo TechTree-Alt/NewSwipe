@@ -286,6 +286,9 @@ public final class SettingsActivity extends Activity {
         look.addView(toggle("길게 눌러 입력할 문자 힌트 없애기",
                 "키의 오른쪽 위에 표시되는 길게 눌러 입력할 문자 힌트를 없앱니다.",
                 Prefs.POPUP_HINT_HIDDEN, prefs.popupHintHidden()));
+        look.addView(toggle("숫자 키 힌트 없애기",
+                "숫자 키(1~0)에서만 길게 눌러 입력할 문자 힌트를 없앱니다.",
+                Prefs.NUMBER_HINT_HIDDEN, prefs.numberHintHidden()));
         LinearLayout pad = section("여백");
         pad.addView(slider("왼쪽 여백", Prefs.PAD_LEFT, prefs.padLeftDp(), 0, 24, 1, "dp"));
         pad.addView(slider("오른쪽 여백", Prefs.PAD_RIGHT, prefs.padRightDp(), 0, 24, 1, "dp"));
@@ -586,6 +589,7 @@ public final class SettingsActivity extends Activity {
         oneHandKeys.setKeyRadius(Ui.dp(this, prefs.keyRadiusDp()));
         oneHandKeys.setGridColors(prefs.gridColors());
         oneHandKeys.setPopupHints(prefs.longPressChars() && !prefs.popupHintHidden());
+        oneHandKeys.setNumberHintHidden(prefs.numberHintHidden());
         oneHandKeys.setKeyGaps(Ui.dp(this, prefs.keyGapXDp()), Ui.dp(this, prefs.keyGapYDp()));
         oneHandKeys.setInsets(Ui.dp(this, prefs.padLeftDp()), Ui.dp(this, prefs.padTopDp()),
                 Ui.dp(this, prefs.padRightDp()), Ui.dp(this, prefs.padBottomDp()));
@@ -711,6 +715,7 @@ public final class SettingsActivity extends Activity {
         preview.setKeyRadius(Ui.dp(this, prefs.keyRadiusDp()));
         preview.setGridColors(prefs.gridColors());
         preview.setPopupHints(prefs.longPressChars() && !prefs.popupHintHidden());
+        preview.setNumberHintHidden(prefs.numberHintHidden());
         int p = Ui.dp(this, 4);
         preview.setKeyGaps(Ui.dp(this, prefs.keyGapXDp()), Ui.dp(this, prefs.keyGapYDp()));
         preview.setInsets(Ui.dp(this, prefs.padLeftDp()), p, Ui.dp(this, prefs.padRightDp()), p);

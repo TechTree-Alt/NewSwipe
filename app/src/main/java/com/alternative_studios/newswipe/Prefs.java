@@ -84,6 +84,7 @@ public final class Prefs {
     public static final String TWO_FINGER_UNDO = "two_finger_undo";           // 두 손가락으로 밀어 실행 취소·다시 실행
     public static final String SWIPE_KEYBOARD_CUSTOM = "swipe_keyboard_custom"; // 키보드 밀기 완전 사용자화
     public static final String SPACE_LANG_SWIPE = "space_lang_swipe";         // 스페이스바를 좌우로 밀어 한/영 전환
+    public static final String NUMBER_HINT_HIDDEN = "number_hint_hidden";     // 숫자 키만 길게 눌러 입력할 문자 힌트 없애기
     public static final String POPUP_HINT_HIDDEN = "popup_hint_hidden";       // 키 오른쪽 위의 길게 눌러 입력할 문자 힌트 없애기
     // 커서 이동 속도 (%, 100 = 기본). 스페이스바·문자 키, 좌우·상하 따로.
     public static final String SPLIT_SPACE_JOIN = "split_space_join";   // 분리 키보드: 나뉜 스페이스바를 하나로 잇기
@@ -306,7 +307,7 @@ public final class Prefs {
         MENU_PREFIXES.put("layout", keys("balanced_", LANDSCAPE_SPLIT + "_", "swipe_fk_"));
         MENU_KEYS.put("theme", keys(THEME_MODE, ACCENT_MODE, ACCENT_COLOR, GRID_COLORS));
         MENU_KEYS.put("look", keys(KEYBOARD_HEIGHT, KEY_TEXT_SIZE, KEY_RADIUS, KEY_SHADOW, KEY_SHADOW_STRENGTH,
-                KEY_PREVIEW, POPUP_HINT_HIDDEN, PAD_LEFT, PAD_RIGHT, PAD_TOP, PAD_BOTTOM, KEY_GAP_X, KEY_GAP_Y));
+                KEY_PREVIEW, POPUP_HINT_HIDDEN, NUMBER_HINT_HIDDEN, PAD_LEFT, PAD_RIGHT, PAD_TOP, PAD_BOTTOM, KEY_GAP_X, KEY_GAP_Y));
         MENU_KEYS.put("input", keys(AUTO_CAP, DOUBLE_SPACE_PERIOD, DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT,
                 DOUBLE_TAP_CONSONANT_MS, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, SPACE_HIT_SHRINK,
                 SPACE_HIT_SHRINK_PCT));
@@ -533,6 +534,8 @@ public final class Prefs {
 
     public boolean spaceLangSwipe() { return sp.getBoolean(SPACE_LANG_SWIPE, false); }
     public boolean popupHintHidden() { return sp.getBoolean(POPUP_HINT_HIDDEN, false); }
+    /** 숫자 키(1~0)에만 길게 눌러 입력할 문자 힌트를 보이지 않게 하는지. */
+    public boolean numberHintHidden() { return sp.getBoolean(NUMBER_HINT_HIDDEN, false); }
     public boolean deleteHitShrink() { return sp.getBoolean(DELETE_HIT_SHRINK, false); }
     public int deleteHitShrinkPct() { return sp.getInt(DELETE_HIT_SHRINK_PCT, 10); }
     public boolean spaceHitShrink() { return sp.getBoolean(SPACE_HIT_SHRINK, false); }

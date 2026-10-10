@@ -146,6 +146,8 @@ public final class KeyboardView extends View {
     private float fnSwipeThreshold;
     private boolean showPreview = true;
     private boolean showHints = true;
+    /** 숫자 키(1~0)의 힌트만 숨긴다. */
+    private boolean numberHintHidden;
     /** 키를 길게 눌러 문자를 입력하는 기능. 끄면 팝업도, 키 위의 작은 글자도 없다. */
     private boolean longPressChars = true;
     private boolean keyShadow;
@@ -337,6 +339,14 @@ public final class KeyboardView extends View {
 
     public void setKeyboardSwipes(KeyboardSwipes k) {
         kbSwipes = k;
+    }
+
+    /** 숫자 키(1~0)에는 길게 눌러 입력할 문자 힌트를 그리지 않을지. */
+    public void setNumberHintHidden(boolean on) {
+        if (numberHintHidden != on) {
+            numberHintHidden = on;
+            invalidate();
+        }
     }
 
     /** 키 오른쪽 위의 작은 글자(길게 눌러 입력할 문자 힌트)를 그릴지. 길게 눌러 입력하는 기능과는 상관없다. */
@@ -686,7 +696,8 @@ public final class KeyboardView extends View {
         drawCentered(c, label, cx, cy);
 
         String hint = shiftState != 0 && layout.kind == KeyboardLayout.ENGLISH ? k.hintUpper() : k.hint();
-        if (showHints && hint != null && layout.kind != KeyboardLayout.NUMBER && !isRepeatChar(k)) {
+        if (showHints && hint != null && layout.kind != KeyboardLayout.NUMBER && !isRepeatChar(k)
+                && !(numberHintHidden && KeyboardLayout.isDigit(k.label))) {
             text.setColor(theme.hint);
             text.setTypeface(Typeface.DEFAULT);
             text.setTextSize(spHint);

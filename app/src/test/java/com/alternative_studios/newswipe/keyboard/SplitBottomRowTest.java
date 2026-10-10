@@ -577,4 +577,30 @@ public class SplitBottomRowTest {
             assertEquals(modeApart, widthOf(KeyboardLayout.korean(p).rows[3], Key.TO_SYMBOLS, true), 0.001f);
         }
     }
+
+    @Test
+    public void numberKeysCanHaveLongPressCharacters() throws Exception {
+        assertEquals("num", KeyboardLayout.groupOf(true, "5"));
+        assertEquals("num", KeyboardLayout.groupOf(false, "0"));
+        assertEquals("ko", KeyboardLayout.groupOf(true, "ㅂ"));
+        for (boolean split : new boolean[]{false, true}) {
+            FakeSp sp = new FakeSp();
+            Prefs p = split ? landscapeEditView(sp) : portraitView(sp);
+            sp.m.put(Prefs.NUMBER_ROW, true);
+            for (KeyboardLayout l : new KeyboardLayout[]{KeyboardLayout.korean(p), KeyboardLayout.english(p)}) {
+                assertTrue("기본은 길게 누르기 문자가 없다", l.rows[0].keys[l.rows[0].keys.length > 10 ? 1 : 0].popup == null);
+            }
+            sp.m.put("popup_num_1", "@\n#\n긴 문장 입니다");
+            for (KeyboardLayout l : new KeyboardLayout[]{KeyboardLayout.korean(p), KeyboardLayout.english(p)}) {
+                Key one = null;
+                for (Key k : l.rows[0].keys) if (k.type == Key.CHAR && "1".equals(k.label)) one = k;
+                assertTrue(one != null);
+                assertEquals(3, one.popup.length);
+                assertEquals("긴 문장 입니다", one.popup[2]);
+                assertEquals("@", one.hint());
+                for (Key k : l.rows[0].keys) if (k.type == Key.CHAR && "2".equals(k.label)) assertTrue(k.popup == null);
+            }
+        }
+        assertTrue(KeyboardLayout.isDigit("7") && !KeyboardLayout.isDigit("a") && !KeyboardLayout.isDigit("12"));
+    }
 }

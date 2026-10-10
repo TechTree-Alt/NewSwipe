@@ -804,6 +804,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         keyboard.setDeleteWordSwipe(prefs.deleteWordSwipe());
         // 키보드 밀기 완전 사용자화를 켜면 문자 키 커서 이동은 편집 화면의 '커서 자유 이동'을 따른다.
         keyboard.setPopupHints(prefs.longPressChars() && !prefs.popupHintHidden());
+        keyboard.setNumberHintHidden(prefs.numberHintHidden());
         keyboard.setRepeatChars(prefs.repeatChars());
         applySuggestLead();
         keyboard.setHitShrink(prefs.deleteHitShrink() ? prefs.deleteHitShrinkPct() / 100f : 0f,
