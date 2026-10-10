@@ -45,6 +45,8 @@ public final class PopupEditorActivity extends Activity {
     private LinearLayout list;
     private LinearLayout keysCard;   // 한글/영어 탭 아래의 키 카드
     private boolean korean = true;
+    /** 기호 탭을 보고 있는지. */
+    private boolean symbols;
     private KeyboardTheme keyboardTheme;
     private String themeSignature;
     private int bg, cardColor, textColor, hintColor, accentColor, onAccentColor;
@@ -109,9 +111,11 @@ public final class PopupEditorActivity extends Activity {
         tabCard.setBackground(Ui.round(cardColor, Ui.dp(this, 16)));
         tabCard.setPadding(Ui.dp(this, 16), Ui.dp(this, 8), Ui.dp(this, 16), Ui.dp(this, 8));
         // 탭을 바꿀 때 화면을 다시 만들지 않고 키 카드만 그 자리에서 바꾼다 (선택 버튼의 스프링이 끊기지 않게).
-        tabCard.addView(Ui.choiceRow(this, new String[]{"한글", "영어"}, korean ? 0 : 1,
+        tabCard.addView(Ui.choiceRow(this, new String[]{"한글", "영어", "기호"},
+                symbols ? 2 : korean ? 0 : 1,
                 accentColor, onAccentColor, textColor, hintColor, 0, i -> {
-                    korean = i == 0;
+                    symbols = i == 2;
+                    if (!symbols) korean = i == 0;
                     keysCard.removeAllViews();
                     fillKeys(keysCard);
                 }));
@@ -139,6 +143,10 @@ public final class PopupEditorActivity extends Activity {
 
     /** 자판 키 칸들을 채운다 (한글/영어 탭을 바꿀 때는 이 카드만 다시 채운다). */
     private void fillKeys(LinearLayout card) {
+        if (symbols) {
+            fillSymbolKeys(card);
+            return;
+        }
 
         // 실제 자판과 비슷한 위치에 놓는다: 줄마다 앞/뒤 빈 칸(칸 단위)을 두어 키 위치를 맞춘다.
         boolean noShift = korean && prefs.koreanNewSwipe();   // Shift 자리가 없는 NewSwipe 배열 (NewSwipe 단모음)
@@ -147,6 +155,20 @@ public final class PopupEditorActivity extends Activity {
         int columns = korean ? KeyboardLayout.koreanColumns(prefs) : 10;
         repeatChars = repeatMode ? java.util.Collections.emptySet() : prefs.repeatChars();
         boolean anyDisabled = false;
+        if (prefs.numberRow()) {
+            // 숫자 줄: 실제 자판처럼 맨 위에 놓는다. 열 개가 한 줄(columns칸)을 채우고, 한글·영어 자판이 같은 설정을 쓴다.
+            LinearLayout line = new LinearLayout(this);
+            line.setClipChildren(false);
+            line.setBaselineAligned(false);
+            ExpressiveChoiceButton[] keys = new ExpressiveChoiceButton[KeyboardLayout.NUMBER_KEYS.length];
+            for (int i = 0; i < keys.length; i++) {
+                keys[i] = keyCell(KeyboardLayout.NUMBER_KEYS[i]);
+                line.addView(keys[i], cellParams(columns / (float) keys.length));
+            }
+            ExpressiveChoiceButton.link(keys);
+            for (ExpressiveChoiceButton k : keys) k.setPosition(false, false);
+            card.addView(line);
+        }
         for (int r = 0; r < rows.length; r++) {
             String[] row = rows[r];
             float lead, between = 0;
@@ -180,9 +202,49 @@ public final class PopupEditorActivity extends Activity {
             if (trail > 0) line.addView(spacer(trail));
             card.addView(line);
         }
+        String shared = prefs.numberRow() ? "숫자 줄과 쉼표·온점 설정은 한글/영어가 함께 씁니다."
+                : "쉼표·온점 설정은 한글/영어가 함께 씁니다.";
         TextView extra = text(anyDisabled
-                ? "쉼표·온점 설정은 한글/영어가 함께 씁니다.\n흐리게 보이는 글자는 '길게 눌러 연속 입력'으로 정해 두어 길게 눌러 입력할 문자를 쓸 수 없습니다."
-                : "쉼표·온점 설정은 한글/영어가 함께 씁니다.", 12, hintColor);
+                ? shared + "\n흐리게 보이는 글자는 '길게 눌러 연속 입력'으로 정해 두어 길게 눌러 입력할 문자를 쓸 수 없습니다."
+                : shared, 12, hintColor);
+        extra.setPadding(Ui.dp(this, 4), Ui.dp(this, 8), 0, 0);
+        extra.setTextColor(keyboardTheme.hint);
+        card.addView(extra);
+    }
+
+    /**
+     * 기호 탭: 기호 자판의 1쪽·2쪽을 실제 자판처럼 줄 단위로 놓는다 (기호 쪽 넘김·⌫ 자리는 빈 칸).
+     * 같은 글자는 1쪽·2쪽과 쉼표·온점 키가 같은 설정을 쓴다. 숫자 줄은 한글·영어 탭 맨 위의 설정을 따른다.
+     */
+    private void fillSymbolKeys(LinearLayout card) {
+        repeatChars = repeatMode ? java.util.Collections.emptySet() : prefs.repeatChars();
+        boolean anyDisabled = false;
+        for (int page = 0; page < 2; page++) {
+            TextView title = text(page == 0 ? "기호 1쪽" : "기호 2쪽", 12, hintColor);
+            title.setTextColor(keyboardTheme.hint);
+            title.setPadding(Ui.dp(this, 4), page == 0 ? 0 : Ui.dp(this, 10), 0, Ui.dp(this, 2));
+            card.addView(title);
+            for (java.util.List<Object[]> row : KeyboardLayout.editableSymbolRows(page == 1, prefs)) {
+                LinearLayout line = new LinearLayout(this);
+                line.setClipChildren(false);
+                line.setBaselineAligned(false);
+                for (Object[] cell : row) {
+                    float weight = (Float) cell[1];
+                    if (cell[0] == null) {
+                        line.addView(spacer(weight));
+                    } else {
+                        ExpressiveChoiceButton key = keyCell((String) cell[0]);
+                        anyDisabled |= !key.isEnabled();
+                        line.addView(key, cellParams(weight));
+                    }
+                }
+                card.addView(line);
+            }
+        }
+        String shared = "같은 기호는 1쪽·2쪽과 쉼표·온점 키가 같은 설정을 씁니다. 숫자 줄은 한글/영어 탭 맨 위에서 정합니다.";
+        TextView extra = text(anyDisabled
+                ? shared + "\n흐리게 보이는 글자는 '길게 눌러 연속 입력'으로 정해 두어 길게 눌러 입력할 문자를 쓸 수 없습니다."
+                : shared, 12, hintColor);
         extra.setPadding(Ui.dp(this, 4), Ui.dp(this, 8), 0, 0);
         extra.setTextColor(keyboardTheme.hint);
         card.addView(extra);
@@ -200,7 +262,11 @@ public final class PopupEditorActivity extends Activity {
     }
 
     private LinearLayout.LayoutParams cellParams() {
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, Ui.dp(this, 58), 1f);
+        return cellParams(1f);
+    }
+
+    private LinearLayout.LayoutParams cellParams(float weight) {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, Ui.dp(this, 58), weight);
         int m = Ui.dp(this, 2.5f);
         lp.setMargins(m, m, m, m);
         return lp;

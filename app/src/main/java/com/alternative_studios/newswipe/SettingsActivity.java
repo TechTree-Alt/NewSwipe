@@ -286,6 +286,9 @@ public final class SettingsActivity extends Activity {
         look.addView(toggle("길게 눌러 입력할 문자 힌트 없애기",
                 "키의 오른쪽 위에 표시되는 길게 눌러 입력할 문자 힌트를 없앱니다.",
                 Prefs.POPUP_HINT_HIDDEN, prefs.popupHintHidden()));
+        look.addView(toggle("숫자 키 힌트 없애기",
+                "숫자 키(1~0)에서만 길게 눌러 입력할 문자 힌트를 없앱니다.",
+                Prefs.NUMBER_HINT_HIDDEN, prefs.numberHintHidden()));
         LinearLayout pad = section("여백");
         pad.addView(slider("왼쪽 여백", Prefs.PAD_LEFT, prefs.padLeftDp(), 0, 24, 1, "dp"));
         pad.addView(slider("오른쪽 여백", Prefs.PAD_RIGHT, prefs.padRightDp(), 0, 24, 1, "dp"));
@@ -335,13 +338,6 @@ public final class SettingsActivity extends Activity {
         landscape.addView(button("가로 모드 키보드 사용자화", v -> openSection(LANDSCAPE_AREA)));
         landscape.addView(note("화면을 가로로 돌렸을 때의 자판 모양을 따로 정합니다."));
 
-        LinearLayout keyLayout = section("키 정렬");
-        // 바꾸면 위의 미리보기도 바로 다시 그린다.
-        keyLayout.addView(toggle("격자 정렬", GRID_DESC, prefs.gridLayout(), on -> {
-            prefs.raw().edit().putBoolean(Prefs.GRID_LAYOUT, on).apply();
-            refreshLayoutPreview();
-        }));
-
         LinearLayout numberKeys = section("숫자 키");
         numberKeys.addView(toggle("숫자 줄 표시", "자판 위에 1~0 숫자 줄을 보여 줍니다.", prefs.numberRow(), on -> {
             prefs.raw().edit().putBoolean(Prefs.NUMBER_ROW, on).apply();
@@ -352,6 +348,13 @@ public final class SettingsActivity extends Activity {
         layoutKeys.addView(button("기능키 순서·유무 사용자화", v ->
                 startActivity(new Intent(this, BottomKeysEditorActivity.class))));
         layoutKeys.addView(note("맨 아래 줄 기능키의 순서와 유무를 바꿉니다."));
+
+        LinearLayout keyLayout = section("키 정렬");
+        // 바꾸면 위의 미리보기도 바로 다시 그린다.
+        keyLayout.addView(toggle("격자 정렬", GRID_DESC, prefs.gridLayout(), on -> {
+            prefs.raw().edit().putBoolean(Prefs.GRID_LAYOUT, on).apply();
+            refreshLayoutPreview();
+        }));
     }
 
     /** 고른 한글 배열의 설명. */
@@ -464,6 +467,23 @@ public final class SettingsActivity extends Activity {
                 }));
         card.addView(splitBox);
 
+        // 맨 아래 줄: 나뉜 스페이스바를 이을지, 이었을 때 하단 기능키 폭
+        LinearLayout bottom = section(name + " 분리 키보드 맨 아래 줄");
+        View fnWidth = subGroup(
+                slider("하단 기능키 폭", edit.splitFnWidthKey(), edit.splitFnWidthSetting(), 50, 200, 5, "%", this::refreshLayoutPreview),
+                note("스페이스바·Shift·⌫를 뺀 맨 아래 줄 키(기호 키·쉼표·지구본·온점·엔터)의 폭입니다. "
+                        + "줄이거나 늘린 만큼 스페이스바가 늘거나 줄어듭니다."));
+        fnWidth.setVisibility(edit.splitSpaceJoin() ? View.VISIBLE : View.GONE);
+        String joinKey = edit.splitSpaceJoinKey();
+        bottom.addView(toggle("스페이스바 잇기",
+                when + " 쓰는 값입니다. 양쪽 덩어리에 하나씩 나뉜 스페이스바를 가운데로 이어 하나로 만듭니다.",
+                edit.splitSpaceJoin(), on -> {
+                    prefs.raw().edit().putBoolean(joinKey, on).apply();
+                    Ui.setVisibleAnimated(fnWidth, on);
+                    refreshLayoutPreview();
+                }));
+        bottom.addView(fnWidth);
+
         // 두 덩어리 사이의 빈 공간: 프로필마다 따로 정한다.
         LinearLayout gap = section(name + " 분리 키보드 가운데 빈 공간");
         gap.addView(toggle("밀어서 커서 이동",
@@ -569,6 +589,7 @@ public final class SettingsActivity extends Activity {
         oneHandKeys.setKeyRadius(Ui.dp(this, prefs.keyRadiusDp()));
         oneHandKeys.setGridColors(prefs.gridColors());
         oneHandKeys.setPopupHints(prefs.longPressChars() && !prefs.popupHintHidden());
+        oneHandKeys.setNumberHintHidden(prefs.numberHintHidden());
         oneHandKeys.setKeyGaps(Ui.dp(this, prefs.keyGapXDp()), Ui.dp(this, prefs.keyGapYDp()));
         oneHandKeys.setInsets(Ui.dp(this, prefs.padLeftDp()), Ui.dp(this, prefs.padTopDp()),
                 Ui.dp(this, prefs.padRightDp()), Ui.dp(this, prefs.padBottomDp()));
@@ -694,6 +715,7 @@ public final class SettingsActivity extends Activity {
         preview.setKeyRadius(Ui.dp(this, prefs.keyRadiusDp()));
         preview.setGridColors(prefs.gridColors());
         preview.setPopupHints(prefs.longPressChars() && !prefs.popupHintHidden());
+        preview.setNumberHintHidden(prefs.numberHintHidden());
         int p = Ui.dp(this, 4);
         preview.setKeyGaps(Ui.dp(this, prefs.keyGapXDp()), Ui.dp(this, prefs.keyGapYDp()));
         preview.setInsets(Ui.dp(this, prefs.padLeftDp()), p, Ui.dp(this, prefs.padRightDp()), p);
@@ -1142,6 +1164,8 @@ public final class SettingsActivity extends Activity {
                 + "누르면 그 단어로 바꾸고, 학습한 단어를 길게 누르면 학습한 단어에서 지웁니다.",
                 Prefs.SUGGEST_WORDS, prefs.suggestWords(), fullBar));
         suggest.addView(fullBar);
+        suggest.addView(toggle("이모지 추천", "이모지 창을 열면 커서 앞에 쓴 글(마지막 네 단어)에 맞는 이모지를 최근 탭 맨 위 한 줄에 보여 줍니다. "
+                + "비밀번호 입력란에서는 글을 읽지 않습니다.", Prefs.EMOJI_SUGGEST, prefs.emojiSuggest()));
 
         LinearLayout shortcut = section("단축어");
         View shortcutGroup = subGroup(button("단축어 편집", v -> startActivity(new Intent(this, ShortcutEditorActivity.class))));

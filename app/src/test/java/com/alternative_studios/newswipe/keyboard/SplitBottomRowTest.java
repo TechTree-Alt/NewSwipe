@@ -538,4 +538,126 @@ public class SplitBottomRowTest {
         assertEquals(3f, to - from, 0.001f);
         assertEquals(100, KeyboardLayout.balancedWidthMax(p));
     }
+
+    @Test
+    public void joinedSpaceBarCrossesTheMiddleAndFunctionKeyWidthApplies() throws Exception {
+        for (int[] s : SETTINGS) {
+            FakeSp sp = new FakeSp();
+            Prefs p = landscapeEditView(sp);
+            sp.m.put(p.balancedConsonantPosKey(), s[0]);
+            sp.m.put(p.balancedVowelPosKey(), s[1]);
+            sp.m.put(p.balancedConsonantWidthKey(), s[2]);
+            sp.m.put(p.balancedVowelWidthKey(), s[3]);
+            sp.m.put(p.splitFnWidthKey(), 50);
+            // 스페이스바를 잇지 않으면 기능키 폭 설정은 쓰지 않는다.
+            KeyboardLayout.Row apart = KeyboardLayout.korean(p).rows[3];
+            float modeApart = widthOf(apart, Key.TO_SYMBOLS, true);
+            int spaces = 0;
+            for (Key k : apart.keys) if (k.type == Key.SPACE) spaces++;
+            assertEquals(2, spaces);
+            sp.m.put(p.splitSpaceJoinKey(), true);
+            for (KeyboardLayout l : new KeyboardLayout[]{KeyboardLayout.korean(p), KeyboardLayout.english(p),
+                    KeyboardLayout.symbols(true, p)}) {
+                KeyboardLayout.Row row = l.rows[l.rows.length - 1];
+                float x = 0f, total = 0f, spaceFrom = -1f, spaceTo = 0f;
+                int count = 0;
+                for (Key k : row.keys) {
+                    if (k.type == Key.SPACE) { count++; spaceFrom = x; spaceTo = x + k.weight; }
+                    x += k.weight;
+                    total += k.weight;
+                }
+                assertEquals(1, count);
+                assertEquals(10f, total, 0.001f);
+                assertTrue("스페이스바가 가운데를 가로지른다", spaceFrom < 5f - 0.01f && spaceTo > 5f + 0.01f);
+            }
+            float modeJoined = widthOf(KeyboardLayout.korean(p).rows[3], Key.TO_SYMBOLS, true);
+            assertEquals("하단 기능키 폭 50%", modeApart / 2f, modeJoined, 0.001f);
+            // 폭 설정은 스페이스바를 이었을 때만 쓴다.
+            sp.m.put(p.splitSpaceJoinKey(), false);
+            assertEquals(modeApart, widthOf(KeyboardLayout.korean(p).rows[3], Key.TO_SYMBOLS, true), 0.001f);
+        }
+    }
+
+    @Test
+    public void numberKeysCanHaveLongPressCharacters() throws Exception {
+        assertEquals("num", KeyboardLayout.groupOf(true, "5"));
+        assertEquals("num", KeyboardLayout.groupOf(false, "0"));
+        assertEquals("ko", KeyboardLayout.groupOf(true, "ㅂ"));
+        for (boolean split : new boolean[]{false, true}) {
+            FakeSp sp = new FakeSp();
+            Prefs p = split ? landscapeEditView(sp) : portraitView(sp);
+            sp.m.put(Prefs.NUMBER_ROW, true);
+            for (KeyboardLayout l : new KeyboardLayout[]{KeyboardLayout.korean(p), KeyboardLayout.english(p)}) {
+                assertTrue("기본은 길게 누르기 문자가 없다", l.rows[0].keys[l.rows[0].keys.length > 10 ? 1 : 0].popup == null);
+            }
+            sp.m.put("popup_num_1", "@\n#\n긴 문장 입니다");
+            for (KeyboardLayout l : new KeyboardLayout[]{KeyboardLayout.korean(p), KeyboardLayout.english(p)}) {
+                Key one = null;
+                for (Key k : l.rows[0].keys) if (k.type == Key.CHAR && "1".equals(k.label)) one = k;
+                assertTrue(one != null);
+                assertEquals(3, one.popup.length);
+                assertEquals("긴 문장 입니다", one.popup[2]);
+                assertEquals("@", one.hint());
+                for (Key k : l.rows[0].keys) if (k.type == Key.CHAR && "2".equals(k.label)) assertTrue(k.popup == null);
+            }
+        }
+        assertTrue(KeyboardLayout.isDigit("7") && !KeyboardLayout.isDigit("a") && !KeyboardLayout.isDigit("12"));
+    }
+
+    @Test
+    public void symbolPageKeysCanHaveLongPressCharacters() throws Exception {
+        assertEquals("sym", KeyboardLayout.groupOf(true, "@"));
+        assertEquals("sym", KeyboardLayout.groupOf(false, "₩"));
+        assertEquals("sym", KeyboardLayout.groupOf(true, ","));
+        assertEquals("en", KeyboardLayout.groupOf(false, "a"));
+        // 기본값: 편집 화면이 보여 줄 값은 자판에 실제로 있는 값과 같다.
+        assertEquals("€", KeyboardLayout.defaultPopup(true, null, "$", true)[0]);
+        assertTrue(KeyboardLayout.defaultPopup(true, null, "!", true)[0].equals("¡"));
+        FakeSp sp = new FakeSp();
+        Prefs p = portraitView(sp);
+        KeyboardLayout before = KeyboardLayout.symbols(true, p);
+        sp.m.put("popup_sym_@", "A\nB");
+        sp.m.put("popup_sym_!", "");
+        for (KeyboardLayout l : new KeyboardLayout[]{KeyboardLayout.symbols(true, p), KeyboardLayout.symbols(false, p)}) {
+            for (KeyboardLayout.Row row : l.rows) {
+                for (Key k : row.keys) {
+                    if (k.type != Key.CHAR) continue;
+                    if ("@".equals(k.label)) assertEquals(2, k.popup.length);
+                    if ("!".equals(k.label)) assertTrue("빈 값은 없음", k.popup == null);
+                    if ("1".equals(k.label)) assertTrue("숫자 줄은 그대로", k.popup != null && "¹".equals(k.popup[0]));
+                }
+            }
+        }
+        assertTrue(before != null);
+        // 편집 화면용 줄: 숫자 줄과 맨 아래 줄은 빼고 글자 키 이름과 폭만 돌려준다.
+        for (boolean five : new boolean[]{false, true}) {
+            FakeSp sp2 = new FakeSp();
+            Prefs p2 = portraitView(sp2);
+            sp2.m.put(Prefs.NUMBER_ROW, five);
+            for (boolean page2 : new boolean[]{false, true}) {
+                java.util.List<java.util.List<Object[]>> rows = KeyboardLayout.editableSymbolRows(page2, p2);
+                assertEquals(five ? 3 : 2, rows.size());
+                for (java.util.List<Object[]> row : rows) {
+                    float total = 0f;
+                    int keys = 0;
+                    for (Object[] c : row) {
+                        total += (Float) c[1];
+                        if (c[0] != null) keys++;
+                    }
+                    assertEquals(10f, total, 0.001f);
+                    assertTrue(keys >= 7);
+                }
+            }
+        }
+    }
+
+    @Test
+    public void symbolAndNumberKeysUseTheSameRepeatGroupAsTheEditor() {
+        // 연속 입력 편집 화면이 저장하는 이름 ("<묶음>_<글자>")과 자판이 찾는 이름이 같아야 한다.
+        for (String label : new String[]{"@", "!", "₩", "1", "0", ",", "."}) {
+            String group = KeyboardLayout.groupOf(false, label);
+            assertEquals(group, KeyboardLayout.groupOf(true, label));   // 한글·영어 자판이 같은 묶음
+            assertTrue(group.equals("sym") || group.equals("num"));
+        }
+    }
 }

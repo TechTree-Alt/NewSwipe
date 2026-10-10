@@ -16,8 +16,10 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.alternative_studios.newswipe.keyboard.Icons;
 import com.alternative_studios.newswipe.suggest.Shortcuts;
 import com.alternative_studios.newswipe.ui.Chevron;
+import com.alternative_studios.newswipe.ui.IconButton;
 import com.alternative_studios.newswipe.ui.Ui;
 
 import java.util.Map;
@@ -95,12 +97,15 @@ public final class ShortcutEditorActivity extends Activity {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setBackground(Ui.round(cardColor, Ui.dp(this, 16)));
-        card.setPadding(Ui.dp(this, 6), Ui.dp(this, 4), Ui.dp(this, 6), Ui.dp(this, 4));
+        card.setPadding(0, Ui.dp(this, 4), 0, Ui.dp(this, 4));
         LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         clp.topMargin = Ui.dp(this, 12);
         list.addView(card, clp);
-        for (Map.Entry<String, String> e : all.entrySet()) card.addView(entryRow(e.getKey(), e.getValue()));
+        for (Map.Entry<String, String> e : all.entrySet()) {
+            if (card.getChildCount() > 0) card.addView(divider());
+            card.addView(entryRow(e.getKey(), e.getValue()));
+        }
 
         TextView clear = text("단축어 모두 지우기", 15, accentColor);
         clear.setGravity(Gravity.CENTER);
@@ -142,27 +147,52 @@ public final class ShortcutEditorActivity extends Activity {
         return row;
     }
 
-    /** 단축어 한 줄: 줄임말과 문장. 누르면 고친다. */
+    /** 단축어 사이의 구분선 (학습한 단어 화면과 같은 모양). */
+    private View divider() {
+        View v = new View(this);
+        v.setBackgroundColor(hintColor & 0x00FFFFFF | 0x26000000);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1);
+        lp.leftMargin = Ui.dp(this, 16);
+        lp.rightMargin = Ui.dp(this, 16);
+        v.setLayoutParams(lp);
+        return v;
+    }
+
+    /** 단축어 한 줄: 줄임말과 문장, 오른쪽에 지우기(휴지통) 버튼. 줄을 누르면 고친다. */
     private View entryRow(String key, String phrase) {
         LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.VERTICAL);
-        int h = Ui.dp(this, 10);
-        row.setPadding(h, Ui.dp(this, 10), h, Ui.dp(this, 10));
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(Ui.dp(this, 16), Ui.dp(this, 8), Ui.dp(this, 6), Ui.dp(this, 8));
         row.setBackground(Ui.ripple(accentColor & 0x00FFFFFF | 0x33000000, null, 0));
+        LinearLayout texts = new LinearLayout(this);
+        texts.setOrientation(LinearLayout.VERTICAL);
         TextView k = text(key, 16, accentColor);
         k.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-        row.addView(k);
+        texts.addView(k);
         TextView p = text(phrase, 14, textColor);
         p.setMaxLines(2);
         p.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        row.addView(p);
+        texts.addView(p);
+        row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        IconButton trash = new IconButton(this, Icons.TRASH, hintColor, hintColor & 0x00FFFFFF | 0x33000000,
+                "'" + key + "' 단축어 지우기");
+        trash.setOnClickListener(v -> AppTheme.accentBuilder(AppTheme.dialogContext(this))
+                .setTitle("단축어 삭제")
+                .setMessage("'" + key + "' 단축어를 삭제하시겠습니까?")
+                .setPositiveButton("삭제", (d, w) -> {
+                    prefs.removeShortcut(key);
+                    render();
+                })
+                .setNegativeButton("취소", null)
+                .show());
+        row.addView(trash, new LinearLayout.LayoutParams(Ui.dp(this, 44), Ui.dp(this, 44)));
         row.setClickable(true);
         row.setFocusable(true);
         row.setOnClickListener(v -> edit(key));
         return row;
     }
 
-    /** 추가(key가 null)하거나 고치는 창. 고칠 때는 지우기도 할 수 있다. */
+    /** 추가(key가 null)하거나 고치는 창. 지우기는 목록의 휴지통 버튼으로 한다. */
     private void edit(String key) {
         boolean adding = key == null;
         EditText keyInput = new EditText(this);
@@ -190,12 +220,6 @@ public final class ShortcutEditorActivity extends Activity {
                 .setView(box)
                 .setPositiveButton("저장", null)
                 .setNegativeButton("취소", null);
-        if (!adding) {
-            b.setNeutralButton("삭제", (d, w) -> {
-                prefs.removeShortcut(key);
-                render();
-            });
-        }
         AlertDialog d = b.create();
         d.setOnShowListener(x -> d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             String newKey = keyInput.getText().toString().trim();

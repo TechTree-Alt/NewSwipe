@@ -129,7 +129,7 @@ public final class KeyboardLayout {
     private static final String[] PERIOD_POPUP = {"?", "!", "…", "~", "·", "'", "\"", ":", ";"};
 
     /** 길게 누르기 문자 편집 화면에서 쓰는 키 묶음 이름. */
-    public static final String GROUP_KO = "ko", GROUP_EN = "en", GROUP_SYM = "sym";
+    public static final String GROUP_KO = "ko", GROUP_EN = "en", GROUP_SYM = "sym", GROUP_NUM = "num";
 
     /** 편집할 수 있는 키들(줄 단위). 마지막 줄은 쉼표/온점으로, 두 언어가 함께 쓴다. 한글은 설정한 배열을 따른다. */
     public static String[][] editableRows(boolean korean, Prefs prefs) {
@@ -156,13 +156,31 @@ public final class KeyboardLayout {
     }
 
     public static String groupOf(boolean korean, String label) {
-        return label.equals(",") || label.equals(".") ? GROUP_SYM : korean ? GROUP_KO : GROUP_EN;
+        if (isDigit(label)) return GROUP_NUM;   // 숫자 줄의 키는 한글·영어 자판이 함께 쓴다
+        return isSymbol(label) ? GROUP_SYM : korean ? GROUP_KO : GROUP_EN;   // 기호 키(쉼표·온점 포함)는 모든 자판이 함께 쓴다
+    }
+
+    /** 숫자 줄의 키 이름들. */
+    public static final String[] NUMBER_KEYS = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"};
+
+    /** 글자도 숫자도 아닌 한 글자(쉼표·온점·기호)인지. */
+    static boolean isSymbol(String label) {
+        if (label == null || label.isEmpty() || isDigit(label)) return false;
+        int cp = label.codePointAt(0);
+        return !Character.isLetter(cp) && !Character.isDigit(cp);
+    }
+
+    /** 숫자 한 글자인지. */
+    public static boolean isDigit(String label) {
+        return label != null && label.length() == 1 && label.charAt(0) >= '0' && label.charAt(0) <= '9';
     }
 
     /** 고치지 않았을 때의 길게 누르기 문자. */
     public static String[] defaultPopup(boolean korean, Prefs prefs, String label, boolean periodComma) {
         if (label.equals(",")) return COMMA_POPUP;
         if (label.equals(".")) return periodPopup(periodComma);
+        if (isDigit(label)) return null;   // 숫자 줄의 키는 기본 문자가 없다
+        if (isSymbol(label)) return symbolDefault(label);
         boolean ns = newSwipe(prefs);
         String[][] letters = korean ? (ns ? D7_ROWS : KOREAN_ROWS) : ENGLISH_ROWS;
         String[][][] popups = korean ? (ns ? D7_POPUPS : KOREAN_POPUPS) : ENGLISH_POPUPS;
@@ -196,7 +214,7 @@ public final class KeyboardLayout {
         boolean numberRow = prefs != null && prefs.numberRow();
         int shift = koreanShiftSlot(prefs);
         List<Row> rows = new ArrayList<>();
-        if (numberRow) rows.add(numberRow());
+        if (numberRow) rows.add(numberRow(prefs));
         rows.add(letterRow(KOREAN_ROWS[0], KOREAN_POPUPS[0], true, prefs));
         rows.add(letterRow(KOREAN_ROWS[1], KOREAN_POPUPS[1], true, prefs));
         rows.add(bottomLetterRow(letterKeys(KOREAN_ROWS[2], KOREAN_POPUPS[2], true, prefs), 1f, shift, deleteKey(prefs)));
@@ -236,7 +254,7 @@ public final class KeyboardLayout {
         List<Row> letters = new ArrayList<>();
         for (int r = 0; r < 3; r++) letters.add(balancedRow(r, prefs));
         // 분리 키보드의 숫자 줄과 맨 아래 줄은 한글·영어·기호 자판이 같은 양 끝을 쓴다.
-        if (numberRow) rows.add(splitView(prefs) ? splitNumberRow(prefs) : numberRow());
+        if (numberRow) rows.add(splitView(prefs) ? splitNumberRow(prefs) : numberRow(prefs));
         rows.addAll(letters);
         rows.add(splitBottom(prefs));
         return new KeyboardLayout(KOREAN, BALANCED_COLUMNS, rows);
@@ -381,7 +399,7 @@ public final class KeyboardLayout {
      */
     private static KeyboardLayout nsLayout(Prefs prefs, boolean numberRow) {
         List<Row> rows = new ArrayList<>();
-        if (numberRow) rows.add(numberRow());
+        if (numberRow) rows.add(numberRow(prefs));
         rows.add(nsRow(0, prefs));
         rows.add(nsRow(1, prefs));
         rows.add(nsRow(2, prefs));
@@ -393,7 +411,7 @@ public final class KeyboardLayout {
         if (prefs != null && prefs.splitView()) return splitEnglish(prefs);   // 가로 모드 분리 키보드
         boolean numberRow = prefs != null && prefs.numberRow();
         List<Row> rows = new ArrayList<>();
-        if (numberRow) rows.add(numberRow());
+        if (numberRow) rows.add(numberRow(prefs));
         rows.add(letterRow(ENGLISH_ROWS[0], ENGLISH_POPUPS[0], false, prefs));
         rows.add(letterRow(ENGLISH_ROWS[1], ENGLISH_POPUPS[1], false, prefs));
         Key[] bottomLetters = letterKeys(ENGLISH_ROWS[2], ENGLISH_POPUPS[2], false, prefs);
@@ -404,10 +422,14 @@ public final class KeyboardLayout {
     }
 
     public static KeyboardLayout symbols(boolean korean, Prefs prefs) {
+        return symbols(korean, prefs, prefs != null && prefs.numberRow());
+    }
+
+    /** five: 숫자 줄을 켠 5줄 배열인지 (기본값을 찾을 때는 prefs 없이 두 배열을 모두 만든다). */
+    private static KeyboardLayout symbols(boolean korean, Prefs prefs, boolean five) {
         String back = korean ? "가" : "ABC";
         List<Row> rows = new ArrayList<>();
         // 숫자 줄을 켜면 한글/영어 자판과 같은 5줄(첫 줄 0.78)로 맞추고, 둘째 줄에 기호 줄을 더 넣는다.
-        boolean five = prefs != null && prefs.numberRow();
         rows.add(charRow(new String[]{"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"},
                 new String[][]{{"¹", "½", "⅓", "¼"}, {"²", "⅔"}, {"³", "¾"}, {"⁴"}, null, null, null, null,
                         null, {"ⁿ", "∅"}}, five ? 0.78f : 1f));
@@ -426,13 +448,17 @@ public final class KeyboardLayout {
         for (int i = 0; i < s3.length; i++) r3.add(ch(s3[i], p3[i]));
         r3.add(fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1.5f));
         rows.add(gridSides(r3, prefs));
+        applySymbolPopups(rows, prefs);
         finishSymbols(rows, back, prefs);
         return new KeyboardLayout(SYMBOLS, 10, rows);
     }
 
     public static KeyboardLayout symbols2(boolean korean, Prefs prefs) {
+        return symbols2(korean, prefs, prefs != null && prefs.numberRow());
+    }
+
+    private static KeyboardLayout symbols2(boolean korean, Prefs prefs, boolean five) {
         String back = korean ? "가" : "ABC";
-        boolean five = prefs != null && prefs.numberRow();
         List<Row> rows = new ArrayList<>();
         List<Key> r3 = new ArrayList<>();
         r3.add(fn(Key.SYMBOL_PAGE, "?123", 1.5f));
@@ -464,8 +490,55 @@ public final class KeyboardLayout {
         }
         r3.add(fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1.5f));
         rows.add(gridSides(r3, prefs));
+        applySymbolPopups(rows, prefs);
         finishSymbols(rows, back, prefs);
         return new KeyboardLayout(SYMBOLS_2, 10, rows);
+    }
+
+    /**
+     * 기호 자판의 글자 키(숫자 줄 제외)에 사용자가 정한 길게 누르기 문자를 적용한다.
+     * 같은 글자는 1쪽·2쪽과 쉼표·온점 키가 같은 설정을 쓴다.
+     */
+    private static void applySymbolPopups(List<Row> rows, Prefs prefs) {
+        if (prefs == null) return;
+        for (Row row : rows) {
+            for (Key k : row.keys) {
+                if (k.type == Key.CHAR && !k.grayStyle && !isDigit(k.label)) k.popup = popupFor(prefs, true, k.label, k.popup);
+            }
+        }
+    }
+
+    /** 기호 자판에서 label 키의 기본 길게 누르기 문자 (1쪽을 먼저, 숫자 줄을 켠 배열과 끈 배열 모두 찾는다). 없으면 null. */
+    private static String[] symbolDefault(String label) {
+        for (boolean five : new boolean[]{true, false}) {
+            for (KeyboardLayout l : new KeyboardLayout[]{symbols(true, null, five), symbols2(true, null, five)}) {
+                for (Row row : l.rows) {
+                    for (Key k : row.keys) {
+                        if (k.type == Key.CHAR && !k.grayStyle && label.equals(k.label)) return k.popup;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 길게 누르기 문자 편집 화면의 기호 탭에 놓을 키들: 지금 설정의 기호 자판 1쪽·2쪽을 그대로 줄 단위로 돌려준다
+     * (숫자 줄과 맨 아래 줄은 빼고, 글자 키가 아닌 칸은 {@code null}로 폭만 남긴다). 각 칸은 {이름, 폭} 쌍이다.
+     */
+    public static java.util.List<java.util.List<Object[]>> editableSymbolRows(boolean page2, Prefs prefs) {
+        KeyboardLayout l = page2 ? symbols2(true, prefs) : symbols(true, prefs);
+        java.util.List<java.util.List<Object[]>> out = new ArrayList<>();
+        for (int r = 1; r < l.rows.length - 1; r++) {
+            java.util.List<Object[]> line = new ArrayList<>();
+            for (Key k : l.rows[r].keys) {
+                if (k.type == Key.GAP) continue;
+                boolean editable = k.type == Key.CHAR && !k.grayStyle && !isDigit(k.label);
+                line.add(new Object[]{editable ? k.label : null, k.weight});
+            }
+            out.add(line);
+        }
+        return out;
     }
 
     /** 숫자 입력란(전화번호, 숫자)용 자판. */
@@ -483,11 +556,15 @@ public final class KeyboardLayout {
 
     // ---------------------------------------------------------------- 도우미
 
-    private static Row numberRow() {
-        String[] n = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"};
-        Key[] keys = new Key[n.length];
-        for (int i = 0; i < n.length; i++) keys[i] = ch(n[i], null);
+    private static Row numberRow(Prefs prefs) {
+        Key[] keys = new Key[NUMBER_KEYS.length];
+        for (int i = 0; i < keys.length; i++) keys[i] = numberKey(NUMBER_KEYS[i], prefs);
         return new Row(0.78f, keys);
+    }
+
+    /** 숫자 줄의 키. 길게 누르기 문자는 사용자가 정한 것만 있다 (정하지 않았으면 없다). */
+    private static Key numberKey(String n, Prefs prefs) {
+        return ch(n, popupFor(prefs, true, n, null));
     }
 
     private static Key[] letterKeys(String[] labels, String[][] popups, boolean korean, Prefs prefs) {
@@ -892,8 +969,7 @@ public final class KeyboardLayout {
     /** 분리 키보드의 숫자 줄: 1~5는 왼쪽 덩어리, 6~0은 오른쪽 덩어리를 고르게 채운다. */
     private static Row splitNumberRow(Prefs prefs) {
         List<Key> left = new ArrayList<>(), right = new ArrayList<>();
-        String[] n = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"};
-        for (int i = 0; i < n.length; i++) (i < 5 ? left : right).add(ch(n[i], null));
+        for (int i = 0; i < NUMBER_KEYS.length; i++) (i < 5 ? left : right).add(numberKey(NUMBER_KEYS[i], prefs));
         return blockRow(left, right, 0.78f, 5, 5, prefs);
     }
 
@@ -909,6 +985,7 @@ public final class KeyboardLayout {
         int spaceAt = bottomKeys(modeType, modeLabel, prefs, emojiKey, keys);
         int cut = spaceAt >= 0 ? spaceAt : (keys.size() + 1) / 2;
         List<Key> left = new ArrayList<>(keys.subList(0, cut)), right = new ArrayList<>(keys.subList(cut, keys.size()));
+        if (spaceAt >= 0 && prefs.splitSpaceJoin()) return joinedSpaceRow(left, right, b, prefs);
         for (Key k : left) k.weight *= b[1] / BALANCED_HALF;
         for (Key k : right) k.weight *= b[3] / BALANCED_HALF;
         fillSpan(left, b[1], spaceAt >= 0 ? left.size() : -1);
@@ -916,6 +993,28 @@ public final class KeyboardLayout {
         dropEmptySpace(left);
         dropEmptySpace(right);
         return blockLine(left, b[0], width(left), right, b[2], width(right), 1f);
+    }
+
+    /**
+     * 스페이스바를 이은 맨 아래 줄: 왼쪽 키들은 왼쪽 덩어리의 왼쪽 끝에, 오른쪽 키들은 오른쪽 덩어리의 오른쪽 끝에 놓고
+     * 그 사이를 가운데를 가로지르는 스페이스바 하나가 채운다. 기능키 폭은 덩어리 폭에 비례하고 '하단 기능키 폭'만큼 늘이거나 줄인다.
+     * 키들만으로 줄보다 넓어지면 같은 비율로 줄인다.
+     */
+    private static Row joinedSpaceRow(List<Key> left, List<Key> right, float[] b, Prefs prefs) {
+        float fnScale = prefs.splitFnWidth() / 100f;
+        for (Key k : left) k.weight *= b[1] / BALANCED_HALF * fnScale;
+        for (Key k : right) k.weight *= b[3] / BALANCED_HALF * fnScale;
+        float span = b[2] + b[3] - b[0], lw = width(left), rw = width(right);
+        if (lw + rw > span) {
+            float f = span / (lw + rw);
+            for (Key k : left) k.weight *= f;
+            for (Key k : right) k.weight *= f;
+            lw *= f;
+            rw *= f;
+        }
+        float space = Math.max(0f, span - lw - rw);
+        left.add(spaceKey(space));
+        return blockLine(left, b[0], lw + space, right, b[0] + lw + space, rw, 1f);
     }
 
     /** 폭이 거의 없는 스페이스바는 빼 둔다 (기능키만으로 덩어리가 찬 경우). */
