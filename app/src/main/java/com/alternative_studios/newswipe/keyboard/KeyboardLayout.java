@@ -269,12 +269,6 @@ public final class KeyboardLayout {
             (vowel ? vowels : consonants).add(k);
         }
         if (deleteHere) vowels.add(fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1f));
-        if (splitView(prefs) && r == 2 && prefs.gridLayout()) {
-            // 격자 정렬: Shift(Fn) 자리와 ⌫는 맨 아래 줄 기능키와 같은 폭이다.
-            Key leftEdge = !ns ? consonants.remove(0) : null, rightEdge = vowels.remove(vowels.size() - 1);
-            return gridEdgeRow(leftEdge, consonants, balancedConsonants(prefs), vowels, BALANCED_VOWEL_COLUMNS, rightEdge,
-                    1f, prefs);
-        }
         if (splitView(prefs)) return blockRow(consonants, vowels, 1f, balancedConsonants(prefs), BALANCED_VOWEL_COLUMNS, 0f, prefs);
         return splitRow(consonants, vowels, 1f, BALANCED_HALF / balancedConsonants(prefs),
                 balancedWidthMax(prefs), prefs);
@@ -719,6 +713,14 @@ public final class KeyboardLayout {
     /** 한 줄을 반으로 나눈다: 앞쪽 절반(홀수 개면 한 개 더)은 왼쪽 절반에, 나머지는 오른쪽 절반에 놓는다. */
     private static Row splitEven(Row row, Prefs prefs) {
         int n = row.keys.length, leftCount = (n + 1) / 2;
+        Key last = row.keys[n - 1];
+        if (prefs.gridLayout() && n > 2 && row.keys[0].type == Key.SYMBOL_PAGE
+                && (last.type == Key.DELETE || last.type == Key.SPACER)) {
+            // 격자 정렬: 기호 쪽 넘김 키와 ⌫는 맨 아래 줄 기능키와 같은 폭이다.
+            List<Key> leftLetters = new ArrayList<>(), rightLetters = new ArrayList<>();
+            for (int i = 1; i < n - 1; i++) (i < leftCount ? leftLetters : rightLetters).add(row.keys[i]);
+            return gridEdgeRow(row.keys[0], leftLetters, 5, rightLetters, 5, last, row.height, prefs);
+        }
         List<Key> left = new ArrayList<>(), right = new ArrayList<>();
         for (int i = 0; i < n; i++) (i < leftCount ? left : right).add(row.keys[i]);
         return blockRow(left, right, row.height, 5, 5, 0f, prefs);
@@ -854,10 +856,10 @@ public final class KeyboardLayout {
     }
 
     /**
-     * 격자 정렬을 켠 분리 키보드의 셋째 글자 줄: 양 끝의 기능키(leftEdge: Shift·Fn, rightEdge: ⌫)는 맨 아래 줄의 기능키와
+     * 격자 정렬을 켠 분리 키보드의 영어·기호 자판 셋째 줄: 양 끝의 기능키(leftEdge: Shift·기호 쪽 넘김, rightEdge: ⌫)는 맨 아래 줄의 기능키와
      * 같은 폭(격자 키 한 칸 × 덩어리 폭 / 5)이고 각 덩어리의 바깥 끝에 붙는다. 글자 키는 칸 폭(덩어리 폭 / 열 수)으로
      * 안쪽에 놓고, 기능키와 다 들어가지 않으면 줄여 덩어리 안에 넣는다. 남는 폭은 글자 키와 오른쪽 기능키 사이의
-     * 빈 자리(눌러도 반응하지 않음)로 둔다. leftEdge가 없으면(NewSwipe 단모음) 글자 키만 왼쪽 덩어리를 채운다.
+     * 빈 자리(눌러도 반응하지 않음)로 둔다.
      */
     private static Row gridEdgeRow(Key leftEdge, List<Key> leftLetters, int leftCols, List<Key> rightLetters,
                                    int rightCols, Key rightEdge, float height, Prefs prefs) {

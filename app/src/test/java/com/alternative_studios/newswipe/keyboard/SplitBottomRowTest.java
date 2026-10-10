@@ -419,11 +419,16 @@ public class SplitBottomRowTest {
                 KeyboardLayout.Row letters = en.rows[2];
                 assertEquals("Shift = ?123 폭", mode, widthOf(letters, Key.SHIFT, true), 0.001f);
                 assertEquals("⌫ = 엔터 폭", enter, widthOf(letters, Key.DELETE, false), 0.001f);
-                assertEquals("⌫ = 엔터 폭 (한글)", widthOf(koBottom, Key.ENTER, false),
-                        widthOf(ko.rows[2], Key.DELETE, false), 0.001f);
-                if (!d7) {
-                    assertEquals("Shift 자리 = ?123 폭 (한글)", widthOf(koBottom, Key.TO_SYMBOLS, true),
-                            ko.rows[2].keys[0].type == Key.GAP ? ko.rows[2].keys[1].weight : ko.rows[2].keys[0].weight, 0.001f);
+                // 한글 자판의 ⌫는 엔터 폭이 아니라 다른 모음 키와 같은 폭이다.
+                assertEquals("한글 ⌫ = 모음 폭", widthOf(ko.rows[1], Key.CHAR, false), widthOf(ko.rows[2], Key.DELETE, false), 0.001f);
+                for (KeyboardLayout sym : new KeyboardLayout[]{KeyboardLayout.symbols(true, p), KeyboardLayout.symbols2(true, p)}) {
+                    KeyboardLayout.Row third = sym.rows[sym.rows.length - 2];
+                    KeyboardLayout.Row symBottom = sym.rows[sym.rows.length - 1];
+                    assertEquals("기호 쪽 넘김 키 = 맨 아래 왼쪽 기능키 폭", widthOf(symBottom, Key.TO_LETTERS, true),
+                            widthOf(third, Key.SYMBOL_PAGE, true), 0.001f);
+                    assertEquals("기호 자판 ⌫ = 엔터 폭", widthOf(symBottom, Key.ENTER, false),
+                            widthOf(third, Key.DELETE, false), 0.001f);
+                    halves(third);
                 }
                 float total = 0f;
                 for (Key k : letters.keys) total += k.weight;
