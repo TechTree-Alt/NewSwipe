@@ -107,7 +107,7 @@ public class SplitBottomRowTest {
     private static float[] halves(KeyboardLayout.Row row) {
         float x = 0f, ll = -1f, lr = 0f, rl = -1f, rr = 0f;
         for (Key k : row.keys) {
-            if (k.type != Key.GAP && !k.hidden) {
+            if (k.type != Key.GAP && !middleGap(k, x) && !k.hidden) {
                 if (x + k.weight <= 5.001f) {
                     if (ll < 0f) ll = x;
                     lr = x + k.weight;
@@ -123,6 +123,11 @@ public class SplitBottomRowTest {
         return new float[]{ll, lr, rl, rr};
     }
 
+    /** 두 덩어리 사이의 빈 자리(가운데 5칸에 닿거나 걸치는 SPACER)인지. Shift 자리 같은 다른 빈 칸은 키로 센다. */
+    private static boolean middleGap(Key k, float x) {
+        return k.type == Key.SPACER && x <= 5.001f && x + k.weight >= 4.999f;
+    }
+
     @Test
     public void numberKeysFillEachBlockEvenly() throws Exception {
         for (int[] s : SETTINGS) {
@@ -134,7 +139,7 @@ public class SplitBottomRowTest {
                 for (int i = 0; i < 4; i++) assertEquals("숫자 줄은 덩어리와 같은 자리", letters[i], h[i], 0.001f);
                 float x = 0f;
                 for (Key k : l.rows[0].keys) {
-                    if (k.type != Key.GAP) {
+                    if (k.type != Key.GAP && !middleGap(k, x)) {
                         boolean left = x < 5f;
                         float want = left ? (h[1] - h[0]) / 5f : (h[3] - h[2]) / 5f;
                         assertEquals("덩어리 안의 숫자 키 폭은 같습니다", want, k.weight, 0.001f);
@@ -224,7 +229,7 @@ public class SplitBottomRowTest {
                     float x = 0f;
                     int leftKeys = 0, rightKeys = 0;
                     for (Key k : l.rows[r].keys) {
-                        if (k.type != Key.GAP) {
+                        if (k.type != Key.GAP && !middleGap(k, x)) {
                             if (x + k.weight <= 5.001f) leftKeys++;
                             else if (x >= 4.999f) rightKeys++;
                             else throw new AssertionError("키가 가운데를 가로지릅니다: 줄 " + r);
@@ -312,5 +317,28 @@ public class SplitBottomRowTest {
         int spaces = 0;
         for (Key k : KeyboardLayout.english(null).rows[3].keys) if (k.type == Key.SPACE) spaces++;
         assertEquals(1, spaces);
+    }
+
+    @Test
+    public void middleGapDoesNotPressTheNearestKey() throws Exception {
+        boolean seen = false;
+        for (int[] s : SETTINGS) {
+            Prefs p = prefsFor(s, true);
+            for (KeyboardLayout l : new KeyboardLayout[]{KeyboardLayout.korean(p), KeyboardLayout.english(p),
+                    KeyboardLayout.symbols(true, p)}) {
+                for (KeyboardLayout.Row row : l.rows) {
+                    // 왼쪽 덩어리의 마지막 키와 오른쪽 덩어리의 첫 키 사이에는 '가까운 키'로 가는 빈틈(GAP)이 없다.
+                    float x = 0f;
+                    for (Key k : row.keys) {
+                        if (k.type == Key.GAP) {
+                            assertTrue("가운데에 가까운 키로 가는 빈틈", x + k.weight < 4.999f || x > 5.001f);
+                        }
+                        if (k.type == Key.SPACER && x < 5f && x + k.weight > 5f) seen = true;
+                        x += k.weight;
+                    }
+                }
+            }
+        }
+        assertTrue("폭을 줄이면 가운데에 반응하지 않는 빈 자리가 생긴다", seen);
     }
 }

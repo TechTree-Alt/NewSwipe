@@ -453,8 +453,7 @@ public final class SettingsActivity extends Activity {
         splitBox.addView(note(when + " 쓰는 값입니다. "
                 + "왼쪽 덩어리(자음, 숫자 1~5, 스페이스바와 그 왼쪽 키)와 오른쪽 덩어리(모음, 숫자 6~0, 스페이스바와 그 오른쪽 키)가 각각 함께 움직입니다. "
                 + "자음 키 폭·모음 키 폭은 각 덩어리의 폭으로, 100%면 자기 절반을 꽉 채웁니다. 가로 위치는 각 절반 안에서 덩어리가 놓이는 곳입니다 "
-                + "(0 = 왼쪽 끝, 50 = 가운데, 100 = 오른쪽 끝). "
-                + "하단 기능키 폭은 맨 아래 줄의 기호 키·쉼표·지구본 키·온점·엔터 키(스페이스바 제외)의 폭으로, 줄인 만큼 스페이스바가 넓어집니다."));
+                + "(0 = 왼쪽 끝, 50 = 가운데, 100 = 오른쪽 끝)."));
         addKeyAreaControls(splitBox, edit);
         String splitKey = edit.splitKey();
         card.addView(toggle(name + " 분리 키보드",
@@ -503,10 +502,6 @@ public final class SettingsActivity extends Activity {
                 this::refreshLayoutPreview));
         card.addView(slider("모음 가로 위치", p.balancedVowelPosKey(), p.balancedVowelPos(), 0, 100, 5, "",
                 this::refreshLayoutPreview));
-        if (!p.profile().isEmpty()) {
-            // 가로 모드·대화면 분리 키보드에서는 맨 아래 줄 기능키가 너무 넓어 오타가 나기 쉬워 폭을 줄일 수 있다.
-            card.addView(slider("하단 기능키 폭", p.fnKeyWidthKey(), p.fnKeyWidth(), 40, 100, 5, "%", this::refreshLayoutPreview));
-        }
     }
 
     // ---------------------------------------------------------------- 한 손 모드

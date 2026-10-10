@@ -365,7 +365,7 @@ public final class KeyboardLayout {
         if (at < 0) return row;
         int first = at;
         float gap = 0f;
-        while (first > 0 && row.keys[first - 1].type == Key.GAP) {
+        while (first > 0 && (row.keys[first - 1].type == Key.GAP || row.keys[first - 1].type == Key.SPACER)) {
             first--;
             gap += row.keys[first].weight;
         }
@@ -373,7 +373,8 @@ public final class KeyboardLayout {
         if (w < 0.05f) return row;
         List<Key> keys = new ArrayList<>();
         for (int i = 0; i < first; i++) keys.add(row.keys[i]);
-        if (gap - w > 0.001f) keys.add(fn(Key.GAP, "", gap - w));
+        // 남는 빈 자리는 원래 성질(가운데 빈 자리는 눌러도 반응하지 않음)을 지킨다.
+        if (gap - w > 0.001f) keys.add(fn(row.keys[first].type, "", gap - w));
         hidden.weight = w;
         keys.add(hidden);
         for (int i = at; i < row.keys.length; i++) keys.add(row.keys[i]);
@@ -714,7 +715,7 @@ public final class KeyboardLayout {
 
     /**
      * 맨 아래 줄의 키들을 하단 키 완전 사용자화의 순서·표시 여부대로 keys에 담는다 (스페이스바 제외).
-     * 기호 키·엔터 키는 1.5칸, 나머지는 1칸이다 (격자 정렬이면 모두 한글 키 한 칸, 분리 키보드면 '하단 기능키 폭'만큼 줄인다).
+     * 기호 키·엔터 키는 1.5칸, 나머지는 1칸이다 (격자 정렬이면 모두 한글 키 한 칸).
      *
      * @return 스페이스바가 들어갈 자리 (keys 안의 번호). 스페이스바를 없앴으면 -1.
      */
@@ -723,12 +724,6 @@ public final class KeyboardLayout {
         // 격자 정렬: 기능키를 모두 한글 글자 키 한 칸 폭으로 맞춰 한글 자판이 반듯한 격자가 되게 한다.
         boolean grid = prefs != null && prefs.gridLayout();
         float wideW = grid ? gridKey(prefs) : 1.5f, narrowW = grid ? gridKey(prefs) : 1f;
-        // 분리 키보드(가로 모드·대화면)에서는 기능키 폭을 줄일 수 있다. 줄어든 만큼 스페이스바가 넓어진다.
-        if (prefs != null) {
-            float fnScale = prefs.fnKeyWidth() / 100f;
-            wideW *= fnScale;
-            narrowW *= fnScale;
-        }
         String[] order = prefs == null ? BottomKeys.DEFAULT_ORDER : prefs.bottomKeyOrder();
         int spaceAt = -1;
         for (String id : order) {
@@ -838,12 +833,15 @@ public final class KeyboardLayout {
         return blockLine(left, ls, lw, right, rs, rw, height);
     }
 
-    /** 왼쪽 키들(ls부터 lw 폭)과 오른쪽 키들(rs부터 rw 폭)을 잇고, 앞·가운데·뒤를 빈틈으로 채워 10칸 줄을 만든다. */
+    /**
+     * 왼쪽 키들(ls부터 lw 폭)과 오른쪽 키들(rs부터 rw 폭)을 잇고, 앞·가운데·뒤를 빈 자리로 채워 10칸 줄을 만든다.
+     * 가운데 빈 자리는 눌러도 반응하지 않는다(SPACER). 양 바깥의 빈틈은 누르면 가까운 키가 눌린다(GAP).
+     */
     private static Row blockLine(List<Key> left, float ls, float lw, List<Key> right, float rs, float rw, float height) {
         List<Key> keys = new ArrayList<>();
         if (ls > 0.001f) keys.add(fn(Key.GAP, "", ls));
         keys.addAll(left);
-        if (rs - ls - lw > 0.001f) keys.add(fn(Key.GAP, "", rs - ls - lw));
+        if (rs - ls - lw > 0.001f) keys.add(fn(Key.SPACER, "", rs - ls - lw));
         keys.addAll(right);
         if (SPACE_ROW_UNITS - rs - rw > 0.001f) keys.add(fn(Key.GAP, "", SPACE_ROW_UNITS - rs - rw));
         return new Row(height, keys.toArray(new Key[0]));

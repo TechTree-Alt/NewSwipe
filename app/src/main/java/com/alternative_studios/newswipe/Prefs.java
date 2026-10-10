@@ -55,7 +55,6 @@ public final class Prefs {
     public static final String BALANCED_LAYOUT = "balanced_layout";
     /** 가로 모드 분리 키보드: 가로 모드에서 자·모음 균형 레이아웃으로 자판을 나눈다. 한글 배열마다 따로 저장한다: 이 이름 + "_" + 배열 값. */
     public static final String LANDSCAPE_SPLIT = "landscape_split";
-    public static final String FN_KEY_WIDTH_LAND = "fn_key_width_land";            // 가로 모드 분리 키보드: 하단 기능키 폭(%)
     public static final String LANDSCAPE_SIZE = "landscape_size";                  // 가로 모드 분리 키보드: 키보드 높이·글자 크기를 따로 정하기
     /** 실험실 '대화면 별도 레이아웃': 대화면(폴더블 내부 화면 등)에서는 가로·세로 키보드를 따로 정한 값으로 쓴다. */
     public static final String LARGE_LAYOUT = "large_layout";
@@ -296,7 +295,7 @@ public final class Prefs {
     /** 메뉴별로 키 앞부분이 같은 값들 (배열·방향·칸마다 따로 저장하는 값). */
     private static final java.util.Map<String, String[]> MENU_PREFIXES = new java.util.HashMap<>();
     static {
-        MENU_KEYS.put("layout", keys(KOREAN_LAYOUT, GRID_LAYOUT, NUMBER_ROW, LANDSCAPE_SPLIT, LANDSCAPE_SIZE, FN_KEY_WIDTH_LAND,
+        MENU_KEYS.put("layout", keys(KOREAN_LAYOUT, GRID_LAYOUT, NUMBER_ROW, LANDSCAPE_SPLIT, LANDSCAPE_SIZE,
                 KEYBOARD_HEIGHT_LAND, KEY_TEXT_SIZE_LAND,
                 BOTTOM_KEY_ORDER, COMMA_CHAR, PERIOD_CHAR, MODE_KEY_HIDDEN, PERIOD_COMMA, LANGUAGE_KEY_HIDDEN, SPACE_KEY_HIDDEN,
                 PERIOD_KEY_HIDDEN, ENTER_KEY_HIDDEN, DELETE_KEY_HIDDEN, KOREAN_SHIFT_HIDDEN, KOREAN_SHIFT_FN));
@@ -375,7 +374,7 @@ public final class Prefs {
     /** 프로필 사용자화 화면(가로 모드·대화면)의 이 프로필 값. 그 프로필의 편집 보기(profileEditView)에서 부른다. */
     public void resetProfileArea() {
         resetBalancedKeys();
-        removeKeys(new String[]{splitKey(), sizeKey(), heightKey(), textSizeKey(), fnKeyWidthKey(), oneHandWidthKey()},
+        removeKeys(new String[]{splitKey(), sizeKey(), heightKey(), textSizeKey(), oneHandWidthKey()},
                 new String[]{splitKey() + "_"});   // 예전에 배열마다 저장하던 분리 키보드 값도 함께
     }
 
@@ -608,17 +607,6 @@ public final class Prefs {
     public String sizeKey() { return large() ? LARGE_PREFIX + "size_" + largeSide() : LANDSCAPE_SIZE; }
     public String heightKey() { return large() ? LARGE_PREFIX + KEYBOARD_HEIGHT + "_" + largeSide() : KEYBOARD_HEIGHT_LAND; }
     public String textSizeKey() { return large() ? LARGE_PREFIX + KEY_TEXT_SIZE + "_" + largeSide() : KEY_TEXT_SIZE_LAND; }
-
-    /** 이 프로필의 '하단 기능키 폭' 설정 키. */
-    public String fnKeyWidthKey() { return large() ? LARGE_PREFIX + "fn_key_width_" + largeSide() : FN_KEY_WIDTH_LAND; }
-
-    /**
-     * 분리 키보드(가로 모드, 대화면 세로·가로)에서 맨 아래 줄 기능키(스페이스바 제외)의 폭 (보통 폭의 %, 40~100).
-     * 분리 키보드가 아니면 늘 100이다.
-     */
-    public int fnKeyWidth() {
-        return profileValues() ? clamp(sp.getInt(fnKeyWidthKey(), 100), 40, 100) : 100;
-    }
 
     /** 이 프로필에서 자판을 자음(왼쪽)·모음(오른쪽)으로 나누는지. 한글 배열과 상관없이 켜고 끈 상태가 유지된다. 세로 모드는 늘 false. */
     public boolean profileSplit() {
