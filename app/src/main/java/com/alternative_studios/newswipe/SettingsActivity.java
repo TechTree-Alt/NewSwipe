@@ -133,13 +133,13 @@ public final class SettingsActivity extends Activity {
     private static final String[][] SECTIONS = {
             {"layout", "자판 레이아웃", "한글 자판 배열, 숫자 줄, 기능키 배열"},
             {"theme", "테마", "화면 모드, 강조 색"},
-            {"look", "자판 모양", "키보드 높이, 글자 크기, 여백, 이모지 크기"},
+            {"look", "자판 모양", "키보드 높이, 글자 크기, 여백"},
             {"input", "입력 동작", "쌍자음, 이중모음, 자동 대소문자, 마침표"},
             {"keys", "길게 누르기", "문자 입력, 기능키 길게 누르기"},
             {"swipe", "밀어서 글자 입력", "쌍자음, 이중모음, 완전 사용자화"},
             {"swipefn", "밀어서 기능", "기능키·도구 막대 밀기, 완전 사용자화"},
             {"feedback", "소리 및 진동", "키를 누를 때의 진동과 소리"},
-            {"tools", "도구 막대와 클립보드", "도구 막대 버튼·위치·높이, 클립보드 기록"},
+            {"tools", "도구 막대, 클립보드, 이모지", "도구 막대 버튼·위치·높이, 클립보드 기록, 이모지 크기·추천"},
             {"words", "단어 추천", "단어 추천, 단축어, 자동 수정, 입력한 단어 학습"},
             {"onehand", "한 손 모드", "자판 폭·키 높이, 세로 위치"},
             {"backup", "설정 가져오기 및 내보내기", "모든 설정을 파일로 저장하거나 불러오기"},
@@ -325,7 +325,7 @@ public final class SettingsActivity extends Activity {
             {"look", "아래쪽 여백", "패딩 간격"},
             {"look", "키 좌우 여백", "키 간격 갭"},
             {"look", "키 상하 여백", "키 간격 갭"},
-            {"look", "이모지 크기", "이모티콘 크기 글자 키우기 크게 이모지 창"},
+            {"tools", "이모지 크기", "이모티콘 크기 글자 키우기 크게 이모지 창"},
             {"layout", "키 위치·폭 사용자화", "자음 모음 열 폭 위치 배치"},
             {"layout", "자·모음 균형 레이아웃", "자음 모음 반반 균형"},
             {"layout", "가로 모드 키보드 사용자화", "가로 화면 landscape"},
@@ -384,7 +384,7 @@ public final class SettingsActivity extends Activity {
             {"words", "도구 막대 전체를 쓰기", "추천 툴바 전체"},
             {"words", "추천 단어 뒤에 공백 포함", "띄어쓰기 스페이스"},
             {"words", "단어 추천", "자동 완성 예측 추천"},
-            {"words", "이모지 추천", "이모티콘 추천"},
+            {"tools", "이모지 추천", "이모티콘 추천"},
             {"words", "단축어 편집", "줄임말 약어 텍스트 확장"},
             {"words", "단축어 사용", "줄임말 약어 텍스트 확장"},
             {"words", "자동 수정", "오타 교정 자동 고침"},
@@ -840,9 +840,6 @@ public final class SettingsActivity extends Activity {
         pad.addView(slider("아래쪽 여백", Prefs.PAD_BOTTOM, prefs.padBottomDp(), 0, 48, 1, "dp"));
         pad.addView(slider("키 좌우 여백", Prefs.KEY_GAP_X, prefs.keyGapXDp(), 0, 12, 1, "dp"));
         pad.addView(slider("키 상하 여백", Prefs.KEY_GAP_Y, prefs.keyGapYDp(), 0, 20, 1, "dp"));
-
-        LinearLayout emoji = section("이모지 창");
-        emoji.addView(emojiSizeRow());
     }
 
     /** 이모지 창의 이모지 크기 (기본·크게·더 크게). 고르면 아래 견본 글자도 같은 크기로 바뀐다. */
@@ -1743,8 +1740,6 @@ public final class SettingsActivity extends Activity {
                 + "누르면 그 단어로 바꾸고, 학습한 단어를 길게 누르면 학습한 단어에서 지웁니다.",
                 Prefs.SUGGEST_WORDS, prefs.suggestWords(), fullBar));
         suggest.addView(fullBar);
-        suggest.addView(toggle("이모지 추천", "이모지 창을 열면 커서 앞에 쓴 글(마지막 네 단어)에 맞는 이모지를 최근 탭 맨 위 한 줄에 보여 줍니다. "
-                + "비밀번호 입력란에서는 글을 읽지 않습니다.", Prefs.EMOJI_SUGGEST, prefs.emojiSuggest()));
 
         LinearLayout shortcut = section("단축어");
         View shortcutGroup = subGroup(button("단축어 편집", v -> startActivity(new Intent(this, ShortcutEditorActivity.class))));
@@ -2043,6 +2038,11 @@ public final class SettingsActivity extends Activity {
                 })
                 .setNegativeButton("취소", null)
                 .show()));
+
+        LinearLayout emoji = section("이모지");
+        emoji.addView(emojiSizeRow());
+        emoji.addView(toggle("이모지 추천", "이모지 창을 열면 커서 앞에 쓴 글(마지막 네 단어)에 맞는 이모지를 최근 탭 맨 위 한 줄에 보여 줍니다. "
+                + "비밀번호 입력란에서는 글을 읽지 않습니다.", Prefs.EMOJI_SUGGEST, prefs.emojiSuggest()));
     }
 
     /**
