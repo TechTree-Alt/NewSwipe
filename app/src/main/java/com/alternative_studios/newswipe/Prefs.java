@@ -86,6 +86,8 @@ public final class Prefs {
     public static final String SPACE_LANG_SWIPE = "space_lang_swipe";         // 스페이스바를 좌우로 밀어 한/영 전환
     public static final String POPUP_HINT_HIDDEN = "popup_hint_hidden";       // 키 오른쪽 위의 길게 눌러 입력할 문자 힌트 없애기
     // 커서 이동 속도 (%, 100 = 기본). 스페이스바·문자 키, 좌우·상하 따로.
+    public static final String SPLIT_SPACE_JOIN = "split_space_join";   // 분리 키보드: 나뉜 스페이스바를 하나로 잇기
+    public static final String SPLIT_FN_WIDTH = "split_fn_width";       // 분리 키보드(스페이스바를 이었을 때): 하단 기능키 폭(%)
     public static final String SPLIT_GAP_CURSOR = "split_gap_cursor";   // 분리 키보드 가운데 빈 공간을 밀어 커서 이동
     public static final String SPACE_CURSOR_SPEED_H = "space_cursor_speed_h";
     public static final String SPACE_CURSOR_SPEED_V = "space_cursor_speed_v";
@@ -297,7 +299,7 @@ public final class Prefs {
     private static final java.util.Map<String, String[]> MENU_PREFIXES = new java.util.HashMap<>();
     static {
         MENU_KEYS.put("layout", keys(KOREAN_LAYOUT, GRID_LAYOUT, NUMBER_ROW, LANDSCAPE_SPLIT, LANDSCAPE_SIZE,
-                KEYBOARD_HEIGHT_LAND, KEY_TEXT_SIZE_LAND, SPLIT_GAP_CURSOR,
+                KEYBOARD_HEIGHT_LAND, KEY_TEXT_SIZE_LAND, SPLIT_GAP_CURSOR, SPLIT_SPACE_JOIN, SPLIT_FN_WIDTH,
                 BOTTOM_KEY_ORDER, COMMA_CHAR, PERIOD_CHAR, MODE_KEY_HIDDEN, PERIOD_COMMA, LANGUAGE_KEY_HIDDEN, SPACE_KEY_HIDDEN,
                 PERIOD_KEY_HIDDEN, ENTER_KEY_HIDDEN, DELETE_KEY_HIDDEN, KOREAN_SHIFT_HIDDEN, KOREAN_SHIFT_FN));
         MENU_PREFIXES.put("layout", keys("balanced_", LANDSCAPE_SPLIT + "_", "swipe_fk_"));
@@ -375,7 +377,8 @@ public final class Prefs {
     /** 프로필 사용자화 화면(가로 모드·대화면)의 이 프로필 값. 그 프로필의 편집 보기(profileEditView)에서 부른다. */
     public void resetProfileArea() {
         resetBalancedKeys();
-        removeKeys(new String[]{splitKey(), sizeKey(), heightKey(), textSizeKey(), oneHandWidthKey(), splitGapCursorKey()},
+        removeKeys(new String[]{splitKey(), sizeKey(), heightKey(), textSizeKey(), oneHandWidthKey(), splitGapCursorKey(),
+                splitSpaceJoinKey(), splitFnWidthKey()},
                 new String[]{splitKey() + "_"});   // 예전에 배열마다 저장하던 분리 키보드 값도 함께
     }
 
@@ -446,6 +449,22 @@ public final class Prefs {
     public boolean spaceCursorH() { return sp.getBoolean(SPACE_CURSOR_H, true); }
     public boolean spaceCursorV() { return sp.getBoolean(SPACE_CURSOR_V, true); }
     public boolean spaceCursor() { return sp.getBoolean(SPACE_CURSOR, true); }
+    /** 이 프로필의 '스페이스바 잇기'와 '하단 기능키 폭' 설정 키. */
+    public String splitSpaceJoinKey() { return large() ? LARGE_PREFIX + SPLIT_SPACE_JOIN + "_" + largeSide() : SPLIT_SPACE_JOIN; }
+    public String splitFnWidthKey() { return large() ? LARGE_PREFIX + SPLIT_FN_WIDTH + "_" + largeSide() : SPLIT_FN_WIDTH; }
+
+    /** 분리 키보드에서 나뉜 스페이스바를 가운데로 이어 하나로 쓰는지 (기본은 꺼짐: 양쪽 덩어리에 하나씩). */
+    public boolean splitSpaceJoin() { return profileValues() && sp.getBoolean(splitSpaceJoinKey(), false); }
+
+    /**
+     * 스페이스바를 이었을 때 스페이스바·Shift·⌫를 뺀 하단 기능키(기호 키·쉼표·지구본·온점·엔터)의 폭 (보통 폭의 %, 50~150).
+     * 스페이스바를 잇지 않았으면 늘 100이다 (나뉜 스페이스바는 덩어리의 남는 폭을 모두 쓴다).
+     */
+    public int splitFnWidth() { return splitSpaceJoin() ? splitFnWidthSetting() : 100; }
+
+    /** 저장된 '하단 기능키 폭' 값 (스페이스바를 잇지 않아도 설정 화면이 보여 주도록). */
+    public int splitFnWidthSetting() { return Math.max(50, Math.min(150, sp.getInt(splitFnWidthKey(), 100))); }
+
     /** 이 프로필(가로 모드, 대화면 세로·가로)의 '가운데 빈 공간을 밀어서 커서 이동' 설정 키. */
     public String splitGapCursorKey() { return large() ? LARGE_PREFIX + SPLIT_GAP_CURSOR + "_" + largeSide() : SPLIT_GAP_CURSOR; }
 

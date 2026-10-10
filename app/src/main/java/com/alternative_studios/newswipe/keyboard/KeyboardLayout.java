@@ -909,6 +909,7 @@ public final class KeyboardLayout {
         int spaceAt = bottomKeys(modeType, modeLabel, prefs, emojiKey, keys);
         int cut = spaceAt >= 0 ? spaceAt : (keys.size() + 1) / 2;
         List<Key> left = new ArrayList<>(keys.subList(0, cut)), right = new ArrayList<>(keys.subList(cut, keys.size()));
+        if (spaceAt >= 0 && prefs.splitSpaceJoin()) return joinedSpaceRow(left, right, b, prefs);
         for (Key k : left) k.weight *= b[1] / BALANCED_HALF;
         for (Key k : right) k.weight *= b[3] / BALANCED_HALF;
         fillSpan(left, b[1], spaceAt >= 0 ? left.size() : -1);
@@ -916,6 +917,28 @@ public final class KeyboardLayout {
         dropEmptySpace(left);
         dropEmptySpace(right);
         return blockLine(left, b[0], width(left), right, b[2], width(right), 1f);
+    }
+
+    /**
+     * 스페이스바를 이은 맨 아래 줄: 왼쪽 키들은 왼쪽 덩어리의 왼쪽 끝에, 오른쪽 키들은 오른쪽 덩어리의 오른쪽 끝에 놓고
+     * 그 사이를 가운데를 가로지르는 스페이스바 하나가 채운다. 기능키 폭은 덩어리 폭에 비례하고 '하단 기능키 폭'만큼 늘이거나 줄인다.
+     * 키들만으로 줄보다 넓어지면 같은 비율로 줄인다.
+     */
+    private static Row joinedSpaceRow(List<Key> left, List<Key> right, float[] b, Prefs prefs) {
+        float fnScale = prefs.splitFnWidth() / 100f;
+        for (Key k : left) k.weight *= b[1] / BALANCED_HALF * fnScale;
+        for (Key k : right) k.weight *= b[3] / BALANCED_HALF * fnScale;
+        float span = b[2] + b[3] - b[0], lw = width(left), rw = width(right);
+        if (lw + rw > span) {
+            float f = span / (lw + rw);
+            for (Key k : left) k.weight *= f;
+            for (Key k : right) k.weight *= f;
+            lw *= f;
+            rw *= f;
+        }
+        float space = Math.max(0f, span - lw - rw);
+        left.add(spaceKey(space));
+        return blockLine(left, b[0], lw + space, right, b[0] + lw + space, rw, 1f);
     }
 
     /** 폭이 거의 없는 스페이스바는 빼 둔다 (기능키만으로 덩어리가 찬 경우). */

@@ -538,4 +538,43 @@ public class SplitBottomRowTest {
         assertEquals(3f, to - from, 0.001f);
         assertEquals(100, KeyboardLayout.balancedWidthMax(p));
     }
+
+    @Test
+    public void joinedSpaceBarCrossesTheMiddleAndFunctionKeyWidthApplies() throws Exception {
+        for (int[] s : SETTINGS) {
+            FakeSp sp = new FakeSp();
+            Prefs p = landscapeEditView(sp);
+            sp.m.put(p.balancedConsonantPosKey(), s[0]);
+            sp.m.put(p.balancedVowelPosKey(), s[1]);
+            sp.m.put(p.balancedConsonantWidthKey(), s[2]);
+            sp.m.put(p.balancedVowelWidthKey(), s[3]);
+            sp.m.put(p.splitFnWidthKey(), 50);
+            // 스페이스바를 잇지 않으면 기능키 폭 설정은 쓰지 않는다.
+            KeyboardLayout.Row apart = KeyboardLayout.korean(p).rows[3];
+            float modeApart = widthOf(apart, Key.TO_SYMBOLS, true);
+            int spaces = 0;
+            for (Key k : apart.keys) if (k.type == Key.SPACE) spaces++;
+            assertEquals(2, spaces);
+            sp.m.put(p.splitSpaceJoinKey(), true);
+            for (KeyboardLayout l : new KeyboardLayout[]{KeyboardLayout.korean(p), KeyboardLayout.english(p),
+                    KeyboardLayout.symbols(true, p)}) {
+                KeyboardLayout.Row row = l.rows[l.rows.length - 1];
+                float x = 0f, total = 0f, spaceFrom = -1f, spaceTo = 0f;
+                int count = 0;
+                for (Key k : row.keys) {
+                    if (k.type == Key.SPACE) { count++; spaceFrom = x; spaceTo = x + k.weight; }
+                    x += k.weight;
+                    total += k.weight;
+                }
+                assertEquals(1, count);
+                assertEquals(10f, total, 0.001f);
+                assertTrue("스페이스바가 가운데를 가로지른다", spaceFrom < 5f - 0.01f && spaceTo > 5f + 0.01f);
+            }
+            float modeJoined = widthOf(KeyboardLayout.korean(p).rows[3], Key.TO_SYMBOLS, true);
+            assertEquals("하단 기능키 폭 50%", modeApart / 2f, modeJoined, 0.001f);
+            // 폭 설정은 스페이스바를 이었을 때만 쓴다.
+            sp.m.put(p.splitSpaceJoinKey(), false);
+            assertEquals(modeApart, widthOf(KeyboardLayout.korean(p).rows[3], Key.TO_SYMBOLS, true), 0.001f);
+        }
+    }
 }

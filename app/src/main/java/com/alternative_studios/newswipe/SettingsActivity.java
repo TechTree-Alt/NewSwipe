@@ -464,6 +464,23 @@ public final class SettingsActivity extends Activity {
                 }));
         card.addView(splitBox);
 
+        // 맨 아래 줄: 나뉜 스페이스바를 이을지, 이었을 때 하단 기능키 폭
+        LinearLayout bottom = section(name + " 분리 키보드 맨 아래 줄");
+        View fnWidth = subGroup(
+                slider("하단 기능키 폭", edit.splitFnWidthKey(), edit.splitFnWidthSetting(), 50, 150, 5, "%", this::refreshLayoutPreview),
+                note("스페이스바·Shift·⌫를 뺀 맨 아래 줄 키(기호 키·쉼표·지구본·온점·엔터)의 폭입니다. "
+                        + "줄이거나 늘린 만큼 스페이스바가 늘거나 줄어듭니다."));
+        fnWidth.setVisibility(edit.splitSpaceJoin() ? View.VISIBLE : View.GONE);
+        String joinKey = edit.splitSpaceJoinKey();
+        bottom.addView(toggle("스페이스바 잇기",
+                when + " 쓰는 값입니다. 양쪽 덩어리에 하나씩 나뉜 스페이스바를 가운데로 이어 하나로 만듭니다.",
+                edit.splitSpaceJoin(), on -> {
+                    prefs.raw().edit().putBoolean(joinKey, on).apply();
+                    Ui.setVisibleAnimated(fnWidth, on);
+                    refreshLayoutPreview();
+                }));
+        bottom.addView(fnWidth);
+
         // 두 덩어리 사이의 빈 공간: 프로필마다 따로 정한다.
         LinearLayout gap = section(name + " 분리 키보드 가운데 빈 공간");
         gap.addView(toggle("밀어서 커서 이동",
