@@ -335,13 +335,6 @@ public final class SettingsActivity extends Activity {
         landscape.addView(button("가로 모드 키보드 사용자화", v -> openSection(LANDSCAPE_AREA)));
         landscape.addView(note("화면을 가로로 돌렸을 때의 자판 모양을 따로 정합니다."));
 
-        LinearLayout keyLayout = section("키 정렬");
-        // 바꾸면 위의 미리보기도 바로 다시 그린다.
-        keyLayout.addView(toggle("격자 정렬", GRID_DESC, prefs.gridLayout(), on -> {
-            prefs.raw().edit().putBoolean(Prefs.GRID_LAYOUT, on).apply();
-            refreshLayoutPreview();
-        }));
-
         LinearLayout numberKeys = section("숫자 키");
         numberKeys.addView(toggle("숫자 줄 표시", "자판 위에 1~0 숫자 줄을 보여 줍니다.", prefs.numberRow(), on -> {
             prefs.raw().edit().putBoolean(Prefs.NUMBER_ROW, on).apply();
@@ -352,6 +345,13 @@ public final class SettingsActivity extends Activity {
         layoutKeys.addView(button("기능키 순서·유무 사용자화", v ->
                 startActivity(new Intent(this, BottomKeysEditorActivity.class))));
         layoutKeys.addView(note("맨 아래 줄 기능키의 순서와 유무를 바꿉니다."));
+
+        LinearLayout keyLayout = section("키 정렬");
+        // 바꾸면 위의 미리보기도 바로 다시 그린다.
+        keyLayout.addView(toggle("격자 정렬", GRID_DESC, prefs.gridLayout(), on -> {
+            prefs.raw().edit().putBoolean(Prefs.GRID_LAYOUT, on).apply();
+            refreshLayoutPreview();
+        }));
     }
 
     /** 고른 한글 배열의 설명. */
