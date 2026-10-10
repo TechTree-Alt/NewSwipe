@@ -383,17 +383,6 @@ public final class SettingsActivity extends Activity {
      */
     private void buildLandscapeArea() {
         addProfileArea(Prefs.PROFILE_LANDSCAPE, "가로 모드", "화면을 가로로 돌렸을 때");
-        addSplitGapSection();
-    }
-
-    /** 분리 키보드 두 덩어리 사이의 빈 공간 설정. 가로 모드와 대화면의 분리 키보드가 함께 쓴다. */
-    private void addSplitGapSection() {
-        LinearLayout gap = section("분리 키보드 가운데 빈 공간");
-        gap.addView(toggle("밀어서 커서 이동",
-                "분리 키보드(가로 모드·대화면)의 두 덩어리 사이 빈 공간을 밀어 커서를 옮깁니다. "
-                        + "좌우·상하 이동과 속도는 스페이스바 설정('밀어서 기능')을 따르고, 가로 모드와 대화면 분리 키보드에 모두 적용됩니다. "
-                        + "끄면 빈 공간은 눌러도 밀어도 반응하지 않습니다.",
-                Prefs.SPLIT_GAP_CURSOR, prefs.splitGapCursor()));
     }
 
     /** 실험실: 아직 시험 중인 기능. */
@@ -448,7 +437,6 @@ public final class SettingsActivity extends Activity {
         pick.addView(note("대화면이 세로일 때와 가로일 때의 키보드 크기·형태를 따로 정합니다."));
         list.addView(portBox);
         list.addView(landBox);
-        addSplitGapSection();
     }
 
     /**
@@ -475,6 +463,13 @@ public final class SettingsActivity extends Activity {
                     Ui.setVisibleAnimated(splitBox, on);
                 }));
         card.addView(splitBox);
+
+        // 두 덩어리 사이의 빈 공간: 프로필마다 따로 정한다.
+        LinearLayout gap = section(name + " 분리 키보드 가운데 빈 공간");
+        gap.addView(toggle("밀어서 커서 이동",
+                when + " 쓰는 값입니다. 분리 키보드의 두 덩어리 사이 빈 공간을 밀어 커서를 옮깁니다. "
+                        + "좌우·상하 이동과 속도는 스페이스바 설정('밀어서 기능')을 따르고, 끄면 빈 공간은 눌러도 밀어도 반응하지 않습니다.",
+                edit.splitGapCursorKey(), edit.splitGapCursor()));
 
         // 키보드 높이·글자 크기: 켜기 전에는 세로 모드('자판 모양')의 값을 그대로 쓴다.
         LinearLayout size = section(name + " 크기");

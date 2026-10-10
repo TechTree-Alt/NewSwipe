@@ -375,7 +375,7 @@ public final class Prefs {
     /** 프로필 사용자화 화면(가로 모드·대화면)의 이 프로필 값. 그 프로필의 편집 보기(profileEditView)에서 부른다. */
     public void resetProfileArea() {
         resetBalancedKeys();
-        removeKeys(new String[]{splitKey(), sizeKey(), heightKey(), textSizeKey(), oneHandWidthKey(), SPLIT_GAP_CURSOR},
+        removeKeys(new String[]{splitKey(), sizeKey(), heightKey(), textSizeKey(), oneHandWidthKey(), splitGapCursorKey()},
                 new String[]{splitKey() + "_"});   // 예전에 배열마다 저장하던 분리 키보드 값도 함께
     }
 
@@ -446,8 +446,14 @@ public final class Prefs {
     public boolean spaceCursorH() { return sp.getBoolean(SPACE_CURSOR_H, true); }
     public boolean spaceCursorV() { return sp.getBoolean(SPACE_CURSOR_V, true); }
     public boolean spaceCursor() { return sp.getBoolean(SPACE_CURSOR, true); }
-    /** 분리 키보드(가로 모드·대화면)의 가운데 빈 공간을 밀어서 커서를 옮기는지. 좌우·상하 이동과 속도는 스페이스바 설정을 따른다. */
-    public boolean splitGapCursor() { return sp.getBoolean(SPLIT_GAP_CURSOR, true); }
+    /** 이 프로필(가로 모드, 대화면 세로·가로)의 '가운데 빈 공간을 밀어서 커서 이동' 설정 키. */
+    public String splitGapCursorKey() { return large() ? LARGE_PREFIX + SPLIT_GAP_CURSOR + "_" + largeSide() : SPLIT_GAP_CURSOR; }
+
+    /**
+     * 분리 키보드의 가운데 빈 공간을 밀어서 커서를 옮기는지. 가로 모드와 대화면 세로·가로가 각각 따로 정한다
+     * (그 프로필의 설정 보기에서 부른다). 좌우·상하 이동과 속도는 스페이스바 설정을 따른다.
+     */
+    public boolean splitGapCursor() { return sp.getBoolean(splitGapCursorKey(), true); }
     public boolean clipboardHistory() { return sp.getBoolean(CLIPBOARD_HISTORY, true); }
     public boolean clipboardImages() { return sp.getBoolean(CLIPBOARD_IMAGES, true); }
     public int keyGapXDp() { return clamp(sp.getInt(KEY_GAP_X, 5), 0, 12); }
