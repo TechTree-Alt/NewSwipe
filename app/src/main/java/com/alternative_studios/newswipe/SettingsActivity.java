@@ -720,14 +720,23 @@ public final class SettingsActivity extends Activity {
         flash(box);
     }
 
-    /** 반투명 강조색을 항목 위에 두 번 깔았다 걷는다 (한 번에 1초쯤, 부드럽게 나타났다 사라진다). */
+    /**
+     * 반투명 강조색을 항목 위에 두 번 깔았다 걷는다 (부드럽게 나타났다 사라진다).
+     * 글자가 칸 가장자리에 붙어 보이지 않도록 항목보다 좌우·위아래로 조금 더 넓게 칠한다. 항목 안에서는 그릴 수 없는 바깥 여백이라
+     * 항목이 아니라 항목을 담은 부모의 위에 그린다.
+     */
     private void flash(View box) {
         int w = box.getWidth(), h = box.getHeight();
         if (w == 0 || h == 0) return;
+        int dx = Ui.dp(this, 10), dy = Ui.dp(this, 2);
+        final View host = box.getParent() instanceof ViewGroup ? (View) box.getParent() : box;
+        android.graphics.Rect bounds = host == box
+                ? new android.graphics.Rect(-dx, -dy, w + dx, h + dy)
+                : new android.graphics.Rect(box.getLeft() - dx, box.getTop() - dy, box.getRight() + dx, box.getBottom() + dy);
         android.graphics.drawable.GradientDrawable d = Ui.round(accentColor, Ui.dp(this, 12));
-        d.setBounds(0, 0, w, h);
+        d.setBounds(bounds);
         d.setAlpha(0);
-        box.getOverlay().add(d);
+        host.getOverlay().add(d);
         android.animation.ValueAnimator pulse = android.animation.ValueAnimator.ofFloat(0f, 1f);
         pulse.setDuration(2000);
         pulse.addUpdateListener(a -> {
@@ -736,7 +745,7 @@ public final class SettingsActivity extends Activity {
         });
         pulse.addListener(new android.animation.AnimatorListenerAdapter() {
             @Override public void onAnimationEnd(android.animation.Animator animation) {
-                box.getOverlay().remove(d);
+                host.getOverlay().remove(d);
             }
         });
         pulse.start();
@@ -751,11 +760,19 @@ public final class SettingsActivity extends Activity {
         return hidden;
     }
 
-    /** 접힌 칸을 열고 닫는 설정: 같은 부모 안에서 그 칸 바로 앞에 있는 보이는 줄. 없으면 null. */
+    /**
+     * 접힌 칸을 열고 닫는 설정: 같은 부모 안에서 그 칸 바로 앞에 있는 보이는 줄.
+     * 앞에 보이는 줄이 없으면 바로 뒤에 있는 보이는 줄 (예: 접힌 설정 아래에 '사용자화' 버튼만 있는 경우). 둘 다 없으면 null.
+     */
     private static View controllerOf(View hidden) {
         if (!(hidden.getParent() instanceof ViewGroup)) return null;
         ViewGroup parent = (ViewGroup) hidden.getParent();
-        for (int i = parent.indexOfChild(hidden) - 1; i >= 0; i--) {
+        int at = parent.indexOfChild(hidden);
+        for (int i = at - 1; i >= 0; i--) {
+            View sibling = parent.getChildAt(i);
+            if (sibling.getVisibility() == View.VISIBLE && sibling.getHeight() > 2) return sibling;
+        }
+        for (int i = at + 1; i < parent.getChildCount(); i++) {
             View sibling = parent.getChildAt(i);
             if (sibling.getVisibility() == View.VISIBLE && sibling.getHeight() > 2) return sibling;
         }
