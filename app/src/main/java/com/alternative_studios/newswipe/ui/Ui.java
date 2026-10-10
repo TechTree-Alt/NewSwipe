@@ -103,6 +103,15 @@ public final class Ui {
         return row;
     }
 
+    /**
+     * 선택 줄의 칸들이 누를 때 내는 기본 진동(누르는 순간·고르는 순간)을 끈다.
+     * 진동 설정처럼 고른 항목의 진동만 또렷하게 느껴야 하는 곳에서 쓴다.
+     */
+    public static <T extends android.view.ViewGroup> T muteHaptics(T row) {
+        for (int i = 0; i < row.getChildCount(); i++) row.getChildAt(i).setHapticFeedbackEnabled(false);
+        return row;
+    }
+
     /** Android 15부터 화면이 시스템 바 뒤까지 그려지므로 시스템 바·키보드·노치만큼 안쪽 여백을 준다. */
     public static void padForSystemBars(android.view.View v) {
         if (android.os.Build.VERSION.SDK_INT < 35) return;

@@ -1377,10 +1377,10 @@ public final class SettingsActivity extends Activity {
             t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
             box.addView(t);
         }
-        box.addView(choiceRowNow(LEVEL_LABELS, Math.max(1, Math.min(3, level)) - 1, i -> {
+        box.addView(Ui.muteHaptics(choiceRowNow(LEVEL_LABELS, Math.max(1, Math.min(3, level)) - 1, i -> {
             prefs.raw().edit().putInt(key, i + 1).apply();
             previewVibration(i + 1);
-        }));
+        })));
         return box;
     }
 
@@ -1395,11 +1395,12 @@ public final class SettingsActivity extends Activity {
                 () -> previewVibration(0)));
         customGroup.addView(note("강도는 진동 세기를 조절할 수 있는 기기에서만 적용됩니다."));
         customGroup.setVisibility(prefs.vibrateStyle() == 3 ? View.VISIBLE : View.GONE);
-        View styleRow = choiceRowNow(new String[]{"약하게", "기본", "강하게", "직접 설정"}, prefs.vibrateStyle(), i -> {
+        View styleRow = Ui.muteHaptics(choiceRowNow(new String[]{"약하게", "기본", "강하게", "직접 설정"},
+                prefs.vibrateStyle(), i -> {
             prefs.raw().edit().putInt(Prefs.VIBRATE_STYLE, i).apply();
             Ui.setVisibleAnimated(customGroup, i == 3);
             previewVibration(0);
-        });
+        }));
         LinearLayout perKeyBox = new LinearLayout(this);
         perKeyBox.setOrientation(LinearLayout.VERTICAL);
         perKeyBox.addView(levelRow("지우기 키", Prefs.VIBRATE_DELETE, prefs.vibrateDelete()));
