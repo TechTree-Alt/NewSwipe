@@ -329,12 +329,14 @@ public final class KeyboardLayout {
         for (int r = 0; r < 3; r++) {
             Key[] letters = letterKeys(ENGLISH_ROWS[r], ENGLISH_POPUPS[r], false, prefs);
             List<Key> left = new ArrayList<>(), right = new ArrayList<>();
-            if (r == 2) left.add(fn(Key.SHIFT, "", 1f));
+            // 셋째 줄은 일반 자판처럼 Shift·⌫가 글자 키의 1.5배 폭이다.
+            if (r == 2) left.add(fn(Key.SHIFT, "", 1.5f));
             for (int i = 0; i < letters.length; i++) (i < leftCount[r] ? left : right).add(letters[i]);
-            if (r == 2) right.add(fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1f));
+            if (r == 2) right.add(fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1.5f));
             Key host = right.get(0);   // 오른쪽 절반 맨 왼쪽 키: h, b
             // 둘째 줄(a~l)은 일반 자판처럼 반 칸 들인다: a~g는 오른쪽으로 반 칸, h~l은 덩어리 가운데에 놓여 양쪽에 반 칸씩 빈다.
-            Row row = blockRow(left, right, 1f, 5, 5, r == 1 ? 0.5f : 0f, prefs);
+            Row row = r == 2 ? edgeRow(left, right, 1f, 5, prefs)
+                    : blockRow(left, right, 1f, 5, 5, r == 1 ? 0.5f : 0f, prefs);
             // h 왼쪽의 빈 자리를 누르면 g가, b 왼쪽의 빈 자리를 누르면 v가 입력된다 (왼손·오른손 모두 치기 쉽게).
             // 키를 더 그리는 것이 아니라서 줄의 폭과 열은 그대로다.
             if (r > 0) row = withHiddenKey(row, host, hiddenCopyOf(letters[leftCount[r] - 1]));
@@ -838,7 +840,27 @@ public final class KeyboardLayout {
     }
 
     /**
-     * 왼쪽 키들(ls부터 lw 폭)과 오른쪽 키들(rs부터 rw 폭)을 잇고, 앞·가운데·뒤를 빈 자리로 채워 10칸 줄을 만든다.
+     * 양 끝의 기능키(Shift, ⌫)가 있는 영어 자판 셋째 줄. 일반 자판처럼 글자 키 한 칸(덩어리 폭 / columns)을 기준으로
+     * Shift와 ⌫가 1.5칸 폭이고, Shift는 왼쪽 덩어리의 왼쪽 끝에, ⌫는 오른쪽 덩어리의 오른쪽 끝에 붙는다.
+     * 글자 키는 그 사이에서 다른 줄과 같은 칸 폭을 쓰고, 두 덩어리가 가운데에서 겹치면 같은 비율로 줄인다.
+     */
+    private static Row edgeRow(List<Key> left, List<Key> right, float height, int columns, Prefs prefs) {
+        float[] b = blocks(prefs);
+        float uLeft = b[1] / columns, uRight = b[3] / columns;
+        float lw = 0f, rw = 0f;
+        for (Key k : left) lw += k.weight * uLeft;
+        for (Key k : right) rw += k.weight * uRight;
+        float end = b[2] + b[3], start = b[0];
+        float f = Math.min(1f, (end - start) / (lw + rw));
+        for (Key k : left) k.weight *= uLeft * f;
+        for (Key k : right) k.weight *= uRight * f;
+        lw *= f;
+        rw *= f;
+        return blockLine(left, start, lw, right, end - rw, rw, height);
+    }
+
+    /**
+     * 왼쪽 키들(rs부터 rw 폭)을 잇고, 앞·가운데·뒤를 빈 자리로 채워 10칸 줄을 만든다.
      * 가운데 빈 자리는 눌러도 반응하지 않는다(SPACER). 양 바깥의 빈틈은 누르면 가까운 키가 눌린다(GAP).
      */
     private static Row blockLine(List<Key> left, float ls, float lw, List<Key> right, float rs, float rw, float height) {

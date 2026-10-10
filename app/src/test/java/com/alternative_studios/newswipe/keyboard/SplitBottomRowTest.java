@@ -367,4 +367,28 @@ public class SplitBottomRowTest {
         for (KeyboardLayout.Row row : l.rows) java.util.Collections.addAll(all, row.keys);
         return all;
     }
+
+    @Test
+    public void englishBottomLetterRowHasWideShiftAndDeleteAtTheEdges() throws Exception {
+        for (int[] s : SETTINGS) {
+            Prefs p = prefsFor(s, false);
+            KeyboardLayout l = KeyboardLayout.english(p);
+            KeyboardLayout.Row row = l.rows[2];
+            float x = 0f, shiftAt = -1f, shiftW = 0f, delEnd = -1f, delW = 0f, letterW = 0f, rightLetterW = 0f, firstLetterAt = -1f;
+            for (Key k : row.keys) {
+                if (k.type == Key.SHIFT) { shiftAt = x; shiftW = k.weight; }
+                if (k.type == Key.DELETE) { delEnd = x + k.weight; delW = k.weight; }
+                if (k.type == Key.CHAR && !k.hidden && firstLetterAt < 0f) { firstLetterAt = x; letterW = k.weight; }
+                if (k.type == Key.CHAR && !k.hidden) rightLetterW = k.weight;   // 마지막 글자(m): 오른쪽 덩어리의 칸 폭
+                x += k.weight;
+            }
+            float[] top = extent(l.rows[0]);   // q ~ p (첫 글자 줄): 덩어리의 양 끝
+            assertEquals("Shift는 왼쪽 덩어리의 왼쪽 끝에", top[0], shiftAt, 0.001f);
+            assertEquals("⌫는 오른쪽 덩어리의 오른쪽 끝에", top[1], delEnd, 0.001f);
+            assertEquals("Shift는 글자 키의 1.5배", 1.5f * letterW, shiftW, 0.001f);
+            assertEquals("⌫도 (오른쪽 덩어리의) 글자 키의 1.5배", 1.5f * rightLetterW, delW, 0.001f);
+            assertEquals("z는 Shift 바로 옆", shiftAt + shiftW, firstLetterAt, 0.001f);
+            assertEquals(10f, x, 0.001f);
+        }
+    }
 }
