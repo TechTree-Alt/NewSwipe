@@ -754,8 +754,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         float scale = prefs.toolButtonSize() / 100f;
         int width = Math.round(Ui.dp(this, 40) * scale);
         float icon = Ui.dp(this, 22) * scale;
-        // 버튼마다 자동 완성 칩과 같은 모양의 칩 배경을 씌운다: 설정 메뉴 아이콘처럼 강조 색을 옅게 깐 둥근 바탕,
-        // 높이는 칩 높이, 좌우는 2dp씩 띄운다. 아이콘은 글자 색이다.
+        // 버튼마다 자동 완성 칩과 같은 모양의 칩 배경을 씌운다: 기능키 색 둥근 바탕(누르는 버튼이라 기능키와 같은 색을 쓰고,
+        // 흰 키 색은 복사한 내용·자동 완성 같은 내용 칩에 남겨 둔다), 높이는 칩 높이, 좌우는 2dp씩 띄운다. 아이콘은 글자 색이다.
+        // 눌린 키 색은 밝은 테마의 기능키 색과 거의 같아서, 누를 때는 글자 색을 옅게 덮어 눌린 것이 보이게 한다.
         int chipH = Ui.chipHeight(this, toolbarHeight);
         int insetV = Math.max(0, (toolbarHeight - chipH) / 2);
         int insetH = Ui.dp(this, 2);
@@ -768,7 +769,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 v.setLayoutParams(lp);
             }
             ((IconButton) v).setIconSize(icon);
-            ((IconButton) v).setChip(Ui.tint(theme.accent), theme.keyPressed, insetH, insetV, Ui.chipRadius(this));
+            ((IconButton) v).setChip(theme.functionKey, Ui.tint(theme.text), insetH, insetV, Ui.chipRadius(this));
         }
         if (editBar != null) {
             LinearLayout row = (LinearLayout) editBar.getChildAt(0);
