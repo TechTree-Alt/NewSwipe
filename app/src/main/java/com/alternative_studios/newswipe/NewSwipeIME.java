@@ -129,7 +129,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private View autofillBar;
     private View toolSpacer;
     /** 방금 복사한 내용을 붙여 넣는 칩과 그 자리 (도구 막대 안, 왼쪽·오른쪽 도구 버튼 사이의 빈 공간). */
-    private FrameLayout clipChipSlot;
+    private ClipChip.Slot clipChipSlot;
     private ClipChip clipChip;
     /** 도구 막대 버튼 배치 {왼쪽, 오른쪽} (ToolbarButtons ID). 바뀌었을 때만 버튼을 다시 놓는다. */
     private String[][] toolOrder;
@@ -183,7 +183,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
      * 믿고 쓸 수 있다 (키보드를 내렸다 다시 올리면 같은 EditorInfo가 다시 오므로 그때는 쓰지 않는다).
      */
     private boolean initialTextFresh;
-    /** 방금 복사한 텍스트를 붙여 넣는 칩을 보여 줄 차례인지. 복사한 뒤 CLIP_CHIP_MS가 지나거나 글자를 입력하면 사라진다. */
+    /**
+     * 방금 복사한 텍스트를 붙여 넣는 칩을 보여 줄 차례인지. 복사한 뒤 CLIP_CHIP_MS 동안 유지되고(글자를 입력해도),
+     * 붙여 넣거나 시간이 지나면 사라진다. 추천 단어·자동 완성 칩이 떠 있는 동안에는 그 자리를 양보했다가 다시 뜬다.
+     */
     private boolean clipChipActive;
     /** 칩의 미리보기 (복사한 글의 앞부분 한 줄). 민감한 정보로 표시된 복사면 null이고 내용은 기억하지 않는다. */
     private String clipChipPreview;
@@ -774,9 +777,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 추천 단어 앞의 빈 칸. 분리 키보드에서는 남는 폭을 모두 가져 추천 단어 세 개가 오른쪽 끝에 붙는다. */
     private View suggestLead;
 
-    /** 방금 복사한 내용 칩의 자리. 칩은 왼쪽에 붙고 내용이 길면 자리에 맞게 줄어든다. */
-    private FrameLayout buildClipChipSlot() {
-        FrameLayout slot = new FrameLayout(this);
+    /** 방금 복사한 내용 칩의 자리. 칩은 도구 막대 한가운데에 뜨고(버튼에 밀릴 때만 비켜 간다) 내용이 길면 줄어든다. */
+    private ClipChip.Slot buildClipChipSlot() {
+        ClipChip.Slot slot = new ClipChip.Slot(this);
         slot.setVisibility(View.GONE);
         clipChip = new ClipChip(this, theme.text, theme.hint, theme.key, theme.keyPressed);
         clipChip.setOnClickListener(v -> {
@@ -784,7 +787,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             pasteClipChip();
         });
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER_VERTICAL | Gravity.START);
+                ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
         lp.leftMargin = Ui.dp(this, 4);
         lp.rightMargin = Ui.dp(this, 4);
         slot.addView(clipChip, lp);
@@ -1464,7 +1467,6 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     public void onKeyRepeat(Key key) {
         feedback.onRepeat();
         lastWasSpace = false;
-        dismissClipChip();
         // 탭이 아니라 길게 눌러 입력하는 것이라 연속 탭(쌍자음·이중모음) 판단에서 빠진다.
         typeText(shiftState != 0 && lettersLayout() ? key.shifted : key.output, false);
     }
@@ -1472,8 +1474,6 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     @Override
     public void onKeyTap(Key key) {
         if (key.type != Key.SPACE) lastWasSpace = false;
-        // 글자를 입력하기 시작하면 방금 복사한 내용 칩을 거둔다 (지우기는 붙여 넣기 전에 칸을 비우는 일이 많아 두고 본다).
-        if (key.type == Key.CHAR || key.type == Key.SPACE || key.type == Key.ENTER) dismissClipChip();
         switch (key.type) {
             case Key.CHAR:
                 if (shiftState != 0 && lettersLayout()) {
@@ -1519,14 +1519,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     @Override
     public void onKeySwipe(Key key, String text) {
         lastWasSpace = false;
-        dismissClipChip();
         typeText(text, false);
     }
 
     @Override
     public void onPopupChar(Key key, String text) {
         lastWasSpace = false;
-        dismissClipChip();
         typeText(text, false);
     }
 
@@ -1547,11 +1545,22 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     @Override
     public void onDeleteRepeat() {
-        feedback.onRepeat();
+        // 더 지울 것이 없어 커서가 멈췄으면 진동하지 않는다 (지우기 자체는 예전처럼 보낸다).
+        if (!nothingToDelete()) feedback.onRepeat();
         // 선택 영역 확인(앱에 묻고 기다리는 호출)은 연속 삭제의 첫 번째에서만 한다.
         // 첫 삭제 뒤에는 선택 영역이 사라지므로 이후에는 묻지 않아도 된다.
         handleDelete(deleteRepeatChecked);
         deleteRepeatChecked = true;
+    }
+
+    /**
+     * 연속 삭제에서 더 지울 것이 없는지: 조합 중인 글자도, 선택 영역도 없이 커서가 입력란 맨 앞이다 (검색 중이면 검색어가 비었다).
+     * 앱이 알려 준 커서 위치로 판단해 앱에 묻지 않는다. 위치를 모르면 지울 것이 있다고 본다.
+     */
+    private boolean nothingToDelete() {
+        if (!composer.isEmpty()) return false;
+        if (panel == PANEL_SEARCH) return search.length() == 0;
+        return selStart == 0 && selEnd == 0;
     }
 
     /** 이번 지우기 키 누름에서 선택 영역을 이미 확인했는지. 키를 누를 때마다 초기화된다. */
@@ -2265,7 +2274,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return s.length() > 60 ? s.substring(0, Character.isHighSurrogate(s.charAt(59)) ? 59 : 60) : s;
     }
 
-    /** 칩을 거둔다 (붙여 넣었거나, 글자를 입력했거나, 시간이 지났거나, 클립보드가 비었다). */
+    /** 칩을 거둔다 (붙여 넣었거나, 시간이 지났거나, 클립보드가 비었다). */
     private void dismissClipChip() {
         if (main != null) main.removeCallbacks(expireClipChip);
         if (!clipChipActive) return;
@@ -3011,7 +3020,6 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     @Override
     public void onEmoji(String emoji) {
-        dismissClipChip();   // 이모지를 넣었으면 글자를 입력한 것과 같다
         InputConnection ic = getCurrentInputConnection();
         if (ic != null) {
             if (panel == PANEL_SEARCH) {

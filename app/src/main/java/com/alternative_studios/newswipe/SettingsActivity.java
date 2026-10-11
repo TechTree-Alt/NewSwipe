@@ -2170,9 +2170,7 @@ public final class SettingsActivity extends Activity {
                 Prefs.CLIPBOARD_HISTORY, prefs.clipboardHistory(), clipImages));
         clip.addView(clipImages);
         clip.addView(toggle("방금 복사한 내용 붙여넣기",
-                "복사한 지 1분 안에 키보드를 열면 복사한 텍스트를 도구 막대에 칩으로 보여 주고, 누르면 붙여 넣습니다. "
-                        + "글자를 입력하면 사라집니다. 비밀번호 입력란에서도 쓸 수 있으며, 이때와 비밀번호처럼 민감한 정보로 "
-                        + "표시된 복사는 내용을 가린 채 보여 줍니다. 칩은 내용을 저장하지 않습니다.",
+                "방금 복사한 텍스트를 도구 막대에 1분 간 보여 주어 빠르게 붙여 넣을 수 있게 합니다.",
                 Prefs.CLIPBOARD_CHIP, prefs.clipboardChip()));
         clip.addView(trashButton("클립보드 기록 모두 지우기", v -> AppTheme.dialogBuilder(this)
                 .setTitle("클립보드 기록 모두 지우기")

@@ -7,6 +7,7 @@ import android.text.TextPaint;
 import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.View;
+import android.widget.FrameLayout;
 
 import com.alternative_studios.newswipe.keyboard.Icons;
 
@@ -14,6 +15,7 @@ import com.alternative_studios.newswipe.keyboard.Icons;
  * 방금 복사한 내용을 붙여 넣는 칩: 둥근 바탕에 클립보드 아이콘과 내용 미리보기 한 줄.
  * 자리가 좁으면 글은 뒤를 …로 줄이고, 글을 넣을 자리가 없으면 아이콘만 보인다.
  * 높이는 도구 막대 높이에서 위아래를 조금 남긴 만큼이라 자동 완성 칩과 같은 크기로 보인다.
+ * 칩은 {@link Slot}에 넣어 도구 막대의 한가운데에 놓는다.
  */
 public final class ClipChip extends View {
     private final Paint iconPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -91,6 +93,33 @@ public final class ClipChip extends View {
             Paint.FontMetrics fm = textPaint.getFontMetrics();
             float baseline = cy - (fm.ascent + fm.descent) / 2f;
             canvas.drawText(fitted, 0, fitted.length(), padH + iconSize + gap, baseline, textPaint);
+        }
+    }
+
+    /**
+     * 칩의 자리: 칩을 이 자리가 아니라 부모(도구 막대)의 한가운데에 놓는다. 양옆 도구 버튼 때문에 자리가 한쪽으로
+     * 치우쳐 칩이 가운데에 들어가지 못할 때만 자리 안쪽으로 밀어 넣는다. 칩은 하나만 넣는다.
+     */
+    public static final class Slot extends FrameLayout {
+        public Slot(Context c) {
+            super(c);
+        }
+
+        @Override
+        protected void onLayout(boolean changed, int l, int t, int r, int b) {
+            View c = getChildCount() > 0 ? getChildAt(0) : null;
+            if (c == null || c.getVisibility() == GONE) return;
+            FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) c.getLayoutParams();
+            int w = c.getMeasuredWidth(), h = c.getMeasuredHeight();
+            int slotW = r - l;
+            View parent = getParent() instanceof View ? (View) getParent() : null;
+            int parentW = parent != null && parent.getWidth() > 0 ? parent.getWidth() : slotW;
+            // 도구 막대의 가운데를 이 자리 기준 좌표로 옮겨, 칩의 가운데를 거기에 맞춘다.
+            int left = parentW / 2 - l - w / 2;
+            int max = slotW - lp.rightMargin - w;
+            left = Math.max(lp.leftMargin, Math.min(left, max));
+            int top = (b - t - h) / 2;
+            c.layout(left, top, left + w, top + h);
         }
     }
 }
