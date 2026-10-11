@@ -105,7 +105,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private IconButton voiceButton, undoButton, oneHandButton;
     /**
      * 한 손 모드 배치: body(가로) = [column(도구 막대·검색 결과·자판) | sideStrip(반대편 빈 곳)], 그 아래 liftSpace.
-     * 한 손 모드가 꺼져 있으면 column만 꽉 차게 들어가고 sideStrip·liftSpace는 숨긴다.
+     * 한 손 모드가 꺼져 있으면 column만 꽉 차게 들어가고 sideStrip은 숨긴다. liftSpace는 가로 모드·대화면의
+     * '세로 위치'를 정했을 때만 보인다.
      */
     private LinearLayout body, column, sideStrip;
     private View liftSpace;
@@ -922,14 +923,16 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /**
      * 한 손 모드 배치를 뷰에 반영한다: column을 '자판 폭'만큼만 쓰고 한쪽으로 붙이며, 반대편에 sideStrip을 둔다.
-     * 아래에는 '세로 위치'만큼 빈 칸을 두어 자판을 띄운다.
+     * 아래에는 '세로 위치'만큼 빈 칸을 두어 자판을 띄운다 (한 손 모드가 아니어도 가로 모드·대화면의 세로 위치를 쓴다).
      */
     private void applyOneHand() {
         if (body == null) return;
         String side = activeOneHand();
         boolean on = !Prefs.ONE_HAND_OFF.equals(side);
-        int width = prefs.profileView(profile()).oneHandWidthForProfile();
-        int lift = on ? Ui.dp(this, prefs.oneHandLiftDp()) : 0;
+        Prefs profilePrefs = prefs.profileView(profile());
+        int width = profilePrefs.oneHandWidthForProfile();
+        // 세로 위치: 한 손 모드는 한 손 모드의 값을, 아니면 가로 모드·대화면에서 정한 값을 쓴다 (세로 모드는 0).
+        int lift = Ui.dp(this, on ? prefs.oneHandLiftDp() : profilePrefs.profileLiftDp());
         String signature = side + "/" + width + "/" + lift;
         if (signature.equals(appliedOneHand)) return;
         appliedOneHand = signature;

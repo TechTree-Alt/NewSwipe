@@ -695,6 +695,52 @@ public class SplitBottomRowTest {
         return -1;
     }
 
+    private static Prefs editView(FakeSp sp, String profile) throws Exception {
+        Constructor<Prefs> c = Prefs.class.getDeclaredConstructor(SharedPreferences.class, boolean.class, String.class,
+                boolean.class);
+        c.setAccessible(true);
+        return c.newInstance(sp, false, profile, true);
+    }
+
+    @Test
+    public void largePortraitAndLandscapeShareTheLayoutButNotTheShape() throws Exception {
+        FakeSp sp = new FakeSp();
+        Prefs land = editView(sp, Prefs.PROFILE_LANDSCAPE);
+        Prefs port = editView(sp, Prefs.PROFILE_LARGE_PORTRAIT), largeLand = editView(sp, Prefs.PROFILE_LARGE_LANDSCAPE);
+        // 분리 키보드 레이아웃: 대화면 세로·가로는 같은 키, 가로 모드는 다른 키.
+        assertEquals(port.splitKey(), largeLand.splitKey());
+        assertEquals(port.splitReachColumnKey(), largeLand.splitReachColumnKey());
+        assertEquals(port.splitSpaceJoinKey(), largeLand.splitSpaceJoinKey());
+        assertEquals(port.splitFnWidthKey(), largeLand.splitFnWidthKey());
+        assertTrue(!land.splitKey().equals(port.splitKey()));
+        assertTrue(!land.splitReachColumnKey().equals(port.splitReachColumnKey()));
+        assertTrue(!land.splitSpaceJoinKey().equals(port.splitSpaceJoinKey()));
+        // 분리 키보드 모양: 셋 모두 다른 키.
+        for (String[] keys : new String[][]{
+                {land.balancedConsonantWidthKey(), port.balancedConsonantWidthKey(), largeLand.balancedConsonantWidthKey()},
+                {land.balancedVowelPosKey(), port.balancedVowelPosKey(), largeLand.balancedVowelPosKey()},
+                {land.heightKey(), port.heightKey(), largeLand.heightKey()},
+                {land.textSizeKey(), port.textSizeKey(), largeLand.textSizeKey()},
+                {land.liftKey(), port.liftKey(), largeLand.liftKey()}}) {
+            assertTrue(!keys[0].equals(keys[1]) && !keys[0].equals(keys[2]) && !keys[1].equals(keys[2]));
+        }
+        // 키보드 높이·글자 크기는 정하기 전에는 세로 모드 값을, 정하면 그 값을 쓴다.
+        sp.m.put(Prefs.KEYBOARD_HEIGHT, 120);
+        assertEquals(120, land.keyboardHeight());
+        sp.m.put(land.heightKey(), 80);
+        assertEquals(80, land.keyboardHeight());
+        assertEquals(120, port.keyboardHeight());
+        // 세로 위치: 기본 0, 프로필마다 따로.
+        assertEquals(0, land.profileLiftDp());
+        sp.m.put(port.liftKey(), 40);
+        assertEquals(40, port.profileLiftDp());
+        assertEquals(0, largeLand.profileLiftDp());
+        // 대화면 세로에서 켠 분리 키보드는 대화면 가로에서도 켜져 있다.
+        sp.m.put(port.splitKey(), true);
+        assertTrue(largeLand.profileSplit());
+        assertTrue(!land.profileSplit());
+    }
+
     @Test
     public void numberKeysCanHaveLongPressCharacters() throws Exception {
         assertEquals("num", KeyboardLayout.groupOf(true, "5"));
