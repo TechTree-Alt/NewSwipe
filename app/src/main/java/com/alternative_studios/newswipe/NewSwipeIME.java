@@ -22,6 +22,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowInsets;
 import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InlineSuggestionsRequest;
+import android.view.inputmethod.InlineSuggestionsResponse;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputContentInfo;
 import android.view.inputmethod.InputMethodInfo;
@@ -78,6 +80,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     private Prefs prefs;
     private Feedback feedback;
+    /** 자동 완성 제안 칩 (Android 11 이상에서만 만든다). */
+    private InlineAutofill autofill;
     private final HangulComposer composer = new HangulComposer();
     private ClipboardManager clipboard;
     private ClipboardHistory clipHistory;
@@ -180,6 +184,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         super.onCreate();
         prefs = new Prefs(this);
         feedback = new Feedback(this);
+        if (Build.VERSION.SDK_INT >= 30) autofill = new InlineAutofill(this, this::applyTopSlotVisibility);
         korean = prefs.korean();
         emojiRepo = new EmojiRepository(this, io);
         userWords = UserDictionary.shared(getFilesDir());
@@ -388,6 +393,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         searchBar = buildSearchBar();
         searchBar.setVisibility(View.GONE);
         topSlot.addView(searchBar);
+        if (autofill != null) {
+            topSlot.addView(autofill.createBar(theme), new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT));
+        }
         forgetBar = null;   // 도구 막대의 확인 줄은 필요할 때 만든다 (새 화면에는 아직 없다)
         column.addView(topSlot, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, toolbarHeight));
 
@@ -1023,6 +1032,32 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         hadComposing = false;
         mirror.forget();
         clearSuggestions();
+        if (autofill != null) autofill.clear();   // 입력란을 떠나면 그 칸의 자동 완성 칩도 버린다
+    }
+
+    // ---------------------------------------------------------------- 자동 완성 (Android 11 이상)
+
+    /**
+     * 자동 완성 서비스에 칩을 도구 막대 자리에 보여 줄 수 있다고 알린다. 설정에서 껐거나 '비밀번호 입력란에서만'인데
+     * 비밀번호 칸이 아니면 null을 돌려준다 (그러면 서비스가 앱 안에 원래의 자동 완성 목록을 띄운다).
+     */
+    @Override
+    public InlineSuggestionsRequest onCreateInlineSuggestionsRequest(android.os.Bundle uiExtras) {
+        if (autofill == null || !prefs.autofillInline()) return null;
+        EditorInfo info = getCurrentInputEditorInfo();
+        if (prefs.autofillPasswordOnly() && (info == null || !InputFields.isPassword(info.inputType))) return null;
+        KeyboardTheme t = theme != null ? theme : KeyboardTheme.of(this);
+        int height = toolbarHeight > 0 ? toolbarHeight : toolbarHeightPx();
+        int maxWidth = Math.min(Ui.dp(this, 320), getResources().getDisplayMetrics().widthPixels * 2 / 3);
+        return autofill.request(t, height, maxWidth);
+    }
+
+    /** 자동 완성 서비스가 보낸 칩을 보여 준다 (빈 목록이면 감춘다). */
+    @Override
+    public boolean onInlineSuggestionsResponse(InlineSuggestionsResponse response) {
+        if (autofill == null) return false;
+        autofill.show(response.getInlineSuggestions());
+        return true;
     }
 
     @Override
@@ -1109,6 +1144,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         placeTopSlot();
         topSlot.setVisibility(full || (p == PANEL_KEYBOARD && toolbarGone()) ? View.GONE : View.VISIBLE);
         refreshToolbarVisibility();
+        if (autofill != null) autofill.setPanelVisible(p == PANEL_KEYBOARD);
         searchBar.setVisibility(p == PANEL_SEARCH ? View.VISIBLE : View.GONE);
         resultScroll.setVisibility(p == PANEL_SEARCH ? View.VISIBLE : View.GONE);
         keyboard.setVisibility(full ? View.GONE : View.VISIBLE);
@@ -1145,7 +1181,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 도구 막대를 끈 상태로 자판을 보여 주는 중인지. 검색 패널은 도구 막대 자리에 검색창이 있어 해당하지 않는다. */
     private boolean toolbarGone() {
         return !prefs.toolbar() && !((cfgSuggest && suggestAllowed) || (!shortcuts.isEmpty() && shortcutAllowed))
-                && panel == PANEL_KEYBOARD;
+                && panel == PANEL_KEYBOARD && !(autofill != null && autofill.shown());
     }
 
     private void updatePanelSizes() {

@@ -2140,6 +2140,23 @@ public final class SettingsActivity extends Activity {
         tools.addView(slider("도구 버튼 크기", Prefs.TOOL_BUTTON_SIZE, prefs.toolButtonSize(), 70, 150, 5, "%"));
         tools.addView(note("도구 버튼의 아이콘은 막대보다 커지지 않습니다."));
 
+        // 자동 완성: 서비스(Autofill with Google, 삼성 패스 등)의 제안을 도구 막대 자리에 칩으로 (Android 11 이상).
+        LinearLayout autofill = section("자동 완성");
+        if (Build.VERSION.SDK_INT >= 30) {
+            View passwordOnly = subGroup(toggle("비밀번호 입력란에서만",
+                    "비밀번호 칸에서만 칩을 보여 줍니다. 아이디 칸 등 다른 칸에서는 앱 안에 원래의 자동 완성 목록이 뜹니다.",
+                    Prefs.AUTOFILL_PASSWORD_ONLY, prefs.autofillPasswordOnly()));
+            autofill.addView(toggle("자동 완성 제안",
+                    "자동 완성 서비스(Autofill with Google, 삼성 패스 등)가 채울 수 있는 칸에서 계정을 도구 막대에 칩으로 보여 줍니다. "
+                            + "칩을 누르면 그 계정으로 채워집니다.",
+                    Prefs.AUTOFILL_INLINE, prefs.autofillInline(), passwordOnly));
+            autofill.addView(passwordOnly);
+            autofill.addView(note("기기 설정에서 고른 자동 완성 서비스를 씁니다. 서비스가 키보드 칩을 지원하지 않으면 칩 대신 "
+                    + "앱 안에 원래의 자동 완성 목록이 뜹니다. 바꾼 설정은 다음 입력란부터 적용됩니다."));
+        } else {
+            autofill.addView(note("Android 11 이상에서 쓸 수 있습니다. 이 기기에서는 앱 안에 뜨는 원래의 자동 완성 목록을 쓰세요."));
+        }
+
         LinearLayout clip = section("클립보드");
         View clipImagesToggle = toggle("이미지 저장", "복사한 이미지도 클립보드에 저장됩니다 (최대 "
                         + ClipboardHistory.MAX_IMAGES + "개).",
