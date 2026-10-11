@@ -72,6 +72,11 @@ public final class SettingsActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         prefs = new Prefs(this);
+        // 설정 화면은 세로로 고정이지만(매니페스트), 가로 모드·대화면 키보드 사용자화는 화면을 돌려 가며 미리보기를 볼 수 있다.
+        String openId = getIntent().getStringExtra(EXTRA_SECTION);
+        if (LANDSCAPE_AREA.equals(openId) || LARGE_AREA.equals(openId)) {
+            setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+        }
         // 앱을 처음 열면 첫 시작 가이드부터 보여 준다 (가이드를 마치면 이 화면을 다시 연다).
         if (getIntent().getStringExtra(EXTRA_SECTION) == null && !prefs.onboardingDone()) {
             startActivity(new Intent(this, OnboardingActivity.class));
@@ -1131,7 +1136,8 @@ public final class SettingsActivity extends Activity {
         card.addView(columns);
         card.addView(slider("키보드 높이", edit.heightKey(), edit.keyboardHeight(), Prefs.PROFILE_HEIGHT_MIN, 140, 5, "%",
                 this::refreshLayoutPreview));
-        card.addView(slider("키 글자 크기", edit.textSizeKey(), edit.keyTextSize(), 70, 140, 5, "%"));
+        card.addView(slider("키 글자 크기", edit.textSizeKey(), edit.keyTextSize(), Prefs.PROFILE_HEIGHT_MIN, 140, 5, "%",
+                this::refreshLayoutPreview));
         card.addView(slider("세로 위치", edit.liftKey(), edit.profileLiftDp(), 0, 160, 4, "dp"));
         card.addView(note(when + " 쓰는 값입니다. 키보드 높이·키 글자 크기는 정하기 전에는 세로 모드('자판 모양')의 값을 따릅니다. "
                 + "세로 위치는 키보드를 화면 아래에서 띄우는 높이로, 값이 클수록 키보드가 위로 올라갑니다 "
@@ -1334,6 +1340,7 @@ public final class SettingsActivity extends Activity {
     private void refreshLayoutPreview() {
         for (java.util.Map.Entry<com.alternative_studios.newswipe.keyboard.KeyboardView, String> e : layoutPreviews.entrySet()) {
             refreshLayoutPreview(e.getKey(), previewPrefs(e.getValue()));
+            applyPreviewSize(e.getKey(), previewPrefs(e.getValue()), isLandscapeProfile(e.getValue()));
         }
     }
 
@@ -1351,6 +1358,25 @@ public final class SettingsActivity extends Activity {
         if (view == null) return;
         view.setGridColors(p.gridColors());
         view.setLayout(com.alternative_studios.newswipe.keyboard.KeyboardLayout.korean(p));
+    }
+
+    private static boolean isLandscapeProfile(String profile) {
+        return Prefs.PROFILE_LANDSCAPE.equals(profile) || Prefs.PROFILE_LARGE_LANDSCAPE.equals(profile);
+    }
+
+    /**
+     * 미리보기의 키 높이와 글자 크기를 설정에 맞춘다. 가로 방향 미리보기는 키가 낮아진 만큼 글자도 작게 그려
+     * 키 안에 들어가게 한다.
+     */
+    private void applyPreviewSize(com.alternative_studios.newswipe.keyboard.KeyboardView view, Prefs p, boolean landscape) {
+        if (view == null) return;
+        float scale = landscape ? LANDSCAPE_PREVIEW_SCALE : 1f;
+        view.configure(p.longPressMs(), p.swipeThresholdDp(), false, p.longPressChars(), false,
+                Math.round(p.keyTextSize() * scale));
+        int pad = Ui.dp(this, 4);
+        com.alternative_studios.newswipe.keyboard.KeyboardLayout l =
+                com.alternative_studios.newswipe.keyboard.KeyboardLayout.korean(p);
+        view.setKeyboardHeight(Math.round(Ui.dp(this, 54) * l.totalHeight() * p.keyboardHeight() / 100f * scale) + 2 * pad);
     }
 
     /** 가로 방향 미리보기(가로 모드, 대화면 가로)의 키 높이·글자 크기 비율. */

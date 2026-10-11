@@ -737,6 +737,11 @@ public class SplitBottomRowTest {
         assertEquals(30, land.keyboardHeight());
         sp.m.put(land.heightKey(), 200);
         assertEquals(140, land.keyboardHeight());
+        // 키 글자 크기도 30%까지.
+        sp.m.put(land.textSizeKey(), 30);
+        assertEquals(30, land.keyTextSize());
+        sp.m.put(land.textSizeKey(), 5);
+        assertEquals(30, land.keyTextSize());
         // 세로 위치: 기본 0, 프로필마다 따로.
         assertEquals(0, land.profileLiftDp());
         sp.m.put(port.liftKey(), 40);

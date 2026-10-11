@@ -104,7 +104,7 @@ public final class Prefs {
     public static final String SPLIT_FN_WIDTH = "split_fn_width";       // 분리 키보드(스페이스바를 이었을 때): 하단 기능키 폭(%)
     public static final String SPLIT_GAP_CURSOR = "split_gap_cursor";   // 분리 키보드 가운데 빈 공간을 밀어 커서 이동
     public static final String SPLIT_REACH_COLUMN = "split_reach_column";
-    /** 가로 모드·대화면에서 따로 정하는 키보드 높이(%)의 최솟값 (세로 모드는 70). */
+    /** 가로 모드·대화면에서 따로 정하는 키보드 높이·키 글자 크기(%)의 최솟값 (세로 모드는 70). */
     public static final int PROFILE_HEIGHT_MIN = 30;
     public static final String PROFILE_LIFT = "lift";   // 가로 모드·대화면: 키보드를 화면 아래에서 띄우는 높이(dp), 0~160   // 분리 키보드: 자음의 맨 오른쪽 줄을 오른쪽 묶음으로
     public static final String SPACE_CURSOR_SPEED_H = "space_cursor_speed_h";
@@ -443,10 +443,10 @@ public final class Prefs {
         int v = sp.getInt(KEYBOARD_HEIGHT, 100);
         return profileSize() ? clamp(sp.getInt(heightKey(), v), PROFILE_HEIGHT_MIN, 140) : v;
     }
-    /** 키 글자 크기 (%). 가로 모드·대화면 보기에서 따로 정했으면 그 값 (정하기 전에는 세로 모드 값). */
+    /** 키 글자 크기 (%). 가로 모드·대화면 보기에서 따로 정했으면 그 값 (30~140, 정하기 전에는 세로 모드 값). */
     public int keyTextSize() {
         int v = sp.getInt(KEY_TEXT_SIZE, 100);
-        return profileSize() ? clamp(sp.getInt(textSizeKey(), v), 70, 140) : v;
+        return profileSize() ? clamp(sp.getInt(textSizeKey(), v), PROFILE_HEIGHT_MIN, 140) : v;
     }
     public int longPressMs() { return sp.getInt(LONG_PRESS_MS, 340); }   // 설정 단위(20ms)에 맞춘 기본값
     public int swipeThresholdDp() { return sp.getInt(SWIPE_THRESHOLD, 22); }
