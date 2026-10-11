@@ -1402,7 +1402,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         scheduleSuggest();
     }
 
-    /** 밀어서 커서 이동(스페이스바·분리 키보드 가운데 빈 공간·글자 키): 커서가 한 칸 움직일 때마다 약한 진동(틱). */
+    /** 밀어서 커서 이동(스페이스바·분리 키보드 가운데 빈 공간·글자 키): 커서가 실제로 한 칸 움직일 때마다 약한 진동(틱). */
     @Override
     public void onCursorMove(int direction) {
         if (moveCursor(direction)) feedback.onRepeat();
@@ -1414,17 +1414,32 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (moveCursorVertical(direction)) feedback.onRepeat();
     }
 
-    /** 커서를 왼쪽(-1)/오른쪽(+1)으로 한 칸 옮긴다. 옮겼으면 true. */
+    /** 커서를 왼쪽(-1)/오른쪽(+1)으로 한 칸 옮긴다. 커서가 실제로 움직였으면 true (글의 맨 앞·맨 뒤면 false). */
     private boolean moveCursor(int direction) {
         if (panel == PANEL_SEARCH) return false;
         correctedTo = null;
         commitComposing();
+        boolean moves = cursorCanMove(direction < 0);
         sendDownUpKeyEvents(direction < 0 ? KeyEvent.KEYCODE_DPAD_LEFT : KeyEvent.KEYCODE_DPAD_RIGHT);
         mirror.forget();
-        return true;
+        return moves;
     }
 
-    /** 커서를 위(-1)/아래(+1)로 한 줄 옮긴다. 옮겼으면 true. */
+    /**
+     * 커서를 앞(backward)·뒤로 옮기면 실제로 움직이는지: 선택한 글자가 있으면(선택이 풀리며 움직인다) 또는 그쪽에 글자가
+     * 있으면 true. 위·아래로 옮길 때도 같다 (첫 줄에서 위로 밀면 글의 맨 앞으로, 마지막 줄에서 아래로 밀면 맨 뒤로 가므로).
+     * 입력란이 글자를 알려 주지 않으면 움직인다고 본다.
+     */
+    private boolean cursorCanMove(boolean backward) {
+        InputConnection ic = getCurrentInputConnection();
+        if (ic == null) return false;
+        CharSequence sel = ic.getSelectedText(0);
+        if (sel != null && sel.length() > 0) return true;
+        CharSequence next = backward ? ic.getTextBeforeCursor(1, 0) : ic.getTextAfterCursor(1, 0);
+        return next == null || next.length() > 0;
+    }
+
+    /** 커서를 위(-1)/아래(+1)로 한 줄 옮긴다. 커서가 실제로 움직였으면 true. */
     private boolean moveCursorVertical(int direction) {
         if (panel == PANEL_SEARCH) return false;
         // 한 줄짜리 입력란에서 위/아래 키를 보내면 다른 입력란으로 포커스가 넘어가므로 여러 줄 입력란에서만 움직인다.
@@ -1435,9 +1450,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
         correctedTo = null;
         commitComposing();
+        boolean moves = cursorCanMove(direction < 0);
         sendDownUpKeyEvents(direction < 0 ? KeyEvent.KEYCODE_DPAD_UP : KeyEvent.KEYCODE_DPAD_DOWN);
         mirror.forget();
-        return true;
+        return moves;
     }
 
     @Override
