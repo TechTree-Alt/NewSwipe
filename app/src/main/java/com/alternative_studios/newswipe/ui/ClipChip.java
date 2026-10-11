@@ -76,9 +76,15 @@ public final class ClipChip extends View {
 
     private void refit(int w) {
         float avail = w - 2 * padH - iconSize - gap;
-        // 두어 글자도 들어가지 않으면 글은 빼고 아이콘만 보인다.
-        fitted = label.isEmpty() || avail < textPaint.measureText("가…") ? ""
-                : TextUtils.ellipsize(label, textPaint, avail, TextUtils.TruncateAt.END);
+        if (label.isEmpty()) {
+            fitted = "";
+        } else if (textPaint.measureText(label) <= avail + 0.5f) {
+            fitted = label;   // 다 들어가면 짧은 글(한두 글자)도 그대로 보인다
+        } else {
+            // 줄여야 하는데 두어 글자도 들어가지 않으면 글은 빼고 아이콘만 보인다.
+            fitted = avail < textPaint.measureText("가…") ? ""
+                    : TextUtils.ellipsize(label, textPaint, avail, TextUtils.TruncateAt.END);
+        }
     }
 
     @Override

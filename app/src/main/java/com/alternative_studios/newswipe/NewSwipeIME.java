@@ -2828,9 +2828,26 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         InputConnection ic = getCurrentInputConnection();
         if (selectAllFirst) ic.performContextMenuAction(android.R.id.selectAll);
         CharSequence selected = ic.getSelectedText(0);   // 복사하면 앱이 선택을 풀 수 있어 먼저 읽는다
+        boolean hasSelection = (selected != null && selected.length() > 0) || selStart != selEnd;
         ic.performContextMenuAction(android.R.id.copy);
         endEdit();
-        if (selected != null && selected.length() > 0) showMessage("복사했습니다");
+        EditorInfo ei = getCurrentInputEditorInfo();
+        if (ei != null && copyBlockedFor(ei) && (selectAllFirst || hasSelection)) {
+            // 가려 보이는 비밀번호 입력란은 시스템(입력란)이 복사를 막는다. 복사했다고 잘못 알리지 않는다.
+            showMessage("복사가 제한되는 내용입니다.");
+        } else if (selected != null && selected.length() > 0) {
+            showMessage("복사했습니다");
+        }
+    }
+
+    /** 글자를 가려 보이는 비밀번호 입력란인지: 이런 칸은 입력란이 복사·잘라내기를 막는다 (보이는 비밀번호 칸은 막지 않는다). */
+    private static boolean copyBlockedFor(EditorInfo info) {
+        int type = info.inputType;
+        int cls = type & InputType.TYPE_MASK_CLASS;
+        int variation = type & InputType.TYPE_MASK_VARIATION;
+        if (cls == InputType.TYPE_CLASS_NUMBER) return variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD;
+        return cls == InputType.TYPE_CLASS_TEXT && (variation == InputType.TYPE_TEXT_VARIATION_PASSWORD
+                || variation == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD);
     }
 
     /** 안내 문구를 보여 주는 칸 (키보드 위쪽 가운데). */
