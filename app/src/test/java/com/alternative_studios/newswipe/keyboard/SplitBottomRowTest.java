@@ -578,6 +578,42 @@ public class SplitBottomRowTest {
         }
     }
 
+    /** 줄에서 label 키가 가운데(5칸)의 오른쪽에 있는지. */
+    private static boolean onRight(KeyboardLayout.Row row, String label) {
+        float x = 0f;
+        for (Key k : row.keys) {
+            if (k.type == Key.CHAR && label.equals(k.label)) return x >= 5f - 0.001f;
+            x += k.weight;
+        }
+        throw new AssertionError(label + " 키가 없다");
+    }
+
+    @Test
+    public void reachColumnMovesTheRightmostConsonantsToTheRightBlock() throws Exception {
+        String[][] columns = {{"ㅅ", "ㅎ", "ㅍ"}, {"ㄱ", "ㄹ", "ㅅ"}};
+        for (int layout = 0; layout < 2; layout++) {
+            for (int[] s : SETTINGS) {
+                Prefs p = prefsFor(s, false);
+                FakeSp sp = (FakeSp) p.raw();
+                if (layout == 1) sp.m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_D7);
+                KeyboardLayout off = KeyboardLayout.korean(p);
+                for (int r = 0; r < 3; r++) assertTrue(!onRight(off.rows[r], columns[layout][r]));
+                float[] edges = outer(off, 0);
+                sp.m.put(p.splitReachColumnKey(), true);
+                KeyboardLayout on = KeyboardLayout.korean(p);
+                for (int r = 0; r < 3; r++) {
+                    assertTrue("맨 오른쪽 자음이 오른쪽 묶음으로", onRight(on.rows[r], columns[layout][r]));
+                    float total = 0f;
+                    for (Key k : on.rows[r].keys) total += k.weight;
+                    assertEquals(10f, total, 0.001f);
+                }
+                float[] moved = outer(on, 0);
+                assertEquals("묶음의 바깥 끝은 그대로", edges[0], moved[0], 0.001f);
+                assertEquals(edges[1], moved[1], 0.001f);
+            }
+        }
+    }
+
     @Test
     public void numberKeysCanHaveLongPressCharacters() throws Exception {
         assertEquals("num", KeyboardLayout.groupOf(true, "5"));

@@ -1045,6 +1045,16 @@ public final class SettingsActivity extends Activity {
                 }));
         card.addView(splitBox);
 
+        // 손이 닿기 쉽게: 자음의 맨 오른쪽 줄을 오른쪽 묶음으로
+        String reachKey = edit.splitReachColumnKey();
+        splitBox.addView(toggle("자음 맨 오른쪽 줄을 오른쪽으로",
+                when + " 쓰는 값입니다. 한글 자판에서 자음의 맨 오른쪽 줄 3개(8열 단모음은 ㅅ·ㅎ·ㅍ, NewSwipe 단모음은 ㄱ·ㄹ·ㅅ)를 "
+                        + "오른쪽 묶음의 모음 왼쪽에 놓아 양손이 고르게 닿게 합니다.",
+                edit.splitReachColumn(), on -> {
+                    prefs.raw().edit().putBoolean(reachKey, on).apply();
+                    refreshLayoutPreview();
+                }));
+
         // 맨 아래 줄: 나뉜 스페이스바를 이을지, 이었을 때 하단 기능키 폭
         LinearLayout bottom = section(name + " 분리 키보드 맨 아래 줄");
         View fnWidth = subGroup(

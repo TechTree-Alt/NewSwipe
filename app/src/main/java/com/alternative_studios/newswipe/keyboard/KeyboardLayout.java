@@ -281,7 +281,16 @@ public final class KeyboardLayout {
             (vowel ? vowels : consonants).add(k);
         }
         if (deleteHere) vowels.add(fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1f));
-        if (splitView(prefs)) return blockRow(consonants, vowels, 1f, balancedConsonants(prefs), BALANCED_VOWEL_COLUMNS, prefs);
+        if (splitView(prefs)) {
+            int leftColumns = balancedConsonants(prefs), rightColumns = BALANCED_VOWEL_COLUMNS;
+            if (prefs.splitReachColumn()) {
+                // 자음의 맨 오른쪽 줄(8열 단모음 ㅅ·ㅎ·ㅍ, NewSwipe 단모음 ㄱ·ㄹ·ㅅ)을 오른쪽 묶음의 모음 앞으로 옮긴다.
+                vowels.add(0, consonants.remove(consonants.size() - 1));
+                leftColumns--;
+                rightColumns++;
+            }
+            return blockRow(consonants, vowels, 1f, leftColumns, rightColumns, prefs);
+        }
         return splitRow(consonants, vowels, 1f, prefs);
     }
 

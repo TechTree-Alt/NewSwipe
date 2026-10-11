@@ -103,6 +103,7 @@ public final class Prefs {
     public static final String SPLIT_SPACE_JOIN = "split_space_join";   // 분리 키보드: 나뉜 스페이스바를 하나로 잇기
     public static final String SPLIT_FN_WIDTH = "split_fn_width";       // 분리 키보드(스페이스바를 이었을 때): 하단 기능키 폭(%)
     public static final String SPLIT_GAP_CURSOR = "split_gap_cursor";   // 분리 키보드 가운데 빈 공간을 밀어 커서 이동
+    public static final String SPLIT_REACH_COLUMN = "split_reach_column";   // 분리 키보드: 자음의 맨 오른쪽 줄을 오른쪽 묶음으로
     public static final String SPACE_CURSOR_SPEED_H = "space_cursor_speed_h";
     public static final String SPACE_CURSOR_SPEED_V = "space_cursor_speed_v";
     public static final String CHAR_CURSOR_SPEED_H = "char_cursor_speed_h";
@@ -315,7 +316,7 @@ public final class Prefs {
     static {
         MENU_KEYS.put("layout", keys(KOREAN_LAYOUT, GRID_LAYOUT, NUMBER_ROW, LANDSCAPE_SPLIT, LANDSCAPE_SIZE,
                 KEYBOARD_HEIGHT_LAND, KEY_TEXT_SIZE_LAND, SPLIT_GAP_CURSOR, SPLIT_SPACE_JOIN, SPLIT_FN_WIDTH,
-                BOTTOM_KEY_ORDER, COMMA_CHAR, PERIOD_CHAR, MODE_KEY_HIDDEN, PERIOD_COMMA, LANGUAGE_KEY_HIDDEN, SPACE_KEY_HIDDEN,
+                SPLIT_REACH_COLUMN, BOTTOM_KEY_ORDER, COMMA_CHAR, PERIOD_CHAR, MODE_KEY_HIDDEN, PERIOD_COMMA, LANGUAGE_KEY_HIDDEN, SPACE_KEY_HIDDEN,
                 PERIOD_KEY_HIDDEN, ENTER_KEY_HIDDEN, DELETE_KEY_HIDDEN, KOREAN_SHIFT_HIDDEN, KOREAN_SHIFT_FN));
         MENU_PREFIXES.put("layout", keys("balanced_", LANDSCAPE_SPLIT + "_", "swipe_fk_"));
         MENU_KEYS.put("theme", keys(THEME_MODE, ACCENT_MODE, ACCENT_COLOR, GRID_COLORS));
@@ -395,7 +396,7 @@ public final class Prefs {
     public void resetProfileArea() {
         resetBalancedKeys();
         removeKeys(new String[]{splitKey(), sizeKey(), heightKey(), textSizeKey(), oneHandWidthKey(), splitGapCursorKey(),
-                splitSpaceJoinKey(), splitFnWidthKey()},
+                splitSpaceJoinKey(), splitFnWidthKey(), splitReachColumnKey()},
                 new String[]{splitKey() + "_"});   // 예전에 배열마다 저장하던 분리 키보드 값도 함께
     }
 
@@ -494,6 +495,17 @@ public final class Prefs {
 
     /** 저장된 '하단 기능키 폭' 값 (스페이스바를 잇지 않아도 설정 화면이 보여 주도록). */
     public int splitFnWidthSetting() { return Math.max(50, Math.min(200, sp.getInt(splitFnWidthKey(), 100))); }
+
+    /** 이 프로필의 '자음 맨 오른쪽 줄을 오른쪽 묶음으로' 설정 키. */
+    public String splitReachColumnKey() {
+        return large() ? LARGE_PREFIX + SPLIT_REACH_COLUMN + "_" + largeSide() : SPLIT_REACH_COLUMN;
+    }
+
+    /**
+     * 분리 키보드 한글 자판에서 자음의 맨 오른쪽 줄(8열 단모음은 ㅅ·ㅎ·ㅍ, NewSwipe 단모음은 ㄱ·ㄹ·ㅅ)을
+     * 오른쪽 묶음의 모음 앞에 놓는지 (기본은 꺼짐). 오른손이 닿기 쉽게 하려는 것이다.
+     */
+    public boolean splitReachColumn() { return profileValues() && sp.getBoolean(splitReachColumnKey(), false); }
 
     /** 이 프로필(가로 모드, 대화면 세로·가로)의 '가운데 빈 공간을 밀어서 커서 이동' 설정 키. */
     public String splitGapCursorKey() { return large() ? LARGE_PREFIX + SPLIT_GAP_CURSOR + "_" + largeSide() : SPLIT_GAP_CURSOR; }
