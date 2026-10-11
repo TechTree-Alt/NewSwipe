@@ -143,7 +143,12 @@ final class InlineAutofill {
             InlineContentView v = made[i];
             if (v == null) continue;
             boolean isPinned = suggestions.get(i).getInfo().isPinned();
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, chipHeight);
+            // 시스템이 넘겨준 칩에는 실제로 그려진 크기가 LayoutParams로 들어 있다. InlineContentView는 스스로 크기를
+            // 재지 못하므로(WRAP_CONTENT면 스크롤 안에서는 폭 0, 밖에서는 남는 폭을 모두 차지한다) 그 크기를 그대로 쓴다.
+            ViewGroup.LayoutParams given = v.getLayoutParams();
+            int w = given != null && given.width > 0 ? given.width : ViewGroup.LayoutParams.WRAP_CONTENT;
+            int h = given != null && given.height > 0 ? given.height : chipHeight;
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(w, h);
             lp.leftMargin = margin;
             lp.rightMargin = margin;
             (isPinned ? pinned : chips).addView(v, lp);
