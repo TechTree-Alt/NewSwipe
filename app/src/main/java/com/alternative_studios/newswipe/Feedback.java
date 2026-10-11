@@ -25,6 +25,11 @@ final class Feedback {
     private final VibrationEffect[] levels = new VibrationEffect[4];
     /** 일반 키를 눌렀을 때의 진동 (약하게·기본·강하게 중 하나이거나 직접 설정한 값). */
     private VibrationEffect keyEffect;
+    /**
+     * 커서 이동·연속 삭제·반복 입력처럼 빠르게 이어지는 틱. 기기가 지원하면(Android 12부터) 짧고 가벼운 기본 진동
+     * (PRIMITIVE_LOW_TICK)을 쓰고, 아니면 null이라 예전처럼 약한 진동(틱)을 쓴다.
+     */
+    private final VibrationEffect repeatTick;
     private int builtSignature = Integer.MIN_VALUE;
 
     @SuppressWarnings("deprecation")
@@ -39,6 +44,20 @@ final class Feedback {
         }
         vibrator = v;
         hasVibrator = v != null && v.hasVibrator();
+        repeatTick = hasVibrator ? lowTick(v) : null;
+    }
+
+    /** 기기가 가벼운 틱(PRIMITIVE_LOW_TICK)을 지원하면 그 진동, 아니면 null. */
+    private static VibrationEffect lowTick(Vibrator v) {
+        if (Build.VERSION.SDK_INT < 31) return null;
+        try {
+            if (!v.areAllPrimitivesSupported(VibrationEffect.Composition.PRIMITIVE_LOW_TICK)) return null;
+            return VibrationEffect.startComposition()
+                    .addPrimitive(VibrationEffect.Composition.PRIMITIVE_LOW_TICK)
+                    .compose();
+        } catch (RuntimeException e) {
+            return null;   // 일부 기기는 진동 서비스 호출이 실패할 수 있다
+        }
     }
 
     void configure(Prefs prefs) {
@@ -117,7 +136,7 @@ final class Feedback {
 
     /** 키를 누르고 있어 글자가 반복 입력되거나 연속으로 지워질 때, 한 글자마다 울리는 틱. */
     void onRepeat() {
-        if (vibrate) play(levels[WEAK]);
+        if (vibrate) play(repeatTick != null ? repeatTick : levels[WEAK]);
     }
 
     void onKey(Key key) {
