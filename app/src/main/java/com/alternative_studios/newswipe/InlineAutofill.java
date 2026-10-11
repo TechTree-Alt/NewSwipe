@@ -57,8 +57,6 @@ final class InlineAutofill {
     private boolean shown;
     /** 응답마다 늘어난다. 늦게 끝난 예전 응답의 칩 만들기 결과는 버린다. */
     private int generation;
-    /** 막대 양옆 여백 (px). 도구 막대처럼 자판의 좌우 여백을 따른다. */
-    private int padLeft, padRight;
     /** 요청할 때 정한 칩 높이 (px). 칩은 이 높이로 만든다 (요청한 크기 범위를 벗어나면 만들 수 없다). */
     private int chipHeight;
 
@@ -68,7 +66,8 @@ final class InlineAutofill {
     }
 
     /**
-     * 도구 막대 자리(topSlot)에 겹쳐 놓을 막대를 새로 만든다. 입력 화면을 다시 만들 때마다 부르고, 예전 막대와 칩은 버린다.
+     * 도구 막대 안, 추천 단어 줄 자리에 놓을 칩 줄을 새로 만든다 (추천 단어처럼 왼쪽·오른쪽 도구 버튼 사이를 채운다).
+     * 입력 화면을 다시 만들 때마다 부르고, 예전 막대와 칩은 버린다.
      */
     View createBar(KeyboardTheme theme) {
         // 예전 막대의 칩과 만들고 있던 칩은 버린다. 입력 화면을 만드는 중이라 IME에는 알리지 않는다
@@ -78,8 +77,6 @@ final class InlineAutofill {
         shown = false;
         bar = new LinearLayout(context);
         bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setBackgroundColor(theme.background);
-        bar.setClickable(true);   // 아래의 도구 막대·추천이 눌리지 않게
         bar.setVisibility(View.GONE);
         scroll = new HorizontalScrollView(context);
         scroll.setHorizontalScrollBarEnabled(false);
@@ -95,22 +92,13 @@ final class InlineAutofill {
         scroll.setOnScrollChangeListener((v, x, y, oldX, oldY) -> clipChips());
         scroll.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> clipChips());
         bar.addView(scroll, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
-        // 고정 칩(열쇠 등) 자리: 배경을 깔아 칩 줄과 나눈다. 줄의 칩은 이 앞(스크롤 칸 끝)에서 잘려 이 아래로 들어간다.
+        // 고정 칩(열쇠 등) 자리: 칩 줄은 이 앞(스크롤 칸 끝)에서 잘린다.
         pinned = new LinearLayout(context);
         pinned.setGravity(Gravity.CENTER_VERTICAL);
-        pinned.setBackgroundColor(theme.background);
         pinned.setPadding(Ui.dp(context, 4), 0, 0, 0);
         bar.addView(pinned, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
-        bar.setPadding(padLeft, 0, padRight, 0);
         return bar;
-    }
-
-    /** 막대 양옆 여백 (px): 도구 막대와 같이 자판의 좌우 여백 안쪽에만 칩을 놓는다. */
-    void setSidePadding(int left, int right) {
-        padLeft = left;
-        padRight = right;
-        if (bar != null) bar.setPadding(left, 0, right, 0);
     }
 
     /**
@@ -227,11 +215,6 @@ final class InlineAutofill {
         return shown && bar != null;
     }
 
-    /** 다른 패널(검색·이모지 등)을 보는 동안에는 막대를 가린다. 칩은 그대로 두었다가 자판으로 돌아오면 다시 보인다. */
-    void setPanelVisible(boolean keyboardPanel) {
-        if (bar != null) bar.setVisibility(shown && keyboardPanel ? View.VISIBLE : View.GONE);
-    }
-
     private void removeChips() {
         clipFrom = new int[0];
         clipTo = new int[0];
@@ -244,7 +227,6 @@ final class InlineAutofill {
         shown = on;
         if (bar != null) {
             bar.setVisibility(on ? View.VISIBLE : View.GONE);
-            if (on) bar.bringToFront();
         }
         if (changed) host.onAutofillBarChanged();
     }
