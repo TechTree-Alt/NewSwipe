@@ -284,9 +284,18 @@ public final class KeyboardLayout {
         if (splitView(prefs)) {
             int leftColumns = balancedConsonants(prefs), rightColumns = BALANCED_VOWEL_COLUMNS;
             if (prefs.splitReachColumn()) {
-                // 자음의 맨 오른쪽 줄(8열 단모음 ㅅ·ㅎ·ㅍ, NewSwipe 단모음 ㄱ·ㄹ·ㅅ)을 오른쪽 묶음의 모음 앞으로 옮긴다.
-                vowels.add(0, consonants.remove(consonants.size() - 1));
-                leftColumns--;
+                // 좌·우 균형 레이아웃: 양쪽 묶음을 4열씩으로 맞춘다.
+                if (ns) {
+                    // NewSwipe 단모음: 자음의 맨 오른쪽 줄(ㄱ·ㄹ·ㅅ)은 그대로 두고, 같은 키를 하나 더 만들어 모음 앞에 놓는다.
+                    String last = consonants.get(consonants.size() - 1).label;
+                    for (Key k : letterKeys(rows[r], popups[r], true, prefs)) {
+                        if (k.label.equals(last)) vowels.add(0, k);
+                    }
+                } else {
+                    // 8열 단모음: 자음의 맨 오른쪽 줄(ㅅ·ㅎ·ㅍ)을 오른쪽 묶음의 모음 앞으로 옮긴다.
+                    vowels.add(0, consonants.remove(consonants.size() - 1));
+                    leftColumns--;
+                }
                 rightColumns++;
             }
             return blockRow(consonants, vowels, 1f, leftColumns, rightColumns, prefs);

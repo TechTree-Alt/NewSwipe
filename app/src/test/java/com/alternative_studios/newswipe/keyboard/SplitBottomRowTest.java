@@ -578,31 +578,54 @@ public class SplitBottomRowTest {
         }
     }
 
-    /** 줄에서 label 키가 가운데(5칸)의 오른쪽에 있는지. */
-    private static boolean onRight(KeyboardLayout.Row row, String label) {
+    /** 줄에서 label 키의 {가운데(5칸) 왼쪽에 있는 수, 오른쪽에 있는 수}. */
+    private static int[] sides(KeyboardLayout.Row row, String label) {
+        int[] n = new int[2];
         float x = 0f;
         for (Key k : row.keys) {
-            if (k.type == Key.CHAR && label.equals(k.label)) return x >= 5f - 0.001f;
+            if (k.type == Key.CHAR && label.equals(k.label)) n[x >= 5f - 0.001f ? 1 : 0]++;
             x += k.weight;
         }
-        throw new AssertionError(label + " 키가 없다");
+        return n;
+    }
+
+    /** 줄의 왼쪽·오른쪽 묶음에 있는 키(빈틈·가운데 빈 자리 제외)의 수. */
+    private static int[] blockSizes(KeyboardLayout.Row row) {
+        int[] n = new int[2];
+        float x = 0f;
+        for (Key k : row.keys) {
+            if (k.type != Key.GAP && !(k.type == Key.SPACER && k.dragCursor)) n[x >= 5f - 0.001f ? 1 : 0]++;
+            x += k.weight;
+        }
+        return n;
     }
 
     @Test
-    public void reachColumnMovesTheRightmostConsonantsToTheRightBlock() throws Exception {
+    public void leftRightBalancedLayoutGivesFourColumnsOnEachSide() throws Exception {
         String[][] columns = {{"ㅅ", "ㅎ", "ㅍ"}, {"ㄱ", "ㄹ", "ㅅ"}};
         for (int layout = 0; layout < 2; layout++) {
+            boolean ns = layout == 1;
             for (int[] s : SETTINGS) {
                 Prefs p = prefsFor(s, false);
                 FakeSp sp = (FakeSp) p.raw();
-                if (layout == 1) sp.m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_D7);
+                if (ns) sp.m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_D7);
                 KeyboardLayout off = KeyboardLayout.korean(p);
-                for (int r = 0; r < 3; r++) assertTrue(!onRight(off.rows[r], columns[layout][r]));
+                for (int r = 0; r < 3; r++) {
+                    int[] n = sides(off.rows[r], columns[layout][r]);
+                    assertEquals(1, n[0]);
+                    assertEquals(0, n[1]);
+                }
                 float[] edges = outer(off, 0);
                 sp.m.put(p.splitReachColumnKey(), true);
                 KeyboardLayout on = KeyboardLayout.korean(p);
                 for (int r = 0; r < 3; r++) {
-                    assertTrue("맨 오른쪽 자음이 오른쪽 묶음으로", onRight(on.rows[r], columns[layout][r]));
+                    int[] n = sides(on.rows[r], columns[layout][r]);
+                    // 8열 단모음은 오른쪽으로 옮기고, NewSwipe 단모음은 왼쪽에 둔 채 오른쪽에 하나 더 놓는다.
+                    assertEquals(ns ? 1 : 0, n[0]);
+                    assertEquals(1, n[1]);
+                    int[] size = blockSizes(on.rows[r]);
+                    assertEquals("왼쪽 4열", 4, size[0]);
+                    assertEquals("오른쪽 4열", 4, size[1]);
                     float total = 0f;
                     for (Key k : on.rows[r].keys) total += k.weight;
                     assertEquals(10f, total, 0.001f);

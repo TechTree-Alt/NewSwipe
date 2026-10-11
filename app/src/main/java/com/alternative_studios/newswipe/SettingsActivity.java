@@ -1045,11 +1045,12 @@ public final class SettingsActivity extends Activity {
                 }));
         card.addView(splitBox);
 
-        // 손이 닿기 쉽게: 자음의 맨 오른쪽 줄을 오른쪽 묶음으로
+        // 좌·우 균형 레이아웃: 양쪽 묶음을 4열씩으로
         String reachKey = edit.splitReachColumnKey();
-        splitBox.addView(toggle("자음 맨 오른쪽 줄을 오른쪽으로",
-                when + " 쓰는 값입니다. 한글 자판에서 자음의 맨 오른쪽 줄 3개(8열 단모음은 ㅅ·ㅎ·ㅍ, NewSwipe 단모음은 ㄱ·ㄹ·ㅅ)를 "
-                        + "오른쪽 묶음의 모음 왼쪽에 놓아 양손이 고르게 닿게 합니다.",
+        splitBox.addView(toggle("좌·우 균형 레이아웃",
+                when + " 쓰는 값입니다. 한글 자판의 왼쪽·오른쪽 묶음을 4열씩으로 맞춰 양손이 고르게 닿게 합니다. "
+                        + "8열 단모음은 자음의 맨 오른쪽 줄(ㅅ·ㅎ·ㅍ)을 오른쪽 묶음의 모음 왼쪽으로 옮기고, "
+                        + "NewSwipe 단모음은 맨 오른쪽 줄(ㄱ·ㄹ·ㅅ)을 왼쪽에 그대로 두고 오른쪽 묶음의 모음 왼쪽에도 하나씩 더 놓습니다.",
                 edit.splitReachColumn(), on -> {
                     prefs.raw().edit().putBoolean(reachKey, on).apply();
                     refreshLayoutPreview();

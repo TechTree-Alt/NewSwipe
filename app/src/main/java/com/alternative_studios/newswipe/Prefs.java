@@ -496,14 +496,15 @@ public final class Prefs {
     /** 저장된 '하단 기능키 폭' 값 (스페이스바를 잇지 않아도 설정 화면이 보여 주도록). */
     public int splitFnWidthSetting() { return Math.max(50, Math.min(200, sp.getInt(splitFnWidthKey(), 100))); }
 
-    /** 이 프로필의 '자음 맨 오른쪽 줄을 오른쪽 묶음으로' 설정 키. */
+    /** 이 프로필의 '좌·우 균형 레이아웃' 설정 키. */
     public String splitReachColumnKey() {
         return large() ? LARGE_PREFIX + SPLIT_REACH_COLUMN + "_" + largeSide() : SPLIT_REACH_COLUMN;
     }
 
     /**
-     * 분리 키보드 한글 자판에서 자음의 맨 오른쪽 줄(8열 단모음은 ㅅ·ㅎ·ㅍ, NewSwipe 단모음은 ㄱ·ㄹ·ㅅ)을
-     * 오른쪽 묶음의 모음 앞에 놓는지 (기본은 꺼짐). 오른손이 닿기 쉽게 하려는 것이다.
+     * 분리 키보드 한글 자판의 좌·우 균형 레이아웃을 쓰는지 (기본은 꺼짐): 양쪽 묶음을 4열씩으로 맞춘다.
+     * 8열 단모음은 자음의 맨 오른쪽 줄(ㅅ·ㅎ·ㅍ)을 오른쪽 묶음의 모음 앞으로 옮기고, NewSwipe 단모음은 맨 오른쪽 줄
+     * (ㄱ·ㄹ·ㅅ)을 왼쪽에 그대로 둔 채 오른쪽 묶음의 모음 앞에도 하나씩 더 놓는다.
      */
     public boolean splitReachColumn() { return profileValues() && sp.getBoolean(splitReachColumnKey(), false); }
 
