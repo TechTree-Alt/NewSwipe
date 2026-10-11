@@ -83,6 +83,10 @@ final class InlineAutofill {
         bar.setVisibility(View.GONE);
         scroll = new HorizontalScrollView(context);
         scroll.setHorizontalScrollBarEnabled(false);
+        // 끝에서 늘어나는 효과(Android 12의 늘어나는 오버스크롤)는 스크롤 칸의 그림만 늘릴 뿐 서비스가 따로 그리는 칩에는
+        // 적용되지 않는다. 그래서 칩이 어긋나 왼쪽 여백까지 밀려 나오고 스크롤이 이상해 보이므로 끈다.
+        scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        scroll.setHorizontalFadingEdgeEnabled(false);
         chips = new LinearLayout(context);
         chips.setGravity(Gravity.CENTER_VERTICAL);
         scroll.addView(chips, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -185,15 +189,31 @@ final class InlineAutofill {
      */
     private void clipChips() {
         if (scroll == null || chips == null) return;
+        int n = chips.getChildCount();
+        if (clipFrom.length < n) {
+            clipFrom = new int[n];
+            clipTo = new int[n];
+            java.util.Arrays.fill(clipFrom, CLIP_UNSET);
+        }
         int from = scroll.getScrollX(), to = from + scroll.getWidth();
-        for (int i = 0; i < chips.getChildCount(); i++) {
+        for (int i = 0; i < n; i++) {
             View v = chips.getChildAt(i);
             int left = Math.max(0, from - v.getLeft());
             int right = Math.min(v.getWidth(), to - v.getLeft());
-            Rect want = right > left ? new Rect(left, 0, right, v.getHeight()) : new Rect();
-            if (!want.equals(v.getClipBounds())) v.setClipBounds(want);
+            if (right < left) right = left;
+            // 스크롤 중에는 매 프레임 불리므로, 보이는 범위가 달라진 칩만 다시 자른다 (새 객체도 만들지 않는다).
+            if (left == clipFrom[i] && right == clipTo[i]) continue;
+            clipFrom[i] = left;
+            clipTo[i] = right;
+            clipRect.set(left, 0, right, v.getHeight());
+            v.setClipBounds(clipRect);
         }
     }
+
+    private static final int CLIP_UNSET = Integer.MIN_VALUE;
+    /** 칩마다 마지막으로 자른 보이는 범위 (칩 안의 가로 위치). */
+    private int[] clipFrom = new int[0], clipTo = new int[0];
+    private final Rect clipRect = new Rect();
 
     /** 입력란을 떠났을 때: 칩을 모두 버리고 막대를 감춘다. 아직 만들고 있는 칩도 버린다. */
     void clear() {
@@ -213,6 +233,8 @@ final class InlineAutofill {
     }
 
     private void removeChips() {
+        clipFrom = new int[0];
+        clipTo = new int[0];
         if (chips != null) chips.removeAllViews();
         if (pinned != null) pinned.removeAllViews();
     }
