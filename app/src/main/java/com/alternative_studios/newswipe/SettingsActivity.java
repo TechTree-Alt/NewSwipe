@@ -46,6 +46,8 @@ public final class SettingsActivity extends Activity {
 
     private Prefs prefs;
     private LinearLayout list;
+    /** 스크롤 목록 위에 고정되어 스크롤해도 늘 보이는 곳 (키보드 미리보기). 담은 것이 없으면 숨긴다. */
+    private LinearLayout pinned;
     private TextView status;
     private View setupCard, setupHeading, appCard;
     /** 첫 화면의 설정 메뉴 (제목과 카드). 시작하기를 처음 마치기 전에는 흐리게 하고 막는다. */
@@ -101,7 +103,15 @@ public final class SettingsActivity extends Activity {
         int pad = Ui.dp(this, 16);
         list.setPadding(pad, 0, pad, Ui.dp(this, 32));
         scroll.addView(list);
-        setContentView(frame.wrap(scroll));
+        pinned = new LinearLayout(this);
+        pinned.setOrientation(LinearLayout.VERTICAL);
+        pinned.setPadding(pad, 0, pad, Ui.dp(this, 4));
+        pinned.setVisibility(View.GONE);
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.addView(pinned, matchWrap());
+        content.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        setContentView(frame.wrap(content));
         build();
         // 검색 결과에서 들어왔으면 그 항목까지 스크롤하고 깜빡여 알려 준다.
         String highlight = getIntent().getStringExtra(EXTRA_HIGHLIGHT);
@@ -958,6 +968,16 @@ public final class SettingsActivity extends Activity {
         addKeyAreaControls(card, prefs);
     }
 
+    /** v를 스크롤 목록 위의 고정된 곳에 놓는다. 설정 검색용으로 화면을 만들 때는 그 임시 목록에 넣는다. */
+    private void pinTop(View v) {
+        if (harvesting) {
+            list.addView(v);
+            return;
+        }
+        pinned.addView(v);
+        pinned.setVisibility(View.VISIBLE);
+    }
+
     /**
      * 가로 모드 키보드 사용자화: '분리 키보드 레이아웃'(분리 키보드 켜기, 좌·우 균형 레이아웃, 스페이스바 잇기),
      * '키보드 모양'(묶음의 폭·위치, 키보드 높이·글자 크기, 세로 위치), '분리 키보드 기능'(가운데 빈 공간 밀기).
@@ -965,7 +985,7 @@ public final class SettingsActivity extends Activity {
     private void buildLandscapeArea() {
         String p = Prefs.PROFILE_LANDSCAPE, when = "화면을 가로로 돌렸을 때";
         java.util.List<View> splitOnly = new java.util.ArrayList<>();
-        list.addView(layoutPreview(p));   // 미리보기는 화면 맨 위: 분리 키보드를 꺼도 보인다
+        pinTop(layoutPreview(p));   // 미리보기는 화면 맨 위에 고정: 스크롤해도, 분리 키보드를 꺼도 보인다
         addSplitLayout(p, "가로 모드", when, splitOnly);
         addSplitShape(p, when, splitOnly);
         addSplitFunctions(p, when, splitOnly);
@@ -1004,11 +1024,11 @@ public final class SettingsActivity extends Activity {
      */
     private void buildLargeArea() {
         String port = Prefs.PROFILE_LARGE_PORTRAIT, land = Prefs.PROFILE_LARGE_LANDSCAPE;
-        // 미리보기는 화면 맨 위(분리 키보드를 꺼도 보인다)에 두고, 고른 쪽(세로·가로)을 그린다.
+        // 미리보기는 화면 맨 위에 고정하고(스크롤해도, 분리 키보드를 꺼도 보인다), 고른 쪽(세로·가로)을 그린다.
         View portPreview = layoutPreview(port), landPreview = layoutPreview(land);
         landPreview.setVisibility(View.GONE);
-        list.addView(portPreview);
-        list.addView(landPreview);
+        pinTop(portPreview);
+        pinTop(landPreview);
         LinearLayout pick = card();
         java.util.List<View> splitOnly = new java.util.ArrayList<>();
         // 레이아웃 값은 대화면 세로·가로가 함께 쓰므로 어느 쪽 보기로 고쳐도 같다.
