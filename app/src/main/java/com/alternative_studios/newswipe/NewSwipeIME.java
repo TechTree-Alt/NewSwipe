@@ -2849,7 +2849,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 비밀번호 입력란에서 복사를 요청하고 클립보드가 바뀌기를 기다리는 중인지. */
     private boolean copyPending;
     /** 이만큼 기다려도 클립보드가 바뀌지 않으면 입력란이 복사를 막은 것으로 본다. */
-    private static final long COPY_WAIT_MS = 600;
+    private static final long COPY_WAIT_MS = 300;
     private final Runnable copyRefused = () -> {
         copyPending = false;
         showMessage("복사가 제한되는 내용입니다.");
