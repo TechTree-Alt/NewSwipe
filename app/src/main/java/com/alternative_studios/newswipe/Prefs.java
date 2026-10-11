@@ -97,6 +97,8 @@ public final class Prefs {
     public static final int BALANCED_CONSONANT_WIDTH_MAX = 100;
     /** 가로 모드는 키를 더 좁게 (30%까지) 줄일 수 있다. */
     public static final int BALANCED_WIDTH_MIN_LANDSCAPE = 30;
+    public static final String SPACE_SELECT = "space_select";                 // 스페이스바를 길게 누른 뒤 밀어서 글자 선택
+    public static final String SELECTION_CHIPS = "selection_chips";           // 글자를 선택하면 도구 막대에 편집 칩
     public static final String TWO_FINGER_UNDO = "two_finger_undo";           // 두 손가락으로 밀어 실행 취소·다시 실행
     public static final String SWIPE_KEYBOARD_CUSTOM = "swipe_keyboard_custom"; // 키보드 밀기 완전 사용자화
     public static final String SPACE_LANG_SWIPE = "space_lang_swipe";         // 스페이스바를 좌우로 밀어 한/영 전환
@@ -341,14 +343,14 @@ public final class Prefs {
         MENU_PREFIXES.put("swipe", keys("swipe_custom_", "swipe_final_", "swipe_vowel_"));
         MENU_KEYS.put("swipefn", keys(FN_SWIPE_THRESHOLD, SPACE_CURSOR, SPACE_CURSOR_H, SPACE_CURSOR_V,
                 SPACE_CURSOR_SPEED_H, SPACE_CURSOR_SPEED_V, CHAR_CURSOR, CHAR_CURSOR_H, CHAR_CURSOR_V,
-                CHAR_CURSOR_SPEED_H, CHAR_CURSOR_SPEED_V, SPACE_LANG_SWIPE, TWO_FINGER_UNDO, SWIPE_KEYBOARD_CUSTOM,
+                CHAR_CURSOR_SPEED_H, CHAR_CURSOR_SPEED_V, SPACE_LANG_SWIPE, SPACE_SELECT, TWO_FINGER_UNDO, SWIPE_KEYBOARD_CUSTOM,
                 SWIPE_FN_CUSTOM, SWIPE_TOOLBAR_CUSTOM, DELETE_WORD_SWIPE, MODE_KEY_EMOJI, TOOLBAR_SWIPE,
                 TOOL_EMOJI_SWIPE, TOOL_CLIPBOARD_SWIPE, TOOL_UNDO_SWIPE));
         MENU_PREFIXES.put("swipefn", keys("swipe_fn_", "swipe_toolbar_", "swipe_kb_"));
         MENU_KEYS.put("feedback", keys(VIBRATE, VIBRATE_MS, VIBRATE_STYLE, VIBRATE_AMP, VIBRATE_PER_KEY,
                 VIBRATE_DELETE, VIBRATE_SPACE, VIBRATE_ENTER, VIBRATE_SHIFT, VIBRATE_SYMBOL, VIBRATE_LANGUAGE, VIBRATE_TOOLBAR,
                 VIBRATE_GESTURE_ON, VIBRATE_GESTURE_LEVEL, SOUND, SOUND_VOLUME));
-        MENU_KEYS.put("tools", keys(TOOLBAR, TOOLBAR_BOTTOM, TOOLBAR_HEIGHT, TOOL_BUTTON_SIZE, CLIPBOARD_HISTORY, CLIPBOARD_IMAGES, CLIPBOARD_SENSITIVE, CLIPBOARD_CHIP, TOOL_ORDER, TOOL_CLIPBOARD,
+        MENU_KEYS.put("tools", keys(TOOLBAR, TOOLBAR_BOTTOM, TOOLBAR_HEIGHT, TOOL_BUTTON_SIZE, CLIPBOARD_HISTORY, CLIPBOARD_IMAGES, CLIPBOARD_SENSITIVE, CLIPBOARD_CHIP, SELECTION_CHIPS, TOOL_ORDER, TOOL_CLIPBOARD,
                 TOOL_EMOJI, VOICE_KEY, TOOL_UNDO, TOOL_SETTINGS, TOOL_ONE_HAND, TOOL_HIDE, EMOJI_SIZE, EMOJI_SUGGEST));
         MENU_KEYS.put("words", keys(SHORTCUTS_ENABLED, SUGGEST_WORDS, SUGGEST_FULL_BAR, SUGGEST_SPACE, AUTO_CORRECT, LEARN_WORDS,
                 CONFIRM_LEARNED_DELETE, AUTOFILL_INLINE));
@@ -594,6 +596,8 @@ public final class Prefs {
         else sp.edit().putString(key, c).apply();
     }
     public boolean periodKeyHidden() { return sp.getBoolean(PERIOD_KEY_HIDDEN, false); }
+    public boolean spaceSelect() { return sp.getBoolean(SPACE_SELECT, true); }
+    public boolean selectionChips() { return sp.getBoolean(SELECTION_CHIPS, true); }
     public boolean twoFingerUndo() { return sp.getBoolean(TWO_FINGER_UNDO, false); }
     public boolean swipeKeyboardCustom() { return sp.getBoolean(SWIPE_KEYBOARD_CUSTOM, false); }
 

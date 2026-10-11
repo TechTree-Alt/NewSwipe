@@ -35,8 +35,8 @@ public final class ClipChip extends View {
         iconSize = Ui.dp(c, 18);
         gap = Ui.dp(c, 6);
         minHeight = Ui.dp(c, 24);
-        inset = Ui.dp(c, 6);
-        float r = Ui.dp(c, 14);
+        inset = Ui.dp(c, 4);   // Ui.chipHeight와 같게: 막대에서 위아래 4dp씩 남긴다
+        float r = Ui.chipRadius(c);
         setBackground(Ui.ripple(pressed, Ui.round(fill, r), r));
         setClickable(true);
         setFocusable(true);

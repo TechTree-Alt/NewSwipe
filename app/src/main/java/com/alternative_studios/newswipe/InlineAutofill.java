@@ -175,9 +175,8 @@ final class InlineAutofill {
      * 자동 완성 서비스에 보낼 요청: 칩의 크기 범위와 모양. toolbarHeight는 도구 막대 높이(px), maxWidth는 칩 하나의 최대 폭.
      */
     InlineSuggestionsRequest request(KeyboardTheme theme, int toolbarHeight, int maxWidth) {
-        // 도구 막대 높이에서 위아래 4dp씩 남긴다. 도구 버튼은 아이콘(22dp)만 보이므로, 칩이 터치 영역 전체만큼 커 보이지 않고
-        // 버튼들과 비슷한 높이로 느껴지게 한다 (기본 막대 40dp면 칩 32dp).
-        chipHeight = Math.max(Ui.dp(context, 24), toolbarHeight - Ui.dp(context, 8));
+        // 도구 막대 높이에서 위아래를 조금 남긴다. 도구 버튼의 칩 배경과 같은 높이다 (기본 막대 40dp면 칩 32dp).
+        chipHeight = Ui.chipHeight(context, toolbarHeight);
         Size min = new Size(Ui.dp(context, 32), chipHeight);
         Size max = new Size(Math.max(min.getWidth(), maxWidth), chipHeight);
         InlinePresentationSpec spec = new InlinePresentationSpec.Builder(min, max)

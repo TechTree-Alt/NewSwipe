@@ -1,8 +1,11 @@
 package com.alternative_studios.newswipe.ui;
 
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.drawable.InsetDrawable;
+import android.graphics.drawable.RippleDrawable;
 import android.view.View;
 
 import com.alternative_studios.newswipe.keyboard.Icons;
@@ -22,6 +25,16 @@ public final class IconButton extends View {
         setFocusable(true);
         setContentDescription(description);
         setBackground(Ui.ripple(pressColor, null, Ui.dp(context, 20)));
+    }
+
+    /**
+     * 배경을 칩으로 바꾼다: 버튼 영역에서 좌우 insetH, 위아래 insetV만큼 들어간 둥근 바탕(fill)이고, 누르면 pressed 색으로
+     * 물결이 퍼진다. 터치 영역은 버튼 전체 그대로다.
+     */
+    public void setChip(int fill, int pressed, int insetH, int insetV, float radius) {
+        InsetDrawable content = new InsetDrawable(Ui.round(fill, radius), insetH, insetV, insetH, insetV);
+        InsetDrawable mask = new InsetDrawable(Ui.round(0xFFFFFFFF, radius), insetH, insetV, insetH, insetV);
+        setBackground(new RippleDrawable(ColorStateList.valueOf(pressed), content, mask));
     }
 
     public void setIcon(int icon) {

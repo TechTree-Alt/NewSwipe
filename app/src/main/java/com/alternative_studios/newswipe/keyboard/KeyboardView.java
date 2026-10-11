@@ -77,6 +77,18 @@ public final class KeyboardView extends View {
          */
         default void onGesture() {
         }
+
+        /** 스페이스바를 길게 눌러 선택 모드를 시작했다 (이제부터 밀면 선택 영역을 넓히거나 좁힌다). */
+        default void onSelectStart() {
+        }
+
+        /** 선택 모드에서 좌우로 밀어 선택 영역의 움직이는 끝을 한 글자 왼쪽(-1)/오른쪽(+1)으로 옮긴다. */
+        default void onSelectMove(int direction) {
+        }
+
+        /** 선택 모드에서 위아래로 밀어 선택 영역의 움직이는 끝을 한 줄 위(-1)/아래(+1)로 옮긴다. */
+        default void onSelectMoveVertical(int direction) {
+        }
     }
 
     private static final int NORMAL = 0;
@@ -94,6 +106,8 @@ public final class KeyboardView extends View {
     private static final int FN_SWIPE = 8;
     /** 길게 눌러 연속 입력하는 글자 키를 누르고 있는 중 (손을 뗄 때까지 계속 입력한다). */
     private static final int CHAR_REPEAT = 10;
+    /** 스페이스바를 길게 누른 뒤 밀고 있는 중: 커서 이동처럼 움직이되 선택 영역을 넓힌다. */
+    private static final int SELECT = 11;
 
     private static final class Pointer {
         int id;
@@ -112,6 +126,8 @@ public final class KeyboardView extends View {
         /** 분리 키보드 가운데 빈 공간에서 시작한 커서 이동: 스페이스바의 좌우·상하 설정을 따른다. */
         boolean gap;
         boolean chord;
+        /** 선택 모드에서 선택 영역을 한 번이라도 움직였는지 (움직이지 않고 떼면 그냥 스페이스로 입력한다). */
+        boolean selectMoved;
     }
 
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -161,6 +177,7 @@ public final class KeyboardView extends View {
     private int keyShadowStrength = 50;
     private Paint shadowPaint;
     private boolean spaceCursor = true;
+    private boolean spaceSelect = true;
     private boolean gapCursor = true;
     /** 문자·숫자 키를 트랙패드처럼 밀어 커서를 옮기는 기능. 그 방향에 밀어서 입력할 글자가 있으면 글자가 먼저다. */
     private boolean charCursor;
@@ -335,6 +352,11 @@ public final class KeyboardView extends View {
 
     public void setSpaceLangSwipe(boolean on) {
         spaceLangSwipe = on;
+    }
+
+    /** 스페이스바를 길게 누른 뒤 밀어서 글자 선택. */
+    public void setSpaceSelect(boolean on) {
+        spaceSelect = on;
     }
 
     /** 커서 이동 속도 (%). 100 = 기본. */
@@ -901,10 +923,11 @@ public final class KeyboardView extends View {
                     || (modeKeyLongPress && (k.type == Key.TO_SYMBOLS || k.type == Key.TO_LETTERS));
         }
         boolean chars = k.type == Key.CHAR && (k.popup != null && longPressChars || isRepeatChar(k));
-        if (del || lang || chars) {
+        boolean select = k.type == Key.SPACE && spaceSelect;
+        if (del || lang || chars || select) {
             longPressTarget = p;
             // 기능키는 모두 '기능키 길게 누르기 시간'을, 문자 키는 '문자 길게 누르기 시간'을 따른다.
-            long delay = del || lang ? fnPressMs : longPressMs;
+            long delay = del || lang || select ? fnPressMs : longPressMs;
             handler.postDelayed(longPressRunnable, delay);
         }
     }
@@ -1075,6 +1098,28 @@ public final class KeyboardView extends View {
                 }
                 break;
             }
+            case SELECT: {
+                // 스페이스바 커서 이동과 같은 속도로, 좌우는 글자 단위·위아래는 줄 단위로 선택 영역의 끝을 옮긴다.
+                float stepX = cursorStep / spaceSpeedH;
+                float stepY = cursorStepY / spaceSpeedV;
+                float d = x - p.cursorAnchorX;
+                while (Math.abs(d) >= stepX) {
+                    int dir = d > 0 ? 1 : -1;
+                    p.selectMoved = true;
+                    if (listener != null) listener.onSelectMove(dir);
+                    p.cursorAnchorX += dir * stepX;
+                    d = x - p.cursorAnchorX;
+                }
+                float dv = y - p.cursorAnchorY;
+                while (Math.abs(dv) >= stepY) {
+                    int dir = dv > 0 ? 1 : -1;
+                    p.selectMoved = true;
+                    if (listener != null) listener.onSelectMoveVertical(dir);
+                    p.cursorAnchorY += dir * stepY;
+                    dv = y - p.cursorAnchorY;
+                }
+                break;
+            }
             case DELETE_WORD:
                 if (dx > -fnSwipeThreshold) p.mode = NORMAL;
                 break;
@@ -1164,6 +1209,13 @@ public final class KeyboardView extends View {
                 break;
             case CHAR_REPEAT:
                 stopCharRepeat();
+                break;
+            case SELECT:
+                // 길게 누르기만 하고 밀지 않았으면 예전처럼 스페이스를 입력한다.
+                if (!p.selectMoved) {
+                    listener.onKeyTap(p.key);
+                    markChord();
+                }
                 break;
             case CONSUMED:
                 if (p.key.type == Key.SHIFT && p.chord) listener.onShiftChordEnd();
@@ -1259,7 +1311,17 @@ public final class KeyboardView extends View {
             return;
         }
         if (shiftHeld) return;
-        if (k.type == Key.DELETE) {
+        if (k.type == Key.SPACE && spaceSelect) {
+            // 선택 모드: 이제부터 밀면 커서 대신 선택 영역의 끝이 움직인다. 손가락이 지금 있는 자리에서 잰다.
+            p.mode = SELECT;
+            p.selectMoved = false;
+            p.cursorAnchorX = p.lastX;
+            p.cursorAnchorY = p.lastY;
+            if (listener != null) {
+                listener.onGesture();
+                listener.onSelectStart();
+            }
+        } else if (k.type == Key.DELETE) {
             p.mode = REPEAT;
             repeatRunnable.run();
         } else if (k.type == Key.LANGUAGE || k.type == Key.TO_SYMBOLS || k.type == Key.TO_LETTERS) {

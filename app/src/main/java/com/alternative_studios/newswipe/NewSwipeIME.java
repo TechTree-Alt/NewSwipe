@@ -125,6 +125,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private int selStart = -1, selEnd = -1;
     private LinearLayout searchBar;
     private LinearLayout suggestBar;
+    /** 글자를 선택했을 때 뜨는 편집 칩 줄 (도구 막대 안, 추천 단어 줄 자리). */
+    private FrameLayout editBar;
     /** 자동 완성 칩 줄 (도구 막대 안, 추천 단어 줄 자리). */
     private View autofillBar;
     private View toolSpacer;
@@ -615,6 +617,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         suggestBar = buildSuggestBar();
         suggestBar.setVisibility(View.GONE);
         bar.addView(suggestBar, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+        // 글자를 선택하면 같은 자리에 편집 칩(잘라내기·복사·붙여넣기·전체 선택)이 뜬다.
+        editBar = buildEditBar();
+        bar.addView(editBar, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
         // 자동 완성 칩도 같은 자리에 뜬다 (추천 단어와 함께 뜨면 칩이 먼저).
         autofillBar = autofill != null ? autofill.createBar(theme) : null;
         if (autofillBar != null) {
@@ -668,11 +673,13 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         toolbar.removeView(toolSpacer);
         toolbar.removeView(clipChipSlot);
         toolbar.removeView(suggestBar);
+        toolbar.removeView(editBar);
         if (autofillBar != null) toolbar.removeView(autofillBar);
         for (String id : order[0]) toolbar.addView(toolButtonOf(id));
         toolbar.addView(toolSpacer, new LinearLayout.LayoutParams(0, 1, 1f));
         toolbar.addView(clipChipSlot, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
         toolbar.addView(suggestBar, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+        toolbar.addView(editBar, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
         if (autofillBar != null) {
             toolbar.addView(autofillBar, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
         }
@@ -722,7 +729,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     private IconButton toolButton(int icon, String desc, View.OnClickListener l) {
-        IconButton b = new IconButton(this, icon, theme.hint, theme.keyPressed, desc);
+        IconButton b = new IconButton(this, icon, theme.text, theme.keyPressed, desc);
         b.setOnClickListener(v -> {
             feedback.onToolbar();
             l.onClick(v);
@@ -747,6 +754,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         float scale = prefs.toolButtonSize() / 100f;
         int width = Math.round(Ui.dp(this, 40) * scale);
         float icon = Ui.dp(this, 22) * scale;
+        // 버튼마다 자동 완성 칩과 같은 모양의 칩 배경을 씌운다: 키 색 둥근 바탕, 높이는 칩 높이, 좌우는 2dp씩 띄운다.
+        int chipH = Ui.chipHeight(this, toolbarHeight);
+        int insetV = Math.max(0, (toolbarHeight - chipH) / 2);
+        int insetH = Ui.dp(this, 2);
         for (String id : ToolbarButtons.ALL) {
             View v = toolButtonOf(id);
             ViewGroup.LayoutParams lp = v.getLayoutParams();
@@ -756,6 +767,17 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 v.setLayoutParams(lp);
             }
             ((IconButton) v).setIconSize(icon);
+            ((IconButton) v).setChip(theme.key, theme.keyPressed, insetH, insetV, Ui.chipRadius(this));
+        }
+        if (editBar != null) {
+            LinearLayout row = (LinearLayout) editBar.getChildAt(0);
+            for (int i = 0; i < row.getChildCount(); i++) {
+                ViewGroup.LayoutParams lp = row.getChildAt(i).getLayoutParams();
+                if (lp.height != chipH) {
+                    lp.height = chipH;
+                    row.getChildAt(i).setLayoutParams(lp);
+                }
+            }
         }
     }
 
@@ -792,6 +814,57 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         lp.rightMargin = Ui.dp(this, 4);
         slot.addView(clipChip, lp);
         return slot;
+    }
+
+    /** 칩 하나의 최대 폭 (dp): 가로 모드처럼 막대가 아주 넓어도 칩이 길게 늘어나지 않게 한다. */
+    private static final int EDIT_CHIP_MAX_DP = 96;
+
+    /**
+     * 글자를 선택했을 때 뜨는 편집 칩 줄: 잘라내기·복사·붙여넣기·전체 선택. 칩은 같은 폭으로 줄을 나눠 쓰고
+     * (칩 하나가 EDIT_CHIP_MAX_DP보다 넓어지지 않게 줄 전체를 가운데에 모은다), 모양은 자동 완성 칩과 같다.
+     */
+    private FrameLayout buildEditBar() {
+        FrameLayout frame = new FrameLayout(this);
+        frame.setVisibility(View.GONE);
+        LinearLayout row = new LinearLayout(this) {
+            @Override
+            protected void onMeasure(int widthSpec, int heightSpec) {
+                int max = Ui.dp(getContext(), EDIT_CHIP_MAX_DP) * getChildCount();
+                if (MeasureSpec.getSize(widthSpec) > max) widthSpec = MeasureSpec.makeMeasureSpec(max, MeasureSpec.EXACTLY);
+                super.onMeasure(widthSpec, heightSpec);
+            }
+        };
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.addView(editChip("잘라내기", v -> contextAction(android.R.id.cut)));
+        row.addView(editChip("복사", v -> copySelection(false)));
+        row.addView(editChip("붙여넣기", v -> contextAction(android.R.id.paste)));
+        row.addView(editChip("전체 선택", v -> contextAction(android.R.id.selectAll)));
+        frame.addView(row, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER));
+        return frame;
+    }
+
+    private TextView editChip(String label, View.OnClickListener l) {
+        TextView t = new TextView(this);
+        t.setText(label);
+        t.setTextColor(theme.text);
+        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        t.setGravity(Gravity.CENTER);
+        t.setSingleLine(true);
+        t.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        int pad = Ui.dp(this, 6);
+        t.setPadding(pad, 0, pad, 0);
+        float r = Ui.chipRadius(this);
+        t.setBackground(Ui.ripple(theme.keyPressed, Ui.round(theme.key, r), r));
+        t.setOnClickListener(v -> {
+            feedback.onToolbar();
+            l.onClick(v);
+        });
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, Ui.chipHeight(this, toolbarHeightPx()), 1f);
+        lp.leftMargin = Ui.dp(this, 2);
+        lp.rightMargin = Ui.dp(this, 2);
+        t.setLayoutParams(lp);
+        return t;
     }
 
     private LinearLayout buildSuggestBar() {
@@ -877,6 +950,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         keyboard.setCursorSpeed(prefs.spaceCursorSpeedH(), prefs.spaceCursorSpeedV(),
                 prefs.charCursorSpeedH(), prefs.charCursorSpeedV());
         keyboard.setSpaceLangSwipe(prefs.spaceLangSwipe());
+        keyboard.setSpaceSelect(prefs.spaceSelect());
         keyboard.setDeleteLongPress(prefs.longPressDelete(), prefs.deletePressMs());
         keyboard.setModeKeyLongPress(prefs.modeKeyLongPress());
         keyboard.setLongPressActions(prefs.longPressCustom()
@@ -1168,9 +1242,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd);
         mirror.onSelection(newSelStart, newSelEnd);   // 이모지 검색 중에도 실제 입력란의 커서 변화는 따라간다
         initialTextFresh = false;   // EditorInfo의 커서 앞 글자는 이제 지난 내용일 수 있다
+        boolean hadSelection = selStart >= 0 && selEnd >= 0 && selStart != selEnd;
         selStart = newSelStart;
         selEnd = newSelEnd;
         if (panel == PANEL_SEARCH) return;
+        // 글자를 선택하거나 선택을 풀면 선택 편집 칩을 띄우거나 감춘다.
+        if (hadSelection != (newSelStart >= 0 && newSelEnd >= 0 && newSelStart != newSelEnd)) onAutofillChipsChanged();
         // 사용자가 커서를 옮기면 조합 중인 글자를 확정하고 조합을 끝낸다.
         if (hadComposing && (candidatesEnd == -1 || newSelStart != candidatesEnd || newSelEnd != candidatesEnd)) {
             composer.reset();
@@ -1359,7 +1436,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 도구 막대를 끈 상태로 자판을 보여 주는 중인지. 검색 패널은 도구 막대 자리에 검색창이 있어 해당하지 않는다. */
     private boolean toolbarGone() {
         return !prefs.toolbar() && !((cfgSuggest && suggestAllowed) || (!shortcuts.isEmpty() && shortcutAllowed))
-                && panel == PANEL_KEYBOARD && !autofillShowing();
+                && panel == PANEL_KEYBOARD && !autofillShowing() && !editShowing();
     }
 
     private void updatePanelSizes() {
@@ -1690,18 +1767,82 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 커서를 위(-1)/아래(+1)로 한 줄 옮긴다. check면 커서가 실제로 움직였는지 돌려준다 ({@link #moveCursor} 참고). */
     private boolean moveCursorVertical(int direction, boolean check) {
         if (panel == PANEL_SEARCH) return false;
-        // 한 줄짜리 입력란에서 위/아래 키를 보내면 다른 입력란으로 포커스가 넘어가므로 여러 줄 입력란에서만 움직인다.
-        EditorInfo ei = getCurrentInputEditorInfo();
-        if (ei == null || (ei.inputType & InputType.TYPE_MASK_CLASS) != InputType.TYPE_CLASS_TEXT
-                || (ei.inputType & (InputType.TYPE_TEXT_FLAG_MULTI_LINE | InputType.TYPE_TEXT_FLAG_IME_MULTI_LINE)) == 0) {
-            return false;
-        }
+        if (!multiLineField()) return false;
         correctedTo = null;
         commitComposing();
         boolean moves = check && cursorCanMove(direction < 0);
         sendDownUpKeyEvents(direction < 0 ? KeyEvent.KEYCODE_DPAD_UP : KeyEvent.KEYCODE_DPAD_DOWN);
         mirror.forget();
         return moves;
+    }
+
+    /** 한 줄짜리 입력란에서 위/아래 키를 보내면 다른 입력란으로 포커스가 넘어가므로, 줄 이동은 여러 줄 입력란에서만 한다. */
+    private boolean multiLineField() {
+        EditorInfo ei = getCurrentInputEditorInfo();
+        return ei != null && (ei.inputType & InputType.TYPE_MASK_CLASS) == InputType.TYPE_CLASS_TEXT
+                && (ei.inputType & (InputType.TYPE_TEXT_FLAG_MULTI_LINE | InputType.TYPE_TEXT_FLAG_IME_MULTI_LINE)) != 0;
+    }
+
+    // ---------------------------------------------------------------- 스페이스바를 길게 누른 뒤 밀어서 선택
+
+    /** 선택 모드를 시작할 때의 선택 시작점 (움직이지 않는 끝). 움직이는 끝은 선택 영역의 다른 쪽이다. */
+    private int selectAnchor = -1;
+
+    @Override
+    public void onSelectStart() {
+        if (panel == PANEL_SEARCH) return;
+        correctedTo = null;
+        commitComposing();
+        selectAnchor = selStart;
+    }
+
+    @Override
+    public void onSelectMove(int direction) {
+        if (extendSelection(direction < 0 ? KeyEvent.KEYCODE_DPAD_LEFT : KeyEvent.KEYCODE_DPAD_RIGHT,
+                direction < 0, cursorTickDue())) {
+            cursorTick();
+        }
+    }
+
+    @Override
+    public void onSelectMoveVertical(int direction) {
+        if (!multiLineField()) return;
+        if (extendSelection(direction < 0 ? KeyEvent.KEYCODE_DPAD_UP : KeyEvent.KEYCODE_DPAD_DOWN,
+                direction < 0, cursorTickDue())) {
+            cursorTick();
+        }
+    }
+
+    /**
+     * Shift+방향 키를 보내 선택 영역의 움직이는 끝을 옮긴다 (입력란이 Shift를 보고 선택을 넓히거나 좁힌다).
+     * check면 실제로 움직일 수 있는지 돌려준다 (글의 맨 앞·맨 뒤에 닿았으면 false).
+     */
+    private boolean extendSelection(int keyCode, boolean backward, boolean check) {
+        if (panel == PANEL_SEARCH) return false;
+        InputConnection ic = getCurrentInputConnection();
+        if (ic == null) return false;
+        correctedTo = null;
+        commitComposing();
+        boolean moves = check && selectionCanMove(ic, backward);
+        long t = SystemClock.uptimeMillis();
+        int meta = KeyEvent.META_SHIFT_ON | KeyEvent.META_SHIFT_LEFT_ON;
+        ic.sendKeyEvent(new KeyEvent(t, t, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_SHIFT_LEFT, 0, meta));
+        ic.sendKeyEvent(new KeyEvent(t, t, KeyEvent.ACTION_DOWN, keyCode, 0, meta));
+        ic.sendKeyEvent(new KeyEvent(t, t, KeyEvent.ACTION_UP, keyCode, 0, meta));
+        ic.sendKeyEvent(new KeyEvent(t, t, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_SHIFT_LEFT, 0, 0));
+        mirror.forget();
+        return moves;
+    }
+
+    /** 선택 영역의 움직이는 끝이 그쪽으로 더 갈 수 있는지. 선택 영역 안쪽으로 줄어드는 쪽이면 늘 갈 수 있다. */
+    private boolean selectionCanMove(InputConnection ic, boolean backward) {
+        if (selStart < 0 || selEnd < 0) return true;
+        int lo = Math.min(selStart, selEnd), hi = Math.max(selStart, selEnd);
+        int focus = selStart == selectAnchor ? selEnd : selStart;
+        if (backward) return focus > lo || lo > 0;
+        if (focus < hi) return true;
+        CharSequence next = ic.getTextAfterCursor(1, 0);
+        return next == null || next.length() > 0;
     }
 
     @Override
@@ -2207,14 +2348,23 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return autofill != null && autofill.shown() && panel == PANEL_KEYBOARD;
     }
 
-    /** 추천 단어 줄은 추천이 있고 자동 완성 칩이 없을 때만 보인다 (칩이 같은 자리를 쓴다). */
+    /**
+     * 선택 편집 칩이 떠 있는지: 자판 화면에서 글자를 선택했을 때 (설정에서 껐거나 자동 완성 칩이 떠 있으면 뜨지 않는다).
+     */
+    private boolean editShowing() {
+        return editBar != null && panel == PANEL_KEYBOARD && prefs.selectionChips() && !autofillShowing()
+                && selStart >= 0 && selEnd >= 0 && selStart != selEnd;
+    }
+
+    /** 추천 단어 줄은 추천이 있고 자동 완성 칩·선택 편집 칩이 없을 때만 보인다 (칩이 같은 자리를 쓴다). */
     private void applySuggestBarVisibility() {
         if (suggestBar != null) {
-            suggestBar.setVisibility(suggestions.length > 0 && !autofillShowing() ? View.VISIBLE : View.GONE);
+            suggestBar.setVisibility(suggestions.length > 0 && !autofillShowing() && !editShowing()
+                    ? View.VISIBLE : View.GONE);
         }
     }
 
-    /** 자동 완성 칩이 생기거나 사라졌다: 추천 단어 줄과 도구 버튼, 도구 막대 자리를 다시 맞춘다. */
+    /** 자동 완성 칩이나 선택 편집 칩이 생기거나 사라졌다: 추천 단어 줄과 도구 버튼, 도구 막대 자리를 다시 맞춘다. */
     private void onAutofillChipsChanged() {
         applySuggestBarVisibility();
         refreshToolbarVisibility();
@@ -2225,11 +2375,15 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private void refreshToolbarVisibility() {
         if (toolbar == null) return;
         // 추천 단어 줄이나 자동 완성 칩 줄이 떠 있는 동안: 오른쪽 버튼들이 접히고 그 줄이 자리를 쓴다.
-        boolean suggesting = (suggestBar != null && suggestBar.getVisibility() == View.VISIBLE) || autofillShowing();
+        boolean editing = editShowing();
+        if (editBar != null) editBar.setVisibility(editing ? View.VISIBLE : View.GONE);
+        boolean suggesting = (suggestBar != null && suggestBar.getVisibility() == View.VISIBLE) || autofillShowing()
+                || editing;
         boolean on = prefs.toolbar();
         toolbar.setVisibility(panel == PANEL_SEARCH || !(on || suggesting) ? View.GONE : View.VISIBLE);
         // 설정에서 '도구 막대 전체를 쓰기'를 켰으면 추천이 떠 있는 동안 왼쪽 버튼들도 사라진다.
-        boolean left = on && !(suggesting && prefs.suggestFullBar());
+        // 선택 편집 칩은 칩 네 개가 넉넉히 들어가도록 언제나 막대 전체를 쓴다.
+        boolean left = on && !(suggesting && (editing || prefs.suggestFullBar()));
         // 오른쪽 버튼들은 추천이 떠 있는 동안 사라져서 추천이 쓸 공간을 내준다.
         boolean right = on && !suggesting;
         String[][] order = toolOrder != null ? toolOrder : prefs.toolOrder();

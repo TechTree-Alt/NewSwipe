@@ -24,6 +24,19 @@ public final class Ui {
         return g;
     }
 
+    /**
+     * 도구 막대에 놓는 칩(자동 완성 칩, 도구 버튼, 방금 복사한 내용 칩, 선택 편집 칩)의 높이 (px).
+     * 도구 막대 높이에서 위아래 4dp씩 남긴다 (기본 막대 40dp면 32dp). 막대가 아주 낮아도 24dp보다 작아지지 않는다.
+     */
+    public static int chipHeight(Context c, int barHeight) {
+        return Math.max(dp(c, 24), barHeight - dp(c, 8));
+    }
+
+    /** 도구 막대 칩의 모서리 반지름 (px). */
+    public static float chipRadius(Context c) {
+        return dp(c, 16);
+    }
+
     /** 눌렀을 때 물결 효과가 있는 배경. content가 null이면 투명 배경. */
     public static Drawable ripple(int pressColor, Drawable content, float radiusPx) {
         GradientDrawable mask = round(0xFFFFFFFF, radiusPx);
