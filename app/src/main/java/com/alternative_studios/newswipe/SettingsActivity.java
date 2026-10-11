@@ -155,7 +155,7 @@ public final class SettingsActivity extends Activity {
             {"swipefn", "밀어서 기능", "기능키·도구 막대 밀기, 완전 사용자화"},
             {"feedback", "소리 및 진동", "키를 누를 때의 진동과 소리"},
             {"tools", "도구 막대, 클립보드, 이모지", "도구 막대 사용자화, 클립보드 기록, 이모지"},
-            {"words", "단어 추천", "단어 추천, 단축어, 자동 수정, 입력한 단어 학습"},
+            {"words", "추천, 학습 및 완성", "단어 추천, 학습, 단축어, 자동 완성"},
             {"onehand", "한 손 모드", "자판 폭·키 높이, 세로 위치"},
             {"backup", "설정 가져오기 및 내보내기", "모든 설정을 파일로 저장하거나 불러오기"},
             {"lab", "실험실", "대화면 별도 레이아웃, 스와이프 방향 판정"},
@@ -407,6 +407,7 @@ public final class SettingsActivity extends Activity {
             {"words", "단어를 지울 때 확인", "삭제 확인 학습한 단어"},
             {"words", "학습한 단어 보기", "사용자 사전 목록"},
             {"words", "학습한 단어 모두 지우기", "사용자 사전 초기화 삭제"},
+            {"words", "자동 완성 제안", "오토필 Autofill Google 삼성패스 비밀번호 아이디 계정 칩 인증번호"},
             {"feedback", "키 진동", "햅틱 진동 켜기 끄기"},
             {"feedback", "진동 길이", "햅틱 ms 밀리초 진동 시간"},
             {"feedback", "진동 강도", "햅틱 세기 진폭"},
@@ -1891,6 +1892,19 @@ public final class SettingsActivity extends Activity {
                 .setNegativeButton("취소", null)
                 .show()));
 
+        // 자동 완성: 서비스(Autofill with Google, 삼성 패스 등)의 제안을 도구 막대 자리에 칩으로 (Android 11 이상).
+        LinearLayout autofill = section("자동 완성");
+        if (Build.VERSION.SDK_INT >= 30) {
+            autofill.addView(toggle("자동 완성 제안",
+                    "자동 완성 서비스(Autofill with Google, 삼성 패스 등)가 채울 수 있는 칸에서 계정을 도구 막대에 칩으로 보여 줍니다. "
+                            + "칩을 누르면 그 계정으로 채워집니다.",
+                    Prefs.AUTOFILL_INLINE, prefs.autofillInline()));
+            autofill.addView(note("기기 설정에서 고른 자동 완성 서비스를 씁니다. 서비스가 키보드 칩을 지원하지 않으면 칩 대신 "
+                    + "앱 안에 원래의 자동 완성 목록이 뜹니다. 바꾼 설정은 다음 입력란부터 적용됩니다."));
+        } else {
+            autofill.addView(note("Android 11 이상에서 쓸 수 있습니다. 이 기기에서는 앱 안에 뜨는 원래의 자동 완성 목록을 쓰세요."));
+        }
+
         LinearLayout about = section("개인 정보");
         about.addView(note("모든 처리는 기기 안에서만 하며 인터넷을 쓰지 않습니다. 비밀번호·이메일 입력란에서는 학습을 하지 않습니다."));
     }
@@ -2139,19 +2153,6 @@ public final class SettingsActivity extends Activity {
         tools.addView(slider("도구 막대 높이", Prefs.TOOLBAR_HEIGHT, prefs.toolbarHeight(), 70, 150, 5, "%"));
         tools.addView(slider("도구 버튼 크기", Prefs.TOOL_BUTTON_SIZE, prefs.toolButtonSize(), 70, 150, 5, "%"));
         tools.addView(note("도구 버튼의 아이콘은 막대보다 커지지 않습니다."));
-
-        // 자동 완성: 서비스(Autofill with Google, 삼성 패스 등)의 제안을 도구 막대 자리에 칩으로 (Android 11 이상).
-        LinearLayout autofill = section("자동 완성");
-        if (Build.VERSION.SDK_INT >= 30) {
-            autofill.addView(toggle("자동 완성 제안",
-                    "자동 완성 서비스(Autofill with Google, 삼성 패스 등)가 채울 수 있는 칸에서 계정을 도구 막대에 칩으로 보여 줍니다. "
-                            + "칩을 누르면 그 계정으로 채워집니다.",
-                    Prefs.AUTOFILL_INLINE, prefs.autofillInline()));
-            autofill.addView(note("기기 설정에서 고른 자동 완성 서비스를 씁니다. 서비스가 키보드 칩을 지원하지 않으면 칩 대신 "
-                    + "앱 안에 원래의 자동 완성 목록이 뜹니다. 바꾼 설정은 다음 입력란부터 적용됩니다."));
-        } else {
-            autofill.addView(note("Android 11 이상에서 쓸 수 있습니다. 이 기기에서는 앱 안에 뜨는 원래의 자동 완성 목록을 쓰세요."));
-        }
 
         LinearLayout clip = section("클립보드");
         View clipImagesToggle = toggle("이미지 저장", "복사한 이미지도 클립보드에 저장됩니다 (최대 "
