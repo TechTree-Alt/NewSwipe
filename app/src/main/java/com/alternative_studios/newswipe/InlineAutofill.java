@@ -3,6 +3,9 @@ package com.alternative_studios.newswipe;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.res.ColorStateList;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.Rect;
 import android.graphics.drawable.Icon;
 import android.os.Bundle;
@@ -19,9 +22,7 @@ import android.widget.LinearLayout;
 import android.widget.inline.InlineContentView;
 import android.widget.inline.InlinePresentationSpec;
 
-import com.alternative_studios.newswipe.keyboard.Icons;
 import com.alternative_studios.newswipe.keyboard.KeyboardTheme;
-import com.alternative_studios.newswipe.ui.IconButton;
 import com.alternative_studios.newswipe.ui.Ui;
 
 import java.util.ArrayList;
@@ -56,7 +57,7 @@ final class InlineAutofill {
     private final Host host;
     private LinearLayout bar, pinned;
     private ChipRow row;
-    private IconButton prev, next;
+    private PageChevron prev, next;
     /** 스크롤하지 않는 대신 쪽(page)으로 넘긴다: 칩이 줄 폭에 다 들어가면 한 쪽이고, 아니면 칩 단위로 넘긴다. */
     private final List<InlineContentView> chipViews = new ArrayList<>();
     /** 지금 쪽의 첫 칩 번호. */
@@ -91,8 +92,8 @@ final class InlineAutofill {
         // 칩은 서비스가 따로 그려 창 위에 얹는 화면이라 스크롤로 옮기면 가장자리에서 잘라 내는 시점이 칩 위치와 어긋나
         // 경계선이 흔들리고 도구 버튼 위로 잠깐 비쳐 보인다. 그래서 스크롤하지 않고, 줄에 온전히 들어가는 칩만 보여
         // 쪽(page)으로 넘긴다 (좌우로 밀거나 양옆 화살표를 누른다). 칩이 잘리는 일이 없다.
-        prev = arrow(Icons.BACK, theme, -1, "이전 자동 완성");
-        next = arrow(Icons.NEXT, theme, 1, "다음 자동 완성");
+        prev = arrow(theme, -1, "이전 자동 완성");
+        next = arrow(theme, 1, "다음 자동 완성");
         row = new ChipRow(context);
         // 이 쪽의 칩들을 칩 줄 가운데에 모아 놓는다 (가로·세로 모두 가운데).
         row.setGravity(Gravity.CENTER);
@@ -112,35 +113,60 @@ final class InlineAutofill {
         return bar;
     }
 
-    /** 쪽 넘김 버튼의 폭(dp)과 바깥 여백(dp). 칩보다 눈에 띄게 크게 해 더 있다는 것을 분명히 알린다. */
-    private static final int ARROW_DP = 40, ARROW_MARGIN_DP = 2;
-
-    /** 칩 줄 폭에서 칩이 쓸 수 없는 폭 (px): 양옆 쪽 넘김 버튼과 고정 칩(열쇠)의 대략적인 폭. 칩 최대 폭을 정할 때 뺀다. */
-    int reservedWidth() {
-        return Ui.dp(context, 2 * (ARROW_DP + 2 * ARROW_MARGIN_DP) + PINNED_DP);
-    }
-
+    /** 쪽 넘김 표시의 폭(dp): 칩이 쓸 자리를 최대한 남기려고 얇은 〈 〉 모양만 둔다. */
+    private static final int ARROW_DP = 18;
     private static final int PINNED_DP = 48;
 
-    private LinearLayout.LayoutParams arrowParams() {
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(Ui.dp(context, ARROW_DP),
-                chipHeight > 0 ? chipHeight : ViewGroup.LayoutParams.MATCH_PARENT);
-        lp.leftMargin = lp.rightMargin = Ui.dp(context, ARROW_MARGIN_DP);
-        return lp;
+    /** 칩 줄 폭에서 칩이 쓸 수 없는 폭 (px): 양옆 쪽 넘김 표시와 고정 칩(열쇠)의 대략적인 폭. 칩 최대 폭을 정할 때 뺀다. */
+    int reservedWidth() {
+        return Ui.dp(context, 2 * ARROW_DP + PINNED_DP);
     }
 
-    /** 쪽을 넘기는 버튼: 칩과 같은 높이의 둥근 버튼에 화살표 아이콘을 가운데로 그린다. 누르면 이전(-1)·다음(+1) 쪽으로 간다. */
-    private IconButton arrow(int icon, KeyboardTheme theme, int dir, String description) {
-        IconButton b = new IconButton(context, icon, theme.text, theme.keyPressed, description);
-        b.setIconSize(Ui.dp(context, 24));
-        float radius = Ui.dp(context, 16);
-        b.setBackground(Ui.ripple(theme.keyPressed, Ui.round(theme.functionKey, radius), radius));
+    private LinearLayout.LayoutParams arrowParams() {
+        return new LinearLayout.LayoutParams(Ui.dp(context, ARROW_DP),
+                chipHeight > 0 ? chipHeight : ViewGroup.LayoutParams.MATCH_PARENT);
+    }
+
+    /** 쪽을 넘기는 얇은 〈 〉: 배경 없이 모양만 그리고, 누르면 이전(-1)·다음(+1) 쪽으로 간다. */
+    private PageChevron arrow(KeyboardTheme theme, int dir, String description) {
+        PageChevron b = new PageChevron(context, theme.hint, dir < 0);
+        b.setContentDescription(description);
+        b.setBackground(Ui.ripple(theme.keyPressed, null, Ui.dp(context, 14)));
         b.setVisibility(View.GONE);
         b.setOnClickListener(v -> {
             host.onAutofillChipClicked();
             turnPage(dir);
         });
         return b;
+    }
+
+    /** 얇은 꺾쇠(〉, 왼쪽이면 〈)를 가운데에 그린다. */
+    private static final class PageChevron extends View {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Path path = new Path();
+        private final boolean left;
+
+        PageChevron(Context c, int color, boolean left) {
+            super(c);
+            this.left = left;
+            paint.setColor(color);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(Ui.dp(c, 2));
+            paint.setStrokeCap(Paint.Cap.ROUND);
+            paint.setStrokeJoin(Paint.Join.ROUND);
+            setClickable(true);
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            float cx = getWidth() / 2f, cy = getHeight() / 2f;
+            float hw = Ui.dp(getContext(), 3.5f) * (left ? -1 : 1), hh = Ui.dp(getContext(), 7f);
+            path.reset();
+            path.moveTo(cx - hw, cy - hh);
+            path.lineTo(cx + hw, cy);
+            path.lineTo(cx - hw, cy + hh);
+            canvas.drawPath(path, paint);
+        }
     }
 
     /**
@@ -275,7 +301,7 @@ final class InlineAutofill {
         int total = 0;
         for (View v : chipViews) total += outerWidth(v);
         boolean single = total <= slot;
-        int arrowW = Ui.dp(context, ARROW_DP + 2 * ARROW_MARGIN_DP);
+        int arrowW = Ui.dp(context, ARROW_DP);
         int avail = single ? slot : Math.max(1, slot - 2 * arrowW);
         ViewGroup.LayoutParams rlp = row.getLayoutParams();
         if (rlp.width != avail) {
