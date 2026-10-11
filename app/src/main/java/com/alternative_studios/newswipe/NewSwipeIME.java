@@ -753,6 +753,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private void sizeToolbar() {
         toolbarHeight = toolbarHeightPx();
         setHeight(topSlot, toolbarHeight);
+        dropStalePanels();
         float scale = prefs.toolButtonSize() / 100f;
         int width = Math.round(Ui.dp(this, 40) * scale);
         float icon = Ui.dp(this, 22) * scale;
@@ -1479,9 +1480,28 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
     }
 
+    /** 이모지·클립보드 패널을 만들 때 쓴 맨 위 줄 높이 (도구 막대 높이). 높이 설정이 바뀌면 패널을 다시 만든다. */
+    private int emojiPanelTop, clipPanelTop;
+
+    /**
+     * 도구 막대 높이가 바뀌었으면, 예전 높이로 만든 이모지·클립보드 패널을 버린다 (다음에 열 때 새 높이로 만든다).
+     * 지금 보고 있는 패널은 그대로 둔다.
+     */
+    private void dropStalePanels() {
+        if (emojiPanel != null && emojiPanelTop != toolbarHeight && panel != PANEL_EMOJI && panel != PANEL_SEARCH) {
+            // 패널만 버린다 (읽어 둔 이모지 데이터는 그대로 두고 새 패널에 다시 넘긴다).
+            emojiPanel.dismissTones();
+            if (content != null) content.removeView(emojiPanel);
+            emojiPanel = null;
+        }
+        if (clipPanel != null && clipPanelTop != toolbarHeight && panel != PANEL_CLIPBOARD) releaseClipboard();
+    }
+
     private void ensureEmojiPanel() {
         if (emojiPanel != null) return;
-        emojiPanel = new EmojiPanel(this, theme, Ui.dp(this, 40), this);   // 패널 위쪽 탭 줄은 도구 막대 높이와 관계없이 기본 높이
+        // 패널 맨 위 줄(뒤로 가기·검색창)은 도구 막대 자리라 도구 막대 높이를 따른다.
+        emojiPanelTop = toolbarHeight;
+        emojiPanel = new EmojiPanel(this, theme, toolbarHeight, this);
         emojiPanel.setSizeLevel(prefs.emojiSize());
         // 데이터를 읽는 동안 열려도 처음 탭(최근이 있으면 최근 탭)을 바로 고를 수 있게 사용 기록부터 넘긴다.
         emojiPanel.setRecent(EmojiRepository.parseRecent(prefs.recentEmoji()));
@@ -1539,7 +1559,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     private void ensureClipPanel() {
         if (clipPanel != null) return;
-        clipPanel = new ClipboardPanel(this, theme, Ui.dp(this, 40), this);
+        // 패널 맨 위 줄(뒤로 가기·제목·모두 지우기)은 도구 막대 자리라 도구 막대 높이를 따른다.
+        clipPanelTop = toolbarHeight;
+        clipPanel = new ClipboardPanel(this, theme, toolbarHeight, this);
         content.addView(clipPanel, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 keyboardHeight + toolbarHeight));
     }
