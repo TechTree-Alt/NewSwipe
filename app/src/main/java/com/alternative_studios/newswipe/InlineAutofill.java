@@ -9,12 +9,14 @@ import android.os.Bundle;
 import android.util.Size;
 import android.util.TypedValue;
 import android.view.Gravity;
+import android.view.MotionEvent;
+import android.view.ViewConfiguration;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InlineSuggestion;
 import android.view.inputmethod.InlineSuggestionsRequest;
-import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.inline.InlineContentView;
 import android.widget.inline.InlinePresentationSpec;
 
@@ -31,7 +33,7 @@ import java.util.List;
  * <p>키보드가 {@link #request}로 "칩을 이 크기·모양으로 보여 줄 수 있다"고 알리면, 자동 완성 서비스가 채울 수 있는
  * 입력란(로그인 칸 등)에서 칩을 보내 준다. 칩은 서비스가 그리는 화면({@link InlineContentView})이라 키보드는 자리만
  * 내준다. 칩을 누르면 서비스가 입력란을 채운다. 서비스가 고정(pinned) 칩(예: 비밀번호 목록 열기)을 보내면 막대 오른쪽
- * 끝에 따로 놓는다.
+ * 끝에 따로 놓는다. 칩은 스크롤하지 않고 줄에 온전히 들어가는 만큼씩 쪽으로 넘겨 본다 (좌우로 밀거나 화살표).
  *
  * <p>칩의 모양은 AndroidX autofill 라이브러리(androidx.autofill.inline v1)가 읽는 Bundle 형식으로 넘긴다.
  * 라이브러리를 쓰지 않으려고 그 형식(키 이름)을 그대로 만든다.
@@ -51,8 +53,15 @@ final class InlineAutofill {
 
     private final Context context;
     private final Host host;
-    private LinearLayout bar, chips, pinned;
-    private HorizontalScrollView scroll;
+    private LinearLayout bar, pinned;
+    private ChipRow row;
+    private TextView prev, next;
+    /** 스크롤하지 않는 대신 쪽(page)으로 넘긴다: 칩이 줄 폭에 다 들어가면 한 쪽이고, 아니면 칩 단위로 넘긴다. */
+    private final List<InlineContentView> chipViews = new ArrayList<>();
+    /** 지금 쪽의 첫 칩 번호. */
+    private int first;
+    /** 마지막으로 배치한 때의 칩 줄 폭 (바뀌었을 때만 다시 배치한다). */
+    private int laidOutSlot = -1;
     /** 지금 보여 줄 칩이 있는지 (패널을 바꿔 막대를 잠깐 가려도 그대로다). */
     private boolean shown;
     /** 응답마다 늘어난다. 늦게 끝난 예전 응답의 칩 만들기 결과는 버린다. */
@@ -78,27 +87,45 @@ final class InlineAutofill {
         bar = new LinearLayout(context);
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.setVisibility(View.GONE);
-        scroll = new HorizontalScrollView(context);
-        scroll.setHorizontalScrollBarEnabled(false);
-        // 끝에서 늘어나는 효과(Android 12의 늘어나는 오버스크롤)는 스크롤 칸의 그림만 늘릴 뿐 서비스가 따로 그리는 칩에는
-        // 적용되지 않는다. 그래서 칩이 어긋나 왼쪽 여백까지 밀려 나오고 스크롤이 이상해 보이므로 끈다.
-        scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
-        scroll.setHorizontalFadingEdgeEnabled(false);
-        chips = new LinearLayout(context);
-        chips.setGravity(Gravity.CENTER_VERTICAL);
-        scroll.addView(chips, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.MATCH_PARENT));
-        // 스크롤하거나 크기가 바뀌면 칩이 스크롤 칸 밖으로 삐져나오지 않게 다시 자른다.
-        scroll.setOnScrollChangeListener((v, x, y, oldX, oldY) -> clipChips());
-        scroll.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> clipChips());
-        bar.addView(scroll, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
-        // 고정 칩(열쇠 등) 자리: 칩 줄은 이 앞(스크롤 칸 끝)에서 잘린다.
+        // 칩은 서비스가 따로 그려 창 위에 얹는 화면이라 스크롤로 옮기면 가장자리에서 잘라 내는 시점이 칩 위치와 어긋나
+        // 경계선이 흔들리고 도구 버튼 위로 잠깐 비쳐 보인다. 그래서 스크롤하지 않고, 줄에 온전히 들어가는 칩만 보여
+        // 쪽(page)으로 넘긴다 (좌우로 밀거나 양옆 화살표를 누른다). 칩이 잘리는 일이 없다.
+        prev = arrow("‹", theme, -1);
+        next = arrow("›", theme, 1);
+        row = new ChipRow(context);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        bar.addView(prev, new LinearLayout.LayoutParams(Ui.dp(context, ARROW_DP), ViewGroup.LayoutParams.MATCH_PARENT));
+        bar.addView(row, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT));
+        bar.addView(next, new LinearLayout.LayoutParams(Ui.dp(context, ARROW_DP), ViewGroup.LayoutParams.MATCH_PARENT));
+        // 남는 폭: 고정 칩(열쇠 등)을 오른쪽 끝으로 민다.
+        bar.addView(new View(context), new LinearLayout.LayoutParams(0, 1, 1f));
         pinned = new LinearLayout(context);
         pinned.setGravity(Gravity.CENTER_VERTICAL);
         pinned.setPadding(Ui.dp(context, 4), 0, 0, 0);
         bar.addView(pinned, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
+        // 막대나 고정 칩의 폭이 정해지거나 바뀌면 쪽을 다시 나눈다.
+        bar.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> relayoutPage());
+        pinned.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> relayoutPage());
         return bar;
+    }
+
+    private static final int ARROW_DP = 24;
+
+    /** 쪽을 넘기는 화살표: 누르면 이전(-1)·다음(+1) 쪽으로 간다. */
+    private TextView arrow(String glyph, KeyboardTheme theme, int dir) {
+        TextView t = new TextView(context);
+        t.setText(glyph);
+        t.setTextColor(theme.hint);
+        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
+        t.setGravity(Gravity.CENTER);
+        t.setBackground(Ui.ripple(theme.keyPressed, null, 0));
+        t.setVisibility(View.GONE);
+        t.setOnClickListener(v -> {
+            host.onAutofillChipClicked();
+            turnPage(dir);
+        });
+        return t;
     }
 
     /**
@@ -155,53 +182,156 @@ final class InlineAutofill {
             v.setOnClickListener(c -> host.onAutofillChipClicked());   // 누른 느낌(진동·소리). 채우기는 서비스가 한다
             boolean isPinned = suggestions.get(i).getInfo().isPinned();
             // 시스템이 넘겨준 칩에는 실제로 그려진 크기가 LayoutParams로 들어 있다. InlineContentView는 스스로 크기를
-            // 재지 못하므로(WRAP_CONTENT면 스크롤 안에서는 폭 0, 밖에서는 남는 폭을 모두 차지한다) 그 크기를 그대로 쓴다.
+            // 재지 못하므로(WRAP_CONTENT면 칸 안에서 폭 0, 밖에서는 남는 폭을 모두 차지한다) 그 크기를 그대로 쓴다.
             ViewGroup.LayoutParams given = v.getLayoutParams();
             int w = given != null && given.width > 0 ? given.width : ViewGroup.LayoutParams.WRAP_CONTENT;
             int h = given != null && given.height > 0 ? given.height : chipHeight;
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(w, h);
             lp.leftMargin = margin;
             lp.rightMargin = margin;
-            (isPinned ? pinned : chips).addView(v, lp);
+            if (isPinned) {
+                pinned.addView(v, lp);
+            } else {
+                row.addView(v, lp);
+                chipViews.add(v);
+            }
             any = true;
         }
-        scroll.scrollTo(0, 0);
+        first = 0;
+        laidOutSlot = -1;
         setShown(any);
-        scroll.post(this::clipChips);
+        relayoutPage();
+        bar.requestLayout();   // 아직 배치 전이면 막대가 배치될 때 위 리스너가 쪽을 나눈다
+    }
+
+    /** 이전(-1)·다음(+1) 쪽으로 넘긴다. 이미 끝이면 그대로. */
+    private void turnPage(int dir) {
+        int n = chipViews.size();
+        if (n == 0) return;
+        int target = dir > 0 ? first + Math.max(1, pageCount(first)) : prevPageStart();
+        target = Math.max(0, Math.min(n - 1, target));
+        if (target == first) return;
+        first = target;
+        laidOutSlot = -1;
+        relayoutPage();
+    }
+
+    /** from번 칩부터 줄(row 폭)에 온전히 들어가는 칩 수 (적어도 1). */
+    private int pageCount(int from) {
+        int avail = row.getLayoutParams().width;
+        int used = 0, count = 0;
+        for (int i = from; i < chipViews.size(); i++) {
+            int w = outerWidth(chipViews.get(i));
+            if (count > 0 && used + w > avail) break;
+            used += w;
+            count++;
+        }
+        return count;
+    }
+
+    /** 지금 쪽의 바로 앞 쪽이 시작하는 칩 번호 (앞쪽에서 줄에 들어가는 만큼 거슬러 올라간다). */
+    private int prevPageStart() {
+        int avail = row.getLayoutParams().width;
+        int used = 0, at = first;
+        while (at > 0) {
+            int w = outerWidth(chipViews.get(at - 1));
+            if (at < first && used + w > avail) break;
+            used += w;
+            at--;
+        }
+        return at;
+    }
+
+    private static int outerWidth(View v) {
+        LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) v.getLayoutParams();
+        return Math.max(0, lp.width) + lp.leftMargin + lp.rightMargin;
     }
 
     /**
-     * 줄의 칩을 스크롤 칸 안에 보이는 부분만 그리게 자른다. 칩은 창 위에 따로 얹혀 그려지는 화면이라 그냥 두면 스크롤해도
-     * 막대의 좌우 여백이나 고정 칩(열쇠) 위로 삐져나온다. 창 아래로 내리면 둥근 모서리가 네모로 비치고 스크롤이 끊기므로,
-     * 창 위에 둔 채 잘라 낸다 (Android 12부터 칩 화면이 이 자르기를 따른다).
+     * 칩을 쪽으로 나누어 배치한다. 막대 폭에서 고정 칩 폭을 뺀 만큼이 칩 줄 자리이고, 칩이 다 들어가면 한 쪽(화살표 없음),
+     * 아니면 양옆 화살표 자리를 떼고 쪽을 나눈다. 쪽에 안 들어가는 칩은 숨긴다 (가리는 칩은 잘리지 않고 통째로 숨는다).
      */
-    private void clipChips() {
-        if (scroll == null || chips == null) return;
-        int n = chips.getChildCount();
-        if (clipFrom.length < n) {
-            clipFrom = new int[n];
-            clipTo = new int[n];
-            java.util.Arrays.fill(clipFrom, CLIP_UNSET);
+    private void relayoutPage() {
+        if (bar == null || row == null || chipViews.isEmpty()) return;
+        int slot = bar.getWidth() - pinned.getWidth();
+        if (slot <= 0 || slot == laidOutSlot) return;
+        laidOutSlot = slot;
+        int total = 0;
+        for (View v : chipViews) total += outerWidth(v);
+        boolean single = total <= slot;
+        int arrowW = Ui.dp(context, ARROW_DP);
+        int avail = single ? slot : Math.max(1, slot - 2 * arrowW);
+        ViewGroup.LayoutParams rlp = row.getLayoutParams();
+        if (rlp.width != avail) {
+            rlp.width = avail;
+            row.setLayoutParams(rlp);
         }
-        int from = scroll.getScrollX(), to = from + scroll.getWidth();
-        for (int i = 0; i < n; i++) {
-            View v = chips.getChildAt(i);
-            int left = Math.max(0, from - v.getLeft());
-            int right = Math.min(v.getWidth(), to - v.getLeft());
-            if (right < left) right = left;
-            // 스크롤 중에는 매 프레임 불리므로, 보이는 범위가 달라진 칩만 다시 자른다 (새 객체도 만들지 않는다).
-            if (left == clipFrom[i] && right == clipTo[i]) continue;
-            clipFrom[i] = left;
-            clipTo[i] = right;
-            clipRect.set(left, 0, right, v.getHeight());
-            v.setClipBounds(clipRect);
+        if (single) first = 0;
+        int count = pageCount(first);
+        int shown = 0;
+        for (int i = 0; i < chipViews.size(); i++) {
+            InlineContentView v = chipViews.get(i);
+            boolean on = i >= first && i < first + count;
+            v.setVisibility(on ? View.VISIBLE : View.GONE);
+            // 줄보다 넓은 칩이 혼자 남으면 줄 폭에서 잘라 도구 버튼 쪽으로 삐져나오지 않게 한다 (움직이지 않으니 어긋나지 않는다).
+            v.setClipBounds(on && outerWidth(v) > avail ? new Rect(0, 0, Math.max(1, avail - 2 * Ui.dp(context, 2)), v.getHeight())
+                    : null);
+            if (on) shown++;
         }
+        prev.setVisibility(single ? View.GONE : first > 0 ? View.VISIBLE : View.INVISIBLE);
+        next.setVisibility(single ? View.GONE : first + count < chipViews.size() ? View.VISIBLE : View.INVISIBLE);
     }
 
-    private static final int CLIP_UNSET = Integer.MIN_VALUE;
-    /** 칩마다 마지막으로 자른 보이는 범위 (칩 안의 가로 위치). */
-    private int[] clipFrom = new int[0], clipTo = new int[0];
-    private final Rect clipRect = new Rect();
+    /** 칩 줄: 좌우로 밀면 쪽을 넘긴다 (스크롤하지 않고 손을 뗄 때 한 쪽씩). */
+    private final class ChipRow extends LinearLayout {
+        private final int slop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
+        private float downX, downY;
+        private boolean dragging;
+
+        ChipRow(Context c) {
+            super(c);
+        }
+
+        @Override
+        public boolean onInterceptTouchEvent(MotionEvent ev) {
+            switch (ev.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    downX = ev.getX();
+                    downY = ev.getY();
+                    dragging = false;
+                    break;
+                case MotionEvent.ACTION_MOVE:
+                    float dx = ev.getX() - downX, dy = ev.getY() - downY;
+                    if (!dragging && Math.abs(dx) > slop * 2 && Math.abs(dx) > Math.abs(dy) * 1.5f) {
+                        dragging = true;
+                        getParent().requestDisallowInterceptTouchEvent(true);
+                        return true;   // 칩에는 취소가 가고, 이 뒤는 onTouchEvent가 받는다
+                    }
+                    break;
+                default:
+                    break;
+            }
+            return dragging;
+        }
+
+        @Override
+        public boolean onTouchEvent(MotionEvent ev) {
+            switch (ev.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    return true;
+                case MotionEvent.ACTION_UP:
+                    float dx = ev.getX() - downX;
+                    if (dragging && Math.abs(dx) > slop * 3) turnPage(dx < 0 ? 1 : -1);
+                    dragging = false;
+                    return true;
+                case MotionEvent.ACTION_CANCEL:
+                    dragging = false;
+                    return true;
+                default:
+                    return true;
+            }
+        }
+    }
 
     /** 입력란을 떠났을 때: 칩을 모두 버리고 막대를 감춘다. 아직 만들고 있는 칩도 버린다. */
     void clear() {
@@ -216,9 +346,10 @@ final class InlineAutofill {
     }
 
     private void removeChips() {
-        clipFrom = new int[0];
-        clipTo = new int[0];
-        if (chips != null) chips.removeAllViews();
+        chipViews.clear();
+        first = 0;
+        laidOutSlot = -1;
+        if (row != null) row.removeAllViews();
         if (pinned != null) pinned.removeAllViews();
     }
 

@@ -1068,7 +1068,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (autofill == null || !prefs.autofillInline()) return null;
         KeyboardTheme t = theme != null ? theme : KeyboardTheme.of(this);
         int height = toolbarHeight > 0 ? toolbarHeight : toolbarHeightPx();
-        int maxWidth = Math.min(Ui.dp(this, 320), getResources().getDisplayMetrics().widthPixels * 2 / 3);
+        // 칩은 쪽으로 넘기며 보므로 한 칩이 칩 줄(왼쪽 도구 버튼을 뺀 폭)에 들어갈 만큼만 키운다. 긴 글은 서비스가 줄여 보인다.
+        int maxWidth = Math.min(Ui.dp(this, 220), getResources().getDisplayMetrics().widthPixels * 9 / 20);
         return autofill.request(t, height, maxWidth);
     }
 
