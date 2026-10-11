@@ -191,11 +191,13 @@ final class InlineAutofill {
     /** 서비스가 보낸 제안을 칩으로 만들어 보여 준다. 빈 목록이면 막대를 감춘다. */
     void show(List<InlineSuggestion> suggestions) {
         int gen = ++generation;
-        removeChips();
         if (bar == null || suggestions == null || suggestions.isEmpty()) {
+            removeChips();
             setShown(false);
             return;
         }
+        // 예전 칩은 새 칩이 다 만들어질 때(place)까지 그대로 둔다. 미리 지우면 입력할 때마다(서비스가 목록을 새로 보낼 때)
+        // 칩 자리가 잠깐 비어 깜빡인다.
         int n = suggestions.size();
         InlineContentView[] made = new InlineContentView[n];
         int[] pending = {n};
@@ -219,8 +221,8 @@ final class InlineAutofill {
     /** 칩을 받은 순서대로 놓는다 (고정 칩은 오른쪽 끝에 따로). 하나도 없으면 막대를 감춘다. */
     private void place(List<InlineSuggestion> suggestions, InlineContentView[] made) {
         if (bar == null) return;
+        removeChips();   // 예전 응답의 칩을 이제 바꾼다
         int margin = Ui.dp(context, 2);
-        boolean any = false;
         for (int i = 0; i < made.length; i++) {
             InlineContentView v = made[i];
             if (v == null) continue;
@@ -240,7 +242,6 @@ final class InlineAutofill {
                 row.addView(v, lp);
                 chipViews.add(v);
             }
-            any = true;
         }
         first = 0;
         laidOutSlot = -1;
@@ -355,7 +356,6 @@ final class InlineAutofill {
         }
         if (single) first = 0;
         int count = pageCount(first);
-        int shown = 0;
         for (int i = 0; i < chipViews.size(); i++) {
             InlineContentView v = chipViews.get(i);
             boolean on = i >= first && i < first + count;
@@ -363,7 +363,6 @@ final class InlineAutofill {
             // 줄보다 넓은 칩이 혼자 남으면 줄 폭에서 잘라 도구 버튼 쪽으로 삐져나오지 않게 한다 (움직이지 않으니 어긋나지 않는다).
             v.setClipBounds(on && outerWidth(v) > avail ? new Rect(0, 0, Math.max(1, avail - 2 * Ui.dp(context, 2)), v.getHeight())
                     : null);
-            if (on) shown++;
         }
         prev.setVisibility(single ? View.GONE : first > 0 ? View.VISIBLE : View.INVISIBLE);
         next.setVisibility(single ? View.GONE : first + count < chipViews.size() ? View.VISIBLE : View.INVISIBLE);
