@@ -42,6 +42,9 @@ public final class Prefs {
     public static final String SPACE_CURSOR = "space_cursor";
     public static final String CLIPBOARD_HISTORY = "clipboard_history";
     public static final String CLIPBOARD_IMAGES = "clipboard_images";
+    public static final String CLIPBOARD_SENSITIVE = "clipboard_sensitive";   // 민감한 정보로 표시되었거나 비밀번호를 복사한 것도 기록에 저장
+    public static final String CLIPBOARD_CHIP = "clipboard_chip";     // 방금 복사한 내용을 도구 막대에 칩으로
+    public static final String ENGLISH_FIELDS = "english_fields";     // 이메일 입력란 등에서 영어 자판으로 시작
     public static final String LANGUAGE = "language";                 // "ko" | "en"
     public static final String PAD_LEFT = "pad_left";                 // dp, 0~24
     public static final String PAD_RIGHT = "pad_right";               // dp, 0~24
@@ -327,7 +330,7 @@ public final class Prefs {
         MENU_KEYS.put("theme", keys(THEME_MODE, ACCENT_MODE, ACCENT_COLOR, GRID_COLORS));
         MENU_KEYS.put("look", keys(KEYBOARD_HEIGHT, KEY_TEXT_SIZE, KEY_RADIUS, KEY_SHADOW, KEY_SHADOW_STRENGTH,
                 KEY_PREVIEW, POPUP_HINT_HIDDEN, NUMBER_HINT_HIDDEN, PAD_LEFT, PAD_RIGHT, PAD_TOP, PAD_BOTTOM, KEY_GAP_X, KEY_GAP_Y));
-        MENU_KEYS.put("input", keys(AUTO_CAP, DOUBLE_SPACE_PERIOD, DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT,
+        MENU_KEYS.put("input", keys(AUTO_CAP, ENGLISH_FIELDS, DOUBLE_SPACE_PERIOD, DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT,
                 DOUBLE_TAP_CONSONANT_MS, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, SPACE_HIT_SHRINK,
                 SPACE_HIT_SHRINK_PCT));
         MENU_KEYS.put("keys", keys(LONG_PRESS_CHARS, LONG_PRESS_REPEAT, LONG_PRESS_MS, LONG_PRESS_DELETE, DELETE_PRESS_MS,
@@ -345,7 +348,7 @@ public final class Prefs {
         MENU_KEYS.put("feedback", keys(VIBRATE, VIBRATE_MS, VIBRATE_STYLE, VIBRATE_AMP, VIBRATE_PER_KEY,
                 VIBRATE_DELETE, VIBRATE_SPACE, VIBRATE_ENTER, VIBRATE_SHIFT, VIBRATE_SYMBOL, VIBRATE_LANGUAGE, VIBRATE_TOOLBAR,
                 VIBRATE_GESTURE_ON, VIBRATE_GESTURE_LEVEL, SOUND, SOUND_VOLUME));
-        MENU_KEYS.put("tools", keys(TOOLBAR, TOOLBAR_BOTTOM, TOOLBAR_HEIGHT, TOOL_BUTTON_SIZE, CLIPBOARD_HISTORY, CLIPBOARD_IMAGES, TOOL_ORDER, TOOL_CLIPBOARD,
+        MENU_KEYS.put("tools", keys(TOOLBAR, TOOLBAR_BOTTOM, TOOLBAR_HEIGHT, TOOL_BUTTON_SIZE, CLIPBOARD_HISTORY, CLIPBOARD_IMAGES, CLIPBOARD_SENSITIVE, CLIPBOARD_CHIP, TOOL_ORDER, TOOL_CLIPBOARD,
                 TOOL_EMOJI, VOICE_KEY, TOOL_UNDO, TOOL_SETTINGS, TOOL_ONE_HAND, TOOL_HIDE, EMOJI_SIZE, EMOJI_SUGGEST));
         MENU_KEYS.put("words", keys(SHORTCUTS_ENABLED, SUGGEST_WORDS, SUGGEST_FULL_BAR, SUGGEST_SPACE, AUTO_CORRECT, LEARN_WORDS,
                 CONFIRM_LEARNED_DELETE, AUTOFILL_INLINE));
@@ -533,6 +536,12 @@ public final class Prefs {
 
     public boolean clipboardHistory() { return sp.getBoolean(CLIPBOARD_HISTORY, true); }
     public boolean clipboardImages() { return sp.getBoolean(CLIPBOARD_IMAGES, true); }
+    /** 방금 복사한 텍스트를 도구 막대에 칩으로 보여 누르면 붙여 넣는지 (기본 켬). 클립보드 기록 저장과 따로 정한다. */
+    /** 민감한 정보로 표시된 복사와 비밀번호 입력란에서 한 복사도 클립보드 기록에 저장하는지 (기본 꺼짐). */
+    public boolean clipboardSensitive() { return sp.getBoolean(CLIPBOARD_SENSITIVE, false); }
+    public boolean clipboardChip() { return sp.getBoolean(CLIPBOARD_CHIP, true); }
+    /** 이메일 입력란이나 앱이 영어 입력을 요청한 칸에서 영어 자판으로 시작하는지 (기본 켬). */
+    public boolean englishFields() { return sp.getBoolean(ENGLISH_FIELDS, true); }
     public int keyGapXDp() { return clamp(sp.getInt(KEY_GAP_X, 5), 0, 12); }
     public int keyGapYDp() { return clamp(sp.getInt(KEY_GAP_Y, 9), 0, 20); }
     public int padLeftDp() { return sp.getInt(PAD_LEFT, 3); }

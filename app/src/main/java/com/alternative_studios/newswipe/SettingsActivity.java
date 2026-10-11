@@ -1634,6 +1634,10 @@ public final class SettingsActivity extends Activity {
         input.addView(toggle("모음 연속 탭으로 이중모음", "같은 모음을 연달아 누르면 이중모음을 입력합니다 (예: ㅏㅏ→ㅑ, ㅗㅗ→ㅛ).",
                 Prefs.DOUBLE_TAP_VOWEL, prefs.doubleTapVowel()));
         input.addView(toggle("영어 자동 대문자", "문장 첫 글자를 대문자로 시작합니다.", Prefs.AUTO_CAP, prefs.autoCap()));
+        input.addView(toggle("이메일 입력란은 영어로 시작",
+                "이메일 주소 입력란이나 앱이 영어 입력을 요청한 칸(아이디 입력란 등)에서는 영어 자판으로 시작하고, "
+                        + "그 칸을 떠나면 원래 언어로 돌아갑니다. 웹 브라우저 주소창은 검색에도 쓰이므로 바꾸지 않습니다.",
+                Prefs.ENGLISH_FIELDS, prefs.englishFields()));
         input.addView(toggle("스페이스바 두 번으로 마침표", "스페이스바를 빠르게 두 번 누르면 '. '을 넣습니다.",
                 Prefs.DOUBLE_SPACE_PERIOD, prefs.doubleSpacePeriod()));
         View deleteShrink = subGroup(slider("줄이는 정도", Prefs.DELETE_HIT_SHRINK_PCT, prefs.deleteHitShrinkPct(),
@@ -2159,12 +2163,18 @@ public final class SettingsActivity extends Activity {
                         + ClipboardHistory.MAX_IMAGES + "개).",
                 prefs.clipboardImages(), this::onClipImagesChanged);
         clipImagesSwitch = switchOf(clipImagesToggle);
-        View clipImages = subGroup(clipImagesToggle);
+        View clipSensitiveToggle = toggle("민감한 정보도 저장",
+                "비밀번호와 같이 민감한 정보도 복사하면 클립보드에 저장합니다. 보안에 주의하시기 바랍니다.",
+                Prefs.CLIPBOARD_SENSITIVE, prefs.clipboardSensitive());
+        View clipImages = subGroup(clipImagesToggle, clipSensitiveToggle);
         clip.addView(toggle("클립보드 기록 저장", "복사·잘라낸 내용을 최근 " + ClipboardHistory.MAX_ITEMS
                         + "개까지 모아 둡니다. 고정하지 않은 항목은 24시간 뒤 지워지고, "
-                        + "비밀번호처럼 민감한 정보로 표시된 복사는 저장하지 않습니다.",
+                        + "비밀번호처럼 민감한 정보로 표시된 복사는 기본으로 저장하지 않습니다.",
                 Prefs.CLIPBOARD_HISTORY, prefs.clipboardHistory(), clipImages));
         clip.addView(clipImages);
+        clip.addView(toggle("방금 복사한 내용 붙여넣기",
+                "방금 복사한 텍스트를 도구 막대에 1분 간 보여 주어 빠르게 붙여 넣을 수 있게 합니다.",
+                Prefs.CLIPBOARD_CHIP, prefs.clipboardChip()));
         clip.addView(trashButton("클립보드 기록 모두 지우기", v -> AppTheme.dialogBuilder(this)
                 .setTitle("클립보드 기록 모두 지우기")
                 .setMessage("저장된 클립보드 기록을 모두 지웁니다. 고정한 항목도 함께 지워지며 되돌릴 수 없습니다.")

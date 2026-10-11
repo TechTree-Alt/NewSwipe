@@ -29,6 +29,7 @@ import android.view.inputmethod.InputContentInfo;
 import android.view.inputmethod.InputMethodInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.view.inputmethod.InputMethodSubtype;
+import android.view.inputmethod.SurroundingText;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
@@ -53,6 +54,7 @@ import com.alternative_studios.newswipe.keyboard.KeyboardLayout;
 import com.alternative_studios.newswipe.keyboard.KeyboardTheme;
 import com.alternative_studios.newswipe.keyboard.KeyboardView;
 import com.alternative_studios.newswipe.keyboard.SwipeAction;
+import com.alternative_studios.newswipe.ui.ClipChip;
 import com.alternative_studios.newswipe.ui.IconButton;
 import com.alternative_studios.newswipe.ui.SwipeVertical;
 import com.alternative_studios.newswipe.ui.SwipeStrip;
@@ -126,6 +128,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 자동 완성 칩 줄 (도구 막대 안, 추천 단어 줄 자리). */
     private View autofillBar;
     private View toolSpacer;
+    /** 방금 복사한 내용을 붙여 넣는 칩과 그 자리 (도구 막대 안, 왼쪽·오른쪽 도구 버튼 사이의 빈 공간). */
+    private ClipChip.Slot clipChipSlot;
+    private ClipChip clipChip;
     /** 도구 막대 버튼 배치 {왼쪽, 오른쪽} (ToolbarButtons ID). 바뀌었을 때만 버튼을 다시 놓는다. */
     private String[][] toolOrder;
     private final TextView[] suggestViews = new TextView[WordSuggester.MAX];
@@ -165,6 +170,28 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private int ignoredEditVersion;
     private String suggestWord = "";
     private boolean domainField;   // 이메일 주소·인터넷 주소 입력란: 온점 키를 길게 누르면 .com 등이 나온다
+    private boolean passwordField;   // 비밀번호 입력란: 복사한 내용 칩의 미리보기를 가린다
+    /** 이메일 입력란 등에서 영어로 시작했다 (설정에는 저장하지 않는다). 그런 칸이 아닌 곳으로 가면 한글로 돌아간다. */
+    private boolean autoEnglish;
+    /**
+     * 영어로 시작한 칸에서 사용자가 직접 언어를 바꿨으면 그 칸 (앱 패키지와 칸 ID). 같은 칸을 다시 시작하거나
+     * 키보드를 내렸다 다시 올려도 다시 영어로 바꾸지 않는다. 다른 칸으로 가면 잊는다.
+     */
+    private String autoEnglishDeclined;
+    /**
+     * 입력란이 새로 연결된 뒤(onStartInput) 아직 선택 영역이 바뀌지 않았다: EditorInfo에 담겨 온 커서 앞 글자를
+     * 믿고 쓸 수 있다 (키보드를 내렸다 다시 올리면 같은 EditorInfo가 다시 오므로 그때는 쓰지 않는다).
+     */
+    private boolean initialTextFresh;
+    /**
+     * 방금 복사한 텍스트를 붙여 넣는 칩을 보여 줄 차례인지. 복사한 뒤 CLIP_CHIP_MS 동안 유지되고(글자를 입력해도),
+     * 붙여 넣거나 시간이 지나면 사라진다. 추천 단어·자동 완성 칩이 떠 있는 동안에는 그 자리를 양보했다가 다시 뜬다.
+     */
+    private boolean clipChipActive;
+    /** 칩의 미리보기 (복사한 글의 앞부분 한 줄). 민감한 정보로 표시된 복사면 null이고 내용은 기억하지 않는다. */
+    private String clipChipPreview;
+    private static final long CLIP_CHIP_MS = 60_000;
+    private final Runnable expireClipChip = this::dismissClipChip;
     private boolean shortcutAllowed;   // 현재 입력란에서 단축어를 쓸 수 있는지 (비밀번호만 제외, 이메일 입력란은 허용)
     private boolean suggestAllowed;   // 현재 입력란에서 추천을 쓸 수 있는지 (비밀번호·이메일 등은 제외, 인터넷 주소 입력란은 허용)
     /** 설정값 (applySettings에서 읽어 둔다. 키마다 설정 파일을 읽지 않기 위해). */
@@ -247,9 +274,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 사용할 때마다 설정에서 직접 읽는 값이나 키보드 화면과 상관없는 값은 다시 그릴 필요가 없다. */
     private static boolean affectsKeyboard(String key) {
         return !(Prefs.LANGUAGE.equals(key) || Prefs.RECENT_EMOJI.equals(key) || Prefs.PINNED_EMOJI.equals(key)
-                || Prefs.CLIPBOARD_HISTORY.equals(key) || Prefs.CLIPBOARD_IMAGES.equals(key) || Prefs.AUTO_CAP.equals(key)
+                || Prefs.CLIPBOARD_HISTORY.equals(key) || Prefs.CLIPBOARD_IMAGES.equals(key) || Prefs.CLIPBOARD_SENSITIVE.equals(key) || Prefs.CLIPBOARD_CHIP.equals(key) || Prefs.AUTO_CAP.equals(key)
                 || Prefs.DOUBLE_SPACE_PERIOD.equals(key) || Prefs.CONFIRM_LEARNED_DELETE.equals(key)
-                || Prefs.ONE_HAND_LAST.equals(key));
+                || Prefs.ONE_HAND_LAST.equals(key) || Prefs.ENGLISH_FIELDS.equals(key));
     }
 
     @Override
@@ -581,6 +608,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         bar.addView(undoButton);
         toolSpacer = new View(this);
         bar.addView(toolSpacer, new LinearLayout.LayoutParams(0, 1, 1f));
+        // 방금 복사한 내용 칩은 빈 공간 자리에 뜬다 (도구 버튼은 그대로 둔다).
+        clipChipSlot = buildClipChipSlot();
+        bar.addView(clipChipSlot, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
         // 추천 단어는 왼쪽 버튼들 오른쪽에 뜬다. 추천이 있으면 빈 공간 대신 이 영역을 쓰고 오른쪽 버튼들은 접는다.
         suggestBar = buildSuggestBar();
         suggestBar.setVisibility(View.GONE);
@@ -636,10 +666,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         toolOrder = order;
         for (String id : ToolbarButtons.ALL) toolbar.removeView(toolButtonOf(id));
         toolbar.removeView(toolSpacer);
+        toolbar.removeView(clipChipSlot);
         toolbar.removeView(suggestBar);
         if (autofillBar != null) toolbar.removeView(autofillBar);
         for (String id : order[0]) toolbar.addView(toolButtonOf(id));
         toolbar.addView(toolSpacer, new LinearLayout.LayoutParams(0, 1, 1f));
+        toolbar.addView(clipChipSlot, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
         toolbar.addView(suggestBar, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
         if (autofillBar != null) {
             toolbar.addView(autofillBar, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
@@ -744,6 +776,23 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /** 추천 단어 앞의 빈 칸. 분리 키보드에서는 남는 폭을 모두 가져 추천 단어 세 개가 오른쪽 끝에 붙는다. */
     private View suggestLead;
+
+    /** 방금 복사한 내용 칩의 자리. 칩은 도구 막대 한가운데에 뜨고(버튼에 밀릴 때만 비켜 간다) 내용이 길면 줄어든다. */
+    private ClipChip.Slot buildClipChipSlot() {
+        ClipChip.Slot slot = new ClipChip.Slot(this);
+        slot.setVisibility(View.GONE);
+        clipChip = new ClipChip(this, theme.text, theme.hint, theme.key, theme.keyPressed);
+        clipChip.setOnClickListener(v -> {
+            feedback.onToolbar();
+            pasteClipChip();
+        });
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
+        lp.leftMargin = Ui.dp(this, 4);
+        lp.rightMargin = Ui.dp(this, 4);
+        slot.addView(clipChip, lp);
+        return slot;
+    }
 
     private LinearLayout buildSuggestBar() {
         suggestions = new String[0];   // 새 막대는 비어 있다 (예전 막대의 내용과 비교하지 않도록)
@@ -998,6 +1047,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     // ---------------------------------------------------------------- 입력 시작/종료
 
     @Override
+    public void onStartInput(EditorInfo attribute, boolean restarting) {
+        super.onStartInput(attribute, restarting);
+        initialTextFresh = true;
+    }
+
+    @Override
     public void onStartInputView(EditorInfo info, boolean restarting) {
         super.onStartInputView(info, restarting);
         windowHidden = false;   // 창이 실제로 보이기(onWindowShown) 전에 불리므로 여기서도 켠다
@@ -1017,12 +1072,16 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         suggestAllowed = suggestAllowedFor(info);
         shortcutAllowed = shortcutAllowedFor(info);
         domainField = domainFieldFor(info);
+        passwordField = passwordFieldFor(info);
         // 시크릿 모드 등 앱이 학습하지 말라고 표시한 입력란에서는 단어를 학습하지 않는다 (추천은 그대로).
         learnAllowed = (info.imeOptions & EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) == 0;
         mirror.start(info.initialSelStart, info.initialSelEnd);
+        if (initialTextFresh) seedMirror(info);
+        initialTextFresh = false;
         selStart = info.initialSelStart;
         selEnd = info.initialSelEnd;
         clearSuggestions();
+        applyFieldLanguage(info, restarting);
         if (cls == InputType.TYPE_CLASS_NUMBER || cls == InputType.TYPE_CLASS_PHONE
                 || cls == InputType.TYPE_CLASS_DATETIME) {
             setLayoutKind(KeyboardLayout.NUMBER);
@@ -1034,6 +1093,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         updateAutoCap();
         warmSuggester();   // 첫 글자부터 추천이 나오도록 미리 읽어 둔다
         scheduleSuggest();
+        refreshToolbarVisibility();   // 입력란이 바뀌면 복사한 내용 칩의 가림 여부도 다시 정한다 (비밀번호 입력란)
         applyTopSlotVisibility();
     }
 
@@ -1057,6 +1117,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         mirror.forget();
         clearSuggestions();
         if (autofill != null) autofill.clear();   // 입력란을 떠나면 그 칸의 자동 완성 칩도 버린다
+        copyPending = false;   // 다른 칸으로 갔으면 지난 칸의 복사 결과는 알리지 않는다
+        main.removeCallbacks(copyRefused);
     }
 
     // ---------------------------------------------------------------- 자동 완성 (Android 11 이상)
@@ -1105,6 +1167,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                                   int candidatesStart, int candidatesEnd) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd);
         mirror.onSelection(newSelStart, newSelEnd);   // 이모지 검색 중에도 실제 입력란의 커서 변화는 따라간다
+        initialTextFresh = false;   // EditorInfo의 커서 앞 글자는 이제 지난 내용일 수 있다
         selStart = newSelStart;
         selEnd = newSelEnd;
         if (panel == PANEL_SEARCH) return;
@@ -1118,6 +1181,81 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
         if (composer.isEmpty()) updateAutoCap();
         scheduleSuggest();
+    }
+
+    /**
+     * 입력란을 연결할 때 함께 온 커서 앞 글자로 따라 적을 글자를 미리 채운다 (Android 11부터). 첫 글자부터 추천을 찾을 때
+     * 앱에 다시 묻지 않아도 된다. 앱이 보내 주지 않았거나 선택 영역이 있으면 예전처럼 처음 필요할 때 앱에 묻는다.
+     * 추천·단축어를 쓰지 않는 칸(비밀번호 등)에서는 읽지 않는다.
+     */
+    private void seedMirror(EditorInfo info) {
+        if (Build.VERSION.SDK_INT < 30) return;
+        if (!suggestAllowed && !shortcutAllowed) return;
+        int sel = info.initialSelStart;
+        if (sel < 0 || sel != info.initialSelEnd) return;
+        CharSequence before;
+        try {
+            before = info.getInitialTextBeforeCursor(TextMirror.KEEP, 0);
+        } catch (RuntimeException e) {
+            return;
+        }
+        if (before == null) return;
+        // 요청보다 덜 왔더라도 커서 위치보다 짧으면 앱이 잘라 보낸 것이라, 입력란의 처음부터라고 보지 않는다.
+        int requested = before.length() < TextMirror.KEEP && before.length() != sel ? before.length() : TextMirror.KEEP;
+        mirror.fill(before, requested);
+    }
+
+    /**
+     * 이메일 입력란이나 앱이 영어 입력을 요청한 칸이면 영어 자판으로 시작하고, 그런 칸을 떠나면 원래의 한글로 돌아간다.
+     * 설정에 저장한 언어는 바꾸지 않는다. 사용자가 그 칸에서 직접 언어를 바꿨으면 그 선택을 따른다.
+     * 자판을 놓기(setLayoutKind) 전에 부른다. 추천은 바로 앞에서 비웠다.
+     */
+    private void applyFieldLanguage(EditorInfo info, boolean restarting) {
+        if (prefs.englishFields() && englishFieldFor(info)) {
+            if (autoEnglishDeclined != null && (restarting || autoEnglishDeclined.equals(fieldKey(info)))) return;
+            autoEnglishDeclined = null;
+            if (korean) {
+                korean = false;
+                autoEnglish = true;
+            }
+            return;
+        }
+        autoEnglishDeclined = null;
+        if (autoEnglish) {
+            autoEnglish = false;
+            korean = true;
+        }
+    }
+
+    /**
+     * 영어로 시작할 칸: 이메일 주소 입력란, 앱이 영어(ASCII) 입력을 요청한 칸, 첫 언어로 영어를 알려 준 칸.
+     * 인터넷 주소 입력란(웹 브라우저 주소창)은 검색어도 받으므로 빼고, 숫자 등 글자가 아닌 입력란도 뺀다.
+     */
+    private static boolean englishFieldFor(EditorInfo info) {
+        int type = info.inputType;
+        if ((type & InputType.TYPE_MASK_CLASS) != InputType.TYPE_CLASS_TEXT) return false;
+        int variation = type & InputType.TYPE_MASK_VARIATION;
+        if (variation == InputType.TYPE_TEXT_VARIATION_URI) return false;
+        if (variation == InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+                || variation == InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS) return true;
+        if ((info.imeOptions & EditorInfo.IME_FLAG_FORCE_ASCII) != 0) return true;
+        android.os.LocaleList hints = info.hintLocales;
+        return hints != null && !hints.isEmpty() && "en".equals(hints.get(0).getLanguage());
+    }
+
+    /** 입력란을 가리키는 이름 (앱 패키지와 칸 ID). */
+    private static String fieldKey(EditorInfo info) {
+        return info.packageName + "#" + info.fieldId;
+    }
+
+    private static boolean passwordFieldFor(EditorInfo info) {
+        int type = info.inputType;
+        int cls = type & InputType.TYPE_MASK_CLASS;
+        int variation = type & InputType.TYPE_MASK_VARIATION;
+        if (cls == InputType.TYPE_CLASS_NUMBER) return variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD;
+        return cls == InputType.TYPE_CLASS_TEXT && (variation == InputType.TYPE_TEXT_VARIATION_PASSWORD
+                || variation == InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+                || variation == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD);
     }
 
     private static int enterIcon(EditorInfo info) {
@@ -1409,11 +1547,22 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     @Override
     public void onDeleteRepeat() {
-        feedback.onRepeat();
+        // 더 지울 것이 없어 커서가 멈췄으면 진동하지 않는다 (지우기 자체는 예전처럼 보낸다).
+        if (!nothingToDelete()) feedback.onRepeat();
         // 선택 영역 확인(앱에 묻고 기다리는 호출)은 연속 삭제의 첫 번째에서만 한다.
         // 첫 삭제 뒤에는 선택 영역이 사라지므로 이후에는 묻지 않아도 된다.
         handleDelete(deleteRepeatChecked);
         deleteRepeatChecked = true;
+    }
+
+    /**
+     * 연속 삭제에서 더 지울 것이 없는지: 조합 중인 글자도, 선택 영역도 없이 커서가 입력란 맨 앞이다 (검색 중이면 검색어가 비었다).
+     * 앱이 알려 준 커서 위치로 판단해 앱에 묻지 않는다. 위치를 모르면 지울 것이 있다고 본다.
+     */
+    private boolean nothingToDelete() {
+        if (!composer.isEmpty()) return false;
+        if (panel == PANEL_SEARCH) return search.length() == 0;
+        return selStart == 0 && selEnd == 0;
     }
 
     /** 이번 지우기 키 누름에서 선택 영역을 이미 확인했는지. 키를 누를 때마다 초기화된다. */
@@ -1797,6 +1946,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     private void toggleLanguage() {
         commitComposing();
+        // 이메일 입력란 등에서 영어로 시작했어도 사용자가 직접 바꿨으면 그 선택을 따른다 (그 칸을 떠나도 되돌리지 않는다).
+        if (autoEnglish) {
+            EditorInfo ei = getCurrentInputEditorInfo();
+            autoEnglishDeclined = ei != null ? fieldKey(ei) : "";
+        }
+        autoEnglish = false;
         korean = !korean;
         clearSuggestions();
         warmSuggester();
@@ -2080,7 +2235,73 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         String[][] order = toolOrder != null ? toolOrder : prefs.toolOrder();
         for (String id : order[0]) toolButtonOf(id).setVisibility(left && prefs.toolShown(id) ? View.VISIBLE : View.GONE);
         for (String id : order[1]) toolButtonOf(id).setVisibility(right && prefs.toolShown(id) ? View.VISIBLE : View.GONE);
-        toolSpacer.setVisibility(suggesting ? View.GONE : View.VISIBLE);
+        // 방금 복사한 내용 칩은 추천·자동 완성 칩이 없을 때 빈 공간 자리에 뜬다 (도구 버튼은 그대로 보인다).
+        boolean chip = !suggesting && on && clipChipShowing();
+        toolSpacer.setVisibility(suggesting || chip ? View.GONE : View.VISIBLE);
+        if (clipChipSlot != null) {
+            if (chip) {
+                boolean masked = clipChipPreview == null || passwordField;
+                clipChip.setLabel(masked ? "••••••" : clipChipPreview);
+                clipChip.setContentDescription(masked ? "복사한 내용 붙여넣기" : "붙여넣기: " + clipChipPreview);
+            }
+            clipChipSlot.setVisibility(chip ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    /** 방금 복사한 내용 칩을 보여 줄 수 있는지 (자판 화면에서, 설정에서 켰을 때). */
+    private boolean clipChipShowing() {
+        return clipChipActive && panel == PANEL_KEYBOARD && prefs.clipboardChip();
+    }
+
+    /** 방금 복사한 텍스트로 칩을 띄운다. 민감한 정보면 내용은 기억하지 않고 가린 채 보인다. */
+    private void offerClipChip(CharSequence text, boolean sensitive) {
+        // 비밀번호 입력란에서 복사했으면 다른 입력란이나 앱으로 가도 가린다 (그때는 미리보기 글을 아예 기억하지 않는다).
+        // 키보드가 내려가 있을 때의 복사는 다른 앱에서 한 것이라 지난 입력란을 따르지 않는다.
+        boolean masked = sensitive || (passwordField && !windowHidden);
+        String preview = masked ? null : clipPreview(text);
+        if (!masked && preview == null) {
+            dismissClipChip();   // 빈 글이나 공백만 복사했다
+            return;
+        }
+        clipChipActive = true;
+        clipChipPreview = preview;
+        main.removeCallbacks(expireClipChip);
+        main.postDelayed(expireClipChip, CLIP_CHIP_MS);
+        refreshToolbarVisibility();
+    }
+
+    /** 칩에 보일 한 줄: 앞부분만 잘라 줄바꿈·연속 공백을 한 칸으로 줄인다. 보일 글자가 없으면 null. */
+    private static String clipPreview(CharSequence text) {
+        if (text == null) return null;
+        CharSequence head = text.length() > 200 ? text.subSequence(0, 200) : text;
+        String s = head.toString().replaceAll("\\s+", " ").trim();
+        if (s.isEmpty()) return null;
+        return s.length() > 60 ? s.substring(0, Character.isHighSurrogate(s.charAt(59)) ? 59 : 60) : s;
+    }
+
+    /** 칩을 거둔다 (붙여 넣었거나, 시간이 지났거나, 클립보드가 비었다). */
+    private void dismissClipChip() {
+        if (main != null) main.removeCallbacks(expireClipChip);
+        if (!clipChipActive) return;
+        clipChipActive = false;
+        clipChipPreview = null;
+        refreshToolbarVisibility();
+    }
+
+    /** 칩을 눌렀다: 지금 클립보드의 텍스트를 커서 자리에 붙여 넣는다 (칩에 보인 미리보기가 아니라 원래 내용 전체). */
+    private void pasteClipChip() {
+        CharSequence text = null;
+        try {
+            ClipData clip = clipboard != null ? clipboard.getPrimaryClip() : null;
+            if (clip != null && clip.getItemCount() > 0) text = clip.getItemAt(0).getText();
+        } catch (RuntimeException ignored) {
+            // 클립보드를 읽지 못했다
+        }
+        dismissClipChip();
+        if (text == null || text.length() == 0) return;
+        correctedTo = null;
+        lastWasSpace = false;
+        pasteText(text.toString());
     }
 
     private void applyTopSlotVisibility() {
@@ -2276,10 +2497,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
         String fixed = suggester.autoCorrect(word, korean);
         if (fixed == null) return false;
-        ic.beginBatchEdit();
-        ic.deleteSurroundingText(word.length(), 0);
-        ic.commitText(fixed + " ", 1);
-        ic.endBatchEdit();
+        replaceBeforeCursor(ic, word, fixed + " ");
         mirror.replaceTail(word.length(), fixed + " ");
         correctedFrom = word;
         correctedTo = fixed;
@@ -2287,6 +2505,35 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         clearSuggestions();
         updateAutoCap();
         return true;
+    }
+
+    /**
+     * 커서 바로 앞의 글자 expected를 replacement로 바꾼다 (자동 수정과 그 되돌리기). Android 14부터는 입력란에 한 번의
+     * 바꾸기(replaceText)로 맡겨, 앱의 실행 취소 기록과 화면에 지우기·넣기 두 번이 아니라 한 번의 편집으로 남게 한다.
+     * 그 자리를 입력란에 다시 물어 커서 바로 앞이 정말 expected이고 위치를 알 때만 쓰며, 아니면 예전처럼 지우고 넣는다.
+     */
+    private void replaceBeforeCursor(InputConnection ic, String expected, String replacement) {
+        int n = expected.length();
+        if (Build.VERSION.SDK_INT >= 34) {
+            try {
+                SurroundingText st = ic.getSurroundingText(n, 0, 0);
+                if (st != null && st.getOffset() >= 0 && st.getSelectionStart() == st.getSelectionEnd()) {
+                    CharSequence t = st.getText();
+                    int cursor = st.getSelectionStart();
+                    if (cursor == t.length() && cursor >= n
+                            && TextUtils.equals(t.subSequence(cursor - n, cursor), expected)) {
+                        int end = st.getOffset() + cursor;
+                        if (ic.replaceText(end - n, end, replacement, 1, null)) return;
+                    }
+                }
+            } catch (RuntimeException ignored) {
+                // 이 입력란이 지원하지 않는다: 아래의 예전 방식으로 바꾼다
+            }
+        }
+        ic.beginBatchEdit();
+        ic.deleteSurroundingText(n, 0);
+        ic.commitText(replacement, 1);
+        ic.endBatchEdit();
     }
 
     /** 자동 수정 직후 지우기 키를 누르면 입력한 그대로 되돌리고, 같은 단어는 이번에 다시 고치지 않는다. */
@@ -2298,10 +2545,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (ic == null) return false;
         CharSequence before = ic.getTextBeforeCursor(to.length() + 1, 0);
         if (before == null || !before.toString().equals(to + " ")) return false;
-        ic.beginBatchEdit();
-        ic.deleteSurroundingText(to.length() + 1, 0);
-        ic.commitText(from, 1);
-        ic.endBatchEdit();
+        replaceBeforeCursor(ic, to + " ", from);
         mirror.replaceTail(to.length() + 1, from);
         syncIgnoredWithUserWords();
         correctionIgnored.add(from);
@@ -2589,10 +2833,30 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         InputConnection ic = getCurrentInputConnection();
         if (selectAllFirst) ic.performContextMenuAction(android.R.id.selectAll);
         CharSequence selected = ic.getSelectedText(0);   // 복사하면 앱이 선택을 풀 수 있어 먼저 읽는다
+        boolean hasSelection = (selected != null && selected.length() > 0) || selStart != selEnd;
         ic.performContextMenuAction(android.R.id.copy);
         endEdit();
-        if (selected != null && selected.length() > 0) showMessage("복사했습니다");
+        EditorInfo ei = getCurrentInputEditorInfo();
+        main.removeCallbacks(copyRefused);
+        copyPending = false;
+        if (ei != null && passwordFieldFor(ei) && (selectAllFirst || hasSelection)) {
+            // 비밀번호 입력란은 글자를 가렸는지(앱의 '비밀번호 보기' 등)에 따라 복사를 막기도 하고 허락하기도 한다.
+            // 입력란 종류로는 알 수 없으므로, 클립보드가 실제로 바뀌는지 잠깐 기다려 보고 알린다.
+            copyPending = true;
+            main.postDelayed(copyRefused, COPY_WAIT_MS);
+        } else if (selected != null && selected.length() > 0) {
+            showMessage("복사했습니다");
+        }
     }
+
+    /** 비밀번호 입력란에서 복사를 요청하고 클립보드가 바뀌기를 기다리는 중인지. */
+    private boolean copyPending;
+    /** 이만큼 기다려도 클립보드가 바뀌지 않으면 입력란이 복사를 막은 것으로 본다. */
+    private static final long COPY_WAIT_MS = 300;
+    private final Runnable copyRefused = () -> {
+        copyPending = false;
+        showMessage("복사가 제한되는 내용입니다.");
+    };
 
     /** 안내 문구를 보여 주는 칸 (키보드 위쪽 가운데). */
     private TextView messageView;
@@ -2950,21 +3214,36 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     @Override
     public void onPrimaryClipChanged() {
-        if (!prefs.clipboardHistory() || clipboard == null) return;
+        if (copyPending) {
+            // 비밀번호 입력란에서 요청한 복사가 실제로 됐다.
+            copyPending = false;
+            main.removeCallbacks(copyRefused);
+            showMessage("복사했습니다");
+        }
+        boolean history = prefs.clipboardHistory(), chip = prefs.clipboardChip();
+        if ((!history && !chip) || clipboard == null) return;
         ClipData clip;
         try {
             clip = clipboard.getPrimaryClip();
         } catch (RuntimeException e) {
             return;
         }
-        if (clip == null || clip.getItemCount() == 0) return;
-        ClipDescription desc = clip.getDescription();
-        if (desc != null) {
-            PersistableBundle extras = desc.getExtras();
-            // 비밀번호 관리자 등이 민감 정보로 표시한 복사는 저장하지 않는다.
-            if (extras != null && extras.getBoolean(SENSITIVE_EXTRA, false)) return;
+        if (clip == null || clip.getItemCount() == 0) {
+            dismissClipChip();   // 클립보드를 비웠다
+            return;
         }
+        ClipDescription desc = clip.getDescription();
+        PersistableBundle extras = desc != null ? desc.getExtras() : null;
+        boolean sensitive = extras != null && extras.getBoolean(SENSITIVE_EXTRA, false);
         ClipData.Item first = clip.getItemAt(0);
+        if (chip) {
+            // 방금 복사한 텍스트를 칩으로 띄운다. 비밀번호처럼 민감한 정보도 붙여 넣을 수 있게 하되 내용은 가린다.
+            if (first.getUri() == null && first.getText() != null) offerClipChip(first.getText(), sensitive);
+            else dismissClipChip();
+        }
+        // 비밀번호 관리자 등이 민감 정보로 표시한 복사와, 비밀번호 입력란에서 한 복사(글자가 보이게 바꾼 칸 포함)는
+        // 클립보드 기록에 저장하지 않는다 (설정에서 '민감한 정보도 저장'을 켠 경우만 저장한다). 키보드가 내려가 있을 때의 복사는 다른 앱에서 한 것이라 지난 입력란을 따르지 않는다.
+        if (!history || ((sensitive || (passwordField && !windowHidden)) && !prefs.clipboardSensitive())) return;
         String imageMime = imageMime(desc, first.getUri());
         if (imageMime != null) {
             if (prefs.clipboardImages()) saveClipImage(first.getUri(), imageMime);

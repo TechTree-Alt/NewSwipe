@@ -12,7 +12,7 @@ package com.alternative_studios.newswipe.suggest;
  */
 public final class TextMirror {
     /** 기억해 두는 최대 글자 수. 추천에는 마지막 단어만 필요하다. */
-    static final int KEEP = 48;
+    public static final int KEEP = 48;
     private static final int RING = 16;
 
     private final StringBuilder text = new StringBuilder();
