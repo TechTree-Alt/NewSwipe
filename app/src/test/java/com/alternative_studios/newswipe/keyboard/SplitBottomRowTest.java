@@ -742,6 +742,15 @@ public class SplitBottomRowTest {
         assertEquals(30, land.keyTextSize());
         sp.m.put(land.textSizeKey(), 5);
         assertEquals(30, land.keyTextSize());
+        // 분리 키보드 가운데 빈 공간의 커서 이동 속도: 기본 100%, 프로필마다 따로, 50~300%.
+        assertEquals(100, land.splitGapSpeed());
+        assertTrue(!land.splitGapSpeedKey().equals(port.splitGapSpeedKey()));
+        assertTrue(!port.splitGapSpeedKey().equals(largeLand.splitGapSpeedKey()));
+        sp.m.put(port.splitGapSpeedKey(), 200);
+        assertEquals(200, port.splitGapSpeed());
+        assertEquals(100, largeLand.splitGapSpeed());
+        sp.m.put(port.splitGapSpeedKey(), 1000);
+        assertEquals(300, port.splitGapSpeed());
         // 세로 위치: 기본 0, 프로필마다 따로.
         assertEquals(0, land.profileLiftDp());
         sp.m.put(port.liftKey(), 40);

@@ -1099,7 +1099,7 @@ public final class SettingsActivity extends Activity {
         fnWidth.setVisibility(edit.splitSpaceJoin() ? View.VISIBLE : View.GONE);
         String joinKey = edit.splitSpaceJoinKey();
         box.addView(toggle("스페이스바 잇기",
-                "양쪽 묶음에 하나씩 나뉜 스페이스바를 가운데로 이어 하나로 만듭니다.",
+                "양쪽에 걸친 스페이스바를 이어 붙입니다.",
                 edit.splitSpaceJoin(), on -> {
                     prefs.raw().edit().putBoolean(joinKey, on).apply();
                     Ui.setVisibleAnimated(fnWidth, on);
@@ -1109,7 +1109,7 @@ public final class SettingsActivity extends Activity {
 
         String splitKey = edit.splitKey();
         card.addView(toggle(name + " 분리 키보드",
-                when + " 자판을 가운데에서 반으로 나눠 왼쪽 절반에는 자음을, 오른쪽 절반에는 모음을 놓습니다. 스페이스바도 양쪽에 하나씩 나뉩니다.",
+                "자판을 반으로 나눠 엄지손가락만으로 타이핑을 편하게 합니다.",
                 edit.profileSplit(), on -> {
                     prefs.raw().edit().putBoolean(splitKey, on).apply();
                     for (View v : splitOnly) Ui.setVisibleAnimated(v, on);
@@ -1153,10 +1153,13 @@ public final class SettingsActivity extends Activity {
             v.setVisibility(edit.profileSplit() ? View.VISIBLE : View.GONE);
             splitOnly.add(v);
         }
+        // 켜면 보이는 하위 항목: 이동 속도. 좌우·상하는 모두 움직인다.
+        View speed = subGroup(slider("이동 속도", edit.splitGapSpeedKey(), edit.splitGapSpeed(), 50, 300, 10, "%"));
+        speed.setVisibility(edit.splitGapCursor() ? View.VISIBLE : View.GONE);
         card.addView(toggle("밀어서 커서 이동",
-                when + " 쓰는 값입니다. 분리 키보드의 두 묶음 사이 빈 공간을 밀어 커서를 옮깁니다. "
-                        + "좌우·상하 이동과 속도는 스페이스바 설정('밀어서 기능')을 따르고, 끄면 빈 공간은 눌러도 밀어도 반응하지 않습니다.",
-                edit.splitGapCursorKey(), edit.splitGapCursor()));
+                "분리 키보드 가운데의 빈 공간을 밀어 커서를 옮깁니다.",
+                edit.splitGapCursorKey(), edit.splitGapCursor(), speed));
+        card.addView(speed);
     }
 
     /** 대화면 세로·가로의 한 손 모드 자판 폭 (정하기 전에는 세로·가로 모드의 값). */
