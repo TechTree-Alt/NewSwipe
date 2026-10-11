@@ -184,7 +184,19 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         super.onCreate();
         prefs = new Prefs(this);
         feedback = new Feedback(this);
-        if (Build.VERSION.SDK_INT >= 30) autofill = new InlineAutofill(this, this::applyTopSlotVisibility);
+        if (Build.VERSION.SDK_INT >= 30) {
+            autofill = new InlineAutofill(this, new InlineAutofill.Host() {
+                @Override
+                public void onAutofillBarChanged() {
+                    applyTopSlotVisibility();
+                }
+
+                @Override
+                public void onAutofillChipClicked() {
+                    feedback.onToolbar();
+                }
+            });
+        }
         korean = prefs.korean();
         emojiRepo = new EmojiRepository(this, io);
         userWords = UserDictionary.shared(getFilesDir());

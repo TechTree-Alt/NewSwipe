@@ -44,6 +44,9 @@ final class InlineAutofill {
     /** 막대가 보이거나 사라질 때 IME가 도구 막대 자리를 다시 맞추도록 알린다. */
     interface Host {
         void onAutofillBarChanged();
+
+        /** 칩(또는 열쇠 버튼)을 눌렀다: 다른 도구 버튼처럼 누른 느낌(진동·소리)을 준다. */
+        void onAutofillChipClicked();
     }
 
     private final Context context;
@@ -157,6 +160,7 @@ final class InlineAutofill {
         for (int i = 0; i < made.length; i++) {
             InlineContentView v = made[i];
             if (v == null) continue;
+            v.setOnClickListener(c -> host.onAutofillChipClicked());   // 누른 느낌(진동·소리). 채우기는 서비스가 한다
             boolean isPinned = suggestions.get(i).getInfo().isPinned();
             // 시스템이 넘겨준 칩에는 실제로 그려진 크기가 LayoutParams로 들어 있다. InlineContentView는 스스로 크기를
             // 재지 못하므로(WRAP_CONTENT면 스크롤 안에서는 폭 0, 밖에서는 남는 폭을 모두 차지한다) 그 크기를 그대로 쓴다.
@@ -231,7 +235,11 @@ final class InlineAutofill {
     /** 칩 모양: 둥근 배경(키 색)에 글자(자판 글자 색), 부제목은 흐린 색. 아이콘만 있는 칩은 아이콘을 글자 색으로 칠한다. */
     private Bundle style(KeyboardTheme theme) {
         int h = Ui.dp(context, 12);
-        Icon background = Icon.createWithResource(context, R.drawable.autofill_chip).setTint(theme.key);
+        // 누르면 배경이 눌린 키 색으로 바뀌도록 색 상태 목록으로 칠한다. 칩은 서비스가 그리는 화면이지만 배경 그림은
+        // 이 목록으로 칠해져 오고, 칩 화면이 눌리면 그 상태(pressed)에 맞는 색이 된다.
+        ColorStateList fill = new ColorStateList(
+                new int[][]{{android.R.attr.state_pressed}, {}}, new int[]{theme.keyPressed, theme.key});
+        Icon background = Icon.createWithResource(context, R.drawable.autofill_chip).setTintList(fill);
         Bundle v1 = new Bundle();
         v1.putBoolean("style_v1", true);
         v1.putBundle("chip_style", viewStyle(background, new int[]{h, 0, h, 0}));
