@@ -1405,24 +1405,44 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         scheduleSuggest();
     }
 
+    /**
+     * 커서 이동 틱 사이의 최소 간격. 빠르게 밀면 한 번의 터치 이벤트에 여러 칸이 움직이는데, 칸마다 진동기를 부르면
+     * 진동이 뭉개지고 입력란에 묻는 호출도 늘어나므로 이 간격 안의 칸은 틱 없이(묻지도 않고) 옮긴다.
+     */
+    private static final long CURSOR_TICK_GAP_MS = 30;
+    private long lastCursorTick;
+
+    /** 지금 커서 이동 틱을 울릴 차례인지 (마지막 틱에서 CURSOR_TICK_GAP_MS가 지났는지). */
+    private boolean cursorTickDue() {
+        return SystemClock.uptimeMillis() - lastCursorTick >= CURSOR_TICK_GAP_MS;
+    }
+
+    private void cursorTick() {
+        lastCursorTick = SystemClock.uptimeMillis();
+        feedback.onRepeat();
+    }
+
     /** 밀어서 커서 이동(스페이스바·분리 키보드 가운데 빈 공간·글자 키): 커서가 실제로 한 칸 움직일 때마다 약한 진동(틱). */
     @Override
     public void onCursorMove(int direction) {
-        if (moveCursor(direction)) feedback.onRepeat();
+        if (moveCursor(direction, cursorTickDue())) cursorTick();
     }
 
     /** 밀어서 커서 이동으로 한 줄 옮긴다. 실제로 움직였을 때만 약한 진동(틱)이 울린다. */
     @Override
     public void onCursorMoveVertical(int direction) {
-        if (moveCursorVertical(direction)) feedback.onRepeat();
+        if (moveCursorVertical(direction, cursorTickDue())) cursorTick();
     }
 
-    /** 커서를 왼쪽(-1)/오른쪽(+1)으로 한 칸 옮긴다. 커서가 실제로 움직였으면 true (글의 맨 앞·맨 뒤면 false). */
-    private boolean moveCursor(int direction) {
+    /**
+     * 커서를 왼쪽(-1)/오른쪽(+1)으로 한 칸 옮긴다. check면 커서가 실제로 움직이는지 입력란에 물어 그 결과를 돌려준다
+     * (글의 맨 앞·맨 뒤면 false). check가 아니면 묻지 않고 false.
+     */
+    private boolean moveCursor(int direction, boolean check) {
         if (panel == PANEL_SEARCH) return false;
         correctedTo = null;
         commitComposing();
-        boolean moves = cursorCanMove(direction < 0);
+        boolean moves = check && cursorCanMove(direction < 0);
         sendDownUpKeyEvents(direction < 0 ? KeyEvent.KEYCODE_DPAD_LEFT : KeyEvent.KEYCODE_DPAD_RIGHT);
         mirror.forget();
         return moves;
@@ -1436,14 +1456,14 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private boolean cursorCanMove(boolean backward) {
         InputConnection ic = getCurrentInputConnection();
         if (ic == null) return false;
-        CharSequence sel = ic.getSelectedText(0);
-        if (sel != null && sel.length() > 0) return true;
+        // 선택 범위는 onUpdateSelection으로 알고 있으므로 입력란에 따로 묻지 않는다 (밀 때마다 부르므로 호출을 줄인다).
+        if (selStart >= 0 && selStart != selEnd) return true;
         CharSequence next = backward ? ic.getTextBeforeCursor(1, 0) : ic.getTextAfterCursor(1, 0);
         return next == null || next.length() > 0;
     }
 
-    /** 커서를 위(-1)/아래(+1)로 한 줄 옮긴다. 커서가 실제로 움직였으면 true. */
-    private boolean moveCursorVertical(int direction) {
+    /** 커서를 위(-1)/아래(+1)로 한 줄 옮긴다. check면 커서가 실제로 움직였는지 돌려준다 ({@link #moveCursor} 참고). */
+    private boolean moveCursorVertical(int direction, boolean check) {
         if (panel == PANEL_SEARCH) return false;
         // 한 줄짜리 입력란에서 위/아래 키를 보내면 다른 입력란으로 포커스가 넘어가므로 여러 줄 입력란에서만 움직인다.
         EditorInfo ei = getCurrentInputEditorInfo();
@@ -1453,7 +1473,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
         correctedTo = null;
         commitComposing();
-        boolean moves = cursorCanMove(direction < 0);
+        boolean moves = check && cursorCanMove(direction < 0);
         sendDownUpKeyEvents(direction < 0 ? KeyEvent.KEYCODE_DPAD_UP : KeyEvent.KEYCODE_DPAD_DOWN);
         mirror.forget();
         return moves;
@@ -2360,16 +2380,16 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 }
                 break;
             case SwipeAction.CURSOR_LEFT:
-                moveCursor(-1);
+                moveCursor(-1, false);
                 break;
             case SwipeAction.CURSOR_RIGHT:
-                moveCursor(1);
+                moveCursor(1, false);
                 break;
             case SwipeAction.CURSOR_UP:
-                moveCursorVertical(-1);   // 여러 줄 입력란에서만 움직인다
+                moveCursorVertical(-1, false);   // 여러 줄 입력란에서만 움직인다
                 break;
             case SwipeAction.CURSOR_DOWN:
-                moveCursorVertical(1);
+                moveCursorVertical(1, false);
                 break;
             case SwipeAction.WORD_LEFT:
             case SwipeAction.WORD_RIGHT:

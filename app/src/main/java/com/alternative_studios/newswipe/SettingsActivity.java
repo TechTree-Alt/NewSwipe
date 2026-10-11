@@ -1342,8 +1342,7 @@ public final class SettingsActivity extends Activity {
 
     private void refreshLayoutPreview() {
         for (java.util.Map.Entry<com.alternative_studios.newswipe.keyboard.KeyboardView, String> e : layoutPreviews.entrySet()) {
-            refreshLayoutPreview(e.getKey(), previewPrefs(e.getValue()));
-            applyPreviewSize(e.getKey(), previewPrefs(e.getValue()), isLandscapeProfile(e.getValue()));
+            refreshLayoutPreview(e.getKey(), previewPrefs(e.getValue()), isLandscapeProfile(e.getValue()));
         }
     }
 
@@ -1357,10 +1356,14 @@ public final class SettingsActivity extends Activity {
         return edit.profileSplit() ? edit : prefs.profileView(profile);
     }
 
-    private void refreshLayoutPreview(com.alternative_studios.newswipe.keyboard.KeyboardView view, Prefs p) {
+    /** 미리보기 하나를 지금 설정으로 다시 그린다: 자판 배열과 키 높이·글자 크기 (배열은 한 번만 만든다). */
+    private void refreshLayoutPreview(com.alternative_studios.newswipe.keyboard.KeyboardView view, Prefs p, boolean landscape) {
         if (view == null) return;
+        com.alternative_studios.newswipe.keyboard.KeyboardLayout l =
+                com.alternative_studios.newswipe.keyboard.KeyboardLayout.korean(p);
         view.setGridColors(p.gridColors());
-        view.setLayout(com.alternative_studios.newswipe.keyboard.KeyboardLayout.korean(p));
+        applyPreviewSize(view, p, l, landscape);
+        view.setLayout(l);
     }
 
     private static boolean isLandscapeProfile(String profile) {
@@ -1371,14 +1374,12 @@ public final class SettingsActivity extends Activity {
      * 미리보기의 키 높이와 글자 크기를 설정에 맞춘다. 가로 방향 미리보기는 키가 낮아진 만큼 글자도 작게 그려
      * 키 안에 들어가게 한다.
      */
-    private void applyPreviewSize(com.alternative_studios.newswipe.keyboard.KeyboardView view, Prefs p, boolean landscape) {
-        if (view == null) return;
+    private void applyPreviewSize(com.alternative_studios.newswipe.keyboard.KeyboardView view, Prefs p,
+                                  com.alternative_studios.newswipe.keyboard.KeyboardLayout l, boolean landscape) {
         float scale = landscape ? LANDSCAPE_PREVIEW_SCALE : 1f;
         view.configure(p.longPressMs(), p.swipeThresholdDp(), false, p.longPressChars(), false,
                 Math.round(p.keyTextSize() * scale));
         int pad = Ui.dp(this, 4);
-        com.alternative_studios.newswipe.keyboard.KeyboardLayout l =
-                com.alternative_studios.newswipe.keyboard.KeyboardLayout.korean(p);
         view.setKeyboardHeight(Math.round(Ui.dp(this, 54) * l.totalHeight() * p.keyboardHeight() / 100f * scale) + 2 * pad);
     }
 

@@ -104,10 +104,10 @@ public final class Prefs {
     public static final String SPLIT_FN_WIDTH = "split_fn_width";       // 분리 키보드(스페이스바를 이었을 때): 하단 기능키 폭(%)
     public static final String SPLIT_GAP_SPEED = "split_gap_speed";     // 분리 키보드 가운데 빈 공간 커서 이동 속도(%)
     public static final String SPLIT_GAP_CURSOR = "split_gap_cursor";   // 분리 키보드 가운데 빈 공간을 밀어 커서 이동
-    public static final String SPLIT_REACH_COLUMN = "split_reach_column";
+    public static final String SPLIT_REACH_COLUMN = "split_reach_column";   // 분리 키보드: 좌·우 균형 레이아웃
     /** 가로 모드·대화면에서 따로 정하는 키보드 높이·키 글자 크기(%)의 최솟값 (세로 모드는 70). */
     public static final int PROFILE_HEIGHT_MIN = 30;
-    public static final String PROFILE_LIFT = "lift";   // 가로 모드·대화면: 키보드를 화면 아래에서 띄우는 높이(dp), 0~160   // 분리 키보드: 자음의 맨 오른쪽 줄을 오른쪽 묶음으로
+    public static final String PROFILE_LIFT = "lift";   // 가로 모드·대화면: 키보드를 화면 아래에서 띄우는 높이(dp), 0~160
     public static final String SPACE_CURSOR_SPEED_H = "space_cursor_speed_h";
     public static final String SPACE_CURSOR_SPEED_V = "space_cursor_speed_v";
     public static final String CHAR_CURSOR_SPEED_H = "char_cursor_speed_h";
