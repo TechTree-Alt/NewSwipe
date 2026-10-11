@@ -281,7 +281,30 @@ public final class KeyboardLayout {
             (vowel ? vowels : consonants).add(k);
         }
         if (deleteHere) vowels.add(fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1f));
-        if (splitView(prefs)) return blockRow(consonants, vowels, 1f, balancedConsonants(prefs), BALANCED_VOWEL_COLUMNS, prefs);
+        if (splitView(prefs)) {
+            int leftColumns = balancedConsonants(prefs), rightColumns = BALANCED_VOWEL_COLUMNS;
+            if (prefs.splitReachColumn()) {
+                // 좌·우 균형 레이아웃: 양쪽 묶음을 4열씩으로 맞춘다.
+                if (ns) {
+                    // NewSwipe 단모음: 자음의 맨 오른쪽 줄(ㄱ·ㄹ·ㅅ)은 그대로 두고, 같은 키를 하나 더 만들어 모음 앞에 놓는다.
+                    String last = consonants.get(consonants.size() - 1).label;
+                    for (Key k : letterKeys(rows[r], popups[r], true, prefs)) {
+                        if (k.label.equals(last)) vowels.add(0, k);
+                    }
+                } else {
+                    // 8열 단모음: 자음의 맨 오른쪽 줄(ㅅ·ㅎ·ㅍ)을 오른쪽 묶음의 모음 앞으로 옮긴다.
+                    vowels.add(0, consonants.remove(consonants.size() - 1));
+                    leftColumns--;
+                }
+                rightColumns++;
+            }
+            Row row = blockRow(consonants, vowels, 1f, leftColumns, rightColumns, prefs);
+            if (prefs.splitReachColumn() && !ns) {
+                // 8열 단모음: 왼쪽 묶음 오른쪽의 키 하나 폭 빈 자리를 누르면 오른쪽 묶음의 맨 왼쪽 키(옮겨 간 ㅅ·ㅎ·ㅍ)가 눌린다.
+                row = withHiddenKey(row, consonants.get(consonants.size() - 1), hiddenCopyOf(vowels.get(0)), true);
+            }
+            return row;
+        }
         return splitRow(consonants, vowels, 1f, prefs);
     }
 
@@ -368,28 +391,43 @@ public final class KeyboardLayout {
      * 그 폭만큼이다. 빈 자리가 없으면 줄을 그대로 돌려준다. 줄 전체의 폭과 다른 키의 위치는 바뀌지 않는다.
      */
     private static Row withHiddenKey(Row row, Key host, Key hidden) {
+        return withHiddenKey(row, host, hidden, false);
+    }
+
+    /** {@link #withHiddenKey(Row, Key, Key)}와 같되, after면 host 키 바로 오른쪽의 빈 자리에 놓는다. */
+    private static Row withHiddenKey(Row row, Key host, Key hidden, boolean after) {
         int at = -1;
         for (int i = 0; i < row.keys.length; i++) if (row.keys[i] == host) at = i;
         if (at < 0) return row;
-        int first = at;
+        int step = after ? 1 : -1, end = at;   // end: host에서 가장 먼 빈틈
         float gap = 0f;
-        while (first > 0 && (row.keys[first - 1].type == Key.GAP || row.keys[first - 1].type == Key.SPACER)) {
-            first--;
-            gap += row.keys[first].weight;
+        while (end + step >= 0 && end + step < row.keys.length
+                && (row.keys[end + step].type == Key.GAP || row.keys[end + step].type == Key.SPACER)) {
+            end += step;
+            gap += row.keys[end].weight;
         }
         float w = Math.min(gap, host.weight);
         if (w < 0.05f) return row;
-        List<Key> keys = new ArrayList<>();
-        for (int i = 0; i < first; i++) keys.add(row.keys[i]);
         // 남는 빈 자리는 원래 성질(가운데 빈 자리는 눌러도 반응하지 않음)을 지킨다.
+        Key rest = null;
         if (gap - w > 0.001f) {
-            Key rest = fn(row.keys[first].type, "", gap - w);
-            rest.dragCursor = row.keys[first].dragCursor;
-            keys.add(rest);
+            rest = fn(row.keys[end].type, "", gap - w);
+            rest.dragCursor = row.keys[end].dragCursor;
         }
         hidden.weight = w;
-        keys.add(hidden);
-        for (int i = at; i < row.keys.length; i++) keys.add(row.keys[i]);
+        List<Key> keys = new ArrayList<>();
+        int from = Math.min(at, end), to = Math.max(at, end);   // from~to: host와 빈틈들
+        for (int i = 0; i < from; i++) keys.add(row.keys[i]);
+        if (after) {
+            keys.add(host);
+            keys.add(hidden);
+            if (rest != null) keys.add(rest);
+        } else {
+            if (rest != null) keys.add(rest);
+            keys.add(hidden);
+            keys.add(host);
+        }
+        for (int i = to + 1; i < row.keys.length; i++) keys.add(row.keys[i]);
         return new Row(row.height, keys.toArray(new Key[0]));
     }
 
@@ -734,7 +772,12 @@ public final class KeyboardLayout {
      */
     private static float gridKey(Prefs prefs) {
         // 자·모음 균형 레이아웃: 왼쪽 절반을 나눠 가진 자음 키 한 칸 (5열이면 1칸, 4열이면 1.25칸).
-        if (balanced(prefs)) return BALANCED_HALF / balancedConsonants(prefs);
+        // 8열 단모음의 좌·우 균형 레이아웃은 자음이 4열이 되므로 그 폭을 따른다.
+        if (balanced(prefs)) {
+            int columns = balancedConsonants(prefs);
+            if (!newSwipe(prefs) && splitView(prefs) && prefs.splitReachColumn()) columns--;
+            return BALANCED_HALF / columns;
+        }
         return SPACE_ROW_UNITS / koreanColumns(prefs);
     }
 

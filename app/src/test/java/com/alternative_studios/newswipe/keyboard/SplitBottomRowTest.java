@@ -578,6 +578,190 @@ public class SplitBottomRowTest {
         }
     }
 
+    /** 줄에서 label 키의 {가운데(5칸) 왼쪽에 있는 수, 오른쪽에 있는 수}. */
+    private static int[] sides(KeyboardLayout.Row row, String label) {
+        int[] n = new int[2];
+        float x = 0f;
+        for (Key k : row.keys) {
+            if (k.type == Key.CHAR && !k.hidden && label.equals(k.label)) n[x >= 5f - 0.001f ? 1 : 0]++;
+            x += k.weight;
+        }
+        return n;
+    }
+
+    /** 줄의 왼쪽·오른쪽 묶음에 있는 키(빈틈·가운데 빈 자리 제외)의 수. */
+    private static int[] blockSizes(KeyboardLayout.Row row) {
+        int[] n = new int[2];
+        float x = 0f;
+        for (Key k : row.keys) {
+            if (k.type != Key.GAP && !k.hidden && !(k.type == Key.SPACER && k.dragCursor)) n[x >= 5f - 0.001f ? 1 : 0]++;
+            x += k.weight;
+        }
+        return n;
+    }
+
+    @Test
+    public void leftRightBalancedLayoutGivesFourColumnsOnEachSide() throws Exception {
+        String[][] columns = {{"ㅅ", "ㅎ", "ㅍ"}, {"ㄱ", "ㄹ", "ㅅ"}};
+        for (int layout = 0; layout < 2; layout++) {
+            boolean ns = layout == 1;
+            for (int[] s : SETTINGS) {
+                Prefs p = prefsFor(s, false);
+                FakeSp sp = (FakeSp) p.raw();
+                if (ns) sp.m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_D7);
+                KeyboardLayout off = KeyboardLayout.korean(p);
+                for (int r = 0; r < 3; r++) {
+                    int[] n = sides(off.rows[r], columns[layout][r]);
+                    assertEquals(1, n[0]);
+                    assertEquals(0, n[1]);
+                }
+                float[] edges = outer(off, 0);
+                sp.m.put(p.splitReachColumnKey(), true);
+                KeyboardLayout on = KeyboardLayout.korean(p);
+                for (int r = 0; r < 3; r++) {
+                    int[] n = sides(on.rows[r], columns[layout][r]);
+                    // 8열 단모음은 오른쪽으로 옮기고, NewSwipe 단모음은 왼쪽에 둔 채 오른쪽에 하나 더 놓는다.
+                    assertEquals(ns ? 1 : 0, n[0]);
+                    assertEquals(1, n[1]);
+                    int[] size = blockSizes(on.rows[r]);
+                    assertEquals("왼쪽 4열", 4, size[0]);
+                    assertEquals("오른쪽 4열", 4, size[1]);
+                    float total = 0f;
+                    for (Key k : on.rows[r].keys) total += k.weight;
+                    assertEquals(10f, total, 0.001f);
+                }
+                float[] moved = outer(on, 0);
+                assertEquals("묶음의 바깥 끝은 그대로", edges[0], moved[0], 0.001f);
+                assertEquals(edges[1], moved[1], 0.001f);
+            }
+        }
+    }
+
+    @Test
+    public void tappingRightOfTheLeftBlockTypesTheMovedConsonant() throws Exception {
+        String[] hosts = {"ㄱ", "ㄹ", "ㅊ"}, moved = {"ㅅ", "ㅎ", "ㅍ"};
+        for (int[] s : SETTINGS) {
+            Prefs p = prefsFor(s, false);
+            ((FakeSp) p.raw()).m.put(p.splitReachColumnKey(), true);
+            KeyboardLayout l = KeyboardLayout.korean(p);
+            for (int r = 0; r < 3; r++) {
+                Key[] keys = l.rows[r].keys;
+                int host = -1;
+                float middle = 0f;   // 두 묶음 사이 빈 자리의 폭 (숨은 키 포함)
+                for (int i = 0; i < keys.length; i++) {
+                    if (hosts[r].equals(keys[i].label)) host = i;
+                    if (keys[i].hidden || (keys[i].type == Key.SPACER && keys[i].dragCursor)) middle += keys[i].weight;
+                }
+                assertTrue(host >= 0);
+                if (middle < 0.05f) continue;   // 빈 자리가 없으면 숨은 키도 없다
+                Key hidden = keys[host + 1];
+                assertTrue("왼쪽 묶음 바로 오른쪽에 숨은 키", hidden.hidden);
+                assertEquals(moved[r], hidden.label);
+                assertEquals(Math.min(middle, keys[host].weight), hidden.weight, 0.001f);
+            }
+        }
+        // NewSwipe 단모음은 양쪽에 같은 키가 있으므로 숨은 키를 두지 않는다.
+        Prefs p = prefsFor(SETTINGS[1], false);
+        ((FakeSp) p.raw()).m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_D7);
+        ((FakeSp) p.raw()).m.put(p.splitReachColumnKey(), true);
+        for (KeyboardLayout.Row row : KeyboardLayout.korean(p).rows) for (Key k : row.keys) assertTrue(!k.hidden);
+    }
+
+    @Test
+    public void gridLayoutFollowsTheFourColumnConsonantsOfTheLeftRightBalancedLayout() throws Exception {
+        for (boolean d7 : new boolean[]{false, true}) {
+            for (int[] s : SETTINGS) {
+                Prefs p = prefsFor(s, false);
+                FakeSp sp = (FakeSp) p.raw();
+                if (d7) sp.m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_D7);
+                sp.m.put(Prefs.GRID_LAYOUT, true);
+                sp.m.put(p.splitReachColumnKey(), true);
+                KeyboardLayout l = KeyboardLayout.korean(p);
+                float consonant = -1f, vowel = -1f;   // 왼쪽·오른쪽 묶음의 4열 키 한 칸
+                for (Key k : l.rows[0].keys) {
+                    if ("ㅂ".equals(k.label)) consonant = k.weight;
+                    if ("ㅗ".equals(k.label)) vowel = k.weight;
+                }
+                KeyboardLayout.Row bottom = l.rows[l.rows.length - 1];
+                assertEquals("기호 키 = 4열 자음 키", consonant, widthOf(bottom, Key.TO_SYMBOLS, true), 0.001f);
+                assertEquals("엔터 키 = 오른쪽 묶음의 4열 키", vowel, widthOf(bottom, Key.ENTER, false), 0.001f);
+                if (!d7) assertEquals("Shift 자리 = 4열 자음 키", consonant, l.rows[2].keys[firstKey(l.rows[2])].weight, 0.001f);
+            }
+        }
+    }
+
+    private static int firstKey(KeyboardLayout.Row row) {
+        for (int i = 0; i < row.keys.length; i++) if (row.keys[i].type != Key.GAP) return i;
+        return -1;
+    }
+
+    private static Prefs editView(FakeSp sp, String profile) throws Exception {
+        Constructor<Prefs> c = Prefs.class.getDeclaredConstructor(SharedPreferences.class, boolean.class, String.class,
+                boolean.class);
+        c.setAccessible(true);
+        return c.newInstance(sp, false, profile, true);
+    }
+
+    @Test
+    public void largePortraitAndLandscapeShareTheLayoutButNotTheShape() throws Exception {
+        FakeSp sp = new FakeSp();
+        Prefs land = editView(sp, Prefs.PROFILE_LANDSCAPE);
+        Prefs port = editView(sp, Prefs.PROFILE_LARGE_PORTRAIT), largeLand = editView(sp, Prefs.PROFILE_LARGE_LANDSCAPE);
+        // 분리 키보드 레이아웃: 대화면 세로·가로는 같은 키, 가로 모드는 다른 키.
+        assertEquals(port.splitKey(), largeLand.splitKey());
+        assertEquals(port.splitReachColumnKey(), largeLand.splitReachColumnKey());
+        assertEquals(port.splitSpaceJoinKey(), largeLand.splitSpaceJoinKey());
+        assertEquals(port.splitFnWidthKey(), largeLand.splitFnWidthKey());
+        assertTrue(!land.splitKey().equals(port.splitKey()));
+        assertTrue(!land.splitReachColumnKey().equals(port.splitReachColumnKey()));
+        assertTrue(!land.splitSpaceJoinKey().equals(port.splitSpaceJoinKey()));
+        // 분리 키보드 모양: 셋 모두 다른 키.
+        for (String[] keys : new String[][]{
+                {land.balancedConsonantWidthKey(), port.balancedConsonantWidthKey(), largeLand.balancedConsonantWidthKey()},
+                {land.balancedVowelPosKey(), port.balancedVowelPosKey(), largeLand.balancedVowelPosKey()},
+                {land.heightKey(), port.heightKey(), largeLand.heightKey()},
+                {land.textSizeKey(), port.textSizeKey(), largeLand.textSizeKey()},
+                {land.liftKey(), port.liftKey(), largeLand.liftKey()}}) {
+            assertTrue(!keys[0].equals(keys[1]) && !keys[0].equals(keys[2]) && !keys[1].equals(keys[2]));
+        }
+        // 키보드 높이·글자 크기는 정하기 전에는 세로 모드 값을, 정하면 그 값을 쓴다.
+        sp.m.put(Prefs.KEYBOARD_HEIGHT, 120);
+        assertEquals(120, land.keyboardHeight());
+        sp.m.put(land.heightKey(), 80);
+        assertEquals(80, land.keyboardHeight());
+        assertEquals(120, port.keyboardHeight());
+        // 가로 모드·대화면의 키보드 높이는 30%까지 줄일 수 있다 (세로 모드 값과 상관없이).
+        sp.m.put(land.heightKey(), 30);
+        assertEquals(30, land.keyboardHeight());
+        sp.m.put(land.heightKey(), 10);
+        assertEquals(30, land.keyboardHeight());
+        sp.m.put(land.heightKey(), 200);
+        assertEquals(140, land.keyboardHeight());
+        // 키 글자 크기도 30%까지.
+        sp.m.put(land.textSizeKey(), 30);
+        assertEquals(30, land.keyTextSize());
+        sp.m.put(land.textSizeKey(), 5);
+        assertEquals(30, land.keyTextSize());
+        // 분리 키보드 가운데 빈 공간의 커서 이동 속도: 기본 100%, 프로필마다 따로, 50~300%.
+        assertEquals(100, land.splitGapSpeed());
+        assertTrue(!land.splitGapSpeedKey().equals(port.splitGapSpeedKey()));
+        assertTrue(!port.splitGapSpeedKey().equals(largeLand.splitGapSpeedKey()));
+        sp.m.put(port.splitGapSpeedKey(), 200);
+        assertEquals(200, port.splitGapSpeed());
+        assertEquals(100, largeLand.splitGapSpeed());
+        sp.m.put(port.splitGapSpeedKey(), 1000);
+        assertEquals(300, port.splitGapSpeed());
+        // 세로 위치: 기본 0, 프로필마다 따로.
+        assertEquals(0, land.profileLiftDp());
+        sp.m.put(port.liftKey(), 40);
+        assertEquals(40, port.profileLiftDp());
+        assertEquals(0, largeLand.profileLiftDp());
+        // 대화면 세로에서 켠 분리 키보드는 대화면 가로에서도 켜져 있다.
+        sp.m.put(port.splitKey(), true);
+        assertTrue(largeLand.profileSplit());
+        assertTrue(!land.profileSplit());
+    }
+
     @Test
     public void numberKeysCanHaveLongPressCharacters() throws Exception {
         assertEquals("num", KeyboardLayout.groupOf(true, "5"));

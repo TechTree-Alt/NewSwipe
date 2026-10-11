@@ -165,6 +165,7 @@ public final class KeyboardView extends View {
     /** 문자·숫자 키를 트랙패드처럼 밀어 커서를 옮기는 기능. 그 방향에 밀어서 입력할 글자가 있으면 글자가 먼저다. */
     private boolean charCursor;
     /** 커서 이동이 시작된 뒤 손가락이 움직이는 거리당 커서가 움직이는 빠르기 (1 = 기본). 스페이스바·문자 키, 좌우·상하 따로. */
+    private float gapSpeed = 1f;
     private float spaceSpeedH = 1f, spaceSpeedV = 1f, charSpeedH = 1f, charSpeedV = 1f;
     /** 스페이스바를 좌우로 밀어 한/영 전환 (손을 떼면 바꾼다). 스페이스바 좌우 커서 이동과 함께 쓰지 않는다. */
     private boolean spaceLangSwipe;
@@ -425,9 +426,10 @@ public final class KeyboardView extends View {
         fnPressMs = ms;
     }
 
-    /** 분리 키보드 가운데 빈 공간을 밀어 커서를 옮기는지. */
-    public void setGapCursor(boolean on) {
+    /** 분리 키보드 가운데 빈 공간을 밀어 커서를 옮기는지와 그 이동 속도 (%, 100 = 기본). 좌우·상하로 모두 움직인다. */
+    public void setGapCursor(boolean on, int speedPercent) {
         gapCursor = on;
+        gapSpeed = Math.max(10, speedPercent) / 100f;
     }
 
     public void setCursorAxes(boolean horizontal, boolean vertical) {
@@ -953,9 +955,9 @@ public final class KeyboardView extends View {
             case NORMAL:
             case SWIPED:
                 if (p.key.type == Key.SPACER) {
-                    // 분리 키보드 가운데 빈 공간: 충분히 밀면 커서 이동 (스페이스바와 같은 거리·축 설정).
-                    if (deferred == null && ((cursorH && Math.abs(dx) > fnSwipeThreshold)
-                            || (cursorV && Math.abs(dy) > fnSwipeThreshold * 1.5f))) {
+                    // 분리 키보드 가운데 빈 공간: 충분히 밀면 커서 이동 (스페이스바와 같은 거리, 축은 늘 좌우·상하 모두).
+                    if (deferred == null && (Math.abs(dx) > fnSwipeThreshold
+                            || Math.abs(dy) > fnSwipeThreshold * 1.5f)) {
                         p.mode = CURSOR;
                         p.gap = true;
                         p.cursorAnchorX = x;
@@ -1050,12 +1052,13 @@ public final class KeyboardView extends View {
                 break;
             case CURSOR: {
                 // 완전 사용자화를 켰으면 '커서 이동'을 정한 방향의 축만 움직인다.
-                boolean curH = p.gap ? cursorH : p.freeCursor ? p.freeH
-                        : fnSwipes != null ? fnSwipes.cursorH() : cursorH && !spaceLangSwipe;
-                boolean curV = p.gap ? cursorV : p.freeCursor ? p.freeV : fnSwipes != null ? fnSwipes.cursorV() : cursorV;
+                // 분리 키보드 가운데 빈 공간은 늘 좌우·상하로 모두 움직이고 속도도 따로 정한다.
+                boolean curH = p.gap || (p.freeCursor ? p.freeH
+                        : fnSwipes != null ? fnSwipes.cursorH() : cursorH && !spaceLangSwipe);
+                boolean curV = p.gap || (p.freeCursor ? p.freeV : fnSwipes != null ? fnSwipes.cursorV() : cursorV);
                 // 커서 이동 속도: 한 칸(한 줄) 움직이는 데 필요한 손가락 거리를 속도만큼 줄이거나 늘린다.
-                float stepX = cursorStep / (p.freeCursor ? charSpeedH : spaceSpeedH);
-                float stepY = cursorStepY / (p.freeCursor ? charSpeedV : spaceSpeedV);
+                float stepX = cursorStep / (p.gap ? gapSpeed : p.freeCursor ? charSpeedH : spaceSpeedH);
+                float stepY = cursorStepY / (p.gap ? gapSpeed : p.freeCursor ? charSpeedV : spaceSpeedV);
                 float d = x - p.cursorAnchorX;
                 while (curH && Math.abs(d) >= stepX) {
                     int dir = d > 0 ? 1 : -1;
