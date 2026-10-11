@@ -93,7 +93,7 @@ public final class ClipboardPanel extends LinearLayout {
         LayoutParams titleLp = new LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         titleLp.leftMargin = Ui.dp(context, 10);   // 뒤로 가기 칩에 붙지 않게
         header.addView(title, titleLp);
-        clear = Ui.chipButton(context, "모두 지우기", 0xFF1D1E21, theme.accent, topBarHeight);   // 글자는 다크 모드에서도 어두운 색 그대로
+        clear = Ui.chipButton(context, "모두 지우기", theme.onAccent, theme.accent, topBarHeight);   // 강조 색 위 글자는 밝기에 따라 읽기 좋은 색
         clear.setOnClickListener(v -> confirmClear());
         header.addView(clear);
         addView(header, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, topBarHeight));
