@@ -22,6 +22,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowInsets;
 import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InlineSuggestionsRequest;
+import android.view.inputmethod.InlineSuggestionsResponse;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputContentInfo;
 import android.view.inputmethod.InputMethodInfo;
@@ -78,6 +80,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     private Prefs prefs;
     private Feedback feedback;
+    /** 자동 완성 제안 칩 (Android 11 이상에서만 만든다). */
+    private InlineAutofill autofill;
     private final HangulComposer composer = new HangulComposer();
     private ClipboardManager clipboard;
     private ClipboardHistory clipHistory;
@@ -119,6 +123,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private int selStart = -1, selEnd = -1;
     private LinearLayout searchBar;
     private LinearLayout suggestBar;
+    /** 자동 완성 칩 줄 (도구 막대 안, 추천 단어 줄 자리). */
+    private View autofillBar;
     private View toolSpacer;
     /** 도구 막대 버튼 배치 {왼쪽, 오른쪽} (ToolbarButtons ID). 바뀌었을 때만 버튼을 다시 놓는다. */
     private String[][] toolOrder;
@@ -180,6 +186,19 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         super.onCreate();
         prefs = new Prefs(this);
         feedback = new Feedback(this);
+        if (Build.VERSION.SDK_INT >= 30) {
+            autofill = new InlineAutofill(this, new InlineAutofill.Host() {
+                @Override
+                public void onAutofillBarChanged() {
+                    onAutofillChipsChanged();
+                }
+
+                @Override
+                public void onAutofillChipClicked() {
+                    feedback.onToolbar();
+                }
+            });
+        }
         korean = prefs.korean();
         emojiRepo = new EmojiRepository(this, io);
         userWords = UserDictionary.shared(getFilesDir());
@@ -566,6 +585,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         suggestBar = buildSuggestBar();
         suggestBar.setVisibility(View.GONE);
         bar.addView(suggestBar, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+        // 자동 완성 칩도 같은 자리에 뜬다 (추천 단어와 함께 뜨면 칩이 먼저).
+        autofillBar = autofill != null ? autofill.createBar(theme) : null;
+        if (autofillBar != null) {
+            bar.addView(autofillBar, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+        }
         oneHandButton = toolButton(Icons.ONE_HAND, "한 손 모드", v -> toggleOneHand());
         bar.addView(oneHandButton);
         settingsButton = toolButton(Icons.SETTINGS, "설정", v -> openSettings());
@@ -582,7 +606,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         attachToolSwipe(hideButton, ToolbarSwipes.HIDE);
         attachToolSwipe(oneHandButton, ToolbarSwipes.ONE_HAND);
         // 기능이 있는 방향은 버튼이 처리하고, 없는 방향은 도구 막대를 그 방향으로 민 것으로 본다.
-        bar.setSwipeOwner((v, dir) -> !SwipeAction.NONE.equals(toolButtonAction(toolSlotOf(v), dir)));
+        // 자동 완성 칩 줄은 좌우로 밀어 스크롤하므로, 그 줄 위의 좌우 밀기는 도구 막대가 가로채지 않는다.
+        bar.setSwipeOwner((v, dir) -> v == autofillBar
+                ? dir == Key.SWIPE_LEFT || dir == Key.SWIPE_RIGHT
+                : !SwipeAction.NONE.equals(toolButtonAction(toolSlotOf(v), dir)));
         return bar;
     }
 
@@ -610,9 +637,13 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         for (String id : ToolbarButtons.ALL) toolbar.removeView(toolButtonOf(id));
         toolbar.removeView(toolSpacer);
         toolbar.removeView(suggestBar);
+        if (autofillBar != null) toolbar.removeView(autofillBar);
         for (String id : order[0]) toolbar.addView(toolButtonOf(id));
         toolbar.addView(toolSpacer, new LinearLayout.LayoutParams(0, 1, 1f));
         toolbar.addView(suggestBar, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+        if (autofillBar != null) {
+            toolbar.addView(autofillBar, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+        }
         for (String id : order[1]) toolbar.addView(toolButtonOf(id));
         refreshToolbarVisibility();
     }
@@ -936,6 +967,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         String signature = side + "/" + width + "/" + lift;
         if (signature.equals(appliedOneHand)) return;
         appliedOneHand = signature;
+        // 한 손 모드를 켜고 끌 때마다 자동 완성 칩을 다시 배치한다 (한 손 모드에서는 열쇠만, 아니면 계정 칩 모두).
+        if (autofill != null) autofill.setCompact(on);
         body.removeAllViews();
         if (on) {
             boolean left = Prefs.ONE_HAND_LEFT.equals(side);
@@ -1023,6 +1056,48 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         hadComposing = false;
         mirror.forget();
         clearSuggestions();
+        if (autofill != null) autofill.clear();   // 입력란을 떠나면 그 칸의 자동 완성 칩도 버린다
+    }
+
+    // ---------------------------------------------------------------- 자동 완성 (Android 11 이상)
+
+    /**
+     * 자동 완성 서비스에 칩을 도구 막대 자리에 보여 줄 수 있다고 알린다. 칩은 서비스가 채울 수 있는 칸에서만 온다.
+     * 설정에서 껐으면 null을 돌려준다 (그러면 서비스가 앱 안에 원래의 자동 완성 목록을 띄운다).
+     */
+    @Override
+    public InlineSuggestionsRequest onCreateInlineSuggestionsRequest(android.os.Bundle uiExtras) {
+        if (autofill == null || !prefs.autofillInline()) return null;
+        KeyboardTheme t = theme != null ? theme : KeyboardTheme.of(this);
+        int height = toolbarHeight > 0 ? toolbarHeight : toolbarHeightPx();
+        // 칩은 쪽으로 넘기며 보므로, 한 칩이 칩 줄(왼쪽 도구 버튼을 뺀 폭에서 쪽 넘김 버튼·고정 칩 자리를 뺀 폭)에
+        // 들어갈 만큼만 키운다. 긴 글은 서비스가 줄여 보인다.
+        int maxWidth = Math.max(Ui.dp(this, 96), Math.min(Ui.dp(this, 260), chipSlotWidth() - autofill.reservedWidth()));
+        return autofill.request(t, height, maxWidth);
+    }
+
+    /** 칩 줄 자리의 폭 (px): 도구 막대 폭에서 안 가려지는 왼쪽 도구 버튼들의 폭을 뺀 값 ('도구 막대 전체를 쓰기'면 막대 전체). */
+    private int chipSlotWidth() {
+        int width = toolbar != null && toolbar.getWidth() > 0 ? toolbar.getWidth() : getResources().getDisplayMetrics().widthPixels;
+        width -= (toolbar != null ? toolbar.getPaddingLeft() + toolbar.getPaddingRight() : 0);
+        if (!prefs.suggestFullBar() && prefs.toolbar()) {
+            String[][] order = toolOrder != null ? toolOrder : prefs.toolOrder();
+            for (String id : order[0]) {
+                if (!prefs.toolShown(id)) continue;
+                ViewGroup.LayoutParams lp = toolButtonOf(id).getLayoutParams();
+                width -= lp != null && lp.width > 0 ? lp.width : Ui.dp(this, 40);
+            }
+        }
+        return width;
+    }
+
+    /** 자동 완성 서비스가 보낸 칩을 보여 준다 (빈 목록이면 감춘다). */
+    @Override
+    public boolean onInlineSuggestionsResponse(InlineSuggestionsResponse response) {
+        if (autofill == null) return false;
+        autofill.setCompact(!Prefs.ONE_HAND_OFF.equals(activeOneHand()));   // 칩을 놓기 전에 지금 모드에 맞춘다
+        autofill.show(response.getInlineSuggestions());
+        return true;
     }
 
     @Override
@@ -1109,6 +1184,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         placeTopSlot();
         topSlot.setVisibility(full || (p == PANEL_KEYBOARD && toolbarGone()) ? View.GONE : View.VISIBLE);
         refreshToolbarVisibility();
+        onAutofillChipsChanged();   // 자판이 아닌 화면에서는 칩 줄을 가린다
         searchBar.setVisibility(p == PANEL_SEARCH ? View.VISIBLE : View.GONE);
         resultScroll.setVisibility(p == PANEL_SEARCH ? View.VISIBLE : View.GONE);
         keyboard.setVisibility(full ? View.GONE : View.VISIBLE);
@@ -1145,7 +1221,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 도구 막대를 끈 상태로 자판을 보여 주는 중인지. 검색 패널은 도구 막대 자리에 검색창이 있어 해당하지 않는다. */
     private boolean toolbarGone() {
         return !prefs.toolbar() && !((cfgSuggest && suggestAllowed) || (!shortcuts.isEmpty() && shortcutAllowed))
-                && panel == PANEL_KEYBOARD;
+                && panel == PANEL_KEYBOARD && !autofillShowing();
     }
 
     private void updatePanelSizes() {
@@ -1950,7 +2026,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
         boolean showing = found.length > 0;
         if (showing != wasShowing) {
-            suggestBar.setVisibility(showing ? View.VISIBLE : View.GONE);
+            applySuggestBarVisibility();
             refreshToolbarVisibility();
         }
     }
@@ -1971,10 +2047,30 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         refreshToolbarVisibility();
     }
 
-    /** 도구 막대는 추천이 떠 있거나 검색 중이거나 설정에서 껐으면 가린다. */
+    /** 자동 완성 칩이 떠 있는지 (자판 화면에서만). */
+    private boolean autofillShowing() {
+        return autofill != null && autofill.shown() && panel == PANEL_KEYBOARD;
+    }
+
+    /** 추천 단어 줄은 추천이 있고 자동 완성 칩이 없을 때만 보인다 (칩이 같은 자리를 쓴다). */
+    private void applySuggestBarVisibility() {
+        if (suggestBar != null) {
+            suggestBar.setVisibility(suggestions.length > 0 && !autofillShowing() ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    /** 자동 완성 칩이 생기거나 사라졌다: 추천 단어 줄과 도구 버튼, 도구 막대 자리를 다시 맞춘다. */
+    private void onAutofillChipsChanged() {
+        applySuggestBarVisibility();
+        refreshToolbarVisibility();
+        applyTopSlotVisibility();
+    }
+
+    /** 도구 막대는 추천이나 자동 완성 칩이 떠 있거나 검색 중이거나 설정에서 껐으면 가린다. */
     private void refreshToolbarVisibility() {
         if (toolbar == null) return;
-        boolean suggesting = suggestBar != null && suggestBar.getVisibility() == View.VISIBLE;
+        // 추천 단어 줄이나 자동 완성 칩 줄이 떠 있는 동안: 오른쪽 버튼들이 접히고 그 줄이 자리를 쓴다.
+        boolean suggesting = (suggestBar != null && suggestBar.getVisibility() == View.VISIBLE) || autofillShowing();
         boolean on = prefs.toolbar();
         toolbar.setVisibility(panel == PANEL_SEARCH || !(on || suggesting) ? View.GONE : View.VISIBLE);
         // 설정에서 '도구 막대 전체를 쓰기'를 켰으면 추천이 떠 있는 동안 왼쪽 버튼들도 사라진다.
