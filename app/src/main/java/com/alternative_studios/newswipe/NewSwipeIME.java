@@ -2255,8 +2255,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /** 방금 복사한 텍스트로 칩을 띄운다. 민감한 정보면 내용은 기억하지 않고 가린 채 보인다. */
     private void offerClipChip(CharSequence text, boolean sensitive) {
-        String preview = sensitive ? null : clipPreview(text);
-        if (!sensitive && preview == null) {
+        // 비밀번호 입력란에서 복사했으면 다른 입력란이나 앱으로 가도 가린다 (그때는 미리보기 글을 아예 기억하지 않는다).
+        // 키보드가 내려가 있을 때의 복사는 다른 앱에서 한 것이라 지난 입력란을 따르지 않는다.
+        boolean masked = sensitive || (passwordField && !windowHidden);
+        String preview = masked ? null : clipPreview(text);
+        if (!masked && preview == null) {
             dismissClipChip();   // 빈 글이나 공백만 복사했다
             return;
         }
