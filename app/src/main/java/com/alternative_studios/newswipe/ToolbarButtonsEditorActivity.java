@@ -21,7 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 도구 막대 버튼을 켜고 끄고, 왼쪽·오른쪽 중 어디에 어떤 순서로 둘지 바꾸는 화면 (도구 막대 버튼 순서·유무 사용자화).
+ * 도구 막대 버튼을 켜고 끄고, 왼쪽·오른쪽 중 어디에 어떤 순서로 둘지 바꾸는 화면 (도구 막대 버튼 사용자화).
  * 한 카드 안에 '왼쪽'·'오른쪽' 제목을 두고, ≡를 잡고 끌면 제목을 넘어 다른 쪽으로도 옮길 수 있다.
  */
 public final class ToolbarButtonsEditorActivity extends Activity {
@@ -61,7 +61,7 @@ public final class ToolbarButtonsEditorActivity extends Activity {
         int pad = Ui.dp(this, 16);
         list.setPadding(pad, 0, pad, Ui.dp(this, 32));
         scroll.addView(list);
-        setContentView(new SettingsFrame(this, "도구 막대 버튼 순서·유무 사용자화", getString(R.string.app_name)).wrap(scroll));
+        setContentView(new SettingsFrame(this, "도구 막대 버튼 사용자화", getString(R.string.app_name)).wrap(scroll));
         render();
     }
 
@@ -118,7 +118,7 @@ public final class ToolbarButtonsEditorActivity extends Activity {
         keys.addView(rightHeader);
         for (String id : order[1]) keys.addView(buttonRow(id));
         updatePreview();
-        list.addView(ResetDialog.button(this, "도구 막대 버튼 순서·유무 사용자화", () -> {
+        list.addView(ResetDialog.button(this, "도구 막대 버튼 사용자화", () -> {
             prefs.resetToolButtons();
             render();
         }));
@@ -353,8 +353,9 @@ public final class ToolbarButtonsEditorActivity extends Activity {
 
     private void addPreviewButton(String id) {
         if (!prefs.toolShown(id)) return;
-        IconButton b = new IconButton(this, ToolbarButtons.icon(id), keyboardTheme.hint, keyboardTheme.keyPressed,
+        IconButton b = new IconButton(this, ToolbarButtons.icon(id), keyboardTheme.text, keyboardTheme.keyPressed,
                 ToolbarButtons.label(id));
+        b.setToolbarStyle(keyboardTheme, Ui.dp(this, 40));
         b.setClickable(false);
         b.setFocusable(false);
         preview.addView(b, new LinearLayout.LayoutParams(Ui.dp(this, 40), Ui.dp(this, 40)));

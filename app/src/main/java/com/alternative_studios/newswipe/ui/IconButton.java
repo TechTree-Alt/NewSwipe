@@ -9,6 +9,7 @@ import android.graphics.drawable.RippleDrawable;
 import android.view.View;
 
 import com.alternative_studios.newswipe.keyboard.Icons;
+import com.alternative_studios.newswipe.keyboard.KeyboardTheme;
 
 /** 코드로 그린 아이콘 하나를 보여 주는 버튼. */
 public final class IconButton extends View {
@@ -41,6 +42,18 @@ public final class IconButton extends View {
         InsetDrawable content = new InsetDrawable(Ui.round(fill, radius), insetH, insetV, insetH, insetV);
         InsetDrawable mask = new InsetDrawable(Ui.round(0xFFFFFFFF, radius), insetH, insetV, insetH, insetV);
         setBackground(new RippleDrawable(ColorStateList.valueOf(pressed), content, mask));
+    }
+
+    /**
+     * 도구 막대 버튼의 모양: 기능키 색 칩 바탕에 글자 색 아이콘. 키보드의 도구 막대와 설정 화면의 미리보기가 같이 쓴다.
+     * @param barHeight 버튼이 놓이는 도구 막대 높이 (px). 칩은 여기서 위아래를 조금 뺀 높이다.
+     */
+    public void setToolbarStyle(KeyboardTheme theme, int barHeight) {
+        Context c = getContext();
+        setColor(theme.text);
+        int insetV = Math.max(0, (barHeight - Ui.chipHeight(c, barHeight)) / 2);
+        // 눌린 키 색은 밝은 테마의 기능키 색과 거의 같아서, 누를 때는 글자 색을 옅게 덮어 눌린 것이 보이게 한다.
+        setChip(theme.functionKey, Ui.tint(theme.text), Ui.dp(c, 2), insetV, Ui.chipRadius(c));
     }
 
     public void setIcon(int icon) {

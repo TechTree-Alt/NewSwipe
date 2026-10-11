@@ -417,7 +417,7 @@ public final class Prefs {
                 KOREAN_SHIFT_FN}, NONE);
     }
 
-    /** '도구 막대 버튼 순서·유무 사용자화' 화면의 값. */
+    /** '도구 막대 버튼 사용자화' 화면의 값. */
     public void resetToolButtons() {
         removeKeys(new String[]{TOOL_ORDER, TOOL_CLIPBOARD, TOOL_EMOJI, VOICE_KEY, TOOL_UNDO, TOOL_SETTINGS,
                 TOOL_ONE_HAND, TOOL_HIDE}, NONE);

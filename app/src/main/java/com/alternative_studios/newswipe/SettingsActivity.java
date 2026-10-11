@@ -417,7 +417,7 @@ public final class SettingsActivity extends Activity {
             {"feedback", "키 소리", "클릭음 사운드 소리 켜기"},
             {"feedback", "소리 크기", "볼륨 클릭음"},
             {"tools", "도구 막대 표시", "툴바 켜기 끄기"},
-            {"tools", "도구 막대 버튼 순서·유무 사용자화", "툴바 버튼 순서 음성 입력 마이크 클립보드 이모지 실행 취소"},
+            {"tools", "도구 막대 버튼 사용자화", "툴바 버튼 순서 음성 입력 마이크 클립보드 이모지 실행 취소"},
             {"tools", "자판 아래에 두기", "툴바 위치 아래 위"},
             {"tools", "도구 막대 높이", "툴바 높이 크기"},
             {"tools", "도구 버튼 크기", "툴바 아이콘 크기"},
@@ -1299,8 +1299,7 @@ public final class SettingsActivity extends Activity {
                 if (!prefs.toolShown(id)) continue;
                 IconButton b = new IconButton(this, com.alternative_studios.newswipe.keyboard.ToolbarButtons.icon(id),
                         kt.text, kt.keyPressed, null);
-                int bar40 = Ui.dp(this, 40);
-                b.setChip(kt.functionKey, Ui.tint(kt.text), Ui.dp(this, 2), (bar40 - Ui.chipHeight(this, bar40)) / 2, Ui.chipRadius(this));
+                b.setToolbarStyle(kt, Ui.dp(this, 40));
                 b.setClickable(false);
                 b.setFocusable(false);
                 bar.addView(b, new LinearLayout.LayoutParams(Ui.dp(this, 40), Ui.dp(this, 40)));
@@ -2152,7 +2151,7 @@ public final class SettingsActivity extends Activity {
 
     private void buildTools() {
         LinearLayout tools = section("도구 막대");
-        View toolButtons = subGroup(button("도구 막대 버튼 순서·유무 사용자화", v ->
+        View toolButtons = subGroup(button("도구 막대 버튼 사용자화", v ->
                 startActivity(new Intent(this, ToolbarButtonsEditorActivity.class))),
                 note("도구 막대 버튼의 유무와 순서를 바꿉니다."));
         tools.addView(toggle("도구 막대 표시", "다양한 도구를 빠르게 쓸 수 있는 막대를 보여 줍니다.",
