@@ -1038,14 +1038,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     // ---------------------------------------------------------------- 자동 완성 (Android 11 이상)
 
     /**
-     * 자동 완성 서비스에 칩을 도구 막대 자리에 보여 줄 수 있다고 알린다. 설정에서 껐거나 '비밀번호 입력란에서만'인데
-     * 비밀번호 칸이 아니면 null을 돌려준다 (그러면 서비스가 앱 안에 원래의 자동 완성 목록을 띄운다).
+     * 자동 완성 서비스에 칩을 도구 막대 자리에 보여 줄 수 있다고 알린다. 칩은 서비스가 채울 수 있는 칸에서만 온다.
+     * 설정에서 껐으면 null을 돌려준다 (그러면 서비스가 앱 안에 원래의 자동 완성 목록을 띄운다).
      */
     @Override
     public InlineSuggestionsRequest onCreateInlineSuggestionsRequest(android.os.Bundle uiExtras) {
         if (autofill == null || !prefs.autofillInline()) return null;
-        EditorInfo info = getCurrentInputEditorInfo();
-        if (prefs.autofillPasswordOnly() && (info == null || !InputFields.isPassword(info.inputType))) return null;
         KeyboardTheme t = theme != null ? theme : KeyboardTheme.of(this);
         int height = toolbarHeight > 0 ? toolbarHeight : toolbarHeightPx();
         int maxWidth = Math.min(Ui.dp(this, 320), getResources().getDisplayMetrics().widthPixels * 2 / 3);

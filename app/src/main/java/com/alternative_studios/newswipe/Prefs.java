@@ -105,7 +105,6 @@ public final class Prefs {
     public static final String SPLIT_GAP_SPEED = "split_gap_speed";     // 분리 키보드 가운데 빈 공간 커서 이동 속도(%)
     public static final String SPLIT_GAP_CURSOR = "split_gap_cursor";   // 분리 키보드 가운데 빈 공간을 밀어 커서 이동
     public static final String AUTOFILL_INLINE = "autofill_inline";               // 자동 완성 제안을 도구 막대에 칩으로 (Android 11+)
-    public static final String AUTOFILL_PASSWORD_ONLY = "autofill_password_only"; // 그 칩을 비밀번호 입력란에서만
     public static final String SPLIT_REACH_COLUMN = "split_reach_column";   // 분리 키보드: 좌·우 균형 레이아웃
     /** 가로 모드·대화면에서 따로 정하는 키보드 높이·키 글자 크기(%)의 최솟값 (세로 모드는 70). */
     public static final int PROFILE_HEIGHT_MIN = 30;
@@ -348,7 +347,7 @@ public final class Prefs {
                 VIBRATE_GESTURE_ON, VIBRATE_GESTURE_LEVEL, SOUND, SOUND_VOLUME));
         MENU_KEYS.put("tools", keys(TOOLBAR, TOOLBAR_BOTTOM, TOOLBAR_HEIGHT, TOOL_BUTTON_SIZE, CLIPBOARD_HISTORY, CLIPBOARD_IMAGES, TOOL_ORDER, TOOL_CLIPBOARD,
                 TOOL_EMOJI, VOICE_KEY, TOOL_UNDO, TOOL_SETTINGS, TOOL_ONE_HAND, TOOL_HIDE, EMOJI_SIZE, EMOJI_SUGGEST,
-                AUTOFILL_INLINE, AUTOFILL_PASSWORD_ONLY));
+                AUTOFILL_INLINE));
         MENU_KEYS.put("words", keys(SHORTCUTS_ENABLED, SUGGEST_WORDS, SUGGEST_FULL_BAR, SUGGEST_SPACE, AUTO_CORRECT, LEARN_WORDS,
                 CONFIRM_LEARNED_DELETE));
         // 실험실: 대화면 별도 레이아웃과 대화면 키보드 사용자화의 값은 모두 large_로 시작한다.
@@ -532,9 +531,6 @@ public final class Prefs {
     public int splitGapSpeed() { return clamp(sp.getInt(splitGapSpeedKey(), 100), 50, 300); }
     /** 자동 완성 서비스의 제안을 도구 막대 자리에 칩으로 보여 주는지 (Android 11 이상, 기본 켬). */
     public boolean autofillInline() { return sp.getBoolean(AUTOFILL_INLINE, true); }
-
-    /** 자동 완성 칩을 비밀번호 입력란에서만 보여 주는지 (기본 켬). 다른 칸에서는 앱 안의 원래 자동 완성 목록이 뜬다. */
-    public boolean autofillPasswordOnly() { return sp.getBoolean(AUTOFILL_PASSWORD_ONLY, true); }
 
     public boolean clipboardHistory() { return sp.getBoolean(CLIPBOARD_HISTORY, true); }
     public boolean clipboardImages() { return sp.getBoolean(CLIPBOARD_IMAGES, true); }
