@@ -858,6 +858,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 Ui.dp(this, prefs.padRightDp()), Ui.dp(this, prefs.padBottomDp()));
         // 도구 막대의 양 끝 버튼이 자판의 양 끝 키와 같은 선에 오도록 '자판 모양'의 좌우 여백을 따른다.
         if (toolbar != null) toolbar.setPadding(Ui.dp(this, prefs.padLeftDp()), 0, Ui.dp(this, prefs.padRightDp()), 0);
+        // 자동 완성 칩도 도구 막대처럼 자판의 좌우 여백 안쪽에만 놓는다.
+        if (autofill != null) autofill.setSidePadding(Ui.dp(this, prefs.padLeftDp()), Ui.dp(this, prefs.padRightDp()));
         arrangeToolbar();
         if (topSlot != null) {
             sizeToolbar();

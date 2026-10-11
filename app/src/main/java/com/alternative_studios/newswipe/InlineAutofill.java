@@ -53,6 +53,8 @@ final class InlineAutofill {
     private boolean shown;
     /** 응답마다 늘어난다. 늦게 끝난 예전 응답의 칩 만들기 결과는 버린다. */
     private int generation;
+    /** 막대 양옆 여백 (px). 도구 막대처럼 자판의 좌우 여백을 따른다. */
+    private int padLeft, padRight;
     /** 요청할 때 정한 칩 높이 (px). 칩은 이 높이로 만든다 (요청한 크기 범위를 벗어나면 만들 수 없다). */
     private int chipHeight;
 
@@ -82,13 +84,22 @@ final class InlineAutofill {
         scroll.addView(chips, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
         bar.addView(scroll, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+        // 고정 칩(열쇠 등) 자리: 불투명한 배경을 깔고 칩 줄보다 나중에 그려서, 옆으로 밀린 칩이 이 아래로 들어가 가려진다.
         pinned = new LinearLayout(context);
         pinned.setGravity(Gravity.CENTER_VERTICAL);
+        pinned.setBackgroundColor(theme.background);
+        pinned.setPadding(Ui.dp(context, 4), 0, 0, 0);
         bar.addView(pinned, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
-        int pad = Ui.dp(context, 4);
-        bar.setPadding(pad, 0, pad, 0);
+        bar.setPadding(padLeft, 0, padRight, 0);
         return bar;
+    }
+
+    /** 막대 양옆 여백 (px): 도구 막대와 같이 자판의 좌우 여백 안쪽에만 칩을 놓는다. */
+    void setSidePadding(int left, int right) {
+        padLeft = left;
+        padRight = right;
+        if (bar != null) bar.setPadding(left, 0, right, 0);
     }
 
     /**
@@ -151,6 +162,9 @@ final class InlineAutofill {
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(w, h);
             lp.leftMargin = margin;
             lp.rightMargin = margin;
+            // 칩은 기본으로 창 위에 따로 그려지는 화면이라 스크롤해도 막대의 여백이나 고정 칩 위로 삐져나온다.
+            // 줄의 칩은 창 아래로 내려, 막대 배경(여백)과 고정 칩 자리의 배경이 그 위를 덮어 가리게 한다.
+            if (!isPinned) v.setZOrderedOnTop(false);
             (isPinned ? pinned : chips).addView(v, lp);
             any = true;
         }
