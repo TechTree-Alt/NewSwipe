@@ -263,23 +263,18 @@ public final class ClipboardPanel extends LinearLayout {
             LinearLayout bar = new LinearLayout(c);
             bar.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
             LayoutParams barLp = new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            // 칩의 좌우 여백(2dp)만큼만 카드 안쪽 여백으로 내보내, 칩의 오른쪽 끝을 글의 오른쪽 끝에 맞춘다.
-            // 더 내보내면 카드가 안쪽 여백 밖을 잘라 칩이 잘린다.
-            barLp.rightMargin = -Ui.dp(c, 2);
+            barLp.rightMargin = -Ui.dp(c, 6);   // 버튼 안쪽 여백만큼 카드 오른쪽 끝에 붙인다
             card.addView(bar, barLp);
             // 고정 / 삭제 버튼 (고정된 항목의 핀은 강조색)
-            IconButton pin = new IconButton(c, item.pinned ? Icons.PIN_FILLED : Icons.PIN, item.pinned ? theme.accent : theme.text, theme.keyPressed,
+            IconButton pin = new IconButton(c, item.pinned ? Icons.PIN_FILLED : Icons.PIN, theme.accent, theme.keyPressed,
                     item.pinned ? "고정 해제" : "고정");
             pin.setOnClickListener(v -> {
                 animateNext = true;
                 listener.onClipPin(item, !item.pinned);
             });
-            // 칩으로 감싼다: 핀은 옅은 강조 색 바탕에 강조 색 아이콘 (고정 여부는 핀이 채워졌는지로 구분한다).
-            pin.setToolbarStyle(theme, Ui.dp(c, 36), Ui.tint(theme.accent), theme.accent);
             bar.addView(pin, new LayoutParams(Ui.dp(c, 36), Ui.dp(c, 36)));
-            IconButton trash = new IconButton(c, Icons.TRASH, theme.text, theme.keyPressed, "삭제");
-            int red = Ui.danger(theme.dark);
-            trash.setToolbarStyle(theme, Ui.dp(c, 36), Ui.tint(red), red);   // 삭제는 옅은 붉은색 바탕에 붉은 아이콘
+            // 아이콘만 있는 버튼: 핀은 강조 색(고정 여부는 채워졌는지로 구분), 삭제는 붉은색
+            IconButton trash = new IconButton(c, Icons.TRASH, Ui.danger(theme.dark), theme.keyPressed, "삭제");
             trash.setOnClickListener(v -> {
                 animateNext = true;
                 listener.onClipDelete(item);
