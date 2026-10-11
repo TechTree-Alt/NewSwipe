@@ -1129,7 +1129,8 @@ public final class SettingsActivity extends Activity {
                 + "묶음 폭은 각 묶음의 폭으로, 100%면 자기 절반을 꽉 채웁니다. 가로 위치는 각 절반 안에서 묶음이 놓이는 곳입니다 "
                 + "(0 = 왼쪽 끝, 50 = 가운데, 100 = 오른쪽 끝)."));
         card.addView(columns);
-        card.addView(slider("키보드 높이", edit.heightKey(), edit.keyboardHeight(), 70, 140, 5, "%"));
+        card.addView(slider("키보드 높이", edit.heightKey(), edit.keyboardHeight(), Prefs.PROFILE_HEIGHT_MIN, 140, 5, "%",
+                this::refreshLayoutPreview));
         card.addView(slider("키 글자 크기", edit.textSizeKey(), edit.keyTextSize(), 70, 140, 5, "%"));
         card.addView(slider("세로 위치", edit.liftKey(), edit.profileLiftDp(), 0, 160, 4, "dp"));
         card.addView(note(when + " 쓰는 값입니다. 키보드 높이·키 글자 크기는 정하기 전에는 세로 모드('자판 모양')의 값을 따릅니다. "

@@ -730,6 +730,13 @@ public class SplitBottomRowTest {
         sp.m.put(land.heightKey(), 80);
         assertEquals(80, land.keyboardHeight());
         assertEquals(120, port.keyboardHeight());
+        // 가로 모드·대화면의 키보드 높이는 30%까지 줄일 수 있다 (세로 모드 값과 상관없이).
+        sp.m.put(land.heightKey(), 30);
+        assertEquals(30, land.keyboardHeight());
+        sp.m.put(land.heightKey(), 10);
+        assertEquals(30, land.keyboardHeight());
+        sp.m.put(land.heightKey(), 200);
+        assertEquals(140, land.keyboardHeight());
         // 세로 위치: 기본 0, 프로필마다 따로.
         assertEquals(0, land.profileLiftDp());
         sp.m.put(port.liftKey(), 40);
