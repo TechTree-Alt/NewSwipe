@@ -32,6 +32,11 @@ public final class Ui {
         return Math.max(dp(c, 24), barHeight - dp(c, 8));
     }
 
+    /** 색을 옅게 깐 바탕색: 설정 메뉴 아이콘의 바탕처럼 같은 색을 반투명(약 12%)으로 쓴다. */
+    public static int tint(int color) {
+        return (color & 0x00FFFFFF) | 0x1F000000;
+    }
+
     /** 도구 막대 칩의 모서리 반지름 (px). */
     public static float chipRadius(Context c) {
         return dp(c, 16);

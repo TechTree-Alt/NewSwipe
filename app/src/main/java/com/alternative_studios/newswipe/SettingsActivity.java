@@ -1300,7 +1300,7 @@ public final class SettingsActivity extends Activity {
                 IconButton b = new IconButton(this, com.alternative_studios.newswipe.keyboard.ToolbarButtons.icon(id),
                         kt.text, kt.keyPressed, null);
                 int bar40 = Ui.dp(this, 40);
-                b.setChip(kt.key, kt.keyPressed, Ui.dp(this, 2), (bar40 - Ui.chipHeight(this, bar40)) / 2, Ui.chipRadius(this));
+                b.setChip(Ui.tint(kt.accent), kt.keyPressed, Ui.dp(this, 2), (bar40 - Ui.chipHeight(this, bar40)) / 2, Ui.chipRadius(this));
                 b.setClickable(false);
                 b.setFocusable(false);
                 bar.addView(b, new LinearLayout.LayoutParams(Ui.dp(this, 40), Ui.dp(this, 40)));
