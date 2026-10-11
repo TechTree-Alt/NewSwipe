@@ -62,6 +62,8 @@ final class InlineAutofill {
     private final List<InlineContentView> chipViews = new ArrayList<>();
     /** 지금 쪽의 첫 칩 번호. */
     private int first;
+    /** 한 손 모드: 자리가 좁아 계정 칩은 모두 숨기고 고정 칩(열쇠)만 보인다. */
+    private boolean compact;
     /** 마지막으로 배치한 때의 칩 줄 폭 (바뀌었을 때만 다시 배치한다). */
     private int laidOutSlot = -1;
     /** 지금 보여 줄 칩이 있는지 (패널을 바꿔 막대를 잠깐 가려도 그대로다). */
@@ -171,16 +173,15 @@ final class InlineAutofill {
 
     /**
      * 자동 완성 서비스에 보낼 요청: 칩의 크기 범위와 모양. toolbarHeight는 도구 막대 높이(px), maxWidth는 칩 하나의 최대 폭.
-     * compact(한 손 모드)면 글자를 감추고 아이콘만 보이는 작은 칩으로 요청한다 (좁은 자리에 맞춘다).
      */
-    InlineSuggestionsRequest request(KeyboardTheme theme, int toolbarHeight, int maxWidth, boolean compact) {
+    InlineSuggestionsRequest request(KeyboardTheme theme, int toolbarHeight, int maxWidth) {
         // 도구 막대 높이에서 위아래 6dp씩 남긴다. 도구 버튼은 아이콘(22dp)만 보이므로, 칩이 터치 영역 전체만큼 커 보이지 않고
         // 버튼들과 비슷한 높이로 느껴지게 한다 (기본 막대 40dp면 칩 28dp).
         chipHeight = Math.max(Ui.dp(context, 24), toolbarHeight - Ui.dp(context, 12));
-        Size min = new Size(Ui.dp(context, compact ? 24 : 32), chipHeight);
-        Size max = new Size(Math.max(min.getWidth(), compact ? chipHeight + Ui.dp(context, 16) : maxWidth), chipHeight);
+        Size min = new Size(Ui.dp(context, 32), chipHeight);
+        Size max = new Size(Math.max(min.getWidth(), maxWidth), chipHeight);
         InlinePresentationSpec spec = new InlinePresentationSpec.Builder(min, max)
-                .setStyle(style(theme, compact))
+                .setStyle(style(theme))
                 .build();
         return new InlineSuggestionsRequest.Builder(Collections.singletonList(spec))
                 .setMaxSuggestionCount(MAX_SUGGESTIONS)
@@ -243,9 +244,39 @@ final class InlineAutofill {
         }
         first = 0;
         laidOutSlot = -1;
-        setShown(any);
+        refreshShown();
         relayoutPage();
         bar.requestLayout();   // 아직 배치 전이면 막대가 배치될 때 위 리스너가 쪽을 나눈다
+    }
+
+    /**
+     * 한 손 모드로 바뀌었다(on)거나 돌아왔다: 한 손 모드에서는 자리가 좁아 계정 칩을 모두 숨기고 열쇠(고정 칩)만 둔다.
+     * 칩은 한 번만 만들 수 있어서 다시 만들지 않고 숨기거나 다시 보이게 하며, 돌아오면 처음 쪽부터 다시 배치한다.
+     */
+    void setCompact(boolean on) {
+        if (compact == on) return;
+        compact = on;
+        first = 0;
+        laidOutSlot = -1;
+        if (on) hideAccountChips();
+        else relayoutPage();
+        refreshShown();
+    }
+
+    /** 계정 칩과 쪽 넘김 표시를 모두 숨긴다. */
+    private void hideAccountChips() {
+        for (InlineContentView v : chipViews) {
+            v.setVisibility(View.GONE);
+        }
+        if (prev != null) prev.setVisibility(View.GONE);
+        if (next != null) next.setVisibility(View.GONE);
+        if (row != null) row.setVisibility(View.GONE);   // 숨긴 칩 줄이 폭을 차지해 열쇠를 밀어내지 않게
+    }
+
+    /** 보이는 칩이 있을 때만 막대를 보인다: 고정 칩이 있거나, 한 손 모드가 아니면서 계정 칩이 있을 때. */
+    private void refreshShown() {
+        boolean any = (pinned != null && pinned.getChildCount() > 0) || (!compact && !chipViews.isEmpty());
+        setShown(any);
     }
 
     /** 이전(-1)·다음(+1) 쪽으로 넘긴다. 이미 끝이면 그대로. */
@@ -297,9 +328,14 @@ final class InlineAutofill {
      */
     private void relayoutPage() {
         if (bar == null || row == null || chipViews.isEmpty()) return;
+        if (compact) {
+            hideAccountChips();
+            return;
+        }
         int slot = bar.getWidth() - pinned.getWidth();
         if (slot <= 0 || slot == laidOutSlot) return;
         laidOutSlot = slot;
+        row.setVisibility(View.VISIBLE);
         int total = 0;
         for (View v : chipViews) total += outerWidth(v);
         boolean single = total <= slot;
@@ -419,8 +455,8 @@ final class InlineAutofill {
     private static final String VERSION_1 = "androidx.autofill.inline.ui.version:v1";
 
     /** 칩 모양: 둥근 배경(키 색)에 글자(자판 글자 색), 부제목은 흐린 색. 아이콘만 있는 칩은 아이콘을 글자 색으로 칠한다. */
-    private Bundle style(KeyboardTheme theme, boolean compact) {
-        int h = Ui.dp(context, compact ? 8 : 14);
+    private Bundle style(KeyboardTheme theme) {
+        int h = Ui.dp(context, 14);
         // 누르면 배경이 눌린 키 색으로 바뀌도록 색 상태 목록으로 칠한다. 칩은 서비스가 그리는 화면이지만 배경 그림은
         // 이 목록으로 칠해져 오고, 칩 화면이 눌리면 그 상태(pressed)에 맞는 색이 된다.
         ColorStateList fill = new ColorStateList(
@@ -429,14 +465,8 @@ final class InlineAutofill {
         Bundle v1 = new Bundle();
         v1.putBoolean("style_v1", true);
         v1.putBundle("chip_style", viewStyle(background, new int[]{h, 0, h, 0}));
-        if (compact) {
-            // 아이콘만 남긴다: 제목·부제목을 투명하고 아주 작게 해서 칩이 아이콘 폭만큼만 차지하게 한다.
-            v1.putBundle("title_style", textStyle(0x00000000, 1));
-            v1.putBundle("subtitle_style", textStyle(0x00000000, 1));
-        } else {
-            v1.putBundle("title_style", textStyle(theme.text, 14));
-            v1.putBundle("subtitle_style", textStyle(theme.hint, 12));
-        }
+        v1.putBundle("title_style", textStyle(theme.text, 14));
+        v1.putBundle("subtitle_style", textStyle(theme.hint, 12));
         int s = Ui.dp(context, 8);
         v1.putBundle("single_icon_chip_style", viewStyle(background, new int[]{s, 0, s, 0}));
         Bundle icon = new Bundle();
