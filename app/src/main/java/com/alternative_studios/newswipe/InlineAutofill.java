@@ -3,6 +3,7 @@ package com.alternative_studios.newswipe;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.res.ColorStateList;
+import android.graphics.Rect;
 import android.graphics.drawable.Icon;
 import android.os.Bundle;
 import android.util.Size;
@@ -83,8 +84,11 @@ final class InlineAutofill {
         chips.setGravity(Gravity.CENTER_VERTICAL);
         scroll.addView(chips, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
+        // 스크롤하거나 크기가 바뀌면 칩이 스크롤 칸 밖으로 삐져나오지 않게 다시 자른다.
+        scroll.setOnScrollChangeListener((v, x, y, oldX, oldY) -> clipChips());
+        scroll.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> clipChips());
         bar.addView(scroll, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
-        // 고정 칩(열쇠 등) 자리: 불투명한 배경을 깔고 칩 줄보다 나중에 그려서, 옆으로 밀린 칩이 이 아래로 들어가 가려진다.
+        // 고정 칩(열쇠 등) 자리: 배경을 깔아 칩 줄과 나눈다. 줄의 칩은 이 앞(스크롤 칸 끝)에서 잘려 이 아래로 들어간다.
         pinned = new LinearLayout(context);
         pinned.setGravity(Gravity.CENTER_VERTICAL);
         pinned.setBackgroundColor(theme.background);
@@ -162,14 +166,29 @@ final class InlineAutofill {
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(w, h);
             lp.leftMargin = margin;
             lp.rightMargin = margin;
-            // 칩은 기본으로 창 위에 따로 그려지는 화면이라 스크롤해도 막대의 여백이나 고정 칩 위로 삐져나온다.
-            // 줄의 칩은 창 아래로 내려, 막대 배경(여백)과 고정 칩 자리의 배경이 그 위를 덮어 가리게 한다.
-            if (!isPinned) v.setZOrderedOnTop(false);
             (isPinned ? pinned : chips).addView(v, lp);
             any = true;
         }
         scroll.scrollTo(0, 0);
         setShown(any);
+        scroll.post(this::clipChips);
+    }
+
+    /**
+     * 줄의 칩을 스크롤 칸 안에 보이는 부분만 그리게 자른다. 칩은 창 위에 따로 얹혀 그려지는 화면이라 그냥 두면 스크롤해도
+     * 막대의 좌우 여백이나 고정 칩(열쇠) 위로 삐져나온다. 창 아래로 내리면 둥근 모서리가 네모로 비치고 스크롤이 끊기므로,
+     * 창 위에 둔 채 잘라 낸다 (Android 12부터 칩 화면이 이 자르기를 따른다).
+     */
+    private void clipChips() {
+        if (scroll == null || chips == null) return;
+        int from = scroll.getScrollX(), to = from + scroll.getWidth();
+        for (int i = 0; i < chips.getChildCount(); i++) {
+            View v = chips.getChildAt(i);
+            int left = Math.max(0, from - v.getLeft());
+            int right = Math.min(v.getWidth(), to - v.getLeft());
+            Rect want = right > left ? new Rect(left, 0, right, v.getHeight()) : new Rect();
+            if (!want.equals(v.getClipBounds())) v.setClipBounds(want);
+        }
     }
 
     /** 입력란을 떠났을 때: 칩을 모두 버리고 막대를 감춘다. 아직 만들고 있는 칩도 버린다. */
