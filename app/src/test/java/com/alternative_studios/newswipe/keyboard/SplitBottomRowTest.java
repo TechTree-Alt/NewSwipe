@@ -583,7 +583,7 @@ public class SplitBottomRowTest {
         int[] n = new int[2];
         float x = 0f;
         for (Key k : row.keys) {
-            if (k.type == Key.CHAR && label.equals(k.label)) n[x >= 5f - 0.001f ? 1 : 0]++;
+            if (k.type == Key.CHAR && !k.hidden && label.equals(k.label)) n[x >= 5f - 0.001f ? 1 : 0]++;
             x += k.weight;
         }
         return n;
@@ -594,7 +594,7 @@ public class SplitBottomRowTest {
         int[] n = new int[2];
         float x = 0f;
         for (Key k : row.keys) {
-            if (k.type != Key.GAP && !(k.type == Key.SPACER && k.dragCursor)) n[x >= 5f - 0.001f ? 1 : 0]++;
+            if (k.type != Key.GAP && !k.hidden && !(k.type == Key.SPACER && k.dragCursor)) n[x >= 5f - 0.001f ? 1 : 0]++;
             x += k.weight;
         }
         return n;
@@ -635,6 +635,36 @@ public class SplitBottomRowTest {
                 assertEquals(edges[1], moved[1], 0.001f);
             }
         }
+    }
+
+    @Test
+    public void tappingRightOfTheLeftBlockTypesTheMovedConsonant() throws Exception {
+        String[] hosts = {"ㄱ", "ㄹ", "ㅊ"}, moved = {"ㅅ", "ㅎ", "ㅍ"};
+        for (int[] s : SETTINGS) {
+            Prefs p = prefsFor(s, false);
+            ((FakeSp) p.raw()).m.put(p.splitReachColumnKey(), true);
+            KeyboardLayout l = KeyboardLayout.korean(p);
+            for (int r = 0; r < 3; r++) {
+                Key[] keys = l.rows[r].keys;
+                int host = -1;
+                float middle = 0f;   // 두 묶음 사이 빈 자리의 폭 (숨은 키 포함)
+                for (int i = 0; i < keys.length; i++) {
+                    if (hosts[r].equals(keys[i].label)) host = i;
+                    if (keys[i].hidden || (keys[i].type == Key.SPACER && keys[i].dragCursor)) middle += keys[i].weight;
+                }
+                assertTrue(host >= 0);
+                if (middle < 0.05f) continue;   // 빈 자리가 없으면 숨은 키도 없다
+                Key hidden = keys[host + 1];
+                assertTrue("왼쪽 묶음 바로 오른쪽에 숨은 키", hidden.hidden);
+                assertEquals(moved[r], hidden.label);
+                assertEquals(Math.min(middle, keys[host].weight), hidden.weight, 0.001f);
+            }
+        }
+        // NewSwipe 단모음은 양쪽에 같은 키가 있으므로 숨은 키를 두지 않는다.
+        Prefs p = prefsFor(SETTINGS[1], false);
+        ((FakeSp) p.raw()).m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_D7);
+        ((FakeSp) p.raw()).m.put(p.splitReachColumnKey(), true);
+        for (KeyboardLayout.Row row : KeyboardLayout.korean(p).rows) for (Key k : row.keys) assertTrue(!k.hidden);
     }
 
     @Test

@@ -505,6 +505,7 @@ public final class Prefs {
      * 분리 키보드 한글 자판의 좌·우 균형 레이아웃을 쓰는지 (기본은 꺼짐): 양쪽 묶음을 4열씩으로 맞춘다.
      * 8열 단모음은 자음의 맨 오른쪽 줄(ㅅ·ㅎ·ㅍ)을 오른쪽 묶음의 모음 앞으로 옮기고, NewSwipe 단모음은 맨 오른쪽 줄
      * (ㄱ·ㄹ·ㅅ)을 왼쪽에 그대로 둔 채 오른쪽 묶음의 모음 앞에도 하나씩 더 놓는다.
+     * 8열 단모음에서는 왼쪽 묶음 바로 오른쪽의 키 하나 폭 빈 자리를 누르면 옮겨 간 키가 눌린다.
      */
     public boolean splitReachColumn() { return profileValues() && sp.getBoolean(splitReachColumnKey(), false); }
 
