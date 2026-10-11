@@ -61,6 +61,11 @@ public final class Ui {
         return b;
     }
 
+    /** 삭제처럼 되돌릴 수 없는 동작에 쓰는 붉은색 (어두운 테마에서는 배경에 묻히지 않게 밝게). */
+    public static int danger(boolean dark) {
+        return dark ? 0xFFF28B82 : 0xFFD93025;
+    }
+
     /** 도구 막대 칩의 모서리 반지름 (px). */
     public static float chipRadius(Context c) {
         return dp(c, 16);

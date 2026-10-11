@@ -146,8 +146,8 @@ public final class EmojiPanel extends LinearLayout {
         searchRow.addView(topBack, new LayoutParams(Ui.dp(context, 44), ViewGroup.LayoutParams.MATCH_PARENT));
         LinearLayout search = new LinearLayout(context);
         search.setGravity(Gravity.CENTER_VERTICAL);
-        search.setBackground(Ui.ripple(theme.keyPressed, Ui.round(theme.functionKey, Ui.dp(context, 20)),
-                Ui.dp(context, 20)));
+        search.setBackground(Ui.ripple(Ui.tint(theme.text), Ui.round(theme.functionKey, Ui.chipRadius(context)),
+                Ui.chipRadius(context)));
         search.setPadding(Ui.dp(context, 10), 0, Ui.dp(context, 12), 0);
         IconButton icon = new IconButton(context, Icons.SEARCH, theme.hint, theme.keyPressed, null);
         icon.setClickable(false);
@@ -159,9 +159,9 @@ public final class EmojiPanel extends LinearLayout {
         hint.setPadding(Ui.dp(context, 6), 0, 0, 0);
         search.addView(hint);
         search.setOnClickListener(v -> listener.onEmojiSearch());
-        LayoutParams searchLp = new LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
-        searchLp.topMargin = Ui.dp(context, 6);
-        searchLp.bottomMargin = Ui.dp(context, 6);
+        // 검색창은 뒤로 가기 칩과 같은 높이로 줄 가운데에 놓는다 (칩 사이 2dp도 같게).
+        LayoutParams searchLp = new LayoutParams(0, Ui.chipHeight(context, topBarHeight), 1f);
+        searchLp.leftMargin = Ui.dp(context, 2);
         searchRow.addView(search, searchLp);
         addView(searchRow, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, topBarHeight));
 

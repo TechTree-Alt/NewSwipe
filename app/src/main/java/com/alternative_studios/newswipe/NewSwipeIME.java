@@ -124,6 +124,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 입력란이 알려 준 마지막 선택 영역 (모르면 -1). 단어 단위 커서 이동이 입력란에 다시 묻지 않도록 기억한다. */
     private int selStart = -1, selEnd = -1;
     private LinearLayout searchBar;
+    /** 이모지 검색줄의 뒤로 가기·검색어 지우기 칩 (도구 막대 높이에 맞춰 sizeToolbar()가 칩 크기를 정한다). */
+    private IconButton searchBack, searchClear;
     private LinearLayout suggestBar;
     /** 글자를 선택했을 때 뜨는 편집 칩 줄 (도구 막대 안, 추천 단어 줄 자리). */
     private FrameLayout editBar;
@@ -767,6 +769,15 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             ((IconButton) v).setIconSize(icon);
             ((IconButton) v).setToolbarStyle(theme, toolbarHeight);
         }
+        if (searchBar != null) {
+            searchBack.setToolbarStyle(theme, toolbarHeight);
+            searchClear.setToolbarStyle(theme, toolbarHeight);
+            ViewGroup.LayoutParams lp = searchText.getLayoutParams();
+            if (lp.height != chipH) {
+                lp.height = chipH;
+                searchText.setLayoutParams(lp);
+            }
+        }
         if (editBar != null) {
             LinearLayout row = (LinearLayout) editBar.getChildAt(0);
             for (int i = 0; i < row.getChildCount(); i++) {
@@ -897,9 +908,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private LinearLayout buildSearchBar() {
         LinearLayout bar = new LinearLayout(this);
         bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setPadding(Ui.dp(this, 4), Ui.dp(this, 5), Ui.dp(this, 6), Ui.dp(this, 5));
+        // 도구 막대 자리에 놓이므로 도구 막대와 같은 높이를 쓰고, 칩(뒤로·검색창·지우기)도 도구 막대 칩과 같은 높이다.
+        // 높이는 sizeToolbar()가 설정의 도구 막대 높이에 맞춘다.
+        bar.setPadding(Ui.dp(this, 4), 0, Ui.dp(this, 6), 0);
         IconButton back = new IconButton(this, Icons.BACK, theme.text, theme.keyPressed, "이모지로 돌아가기");
-        back.setToolbarStyle(theme, toolbarHeightPx() - Ui.dp(this, 10));   // 위아래 패딩 5dp씩을 뺀 줄 높이
+        searchBack = back;
         back.setOnClickListener(v -> showPanel(PANEL_EMOJI));
         bar.addView(back, new LinearLayout.LayoutParams(Ui.dp(this, 44), ViewGroup.LayoutParams.MATCH_PARENT));
         searchText = new TextView(this);
@@ -908,10 +921,13 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         searchText.setGravity(Gravity.CENTER_VERTICAL);
         searchText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
         searchText.setPadding(Ui.dp(this, 14), 0, Ui.dp(this, 14), 0);
-        searchText.setBackground(Ui.round(theme.functionKey, Ui.dp(this, 20)));
-        bar.addView(searchText, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+        searchText.setBackground(Ui.round(theme.functionKey, Ui.chipRadius(this)));
+        LinearLayout.LayoutParams textLp = new LinearLayout.LayoutParams(0, Ui.chipHeight(this, toolbarHeightPx()), 1f);
+        textLp.leftMargin = Ui.dp(this, 2);
+        textLp.rightMargin = Ui.dp(this, 2);
+        bar.addView(searchText, textLp);
         IconButton clear = new IconButton(this, Icons.CLOSE, theme.text, theme.keyPressed, "검색어 지우기");
-        clear.setToolbarStyle(theme, toolbarHeightPx() - Ui.dp(this, 10));
+        searchClear = clear;
         clear.setOnClickListener(v -> {
             composer.reset();
             search.setLength(0);
