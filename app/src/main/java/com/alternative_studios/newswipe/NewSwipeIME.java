@@ -3241,8 +3241,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             if (first.getUri() == null && first.getText() != null) offerClipChip(first.getText(), sensitive);
             else dismissClipChip();
         }
-        // 비밀번호 관리자 등이 민감 정보로 표시한 복사는 저장하지 않는다.
-        if (!history || sensitive) return;
+        // 비밀번호 관리자 등이 민감 정보로 표시한 복사와, 비밀번호 입력란에서 한 복사(글자가 보이게 바꾼 칸 포함)는
+        // 클립보드 기록에 저장하지 않는다. 키보드가 내려가 있을 때의 복사는 다른 앱에서 한 것이라 지난 입력란을 따르지 않는다.
+        if (!history || sensitive || (passwordField && !windowHidden)) return;
         String imageMime = imageMime(desc, first.getUri());
         if (imageMime != null) {
             if (prefs.clipboardImages()) saveClipImage(first.getUri(), imageMime);
