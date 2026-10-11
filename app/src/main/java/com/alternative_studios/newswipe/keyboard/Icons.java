@@ -75,11 +75,16 @@ public final class Icons {
      * @param p    색이 지정된 Paint. 선 굵기·스타일은 이 메서드가 정한다.
      */
     public static void draw(Canvas c, int icon, float cx, float cy, float size, Paint p) {
+        draw(c, icon, cx, cy, size, p, 1.9f);
+    }
+
+    /** @param stroke 선 굵기 (24칸짜리 아이콘 그림 기준. 기본 1.9). */
+    public static void draw(Canvas c, int icon, float cx, float cy, float size, Paint p, float stroke) {
         float u = size / 24f;
         c.save();
         c.translate(cx - size / 2f, cy - size / 2f);
         c.scale(u, u);
-        p.setStrokeWidth(1.9f);
+        p.setStrokeWidth(stroke);
         p.setStrokeCap(Paint.Cap.ROUND);
         p.setStrokeJoin(Paint.Join.ROUND);
         p.setStyle(Paint.Style.STROKE);
