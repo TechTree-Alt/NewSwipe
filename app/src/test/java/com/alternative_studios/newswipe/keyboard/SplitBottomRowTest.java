@@ -668,6 +668,34 @@ public class SplitBottomRowTest {
     }
 
     @Test
+    public void gridLayoutFollowsTheFourColumnConsonantsOfTheLeftRightBalancedLayout() throws Exception {
+        for (boolean d7 : new boolean[]{false, true}) {
+            for (int[] s : SETTINGS) {
+                Prefs p = prefsFor(s, false);
+                FakeSp sp = (FakeSp) p.raw();
+                if (d7) sp.m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_D7);
+                sp.m.put(Prefs.GRID_LAYOUT, true);
+                sp.m.put(p.splitReachColumnKey(), true);
+                KeyboardLayout l = KeyboardLayout.korean(p);
+                float consonant = -1f, vowel = -1f;   // 왼쪽·오른쪽 묶음의 4열 키 한 칸
+                for (Key k : l.rows[0].keys) {
+                    if ("ㅂ".equals(k.label)) consonant = k.weight;
+                    if ("ㅗ".equals(k.label)) vowel = k.weight;
+                }
+                KeyboardLayout.Row bottom = l.rows[l.rows.length - 1];
+                assertEquals("기호 키 = 4열 자음 키", consonant, widthOf(bottom, Key.TO_SYMBOLS, true), 0.001f);
+                assertEquals("엔터 키 = 오른쪽 묶음의 4열 키", vowel, widthOf(bottom, Key.ENTER, false), 0.001f);
+                if (!d7) assertEquals("Shift 자리 = 4열 자음 키", consonant, l.rows[2].keys[firstKey(l.rows[2])].weight, 0.001f);
+            }
+        }
+    }
+
+    private static int firstKey(KeyboardLayout.Row row) {
+        for (int i = 0; i < row.keys.length; i++) if (row.keys[i].type != Key.GAP) return i;
+        return -1;
+    }
+
+    @Test
     public void numberKeysCanHaveLongPressCharacters() throws Exception {
         assertEquals("num", KeyboardLayout.groupOf(true, "5"));
         assertEquals("num", KeyboardLayout.groupOf(false, "0"));

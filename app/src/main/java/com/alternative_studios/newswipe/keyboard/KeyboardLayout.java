@@ -772,7 +772,12 @@ public final class KeyboardLayout {
      */
     private static float gridKey(Prefs prefs) {
         // 자·모음 균형 레이아웃: 왼쪽 절반을 나눠 가진 자음 키 한 칸 (5열이면 1칸, 4열이면 1.25칸).
-        if (balanced(prefs)) return BALANCED_HALF / balancedConsonants(prefs);
+        // 8열 단모음의 좌·우 균형 레이아웃은 자음이 4열이 되므로 그 폭을 따른다.
+        if (balanced(prefs)) {
+            int columns = balancedConsonants(prefs);
+            if (!newSwipe(prefs) && splitView(prefs) && prefs.splitReachColumn()) columns--;
+            return BALANCED_HALF / columns;
+        }
         return SPACE_ROW_UNITS / koreanColumns(prefs);
     }
 
