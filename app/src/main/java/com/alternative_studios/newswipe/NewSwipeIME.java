@@ -1068,9 +1068,25 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (autofill == null || !prefs.autofillInline()) return null;
         KeyboardTheme t = theme != null ? theme : KeyboardTheme.of(this);
         int height = toolbarHeight > 0 ? toolbarHeight : toolbarHeightPx();
-        // 칩은 쪽으로 넘기며 보므로 한 칩이 칩 줄(왼쪽 도구 버튼을 뺀 폭)에 들어갈 만큼만 키운다. 긴 글은 서비스가 줄여 보인다.
-        int maxWidth = Math.min(Ui.dp(this, 220), getResources().getDisplayMetrics().widthPixels * 9 / 20);
+        // 칩은 쪽으로 넘기며 보므로, 한 칩이 칩 줄(왼쪽 도구 버튼을 뺀 폭에서 쪽 넘김 버튼·고정 칩 자리를 뺀 폭)에
+        // 들어갈 만큼만 키운다. 긴 글은 서비스가 줄여 보인다.
+        int maxWidth = Math.max(Ui.dp(this, 96), Math.min(Ui.dp(this, 260), chipSlotWidth() - autofill.reservedWidth()));
         return autofill.request(t, height, maxWidth);
+    }
+
+    /** 칩 줄 자리의 폭 (px): 도구 막대 폭에서 안 가려지는 왼쪽 도구 버튼들의 폭을 뺀 값 ('도구 막대 전체를 쓰기'면 막대 전체). */
+    private int chipSlotWidth() {
+        int width = toolbar != null && toolbar.getWidth() > 0 ? toolbar.getWidth() : getResources().getDisplayMetrics().widthPixels;
+        width -= (toolbar != null ? toolbar.getPaddingLeft() + toolbar.getPaddingRight() : 0);
+        if (!prefs.suggestFullBar() && prefs.toolbar()) {
+            String[][] order = toolOrder != null ? toolOrder : prefs.toolOrder();
+            for (String id : order[0]) {
+                if (!prefs.toolShown(id)) continue;
+                ViewGroup.LayoutParams lp = toolButtonOf(id).getLayoutParams();
+                width -= lp != null && lp.width > 0 ? lp.width : Ui.dp(this, 40);
+            }
+        }
+        return width;
     }
 
     /** 자동 완성 서비스가 보낸 칩을 보여 준다 (빈 목록이면 감춘다). */

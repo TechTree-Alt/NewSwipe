@@ -16,11 +16,12 @@ import android.view.ViewGroup;
 import android.view.inputmethod.InlineSuggestion;
 import android.view.inputmethod.InlineSuggestionsRequest;
 import android.widget.LinearLayout;
-import android.widget.TextView;
 import android.widget.inline.InlineContentView;
 import android.widget.inline.InlinePresentationSpec;
 
+import com.alternative_studios.newswipe.keyboard.Icons;
 import com.alternative_studios.newswipe.keyboard.KeyboardTheme;
+import com.alternative_studios.newswipe.ui.IconButton;
 import com.alternative_studios.newswipe.ui.Ui;
 
 import java.util.ArrayList;
@@ -55,7 +56,7 @@ final class InlineAutofill {
     private final Host host;
     private LinearLayout bar, pinned;
     private ChipRow row;
-    private TextView prev, next;
+    private IconButton prev, next;
     /** 스크롤하지 않는 대신 쪽(page)으로 넘긴다: 칩이 줄 폭에 다 들어가면 한 쪽이고, 아니면 칩 단위로 넘긴다. */
     private final List<InlineContentView> chipViews = new ArrayList<>();
     /** 지금 쪽의 첫 칩 번호. */
@@ -90,13 +91,14 @@ final class InlineAutofill {
         // 칩은 서비스가 따로 그려 창 위에 얹는 화면이라 스크롤로 옮기면 가장자리에서 잘라 내는 시점이 칩 위치와 어긋나
         // 경계선이 흔들리고 도구 버튼 위로 잠깐 비쳐 보인다. 그래서 스크롤하지 않고, 줄에 온전히 들어가는 칩만 보여
         // 쪽(page)으로 넘긴다 (좌우로 밀거나 양옆 화살표를 누른다). 칩이 잘리는 일이 없다.
-        prev = arrow("‹", theme, -1);
-        next = arrow("›", theme, 1);
+        prev = arrow(Icons.BACK, theme, -1, "이전 자동 완성");
+        next = arrow(Icons.NEXT, theme, 1, "다음 자동 완성");
         row = new ChipRow(context);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        bar.addView(prev, new LinearLayout.LayoutParams(Ui.dp(context, ARROW_DP), ViewGroup.LayoutParams.MATCH_PARENT));
+        // 이 쪽의 칩들을 칩 줄 가운데에 모아 놓는다 (가로·세로 모두 가운데).
+        row.setGravity(Gravity.CENTER);
+        bar.addView(prev, arrowParams());
         bar.addView(row, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT));
-        bar.addView(next, new LinearLayout.LayoutParams(Ui.dp(context, ARROW_DP), ViewGroup.LayoutParams.MATCH_PARENT));
+        bar.addView(next, arrowParams());
         // 남는 폭: 고정 칩(열쇠 등)을 오른쪽 끝으로 민다.
         bar.addView(new View(context), new LinearLayout.LayoutParams(0, 1, 1f));
         pinned = new LinearLayout(context);
@@ -110,29 +112,43 @@ final class InlineAutofill {
         return bar;
     }
 
-    private static final int ARROW_DP = 24;
+    /** 쪽 넘김 버튼의 폭(dp)과 바깥 여백(dp). 칩보다 눈에 띄게 크게 해 더 있다는 것을 분명히 알린다. */
+    private static final int ARROW_DP = 40, ARROW_MARGIN_DP = 2;
 
-    /** 쪽을 넘기는 화살표: 누르면 이전(-1)·다음(+1) 쪽으로 간다. */
-    private TextView arrow(String glyph, KeyboardTheme theme, int dir) {
-        TextView t = new TextView(context);
-        t.setText(glyph);
-        t.setTextColor(theme.hint);
-        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
-        t.setGravity(Gravity.CENTER);
-        t.setBackground(Ui.ripple(theme.keyPressed, null, 0));
-        t.setVisibility(View.GONE);
-        t.setOnClickListener(v -> {
+    /** 칩 줄 폭에서 칩이 쓸 수 없는 폭 (px): 양옆 쪽 넘김 버튼과 고정 칩(열쇠)의 대략적인 폭. 칩 최대 폭을 정할 때 뺀다. */
+    int reservedWidth() {
+        return Ui.dp(context, 2 * (ARROW_DP + 2 * ARROW_MARGIN_DP) + PINNED_DP);
+    }
+
+    private static final int PINNED_DP = 48;
+
+    private LinearLayout.LayoutParams arrowParams() {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(Ui.dp(context, ARROW_DP),
+                chipHeight > 0 ? chipHeight : ViewGroup.LayoutParams.MATCH_PARENT);
+        lp.leftMargin = lp.rightMargin = Ui.dp(context, ARROW_MARGIN_DP);
+        return lp;
+    }
+
+    /** 쪽을 넘기는 버튼: 칩과 같은 높이의 둥근 버튼에 화살표 아이콘을 가운데로 그린다. 누르면 이전(-1)·다음(+1) 쪽으로 간다. */
+    private IconButton arrow(int icon, KeyboardTheme theme, int dir, String description) {
+        IconButton b = new IconButton(context, icon, theme.text, theme.keyPressed, description);
+        b.setIconSize(Ui.dp(context, 24));
+        float radius = Ui.dp(context, 16);
+        b.setBackground(Ui.ripple(theme.keyPressed, Ui.round(theme.functionKey, radius), radius));
+        b.setVisibility(View.GONE);
+        b.setOnClickListener(v -> {
             host.onAutofillChipClicked();
             turnPage(dir);
         });
-        return t;
+        return b;
     }
 
     /**
      * 자동 완성 서비스에 보낼 요청: 칩의 크기 범위와 모양. toolbarHeight는 도구 막대 높이(px), maxWidth는 칩 하나의 최대 폭.
      */
     InlineSuggestionsRequest request(KeyboardTheme theme, int toolbarHeight, int maxWidth) {
-        chipHeight = Math.max(Ui.dp(context, 24), toolbarHeight - Ui.dp(context, 8));
+        // 도구 막대 높이에서 위아래 3dp씩만 남기고 꽉 채운다 (도구 버튼의 터치 영역과 같은 높이대로 보이도록).
+        chipHeight = Math.max(Ui.dp(context, 24), toolbarHeight - Ui.dp(context, 6));
         Size min = new Size(Ui.dp(context, 32), chipHeight);
         Size max = new Size(Math.max(min.getWidth(), maxWidth), chipHeight);
         InlinePresentationSpec spec = new InlinePresentationSpec.Builder(min, max)
@@ -259,12 +275,19 @@ final class InlineAutofill {
         int total = 0;
         for (View v : chipViews) total += outerWidth(v);
         boolean single = total <= slot;
-        int arrowW = Ui.dp(context, ARROW_DP);
+        int arrowW = Ui.dp(context, ARROW_DP + 2 * ARROW_MARGIN_DP);
         int avail = single ? slot : Math.max(1, slot - 2 * arrowW);
         ViewGroup.LayoutParams rlp = row.getLayoutParams();
         if (rlp.width != avail) {
             rlp.width = avail;
             row.setLayoutParams(rlp);
+        }
+        for (View a : new View[]{prev, next}) {   // 버튼 높이는 칩 높이에 맞춘다 (칩 높이는 요청할 때 정해진다)
+            ViewGroup.LayoutParams alp = a.getLayoutParams();
+            if (chipHeight > 0 && alp.height != chipHeight) {
+                alp.height = chipHeight;
+                a.setLayoutParams(alp);
+            }
         }
         if (single) first = 0;
         int count = pageCount(first);
@@ -369,7 +392,7 @@ final class InlineAutofill {
 
     /** 칩 모양: 둥근 배경(키 색)에 글자(자판 글자 색), 부제목은 흐린 색. 아이콘만 있는 칩은 아이콘을 글자 색으로 칠한다. */
     private Bundle style(KeyboardTheme theme) {
-        int h = Ui.dp(context, 12);
+        int h = Ui.dp(context, 14);
         // 누르면 배경이 눌린 키 색으로 바뀌도록 색 상태 목록으로 칠한다. 칩은 서비스가 그리는 화면이지만 배경 그림은
         // 이 목록으로 칠해져 오고, 칩 화면이 눌리면 그 상태(pressed)에 맞는 색이 된다.
         ColorStateList fill = new ColorStateList(
@@ -378,7 +401,7 @@ final class InlineAutofill {
         Bundle v1 = new Bundle();
         v1.putBoolean("style_v1", true);
         v1.putBundle("chip_style", viewStyle(background, new int[]{h, 0, h, 0}));
-        v1.putBundle("title_style", textStyle(theme.text, 14));
+        v1.putBundle("title_style", textStyle(theme.text, 15));
         v1.putBundle("subtitle_style", textStyle(theme.hint, 12));
         int s = Ui.dp(context, 8);
         v1.putBundle("single_icon_chip_style", viewStyle(background, new int[]{s, 0, s, 0}));
