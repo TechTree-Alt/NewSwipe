@@ -1402,28 +1402,42 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         scheduleSuggest();
     }
 
+    /** 밀어서 커서 이동(스페이스바·분리 키보드 가운데 빈 공간·글자 키): 커서가 한 칸 움직일 때마다 약한 진동(틱). */
     @Override
     public void onCursorMove(int direction) {
-        if (panel == PANEL_SEARCH) return;
+        if (moveCursor(direction)) feedback.onRepeat();
+    }
+
+    /** 밀어서 커서 이동으로 한 줄 옮긴다. 실제로 움직였을 때만 약한 진동(틱)이 울린다. */
+    @Override
+    public void onCursorMoveVertical(int direction) {
+        if (moveCursorVertical(direction)) feedback.onRepeat();
+    }
+
+    /** 커서를 왼쪽(-1)/오른쪽(+1)으로 한 칸 옮긴다. 옮겼으면 true. */
+    private boolean moveCursor(int direction) {
+        if (panel == PANEL_SEARCH) return false;
         correctedTo = null;
         commitComposing();
         sendDownUpKeyEvents(direction < 0 ? KeyEvent.KEYCODE_DPAD_LEFT : KeyEvent.KEYCODE_DPAD_RIGHT);
         mirror.forget();
+        return true;
     }
 
-    @Override
-    public void onCursorMoveVertical(int direction) {
-        if (panel == PANEL_SEARCH) return;
+    /** 커서를 위(-1)/아래(+1)로 한 줄 옮긴다. 옮겼으면 true. */
+    private boolean moveCursorVertical(int direction) {
+        if (panel == PANEL_SEARCH) return false;
         // 한 줄짜리 입력란에서 위/아래 키를 보내면 다른 입력란으로 포커스가 넘어가므로 여러 줄 입력란에서만 움직인다.
         EditorInfo ei = getCurrentInputEditorInfo();
         if (ei == null || (ei.inputType & InputType.TYPE_MASK_CLASS) != InputType.TYPE_CLASS_TEXT
                 || (ei.inputType & (InputType.TYPE_TEXT_FLAG_MULTI_LINE | InputType.TYPE_TEXT_FLAG_IME_MULTI_LINE)) == 0) {
-            return;
+            return false;
         }
         correctedTo = null;
         commitComposing();
         sendDownUpKeyEvents(direction < 0 ? KeyEvent.KEYCODE_DPAD_UP : KeyEvent.KEYCODE_DPAD_DOWN);
         mirror.forget();
+        return true;
     }
 
     @Override
@@ -2327,16 +2341,16 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 }
                 break;
             case SwipeAction.CURSOR_LEFT:
-                onCursorMove(-1);
+                moveCursor(-1);
                 break;
             case SwipeAction.CURSOR_RIGHT:
-                onCursorMove(1);
+                moveCursor(1);
                 break;
             case SwipeAction.CURSOR_UP:
-                onCursorMoveVertical(-1);   // 여러 줄 입력란에서만 움직인다
+                moveCursorVertical(-1);   // 여러 줄 입력란에서만 움직인다
                 break;
             case SwipeAction.CURSOR_DOWN:
-                onCursorMoveVertical(1);
+                moveCursorVertical(1);
                 break;
             case SwipeAction.WORD_LEFT:
             case SwipeAction.WORD_RIGHT:
