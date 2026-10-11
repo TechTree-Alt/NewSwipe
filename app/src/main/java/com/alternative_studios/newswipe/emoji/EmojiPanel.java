@@ -138,6 +138,7 @@ public final class EmojiPanel extends LinearLayout {
         searchRow.setGravity(Gravity.CENTER_VERTICAL);
         searchRow.setPadding(Ui.dp(context, 4), 0, Ui.dp(context, 8), 0);
         IconButton topBack = new IconButton(context, Icons.BACK, theme.text, theme.keyPressed, "키보드로 돌아가기");
+        topBack.setToolbarStyle(theme, topBarHeight);   // 도구 막대 버튼과 같은 칩
         topBack.setOnClickListener(v -> {
             listener.onEmojiKeyPress();
             listener.onEmojiBack();

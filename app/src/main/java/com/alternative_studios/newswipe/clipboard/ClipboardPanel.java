@@ -83,8 +83,9 @@ public final class ClipboardPanel extends LinearLayout {
         header.setGravity(Gravity.CENTER_VERTICAL);
         header.setPadding(Ui.dp(context, 4), 0, Ui.dp(context, 8), 0);
         IconButton back = new IconButton(context, Icons.BACK, theme.text, theme.keyPressed, "키보드로 돌아가기");
+        back.setToolbarStyle(theme, topBarHeight);   // 도구 막대 버튼과 같은 칩
         back.setOnClickListener(v -> listener.onClipBack());
-        header.addView(back, new LayoutParams(Ui.dp(context, 44), Ui.dp(context, 40)));
+        header.addView(back, new LayoutParams(Ui.dp(context, 44), topBarHeight));
         TextView title = new TextView(context);
         title.setText("클립보드");
         title.setTextColor(theme.text);
