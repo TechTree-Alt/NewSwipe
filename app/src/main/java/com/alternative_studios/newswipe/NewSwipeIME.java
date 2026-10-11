@@ -274,7 +274,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 사용할 때마다 설정에서 직접 읽는 값이나 키보드 화면과 상관없는 값은 다시 그릴 필요가 없다. */
     private static boolean affectsKeyboard(String key) {
         return !(Prefs.LANGUAGE.equals(key) || Prefs.RECENT_EMOJI.equals(key) || Prefs.PINNED_EMOJI.equals(key)
-                || Prefs.CLIPBOARD_HISTORY.equals(key) || Prefs.CLIPBOARD_IMAGES.equals(key) || Prefs.AUTO_CAP.equals(key)
+                || Prefs.CLIPBOARD_HISTORY.equals(key) || Prefs.CLIPBOARD_IMAGES.equals(key) || Prefs.CLIPBOARD_SENSITIVE.equals(key) || Prefs.CLIPBOARD_CHIP.equals(key) || Prefs.AUTO_CAP.equals(key)
                 || Prefs.DOUBLE_SPACE_PERIOD.equals(key) || Prefs.CONFIRM_LEARNED_DELETE.equals(key)
                 || Prefs.ONE_HAND_LAST.equals(key) || Prefs.ENGLISH_FIELDS.equals(key));
     }
@@ -3242,8 +3242,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             else dismissClipChip();
         }
         // 비밀번호 관리자 등이 민감 정보로 표시한 복사와, 비밀번호 입력란에서 한 복사(글자가 보이게 바꾼 칸 포함)는
-        // 클립보드 기록에 저장하지 않는다. 키보드가 내려가 있을 때의 복사는 다른 앱에서 한 것이라 지난 입력란을 따르지 않는다.
-        if (!history || sensitive || (passwordField && !windowHidden)) return;
+        // 클립보드 기록에 저장하지 않는다 (설정에서 '민감한 정보도 저장'을 켠 경우만 저장한다). 키보드가 내려가 있을 때의 복사는 다른 앱에서 한 것이라 지난 입력란을 따르지 않는다.
+        if (!history || ((sensitive || (passwordField && !windowHidden)) && !prefs.clipboardSensitive())) return;
         String imageMime = imageMime(desc, first.getUri());
         if (imageMime != null) {
             if (prefs.clipboardImages()) saveClipImage(first.getUri(), imageMime);

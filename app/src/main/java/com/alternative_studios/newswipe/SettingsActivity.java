@@ -2163,10 +2163,13 @@ public final class SettingsActivity extends Activity {
                         + ClipboardHistory.MAX_IMAGES + "개).",
                 prefs.clipboardImages(), this::onClipImagesChanged);
         clipImagesSwitch = switchOf(clipImagesToggle);
-        View clipImages = subGroup(clipImagesToggle);
+        View clipSensitiveToggle = toggle("민감한 정보도 저장",
+                "비밀번호와 같이 민감한 정보도 복사하면 클립보드에 저장합니다. 보안에 주의하시기 바랍니다.",
+                Prefs.CLIPBOARD_SENSITIVE, prefs.clipboardSensitive());
+        View clipImages = subGroup(clipImagesToggle, clipSensitiveToggle);
         clip.addView(toggle("클립보드 기록 저장", "복사·잘라낸 내용을 최근 " + ClipboardHistory.MAX_ITEMS
                         + "개까지 모아 둡니다. 고정하지 않은 항목은 24시간 뒤 지워지고, "
-                        + "비밀번호처럼 민감한 정보로 표시된 복사는 저장하지 않습니다.",
+                        + "비밀번호처럼 민감한 정보로 표시된 복사는 기본으로 저장하지 않습니다.",
                 Prefs.CLIPBOARD_HISTORY, prefs.clipboardHistory(), clipImages));
         clip.addView(clipImages);
         clip.addView(toggle("방금 복사한 내용 붙여넣기",
