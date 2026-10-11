@@ -1117,6 +1117,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         mirror.forget();
         clearSuggestions();
         if (autofill != null) autofill.clear();   // 입력란을 떠나면 그 칸의 자동 완성 칩도 버린다
+        copyPending = false;   // 다른 칸으로 갔으면 지난 칸의 복사 결과는 알리지 않는다
+        main.removeCallbacks(copyRefused);
     }
 
     // ---------------------------------------------------------------- 자동 완성 (Android 11 이상)
@@ -2832,23 +2834,26 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         ic.performContextMenuAction(android.R.id.copy);
         endEdit();
         EditorInfo ei = getCurrentInputEditorInfo();
-        if (ei != null && copyBlockedFor(ei) && (selectAllFirst || hasSelection)) {
-            // 가려 보이는 비밀번호 입력란은 시스템(입력란)이 복사를 막는다. 복사했다고 잘못 알리지 않는다.
-            showMessage("복사가 제한되는 내용입니다.");
+        main.removeCallbacks(copyRefused);
+        copyPending = false;
+        if (ei != null && passwordFieldFor(ei) && (selectAllFirst || hasSelection)) {
+            // 비밀번호 입력란은 글자를 가렸는지(앱의 '비밀번호 보기' 등)에 따라 복사를 막기도 하고 허락하기도 한다.
+            // 입력란 종류로는 알 수 없으므로, 클립보드가 실제로 바뀌는지 잠깐 기다려 보고 알린다.
+            copyPending = true;
+            main.postDelayed(copyRefused, COPY_WAIT_MS);
         } else if (selected != null && selected.length() > 0) {
             showMessage("복사했습니다");
         }
     }
 
-    /** 글자를 가려 보이는 비밀번호 입력란인지: 이런 칸은 입력란이 복사·잘라내기를 막는다 (보이는 비밀번호 칸은 막지 않는다). */
-    private static boolean copyBlockedFor(EditorInfo info) {
-        int type = info.inputType;
-        int cls = type & InputType.TYPE_MASK_CLASS;
-        int variation = type & InputType.TYPE_MASK_VARIATION;
-        if (cls == InputType.TYPE_CLASS_NUMBER) return variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD;
-        return cls == InputType.TYPE_CLASS_TEXT && (variation == InputType.TYPE_TEXT_VARIATION_PASSWORD
-                || variation == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD);
-    }
+    /** 비밀번호 입력란에서 복사를 요청하고 클립보드가 바뀌기를 기다리는 중인지. */
+    private boolean copyPending;
+    /** 이만큼 기다려도 클립보드가 바뀌지 않으면 입력란이 복사를 막은 것으로 본다. */
+    private static final long COPY_WAIT_MS = 600;
+    private final Runnable copyRefused = () -> {
+        copyPending = false;
+        showMessage("복사가 제한되는 내용입니다.");
+    };
 
     /** 안내 문구를 보여 주는 칸 (키보드 위쪽 가운데). */
     private TextView messageView;
@@ -3206,6 +3211,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     @Override
     public void onPrimaryClipChanged() {
+        if (copyPending) {
+            // 비밀번호 입력란에서 요청한 복사가 실제로 됐다.
+            copyPending = false;
+            main.removeCallbacks(copyRefused);
+            showMessage("복사했습니다");
+        }
         boolean history = prefs.clipboardHistory(), chip = prefs.clipboardChip();
         if ((!history && !chip) || clipboard == null) return;
         ClipData clip;
