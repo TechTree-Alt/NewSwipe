@@ -37,6 +37,30 @@ public final class Ui {
         return (color & 0x00FFFFFF) | 0x1F000000;
     }
 
+    /**
+     * 도구 막대 자리에 놓는 글자 버튼(취소, 지우기, 모두 지우기 등)을 칩 모양으로 만든다. 칩 높이는 {@link #chipHeight}이고,
+     * LinearLayout에 그대로 addView하면 된다 (좌우 2dp씩 띄운 레이아웃 인자가 들어 있다).
+     * @param fill    칩 바탕색. 눌렀을 때는 글자 색을 옅게 덮는다.
+     * @param barHeight 버튼이 놓이는 줄의 높이 (px)
+     */
+    public static android.widget.TextView chipButton(Context c, CharSequence label, int textColor, int fill, int barHeight) {
+        android.widget.TextView b = new android.widget.TextView(c);
+        b.setText(label);
+        b.setTextColor(textColor);
+        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        b.setGravity(android.view.Gravity.CENTER);
+        b.setSingleLine(true);
+        b.setPadding(dp(c, 14), 0, dp(c, 14), 0);
+        float r = chipRadius(c);
+        b.setBackground(ripple(tint(textColor), round(fill, r), r));
+        android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT, chipHeight(c, barHeight));
+        lp.leftMargin = dp(c, 2);
+        lp.rightMargin = dp(c, 2);
+        b.setLayoutParams(lp);
+        return b;
+    }
+
     /** 도구 막대 칩의 모서리 반지름 (px). */
     public static float chipRadius(Context c) {
         return dp(c, 16);

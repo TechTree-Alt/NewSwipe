@@ -899,6 +899,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.setPadding(Ui.dp(this, 4), Ui.dp(this, 5), Ui.dp(this, 6), Ui.dp(this, 5));
         IconButton back = new IconButton(this, Icons.BACK, theme.text, theme.keyPressed, "이모지로 돌아가기");
+        back.setToolbarStyle(theme, toolbarHeightPx() - Ui.dp(this, 10));   // 위아래 패딩 5dp씩을 뺀 줄 높이
         back.setOnClickListener(v -> showPanel(PANEL_EMOJI));
         bar.addView(back, new LinearLayout.LayoutParams(Ui.dp(this, 44), ViewGroup.LayoutParams.MATCH_PARENT));
         searchText = new TextView(this);
@@ -909,7 +910,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         searchText.setPadding(Ui.dp(this, 14), 0, Ui.dp(this, 14), 0);
         searchText.setBackground(Ui.round(theme.functionKey, Ui.dp(this, 20)));
         bar.addView(searchText, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
-        IconButton clear = new IconButton(this, Icons.CLOSE, theme.hint, theme.keyPressed, "검색어 지우기");
+        IconButton clear = new IconButton(this, Icons.CLOSE, theme.text, theme.keyPressed, "검색어 지우기");
+        clear.setToolbarStyle(theme, toolbarHeightPx() - Ui.dp(this, 10));
         clear.setOnClickListener(v -> {
             composer.reset();
             search.setLength(0);
@@ -2549,8 +2551,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             forgetText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
             forgetText.setSingleLine(true);
             forgetBar.addView(forgetText, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-            forgetBar.addView(forgetButton("취소", theme.text, v -> dismissForgetDialog()));
-            forgetOk = forgetButton("", theme.accent, v -> {
+            forgetBar.addView(forgetButton("취소", theme.text, theme.functionKey, v -> dismissForgetDialog()));
+            forgetOk = forgetButton("", theme.onAccent, theme.accent, v -> {
                 Runnable a = forgetAction;
                 dismissForgetDialog();
                 if (a != null) a.run();
@@ -2568,14 +2570,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return true;
     }
 
-    private TextView forgetButton(String label, int color, View.OnClickListener l) {
-        TextView b = new TextView(this);
-        b.setText(label);
-        b.setTextColor(color);
-        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        int h = Ui.dp(this, 12), v = Ui.dp(this, 8);
-        b.setPadding(h, v, h, v);
-        b.setBackground(Ui.ripple(theme.keyPressed, null, Ui.dp(this, 16)));
+    /** 확인 줄의 칩 버튼. 취소는 기능키 색, 확인은 강조 색 바탕이다. */
+    private TextView forgetButton(String label, int color, int fill, View.OnClickListener l) {
+        TextView b = Ui.chipButton(this, label, color, fill, toolbarHeightPx());
         b.setOnClickListener(l);
         return b;
     }

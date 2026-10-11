@@ -49,11 +49,16 @@ public final class IconButton extends View {
      * @param barHeight 버튼이 놓이는 도구 막대 높이 (px). 칩은 여기서 위아래를 조금 뺀 높이다.
      */
     public void setToolbarStyle(KeyboardTheme theme, int barHeight) {
+        setToolbarStyle(theme, barHeight, theme.functionKey, theme.text);
+    }
+
+    /** 바탕색과 아이콘 색을 정해서 (예: 고정한 핀은 강조 색 바탕에 강조 색 아이콘). */
+    public void setToolbarStyle(KeyboardTheme theme, int barHeight, int fill, int iconColor) {
         Context c = getContext();
-        setColor(theme.text);
+        setColor(iconColor);
         int insetV = Math.max(0, (barHeight - Ui.chipHeight(c, barHeight)) / 2);
-        // 눌린 키 색은 밝은 테마의 기능키 색과 거의 같아서, 누를 때는 글자 색을 옅게 덮어 눌린 것이 보이게 한다.
-        setChip(theme.functionKey, Ui.tint(theme.text), Ui.dp(c, 2), insetV, Ui.chipRadius(c));
+        // 눌린 키 색은 밝은 테마의 기능키 색과 거의 같아서, 누를 때는 아이콘 색을 옅게 덮어 눌린 것이 보이게 한다.
+        setChip(fill, Ui.tint(iconColor), Ui.dp(c, 2), insetV, Ui.chipRadius(c));
     }
 
     public void setIcon(int icon) {

@@ -91,12 +91,7 @@ public final class ClipboardPanel extends LinearLayout {
         title.setTextColor(theme.text);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
         header.addView(title, new LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        clear = new TextView(context);
-        clear.setText("모두 지우기");
-        clear.setTextColor(theme.accent);
-        clear.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        clear.setPadding(Ui.dp(context, 12), Ui.dp(context, 8), Ui.dp(context, 12), Ui.dp(context, 8));
-        clear.setBackground(Ui.ripple(theme.keyPressed, null, Ui.dp(context, 16)));
+        clear = Ui.chipButton(context, "모두 지우기", theme.accent, theme.functionKey, topBarHeight);
         clear.setOnClickListener(v -> confirmClear());
         header.addView(clear);
         addView(header, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, topBarHeight));
@@ -113,10 +108,10 @@ public final class ClipboardPanel extends LinearLayout {
         ask.setMaxLines(2);
         ask.setEllipsize(TextUtils.TruncateAt.END);
         confirmRow.addView(ask, new LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        TextView cancel = rowButton(context, "취소", theme.text);
+        TextView cancel = Ui.chipButton(context, "취소", theme.text, theme.functionKey, topBarHeight);
         cancel.setOnClickListener(v -> dismissDialog());
         confirmRow.addView(cancel);
-        TextView ok = rowButton(context, "지우기", theme.accent);
+        TextView ok = Ui.chipButton(context, "지우기", theme.onAccent, theme.accent, topBarHeight);
         ok.setOnClickListener(v -> {
             dismissDialog();
             listener.onClipClear();
@@ -269,14 +264,18 @@ public final class ClipboardPanel extends LinearLayout {
             barLp.rightMargin = -Ui.dp(c, 6);   // 버튼 안쪽 여백만큼 카드 오른쪽 끝에 붙인다
             card.addView(bar, barLp);
             // 고정 / 삭제 버튼 (고정된 항목의 핀은 강조색)
-            IconButton pin = new IconButton(c, item.pinned ? Icons.PIN_FILLED : Icons.PIN, item.pinned ? theme.accent : theme.hint, theme.keyPressed,
+            IconButton pin = new IconButton(c, item.pinned ? Icons.PIN_FILLED : Icons.PIN, item.pinned ? theme.accent : theme.text, theme.keyPressed,
                     item.pinned ? "고정 해제" : "고정");
             pin.setOnClickListener(v -> {
                 animateNext = true;
                 listener.onClipPin(item, !item.pinned);
             });
+            // 칩으로 감싼다: 고정한 핀은 강조 색 바탕에 강조 색 아이콘, 나머지는 기능키 색 바탕.
+            if (item.pinned) pin.setToolbarStyle(theme, Ui.dp(c, 36), Ui.tint(theme.accent), theme.accent);
+            else pin.setToolbarStyle(theme, Ui.dp(c, 36));
             bar.addView(pin, new LayoutParams(Ui.dp(c, 36), Ui.dp(c, 36)));
-            IconButton trash = new IconButton(c, Icons.TRASH, theme.hint, theme.keyPressed, "삭제");
+            IconButton trash = new IconButton(c, Icons.TRASH, theme.text, theme.keyPressed, "삭제");
+            trash.setToolbarStyle(theme, Ui.dp(c, 36));
             trash.setOnClickListener(v -> {
                 animateNext = true;
                 listener.onClipDelete(item);
@@ -372,16 +371,6 @@ public final class ClipboardPanel extends LinearLayout {
         int p = Ui.dp(getContext(), 16);
         t.setPadding(p, p, p, p);
         return t;
-    }
-
-    private TextView rowButton(Context context, String text, int color) {
-        TextView b = new TextView(context);
-        b.setBackground(Ui.ripple(theme.keyPressed, null, Ui.dp(context, 16)));
-        b.setText(text);
-        b.setTextColor(color);
-        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        b.setPadding(Ui.dp(context, 12), Ui.dp(context, 8), Ui.dp(context, 12), Ui.dp(context, 8));
-        return b;
     }
 
     /** 모두 지우기 확인 줄을 닫고 원래 맨 위 줄로 돌아간다 (키보드가 숨겨지거나 패널이 사라질 때도 부른다). */
