@@ -966,6 +966,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         int lift = Ui.dp(this, on ? prefs.oneHandLiftDp() : profilePrefs.profileLiftDp());
         String signature = side + "/" + width + "/" + lift;
         if (signature.equals(appliedOneHand)) return;
+        // 한 손 모드를 켜고 끄면 칩의 크기와 모양이 달라야 하므로, 떠 있던 칩은 버린다 (다음에 입력란에 들어갈 때 새로 받는다).
+        if (appliedOneHand != null && autofill != null && autofill.shown()) autofill.clear();
         appliedOneHand = signature;
         body.removeAllViews();
         if (on) {
@@ -1071,7 +1073,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         // 칩은 쪽으로 넘기며 보므로, 한 칩이 칩 줄(왼쪽 도구 버튼을 뺀 폭에서 쪽 넘김 버튼·고정 칩 자리를 뺀 폭)에
         // 들어갈 만큼만 키운다. 긴 글은 서비스가 줄여 보인다.
         int maxWidth = Math.max(Ui.dp(this, 96), Math.min(Ui.dp(this, 260), chipSlotWidth() - autofill.reservedWidth()));
-        return autofill.request(t, height, maxWidth);
+        // 한 손 모드는 자리가 좁아 글자 없이 아이콘만 있는 작은 칩으로 요청한다.
+        return autofill.request(t, height, maxWidth, !Prefs.ONE_HAND_OFF.equals(activeOneHand()));
     }
 
     /** 칩 줄 자리의 폭 (px): 도구 막대 폭에서 안 가려지는 왼쪽 도구 버튼들의 폭을 뺀 값 ('도구 막대 전체를 쓰기'면 막대 전체). */

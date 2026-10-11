@@ -171,15 +171,16 @@ final class InlineAutofill {
 
     /**
      * 자동 완성 서비스에 보낼 요청: 칩의 크기 범위와 모양. toolbarHeight는 도구 막대 높이(px), maxWidth는 칩 하나의 최대 폭.
+     * compact(한 손 모드)면 글자를 감추고 아이콘만 보이는 작은 칩으로 요청한다 (좁은 자리에 맞춘다).
      */
-    InlineSuggestionsRequest request(KeyboardTheme theme, int toolbarHeight, int maxWidth) {
+    InlineSuggestionsRequest request(KeyboardTheme theme, int toolbarHeight, int maxWidth, boolean compact) {
         // 도구 막대 높이에서 위아래 6dp씩 남긴다. 도구 버튼은 아이콘(22dp)만 보이므로, 칩이 터치 영역 전체만큼 커 보이지 않고
         // 버튼들과 비슷한 높이로 느껴지게 한다 (기본 막대 40dp면 칩 28dp).
         chipHeight = Math.max(Ui.dp(context, 24), toolbarHeight - Ui.dp(context, 12));
-        Size min = new Size(Ui.dp(context, 32), chipHeight);
-        Size max = new Size(Math.max(min.getWidth(), maxWidth), chipHeight);
+        Size min = new Size(Ui.dp(context, compact ? 24 : 32), chipHeight);
+        Size max = new Size(Math.max(min.getWidth(), compact ? chipHeight + Ui.dp(context, 16) : maxWidth), chipHeight);
         InlinePresentationSpec spec = new InlinePresentationSpec.Builder(min, max)
-                .setStyle(style(theme))
+                .setStyle(style(theme, compact))
                 .build();
         return new InlineSuggestionsRequest.Builder(Collections.singletonList(spec))
                 .setMaxSuggestionCount(MAX_SUGGESTIONS)
@@ -418,8 +419,8 @@ final class InlineAutofill {
     private static final String VERSION_1 = "androidx.autofill.inline.ui.version:v1";
 
     /** 칩 모양: 둥근 배경(키 색)에 글자(자판 글자 색), 부제목은 흐린 색. 아이콘만 있는 칩은 아이콘을 글자 색으로 칠한다. */
-    private Bundle style(KeyboardTheme theme) {
-        int h = Ui.dp(context, 14);
+    private Bundle style(KeyboardTheme theme, boolean compact) {
+        int h = Ui.dp(context, compact ? 8 : 14);
         // 누르면 배경이 눌린 키 색으로 바뀌도록 색 상태 목록으로 칠한다. 칩은 서비스가 그리는 화면이지만 배경 그림은
         // 이 목록으로 칠해져 오고, 칩 화면이 눌리면 그 상태(pressed)에 맞는 색이 된다.
         ColorStateList fill = new ColorStateList(
@@ -428,8 +429,14 @@ final class InlineAutofill {
         Bundle v1 = new Bundle();
         v1.putBoolean("style_v1", true);
         v1.putBundle("chip_style", viewStyle(background, new int[]{h, 0, h, 0}));
-        v1.putBundle("title_style", textStyle(theme.text, 14));
-        v1.putBundle("subtitle_style", textStyle(theme.hint, 12));
+        if (compact) {
+            // 아이콘만 남긴다: 제목·부제목을 투명하고 아주 작게 해서 칩이 아이콘 폭만큼만 차지하게 한다.
+            v1.putBundle("title_style", textStyle(0x00000000, 1));
+            v1.putBundle("subtitle_style", textStyle(0x00000000, 1));
+        } else {
+            v1.putBundle("title_style", textStyle(theme.text, 14));
+            v1.putBundle("subtitle_style", textStyle(theme.hint, 12));
+        }
         int s = Ui.dp(context, 8);
         v1.putBundle("single_icon_chip_style", viewStyle(background, new int[]{s, 0, s, 0}));
         Bundle icon = new Bundle();
