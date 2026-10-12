@@ -134,10 +134,11 @@ public final class EmojiPanel extends LinearLayout {
         setBackgroundColor(theme.background);
 
         // 위쪽 줄: [←] [검색창]. 화살표는 클립보드 창의 것과 같은 모양·크기다.
-        LinearLayout searchRow = new LinearLayout(context);
+        searchRow = new LinearLayout(context);
         searchRow.setGravity(Gravity.CENTER_VERTICAL);
         searchRow.setPadding(Ui.dp(context, 4), 0, Ui.dp(context, 8), 0);
         IconButton topBack = new IconButton(context, Icons.BACK, theme.text, theme.keyPressed, "키보드로 돌아가기");
+        topBack.setToolbarStyle(theme, topBarHeight);   // 도구 막대 버튼과 같은 칩
         topBack.setOnClickListener(v -> {
             listener.onEmojiKeyPress();
             listener.onEmojiBack();
@@ -145,8 +146,8 @@ public final class EmojiPanel extends LinearLayout {
         searchRow.addView(topBack, new LayoutParams(Ui.dp(context, 44), ViewGroup.LayoutParams.MATCH_PARENT));
         LinearLayout search = new LinearLayout(context);
         search.setGravity(Gravity.CENTER_VERTICAL);
-        search.setBackground(Ui.ripple(theme.keyPressed, Ui.round(theme.functionKey, Ui.dp(context, 20)),
-                Ui.dp(context, 20)));
+        search.setBackground(Ui.ripple(Ui.tint(theme.text), Ui.round(theme.functionKey, Ui.chipRadius(context)),
+                Ui.chipRadius(context)));
         search.setPadding(Ui.dp(context, 10), 0, Ui.dp(context, 12), 0);
         IconButton icon = new IconButton(context, Icons.SEARCH, theme.hint, theme.keyPressed, null);
         icon.setClickable(false);
@@ -158,12 +159,14 @@ public final class EmojiPanel extends LinearLayout {
         hint.setPadding(Ui.dp(context, 6), 0, 0, 0);
         search.addView(hint);
         search.setOnClickListener(v -> listener.onEmojiSearch());
-        LayoutParams searchLp = new LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
-        searchLp.topMargin = Ui.dp(context, 6);
-        searchLp.bottomMargin = Ui.dp(context, 6);
+        // 검색창은 뒤로 가기 칩과 같은 높이로 줄 가운데에 놓는다 (칩 사이 2dp도 같게).
+        LayoutParams searchLp = new LayoutParams(0, Ui.chipHeight(context, topBarHeight), 1f);
+        searchLp.leftMargin = Ui.dp(context, 2);
+        searchLp.rightMargin = Ui.dp(context, 2);
         searchRow.addView(search, searchLp);
         addView(searchRow, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, topBarHeight));
 
+        gridLeft = gridRight = Ui.dp(context, 4);   // setInsets로 키보드 여백을 받기 전의 기본값
         // 이모지 격자. 좌우로 밀어서도 탭을 넘기며, 미는 동안 옆 탭이 붙어서 따라 들어온다.
         FrameLayout gridFrame = new SwipeFrame(context);
         page = new Page(context);
@@ -172,7 +175,7 @@ public final class EmojiPanel extends LinearLayout {
         addView(gridFrame, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
 
         // 아래쪽 줄: [가/ABC] [분류 탭…] [⌫]
-        LinearLayout bar = new LinearLayout(context);
+        bar = new LinearLayout(context);
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.setPadding(Ui.dp(context, 4), 0, Ui.dp(context, 4), 0);
         back = new TextView(context);
@@ -220,6 +223,32 @@ public final class EmojiPanel extends LinearLayout {
         setRepeating(del);
         bar.addView(del, new LayoutParams(Ui.dp(context, 52), Ui.dp(context, 36)));
         addView(bar, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(context, 46)));
+    }
+
+    private final LinearLayout searchRow, bar;
+    /** 이모지 격자의 좌·위·우 여백 (px). 지금 탭과 옆 탭(peek)이 같은 값을 쓴다. */
+    private int gridLeft, gridTop, gridRight;
+
+    /**
+     * 키보드의 여백 설정을 따른다. 맨 위 줄(뒤로 가기·검색창)은 도구 막대처럼 좌우 여백(barLeft·barRight)만큼,
+     * 이모지 격자와 아래 줄('가'·분류 탭·⌫)은 자판 키의 가장자리(keyLeft·keyRight)에 맞춘다.
+     * 격자 위는 자판 위 여백(top)만큼, 아래 줄 밑은 자판 아래 여백(bottom)만큼 띄운다.
+     */
+    public void setInsets(int barLeft, int barRight, int keyLeft, int top, int keyRight, int bottom) {
+        searchRow.setPadding(barLeft, 0, barRight, 0);
+        gridLeft = keyLeft;
+        gridTop = top;
+        gridRight = keyRight;
+        // 옆 탭(peek)도 같은 여백이어야 밀어서 넘길 때 넘어온 탭이 제자리에서 어긋나지 않는다.
+        page.applyInsets();
+        if (peek != null) peek.applyInsets();
+        bar.setPadding(keyLeft, 0, keyRight, bottom);
+        ViewGroup.LayoutParams lp = bar.getLayoutParams();
+        int h = Ui.dp(getContext(), 46) + bottom;
+        if (lp.height != h) {
+            lp.height = h;
+            bar.setLayoutParams(lp);
+        }
     }
 
     public void setBackLabel(String label) {
@@ -540,6 +569,13 @@ public final class EmojiPanel extends LinearLayout {
         private boolean showHint;
         private final Paint suggestPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
+        /** 패널의 격자 여백을 따른다 (아래 여백은 안내 문구 자리라 positionHint가 정한다). */
+        void applyInsets() {
+            if (grid.getPaddingLeft() == gridLeft && grid.getPaddingTop() == gridTop
+                    && grid.getPaddingRight() == gridRight) return;
+            grid.setPadding(gridLeft, gridTop, gridRight, grid.getPaddingBottom());
+        }
+
         Page(Context context) {
             super(context);
             suggestPaint.setColor(theme.functionKey);
@@ -561,8 +597,8 @@ public final class EmojiPanel extends LinearLayout {
             grid.setStretchMode(GridView.STRETCH_COLUMN_WIDTH);
             grid.setSelector(new ColorDrawable(Color.TRANSPARENT));
             grid.setVerticalScrollBarEnabled(false);
-            grid.setPadding(Ui.dp(context, 4), 0, Ui.dp(context, 4), 0);
             grid.setClipToPadding(false);
+            applyInsets();
             grid.setAdapter(adapter);
             grid.setOnItemClickListener((p, v, pos, id) -> {
                 if (adapter.getItem(pos).isEmpty()) return;   // 빈칸

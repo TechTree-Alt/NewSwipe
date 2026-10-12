@@ -24,6 +24,53 @@ public final class Ui {
         return g;
     }
 
+    /**
+     * 도구 막대에 놓는 칩(자동 완성 칩, 도구 버튼, 방금 복사한 내용 칩, 선택 편집 칩)의 높이 (px).
+     * 도구 막대 높이에서 위아래 4dp씩 남긴다 (기본 막대 40dp면 32dp). 막대가 아주 낮아도 24dp보다 작아지지 않는다.
+     */
+    public static int chipHeight(Context c, int barHeight) {
+        return Math.max(dp(c, 24), barHeight - dp(c, 8));
+    }
+
+    /** 색을 옅게 깐 바탕색: 설정 메뉴 아이콘의 바탕처럼 같은 색을 반투명(약 12%)으로 쓴다. */
+    public static int tint(int color) {
+        return (color & 0x00FFFFFF) | 0x1F000000;
+    }
+
+    /**
+     * 도구 막대 자리에 놓는 글자 버튼(취소, 지우기, 모두 지우기 등)을 칩 모양으로 만든다. 칩 높이는 {@link #chipHeight}이고,
+     * LinearLayout에 그대로 addView하면 된다 (좌우 2dp씩 띄운 레이아웃 인자가 들어 있다).
+     * @param fill    칩 바탕색. 눌렀을 때는 글자 색을 옅게 덮는다.
+     * @param barHeight 버튼이 놓이는 줄의 높이 (px)
+     */
+    public static android.widget.TextView chipButton(Context c, CharSequence label, int textColor, int fill, int barHeight) {
+        android.widget.TextView b = new android.widget.TextView(c);
+        b.setText(label);
+        b.setTextColor(textColor);
+        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        b.setGravity(android.view.Gravity.CENTER);
+        b.setSingleLine(true);
+        b.setPadding(dp(c, 14), 0, dp(c, 14), 0);
+        float r = chipRadius(c);
+        b.setBackground(ripple(tint(textColor), round(fill, r), r));
+        android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT, chipHeight(c, barHeight));
+        lp.leftMargin = dp(c, 2);
+        lp.rightMargin = dp(c, 2);
+        b.setLayoutParams(lp);
+        return b;
+    }
+
+    /** 삭제처럼 되돌릴 수 없는 동작에 쓰는 붉은색 (어두운 테마에서는 배경에 묻히지 않게 밝게). */
+    public static int danger(boolean dark) {
+        return dark ? 0xFFF28B82 : 0xFFD93025;
+    }
+
+    /** 도구 막대 칩의 모서리 반지름 (px). */
+    public static float chipRadius(Context c) {
+        return dp(c, 16);
+    }
+
     /** 눌렀을 때 물결 효과가 있는 배경. content가 null이면 투명 배경. */
     public static Drawable ripple(int pressColor, Drawable content, float radiusPx) {
         GradientDrawable mask = round(0xFFFFFFFF, radiusPx);

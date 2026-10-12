@@ -382,6 +382,7 @@ public final class SettingsActivity extends Activity {
             {"swipefn", "상하 이동 속도", "커서 이동 속도 스페이스바 트랙패드"},
             {"swipefn", "스페이스바를 밀어서 커서 이동", "커서 트랙패드 이동"},
             {"swipefn", "스페이스바를 밀어서 언어 전환", "한영 전환 한/영 스와이프"},
+            {"swipefn", "스페이스바를 길게 누른 뒤 밀어서 선택", "텍스트 선택 범위 드래그 블록"},
             {"swipefn", "⌫ 밀어서 단위 삭제", "백스페이스 단어 삭제 줄 삭제 지우기"},
             {"swipefn", "기호 키를 위로 밀어서 이모지 열기", "이모티콘 스와이프 ?123"},
             {"swipefn", "기능키 밀어서 기능 편집", "스와이프 기능 커스텀"},
@@ -416,12 +417,13 @@ public final class SettingsActivity extends Activity {
             {"feedback", "키 소리", "클릭음 사운드 소리 켜기"},
             {"feedback", "소리 크기", "볼륨 클릭음"},
             {"tools", "도구 막대 표시", "툴바 켜기 끄기"},
-            {"tools", "도구 막대 버튼 순서·유무 사용자화", "툴바 버튼 순서 음성 입력 마이크 클립보드 이모지 실행 취소"},
+            {"tools", "도구 막대 버튼 사용자화", "툴바 버튼 순서 음성 입력 마이크 클립보드 이모지 실행 취소"},
             {"tools", "자판 아래에 두기", "툴바 위치 아래 위"},
             {"tools", "도구 막대 높이", "툴바 높이 크기"},
             {"tools", "도구 버튼 크기", "툴바 아이콘 크기"},
             {"tools", "이미지 저장", "클립보드 사진"},
             {"tools", "클립보드 기록 저장", "복사 기록 히스토리"},
+            {"tools", "선택하면 편집 버튼 보이기", "잘라내기 복사 붙여넣기 전체 선택 편집 칩"},
             {"tools", "클립보드 기록 모두 지우기", "복사 기록 삭제"},
             {"onehand", "자판 폭", "한 손 모드 너비"},
             {"onehand", "가로 모드 자판 폭", "한 손 모드 너비 가로"},
@@ -1296,7 +1298,8 @@ public final class SettingsActivity extends Activity {
             for (String id : order[side]) {
                 if (!prefs.toolShown(id)) continue;
                 IconButton b = new IconButton(this, com.alternative_studios.newswipe.keyboard.ToolbarButtons.icon(id),
-                        kt.hint, kt.keyPressed, null);
+                        kt.text, kt.keyPressed, null);
+                b.setToolbarStyle(kt, Ui.dp(this, 40));
                 b.setClickable(false);
                 b.setFocusable(false);
                 bar.addView(b, new LinearLayout.LayoutParams(Ui.dp(this, 40), Ui.dp(this, 40)));
@@ -1775,6 +1778,10 @@ public final class SettingsActivity extends Activity {
                     Ui.setVisibleAnimated(customEdit, on);
                 }));
         keys.addView(customEdit);
+        keys.addView(toggle("스페이스바를 길게 누른 뒤 밀어서 선택",
+                "스페이스바를 길게 눌러 진동이 오면, 손을 떼지 않고 좌우로 밀어 글자 단위로, "
+                        + "위아래로 밀어 줄 단위로(여러 줄 입력란) 글자를 선택합니다. 밀지 않고 떼면 띄어쓰기가 입력됩니다.",
+                Prefs.SPACE_SELECT, prefs.spaceSelect()));
 
         // 기본 밀기 설정: 완전 사용자화를 켜면 쓰지 않으므로 숨기고, 편집 버튼을 보여 준다.
         LinearLayout bar = section("도구 막대");
@@ -2144,7 +2151,7 @@ public final class SettingsActivity extends Activity {
 
     private void buildTools() {
         LinearLayout tools = section("도구 막대");
-        View toolButtons = subGroup(button("도구 막대 버튼 순서·유무 사용자화", v ->
+        View toolButtons = subGroup(button("도구 막대 버튼 사용자화", v ->
                 startActivity(new Intent(this, ToolbarButtonsEditorActivity.class))),
                 note("도구 막대 버튼의 유무와 순서를 바꿉니다."));
         tools.addView(toggle("도구 막대 표시", "다양한 도구를 빠르게 쓸 수 있는 막대를 보여 줍니다.",
@@ -2172,6 +2179,9 @@ public final class SettingsActivity extends Activity {
                         + "비밀번호처럼 민감한 정보로 표시된 복사는 기본으로 저장하지 않습니다.",
                 Prefs.CLIPBOARD_HISTORY, prefs.clipboardHistory(), clipImages));
         clip.addView(clipImages);
+        clip.addView(toggle("선택하면 편집 버튼 보이기",
+                "글자를 선택하면 도구 막대에 잘라내기·복사·붙여넣기·전체 선택 버튼이 뜹니다.",
+                Prefs.SELECTION_CHIPS, prefs.selectionChips()));
         clip.addView(toggle("방금 복사한 내용 붙여넣기",
                 "방금 복사한 텍스트를 도구 막대에 1분 간 보여 주어 빠르게 붙여 넣을 수 있게 합니다.",
                 Prefs.CLIPBOARD_CHIP, prefs.clipboardChip()));

@@ -24,7 +24,7 @@ public final class IconView extends View {
         paint.setColor(color);
         boxSize = Ui.dp(context, boxDp);
         iconSize = Ui.dp(context, iconDp);
-        setBackground(Ui.round((color & 0x00FFFFFF) | 0x1F000000, Ui.dp(context, 12)));
+        setBackground(Ui.round(Ui.tint(color), Ui.dp(context, 12)));
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
     }
 
