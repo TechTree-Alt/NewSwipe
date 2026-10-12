@@ -910,8 +910,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         LinearLayout bar = new LinearLayout(this);
         bar.setGravity(Gravity.CENTER_VERTICAL);
         // 도구 막대 자리에 놓이므로 도구 막대와 같은 높이를 쓰고, 칩(뒤로·검색창)도 도구 막대 칩과 같은 높이다.
-        // 높이는 sizeToolbar()가 설정의 도구 막대 높이에 맞춘다. 여백은 이모지 창 맨 위 줄과 같다.
-        bar.setPadding(Ui.dp(this, 4), 0, Ui.dp(this, 8), 0);
+        // 높이는 sizeToolbar()가 설정의 도구 막대 높이에 맞춘다. 좌우 여백은 applySettings()가 도구 막대와 같게 맞춘다
+        // (이모지 창 맨 위 줄과 같다).
         IconButton back = new IconButton(this, Icons.BACK, theme.text, theme.keyPressed, "이모지로 돌아가기");
         searchBack = back;
         back.setOnClickListener(v -> showPanel(PANEL_EMOJI));
@@ -933,6 +933,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         searchPill.addView(searchText, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
         LinearLayout.LayoutParams pillLp = new LinearLayout.LayoutParams(0, Ui.chipHeight(this, toolbarHeightPx()), 1f);
         pillLp.leftMargin = Ui.dp(this, 2);
+        pillLp.rightMargin = Ui.dp(this, 2);
         bar.addView(searchPill, pillLp);
         return bar;
     }
@@ -1018,6 +1019,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 Ui.dp(this, prefs.padRightDp()), Ui.dp(this, prefs.padBottomDp()));
         // 도구 막대의 양 끝 버튼이 자판의 양 끝 키와 같은 선에 오도록 '자판 모양'의 좌우 여백을 따른다.
         if (toolbar != null) toolbar.setPadding(Ui.dp(this, prefs.padLeftDp()), 0, Ui.dp(this, prefs.padRightDp()), 0);
+        if (searchBar != null) searchBar.setPadding(Ui.dp(this, prefs.padLeftDp()), 0, Ui.dp(this, prefs.padRightDp()), 0);
+        applyEmojiInsets();
         arrangeToolbar();
         if (topSlot != null) {
             sizeToolbar();
@@ -1495,12 +1498,22 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (clipPanel != null && clipPanelTop != toolbarHeight && panel != PANEL_CLIPBOARD) releaseClipboard();
     }
 
+    /** 이모지 창이 키보드의 여백 설정(좌우·위·아래)을 따르게 한다. 격자와 아래 줄은 자판 키의 가장자리에 맞춘다. */
+    private void applyEmojiInsets() {
+        if (emojiPanel == null) return;
+        int l = Ui.dp(this, prefs.padLeftDp()), r = Ui.dp(this, prefs.padRightDp());
+        int halfGap = Ui.dp(this, prefs.keyGapXDp()) / 2;
+        emojiPanel.setInsets(l, r, l + halfGap, Ui.dp(this, prefs.padTopDp()), r + halfGap,
+                Ui.dp(this, prefs.padBottomDp()));
+    }
+
     private void ensureEmojiPanel() {
         if (emojiPanel != null) return;
         // 패널 맨 위 줄(뒤로 가기·검색창)은 도구 막대 자리라 도구 막대 높이를 따른다.
         emojiPanelTop = toolbarHeight;
         emojiPanel = new EmojiPanel(this, theme, toolbarHeight, this);
         emojiPanel.setSizeLevel(prefs.emojiSize());
+        applyEmojiInsets();
         // 데이터를 읽는 동안 열려도 처음 탭(최근이 있으면 최근 탭)을 바로 고를 수 있게 사용 기록부터 넘긴다.
         emojiPanel.setRecent(EmojiRepository.parseRecent(prefs.recentEmoji()));
         emojiPanel.setPinned(EmojiRepository.parseRecent(prefs.pinnedEmoji()));

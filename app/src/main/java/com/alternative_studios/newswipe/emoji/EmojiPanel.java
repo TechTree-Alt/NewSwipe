@@ -134,7 +134,7 @@ public final class EmojiPanel extends LinearLayout {
         setBackgroundColor(theme.background);
 
         // 위쪽 줄: [←] [검색창]. 화살표는 클립보드 창의 것과 같은 모양·크기다.
-        LinearLayout searchRow = new LinearLayout(context);
+        searchRow = new LinearLayout(context);
         searchRow.setGravity(Gravity.CENTER_VERTICAL);
         searchRow.setPadding(Ui.dp(context, 4), 0, Ui.dp(context, 8), 0);
         IconButton topBack = new IconButton(context, Icons.BACK, theme.text, theme.keyPressed, "키보드로 돌아가기");
@@ -162,6 +162,7 @@ public final class EmojiPanel extends LinearLayout {
         // 검색창은 뒤로 가기 칩과 같은 높이로 줄 가운데에 놓는다 (칩 사이 2dp도 같게).
         LayoutParams searchLp = new LayoutParams(0, Ui.chipHeight(context, topBarHeight), 1f);
         searchLp.leftMargin = Ui.dp(context, 2);
+        searchLp.rightMargin = Ui.dp(context, 2);
         searchRow.addView(search, searchLp);
         addView(searchRow, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, topBarHeight));
 
@@ -173,7 +174,7 @@ public final class EmojiPanel extends LinearLayout {
         addView(gridFrame, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
 
         // 아래쪽 줄: [가/ABC] [분류 탭…] [⌫]
-        LinearLayout bar = new LinearLayout(context);
+        bar = new LinearLayout(context);
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.setPadding(Ui.dp(context, 4), 0, Ui.dp(context, 4), 0);
         back = new TextView(context);
@@ -221,6 +222,25 @@ public final class EmojiPanel extends LinearLayout {
         setRepeating(del);
         bar.addView(del, new LayoutParams(Ui.dp(context, 52), Ui.dp(context, 36)));
         addView(bar, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(context, 46)));
+    }
+
+    private final LinearLayout searchRow, bar;
+
+    /**
+     * 키보드의 여백 설정을 따른다. 맨 위 줄(뒤로 가기·검색창)은 도구 막대처럼 좌우 여백(barLeft·barRight)만큼,
+     * 이모지 격자와 아래 줄('가'·분류 탭·⌫)은 자판 키의 가장자리(keyLeft·keyRight)에 맞춘다.
+     * 격자 위는 자판 위 여백(top)만큼, 아래 줄 밑은 자판 아래 여백(bottom)만큼 띄운다.
+     */
+    public void setInsets(int barLeft, int barRight, int keyLeft, int top, int keyRight, int bottom) {
+        searchRow.setPadding(barLeft, 0, barRight, 0);
+        page.grid.setPadding(keyLeft, top, keyRight, page.grid.getPaddingBottom());
+        bar.setPadding(keyLeft, 0, keyRight, bottom);
+        ViewGroup.LayoutParams lp = bar.getLayoutParams();
+        int h = Ui.dp(getContext(), 46) + bottom;
+        if (lp.height != h) {
+            lp.height = h;
+            bar.setLayoutParams(lp);
+        }
     }
 
     public void setBackLabel(String label) {
