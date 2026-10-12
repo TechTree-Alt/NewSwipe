@@ -1020,7 +1020,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         // 도구 막대의 양 끝 버튼이 자판의 양 끝 키와 같은 선에 오도록 '자판 모양'의 좌우 여백을 따른다.
         if (toolbar != null) toolbar.setPadding(Ui.dp(this, prefs.padLeftDp()), 0, Ui.dp(this, prefs.padRightDp()), 0);
         if (searchBar != null) searchBar.setPadding(Ui.dp(this, prefs.padLeftDp()), 0, Ui.dp(this, prefs.padRightDp()), 0);
-        applyEmojiInsets();
+        applyPanelInsets();
         arrangeToolbar();
         if (topSlot != null) {
             sizeToolbar();
@@ -1498,13 +1498,16 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (clipPanel != null && clipPanelTop != toolbarHeight && panel != PANEL_CLIPBOARD) releaseClipboard();
     }
 
-    /** 이모지 창이 키보드의 여백 설정(좌우·위·아래)을 따르게 한다. 격자와 아래 줄은 자판 키의 가장자리에 맞춘다. */
-    private void applyEmojiInsets() {
-        if (emojiPanel == null) return;
+    /**
+     * 이모지·클립보드 창이 키보드의 여백 설정(좌우·위·아래)을 따르게 한다. 맨 위 줄은 도구 막대와 같은 좌우 여백,
+     * 이모지 격자·아래 줄과 클립보드 카드는 자판 키의 가장자리에 맞춘다.
+     */
+    private void applyPanelInsets() {
         int l = Ui.dp(this, prefs.padLeftDp()), r = Ui.dp(this, prefs.padRightDp());
         int halfGap = Ui.dp(this, prefs.keyGapXDp()) / 2;
-        emojiPanel.setInsets(l, r, l + halfGap, Ui.dp(this, prefs.padTopDp()), r + halfGap,
-                Ui.dp(this, prefs.padBottomDp()));
+        int t = Ui.dp(this, prefs.padTopDp()), b = Ui.dp(this, prefs.padBottomDp());
+        if (emojiPanel != null) emojiPanel.setInsets(l, r, l + halfGap, t, r + halfGap, b);
+        if (clipPanel != null) clipPanel.setInsets(l, r, l + halfGap, t, r + halfGap, b);
     }
 
     private void ensureEmojiPanel() {
@@ -1513,7 +1516,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         emojiPanelTop = toolbarHeight;
         emojiPanel = new EmojiPanel(this, theme, toolbarHeight, this);
         emojiPanel.setSizeLevel(prefs.emojiSize());
-        applyEmojiInsets();
+        applyPanelInsets();
         // 데이터를 읽는 동안 열려도 처음 탭(최근이 있으면 최근 탭)을 바로 고를 수 있게 사용 기록부터 넘긴다.
         emojiPanel.setRecent(EmojiRepository.parseRecent(prefs.recentEmoji()));
         emojiPanel.setPinned(EmojiRepository.parseRecent(prefs.pinnedEmoji()));
@@ -1573,6 +1576,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         // 패널 맨 위 줄(뒤로 가기·제목·모두 지우기)은 도구 막대 자리라 도구 막대 높이를 따른다.
         clipPanelTop = toolbarHeight;
         clipPanel = new ClipboardPanel(this, theme, toolbarHeight, this);
+        applyPanelInsets();
         content.addView(clipPanel, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 keyboardHeight + toolbarHeight));
     }

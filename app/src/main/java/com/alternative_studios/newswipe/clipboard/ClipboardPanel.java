@@ -134,6 +134,18 @@ public final class ClipboardPanel extends LinearLayout {
     }
 
     /**
+     * 키보드의 여백 설정을 따른다. 맨 위 줄(뒤로 가기·제목·모두 지우기, 지우기 확인 줄)은 도구 막대처럼 좌우 여백
+     * (barLeft·barRight)만큼, 항목 카드는 자판 키의 가장자리(keyLeft·keyRight)에 맞춘다.
+     * 카드 목록 위는 자판 위 여백(top)만큼, 아래는 자판 아래 여백(bottom)만큼 띄운다.
+     */
+    public void setInsets(int barLeft, int barRight, int keyLeft, int top, int keyRight, int bottom) {
+        header.setPadding(barLeft, 0, barRight, 0);
+        // 확인 줄의 글은 뒤로 가기 칩 자리만큼 들여 쓴다.
+        confirmRow.setPadding(barLeft + Ui.dp(getContext(), 10), 0, barRight, 0);
+        list.setPadding(keyLeft, top, keyRight, bottom);
+    }
+
+    /**
      * @param enabled 설정에서 기록 저장이 켜져 있는지
      * @param current 지금 클립보드에 있는 텍스트 (기록을 끈 경우에도 보여 준다)
      */
