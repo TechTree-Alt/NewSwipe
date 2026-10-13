@@ -26,6 +26,7 @@ import com.alternative_studios.newswipe.keyboard.FunctionSwipes;
 import com.alternative_studios.newswipe.keyboard.Icons;
 import com.alternative_studios.newswipe.keyboard.KeyboardSwipes;
 import com.alternative_studios.newswipe.keyboard.ToolbarSwipes;
+import com.alternative_studios.newswipe.suggest.DictionaryPack;
 import com.alternative_studios.newswipe.suggest.UsageHistory;
 import com.alternative_studios.newswipe.suggest.UserDictionary;
 import com.alternative_studios.newswipe.ui.Chevron;
@@ -1873,13 +1874,16 @@ public final class SettingsActivity extends Activity {
                         Prefs.SUGGEST_SPACE, prefs.suggestSpace()),
                 toggle("다음 단어 예측",
                         "한글을 띄어 쓴 뒤, 앞 단어 다음에 자주 오는 단어를 미리 보여 줍니다 (예: '좋은' 다음에 하루·아침). "
-                                + "자신 있을 때만 보이며, 그동안은 도구 막대 오른쪽 버튼 자리에 추천이 나옵니다.",
+                                + "자신 있을 때만 보이며, 그동안은 도구 막대 오른쪽 버튼 자리에 추천이 나옵니다. "
+                                + "내가 자주 이어 쓴 말은 그대로 예측하고, 그 밖의 말은 단어 쌍이 든 사전 팩을 가져왔을 때 예측합니다.",
                         Prefs.PREDICT_NEXT, prefs.predictNext()));
         suggest.addView(toggle("단어 추천", "입력 중인 단어에 맞는 단어를 도구 막대에 보여 줍니다. "
                 + "앞 단어와 자주 이어 쓰는 말, 내가 자주 쓰는 말을 먼저 보이고, 초성만 쳐도(ㄱㅅㅎㄴㄷ) 찾습니다. "
                 + "누르면 그 단어로 바꾸고, 학습한 단어를 길게 누르면 학습한 단어에서 지웁니다.",
                 Prefs.SUGGEST_WORDS, prefs.suggestWords(), fullBar));
         suggest.addView(fullBar);
+
+        buildDictionaryPack();
 
         LinearLayout shortcut = section("단축어");
         View shortcutGroup = subGroup(button("단축어 편집", v -> startActivity(new Intent(this, ShortcutEditorActivity.class))));
@@ -1927,6 +1931,82 @@ public final class SettingsActivity extends Activity {
 
         LinearLayout about = section("개인 정보");
         about.addView(note("모든 처리는 기기 안에서만 하며 인터넷을 쓰지 않습니다. 비밀번호·이메일 입력란에서는 학습을 하지 않습니다."));
+    }
+
+    /**
+     * 한국어 사전: 앱에 든 기본 사전 대신 쓸 사전 팩을 가져오거나 지운다. 팩은 사용자가 브라우저로 받은 zip 파일이며
+     * (앱은 인터넷을 쓰지 않는다) 파일 고르기 창으로 가져온다.
+     */
+    private void buildDictionaryPack() {
+        LinearLayout dict = section("한국어 사전");
+        DictionaryPack.Info info = DictionaryPack.installed(getFilesDir());
+        if (info == null) {
+            dict.addView(note("기본 사전을 쓰고 있습니다 (앱에 포함). 단어 추천, 초성 검색, 조사 붙이기, 띄어 쓰지 않고 친 말 추천, "
+                    + "자동 수정, 내 말버릇 학습은 기본 사전으로도 됩니다. 단어가 더 많고 앞 단어와 이어지는 말(단어 쌍)이 든 "
+                    + "사전 팩을 가져오면 다음 단어 예측과 앞 단어에 맞춘 추천이 더해집니다."));
+        } else {
+            StringBuilder b = new StringBuilder();
+            b.append(info.name);
+            if (!info.version.isEmpty()) b.append(" ").append(info.version);
+            b.append("\n단어 ").append(String.format(java.util.Locale.ROOT, "%,d", info.words)).append("개");
+            if (info.pairs > 0) b.append(" · 단어 쌍 ").append(String.format(java.util.Locale.ROOT, "%,d", info.pairs)).append("개");
+            b.append(" · ").append(String.format(java.util.Locale.ROOT, "%.1f", info.bytes / 1048576.0)).append("MB");
+            if (!info.description.isEmpty()) b.append("\n").append(info.description);
+            if (!info.attribution.isEmpty() || !info.license.isEmpty()) {
+                b.append("\n출처: ").append(info.attribution);
+                if (!info.license.isEmpty()) b.append(" (").append(info.license).append(")");
+            }
+            dict.addView(note(b.toString()));
+        }
+        dict.addView(button("사전 팩 받는 곳", v -> openUrl(SOURCE_URL + "/releases")));
+        dict.addView(iconButton("사전 팩 가져오기", Icons.IMPORT, v -> SettingsImport.pick(this, REQ_DICT)));
+        if (info != null) {
+            if (!info.licenseText.isEmpty()) {
+                dict.addView(button("사전 팩의 라이선스 보기", v -> AppTheme.dialogBuilder(this)
+                        .setTitle(info.name)
+                        .setMessage(info.licenseText)
+                        .setPositiveButton("닫기", null)
+                        .show()));
+            }
+            dict.addView(trashButton("기본 사전으로 되돌리기", v -> AppTheme.dialogBuilder(this)
+                    .setTitle("기본 사전으로 되돌리기")
+                    .setMessage("가져온 사전 팩을 지우고 앱에 든 기본 사전을 씁니다. 학습한 단어와 입력 기록은 그대로 남습니다.")
+                    .setPositiveButton("되돌리기", (d, w) -> {
+                        DictionaryPack.remove(getFilesDir());
+                        Toast.makeText(this, "기본 사전으로 되돌렸습니다", Toast.LENGTH_SHORT).show();
+                        recreate();
+                    })
+                    .setNegativeButton("취소", null)
+                    .show()));
+        }
+        dict.addView(note("사전 팩은 tools/make_dict_pack.py로 직접 만들 수도 있습니다. 팩마다 데이터의 출처와 라이선스가 다르니 "
+                + "가져오기 전에 확인하세요."));
+    }
+
+    /** 고른 사전 팩을 검사해 설치한다 (크기가 커서 따로 처리한다). */
+    private void importDictionaryPack(android.net.Uri uri) {
+        Toast.makeText(this, "사전 팩을 확인하는 중입니다…", Toast.LENGTH_SHORT).show();
+        android.content.Context app = getApplicationContext();
+        new Thread(() -> {
+            String message;
+            boolean ok = false;
+            try (java.io.InputStream in = app.getContentResolver().openInputStream(uri)) {
+                if (in == null) throw new java.io.IOException("파일을 열지 못했습니다");
+                DictionaryPack.Info info = DictionaryPack.install(in, app.getFilesDir());
+                message = "'" + info.name + "' 사전을 가져왔습니다";
+                ok = true;
+            } catch (DictionaryPack.InvalidPackException e) {
+                message = "가져올 수 없는 사전 팩입니다: " + e.getMessage();
+            } catch (Exception e) {
+                message = "사전 팩을 가져오지 못했습니다: " + e.getMessage();
+            }
+            String m = message;
+            boolean done = ok;
+            runOnUiThread(() -> {
+                Toast.makeText(app, m, Toast.LENGTH_LONG).show();
+                if (done && !isFinishing()) recreate();
+            });
+        }).start();
     }
 
     /** 한 번에 그리는 학습한 단어 줄 수. 더 있으면 '더 보기'로 이어서 그린다 (수천 줄을 한꺼번에 만들지 않도록). */
@@ -2352,7 +2432,7 @@ public final class SettingsActivity extends Activity {
         return t;
     }
 
-    private static final int REQ_EXPORT = 1, REQ_IMPORT = 2;
+    private static final int REQ_EXPORT = 1, REQ_IMPORT = 2, REQ_DICT = 3;
     private boolean exportWithWords, exportWithEmoji, exportWithClipboard;
 
     /**
@@ -2493,6 +2573,8 @@ public final class SettingsActivity extends Activity {
                 String m = message;
                 runOnUiThread(() -> Toast.makeText(app, m, Toast.LENGTH_LONG).show());
             }).start();
+        } else if (requestCode == REQ_DICT) {
+            importDictionaryPack(uri);
         } else if (requestCode == REQ_IMPORT) {
             SettingsImport.onPicked(this, uri, () -> {
                 importGeneration++;

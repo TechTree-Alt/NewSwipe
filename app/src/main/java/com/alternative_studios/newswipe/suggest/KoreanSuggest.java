@@ -27,8 +27,8 @@ final class KoreanSuggest {
     static double USER_MAX = 0.5, USER_HALF = 300;
     /** 내 기록 안에서 '단어를 쓴 비율'과 '앞 단어 다음에 쓴 비율'의 몫 (나머지가 단어 쌍). */
     static double USER_UNI_SHARE = 0.5;
-    /** 다음 단어 예측을 보여 줄 가장 높은 후보의 최소 확률. */
-    static double PREDICT_MIN = 0.07;
+    /** 다음 단어 예측을 보여 줄 가장 높은 후보의 최소 확률 (사람이 쓴 글로 맞춘 값: 낮으면 자주 보이지만 대부분 틀린다). */
+    static double PREDICT_MIN = 0.25;
     /** 오타 비용 1당 확률에 곱하는 값의 로그 (추천에서 오타가 섞인 접두사 후보, 자동 수정). */
     static double TYPO_PENALTY = 3.0;
     /**
@@ -86,6 +86,11 @@ final class KoreanSuggest {
 
     WordDictionary dict() {
         return dict;
+    }
+
+    /** 단어 쌍이 하나라도 있는 다음 단어 사전을 쓰는지 (기본 사전의 것은 빈도 기준만 담고 단어 쌍이 없다). */
+    boolean hasNextWords() {
+        return next != null && next.pairs() > 0;
     }
 
     /** 빈도(100만 어절당)가 perMillion 이상인 가장 낮은 사전 점수. */

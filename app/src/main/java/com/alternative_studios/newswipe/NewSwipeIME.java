@@ -961,6 +961,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         cfgPredict = prefs.predictNext();
         suggester.setUserEnabled(cfgLearn);
         suggester.setKeyRows(KeyboardLayout.koreanLetterRows(prefs));
+        if (suggester.packChanged()) {
+            // 설정에서 사전 팩을 가져오거나 지웠다: 읽어 둔 사전을 놓고 필요할 때 새 사전을 읽는다.
+            suggester.release();
+            warmingKo = warmingEn = false;
+        }
         feedback.configure(prefs);
         if (emojiPanel != null) emojiPanel.setSizeLevel(prefs.emojiSize());
         applyResultSize();

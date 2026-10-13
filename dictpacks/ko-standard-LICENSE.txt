@@ -1,0 +1,21 @@
+NewSwipe 한국어 표준 사전 팩 (ko-standard)
+
+이 팩의 단어 사전(dict_ko.bin)과 다음 단어 사전(dict_ko_next.bin)은 아래 자료에서 단어와 이어 나온 두 단어의 빈도를
+세어 만든 것입니다. 문장 원문은 들어 있지 않습니다. tools/build_ko_model.py로 다시 만들 수 있습니다.
+
+1. Leipzig Corpora Collection - Korean news 2022, web 2020, web 2015 corpora (1M sentences each)
+   License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+   https://creativecommons.org/licenses/by/4.0/
+   D. Goldhahn, T. Eckart & U. Quasthoff: Building Large Monolingual Dictionaries at the Leipzig Corpora
+   Collection: From 100 to 200 Languages. LREC 2012. https://wortschatz.uni-leipzig.de
+   Changes: word and word-pair frequencies were counted, filtered (Hangul only, profanity removed),
+   pruned and quantized; mixed with the sources below.
+
+2. Naver sentiment movie corpus (NSMC), ratings_train.txt - Lucy Park
+   License: CC0 1.0 Universal (public domain dedication)  https://github.com/e9t/nsmc
+   Used for colloquial style; words containing movie-related topic words were left out.
+
+3. NewSwipe의 구어체 보완 목록·활용형 목록·구어체 문장 목록 (tools/ko_colloquial.txt, ko_conjugated.txt, ko_phrases.txt)
+   License: Apache License 2.0 (NewSwipe 저장소와 같음)
+
+이 팩 전체는 CC BY 4.0으로 배포합니다. 다시 배포할 때는 위 출처를 함께 밝혀 주세요.

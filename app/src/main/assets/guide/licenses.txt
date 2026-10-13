@@ -27,6 +27,17 @@ License: https://creativecommons.org/licenses/by/4.0/
 
 변경 사항: 한글로만 된 단어만 남기고 비속어를 뺐으며, 빈도를 평균 내어 1바이트로 줄이고 많이 쓰이는 단어만 남긴 뒤, 직접 쓴 구어 표현과 활용형을 더했습니다.
 
+## Naver sentiment movie corpus (NSMC)
+한국어 기본 사전의 구어체 단어 빈도
+CC0 1.0
+~~~
+Lucy Park, ratings_train.txt. https://github.com/e9t/nsmc
+License: https://creativecommons.org/publicdomain/zero/1.0/
+
+영화 리뷰의 말투(구어체 어휘)를 가져오려고 섞었으며, 영화와 관련된 주제어가 든 단어는 빼고 셌습니다.
+
+가져온 사전 팩의 출처와 라이선스는 '추천, 학습 및 완성 > 한국어 사전'에서 볼 수 있습니다.
+
 ## SymSpell (en-80k)
 영어 단어 추천 사전의 단어 빈도
 MIT License

@@ -193,6 +193,20 @@ public final class WordSuggester {
         return korean ? ko != null || koFailed : en != null || enFailed;
     }
 
+    /** 한국어 사전을 읽을 때의 {@link DictionaryPack#changes()}. */
+    private volatile int koPackChanges = -1;
+
+    /** 한국어 사전을 읽은 뒤 사전 팩을 가져오거나 지웠는지 (그러면 release()하고 다시 읽는다). */
+    public boolean packChanged() {
+        return (ko != null || koFailed) && koPackChanges != DictionaryPack.changes();
+    }
+
+    /** 지금 쓰는 한국어 사전에 다음 단어 정보가 있는지 (사전 팩을 가져왔을 때). */
+    public boolean hasNextWords() {
+        KoreanSuggest m = koModel;
+        return m != null && m.hasNextWords();
+    }
+
     /** 기본 사전을 놓아 준다. 화면 스레드에서 불러도 기다리지 않는다. */
     public void release() {
         generation++;
@@ -210,7 +224,17 @@ public final class WordSuggester {
             d = korean ? ko : en;
             if (d != null || (korean ? koFailed : enFailed)) return d;
             int gen = generation;
-            try (InputStream in = context.getAssets().open(korean ? "dict_ko.bin" : "dict_en.bin")) {
+            NextWords next = null;
+            DictionaryPack.Loaded pack = null;
+            if (korean) {
+                // 사전 팩을 가져왔으면 그것을 쓴다. 없거나 읽지 못하면 앱에 든 기본 사전을 쓴다.
+                koPackChanges = DictionaryPack.changes();
+                pack = DictionaryPack.load(context.getFilesDir());
+            }
+            if (pack != null) {
+                d = pack.dict;
+                next = pack.next;
+            } else try (InputStream in = context.getAssets().open(korean ? "dict_ko.bin" : "dict_en.bin")) {
                 d = WordDictionary.load(in);
             } catch (IOException | RuntimeException e) {
                 if (korean) koFailed = true;
@@ -221,9 +245,8 @@ public final class WordSuggester {
                 }
                 return null;
             }
-            NextWords next = null;
-            if (korean) {
-                // 다음 단어 사전은 없거나 깨져 있어도 단어 추천은 쓴다 (앞 단어를 보지 않을 뿐이다).
+            if (korean && pack == null) {
+                // 기본 사전의 다음 단어 사전은 단어 쌍 없이 빈도 기준만 담는다. 없거나 깨져 있어도 단어 추천은 쓴다.
                 try (InputStream in = context.getAssets().open("dict_ko_next.bin")) {
                     next = NextWords.load(in, d.size());
                 } catch (IOException | RuntimeException e) {

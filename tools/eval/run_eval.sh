@@ -10,7 +10,7 @@ SRC=$ROOT/app/src/main/java/com/alternative_studios/newswipe
 STUB=$OUT/stub/android/content
 mkdir -p "$STUB/res"
 # WordSuggester가 쓰는 Android 클래스만 흉내 낸다 (평가에서는 쓰지 않는다).
-echo 'package android.content; public abstract class Context { public abstract Context getApplicationContext(); public abstract android.content.res.AssetManager getAssets(); }' > "$STUB/Context.java"
+echo 'package android.content; public abstract class Context { public abstract Context getApplicationContext(); public abstract android.content.res.AssetManager getAssets(); public abstract java.io.File getFilesDir(); }' > "$STUB/Context.java"
 echo 'package android.content.res; public abstract class AssetManager { public abstract java.io.InputStream open(String n) throws java.io.IOException; }' > "$STUB/res/AssetManager.java"
 javac -nowarn -encoding UTF-8 -d "$OUT/classes" "$STUB/Context.java" "$STUB/res/AssetManager.java" \
     "$SRC"/suggest/*.java "$SRC"/hangul/*.java "$ROOT/tools/eval/SuggestEval.java" 2>&1 | grep -v '^Note:\|JAVA_TOOL_OPTIONS' || true

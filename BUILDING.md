@@ -32,6 +32,34 @@ NewSwipe를 직접 빌드하고 서명하는 방법입니다. 사용법은 [READ
 - 서명 정보를 주지 않으면 릴리스 APK·AAB도 **디버그 키로 서명**됩니다. 디버그 키로 서명한 AAB는 Play에 올릴 수 없습니다. 그 APK는 내 키로 서명한 APK 위에 덮어 설치할 수 없습니다 (서명이 달라 업데이트가 거절됩니다).
 - 처음 빌드할 때 Android SDK 라이선스에 동의하지 않았다면 `sdkmanager --licenses`로 동의해야 합니다.
 
+## 한국어 사전과 사전 팩
+
+앱에 든 한국어 기본 사전(`app/src/main/assets/dict_ko.bin`, 4만 단어)과 설정에서 가져오는 사전 팩(`dictpacks/ko-standard.zip`,
+8만 단어 + 단어 쌍 40만 개)은 `tools/build_ko_model.py`로 만듭니다. 말뭉치는 저장소에 넣지 않으며, 만드는 명령과 받는 곳은
+`tools/build_ko_model.py` 맨 위에 적혀 있습니다. NSMC(`ratings_train.txt`, CC0)는 한 번 센 뒤 `--mix 센결과.pkl:0.5
+--mix-exclude tools/ko_mix_exclude_nsmc.txt`로 섞습니다.
+
+```bash
+# 기본 사전 (단어 쌍 없이 빈도 기준만 담은 dict_ko_next.bin도 함께 나온다)
+python3 tools/build_ko_model.py out_base --cache counts.pkl --mix nsmc.pkl:0.5 --mix-exclude tools/ko_mix_exclude_nsmc.txt \
+    --top 40000 --pairs 0 --extra tools/ko_colloquial.txt --extra tools/ko_conjugated.txt --phrases tools/ko_phrases.txt 말뭉치들...
+cp out_base/dict_ko.bin out_base/dict_ko_next.bin app/src/main/assets/
+
+# 표준 사전 팩
+python3 tools/build_ko_model.py out_pack ... --top 80000 --pairs 400000 ...
+python3 tools/make_dict_pack.py out_pack dictpacks/ko-standard.zip --name "표준 사전" --version 2026.10 \
+    --license "CC BY 4.0" --attribution "Leipzig Corpora Collection (CC BY 4.0), NSMC (CC0), NewSwipe" \
+    --license-file dictpacks/ko-standard-LICENSE.txt
+
+# 성능 확인 (실제 조합기로 한 키씩 쳐서 키 절약률을 잰다)
+tools/eval/run_eval.sh out_pack tools/eval/ko_chat_test.txt
+```
+
+사전 팩은 앱에 들어가지 않습니다. 릴리스를 만들 때 `dictpacks/ko-standard.zip`을 GitHub 릴리스에 첨부하면, 설정의 '사전 팩 받는 곳'이
+그 페이지를 엽니다. 팩 형식(zip 안의 `manifest.properties`, `dict_ko.bin`, `dict_ko_next.bin`, `LICENSE.txt`)은
+`app/src/main/java/com/alternative_studios/newswipe/suggest/DictionaryPack.java`에 설명되어 있습니다. 직접 만든 팩도 같은 방법으로
+가져올 수 있으며, 넣은 데이터의 라이선스와 출처는 `--license`, `--attribution`에 정확히 적어 주세요.
+
 ## 릴리스 서명
 
 릴리스 키 정보는 환경 변수로 받습니다. `NEWSWIPE_KEYSTORE`가 있을 때만 릴리스 서명을 쓰고, 없으면 디버그 키를 씁니다 (`app/build.gradle.kts`).
