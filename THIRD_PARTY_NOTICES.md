@@ -47,13 +47,16 @@ SPDX-License-Identifier: Unicode-3.0
 ## Word suggestion dictionaries
 
 `app/src/main/assets/dict_ko.bin` and `dict_en.bin` are word-frequency lists built by
-`tools/build_ko_dict.py` and `tools/build_en_dict.py`. Changes made: words were filtered
-(Hangul-only / Latin-only, profanity removed), frequencies averaged and quantized to one byte,
-the lists were truncated to the most frequent entries, and hand-written colloquial words and
-generated conjugated forms were added.
+`tools/build_ko_model.py` (Korean) and `tools/build_en_dict.py`. `dict_ko_next.bin` is a list of
+word pairs (a word and the words that often follow it) built by `tools/build_ko_model.py`.
+Changes made: words were filtered (Hangul-only / Latin-only, profanity removed), frequencies
+averaged and quantized to one byte, the lists were truncated to the most frequent entries,
+hand-written colloquial words, conjugated forms and conversational phrases were added, and word
+pairs were counted from the corpus sentences, pruned to the 100,000 most informative pairs and
+quantized.
 
-- Korean: word frequencies from the Leipzig Corpora Collection (Korean news 2022 and web 2020
-  corpora, 1M sentences each), licensed under CC BY 4.0.
+- Korean: word and word-pair frequencies from the Leipzig Corpora Collection (Korean news 2022,
+  web 2020 and web 2015 corpora, 1M sentences each), licensed under CC BY 4.0.
   D. Goldhahn, T. Eckart & U. Quasthoff: *Building Large Monolingual Dictionaries at the Leipzig
   Corpora Collection: From 100 to 200 Languages.* LREC 2012. <https://wortschatz.uni-leipzig.de>
   License: <https://creativecommons.org/licenses/by/4.0/>

@@ -6,6 +6,7 @@ import android.content.ClipboardManager;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Typeface;
 import android.net.Uri;
 import android.inputmethodservice.InputMethodService;
 import android.os.Build;
@@ -60,6 +61,7 @@ import com.alternative_studios.newswipe.ui.SwipeVertical;
 import com.alternative_studios.newswipe.ui.SwipeStrip;
 import com.alternative_studios.newswipe.suggest.Shortcuts;
 import com.alternative_studios.newswipe.suggest.TextMirror;
+import com.alternative_studios.newswipe.suggest.UsageHistory;
 import com.alternative_studios.newswipe.suggest.UserDictionary;
 import com.alternative_studios.newswipe.suggest.WordSuggester;
 import com.alternative_studios.newswipe.ui.Ui;
@@ -164,7 +166,15 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private String searchComposing = "";
     private WordSuggester suggester;
     private UserDictionary userWords;
+    /** 한국어 단어와 이어 쓴 단어의 기록 (추천 순서를 내 말버릇에 맞춘다). */
+    private UsageHistory usageHistory;
     private String[] suggestions = new String[0];
+    /** 지금 추천란의 단어가 앞 단어만 보고 예측한 다음 단어인지 (누르면 지우지 않고 커서 자리에 넣는다). */
+    private boolean predictionShown;
+    /** 스페이스를 누르면 자동 수정될 단어가 있는 추천 칸 (굵게 보인다). 없으면 -1. */
+    private int correctionShown = -1;
+    /** 지금 입력란의 종류 (WordSuggester.FIELD_*: 검색·보통). 한국어 추천 순위에 쓴다. */
+    private int fieldKind = WordSuggester.FIELD_NORMAL;
     /** 지금 추천란에 보이는 것이 단축어의 문장인지 (추천란 전체를 이 문장 하나가 채운다). */
     private boolean shortcutShown;
     private Shortcuts shortcuts = Shortcuts.of(null);
@@ -200,7 +210,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private boolean shortcutAllowed;   // 현재 입력란에서 단축어를 쓸 수 있는지 (비밀번호만 제외, 이메일 입력란은 허용)
     private boolean suggestAllowed;   // 현재 입력란에서 추천을 쓸 수 있는지 (비밀번호·이메일 등은 제외, 인터넷 주소 입력란은 허용)
     /** 설정값 (applySettings에서 읽어 둔다. 키마다 설정 파일을 읽지 않기 위해). */
-    private boolean cfgSuggest, cfgAutoCorrect, cfgLearn;
+    private boolean cfgSuggest, cfgAutoCorrect, cfgLearn, cfgPredict;
     /** 사전이 필요한지 (단어 추천이나 자동 수정 중 하나라도 켜져 있으면). */
     private boolean cfgWords;
     /** 커서 앞 글자를 따라 적어 둔 것. 추천을 찾을 때 앱에 묻는 횟수를 줄인다. */
@@ -234,7 +244,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         korean = prefs.korean();
         emojiRepo = new EmojiRepository(this, io);
         userWords = UserDictionary.shared(getFilesDir());
-        suggester = new WordSuggester(this, userWords);
+        usageHistory = UsageHistory.shared(getFilesDir());
+        suggester = new WordSuggester(this, userWords, usageHistory);
         clipHistory = new ClipboardHistory(new File(getFilesDir(), "clipboard.txt"));
         clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
         if (clipboard != null) clipboard.addPrimaryClipChangedListener(this);
@@ -292,7 +303,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         main.removeCallbacksAndMessages(null);
         dismissForgetDialog();
         // 이미 맡긴 단어 기록이 끝난 뒤에 저장하고 내리도록 같은 작업 줄에 넣는다 (shutdown은 남은 작업을 마저 한다).
-        runIo(userWords::release);
+        runIo(this::releaseLearned);
         io.shutdown();
         searchSeq++;   // 지금 돌고 있는 검색이 끝나서 보내는 결과도 버린다
         searchIo.shutdownNow();   // 남은 검색은 보여 줄 곳이 없다
@@ -308,7 +319,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             if (!isInputViewShown()) {
                 suggester.release();
                 warmingKo = warmingEn = false;
-                runIo(userWords::release);
+                runIo(this::releaseLearned);
                 if (panel != PANEL_CLIPBOARD) runIo(clipHistory::release);
             }
         }
@@ -327,7 +338,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         pruneClipboard();
         suggester.release();
         warmingKo = warmingEn = false;
-        runIo(userWords::release);
+        runIo(this::releaseLearned);
         correctionIgnored.clear();
     };
 
@@ -947,7 +958,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         cfgAutoCorrect = prefs.autoCorrect();   // 단어 추천과 따로 켜고 끈다
         cfgWords = cfgSuggest || cfgAutoCorrect;
         cfgLearn = cfgWords && prefs.learnWords();
+        cfgPredict = prefs.predictNext();
         suggester.setUserEnabled(cfgLearn);
+        suggester.setKeyRows(KeyboardLayout.koreanLetterRows(prefs));
         feedback.configure(prefs);
         if (emojiPanel != null) emojiPanel.setSizeLevel(prefs.emojiSize());
         applyResultSize();
@@ -1012,7 +1025,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             warmingKo = warmingEn = false;
             if (panel == PANEL_KEYBOARD) scheduleSuggest();   // 단축어는 단어 추천을 꺼도 쓴다
         }
-        if (wasLearn && !cfgLearn) runIo(userWords::release);   // 학습을 끄면 학습한 단어도 메모리에서 내린다
+        if (wasLearn && !cfgLearn) runIo(this::releaseLearned);   // 학습을 끄면 학습한 단어도 메모리에서 내린다
         float rows = 4 + (prefs.numberRow() ? 0.78f : 0f);
         keyboard.setKeyGaps(Ui.dp(this, prefs.keyGapXDp()), Ui.dp(this, prefs.keyGapYDp()));
         keyboard.setInsets(Ui.dp(this, prefs.padLeftDp()), Ui.dp(this, prefs.padTopDp()),
@@ -1162,6 +1175,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (!restarting || panel == PANEL_SEARCH) showPanel(PANEL_KEYBOARD);
         int cls = info.inputType & InputType.TYPE_MASK_CLASS;
         suggestAllowed = suggestAllowedFor(info);
+        fieldKind = fieldKindFor(info);
         shortcutAllowed = shortcutAllowedFor(info);
         domainField = domainFieldFor(info);
         passwordField = passwordFieldFor(info);
@@ -1198,7 +1212,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (emojiPanel != null) emojiPanel.dismissTones();
         if (clipPanel != null) clipPanel.dismissDialog();
         dismissForgetDialog();
-        if (cfgLearn) runIo(userWords::save);   // 바뀐 것이 있을 때만 쓴다
+        if (cfgLearn) runIo(() -> {   // 바뀐 것이 있을 때만 쓴다
+            userWords.save();
+            usageHistory.save();
+        });
     }
 
     @Override
@@ -2196,6 +2213,23 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
     }
 
+    /** 한국어 추천 순위에 쓰는 입력란 종류: 검색 칸(주소창, 검색 동작)에서는 조사가 붙은 말을 뒤로 미룬다. */
+    private static int fieldKindFor(EditorInfo info) {
+        int variation = info.inputType & InputType.TYPE_MASK_VARIATION;
+        int action = info.imeOptions & EditorInfo.IME_MASK_ACTION;
+        if ((info.inputType & InputType.TYPE_MASK_CLASS) != InputType.TYPE_CLASS_TEXT) return WordSuggester.FIELD_NORMAL;
+        if (variation == InputType.TYPE_TEXT_VARIATION_URI || action == EditorInfo.IME_ACTION_SEARCH) {
+            return WordSuggester.FIELD_SEARCH;
+        }
+        return WordSuggester.FIELD_NORMAL;
+    }
+
+    /** 학습한 단어와 쓴 기록을 저장하고 메모리에서 내린다 (백그라운드 스레드에서). */
+    private void releaseLearned() {
+        userWords.release();
+        usageHistory.release();
+    }
+
     /** 이메일 주소나 인터넷 주소(웹 브라우저의 주소창 등)를 적는 입력란인지. */
     private static boolean domainFieldFor(EditorInfo info) {
         int type = info.inputType;
@@ -2250,7 +2284,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (!cfgWords || !suggestAllowed || windowHidden) return;
         final boolean lang = korean;
         if (lang ? warmingKo : warmingEn) return;
-        if (suggester.isSettled(lang) && (!cfgLearn || userWords.isLoaded())) return;
+        if (suggester.isSettled(lang) && (!cfgLearn || (userWords.isLoaded() && suggester.historyLoaded()))) return;
         if (lang) warmingKo = true;
         else warmingEn = true;
         final int gen = suggester.generation();
@@ -2302,14 +2336,16 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         // 입력 중인 단어가 정해 둔 단축어면 기존 추천은 모두 숨기고 그 문장이 추천란 전체를 채운다.
         String phrase = shortcutsOn() ? shortcuts.lookup(word) : null;
         if (phrase != null) {
-            applySuggestions(word, new String[]{phrase}, true);
+            applySuggestions(word, new String[]{phrase}, true, -1, false);
             return;
         }
         if (!suggestOn()) {
             showSuggestions(word, new String[0]);
             return;
         }
-        if (word.isEmpty()) {
+        // 입력 중인 단어가 없으면 한글은 앞 단어 다음에 올 말을 예측한다 (설정에서 켰을 때).
+        boolean predict = word.isEmpty() && korean && cfgPredict;
+        if (word.isEmpty() && !predict) {
             showSuggestions(word, new String[0]);
             return;
         }
@@ -2319,12 +2355,34 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             showSuggestions(word, new String[0]);
             return;
         }
-        if (cfgLearn && !userWords.isLoaded()) warmSuggester();   // 학습한 단어를 다시 읽어 둔다 (설정에서 고친 뒤 등)
-        showSuggestions(word, suggester.suggestIfLoaded(word, korean));
+        // 학습한 단어·쓴 기록을 다시 읽어 둔다 (설정에서 고친 뒤 등)
+        if (cfgLearn && (!userWords.isLoaded() || !suggester.historyLoaded())) warmSuggester();
+        String prev = korean ? prevWordBeforeCursor(ic) : null;
+        if (predict) {
+            showSuggestions(word, suggester.predictIfLoaded(prev, fieldKind));
+            return;
+        }
+        // 자동 수정이 켜져 있으면 스페이스에서 고칠 단어를 맨 앞에 굵게 보인다 (이번에 되돌린 단어는 고치지 않으니 보이지 않는다).
+        syncIgnoredWithUserWords();
+        boolean preview = autoCorrectActive() && !correctionIgnored.contains(word);
+        showSuggestions(word, suggester.suggestIfLoaded(word, prev, korean, fieldKind, preview));
+    }
+
+    /** 입력 중인 단어 바로 앞의 한글 단어 (없으면 null). 따라 적은 글자로 알 수 없을 때만 앱에 묻는다. */
+    private String prevWordBeforeCursor(InputConnection ic) {
+        String all = mirror.text();
+        if (all != null) return WordSuggester.previousWord(all);
+        CharSequence before = ic.getTextBeforeCursor(TextMirror.KEEP, 0);
+        mirror.fill(before, TextMirror.KEEP);
+        return WordSuggester.previousWord(before);
     }
 
     private void showSuggestions(String word, String[] found) {
-        applySuggestions(word, found, false);
+        applySuggestions(word, found, false, -1, false);
+    }
+
+    private void showSuggestions(String word, WordSuggester.Suggestions s) {
+        applySuggestions(word, s.words, false, s.correction, s.prediction);
     }
 
     /** 단축어의 문장이 추천란 전체를 채울 때는 첫 칸만 보이고 길면 뒤를 …로 줄인다. 아니면 칸 모두 같은 폭이고 길면 앞을 줄인다. */
@@ -2375,11 +2433,18 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
     }
 
-    private void applySuggestions(String word, String[] found, boolean shortcut) {
+    /**
+     * @param correction 스페이스에서 자동 수정될 단어의 칸 (굵게 보인다, 없으면 -1)
+     * @param prediction 입력 중인 단어 없이 예측한 다음 단어인지
+     */
+    private void applySuggestions(String word, String[] found, boolean shortcut, int correction, boolean prediction) {
         suggestWord = word;
-        if (shortcut == shortcutShown && java.util.Arrays.equals(found, suggestions)) return;   // 그대로면 다시 그리지 않는다
+        predictionShown = prediction && found.length > 0;
+        if (shortcut == shortcutShown && correction == correctionShown
+                && java.util.Arrays.equals(found, suggestions)) return;   // 그대로면 다시 그리지 않는다
         boolean wasShowing = suggestions.length > 0;
         suggestions = found;
+        correctionShown = correction;
         if (shortcut != shortcutShown) {
             shortcutShown = shortcut;
             setShortcutLook(shortcut);
@@ -2389,6 +2454,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             TextView t = suggestViews[i];
             CharSequence text = i < found.length ? found[i] : "";
             if (!TextUtils.equals(t.getText(), text)) t.setText(text);
+            Typeface face = i == correction ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT;
+            if (t.getTypeface() != face) t.setTypeface(face);
             t.setEnabled(i < found.length);
         }
         boolean showing = found.length > 0;
@@ -2401,8 +2468,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private void clearSuggestions() {
         if (main != null) main.removeCallbacks(suggestRunnable);
         suggestWord = "";
+        predictionShown = false;
         if (suggestions.length == 0) return;
         suggestions = new String[0];
+        correctionShown = -1;
         if (shortcutShown) {
             shortcutShown = false;
             setShortcutLook(false);
@@ -2541,12 +2610,16 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private void applySuggestion(int index) {
         if (index >= suggestions.length) return;
         String replacement = suggestions[index];
+        if (predictionShown) {
+            applyPrediction(replacement);
+            return;
+        }
         correctedTo = null;
         commitComposing();
         InputConnection ic = getCurrentInputConnection();
         if (ic == null) return;
-        CharSequence before = ic.getTextBeforeCursor(32, 0);
-        mirror.fill(before, 32);
+        CharSequence before = ic.getTextBeforeCursor(TextMirror.KEEP, 0);
+        mirror.fill(before, TextMirror.KEEP);
         String word = before == null ? "" : WordSuggester.currentWord(before, korean);
         if (word.isEmpty()) {
             // 그사이 단어가 끝났거나 커서가 옮겨졌다. 엉뚱한 글자를 지우지 않도록 넣지 않는다.
@@ -2562,7 +2635,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         ic.commitText(inserted, 1);
         ic.endBatchEdit();
         mirror.replaceTail(word.length(), inserted);
-        if (!shortcutShown) learnWord(replacement, false);   // 단축어의 문장은 학습하지 않는다
+        // 단축어의 문장은 학습하지 않는다
+        if (!shortcutShown) learnWord(replacement, korean ? WordSuggester.previousWord(before) : null, false);
         lastWasSpace = withSpace;
         if (withSpace) lastSpaceTime = SystemClock.uptimeMillis();
         composer.reset();
@@ -2571,18 +2645,60 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         updateAutoCap();
     }
 
-    /** 추천을 길게 누르면: 학습한 단어면 학습한 단어에서 지운다. */
+    /** 예측한 다음 단어를 눌렀을 때: 지울 글자 없이 커서 자리에 넣고 (설정에 따라) 띄어쓴다. */
+    private void applyPrediction(String replacement) {
+        correctedTo = null;
+        InputConnection ic = getCurrentInputConnection();
+        if (ic == null) return;
+        CharSequence before = ic.getTextBeforeCursor(TextMirror.KEEP, 0);
+        mirror.fill(before, TextMirror.KEEP);
+        String prev = WordSuggester.previousWord(before);
+        if (!composer.isEmpty() || prev == null || !WordSuggester.currentWord(before, true).isEmpty()) {
+            // 그사이 글자를 쳤거나 커서가 옮겨졌다. 엉뚱한 자리에 넣지 않는다.
+            clearSuggestions();
+            scheduleSuggest();
+            return;
+        }
+        boolean withSpace = prefs.suggestSpace();
+        String inserted = withSpace ? replacement + " " : replacement;
+        ic.commitText(inserted, 1);
+        mirror.commit(inserted);
+        learnWord(replacement, prev, false);
+        lastWasSpace = withSpace;
+        if (withSpace) lastSpaceTime = SystemClock.uptimeMillis();
+        clearSuggestions();
+        updateAutoCap();
+    }
+
+    /** 추천을 길게 누르면: 학습한 단어면 학습한 단어에서 지운다. 기본 사전 단어는 내 입력 기록만 지운다. */
     private boolean forgetSuggestion(int index) {
         if (index >= suggestions.length || !cfgLearn || shortcutShown) return false;
         final String word = suggestions[index];
         final boolean lang = korean;
         if (!userWords.isKnownIfLoaded(word, lang)) {
+            if (lang && usageHistory.countIfLoaded(word) > 0) {
+                // 기본 사전 단어지만 내가 써서 앞으로 나온 단어: 내 입력 기록만 지워 원래 순서로 돌린다.
+                feedback.onKey(null);
+                Runnable forget = () -> runIo(() -> {
+                    usageHistory.remove(word);
+                    main.post(() -> {
+                        Toast.makeText(this, "'" + word + "'의 입력 기록을 지웠습니다", Toast.LENGTH_SHORT).show();
+                        updateSuggestions();
+                    });
+                });
+                if (!prefs.confirmLearnedDelete()
+                        || !confirmOnBar("'" + word + "'의 입력 기록을 지울까요?", "지우기", TextUtils.TruncateAt.MIDDLE, forget)) {
+                    forget.run();
+                }
+                return true;
+            }
             Toast.makeText(this, "기본 사전의 단어라 지울 수 없습니다", Toast.LENGTH_SHORT).show();
             return true;
         }
         feedback.onKey(null);
         Runnable delete = () -> runIo(() -> {
             userWords.remove(word, lang);
+            if (lang) usageHistory.remove(word);
             main.post(() -> {
                 Toast.makeText(this, "'" + word + "'" + WordSuggester.objectParticle(word) + " 삭제했습니다",
                         Toast.LENGTH_SHORT).show();
@@ -2660,31 +2776,34 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
      */
     private void learnCurrentWord(CharSequence before) {
         if (!learningOn()) return;
-        String word;
+        String word, prev;
         if (before != null) {
             word = WordSuggester.currentWord(before, korean);
+            prev = korean ? WordSuggester.previousWord(before) : null;
         } else {
             InputConnection ic = getCurrentInputConnection();
             if (ic == null) return;
             word = wordBeforeCursor(ic);
+            prev = korean && !word.isEmpty() ? prevWordBeforeCursor(ic) : null;
         }
         if (word.isEmpty()) return;
         // 자동 수정을 되돌려 이번에 그냥 두는 단어는 되돌릴 때만 센다 (두 번 되돌려야 학습되도록).
         syncIgnoredWithUserWords();
         if (cfgAutoCorrect && correctionIgnored.contains(word)) return;
-        learnWord(word, false);
+        learnWord(word, prev, false);
     }
 
     /** 단어 기록은 파일을 읽고 쓸 수 있어 백그라운드에서 한다. */
     /** 지금 입력란에서 단어를 학습해도 되는지 (IME_FLAG_NO_PERSONALIZED_LEARNING이 없을 때). */
     private boolean learnAllowed = true;
 
-    private void learnWord(String word, boolean strong) {
+    /** prev = 바로 앞 단어 (한글만 쓴다, 없으면 null). */
+    private void learnWord(String word, String prev, boolean strong) {
         if (!cfgLearn || !suggestAllowed || !learnAllowed) return;
         final boolean lang = korean;
         runIo(() -> {
-            suggester.learn(word, lang, strong);
-            if (userWords.needsSave()) userWords.save();
+            suggester.learn(word, prev, lang, strong);
+            suggester.saveIfNeeded();
         });
     }
 
@@ -2715,7 +2834,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             warmSuggester();
             return false;
         }
-        String fixed = suggester.autoCorrect(word, korean);
+        String fixed = suggester.autoCorrect(word, korean ? WordSuggester.previousWord(before) : null, korean, fieldKind);
         if (fixed == null) return false;
         replaceBeforeCursor(ic, word, fixed + " ");
         mirror.replaceTail(word.length(), fixed + " ");
@@ -2769,7 +2888,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         mirror.replaceTail(to.length() + 1, from);
         syncIgnoredWithUserWords();
         correctionIgnored.add(from);
-        learnWord(from, false);   // 되돌릴 때마다 한 번씩 센다. 두 번 되돌리면 학습되어 더는 고치지 않는다.
+        learnWord(from, null, false);   // 되돌릴 때마다 한 번씩 센다. 두 번 되돌리면 학습되어 더는 고치지 않는다.
         scheduleSuggest();
         return true;
     }

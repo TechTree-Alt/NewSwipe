@@ -26,6 +26,7 @@ import com.alternative_studios.newswipe.keyboard.FunctionSwipes;
 import com.alternative_studios.newswipe.keyboard.Icons;
 import com.alternative_studios.newswipe.keyboard.KeyboardSwipes;
 import com.alternative_studios.newswipe.keyboard.ToolbarSwipes;
+import com.alternative_studios.newswipe.suggest.UsageHistory;
 import com.alternative_studios.newswipe.suggest.UserDictionary;
 import com.alternative_studios.newswipe.ui.Chevron;
 import com.alternative_studios.newswipe.ui.ExpressiveSlider;
@@ -1869,8 +1870,13 @@ public final class SettingsActivity extends Activity {
                 Prefs.SUGGEST_FULL_BAR, prefs.suggestFullBar()),
                 toggle("추천 단어 뒤에 공백 포함",
                         "추천 단어를 눌러 입력할 때 단어 뒤에 공백을 붙입니다. 한글과 영어 모두에 적용되며, 끄면 공백 없이 단어만 입력됩니다.",
-                        Prefs.SUGGEST_SPACE, prefs.suggestSpace()));
+                        Prefs.SUGGEST_SPACE, prefs.suggestSpace()),
+                toggle("다음 단어 예측",
+                        "한글을 띄어 쓴 뒤, 앞 단어 다음에 자주 오는 단어를 미리 보여 줍니다 (예: '좋은' 다음에 하루·아침). "
+                                + "자신 있을 때만 보이며, 그동안은 도구 막대 오른쪽 버튼 자리에 추천이 나옵니다.",
+                        Prefs.PREDICT_NEXT, prefs.predictNext()));
         suggest.addView(toggle("단어 추천", "입력 중인 단어에 맞는 단어를 도구 막대에 보여 줍니다. "
+                + "앞 단어와 자주 이어 쓰는 말, 내가 자주 쓰는 말을 먼저 보이고, 초성만 쳐도(ㄱㅅㅎㄴㄷ) 찾습니다. "
                 + "누르면 그 단어로 바꾸고, 학습한 단어를 길게 누르면 학습한 단어에서 지웁니다.",
                 Prefs.SUGGEST_WORDS, prefs.suggestWords(), fullBar));
         suggest.addView(fullBar);
@@ -1888,6 +1894,7 @@ public final class SettingsActivity extends Activity {
 
         LinearLayout learn = section("입력한 단어 학습");
         learn.addView(toggle("입력한 단어 학습", "내가 자주 입력하는 단어를 기억해 추천에 먼저 보여 주고 자동 수정에서 빼 줍니다. "
+                + "한글은 자주 쓴 단어와 이어 쓴 단어의 기록으로 추천 순서도 내 말버릇에 맞춥니다 (이 기록은 기기에만 두고 백업에 넣지 않습니다). "
                 + "단어 추천이나 자동 수정을 켰을 때만 동작합니다.",
                 Prefs.LEARN_WORDS, prefs.learnWords()));
         learn.addView(toggle("단어를 지울 때 확인", "학습한 단어 목록의 휴지통 버튼이나 추천 막대에서 길게 눌러 지울 때 정말 지울지 묻습니다.",
@@ -1895,9 +1902,11 @@ public final class SettingsActivity extends Activity {
         learn.addView(button("학습한 단어 보기", v -> openSection(LEARNED)));
         learn.addView(trashButton("학습한 단어 모두 지우기", v -> AppTheme.dialogBuilder(this)
                 .setTitle("학습한 단어 모두 지우기")
-                .setMessage("키보드가 기억한 단어를 모두 지웁니다. 되돌릴 수 없습니다.")
+                .setMessage("키보드가 기억한 단어와, 추천 순서에 쓰는 입력 기록(자주 쓴 단어·이어 쓴 단어)을 모두 지웁니다. "
+                        + "되돌릴 수 없습니다.")
                 .setPositiveButton("모두 지우기", (d, w) -> {
                     UserDictionary.shared(getFilesDir()).clear();
+                    UsageHistory.shared(getFilesDir()).clear();
                     Toast.makeText(this, "학습한 단어를 지웠습니다", Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("취소", null)
@@ -2024,6 +2033,7 @@ public final class SettingsActivity extends Activity {
         Runnable delete = () -> {
             boolean korean = word.codePoints().anyMatch(c -> c >= 0xAC00 && c <= 0xD7A3);
             dict.remove(word, korean);
+            if (korean) UsageHistory.shared(getFilesDir()).remove(word);
             // 줄과 그 위(첫 줄이면 아래)의 구분선을 함께 뗀다.
             int idx = words.indexOfChild(row);
             if (idx > 0) words.removeViewAt(idx - 1);
@@ -2303,6 +2313,8 @@ public final class SettingsActivity extends Activity {
         java.util.Map<String, String> values = new java.util.HashMap<>();
         values.put("CLIP_MAX", String.valueOf(ClipboardHistory.MAX_ITEMS));
         values.put("CLIP_IMAGES", String.valueOf(ClipboardHistory.MAX_IMAGES));
+        values.put("USAGE_WORDS", String.valueOf(UsageHistory.MAX_WORDS));
+        values.put("USAGE_PAIRS", String.valueOf(UsageHistory.MAX_PAIRS));
         values.put("ISSUES_URL", ISSUES_URL);
         String text;
         try (java.io.InputStream in = getAssets().open(asset)) {

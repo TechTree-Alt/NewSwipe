@@ -194,6 +194,7 @@ public final class Prefs {
     public static final String SUGGEST_FULL_BAR = "suggest_full_bar";     // 추천이 뜨는 동안 도구 막대 전체를 추천에 쓴다
     public static final String AUTO_CORRECT = "auto_correct";             // 스페이스를 누를 때 오타를 고침
     public static final String SUGGEST_SPACE = "suggest_space";           // 추천 단어를 누르면 뒤에 공백을 붙인다 (한글·영어 모두)
+    public static final String PREDICT_NEXT = "predict_next";             // 띄어 쓴 뒤 다음에 올 단어를 추천 (한글)
     public static final String LEARN_WORDS = "learn_words";               // 입력한 단어를 기억해 추천에 쓴다
     public static final String CONFIRM_LEARNED_DELETE = "confirm_learned_delete";   // 학습한 단어를 지울 때 묻기
     public static final String RECENT_EMOJI = "recent_emoji";
@@ -352,7 +353,7 @@ public final class Prefs {
                 VIBRATE_GESTURE_ON, VIBRATE_GESTURE_LEVEL, SOUND, SOUND_VOLUME));
         MENU_KEYS.put("tools", keys(TOOLBAR, TOOLBAR_BOTTOM, TOOLBAR_HEIGHT, TOOL_BUTTON_SIZE, CLIPBOARD_HISTORY, CLIPBOARD_IMAGES, CLIPBOARD_SENSITIVE, CLIPBOARD_CHIP, SELECTION_CHIPS, TOOL_ORDER, TOOL_CLIPBOARD,
                 TOOL_EMOJI, VOICE_KEY, TOOL_UNDO, TOOL_SETTINGS, TOOL_ONE_HAND, TOOL_HIDE, EMOJI_SIZE, EMOJI_SUGGEST));
-        MENU_KEYS.put("words", keys(SHORTCUTS_ENABLED, SUGGEST_WORDS, SUGGEST_FULL_BAR, SUGGEST_SPACE, AUTO_CORRECT, LEARN_WORDS,
+        MENU_KEYS.put("words", keys(SHORTCUTS_ENABLED, SUGGEST_WORDS, SUGGEST_FULL_BAR, SUGGEST_SPACE, PREDICT_NEXT, AUTO_CORRECT, LEARN_WORDS,
                 CONFIRM_LEARNED_DELETE, AUTOFILL_INLINE));
         // 실험실: 대화면 별도 레이아웃과 대화면 키보드 사용자화의 값은 모두 large_로 시작한다.
         MENU_KEYS.put("lab", keys(SWIPE_DOWN_RATIO, SWIPE_UP_RATIO));
@@ -842,6 +843,7 @@ public final class Prefs {
     public boolean emojiSuggest() { return sp.getBoolean(EMOJI_SUGGEST, true); }
     public boolean suggestFullBar() { return sp.getBoolean(SUGGEST_FULL_BAR, false); }
     public boolean suggestSpace() { return sp.getBoolean(SUGGEST_SPACE, true); }
+    public boolean predictNext() { return sp.getBoolean(PREDICT_NEXT, true); }
     public boolean autoCorrect() { return sp.getBoolean(AUTO_CORRECT, false); }
     public boolean learnWords() { return sp.getBoolean(LEARN_WORDS, true); }
     public boolean confirmLearnedDelete() { return sp.getBoolean(CONFIRM_LEARNED_DELETE, true); }

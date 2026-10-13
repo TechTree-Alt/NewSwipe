@@ -140,6 +140,13 @@ public final class UserDictionary {
         return e != null && e.count >= KNOWN_COUNT;
     }
 
+    /** 화면 스레드용: '아는 단어'(두 번 이상 입력)면 입력한 횟수, 아니면(또는 읽지 않았으면) 0. 한글 단어용. */
+    public synchronized int knownCountIfLoaded(String word) {
+        if (!loaded) return 0;
+        Entry e = words.get(word);
+        return e != null && e.count >= KNOWN_COUNT ? e.count : 0;
+    }
+
     public boolean isKnown(String word, boolean korean) {
         ensureLoaded();
         return isKnownIfLoaded(word, korean);
@@ -196,6 +203,11 @@ public final class UserDictionary {
             Entry e = me.getValue();
             String w = me.getKey();
             if (e.count < KNOWN_COUNT) continue;
+            if (korean) {
+                // 마지막 받침이 다음 글자의 첫소리일 수 있는 것까지 맞춘다 ('뚜빗' → 뚜비서)
+                if (!w.equals(p) && HangulRange.startsWith(w, p)) hits.add(me);
+                continue;
+            }
             if (w.length() < n) continue;
             if (!w.regionMatches(!korean, 0, p, 0, n - 1)) continue;
             char c = korean ? w.charAt(n - 1) : Character.toLowerCase(w.charAt(n - 1));
