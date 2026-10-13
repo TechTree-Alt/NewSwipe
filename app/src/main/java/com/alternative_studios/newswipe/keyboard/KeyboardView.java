@@ -63,6 +63,10 @@ public final class KeyboardView extends View {
         /** 지우기 키를 위로 밀었다: 커서가 있는 줄에서 커서 왼쪽을 모두 지운다. */
         void onDeleteToLineStart();
 
+        /** 이번 터치에서 처음으로 밀어서 커서를 옮기려 한다 (바로 뒤에 onCursorMove·onCursorMoveVertical이 온다). */
+        default void onCursorStart() {
+        }
+
         void onCursorMove(int direction);
 
         /** 스페이스바를 위(-1)/아래(+1)로 밀어 커서를 한 줄 옮긴다. */
@@ -128,6 +132,8 @@ public final class KeyboardView extends View {
         boolean chord;
         /** 선택 모드에서 선택 영역을 한 번이라도 움직였는지 (움직이지 않고 떼면 그냥 스페이스로 입력한다). */
         boolean selectMoved;
+        /** 이번 터치에서 커서 이동을 시작했다고 이미 알렸는지. */
+        boolean cursorStarted;
     }
 
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -1083,13 +1089,18 @@ public final class KeyboardView extends View {
                 float stepX = cursorStep / (p.gap ? gapSpeed : p.freeCursor ? charSpeedH : spaceSpeedH);
                 float stepY = cursorStepY / (p.gap ? gapSpeed : p.freeCursor ? charSpeedV : spaceSpeedV);
                 float d = x - p.cursorAnchorX;
+                float dv = y - p.cursorAnchorY;
+                if (!p.cursorStarted && listener != null
+                        && ((curH && Math.abs(d) >= stepX) || (curV && Math.abs(dv) >= stepY))) {
+                    p.cursorStarted = true;
+                    listener.onCursorStart();
+                }
                 while (curH && Math.abs(d) >= stepX) {
                     int dir = d > 0 ? 1 : -1;
                     if (listener != null) listener.onCursorMove(dir);
                     p.cursorAnchorX += dir * stepX;
                     d = x - p.cursorAnchorX;
                 }
-                float dv = y - p.cursorAnchorY;
                 while (curV && Math.abs(dv) >= stepY) {
                     int dir = dv > 0 ? 1 : -1;
                     if (listener != null) listener.onCursorMoveVertical(dir);
