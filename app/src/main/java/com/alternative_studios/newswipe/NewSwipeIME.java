@@ -1281,7 +1281,13 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     public void onUpdateSelection(int oldSelStart, int oldSelEnd, int newSelStart, int newSelEnd,
                                   int candidatesStart, int candidatesEnd) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd);
+        String mirrored = mirror.text();
         mirror.onSelection(newSelStart, newSelEnd);   // 이모지 검색 중에도 실제 입력란의 커서 변화는 따라간다
+        // 메신저의 보내기 버튼처럼 앱이 입력란을 한 번에 비웠다: 스페이스 없이 끝난 마지막 단어도 학습한다.
+        if (newSelStart == 0 && newSelEnd == 0 && oldSelStart > 1 && oldSelStart == oldSelEnd
+                && mirrored != null && mirror.text() == null && panel != PANEL_SEARCH) {
+            learnFromText(mirrored);
+        }
         initialTextFresh = false;   // EditorInfo의 커서 앞 글자는 이제 지난 내용일 수 있다
         boolean hadSelection = selStart >= 0 && selEnd >= 0 && selStart != selEnd;
         selStart = newSelStart;
@@ -2174,6 +2180,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             updateAutoCap();
         } else {
             commitComposing();
+            learnCurrentWord(null);   // 기호 자판에서 ?·! 등을 치면 단어가 끝난 것이다 (글자 자판일 때 기록해 둔다)
             setLayoutKind(KeyboardLayout.SYMBOLS);
         }
     }
@@ -2791,11 +2798,23 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             word = wordBeforeCursor(ic);
             prev = korean && !word.isEmpty() ? prevWordBeforeCursor(ic) : null;
         }
+        if (korean) word = WordSuggester.learnablePart(word);   // '알겠어ㅋㅋ' → 알겠어
         if (word.isEmpty()) return;
         // 자동 수정을 되돌려 이번에 그냥 두는 단어는 되돌릴 때만 센다 (두 번 되돌려야 학습되도록).
         syncIgnoredWithUserWords();
         if (cfgAutoCorrect && correctionIgnored.contains(word)) return;
         learnWord(word, prev, false);
+    }
+
+    /** 커서 앞 글자 text의 마지막 단어를 학습한다 (입력란이 비워지기 직전에 따라 적어 둔 글자). */
+    private void learnFromText(String text) {
+        if (!learningOn()) return;
+        String word = WordSuggester.currentWord(text, korean);
+        if (korean) word = WordSuggester.learnablePart(word);
+        if (word.isEmpty()) return;
+        syncIgnoredWithUserWords();
+        if (cfgAutoCorrect && correctionIgnored.contains(word)) return;
+        learnWord(word, korean ? WordSuggester.previousWord(text) : null, false);
     }
 
     /** 단어 기록은 파일을 읽고 쓸 수 있어 백그라운드에서 한다. */
@@ -2839,8 +2858,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             warmSuggester();
             return false;
         }
-        String fixed = suggester.autoCorrect(word, korean ? WordSuggester.previousWord(before) : null, korean, fieldKind);
+        String prev = korean ? WordSuggester.previousWord(before) : null;
+        String fixed = suggester.autoCorrect(word, prev, korean, fieldKind);
         if (fixed == null) return false;
+        learnWord(fixed, prev, false);   // 고친 단어도 내가 쓴 말로 센다 (되돌리면 입력한 그대로를 다시 센다)
         replaceBeforeCursor(ic, word, fixed + " ");
         mirror.replaceTail(word.length(), fixed + " ");
         correctedFrom = word;

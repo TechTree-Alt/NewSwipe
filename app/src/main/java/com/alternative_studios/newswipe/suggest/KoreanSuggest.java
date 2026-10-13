@@ -192,6 +192,8 @@ final class KoreanSuggest {
                 for (String w : user.lookupIfLoaded(word, true, 6)) add(pool, cx, w, dict.indexOf(w), 1);
             }
             addParticles(pool, cx, word);
+            // 만든 활용형은 사전 후보가 모자랄 때만 빈칸을 채운다 (사전에 있는 말을 밀어내면 손해가 크다)
+            if (pool.size() < max) addEndings(pool, cx, word);
             if ((SPLIT_ALWAYS || pool.size() < max) && hangulSyllables(word) >= 2) addSplits(pool, cx, word);
             if (pool.size() < max && hangulSyllables(word) >= 2) {
                 int[] ids = new int[8];
@@ -384,6 +386,19 @@ final class KoreanSuggest {
             {"부터", null, "0.008"}, {"에게", null, "0.008"}, {"이나", "나", "0.006"}, {"처럼", null, "0.005"},
             {"보다", null, "0.005"}, {"하고", null, "0.005"}, {"에도", null, "0.005"}, {"으로는", "로는", "0.004"},
             {"에서는", null, "0.004"}, {"이라도", "라도", "0.003"},
+            // 이다 (서술격): 스타일이야, 친구예요, 사람인데, 효과적일까
+            {"이야", "야", "0.02"}, {"이에요", "예요", "0.01"}, {"인데", null, "0.008"}, {"이지", "지", "0.004"},
+            {"이라서", "라서", "0.004"}, {"이니까", "니까", "0.004"}, {"이고", "고", "0.004"}, {"이면", "면", "0.004"},
+            {"이라고", "라고", "0.004"}, {"이래", "래", "0.002"}, {"이었어", "였어", "0.004"}, {"이었는데", "였는데", "0.002"},
+            {"일까", null, "0.003"}, {"인가", null, "0.003"}, {"인가봐", null, "0.002"}, {"이잖아", "잖아", "0.002"},
+            {"이었다", "였다", "0.002"}, {"이라는", "라는", "0.003"}, {"이랑은", "랑은", "0.001"},
+            // 그 밖의 조사
+            {"한테서", null, "0.002"}, {"에게서", null, "0.001"}, {"께서", null, "0.001"}, {"께", null, "0.001"},
+            {"마다", null, "0.003"}, {"밖에", null, "0.003"}, {"조차", null, "0.001"}, {"마저", null, "0.001"},
+            {"뿐", null, "0.001"}, {"이든", "든", "0.002"}, {"보다는", null, "0.001"}, {"으로서", "로서", "0.001"},
+            {"이란", "란", "0.002"}, {"에선", null, "0.002"}, {"에서도", null, "0.003"}, {"한테는", null, "0.002"},
+            {"한테도", null, "0.002"}, {"까지도", null, "0.001"}, {"만큼", null, "0.002"}, {"대로", null, "0.002"},
+            {"은요", "는요", "0.002"},
     };
     private static final double[] PARTICLE_PRIOR = new double[PARTICLES.length];
 
@@ -419,6 +434,96 @@ final class KoreanSuggest {
                 Double old = pool.get(cand);
                 if (old == null || old < s) pool.put(cand, s);
             }
+        }
+    }
+
+    // ---------------------------------------------------------------- 어미
+
+    /**
+     * '○○하다'의 어미 (하다 활용은 규칙적이라 모두 붙인다). 사전에 '○○하고', '○○했다' 같은 활용형이 있는 말에만 붙인다.
+     * 짝은 {어미, 대략적인 비율}.
+     */
+    private static final String[] HA_ENDINGS = {
+            "해", "해요", "해서", "해도", "해야지", "해야돼", "해줘", "해줘요", "해봐", "해볼까", "했어", "했어요", "했다",
+            "했네", "했지", "했잖아", "했는데", "했으면", "했나봐", "했거든", "했더니", "했습니다", "하고", "하지", "하지만",
+            "하네", "하네요", "하니", "하냐", "하자", "하면", "하니까", "하려고", "하잖아", "하거든", "하더라", "하던데",
+            "하겠어", "하겠다", "하겠지", "하겠네", "할게", "할게요", "할래", "할래요", "할까", "할까요", "할거야", "할걸",
+            "합니다", "하세요", "하나봐", "하기로",
+    };
+    /** '○○하다'인지 알아보는 활용형 (하나라도 사전에 있으면). */
+    private static final String[] HA_EVIDENCE = {"하고", "하는", "했다", "했어", "해서", "하면", "한다", "하기", "해요", "했던"};
+    /** 일반 어간에 붙이는 어미: 자음으로 시작해 불규칙 활용과 상관없고 동사·형용사 모두에 붙는 것만. */
+    private static final String[] STEM_ENDINGS = {
+            "고", "지", "지만", "네", "네요", "니", "냐", "거든", "거든요", "더라", "더라고", "던데", "겠어", "겠어요", "겠다",
+            "겠네", "겠지", "잖아", "잖아요", "죠", "기로", "게",
+    };
+    private static final String[] STEM_EVIDENCE = {"고", "지", "는", "네", "게", "기", "다", "던", "지만", "겠다"};
+    /** 과거형(-았/었/였-, 받침 ㅆ) 뒤에 붙이는 어미. */
+    private static final String[] PAST_ENDINGS = {
+            "어", "어요", "다", "네", "네요", "지", "지만", "잖아", "잖아요", "거든", "거든요", "더라", "더라고", "던데",
+            "는데", "고", "니", "냐", "구나", "대", "대요", "다고", "죠", "으면", "을까", "을걸", "겠다", "겠네", "겠지",
+            "나봐", "나", "나요", "더니", "습니다",
+    };
+    private static final String[] PAST_EVIDENCE = {"어", "다", "지", "네", "는데", "고", "어요", "던", "으면"};
+    /** 어미를 붙여 만든 말의 확률에 곱하는 값 (같은 어간의 사전 활용형 확률 합에 곱한다). */
+    static double ENDING_FACTOR = 1.0;
+
+    /**
+     * 사전에 없는 활용형을 만들어 넣는다 ('추천해' → 추천해줘, '좋겠' → 좋겠지, '됐나' → 됐나봐). 사전에 같은 어간의 활용형이
+     * 있어야 하며(하다는 하나, 일반 어간·과거형은 둘 이상), 규칙이 확실한 어미만 붙여 틀린 활용이 나오지 않게 한다.
+     */
+    private void addEndings(Map<String, Double> pool, Context cx, String word) {
+        int n = word.length();
+        for (int k = n; k >= Math.max(1, n - 4); k--) {
+            String base = word.substring(0, k);
+            char last = base.charAt(k - 1);
+            if (last < 0xAC00 || last > 0xD7A3) continue;
+            // 하다: base가 '○○하'로 끝나거나, 입력이 '○○'까지이고 뒤에 하·해·했·할이 오는 중
+            if (last == '하' && k >= 2) {
+                generate(pool, cx, word, base.substring(0, k - 1), HA_EVIDENCE, 1, HA_ENDINGS, false);
+            }
+            int t = (last - 0xAC00) % 28;
+            if (t == 20) generate(pool, cx, word, base, PAST_EVIDENCE, 2, PAST_ENDINGS, false);   // 받침 ㅆ
+            generate(pool, cx, word, base, STEM_EVIDENCE, 2, STEM_ENDINGS, t == 8);
+        }
+        // '추천해', '부업할'처럼 하다 활용 중간까지 친 말: 입력이 명사 + 해/했/할/한/합 ...
+        for (int k = n - 1; k >= Math.max(1, n - 4); k--) {
+            char c = word.charAt(k);
+            if (c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) / 588 == 18) {   // 초성 ㅎ (하·해·했·할 ...)
+                generate(pool, cx, word, word.substring(0, k), HA_EVIDENCE, 1, HA_ENDINGS, false);
+            } else if (c == 'ㅎ') {
+                generate(pool, cx, word, word.substring(0, k), HA_EVIDENCE, 1, HA_ENDINGS, false);
+            }
+        }
+    }
+
+    /**
+     * stem + 어미 중 입력 word로 시작할 수 있는 것을 후보에 넣는다. stem + evidence 활용형이 사전에 minEvidence개 이상
+     * 있어야 한다. dropRieul: ㄹ 받침 어간이면 네·니 앞에서 ㄹ을 뗀다 (놀 → 노네, 사니).
+     */
+    private void generate(Map<String, Double> pool, Context cx, String word, String stem, String[] evidence,
+                          int minEvidence, String[] endings, boolean dropRieul) {
+        if (stem.isEmpty() || hangulSyllables(stem) != stem.length()) return;
+        double family = 0;
+        int found = 0;
+        for (String e : evidence) {
+            int id = dict.indexOf(stem + e);
+            if (id < 0) continue;
+            found++;
+            family += cx.score(stem + e, id);
+        }
+        if (found < minEvidence || family <= 0) return;
+        for (String e : endings) {
+            String s = stem;
+            if (dropRieul && (e.startsWith("네") || e.startsWith("니"))) {
+                char l = stem.charAt(stem.length() - 1);
+                s = stem.substring(0, stem.length() - 1) + (char) (l - 8);
+            }
+            String cand = s + e;
+            if (cand.equals(word) || !HangulRange.startsWith(cand, word) || dict.indexOf(cand) >= 0) continue;
+            double sc = family * ENDING_FACTOR;
+            Double old = pool.get(cand);
+            if (old == null || old < sc) pool.put(cand, sc);
         }
     }
 

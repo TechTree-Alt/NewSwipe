@@ -411,6 +411,10 @@ public final class WordSuggester {
         int j = i;
         while (j > 0 && before.charAt(j - 1) == ' ') j--;
         if (j == i || j == 0) return null;
+        // '알겠어ㅋㅋ'처럼 단어 뒤에 붙인 자음·모음(ㅋㅋ, ㅎㅎ, ㅠㅠ)은 건너뛰고 그 앞 단어를 본다.
+        int jamo = j;
+        while (jamo > 0 && isCompatJamo(before.charAt(jamo - 1))) jamo--;
+        if (jamo < j && jamo > 0 && isSyllable(before.charAt(jamo - 1))) j = jamo;
         int k = j;
         while (k > 0) {
             char c = before.charAt(k - 1);
@@ -419,6 +423,24 @@ public final class WordSuggester {
         }
         if (k == j || (k > 0 && !Character.isWhitespace(before.charAt(k - 1)))) return null;
         return before.subSequence(k, j).toString();
+    }
+
+    /**
+     * 학습할 때의 단어: 끝에 붙인 자음·모음(ㅋㅋ, ㅎㅎ, ㅠㅠ)을 뗀 한글 부분 ('알겠어ㅋㅋ' → 알겠어).
+     * 자음·모음만 있는 말이면 원래 말을 그대로 돌려준다 (학습하지 않게 된다).
+     */
+    public static String learnablePart(String word) {
+        int n = word.length();
+        while (n > 0 && isCompatJamo(word.charAt(n - 1))) n--;
+        return n == 0 ? word : word.substring(0, n);
+    }
+
+    private static boolean isCompatJamo(char c) {
+        return c >= 'ㄱ' && c <= 'ㅣ';
+    }
+
+    private static boolean isSyllable(char c) {
+        return c >= '\uAC00' && c <= '\uD7A3';
     }
 
     /** 커서 앞 글자에서 추천에 쓸 '입력 중인 단어'를 뽑는다. 없으면 빈 문자열. */

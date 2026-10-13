@@ -104,6 +104,8 @@ public class KoreanSuggestTest {
                 {"친구", "180"}, {"친구를", "150"}, {"친구가", "140"}, {"가방", "120"}, {"갑자기", "150"}, {"수고하세요", "160"},
                 {"수고", "130"}, {"사과", "120"}, {"사람", "200"}, {"사람이", "150"}, {"했다", "200"}, {"했어", "150"},
                 {"했어요", "140"}, {"비행기", "120"}, {"보고", "200"}, {"모교", "60"}, {"되요", "40"}, {"돼요", "200"}, {"친절", "135"}, {"밥", "150"}, {"먹었어", "160"}, {"먹고", "150"},
+                {"추천", "150"}, {"추천하고", "120"}, {"추천했다", "120"}, {"좋고", "140"}, {"좋지", "130"},
+                {"됐어", "150"}, {"됐다", "140"}, {"듣고", "120"}, {"듣지", "110"}, {"스타일", "120"}, {"스타일을", "100"},
         });
         next = NextWords.load(new ByteArrayInputStream(buildNext(dict, new String[][]{
                 {"좋은", "하루", "0.6"}, {"좋은", "아침", "0.25"}, {"좋은", "사람", "0.1"},
@@ -272,6 +274,27 @@ public class KoreanSuggestTest {
     }
 
     @Test
+    public void generatesEndingsOnlyWhenRegular() {
+        KoreanSuggest m = model();
+        // 하다 활용: 사전에 '추천하고'·'추천했다'가 있으면 '추천해줘'를 만든다
+        assertTrue(Arrays.asList(words(m.suggest("추천해ㅈ", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)))
+                .contains("추천해줘"));
+        // 자음으로 시작하는 어미는 일반 어간에도 붙인다 (좋 + 겠지)
+        assertTrue(Arrays.asList(words(m.suggest("좋겠ㅈ", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)))
+                .contains("좋겠지"));
+        // 과거형 뒤 어미 (됐 + 나봐)
+        assertTrue(Arrays.asList(words(m.suggest("됐나", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)))
+                .contains("됐나봐"));
+        // 명사 + 이다 (스타일 + 이야)
+        assertTrue(Arrays.asList(words(m.suggest("스타일이", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)))
+                .contains("스타일이야"));
+        // 모음으로 시작하는 어미는 일반 어간에 붙이지 않는다 (불규칙 활용: 듣다 → 들어, '듣어'는 틀린 말)
+        for (String w : words(m.suggest("듣", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3))) {
+            assertFalse(w, w.startsWith("듣어") || w.startsWith("듣을"));
+        }
+    }
+
+    @Test
     public void joinsWordsTheUserTypedTogether() throws Exception {
         UsageHistory h = new UsageHistory(new File(tmp.getRoot(), "h.txt"));
         h.load();
@@ -305,5 +328,17 @@ public class KoreanSuggestTest {
         assertNull(WordSuggester.previousWord("좋은\n"));
         assertNull(WordSuggester.previousWord("하"));
         assertNull(WordSuggester.previousWord(null));
+        // 단어 뒤에 붙인 ㅋㅋ·ㅠㅠ는 건너뛴다
+        assertEquals("알겠어", WordSuggester.previousWord("알겠어ㅋㅋ 내"));
+        assertEquals("알겠어", WordSuggester.previousWord("알겠어ㅠㅠ "));
+        assertNull(WordSuggester.previousWord("ㅋㅋ 내"));   // 자음만 있는 말은 단어가 아니다
+    }
+
+    @Test
+    public void learnablePartDropsTrailingJamo() {
+        assertEquals("알겠어", WordSuggester.learnablePart("알겠어ㅋㅋ"));
+        assertEquals("배고파", WordSuggester.learnablePart("배고파ㅠㅠ"));
+        assertEquals("하루", WordSuggester.learnablePart("하루"));
+        assertEquals("ㅋㅋ", WordSuggester.learnablePart("ㅋㅋ"));
     }
 }

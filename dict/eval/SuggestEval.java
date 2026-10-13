@@ -29,6 +29,7 @@ import java.util.Random;
  *   --old            예전 방식(접두사 + 빈도만, 받침 넘김 없음, 예전 자동 수정)으로 잰다
  *   --max N          평가할 문장 수 (앞에서부터 고르게 뽑는다)
  *   --learn          문장을 치는 동안 쓴 기록을 쌓아 개인화 효과까지 잰다
+ *   --learn-gaps     --learn과 함께: 예전 학습의 빈틈을 흉내 낸다 (문장 끝 단어(보내기 버튼으로 보냄)와 ㅋㅋ가 붙은 단어는 배우지 않는다)
  *   --no-predict     다음 단어 예측을 끈다
  *   --field N        입력란 종류 (0 보통, 1 검색)
  *   --per-sentence F 문장마다 {키 수, 아낀 키 수}를 F에 쓴다 (compare_ksr.py로 두 설정을 견준다)
@@ -43,6 +44,7 @@ public final class SuggestEval {
         String dir = args[0], testFile = args[1];
         boolean old = false, learn = false, predict = true, typoOnly = false, typo = true;
         String perSentence = null;
+        boolean learnGaps = false;
         int max = Integer.MAX_VALUE;
         int field = KoreanSuggest.FIELD_NORMAL;
         for (int i = 2; i < args.length; i++) {
@@ -52,6 +54,7 @@ public final class SuggestEval {
                 case "--no-predict": predict = false; break;
                 case "--typo-only": typoOnly = true; break;
                 case "--per-sentence": perSentence = args[++i]; break;
+                case "--learn-gaps": learnGaps = true; break;
                 case "--no-typo": typo = false; break;
                 case "--max": max = Integer.parseInt(args[++i]); break;
                 case "--field": field = Integer.parseInt(args[++i]); break;
@@ -114,7 +117,12 @@ public final class SuggestEval {
         for (String line : lines) {
             long keys0 = keys, saved0 = saved;
             String prev = null;
-            for (String raw : line.split("\\s+")) {
+            String[] rawTokens = line.split("\\s+");
+            int lastWord = -1;
+            for (int ti = 0; ti < rawTokens.length; ti++) if (strip(rawTokens[ti]) != null) lastWord = ti;
+            int ti = -1;
+            for (String raw : rawTokens) {
+                ti++;
                 String core = strip(raw);
                 boolean breakBefore = core == null || !raw.startsWith(core);
                 boolean breakAfter = core == null || !raw.endsWith(core);
@@ -184,7 +192,8 @@ public final class SuggestEval {
                         if (System.getenv("SHOW_WRONG") != null) System.out.println("  잘못 고침: " + prev + " " + core + " → " + fix);
                     }
                 }
-                if (learn) {
+                boolean gap = learnGaps && (ti == lastWord || raw.matches(".*[ㄱ-ㅣ]$"));
+                if (learn && !gap) {
                     String p = prev;
                     usage.record(p != null && WordSuggester.learnable(p, true) ? p : null, core, words);
                     if (WordSuggester.learnable(core, true) && !d.contains(core)) {
