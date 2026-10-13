@@ -47,7 +47,7 @@ SPDX-License-Identifier: Unicode-3.0
 ## Word suggestion dictionaries
 
 `app/src/main/assets/dict_ko.bin` and `dict_en.bin` are word-frequency lists built by
-`tools/build_ko_model.py` (Korean, 40,000 words) and `tools/build_en_dict.py`. The bundled
+`tools/build_ko_model.py` (Korean, 50,000 words) and `tools/build_en_dict.py`. The bundled
 `dict_ko_next.bin` holds no word pairs, only the frequency scale of `dict_ko.bin`.
 Changes made: words were filtered (Hangul-only / Latin-only, profanity removed), frequencies
 averaged and quantized to one byte, the lists were truncated to the most frequent entries, and

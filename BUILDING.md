@@ -34,7 +34,7 @@ NewSwipe를 직접 빌드하고 서명하는 방법입니다. 사용법은 [READ
 
 ## 한국어 사전과 사전 팩
 
-앱에 든 한국어 기본 사전(`app/src/main/assets/dict_ko.bin`, 4만 단어)과 설정에서 가져오는 사전 팩(`dictpacks/ko-standard.zip`,
+앱에 든 한국어 기본 사전(`app/src/main/assets/dict_ko.bin`, 5만 단어)과 설정에서 가져오는 사전 팩(`dictpacks/ko-standard.zip`,
 8만 단어 + 단어 쌍 40만 개)은 `tools/build_ko_model.py`로 만듭니다. 말뭉치는 저장소에 넣지 않으며, 만드는 명령과 받는 곳은
 `tools/build_ko_model.py` 맨 위에 적혀 있습니다. NSMC(`ratings_train.txt`, CC0)는 한 번 센 뒤 `--mix 센결과.pkl:0.5
 --mix-exclude tools/ko_mix_exclude_nsmc.txt`로 섞습니다.
@@ -42,7 +42,7 @@ NewSwipe를 직접 빌드하고 서명하는 방법입니다. 사용법은 [READ
 ```bash
 # 기본 사전 (단어 쌍 없이 빈도 기준만 담은 dict_ko_next.bin도 함께 나온다)
 python3 tools/build_ko_model.py out_base --cache counts.pkl --mix nsmc.pkl:0.5 --mix-exclude tools/ko_mix_exclude_nsmc.txt \
-    --top 40000 --pairs 0 --extra tools/ko_colloquial.txt --extra tools/ko_conjugated.txt --phrases tools/ko_phrases.txt 말뭉치들...
+    --top 50000 --pairs 0 --extra tools/ko_colloquial.txt --extra tools/ko_conjugated.txt --phrases tools/ko_phrases.txt 말뭉치들...
 cp out_base/dict_ko.bin out_base/dict_ko_next.bin app/src/main/assets/
 
 # 표준 사전 팩

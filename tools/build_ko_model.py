@@ -14,7 +14,7 @@
       --top 단어수 --pairs 단어쌍수 --extra tools/ko_colloquial.txt --extra tools/ko_conjugated.txt \
       --phrases tools/ko_phrases.txt kor_news_2022_1M-sentences.txt kor-kr_web_2020_1M-sentences.txt kor-kr_web_2015_1M-sentences.txt
   말뭉치는 https://downloads.wortschatz-leipzig.de/corpora/ 의 같은 이름 tar.gz에 들어 있다. 세는 데 5분쯤 걸리고,
-  --cache가 있으면 사전 크기·단어 쌍 수를 바꿔 다시 만들 때 1~2분. 앱의 기본 사전(4만 단어, 단어 쌍 없음)과
+  --cache가 있으면 사전 크기·단어 쌍 수를 바꿔 다시 만들 때 1~2분. 앱의 기본 사전(5만 단어, 단어 쌍 없음)과
   표준 사전 팩(8만 단어 + 40만 쌍)을 만든 정확한 명령은 BUILDING.md의 '한국어 사전과 사전 팩'에 있다.
   tools/eval/run_eval.sh로 성능을 확인한다. 평가 문장(ko_test.txt)은 웹 말뭉치에서 떼어 둔 문장이다.
 
