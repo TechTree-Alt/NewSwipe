@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 /**
- * 다음 단어 사전 (tools/build_ko_model.py가 만든 NSN1 파일): 앞 단어마다 그 뒤에 자주 오는 단어와 확률 P(다음|앞).
+ * 다음 단어 사전 (dict/build/build_ko_model.py가 만든 NSN1 파일): 앞 단어마다 그 뒤에 자주 오는 단어와 확률 P(다음|앞).
  * 단어는 단어 사전({@link WordDictionary})의 번호로 가리키므로, 같은 빌드에서 만든 단어 사전과 함께 써야 한다.
  * 단어 사전 점수를 확률로 되돌리는 기준도 담고 있다 ({@link #unigram}).
  */

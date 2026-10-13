@@ -2,11 +2,11 @@
 """영어 단어 추천용 시험 사전을 만든다.
 
 입력: SymSpell의 en-80k.txt (단어 \t 빈도; Google Books Ngram(CC BY 3.0)과 SCOWL 기반 헌스펠 사전의 교집합,
-      저장소는 MIT)와, 직접 고른 구어체·축약형 목록(tools/en_colloquial.txt).
+      저장소는 MIT)와, 직접 고른 구어체·축약형 목록(dict/lists/en_colloquial.txt).
 출력: 빈도 순위 TSV(검토용)와 앱에 넣을 이진 사전(dict_en.bin). 형식은 build_ko_dict.py와 같다.
 
 사용법:
-  python3 tools/build_en_dict.py OUT_DIR TOP_N en-80k.txt [en_colloquial.txt]
+  python3 dict/build/build_en_dict.py OUT_DIR TOP_N en-80k.txt [en_colloquial.txt]
 """
 import math
 import os

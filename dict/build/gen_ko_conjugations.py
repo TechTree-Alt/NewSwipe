@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """한국어 용언 활용형 생성기.
 
-tools/ko_stems.txt의 어간 목록에 자주 쓰는 어미를 붙여, 대화체(해요체, 반말, 합쇼체) 활용형을 만든다.
+dict/lists/ko_stems.txt의 어간 목록에 자주 쓰는 어미를 붙여, 대화체(해요체, 반말, 합쇼체) 활용형을 만든다.
 결과는 build_ko_dict.py의 --extra 형식('점수: 단어 단어 ...')으로 쓴다.
 
 사용법:
-  python3 tools/gen_ko_conjugations.py tools/ko_stems.txt OUT.txt   # 생성
-  python3 tools/gen_ko_conjugations.py --selftest                   # 알려진 정답과 대조
+  python3 dict/build/gen_ko_conjugations.py dict/lists/ko_stems.txt OUT.txt   # 생성
+  python3 dict/build/gen_ko_conjugations.py --selftest                   # 알려진 정답과 대조
 
 지원하는 활용 규칙:
   - 모음조화(아/어), 모음 축약(가+아→가, 보+아→봐, 주+어→줘, 마시+어→마셔, 되+어→돼, 하+여→해)

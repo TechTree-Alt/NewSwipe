@@ -18,7 +18,7 @@ import java.util.zip.ZipInputStream;
 
 /**
  * 사전 팩: 앱에 들어 있는 기본 사전 대신 쓰는 한국어 사전. 사용자가 파일로 받아 설정에서 가져온다 (앱은 인터넷을 쓰지 않는다).
- * 팩은 zip 파일 하나이며 다음을 담는다 (tools/make_dict_pack.py가 만든다).
+ * 팩은 zip 파일 하나이며 다음을 담는다 (dict/build/make_dict_pack.py가 만든다).
  * <ul>
  *   <li>{@code manifest.properties} (필수, UTF-8): format, lang=ko, name, version, description, license, attribution,
  *       sha256.dict_ko.bin, sha256.dict_ko_next.bin</li>

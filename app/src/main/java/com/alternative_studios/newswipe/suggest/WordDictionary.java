@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 /**
- * 단어 사전 (tools/build_*_dict.py가 만든 NSD1 파일).
+ * 단어 사전 (dict/build/build_*_dict.py가 만든 NSD1 파일).
  * 단어는 유니코드 순으로 정렬되어 있어 접두사에 맞는 단어가 한 구간에 모인다.
  * 메모리에는 글자 배열 하나, 시작 위치 배열, 점수 배열만 둔다.
  */

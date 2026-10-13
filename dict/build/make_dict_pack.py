@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """한국어 사전 팩(zip)을 만든다. 앱의 설정 > 단어 추천 > 한국어 사전 > '사전 팩 가져오기'로 가져온다.
 
-  python3 tools/make_dict_pack.py MODEL_DIR OUT.zip --name "표준 사전" --version 2026.10 \\
+  python3 dict/build/make_dict_pack.py MODEL_DIR OUT.zip --name "표준 사전" --version 2026.10 \\
       --license "CC BY 4.0" --attribution "Leipzig Corpora Collection ..." [--description ...] [--license-file F]
 
-MODEL_DIR은 tools/build_ko_model.py의 결과 폴더다 (dict_ko.bin 필수, dict_ko_next.bin 선택).
+MODEL_DIR은 dict/build/build_ko_model.py의 결과 폴더다 (dict_ko.bin 필수, dict_ko_next.bin 선택).
 팩에 넣는 데이터의 라이선스와 출처를 정확히 적는다 (앱은 가져온 팩의 출처를 설정 화면에 보여 준다).
 팩 형식은 app/src/main/java/.../suggest/DictionaryPack.java의 설명을 따른다.
 """

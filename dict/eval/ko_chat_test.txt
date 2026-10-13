@@ -1,4 +1,4 @@
-# 평가용 대화체 문장 (tools/eval/SuggestEval.java). 학습에 쓰지 않는다.
+# 평가용 대화체 문장 (dict/eval/SuggestEval.java). 학습에 쓰지 않는다.
 # ko_phrases.txt를 그대로 옮기지 않도록 따로 적은 메신저·문자 대화 문장이다.
 오늘 저녁에 엄마랑 같이 마트 가기로 했어
 혹시 내일 오전 열 시쯤 통화 가능하실까요

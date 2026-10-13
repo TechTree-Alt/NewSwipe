@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """한국어 단어 추천용 시험 사전을 만든다.
 
-앱에 넣는 dict_ko.bin은 이제 tools/build_ko_model.py가 다음 단어 사전과 함께 만든다 (같은 단어 번호를 써야 해서).
+앱에 넣는 dict_ko.bin은 이제 dict/build/build_ko_model.py가 다음 단어 사전과 함께 만든다 (같은 단어 번호를 써야 해서).
 이 파일의 걸러 내기·양자화·저장 함수(select, write_nsd1)는 build_ko_model.py가 그대로 쓴다.
 
 입력: Leipzig Corpora Collection (CC BY 4.0)의 한국어 단어 빈도 파일 (*-words.txt: 순번 \t 단어 \t 빈도)
 출력: 빈도 순위 TSV(검토용)와, 앱에 넣을 압축 이진 사전(dict_ko.bin)
 
 사용법:
-  python3 tools/build_ko_dict.py OUT_DIR TOP_N [--extra 목록.txt ...] words1.txt [words2.txt ...]
+  python3 dict/build/build_ko_dict.py OUT_DIR TOP_N [--extra 목록.txt ...] words1.txt [words2.txt ...]
 
   --extra: 보완 목록 (여러 번 지정 가능). 뉴스·웹 말뭉치에 대화체가 거의 없어서
            직접 고른 구어체 목록(ko_colloquial.txt)과 활용형 목록(ko_conjugated.txt)으로 보완한다.

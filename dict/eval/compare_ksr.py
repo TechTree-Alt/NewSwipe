@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """두 설정의 키 절약률 차이와 95% 구간 (같은 문장끼리 짝지은 부트스트랩).
 
-  python3 tools/eval/compare_ksr.py A.tsv B.tsv   # SuggestEval --per-sentence로 만든 파일 (B - A)
+  python3 dict/eval/compare_ksr.py A.tsv B.tsv   # SuggestEval --per-sentence로 만든 파일 (B - A)
 """
 import sys, random
 def load(p):

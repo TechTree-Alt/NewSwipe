@@ -1979,7 +1979,7 @@ public final class SettingsActivity extends Activity {
                     .setNegativeButton("취소", null)
                     .show()));
         }
-        dict.addView(note("사전 팩은 tools/make_dict_pack.py로 직접 만들 수도 있습니다. 팩마다 데이터의 출처와 라이선스가 다르니 "
+        dict.addView(note("사전 팩은 dict/build/make_dict_pack.py로 직접 만들 수도 있습니다. 팩마다 데이터의 출처와 라이선스가 다르니 "
                 + "가져오기 전에 확인하세요."));
     }
 

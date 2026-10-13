@@ -1,4 +1,4 @@
-# 한국어 용언 어간 목록 (활용형 생성기 tools/gen_ko_conjugations.py의 입력)
+# 한국어 용언 어간 목록 (활용형 생성기 dict/build/gen_ko_conjugations.py의 입력)
 #
 # 형식: "종류: 어간 어간 ..." 한 줄.
 #  종류 v1 = 동사, 자주 쓰는 것 (활용형을 많이 만든다)

@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * 한국어 추천의 성능을 잰다 (tools/eval/run_eval.sh로 돌린다). 앱의 추천 코드를 그대로 쓴다.
+ * 한국어 추천의 성능을 잰다 (dict/eval/run_eval.sh로 돌린다). 앱의 추천 코드를 그대로 쓴다.
  *
  * <p>평가 문장의 단어를 자판에서 치듯 한 키씩 조합기({@link HangulComposer})에 넣으며, 키마다 보이는 추천 3개에
  * 그 단어가 있으면 누른다고 보고 아낀 키 수를 센다 (추천을 누르면 단어와 띄어쓰기가 한 번에 들어간다).

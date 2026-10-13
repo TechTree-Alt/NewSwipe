@@ -22,7 +22,7 @@ final class KoreanSuggest {
     /** 입력란 종류. */
     static final int FIELD_NORMAL = 0, FIELD_SEARCH = 1;
 
-    // 순위 모형의 계수 (tools/eval/SuggestEval.java로 맞춘 값. 평가 도구가 다른 값을 넣어 볼 수 있게 final로 두지 않는다).
+    // 순위 모형의 계수 (dict/eval/SuggestEval.java로 맞춘 값. 평가 도구가 다른 값을 넣어 볼 수 있게 final로 두지 않는다).
     /** 내 기록을 믿는 최대 비율과, 그 절반에 이르는 기록 수. */
     static double USER_MAX = 0.5, USER_HALF = 300;
     /** 내 기록 안에서 '단어를 쓴 비율'과 '앞 단어 다음에 쓴 비율'의 몫 (나머지가 단어 쌍). */
@@ -151,7 +151,7 @@ final class KoreanSuggest {
     }
 
     /**
-     * 입력란 종류에 따른 배율. 메시지 칸에서 대화체 어미를 앞세우는 것도 재 보았지만(tools/eval), 구어체 보완 목록이 이미
+     * 입력란 종류에 따른 배율. 메시지 칸에서 대화체 어미를 앞세우는 것도 재 보았지만(dict/eval), 구어체 보완 목록이 이미
      * 대화체를 올려 두어서 오히려 키 절약률이 떨어졌다. 그래서 검색 칸만 따로 다룬다.
      */
     private double fieldFactor(String w, int field) {
