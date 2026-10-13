@@ -377,6 +377,7 @@ public final class SuggestEval {
         if (t == double.class) f.setDouble(null, Double.parseDouble(p[1]));
         else if (t == float.class) f.setFloat(null, Float.parseFloat(p[1]));
         else if (t == int.class) f.setInt(null, Integer.parseInt(p[1]));
+        else if (t == boolean.class) f.setBoolean(null, Boolean.parseBoolean(p[1]));
         else throw new IllegalArgumentException(kv);
     }
 }

@@ -45,6 +45,10 @@ final class KoreanSuggest {
     /** 검색 칸에서 사전 단어에 조사가 붙은 말에 곱하는 값. */
     static double SEARCH_PARTICLE = 0.45;
 
+    /** 띄어 쓰지 않고 이어 친 말의 후보에 곱하는 값과, 접두사가 맞는 후보가 충분해도 늘 찾을지. */
+    static double SPLIT_FACTOR = 1.0;
+    static boolean SPLIT_ALWAYS = false;
+
     /** 조사를 붙여 만든 말의 확률에 곱하는 값 (사전에 그 말이 없을 때만 만든다). */
     static double PARTICLE_FACTOR = 0.6;
 
@@ -169,22 +173,13 @@ final class KoreanSuggest {
             }
         } else {
             for (int id : dict.lookupIds(word, 12)) add(pool, cx, dict.word(id), id, 1);
-            if (cx.group >= 0) {
-                int[] rg = new int[4];
-                int nr = dict.ranges(word, rg);
-                for (int r = 0; r < nr; r++) {
-                    for (int k = next.lowerBound(cx.group, rg[2 * r]); k < next.to(cx.group); k++) {
-                        int id = next.word(k);
-                        if (id >= rg[2 * r + 1]) break;
-                        if (!dict.word(id).equals(word)) add(pool, cx, dict.word(id), id, 1);
-                    }
-                }
-            }
+            addNextInRanges(pool, cx, word);
             if (usage != null) for (String w : usage.prefixIfLoaded(word, 1)) add(pool, cx, w, dict.indexOf(w), 1);
             if (user != null) {
                 for (String w : user.lookupIfLoaded(word, true, 6)) add(pool, cx, w, dict.indexOf(w), 1);
             }
             addParticles(pool, cx, word);
+            if ((SPLIT_ALWAYS || pool.size() < max) && hangulSyllables(word) >= 2) addSplits(pool, cx, word);
             if (pool.size() < max && hangulSyllables(word) >= 2) {
                 int[] ids = new int[8];
                 float[] cost = new float[8];
@@ -204,6 +199,50 @@ final class KoreanSuggest {
             if (!w.equals(fix)) out.add(w);
         }
         return new Result(out.toArray(new String[0]), fix != null ? 0 : -1, false);
+    }
+
+    /** 앞 단어 cx 다음에 자주 오는 단어 중 word로 시작할 수 있는 것을 후보에 넣는다. */
+    private void addNextInRanges(Map<String, Double> pool, Context cx, String word) {
+        if (cx.group < 0) return;
+        int[] rg = new int[4];
+        int nr = dict.ranges(word, rg);
+        for (int r = 0; r < nr; r++) {
+            for (int k = next.lowerBound(cx.group, rg[2 * r]); k < next.to(cx.group); k++) {
+                int id = next.word(k);
+                if (id >= rg[2 * r + 1]) break;
+                if (!dict.word(id).equals(word)) add(pool, cx, dict.word(id), id, 1);
+            }
+        }
+    }
+
+    /**
+     * 띄어쓰기를 생략하고 치는 말 ('밥먹' → 밥먹었어): 앞부분이 사전 단어면 그 뒤를 '그 단어 다음에 오는 말'로 보고
+     * 둘을 이어 붙인 후보를 만든다. 확률은 P(앞부분) × P(뒷부분|앞부분) × SPLIT_FACTOR. 긴 앞부분부터 두 가지만 본다.
+     */
+    private void addSplits(Map<String, Double> pool, Context cx, String word) {
+        if (SPLIT_FACTOR <= 0) return;
+        int n = word.length(), tried = 0;
+        for (int k = n - 1; k >= 1 && tried < 2; k--) {
+            String head = word.substring(0, k);
+            if (hangulSyllables(head) != k) continue;
+            int hid = dict.indexOf(head);
+            if (hid < 0) continue;
+            tried++;
+            double ph = cx.score(head, hid);
+            if (ph <= 0) continue;
+            String tail = word.substring(k);
+            Context ch = new Context(head, cx.field, cx.user, cx.usage);
+            Map<String, Double> sub = new HashMap<>();
+            for (int id : dict.lookupIds(tail, 8)) add(sub, ch, dict.word(id), id, 1);
+            addNextInRanges(sub, ch, tail);
+            for (Map.Entry<String, Double> e : sub.entrySet()) {
+                String cand = head + e.getKey();
+                double sc = ph * e.getValue() * SPLIT_FACTOR;
+                if (sc <= 0) continue;
+                Double old = pool.get(cand);
+                if (old == null || old < sc) pool.put(cand, sc);
+            }
+        }
     }
 
     /** 입력 중인 단어 없이, 앞 단어 다음에 올 단어를 예측한다. 자신이 없으면 빈 결과. */

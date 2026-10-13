@@ -128,6 +128,54 @@ def load_cache(path):
         return pickle.load(f)
 
 
+def read_fragments(path):
+    if not path:
+        return []
+    out = []
+    with open(path, encoding='utf-8') as f:
+        for line in f:
+            if not line.startswith('#'):
+                out += line.split()
+    return out
+
+
+def mix_caches(base, other, weight, exclude=()):
+    """두 말뭉치의 센 결과를 (1-weight):weight로 섞는다. 단어 목록은 둘을 합친 것이 된다 (횟수 자체는 더한다).
+    exclude의 조각이 들어간 단어는 other에서 빼고 섞는다 (그 단어가 든 단어 쌍도)."""
+    pm_a, voc_a, pw_a, pr_a, cw_a, cr_a, tests = base
+    pm_b, voc_b, pw_b, pr_b, cw_b, cr_b, _ = other
+    if exclude:
+        bad = {i for i, w in enumerate(voc_b) if any(x in w for x in exclude)}
+        sn = len(voc_b)
+        pm_b = {w: f for w, f in pm_b.items() if not any(x in w for x in exclude)}
+        pw_b = {c: v for c, v in pw_b.items() if c // sn not in bad and c % sn not in bad}
+        cw_b = [0.0 if i in bad else v for i, v in enumerate(cw_b)]
+        print(f'mix: {len(bad):,} topic words excluded')
+    pm = defaultdict(float)
+    for w, f in pm_a.items():
+        pm[w] += (1 - weight) * f
+    for w, f in pm_b.items():
+        pm[w] += weight * f
+    vocab = sorted(set(voc_a) | set(voc_b))
+    wid = {w: i for i, w in enumerate(vocab)}
+    n = len(vocab)
+    pw, pr = defaultdict(float), Counter()
+    cw, cr = [0.0] * n, [0] * n
+    for voc, pws, prs, cws, crs, k in ((voc_a, pw_a, pr_a, cw_a, cr_a, 1 - weight), (voc_b, pw_b, pr_b, cw_b, cr_b, weight)):
+        sn = len(voc)
+        remap = [wid[w] for w in voc]
+        for code, c in pws.items():
+            h, w = divmod(code, sn)
+            nc = remap[h] * n + remap[w]
+            pw[nc] += k * c
+            pr[nc] += prs.get(code, 0)
+        for i in range(sn):
+            cw[remap[i]] += k * cws[i]
+            cr[remap[i]] += crs[i]
+    print(f'mixed: vocab {n:,}, pairs {len(pw):,} (weight {weight})')
+    return dict(pm), vocab, dict(pw), dict(pr), cw, cr, tests
+
+
 def count(a, extra, phrases):
     """말뭉치를 세어 (단어 빈도, 넓은 단어 목록, 단어 쌍 횟수, 앞 단어 횟수, 평가 문장)을 돌려준다.
     단어 쌍은 사전 크기를 바꿔 보며 다시 쓸 수 있게 SUPER_TOP개의 넓은 목록으로 센다."""
@@ -202,6 +250,10 @@ def main():
     ap.add_argument('--holdout', type=int, default=50)
     ap.add_argument('--test-from', default='web')
     ap.add_argument('--cache', help='센 결과를 이 파일에 저장하고, 있으면 다시 쓴다')
+    ap.add_argument('--mix', action='append', default=[], metavar='CACHE:WEIGHT',
+                    help='다른 말뭉치를 센 결과(--cache로 만든 파일)를 이 비중으로 섞는다 (예: nsmc.pkl:0.3). '
+                         '단어 빈도와 단어 쌍 빈도가 (1-비중)×기본 + 비중×이것이 된다')
+    ap.add_argument('--mix-exclude', help='섞는 말뭉치에서 이 목록의 조각이 들어간 단어는 빼고 섞는다 (주제어를 빼고 말투만 가져온다)')
     a = ap.parse_args()
     os.makedirs(a.out_dir, exist_ok=True)
 
@@ -217,6 +269,9 @@ def main():
         if a.cache:
             with open(a.cache, 'wb') as f:
                 pickle.dump(cache, f, protocol=pickle.HIGHEST_PROTOCOL)
+    for spec in a.mix:
+        path, _, weight = spec.rpartition(':')
+        cache = mix_caches(cache, load_cache(path), float(weight), read_fragments(a.mix_exclude))
     per_million_raw, super_vocab, pair_w, pair_raw, ctx_w, ctx_raw, tests = cache
 
     per_million = defaultdict(float, per_million_raw)

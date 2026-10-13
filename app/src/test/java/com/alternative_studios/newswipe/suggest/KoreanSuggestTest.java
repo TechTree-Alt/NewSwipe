@@ -103,11 +103,11 @@ public class KoreanSuggestTest {
                 {"좋은", "200"}, {"아침", "140"}, {"아침에", "100"}, {"오늘", "220"}, {"감사합니다", "255"}, {"감사", "200"},
                 {"친구", "180"}, {"친구를", "150"}, {"친구가", "140"}, {"가방", "120"}, {"갑자기", "150"}, {"수고하세요", "160"},
                 {"수고", "130"}, {"사과", "120"}, {"사람", "200"}, {"사람이", "150"}, {"했다", "200"}, {"했어", "150"},
-                {"했어요", "140"}, {"비행기", "120"}, {"보고", "200"}, {"모교", "60"}, {"되요", "40"}, {"돼요", "200"}, {"친절", "135"},
+                {"했어요", "140"}, {"비행기", "120"}, {"보고", "200"}, {"모교", "60"}, {"되요", "40"}, {"돼요", "200"}, {"친절", "135"}, {"밥", "150"}, {"먹었어", "160"}, {"먹고", "150"},
         });
         next = NextWords.load(new ByteArrayInputStream(buildNext(dict, new String[][]{
                 {"좋은", "하루", "0.3"}, {"좋은", "아침", "0.2"}, {"좋은", "사람", "0.1"},
-                {"오늘", "하루", "0.05"}, {"감사합니다", "수고하세요", "0.2"},
+                {"오늘", "하루", "0.05"}, {"감사합니다", "수고하세요", "0.2"}, {"밥", "먹었어", "0.3"},
         }, 0.6)), dict.size());
         dict.warmUpChosung();
     }
@@ -258,6 +258,14 @@ public class KoreanSuggestTest {
         assertEquals(0, r.correction);
         assertEquals("감사합니다", r.words[0]);
         assertEquals(new ArrayList<>(new java.util.LinkedHashSet<>(Arrays.asList(r.words))).size(), r.words.length);
+    }
+
+    @Test
+    public void joinsWordsTypedWithoutSpace() {
+        // '밥먹었'은 사전에 없지만 '밥' 다음에 '먹었어'가 자주 온다: 띄어 쓰지 않은 그대로 이어 붙여 보인다.
+        assertEquals("밥먹었어", words(model().suggest("밥먹었", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3))[0]);
+        assertTrue(Arrays.asList(words(model().suggest("밥머", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)))
+                .contains("밥먹었어"));
     }
 
     @Test
