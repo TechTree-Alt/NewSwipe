@@ -22,6 +22,8 @@ import java.util.Random;
  *   <li>키 절약률 = 아낀 키 / (모든 단어의 키 + 띄어쓰기)</li>
  *   <li>잘못 고침 = 바르게 친 단어를 스페이스에서 다른 단어로 바꾼 비율</li>
  *   <li>오타 고침 = 일부러 넣은 오타(옆 키, 같은 키의 다른 동작, 빠뜨리기, 더 치기, 맞바꾸기)를 원래 단어로 고친 비율</li>
+ *   <li>만들어 낸 후보 = 보인 추천 칸 중 사전에도 내 기록에도 없는 말(이어 붙인 말, 조사를 붙인 말)의 비율과 그중 맞힌 비율.
+ *       키 절약률은 틀린 후보가 보여도 깎이지 않으므로, 엉뚱한 후보가 늘지 않았는지 이것으로 함께 본다 (SHOW_MADE=1이면 예시를 찍는다)</li>
  * </ul>
  * 사용법: java ... SuggestEval DICT_DIR TEST_FILE [옵션]
  *   --old            예전 방식(접두사 + 빈도만, 받침 넘김 없음, 예전 자동 수정)으로 잰다
@@ -106,7 +108,8 @@ public final class SuggestEval {
         }
         long keys = 0, saved = 0, predSaved = 0, words = 0, predHits = 0, predShown = 0, predTried = 0;
         long hitAt1 = 0, wrongFix = 0, oovWords = 0, oovWrong = 0;
-        long t0 = System.nanoTime(), calls = 0;
+        long t0 = System.nanoTime(), calls = 0, madeShown = 0, madeHit = 0, shownSlots = 0;
+        List<String> made = System.getenv("SHOW_MADE") != null ? new ArrayList<>() : null;
         StringBuilder rows = new StringBuilder();
         for (String line : lines) {
             long keys0 = keys, saved0 = saved;
@@ -150,6 +153,14 @@ public final class SuggestEval {
                         shown = ks.suggest(typed, prev, field, user, usage, null, WordSuggester.MAX).words;
                     }
                     calls++;
+                    for (String w : shown) {
+                        // 사전에도 내 기록에도 없는 말 = 키보드가 만들어 낸 후보 (이어 붙인 말, 조사를 붙인 말)
+                        if (d.contains(w) || (user != null && user.knownCountIfLoaded(w) > 0)) continue;
+                        madeShown++;
+                        if (w.equals(core)) madeHit++;
+                        if (made != null && made.size() < 40 && !w.equals(core)) made.add(typed + "→" + w);
+                    }
+                    shownSlots += shown.length;
                     int at = indexOf(shown, core);
                     if (at >= 0) {
                         if (at == 0) hitAt1++;
@@ -196,6 +207,9 @@ public final class SuggestEval {
         System.out.printf("잘못 고침: 전체 단어의 %.2f%%, 사전에 없는 단어의 %.1f%% (%d/%d)%n",
                 100.0 * wrongFix / words, oovWords == 0 ? 0 : 100.0 * oovWrong / oovWords, oovWrong, oovWords);
         System.out.printf("추천 한 번에 평균 %.3f ms%n", ms / Math.max(1, calls));
+        System.out.printf("만들어 낸 후보(사전에 없는 말): 보인 추천 칸의 %.1f%%, 그중 맞힌 것 %.1f%%%n",
+                100.0 * madeShown / Math.max(1, shownSlots), 100.0 * madeHit / Math.max(1, madeShown));
+        if (made != null) for (String m : made) System.out.println("  " + m);
         if (typo) typoTest(d, ks, lines, old);
     }
 

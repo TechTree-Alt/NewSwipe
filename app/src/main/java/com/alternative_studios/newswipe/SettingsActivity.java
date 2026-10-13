@@ -1941,9 +1941,9 @@ public final class SettingsActivity extends Activity {
         LinearLayout dict = section("한국어 사전");
         DictionaryPack.Info info = DictionaryPack.installed(getFilesDir());
         if (info == null) {
-            dict.addView(note("기본 사전을 쓰고 있습니다 (앱에 포함). 단어 추천, 초성 검색, 조사 붙이기, 띄어 쓰지 않고 친 말 추천, "
-                    + "자동 수정, 내 말버릇 학습은 기본 사전으로도 됩니다. 단어가 더 많고 앞 단어와 이어지는 말(단어 쌍)이 든 "
-                    + "사전 팩을 가져오면 다음 단어 예측과 앞 단어에 맞춘 추천이 더해집니다."));
+            dict.addView(note("기본 사전을 쓰고 있습니다 (앱에 포함). 단어 추천, 초성 검색, 조사 붙이기, 자동 수정, 내 말버릇 학습은 "
+                    + "기본 사전으로도 됩니다. 단어가 더 많고 앞 단어와 이어지는 말(단어 쌍)이 든 사전 팩을 가져오면 "
+                    + "다음 단어 예측, 앞 단어에 맞춘 추천, 띄어 쓰지 않고 친 말 추천이 더해집니다."));
         } else {
             StringBuilder b = new StringBuilder();
             b.append(info.name);

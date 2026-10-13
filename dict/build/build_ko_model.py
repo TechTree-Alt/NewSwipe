@@ -140,18 +140,22 @@ def read_fragments(path):
     return out
 
 
-def mix_caches(base, other, weight, exclude=()):
+def mix_caches(base, other, weight, exclude=(), known_only=False):
     """두 말뭉치의 센 결과를 (1-weight):weight로 섞는다. 단어 목록은 둘을 합친 것이 된다 (횟수 자체는 더한다).
-    exclude의 조각이 들어간 단어는 other에서 빼고 섞는다 (그 단어가 든 단어 쌍도)."""
+    exclude의 조각이 들어간 단어는 other에서 빼고 섞는다 (그 단어가 든 단어 쌍도).
+    known_only면 base의 넓은 단어 목록에 없는 단어도 other에서 뺀다 (other는 이미 있는 단어의 빈도만 바꾼다)."""
     pm_a, voc_a, pw_a, pr_a, cw_a, cr_a, tests = base
     pm_b, voc_b, pw_b, pr_b, cw_b, cr_b, _ = other
-    if exclude:
-        bad = {i for i, w in enumerate(voc_b) if any(x in w for x in exclude)}
+    if exclude or known_only:
+        known = set(voc_a) if known_only else None
+        bad = {i for i, w in enumerate(voc_b)
+               if any(x in w for x in exclude) or (known is not None and w not in known)}
         sn = len(voc_b)
-        pm_b = {w: f for w, f in pm_b.items() if not any(x in w for x in exclude)}
+        pm_b = {w: f for w, f in pm_b.items()
+                if not any(x in w for x in exclude) and (known is None or w in known)}
         pw_b = {c: v for c, v in pw_b.items() if c // sn not in bad and c % sn not in bad}
         cw_b = [0.0 if i in bad else v for i, v in enumerate(cw_b)]
-        print(f'mix: {len(bad):,} topic words excluded')
+        print(f'mix: {len(bad):,} words excluded from the mixed corpus')
     pm = defaultdict(float)
     for w, f in pm_a.items():
         pm[w] += (1 - weight) * f
@@ -255,6 +259,9 @@ def main():
                     help='다른 말뭉치를 센 결과(--cache로 만든 파일)를 이 비중으로 섞는다 (예: nsmc.pkl:0.3). '
                          '단어 빈도와 단어 쌍 빈도가 (1-비중)×기본 + 비중×이것이 된다')
     ap.add_argument('--mix-exclude', help='섞는 말뭉치에서 이 목록의 조각이 들어간 단어는 빼고 섞는다 (주제어를 빼고 말투만 가져온다)')
+    ap.add_argument('--mix-known-only', action='store_true',
+                    help='섞는 말뭉치는 기본 말뭉치에도 있는 단어의 빈도·단어 쌍만 바꾸고 새 단어를 들이지 않는다 '
+                         '(리뷰의 붙여 쓴 어절·고유명사·리뷰 용어가 사전에 들어오지 않게)')
     a = ap.parse_args()
     os.makedirs(a.out_dir, exist_ok=True)
 
@@ -272,7 +279,7 @@ def main():
                 pickle.dump(cache, f, protocol=pickle.HIGHEST_PROTOCOL)
     for spec in a.mix:
         path, _, weight = spec.rpartition(':')
-        cache = mix_caches(cache, load_cache(path), float(weight), read_fragments(a.mix_exclude))
+        cache = mix_caches(cache, load_cache(path), float(weight), read_fragments(a.mix_exclude), a.mix_known_only)
     per_million_raw, super_vocab, pair_w, pair_raw, ctx_w, ctx_raw, tests = cache
 
     per_million = defaultdict(float, per_million_raw)

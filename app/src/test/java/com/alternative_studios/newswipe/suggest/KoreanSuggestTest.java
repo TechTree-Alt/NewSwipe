@@ -266,6 +266,21 @@ public class KoreanSuggestTest {
         assertEquals("밥먹었어", words(model().suggest("밥먹었", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3))[0]);
         assertTrue(Arrays.asList(words(model().suggest("밥머", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)))
                 .contains("밥먹었어"));
+        // '안녕' 다음에 '하'로 시작하는 말이 온다는 근거(단어 쌍)가 없으면 '안녕하루'처럼 이어 붙이지 않는다.
+        assertArrayEquals(new String[]{"안녕하세요"},
+                words(model().suggest("안녕하", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)));
+    }
+
+    @Test
+    public void joinsWordsTheUserTypedTogether() throws Exception {
+        UsageHistory h = new UsageHistory(new File(tmp.getRoot(), "h.txt"));
+        h.load();
+        h.record("안녕", "하늘", 1);
+        assertFalse(Arrays.asList(words(model().suggest("안녕하", null, KoreanSuggest.FIELD_NORMAL, null, h, null, 3)))
+                .contains("안녕하늘"));   // 한 번 이어 쓴 것만으로는 근거가 아니다
+        h.record("안녕", "하늘", 2);
+        assertTrue(Arrays.asList(words(model().suggest("안녕하", null, KoreanSuggest.FIELD_NORMAL, null, h, null, 3)))
+                .contains("안녕하늘"));   // 두 번 이어 쓴 말은 근거가 된다
     }
 
     @Test

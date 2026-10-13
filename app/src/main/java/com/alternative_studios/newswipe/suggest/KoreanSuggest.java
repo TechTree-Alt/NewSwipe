@@ -47,6 +47,8 @@ final class KoreanSuggest {
 
     /** 띄어 쓰지 않고 이어 친 말의 후보에 곱하는 값과, 접두사가 맞는 후보가 충분해도 늘 찾을지. */
     static double SPLIT_FACTOR = 1.0;
+    /** 이어 붙일 근거로 볼 단어 쌍의 최소 P(뒷말|앞말). */
+    static double SPLIT_MIN_P = 0.03;
     static boolean SPLIT_ALWAYS = false;
 
     /** 조사를 붙여 만든 말의 확률에 곱하는 값 (사전에 그 말이 없을 때만 만든다). */
@@ -179,7 +181,13 @@ final class KoreanSuggest {
         } else {
             for (int id : dict.lookupIds(word, 12)) add(pool, cx, dict.word(id), id, 1);
             addNextInRanges(pool, cx, word);
-            if (usage != null) for (String w : usage.prefixIfLoaded(word, 1)) add(pool, cx, w, dict.indexOf(w), 1);
+            if (usage != null) {
+                for (String w : usage.prefixIfLoaded(word, 1)) {
+                    int id = dict.indexOf(w);
+                    // 사전에 없는 말은 두 번 이상 썼을 때만 (한 번 친 오타가 추천에 끼어들지 않게)
+                    if (id >= 0 || usage.countIfLoaded(w) >= 2) add(pool, cx, w, id, 1);
+                }
+            }
             if (user != null) {
                 for (String w : user.lookupIfLoaded(word, true, 6)) add(pool, cx, w, dict.indexOf(w), 1);
             }
@@ -221,8 +229,10 @@ final class KoreanSuggest {
     }
 
     /**
-     * 띄어쓰기를 생략하고 치는 말 ('밥먹' → 밥먹었어): 앞부분이 사전 단어면 그 뒤를 '그 단어 다음에 오는 말'로 보고
-     * 둘을 이어 붙인 후보를 만든다. 확률은 P(앞부분) × P(뒷부분|앞부분) × SPLIT_FACTOR. 긴 앞부분부터 두 가지만 본다.
+     * 띄어쓰기를 생략하고 치는 말 ('밥먹' → 밥먹었어): 앞부분이 단어이고, 그 단어 다음에 뒷부분으로 시작하는 말이 온다는 근거가
+     * 있을 때만 이어 붙인 후보를 만든다. 근거는 다음 단어 사전의 단어 쌍(P(뒷말|앞말) ≥ SPLIT_MIN_P)이나 내가 두 번 이상
+     * 이어 쓴 기록이다. 근거 없이 이어 붙이면 '그런가장', '사솔직히'처럼 말이 안 되는 후보가 빈칸을 채운다.
+     * 확률은 P(앞말) × P(뒷말|앞말) × SPLIT_FACTOR. 긴 앞부분부터 두 가지만 본다.
      */
     private void addSplits(Map<String, Double> pool, Context cx, String word) {
         if (SPLIT_FACTOR <= 0) return;
@@ -231,23 +241,38 @@ final class KoreanSuggest {
             String head = word.substring(0, k);
             if (hangulSyllables(head) != k) continue;
             int hid = dict.indexOf(head);
-            if (hid < 0) continue;
+            if (hid < 0 && (cx.user == null || cx.user.knownCountIfLoaded(head) == 0)) continue;
             tried++;
             double ph = cx.score(head, hid);
             if (ph <= 0) continue;
             String tail = word.substring(k);
             Context ch = new Context(head, cx.field, cx.user, cx.usage);
-            Map<String, Double> sub = new HashMap<>();
-            for (int id : dict.lookupIds(tail, 8)) add(sub, ch, dict.word(id), id, 1);
-            addNextInRanges(sub, ch, tail);
-            for (Map.Entry<String, Double> e : sub.entrySet()) {
-                String cand = head + e.getKey();
-                double sc = ph * e.getValue() * SPLIT_FACTOR;
-                if (sc <= 0) continue;
-                Double old = pool.get(cand);
-                if (old == null || old < sc) pool.put(cand, sc);
+            if (ch.group >= 0) {
+                int[] rg = new int[4];
+                int nr = dict.ranges(tail, rg);
+                for (int r = 0; r < nr; r++) {
+                    for (int i = next.lowerBound(ch.group, rg[2 * r]); i < next.to(ch.group); i++) {
+                        int id = next.word(i);
+                        if (id >= rg[2 * r + 1]) break;
+                        if (next.prob(i) < SPLIT_MIN_P) continue;
+                        putSplit(pool, head + dict.word(id), ph * ch.score(dict.word(id), id) * SPLIT_FACTOR);
+                    }
+                }
+            }
+            if (cx.usage != null) {
+                for (Object[] e : cx.usage.nextIfLoaded(head)) {
+                    String w = (String) e[0];
+                    if ((Integer) e[1] < 2 || w.equals(tail) || !HangulRange.startsWith(w, tail)) continue;
+                    putSplit(pool, head + w, ph * ch.score(w, dict.indexOf(w)) * SPLIT_FACTOR);
+                }
             }
         }
+    }
+
+    private static void putSplit(Map<String, Double> pool, String cand, double sc) {
+        if (sc <= 0) return;
+        Double old = pool.get(cand);
+        if (old == null || old < sc) pool.put(cand, sc);
     }
 
     /** 입력 중인 단어 없이, 앞 단어 다음에 올 단어를 예측한다. 자신이 없으면 빈 결과. */
