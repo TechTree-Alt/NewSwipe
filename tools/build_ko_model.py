@@ -196,6 +196,7 @@ def main():
     ap.add_argument('sentences', nargs='+')
     ap.add_argument('--top', type=int, default=40000)
     ap.add_argument('--pairs', type=int, default=100000)
+    ap.add_argument('--min-pair', type=int, default=MIN_PAIR_RAW, help='말뭉치에서 이보다 적게 본 단어 쌍은 고르지 않는다')
     ap.add_argument('--extra', action='append', default=[])
     ap.add_argument('--phrases')
     ap.add_argument('--holdout', type=int, default=50)
@@ -293,7 +294,7 @@ def main():
 
     scored = []
     for code, c in pair_w.items():
-        if pair_raw[code] < MIN_PAIR_RAW and code not in phrase_pairs:
+        if pair_raw[code] < a.min_pair and code not in phrase_pairs:
             continue
         h, w = divmod(code, n)
         pb = c / ctx_w[h]

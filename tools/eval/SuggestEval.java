@@ -29,6 +29,7 @@ import java.util.Random;
  *   --learn          문장을 치는 동안 쓴 기록을 쌓아 개인화 효과까지 잰다
  *   --no-predict     다음 단어 예측을 끈다
  *   --field N        입력란 종류 (0 보통, 1 검색)
+ *   --per-sentence F 문장마다 {키 수, 아낀 키 수}를 F에 쓴다 (compare_ksr.py로 두 설정을 견준다)
  *   --set NAME=VAL   KoreanSuggest의 계수를 바꿔 본다
  */
 public final class SuggestEval {
@@ -39,6 +40,7 @@ public final class SuggestEval {
     public static void main(String[] args) throws Exception {
         String dir = args[0], testFile = args[1];
         boolean old = false, learn = false, predict = true, typoOnly = false, typo = true;
+        String perSentence = null;
         int max = Integer.MAX_VALUE;
         int field = KoreanSuggest.FIELD_NORMAL;
         for (int i = 2; i < args.length; i++) {
@@ -47,6 +49,7 @@ public final class SuggestEval {
                 case "--learn": learn = true; break;
                 case "--no-predict": predict = false; break;
                 case "--typo-only": typoOnly = true; break;
+                case "--per-sentence": perSentence = args[++i]; break;
                 case "--no-typo": typo = false; break;
                 case "--max": max = Integer.parseInt(args[++i]); break;
                 case "--field": field = Integer.parseInt(args[++i]); break;
@@ -54,10 +57,14 @@ public final class SuggestEval {
                 default: throw new IllegalArgumentException(args[i]);
             }
         }
+        Runtime rt = Runtime.getRuntime();
+        long heap0 = usedHeap(rt);
+        long l0 = System.nanoTime();
         WordDictionary d;
         try (InputStream in = new FileInputStream(new File(dir, "dict_ko.bin"))) {
             d = WordDictionary.load(in);
         }
+        long l1 = System.nanoTime();
         NextWords next = null;
         File nf = new File(dir, "dict_ko_next.bin");
         if (!old && nf.exists()) {
@@ -65,7 +72,13 @@ public final class SuggestEval {
                 next = NextWords.load(in, d.size());
             }
         }
+        long l2 = System.nanoTime();
         d.warmUpChosung();
+        long l3 = System.nanoTime();
+        long heap1 = usedHeap(rt);
+        System.out.printf("읽기: 단어 사전 %.0f ms, 다음 단어 사전 %.0f ms, 초성 색인 %.0f ms / 메모리 %.2f MB (단어 %d개, 단어 쌍 %d개)%n",
+                (l1 - l0) / 1e6, (l2 - l1) / 1e6, (l3 - l2) / 1e6, (heap1 - heap0) / 1048576.0, d.size(),
+                next == null ? 0 : next.pairs());
         KoreanSuggest ks = new KoreanSuggest(d, next, new TypoModel());
         UserDictionary user = null;
         UsageHistory usage = null;
@@ -94,7 +107,9 @@ public final class SuggestEval {
         long keys = 0, saved = 0, predSaved = 0, words = 0, predHits = 0, predShown = 0, predTried = 0;
         long hitAt1 = 0, wrongFix = 0, oovWords = 0, oovWrong = 0;
         long t0 = System.nanoTime(), calls = 0;
+        StringBuilder rows = new StringBuilder();
         for (String line : lines) {
+            long keys0 = keys, saved0 = saved;
             String prev = null;
             for (String raw : line.split("\\s+")) {
                 String core = strip(raw);
@@ -168,7 +183,9 @@ public final class SuggestEval {
                 }
                 prev = breakAfter ? null : core;
             }
+            rows.append(keys - keys0).append('\t').append(saved - saved0).append('\n');
         }
+        if (perSentence != null) Files.write(new File(perSentence).toPath(), rows.toString().getBytes(StandardCharsets.UTF_8));
         double ms = (System.nanoTime() - t0) / 1e6;
         System.out.printf("문장 %d, 단어 %,d, 키 %,d%n", lines.size(), words, keys);
         System.out.printf("키 절약률 %.2f%% (그중 다음 단어 예측 %.2f%%)%n", 100.0 * saved / keys, 100.0 * predSaved / keys);
@@ -180,6 +197,19 @@ public final class SuggestEval {
                 100.0 * wrongFix / words, oovWords == 0 ? 0 : 100.0 * oovWrong / oovWords, oovWrong, oovWords);
         System.out.printf("추천 한 번에 평균 %.3f ms%n", ms / Math.max(1, calls));
         if (typo) typoTest(d, ks, lines, old);
+    }
+
+    /** GC를 몇 번 돌린 뒤 쓰고 있는 힙 (읽어 둔 사전이 차지하는 메모리를 재기 위해). */
+    private static long usedHeap(Runtime rt) {
+        for (int i = 0; i < 4; i++) {
+            System.gc();
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        return rt.totalMemory() - rt.freeMemory();
     }
 
     private static boolean userKnows(UserDictionary user, String w) {
