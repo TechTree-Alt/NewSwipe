@@ -15,3 +15,5 @@ __pycache__/
 # 공개할 수 없는 말뭉치와 그 집계 (국립국어원 말뭉치 등). 저장소 밖에 두는 것이 원칙이고, 실수로 넣지 않도록 막아 둔다.
 /private/
 *.pkl
+# 평가용 공개 말뭉치 (dict/eval/fetch_public_sets.sh로 받는다)
+/dict/eval/data/

@@ -83,11 +83,20 @@ public final class WordSuggester {
      * 추천 순서를 내 말버릇에 맞춘다. 백그라운드 스레드에서 부른다.
      */
     public void learn(String word, String prev, boolean korean, boolean strong) {
-        if (!useUser() || !learnable(word, korean)) return;
+        if (!useUser()) return;
+        learnInto(korean ? ko : en, user, korean ? usage : null, word, prev, korean, strong, System.currentTimeMillis());
+    }
+
+    /**
+     * 학습 한 번 (앱과 평가 도구 dict/eval/SuggestEval이 같이 쓴다). d = 지금 언어의 기본 사전 (아직 읽지 않았으면 null),
+     * usage = 한국어 쓴 기록 (영어나 기록하지 않으면 null).
+     */
+    static void learnInto(WordDictionary d, UserDictionary user, UsageHistory usage, String word, String prev,
+                          boolean korean, boolean strong, long now) {
+        if (!learnable(word, korean)) return;
         if (korean && usage != null) {
-            usage.record(prev != null && learnable(prev, true) ? prev : null, word, System.currentTimeMillis());
+            usage.record(prev != null && learnable(prev, true) ? prev : null, word, now);
         }
-        WordDictionary d = korean ? ko : en;
         if (d == null || d.contains(korean ? word : word.toLowerCase(Locale.ROOT))) return;
         if (korean) {
             // '글자+를', '민수+가'처럼 조사가 붙은 말은 조사를 뗀 단어로 기억한다 (조사마다 따로 쌓이지 않게).
@@ -97,7 +106,7 @@ public final class WordSuggester {
                 word = stem;
             }
         }
-        user.add(word, korean, strong, System.currentTimeMillis());
+        user.add(word, korean, strong, now);
     }
 
     /** 받침이 있어야 붙는 조사, 받침이 없어야(또는 ㄹ 받침) 붙는 조사, 받침과 상관없는 조사. 긴 것부터 맞춘다. */
