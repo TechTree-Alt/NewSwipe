@@ -5,7 +5,8 @@
 #   dict/eval/run_private_eval.sh 말뭉치_폴더_또는_zip [사전팩.zip]
 #
 # 환경 변수: FIELD=original_form (발화의 다른 키를 쓸 때), MAX=20000 (나눈 쪽마다 최대 문장 수),
-#            LEARN_MAX=3000 (학습 평가에 쓸 문장 수)
+#            LEARN_MAX=3000 (학습 평가에 쓸 문장 수),
+#            DEVICE=스마트폰 KEYBOARD=2벌식 (화자의 기기·자판으로 거를 때, 국립국어원 메신저 말뭉치)
 set -e
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 CORPUS=$1
@@ -19,7 +20,8 @@ unset SHOW_MADE SHOW_WRONG WHY
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
-python3 "$ROOT/dict/eval/nikl_extract.py" "$CORPUS" "$TMP/text" --field "${FIELD:-form}" --max "${MAX:-20000}"
+python3 "$ROOT/dict/eval/nikl_extract.py" "$CORPUS" "$TMP/text" --field "${FIELD:-form}" --max "${MAX:-20000}" \
+    --device "${DEVICE:-}" --keyboard "${KEYBOARD:-}"
 
 # 평가기를 한 번 컴파일한다 (run_eval.sh와 같은 방법)
 SRC=$ROOT/app/src/main/java/com/alternative_studios/newswipe

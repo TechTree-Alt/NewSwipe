@@ -40,6 +40,9 @@ dict/eval/run_private_eval.sh ~/corpora/messenger dict/packs/ko-standard.zip   #
 - 말뭉치 폴더 안의 `*.json`과 `*.zip` 속 `*.json`을 모두 읽고, 대화(`utterance` 목록)마다 발화의 `form`을 씁니다
   (`FIELD=original_form`으로 바꿀 수 있습니다). 가명 처리 표시(`&name&` 등)는 단어 사이를 끊는 표시로 바꿉니다.
 - 대화 단위로 dev(조정에 쓸 절반)와 test(조정에 쓰지 않을 절반)로 나눕니다. 나눈 쪽마다 최대 `MAX`(기본 20,000)문장.
+- 국립국어원 메신저 말뭉치는 화자마다 기기·자판이 적혀 있어 `DEVICE=스마트폰 KEYBOARD=2벌식`처럼 거를 수 있습니다
+  (휴대폰 2벌식 사용자가 NewSwipe와 가장 비슷합니다). 기기·자판별 발화 수와 form·original_form이 다른 비율도 집계로 찍습니다.
+- 말뭉치의 JSON 구조는 `python3 dict/eval/json_schema.py 말뭉치`로 원문 없이 키 이름·자료형만 볼 수 있습니다.
 - 예시 문장을 찍는 평가 옵션(`SHOW_MADE`, `SHOW_WRONG`, `WHY`)은 이 스크립트에서 꺼집니다. 이런 말뭉치로는 직접 켜지 마세요.
 - 이 말뭉치로 만든 사전이나 잰 숫자를 공개하려면 약정에 따라 먼저 국립국어원의 승인을 받고 출처를 밝혀야 합니다.
 
