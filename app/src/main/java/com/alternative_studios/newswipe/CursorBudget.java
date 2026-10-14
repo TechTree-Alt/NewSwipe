@@ -36,6 +36,11 @@ final class CursorBudget {
         for (int i = 0; i < left.length; i++) left[i] = UNKNOWN;
     }
 
+    /** dir 쪽으로 갈 수 있는 칸 수를 알고 있는지 (모르면 다음 {@link #take}에서 입력란에 묻는다). */
+    boolean known(int dir) {
+        return left[dir] != UNKNOWN;
+    }
+
     /**
      * dir 쪽으로 한 칸 갈 수 있으면 그 한 칸을 쓰고 true. 모르면 src로 글자를 읽어 센다.
      * 갈 수 없으면 false이며, 다시 반대쪽으로 움직이거나 reset할 때까지 묻지 않고 계속 false다.

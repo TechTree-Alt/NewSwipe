@@ -1172,7 +1172,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         initialTextFresh = false;
         selStart = info.initialSelStart;
         selEnd = info.initialSelEnd;
-        cursorBudget.reset();
+        forgetCursorEdges();
         clearSuggestions();
         applyFieldLanguage(info, restarting);
         if (cls == InputType.TYPE_CLASS_NUMBER || cls == InputType.TYPE_CLASS_PHONE
@@ -1786,10 +1786,29 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return backward ? ic.getTextBeforeCursor(n, 0) : ic.getTextAfterCursor(n, 0);
     };
 
+    /** 좌우 이동에서 커서 위치를 직접 정할 때 쓰는 커서 주변 글. */
+    private final CursorWindow cursorWindow = new CursorWindow();
+    /** 이 입력란은 커서 주변 글과 위치를 알려 주지 않는다: 이번 밀기에서는 좌우도 방향 키로 옮긴다. */
+    private boolean cursorWindowUnsupported;
+
+    /**
+     * 방향 키를 보낸 뒤 입력란이 그 키를 처리했다고 볼 때까지의 시간. 앱은 받은 키를 따로 줄 세워 나중에 처리하므로,
+     * 그 전에 입력란에 글자나 위치를 물으면 커서가 움직이기 전의 답이 올 수 있다 (그 답을 믿으면 끝을 넘겨 키를 보낸다).
+     */
+    private static final long ARROW_SETTLE_MS = 100;
+    private long lastArrowKey;
+
+    /** 기억한 커서 주변 글과 칸 수를 모두 잊는다 (새로 밀기 시작할 때, 입력란이 바뀌었을 때). */
+    private void forgetCursorEdges() {
+        cursorBudget.reset();
+        cursorWindow.reset();
+        cursorWindowUnsupported = false;
+    }
+
     /** 새로 밀어서 커서 이동을 시작했다: 그사이 커서나 글이 바뀌었을 수 있으므로 기억한 칸 수를 잊는다. */
     @Override
     public void onCursorStart() {
-        cursorBudget.reset();
+        forgetCursorEdges();
     }
 
     /** 밀어서 커서 이동(스페이스바·분리 키보드 가운데 빈 공간·글자 키): 커서가 실제로 한 칸 움직일 때마다 약한 진동(틱). */
@@ -1826,25 +1845,81 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (!composer.isEmpty() || hadComposing) {
             commitComposing();
             cursorBudget.reset();
+            cursorWindow.reset();
+        }
+        InputConnection ic = getCurrentInputConnection();
+        if (ic == null) return false;
+        if (!textField()) {
+            // 터미널 등 글을 알려 주지 않는 입력란: 방향 키를 그대로 앱에 넘긴다 (끝을 알 수 없고, 앱이 키를 직접 쓴다).
+            sendDownUpKeyEvents(keyCode);
+            mirror.forget();
+            return true;
         }
         if (selStart >= 0 && selEnd >= 0 && selStart != selEnd) {
             // 선택한 글자가 있으면 방향 키처럼 선택을 풀며 그쪽 끝으로 커서를 옮긴다. 선택이 글의 맨 앞·맨 뒤에 닿아 있어도
             // 방향 키를 보내지 않으므로 포커스가 넘어가지 않는다.
-            InputConnection ic = getCurrentInputConnection();
-            if (ic == null) return false;
             boolean back = dir == CursorBudget.LEFT || dir == CursorBudget.UP;
             int pos = back ? Math.min(selStart, selEnd) : Math.max(selStart, selEnd);
             ic.setSelection(pos, pos);
             // 입력란이 바뀐 위치를 알려 주기 전에 이어서 밀어도 선택이 풀린 것으로 보도록 바로 기억해 둔다.
             selStart = selEnd = pos;
             cursorBudget.reset();
+            cursorWindow.reset();
             mirror.forget();
             return true;
         }
+        if (dir <= CursorBudget.RIGHT && !cursorWindowUnsupported) {
+            int to = cursorWindow.next(dir == CursorBudget.LEFT);
+            if (to == CursorWindow.UNKNOWN) {
+                if (arrowKeyPending()) return false;   // 위아래로 옮긴 키를 아직 처리 중일 수 있다: 이번 칸은 건너뛴다
+                if (readCursorWindow(ic)) {
+                    to = cursorWindow.next(dir == CursorBudget.LEFT);
+                } else {
+                    cursorWindowUnsupported = true;
+                }
+            }
+            if (to >= 0) {
+                ic.setSelection(to, to);
+                selStart = selEnd = to;
+                cursorBudget.reset();   // 위아래로 갈 수 있는 줄 수가 바뀌었을 수 있다
+                mirror.forget();
+                return true;
+            }
+            if (to == CursorWindow.EDGE) return false;
+            // 아주 긴 글자 묶음 등으로 위치를 정하지 못했다: 아래의 방향 키로 옮긴다
+        }
+        // 방향 키로 옮긴다 (위아래, 또는 커서 위치를 알려 주지 않는 입력란의 좌우). 끝에서는 보내지 않는다.
+        if (!cursorBudget.known(dir) && arrowKeyPending()) return false;
         if (!cursorBudget.take(dir, cursorText)) return false;
         sendDownUpKeyEvents(keyCode);
+        lastArrowKey = SystemClock.uptimeMillis();
+        cursorWindow.reset();
         mirror.forget();
         return true;
+    }
+
+    /** 방금 보낸 방향 키를 입력란이 아직 처리하지 않았을 수 있는지 ({@link #ARROW_SETTLE_MS} 참고). */
+    private boolean arrowKeyPending() {
+        return SystemClock.uptimeMillis() - lastArrowKey < ARROW_SETTLE_MS;
+    }
+
+    /** 커서 앞뒤 글과 커서 위치를 입력란에서 읽어 둔다 (Android 12부터). 알려 주지 않으면 false. */
+    private boolean readCursorWindow(InputConnection ic) {
+        if (Build.VERSION.SDK_INT < 31) return false;
+        try {
+            SurroundingText st = ic.getSurroundingText(CursorWindow.WINDOW, CursorWindow.WINDOW, 0);
+            if (st == null || st.getOffset() < 0 || st.getSelectionStart() != st.getSelectionEnd()) return false;
+            cursorWindow.set(st.getText(), st.getOffset(), st.getSelectionStart(), CursorWindow.WINDOW);
+            return true;
+        } catch (RuntimeException e) {
+            return false;   // 이 입력란이 지원하지 않는다: 방향 키로 옮긴다
+        }
+    }
+
+    /** 글을 다루는 입력란인지. 터미널 등은 글 종류를 정하지 않고(TYPE_NULL) 방향 키를 직접 받는다. */
+    private boolean textField() {
+        EditorInfo ei = getCurrentInputEditorInfo();
+        return ei != null && (ei.inputType & InputType.TYPE_MASK_CLASS) != InputType.TYPE_NULL;
     }
 
     /** 한 줄짜리 입력란에서 위/아래 키를 보내면 다른 입력란으로 포커스가 넘어가므로, 줄 이동은 여러 줄 입력란에서만 한다. */
@@ -2940,19 +3015,19 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 }
                 break;
             case SwipeAction.CURSOR_LEFT:
-                cursorBudget.reset();   // 한 번씩 옮기는 동작: 그사이 커서가 어디로 갔는지 모르므로 새로 센다
+                forgetCursorEdges();   // 한 번씩 옮기는 동작: 그사이 커서가 어디로 갔는지 모르므로 새로 센다
                 moveCursor(-1);
                 break;
             case SwipeAction.CURSOR_RIGHT:
-                cursorBudget.reset();
+                forgetCursorEdges();
                 moveCursor(1);
                 break;
             case SwipeAction.CURSOR_UP:
-                cursorBudget.reset();
+                forgetCursorEdges();
                 moveCursorVertical(-1);   // 여러 줄 입력란에서만 움직인다
                 break;
             case SwipeAction.CURSOR_DOWN:
-                cursorBudget.reset();
+                forgetCursorEdges();
                 moveCursorVertical(1);
                 break;
             case SwipeAction.WORD_LEFT:
