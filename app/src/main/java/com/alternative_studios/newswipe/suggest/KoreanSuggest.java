@@ -194,7 +194,7 @@ final class KoreanSuggest {
             }
             addParticles(pool, cx, word);
             // 만든 활용형은 사전 후보가 모자랄 때만 빈칸을 채운다 (사전에 있는 말을 밀어내면 손해가 크다)
-            if (pool.size() < max) addEndings(pool, cx, word);
+            if (pool.size() < max) addBelow(pool, cx, word);
             if ((SPLIT_ALWAYS || pool.size() < max) && hangulSyllables(word) >= 2) addSplits(pool, cx, word);
             if (pool.size() < max && hangulSyllables(word) >= 2) {
                 int[] ids = new int[8];
@@ -431,11 +431,19 @@ final class KoreanSuggest {
      * 그냥 한테·에게는 사전에 근거가 없어도 붙이되(오빠한테) 비율을 낮춘다.
      */
     private static final boolean[] PARTICLE_ANIMATE = new boolean[PARTICLES.length];
+    /**
+     * 붙는 말의 뜻을 많이 가리는 조사 (엄마마다, 커피조차, 오후대로처럼 문법은 맞아도 어색한 말이 되기 쉽다).
+     * 조사의 첫 글자를 다 친 뒤에만 붙인다 ('엄마마' → 엄마마다는 내지만 '엄마ㅁ'에서는 내지 않는다).
+     */
+    private static final boolean[] PARTICLE_PICKY = new boolean[PARTICLES.length];
+    private static final List<String> PICKY = Arrays.asList("마다", "조차", "조차도", "마저", "마저도", "대로", "이야말로",
+            "이나마", "에서처럼", "만큼의");
 
     static {
         for (int i = 0; i < PARTICLES.length; i++) {
             PARTICLE_PRIOR[i] = Double.parseDouble(PARTICLES[i][2]);
             String p = PARTICLES[i][0];
+            PARTICLE_PICKY[i] = PICKY.contains(p);
             PARTICLE_ANIMATE[i] = p.startsWith("께") || p.length() > 2 && (p.startsWith("한테") || p.startsWith("에게"));
         }
     }
@@ -457,6 +465,7 @@ final class KoreanSuggest {
             boolean animate = mine || animate(stem);
             for (int i = 0; i < PARTICLES.length; i++) {
                 if (PARTICLE_ANIMATE[i] && !animate) continue;
+                if (PARTICLE_PICKY[i] && (n <= k || word.charAt(k) < 0xAC00 || word.charAt(k) > 0xD7A3)) continue;
                 String[] p = PARTICLES[i];
                 String particle;
                 if (p[1] == null) particle = p[0];
@@ -479,15 +488,16 @@ final class KoreanSuggest {
     // ---------------------------------------------------------------- 어미
 
     /**
-     * '○○하다'의 어미 (하다 활용은 규칙적이라 모두 붙인다). 사전에 '○○하고', '○○했다' 같은 활용형이 있는 말에만 붙인다.
+     * '○○하다'의 어미 (하다 활용은 규칙적이라 모두 붙인다). 사전에 '○○하고', '○○했다' 같은 활용형이 있는 말에만
+     * 붙인다. 어미 목록(아래 일반 어간·과거형도)은 사람이 쓴 대화 문장(평가에 쓰지 않는 절반)에서 흔한 순서이고, 같은 어간이면
+     * 앞의 것을 먼저 낸다.
      * 짝은 {어미, 대략적인 비율}.
      */
     private static final String[] HA_ENDINGS = {
-            "해", "해요", "해서", "해도", "해야지", "해야돼", "해줘", "해줘요", "해봐", "해볼까", "했어", "했어요", "했다",
-            "했네", "했지", "했잖아", "했는데", "했으면", "했나봐", "했거든", "했더니", "했습니다", "하고", "하지", "하지만",
-            "하네", "하네요", "하니", "하냐", "하자", "하면", "하니까", "하려고", "하잖아", "하거든", "하더라", "하던데",
-            "하겠어", "하겠다", "하겠지", "하겠네", "할게", "할게요", "할래", "할래요", "할까", "할까요", "할거야", "할걸",
-            "합니다", "하세요", "하나봐", "하기로",
+            "해", "하고", "할까", "하면", "하네", "해도", "했어", "하지", "했는데", "해야지", "해서", "해줘", "하겠어", "하려고",
+            "하겠지", "할거야", "해볼까", "해요", "했습니다", "할까요", "합니다", "하니", "했으면", "했네", "하더라", "하니까", "했더니",
+            "할걸", "하나봐", "했다", "했잖아", "하지만", "하네요", "했어요", "하냐", "하세요", "하자", "하던데", "했지", "하겠다", "할게요",
+            "하잖아", "할게", "하겠네", "해봐", "할래", "해줘요", "했나봐", "했거든", "하기로", "하거든", "할래요", "해야돼",
     };
     /** '○○하다'인지 알아보는 활용형 (하나라도 사전에 있으면). */
     private static final String[] HA_EVIDENCE = {"하고", "하는", "했다", "했어", "해서", "하면", "한다", "하기", "해요", "했던"};
@@ -505,15 +515,15 @@ final class KoreanSuggest {
     }
     /** 일반 어간에 붙이는 어미: 자음으로 시작해 불규칙 활용과 상관없고 동사·형용사 모두에 붙는 것만. */
     private static final String[] STEM_ENDINGS = {
-            "고", "지", "지만", "네", "네요", "니", "냐", "거든", "거든요", "더라", "더라고", "던데", "겠어", "겠어요", "겠다",
-            "겠네", "겠지", "잖아", "잖아요", "죠", "기로", "게",
+            "고", "지", "게", "네", "겠어", "니", "겠지", "겠다", "죠", "지만", "기로", "냐", "더라", "네요", "겠네", "잖아",
+            "겠어요", "던데", "잖아요", "거든", "거든요", "더라고",
     };
     private static final String[] STEM_EVIDENCE = {"고", "지", "는", "네", "게", "기", "다", "던", "지만", "겠다"};
     /** 과거형(-았/었/였-, 받침 ㅆ) 뒤에 붙이는 어미. */
     private static final String[] PAST_ENDINGS = {
-            "어", "어요", "다", "네", "네요", "지", "지만", "잖아", "잖아요", "거든", "거든요", "더라", "더라고", "던데",
-            "는데", "고", "니", "냐", "구나", "대", "대요", "다고", "죠", "으면", "을까", "을걸", "겠다", "겠네", "겠지",
-            "나봐", "나", "나요", "더니", "습니다",
+            "어", "고", "지", "네", "다", "는데", "을까", "나", "으면", "니", "겠지", "대", "습니다", "겠다", "나봐", "죠",
+            "다고", "더니", "지만", "어요", "나요", "냐", "더라", "네요", "구나", "겠네", "잖아", "대요", "던데", "잖아요", "거든",
+            "거든요", "을걸", "더라고",
     };
     private static final String[] PAST_EVIDENCE = {"어", "다", "지", "네", "는데", "고", "어요", "던", "으면"};
     /** 어미를 붙여 만든 말의 확률에 곱하는 값 (같은 어간의 사전 활용형 확률 합에 곱한다). */
@@ -569,6 +579,20 @@ final class KoreanSuggest {
         generate(pool, cx, word, stem, HA_EVIDENCE, 1, null, verb ? HA_ENDINGS : HA_ADJ_ENDINGS, false);
     }
 
+    /** 만든 활용형을 이미 있는 후보 아래에 넣는다 (사전에 있는 '말자'가 만든 '말죠'에 밀리지 않게). 순서는 그대로 둔다. */
+    private void addBelow(Map<String, Double> pool, Context cx, String word) {
+        Map<String, Double> made = new HashMap<>();
+        addEndings(made, cx, word);
+        if (made.isEmpty()) return;
+        double floor = Double.MAX_VALUE, top = 0;
+        for (double v : pool.values()) floor = Math.min(floor, v);
+        for (double v : made.values()) top = Math.max(top, v);
+        double scale = pool.isEmpty() || top < floor ? 1 : floor * 0.9 / top;
+        for (Map.Entry<String, Double> e : made.entrySet()) {
+            if (!pool.containsKey(e.getKey())) pool.put(e.getKey(), e.getValue() * scale);
+        }
+    }
+
     /**
      * stem + 어미 중 입력 word로 시작할 수 있는 것을 후보에 넣는다. stem + evidence 활용형이 사전에 minEvidence개 이상
      * 있어야 하고, must가 있으면 stem + must도 사전에 있어야 한다 (일반 어간은 '먹고'처럼 -고 꼴이 있어야 어간으로 본다:
@@ -587,7 +611,8 @@ final class KoreanSuggest {
             family += cx.score(stem + e, id);
         }
         if (found < minEvidence || family <= 0) return;
-        for (String e : endings) {
+        for (int i = 0; i < endings.length; i++) {
+            String e = endings[i];
             String s = stem;
             if (dropRieul && (e.startsWith("네") || e.startsWith("니"))) {
                 char l = stem.charAt(stem.length() - 1);
@@ -595,7 +620,7 @@ final class KoreanSuggest {
             }
             String cand = s + e;
             if (cand.equals(word) || !HangulRange.startsWith(cand, word) || dict.indexOf(cand) >= 0) continue;
-            double sc = family * ENDING_FACTOR;
+            double sc = family * ENDING_FACTOR * (1 - 0.002 * i);   // 같은 어간이면 흔한 어미부터
             Double old = pool.get(cand);
             if (old == null || old < sc) pool.put(cand, sc);
         }
@@ -606,8 +631,7 @@ final class KoreanSuggest {
 
     /**
      * 사전에 격조사를 붙인 말이 있으면 명사로 본다. 은·는·도는 부사(그냥은, 또는)와 용언 활용(가는, 먹은)에도 붙어 보지 않는다.
-     * 받침 뒤 을·이는 용언 활용(먹을, 먹이)과 헷갈려, 하나만 있으면 그 말에 -고·-는·-지 꼴이 없을 때만 믿는다. '있다가'처럼
-     * 다로 끝난 용언 활용형도 뺀다.
+     * '있다가'처럼 다로 끝난 용언 활용형도 뺀다.
      */
     boolean nounLike(String w) {
         int n = w.length();
@@ -623,17 +647,30 @@ final class KoreanSuggest {
         // 가고·가는이 있는 '가'처럼 용언 어간이기도 한 말은 격조사 꼴이 둘 이상 있어야 한다
         boolean verb = dict.contains(w + "고") && (dict.contains(w + "는") || dict.contains(w + "지"))
                 || "아어여워와해".indexOf(last) >= 0;   // 걸어(가), 들어(가): 용언 + 어 꼴
-        String[] cases = {"의", "에", "에서", fin && t != 8 ? "으로" : "로", fin ? "과" : "와", "에게", "한테",
-                fin ? "을" : "를", fin ? "이" : "가"};
-        int strong = 0, weak = 0;
-        for (int i = 0; i < cases.length; i++) {
-            if (!dict.contains(w + cases[i])) continue;
-            if (fin && i >= cases.length - 2) weak++;
-            else strong++;
+        String[] cases = {"의", "에", "에서", fin ? "과" : "와", "에게", "한테"};
+        int strong = 0;
+        for (String c : cases) if (dict.contains(w + c)) strong++;
+        if (!fin) {   // 받침 없는 말 뒤 를·가는 용언 활용과 헷갈리지 않는다
+            if (dict.contains(w + "를")) strong++;
+            if (dict.contains(w + "가")) strong++;
         }
         if (verb) return strong >= 2;
-        return strong >= 1 || weak == 2 || weak == 1 && !dict.contains(w + "고") && !dict.contains(w + "는")
-                && !dict.contains(w + "지");
+        if (strong >= 1) return true;
+        // 받침 뒤 을은 용언 어간이 아닐 때만 (먹을 X, 월급을 O). 이·(으)로는 부사(일찍이, 절대로)에도 붙는다.
+        boolean notVerb = !dict.contains(w + "고") && !dict.contains(w + "는") && !dict.contains(w + "지");
+        if (fin && dict.contains(w + "을")) return notVerb;
+        if (!notVerb) return false;
+        // 하나뿐이면 조사 붙은 꼴이 맨말보다 아주 드물지 않아야 한다: 상관이·한쪽으로는 흔하고, 일찍이·정말로·절대로는 드물다
+        double min = Math.max(freq(w) * WEAK_RATIO, Double.MIN_VALUE);
+        return fin && freq(w + "이") >= min || freq(w + (fin && t != 8 ? "으로" : "로")) >= min;
+    }
+
+    static double WEAK_RATIO = 0.2;
+
+    /** 사전에 있는 말의 빈도 (없으면 0). */
+    private double freq(String w) {
+        int id = dict.indexOf(w);
+        return id < 0 ? 0 : uni[dict.score(id)];
     }
 
     /** 사람·동물 뒤에 오는 조사(한테, 에게, 께)를 붙일 만한 말인지: 사전에 그런 조사를 붙인 말이 있어야 한다. */

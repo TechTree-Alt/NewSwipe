@@ -108,6 +108,7 @@ public class KoreanSuggestTest {
                 {"됐어", "150"}, {"됐다", "140"}, {"듣고", "120"}, {"듣지", "110"}, {"스타일", "120"}, {"스타일을", "100"},
                 {"추천하는", "110"}, {"추천되는", "110"}, {"추천되고", "100"}, {"먹을", "120"}, {"사람한테", "100"},
                 {"피곤한", "120"}, {"피곤해서", "110"}, {"있다", "200"}, {"있다고", "150"}, {"있다는", "150"}, {"있고", "150"},
+                {"일찍", "200"}, {"일찍이", "60"}, {"상관", "120"}, {"상관이", "110"}, {"엄마", "180"}, {"엄마를", "120"},
         });
         next = NextWords.load(new ByteArrayInputStream(buildNext(dict, new String[][]{
                 {"좋은", "하루", "0.6"}, {"좋은", "아침", "0.25"}, {"좋은", "사람", "0.1"},
@@ -312,6 +313,19 @@ public class KoreanSuggestTest {
         for (String w : words(m.suggest("있다ㅈ", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3))) {
             assertFalse(w, w.startsWith("있다잖") || w.startsWith("있다죠"));
         }
+    }
+
+    @Test
+    public void keepsAdverbsAndPickyParticlesOut() {
+        KoreanSuggest m = model();
+        // '일찍이'는 맨말 '일찍'보다 훨씬 드물어 부사로 본다 (일찍한테 X). '상관이'는 흔해 명사로 본다.
+        assertFalse(m.nounLike("일찍"));
+        assertTrue(m.nounLike("상관"));
+        // 뜻을 가리는 조사(마다)는 첫 글자를 다 친 뒤에만
+        assertFalse(Arrays.asList(words(m.suggest("엄마ㅁ", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)))
+                .contains("엄마마다"));
+        assertTrue(Arrays.asList(words(m.suggest("엄마마", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)))
+                .contains("엄마마다"));
     }
 
     @Test
