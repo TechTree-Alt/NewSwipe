@@ -93,6 +93,15 @@ public final class KeyboardView extends View {
         /** 선택 모드에서 위아래로 밀어 선택 영역의 움직이는 끝을 한 줄 위(-1)/아래(+1)로 옮긴다. */
         default void onSelectMoveVertical(int direction) {
         }
+
+        /** 추천 단어가 도구 막대에 떠 있는지 (위로 밀어 추천 단어를 입력할 수 있을 때). */
+        default boolean suggestionsShown() {
+            return false;
+        }
+
+        /** 자판 왼쪽(0)·가운데(1)·오른쪽(2)을 위로 밀었다: 그 자리의 추천 단어를 입력한다. */
+        default void onPickSuggestion(int slot) {
+        }
     }
 
     private static final int NORMAL = 0;
@@ -112,6 +121,8 @@ public final class KeyboardView extends View {
     private static final int CHAR_REPEAT = 10;
     /** 스페이스바를 길게 누른 뒤 밀고 있는 중: 커서 이동처럼 움직이되 선택 영역을 넓힌다. */
     private static final int SELECT = 11;
+    /** 문자 키를 위로 밀고 있는 중 (손을 떼면 밀기 시작한 자리의 추천 단어를 입력한다). */
+    private static final int PICK_SWIPE = 12;
 
     private static final class Pointer {
         int id;
@@ -122,6 +133,8 @@ public final class KeyboardView extends View {
         int swipeDir;
         /** mode가 FN_SWIPE일 때 실행할 기능 (SwipeAction ID). */
         String fnAction;
+        /** mode가 PICK_SWIPE일 때 입력할 추천 단어 자리 (0 왼쪽, 1 가운데, 2 오른쪽). */
+        int pickSlot;
         float cursorAnchorX, cursorAnchorY;
         /** 마지막으로 본 손가락 위치 (두 손가락 밀기를 알아채는 데 쓴다). */
         float lastX, lastY;
@@ -194,6 +207,7 @@ public final class KeyboardView extends View {
     private boolean spaceLangSwipe;
     /** 키보드 밀기 (한 손가락·두 손가락). 쓰지 않으면 null. */
     private KeyboardSwipes kbSwipes;
+    private boolean pickSwipe;
     /**
      * 두 손가락 밀기를 기다리는 중: 앞 손가락(deferred)의 입력을 미루고 두 번째 손가락(second)과 함께 지켜본다.
      * 둘이 같은 방향으로 충분히 움직이면 두 손가락 밀기, 아니면 어느 한 손가락을 뗄 때 평소처럼 앞 키부터 입력한다.
@@ -375,6 +389,11 @@ public final class KeyboardView extends View {
 
     public void setKeyboardSwipes(KeyboardSwipes k) {
         kbSwipes = k;
+    }
+
+    /** 자판 왼쪽·가운데·오른쪽을 위로 밀어 첫째·둘째·셋째 추천 단어를 입력할지. */
+    public void setPickSwipe(boolean on) {
+        pickSwipe = on;
     }
 
     /** 숫자 키(1~0)에는 길게 눌러 입력할 문자 힌트를 그리지 않을지. */
@@ -941,7 +960,8 @@ public final class KeyboardView extends View {
     /** 두 번째 손가락이 닿을 때 앞 키를 바로 입력해도 되는 상태 (아직 입력하지 않은 키). */
     private static boolean releasable(Pointer p) {
         return p.key.type != Key.SHIFT
-                && (p.mode == NORMAL || p.mode == SWIPED || p.mode == EMOJI_SWIPE || p.mode == FN_SWIPE);
+                && (p.mode == NORMAL || p.mode == SWIPED || p.mode == EMOJI_SWIPE || p.mode == FN_SWIPE
+                || p.mode == PICK_SWIPE);
     }
 
     /** 두 손가락이 같은 방향으로 충분히 움직였으면 그 방향의 기능을 실행하고, 두 손가락의 입력은 모두 취소한다. */
@@ -1041,6 +1061,15 @@ public final class KeyboardView extends View {
                         p.swipeDir = dir;
                     } else if (p.mode == SWIPED && swipeDistance(p.swipeDir, dx, dy) > swipeThreshold * 0.5f) {
                         // 한번 스와이프로 들어가면 문턱의 절반까지 되돌려도 유지한다.
+                    } else if (pickSwipe && p.mode == NORMAL && deferred == null && !letterThere && dir == Key.SWIPE_UP
+                            && swipeDistance(dir, dx, dy) > fnSwipeThreshold && listener != null
+                            && listener.suggestionsShown()) {
+                        // 추천 단어가 떠 있으면 위로 밀기는 추천 단어 입력이 먼저다 (커서 이동·키보드 밀기보다).
+                        // 밀기 시작한 자리가 자판의 왼쪽·가운데·오른쪽 3분의 1 중 어디인지로 고른다.
+                        p.mode = PICK_SWIPE;
+                        p.swipeDir = dir;
+                        p.pickSlot = Math.max(0, Math.min(2, (int) (p.downX * 3 / Math.max(1, getWidth()))));
+                        cancelLongPress(p);
                     } else if (charCursor && p.mode == NORMAL && deferred == null && !letterThere
                             && ((dir == Key.SWIPE_LEFT || dir == Key.SWIPE_RIGHT) ? charCursorH : charCursorV)
                             && swipeDistance(dir, dx, dy)
@@ -1148,6 +1177,9 @@ public final class KeyboardView extends View {
                 // 한번 밀기로 들어가면 문턱의 절반까지 되돌려도 유지하고, 그보다 더 되돌리면 그냥 탭으로 돌아간다.
                 if (-dy < fnSwipeThreshold * 0.5f) p.mode = NORMAL;
                 break;
+            case PICK_SWIPE:
+                if (-dy < fnSwipeThreshold * 0.5f) p.mode = NORMAL;
+                break;
             case POPUP:
                 if (p == popupPointer) updatePopupSelection(x, y);
                 break;
@@ -1213,6 +1245,11 @@ public final class KeyboardView extends View {
                     listener.onGesture();
                     listener.onKeyFunction(p.key, p.fnAction);
                 }
+                markChord();
+                break;
+            case PICK_SWIPE:
+                listener.onGesture();
+                listener.onPickSuggestion(p.pickSlot);
                 markChord();
                 break;
             case REPEAT:

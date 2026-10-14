@@ -399,6 +399,7 @@ public final class SettingsActivity extends Activity {
             {"swipefn", "두 손가락으로 밀어서 실행 취소", "undo redo 되돌리기 다시 실행"},
             {"swipefn", "키보드 밀기 편집", "자판 스와이프 기능"},
             {"swipefn", "키보드 밀기 완전 사용자화", "자판 스와이프 커스텀"},
+            {"swipefn", "위로 밀어서 추천 단어 입력", "추천 단어 스와이프 고르기 자판 위로"},
             {"words", "도구 막대 전체를 쓰기", "추천 툴바 전체"},
             {"words", "추천 단어 뒤에 공백 포함", "띄어쓰기 스페이스"},
             {"words", "단어 추천", "자동 완성 예측 추천"},
@@ -1862,6 +1863,11 @@ public final class SettingsActivity extends Activity {
                     Ui.setVisibleAnimated(boardCustomEdit, on);
                 }));
         board.addView(boardCustomEdit);
+        board.addView(toggle("위로 밀어서 추천 단어 입력",
+                "추천 단어가 떠 있을 때 자판의 왼쪽·가운데·오른쪽에서 위로 밀면 첫째·둘째·셋째 추천 단어를 입력합니다. "
+                        + "밀기 시작한 키에 위로 밀어서 입력할 글자가 있으면 글자 입력이 우선되고, "
+                        + "추천 단어가 없을 때는 위로 밀기가 원래대로 동작합니다.",
+                Prefs.SWIPE_PICK_SUGGESTION, prefs.swipePickSuggestion()));
     }
 
     private void buildWords() {

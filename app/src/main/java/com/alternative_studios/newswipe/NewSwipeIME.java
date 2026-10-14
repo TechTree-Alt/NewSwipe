@@ -1003,6 +1003,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         keyboard.setCharCursor(!prefs.swipeKeyboardCustom() && prefs.charCursor(),
                 prefs.charCursorH(), prefs.charCursorV());
         // 키보드 밀기: 완전 사용자화를 켜면 편집한 배치를, 끄면 '두 손가락으로 밀어서 실행 취소'만 쓴다.
+        keyboard.setPickSwipe(prefs.swipePickSuggestion());
         keyboard.setKeyboardSwipes(prefs.swipeKeyboardCustom() ? KeyboardSwipes.load(prefs)
                 : prefs.twoFingerUndo() ? KeyboardSwipes.twoFingerUndo() : null);
         toolbarSwipes = prefs.swipeToolbarCustom() ? ToolbarSwipes.load(prefs)
@@ -3032,6 +3033,23 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             SwipeAction.LANGUAGE, SwipeAction.HIDE_KEYBOARD, SwipeAction.SETTINGS, SwipeAction.DELETE_WORD,
             SwipeAction.DELETE_LINE_START, SwipeAction.SPACE, SwipeAction.BACKSPACE,
             SwipeAction.EMOJI_OPEN, SwipeAction.CLIPBOARD_OPEN, SwipeAction.ONE_HAND_LEFT, SwipeAction.ONE_HAND_RIGHT);
+
+    /** 추천 단어 줄이 떠 있는지 (자판을 위로 밀어 추천 단어를 입력할 수 있을 때). */
+    @Override
+    public boolean suggestionsShown() {
+        return panel == PANEL_KEYBOARD && suggestBar != null && suggestBar.getVisibility() == View.VISIBLE
+                && suggestions.length > 0;
+    }
+
+    @Override
+    public void onPickSuggestion(int slot) {
+        if (!suggestionsShown()) return;
+        // 단축어의 문장은 첫 칸 하나가 추천란을 채우므로 어느 자리에서 밀어도 그 문장을 입력한다.
+        int index = shortcutShown ? 0 : slot;
+        if (index >= suggestions.length) return;
+        feedback.onKey(null);
+        applySuggestion(index);
+    }
 
     /** 밀어서 기능 완전 사용자화로 정해 둔 기능(SwipeAction ID)을 실행한다. */
     @Override

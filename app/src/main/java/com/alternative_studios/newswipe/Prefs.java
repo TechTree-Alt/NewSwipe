@@ -99,6 +99,7 @@ public final class Prefs {
     public static final int BALANCED_WIDTH_MIN_LANDSCAPE = 30;
     public static final String SPACE_SELECT = "space_select";                 // 스페이스바를 길게 누른 뒤 밀어서 글자 선택
     public static final String SELECTION_CHIPS = "selection_chips";           // 글자를 선택하면 도구 막대에 편집 칩
+    public static final String SWIPE_PICK_SUGGESTION = "swipe_pick_suggestion"; // 자판 왼쪽·가운데·오른쪽을 위로 밀어 추천 단어 입력
     public static final String TWO_FINGER_UNDO = "two_finger_undo";           // 두 손가락으로 밀어 실행 취소·다시 실행
     public static final String SWIPE_KEYBOARD_CUSTOM = "swipe_keyboard_custom"; // 키보드 밀기 완전 사용자화
     public static final String SPACE_LANG_SWIPE = "space_lang_swipe";         // 스페이스바를 좌우로 밀어 한/영 전환
@@ -344,7 +345,7 @@ public final class Prefs {
         MENU_PREFIXES.put("swipe", keys("swipe_custom_", "swipe_final_", "swipe_vowel_"));
         MENU_KEYS.put("swipefn", keys(FN_SWIPE_THRESHOLD, SPACE_CURSOR, SPACE_CURSOR_H, SPACE_CURSOR_V,
                 SPACE_CURSOR_SPEED_H, SPACE_CURSOR_SPEED_V, CHAR_CURSOR, CHAR_CURSOR_H, CHAR_CURSOR_V,
-                CHAR_CURSOR_SPEED_H, CHAR_CURSOR_SPEED_V, SPACE_LANG_SWIPE, SPACE_SELECT, TWO_FINGER_UNDO, SWIPE_KEYBOARD_CUSTOM,
+                CHAR_CURSOR_SPEED_H, CHAR_CURSOR_SPEED_V, SPACE_LANG_SWIPE, SPACE_SELECT, TWO_FINGER_UNDO, SWIPE_KEYBOARD_CUSTOM, SWIPE_PICK_SUGGESTION,
                 SWIPE_FN_CUSTOM, SWIPE_TOOLBAR_CUSTOM, DELETE_WORD_SWIPE, MODE_KEY_EMOJI, TOOLBAR_SWIPE,
                 TOOL_EMOJI_SWIPE, TOOL_CLIPBOARD_SWIPE, TOOL_UNDO_SWIPE));
         MENU_PREFIXES.put("swipefn", keys("swipe_fn_", "swipe_toolbar_", "swipe_kb_"));
@@ -600,6 +601,7 @@ public final class Prefs {
     public boolean spaceSelect() { return sp.getBoolean(SPACE_SELECT, true); }
     public boolean selectionChips() { return sp.getBoolean(SELECTION_CHIPS, true); }
     public boolean twoFingerUndo() { return sp.getBoolean(TWO_FINGER_UNDO, false); }
+    public boolean swipePickSuggestion() { return sp.getBoolean(SWIPE_PICK_SUGGESTION, false); }
     public boolean swipeKeyboardCustom() { return sp.getBoolean(SWIPE_KEYBOARD_CUSTOM, false); }
 
     public boolean spaceLangSwipe() { return sp.getBoolean(SPACE_LANG_SWIPE, false); }
