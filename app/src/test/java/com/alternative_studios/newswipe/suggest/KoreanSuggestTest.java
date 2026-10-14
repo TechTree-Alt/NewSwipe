@@ -106,6 +106,8 @@ public class KoreanSuggestTest {
                 {"했어요", "140"}, {"비행기", "120"}, {"보고", "200"}, {"모교", "60"}, {"되요", "40"}, {"돼요", "200"}, {"친절", "135"}, {"밥", "150"}, {"먹었어", "160"}, {"먹고", "150"},
                 {"추천", "150"}, {"추천하고", "120"}, {"추천했다", "120"}, {"좋고", "140"}, {"좋지", "130"},
                 {"됐어", "150"}, {"됐다", "140"}, {"듣고", "120"}, {"듣지", "110"}, {"스타일", "120"}, {"스타일을", "100"},
+                {"추천하는", "110"}, {"추천되는", "110"}, {"추천되고", "100"}, {"먹을", "120"}, {"사람한테", "100"},
+                {"피곤한", "120"}, {"피곤해서", "110"}, {"있다", "200"}, {"있다고", "150"}, {"있다는", "150"}, {"있고", "150"},
         });
         next = NextWords.load(new ByteArrayInputStream(buildNext(dict, new String[][]{
                 {"좋은", "하루", "0.6"}, {"좋은", "아침", "0.25"}, {"좋은", "사람", "0.1"},
@@ -292,6 +294,51 @@ public class KoreanSuggestTest {
         for (String w : words(m.suggest("듣", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3))) {
             assertFalse(w, w.startsWith("듣어") || w.startsWith("듣을"));
         }
+    }
+
+    @Test
+    public void doesNotAttachParticlesToVerbForms() {
+        KoreanSuggest m = model();
+        // '추천되는'이 사전에 있다고 '추천되'를 명사로 보면 '추천되는요'가 나온다
+        assertFalse(m.nounLike("추천되"));
+        for (String w : words(m.suggest("추천되는", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3))) {
+            assertFalse(w, w.endsWith("요"));
+        }
+        // 받침 뒤 '을' 하나만으로는 명사가 아니다 (먹을 → 먹이야 X), 용언 어간이 아닌 말은 명사로 본다 (스타일을)
+        assertFalse(m.nounLike("먹"));
+        assertTrue(m.nounLike("스타일"));
+        assertTrue(m.nounLike("친구"));
+        // 다로 끝난 활용형에 어미를 붙이지 않는다 (있다잖아 X)
+        for (String w : words(m.suggest("있다ㅈ", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3))) {
+            assertFalse(w, w.startsWith("있다잖") || w.startsWith("있다죠"));
+        }
+    }
+
+    @Test
+    public void attachesCompoundParticles() {
+        KoreanSuggest m = model();
+        // 뿐 → 뿐만, 뿐이야
+        List<String> s = Arrays.asList(words(m.suggest("친구뿐", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)));
+        assertTrue(s.toString(), s.contains("친구뿐만") && s.contains("친구뿐이야"));
+        // 한테는·한테도는 사전에 그 말 + 한테가 있을 때만 (평생한테는 같은 말이 나오지 않게)
+        assertTrue(Arrays.asList(words(m.suggest("사람한테", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)))
+                .contains("사람한테는"));
+        assertFalse(Arrays.asList(words(m.suggest("친구한테", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)))
+                .contains("친구한테는"));
+        // 그냥 한테는 근거가 없어도 붙인다
+        assertTrue(Arrays.asList(words(m.suggest("친구한", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)))
+                .contains("친구한테"));
+    }
+
+    @Test
+    public void doesNotGiveVerbEndingsToAdjectives() {
+        KoreanSuggest m = model();
+        // 피곤하다는 형용사라 '피곤해줘'는 틀린 말, 추천하다는 동사라 '추천해줘'를 만든다
+        for (String w : words(m.suggest("피곤해ㅈ", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3))) {
+            assertFalse(w, w.startsWith("피곤해줘"));
+        }
+        assertTrue(Arrays.asList(words(m.suggest("추천해ㅈ", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)))
+                .contains("추천해줘"));
     }
 
     @Test
