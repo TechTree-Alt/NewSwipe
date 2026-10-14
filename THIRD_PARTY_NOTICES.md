@@ -47,13 +47,23 @@ SPDX-License-Identifier: Unicode-3.0
 ## Word suggestion dictionaries
 
 `app/src/main/assets/dict_ko.bin` and `dict_en.bin` are word-frequency lists built by
-`tools/build_ko_dict.py` and `tools/build_en_dict.py`. Changes made: words were filtered
-(Hangul-only / Latin-only, profanity removed), frequencies averaged and quantized to one byte,
-the lists were truncated to the most frequent entries, and hand-written colloquial words and
-generated conjugated forms were added.
+`dict/build/build_ko_model.py` (Korean, 50,000 words) and `dict/build/build_en_dict.py`. The bundled
+`dict_ko_next.bin` holds no word pairs, only the frequency scale of `dict_ko.bin`.
+Changes made: words were filtered (Hangul-only / Latin-only, profanity removed), frequencies
+averaged and quantized to one byte, the lists were truncated to the most frequent entries, and
+hand-written colloquial words, conjugated forms and conversational phrases were added.
 
-- Korean: word frequencies from the Leipzig Corpora Collection (Korean news 2022 and web 2020
-  corpora, 1M sentences each), licensed under CC BY 4.0.
+The optional Korean dictionary pack `dict/packs/ko-standard.zip` (not part of the app; users
+import it from Settings) is built the same way with 80,000 words plus 400,000 word pairs (a word
+and the words that often follow it), counted from the corpus sentences, pruned to the most
+informative pairs and quantized. It is distributed under CC BY 4.0 with its own `LICENSE.txt`.
+
+- Korean: word and word-pair frequencies from the Leipzig Corpora Collection (Korean news 2022,
+  web 2020 and web 2015 corpora, 1M sentences each), licensed under CC BY 4.0, mixed with word
+  frequencies from the Naver sentiment movie corpus (NSMC, `ratings_train.txt`, Lucy Park,
+  <https://github.com/e9t/nsmc>), dedicated to the public domain under CC0 1.0. NSMC only reweights words and
+  word pairs that also occur in the Leipzig corpora; words found only in NSMC and words containing
+  movie-related topic words were left out.
   D. Goldhahn, T. Eckart & U. Quasthoff: *Building Large Monolingual Dictionaries at the Leipzig
   Corpora Collection: From 100 to 200 Languages.* LREC 2012. <https://wortschatz.uni-leipzig.de>
   License: <https://creativecommons.org/licenses/by/4.0/>

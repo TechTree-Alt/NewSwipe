@@ -186,6 +186,12 @@ public final class TextMirror {
         return w;
     }
 
+    /** 기억한 커서 앞 글자 전체 (조합 중인 글자 포함, 최대 KEEP자쯤). 기억이 없으면 null. */
+    public String text() {
+        if (!valid) return null;
+        return composing.isEmpty() ? text.toString() : text + composing;
+    }
+
     /** 커서 바로 앞 글자 (조합 중인 글자 포함). 기억이 없거나 비어 있으면 0. */
     public char lastChar() {
         if (!composing.isEmpty()) return composing.charAt(composing.length() - 1);

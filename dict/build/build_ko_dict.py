@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """한국어 단어 추천용 시험 사전을 만든다.
 
+앱에 넣는 dict_ko.bin은 이제 dict/build/build_ko_model.py가 다음 단어 사전과 함께 만든다 (같은 단어 번호를 써야 해서).
+이 파일의 걸러 내기·양자화·저장 함수(select, write_nsd1)는 build_ko_model.py가 그대로 쓴다.
+
 입력: Leipzig Corpora Collection (CC BY 4.0)의 한국어 단어 빈도 파일 (*-words.txt: 순번 \t 단어 \t 빈도)
 출력: 빈도 순위 TSV(검토용)와, 앱에 넣을 압축 이진 사전(dict_ko.bin)
 
 사용법:
-  python3 tools/build_ko_dict.py OUT_DIR TOP_N [--extra 목록.txt ...] words1.txt [words2.txt ...]
+  python3 dict/build/build_ko_dict.py OUT_DIR TOP_N [--extra 목록.txt ...] words1.txt [words2.txt ...]
 
   --extra: 보완 목록 (여러 번 지정 가능). 뉴스·웹 말뭉치에 대화체가 거의 없어서
            직접 고른 구어체 목록(ko_colloquial.txt)과 활용형 목록(ko_conjugated.txt)으로 보완한다.
@@ -32,13 +35,18 @@ from collections import defaultdict
 HANGUL = re.compile(r'^[가-힣]+$')
 
 # 한 글자로도 추천할 가치가 있는 단어(자주 쓰는 명사·부사·감탄사).
-ONE_CHAR_OK = set('나너내네저제우그이것수때중안못잘더또네예응아오음글말집일년월일밤낮물불길꿈별달해곧')
+ONE_CHAR_OK = set('나너내네저제우그이것수때중안못잘더또네예응아오음글말집일년월일밤낮물불길꿈별달해곧'
+                  # 조사가 자주 붙는 한 글자 명사 ('표는', '돈이'가 자동 수정되지 않게 하고 조사 추천에도 쓴다)
+                  '표돈차책옷밥술꽃눈비산강몸맛손발등문방배병빵컵줄잠힘키값팀폰앱약돌땅섬빛색떡국면옆앞뒤위밑속밖곳번분층명잔벌')
 
 # 추천에서 빼는 욕설·비속어 조각. 이 문자열이 들어간 단어는 제외한다.
 # 뉴스·일상어에도 쓰이는 말(성폭력, 자위대, 한남동, 꺼져, 닥쳐 등)이 걸리지 않도록 뜻이 분명한 것만 둔다.
 BLOCKLIST = [
     '씨발', '시발', '씨팔', '시팔', '병신', '개새끼', '좆', '존나', '지랄', '느금', '니미', '엿먹',
     '미친놈', '미친년', '또라이', '썅', '쌍놈', '쌍년', '창녀', '김치녀', '일베충', '섹스', '야동', '포르노',
+    # 사람이 쓴 리뷰(NSMC)를 섞을 때 들어오는 욕설·비하어 ('곱씹다'는 걸리지 않게 '씹'은 뒤 글자까지 적는다)
+    '씹노', '씹쓰', '씹망', '씹창', '씹덕', '씹새', '개같', '개빡', '개새', '개색', '개쌍', '닥쳐', '꺼져버', '시바', '씨바',
+    '찐따', '된장녀', '짱깨', '쪽바리', '한남충', '틀딱', '급식충', '병신', '븅신', '빙신', '좆',
 ]
 
 
@@ -100,6 +108,20 @@ def main():
     if extra:
         print(f'extra entries: {len(extra):,}')
 
+    kept = select(per_million, extra, top_n)
+
+    # 검토용 TSV (빈도순)
+    with open(os.path.join(out_dir, 'ko_rank.tsv'), 'w', encoding='utf-8') as f:
+        for w, fr in kept:
+            f.write(f'{w}\t{fr:.2f}\n')
+
+    path = os.path.join(out_dir, 'dict_ko.bin')
+    write_nsd1(path, kept)
+    print(f'wrote {path}: {os.path.getsize(path):,} bytes')
+
+
+def select(per_million, extra, top_n):
+    """한 글자 단어(허용 목록 밖), 너무 긴 단어, 차단 목록 단어를 빼고 빈도 상위 top_n개를 [(단어, 빈도)]로."""
     kept = []
     dropped_one = dropped_block = 0
     for w, f in per_million.items():
@@ -112,18 +134,21 @@ def main():
             dropped_block += 1
             continue
         kept.append((w, f))
-    kept.sort(key=lambda x: -x[1])
+    kept.sort(key=lambda x: (-x[1], x[0]))
     kept = kept[:top_n]
     print(f'kept {len(kept):,} (dropped one-char {dropped_one:,}, blocklist {dropped_block:,}), '
           f'min freq/million {kept[-1][1]:.2f}')
+    return kept
 
-    # 검토용 TSV (빈도순)
-    with open(os.path.join(out_dir, 'ko_rank.tsv'), 'w', encoding='utf-8') as f:
-        for w, fr in kept:
-            f.write(f'{w}\t{fr:.2f}\n')
 
-    # 점수: 로그 빈도를 1~255로 양자화
-    top, bottom = math.log(kept[0][1] + 1), math.log(kept[-1][1] + 1)
+def score_scale(kept):
+    """점수 양자화 기준: (가장 흔한 단어, 가장 드문 단어)의 log(백만 단어당 빈도 + 1). kept는 빈도 내림차순."""
+    return math.log(kept[0][1] + 1), math.log(kept[-1][1] + 1)
+
+
+def write_nsd1(path, kept):
+    """kept = [(단어, 백만 단어당 빈도)] (빈도 내림차순). 로그 빈도를 1~255로 양자화해 NSD1로 쓴다."""
+    top, bottom = score_scale(kept)
     def score(fr):
         return 1 + int(round(254 * (math.log(fr + 1) - bottom) / (top - bottom)))
 
@@ -138,10 +163,8 @@ def main():
         blob += struct.pack('<BBB', common, len(tail), score(fr))
         blob += tail.encode('utf-16-le')
         prev = w
-    path = os.path.join(out_dir, 'dict_ko.bin')
     with open(path, 'wb') as f:
         f.write(b'NSD1' + struct.pack('<II', len(words), len(blob)) + bytes(blob))
-    print(f'wrote {path}: {os.path.getsize(path):,} bytes')
 
 
 if __name__ == '__main__':

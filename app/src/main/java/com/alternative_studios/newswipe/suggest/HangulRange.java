@@ -17,6 +17,58 @@ final class HangulRange {
 
     private HangulRange() { }
 
+    /**
+     * 단어 w가 입력 중인 p로 시작할 수 있는지 (마지막 글자가 덜 만들어졌거나, 받침이 다음 글자의 첫소리일 수 있는 것까지).
+     * w가 p와 똑같아도 true.
+     */
+    static boolean startsWith(String w, String p) {
+        if (p.isEmpty()) return false;
+        if (matches(w, p)) return true;
+        String m = movedFinal(p);
+        return m != null && matches(w, m);
+    }
+
+    private static boolean matches(String w, String p) {
+        int n = p.length();
+        if (w.length() < n || !w.regionMatches(0, p, 0, n - 1)) return false;
+        char last = p.charAt(n - 1), c = w.charAt(n - 1);
+        int[] r = of(last);
+        if (r != null) return c >= r[0] && c <= r[1];
+        return !(last >= 'ㄱ' && last <= 'ㅣ') && c == last;
+    }
+
+    /** 종성 번호 → 호환 자모 (0번은 받침 없음). */
+    private static final String FINAL_COMPAT = "\0ㄱㄲㄳㄴㄵㄶㄷㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅄㅅㅆㅇㅈㅊㅋㅌㅍㅎ";
+    /** 겹받침 번호 → {남는 앞 받침 번호, 다음 글자로 넘어갈 자음}. */
+    private static final int[][] SPLIT_FINAL = {
+            {3, 1, 'ㅅ'}, {5, 4, 'ㅈ'}, {6, 4, 'ㅎ'}, {9, 8, 'ㄱ'}, {10, 8, 'ㅁ'}, {11, 8, 'ㅂ'},
+            {12, 8, 'ㅅ'}, {13, 8, 'ㅌ'}, {14, 8, 'ㅍ'}, {15, 8, 'ㅎ'}, {18, 17, 'ㅅ'},
+    };
+
+    /**
+     * 마지막 글자의 받침이 사실은 다음 글자의 첫소리일 수 있을 때(두벌식은 '하'+ㅅ을 먼저 '핫'으로 보인다),
+     * 그 받침을 다음 글자의 첫소리로 넘긴 접두사 ('안녕핫' → '안녕하ㅅ', '닭' → '달ㄱ'). 받침이 없으면 null.
+     */
+    static String movedFinal(String prefix) {
+        int n = prefix.length();
+        if (n == 0) return null;
+        char c = prefix.charAt(n - 1);
+        if (c < BASE || c > END) return null;
+        int s = c - BASE, t = s % 28;
+        if (t == 0) return null;
+        int keep = 0;
+        char moved = FINAL_COMPAT.charAt(t);
+        for (int[] sp : SPLIT_FINAL) {
+            if (sp[0] == t) {
+                keep = sp[1];
+                moved = (char) sp[2];
+                break;
+            }
+        }
+        if (moved >= 0x3131 && moved < 0x3164 && INITIAL_OF_COMPAT[moved - 0x3131] < 0) return null;
+        return prefix.substring(0, n - 1) + (char) (c - t + keep) + moved;
+    }
+
     /** {처음, 끝}(둘 다 포함). 한글이 아니면 null. */
     static int[] of(char c) {
         if (c >= 0x3131 && c < 0x3164) {

@@ -88,6 +88,11 @@ public final class KeyboardLayout {
         return prefs != null && prefs.koreanNewSwipe();
     }
 
+    /** 설정한 한글 배열의 글자 줄 (자동 수정이 이웃한 키를 알기 위해 쓴다). 고치지 않는다. */
+    public static String[][] koreanLetterRows(Prefs prefs) {
+        return newSwipe(prefs) ? D7_ROWS : KOREAN_ROWS;
+    }
+
     /** 한글 자판 한 줄의 칸 수: NewSwipe 단모음은 7, 8열 단모음은 8. */
     public static int koreanColumns(Prefs prefs) {
         return newSwipe(prefs) ? 7 : 8;
