@@ -34,16 +34,18 @@ NewSwipe를 직접 빌드하고 서명하는 방법입니다. 사용법은 [READ
 
 ## 한국어 사전과 사전 팩
 
-앱에 든 한국어 기본 사전(`app/src/main/assets/dict_ko.bin`, 5만 단어)과 설정에서 가져오는 사전 팩(`dict/packs/ko-standard.zip`,
+앱에 든 한국어 기본 사전(`app/src/main/assets/dict_ko.bin`, 7만 단어)과 설정에서 가져오는 사전 팩(`dict/packs/ko-standard.zip`,
 8만 단어 + 단어 쌍 40만 개)은 `dict/build/build_ko_model.py`로 만듭니다. 말뭉치는 저장소에 넣지 않으며, 만드는 명령과 받는 곳은
-`dict/build/build_ko_model.py` 맨 위에 적혀 있습니다. NSMC(`ratings_train.txt`, CC0)는 한 번 센 뒤 `--mix 센결과.pkl:0.5
---mix-exclude dict/lists/ko_mix_exclude_nsmc.txt --mix-known-only`로 섞습니다. `--mix-known-only`는 리뷰가 Leipzig 말뭉치에 있는
-단어의 빈도와 단어 쌍만 바꾸게 해서, 리뷰의 붙여 쓴 어절(`진짜재밌어요`)·고유명사·리뷰 용어가 사전에 들어오지 않게 합니다.
+`dict/build/build_ko_model.py` 맨 위에 적혀 있습니다. NSMC(`ratings_train.txt`, CC0)는 한 번 센 뒤(`build_ko_model.py nsmc_tmp
+--cache nsmc.pkl ratings_train.txt`) `--mix nsmc.pkl:0.5 --mix-exclude dict/lists/ko_mix_exclude_nsmc.txt --mix-admit`로 섞습니다.
+`--mix-admit`은 리뷰가 Leipzig 말뭉치에 있는 단어의 빈도와 단어 쌍을 바꾸고, Leipzig에 없던 단어는 Leipzig가 아는 조각으로 풀리는
+말(대화체 활용형 `재밌음`·`못하겠네`, 띄어 쓰지 않은 두 어절 `볼때마다`)만 들입니다 (`dict/build/ko_admit.py`). 고유명사·리뷰 용어와
+맞춤법이 틀린 말(`봣는데`)은 들어오지 않습니다. 새 단어를 하나도 들이지 않으려면 `--mix-known-only`를 씁니다.
 
 ```bash
 # 기본 사전 (자주 쓰는 단어 쌍 5만 개를 담은 dict_ko_next.bin도 함께 나온다)
-python3 dict/build/build_ko_model.py out_base --cache counts.pkl --mix nsmc.pkl:0.5 --mix-exclude dict/lists/ko_mix_exclude_nsmc.txt --mix-known-only \
-    --top 50000 --pairs 50000 --extra dict/lists/ko_colloquial.txt --extra dict/lists/ko_conjugated.txt --phrases dict/lists/ko_phrases.txt 말뭉치들...
+python3 dict/build/build_ko_model.py out_base --cache counts.pkl --mix nsmc.pkl:0.5 --mix-exclude dict/lists/ko_mix_exclude_nsmc.txt --mix-admit \
+    --top 70000 --pairs 50000 --extra dict/lists/ko_colloquial.txt --extra dict/lists/ko_conjugated.txt --phrases dict/lists/ko_phrases.txt 말뭉치들...
 cp out_base/dict_ko.bin out_base/dict_ko_next.bin app/src/main/assets/
 
 # 표준 사전 팩

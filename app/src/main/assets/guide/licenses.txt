@@ -28,7 +28,7 @@ License: https://creativecommons.org/licenses/by/4.0/
 변경 사항: 한글로만 된 단어만 남기고 비속어를 뺐으며, 빈도를 평균 내어 1바이트로 줄이고 많이 쓰이는 단어만 남긴 뒤, 직접 쓴 구어 표현과 활용형을 더했습니다.
 
 ## Naver sentiment movie corpus (NSMC)
-한국어 기본 사전의 구어체 단어 빈도
+한국어 기본 사전의 구어체 단어와 빈도
 CC0 1.0
 ~~~
 Lucy Park, ratings_train.txt. https://github.com/e9t/nsmc

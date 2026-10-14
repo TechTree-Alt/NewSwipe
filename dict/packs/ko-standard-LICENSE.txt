@@ -13,8 +13,10 @@ NewSwipe 한국어 표준 사전 팩 (ko-standard)
 
 2. Naver sentiment movie corpus (NSMC), ratings_train.txt - Lucy Park
    License: CC0 1.0 Universal (public domain dedication)  https://github.com/e9t/nsmc
-   Used for colloquial style: only reweights words and word pairs that also occur in the Leipzig
-   corpora (words found only in NSMC and movie-related topic words were left out).
+   Used for colloquial style: reweights words and word pairs that also occur in the Leipzig corpora,
+   and adds NSMC-only words only when they split into parts the Leipzig corpora know (a Leipzig word
+   plus a particle or ending, or two Leipzig words written without a space). Movie-related topic
+   words, proper nouns and misspellings were left out.
 
 3. NewSwipe의 구어체 보완 목록·활용형 목록·구어체 문장 목록 (dict/lists/ko_colloquial.txt, ko_conjugated.txt, ko_phrases.txt)
    License: Apache License 2.0 (NewSwipe 저장소와 같음)

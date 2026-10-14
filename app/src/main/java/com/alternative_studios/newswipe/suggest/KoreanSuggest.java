@@ -36,7 +36,7 @@ final class KoreanSuggest {
      * 자동 수정: 고칠 단어의 최소 빈도(100만 어절당; 앞 단어와 이어지는 단어 쌍이 있을 때는 MIN_FREQ_CONTEXT), 1·2위 점수 차.
      * 사전 점수는 사전 크기에 따라 기준이 달라지므로 빈도로 정한다 (드문 단어로 고치면 맞는 말을 잘못 고치기 쉽다).
      */
-    static double CORRECT_MIN_FREQ = 260, CORRECT_MIN_FREQ_CONTEXT = 145;
+    static double CORRECT_MIN_FREQ = 200, CORRECT_MIN_FREQ_CONTEXT = 145;
     static double CORRECT_MARGIN = 0.7;
     /** 자동 수정에서 허용하는 오타 비용 (세 글자 이하, 네 글자 이상). */
     static float CORRECT_MAX_SHORT = 1.0f, CORRECT_MAX_LONG = 1.6f;
