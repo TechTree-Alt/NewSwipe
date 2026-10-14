@@ -26,6 +26,23 @@ python3 dict/eval/compare_ksr.py a.tsv b.tsv                                   #
 `ko_chat_test.txt`는 직접 쓴 메신저 문장이라 실제 사람이 쓴 글보다 표준적입니다. 사람이 쓴 글(예: NSMC, Chatbot_data의 질문)로도
 함께 재 보세요.
 
+### 공개할 수 없는 말뭉치로 평가하기 (국립국어원 메신저 말뭉치 등)
+
+이용 약정상 원문을 복제·배포할 수 없는 말뭉치는 **내 컴퓨터에서만** 평가합니다. 말뭉치는 저장소 밖에 두고, 아래 스크립트가 임시 폴더에
+문장을 뽑아 평가한 뒤 지웁니다. 화면에는 집계(키 절약률 등)만 나오므로 그 결과는 옮겨 적어도 됩니다.
+
+```bash
+dict/eval/run_private_eval.sh ~/corpora/messenger            # 기본 사전
+dict/eval/run_private_eval.sh ~/corpora/messenger dict/packs/ko-standard.zip   # 사전 팩도 함께
+```
+
+- 필요한 것: JDK 17 이상(`javac`), Python 3, `unzip`. Windows에서는 WSL이나 Git Bash에서 돌립니다.
+- 말뭉치 폴더 안의 `*.json`과 `*.zip` 속 `*.json`을 모두 읽고, 대화(`utterance` 목록)마다 발화의 `form`을 씁니다
+  (`FIELD=original_form`으로 바꿀 수 있습니다). 가명 처리 표시(`&name&` 등)는 단어 사이를 끊는 표시로 바꿉니다.
+- 대화 단위로 dev(조정에 쓸 절반)와 test(조정에 쓰지 않을 절반)로 나눕니다. 나눈 쪽마다 최대 `MAX`(기본 20,000)문장.
+- 예시 문장을 찍는 평가 옵션(`SHOW_MADE`, `SHOW_WRONG`, `WHY`)은 이 스크립트에서 꺼집니다. 이런 말뭉치로는 직접 켜지 마세요.
+- 이 말뭉치로 만든 사전이나 잰 숫자를 공개하려면 약정에 따라 먼저 국립국어원의 승인을 받고 출처를 밝혀야 합니다.
+
 ## 사전 팩 형식
 
 zip 안에 `manifest.properties`(형식 번호, 언어, 이름, 출처, 라이선스, 해시), `dict_ko.bin`(필수), `dict_ko_next.bin`(선택),
