@@ -10,6 +10,8 @@ run_private_eval.sh가 임시 폴더에 뽑아 평가한 뒤 지운다. 화면�
 - 가명 처리 표시(&name& 같은 것)는 '#'로 바꾼다: 평가기는 한글이 아닌 토큰에서 앞 단어를 끊는다.
 - 대화 id의 해시로 절반씩 나눈다: dev.txt(조정에 쓸 것), test.txt(조정에 쓰지 않을 것). 같은 대화는 한쪽에만 들어간다.
 - --max: 나눈 쪽마다 최대 문장 수 (해시로 고르게 고른다).
+- --numbered: '순번 \t 문장' 꼴로 쓴다 (dict/build/build_ko_model.py가 읽는 Leipzig 문장 파일과 같은 꼴).
+  사전을 만들 때는 dev.txt만 쓰고 test.txt는 평가에만 쓴다.
 """
 import argparse
 import hashlib
@@ -69,7 +71,8 @@ def main():
     ap.add_argument('corpus')
     ap.add_argument('out_dir')
     ap.add_argument('--field', default='form', help="발화에서 꺼낼 키 (form, original_form 등)")
-    ap.add_argument('--max', type=int, default=20000)
+    ap.add_argument('--max', type=int, default=20000, help='나눈 쪽마다 최대 문장 수 (0이면 모두)')
+    ap.add_argument('--numbered', action='store_true', help="'순번\t문장' 꼴로 쓴다 (사전 만들기용)")
     a = ap.parse_args()
 
     splits = {'dev': [], 'test': []}
@@ -93,10 +96,13 @@ def main():
                     splits[side].append(text)
     os.makedirs(a.out_dir, exist_ok=True)
     for side, lines in splits.items():
-        if len(lines) > a.max:
+        if a.max and len(lines) > a.max:
             lines = sorted(lines, key=stable)[:a.max]
         with open(os.path.join(a.out_dir, side + '.txt'), 'w', encoding='utf-8') as f:
-            f.write('\n'.join(lines) + '\n')
+            if a.numbered:
+                f.write(''.join(f'{i + 1}\t{t}\n' for i, t in enumerate(lines)))
+            else:
+                f.write('\n'.join(lines) + '\n')
         print(f'{side}: 문장 {len(lines):,}개', file=sys.stderr)
     print(f'JSON {files:,}개, 대화 {docs:,}개 (읽지 못한 파일 {skipped}개)', file=sys.stderr)
     if docs == 0:
