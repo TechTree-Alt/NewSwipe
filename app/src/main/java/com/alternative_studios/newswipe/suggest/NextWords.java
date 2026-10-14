@@ -105,6 +105,16 @@ public final class NextWords {
         return -1;
     }
 
+    /** 앞 단어 묶음 수. */
+    public int groups() {
+        return prev.length;
+    }
+
+    /** 묶음 g의 앞 단어 번호. */
+    public int head(int g) {
+        return prev[g];
+    }
+
     public double lambda(int g) {
         return (lambda[g] & 0xFF) / 255.0;
     }

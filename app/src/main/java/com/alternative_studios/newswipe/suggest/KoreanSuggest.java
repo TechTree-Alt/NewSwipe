@@ -36,10 +36,12 @@ final class KoreanSuggest {
      * 자동 수정: 고칠 단어의 최소 빈도(100만 어절당; 앞 단어와 이어지는 단어 쌍이 있을 때는 MIN_FREQ_CONTEXT), 1·2위 점수 차.
      * 사전 점수는 사전 크기에 따라 기준이 달라지므로 빈도로 정한다 (드문 단어로 고치면 맞는 말을 잘못 고치기 쉽다).
      */
-    static double CORRECT_MIN_FREQ = 320, CORRECT_MIN_FREQ_CONTEXT = 145;
+    static double CORRECT_MIN_FREQ = 260, CORRECT_MIN_FREQ_CONTEXT = 145;
     static double CORRECT_MARGIN = 0.7;
     /** 자동 수정에서 허용하는 오타 비용 (세 글자 이하, 네 글자 이상). */
     static float CORRECT_MAX_SHORT = 1.0f, CORRECT_MAX_LONG = 1.6f;
+    /** 자동 수정에서 이 글자 수 이하의 말은 자모 한 번의 편집(바꾸기·빠뜨리기·더하기·맞바꾸기)으로 되는 단어로만 고친다. */
+    static int CORRECT_ONE_EDIT_SYLL = 3;
     /** 오타가 섞인 접두사를 찾을 때의 최대 비용과, 후보로 볼 최소 점수. */
     static float FUZZY_MAX = 1.0f;
     static double FUZZY_MIN_FREQ = 85;
@@ -74,8 +76,16 @@ final class KoreanSuggest {
         static final Result EMPTY = new Result(new String[0], -1, false);
     }
 
+    /**
+     * 앞 단어의 끝 글자(조사·어미)로 본 다음 단어 분포를 믿는 최대 비율과, 그 절반에 이르는 앞 단어 수
+     * ({@link EndingContext}). 앞 단어의 단어 쌍이 없을 때(사전에 없거나 드문 꼴)도 '을' 뒤에는 용언이, '는' 뒤에는 의존 명사가
+     * 오기 쉽다는 것을 쓴다. 0이면 쓰지 않는다.
+     */
+    static double ENDING_MAX = 0.3, ENDING_HALF = 20;
+
     private final WordDictionary dict;
     private final NextWords next;
+    private final EndingContext ending;
     private final TypoModel typo;
     private final double[] uni = new double[256];
 
@@ -85,6 +95,7 @@ final class KoreanSuggest {
         this.typo = typo;
         if (next == null) NextWords.fillUnigram(uni, FALLBACK_LN_TOP, FALLBACK_LN_BOTTOM);
         else for (int s = 0; s < 256; s++) uni[s] = next.unigram(s);
+        ending = EndingContext.build(dict, next);
     }
 
     WordDictionary dict() {
@@ -113,6 +124,8 @@ final class KoreanSuggest {
         final long total;
         final int ctxCount;
         final int field;
+        final int endGroup;         // 앞 단어 끝 글자의 묶음 ({@link EndingContext}, -1 = 없음)
+        final double nu;            // 끝 글자 분포를 믿는 비율
 
         Context(String prev, int field, UserDictionary user, UsageHistory usage) {
             this.prev = prev;
@@ -120,6 +133,13 @@ final class KoreanSuggest {
             int pid = prev == null ? -1 : dict.indexOf(prev);
             group = pid >= 0 && next != null ? next.group(pid) : -1;
             lambda = group >= 0 ? next.lambda(group) : 0;
+            endGroup = ending == null || ENDING_MAX <= 0 ? -1 : ending.group(prev);
+            if (endGroup >= 0) {
+                int h = ending.heads(endGroup);
+                nu = ENDING_MAX * h / (h + ENDING_HALF);
+            } else {
+                nu = 0;
+            }
             this.user = user;
             this.usage = usage;
             total = usage == null ? 0 : usage.totalIfLoaded();
@@ -131,6 +151,10 @@ final class KoreanSuggest {
         double model(int id) {
             if (id < 0) return 0;
             double pu = uni[dict.score(id)];
+            if (endGroup >= 0) {   // 단어 쌍이 없을 때 물러설 곳: 끝 글자 분포와 단어 빈도를 섞는다
+                int e = ending.find(endGroup, id);
+                pu = (1 - nu) * pu + (e >= 0 ? nu * ending.prob(e) : 0);
+            }
             if (group < 0) return pu;
             int k = next.find(group, id);
             return k >= 0 ? lambda * next.prob(k) + (1 - lambda) * pu : (1 - lambda) * pu;
@@ -204,6 +228,7 @@ final class KoreanSuggest {
         } else {
             for (int id : dict.lookupIds(word, 12)) add(pool, cx, dict.word(id), id, 1);
             addNextInRanges(pool, cx, word);
+            addEndingInRanges(pool, cx, word);
             if (usage != null) {
                 for (String w : usage.prefixIfLoaded(word, 1)) {
                     int id = dict.indexOf(w);
@@ -250,6 +275,20 @@ final class KoreanSuggest {
                 int id = next.word(k);
                 if (id >= rg[2 * r + 1]) break;
                 if (!dict.word(id).equals(word)) add(pool, cx, dict.word(id), id, 1);
+            }
+        }
+    }
+
+    /** 앞 단어의 끝 글자 다음에 자주 오는 단어 중 word로 시작할 수 있는 것을 후보에 넣는다. */
+    private void addEndingInRanges(Map<String, Double> pool, Context cx, String word) {
+        if (cx.endGroup < 0) return;
+        int[] rg = new int[4];
+        int nr = dict.ranges(word, rg);
+        for (int r = 0; r < nr; r++) {
+            for (int k = ending.lowerBound(cx.endGroup, rg[2 * r]); k < ending.to(cx.endGroup); k++) {
+                int id = ending.word(k);
+                if (id >= rg[2 * r + 1]) break;
+                if (!pool.containsKey(dict.word(id)) && !dict.word(id).equals(word)) add(pool, cx, dict.word(id), id, 1);
             }
         }
     }
@@ -312,6 +351,12 @@ final class KoreanSuggest {
                 add(pool, cx, dict.word(id), id, 1);
             }
         }
+        if (cx.endGroup >= 0) {
+            for (int k = ending.from(cx.endGroup); k < ending.to(cx.endGroup); k++) {
+                int id = ending.word(k);
+                add(pool, cx, dict.word(id), id, 1);
+            }
+        }
         if (usage != null) {
             for (Object[] e : usage.nextIfLoaded(prev)) {
                 if ((Integer) e[1] < 2) continue;   // 한 번 이어 쓴 것만으로는 예측하지 않는다
@@ -336,6 +381,10 @@ final class KoreanSuggest {
         if (cx.group >= 0 && id >= 0) {
             int k = next.find(cx.group, id);
             if (k >= 0) c = cx.lambda * next.prob(k);
+        }
+        if (cx.endGroup >= 0 && id >= 0) {
+            int e = ending.find(cx.endGroup, id);
+            if (e >= 0) c = Math.max(c, (1 - cx.lambda) * cx.nu * ending.prob(e));
         }
         if (cx.usage != null && cx.ctxCount > 0) {
             c = Math.max(c, cx.usage.pairCountIfLoaded(cx.prev, w) / (cx.ctxCount + 2.0));
@@ -839,6 +888,7 @@ final class KoreanSuggest {
         int syll = hangulSyllables(word);
         if (syll < 2 || syll != word.length()) return null;
         if (dict.contains(word) || WordSuggester.isDictWordWithParticle(dict, word)) return null;
+        if (KEEP_PLAUSIBLE && plausible(word)) return null;
         Context cx = new Context(prev, field, user, usage);
         char[] p = TypoModel.letters(word);
         float maxCost = syll <= 3 ? CORRECT_MAX_SHORT : CORRECT_MAX_LONG;
@@ -854,6 +904,8 @@ final class KoreanSuggest {
             if (Math.abs(tn - p.length) > 2) continue;
             float c = typo.distance(p, p.length, t, tn, maxCost);
             if (c > maxCost || c <= 0f) continue;
+            // 짧은 말은 싼 편집 두 번(현타 → 한다, 파도 → 봐도)으로도 다른 흔한 말이 되기 쉬워 한 번의 편집만 고친다
+            if (syll <= CORRECT_ONE_EDIT_SYLL && !oneEdit(p, p.length, t, tn)) continue;
             boolean context = cx.group >= 0 && next.find(cx.group, id) >= 0;
             if (dict.score(id) < minScore && !context) continue;
             double s = Math.log(cx.score(w, id)) - TYPO_PENALTY * c;
@@ -867,5 +919,173 @@ final class KoreanSuggest {
         }
         if (bestId < 0 || best - second < CORRECT_MARGIN) return null;
         return dict.word(bestId);
+    }
+
+    // ---------------------------------------------------------------- 그럴듯한 말 (고치지 않는다)
+
+    /**
+     * 자동 수정 전에 사전에 없는 말이 한국어 낱말로 그럴듯한지 본다. 사람이 쓴 대화에서 잘못 고친 말은 대부분 오타가 아니라
+     * 사전에 없는 활용형·구어체(같애, 간대, 있대, 망했다, 고민이야)나 사전 단어의 앞부분인 명사(화장 → 화장실·화장품)였다.
+     * 끄면(평가용) 예전처럼 사전에 없는 말을 모두 고칠 후보로 본다.
+     */
+    static boolean KEEP_PLAUSIBLE = true;
+    /** 사전 단어의 앞부분으로 볼 최소 빈도 (그 말로 시작하는 더 긴 사전 단어들의 100만 어절당 빈도 합). */
+    static double PLAUSIBLE_PREFIX_FREQ = 3;
+
+    /** 용언 어간 바로 뒤에 붙는 어미 (구어체 포함). 받침에 섞여 들어가는 어미(간대의 ㄴ대)는 MERGED_ENDINGS. */
+    private static final String[] FREE_ENDINGS = {
+            "고", "지", "게", "네", "니", "냐", "다", "대", "래", "자", "죠", "지만", "기", "던", "더라", "든", "든지",
+            "음", "어", "아", "애", "여", "어요", "아요", "어서", "아서", "어도", "아도", "어야", "아야", "러", "려고", "려",
+            "면", "며", "으면", "으러", "으려고", "은", "을", "는", "는데", "은데", "을까", "을게", "을래", "잖아", "거든",
+            "구나", "군", "겠다", "겠어", "겠지", "겠네", "네요", "지요", "대요", "냐고", "자고", "다고", "라고", "더니",
+            "징", "당", "넹", "쥐", "셈", "듯", "음요",
+    };
+    /** 어간의 마지막 글자에 받침으로 들어가는 어미 첫소리와 그 뒤 (가+ㄴ대 = 간대, 가+ㄹ게 = 갈게, 되+ㅁ = 됨, 가+ㅂ니다). */
+    private static final String[][] MERGED_ENDINGS = {
+            {"ㄴ", "", "대", "데", "다", "지", "가", "거", "건", "걸", "게", "듯", "줄", "다고", "대요", "데요", "가요", "지도"},
+            {"ㄹ", "", "게", "래", "까", "걸", "거", "건", "듯", "수", "때", "지", "께", "껄", "까요", "게요", "래요", "거야"},
+            {"ㅁ", ""},
+            {"ㅂ", "니다", "니까", "시다"},
+    };
+    /** 명사 뒤의 서술격·조사 중 PARTICLES에 없는 구어체 (고민임, 사람인듯, 친구냐). */
+    private static final String[] COPULA_EXTRA = {"임", "인듯", "인거", "인게", "이냐", "냐", "이니", "이었음", "였음", "인지"};
+
+    /** 사전에 없는 word가 한국어 낱말로 그럴듯한지 (사전 단어의 앞부분, 용언 어간 + 어미, 명사 + 조사·서술격). */
+    boolean plausible(String word) {
+        int n = word.length();
+        if (prefixFreq(word) * 1e6 >= PLAUSIBLE_PREFIX_FREQ) return true;
+        for (int k = n - 1; k >= 1; k--) {
+            String stem = word.substring(0, k), tail = word.substring(k);
+            if (nounWithParticle(stem, tail)) return true;
+            if (contains(FREE_ENDINGS, tail) && verbStem(stem)) return true;
+        }
+        if (eoForm(word)) return true;
+        // 받침에 어미가 섞인 말: 마지막 몇 글자 중 한 글자의 받침을 떼어 어간으로 본다 (간대 → 가 + ㄴ대)
+        for (int k = n; k >= Math.max(1, n - 2); k--) {
+            char c = word.charAt(k - 1);
+            int t = (c - 0xAC00) % 28;
+            String rest = word.substring(k);
+            for (String[] m : MERGED_ENDINGS) {
+                if (t != finalIndex(m[0].charAt(0))) continue;
+                String stem = word.substring(0, k - 1) + (char) (c - t);
+                for (int i = 1; i < m.length; i++) {
+                    if (m[i].equals(rest) && (verbStem(stem) || copulaNoun(stem))) return true;
+                }
+            }
+            // 과거형(받침 ㅆ) 뒤의 어미: 망했다 → 망하, 떨어졌대 → 떨어지
+            if (t == 20 && (rest.isEmpty() || contains(FREE_ENDINGS, rest) || rest.equals("어") || rest.equals("음"))) {
+                for (String stem : presentStems(word.substring(0, k - 1), c)) {
+                    if (verbStem(stem) || haStem(stem)) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** 아/어 꼴 뒤에 오는 말 (EO_ENDINGS와 함께 본다): 힘들어져, 보내줘야, 행복해라, 먹어봐. */
+    private static final String[] EO_TAIL_EXTRA = {"", "라", "져", "졌어", "지", "야겠네", "야지", "버려", "버렸네", "보고", "봐도", "봤는데"};
+
+    /**
+     * 용언의 아/어 꼴(먹어, 줄인 꼴 져·줘·봐·해·돼 ...) 뒤에 흔한 말이 붙은 말인지. 마지막 세 글자 안에서 아/어 꼴인 글자를 찾아
+     * 어간을 되살리고(져 → 지, 줘 → 주, 봐 → 보, 해 → 하, 돼 → 되) 그 어간이 사전의 용언이어야 한다.
+     */
+    private boolean eoForm(String word) {
+        int n = word.length();
+        for (int k = n; k >= Math.max(2, n - 2); k--) {
+            String rest = word.substring(k);
+            if (!contains(EO_ENDINGS, rest) && !contains(EO_TAIL_EXTRA, rest)) continue;
+            char c = word.charAt(k - 1);
+            if (c < 0xAC00 || c > 0xD7A3 || (c - 0xAC00) % 28 != 0) continue;
+            int cho = (c - 0xAC00) / 588, jung = (c - 0xAC00) % 588 / 28;
+            String head = word.substring(0, k - 1);
+            // 줄이지 않은 꼴: 먹 + 어, 잡 + 아, 하 + 여
+            if (cho == 11 && (jung == 0 || jung == 4 || jung == 6) && verbStem(head)) return true;
+            // 줄인 꼴: ㅕ ← ㅣ, ㅝ ← ㅜ, ㅘ ← ㅗ, ㅙ ← ㅚ, 해 ← 하
+            int stemJung = jung == 6 ? 20 : jung == 14 ? 13 : jung == 9 ? 8 : jung == 10 ? 11 : -1;
+            if (c == '해') {
+                if (haStem(head + '하')) return true;
+                continue;
+            }
+            if (stemJung < 0) continue;
+            String stem = head + (char) (0xAC00 + cho * 588 + stemJung * 28);
+            if (verbStem(stem)) return true;
+        }
+        return false;
+    }
+
+    /** word로 시작하는 더 긴 사전 단어들의 빈도 합 (단어 확률). 많아야 앞의 200개만 센다. */
+    private double prefixFreq(String word) {
+        int[] r = dict.prefixRange(word);
+        double sum = 0;
+        for (int i = r[0], seen = 0; i < r[1] && seen < 200; i++, seen++) {
+            if (dict.length(i) > word.length()) sum += uni[dict.score(i)];
+        }
+        return sum;
+    }
+
+    /** 용언 어간인지: 사전에 어간 + 고와, 어간 + 는·지·다·게 중 하나가 있다. */
+    private boolean verbStem(String stem) {
+        if (stem.isEmpty() || !dict.contains(stem + "고")) return false;
+        return dict.contains(stem + "는") || dict.contains(stem + "지") || dict.contains(stem + "다") || dict.contains(stem + "게");
+    }
+
+    /** '○○하'의 ○○가 하다 용언인지 (사전에 하다 활용형이 있다). */
+    private boolean haStem(String stem) {
+        if (stem.length() < 2 || stem.charAt(stem.length() - 1) != '하') return false;
+        String head = stem.substring(0, stem.length() - 1);
+        for (String e : HA_EVIDENCE) if (dict.contains(head + e)) return true;
+        return false;
+    }
+
+    /** 명사 + 이다의 어간 '○○이' (받침 없는 명사는 ○○): 고민이 → 고민, 친구 → 친구. */
+    private boolean copulaNoun(String stem) {
+        String noun = stem.endsWith("이") && stem.length() >= 2 ? stem.substring(0, stem.length() - 1) : stem;
+        int id = dict.indexOf(noun);
+        return id >= 0 && noun.length() >= 2 && nounLike(noun);
+    }
+
+    /** stem이 사전의 명사이고 tail이 그 받침에 맞는 조사·서술격인지 (고민이야, 사람인듯, 친구예요). */
+    private boolean nounWithParticle(String stem, String tail) {
+        if (stem.length() < 2 && !dict.contains(stem)) return false;
+        if (!dict.contains(stem) || !nounLike(stem)) return false;
+        char last = stem.charAt(stem.length() - 1);
+        if (last < 0xAC00 || last > 0xD7A3) return false;
+        boolean fin = (last - 0xAC00) % 28 != 0, rieul = (last - 0xAC00) % 28 == 8;
+        for (String[] p : PARTICLES) {
+            String particle = p[1] == null ? p[0] : fin && !(rieul && p[1].startsWith("로")) ? p[0] : p[1];
+            if (particle.equals(tail)) return true;
+        }
+        for (String c : COPULA_EXTRA) {
+            if (c.equals(tail) && (fin || !c.startsWith("이"))) return true;
+        }
+        return false;
+    }
+
+    /** 자모열 a와 b가 정확히 한 번의 편집(바꾸기·빠뜨리기·더하기·맞바꾸기)으로 같아지는지. */
+    static boolean oneEdit(char[] a, int an, char[] b, int bn) {
+        if (Math.abs(an - bn) > 1) return false;
+        int p = 0, min = Math.min(an, bn);
+        while (p < min && a[p] == b[p]) p++;
+        if (p == an && p == bn) return false;
+        if (an == bn) {
+            if (sameTail(a, p + 1, an, b, p + 1, bn)) return true;
+            return p + 1 < an && a[p] == b[p + 1] && a[p + 1] == b[p] && sameTail(a, p + 2, an, b, p + 2, bn);
+        }
+        return an > bn ? sameTail(a, p + 1, an, b, p, bn) : sameTail(a, p, an, b, p + 1, bn);
+    }
+
+    private static boolean sameTail(char[] a, int ai, int an, char[] b, int bi, int bn) {
+        if (an - ai != bn - bi) return false;
+        for (; ai < an; ai++, bi++) if (a[ai] != b[bi]) return false;
+        return true;
+    }
+
+    private static int finalIndex(char jamo) {
+        return "\0ㄱㄲㄳㄴㄵㄶㄷㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅄㅅㅆㅇㅈㅊㅋㅌㅍㅎ".indexOf(jamo);
+    }
+
+    private static boolean contains(String[] a, String s) {
+        for (String x : a) if (x.equals(s)) return true;
+        return false;
     }
 }

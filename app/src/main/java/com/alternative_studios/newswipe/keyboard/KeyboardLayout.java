@@ -88,9 +88,19 @@ public final class KeyboardLayout {
         return prefs != null && prefs.koreanNewSwipe();
     }
 
-    /** 설정한 한글 배열의 글자 줄 (자동 수정이 이웃한 키를 알기 위해 쓴다). 고치지 않는다. */
+    /**
+     * 8열 단모음의 글자 줄을 화면의 칸 위치대로 적은 것: 셋째 줄은 맨 왼쪽에 Shift 자리가 있어 ㅋ이 ㄴ 아래에 온다.
+     * 빈 문자열은 글자가 아닌 칸이다.
+     */
+    private static final String[][] KOREAN_GRID = {KOREAN_ROWS[0], KOREAN_ROWS[1],
+            {"", "ㅋ", "ㅌ", "ㅊ", "ㅍ", "ㅜ", "ㅡ"}};
+
+    /**
+     * 설정한 한글 배열의 글자 줄을 칸 위치대로 (자동 수정이 이웃한 키를 알기 위해 쓴다). 빈 문자열은 글자가 아닌 칸이다.
+     * 고치지 않는다.
+     */
     public static String[][] koreanLetterRows(Prefs prefs) {
-        return newSwipe(prefs) ? D7_ROWS : KOREAN_ROWS;
+        return newSwipe(prefs) ? D7_ROWS : KOREAN_GRID;
     }
 
     /** 한글 자판 한 줄의 칸 수: NewSwipe 단모음은 7, 8열 단모음은 8. */

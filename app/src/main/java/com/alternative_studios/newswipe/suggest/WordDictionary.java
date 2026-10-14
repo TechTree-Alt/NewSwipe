@@ -181,6 +181,14 @@ public final class WordDictionary {
         return true;
     }
 
+    /** prefix로 (글자 그대로) 시작하는 단어들의 번호 구간 {처음, 끝(제외)}. prefix와 같은 단어도 들어간다. */
+    public int[] prefixRange(String prefix) {
+        char[] a = prefix.toCharArray();
+        char[] b = java.util.Arrays.copyOf(a, a.length + 1);
+        b[a.length] = '\uFFFF';
+        return new int[]{lowerBound(a, a.length), lowerBound(b, b.length)};
+    }
+
     public boolean contains(String word) {
         return indexOf(word) >= 0;
     }
