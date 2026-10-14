@@ -1875,7 +1875,7 @@ public final class SettingsActivity extends Activity {
                 toggle("다음 단어 예측",
                         "한글을 띄어 쓴 뒤, 앞 단어 다음에 자주 오는 단어를 미리 보여 줍니다 (예: '좋은' 다음에 하루·아침). "
                                 + "자신 있을 때만 보이며, 그동안은 도구 막대 오른쪽 버튼 자리에 추천이 나옵니다. "
-                                + "내가 자주 이어 쓴 말은 그대로 예측하고, 그 밖의 말은 단어 쌍이 든 사전 팩을 가져왔을 때 예측합니다.",
+                                + "기본 사전의 자주 쓰는 단어 쌍과 내가 자주 이어 쓴 말로 예측하며, 사전 팩을 가져오면 더 많이 맞힙니다.",
                         Prefs.PREDICT_NEXT, prefs.predictNext()));
         suggest.addView(toggle("단어 추천", "입력 중인 단어에 맞는 단어를 도구 막대에 보여 줍니다. "
                 + "앞 단어와 자주 이어 쓰는 말, 내가 자주 쓰는 말을 먼저 보이고, 초성만 쳐도(ㄱㅅㅎㄴㄷ) 찾습니다. "
@@ -1942,8 +1942,8 @@ public final class SettingsActivity extends Activity {
         DictionaryPack.Info info = DictionaryPack.installed(getFilesDir());
         if (info == null) {
             dict.addView(note("기본 사전을 쓰고 있습니다 (앱에 포함). 단어 추천, 초성 검색, 조사 붙이기, 자동 수정, 내 말버릇 학습은 "
-                    + "기본 사전으로도 됩니다. 단어가 더 많고 앞 단어와 이어지는 말(단어 쌍)이 든 사전 팩을 가져오면 "
-                    + "다음 단어 예측, 앞 단어에 맞춘 추천, 띄어 쓰지 않고 친 말 추천이 더해집니다."));
+                    + "기본 사전으로도 되며, 자주 쓰는 단어 쌍 5만 개로 다음 단어 예측과 앞 단어에 맞춘 추천도 합니다. "
+                    + "단어와 단어 쌍이 더 많은 사전 팩을 가져오면 추천이 더 잘 맞습니다."));
         } else {
             StringBuilder b = new StringBuilder();
             b.append(info.name);

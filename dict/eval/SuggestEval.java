@@ -23,7 +23,7 @@ import java.util.Random;
  *   <li>잘못 고침 = 바르게 친 단어를 스페이스에서 다른 단어로 바꾼 비율</li>
  *   <li>오타 고침 = 일부러 넣은 오타(옆 키, 같은 키의 다른 동작, 빠뜨리기, 더 치기, 맞바꾸기)를 원래 단어로 고친 비율</li>
  *   <li>만들어 낸 후보 = 보인 추천 칸 중 사전에도 내 기록에도 없는 말(이어 붙인 말, 조사를 붙인 말)의 비율과 그중 맞힌 비율.
- *       키 절약률은 틀린 후보가 보여도 깎이지 않으므로, 엉뚱한 후보가 늘지 않았는지 이것으로 함께 본다 (SHOW_MADE=1이면 예시를 찍는다)</li>
+ *       키 절약률은 틀린 후보가 보여도 깎이지 않으므로, 엉뚱한 후보가 늘지 않았는지 이것으로 함께 본다 (SHOW_MADE=1이면 예시 40개를, SHOW_MADE=500이면 500개까지 찍는다)</li>
  * </ul>
  * 사용법: java ... SuggestEval DICT_DIR TEST_FILE [옵션]
  *   --old            예전 방식(접두사 + 빈도만, 받침 넘김 없음, 예전 자동 수정)으로 잰다
@@ -113,7 +113,9 @@ public final class SuggestEval {
         long hitAt1 = 0, wrongFix = 0, oovWords = 0, oovWrong = 0;
         long t0 = System.nanoTime(), calls = 0, madeShown = 0, madeHit = 0, shownSlots = 0;
         List<String> made = System.getenv("SHOW_MADE") != null ? new ArrayList<>() : null;
+        int madeMax = made == null ? 0 : System.getenv("SHOW_MADE").matches("\\d{2,}") ? Integer.parseInt(System.getenv("SHOW_MADE")) : 40;
         StringBuilder rows = new StringBuilder();
+        StringBuilder why = System.getenv("WHY") != null ? new StringBuilder() : null;
         for (String line : lines) {
             long keys0 = keys, saved0 = saved;
             String prev = null;
@@ -147,6 +149,7 @@ public final class SuggestEval {
                         done = true;
                     }
                 }
+                int savedWord = done ? k.length : 0;
                 HangulComposer hc = new HangulComposer();
                 StringBuilder committed = new StringBuilder();
                 for (int i = 0; i < k.length && !done; i++) {
@@ -166,13 +169,14 @@ public final class SuggestEval {
                         if (d.contains(w) || (user != null && user.knownCountIfLoaded(w) > 0)) continue;
                         madeShown++;
                         if (w.equals(core)) madeHit++;
-                        if (made != null && made.size() < 40 && !w.equals(core)) made.add(typed + "→" + w);
+                        if (made != null && made.size() < madeMax && !w.equals(core)) made.add(typed + "→" + w);
                     }
                     shownSlots += shown.length;
                     int at = indexOf(shown, core);
                     if (at >= 0) {
                         if (at == 0) hitAt1++;
                         saved += k.length - (i + 1);
+                        savedWord = k.length - (i + 1);
                         done = true;
                     }
                 }
@@ -192,6 +196,11 @@ public final class SuggestEval {
                         if (System.getenv("SHOW_WRONG") != null) System.out.println("  잘못 고침: " + prev + " " + core + " → " + fix);
                     }
                 }
+                if (why != null) {
+                    String cat = d.contains(core) ? "D" : WordSuggester.isDictWordWithParticle(d, core) ? "P" : "O";
+                    why.append(core).append('\t').append(k.length).append('\t').append(savedWord).append('\t').append(cat)
+                            .append('\t').append(prev == null ? "" : prev).append('\n');
+                }
                 boolean gap = learnGaps && (ti == lastWord || raw.matches(".*[ㄱ-ㅣ]$"));
                 if (learn && !gap) {
                     String p = prev;
@@ -205,6 +214,7 @@ public final class SuggestEval {
             }
             rows.append(keys - keys0).append('\t').append(saved - saved0).append('\n');
         }
+        if (why != null) Files.write(new File(System.getenv("WHY")).toPath(), why.toString().getBytes(StandardCharsets.UTF_8));
         if (perSentence != null) Files.write(new File(perSentence).toPath(), rows.toString().getBytes(StandardCharsets.UTF_8));
         double ms = (System.nanoTime() - t0) / 1e6;
         System.out.printf("문장 %d, 단어 %,d, 키 %,d%n", lines.size(), words, keys);

@@ -246,7 +246,7 @@ public final class WordSuggester {
                 return null;
             }
             if (korean && pack == null) {
-                // 기본 사전의 다음 단어 사전은 단어 쌍 없이 빈도 기준만 담는다. 없거나 깨져 있어도 단어 추천은 쓴다.
+                // 기본 사전의 다음 단어 사전 (자주 쓰는 단어 쌍 5만 개). 없거나 깨져 있어도 단어 추천은 쓴다.
                 try (InputStream in = context.getAssets().open("dict_ko_next.bin")) {
                     next = NextWords.load(in, d.size());
                 } catch (IOException | RuntimeException e) {

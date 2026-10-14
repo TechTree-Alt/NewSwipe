@@ -91,7 +91,7 @@ final class KoreanSuggest {
         return dict;
     }
 
-    /** 단어 쌍이 하나라도 있는 다음 단어 사전을 쓰는지 (기본 사전의 것은 빈도 기준만 담고 단어 쌍이 없다). */
+    /** 단어 쌍이 하나라도 있는 다음 단어 사전을 쓰는지. */
     boolean hasNextWords() {
         return next != null && next.pairs() > 0;
     }
@@ -159,7 +159,29 @@ final class KoreanSuggest {
      */
     private double fieldFactor(String w, int field) {
         if (field == FIELD_SEARCH && WordSuggester.isDictWordWithParticle(dict, w)) return SEARCH_PARTICLE;
-        return 1;
+        return formal(w) ? FORMAL_FACTOR : written(w) ? WRITTEN_FACTOR : 1;
+    }
+
+    static double WRITTEN_FACTOR = 0.5;
+
+    /** 기사체 서술(했다, 있었다, 한다, 먹는다). */
+    static boolean written(String w) {
+        int n = w.length();
+        if (n < 2 || w.charAt(n - 1) != '다') return false;
+        char c = w.charAt(n - 2);
+        if (c < 0xAC00 || c > 0xD7A3) return false;
+        int t = (c - 0xAC00) % 28;
+        return t == 20 && c != '겠' || t == 4 && (c == '는' || (c - 0xAC00) % 588 / 28 == 0 && c != '안');   // 했다, 는다, 한다
+    }
+
+    /** 합쇼체 어미(-습니다, -ㅂ니다, -습니까): 사전 빈도는 뉴스·웹 글에서 와서 휴대폰으로 쓰는 글보다 높게 잡혀 있다. */
+    static double FORMAL_FACTOR = 0.5;
+
+    static boolean formal(String w) {
+        int n = w.length();
+        if (n < 3 || w.charAt(n - 2) != '니' || (w.charAt(n - 1) != '다' && w.charAt(n - 1) != '까')) return false;
+        char c = w.charAt(n - 3);
+        return c == '습' || c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 == 17;   // 받침 ㅂ (합니다, 갑니다)
     }
 
     // ---------------------------------------------------------------- 추천
@@ -193,6 +215,7 @@ final class KoreanSuggest {
                 for (String w : user.lookupIfLoaded(word, true, 6)) add(pool, cx, w, dict.indexOf(w), 1);
             }
             addParticles(pool, cx, word);
+            addBound(pool, cx, word);
             // 만든 활용형은 사전 후보가 모자랄 때만 빈칸을 채운다 (사전에 있는 말을 밀어내면 손해가 크다)
             if (pool.size() < max) addBelow(pool, cx, word);
             if ((SPLIT_ALWAYS || pool.size() < max) && hangulSyllables(word) >= 2) addSplits(pool, cx, word);
@@ -395,13 +418,12 @@ final class KoreanSuggest {
             {"이었다", "였다", "0.002"}, {"이라는", "라는", "0.003"}, {"이랑은", "랑은", "0.001"},
             // 그 밖의 조사
             {"한테서", null, "0.002"}, {"에게서", null, "0.001"}, {"께서", null, "0.001"}, {"께", null, "0.001"},
-            {"마다", null, "0.003"}, {"밖에", null, "0.003"}, {"조차", null, "0.001"}, {"마저", null, "0.001"},
+            {"밖에", null, "0.003"},
             {"뿐", null, "0.001"}, {"이든", "든", "0.002"}, {"보다는", null, "0.001"}, {"으로서", "로서", "0.001"},
             {"이란", "란", "0.002"}, {"에선", null, "0.002"}, {"에서도", null, "0.003"}, {"한테는", null, "0.002"},
-            {"한테도", null, "0.002"}, {"까지도", null, "0.001"}, {"만큼", null, "0.002"}, {"대로", null, "0.002"},
+            {"한테도", null, "0.002"}, {"까지도", null, "0.001"}, {"만큼", null, "0.002"},
             {"은요", "는요", "0.002"}, {"이요", "요", "0.002"}, {"엔", null, "0.002"},
-            {"이며", "며", "0.001"}, {"이든지", "든지", "0.0005"}, {"이라든지", "라든지", "0.0003"}, {"이나마", "나마", "0.0002"},
-            {"이야말로", "야말로", "0.0002"},
+            {"이며", "며", "0.001"}, {"이든지", "든지", "0.0005"}, {"이라든지", "라든지", "0.0003"},
             // 서술격 더
             {"입니다", null, "0.004"}, {"이었습니다", "였습니다", "0.001"}, {"인가요", null, "0.002"}, {"인지", null, "0.003"},
             {"이네", "네", "0.002"}, {"이네요", "네요", "0.001"}, {"이죠", "죠", "0.002"}, {"이라면", "라면", "0.003"},
@@ -415,36 +437,26 @@ final class KoreanSuggest {
             {"밖에는", null, "0.0005"}, {"밖엔", null, "0.0003"}, {"밖에도", null, "0.0003"},
             {"만이", null, "0.002"}, {"만을", null, "0.002"}, {"만은", null, "0.001"}, {"만으로", null, "0.001"},
             {"만의", null, "0.001"}, {"만이라도", null, "0.0005"}, {"만도", null, "0.0003"}, {"만큼은", null, "0.0005"},
-            {"만큼의", null, "0.0003"},
             {"까지는", null, "0.002"}, {"까지만", null, "0.001"}, {"까지의", null, "0.001"},
             {"에만", null, "0.001"},
-            {"에서만", null, "0.001"}, {"에서의", null, "0.001"}, {"에서부터", null, "0.0005"}, {"에서처럼", null, "0.0002"},
+            {"에서만", null, "0.001"}, {"에서의", null, "0.001"}, {"에서부터", null, "0.0005"},
             {"에게는", null, "0.001"}, {"에게도", null, "0.001"}, {"에게만", null, "0.0003"}, {"한테만", null, "0.0005"},
-            {"부터는", null, "0.0005"}, {"부터도", null, "0.0003"}, {"보다도", null, "0.0005"}, {"조차도", null, "0.0003"},
-            {"마저도", null, "0.0002"},
+            {"부터는", null, "0.0005"}, {"부터도", null, "0.0003"}, {"보다도", null, "0.0005"},
             {"으로만", "로만", "0.001"}, {"으로도", "로도", "0.002"}, {"으로부터", "로부터", "0.001"}, {"으로써", "로써", "0.0005"},
             {"과는", "와는", "0.001"}, {"과도", "와도", "0.001"}, {"과의", "와의", "0.001"}, {"이랑도", "랑도", "0.0005"},
     };
     private static final double[] PARTICLE_PRIOR = new double[PARTICLES.length];
     /**
-     * 사람 뒤에만 오는 조사 (수께서, 평생한테는 같은 말이 나오지 않게): 사전에 그 말 + 한테·에게·께가 있어야 붙인다.
-     * 그냥 한테·에게는 사전에 근거가 없어도 붙이되(오빠한테) 비율을 낮춘다.
+     * 사람 뒤에만 오는 조사 (수한테, 사업한테, 수께서 같은 말이 나오지 않게): 사전에 그 말 + 한테·에게·께가 있거나
+     * 내가 쓴 말일 때만 붙인다. 근거 없는 사람 이름(오빠한테)은 한 번 쓰면 입력 기록으로 배운다.
      */
     private static final boolean[] PARTICLE_ANIMATE = new boolean[PARTICLES.length];
-    /**
-     * 붙는 말의 뜻을 많이 가리는 조사 (엄마마다, 커피조차, 오후대로처럼 문법은 맞아도 어색한 말이 되기 쉽다).
-     * 조사의 첫 글자를 다 친 뒤에만 붙인다 ('엄마마' → 엄마마다는 내지만 '엄마ㅁ'에서는 내지 않는다).
-     */
-    private static final boolean[] PARTICLE_PICKY = new boolean[PARTICLES.length];
-    private static final List<String> PICKY = Arrays.asList("마다", "조차", "조차도", "마저", "마저도", "대로", "이야말로",
-            "이나마", "에서처럼", "만큼의");
 
     static {
         for (int i = 0; i < PARTICLES.length; i++) {
             PARTICLE_PRIOR[i] = Double.parseDouble(PARTICLES[i][2]);
             String p = PARTICLES[i][0];
-            PARTICLE_PICKY[i] = PICKY.contains(p);
-            PARTICLE_ANIMATE[i] = p.startsWith("께") || p.length() > 2 && (p.startsWith("한테") || p.startsWith("에게"));
+            PARTICLE_ANIMATE[i] = p.startsWith("께") || p.startsWith("한테") || p.startsWith("에게");
         }
     }
 
@@ -465,7 +477,6 @@ final class KoreanSuggest {
             boolean animate = mine || animate(stem);
             for (int i = 0; i < PARTICLES.length; i++) {
                 if (PARTICLE_ANIMATE[i] && !animate) continue;
-                if (PARTICLE_PICKY[i] && (n <= k || word.charAt(k) < 0xAC00 || word.charAt(k) > 0xD7A3)) continue;
                 String[] p = PARTICLES[i];
                 String particle;
                 if (p[1] == null) particle = p[0];
@@ -478,11 +489,62 @@ final class KoreanSuggest {
                 int cid = dict.indexOf(cand);
                 if (cid >= 0) continue;   // 사전에 있으면 사전 후보로 이미 들어간다
                 double s = ps * PARTICLE_PRIOR[i] * PARTICLE_FACTOR;
-                if (!animate && (p[0].startsWith("한테") || p[0].startsWith("에게"))) s *= 0.3;
                 Double old = pool.get(cand);
                 if (old == null || old < s) pool.put(cand, s);
             }
         }
+    }
+
+    // ---------------------------------------------------------------- 의존 명사
+
+    /**
+     * 관형형 뒤에 띄어 쓰지 않고 붙여 치는 의존 명사 (좋아하는게, 힘든거, 할수, 갈때). 메신저에서는 띄어 쓰지 않는 일이 많다.
+     * ㄴ 관형형(-는, -은, -ㄴ, -던) 뒤와 ㄹ 관형형(-ㄹ, -을) 뒤가 다르다. 짝은 {말, 대략적인 비율}.
+     */
+    private static final String[][] BOUND_N = {
+            {"게", "0.25"}, {"거", "0.2"}, {"건", "0.1"}, {"걸", "0.06"}, {"거야", "0.05"}, {"거지", "0.03"},
+            {"거같아", "0.03"}, {"건데", "0.02"}, {"걸까", "0.02"}, {"지", "0.02"}, {"듯", "0.02"}, {"줄", "0.02"},
+            {"거니", "0.01"}, {"거면", "0.01"}, {"거예요", "0.01"}, {"건지", "0.01"}, {"건가", "0.01"}, {"거라", "0.01"},
+    };
+    private static final String[][] BOUND_L = {
+            {"수", "0.25"}, {"때", "0.2"}, {"거야", "0.1"}, {"거", "0.05"}, {"줄", "0.05"}, {"거같아", "0.03"}, {"걸", "0.03"},
+            {"듯", "0.03"}, {"수도", "0.03"}, {"때마다", "0.02"}, {"때는", "0.02"}, {"지도", "0.02"}, {"수있어", "0.02"},
+            {"수있을까", "0.01"}, {"거면", "0.01"}, {"거니까", "0.01"}, {"만큼", "0.01"},
+    };
+    static double BOUND_FACTOR = 0.2;
+
+    private void addBound(Map<String, Double> pool, Context cx, String word) {
+        int n = word.length();
+        for (int k = n; k >= Math.max(1, n - 3); k--) {
+            String x = word.substring(0, k);
+            char last = x.charAt(k - 1);
+            if (last < 0xAC00 || last > 0xD7A3) continue;
+            int t = (last - 0xAC00) % 28;
+            String[][] list;
+            // 관형형인지: ㄴ 관형형은 사전에 '-데'(좋아하는데, 힘든데), ㄹ 관형형은 '-까·-게·-래'(할까, 할게, 갈래)가 있어야 한다
+            if (t == 4 && (dict.contains(x + "데") || adnominalStem(x))) list = BOUND_N;
+            else if (t == 8 && (dict.contains(x + "까") || dict.contains(x + "게") || dict.contains(x + "래"))) list = BOUND_L;
+            else continue;
+            int id = dict.indexOf(x);
+            double px = cx.score(x, id);
+            if (px <= 0) continue;
+            for (String[] b : list) {
+                String cand = x + b[0];
+                if (cand.equals(word) || !HangulRange.startsWith(cand, word) || dict.indexOf(cand) >= 0) continue;
+                double sc = px * Double.parseDouble(b[1]) * BOUND_FACTOR;
+                Double old = pool.get(cand);
+                if (old == null || old < sc) pool.put(cand, sc);
+            }
+        }
+    }
+
+    /** ㄴ 받침 말이 용언의 관형형인지: 어간 + 고가 사전에 있으면 (해주는 → 해주고, 생긴 → 생기고, 힘든 → 힘들고). */
+    private boolean adnominalStem(String x) {
+        String head = x.substring(0, x.length() - 1);
+        char last = x.charAt(x.length() - 1);
+        if (last == '는' || last == '던') return !head.isEmpty() && dict.contains(head + "고");
+        char open = (char) (last - 4);   // 받침 ㄴ을 뗀 글자
+        return dict.contains(head + open + "고") || dict.contains(head + (char) (open + 8) + "고");
     }
 
     // ---------------------------------------------------------------- 어미
@@ -549,10 +611,11 @@ final class KoreanSuggest {
             // 하다: base가 '○○하'로 끝나거나, 입력이 '○○'까지이고 뒤에 하·해·했·할이 오는 중
             if (last == '하' && k >= 2) addHa(pool, cx, word, base.substring(0, k - 1));
             int t = (last - 0xAC00) % 28;
-            if (t == 20) generate(pool, cx, word, base, PAST_EVIDENCE, 2, null, PAST_ENDINGS, false);   // 받침 ㅆ
+            if (t == 20) addPast(pool, cx, word, base);   // 받침 ㅆ
             // '있다', '했다'처럼 다로 끝난 말은 이미 끝난 활용형이다 (있다잖아, 했다겠네가 나오지 않게)
             if (last != '다' && !quoted(base)) generate(pool, cx, word, base, STEM_EVIDENCE, 2, "고", STEM_ENDINGS, t == 8);
         }
+        for (int k = n; k >= Math.max(1, n - 3); k--) addEo(pool, cx, word, word.substring(0, k));
         // '불쌍'처럼 하다 앞말까지 친 말 → 불쌍해, 불쌍하다
         if (n >= 2 && hangulSyllables(word) == n) addHa(pool, cx, word, word);
         // '추천해', '부업할'처럼 하다 활용 중간까지 친 말: 입력이 명사 + 해/했/할/한/합 ...
@@ -609,8 +672,13 @@ final class KoreanSuggest {
      */
     private void generate(Map<String, Double> pool, Context cx, String word, String stem, String[] evidence,
                           int minEvidence, String must, String[] endings, boolean dropRieul) {
-        if (stem.isEmpty() || hangulSyllables(stem) != stem.length()) return;
-        if (must != null && !dict.contains(stem + must)) return;
+        emit(pool, word, stem, endings, dropRieul, family(cx, stem, evidence, minEvidence, must));
+    }
+
+    /** stem + evidence 활용형의 확률 합 (활용형이 minEvidence개보다 적거나 stem + must가 없으면 0). */
+    private double family(Context cx, String stem, String[] evidence, int minEvidence, String must) {
+        if (stem.isEmpty() || hangulSyllables(stem) != stem.length()) return 0;
+        if (must != null && !dict.contains(stem + must)) return 0;
         double family = 0;
         int found = 0;
         for (String e : evidence) {
@@ -619,7 +687,12 @@ final class KoreanSuggest {
             found++;
             family += cx.score(stem + e, id);
         }
-        if (found < minEvidence || family <= 0) return;
+        return found < minEvidence ? 0 : family;
+    }
+
+    private void emit(Map<String, Double> pool, String word, String stem, String[] endings, boolean dropRieul,
+                      double family) {
+        if (family <= 0) return;
         for (int i = 0; i < endings.length; i++) {
             String e = endings[i];
             String s = stem;
@@ -633,6 +706,75 @@ final class KoreanSuggest {
             Double old = pool.get(cand);
             if (old == null || old < sc) pool.put(cand, sc);
         }
+    }
+
+    /** 아/어 꼴(먹어, 해, 바꿔) 뒤에 붙이는 말. 사람이 쓴 대화 문장(평가에 쓰지 않는 절반)에서 흔한 순서. */
+    private static final String[] EO_ENDINGS = {"도", "서", "야지", "요", "줘", "볼까", "봐", "야할까", "야겠다", "야겠지", "있어",
+            "야해", "야돼", "줬어", "야되는데", "야겠어", "놓고", "줘요", "줄래", "줄게", "주세요", "봐야지", "버렸어", "봤어", "보니까"};
+    private static final String[] EO_EVIDENCE = {"도", "요", "야", "줘", "봐", "야지"};
+
+    /**
+     * 아/어 꼴 뒤의 말 (먹어 → 먹어야지, 먹어봐 / 해야 → 해야할까). 불규칙 활용(들어, 도와)은 사용자가 이미 친 꼴이라 따질
+     * 필요가 없다. 사전에 그 꼴 + 서(먹어서)가 있고 다른 활용(먹어도, 먹어요 ...)도 하나 이상 있어야 용언으로 본다.
+     */
+    private void addEo(Map<String, Double> pool, Context cx, String word, String x) {
+        char last = x.charAt(x.length() - 1);
+        if (last < 0xAC00 || last > 0xD7A3 || (last - 0xAC00) % 28 != 0) return;
+        int jung = (last - 0xAC00) % 588 / 28;
+        if (jung != 0 && jung != 4 && jung != 6 && jung != 9 && jung != 14 && jung != 1 && jung != 10) return;   // ㅏㅓㅕㅘㅝㅐㅙ
+        int id = dict.indexOf(x + "서");
+        if (id < 0) return;
+        double fam = cx.score(x + "서", id);
+        int found = 0;
+        for (String e : EO_EVIDENCE) {
+            int j = dict.indexOf(x + e);
+            if (j < 0) continue;
+            found++;
+            fam += cx.score(x + e, j);
+        }
+        if (found == 0) return;
+        emit(pool, word, x, EO_ENDINGS, false, fam);
+    }
+
+    /** -겠- 뒤에 붙이는 어미 (과거형 어미 중 겠 뒤에 자연스러운 것만). */
+    private static final String[] WILL_ENDINGS = {"어", "지", "네", "다", "는데", "고", "니", "냐", "죠", "어요", "습니다",
+            "네요", "지만", "다고"};
+
+    /**
+     * 받침 ㅆ으로 끝난 base(떨어졌, 먹었, 못하겠) 뒤의 어미. 사전에 base의 활용형이 없어도, 줄기 전의 어간(떨어지, 먹, 못하)이
+     * 사전에 있으면 만든다. 사용자가 과거형 글자를 이미 쳤으니 불규칙 활용을 따질 필요가 없다.
+     */
+    private void addPast(Map<String, Double> pool, Context cx, String word, String base) {
+        double fam = family(cx, base, PAST_EVIDENCE, 2, null);
+        char last = base.charAt(base.length() - 1);
+        String prefix = base.substring(0, base.length() - 1);
+        boolean will = last == '겠';
+        if (fam <= 0) {
+            for (String stem : presentStems(prefix, last)) {
+                fam = family(cx, stem, STEM_EVIDENCE, 2, "고");
+                if (fam > 0) break;
+            }
+        }
+        emit(pool, word, base, will ? WILL_ENDINGS : PAST_ENDINGS, false, fam);
+    }
+
+    /** 과거·추측 글자(했, 졌, 봤, 먹었의 었, 겠) 앞의 어간 후보. */
+    private static List<String> presentStems(String prefix, char last) {
+        List<String> out = new ArrayList<>(2);
+        int l = last - 0xAC00, cho = l / 588, jung = l % 588 / 28;
+        if (last == '겠' || cho == 11 && (jung == 0 || jung == 4)) {   // 겠, 았·었: 앞이 어간 (먹었, 좋았, 못하겠)
+            if (!prefix.isEmpty()) out.add(prefix);
+            return out;
+        }
+        if (last == '했') {
+            out.add(prefix + '하');
+            return out;
+        }
+        int[][] map = {{6, 20}, {9, 8}, {14, 13}, {10, 11}, {1, 1}, {0, 0}, {4, 4}, {4, 18}, {5, 5}};   // 졌→지, 봤→보 ...
+        for (int[] m : map) {
+            if (m[0] == jung) out.add(prefix + (char) (0xAC00 + cho * 588 + m[1] * 28));
+        }
+        return out;
     }
 
     /** 이 조사로 끝난 말은 명사로 보지 않는다. */

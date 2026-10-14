@@ -109,7 +109,8 @@ public class KoreanSuggestTest {
                 {"추천하는", "110"}, {"추천되는", "110"}, {"추천되고", "100"}, {"먹을", "120"}, {"사람한테", "100"},
                 {"피곤한", "120"}, {"피곤해서", "110"}, {"있다", "200"}, {"있다고", "150"}, {"있다는", "150"}, {"있고", "150"},
                 {"일찍", "200"}, {"일찍이", "60"}, {"상관", "120"}, {"상관이", "110"}, {"엄마", "180"}, {"엄마를", "120"},
-                {"불쌍한", "130"},
+                {"불쌍한", "130"}, {"떨어지고", "120"}, {"떨어지는", "120"}, {"좋아하는", "150"}, {"좋아하는데", "120"},
+                {"먹어서", "120"}, {"먹어도", "110"}, {"갈까", "120"}, {"갈", "110"},
         });
         next = NextWords.load(new ByteArrayInputStream(buildNext(dict, new String[][]{
                 {"좋은", "하루", "0.6"}, {"좋은", "아침", "0.25"}, {"좋은", "사람", "0.1"},
@@ -322,10 +323,8 @@ public class KoreanSuggestTest {
         // '일찍이'는 맨말 '일찍'보다 훨씬 드물어 부사로 본다 (일찍한테 X). '상관이'는 흔해 명사로 본다.
         assertFalse(m.nounLike("일찍"));
         assertTrue(m.nounLike("상관"));
-        // 뜻을 가리는 조사(마다)는 첫 글자를 다 친 뒤에만
-        assertFalse(Arrays.asList(words(m.suggest("엄마ㅁ", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)))
-                .contains("엄마마다"));
-        assertTrue(Arrays.asList(words(m.suggest("엄마마", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)))
+        // 붙는 말의 뜻을 많이 가리는 조사(마다, 조차 ...)는 만들지 않는다 (흔한 꼴은 사전에 있다)
+        assertFalse(Arrays.asList(words(m.suggest("엄마마", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)))
                 .contains("엄마마다"));
     }
 
@@ -340,8 +339,8 @@ public class KoreanSuggestTest {
                 .contains("사람한테는"));
         assertFalse(Arrays.asList(words(m.suggest("친구한테", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)))
                 .contains("친구한테는"));
-        // 그냥 한테는 근거가 없어도 붙인다
-        assertTrue(Arrays.asList(words(m.suggest("친구한", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)))
+        // 한테·에게도 사전에 근거(그 말 + 한테·에게·께)가 있어야 붙인다 (사업한테 같은 말이 나오지 않게)
+        assertFalse(Arrays.asList(words(m.suggest("친구한", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)))
                 .contains("친구한테"));
     }
 
@@ -353,6 +352,39 @@ public class KoreanSuggestTest {
         for (String w : words(model().suggest("불쌍해ㅈ", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3))) {
             assertFalse(w, w.startsWith("불쌍해줘"));
         }
+    }
+
+    @Test
+    public void generatesChatForms() {
+        KoreanSuggest m = model();
+        // 과거형 글자를 친 뒤: 사전에 '떨어졌…'이 없어도 어간 '떨어지'의 활용이 있으면 만든다
+        assertTrue(Arrays.asList(words(m.suggest("떨어졌ㅇ", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)))
+                .contains("떨어졌어"));
+        // 관형형 + 의존 명사를 붙여 친 말 (좋아하는게, 갈때)
+        assertTrue(Arrays.asList(words(m.suggest("좋아하는ㄱ", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)))
+                .contains("좋아하는게"));
+        assertTrue(Arrays.asList(words(m.suggest("갈ㄸ", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)))
+                .contains("갈때"));
+        // 명사 뒤에는 의존 명사를 붙이지 않는다 (사람게 X)
+        for (String w : words(m.suggest("사람ㄱ", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3))) {
+            assertFalse(w, w.equals("사람게") || w.equals("사람거"));
+        }
+        // 아/어 꼴 뒤 (먹어 → 먹어야지)
+        assertTrue(Arrays.asList(words(m.suggest("먹어ㅇ", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)))
+                .contains("먹어야지"));
+    }
+
+    @Test
+    public void recognizesFormalAndWrittenEndings() {
+        assertTrue(KoreanSuggest.formal("감사합니다"));
+        assertTrue(KoreanSuggest.formal("있습니다"));
+        assertFalse(KoreanSuggest.formal("하니까"));
+        assertTrue(KoreanSuggest.written("했다"));
+        assertTrue(KoreanSuggest.written("먹는다"));
+        assertTrue(KoreanSuggest.written("한다"));
+        assertFalse(KoreanSuggest.written("좋다"));
+        assertFalse(KoreanSuggest.written("좋겠다"));
+        assertFalse(KoreanSuggest.written("안다"));
     }
 
     @Test
