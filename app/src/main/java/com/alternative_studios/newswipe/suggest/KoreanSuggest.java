@@ -494,24 +494,31 @@ final class KoreanSuggest {
      * 짝은 {어미, 대략적인 비율}.
      */
     private static final String[] HA_ENDINGS = {
-            "해", "하고", "할까", "하면", "하네", "해도", "했어", "하지", "했는데", "해야지", "해서", "해줘", "하겠어", "하려고",
+            "해", "하고", "할까", "하면", "하네", "해도", "했어", "하는데", "하지", "했는데", "하게", "해야지", "해서", "해줘",
+            "하겠어", "한데", "하려고", "하다",
             "하겠지", "할거야", "해볼까", "해요", "했습니다", "할까요", "합니다", "하니", "했으면", "했네", "하더라", "하니까", "했더니",
             "할걸", "하나봐", "했다", "했잖아", "하지만", "하네요", "했어요", "하냐", "하세요", "하자", "하던데", "했지", "하겠다", "할게요",
             "하잖아", "할게", "하겠네", "해봐", "할래", "해줘요", "했나봐", "했거든", "하기로", "하거든", "할래요", "해야돼",
     };
-    /** '○○하다'인지 알아보는 활용형 (하나라도 사전에 있으면). */
-    private static final String[] HA_EVIDENCE = {"하고", "하는", "했다", "했어", "해서", "하면", "한다", "하기", "해요", "했던"};
+    /** '○○하다'인지 알아보는 활용형 (하나라도 사전에 있으면). 형용사는 사전에 '불쌍한'만 있는 일이 많아 '한'도 본다. */
+    private static final String[] HA_EVIDENCE = {"하고", "하는", "했다", "했어", "해서", "하면", "한다", "하기", "해요", "했던",
+            "한", "하게", "하다"};
     /** 동사에만 붙는 하다 어미 (피곤해줘, 가능할래 같은 말이 나오지 않게). */
     private static final String[] HA_VERB_ONLY = {"해줘", "해줘요", "해봐", "해볼까", "하자", "하려고", "할게", "할게요", "할래",
-            "할래요", "하기로"};
+            "할래요", "하기로", "하는데"};
+    /** 형용사에만 붙는 하다 어미 (불쌍한데 O, 추천한데 X). */
+    private static final String[] HA_ADJ_ONLY = {"한데"};
     /** 동사인지 알아보는 활용형 (형용사는 '피곤한다', '가능하자'가 없다). */
     private static final String[] HA_VERB_EVIDENCE = {"한다", "하는", "하자", "할게"};
-    private static final String[] HA_ADJ_ENDINGS;
+    private static final String[] HA_VERB_ENDINGS, HA_ADJ_ENDINGS;
 
     static {
         List<String> adj = new ArrayList<>(Arrays.asList(HA_ENDINGS));
         adj.removeAll(Arrays.asList(HA_VERB_ONLY));
         HA_ADJ_ENDINGS = adj.toArray(new String[0]);
+        List<String> verb = new ArrayList<>(Arrays.asList(HA_ENDINGS));
+        verb.removeAll(Arrays.asList(HA_ADJ_ONLY));
+        HA_VERB_ENDINGS = verb.toArray(new String[0]);
     }
     /** 일반 어간에 붙이는 어미: 자음으로 시작해 불규칙 활용과 상관없고 동사·형용사 모두에 붙는 것만. */
     private static final String[] STEM_ENDINGS = {
@@ -546,6 +553,8 @@ final class KoreanSuggest {
             // '있다', '했다'처럼 다로 끝난 말은 이미 끝난 활용형이다 (있다잖아, 했다겠네가 나오지 않게)
             if (last != '다' && !quoted(base)) generate(pool, cx, word, base, STEM_EVIDENCE, 2, "고", STEM_ENDINGS, t == 8);
         }
+        // '불쌍'처럼 하다 앞말까지 친 말 → 불쌍해, 불쌍하다
+        if (n >= 2 && hangulSyllables(word) == n) addHa(pool, cx, word, word);
         // '추천해', '부업할'처럼 하다 활용 중간까지 친 말: 입력이 명사 + 해/했/할/한/합 ...
         for (int k = n - 1; k >= Math.max(1, n - 4); k--) {
             char c = word.charAt(k);
@@ -576,7 +585,7 @@ final class KoreanSuggest {
             if (!ok) return;
             verb = true;
         }
-        generate(pool, cx, word, stem, HA_EVIDENCE, 1, null, verb ? HA_ENDINGS : HA_ADJ_ENDINGS, false);
+        generate(pool, cx, word, stem, HA_EVIDENCE, 1, null, verb ? HA_VERB_ENDINGS : HA_ADJ_ENDINGS, false);
     }
 
     /** 만든 활용형을 이미 있는 후보 아래에 넣는다 (사전에 있는 '말자'가 만든 '말죠'에 밀리지 않게). 순서는 그대로 둔다. */

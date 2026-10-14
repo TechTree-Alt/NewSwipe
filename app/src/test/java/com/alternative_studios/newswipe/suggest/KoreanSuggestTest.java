@@ -109,6 +109,7 @@ public class KoreanSuggestTest {
                 {"추천하는", "110"}, {"추천되는", "110"}, {"추천되고", "100"}, {"먹을", "120"}, {"사람한테", "100"},
                 {"피곤한", "120"}, {"피곤해서", "110"}, {"있다", "200"}, {"있다고", "150"}, {"있다는", "150"}, {"있고", "150"},
                 {"일찍", "200"}, {"일찍이", "60"}, {"상관", "120"}, {"상관이", "110"}, {"엄마", "180"}, {"엄마를", "120"},
+                {"불쌍한", "130"},
         });
         next = NextWords.load(new ByteArrayInputStream(buildNext(dict, new String[][]{
                 {"좋은", "하루", "0.6"}, {"좋은", "아침", "0.25"}, {"좋은", "사람", "0.1"},
@@ -342,6 +343,16 @@ public class KoreanSuggestTest {
         // 그냥 한테는 근거가 없어도 붙인다
         assertTrue(Arrays.asList(words(m.suggest("친구한", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)))
                 .contains("친구한테"));
+    }
+
+    @Test
+    public void conjugatesHaAdjectivesKnownOnlyByAdnominal() {
+        // 사전에 '불쌍한'만 있어도 하다 형용사로 보고 활용형을 만든다 (동사 어미는 붙이지 않는다)
+        List<String> s = Arrays.asList(words(model().suggest("불쌍", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)));
+        assertTrue(s.toString(), s.contains("불쌍한") && s.contains("불쌍해"));
+        for (String w : words(model().suggest("불쌍해ㅈ", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3))) {
+            assertFalse(w, w.startsWith("불쌍해줘"));
+        }
     }
 
     @Test
