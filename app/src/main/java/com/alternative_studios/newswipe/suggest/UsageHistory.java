@@ -46,6 +46,8 @@ public final class UsageHistory {
     private final File file;
     private final Object fileLock = new Object();
     private Map<String, Entry> words = new HashMap<>();
+    /** words의 단어를 사전 순으로 (입력 중인 앞부분으로 찾을 때 모두 훑지 않고 구간만 본다). words와 늘 같은 단어를 담는다. */
+    private java.util.TreeSet<String> sorted = new java.util.TreeSet<>();
     private Map<String, Map<String, Entry>> pairs = new HashMap<>();
     private int pairCount;
     private long total;
@@ -116,6 +118,7 @@ public final class UsageHistory {
                 }
             }
             words = d.words;
+            sorted = new java.util.TreeSet<>(words.keySet());
             pairs = d.pairs;
             pairCount = d.pairCount;
             total = 0;
@@ -148,7 +151,10 @@ public final class UsageHistory {
     public synchronized void record(String prev, String word, long now) {
         if (word == null || word.isEmpty()) return;
         Entry e = words.get(word);
-        if (e == null) words.put(word, new Entry(1, now));
+        if (e == null) {
+            words.put(word, new Entry(1, now));
+            sorted.add(word);
+        }
         else {
             e.count = clampCount(e.count + 1);
             e.last = now;
@@ -177,7 +183,10 @@ public final class UsageHistory {
             all.sort(UsageHistory::older);
             for (int i = 0; i < MAX_WORDS / 10 && i < all.size(); i++) {
                 Entry e = words.remove(all.get(i).getKey());
-                if (e != null) total -= e.count;
+                if (e != null) {
+                    total -= e.count;
+                    sorted.remove(all.get(i).getKey());
+                }
             }
         }
         if (pairCount > MAX_PAIRS) {
@@ -258,16 +267,33 @@ public final class UsageHistory {
         return out;
     }
 
-    /** 화면 스레드용: 입력 중인 prefix로 시작할 수 있는 단어들 (prefix와 똑같은 단어는 뺀다). */
+    /**
+     * 화면 스레드용: 입력 중인 prefix로 시작할 수 있는 단어들 (prefix와 똑같은 단어는 뺀다). {@link HangulRange#startsWith}와
+     * 같은 기준이며, 사전 순 색인에서 맞을 수 있는 구간(마지막 글자가 될 수 있는 글자들, 받침을 다음 글자로 넘긴 꼴)만 본다.
+     */
     public synchronized List<String> prefixIfLoaded(String prefix, int minCount) {
         List<String> out = new ArrayList<>();
         if (!loaded || prefix.isEmpty()) return out;
-        for (Map.Entry<String, Entry> me : words.entrySet()) {
-            if (me.getValue().count < minCount) continue;
-            String w = me.getKey();
-            if (!w.equals(prefix) && HangulRange.startsWith(w, prefix)) out.add(w);
-        }
+        collect(prefix, prefix, minCount, out, null);
+        String moved = HangulRange.movedFinal(prefix);
+        // 받침을 넘긴 꼴의 구간은 처음 구간과 겹칠 수 있다 (같은 단어를 두 번 넣지 않게)
+        if (moved != null) collect(moved, prefix, minCount, out, new java.util.HashSet<>(out));
         return out;
+    }
+
+    /** p로 시작할 수 있는 단어를 out에 더한다 (same과 같은 단어와, seen이 있으면 그 안의 단어는 빼고). */
+    private void collect(String p, String same, int minCount, List<String> out, java.util.Set<String> seen) {
+        int n = p.length();
+        char last = p.charAt(n - 1);
+        int[] r = HangulRange.of(last);
+        if (r == null && last >= 'ㄱ' && last <= 'ㅣ') return;   // 모음만 있거나 맞출 수 없는 자모
+        String head = p.substring(0, n - 1);
+        String from = head + (char) (r != null ? r[0] : last);
+        String to = head + (char) ((r != null ? r[1] : last) + 1);
+        for (String w : sorted.subSet(from, true, to, false)) {
+            if (w.equals(same) || words.get(w).count < minCount || seen != null && seen.contains(w)) continue;
+            out.add(w);
+        }
     }
 
     /** 단어와 그 단어가 들어간 단어 쌍을 지운다 (학습한 단어를 지울 때). */
@@ -278,6 +304,7 @@ public final class UsageHistory {
             Entry e = words.remove(word);
             if (e != null) {
                 total -= e.count;
+                sorted.remove(word);
                 changed = true;
             }
             Map<String, Entry> m = pairs.remove(word);
@@ -367,6 +394,7 @@ public final class UsageHistory {
             if (dirty) return;
             generation++;
             words = new HashMap<>();
+            sorted = new java.util.TreeSet<>();
             pairs = new HashMap<>();
             pairCount = 0;
             total = 0;
@@ -380,6 +408,7 @@ public final class UsageHistory {
             synchronized (this) {
                 generation++;
                 words = new HashMap<>();
+                sorted = new java.util.TreeSet<>();
                 pairs = new HashMap<>();
                 pairCount = 0;
                 total = 0;
