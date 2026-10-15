@@ -7,13 +7,20 @@
 #   nsmc_dev.txt / nsmc_test.txt     NSMC(CC0, github.com/e9t/nsmc)의 ratings_test.txt에서 세 어절 이상인 리뷰 3,000개씩.
 #                                     사전을 만들 때 섞는 것은 ratings_train.txt라 겹치지 않는다. 맞춤법을 틀린 글이 많아
 #                                     '잘못 고침'에 맞게 고친 것(봣는데 → 봤는데)도 섞여 있다.
+#   smile_<말투>.txt                  SmileStyle(Smilegate AI, CC BY-NC 4.0, github.com/smilegate-ai/korean_smile_style_dataset):
+#                                     같은 대화를 말투 17가지(formal, informal, chat, enfp, naruto ...)로 다시 쓴 것. 말투마다 한
+#                                     사람처럼 어미가 한결같아, 학습(--learn)이 개인화에 얼마나 도움이 되는지 재기에 알맞다
+#                                     (위 두 말뭉치는 여러 사람의 글이라 내 말버릇의 효과를 작게 잰다). 비상업 라이선스라 평가에만 쓴다.
 # 평가: dict/eval/run_eval.sh app/src/main/assets dict/eval/data/chat_q_dev.txt
+#       dict/eval/run_eval.sh app/src/main/assets dict/eval/data/smile_naruto.txt --learn --no-typo
 set -e
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 OUT=${1:-$ROOT/dict/eval/data}
 mkdir -p "$OUT/raw"
 curl -sSfL -o "$OUT/raw/ChatbotData.csv" https://raw.githubusercontent.com/songys/Chatbot_data/master/ChatbotData.csv
 curl -sSfL -o "$OUT/raw/ratings_test.txt" https://raw.githubusercontent.com/e9t/nsmc/master/ratings_test.txt
+curl -sSfL -o "$OUT/raw/smilestyle_dataset.tsv" \
+    https://raw.githubusercontent.com/smilegate-ai/korean_smile_style_dataset/main/smilestyle_dataset.tsv
 python3 -I - "$OUT" <<'PY'
 import csv, random, sys
 out = sys.argv[1]
@@ -39,5 +46,9 @@ write('chat_q_dev', qs[0::2])
 write('chat_q_test', qs[1::2])
 write('nsmc_dev', reviews[:3000])
 write('nsmc_test', reviews[3000:6000])
-print(f'질문 {len(qs)}개 (dev {len(qs[0::2])}, test {len(qs[1::2])}), 리뷰 dev 3000 / test 3000 → {out}')
+with open(f'{out}/raw/smilestyle_dataset.tsv', encoding='utf-8') as f:
+    rows = list(csv.reader(f, delimiter='\t'))
+for c, name in enumerate(rows[0]):
+    write('smile_' + name, [r[c].strip() for r in rows[1:] if c < len(r) and r[c].strip()])
+print(f'질문 {len(qs)}개 (dev {len(qs[0::2])}, test {len(qs[1::2])}), 리뷰 dev 3000 / test 3000, 말투 {len(rows[0])}가지 → {out}')
 PY
