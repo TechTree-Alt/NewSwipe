@@ -50,6 +50,16 @@ public final class UsageHistory {
     private java.util.TreeSet<String> sorted = new java.util.TreeSet<>();
     private Map<String, Map<String, Entry>> pairs = new HashMap<>();
     private int pairCount;
+    /**
+     * 내가 쓴 어미: "종류:어미" → 그 어미를 붙인 앞 꼴 → 횟수 (보여+줘서, 했+는데). 앞 꼴이 둘 이상인 어미만 다른 말에도 붙인다
+     * ({@link KoreanSuggest}의 END_*).
+     */
+    private Map<String, Map<String, Entry>> endings = new HashMap<>();
+    private int endingCount;
+    public static final int MAX_ENDINGS = 3000;
+    /** endingsIfLoaded의 결과 (종류마다). 어미 기록이 바뀌면 비운다 (키마다 모두 훑지 않게). */
+    private final Object[] endingCache = new Object[3];
+    private int cacheMinBases = -1, cacheMax = -1;
     private long total;
     private boolean loaded, dirty;
     private int sinceSave;
@@ -63,6 +73,8 @@ public final class UsageHistory {
         final Map<String, Entry> words = new HashMap<>();
         final Map<String, Map<String, Entry>> pairs = new HashMap<>();
         int pairCount;
+        final Map<String, Map<String, Entry>> endings = new HashMap<>();
+        int endingCount;
     }
 
     private Data readFile() {
@@ -75,6 +87,12 @@ public final class UsageHistory {
                 try {
                     if (p.length == 4 && p[0].equals("u") && !p[1].isEmpty() && d.words.size() < MAX_WORDS) {
                         d.words.put(p[1], new Entry(clampCount(Integer.parseInt(p[2])), Long.parseLong(p[3])));
+                    } else if (p.length == 5 && p[0].equals("e") && !p[1].isEmpty() && !p[2].isEmpty()
+                            && d.endingCount < MAX_ENDINGS) {
+                        Map<String, Entry> m = d.endings.computeIfAbsent(p[1], k -> new HashMap<>());
+                        if (m.put(p[2], new Entry(clampCount(Integer.parseInt(p[3])), Long.parseLong(p[4]))) == null) {
+                            d.endingCount++;
+                        }
                     } else if (p.length == 5 && p[0].equals("p") && !p[1].isEmpty() && !p[2].isEmpty()
                             && d.pairCount < MAX_PAIRS) {
                         Map<String, Entry> m = d.pairs.computeIfAbsent(p[1], k -> new HashMap<>());
@@ -117,6 +135,15 @@ public final class UsageHistory {
                     if (merge(m, me.getKey(), me.getValue())) d.pairCount++;
                 }
             }
+            for (Map.Entry<String, Map<String, Entry>> ee : endings.entrySet()) {
+                Map<String, Entry> m = d.endings.computeIfAbsent(ee.getKey(), k -> new HashMap<>());
+                for (Map.Entry<String, Entry> me : ee.getValue().entrySet()) {
+                    if (merge(m, me.getKey(), me.getValue())) d.endingCount++;
+                }
+            }
+            endings = d.endings;
+            endingCount = d.endingCount;
+            java.util.Arrays.fill(endingCache, null);
             words = d.words;
             sorted = new java.util.TreeSet<>(words.keySet());
             pairs = d.pairs;
@@ -174,6 +201,77 @@ public final class UsageHistory {
         dirty = true;
         sinceSave++;
         if (loaded) trimIfNeeded();
+    }
+
+    /** 어미를 한 번 썼다고 기록한다 (kind: 어미 종류, base: 어미 앞의 꼴, tail: 어미). */
+    public synchronized void recordEnding(int kind, String base, String tail, long now) {
+        if (base == null || base.isEmpty() || tail == null || tail.isEmpty()) return;
+        Map<String, Entry> m = endings.computeIfAbsent(kind + ":" + tail, k -> new HashMap<>());
+        Entry e = m.get(base);
+        if (e == null) {
+            m.put(base, new Entry(1, now));
+            endingCount++;
+        } else {
+            e.count = clampCount(e.count + 1);
+            e.last = now;
+        }
+        dirty = true;
+        java.util.Arrays.fill(endingCache, null);
+        if (loaded && endingCount > MAX_ENDINGS) trimEndings();
+    }
+
+    /** 가장 오래 안 쓴 (어미, 앞 꼴)부터 10%를 덜어 낸다. */
+    private void trimEndings() {
+        List<String[]> keys = new ArrayList<>();
+        List<Entry> vals = new ArrayList<>();
+        for (Map.Entry<String, Map<String, Entry>> ee : endings.entrySet()) {
+            for (Map.Entry<String, Entry> me : ee.getValue().entrySet()) {
+                keys.add(new String[]{ee.getKey(), me.getKey()});
+                vals.add(me.getValue());
+            }
+        }
+        Integer[] order = new Integer[keys.size()];
+        for (int i = 0; i < order.length; i++) order[i] = i;
+        java.util.Arrays.sort(order, (a, b) -> olderEntry(vals.get(a), vals.get(b)));
+        for (int i = 0; i < MAX_ENDINGS / 10 && i < order.length; i++) {
+            String[] k = keys.get(order[i]);
+            Map<String, Entry> m = endings.get(k[0]);
+            if (m != null && m.remove(k[1]) != null) {
+                endingCount--;
+                if (m.isEmpty()) endings.remove(k[0]);
+            }
+        }
+    }
+
+    /**
+     * 화면 스레드용: kind 종류의 어미 중 앞 꼴 minBases개 이상에 붙여 쓴 것 (많이 쓴 순, 최대 max개). 읽지 않았으면 빈 목록.
+     * 한 낱말에서만 본 꼬리(가방이 → 가 + 방이)는 어미가 아닐 수 있어 둘 이상의 앞 꼴을 요구한다.
+     */
+    public synchronized List<String> endingsIfLoaded(int kind, int minBases, int max) {
+        List<String> out = new ArrayList<>();
+        if (!loaded) return out;
+        boolean cacheable = kind >= 0 && kind < endingCache.length;
+        if (cacheable && minBases == cacheMinBases && max == cacheMax && endingCache[kind] != null) {
+            @SuppressWarnings("unchecked") List<String> c = (List<String>) endingCache[kind];
+            return new ArrayList<>(c);
+        }
+        if (cacheable && (minBases != cacheMinBases || max != cacheMax)) {
+            java.util.Arrays.fill(endingCache, null);
+            cacheMinBases = minBases;
+            cacheMax = max;
+        }
+        String pre = kind + ":";
+        List<Object[]> all = new ArrayList<>();
+        for (Map.Entry<String, Map<String, Entry>> ee : endings.entrySet()) {
+            if (!ee.getKey().startsWith(pre) || ee.getValue().size() < minBases) continue;
+            int n = 0;
+            for (Entry e : ee.getValue().values()) n += e.count;
+            all.add(new Object[]{ee.getKey().substring(pre.length()), n});
+        }
+        all.sort((a, b) -> Integer.compare((Integer) b[1], (Integer) a[1]));
+        for (int i = 0; i < all.size() && i < max; i++) out.add((String) all.get(i)[0]);
+        if (cacheable) endingCache[kind] = new ArrayList<>(out);
+        return out;
     }
 
     /** 한도를 넘으면 가장 오래 안 쓴 것부터 10%를 덜어 낸다 (한 번만 쓴 것이 먼저). */
@@ -350,6 +448,12 @@ public final class UsageHistory {
             for (Map.Entry<String, Entry> me : words.entrySet()) {
                 lines.add("u\t" + me.getKey() + "\t" + me.getValue().count + "\t" + me.getValue().last);
             }
+            for (Map.Entry<String, Map<String, Entry>> ee : endings.entrySet()) {
+                for (Map.Entry<String, Entry> me : ee.getValue().entrySet()) {
+                    lines.add("e\t" + ee.getKey() + "\t" + me.getKey() + "\t" + me.getValue().count + "\t"
+                            + me.getValue().last);
+                }
+            }
             for (Map.Entry<String, Map<String, Entry>> pe : pairs.entrySet()) {
                 for (Map.Entry<String, Entry> me : pe.getValue().entrySet()) {
                     lines.add("p\t" + pe.getKey() + "\t" + me.getKey() + "\t" + me.getValue().count + "\t"
@@ -395,6 +499,9 @@ public final class UsageHistory {
             generation++;
             words = new HashMap<>();
             sorted = new java.util.TreeSet<>();
+            endings = new HashMap<>();
+            endingCount = 0;
+            java.util.Arrays.fill(endingCache, null);
             pairs = new HashMap<>();
             pairCount = 0;
             total = 0;
@@ -409,6 +516,9 @@ public final class UsageHistory {
                 generation++;
                 words = new HashMap<>();
                 sorted = new java.util.TreeSet<>();
+                endings = new HashMap<>();
+                endingCount = 0;
+                java.util.Arrays.fill(endingCache, null);
                 pairs = new HashMap<>();
                 pairCount = 0;
                 total = 0;

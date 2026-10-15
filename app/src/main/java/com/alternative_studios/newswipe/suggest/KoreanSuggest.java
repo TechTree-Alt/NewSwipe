@@ -138,6 +138,7 @@ final class KoreanSuggest {
         final int field;
         final int endGroup;         // 앞 단어 끝 글자의 묶음 ({@link EndingContext}, -1 = 없음)
         final double nu;            // 끝 글자 분포를 믿는 비율
+        final String[][] learnedEndings = new String[3][];   // 내가 쓴 어미를 더한 어미 목록 (종류마다, 처음 쓸 때 만든다)
 
         Context(String prev, int field, UserDictionary user, UsageHistory usage) {
             this.prev = prev;
@@ -696,7 +697,9 @@ final class KoreanSuggest {
             int t = (last - 0xAC00) % 28;
             if (t == 20) addPast(pool, cx, word, base);   // 받침 ㅆ
             // '있다', '했다'처럼 다로 끝난 말은 이미 끝난 활용형이다 (있다잖아, 했다겠네가 나오지 않게)
-            if (last != '다' && !quoted(base)) generate(pool, cx, word, base, STEM_EVIDENCE, 2, "고", STEM_ENDINGS, t == 8);
+            if (last != '다' && !quoted(base)) {
+                generate(pool, cx, word, base, STEM_EVIDENCE, 2, "고", endingsFor(cx, END_STEM, STEM_ENDINGS), t == 8);
+            }
         }
         for (int k = n; k >= Math.max(1, n - 3); k--) addEo(pool, cx, word, word.substring(0, k));
         // '불쌍'처럼 하다 앞말까지 친 말 → 불쌍해, 불쌍하다
@@ -791,6 +794,67 @@ final class KoreanSuggest {
         }
     }
 
+    // ---------------------------------------------------------------- 내가 쓴 어미
+
+    /** 어미 종류: 아/어 꼴 뒤(보여+줘서), 과거·추측 글자 뒤(했+는데, 하겠+더라), 어간 뒤(먹+더라고요). */
+    static final int END_AO = 0, END_PAST = 1, END_STEM = 2;
+    /** 내가 쓴 어미를 다른 말에도 붙일지 (평가용), 그러려면 몇 개의 앞 꼴에 붙여 썼어야 하는지, 종류마다 최대 몇 개. */
+    static boolean LEARN_ENDINGS = true;
+    static int END_MIN_BASES = 2, END_MAX = 30;
+
+    /**
+     * 학습할 때 (백그라운드): w를 (앞 꼴, 어미)로 나눠 쓴 기록에 남긴다. 앞 꼴은 사전으로 확인되는 것만 (아/어 꼴은 앞 꼴 + 서,
+     * 과거형은 앞 꼴 + 어·다·고, 어간은 어간 + 고와 는·지·다가 사전에 있어야 한다). 사전의 명사(사람 → 사 + 람)는 나누지 않는다.
+     */
+    void learnEndings(String w, UsageHistory usage, long now) {
+        int n = w.length();
+        if (usage == null || n < 2 || n > 12 || hangulSyllables(w) != n) return;
+        if (dict.contains(w) && nounLike(w)) return;
+        String[] sp = WordSuggester.splitParticle(w);   // 가방이 = 가방 + 이 (가 + 방이가 아니다)
+        if (sp != null && dict.contains(sp[0])) return;
+        for (int k = 1; k < n; k++) {
+            String base = w.substring(0, k), tail = w.substring(k);
+            if (tail.length() > 4) continue;
+            char c = base.charAt(k - 1);
+            int t = (c - 0xAC00) % 28, jung = (c - 0xAC00) % 588 / 28;
+            boolean particle = WordSuggester.isParticle(tail);   // 가방이 → 가 + 방이, 하이 → 하 + 이: 어미가 아니다
+            if (particle) continue;
+            if (t == 0 && (jung == 0 || jung == 4 || jung == 6 || jung == 9 || jung == 14 || jung == 1 || jung == 10)
+                    && AFTER_AO.indexOf(tail.charAt(0)) >= 0 && dict.contains(base + "서")) {
+                usage.recordEnding(END_AO, base, tail, now);
+            }
+            if (t == 20 && (dict.contains(base + "어") || dict.contains(base + "다") || dict.contains(base + "고"))) {
+                usage.recordEnding(END_PAST, base, tail, now);
+            }
+            if (dict.contains(base + "고")
+                    && (dict.contains(base + "는") || dict.contains(base + "지") || dict.contains(base + "다"))) {
+                usage.recordEnding(END_STEM, base, tail, now);
+            }
+        }
+    }
+
+    /**
+     * 아/어 꼴 뒤에 오는 말의 첫 글자 (먹어+서·도·요·야, 보조 용언 줘·봐·버리·놓·있·가·오·지 ...). 가·보내처럼 아/어 꼴이 어간과
+     * 같은 말에서 어간 뒤 어미(가+는, 가+고)를 아/어 꼴 뒤 어미로 잘못 배우지 않게 한다.
+     */
+    private static final String AFTER_AO = "서도요야줘주준줄봐보볼봤버놓놔둬두있가갈갔와올왔오지진져졌치";
+
+    /** 이 종류의 어미 목록: 앱에 든 것 + 내가 둘 이상의 말에 붙여 쓴 것 (앞에 없는 것만, 뒤에 붙인다). */
+    private String[] endingsFor(Context cx, int kind, String[] fixed) {
+        if (!LEARN_ENDINGS || cx.usage == null) return fixed;
+        String[][] cache = cx.learnedEndings;
+        if (cache[kind] != null) return cache[kind];
+        List<String> learned = cx.usage.endingsIfLoaded(kind, END_MIN_BASES, END_MAX);
+        String[] out = fixed;
+        if (!learned.isEmpty()) {
+            List<String> all = new ArrayList<>(Arrays.asList(fixed));
+            for (String e : learned) if (!all.contains(e)) all.add(e);
+            out = all.toArray(new String[0]);
+        }
+        cache[kind] = out;
+        return out;
+    }
+
     /** 아/어 꼴(먹어, 해, 바꿔) 뒤에 붙이는 말. 사람이 쓴 대화 문장(평가에 쓰지 않는 절반)에서 흔한 순서. */
     private static final String[] EO_ENDINGS = {"도", "서", "야지", "요", "줘", "볼까", "봐", "야할까", "야겠다", "야겠지", "있어",
             "야해", "야돼", "줬어", "야되는데", "야겠어", "놓고", "줘요", "줄래", "줄게", "주세요", "봐야지", "버렸어", "봤어", "보니까"};
@@ -816,7 +880,7 @@ final class KoreanSuggest {
             fam += cx.score(x + e, j);
         }
         if (found == 0) return;
-        emit(pool, word, x, EO_ENDINGS, false, fam);
+        emit(pool, word, x, endingsFor(cx, END_AO, EO_ENDINGS), false, fam);
     }
 
     /** -겠- 뒤에 붙이는 어미 (과거형 어미 중 겠 뒤에 자연스러운 것만). */
@@ -838,7 +902,7 @@ final class KoreanSuggest {
                 if (fam > 0) break;
             }
         }
-        emit(pool, word, base, will ? WILL_ENDINGS : PAST_ENDINGS, false, fam);
+        emit(pool, word, base, endingsFor(cx, END_PAST, will ? WILL_ENDINGS : PAST_ENDINGS), false, fam);
     }
 
     /** 과거·추측 글자(했, 졌, 봤, 먹었의 었, 겠) 앞의 어간 후보. */

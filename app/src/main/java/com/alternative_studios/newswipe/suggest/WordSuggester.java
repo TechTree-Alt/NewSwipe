@@ -90,6 +90,7 @@ public final class WordSuggester {
         KoreanSuggest m = koModel;
         // 한 번 쓴 말도 추천하되 오타로 보이는 말은 빼려고, 오타인지를 여기(백그라운드)서 재 둔다
         if (korean && m != null && learnable(word, true)) m.noteLearned(word);
+        if (korean && m != null && learnable(word, true)) m.learnEndings(word, usage, System.currentTimeMillis());   // 내가 쓴 어미
     }
 
     /**
@@ -161,7 +162,13 @@ public final class WordSuggester {
         return all.toArray(new String[0][]);
     }
 
-    /** word = 앞부분 + 조사이면 {앞부분, 조사}, 아니면 null. 받침에 맞는 조사만, 긴 것부터. 앞부분은 한글 한 글자 이상. */
+    /** s가 조사(서술격 포함) 하나인지 (이, 가, 를, 한테, 이야 ...). */
+    static boolean isParticle(String s) {
+        for (String[] p : LearnParticles.ALL) if (p[0].equals(s)) return true;
+        return false;
+    }
+
+        /** word = 앞부분 + 조사이면 {앞부분, 조사}, 아니면 null. 받침에 맞는 조사만, 긴 것부터. 앞부분은 한글 한 글자 이상. */
     static String[] splitParticle(String word) {
         for (String[] p : LearnParticles.ALL) {
             String s = p[0];

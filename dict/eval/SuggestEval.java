@@ -267,6 +267,7 @@ public final class SuggestEval {
                     // 앱과 같은 학습 (WordSuggester.learnInto). 시각 대신 단어 순번을 쓴다.
                     WordSuggester.learnInto(d, user, usage, core, prev, true, false, words);
                     if (WordSuggester.learnable(core, true)) ks.noteLearned(core);
+                    if (WordSuggester.learnable(core, true)) ks.learnEndings(core, usage, words);
                 }
                 prev = breakAfter ? null : core;
             }
