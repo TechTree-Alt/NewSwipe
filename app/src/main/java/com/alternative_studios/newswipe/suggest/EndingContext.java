@@ -12,7 +12,7 @@ import java.util.Arrays;
  *
  * <p>끝 글자마다 많아야 {@link #TOP}개의 다음 단어를 단어 번호 순으로 둔다 ({@link NextWords}와 같은 방식으로 찾는다).
  */
-final class EndingContext {
+final class EndingContext implements WordGroups {
     /** 끝 글자마다 남길 다음 단어 수. */
     static final int TOP = 48;
     /** 이보다 적은 앞 단어에서 모인 끝 글자는 믿지 않는다. */
@@ -147,15 +147,15 @@ final class EndingContext {
         return heads[g];
     }
 
-    int from(int g) {
+    public int from(int g) {
         return start[g];
     }
 
-    int to(int g) {
+    public int to(int g) {
         return start[g + 1];
     }
 
-    int word(int i) {
+    public int word(int i) {
         return next[i];
     }
 
@@ -176,7 +176,7 @@ final class EndingContext {
     }
 
     /** 묶음 g 안에서 번호가 w 이상인 첫 자리. */
-    int lowerBound(int g, int w) {
+    public int lowerBound(int g, int w) {
         int lo = start[g], hi = start[g + 1];
         while (lo < hi) {
             int mid = (lo + hi) >>> 1;

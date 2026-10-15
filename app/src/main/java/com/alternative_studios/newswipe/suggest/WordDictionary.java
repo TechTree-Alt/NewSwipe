@@ -125,6 +125,30 @@ public final class WordDictionary {
     public int[] lookupIds(String prefix, int max) {
         int n = prefix.length();
         if (n == 0 || max <= 0) return new int[0];
+        // 첫 키(ㄱ, 가 ...)는 구간이 커서(수천 단어) 매번 훑으면 아깝다. 한 글자 입력의 결과는 기억해 둔다.
+        if (n == 1) {
+            String key = max + ":" + prefix;
+            int[] hit;
+            synchronized (firstKey) {
+                hit = firstKey.get(key);
+            }
+            if (hit == null) {
+                hit = scanIds(prefix, max);
+                synchronized (firstKey) {
+                    if (firstKey.size() > 512) firstKey.clear();
+                    firstKey.put(key, hit);
+                }
+            }
+            return hit.clone();
+        }
+        return scanIds(prefix, max);
+    }
+
+    /** 한 글자 입력의 lookupIds 결과 ("max:글자" → 단어 번호). */
+    private final java.util.Map<String, int[]> firstKey = new java.util.HashMap<>();
+
+    private int[] scanIds(String prefix, int max) {
+        int n = prefix.length();
         int[] rg = new int[4];
         int nr = ranges(prefix, rg);
         int[] best = new int[max];

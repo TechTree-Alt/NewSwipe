@@ -45,9 +45,8 @@ public final class UsageHistory {
 
     private final File file;
     private final Object fileLock = new Object();
-    private Map<String, Entry> words = new HashMap<>();
-    /** words의 단어를 사전 순으로 (입력 중인 앞부분으로 찾을 때 모두 훑지 않고 구간만 본다). words와 늘 같은 단어를 담는다. */
-    private java.util.TreeSet<String> sorted = new java.util.TreeSet<>();
+    /** 단어 → 횟수. 사전 순이라 입력 중인 앞부분으로 찾을 때 모두 훑지 않고 구간만 본다. */
+    private java.util.TreeMap<String, Entry> words = new java.util.TreeMap<>();
     private Map<String, Map<String, Entry>> pairs = new HashMap<>();
     private int pairCount;
     /**
@@ -70,7 +69,7 @@ public final class UsageHistory {
     }
 
     private static final class Data {
-        final Map<String, Entry> words = new HashMap<>();
+        final java.util.TreeMap<String, Entry> words = new java.util.TreeMap<>();
         final Map<String, Map<String, Entry>> pairs = new HashMap<>();
         int pairCount;
         final Map<String, Map<String, Entry>> endings = new HashMap<>();
@@ -145,7 +144,6 @@ public final class UsageHistory {
             endingCount = d.endingCount;
             java.util.Arrays.fill(endingCache, null);
             words = d.words;
-            sorted = new java.util.TreeSet<>(words.keySet());
             pairs = d.pairs;
             pairCount = d.pairCount;
             total = 0;
@@ -178,10 +176,7 @@ public final class UsageHistory {
     public synchronized void record(String prev, String word, long now) {
         if (word == null || word.isEmpty()) return;
         Entry e = words.get(word);
-        if (e == null) {
-            words.put(word, new Entry(1, now));
-            sorted.add(word);
-        }
+        if (e == null) words.put(word, new Entry(1, now));
         else {
             e.count = clampCount(e.count + 1);
             e.last = now;
@@ -217,30 +212,7 @@ public final class UsageHistory {
         }
         dirty = true;
         java.util.Arrays.fill(endingCache, null);
-        if (loaded && endingCount > MAX_ENDINGS) trimEndings();
-    }
-
-    /** 가장 오래 안 쓴 (어미, 앞 꼴)부터 10%를 덜어 낸다. */
-    private void trimEndings() {
-        List<String[]> keys = new ArrayList<>();
-        List<Entry> vals = new ArrayList<>();
-        for (Map.Entry<String, Map<String, Entry>> ee : endings.entrySet()) {
-            for (Map.Entry<String, Entry> me : ee.getValue().entrySet()) {
-                keys.add(new String[]{ee.getKey(), me.getKey()});
-                vals.add(me.getValue());
-            }
-        }
-        Integer[] order = new Integer[keys.size()];
-        for (int i = 0; i < order.length; i++) order[i] = i;
-        java.util.Arrays.sort(order, (a, b) -> olderEntry(vals.get(a), vals.get(b)));
-        for (int i = 0; i < MAX_ENDINGS / 10 && i < order.length; i++) {
-            String[] k = keys.get(order[i]);
-            Map<String, Entry> m = endings.get(k[0]);
-            if (m != null && m.remove(k[1]) != null) {
-                endingCount--;
-                if (m.isEmpty()) endings.remove(k[0]);
-            }
-        }
+        if (loaded && endingCount > MAX_ENDINGS) endingCount -= trimNested(endings, MAX_ENDINGS / 10);
     }
 
     /**
@@ -281,33 +253,35 @@ public final class UsageHistory {
             all.sort(UsageHistory::older);
             for (int i = 0; i < MAX_WORDS / 10 && i < all.size(); i++) {
                 Entry e = words.remove(all.get(i).getKey());
-                if (e != null) {
-                    total -= e.count;
-                    sorted.remove(all.get(i).getKey());
-                }
+                if (e != null) total -= e.count;
             }
         }
-        if (pairCount > MAX_PAIRS) {
-            List<String[]> keys = new ArrayList<>();
-            List<Entry> vals = new ArrayList<>();
-            for (Map.Entry<String, Map<String, Entry>> pe : pairs.entrySet()) {
-                for (Map.Entry<String, Entry> me : pe.getValue().entrySet()) {
-                    keys.add(new String[]{pe.getKey(), me.getKey()});
-                    vals.add(me.getValue());
-                }
-            }
-            Integer[] order = new Integer[keys.size()];
-            for (int i = 0; i < order.length; i++) order[i] = i;
-            java.util.Arrays.sort(order, (a, b) -> olderEntry(vals.get(a), vals.get(b)));
-            for (int i = 0; i < MAX_PAIRS / 10 && i < order.length; i++) {
-                String[] k = keys.get(order[i]);
-                Map<String, Entry> m = pairs.get(k[0]);
-                if (m != null && m.remove(k[1]) != null) {
-                    pairCount--;
-                    if (m.isEmpty()) pairs.remove(k[0]);
-                }
+        if (pairCount > MAX_PAIRS) pairCount -= trimNested(pairs, MAX_PAIRS / 10);
+    }
+
+    /** 앞 키 → (뒤 키 → 횟수) 꼴의 기록에서 가장 오래 안 쓴 것부터(한 번만 쓴 것이 먼저) n개를 덜어 내고 덜어 낸 수를 돌려준다. */
+    private static int trimNested(Map<String, Map<String, Entry>> map, int n) {
+        List<String[]> keys = new ArrayList<>();
+        List<Entry> vals = new ArrayList<>();
+        for (Map.Entry<String, Map<String, Entry>> outer : map.entrySet()) {
+            for (Map.Entry<String, Entry> me : outer.getValue().entrySet()) {
+                keys.add(new String[]{outer.getKey(), me.getKey()});
+                vals.add(me.getValue());
             }
         }
+        Integer[] order = new Integer[keys.size()];
+        for (int i = 0; i < order.length; i++) order[i] = i;
+        java.util.Arrays.sort(order, (a, b) -> olderEntry(vals.get(a), vals.get(b)));
+        int removed = 0;
+        for (int i = 0; i < n && i < order.length; i++) {
+            String[] k = keys.get(order[i]);
+            Map<String, Entry> m = map.get(k[0]);
+            if (m != null && m.remove(k[1]) != null) {
+                removed++;
+                if (m.isEmpty()) map.remove(k[0]);
+            }
+        }
+        return removed;
     }
 
     private static int older(Map.Entry<String, Entry> a, Map.Entry<String, Entry> b) {
@@ -350,9 +324,9 @@ public final class UsageHistory {
         return n;
     }
 
-    /** 화면 스레드용: prev 다음에 쓴 단어들 {단어, 횟수} (많이 쓴 순, 같으면 최근 순). */
-    public synchronized List<Object[]> nextIfLoaded(String prev) {
-        List<Object[]> out = new ArrayList<>();
+    /** 화면 스레드용: prev 다음에 쓴 단어와 횟수 (많이 쓴 순, 같으면 최근 순). */
+    public synchronized List<Map.Entry<String, Integer>> nextIfLoaded(String prev) {
+        List<Map.Entry<String, Integer>> out = new ArrayList<>();
         if (!loaded || prev == null) return out;
         Map<String, Entry> m = pairs.get(prev);
         if (m == null) return out;
@@ -361,37 +335,26 @@ public final class UsageHistory {
             int c = Integer.compare(b.getValue().count, a.getValue().count);
             return c != 0 ? c : Long.compare(b.getValue().last, a.getValue().last);
         });
-        for (Map.Entry<String, Entry> me : all) out.add(new Object[]{me.getKey(), me.getValue().count});
+        for (Map.Entry<String, Entry> me : all) {
+            out.add(new java.util.AbstractMap.SimpleImmutableEntry<>(me.getKey(), me.getValue().count));
+        }
         return out;
     }
 
-    /**
-     * 화면 스레드용: 입력 중인 prefix로 시작할 수 있는 단어들 (prefix와 똑같은 단어는 뺀다). {@link HangulRange#startsWith}와
-     * 같은 기준이며, 사전 순 색인에서 맞을 수 있는 구간(마지막 글자가 될 수 있는 글자들, 받침을 다음 글자로 넘긴 꼴)만 본다.
-     */
+    /** 화면 스레드용: 입력 중인 prefix로 시작할 수 있는 단어들 (prefix와 똑같은 단어는 뺀다, {@link HangulRange#startsWith}). */
     public synchronized List<String> prefixIfLoaded(String prefix, int minCount) {
         List<String> out = new ArrayList<>();
-        if (!loaded || prefix.isEmpty()) return out;
-        collect(prefix, prefix, minCount, out, null);
-        String moved = HangulRange.movedFinal(prefix);
-        // 받침을 넘긴 꼴의 구간은 처음 구간과 겹칠 수 있다 (같은 단어를 두 번 넣지 않게)
-        if (moved != null) collect(moved, prefix, minCount, out, new java.util.HashSet<>(out));
-        return out;
-    }
-
-    /** p로 시작할 수 있는 단어를 out에 더한다 (same과 같은 단어와, seen이 있으면 그 안의 단어는 빼고). */
-    private void collect(String p, String same, int minCount, List<String> out, java.util.Set<String> seen) {
-        int n = p.length();
-        char last = p.charAt(n - 1);
-        int[] r = HangulRange.of(last);
-        if (r == null && last >= 'ㄱ' && last <= 'ㅣ') return;   // 모음만 있거나 맞출 수 없는 자모
-        String head = p.substring(0, n - 1);
-        String from = head + (char) (r != null ? r[0] : last);
-        String to = head + (char) ((r != null ? r[1] : last) + 1);
-        for (String w : sorted.subSet(from, true, to, false)) {
-            if (w.equals(same) || words.get(w).count < minCount || seen != null && seen.contains(w)) continue;
-            out.add(w);
+        if (!loaded) return out;
+        List<String[]> bounds = HangulRange.bounds(prefix);
+        for (String[] b : bounds) {
+            for (Map.Entry<String, Entry> me : words.subMap(b[0], true, b[1], false).entrySet()) {
+                String w = me.getKey();
+                if (w.equals(prefix) || me.getValue().count < minCount) continue;
+                if (bounds.size() > 1 && out.contains(w)) continue;   // 두 구간이 겹칠 때
+                out.add(w);
+            }
         }
+        return out;
     }
 
     /** 단어와 그 단어가 들어간 단어 쌍을 지운다 (학습한 단어를 지울 때). */
@@ -402,7 +365,6 @@ public final class UsageHistory {
             Entry e = words.remove(word);
             if (e != null) {
                 total -= e.count;
-                sorted.remove(word);
                 changed = true;
             }
             Map<String, Entry> m = pairs.remove(word);
@@ -497,8 +459,7 @@ public final class UsageHistory {
         synchronized (this) {
             if (dirty) return;
             generation++;
-            words = new HashMap<>();
-            sorted = new java.util.TreeSet<>();
+            words = new java.util.TreeMap<>();
             endings = new HashMap<>();
             endingCount = 0;
             java.util.Arrays.fill(endingCache, null);
@@ -514,8 +475,7 @@ public final class UsageHistory {
         synchronized (fileLock) {
             synchronized (this) {
                 generation++;
-                words = new HashMap<>();
-                sorted = new java.util.TreeSet<>();
+                words = new java.util.TreeMap<>();
                 endings = new HashMap<>();
                 endingCount = 0;
                 java.util.Arrays.fill(endingCache, null);

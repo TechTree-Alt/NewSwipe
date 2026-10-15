@@ -88,9 +88,10 @@ public final class WordSuggester {
         if (!useUser()) return;
         learnInto(korean ? ko : en, user, korean ? usage : null, word, prev, korean, strong, System.currentTimeMillis());
         KoreanSuggest m = koModel;
-        // 한 번 쓴 말도 추천하되 오타로 보이는 말은 빼려고, 오타인지를 여기(백그라운드)서 재 둔다
-        if (korean && m != null && learnable(word, true)) m.noteLearned(word);
-        if (korean && m != null && learnable(word, true)) m.learnEndings(word, usage, System.currentTimeMillis());   // 내가 쓴 어미
+        if (korean && m != null && learnable(word, true)) {
+            m.noteLearned(word);   // 한 번 쓴 말도 추천하되 오타로 보이는 말은 빼려고, 오타인지를 여기(백그라운드)서 재 둔다
+            m.learnEndings(word, usage, System.currentTimeMillis());   // 내가 쓴 어미
+        }
     }
 
     /**
@@ -127,10 +128,11 @@ public final class WordSuggester {
     /** 낱말의 끝 글자이기도 한 짧은 조사 (길냥이, 사이다, 오징어볶음밥도처럼 낱말에 들어 있을 수 있다). */
     private static final java.util.Set<String> AMBIGUOUS_PARTICLES = new java.util.HashSet<>(java.util.Arrays.asList(
             "이", "가", "도", "의", "만", "와", "과", "로", "나", "야", "요", "고", "면", "지", "네", "래", "며", "든", "엔", "란",
-            "뿐", "께", "죠", "임"));
+            "뿐", "께", "죠", "임", "냐", "니"));
 
     /**
-     * 학습할 때 떼는 조사: 추천에서 붙이는 조사(서술격 포함, {@link KoreanSuggest#PARTICLES})와 particleStem의 목록. 긴 것부터.
+     * 떼어 알아보는 조사: 추천에서 붙이는 조사(서술격 포함, {@link KoreanSuggest#PARTICLES})와 서술격의 구어체. 긴 것부터.
+     * 학습(조사를 뗀 말로 기억), 자동 수정(사전 단어·학습한 말 + 조사는 고치지 않는다), 검색 칸 순위가 모두 이것을 쓴다.
      * (아래쪽에 선언한 목록을 쓰므로 처음 쓸 때 만든다.)
      */
     private static final class LearnParticles {
@@ -148,11 +150,10 @@ public final class WordSuggester {
                 m.put(p[1] + "|V", "V");
             }
         }
-        for (String p : PARTICLE_ANY) m.put(p + "|", "");
-        for (String p : PARTICLE_AFTER_FINAL) m.put(p + "|F", "F");
-        for (String p : PARTICLE_AFTER_VOWEL) m.put(p + "|V", "V");
-        m.put("임|F", "F");   // 서술격의 명사형 (고민임, 짝남임)
-        m.put("임|V", "V");
+        m.put("마다|", "");
+        // 서술격의 구어체 (고민임, 사람인듯, 친구냐, 짝남이었음): 추천에서 붙이지는 않지만 떼어 알아본다
+        for (String p : new String[]{"임", "인듯", "인거", "인게", "이냐", "이니", "이었음", "인지"}) m.put(p + "|F", "F");
+        for (String p : new String[]{"임", "인듯", "인거", "인게", "냐", "니", "였음", "인지"}) m.put(p + "|V", "V");
         List<String[]> all = new ArrayList<>();
         for (String k : m.keySet()) {
             int bar = k.indexOf('|');
@@ -205,32 +206,10 @@ public final class WordSuggester {
         return sp != null && user.knownCountIfLoaded(sp[0]) > 0;
     }
 
-    /** 받침이 있어야 붙는 조사, 받침이 없어야(또는 ㄹ 받침) 붙는 조사, 받침과 상관없는 조사. 긴 것부터 맞춘다. */
-    private static final String[] PARTICLE_AFTER_FINAL = {"으로부터", "으로는", "으로도", "이라도", "이랑", "으로", "이나", "을", "은", "이", "과"};
-    private static final String[] PARTICLE_AFTER_VOWEL = {"로부터", "로는", "로도", "라도", "랑", "로", "나", "를", "는", "가", "와"};
-    private static final String[] PARTICLE_ANY = {"에서부터", "에게서", "한테서", "에서는", "에서도", "에게는", "에게도", "한테는", "까지는",
-            "까지도", "부터는", "만큼은", "에서", "에게", "한테", "까지", "부터", "처럼", "보다", "마다", "만큼", "하고", "에는", "에도",
-            "의", "에", "도", "만", "께"};
-
-    /**
-     * 끝에 흔한 조사가 붙어 있으면 조사를 뗀 앞부분을, 아니면 null. 받침에 맞는 조사만 인정한다
-     * (받침 뒤 을·은·이·과, 받침 없는 말 뒤 를·는·가·와, '로'는 ㄹ 받침 뒤에도). 앞부분은 한글 한 글자 이상.
-     */
+    /** 끝에 조사(서술격 포함)가 붙어 있으면 조사를 뗀 앞부분을, 아니면 null ({@link #splitParticle}). */
     static String particleStem(String word) {
-        if (word.length() < 2) return null;
-        for (String[] group : new String[][]{PARTICLE_ANY, PARTICLE_AFTER_FINAL, PARTICLE_AFTER_VOWEL}) {
-            for (String p : group) {
-                if (word.length() <= p.length() || !word.endsWith(p)) continue;
-                String stem = word.substring(0, word.length() - p.length());
-                char last = stem.charAt(stem.length() - 1);
-                if (last < '\uAC00' || last > '\uD7A3') continue;
-                int fin = (last - 0xAC00) % 28;
-                if (group == PARTICLE_AFTER_FINAL && fin == 0) continue;
-                if (group == PARTICLE_AFTER_VOWEL && fin != 0 && !(fin == 8 && p.startsWith("로"))) continue;
-                return stem;
-            }
-        }
-        return null;
+        String[] sp = splitParticle(word);
+        return sp == null ? null : sp[0];
     }
 
     /** 기본 사전에 있는 단어 뒤에 흔한 조사만 붙은 말인지 (예: 바람+에도, 친구+를). */
@@ -378,11 +357,6 @@ public final class WordSuggester {
         }
     }
 
-    /** 사전을 아직 읽지 않았으면 읽지 않고 빈 결과를 돌려준다 (화면 스레드에서 쓰기 위해). */
-    public String[] suggestIfLoaded(String word, boolean korean) {
-        return suggestIfLoaded(word, null, korean, FIELD_NORMAL, false).words;
-    }
-
     /**
      * 입력 중인 word의 추천 (화면 스레드용, 사전을 읽지 않았으면 빈 결과).
      * prev = 바로 앞 단어 (한국어 순위에 쓴다, 없으면 null). correction이면 스페이스에서 자동 수정될 단어를 맨 앞에 넣는다.
@@ -468,25 +442,13 @@ public final class WordSuggester {
         if (korean) {
             KoreanSuggest m = koModel;
             if (m == null) return null;
-            return koreanCorrect(m, word, prev, field, useUser() ? user : null, useUser() ? usage : null);
+            return m.correct(word, prev, field, useUser() ? user : null, useUser() ? usage : null);   // 덜 만든 글자·ㅋㅋ·사전 단어는 그대로 둔다
         }
         return autoCorrect(d, word, false);
     }
 
-    private static String koreanCorrect(KoreanSuggest m, String word, String prev, int field, UserDictionary user,
-                                        UsageHistory usage) {
-        if (word.length() < 2) return null;
-        for (int i = 0; i < word.length(); i++) {
-            char c = word.charAt(i);
-            if (c < '\uAC00' || c > '\uD7A3') return null;   // 덜 만든 글자나 자음만 있는 말(ㅋㅋ)은 그대로 둔다
-        }
-        WordDictionary d = m.dict();
-        if (d.contains(word) || isDictWordWithParticle(d, word)) return null;
-        return m.correct(word, prev, field, user, usage);
-    }
-
     static String autoCorrect(WordDictionary d, String word, boolean korean) {
-        if (korean) return koreanCorrect(new KoreanSuggest(d, null, new TypoModel()), word, null, FIELD_NORMAL, null, null);
+        if (korean) return new KoreanSuggest(d, null, new TypoModel()).correct(word, null, FIELD_NORMAL, null, null);
         if (word.length() < 3) return null;
         for (int i = 1; i < word.length(); i++) if (Character.isUpperCase(word.charAt(i))) return null;
         String lower = word.toLowerCase(Locale.ROOT);

@@ -240,8 +240,8 @@ final class KoreanSuggest {
             }
         } else {
             for (int id : dict.lookupIds(word, 12)) add(pool, cx, dict.word(id), id, 1);
-            addNextInRanges(pool, cx, word);
-            addEndingInRanges(pool, cx, word);
+            if (cx.group >= 0) addInRanges(pool, cx, word, next, cx.group);            // 앞 단어 다음에 자주 오는 말
+            if (cx.endGroup >= 0) addInRanges(pool, cx, word, ending, cx.endGroup);   // 앞 단어 끝 글자 다음에 자주 오는 말
             if (usage != null) {
                 typoBudget = TYPO_CHECKS;
                 for (String w : usage.prefixIfLoaded(word, 1)) {
@@ -300,31 +300,25 @@ final class KoreanSuggest {
         return t;
     }
 
-    /** 앞 단어 cx 다음에 자주 오는 단어 중 word로 시작할 수 있는 것을 후보에 넣는다. */
-    private void addNextInRanges(Map<String, Double> pool, Context cx, String word) {
-        if (cx.group < 0) return;
+    /** 묶음 g(앞 단어나 그 끝 글자 다음에 자주 오는 말)의 단어 중 word로 시작할 수 있는 것을 후보에 넣는다. */
+    private void addInRanges(Map<String, Double> pool, Context cx, String word, WordGroups src, int g) {
         int[] rg = new int[4];
         int nr = dict.ranges(word, rg);
         for (int r = 0; r < nr; r++) {
-            for (int k = next.lowerBound(cx.group, rg[2 * r]); k < next.to(cx.group); k++) {
-                int id = next.word(k);
+            for (int k = src.lowerBound(g, rg[2 * r]); k < src.to(g); k++) {
+                int id = src.word(k);
                 if (id >= rg[2 * r + 1]) break;
-                if (!dict.word(id).equals(word)) add(pool, cx, dict.word(id), id, 1);
+                String w = dict.word(id);
+                if (!w.equals(word)) add(pool, cx, w, id, 1);
             }
         }
     }
 
-    /** 앞 단어의 끝 글자 다음에 자주 오는 단어 중 word로 시작할 수 있는 것을 후보에 넣는다. */
-    private void addEndingInRanges(Map<String, Double> pool, Context cx, String word) {
-        if (cx.endGroup < 0) return;
-        int[] rg = new int[4];
-        int nr = dict.ranges(word, rg);
-        for (int r = 0; r < nr; r++) {
-            for (int k = ending.lowerBound(cx.endGroup, rg[2 * r]); k < ending.to(cx.endGroup); k++) {
-                int id = ending.word(k);
-                if (id >= rg[2 * r + 1]) break;
-                if (!pool.containsKey(dict.word(id)) && !dict.word(id).equals(word)) add(pool, cx, dict.word(id), id, 1);
-            }
+    /** 묶음 g의 단어를 모두 후보에 넣는다 (다음 단어 예측). */
+    private void addGroup(Map<String, Double> pool, Context cx, WordGroups src, int g) {
+        for (int k = src.from(g); k < src.to(g); k++) {
+            int id = src.word(k);
+            add(pool, cx, dict.word(id), id, 1);
         }
     }
 
@@ -360,9 +354,9 @@ final class KoreanSuggest {
                 }
             }
             if (cx.usage != null) {
-                for (Object[] e : cx.usage.nextIfLoaded(head)) {
-                    String w = (String) e[0];
-                    if ((Integer) e[1] < 2 || w.equals(tail) || !HangulRange.startsWith(w, tail)) continue;
+                for (Map.Entry<String, Integer> e : cx.usage.nextIfLoaded(head)) {
+                    String w = e.getKey();
+                    if (e.getValue() < 2 || w.equals(tail) || !HangulRange.startsWith(w, tail)) continue;
                     putSplit(pool, head + w, ph * ch.score(w, dict.indexOf(w)) * SPLIT_FACTOR);
                 }
             }
@@ -380,23 +374,12 @@ final class KoreanSuggest {
         if (prev == null || prev.isEmpty()) return Result.EMPTY;
         Context cx = new Context(prev, field, user, usage);
         Map<String, Double> pool = new HashMap<>();
-        if (cx.group >= 0) {
-            for (int k = next.from(cx.group); k < next.to(cx.group); k++) {
-                int id = next.word(k);
-                add(pool, cx, dict.word(id), id, 1);
-            }
-        }
-        if (cx.endGroup >= 0) {
-            for (int k = ending.from(cx.endGroup); k < ending.to(cx.endGroup); k++) {
-                int id = ending.word(k);
-                add(pool, cx, dict.word(id), id, 1);
-            }
-        }
+        if (cx.group >= 0) addGroup(pool, cx, next, cx.group);
+        if (cx.endGroup >= 0) addGroup(pool, cx, ending, cx.endGroup);
         if (usage != null) {
-            for (Object[] e : usage.nextIfLoaded(prev)) {
-                if ((Integer) e[1] < 2) continue;   // 한 번 이어 쓴 것만으로는 예측하지 않는다
-                String w = (String) e[0];
-                add(pool, cx, w, dict.indexOf(w), 1);
+            for (Map.Entry<String, Integer> e : usage.nextIfLoaded(prev)) {
+                if (e.getValue() < 2) continue;   // 한 번 이어 쓴 것만으로는 예측하지 않는다
+                add(pool, cx, e.getKey(), dict.indexOf(e.getKey()), 1);
             }
         }
         if (pool.isEmpty()) return Result.EMPTY;
@@ -559,6 +542,7 @@ final class KoreanSuggest {
             boolean fin = (last - 0xAC00) % 28 != 0;
             boolean rieul = (last - 0xAC00) % 28 == 8;
             boolean animate = mine || animate(stem);
+            String rest = word.substring(k);   // 조사 자리에 이미 친 것 (stem + 조사가 word로 시작하려면 조사가 rest로 시작해야 한다)
             for (int i = 0; i < PARTICLES.length; i++) {
                 if (PARTICLE_ANIMATE[i] && !animate) continue;
                 String[] p = PARTICLES[i];
@@ -568,10 +552,9 @@ final class KoreanSuggest {
                 else particle = p[1];
                 // 한 글자 말 + 은요·는요·요는 '자는', '우는' 같은 용언 활용 뒤에 요를 붙인 꼴이 되기 쉽다
                 if (k == 1 && particle.endsWith("요") && particle.length() <= 2) continue;
+                if (!rest.isEmpty() && (particle.equals(rest) || !HangulRange.startsWith(particle, rest))) continue;
                 String cand = stem + particle;
-                if (cand.equals(word) || !HangulRange.startsWith(cand, word)) continue;
-                int cid = dict.indexOf(cand);
-                if (cid >= 0) continue;   // 사전에 있으면 사전 후보로 이미 들어간다
+                if (dict.indexOf(cand) >= 0) continue;   // 사전에 있으면 사전 후보로 이미 들어간다
                 double s = ps * PARTICLE_PRIOR[i] * PARTICLE_FACTOR;
                 Double old = pool.get(cand);
                 if (old == null || old < s) pool.put(cand, s);
@@ -1045,17 +1028,14 @@ final class KoreanSuggest {
             {"ㅁ", ""},
             {"ㅂ", "니다", "니까", "시다"},
     };
-    /** 명사 뒤의 서술격·조사 중 PARTICLES에 없는 구어체 (고민임, 사람인듯, 친구냐). */
-    private static final String[] COPULA_EXTRA = {"임", "인듯", "인거", "인게", "이냐", "냐", "이니", "이었음", "였음", "인지"};
-
     /** 사전에 없는 word가 한국어 낱말로 그럴듯한지 (사전 단어의 앞부분, 용언 어간 + 어미, 명사 + 조사·서술격). */
     boolean plausible(String word) {
         int n = word.length();
         if (prefixFreq(word) * 1e6 >= PLAUSIBLE_PREFIX_FREQ) return true;
+        String[] sp = WordSuggester.splitParticle(word);   // 명사 + 조사·서술격 (고민이야, 사람인듯, 친구예요)
+        if (sp != null && dict.contains(sp[0]) && nounLike(sp[0])) return true;
         for (int k = n - 1; k >= 1; k--) {
-            String stem = word.substring(0, k), tail = word.substring(k);
-            if (nounWithParticle(stem, tail)) return true;
-            if (contains(FREE_ENDINGS, tail) && verbStem(stem)) return true;
+            if (contains(FREE_ENDINGS, word.substring(k)) && verbStem(word.substring(0, k))) return true;
         }
         if (eoForm(word)) return true;
         // 받침에 어미가 섞인 말: 마지막 몇 글자 중 한 글자의 받침을 떼어 어간으로 본다 (간대 → 가 + ㄴ대)
@@ -1140,23 +1120,6 @@ final class KoreanSuggest {
         String noun = stem.endsWith("이") && stem.length() >= 2 ? stem.substring(0, stem.length() - 1) : stem;
         int id = dict.indexOf(noun);
         return id >= 0 && noun.length() >= 2 && nounLike(noun);
-    }
-
-    /** stem이 사전의 명사이고 tail이 그 받침에 맞는 조사·서술격인지 (고민이야, 사람인듯, 친구예요). */
-    private boolean nounWithParticle(String stem, String tail) {
-        if (stem.length() < 2 && !dict.contains(stem)) return false;
-        if (!dict.contains(stem) || !nounLike(stem)) return false;
-        char last = stem.charAt(stem.length() - 1);
-        if (last < 0xAC00 || last > 0xD7A3) return false;
-        boolean fin = (last - 0xAC00) % 28 != 0, rieul = (last - 0xAC00) % 28 == 8;
-        for (String[] p : PARTICLES) {
-            String particle = p[1] == null ? p[0] : fin && !(rieul && p[1].startsWith("로")) ? p[0] : p[1];
-            if (particle.equals(tail)) return true;
-        }
-        for (String c : COPULA_EXTRA) {
-            if (c.equals(tail) && (fin || !c.startsWith("이"))) return true;
-        }
-        return false;
     }
 
     /** 자모열 a와 b가 정확히 한 번의 편집(바꾸기·빠뜨리기·더하기·맞바꾸기)으로 같아지는지. */
