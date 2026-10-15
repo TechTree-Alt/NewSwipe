@@ -4,6 +4,8 @@ import android.content.Context;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -85,6 +87,9 @@ public final class WordSuggester {
     public void learn(String word, String prev, boolean korean, boolean strong) {
         if (!useUser()) return;
         learnInto(korean ? ko : en, user, korean ? usage : null, word, prev, korean, strong, System.currentTimeMillis());
+        KoreanSuggest m = koModel;
+        // 한 번 쓴 말도 추천하되 오타로 보이는 말은 빼려고, 오타인지를 여기(백그라운드)서 재 둔다
+        if (korean && m != null && learnable(word, true)) m.noteLearned(word);
     }
 
     /**
@@ -99,14 +104,98 @@ public final class WordSuggester {
         }
         if (d == null || d.contains(korean ? word : word.toLowerCase(Locale.ROOT))) return;
         if (korean) {
-            // '글자+를', '민수+가'처럼 조사가 붙은 말은 조사를 뗀 단어로 기억한다 (조사마다 따로 쌓이지 않게).
-            String stem = particleStem(word);
-            if (stem != null) {
-                if (d.contains(stem) || !learnable(stem, true)) return;   // 사전 단어에 조사만 붙었으면 기억할 필요가 없다
-                word = stem;
+            // '짝남+한테', '민수+가', '고민+이야'처럼 조사(서술격 포함)가 붙은 말은 조사를 뗀 말로 기억한다
+            // (조사마다 따로 쌓이지 않고, 기억한 말에 어느 조사든 붙여 추천한다).
+            String[] sp = splitParticle(word);
+            if (sp != null) {
+                String stem = sp[0];
+                if (d.contains(stem)) return;   // 사전 단어에 조사만 붙었으면 기억할 필요가 없다
+                // 이·가·도·만처럼 낱말의 끝 글자이기도 한 조사는, 앞부분을 맨말이나 다른 조사와 함께 쓴 적이 있을 때만 뗀다
+                // (길냥이 → 길냥, 냥이 → 냥으로 잘못 떼지 않게). 앞부분을 이미 다른 꼴로 썼으면 두 번째이니 바로 아는 말이 된다.
+                boolean seen = stemSeen(user, usage, stem, word);
+                if (learnable(stem, true) && (seen || !AMBIGUOUS_PARTICLES.contains(sp[1]))) {
+                    user.add(stem, true, strong || seen, now);
+                    return;
+                }
+                // 조사인지 알 수 없으면 입력한 그대로 기억한다
             }
         }
         user.add(word, korean, strong, now);
+    }
+
+    /** 낱말의 끝 글자이기도 한 짧은 조사 (길냥이, 사이다, 오징어볶음밥도처럼 낱말에 들어 있을 수 있다). */
+    private static final java.util.Set<String> AMBIGUOUS_PARTICLES = new java.util.HashSet<>(java.util.Arrays.asList(
+            "이", "가", "도", "의", "만", "와", "과", "로", "나", "야", "요", "고", "면", "지", "네", "래", "며", "든", "엔", "란",
+            "뿐", "께", "죠", "임"));
+
+    /**
+     * 학습할 때 떼는 조사: 추천에서 붙이는 조사(서술격 포함, {@link KoreanSuggest#PARTICLES})와 particleStem의 목록. 긴 것부터.
+     * (아래쪽에 선언한 목록을 쓰므로 처음 쓸 때 만든다.)
+     */
+    private static final class LearnParticles {
+        static final String[][] ALL = build();
+    }
+
+    private static String[][] build() {
+        // {조사, 붙는 자리} 붙는 자리: "" 아무 데나, "F" 받침 뒤, "V" 받침 없는 말 뒤 (ㄹ 받침 뒤의 로도 V로 본다)
+        java.util.Map<String, String> m = new java.util.LinkedHashMap<>();
+        for (String[] p : KoreanSuggest.PARTICLES) {
+            if (p[1] == null) {
+                m.put(p[0] + "|", "");
+            } else {
+                m.put(p[0] + "|F", "F");
+                m.put(p[1] + "|V", "V");
+            }
+        }
+        for (String p : PARTICLE_ANY) m.put(p + "|", "");
+        for (String p : PARTICLE_AFTER_FINAL) m.put(p + "|F", "F");
+        for (String p : PARTICLE_AFTER_VOWEL) m.put(p + "|V", "V");
+        m.put("임|F", "F");   // 서술격의 명사형 (고민임, 짝남임)
+        m.put("임|V", "V");
+        List<String[]> all = new ArrayList<>();
+        for (String k : m.keySet()) {
+            int bar = k.indexOf('|');
+            all.add(new String[]{k.substring(0, bar), k.substring(bar + 1)});
+        }
+        all.sort((a, b) -> b[0].length() - a[0].length());
+        return all.toArray(new String[0][]);
+    }
+
+    /** word = 앞부분 + 조사이면 {앞부분, 조사}, 아니면 null. 받침에 맞는 조사만, 긴 것부터. 앞부분은 한글 한 글자 이상. */
+    static String[] splitParticle(String word) {
+        for (String[] p : LearnParticles.ALL) {
+            String s = p[0];
+            if (word.length() <= s.length() || !word.endsWith(s)) continue;
+            String stem = word.substring(0, word.length() - s.length());
+            char last = stem.charAt(stem.length() - 1);
+            if (last < '\uAC00' || last > '\uD7A3') continue;
+            int fin = (last - 0xAC00) % 28;
+            if (p[1].equals("F") && (fin == 0 || fin == 8 && s.startsWith("으로"))) continue;
+            if (p[1].equals("V") && fin != 0 && !(fin == 8 && s.startsWith("로"))) continue;
+            return new String[]{stem, s};
+        }
+        return null;
+    }
+
+    /** stem을 맨말로, 또는 word가 아닌 다른 조사와 함께 쓴 적이 있는지 (쓴 기록과 학습한 단어에서). */
+    private static boolean stemSeen(UserDictionary user, UsageHistory usage, String stem, String word) {
+        if (user.knownCountIfLoaded(stem) > 0) return true;
+        if (usage == null) return false;
+        if (usage.countIfLoaded(stem) > 0) return true;
+        for (String[] p : LearnParticles.ALL) {
+            String w = stem + p[0];
+            if (w.equals(word) || usage.countIfLoaded(w) == 0) continue;
+            String[] sp = splitParticle(w);
+            if (sp != null && sp[0].equals(stem)) return true;   // 받침에 맞는 조사로 떼어지는 꼴만
+        }
+        return false;
+    }
+
+    /** 학습한 말이거나 학습한 말에 조사가 붙은 말인지 (자동 수정하지 않는다). */
+    static boolean userKnows(UserDictionary user, String word) {
+        if (user.knownCountIfLoaded(word) > 0) return true;
+        String[] sp = splitParticle(word);
+        return sp != null && user.knownCountIfLoaded(sp[0]) > 0;
     }
 
     /** 받침이 있어야 붙는 조사, 받침이 없어야(또는 ㄹ 받침) 붙는 조사, 받침과 상관없는 조사. 긴 것부터 맞춘다. */
@@ -367,10 +456,7 @@ public final class WordSuggester {
         if (useUser()) {
             // 내가 쓰는 단어는 고치지 않는다. 학습한 단어를 아직 읽지 않았으면 모르니 고치지 않는다.
             if (!user.isLoaded() || user.isKnownIfLoaded(word, korean)) return null;
-            if (korean) {
-                String stem = particleStem(word);   // '민수가'처럼 학습한 단어에 조사가 붙은 말
-                if (stem != null && user.isKnownIfLoaded(stem, true)) return null;
-            }
+            if (korean && userKnows(user, word)) return null;   // '민수가', '짝남이야'처럼 학습한 말에 조사가 붙은 말
         }
         if (korean) {
             KoreanSuggest m = koModel;

@@ -82,6 +82,18 @@ final class KoreanSuggest {
      * 오기 쉽다는 것을 쓴다. 0이면 쓰지 않는다.
      */
     static double ENDING_MAX = 0.3, ENDING_HALF = 20;
+    /**
+     * 사전에 없는 말을 내 기록에서 추천하려면 이만큼 써야 한다. 한 번만 쓴 말은 흔한 단어의 오타로 보이지 않을 때만
+     * (자동 수정이 고치지 않을 말일 때만) 추천한다: 신조어·이름은 두 번째부터 추천하고, 한 번 친 오타는 끼어들지 않게.
+     */
+    static int LEARNED_MIN = 1;
+    /**
+     * 한 번만 쓴 말이 오타로 보이는지 (자동 수정 후보가 있는지). 학습할 때 백그라운드에서 재 두고({@link #noteLearned}),
+     * 재 두지 않은 말(앱을 다시 켠 뒤 등)은 추천 한 번에 TYPO_CHECKS개까지만 화면 스레드에서 잰다.
+     */
+    private final Map<String, Boolean> typoLike = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final int TYPO_CHECKS = 4;
+    private int typoBudget;
 
     private final WordDictionary dict;
     private final NextWords next;
@@ -230,10 +242,11 @@ final class KoreanSuggest {
             addNextInRanges(pool, cx, word);
             addEndingInRanges(pool, cx, word);
             if (usage != null) {
+                typoBudget = TYPO_CHECKS;
                 for (String w : usage.prefixIfLoaded(word, 1)) {
                     int id = dict.indexOf(w);
                     // 사전에 없는 말은 두 번 이상 썼을 때만 (한 번 친 오타가 추천에 끼어들지 않게)
-                    if (id >= 0 || usage.countIfLoaded(w) >= 2) add(pool, cx, w, id, 1);
+                    if (id >= 0 || learnedEnough(w, usage.countIfLoaded(w))) add(pool, cx, w, id, 1);
                 }
             }
             if (user != null) {
@@ -263,6 +276,27 @@ final class KoreanSuggest {
             if (!w.equals(fix)) out.add(w);
         }
         return new Result(out.toArray(new String[0]), fix != null ? 0 : -1, false);
+    }
+
+    /** 사전에 없는 말 w를 c번 썼을 때 추천해도 되는지. */
+    private boolean learnedEnough(String w, int c) {
+        if (c >= 2) return true;
+        if (c < LEARNED_MIN) return false;
+        Boolean t = typoLike.get(w);
+        if (t == null) {
+            if (typoBudget <= 0) return false;
+            typoBudget--;
+            t = noteLearned(w);
+        }
+        return !t;
+    }
+
+    /** 사전에 없는 말을 학습했을 때 (백그라운드): 오타로 보이는지 재 둔다. 오타로 보이면 true. */
+    boolean noteLearned(String w) {
+        if (typoLike.size() > 4000) typoLike.clear();
+        boolean t = !dict.contains(w) && correct(w, null, FIELD_NORMAL, null, null) != null;
+        typoLike.put(w, t);
+        return t;
     }
 
     /** 앞 단어 cx 다음에 자주 오는 단어 중 word로 시작할 수 있는 것을 후보에 넣는다. */
@@ -452,7 +486,7 @@ final class KoreanSuggest {
     // ---------------------------------------------------------------- 조사
 
     /** 조사와, 명사 뒤에서의 대략적인 비율. 받침 뒤(앞), 받침 없는 말 뒤(뒤) 짝. 짝이 없으면 한 칸만. */
-    private static final String[][] PARTICLES = {
+    static final String[][] PARTICLES = {
             {"이", "가", "0.15"}, {"을", "를", "0.15"}, {"은", "는", "0.13"}, {"에", null, "0.07"}, {"의", null, "0.05"},
             {"도", null, "0.05"}, {"으로", "로", "0.05"}, {"에서", null, "0.03"}, {"과", "와", "0.03"}, {"만", null, "0.02"},
             {"이랑", "랑", "0.015"}, {"한테", null, "0.012"}, {"까지", null, "0.01"}, {"에는", null, "0.01"},

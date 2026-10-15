@@ -266,6 +266,7 @@ public final class SuggestEval {
                 if (learn && !gap) {
                     // 앱과 같은 학습 (WordSuggester.learnInto). 시각 대신 단어 순번을 쓴다.
                     WordSuggester.learnInto(d, user, usage, core, prev, true, false, words);
+                    if (WordSuggester.learnable(core, true)) ks.noteLearned(core);
                 }
                 prev = breakAfter ? null : core;
             }
@@ -321,9 +322,7 @@ public final class SuggestEval {
 
     private static boolean userKnows(UserDictionary user, String w) {
         if (user == null) return false;
-        if (user.knownCountIfLoaded(w) > 0) return true;
-        String stem = WordSuggester.particleStem(w);
-        return stem != null && user.knownCountIfLoaded(stem) > 0;
+        return WordSuggester.userKnows(user, w);   // 앱의 자동 수정과 같은 기준
     }
 
     /** 예전 방식: 접두사(마지막 글자 하나의 범위)가 맞는 단어를 점수순으로. */
