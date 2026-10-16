@@ -102,7 +102,11 @@ public final class WordSuggester {
                           boolean korean, boolean strong, long now) {
         if (!learnable(word, korean)) return;
         if (korean && usage != null) {
-            usage.record(prev != null && learnable(prev, true) ? prev : null, word, now);
+            String p = prev != null && learnable(prev, true) ? prev : null;
+            usage.record(p, word, now);
+            // 앞 단어의 끝 글자(조사·어미) 다음에 쓴 말도 센다: '-고' 다음에 내가 쓰는 말을 다른 앞 단어 뒤에서도 예측한다
+            if (p != null && KoreanSuggest.K_END > 0) usage.recordContext(KoreanSuggest.endKey(p), word, now);
+            usage.noteRecent(word);
         }
         if (d == null || d.contains(korean ? word : word.toLowerCase(Locale.ROOT))) return;
         if (korean) {

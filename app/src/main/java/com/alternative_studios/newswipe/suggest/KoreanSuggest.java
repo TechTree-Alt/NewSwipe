@@ -14,8 +14,10 @@ import java.util.Map;
  * <p>후보 단어 w의 점수 = P(w | 앞 단어)이며, 다음을 섞는다.
  * <ul>
  *   <li>기본 사전: λ·P(w|앞 단어) + (1-λ)·P(w). 앞 단어와의 관계는 다음 단어 사전({@link NextWords})에서 온다.</li>
- *   <li>내 기록({@link UsageHistory}, {@link UserDictionary}): 내가 그 단어를 쓴 비율과, 그 앞 단어 다음에 쓴 비율.
- *       기록이 쌓일수록 더 믿는다 (최대 USER_MAX).</li>
+ *   <li>내 기록({@link UsageHistory}, {@link UserDictionary}): 내가 그 단어를 쓴 비율(기록이 쌓일수록 더 믿는다, 최대
+ *       USER_MAX)과 최근에 쓴 단어 위에, 내가 앞 단어의 끝 글자 다음에 쓴 비율과 그 앞 단어 다음에 쓴 비율을 차례로 보간한다
+ *       (문맥마다 쓴 횟수만큼 믿는다, {@link Context#score}).</li>
+ *   <li>내 어미 버릇: 같은 어간의 꼴 중 내가 다른 말에서 자주 쓴 어미를 앞세운다 ({@link #E_MAX}).</li>
  *   <li>입력란 종류: 검색 칸에서는 조사가 붙은 말을 뒤로 미룬다 (검색어에는 조사를 거의 붙이지 않는다).</li>
  * </ul>
  * 후보는 접두사가 맞는 사전 단어, 앞 단어 다음에 자주 오는 단어, 내가 쓴 단어, 명사에 조사를 붙인 말, 초성 검색,
@@ -29,11 +31,37 @@ final class KoreanSuggest {
     /** 내 기록을 믿는 최대 비율과, 그 절반에 이르는 기록 수. */
     static double USER_MAX = 0.5, USER_HALF = 300;
 
-    /** 내 기록 안에서 '단어를 쓴 비율'과 '앞 단어 다음에 쓴 비율'의 몫 (나머지가 단어 쌍). */
-    static double USER_UNI_SHARE = 0.5;
+    /**
+     * 내 기록의 문맥 (앞 단어의 끝 글자, 앞 단어)을 믿는 정도: 그 문맥 다음에 쓴 횟수 n과 다른 단어 수 t로
+     * λ = n / (n + K·t) (Witten-Bell). 한 번 이어 쓴 앞 단어도 바로 절반쯤 믿어 빨리 배운다. 끝 글자 문맥('-고' 다음에
+     * 내가 쓰는 말)은 여러 앞 단어에 걸친 버릇이라 A_END보다 더 믿지 않는다. K가 0이면 그 문맥을 쓰지 않는다.
+     */
+    static double K_END = 2.0, A_END = 0.15, K_BI = 1.0;
 
-    /** 다음 단어 예측을 보여 줄 가장 높은 후보의 최소 확률 (사람이 쓴 글로 맞춘 값: 낮으면 자주 보이지만 대부분 틀린다). */
-    static double PREDICT_MIN = 0.25;
+    /** 최근에 쓴 단어(UsageHistory.RECENT개)를 믿는 비율: 대화 안에서 되풀이되는 말(이름, 주제어)을 앞세운다. */
+    static double CACHE_W = 0.03;
+
+    /**
+     * 어미 버릇 (내가 쓴 어미를 다른 어간에도): 후보를 {종류, 앞 꼴, 어미}로 나눠({@link KoreanForms#split}), 같은 앞 꼴 후보들의
+     * 점수 합 × 내가 그 종류에서 그 어미를 쓴 비율 × ε를 더한다 (없어·싶어처럼 '-어'를 많이 쓰면 있다보다 있어를 앞세운다).
+     * ε = E_MAX × N / (N + E_HALF) (N = 그 종류의 어미를 쓴 횟수). 후보 사이의 순서만 바꾸므로 어색한 꼴이 새로 생기지 않는다.
+     */
+    static double E_MAX = 0.5, E_HALF = 50;
+
+    /**
+     * 다음 단어 예측을 보여 줄 가장 높은 후보의 최소 점수 P(w|앞 단어) (사람이 쓴 글로 맞춘 값). 내 기록을 쌓으며 쳤을 때
+     * 예전 기준(근거 조각 중 큰 것 ≥ 0.25)보다 예측이 두세 배 자주 보이고 맞힌 예측도 두 배쯤 많으며, 보인 예측의 세 칸 적중률은
+     * 15~30%다 (기록이 없으면 10~25%). 더 내리면 틀린 예측이 도구 막대를 가리는 일이 늘어난다.
+     */
+    static double PREDICT_MIN = 0.08;
+
+    /** 내가 이어 쓴 기록에서 예측 후보로 쓸 최소 횟수 (한 번 이어 쓴 것만으로 예측하면 틀린 예측이 크게 는다). */
+    static int PRED_USER_MIN = 2;
+
+    /** 앞 단어 끝 글자 문맥의 키 (낱말에는 ~가 없다). UsageHistory의 단어 쌍에 앞 단어 대신 넣는다. */
+    static String endKey(String prev) {
+        return prev == null || prev.isEmpty() ? null : "~" + prev.charAt(prev.length() - 1);
+    }
 
     /** 오타 비용 1당 확률에 곱하는 값의 로그 (추천에서 오타가 섞인 접두사 후보, 자동 수정). */
     static double TYPO_PENALTY = 3.0;
@@ -63,6 +91,8 @@ final class KoreanSuggest {
         final int correction;
         /** 입력 중인 단어 없이 앞 단어만 보고 예측한 다음 단어인지. */
         final boolean prediction;
+        /** 예측일 때 맨 위 후보의 점수 (PREDICT_MIN과 견준다). */
+        double confidence;
 
         Result(String[] words, int correction, boolean prediction) {
             this.words = words;
@@ -141,6 +171,11 @@ final class KoreanSuggest {
         forms.learnEndings(w, usage, now);
     }
 
+    /** 용언 활용형으로 나뉘는지 ({@link KoreanForms#split}, 평가용). */
+    boolean inflected(String w) {
+        return forms.split(w) != null;
+    }
+
     /** 사전에 격조사를 붙인 말이 있는 명사인지 ({@link KoreanMorph#nounLike}). */
     boolean nounLike(String w) {
         return morph.nounLike(w);
@@ -168,10 +203,15 @@ final class KoreanSuggest {
         final double lambda;
         final UserDictionary user;
         final UsageHistory usage;
-        final double mu;            // 내 기록을 믿는 비율
+        final double mu;            // 내 단어 비율을 믿는 비율
         final long total;
-        final int ctxCount;
         final int field;
+        final int recentN;          // 최근 단어 수
+        // 내 기록 문맥 (일반 → 구체 순: 앞 단어 끝 글자, 앞 단어)의 키, 쓴 횟수 합, 믿는 비율
+        final String[] uKey = new String[2];
+        final int[] uN = new int[2];
+        final double[] uA = new double[2];
+        int uK;
         final int endGroup;         // 앞 단어 끝 글자의 묶음 ({@link EndingContext}, -1 = 없음)
         final double nu;            // 끝 글자 분포를 믿는 비율
         final String[][] learnedEndings = new String[3][];   // 내가 쓴 어미를 더한 어미 목록 (종류마다, 처음 쓸 때 만든다)
@@ -193,7 +233,21 @@ final class KoreanSuggest {
             this.usage = usage;
             total = usage == null ? 0 : usage.totalIfLoaded();
             mu = total == 0 ? 0 : USER_MAX * total / (total + USER_HALF);
-            ctxCount = usage == null || prev == null ? 0 : usage.contextCountIfLoaded(prev);
+            recentN = usage == null || CACHE_W <= 0 ? 0 : usage.recentSize();
+            if (total > 0 && prev != null) {
+                addContext(endKey(prev), K_END, A_END);
+                addContext(prev, K_BI, 1);
+            }
+        }
+
+        private void addContext(String key, double k, double cap) {
+            if (key == null || k <= 0) return;
+            int[] st = usage.contextStatsIfLoaded(key);
+            if (st[0] == 0) return;
+            uKey[uK] = key;
+            uN[uK] = st[0];
+            uA[uK] = Math.min(cap, st[0] / (st[0] + k * st[1]));
+            uK++;
         }
 
         /** 앞 단어와 id의 단어 쌍이 다음 단어 사전에 있는지. */
@@ -214,18 +268,21 @@ final class KoreanSuggest {
             return k >= 0 ? lambda * next.prob(k) + (1 - lambda) * pu : (1 - lambda) * pu;
         }
 
-        /** 내 기록의 P(w|앞 단어). */
+        /** 내가 w를 쓴 비율. */
         double mine(String w) {
-            if (mu == 0) return 0;
             int c = usage.countIfLoaded(w);
             if (user != null) c = Math.max(c, user.knownCountIfLoaded(w));
-            double pu = c / (total + 30.0);
-            double pb = ctxCount == 0 ? 0 : usage.pairCountIfLoaded(prev, w) / (ctxCount + 2.0);
-            return USER_UNI_SHARE * pu + (1 - USER_UNI_SHARE) * pb;
+            return c / (total + 30.0);
         }
 
+        /**
+         * P(w|앞 단어): 기본 사전 모형과 내 단어 비율, 최근 단어를 섞은 위에 내 기록 문맥을 일반 → 구체 순으로 보간한다
+         * (p ← λ·c(문맥, w)/c(문맥) + (1-λ)·p).
+         */
         double score(String w, int id) {
-            double p = (1 - mu) * model(id) + mu * mine(w);
+            double p = mu == 0 ? model(id) : (1 - mu) * model(id) + mu * mine(w);
+            if (recentN > 0) p = (1 - CACHE_W) * p + CACHE_W * usage.recentCount(w) / recentN;
+            for (int i = 0; i < uK; i++) p = uA[i] * usage.pairCountIfLoaded(uKey[i], w) / uN[i] + (1 - uA[i]) * p;
             if (p <= 0 && user != null && user.knownCountIfLoaded(w) > 0) p = 1e-7;   // 기록을 아직 읽지 않았을 때
             return p * fieldFactor(w, field);
         }
@@ -307,7 +364,7 @@ final class KoreanSuggest {
             }
         }
         pool.remove(word);
-        List<String> ranked = rank(pool);
+        List<String> ranked = rank(pool, cx);
 
         List<String> out = new ArrayList<>(max);
         if (fix != null) out.add(fix);
@@ -415,38 +472,19 @@ final class KoreanSuggest {
         Map<String, Double> pool = new HashMap<>();
         if (cx.group >= 0) addGroup(pool, cx, next, cx.group);
         if (cx.endGroup >= 0) addGroup(pool, cx, ending, cx.endGroup);
-        if (usage != null) {
-            for (Map.Entry<String, Integer> e : usage.nextIfLoaded(prev)) {
-                if (e.getValue() < 2) continue;   // 한 번 이어 쓴 것만으로는 예측하지 않는다
+        for (int i = 0; i < cx.uK; i++) {   // 내가 앞 단어(와 그 끝 글자) 다음에 이어 쓴 말
+            for (Map.Entry<String, Integer> e : usage.nextIfLoaded(cx.uKey[i], PRED_USER_MIN)) {
                 add(pool, cx, e.getKey(), dict.indexOf(e.getKey()), 1);
             }
         }
         if (pool.isEmpty()) return Result.EMPTY;
-        List<String> ranked = rank(pool);
-        if (confidence(cx, ranked.get(0)) < PREDICT_MIN) return Result.EMPTY;
+        List<String> ranked = rank(pool, cx);
+        double top = pool.get(ranked.get(0));
+        if (top < PREDICT_MIN) return Result.EMPTY;
         int n = Math.min(max, ranked.size());
-        return new Result(ranked.subList(0, n).toArray(new String[0]), -1, true);
-    }
-
-    /**
-     * 예측을 보여 줄 만큼 믿을 만한지: 다음 단어 사전의 λ·P(w|앞)와, 내가 그 앞 단어 다음에 w를 쓴 비율 중 큰 것.
-     * (순위 점수는 내 기록의 비중이 아직 작을 때 내 기록만으로 아는 말을 낮게 보므로 따로 잰다.)
-     */
-    private double confidence(Context cx, String w) {
-        double c = 0;
-        int id = dict.indexOf(w);
-        if (cx.group >= 0 && id >= 0) {
-            int k = next.find(cx.group, id);
-            if (k >= 0) c = cx.lambda * next.prob(k);
-        }
-        if (cx.endGroup >= 0 && id >= 0) {
-            int e = ending.find(cx.endGroup, id);
-            if (e >= 0) c = Math.max(c, (1 - cx.lambda) * cx.nu * ending.prob(e));
-        }
-        if (cx.usage != null && cx.ctxCount > 0) {
-            c = Math.max(c, cx.usage.pairCountIfLoaded(cx.prev, w) / (cx.ctxCount + 2.0));
-        }
-        return c;
+        Result r = new Result(ranked.subList(0, n).toArray(new String[0]), -1, true);
+        r.confidence = top;
+        return r;
     }
 
     private static void add(Map<String, Double> pool, Context cx, String w, int id, double factor) {
@@ -456,7 +494,8 @@ final class KoreanSuggest {
         if (old == null || old < s) pool.put(w, s);
     }
 
-    private static List<String> rank(Map<String, Double> pool) {
+    private List<String> rank(Map<String, Double> pool, Context cx) {
+        if (E_MAX > 0 && cx.usage != null) learnedEndings(pool, cx);
         List<Map.Entry<String, Double>> all = new ArrayList<>(pool.entrySet());
         all.sort((a, b) -> {
             int c = Double.compare(b.getValue(), a.getValue());
@@ -467,6 +506,52 @@ final class KoreanSuggest {
         List<String> out = new ArrayList<>(all.size());
         for (Map.Entry<String, Double> e : all) out.add(e.getKey());
         return out;
+    }
+
+    /** 어미 버릇을 볼 후보 수 (점수가 높은 것부터. 순위를 바꿀 수 있는 것만 나눠 본다). */
+    private static final int ENDING_TOP = 16;
+
+    /** 어미 버릇: 같은 앞 꼴 후보들 사이에서 내가 다른 말에서도 자주 쓴 어미를 앞세운다 ({@link #E_MAX}). */
+    private void learnedEndings(Map<String, Double> pool, Context cx) {
+        Map<String, Integer> tot = cx.usage.endingTotalsIfLoaded();
+        if (tot == null || tot.isEmpty()) return;
+        List<Map.Entry<String, Double>> top = new ArrayList<>(pool.entrySet());
+        if (top.size() > ENDING_TOP) {
+            top.sort((a, b) -> Double.compare(b.getValue(), a.getValue()));
+            top = top.subList(0, ENDING_TOP);
+        }
+        Map<String, String[]> parts = new HashMap<>();
+        Map<String, Double> fam = new HashMap<>();   // "아/어 꼴인지:앞 꼴" → 그 앞 꼴 후보들의 점수 합
+        for (Map.Entry<String, Double> e : top) {
+            String[] sp = forms.split(e.getKey());
+            if (sp == null) continue;
+            parts.put(e.getKey(), sp);
+            fam.merge(isAo(sp) + ":" + sp[1], e.getValue(), Double::sum);
+        }
+        for (Map.Entry<String, String[]> e : parts.entrySet()) {
+            String[] sp = e.getValue();
+            // 어간 뒤(있+어)와 과거·추측 글자 뒤(했+어)는 붙는 어미가 같아 버릇을 함께 센다 (있·했처럼 둘로 다 보이는 앞 꼴도 있다)
+            int nk, c;
+            if (isAo(sp)) {
+                nk = count(tot, KoreanForms.END_AO + "");
+                c = count(tot, KoreanForms.END_AO + ":" + sp[2]);
+            } else {
+                nk = count(tot, KoreanForms.END_STEM + "") + count(tot, KoreanForms.END_PAST + "");
+                c = count(tot, KoreanForms.END_STEM + ":" + sp[2]) + count(tot, KoreanForms.END_PAST + ":" + sp[2]);
+            }
+            if (nk == 0 || c == 0) continue;
+            double eps = E_MAX * nk / (nk + E_HALF);
+            pool.put(e.getKey(), pool.get(e.getKey()) + eps * fam.get(isAo(sp) + ":" + sp[1]) * c / nk);
+        }
+    }
+
+    private static boolean isAo(String[] split) {
+        return split[0].equals(KoreanForms.END_AO + "");
+    }
+
+    private static int count(Map<String, Integer> m, String k) {
+        Integer v = m.get(k);
+        return v == null ? 0 : v;
     }
 
     static boolean isInitials(String word) {

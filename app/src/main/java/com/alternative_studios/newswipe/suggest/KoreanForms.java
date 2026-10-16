@@ -377,6 +377,53 @@ final class KoreanForms {
     }
 
     /**
+     * w를 {종류, 앞 꼴, 어미}로 나눈다 ({@link #learnEndings}와 같은 기준으로, 어미가 가장 짧게). 나눌 수 없으면 null.
+     * 추천 순위에서 내 어미 버릇을 다른 말에도 옮길 때 쓴다 ({@link KoreanSuggest#E_MAX}). 화면 스레드에서 부르며 결과를 담아 둔다.
+     */
+    String[] split(String w) {
+        String[] c = splitCache.get(w);
+        if (c != null) return c.length == 0 ? null : c;
+        if (splitCache.size() >= 4096) splitCache.clear();
+        String[] r = splitNow(w);
+        splitCache.put(w, r == null ? new String[0] : r);
+        return r;
+    }
+
+    private final Map<String, String[]> splitCache = new HashMap<>();
+
+    private String[] splitNow(String w) {
+        int n = w.length();
+        if (n < 2 || n > 12 || KoreanMorph.hangulSyllables(w) != n) return null;
+        for (int k = n - 1; k >= 1 && n - k <= 4; k--) {
+            String base = w.substring(0, k), tail = w.substring(k);
+            if (WordSuggester.isParticle(tail)) continue;   // 가방이 → 가 + 방이: 어미가 아니다
+            int kind = kindOf(base, tail);
+            if (kind < 0) continue;
+            // 사전의 명사(사람 → 사 + 람)와 명사 + 조사(가방이 → 가 + 방이)는 나누지 않는다
+            if (dict.contains(w) && morph.nounLike(w)) return null;
+            String[] sp = WordSuggester.splitParticle(w);
+            if (sp != null && dict.contains(sp[0])) return null;
+            return new String[]{String.valueOf(kind), base, tail};
+        }
+        return null;
+    }
+
+    /** base + tail이 어미 종류 무엇의 활용인지 (사전으로 확인되는 것만, {@link #learnEndings}와 같은 기준). 아니면 -1. */
+    private int kindOf(String base, String tail) {
+        char c = base.charAt(base.length() - 1);
+        int t = (c - 0xAC00) % 28, jung = (c - 0xAC00) % 588 / 28;
+        if (t == 0 && (jung == 0 || jung == 4 || jung == 6 || jung == 9 || jung == 14 || jung == 1 || jung == 10)
+                && AFTER_AO.indexOf(tail.charAt(0)) >= 0 && dict.contains(base + "서")) {
+            return END_AO;
+        }
+        if (t == 20 && (dict.contains(base + "어") || dict.contains(base + "다") || dict.contains(base + "고"))) return END_PAST;
+        if (dict.contains(base + "고") && (dict.contains(base + "는") || dict.contains(base + "지") || dict.contains(base + "다"))) {
+            return END_STEM;
+        }
+        return -1;
+    }
+
+    /**
      * 아/어 꼴 뒤에 오는 말의 첫 글자 (먹어+서·도·요·야, 보조 용언 줘·봐·버리·놓·있·가·오·지 ...). 가·보내처럼 아/어 꼴이 어간과
      * 같은 말에서 어간 뒤 어미(가+는, 가+고)를 아/어 꼴 뒤 어미로 잘못 배우지 않게 한다.
      */
