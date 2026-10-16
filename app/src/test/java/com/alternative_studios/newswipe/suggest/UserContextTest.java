@@ -3,6 +3,7 @@ package com.alternative_studios.newswipe.suggest;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -100,5 +101,40 @@ public class UserContextTest {
         assertArrayEquals(new int[]{2, 2}, h.contextStatsIfLoaded("~고"));
         assertEquals(2, h.nextIfLoaded("~고", 1).size());
         assertEquals(0, h.nextIfLoaded("~고", 2).size());
+    }
+
+    @Test
+    public void ignoredPredictionsAreShownLessAndForgiven() throws Exception {
+        WordDictionary d = dict();
+        KoreanSuggest m = new KoreanSuggest(d, null, new TypoModel());
+        File dir = tmp.newFolder();
+        UsageHistory h = new UsageHistory(new File(dir, "h.txt"));
+        h.load();
+        UserDictionary u = user();
+        for (int i = 0; i < 3; i++) WordSuggester.learnInto(d, u, h, "싶어", "보고", true, false, i);
+        assertEquals("싶어", m.predict("보고", KoreanSuggest.FIELD_NORMAL, u, h, 3).words[0]);
+        // '보고' 다음에 '싶어'를 보였는데 '싶다'를 쳤다: 그 예측을 덜 보인다
+        double factor = KoreanSuggest.IGNORED_FACTOR;
+        KoreanSuggest.IGNORED_FACTOR = 0.5;
+        try {
+            double before = m.predict("보고", KoreanSuggest.FIELD_NORMAL, u, h, 3).confidence;
+            WordSuggester.noteIgnoredInto(h, "보고", new String[]{"싶어"}, "싶다", 10);
+            assertEquals(1, h.ignoredIfLoaded("보고", "싶어"));
+            KoreanSuggest.Result r = m.predict("보고", KoreanSuggest.FIELD_NORMAL, u, h, 3);
+            assertTrue(r.words.length == 0 || r.confidence < before);
+        } finally {
+            KoreanSuggest.IGNORED_FACTOR = factor;
+        }
+        // 고른 예측이나 직접 쳐도 맞힌 예측은 기록하지 않는다
+        WordSuggester.noteIgnoredInto(h, "보고", new String[]{"싶어"}, "싶어", 11);
+        assertEquals(1, h.ignoredIfLoaded("보고", "싶어"));
+        // 저장했다 다시 읽어도 남는다 (예전 버전은 모르는 i 줄을 건너뛴다)
+        h.save();
+        UsageHistory h2 = new UsageHistory(new File(dir, "h.txt"));
+        h2.load();
+        assertEquals(1, h2.ignoredIfLoaded("보고", "싶어"));
+        // 그 앞 단어 다음에 실제로 쓰면 지운다
+        h2.record("보고", "싶어", 12);
+        assertEquals(0, h2.ignoredIfLoaded("보고", "싶어"));
     }
 }
