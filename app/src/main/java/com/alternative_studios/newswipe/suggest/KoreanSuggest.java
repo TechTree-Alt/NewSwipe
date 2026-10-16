@@ -352,7 +352,8 @@ final class KoreanSuggest {
             forms.addParticles(pool, cx, word);
             forms.addBound(pool, cx, word);
             // 만든 활용형은 사전 후보가 모자랄 때만 빈칸을 채운다 (사전에 있는 말을 밀어내면 손해가 크다)
-            if (pool.size() < max) forms.addBelow(pool, cx, word);
+            if (KoreanForms.GEN_MODE != 0) forms.addAlways(pool, cx, word, pool.size() >= max);
+            else if (pool.size() < max) forms.addBelow(pool, cx, word);
             if ((SPLIT_ALWAYS || pool.size() < max) && KoreanMorph.hangulSyllables(word) >= 2) addSplits(pool, cx, word);
             if (pool.size() < max && KoreanMorph.hangulSyllables(word) >= 2) {
                 int[] ids = new int[8];
