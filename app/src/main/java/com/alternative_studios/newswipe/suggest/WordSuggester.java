@@ -129,6 +129,29 @@ public final class WordSuggester {
         user.add(word, korean, strong, now);
     }
 
+    /**
+     * 앞 단어 prev 다음에 shown을 예측해 보였는데 사용자가 고르지 않고 typed를 쳤다 (백그라운드 스레드에서 부른다).
+     * typed가 shown에 있으면 (직접 쳤어도 맞힌 예측이니) 기록하지 않는다.
+     */
+    public void noteIgnoredPrediction(String prev, String[] shown, String typed) {
+        if (!useUser()) return;
+        noteIgnoredInto(usage, prev, shown, typed, System.currentTimeMillis());
+    }
+
+    /** 고르지 않은 예측 기록 (앱과 평가 도구가 같이 쓴다). */
+    static void noteIgnoredInto(UsageHistory usage, String prev, String[] shown, String typed, long now) {
+        if (usage == null || shown == null || shown.length == 0 || prev == null || !learnable(prev, true)
+                || typed == null || !learnable(typed, true)) {
+            return;
+        }
+        for (String w : shown) if (w.equals(typed)) return;
+        String ek = KoreanSuggest.endKey(prev);
+        for (String w : shown) {
+            usage.recordIgnored(prev, w, now);
+            if (KoreanSuggest.IGNORED_END > 0) usage.recordIgnored(ek, w, now);
+        }
+    }
+
     /** 낱말의 끝 글자이기도 한 짧은 조사 (길냥이, 사이다, 오징어볶음밥도처럼 낱말에 들어 있을 수 있다). */
     private static final java.util.Set<String> AMBIGUOUS_PARTICLES = new java.util.HashSet<>(java.util.Arrays.asList(
             "이", "가", "도", "의", "만", "와", "과", "로", "나", "야", "요", "고", "면", "지", "네", "래", "며", "든", "엔", "란",

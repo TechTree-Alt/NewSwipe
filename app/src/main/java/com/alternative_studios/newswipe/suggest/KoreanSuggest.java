@@ -38,6 +38,19 @@ final class KoreanSuggest {
      */
     static double K_END = 2.0, A_END = 0.15, K_BI = 1.0;
 
+    /** 실험: 입력 상태(0 예측, 1 한 글자, 2 두 글자, 3 세 글자 이상)마다 내 단어 비율·최근 단어·내 기록 문맥에 곱하는 값. */
+    static double SU0 = 1, SU1 = 1, SU2 = 1, SU3 = 1, SC0 = 1, SC1 = 1, SC2 = 1, SC3 = 1, SX0 = 1, SX1 = 1, SX2 = 1, SX3 = 1;
+
+    static int stateOf(String word) {
+        if (word == null || word.isEmpty()) return 0;
+        int n = 0;
+        for (int i = 0; i < word.length(); i++) {
+            char c = word.charAt(i);
+            if (c >= 0xAC00 && c <= 0xD7A3 || c >= 0x3131 && c <= 0x3163) n++;
+        }
+        return Math.max(1, Math.min(3, n));
+    }
+
     /** 최근에 쓴 단어(UsageHistory.RECENT개)를 믿는 비율: 대화 안에서 되풀이되는 말(이름, 주제어)을 앞세운다. */
     static double CACHE_W = 0.03;
 
@@ -54,6 +67,12 @@ final class KoreanSuggest {
      * 15~30%다 (기록이 없으면 10~25%). 더 내리면 틀린 예측이 도구 막대를 가리는 일이 늘어난다.
      */
     static double PREDICT_MIN = 0.08;
+
+    /**
+     * 예측을 보였지만 고르지 않고 다른 말을 친 횟수 g마다 그 예측 점수에 곱하는 값 (IGNORED_FACTOR^g). 앞 단어의 끝 글자
+     * 문맥에서 고르지 않은 횟수는 IGNORED_END만큼만 센다. 그 말을 그 앞 단어 다음에 실제로 쓰면 기록을 지운다.
+     */
+    static double IGNORED_FACTOR = 1.0, IGNORED_END = 0;
 
     /** 내가 이어 쓴 기록에서 예측 후보로 쓸 최소 횟수 (한 번 이어 쓴 것만으로 예측하면 틀린 예측이 크게 는다). */
     static int PRED_USER_MIN = 2;
@@ -209,7 +228,9 @@ final class KoreanSuggest {
         final int recentN;          // 최근 단어 수
         // 내 기록 문맥 (일반 → 구체 순: 앞 단어 끝 글자, 앞 단어)의 키, 쓴 횟수 합, 믿는 비율
         final String[] uKey = new String[2];
-        final int[] uN = new int[2];
+        final double[] uN = new double[2];
+        int state = -1;   // 입력 상태 (stateOf, -1 = 따지지 않음)
+        final double totalW;
         final double[] uA = new double[2];
         int uK;
         final int endGroup;         // 앞 단어 끝 글자의 묶음 ({@link EndingContext}, -1 = 없음)
@@ -233,6 +254,7 @@ final class KoreanSuggest {
             this.usage = usage;
             total = usage == null ? 0 : usage.totalIfLoaded();
             mu = total == 0 ? 0 : USER_MAX * total / (total + USER_HALF);
+            totalW = usage == null ? 0 : usage.totalWeightIfLoaded();
             recentN = usage == null || CACHE_W <= 0 ? 0 : usage.recentSize();
             if (total > 0 && prev != null) {
                 addContext(endKey(prev), K_END, A_END);
@@ -242,8 +264,8 @@ final class KoreanSuggest {
 
         private void addContext(String key, double k, double cap) {
             if (key == null || k <= 0) return;
-            int[] st = usage.contextStatsIfLoaded(key);
-            if (st[0] == 0) return;
+            double[] st = usage.contextWeightIfLoaded(key);
+            if (st[0] <= 0) return;
             uKey[uK] = key;
             uN[uK] = st[0];
             uA[uK] = Math.min(cap, st[0] / (st[0] + k * st[1]));
@@ -270,9 +292,13 @@ final class KoreanSuggest {
 
         /** 내가 w를 쓴 비율. */
         double mine(String w) {
-            int c = usage.countIfLoaded(w);
+            double c = usage.weightIfLoaded(w);
             if (user != null) c = Math.max(c, user.knownCountIfLoaded(w));
-            return c / (total + 30.0);
+            return c / (totalW + 30.0);
+        }
+
+        private double scale(double a, double b, double c, double d) {
+            return state == 0 ? a : state == 1 ? b : state == 2 ? c : state == 3 ? d : 1;
         }
 
         /**
@@ -280,9 +306,15 @@ final class KoreanSuggest {
          * (p ← λ·c(문맥, w)/c(문맥) + (1-λ)·p).
          */
         double score(String w, int id) {
-            double p = mu == 0 ? model(id) : (1 - mu) * model(id) + mu * mine(w);
-            if (recentN > 0) p = (1 - CACHE_W) * p + CACHE_W * usage.recentCount(w) / recentN;
-            for (int i = 0; i < uK; i++) p = uA[i] * usage.pairCountIfLoaded(uKey[i], w) / uN[i] + (1 - uA[i]) * p;
+            double m = Math.min(1, mu * scale(SU0, SU1, SU2, SU3));
+            double p = m == 0 ? model(id) : (1 - m) * model(id) + m * mine(w);
+            double cw = Math.min(1, CACHE_W * scale(SC0, SC1, SC2, SC3));
+            if (recentN > 0) p = (1 - cw) * p + cw * usage.recentCount(w) / recentN;
+            double xs = scale(SX0, SX1, SX2, SX3);
+            for (int i = 0; i < uK; i++) {
+                double a = Math.min(1, uA[i] * xs);
+                p = a * usage.pairWeightIfLoaded(uKey[i], w) / uN[i] + (1 - a) * p;
+            }
             if (p <= 0 && user != null && user.knownCountIfLoaded(w) > 0) p = 1e-7;   // 기록을 아직 읽지 않았을 때
             return p * fieldFactor(w, field);
         }
@@ -325,6 +357,7 @@ final class KoreanSuggest {
     Result suggest(String word, String prev, int field, UserDictionary user, UsageHistory usage, String fix, int max) {
         if (word.isEmpty()) return predict(prev, field, user, usage, max);
         Context cx = new Context(prev, field, user, usage);
+        cx.state = stateOf(word);
         Map<String, Double> pool = new HashMap<>();
 
         boolean initials = isInitials(word);
@@ -469,6 +502,7 @@ final class KoreanSuggest {
     Result predict(String prev, int field, UserDictionary user, UsageHistory usage, int max) {
         if (prev == null || prev.isEmpty()) return Result.EMPTY;
         Context cx = new Context(prev, field, user, usage);
+        cx.state = 0;
         Map<String, Double> pool = new HashMap<>();
         if (cx.group >= 0) addGroup(pool, cx, next, cx.group);
         if (cx.endGroup >= 0) addGroup(pool, cx, ending, cx.endGroup);
@@ -478,6 +512,14 @@ final class KoreanSuggest {
             }
         }
         if (pool.isEmpty()) return Result.EMPTY;
+        if (usage != null && IGNORED_FACTOR < 1) {
+            String ek = endKey(prev);
+            for (Map.Entry<String, Double> e : pool.entrySet()) {
+                double g = usage.ignoredIfLoaded(prev, e.getKey());
+                if (IGNORED_END > 0) g += IGNORED_END * usage.ignoredIfLoaded(ek, e.getKey());
+                if (g > 0) e.setValue(e.getValue() * Math.pow(IGNORED_FACTOR, g));
+            }
+        }
         List<String> ranked = rank(pool, cx);
         double top = pool.get(ranked.get(0));
         if (top < PREDICT_MIN) return Result.EMPTY;

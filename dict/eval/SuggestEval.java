@@ -185,6 +185,7 @@ public final class SuggestEval {
                 catWords[cat]++;
                 catKeys[cat] += k.length + 1;
                 boolean done = false, doneTop1 = false;
+                String[] shownPred = null;   // 이번 단어 앞에서 보인 예측 (고르지 않았는지 학습할 때 쓴다)
                 if (predict && !old && prev != null) {
                     predTried++;
                     long c0 = System.nanoTime();
@@ -196,6 +197,7 @@ public final class SuggestEval {
                     int ra = indexOf(r.words, core);
                     if (r.words.length > 0) curve.add(new double[]{r.confidence, ra == 0 ? 1 : 0, ra >= 0 ? 1 : 0});
                     if (r.confidence < predictMin) r = KoreanSuggest.Result.EMPTY;
+                    shownPred = r.words;
                     if (r.words.length > 0) predShown++;
                     int at = indexOf(r.words, core);
                     if (at >= 0) {
@@ -288,6 +290,7 @@ public final class SuggestEval {
                 boolean gap = learnGaps && (ti == lastWord || raw.matches(".*[ㄱ-ㅣ]$"));
                 if (learn && !gap) {
                     // 앱과 같은 학습 (WordSuggester.learnInto). 시각 대신 단어 순번을 쓴다.
+                    WordSuggester.noteIgnoredInto(usage, prev, shownPred, core, words);
                     WordSuggester.learnInto(d, user, usage, core, prev, true, false, words);
                     if (WordSuggester.learnable(core, true)) ks.noteLearned(core);
                     if (WordSuggester.learnable(core, true)) ks.learnEndings(core, usage, words);
@@ -547,7 +550,8 @@ public final class SuggestEval {
     private static void set(String kv) throws Exception {
         String[] p = kv.split("=", 2);
         java.lang.reflect.Field f = null;   // 계수는 순위(KoreanSuggest), 만든 꼴(KoreanForms), 자동 수정(KoreanCorrect), 꼴 알아보기(KoreanMorph)에 있다
-        for (Class<?> c : new Class<?>[]{KoreanSuggest.class, KoreanForms.class, KoreanCorrect.class, KoreanMorph.class}) {
+        for (Class<?> c : new Class<?>[]{KoreanSuggest.class, KoreanForms.class, KoreanCorrect.class, KoreanMorph.class,
+                UsageHistory.class}) {
             try {
                 f = c.getDeclaredField(p[0]);
                 break;

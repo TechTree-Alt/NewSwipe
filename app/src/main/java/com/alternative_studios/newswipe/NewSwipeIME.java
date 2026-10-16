@@ -171,6 +171,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private String[] suggestions = new String[0];
     /** 지금 추천란의 단어가 앞 단어만 보고 예측한 다음 단어인지 (누르면 지우지 않고 커서 자리에 넣는다). */
     private boolean predictionShown;
+    /** 마지막으로 보인 다음 단어 예측과 그 앞 단어: 다음 단어를 학습할 때 고르지 않은 예측인지 본다. */
+    private String predictedAfter;
+    private String[] predictedWords;
     /** 스페이스를 누르면 자동 수정될 단어가 있는 추천 칸 (굵게 보인다). 없으면 -1. */
     private int correctionShown = -1;
     /** 지금 입력란의 종류 (WordSuggester.FIELD_*: 검색·보통). 한국어 추천 순위에 쓴다. */
@@ -2447,7 +2450,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (cfgLearn && (!userWords.isLoaded() || !suggester.historyLoaded())) warmSuggester();
         String prev = korean ? prevWordBeforeCursor(ic) : null;
         if (predict) {
-            showSuggestions(word, suggester.predictIfLoaded(prev, fieldKind));
+            WordSuggester.Suggestions predicted = suggester.predictIfLoaded(prev, fieldKind);
+            if (predicted.words.length > 0) {
+                predictedAfter = prev;
+                predictedWords = predicted.words;
+            }
+            showSuggestions(word, predicted);
             return;
         }
         // 자동 수정이 켜져 있으면 스페이스에서 고칠 단어를 맨 앞에 굵게 보인다 (이번에 되돌린 단어는 고치지 않으니 보이지 않는다).
@@ -2899,9 +2907,14 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /** prev = 바로 앞 단어 (한글만 쓴다, 없으면 null). */
     private void learnWord(String word, String prev, boolean strong) {
+        // 이 앞 단어 다음에 예측을 보였는데 다른 말을 쳤으면 그 예측을 덜 보인다 (예측을 골랐거나 직접 쳐도 맞았으면 그대로)
+        String[] shown = prev != null && prev.equals(predictedAfter) ? predictedWords : null;
+        predictedAfter = null;
+        predictedWords = null;
         if (!cfgLearn || !suggestAllowed || !learnAllowed) return;
         final boolean lang = korean;
         runIo(() -> {
+            if (lang && shown != null) suggester.noteIgnoredPrediction(prev, shown, word);
             suggester.learn(word, prev, lang, strong);
             suggester.saveIfNeeded();
         });
