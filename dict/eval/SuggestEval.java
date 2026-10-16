@@ -34,7 +34,7 @@ import java.util.Random;
  *   --no-predict     다음 단어 예측을 끈다
  *   --field N        입력란 종류 (0 보통, 1 검색)
  *   --per-sentence F 문장마다 {키 수, 아낀 키 수}를 F에 쓴다 (compare_ksr.py로 두 설정을 견준다)
- *   --set NAME=VAL   KoreanSuggest의 계수를 바꿔 본다
+ *   --set NAME=VAL   추천 엔진의 계수를 바꿔 본다 (KoreanSuggest·KoreanForms·KoreanCorrect·KoreanMorph의 static 값)
  *   --layout 8|7     오타를 넣을 자판 (8 = 8열 단모음, 7 = NewSwipe 단모음). 자동 수정의 이웃 키도 이 자판으로 맞춘다
  *   --seed N         오타를 넣는 난수 씨앗 (기본 7)
  *
@@ -495,7 +495,16 @@ public final class SuggestEval {
 
     private static void set(String kv) throws Exception {
         String[] p = kv.split("=", 2);
-        java.lang.reflect.Field f = KoreanSuggest.class.getDeclaredField(p[0]);
+        java.lang.reflect.Field f = null;   // 계수는 순위(KoreanSuggest), 만든 꼴(KoreanForms), 자동 수정(KoreanCorrect), 꼴 알아보기(KoreanMorph)에 있다
+        for (Class<?> c : new Class<?>[]{KoreanSuggest.class, KoreanForms.class, KoreanCorrect.class, KoreanMorph.class}) {
+            try {
+                f = c.getDeclaredField(p[0]);
+                break;
+            } catch (NoSuchFieldException ignored) {
+                // 다음 클래스에서 찾는다
+            }
+        }
+        if (f == null) throw new IllegalArgumentException("계수를 찾을 수 없다: " + p[0]);
         f.setAccessible(true);
         Class<?> t = f.getType();
         if (t == double.class) f.setDouble(null, Double.parseDouble(p[1]));

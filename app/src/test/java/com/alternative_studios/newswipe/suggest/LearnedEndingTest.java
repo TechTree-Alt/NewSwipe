@@ -28,13 +28,13 @@ public class LearnedEndingTest {
         m.learnEndings("보여줘서", h, 1);
         assertFalse(offered(m, h, "보내줘ㅅ", "보내줘서"));   // 한 말에서만 본 어미는 아직 붙이지 않는다
         m.learnEndings("알려줘서", h, 2);
-        assertTrue(h.endingsIfLoaded(KoreanSuggest.END_AO, 2, 30).contains("줘서"));
+        assertTrue(h.endingsIfLoaded(KoreanForms.END_AO, 2, 30).contains("줘서"));
         assertTrue(offered(m, h, "보내줘ㅅ", "보내줘서"));
         // 조사(가방+이)나 어간과 같은 아/어 꼴 뒤의 어간 어미(가+는)는 어미로 배우지 않는다
         m.learnEndings("가는", h, 3);
         m.learnEndings("가방이", h, 4);
-        assertFalse(h.endingsIfLoaded(KoreanSuggest.END_AO, 1, 30).contains("는"));
-        assertFalse(h.endingsIfLoaded(KoreanSuggest.END_STEM, 1, 30).contains("방이"));
+        assertFalse(h.endingsIfLoaded(KoreanForms.END_AO, 1, 30).contains("는"));
+        assertFalse(h.endingsIfLoaded(KoreanForms.END_STEM, 1, 30).contains("방이"));
     }
 
     private static boolean offered(KoreanSuggest m, UsageHistory h, String typed, String want) {

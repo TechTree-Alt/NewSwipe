@@ -60,12 +60,12 @@ public class KoreanContextTest {
 
     @Test
     public void oneEdit() {
-        assertTrue(KoreanSuggest.oneEdit(TypoModel.letters("가장"), 4, TypoModel.letters("가쟝"), 4));
-        assertTrue(KoreanSuggest.oneEdit(TypoModel.letters("가장"), 4, TypoModel.letters("갖앙"), 4));   // 맞바꾸기
+        assertTrue(KoreanCorrect.oneEdit(TypoModel.letters("가장"), 4, TypoModel.letters("가쟝"), 4));
+        assertTrue(KoreanCorrect.oneEdit(TypoModel.letters("가장"), 4, TypoModel.letters("갖앙"), 4));   // 맞바꾸기
         char[] a = TypoModel.letters("현타"), b = TypoModel.letters("한다");
-        assertFalse(KoreanSuggest.oneEdit(a, a.length, b, b.length));   // 두 번 바꾸기
+        assertFalse(KoreanCorrect.oneEdit(a, a.length, b, b.length));   // 두 번 바꾸기
         char[] c = TypoModel.letters("가장");
-        assertFalse(KoreanSuggest.oneEdit(c, c.length, c, c.length));   // 같은 말
+        assertFalse(KoreanCorrect.oneEdit(c, c.length, c, c.length));   // 같은 말
     }
 
     @Test

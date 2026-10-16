@@ -142,7 +142,7 @@ public final class WordSuggester {
     private static String[][] build() {
         // {조사, 붙는 자리} 붙는 자리: "" 아무 데나, "F" 받침 뒤, "V" 받침 없는 말 뒤 (ㄹ 받침 뒤의 로도 V로 본다)
         java.util.Map<String, String> m = new java.util.LinkedHashMap<>();
-        for (String[] p : KoreanSuggest.PARTICLES) {
+        for (String[] p : KoreanForms.PARTICLES) {
             if (p[1] == null) {
                 m.put(p[0] + "|", "");
             } else {
