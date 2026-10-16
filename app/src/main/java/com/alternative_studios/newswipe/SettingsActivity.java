@@ -1889,8 +1889,6 @@ public final class SettingsActivity extends Activity {
                 Prefs.SUGGEST_WORDS, prefs.suggestWords(), fullBar));
         suggest.addView(fullBar);
 
-        buildDictionaryPack();
-
         LinearLayout shortcut = section("단축어");
         View shortcutGroup = subGroup(button("단축어 편집", v -> startActivity(new Intent(this, ShortcutEditorActivity.class))));
         shortcut.addView(toggle("단축어 사용", "사용자가 정한 줄임말을 입력하면 정해 둔 문장을 추천란에 보여 줍니다 (예: ㅈㄱㅈ → 지금 가는 중)",
@@ -1937,6 +1935,8 @@ public final class SettingsActivity extends Activity {
 
         LinearLayout about = section("개인 정보");
         about.addView(note("모든 처리는 기기 안에서만 하며 인터넷을 쓰지 않습니다. 비밀번호·이메일 입력란에서는 학습을 하지 않습니다."));
+
+        buildDictionaryPack();
     }
 
     /**
