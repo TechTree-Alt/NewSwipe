@@ -23,6 +23,10 @@ import java.util.Random;
  *       이상적인 사용자와 얼마나 다른지 본다). 단어 종류(사전 단어, 사전 단어 + 조사, 그 밖)별로도 나눠 찍는다.</li>
  *   <li>잘못 고침 = 바르게 친 단어를 스페이스에서 다른 단어로 바꾼 비율</li>
  *   <li>오타 고침 = 일부러 넣은 오타(옆 키, 같은 키의 다른 동작, 빠뜨리기, 더 치기, 맞바꾸기)를 원래 단어로 고친 비율</li>
+ *   <li>예측(늘 보일 때) = 문턱(PREDICT_MIN) 없이 늘 예측을 보였다면 첫 칸·세 칸에 맞힌 비율과, 점수가 높은 순으로 n%만
+ *       보였을 때의 세 칸 적중률 (문턱을 맞출 때 본다)</li>
+ *   <li>마지막 글자 전까지 쳤을 때 = 단어의 마지막 글자만 남기고 쳤을 때(명사·어간까지 친 뒤) 맞는 꼴이 첫 칸·세 칸에 보인
+ *       비율. 명사 + 조사, 용언 활용(어간 + 어미로 나뉘는 말), 그 밖으로 나눈다. 조사·어미 추천을 따로 본다.</li>
  *   <li>만들어 낸 후보 = 보인 추천 칸 중 사전에도 내 기록에도 없는 말(이어 붙인 말, 조사를 붙인 말)의 비율과 그중 맞힌 비율.
  *       키 절약률은 틀린 후보가 보여도 깎이지 않으므로, 엉뚱한 후보가 늘지 않았는지 이것으로 함께 본다 (SHOW_MADE=1이면 예시 40개를, SHOW_MADE=500이면 500개까지 찍는다)</li>
  * </ul>
@@ -154,6 +158,9 @@ public final class SuggestEval {
         int madeMax = made == null ? 0 : System.getenv("SHOW_MADE").matches("\\d{2,}") ? Integer.parseInt(System.getenv("SHOW_MADE")) : 40;
         StringBuilder rows = new StringBuilder();
         StringBuilder why = System.getenv("WHY") != null ? new StringBuilder() : null;
+        List<double[]> curve = new ArrayList<>();   // 예측 기회마다 {점수, 첫 칸 맞음, 세 칸 맞음}
+        long[] endTried = new long[3], endTop1 = new long[3], endTop3 = new long[3];   // 명사 + 조사, 용언 활용, 그 밖
+        double predictMin = KoreanSuggest.PREDICT_MIN;
         for (String line : lines) {
             long keys0 = keys, saved0 = saved;
             String prev = null;
@@ -181,9 +188,14 @@ public final class SuggestEval {
                 if (predict && !old && prev != null) {
                     predTried++;
                     long c0 = System.nanoTime();
+                    KoreanSuggest.PREDICT_MIN = -1;   // 늘 예측해 보고 문턱은 여기서 견준다 (점수 곡선을 찍으려고)
                     KoreanSuggest.Result r = ks.predict(prev, field, user, usage, WordSuggester.MAX);
+                    KoreanSuggest.PREDICT_MIN = predictMin;
                     if (latN < lat.length) lat[latN++] = System.nanoTime() - c0;
                     calls++;
+                    int ra = indexOf(r.words, core);
+                    if (r.words.length > 0) curve.add(new double[]{r.confidence, ra == 0 ? 1 : 0, ra >= 0 ? 1 : 0});
+                    if (r.confidence < predictMin) r = KoreanSuggest.Result.EMPTY;
                     if (r.words.length > 0) predShown++;
                     int at = indexOf(r.words, core);
                     if (at >= 0) {
@@ -262,6 +274,17 @@ public final class SuggestEval {
                     why.append(core).append('\t').append(k.length).append('\t').append(savedWord).append('\t').append("DPO".charAt(cat))
                             .append('\t').append(prev == null ? "" : prev).append('\n');
                 }
+                if (!old && core.length() >= 2) {
+                    // 마지막 글자만 남기고 쳤을 때 (명사·어간까지 친 뒤) 맞는 꼴(조사·어미)이 보이는지
+                    String[] sp = WordSuggester.splitParticle(core);
+                    int ec = sp != null && (d.contains(sp[0]) || userKnows(user, sp[0])) ? 0 : ks.inflected(core) ? 1 : 2;
+                    String[] sh = ks.suggest(core.substring(0, core.length() - 1), prev, field, user, usage, null,
+                            WordSuggester.MAX).words;
+                    int at = indexOf(sh, core);
+                    endTried[ec]++;
+                    if (at == 0) endTop1[ec]++;
+                    if (at >= 0) endTop3[ec]++;
+                }
                 boolean gap = learnGaps && (ti == lastWord || raw.matches(".*[ㄱ-ㅣ]$"));
                 if (learn && !gap) {
                     // 앱과 같은 학습 (WordSuggester.learnInto). 시각 대신 단어 순번을 쓴다.
@@ -290,6 +313,14 @@ public final class SuggestEval {
             System.out.printf("예측: 보인 비율 %.1f%%, 맞힌 비율(보인 것 중) %.1f%%%n",
                     100.0 * predShown / predTried, predShown == 0 ? 0 : 100.0 * predHits / predShown);
         }
+        printCurve(curve, predTried);
+        String[] endName = {"명사+조사", "용언 활용", "그 밖"};
+        StringBuilder ends = new StringBuilder("마지막 글자 전까지 쳤을 때 (첫 칸/세 칸):");
+        for (int c = 0; c < 3; c++) {
+            ends.append(String.format(" %s %.1f%%/%.1f%%(%d)", endName[c], 100.0 * endTop1[c] / Math.max(1, endTried[c]),
+                    100.0 * endTop3[c] / Math.max(1, endTried[c]), endTried[c]));
+        }
+        System.out.println(ends);
         System.out.printf("잘못 고침: 전체 단어의 %.2f%%, 사전에 없는 단어의 %.1f%% (%d/%d)%n",
                 100.0 * wrongFix / words, oovWords == 0 ? 0 : 100.0 * oovWrong / oovWords, oovWrong, oovWords);
         System.out.printf("추천 한 번에 평균 %.3f ms (중앙값 %.3f, 99%% %.3f, 최대 %.3f ms)%n", ms / Math.max(1, calls),
@@ -298,6 +329,26 @@ public final class SuggestEval {
                 100.0 * madeShown / Math.max(1, shownSlots), 100.0 * madeHit / Math.max(1, madeShown));
         if (made != null) for (String m : made) System.out.println("  " + m);
         if (typo) typoTest(d, ks, lines, old);
+    }
+
+    /** 예측을 늘 보였다면 맞힌 비율 (예측 기회 tried번 중)과, 점수가 높은 순으로 n%만 보였을 때의 세 칸 적중률과 그 문턱. */
+    private static void printCurve(List<double[]> c, long tried) {
+        if (c.isEmpty()) return;
+        c.sort((a, b) -> Double.compare(b[0], a[0]));
+        double h1 = 0, h3 = 0;
+        for (double[] x : c) {
+            h1 += x[1];
+            h3 += x[2];
+        }
+        StringBuilder b = new StringBuilder(String.format("예측(늘 보일 때): 첫 칸 %.1f%%, 세 칸 %.1f%% / 점수 상위 n%%의 세 칸:",
+                100 * h1 / tried, 100 * h3 / tried));
+        for (int q : new int[]{10, 20, 30, 50}) {
+            int n = (int) Math.max(1, Math.min(c.size(), tried * q / 100));
+            double h = 0;
+            for (int i = 0; i < n; i++) h += c.get(i)[2];
+            b.append(String.format(" %d%%→%.1f%%(≥%.3f)", q, 100 * h / n, c.get(n - 1)[0]));
+        }
+        System.out.println(b);
     }
 
     /** 걸린 시간(ns) 중 q 분위 (ms). */
