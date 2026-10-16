@@ -267,7 +267,6 @@ final class KoreanForms {
      * 띄어 쓰지 않고 붙여 치는 안·못·잘·다와 사전에 '말해줘', '일할게' 같은 동사 활용이 있는 말에만 붙인다.
      */
     private void addHa(Map<String, Double> pool, KoreanSuggest.Context cx, String word, String stem) {
-        if (learnedOnlyPass) return;   // 하다 어미는 고정 목록뿐
         char last = stem.charAt(stem.length() - 1);
         if (last == '야' || last == '해') return;   // 해야하는 → '해야'는 하다 앞말이 아니다
         boolean verb = false;
@@ -282,46 +281,9 @@ final class KoreanForms {
     }
 
     /** 만든 활용형을 이미 있는 후보 아래에 넣는다 (사전에 있는 '말자'가 만든 '말죠'에 밀리지 않게). 순서는 그대로 둔다. */
-    /** 실험: 0 = 빈칸일 때만 아래에, 1 = 늘 아래에, 2 = 늘 같은 점수로 경쟁 (점수 × COMPETE_FACTOR). */
-    static int GEN_MODE = 0;
-    /** 실험: 늘 만드는 것을 내가 쓴 어미로만 한정 (빈칸일 때는 예전처럼 모두). */
-    static boolean GEN_LEARNED_ONLY = false;
-    static double COMPETE_FACTOR = 1.0;
-    private boolean learnedOnlyPass;
-
-    /** 실험용: 추천 칸이 찼을 때도 만든 활용형을 넣는다. */
-    void addAlways(Map<String, Double> pool, KoreanSuggest.Context cx, String word, boolean full) {
-        if (GEN_LEARNED_ONLY ? !full : GEN_MODE == 1) {   // 빈칸이면 예전처럼 모두 아래에
-            addBelow(pool, cx, word);
-            return;
-        }
-        boolean only = GEN_LEARNED_ONLY;
-        Map<String, Double> made = new HashMap<>();
-        learnedOnlyPass = only;
-        try {
-            addEndings(made, cx, word);
-        } finally {
-            learnedOnlyPass = false;
-        }
-        if (made.isEmpty()) return;
-        if (GEN_MODE == 1) {
-            placeBelow(pool, made);
-            return;
-        }
-        for (Map.Entry<String, Double> e : made.entrySet()) {
-            double v = e.getValue() * COMPETE_FACTOR;
-            Double old = pool.get(e.getKey());
-            if (old == null || old < v) pool.put(e.getKey(), v);
-        }
-    }
-
     void addBelow(Map<String, Double> pool, KoreanSuggest.Context cx, String word) {
         Map<String, Double> made = new HashMap<>();
         addEndings(made, cx, word);
-        placeBelow(pool, made);
-    }
-
-    private static void placeBelow(Map<String, Double> pool, Map<String, Double> made) {
         if (made.isEmpty()) return;
         double floor = Double.MAX_VALUE, top = 0;
         for (double v : pool.values()) floor = Math.min(floor, v);
@@ -469,12 +431,6 @@ final class KoreanForms {
 
     /** 이 종류의 어미 목록: 앱에 든 것 + 내가 둘 이상의 말에 붙여 쓴 것 (앞에 없는 것만, 뒤에 붙인다). */
     private String[] endingsFor(KoreanSuggest.Context cx, int kind, String[] fixed) {
-        if (learnedOnlyPass) {
-            if (!LEARN_ENDINGS || cx.usage == null) return new String[0];
-            List<String> learned = new ArrayList<>(cx.usage.endingsIfLoaded(kind, END_MIN_BASES, END_MAX));
-            learned.removeAll(Arrays.asList(fixed));
-            return learned.toArray(new String[0]);
-        }
         if (!LEARN_ENDINGS || cx.usage == null) return fixed;
         String[][] cache = cx.learnedEndings;
         if (cache[kind] != null) return cache[kind];
