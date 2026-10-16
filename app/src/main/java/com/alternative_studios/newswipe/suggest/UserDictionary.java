@@ -44,7 +44,8 @@ public final class UserDictionary {
 
     private final File file;
     private final Object fileLock = new Object();   // 파일 읽기·쓰기 순서를 지킨다 (단어 목록 잠금과 따로 둔다)
-    private Map<String, Entry> words = new HashMap<>();
+    /** 단어 → 횟수. 사전 순이라 한글은 입력 중인 앞부분으로 찾을 때 모두 훑지 않고 구간만 본다. */
+    private java.util.TreeMap<String, Entry> words = new java.util.TreeMap<>();
     private boolean loaded, dirty;
     private int sinceSave;
     private int generation;   // release()/clear()마다 올린다. 읽는 도중에 바뀌면 읽은 결과를 버린다.
@@ -59,8 +60,8 @@ public final class UserDictionary {
         this.file = file;
     }
 
-    private Map<String, Entry> readFile() {
-        Map<String, Entry> map = new HashMap<>();
+    private java.util.TreeMap<String, Entry> readFile() {
+        java.util.TreeMap<String, Entry> map = new java.util.TreeMap<>();
         if (!file.exists()) return map;
         try (BufferedReader r = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
             String line;
@@ -89,7 +90,7 @@ public final class UserDictionary {
             if (loaded) return;
             gen = generation;
         }
-        Map<String, Entry> map;
+        java.util.TreeMap<String, Entry> map;
         synchronized (fileLock) {
             map = readFile();
         }
@@ -199,7 +200,19 @@ public final class UserDictionary {
         int[] range = korean ? HangulRange.of(last) : null;
         if (korean && range == null && last >= 'ㄱ' && last <= 'ㅣ') return new String[0];
         List<Map.Entry<String, Entry>> hits = new ArrayList<>();
-        for (Map.Entry<String, Entry> me : words.entrySet()) {
+        // 한글은 사전 순 구간만 본다 (마지막 받침이 다음 글자의 첫소리일 수 있는 것까지: '뚜빗' → 뚜비서)
+        Iterable<Map.Entry<String, Entry>> scan = words.entrySet();
+        if (korean) {
+            List<Map.Entry<String, Entry>> in = new ArrayList<>();
+            List<String[]> bounds = HangulRange.bounds(p);
+            for (String[] b : bounds) {
+                for (Map.Entry<String, Entry> me : words.subMap(b[0], true, b[1], false).entrySet()) {
+                    if (bounds.size() == 1 || !in.contains(me)) in.add(me);
+                }
+            }
+            scan = in;
+        }
+        for (Map.Entry<String, Entry> me : scan) {
             Entry e = me.getValue();
             String w = me.getKey();
             if (e.count < KNOWN_COUNT) continue;
@@ -256,7 +269,7 @@ public final class UserDictionary {
      * 메모리에 올라와 있지 않았으면 파일만 바꾸고 올리지 않는다.
      */
     public int replaceAll(List<String[]> items) {
-        Map<String, Entry> map = new HashMap<>();
+        java.util.TreeMap<String, Entry> map = new java.util.TreeMap<>();
         for (String[] it : items) {
             if (map.size() >= MAX_WORDS) break;
             try {
@@ -271,7 +284,7 @@ public final class UserDictionary {
         synchronized (fileLock) {
             synchronized (this) {
                 generation++;
-                words = loaded ? map : new HashMap<>();
+                words = loaded ? map : new java.util.TreeMap<>();
                 dirty = false;
                 sinceSave = 0;
             }
@@ -401,7 +414,7 @@ public final class UserDictionary {
         synchronized (this) {
             if (dirty) return;   // 저장에 실패했으면 잃지 않도록 들고 있는다
             generation++;
-            words = new HashMap<>();
+            words = new java.util.TreeMap<>();
             loaded = false;
         }
     }
@@ -412,7 +425,7 @@ public final class UserDictionary {
         synchronized (fileLock) {
             synchronized (this) {
                 generation++;
-                words = new HashMap<>();
+                words = new java.util.TreeMap<>();
                 // 파일까지 지웠으니 '빈 사전을 읽은 상태'다. 읽지 않은 상태로 두면 다시 읽을 때까지
                 // 키보드가 학습한 단어를 모른다고 보고 자동 수정을 멈춘다.
                 loaded = true;

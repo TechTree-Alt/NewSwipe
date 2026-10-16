@@ -7,7 +7,7 @@
 |---|---|
 | `build/` | 사전을 만드는 도구. `build_ko_model.py`(한국어 단어 사전 + 다음 단어 사전), `build_ko_dict.py`(걸러 내기·저장 함수, 차단 목록), `build_en_dict.py`(영어), `gen_ko_conjugations.py`(용언 활용형 생성), `make_dict_pack.py`(사전 팩 zip 만들기) |
 | `lists/` | 직접 고른 목록. 구어체 단어(`ko_colloquial.txt`, `en_colloquial.txt`), 용언 어간(`ko_stems.txt`)과 그것으로 만든 활용형(`ko_conjugated.txt`), 구어체 문장(`ko_phrases.txt`), 말뭉치를 섞을 때 뺄 주제어(`ko_mix_exclude_nsmc.txt`) |
-| `eval/` | 평가 도구. 앱의 추천 코드로 한 키씩 쳐서 키 절약률·잘못 고침·오타 고침을 잰다 (`run_eval.sh`, `SuggestEval.java`), 두 설정을 같은 문장끼리 견준다 (`compare_ksr.py`) |
+| `eval/` | 평가 도구. 앱의 추천 코드로 한 키씩 쳐서 키 절약률·잘못 고침·오타 고침을 잰다 (`run_eval.sh`, `SuggestEval.java`), 두 설정을 같은 문장끼리 견준다 (`compare_ksr.py`), 공개 평가 말뭉치를 받아 dev·test로 나눈다 (`fetch_public_sets.sh`) |
 | `packs/` | 설정에서 가져오는 사전 팩. `ko-standard.zip`(표준 사전: 단어 8만 개 + 단어 쌍 40만 개, 약 1.1MB)과 그 라이선스 |
 
 ## 만들기
@@ -23,8 +23,27 @@ dict/eval/run_eval.sh 만든_폴더 평가_문장.txt --per-sentence a.tsv      
 python3 dict/eval/compare_ksr.py a.tsv b.tsv                                   # 두 설정의 차이와 95% 구간
 ```
 
-`ko_chat_test.txt`는 직접 쓴 메신저 문장이라 실제 사람이 쓴 글보다 표준적입니다. 사람이 쓴 글(예: NSMC, Chatbot_data의 질문)로도
-함께 재 보세요.
+`ko_chat_test.txt`는 직접 쓴 메신저 문장(약 600어절)이라 실제 사람이 쓴 글보다 표준적이고, 작아서 차이가 1%p 안쪽이면 가려내지
+못합니다. 사람이 쓴 공개 말뭉치를 받아 dev(계수 맞추기)와 test(마지막 확인)로 나눠 함께 재 주세요. **계수는 dev로만 맞춥니다.**
+
+```bash
+dict/eval/fetch_public_sets.sh                                                  # dict/eval/data/에 받는다 (저장소에 넣지 않는다)
+dict/eval/run_eval.sh app/src/main/assets dict/eval/data/chat_q_dev.txt         # Chatbot_data 질문 (대화체)
+dict/eval/run_eval.sh app/src/main/assets dict/eval/data/nsmc_dev.txt           # NSMC 리뷰 (맞춤법을 틀린 글이 많다)
+dict/eval/run_eval.sh app/src/main/assets dict/eval/data/chat_q_dev.txt --layout 7   # NewSwipe 단모음 자판의 오타
+```
+
+찍는 것: 키 절약률(세 칸을 다 보는 사용자, 첫 칸만 보는 사용자), 단어 종류(사전 단어 / 사전 단어 + 조사 / 사전에 없는 말)별 비율과
+키 절약률, 다음 단어 예측이 보인 비율과 맞힌 비율, 바르게 친 말을 잘못 고친 비율, 추천 시간(평균·중앙값·99%·최대), 일부러 넣은 오타를
+고친 비율(오타 종류별)과 고치지 못했어도 다 친 뒤 추천에 원래 단어가 보인 비율.
+
+학습(`--learn`)의 효과는 `smile_<말투>.txt`로도 재 주세요. Chatbot_data·NSMC는 여러 사람이 쓴 글을 한 사람이 친 것처럼 이어 치므로
+내 말버릇(자주 쓰는 어미 등)의 효과를 작게 잽니다: 내가 쓴 어미 배우기는 두 말뭉치에서 +0.1%p였지만, 말투가 한결같은 SmileStyle
+12가지에서는 평균 +0.49%p(naruto +1.6%p, halbae +1.3%p)였습니다.
+
+알아 둘 한계: 오타는 한 단어에 한 번만 넣고(실제로는 두 번 틀리기도 한다), 띄어쓰기를 빼먹은 글은 재지 않습니다. NSMC의 '잘못 고침'에는
+맞춤법을 바로잡은 것(봣는데 → 봤는데)도 섞여 있습니다. 실제로 친 글과 고친 글이 함께 있는 말뭉치(국립국어원 메신저 말뭉치의
+original_form·form)가 자동 수정을 재기에 가장 알맞습니다.
 
 ### 공개할 수 없는 말뭉치로 평가하기 (국립국어원 메신저 말뭉치 등)
 

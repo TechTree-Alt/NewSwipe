@@ -28,9 +28,9 @@ public class UsageHistoryTest {
         assertEquals(4, h.totalIfLoaded());
         assertEquals(2, h.pairCountIfLoaded("안녕", "하세요"));
         assertEquals(3, h.contextCountIfLoaded("안녕"));
-        List<Object[]> next = h.nextIfLoaded("안녕");
-        assertEquals("하세요", next.get(0)[0]);
-        assertEquals(2, next.get(0)[1]);
+        List<java.util.Map.Entry<String, Integer>> next = h.nextIfLoaded("안녕");
+        assertEquals("하세요", next.get(0).getKey());
+        assertEquals(2, (int) next.get(0).getValue());
         h.save();   // 바뀐 것이 10개가 안 되어도 저장은 된다
 
         UsageHistory again = new UsageHistory(f);

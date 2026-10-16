@@ -4,6 +4,8 @@ import android.content.Context;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -83,49 +85,131 @@ public final class WordSuggester {
      * 추천 순서를 내 말버릇에 맞춘다. 백그라운드 스레드에서 부른다.
      */
     public void learn(String word, String prev, boolean korean, boolean strong) {
-        if (!useUser() || !learnable(word, korean)) return;
-        if (korean && usage != null) {
-            usage.record(prev != null && learnable(prev, true) ? prev : null, word, System.currentTimeMillis());
+        if (!useUser()) return;
+        learnInto(korean ? ko : en, user, korean ? usage : null, word, prev, korean, strong, System.currentTimeMillis());
+        KoreanSuggest m = koModel;
+        if (korean && m != null && learnable(word, true)) {
+            m.noteLearned(word);   // 한 번 쓴 말도 추천하되 오타로 보이는 말은 빼려고, 오타인지를 여기(백그라운드)서 재 둔다
+            m.learnEndings(word, usage, System.currentTimeMillis());   // 내가 쓴 어미
         }
-        WordDictionary d = korean ? ko : en;
-        if (d == null || d.contains(korean ? word : word.toLowerCase(Locale.ROOT))) return;
-        if (korean) {
-            // '글자+를', '민수+가'처럼 조사가 붙은 말은 조사를 뗀 단어로 기억한다 (조사마다 따로 쌓이지 않게).
-            String stem = particleStem(word);
-            if (stem != null) {
-                if (d.contains(stem) || !learnable(stem, true)) return;   // 사전 단어에 조사만 붙었으면 기억할 필요가 없다
-                word = stem;
-            }
-        }
-        user.add(word, korean, strong, System.currentTimeMillis());
     }
 
-    /** 받침이 있어야 붙는 조사, 받침이 없어야(또는 ㄹ 받침) 붙는 조사, 받침과 상관없는 조사. 긴 것부터 맞춘다. */
-    private static final String[] PARTICLE_AFTER_FINAL = {"으로부터", "으로는", "으로도", "이라도", "이랑", "으로", "이나", "을", "은", "이", "과"};
-    private static final String[] PARTICLE_AFTER_VOWEL = {"로부터", "로는", "로도", "라도", "랑", "로", "나", "를", "는", "가", "와"};
-    private static final String[] PARTICLE_ANY = {"에서부터", "에게서", "한테서", "에서는", "에서도", "에게는", "에게도", "한테는", "까지는",
-            "까지도", "부터는", "만큼은", "에서", "에게", "한테", "까지", "부터", "처럼", "보다", "마다", "만큼", "하고", "에는", "에도",
-            "의", "에", "도", "만", "께"};
-
     /**
-     * 끝에 흔한 조사가 붙어 있으면 조사를 뗀 앞부분을, 아니면 null. 받침에 맞는 조사만 인정한다
-     * (받침 뒤 을·은·이·과, 받침 없는 말 뒤 를·는·가·와, '로'는 ㄹ 받침 뒤에도). 앞부분은 한글 한 글자 이상.
+     * 학습 한 번 (앱과 평가 도구 dict/eval/SuggestEval이 같이 쓴다). d = 지금 언어의 기본 사전 (아직 읽지 않았으면 null),
+     * usage = 한국어 쓴 기록 (영어나 기록하지 않으면 null).
      */
-    static String particleStem(String word) {
-        if (word.length() < 2) return null;
-        for (String[] group : new String[][]{PARTICLE_ANY, PARTICLE_AFTER_FINAL, PARTICLE_AFTER_VOWEL}) {
-            for (String p : group) {
-                if (word.length() <= p.length() || !word.endsWith(p)) continue;
-                String stem = word.substring(0, word.length() - p.length());
-                char last = stem.charAt(stem.length() - 1);
-                if (last < '\uAC00' || last > '\uD7A3') continue;
-                int fin = (last - 0xAC00) % 28;
-                if (group == PARTICLE_AFTER_FINAL && fin == 0) continue;
-                if (group == PARTICLE_AFTER_VOWEL && fin != 0 && !(fin == 8 && p.startsWith("로"))) continue;
-                return stem;
+    static void learnInto(WordDictionary d, UserDictionary user, UsageHistory usage, String word, String prev,
+                          boolean korean, boolean strong, long now) {
+        if (!learnable(word, korean)) return;
+        if (korean && usage != null) {
+            usage.record(prev != null && learnable(prev, true) ? prev : null, word, now);
+        }
+        if (d == null || d.contains(korean ? word : word.toLowerCase(Locale.ROOT))) return;
+        if (korean) {
+            // '짝남+한테', '민수+가', '고민+이야'처럼 조사(서술격 포함)가 붙은 말은 조사를 뗀 말로 기억한다
+            // (조사마다 따로 쌓이지 않고, 기억한 말에 어느 조사든 붙여 추천한다).
+            String[] sp = splitParticle(word);
+            if (sp != null) {
+                String stem = sp[0];
+                if (d.contains(stem)) return;   // 사전 단어에 조사만 붙었으면 기억할 필요가 없다
+                // 이·가·도·만처럼 낱말의 끝 글자이기도 한 조사는, 앞부분을 맨말이나 다른 조사와 함께 쓴 적이 있을 때만 뗀다
+                // (길냥이 → 길냥, 냥이 → 냥으로 잘못 떼지 않게). 앞부분을 이미 다른 꼴로 썼으면 두 번째이니 바로 아는 말이 된다.
+                boolean seen = stemSeen(user, usage, stem, word);
+                if (learnable(stem, true) && (seen || !AMBIGUOUS_PARTICLES.contains(sp[1]))) {
+                    user.add(stem, true, strong || seen, now);
+                    return;
+                }
+                // 조사인지 알 수 없으면 입력한 그대로 기억한다
             }
         }
+        user.add(word, korean, strong, now);
+    }
+
+    /** 낱말의 끝 글자이기도 한 짧은 조사 (길냥이, 사이다, 오징어볶음밥도처럼 낱말에 들어 있을 수 있다). */
+    private static final java.util.Set<String> AMBIGUOUS_PARTICLES = new java.util.HashSet<>(java.util.Arrays.asList(
+            "이", "가", "도", "의", "만", "와", "과", "로", "나", "야", "요", "고", "면", "지", "네", "래", "며", "든", "엔", "란",
+            "뿐", "께", "죠", "임", "냐", "니"));
+
+    /**
+     * 떼어 알아보는 조사: 추천에서 붙이는 조사(서술격 포함, {@link KoreanSuggest#PARTICLES})와 서술격의 구어체. 긴 것부터.
+     * 학습(조사를 뗀 말로 기억), 자동 수정(사전 단어·학습한 말 + 조사는 고치지 않는다), 검색 칸 순위가 모두 이것을 쓴다.
+     * (아래쪽에 선언한 목록을 쓰므로 처음 쓸 때 만든다.)
+     */
+    private static final class LearnParticles {
+        static final String[][] ALL = build();
+    }
+
+    private static String[][] build() {
+        // {조사, 붙는 자리} 붙는 자리: "" 아무 데나, "F" 받침 뒤, "V" 받침 없는 말 뒤 (ㄹ 받침 뒤의 로도 V로 본다)
+        java.util.Map<String, String> m = new java.util.LinkedHashMap<>();
+        for (String[] p : KoreanForms.PARTICLES) {
+            if (p[1] == null) {
+                m.put(p[0] + "|", "");
+            } else {
+                m.put(p[0] + "|F", "F");
+                m.put(p[1] + "|V", "V");
+            }
+        }
+        m.put("마다|", "");
+        // 서술격의 구어체 (고민임, 사람인듯, 친구냐, 짝남이었음): 추천에서 붙이지는 않지만 떼어 알아본다
+        for (String p : new String[]{"임", "인듯", "인거", "인게", "이냐", "이니", "이었음", "인지"}) m.put(p + "|F", "F");
+        for (String p : new String[]{"임", "인듯", "인거", "인게", "냐", "니", "였음", "인지"}) m.put(p + "|V", "V");
+        List<String[]> all = new ArrayList<>();
+        for (String k : m.keySet()) {
+            int bar = k.indexOf('|');
+            all.add(new String[]{k.substring(0, bar), k.substring(bar + 1)});
+        }
+        all.sort((a, b) -> b[0].length() - a[0].length());
+        return all.toArray(new String[0][]);
+    }
+
+    /** s가 조사(서술격 포함) 하나인지 (이, 가, 를, 한테, 이야 ...). */
+    static boolean isParticle(String s) {
+        for (String[] p : LearnParticles.ALL) if (p[0].equals(s)) return true;
+        return false;
+    }
+
+        /** word = 앞부분 + 조사이면 {앞부분, 조사}, 아니면 null. 받침에 맞는 조사만, 긴 것부터. 앞부분은 한글 한 글자 이상. */
+    static String[] splitParticle(String word) {
+        for (String[] p : LearnParticles.ALL) {
+            String s = p[0];
+            if (word.length() <= s.length() || !word.endsWith(s)) continue;
+            String stem = word.substring(0, word.length() - s.length());
+            char last = stem.charAt(stem.length() - 1);
+            if (last < '\uAC00' || last > '\uD7A3') continue;
+            int fin = (last - 0xAC00) % 28;
+            if (p[1].equals("F") && (fin == 0 || fin == 8 && s.startsWith("으로"))) continue;
+            if (p[1].equals("V") && fin != 0 && !(fin == 8 && s.startsWith("로"))) continue;
+            return new String[]{stem, s};
+        }
         return null;
+    }
+
+    /** stem을 맨말로, 또는 word가 아닌 다른 조사와 함께 쓴 적이 있는지 (쓴 기록과 학습한 단어에서). */
+    private static boolean stemSeen(UserDictionary user, UsageHistory usage, String stem, String word) {
+        if (user.knownCountIfLoaded(stem) > 0) return true;
+        if (usage == null) return false;
+        if (usage.countIfLoaded(stem) > 0) return true;
+        for (String[] p : LearnParticles.ALL) {
+            String w = stem + p[0];
+            if (w.equals(word) || usage.countIfLoaded(w) == 0) continue;
+            String[] sp = splitParticle(w);
+            if (sp != null && sp[0].equals(stem)) return true;   // 받침에 맞는 조사로 떼어지는 꼴만
+        }
+        return false;
+    }
+
+    /** 학습한 말이거나 학습한 말에 조사가 붙은 말인지 (자동 수정하지 않는다). */
+    static boolean userKnows(UserDictionary user, String word) {
+        if (user.knownCountIfLoaded(word) > 0) return true;
+        String[] sp = splitParticle(word);
+        return sp != null && user.knownCountIfLoaded(sp[0]) > 0;
+    }
+
+    /** 끝에 조사(서술격 포함)가 붙어 있으면 조사를 뗀 앞부분을, 아니면 null ({@link #splitParticle}). */
+    static String particleStem(String word) {
+        String[] sp = splitParticle(word);
+        return sp == null ? null : sp[0];
     }
 
     /** 기본 사전에 있는 단어 뒤에 흔한 조사만 붙은 말인지 (예: 바람+에도, 친구+를). */
@@ -273,11 +357,6 @@ public final class WordSuggester {
         }
     }
 
-    /** 사전을 아직 읽지 않았으면 읽지 않고 빈 결과를 돌려준다 (화면 스레드에서 쓰기 위해). */
-    public String[] suggestIfLoaded(String word, boolean korean) {
-        return suggestIfLoaded(word, null, korean, FIELD_NORMAL, false).words;
-    }
-
     /**
      * 입력 중인 word의 추천 (화면 스레드용, 사전을 읽지 않았으면 빈 결과).
      * prev = 바로 앞 단어 (한국어 순위에 쓴다, 없으면 null). correction이면 스페이스에서 자동 수정될 단어를 맨 앞에 넣는다.
@@ -358,33 +437,18 @@ public final class WordSuggester {
         if (useUser()) {
             // 내가 쓰는 단어는 고치지 않는다. 학습한 단어를 아직 읽지 않았으면 모르니 고치지 않는다.
             if (!user.isLoaded() || user.isKnownIfLoaded(word, korean)) return null;
-            if (korean) {
-                String stem = particleStem(word);   // '민수가'처럼 학습한 단어에 조사가 붙은 말
-                if (stem != null && user.isKnownIfLoaded(stem, true)) return null;
-            }
+            if (korean && userKnows(user, word)) return null;   // '민수가', '짝남이야'처럼 학습한 말에 조사가 붙은 말
         }
         if (korean) {
             KoreanSuggest m = koModel;
             if (m == null) return null;
-            return koreanCorrect(m, word, prev, field, useUser() ? user : null, useUser() ? usage : null);
+            return m.correct(word, prev, field, useUser() ? user : null, useUser() ? usage : null);   // 덜 만든 글자·ㅋㅋ·사전 단어는 그대로 둔다
         }
         return autoCorrect(d, word, false);
     }
 
-    private static String koreanCorrect(KoreanSuggest m, String word, String prev, int field, UserDictionary user,
-                                        UsageHistory usage) {
-        if (word.length() < 2) return null;
-        for (int i = 0; i < word.length(); i++) {
-            char c = word.charAt(i);
-            if (c < '\uAC00' || c > '\uD7A3') return null;   // 덜 만든 글자나 자음만 있는 말(ㅋㅋ)은 그대로 둔다
-        }
-        WordDictionary d = m.dict();
-        if (d.contains(word) || isDictWordWithParticle(d, word)) return null;
-        return m.correct(word, prev, field, user, usage);
-    }
-
     static String autoCorrect(WordDictionary d, String word, boolean korean) {
-        if (korean) return koreanCorrect(new KoreanSuggest(d, null, new TypoModel()), word, null, FIELD_NORMAL, null, null);
+        if (korean) return new KoreanSuggest(d, null, new TypoModel()).correct(word, null, FIELD_NORMAL, null, null);
         if (word.length() < 3) return null;
         for (int i = 1; i < word.length(); i++) if (Character.isUpperCase(word.charAt(i))) return null;
         String lower = word.toLowerCase(Locale.ROOT);

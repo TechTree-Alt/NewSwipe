@@ -9,7 +9,7 @@ import java.io.InputStream;
  * 단어는 단어 사전({@link WordDictionary})의 번호로 가리키므로, 같은 빌드에서 만든 단어 사전과 함께 써야 한다.
  * 단어 사전 점수를 확률로 되돌리는 기준도 담고 있다 ({@link #unigram}).
  */
-public final class NextWords {
+public final class NextWords implements WordGroups {
     private final int[] prev;      // 앞 단어 번호 (오름차순)
     private final int[] start;     // 앞 단어 g의 다음 단어 = next[start[g] .. start[g+1])
     private final byte[] lambda;   // 앞 단어마다 다음 단어 사전을 믿는 정도 (Witten-Bell, ×255)
@@ -103,6 +103,16 @@ public final class NextWords {
             else return mid;
         }
         return -1;
+    }
+
+    /** 앞 단어 묶음 수. */
+    public int groups() {
+        return prev.length;
+    }
+
+    /** 묶음 g의 앞 단어 번호. */
+    public int head(int g) {
+        return prev[g];
     }
 
     public double lambda(int g) {

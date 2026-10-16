@@ -61,9 +61,10 @@ informative pairs and quantized. It is distributed under CC BY 4.0 with its own 
 - Korean: word and word-pair frequencies from the Leipzig Corpora Collection (Korean news 2022,
   web 2020 and web 2015 corpora, 1M sentences each), licensed under CC BY 4.0, mixed with word
   frequencies from the Naver sentiment movie corpus (NSMC, `ratings_train.txt`, Lucy Park,
-  <https://github.com/e9t/nsmc>), dedicated to the public domain under CC0 1.0. NSMC only reweights words and
-  word pairs that also occur in the Leipzig corpora; words found only in NSMC and words containing
-  movie-related topic words were left out.
+  <https://github.com/e9t/nsmc>), dedicated to the public domain under CC0 1.0. NSMC reweights words and
+  word pairs that also occur in the Leipzig corpora, and adds NSMC-only words only when they split into
+  parts the Leipzig corpora know (colloquial endings, two words written without a space); proper nouns,
+  misspellings and words containing movie-related topic words were left out.
   D. Goldhahn, T. Eckart & U. Quasthoff: *Building Large Monolingual Dictionaries at the Leipzig
   Corpora Collection: From 100 to 200 Languages.* LREC 2012. <https://wortschatz.uni-leipzig.de>
   License: <https://creativecommons.org/licenses/by/4.0/>

@@ -37,6 +37,28 @@ final class HangulRange {
         return !(last >= 'ㄱ' && last <= 'ㅣ') && c == last;
     }
 
+    /**
+     * 입력 중인 p로 시작할 수 있는 단어({@link #startsWith})가 사전 순으로 놓이는 구간들 {처음(포함), 끝(제외)}. 마지막 글자가
+     * 될 수 있는 글자들의 구간과, 받침을 다음 글자로 넘긴 꼴의 구간 (0~2개, 겹칠 수 있다). 정렬된 단어 목록에서 찾을 때 쓴다.
+     */
+    static java.util.List<String[]> bounds(String p) {
+        java.util.List<String[]> out = new java.util.ArrayList<>(2);
+        if (p.isEmpty()) return out;
+        addBounds(p, out);
+        String m = movedFinal(p);
+        if (m != null) addBounds(m, out);
+        return out;
+    }
+
+    private static void addBounds(String p, java.util.List<String[]> out) {
+        int n = p.length();
+        char last = p.charAt(n - 1);
+        int[] r = of(last);
+        if (r == null && last >= 'ㄱ' && last <= 'ㅣ') return;   // 모음만 있거나 맞출 수 없는 자모
+        String head = p.substring(0, n - 1);
+        out.add(new String[]{head + (char) (r != null ? r[0] : last), head + (char) ((r != null ? r[1] : last) + 1)});
+    }
+
     /** 종성 번호 → 호환 자모 (0번은 받침 없음). */
     private static final String FINAL_COMPAT = "\0ㄱㄲㄳㄴㄵㄶㄷㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅄㅅㅆㅇㅈㅊㅋㅌㅍㅎ";
     /** 겹받침 번호 → {남는 앞 받침 번호, 다음 글자로 넘어갈 자음}. */
