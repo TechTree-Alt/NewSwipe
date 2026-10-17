@@ -166,6 +166,7 @@ public final class SuggestEval {
         List<double[]> curve = new ArrayList<>();   // 예측 기회마다 {점수, 첫 칸 맞음, 세 칸 맞음}
         long[] endTried = new long[3], endTop1 = new long[3], endTop3 = new long[3];   // 명사 + 조사, 용언 활용, 그 밖
         double predictMin = KoreanSuggest.PREDICT_MIN;
+        boolean showEnd = System.getenv("SHOW_END") != null;   // 마지막 글자 전까지 쳤을 때 첫 칸이 아닌 예 (공개 말뭉치에서만)
         java.io.PrintWriter dump = System.getenv("DUMP") == null ? null
                 : new java.io.PrintWriter(new java.io.BufferedWriter(new java.io.OutputStreamWriter(
                 new java.io.FileOutputStream(new File(System.getenv("DUMP"), new File(testFile).getName() + ".dump")),
@@ -328,6 +329,9 @@ public final class SuggestEval {
                     String[] sh = ks.suggest(core.substring(0, core.length() - 1), prev, field, user, usage, null,
                             WordSuggester.MAX).words;
                     int at = indexOf(sh, core);
+                    if (showEnd && at != 0) {
+                        System.out.println("  END" + "PVO".charAt(ec) + " " + prev + " | " + core + " → " + String.join(",", sh));
+                    }
                     endTried[ec]++;
                     if (at == 0) endTop1[ec]++;
                     if (at >= 0) endTop3[ec]++;

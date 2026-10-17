@@ -4,7 +4,10 @@
 SuggestEval을 DUMP=폴더로 돌리면 단어마다(W 줄) 다음 단어 예측과, 고르기와 상관없이 그 단어의 모든 접두에서 다시 정렬하기
 전의 상위 후보(최대 RERANK_TOP개)의 특징(KoreanSuggest.features), 정답 위치, 그때 맞히면 아끼는 키 수를 <말뭉치>.dump에 쓴다.
 이 스크립트는 그 자료에서 가중치를 바꿨을 때의 키 절약률을 그대로 계산한다: 단어마다 정답이 세 칸 안에 처음 드는 접두
-(또는 예측)에서 아끼는 키를 더한다. 입력 상태(0 = 다음 단어 예측, 1/2/3 = 한/두/세 글자 이상)마다 선형 점수 w·f를
+(또는 예측)에서 아끼는 키를 더한다. 다만 키 절약률은 키마다 추천란을 보는 사용자를 가정해서, 그대로 맞추면 '앞에서 보였을
+말은 뒤에서 내려도 된다'고 배운다 (최근에 쓴 '엄마가'를 '엄마'까지 친 뒤에 내린다). 그래서 키마다 확률 Q로만 추천란을 보는
+사용자가 아끼는 키의 기대값을 올린다 (Q = 1이면 키 절약률): 정답이 세 칸에 든 접두마다 Q × (1-Q)^(그 앞에서 정답이 든 접두
+수) × 아끼는 키. 입력 상태(0 = 다음 단어 예측, 1/2/3 = 한/두/세 글자 이상)마다 선형 점수 w·f를
 쓰고, '지금의 순위 점수만 쓰는 것'(f[0]의 가중치 1, 지금과 같은 순위)에서 시작해 좌표마다 키 절약률이 오르는 쪽으로 옮긴다.
 
   python3 dict/eval/train_rerank.py OUT.txt --dev DEV_DUMP... [--test TEST_DUMP...]
@@ -85,10 +88,24 @@ def group_values(d, w, sel=None):
     return np.where((rank < 3) & d.shown[idx], d.keys[idx], 0.0)
 
 
-def ksr(d, vals):
-    saved = np.zeros(len(d.words))
-    np.maximum.at(saved, d.wid, vals)
-    return 100 * saved.sum() / (d.words + 1).sum()
+Q = [1.0, 0.5, 0.25]   # 학습 목표: 이 사용자들의 키 절약률 평균 (늘 보는 사용자만 맞추면 늦게 보는 사용자가 손해를 본다)
+
+
+def ksr(d, vals, q=None):
+    """키마다 확률 q로 추천란을 보는 사용자의 키 절약률 (q = 1: 늘 보는 사용자, 단어마다 처음 맞힌 곳). q가 목록이면 평균."""
+    q = Q if q is None else q
+    if isinstance(q, list):
+        return sum(ksr(d, vals, x) for x in q) / len(q)
+    if q >= 1:
+        saved = np.zeros(len(d.words))
+        np.maximum.at(saved, d.wid, vals)
+        return 100 * saved.sum() / (d.words + 1).sum()
+    hit = (vals > 0).astype(np.float64)
+    c = np.cumsum(hit)
+    first = np.r_[True, d.wid[1:] != d.wid[:-1]]   # 단어마다 첫 묶음 (자료는 단어 순, 단어 안에서는 아끼는 키가 큰 순)
+    base = np.maximum.accumulate(np.where(first, c - hit, 0))
+    before = c - hit - base
+    return 100 * (vals * q * (1 - q) ** before).sum() / (d.words + 1).sum()
 
 
 def base_weights(nf):
@@ -102,7 +119,13 @@ def train(d, test=None, sweeps=4):
     w = base_weights(nf)
     vals = group_values(d, w)
     best = ksr(d, vals)
-    print(f'시작 (지금 순위): dev {best:.3f}%' + (f', test {ksr(test, group_values(test, w)):.3f}%' if test else ''))
+    def show(tag, w_):
+        vd, vt = group_values(d, w_), group_values(test, w_) if test else None
+        msg = f'{tag}: dev 목표 {ksr(d, vd):.3f}% (q=1 {ksr(d, vd, 1):.3f}, q=0.25 {ksr(d, vd, 0.25):.3f})'
+        if test:
+            msg += f' | test 목표 {ksr(test, vt):.3f}% (q=1 {ksr(test, vt, 1):.3f}, q=0.25 {ksr(test, vt, 0.25):.3f})'
+        print(msg, flush=True)
+    show('시작 (지금 순위)', w)
     sd = d.x[d.mask].std(0) + 1e-6
     steps = [-2, -1, -0.5, -0.25, 0.25, 0.5, 1, 2]
     for sweep in range(sweeps):
@@ -127,8 +150,7 @@ def train(d, test=None, sweeps=4):
                     w, vals = cand
                     improved = True
             print(f'  {sweep + 1}회 상태 {s}까지: dev {best:.3f}%', flush=True)
-        if test:
-            print(f'{sweep + 1}회 끝: dev {best:.3f}%, test {ksr(test, group_values(test, w)):.3f}%', flush=True)
+        show(f'{sweep + 1}회 끝', w)
         if not improved:
             break
     return w
@@ -149,6 +171,11 @@ def main():
     if a[0] == '--cache':   # 자료를 numpy로 바꿔 둔다
         load(a[2:]).save(a[1])
         return
+    global Q
+    if '--q' in a:
+        i = a.index('--q')
+        Q = [float(x) for x in a[i + 1].split(',')]
+        del a[i:i + 2]
     out = a[0]
     i = a.index('--dev')
     j = a.index('--test') if '--test' in a else len(a)
