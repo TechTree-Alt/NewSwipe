@@ -74,6 +74,9 @@ final class KoreanSuggest {
      */
     static double IGNORED_FACTOR = 1.0, IGNORED_END = 0;
 
+    /** 이만큼은 고르지 않아도 깎지 않는다 (한두 번 지나친 예측도 다음에는 맞기도 한다). */
+    static double IGNORED_GRACE = 0;
+
     /** 내가 이어 쓴 기록에서 예측 후보로 쓸 최소 횟수 (한 번 이어 쓴 것만으로 예측하면 틀린 예측이 크게 는다). */
     static int PRED_USER_MIN = 2;
 
@@ -517,6 +520,7 @@ final class KoreanSuggest {
             for (Map.Entry<String, Double> e : pool.entrySet()) {
                 double g = usage.ignoredIfLoaded(prev, e.getKey());
                 if (IGNORED_END > 0) g += IGNORED_END * usage.ignoredIfLoaded(ek, e.getKey());
+                g -= IGNORED_GRACE;
                 if (g > 0) e.setValue(e.getValue() * Math.pow(IGNORED_FACTOR, g));
             }
         }
