@@ -12,7 +12,7 @@ import java.util.List;
 
 /** 어간에 붙이는 어미: 자음으로 시작하는 어미, 동사에만 붙는 '-는' 계열, 매개모음 '-으-' 계열과 불규칙·ㄹ 탈락. */
 public class GrammarFormsTest {
-    private boolean more, verb, medial;
+    private boolean more, verb, medial, past, guna;
     private KoreanSuggest m;
 
     @Before
@@ -20,7 +20,10 @@ public class GrammarFormsTest {
         more = KoreanForms.MORE_STEM;
         verb = KoreanForms.VERB_ENDS;
         medial = KoreanForms.MEDIAL;
+        past = KoreanForms.PAST_NEUN;
+        guna = KoreanForms.GUNA;
         KoreanForms.MORE_STEM = KoreanForms.VERB_ENDS = KoreanForms.MEDIAL = true;
+        KoreanForms.PAST_NEUN = KoreanForms.GUNA = true;   // 기본은 꺼 두었지만 문법은 맞아야 한다
         WordDictionary d = KoreanSuggestTest.buildDict(new String[][]{
                 // 붙잡다 (받침 ㅂ이지만 규칙: 붙잡아)
                 {"붙잡고", "150"}, {"붙잡는", "140"}, {"붙잡지", "130"}, {"붙잡아", "140"},
@@ -44,6 +47,8 @@ public class GrammarFormsTest {
         KoreanForms.MORE_STEM = more;
         KoreanForms.VERB_ENDS = verb;
         KoreanForms.MEDIAL = medial;
+        KoreanForms.PAST_NEUN = past;
+        KoreanForms.GUNA = guna;
     }
 
     private List<String> made(String typed) {

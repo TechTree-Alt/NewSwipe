@@ -289,7 +289,7 @@ final class KoreanForms {
     }
 
     /** 하다 어미 더 (문서 '어미'): 동사 -는지·-ㄴ다·-ㅂ시다, 과거 + -는지, 형용사 -ㄴ가·-구나. */
-    static boolean HA_MORE = true;
+    static boolean HA_MORE = false;
     private static final String[] HA_VERB_MORE = {"하는지", "한다", "하는거", "하는게", "했는지", "한대", "한지", "하는구나",
             "합시다", "하셨어요"};
     private static final String[] HA_ADJ_MORE = {"한지", "한가", "하구나", "한가요", "했는지", "한거", "한게"};
@@ -562,7 +562,7 @@ final class KoreanForms {
      * 문서(어미, 불규칙 활용)를 보고 더한 어미 (실험 스위치). 과거 뒤 '-는' 계열(갔는지, 했는게), 앞 꼴 + ㄴ(형용사 좋은데·추운지·
      * 큰가, 동사 먹은거·간건), 동사 -ㄴ다/-는다(간다, 먹는대), -ㅂ니다/-습니다(갑니다, 만듭니다, 먹습니다), 동사 -는구나·형용사 -구나.
      */
-    static boolean PAST_NEUN = true, ADJ_N = true, VERB_DA = true, FORMAL = true, GUNA = true;
+    static boolean PAST_NEUN = false, ADJ_N = true, VERB_DA = true, FORMAL = true, GUNA = false;
 
     private static final String[] PAST_NEUN_ENDINGS = {"는지", "는게", "는거", "는데요", "는건", "는걸", "는지도", "는구나", "는군요"};
     private static final String[] N_ADJ_ENDINGS = {"데", "지", "가", "데요", "거", "건", "게", "걸", "가요", "지도"};
