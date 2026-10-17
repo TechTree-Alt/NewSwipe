@@ -38,9 +38,15 @@ final class KoreanSuggest {
      */
     static double K_END = 2.0, A_END = 0.15, K_BI = 1.0;
 
-    /** 실험: 입력 상태(0 예측, 1 한 글자, 2 두 글자, 3 세 글자 이상)마다 내 단어 비율·최근 단어·내 기록 문맥에 곱하는 값. */
-    static double SU0 = 1, SU1 = 1, SU2 = 1, SU3 = 1, SC0 = 1, SC1 = 1, SC2 = 1, SC3 = 1, SX0 = 1, SX1 = 1, SX2 = 1, SX3 = 1;
+    /**
+     * 입력 상태(0 = 다음 단어 예측, 1 = 한 글자, 2 = 두 글자, 3 = 세 글자 이상 쳤을 때)마다 내 단어 비율(mu)·최근 단어(CACHE_W)·
+     * 내 기록 문맥(앞 단어와 그 끝 글자)을 믿는 정도에 곱하는 값 (dev로 맞춘 값). 한 글자일 때는 최근 단어가 가장 쓸모 있고(끄면
+     * -0.45%p), 두 글자부터는 내가 쓴 말을 더 믿고 최근 단어는 덜 믿는 편이, 예측은 내 문맥을 더 믿고 내 단어 비율은 덜 믿는
+     * 편이 낫다. 곱한 값이 1을 넘지 않게 자른다 (내 단어 비율을 너무 믿으면 사전에 있는 말이 사라진다: 두 글자 ×3은 -1.6%p).
+     */
+    static final double[] USER_BY_STATE = {0.5, 1, 1.5, 0.5}, CACHE_BY_STATE = {1, 1, 0, 1}, CTX_BY_STATE = {1.5, 0.5, 1, 1};
 
+    /** 입력 중인 word의 상태 (한글 글자·자모 수, 0이면 예측). */
     static int stateOf(String word) {
         if (word == null || word.isEmpty()) return 0;
         int n = 0;
@@ -72,10 +78,13 @@ final class KoreanSuggest {
      * 예측을 보였지만 고르지 않고 다른 말을 친 횟수 g마다 그 예측 점수에 곱하는 값 (IGNORED_FACTOR^g). 앞 단어의 끝 글자
      * 문맥에서 고르지 않은 횟수는 IGNORED_END만큼만 센다. 그 말을 그 앞 단어 다음에 실제로 쓰면 기록을 지운다.
      */
-    static double IGNORED_FACTOR = 1.0, IGNORED_END = 0;
+    static double IGNORED_FACTOR = 0.5, IGNORED_END = 0;
 
-    /** 이만큼은 고르지 않아도 깎지 않는다 (한두 번 지나친 예측도 다음에는 맞기도 한다). */
-    static double IGNORED_GRACE = 0;
+    /**
+     * 이만큼은 고르지 않아도 깎지 않는다: 한두 번 지나친 예측도 다음에는 맞기도 하므로 세 번째부터 깎는다 (dev에서 늘 깎는 것보다
+     * 맞힌 예측을 덜 잃었다).
+     */
+    static double IGNORED_GRACE = 2;
 
     /** 내가 이어 쓴 기록에서 예측 후보로 쓸 최소 횟수 (한 번 이어 쓴 것만으로 예측하면 틀린 예측이 크게 는다). */
     static int PRED_USER_MIN = 2;
@@ -231,9 +240,8 @@ final class KoreanSuggest {
         final int recentN;          // 최근 단어 수
         // 내 기록 문맥 (일반 → 구체 순: 앞 단어 끝 글자, 앞 단어)의 키, 쓴 횟수 합, 믿는 비율
         final String[] uKey = new String[2];
-        final double[] uN = new double[2];
-        int state = -1;   // 입력 상태 (stateOf, -1 = 따지지 않음)
-        final double totalW;
+        final int[] uN = new int[2];
+        int state = -1;   // 입력 상태 (stateOf, -1 = 따지지 않음: 자동 수정 등)
         final double[] uA = new double[2];
         int uK;
         final int endGroup;         // 앞 단어 끝 글자의 묶음 ({@link EndingContext}, -1 = 없음)
@@ -257,7 +265,6 @@ final class KoreanSuggest {
             this.usage = usage;
             total = usage == null ? 0 : usage.totalIfLoaded();
             mu = total == 0 ? 0 : USER_MAX * total / (total + USER_HALF);
-            totalW = usage == null ? 0 : usage.totalWeightIfLoaded();
             recentN = usage == null || CACHE_W <= 0 ? 0 : usage.recentSize();
             if (total > 0 && prev != null) {
                 addContext(endKey(prev), K_END, A_END);
@@ -267,8 +274,8 @@ final class KoreanSuggest {
 
         private void addContext(String key, double k, double cap) {
             if (key == null || k <= 0) return;
-            double[] st = usage.contextWeightIfLoaded(key);
-            if (st[0] <= 0) return;
+            int[] st = usage.contextStatsIfLoaded(key);
+            if (st[0] == 0) return;
             uKey[uK] = key;
             uN[uK] = st[0];
             uA[uK] = Math.min(cap, st[0] / (st[0] + k * st[1]));
@@ -295,13 +302,14 @@ final class KoreanSuggest {
 
         /** 내가 w를 쓴 비율. */
         double mine(String w) {
-            double c = usage.weightIfLoaded(w);
+            int c = usage.countIfLoaded(w);
             if (user != null) c = Math.max(c, user.knownCountIfLoaded(w));
-            return c / (totalW + 30.0);
+            return c / (total + 30.0);
         }
 
-        private double scale(double a, double b, double c, double d) {
-            return state == 0 ? a : state == 1 ? b : state == 2 ? c : state == 3 ? d : 1;
+        /** 입력 상태에 따른 배율 (상태를 따지지 않으면 1). */
+        private double byState(double[] f) {
+            return state < 0 ? 1 : f[state];
         }
 
         /**
@@ -309,14 +317,14 @@ final class KoreanSuggest {
          * (p ← λ·c(문맥, w)/c(문맥) + (1-λ)·p).
          */
         double score(String w, int id) {
-            double m = Math.min(1, mu * scale(SU0, SU1, SU2, SU3));
+            double m = Math.min(1, mu * byState(USER_BY_STATE));
             double p = m == 0 ? model(id) : (1 - m) * model(id) + m * mine(w);
-            double cw = Math.min(1, CACHE_W * scale(SC0, SC1, SC2, SC3));
+            double cw = Math.min(1, CACHE_W * byState(CACHE_BY_STATE));
             if (recentN > 0) p = (1 - cw) * p + cw * usage.recentCount(w) / recentN;
-            double xs = scale(SX0, SX1, SX2, SX3);
+            double xs = byState(CTX_BY_STATE);
             for (int i = 0; i < uK; i++) {
                 double a = Math.min(1, uA[i] * xs);
-                p = a * usage.pairWeightIfLoaded(uKey[i], w) / uN[i] + (1 - a) * p;
+                p = a * usage.pairCountIfLoaded(uKey[i], w) / uN[i] + (1 - a) * p;
             }
             if (p <= 0 && user != null && user.knownCountIfLoaded(w) > 0) p = 1e-7;   // 기록을 아직 읽지 않았을 때
             return p * fieldFactor(w, field);

@@ -113,28 +113,26 @@ public class UserContextTest {
         UserDictionary u = user();
         for (int i = 0; i < 3; i++) WordSuggester.learnInto(d, u, h, "싶어", "보고", true, false, i);
         assertEquals("싶어", m.predict("보고", KoreanSuggest.FIELD_NORMAL, u, h, 3).words[0]);
-        // '보고' 다음에 '싶어'를 보였는데 '싶다'를 쳤다: 그 예측을 덜 보인다
-        double factor = KoreanSuggest.IGNORED_FACTOR;
-        KoreanSuggest.IGNORED_FACTOR = 0.5;
-        try {
-            double before = m.predict("보고", KoreanSuggest.FIELD_NORMAL, u, h, 3).confidence;
-            WordSuggester.noteIgnoredInto(h, "보고", new String[]{"싶어"}, "싶다", 10);
-            assertEquals(1, h.ignoredIfLoaded("보고", "싶어"));
-            KoreanSuggest.Result r = m.predict("보고", KoreanSuggest.FIELD_NORMAL, u, h, 3);
-            assertTrue(r.words.length == 0 || r.confidence < before);
-        } finally {
-            KoreanSuggest.IGNORED_FACTOR = factor;
+        // '보고' 다음에 '싶어'를 보였는데 '싶다'를 쳤다: 유예(IGNORED_GRACE)를 넘게 되풀이하면 그 예측을 덜 보인다
+        double before = m.predict("보고", KoreanSuggest.FIELD_NORMAL, u, h, 3).confidence;
+        int times = (int) KoreanSuggest.IGNORED_GRACE + 1;
+        for (int i = 0; i < times; i++) {
+            assertEquals(before, m.predict("보고", KoreanSuggest.FIELD_NORMAL, u, h, 3).confidence, 1e-12);
+            WordSuggester.noteIgnoredInto(h, "보고", new String[]{"싶어"}, "싶다", 10 + i);
         }
+        assertEquals(times, h.ignoredIfLoaded("보고", "싶어"));
+        KoreanSuggest.Result r = m.predict("보고", KoreanSuggest.FIELD_NORMAL, u, h, 3);
+        assertTrue(r.words.length == 0 || r.confidence < before);
         // 고른 예측이나 직접 쳐도 맞힌 예측은 기록하지 않는다
-        WordSuggester.noteIgnoredInto(h, "보고", new String[]{"싶어"}, "싶어", 11);
-        assertEquals(1, h.ignoredIfLoaded("보고", "싶어"));
+        WordSuggester.noteIgnoredInto(h, "보고", new String[]{"싶어"}, "싶어", 20);
+        assertEquals(times, h.ignoredIfLoaded("보고", "싶어"));
         // 저장했다 다시 읽어도 남는다 (예전 버전은 모르는 i 줄을 건너뛴다)
         h.save();
         UsageHistory h2 = new UsageHistory(new File(dir, "h.txt"));
         h2.load();
-        assertEquals(1, h2.ignoredIfLoaded("보고", "싶어"));
+        assertEquals(times, h2.ignoredIfLoaded("보고", "싶어"));
         // 그 앞 단어 다음에 실제로 쓰면 지운다
-        h2.record("보고", "싶어", 12);
+        h2.record("보고", "싶어", 21);
         assertEquals(0, h2.ignoredIfLoaded("보고", "싶어"));
     }
 }
