@@ -94,8 +94,11 @@ final class KoreanSuggest {
         return prev == null || prev.isEmpty() ? null : "~" + prev.charAt(prev.length() - 1);
     }
 
-    /** 입력 중인 마지막 모음을 한 번 더 탭해야(ㅓ+ㅓ → ㅕ) 맞는 후보에 곱하는 값 ({@link HangulRange#doubledVowel}). */
-    static double DOUBLED_FACTOR = 1;
+    /**
+     * 입력 중인 마지막 모음을 한 번 더 탭해야(ㅓ+ㅓ → ㅕ) 맞는 후보에 곱하는 값 ({@link HangulRange#doubledVowel}). 1이면 연속 탭으로
+     * 치는 사용자가 가장 많이 얻지만 밀어서 치는 사용자는 '너'에서도 '녀석' 같은 말이 끼어들어 손해라, 둘 다 지키는 값 (dev).
+     */
+    static double DOUBLED_FACTOR = 0.1;
 
     /** 오타 비용 1당 확률에 곱하는 값의 로그 (추천에서 오타가 섞인 접두사 후보, 자동 수정). */
     static double TYPO_PENALTY = 3.0;
