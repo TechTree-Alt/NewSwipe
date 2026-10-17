@@ -243,6 +243,14 @@ final class KoreanSuggest {
         final int[] uN = new int[2];
         int state = -1;   // 입력 상태 (stateOf, -1 = 따지지 않음: 자동 수정 등)
         String typed = "";   // 입력 중인 단어 (예측이면 빈 문자열)
+        /** 후보가 처음 들어온 곳 (SRC_*, 재정렬의 특징). */
+        final Map<String, Integer> src = new HashMap<>();
+
+        /** pool에 새로 들어온 후보에 들어온 곳을 적는다. */
+        void tag(Map<String, Double> pool, int source) {
+            if (pool.size() == src.size()) return;
+            for (String w : pool.keySet()) src.putIfAbsent(w, source);
+        }
         final double[] uA = new double[2];
         int uK;
         final int endGroup;         // 앞 단어 끝 글자의 묶음 ({@link EndingContext}, -1 = 없음)
@@ -380,10 +388,12 @@ final class KoreanSuggest {
                 // 내가 쓴 단어 중 초성이 맞는 것
                 for (String w : chosungMatches(usage, word)) add(pool, cx, w, dict.indexOf(w), 1);
             }
+            cx.tag(pool, SRC_INITIALS);
         } else {
             for (int id : dict.lookupIds(word, 12)) add(pool, cx, dict.word(id), id, 1);
             if (cx.group >= 0) addInRanges(pool, cx, word, next, cx.group);            // 앞 단어 다음에 자주 오는 말
             if (cx.endGroup >= 0) addInRanges(pool, cx, word, ending, cx.endGroup);   // 앞 단어 끝 글자 다음에 자주 오는 말
+            cx.tag(pool, SRC_DICT);
             if (usage != null) {
                 typoBudget = TYPO_CHECKS;
                 for (String w : usage.prefixIfLoaded(word, 1)) {
@@ -395,11 +405,16 @@ final class KoreanSuggest {
             if (user != null) {
                 for (String w : user.lookupIfLoaded(word, true, 6)) add(pool, cx, w, dict.indexOf(w), 1);
             }
+            cx.tag(pool, SRC_MINE);
             forms.addParticles(pool, cx, word);
+            cx.tag(pool, SRC_PARTICLE);
             forms.addBound(pool, cx, word);
+            cx.tag(pool, SRC_BOUND);
             // 만든 활용형은 사전 후보가 모자랄 때만 빈칸을 채운다 (사전에 있는 말을 밀어내면 손해가 크다)
             if (pool.size() < max) forms.addBelow(pool, cx, word);
+            cx.tag(pool, SRC_ENDING);
             if ((SPLIT_ALWAYS || pool.size() < max) && KoreanMorph.hangulSyllables(word) >= 2) addSplits(pool, cx, word);
+            cx.tag(pool, SRC_SPLIT);
             if (pool.size() < max && KoreanMorph.hangulSyllables(word) >= 2) {
                 int[] ids = new int[8];
                 float[] cost = new float[8];
@@ -408,6 +423,7 @@ final class KoreanSuggest {
                     add(pool, cx, dict.word(ids[i]), ids[i], Math.exp(-TYPO_PENALTY * cost[i]));
                 }
             }
+            cx.tag(pool, SRC_TYPO);
         }
         pool.remove(word);
         List<String> ranked = rank(pool, cx);
@@ -594,15 +610,22 @@ final class KoreanSuggest {
     static RankSink sink;
 
     /**
-     * 학습한 재정렬 (입력 상태마다 특징 가중치, dict/eval/train_rerank.py로 맞춘다). 점수가 높은 RERANK_TOP개 후보를
-     * 가중치 · 특징으로 다시 정렬한다. null이면 다시 정렬하지 않는다.
+     * 학습한 재정렬: 점수가 높은 RERANK_TOP개 후보를 입력 상태(예측, 한/두/세 글자 이상)마다 가중치 · {@link #features}로 다시
+     * 정렬한다. null이면 다시 정렬하지 않는다. 가중치는 dict/eval/train_rerank.py로 dev 말뭉치에서 맞췄다: 키마다 추천란을
+     * 보는 사용자와 가끔 보는 사용자(q = 1, 0.5, 0.25)의 키 절약률 평균을 올리도록 (늘 보는 사용자만 맞추면 '앞에서 보였을 말을
+     * 뒤에서 내리게' 되어 늦게 보는 사용자가 손해를 본다). 조정에 쓰지 않은 test 말뭉치에서 키 절약률 +0.26~+0.91%p,
+     * 첫 칸만 보는 사용자 +0.5~+1.4%p. 특징을 바꾸면 다시 학습해야 한다.
      */
     static double[][] RERANK = null;
 
     static int RERANK_TOP = 12;
 
+    /** 후보가 들어온 곳 (재정렬의 특징): 사전(앞 단어 묶음 포함), 내 기록, 조사를 붙인 꼴, 관형형 + 의존 명사, 만든 활용형, 이어 붙인 말, 오타를 고친 꼴, 초성. */
+    static final int SRC_DICT = 0, SRC_MINE = 1, SRC_PARTICLE = 2, SRC_BOUND = 3, SRC_ENDING = 4, SRC_SPLIT = 5, SRC_TYPO = 6,
+            SRC_INITIALS = 7;
+
     /** 특징 수 ({@link #features}). */
-    static final int NF = 22;
+    static final int NF = 24;
 
     private static final double FLOOR = 1e-9;
 
@@ -631,13 +654,17 @@ final class KoreanSuggest {
         f[9] = cx.recentN > 0 ? u.recentCount(w) / (double) cx.recentN : 0;
         boolean learned = !inDict && (u != null && u.countIfLoaded(w) > 0 || cx.user != null && cx.user.knownCountIfLoaded(w) > 0);
         f[10] = learned ? 1 : 0;
+        // 사전에도 내 기록에도 없는 (만든) 말이 어디서 왔는지: 조사, 의존 명사, 활용형, 이어 붙인 말 (나머지는 오타를 고친 꼴 등)
+        int src = cx.src.getOrDefault(w, -1);
         if (!inDict && !learned) {
-            if (WordSuggester.particleStem(w) != null) f[11] = 1;
-            else if (forms.split(w) != null) f[12] = 1;
-            else f[13] = 1;
+            if (src == SRC_PARTICLE) f[11] = 1;
+            else if (src == SRC_ENDING) f[12] = 1;
+            else if (src == SRC_BOUND) f[13] = 1;
+            else if (src == SRC_SPLIT) f[22] = 1;
         }
         String typed = cx.typed == null ? "" : cx.typed;
-        f[14] = typed.isEmpty() || HangulRange.startsWith(w, typed) ? 0 : 1;
+        f[14] = src == SRC_TYPO ? 1 : 0;
+        f[23] = src == SRC_INITIALS ? 1 : 0;
         int rem = Math.max(0, keys(w) - keys(typed));
         f[15] = rem;
         f[16] = Math.log(1 + rem);
