@@ -346,9 +346,8 @@ public class KoreanSuggestTest {
 
     @Test
     public void conjugatesHaAdjectivesKnownOnlyByAdnominal() {
-        // 사전에 '불쌍한'만 있어도 하다 형용사로 보고 활용형을 만든다 (동사 어미는 붙이지 않는다). 만든 꼴 사이의 순서는
-        // 학습한 재정렬이 정하므로 상위 몇 개 안에 있는지만 본다.
-        List<String> s = Arrays.asList(words(model().suggest("불쌍", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 6)));
+        // 사전에 '불쌍한'만 있어도 하다 형용사로 보고 활용형을 만든다 (동사 어미는 붙이지 않는다)
+        List<String> s = Arrays.asList(words(model().suggest("불쌍", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)));
         assertTrue(s.toString(), s.contains("불쌍한") && s.contains("불쌍해"));
         for (String w : words(model().suggest("불쌍해ㅈ", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3))) {
             assertFalse(w, w.startsWith("불쌍해줘"));

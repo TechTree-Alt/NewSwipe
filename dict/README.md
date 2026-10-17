@@ -38,6 +38,25 @@ dict/eval/run_eval.sh app/src/main/assets dict/eval/data/chat_q_dev.txt --layout
 맞출 때 본다), 마지막 글자만 남기고 쳤을 때 맞는 조사·어미가 보인 비율(명사 + 조사 / 용언 활용 / 그 밖), 바르게 친 말을 잘못 고친 비율, 추천 시간(평균·중앙값·99%·최대), 일부러 넣은 오타를
 고친 비율(오타 종류별)과 고치지 못했어도 다 친 뒤 추천에 원래 단어가 보인 비율.
 
+### 순위 재정렬 다시 학습하기
+
+추천 순위의 마지막 단계는 학습한 재정렬(`KoreanSuggest.RERANK`, 입력 상태마다 특징 가중치)입니다. 특징(`KoreanSuggest.features`)이나
+순위 점수를 크게 바꾸면 다시 학습해야 합니다 (그대로 두면 오히려 나빠질 수 있으니 `--no-rerank`와 견주어 보세요).
+
+```bash
+mkdir -p /tmp/dev /tmp/test
+DUMP=/tmp/dev dict/eval/run_eval.sh app/src/main/assets dict/eval/data/chat_q_dev.txt --learn --no-typo --no-rerank   # dev 말뭉치마다
+DUMP=/tmp/test dict/eval/run_eval.sh app/src/main/assets dict/eval/data/chat_q_test.txt --learn --no-typo --no-rerank # 확인용
+python3 dict/eval/train_rerank.py --cache /tmp/dev.npz /tmp/dev/*.dump
+python3 dict/eval/train_rerank.py --cache /tmp/test.npz /tmp/test/*.dump
+python3 dict/eval/train_rerank.py w.txt --dev /tmp/dev.npz --test /tmp/test.npz   # w.txt를 KoreanSuggest.RERANK에 옮겨 적는다
+dict/eval/run_eval.sh app/src/main/assets dict/eval/data/chat_q_test.txt --learn --rerank w.txt                      # 실제로 잰다
+```
+
+학습 자료는 고르기와 상관없이 단어의 모든 접두에서 쓴다 (고른 뒤의 키를 빼면 '앞에서 못 골랐다'는 조건이 붙어, 켜면 맞지 않는다).
+목표는 키마다 확률 q(1, 0.5, 0.25)로 추천란을 보는 사용자들의 키 절약률 평균이다 (늘 보는 사용자만 맞추면 '앞에서 보였을 말을
+뒤에서 내리게' 되어, '엄마'까지 친 뒤 '엄마가'가 첫 칸에서 빠지는 식으로 늦게 보는 사용자가 손해를 본다).
+
 학습(`--learn`)의 효과는 `smile_<말투>.txt`로도 재 주세요. Chatbot_data·NSMC는 여러 사람이 쓴 글을 한 사람이 친 것처럼 이어 치므로
 내 말버릇(자주 쓰는 어미 등)의 효과를 작게 잽니다: 내가 쓴 어미 배우기는 두 말뭉치에서 +0.1%p였지만, 말투가 한결같은 SmileStyle
 12가지에서는 평균 +0.49%p(naruto +1.6%p, halbae +1.3%p)였습니다.
