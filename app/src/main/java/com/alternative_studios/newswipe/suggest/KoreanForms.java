@@ -341,8 +341,11 @@ final class KoreanForms {
         }
     }
 
-    /** 실험: 어간에 더 붙일 어미 (자음으로 시작해 불규칙 활용과 상관없는 것, 동사에만 붙는 것, 매개모음 '-으-' 계열). */
-    static boolean MORE_STEM = false, VERB_ENDS = false, MEDIAL = false;
+    /**
+     * 어간에 더 붙일 어미: 자음으로 시작해 불규칙 활용과 상관없는 것, 동사에만 붙는 것, 매개모음 '-으-' 계열 (dev에서 셋 다
+     * 켜면 +0.12%p, 말뭉치마다 모두 올랐고 만들어 낸 후보의 적중률은 그대로).
+     */
+    static boolean MORE_STEM = true, VERB_ENDS = true, MEDIAL = true;
 
     /** 동사·형용사 어간 모두에 붙고 자음으로 시작하는 어미 (STEM_ENDINGS에 더). 사람이 쓴 대화 문장(dev)에서 흔한 순서. */
     private static final String[] MORE_STEM_ENDINGS = {"기", "던", "거나", "기도", "도록", "긴", "길", "기만", "길래", "진",
