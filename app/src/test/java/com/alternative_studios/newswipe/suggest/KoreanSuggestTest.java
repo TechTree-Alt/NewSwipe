@@ -238,6 +238,24 @@ public class KoreanSuggestTest {
     }
 
     @Test
+    public void vowelBeingDoubledByTap() {
+        // 모음 연속 탭(ㅓ+ㅓ → ㅕ) 중인 '안너'도 '안녀…'로 찾는다 (받침이 다음 글자로 넘어가는 '안녕핫'처럼)
+        assertEquals("안녀", HangulRange.doubledVowel("안너"));
+        assertEquals("교", HangulRange.doubledVowel("고"));
+        assertNull(HangulRange.doubledVowel("안넌"));   // 받침이 있으면 아니다
+        assertNull(HangulRange.doubledVowel("안니"));   // ㅣ는 이중모음이 되지 않는다
+        assertTrue(HangulRange.startsWith("안녕하세요", "안너"));
+        assertTrue(Arrays.asList(words(model().suggest("안너", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)))
+                .contains("안녕하세요"));
+        HangulRange.doubleTapVowel = false;   // 설정에서 끄면 그 꼴은 생기지 않는다
+        try {
+            assertFalse(HangulRange.startsWith("안녕하세요", "안너"));
+        } finally {
+            HangulRange.doubleTapVowel = true;
+        }
+    }
+
+    @Test
     public void searchFieldPrefersBareNouns() {
         KoreanSuggest m = model();
         String[] normal = words(m.suggest("친", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3));

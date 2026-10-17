@@ -58,6 +58,11 @@ public final class WordSuggester {
         this.usage = usage;
     }
 
+    /** 모음 연속 탭(ㅓ+ㅓ → ㅕ)을 쓰는지 알려 준다: 쓰면 입력 중인 '안너'도 '안녀…'로 시작하는 말을 찾는다. */
+    public static void setDoubleTapVowel(boolean enabled) {
+        HangulRange.doubleTapVowel = enabled;
+    }
+
     /** 자동 수정에서 이웃한 키를 알 수 있게 지금 한글 자판의 글자 줄을 알려 준다. */
     public void setKeyRows(String[][] rows) {
         typo.setRows(rows);

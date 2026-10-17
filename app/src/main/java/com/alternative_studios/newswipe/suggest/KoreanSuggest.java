@@ -94,6 +94,9 @@ final class KoreanSuggest {
         return prev == null || prev.isEmpty() ? null : "~" + prev.charAt(prev.length() - 1);
     }
 
+    /** 입력 중인 마지막 모음을 한 번 더 탭해야(ㅓ+ㅓ → ㅕ) 맞는 후보에 곱하는 값 ({@link HangulRange#doubledVowel}). */
+    static double DOUBLED_FACTOR = 1;
+
     /** 오타 비용 1당 확률에 곱하는 값의 로그 (추천에서 오타가 섞인 접두사 후보, 자동 수정). */
     static double TYPO_PENALTY = 3.0;
 
@@ -426,6 +429,12 @@ final class KoreanSuggest {
             cx.tag(pool, SRC_TYPO);
         }
         pool.remove(word);
+        if (DOUBLED_FACTOR != 1 && HangulRange.doubledVowel(word) != null) {
+            // 모음을 한 번 더 탭해 이중모음이 되어야 맞는 말 ('안너' → 안녕하세요)은 그럴 수 있을 만큼만 믿는다
+            for (Map.Entry<String, Double> e : pool.entrySet()) {
+                if (HangulRange.onlyDoubled(e.getKey(), word)) e.setValue(e.getValue() * DOUBLED_FACTOR);
+            }
+        }
         List<String> ranked = rank(pool, cx);
 
         List<String> out = new ArrayList<>(max);

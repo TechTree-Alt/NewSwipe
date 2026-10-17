@@ -973,6 +973,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (emojiPanel != null) emojiPanel.setSizeLevel(prefs.emojiSize());
         applyResultSize();
         composer.setDoubleTapVowel(prefs.doubleTapVowel());
+        WordSuggester.setDoubleTapVowel(prefs.doubleTapVowel());   // '안너'도 '안녀…'로 찾는다
         composer.setDoubleTapConsonant(prefs.doubleTapConsonant(), prefs.doubleTapConsonantMs());
         // 가로 모드·대화면에서 따로 정한 키보드 높이·글자 크기는 그 화면에서만 쓴다.
         Prefs sizePrefs = prefs.profileView(profile());

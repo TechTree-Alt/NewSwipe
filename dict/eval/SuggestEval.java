@@ -65,6 +65,8 @@ public final class SuggestEval {
     private static final String[] SAME_KEY_8 = {"ㄱㄲ", "ㄷㄸ", "ㅂㅃ", "ㅅㅆ", "ㅈㅉ", "ㅏㅑ", "ㅓㅕ", "ㅗㅛ", "ㅜㅠ", "ㅐㅒ", "ㅔㅖ", "ㅐㅔ"};
     private static final String[] SAME_KEY_7 = {"ㄱㄲㅋ", "ㄷㄸㅌ", "ㅂㅃㅍ", "ㅅㅆ", "ㅈㅉㅊ", "ㅏㅑ", "ㅓㅕ", "ㅗㅛ", "ㅜㅠ", "ㅐㅒ", "ㅔㅖ", "ㅐㅔ"};
     private static String[][] rows = ROWS_8;
+    /** ㅑㅕㅛㅠㅒㅖ를 밀지 않고 같은 모음을 두 번 탭해 치는 사용자 (--double-tap-vowel): 키가 하나 늘고 '안너' 같은 중간 꼴이 보인다. */
+    private static boolean doubleTapVowel;
     /** 학습 자료를 쓸 때 (DUMP): 지금 치는 단어와, 지금 맞히면 아끼는 키 수. */
     private static String dumpTarget;
     private static int dumpKeys;
@@ -97,6 +99,7 @@ public final class SuggestEval {
                     break;
                 }
                 case "--seed": seed = Long.parseLong(args[++i]); break;
+                case "--double-tap-vowel": doubleTapVowel = true; break;
                 case "--rerank": KoreanSuggest.RERANK = readRerank(args[++i]); break;
                 case "--no-rerank": KoreanSuggest.RERANK = null; break;
                 default: throw new IllegalArgumentException(args[i]);
@@ -247,7 +250,7 @@ public final class SuggestEval {
                 HangulComposer hc = new HangulComposer();
                 StringBuilder committed = new StringBuilder();
                 for (int i = 0; i < k.length && !(done && doneTop1); i++) {
-                    hc.input(k[i], false, i * 1000L);
+                    hc.input(k[i], doubleTapVowel && isVowelKey(k[i]), i * 1000L);
                     committed.append(hc.takeCommit());
                     String typed = committed + hc.getComposing();
                     if (i == k.length - 1) break;   // 다 쳤으면 스페이스를 누른다
@@ -315,7 +318,7 @@ public final class SuggestEval {
                     StringBuilder dcm = new StringBuilder();
                     dumpTarget = core;
                     for (int i = 0; i < k.length - 1; i++) {
-                        dc.input(k[i], false, i * 1000L);
+                        dc.input(k[i], doubleTapVowel && isVowelKey(k[i]), i * 1000L);
                         dcm.append(dc.takeCommit());
                         dumpKeys = k.length - (i + 1);
                         ks.suggest(dcm + dc.getComposing(), prev, field, user, usage, null, WordSuggester.MAX);
@@ -567,7 +570,7 @@ public final class SuggestEval {
         HangulComposer hc = new HangulComposer();
         StringBuilder out = new StringBuilder();
         for (int i = 0; i < k.length; i++) {
-            hc.input(k[i], false, i * 1000L);
+            hc.input(k[i], doubleTapVowel && isVowelKey(k[i]), i * 1000L);
             out.append(hc.takeCommit());
         }
         hc.flush();
@@ -580,12 +583,20 @@ public final class SuggestEval {
         return true;
     }
 
+    private static boolean isVowelKey(char c) {
+        return c >= 'ㅏ' && c <= 'ㅣ';
+    }
+
     /** 단어를 치는 키 (자모 하나 = 키 하나; 겹모음·겹받침·쌍자음도 밀기 한 번). */
     static char[] keysOf(String w) {
         StringBuilder b = new StringBuilder();
         for (int i = 0; i < w.length(); i++) {
             int s = w.charAt(i) - 0xAC00;
-            b.append(CHO.charAt(s / 588)).append(JUNG.charAt((s / 28) % 21));
+            b.append(CHO.charAt(s / 588));
+            char v = JUNG.charAt((s / 28) % 21);
+            int dv = "ㅑㅕㅛㅠㅒㅖ".indexOf(v);
+            if (doubleTapVowel && dv >= 0) b.append("ㅏㅓㅗㅜㅐㅔ".charAt(dv)).append("ㅏㅓㅗㅜㅐㅔ".charAt(dv));
+            else b.append(v);
             if (s % 28 != 0) b.append(JONG.charAt(s % 28));
         }
         return b.toString().toCharArray();
@@ -614,7 +625,7 @@ public final class SuggestEval {
         String[] p = kv.split("=", 2);
         java.lang.reflect.Field f = null;   // 계수는 순위(KoreanSuggest), 만든 꼴(KoreanForms), 자동 수정(KoreanCorrect), 꼴 알아보기(KoreanMorph)에 있다
         for (Class<?> c : new Class<?>[]{KoreanSuggest.class, KoreanForms.class, KoreanCorrect.class, KoreanMorph.class,
-                UsageHistory.class}) {
+                UsageHistory.class, HangulRange.class}) {
             try {
                 f = c.getDeclaredField(p[0]);
                 break;

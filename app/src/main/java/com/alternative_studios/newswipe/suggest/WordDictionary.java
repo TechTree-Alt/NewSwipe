@@ -173,12 +173,13 @@ public final class WordDictionary {
 
     /**
      * prefix로 시작할 수 있는 단어들의 번호 구간을 out에 {처음, 끝(제외)} 쌍으로 넣고 구간 수(0~2)를 돌려준다.
-     * 마지막 글자가 덜 만들어진 상태도 맞추고, 받침이 다음 글자 첫소리일 수 있는 구간도 넣는다. out은 4칸 이상.
+     * 마지막 글자가 덜 만들어진 상태도 맞추고, 받침이 다음 글자 첫소리일 수 있거나 모음을 한 번 더 탭해 이중모음이 될 수 있는
+     * 구간도 넣는다 ({@link HangulRange#alternate}). out은 4칸 이상.
      */
     public int ranges(String prefix, int[] out) {
         int nr = 0;
         if (range(prefix, out, 0)) nr++;
-        String moved = HangulRange.movedFinal(prefix);
+        String moved = HangulRange.alternate(prefix);
         if (moved != null && range(moved, out, 2 * nr)) nr++;
         return nr;
     }

@@ -18,14 +18,63 @@ final class HangulRange {
     private HangulRange() { }
 
     /**
-     * 단어 w가 입력 중인 p로 시작할 수 있는지 (마지막 글자가 덜 만들어졌거나, 받침이 다음 글자의 첫소리일 수 있는 것까지).
-     * w가 p와 똑같아도 true.
+     * 모음을 연속으로 탭해 이중모음을 만드는지 (ㅓ+ㅓ → ㅕ, 설정 '모음 연속 탭', 키보드가 알려 준다). 그러면 '안너'는 ㅓ를 한 번
+     * 더 눌러 '안녀'가 되는 중일 수 있다 ({@link #doubledVowel}).
+     */
+    static volatile boolean doubleTapVowel = true;
+
+    /**
+     * 단어 w가 입력 중인 p로 시작할 수 있는지 (마지막 글자가 덜 만들어졌거나, 받침이 다음 글자의 첫소리일 수 있거나, 모음을
+     * 한 번 더 탭해 이중모음이 될 수 있는 것까지). w가 p와 똑같아도 true.
      */
     static boolean startsWith(String w, String p) {
         if (p.isEmpty()) return false;
         if (matches(w, p)) return true;
-        String m = movedFinal(p);
+        String m = alternate(p);
         return m != null && matches(w, m);
+    }
+
+    /**
+     * p의 마지막 글자가 될 수 있는 다른 꼴: 받침을 다음 글자로 넘긴 꼴({@link #movedFinal}, 받침이 있을 때)이나 모음을 이중모음으로
+     * 바꾼 꼴({@link #doubledVowel}, 받침이 없을 때). 둘은 함께 생기지 않는다. 없으면 null.
+     */
+    static String alternate(String p) {
+        String m = movedFinal(p);
+        return m != null ? m : doubledVowel(p);
+    }
+
+    /** 단어 w가 p를 이중모음으로 바꾼 꼴로만 맞는지 ('안너' 다음의 '안녕하세요': 점수를 낮춘다). */
+    static boolean onlyDoubled(String w, String p) {
+        if (p.isEmpty() || matches(w, p)) return false;
+        String d = doubledVowel(p);
+        return d != null && matches(w, d);
+    }
+
+    /** 단모음 중성 번호 → 연속 탭으로 바뀌는 이중모음 번호 (ㅏ→ㅑ, ㅐ→ㅒ, ㅓ→ㅕ, ㅔ→ㅖ, ㅗ→ㅛ, ㅜ→ㅠ). 없으면 -1. */
+    private static final int[] DOUBLED = new int[21];
+
+    static {
+        java.util.Arrays.fill(DOUBLED, -1);
+        DOUBLED[0] = 2;
+        DOUBLED[1] = 3;
+        DOUBLED[4] = 6;
+        DOUBLED[5] = 7;
+        DOUBLED[8] = 12;
+        DOUBLED[13] = 17;
+    }
+
+    /**
+     * 마지막 글자가 받침 없는 단모음(ㅏㅐㅓㅔㅗㅜ)이고 모음 연속 탭을 쓰면, 그 모음을 이중모음으로 바꾼 접두사 ('안너' → '안녀',
+     * '고' → '교'). 같은 모음을 한 번 더 누르는 중일 수 있다. 아니면 null.
+     */
+    static String doubledVowel(String prefix) {
+        int n = prefix.length();
+        if (n == 0 || !doubleTapVowel) return null;
+        char c = prefix.charAt(n - 1);
+        if (c < BASE || c > END) return null;
+        int s = c - BASE, t = s % 28, v = (s / 28) % 21;
+        if (t != 0 || DOUBLED[v] < 0) return null;
+        return prefix.substring(0, n - 1) + (char) (c + (DOUBLED[v] - v) * 28);
     }
 
     private static boolean matches(String w, String p) {
@@ -39,13 +88,13 @@ final class HangulRange {
 
     /**
      * 입력 중인 p로 시작할 수 있는 단어({@link #startsWith})가 사전 순으로 놓이는 구간들 {처음(포함), 끝(제외)}. 마지막 글자가
-     * 될 수 있는 글자들의 구간과, 받침을 다음 글자로 넘긴 꼴의 구간 (0~2개, 겹칠 수 있다). 정렬된 단어 목록에서 찾을 때 쓴다.
+     * 될 수 있는 글자들의 구간과, 다른 꼴({@link #alternate})의 구간 (0~2개, 겹칠 수 있다). 정렬된 단어 목록에서 찾을 때 쓴다.
      */
     static java.util.List<String[]> bounds(String p) {
         java.util.List<String[]> out = new java.util.ArrayList<>(2);
         if (p.isEmpty()) return out;
         addBounds(p, out);
-        String m = movedFinal(p);
+        String m = alternate(p);
         if (m != null) addBounds(m, out);
         return out;
     }
