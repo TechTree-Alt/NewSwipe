@@ -242,6 +242,7 @@ final class KoreanSuggest {
         final String[] uKey = new String[2];
         final int[] uN = new int[2];
         int state = -1;   // 입력 상태 (stateOf, -1 = 따지지 않음: 자동 수정 등)
+        String typed = "";   // 입력 중인 단어 (예측이면 빈 문자열)
         final double[] uA = new double[2];
         int uK;
         final int endGroup;         // 앞 단어 끝 글자의 묶음 ({@link EndingContext}, -1 = 없음)
@@ -369,6 +370,7 @@ final class KoreanSuggest {
         if (word.isEmpty()) return predict(prev, field, user, usage, max);
         Context cx = new Context(prev, field, user, usage);
         cx.state = stateOf(word);
+        cx.typed = word;
         Map<String, Double> pool = new HashMap<>();
 
         boolean initials = isInitials(word);
@@ -533,7 +535,8 @@ final class KoreanSuggest {
             }
         }
         List<String> ranked = rank(pool, cx);
-        double top = pool.get(ranked.get(0));
+        double top = 0;   // 예측을 보일지는 (다시 정렬한 순서가 아니라) 가장 높은 점수로 정한다
+        for (double v : pool.values()) top = Math.max(top, v);
         if (top < PREDICT_MIN) return Result.EMPTY;
         int n = Math.min(max, ranked.size());
         Result r = new Result(ranked.subList(0, n).toArray(new String[0]), -1, true);
@@ -559,7 +562,102 @@ final class KoreanSuggest {
         });
         List<String> out = new ArrayList<>(all.size());
         for (Map.Entry<String, Double> e : all) out.add(e.getKey());
+        int st = cx.state;
+        boolean rerank = st >= 0 && RERANK != null && RERANK[st] != null;
+        if (rerank || sink != null) {
+            int k = Math.min(RERANK_TOP, out.size());
+            double[][] f = new double[k][];
+            for (int i = 0; i < k; i++) f[i] = features(cx, out.get(i), all.get(i).getValue());
+            if (sink != null) sink.accept(cx, out.subList(0, k), f);
+            if (rerank) {
+                double[] w = RERANK[st];
+                Integer[] order = new Integer[k];
+                double[] sc = new double[k];
+                for (int i = 0; i < k; i++) {
+                    order[i] = i;
+                    for (int j = 0; j < NF; j++) sc[i] += w[j] * f[i][j];
+                }
+                Arrays.sort(order, (a, b) -> Double.compare(sc[b], sc[a]));   // 같으면 원래 순서
+                List<String> top = new ArrayList<>(k);
+                for (int i = 0; i < k; i++) top.add(out.get(order[i]));
+                for (int i = 0; i < k; i++) out.set(i, top.get(i));
+            }
+        }
         return out;
+    }
+
+    /** 평가용: 순위를 매길 때마다 다시 정렬하기 전의 상위 후보와 특징을 받는다. */
+    interface RankSink {
+        void accept(Context cx, List<String> top, double[][] features);
+    }
+
+    static RankSink sink;
+
+    /**
+     * 학습한 재정렬 (입력 상태마다 특징 가중치, dict/eval/train_rerank.py로 맞춘다). 점수가 높은 RERANK_TOP개 후보를
+     * 가중치 · 특징으로 다시 정렬한다. null이면 다시 정렬하지 않는다.
+     */
+    static double[][] RERANK = null;
+
+    static int RERANK_TOP = 12;
+
+    /** 특징 수 ({@link #features}). */
+    static final int NF = 22;
+
+    private static final double FLOOR = 1e-9;
+
+    /**
+     * 후보 w의 특징 (모두 화면 스레드에서 바로 셀 수 있는 것): 순위 점수와 그 조각들(사전 문맥 확률, 단어 빈도, 내 기록, 최근
+     * 단어), 후보의 종류(사전 단어, 학습한 말, 만든 꼴, 오타를 고친 꼴), 남은 키 수.
+     */
+    double[] features(Context cx, String w, double score) {
+        double[] f = new double[NF];
+        int id = dict.indexOf(w);
+        boolean inDict = id >= 0;
+        f[0] = Math.log(Math.max(score, FLOOR));
+        f[1] = inDict ? Math.log(Math.max(cx.model(id), FLOOR)) : Math.log(FLOOR);
+        f[2] = inDict ? Math.log(uni[dict.score(id)]) : Math.log(FLOOR);
+        f[3] = inDict ? 1 : 0;
+        f[4] = inDict && cx.hasPair(id) ? 1 : 0;
+        f[5] = inDict && cx.endGroup >= 0 && ending.find(cx.endGroup, id) >= 0 ? 1 : 0;
+        UsageHistory u = cx.usage;
+        double mine = cx.mu > 0 ? cx.mine(w) : 0;
+        f[6] = Math.log(mine + 1e-6);
+        for (int i = 0; i < cx.uK; i++) {
+            double r = u.pairCountIfLoaded(cx.uKey[i], w) / (double) cx.uN[i];
+            if (cx.uKey[i].startsWith("~")) f[8] = r;
+            else f[7] = r;
+        }
+        f[9] = cx.recentN > 0 ? u.recentCount(w) / (double) cx.recentN : 0;
+        boolean learned = !inDict && (u != null && u.countIfLoaded(w) > 0 || cx.user != null && cx.user.knownCountIfLoaded(w) > 0);
+        f[10] = learned ? 1 : 0;
+        if (!inDict && !learned) {
+            if (WordSuggester.particleStem(w) != null) f[11] = 1;
+            else if (forms.split(w) != null) f[12] = 1;
+            else f[13] = 1;
+        }
+        String typed = cx.typed == null ? "" : cx.typed;
+        f[14] = typed.isEmpty() || HangulRange.startsWith(w, typed) ? 0 : 1;
+        int rem = Math.max(0, keys(w) - keys(typed));
+        f[15] = rem;
+        f[16] = Math.log(1 + rem);
+        f[17] = formal(w) ? 1 : 0;
+        f[18] = written(w) ? 1 : 0;
+        f[19] = w.length();
+        f[20] = f[7] > 0 ? 1 : 0;
+        f[21] = f[8] > 0 ? 1 : 0;
+        return f;
+    }
+
+    /** 자판에서 칠 키 수 (글자마다 초성·중성 + 받침, 자모 하나는 한 키). */
+    static int keys(String w) {
+        int n = 0;
+        for (int i = 0; i < w.length(); i++) {
+            char c = w.charAt(i);
+            if (c >= 0xAC00 && c <= 0xD7A3) n += (c - 0xAC00) % 28 == 0 ? 2 : 3;
+            else n++;
+        }
+        return n;
     }
 
     /** 어미 버릇을 볼 후보 수 (점수가 높은 것부터. 순위를 바꿀 수 있는 것만 나눠 본다). */

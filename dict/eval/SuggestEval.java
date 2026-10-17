@@ -65,6 +65,9 @@ public final class SuggestEval {
     private static final String[] SAME_KEY_8 = {"ㄱㄲ", "ㄷㄸ", "ㅂㅃ", "ㅅㅆ", "ㅈㅉ", "ㅏㅑ", "ㅓㅕ", "ㅗㅛ", "ㅜㅠ", "ㅐㅒ", "ㅔㅖ", "ㅐㅔ"};
     private static final String[] SAME_KEY_7 = {"ㄱㄲㅋ", "ㄷㄸㅌ", "ㅂㅃㅍ", "ㅅㅆ", "ㅈㅉㅊ", "ㅏㅑ", "ㅓㅕ", "ㅗㅛ", "ㅜㅠ", "ㅐㅒ", "ㅔㅖ", "ㅐㅔ"};
     private static String[][] rows = ROWS_8;
+    /** 학습 자료를 쓸 때 (DUMP): 지금 치는 단어와, 지금 맞히면 아끼는 키 수. */
+    private static String dumpTarget;
+    private static int dumpKeys;
     private static String[] sameKey = SAME_KEY_8;
     private static long seed = 7;
 
@@ -94,6 +97,8 @@ public final class SuggestEval {
                     break;
                 }
                 case "--seed": seed = Long.parseLong(args[++i]); break;
+                case "--rerank": KoreanSuggest.RERANK = readRerank(args[++i]); break;
+                case "--no-rerank": KoreanSuggest.RERANK = null; break;
                 default: throw new IllegalArgumentException(args[i]);
             }
         }
@@ -161,6 +166,28 @@ public final class SuggestEval {
         List<double[]> curve = new ArrayList<>();   // 예측 기회마다 {점수, 첫 칸 맞음, 세 칸 맞음}
         long[] endTried = new long[3], endTop1 = new long[3], endTop3 = new long[3];   // 명사 + 조사, 용언 활용, 그 밖
         double predictMin = KoreanSuggest.PREDICT_MIN;
+        java.io.PrintWriter dump = System.getenv("DUMP") == null ? null
+                : new java.io.PrintWriter(new java.io.BufferedWriter(new java.io.OutputStreamWriter(
+                new java.io.FileOutputStream(new File(System.getenv("DUMP"), new File(testFile).getName() + ".dump")),
+                StandardCharsets.UTF_8), 1 << 20));
+        if (dump != null) {
+            final java.io.PrintWriter dw = dump;
+            KoreanSuggest.sink = (cx, top, f) -> {
+                if (dumpTarget == null) return;
+                int at = top.indexOf(dumpTarget);
+                dw.print("G " + cx.state + " " + dumpKeys + " " + at + " " + (at >= 0 ? top.size() : 0) + "\n");
+                if (at < 0) return;
+                StringBuilder b = new StringBuilder();
+                for (double[] row : f) {
+                    for (int j = 0; j < row.length; j++) {
+                        if (j > 0) b.append(' ');
+                        b.append((float) row[j]);
+                    }
+                    b.append('\n');
+                }
+                dw.print(b);
+            };
+        }
         for (String line : lines) {
             long keys0 = keys, saved0 = saved;
             String prev = null;
@@ -186,11 +213,15 @@ public final class SuggestEval {
                 catKeys[cat] += k.length + 1;
                 boolean done = false, doneTop1 = false;
                 String[] shownPred = null;   // 이번 단어 앞에서 보인 예측 (고르지 않았는지 학습할 때 쓴다)
+                if (dump != null) dump.print("W " + k.length + "\n");   // 학습 자료: 단어마다 묶는다
                 if (predict && !old && prev != null) {
                     predTried++;
                     long c0 = System.nanoTime();
                     KoreanSuggest.PREDICT_MIN = -1;   // 늘 예측해 보고 문턱은 여기서 견준다 (점수 곡선을 찍으려고)
+                    dumpTarget = core;
+                    dumpKeys = k.length;
                     KoreanSuggest.Result r = ks.predict(prev, field, user, usage, WordSuggester.MAX);
+                    dumpTarget = null;
                     KoreanSuggest.PREDICT_MIN = predictMin;
                     if (latN < lat.length) lat[latN++] = System.nanoTime() - c0;
                     calls++;
@@ -276,6 +307,20 @@ public final class SuggestEval {
                     why.append(core).append('\t').append(k.length).append('\t').append(savedWord).append('\t').append("DPO".charAt(cat))
                             .append('\t').append(prev == null ? "" : prev).append('\n');
                 }
+                if (dump != null) {
+                    // 학습 자료: 고르기와 상관없이 이 단어의 모든 접두에서 (재정렬 전의) 상위 후보를 쓴다
+                    // (고른 뒤의 키를 빼면 '앞에서 못 골랐다'는 조건이 붙어, 재정렬을 켜면 맞지 않게 된다)
+                    HangulComposer dc = new HangulComposer();
+                    StringBuilder dcm = new StringBuilder();
+                    dumpTarget = core;
+                    for (int i = 0; i < k.length - 1; i++) {
+                        dc.input(k[i], false, i * 1000L);
+                        dcm.append(dc.takeCommit());
+                        dumpKeys = k.length - (i + 1);
+                        ks.suggest(dcm + dc.getComposing(), prev, field, user, usage, null, WordSuggester.MAX);
+                    }
+                    dumpTarget = null;
+                }
                 if (!old && core.length() >= 2) {
                     // 마지막 글자만 남기고 쳤을 때 (명사·어간까지 친 뒤) 맞는 꼴(조사·어미)이 보이는지
                     String[] sp = WordSuggester.splitParticle(core);
@@ -299,6 +344,7 @@ public final class SuggestEval {
             }
             rows.append(keys - keys0).append('\t').append(saved - saved0).append('\n');
         }
+        if (dump != null) dump.close();
         if (why != null) Files.write(new File(System.getenv("WHY")).toPath(), why.toString().getBytes(StandardCharsets.UTF_8));
         if (perSentence != null) Files.write(new File(perSentence).toPath(), rows.toString().getBytes(StandardCharsets.UTF_8));
         double ms = (System.nanoTime() - t0) / 1e6;
@@ -352,6 +398,19 @@ public final class SuggestEval {
             b.append(String.format(" %d%%→%.1f%%(≥%.3f)", q, 100 * h / n, c.get(n - 1)[0]));
         }
         System.out.println(b);
+    }
+
+    /** train_rerank.py가 쓴 가중치 (상태마다 한 줄). */
+    private static double[][] readRerank(String path) throws IOException {
+        List<String> ls = Files.readAllLines(new File(path).toPath(), StandardCharsets.UTF_8);
+        double[][] w = new double[4][];
+        for (int s = 0; s < 4 && s < ls.size(); s++) {
+            String[] p = ls.get(s).trim().split("\\s+");
+            if (p.length != KoreanSuggest.NF) throw new IOException("rerank: 특징 수가 다르다");
+            w[s] = new double[p.length];
+            for (int j = 0; j < p.length; j++) w[s][j] = Double.parseDouble(p[j]);
+        }
+        return w;
     }
 
     /** 걸린 시간(ns) 중 q 분위 (ms). */
