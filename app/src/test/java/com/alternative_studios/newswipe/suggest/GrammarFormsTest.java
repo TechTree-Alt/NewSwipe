@@ -32,6 +32,9 @@ public class GrammarFormsTest {
                 {"만들고", "150"}, {"만드는", "150"}, {"만들지", "130"}, {"만들면", "120"}, {"만드니까", "110"}, {"만드세요", "110"},
                 // 좋다 (형용사: 좋으면, 좋으러 X)
                 {"좋고", "200"}, {"좋지", "180"}, {"좋다", "200"}, {"좋아", "200"}, {"좋은", "200"},
+                // 없다 (-는은 붙지만 동작의 어미는 X), 갔다 (과거)
+                {"없고", "200"}, {"없는", "200"}, {"없지", "180"}, {"없어", "200"},
+                {"갔어", "200"}, {"갔다", "200"}, {"갔지", "150"},
         });
         m = new KoreanSuggest(d, null, new TypoModel());
     }
@@ -76,5 +79,25 @@ public class GrammarFormsTest {
         assertTrue(made("좋").contains("좋으면서"));
         assertFalse(made("좋").contains("좋으러"));       // 목적·의도·약속은 동사에만 (좋으러·좋을게 X)
         assertFalse(made("좋").contains("좋을게"));
+    }
+
+    @Test
+    public void documentedEndings() {
+        assertTrue(made("갔").contains("갔는지"));        // 과거 -었- 뒤에도 '-는'
+        assertTrue(made("좋").contains("좋은데"));        // 형용사 -(으)ㄴ데
+        assertFalse(made("붙잡").contains("붙잡은데"));   // 동사는 -는데
+        assertFalse(made("들으").contains("들은데"));     // 바뀐 꼴은 형용사인지 모르면 -(으)ㄴ데를 붙이지 않는다
+        assertTrue(made("붙잡").contains("붙잡는대"));    // 동사 -는다/-ㄴ다
+        assertTrue(made("만드").contains("만든대"));      // ㄹ은 종성 ㄴ 앞에서도 떨어진다
+        assertFalse(made("춥").contains("춥는대"));
+        assertTrue(made("춥").contains("춥습니다"));      // -습니다는 자음 어미라 불규칙과 상관없다
+        assertTrue(made("만드").contains("만듭니다"));    // ㄹ은 종성 ㅂ 앞에서도 떨어진다
+        assertTrue(made("들으").contains("들읍시다"));    // -(으)ㅂ시다는 매개모음 꼴에 붙는다 (듣읍시다 X)
+        assertFalse(made("듣").contains("듣읍시다"));
+        assertTrue(made("좋").contains("좋구나"));
+        assertTrue(made("붙잡").contains("붙잡는구나"));
+        assertFalse(made("없").contains("없는다"));       // 없다: -는은 붙지만 동작의 어미는 붙지 않는다
+        assertFalse(made("없").contains("없은데"));
+        assertTrue(made("없").contains("없는구나"));
     }
 }
