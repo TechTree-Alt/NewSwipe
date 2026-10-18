@@ -140,18 +140,18 @@ def read_fragments(path):
     return out
 
 
-def mix_caches(base, other, weight, exclude=(), known_only=False, admit=False):
+def mix_caches(base, other, weight, exclude=(), known_only=False, admit=False, admit_stems=None):
     """두 말뭉치의 센 결과를 (1-weight):weight로 섞는다. 단어 목록은 둘을 합친 것이 된다 (횟수 자체는 더한다).
     exclude의 조각이 들어간 단어는 other에서 빼고 섞는다 (그 단어가 든 단어 쌍도).
     known_only면 base의 넓은 단어 목록에 없는 단어도 other에서 뺀다 (other는 이미 있는 단어의 빈도만 바꾼다).
-    admit이면 base에 없는 단어 중 base가 아는 조각으로 풀리는 말만 들인다 (ko_admit.py)."""
+    admit이면 base에 없는 단어 중 base가 아는 조각으로 풀리는 말만 들인다 (ko_admit.py, admit_stems = 어간 목록 파일)."""
     pm_a, voc_a, pw_a, pr_a, cw_a, cr_a, tests = base
     pm_b, voc_b, pw_b, pr_b, cw_b, cr_b, _ = other
     if exclude or known_only or admit:
         known = set(voc_a) if known_only or admit else None
         if admit:
             import ko_admit
-            ok = ko_admit.Admit(pm_a, kd.ONE_CHAR_OK)
+            ok = ko_admit.Admit(pm_a, kd.ONE_CHAR_OK, admit_stems)
             new = {w for w in pm_b if w not in known and ok(w)}
             print(f'mix: admitted {len(new):,} new words from the mixed corpus')
             known |= new
@@ -272,6 +272,8 @@ def main():
     ap.add_argument('--mix-admit', action='store_true',
                     help='--mix-known-only처럼 섞되, 기본 말뭉치가 아는 조각으로 풀리는 새 단어(대화체 활용형, 띄어 쓰지 않은 '
                          '두 어절)는 들인다 (ko_admit.py: 고유명사·맞춤법이 틀린 말은 들이지 않는다)')
+    ap.add_argument('--admit-stems', help='--mix-admit에서 어간 + 어미로 풀리는 말을 가릴 때 더 쓸 어간 목록 '
+                         '(dict/lists/ko_stems_kiwi.txt: 형태소 분석기로 센 어간)')
     a = ap.parse_args()
     os.makedirs(a.out_dir, exist_ok=True)
 
@@ -290,7 +292,7 @@ def main():
     for spec in a.mix:
         path, _, weight = spec.rpartition(':')
         cache = mix_caches(cache, load_cache(path), float(weight), read_fragments(a.mix_exclude), a.mix_known_only,
-                           a.mix_admit)
+                           a.mix_admit, a.admit_stems)
     per_million_raw, super_vocab, pair_w, pair_raw, ctx_w, ctx_raw, tests = cache
 
     per_million = defaultdict(float, per_million_raw)

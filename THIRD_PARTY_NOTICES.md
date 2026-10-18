@@ -364,3 +364,24 @@ and Australian word list.  It is under the following copyright:
   OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
   SUCH DAMAGE.
 ```
+
+## Korean spelling rules and verb stems (open-korean-text, Kiwi)
+
+The spelling-typo rules in `app/src/main/java/com/alternative_studios/newswipe/suggest/KoreanCorrect.java`
+(`spellEdits`: ㅅ final written for ㅆ, 찬 for 찮, 왠 for 웬, 읍 for 습, 되/돼 and 됀/된 confusions, and the
+whole-word pairs 어자피, 댓가) were chosen from these lists, keeping only the misspellings that occur in real
+text and leaving out the stylistic variants:
+
+- `typos/typos.txt` of open-korean-text (<https://github.com/open-korean-text/open-korean-text>),
+  Copyright 2014 Twitter, Inc., licensed under the Apache License, Version 2.0.
+- `models/cong/base/typo.dict` and the `basicTypoSet` in `src/TypoTransformer.cpp` of Kiwi
+  (<https://github.com/bab2min/Kiwi>), Copyright 2017-2026 Minchul Lee and the Kiwi contributors,
+  licensed under the Apache License, Version 2.0 (versions after 0.23.2).
+
+The verb stem list `dict/lists/ko_stems_kiwi.txt` (used only when building the dictionaries, not part of the
+app) was made by analysing the Leipzig corpora with Kiwi (kiwipiepy 0.24.0, Apache License 2.0), and its rarer
+stems were kept only when they also appear in the `verb/verb.txt` or `adjective/adjective.txt` lists of
+open-korean-text (Apache License 2.0). The irregular-conjugation exceptions of 르 stems follow Kiwi's
+`models/cong/base/combiningRule.txt`.
+
+The Apache License, Version 2.0 text is in `LICENSE`.

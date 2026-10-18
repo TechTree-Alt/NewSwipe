@@ -6,6 +6,7 @@ dict/lists/ko_stems.txt의 어간 목록에 자주 쓰는 어미를 붙여, 대�
 
 사용법:
   python3 dict/build/gen_ko_conjugations.py dict/lists/ko_stems.txt OUT.txt   # 생성
+  python3 dict/build/gen_ko_conjugations.py dict/lists/ko_stems_kiwi.txt OUT.txt   # 말뭉치에서 센 어간 (3단계)
   python3 dict/build/gen_ko_conjugations.py --selftest                   # 알려진 정답과 대조
 
 지원하는 활용 규칙:
@@ -237,6 +238,8 @@ def conjugate(stem, flag, kind, ending, pos):
 
 
 def parse_stem(token):
+    """'어간[/표시][=빈도]' → (어간, 표시). 빈도는 parse_freq로 읽는다."""
+    token = token.split('=', 1)[0]
     if '/' in token:
         stem, flag = token.split('/', 1)
     else:
@@ -245,10 +248,29 @@ def parse_stem(token):
     return stem, flag
 
 
+def parse_freq(token):
+    """'어간=빈도'의 빈도 (100만 어절당). 없으면 None."""
+    return float(token.split('=', 1)[1]) if '=' in token else None
+
+
+# 3단계(v3·a3: 말뭉치에서 센 어간, count_ko_stems.py): 활용형 점수 = 어간 빈도 × 어미 점수 / 1000 × TIER3_SCALE.
+# 1·2단계처럼 정해 둔 점수를 주면 드문 어간의 꼴이 말뭉치의 실제 단어를 사전 밖으로 밀어낸다 (gen_ko_forms.py의 평가).
+# 평가 (2026-10, 기본 사전 7만 단어, ko_stems_kiwi.txt 어간 4천여 개): 0.1이면 Chatbot_data·NSMC dev에서 차이가 없고
+# (+0.01%p, -0.01%p, 95% 구간이 0을 품는다) 0.3에서 -0.07%p·-0.15%p, 1.0에서 -0.3%p·-0.5%p로 나빠졌다. 그래서 기본
+# 사전에는 넣지 않고, 어간 목록은 리뷰를 섞을 때 들일 말을 가리는 데만 쓴다 (build_ko_model.py --admit-stems).
+TIER3_SCALE = 0.1
+
+
 def generate(path):
-    """어간 파일을 읽어 {단어: 점수}와 종류별 통계를 돌려준다."""
+    """어간 파일을 읽어 {단어: 점수}와 종류별 통계를 돌려준다. path는 파일 하나나 여러 개(목록)."""
     result = {}
     skipped = []
+    for p in [path] if isinstance(path, str) else path:
+        generate_file(p, result, skipped)
+    return result, skipped
+
+
+def generate_file(path, result, skipped):
     with open(path, encoding='utf-8') as f:
         for raw in f:
             line = raw.strip()
@@ -258,9 +280,12 @@ def generate(path):
             kind = kind.strip()
             pos = 'v' if kind.startswith('v') else 'a'
             tier_full = kind.endswith('1')
+            tier3 = kind.endswith('3')
             factor = 1.0 if tier_full else 0.4
             for token in tokens.split():
                 stem, flag = parse_stem(token)
+                if tier3:
+                    factor = parse_freq(token) / 1000 * TIER3_SCALE
                 for ek, tail, score, target, size in ENDINGS:
                     if pos not in target and target != 'va':
                         continue
@@ -276,9 +301,9 @@ def generate(path):
                         skipped.append(f'{token}+{ek}:{tail}')
                         continue
                     if word:
-                        s = max(1, round(score * factor))
-                        result[word] = max(result.get(word, 0), s)
-    return result, skipped
+                        s = round(score * factor, 1) if tier3 else max(1, round(score * factor))
+                        if s > 0:
+                            result[word] = max(result.get(word, 0), s)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -357,7 +382,9 @@ def selftest():
 def main():
     if sys.argv[1:] == ['--selftest']:
         sys.exit(0 if selftest() else 1)
-    src, dst = sys.argv[1], sys.argv[2]
+    *src, dst = sys.argv[1:]
+    if not src:
+        sys.exit(__doc__)
     if not selftest():
         sys.exit('자체 검사에 실패해서 생성하지 않는다.')
     words, skipped = generate(src)

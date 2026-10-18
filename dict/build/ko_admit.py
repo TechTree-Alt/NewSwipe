@@ -6,7 +6,9 @@
 
   - 기본 말뭉치의 단어 + 조사·의존 명사 (이런걸, 어릴때, 보는게)
   - 기본 말뭉치의 단어 + 기본 말뭉치의 흔한 단어 (띄어 쓰지 않은 두 어절: 가고싶다, 지금봐도)
-  - 말뭉치로 확인한 용언 어간(gen_ko_forms.find_stems) + 어미 (재밌음, 못하겠네, 짜증난다, 안됨)
+  - 말뭉치로 확인한 용언 어간(gen_ko_forms.find_stems, --admit-stems로 준 어간 목록) + 어미 (재밌음, 못하겠네, 짜증난다, 안됨)
+    어간 목록은 형태소 분석기로 센 ko_stems_kiwi.txt를 준다 (find_stems는 어간 + 고 꼴이 말뭉치에 흔한 어간만 찾아
+    진부하고·어설프게·식상한 같은 리뷰의 대화체 꼴을 놓친다).
 고유명사(송윤아 → 송 + 윤아?)와 틀린 말(봣 + 는데)은 앞 조각이 기본 말뭉치에 없어 걸러진다.
 """
 import gen_ko_conjugations as g
@@ -24,11 +26,24 @@ ENDINGS = {t for _, t, _, _ in gf.ENDINGS if t} | set('''음 고 지 게 네 니
 MISSPELLED = ('됬', '되요', '되서', '할께', '갈께', '줄께', '께요', '몇일', '어떻해', '웬지', '안되요')
 
 
+def read_stems(path):
+    """어간 목록 파일(ko_stems.txt 형식, 3단계의 '어간=빈도' 포함)의 어간들."""
+    stems = set()
+    with open(path, encoding='utf-8') as f:
+        for line in f:
+            if line.startswith('#') or ':' not in line:
+                continue
+            stems |= {g.parse_stem(t)[0] for t in line.split(':', 1)[1].split()}
+    return stems
+
+
 class Admit:
-    def __init__(self, base_freq, one_char_ok):
+    def __init__(self, base_freq, one_char_ok, extra_stems=None):
         self.f = base_freq
         self.one = one_char_ok
         self.stems = {s for s, _, _, _ in gf.find_stems(base_freq, 20000, 1.0)}
+        if extra_stems:
+            self.stems |= read_stems(extra_stems)
 
     def known(self, w, min_freq=1.0):
         if len(w) == 1 and w not in self.one:
