@@ -340,11 +340,11 @@ public final class WordDictionary {
     static boolean FAST_FUZZY = true;
 
     /** 첫 초성을 잘못 친 말도 찾을지와, 그때 첫 초성 바꾸기의 최대 비용 (평가용). */
-    static boolean FUZZY_FIRST = false;
+    static boolean FUZZY_FIRST = true;
 
     static float FIRST_MAX = 0.6f;
 
-    static int FIRST_NEED = 99;
+    static int FIRST_NEED = 3;
 
     public int fuzzyPrefix(String prefix, TypoModel typo, float maxCost, int minScore, int max, int[] out, float[] cost) {
         if (prefix.length() < 2 || max <= 0) return 0;
