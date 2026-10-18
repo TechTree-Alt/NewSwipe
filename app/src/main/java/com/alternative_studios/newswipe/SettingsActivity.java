@@ -959,14 +959,13 @@ public final class SettingsActivity extends Activity {
     /** 고른 한글 배열의 설명. */
     private String layoutNoteText() {
         return prefs.koreanD7()
-                ? "NewSwipe 단모음은 거센소리 일부를 빼 한 줄을 7칸으로 줄인 배열입니다. "
-                        + "거센소리(ㅍ·ㅊ·ㅌ·ㅋ)는 ㅂ·ㅈ·ㄷ·ㄱ를 오른쪽으로 밀어 입력합니다."
-                : "단모음은 두벌식 키보드에서 ㅣ계 이중모음(ㅑ·ㅕ·ㅛ·ㅠ)을 빼 한 줄을 8칸으로 줄인 배열입니다. "
-                        + "빠진 글자는 모음 키를 아래로 밀어 입력합니다.";
+                ? "NewSwipe 단모음은 거센소리 일부(ㅊ, ㅌ)를 빼 한 줄을 7칸으로 줄인 배열입니다. "
+                        + "ㅊ·ㅌ은 ㅈ·ㄷ을 오른쪽으로 밀어 입력합니다."
+                : "단모음은 두벌식 키보드에서 ㅣ계 이중모음(ㅑ·ㅕ·ㅛ·ㅠ)을 빼 한 줄을 8칸으로 줄인 배열입니다. ";
     }
 
     private static final String GRID_DESC = "아래 줄의 기능키를 한글 키와 같은 폭으로 해 줄을 맞춥니다. "
-            + "\n오쏘리니어 키보드에서 영감을 받았습니다.";
+            + "오쏘리니어 키보드에서 영감을 받았습니다.";
     /**
      * 키 위치·폭 사용자화: 미리보기를 보면서 자·모음 균형 레이아웃의 자음 열(왼쪽 절반)과 모음 3열(오른쪽 절반)의
      * 폭과 가로 위치를 정한다. 가로 모드의 값은 '가로 모드 키보드 사용자화'에서 따로 정한다.
@@ -1209,7 +1208,7 @@ public final class SettingsActivity extends Activity {
         LinearLayout card = section("한 손 모드");
         card.addView(oneHandPreview());
         card.addView(note("자판과 도구 막대가 한쪽으로 쏠려 한 손으로 편하게 입력할 수 있습니다.\n"
-                + "도구 막대의 한 손 모드 버튼으로 켜고, 버튼을 왼쪽·오른쪽으로 밀면 그쪽으로 쏠린 한 손 모드가 됩니다."));
+                + "도구 막대의 한 손 모드 버튼으로 켭니다. 버튼을 왼쪽·오른쪽으로 밀면 그쪽으로 쏠린 한 손 모드가 됩니다."));
 
         LinearLayout size = section("크기와 위치");
         size.addView(slider("자판 폭", Prefs.ONE_HAND_WIDTH, prefs.oneHandWidth(), 60, 90, 5, "%",
@@ -1820,7 +1819,7 @@ public final class SettingsActivity extends Activity {
 
         // 커서 이동과 키보드 밀기. 키보드 밀기 완전 사용자화를 켜면 문자 키 커서 이동과 두 손가락 실행 취소는
         // 편집 화면('커서 자유 이동' 등)이 대신하므로 숨긴다. 스페이스바 커서 이동은 위 '기능키' 섹션에 있다.
-        LinearLayout board = section("커서 이동 · 키보드 밀기");
+        LinearLayout board = section("키보드 밀기");
         LinearLayout boardStandard = new LinearLayout(this);
         boardStandard.setOrientation(LinearLayout.VERTICAL);
         View charSpeedH = slider("좌우 이동 속도", Prefs.CHAR_CURSOR_SPEED_H, prefs.charCursorSpeedH(), 50, 300, 10, "%");
@@ -1842,8 +1841,7 @@ public final class SettingsActivity extends Activity {
                 }),
                 charSpeedV, charSpeedNote);
         boardStandard.addView(toggle("문자 키를 밀어서 커서 이동",
-                "문자·숫자 키 전체를 트랙패드처럼 밀어 커서를 옮깁니다. "
-                        + "밀기 시작한 키에 그 방향으로 밀어서 입력할 글자가 있으면 글자 입력이 우선됩니다.",
+                "문자·숫자 키 전체를 트랙패드처럼 밀어 커서를 옮깁니다. ",
                 Prefs.CHAR_CURSOR, prefs.charCursor(), charCursorGroup));
         boardStandard.addView(charCursorGroup);
         boardStandard.addView(toggle("두 손가락으로 밀어서 실행 취소",
@@ -1864,28 +1862,22 @@ public final class SettingsActivity extends Activity {
                 }));
         board.addView(boardCustomEdit);
         board.addView(toggle("위로 밀어서 추천 단어 입력",
-                "추천 단어가 떠 있을 때 자판의 왼쪽·가운데·오른쪽에서 위로 밀면 첫째·둘째·셋째 추천 단어를 입력합니다. "
-                        + "밀기 시작한 키에 위로 밀어서 입력할 글자가 있으면 글자 입력이 우선되고, "
-                        + "추천 단어가 없을 때는 위로 밀기가 원래대로 동작합니다.",
+                "추천 단어가 떠 있을 때 자판의 왼쪽·가운데·오른쪽에서 위로 밀면 첫째·둘째·셋째 추천 단어를 입력합니다. ",
                 Prefs.SWIPE_PICK_SUGGESTION, prefs.swipePickSuggestion()));
     }
 
     private void buildWords() {
         LinearLayout suggest = section("단어 추천");
         View fullBar = subGroup(toggle("도구 막대 전체를 쓰기",
-                "추천이 나오는 동안 도구 막대 왼쪽의 버튼까지 숨기고 도구 막대 전체를 추천에 씁니다.",
+                "추천이 나오는 동안 도구 막대 전체를 추천에 씁니다.",
                 Prefs.SUGGEST_FULL_BAR, prefs.suggestFullBar()),
                 toggle("추천 단어 뒤에 공백 포함",
-                        "추천 단어를 눌러 입력할 때 단어 뒤에 공백을 붙입니다. 한글과 영어 모두에 적용되며, 끄면 공백 없이 단어만 입력됩니다.",
+                        "입력된 추천 단어 뒤에 공백을 붙입니다. 끄면 공백 없이 단어만 입력됩니다.",
                         Prefs.SUGGEST_SPACE, prefs.suggestSpace()),
                 toggle("다음 단어 예측",
-                        "한글을 띄어 쓴 뒤, 앞 단어 다음에 자주 오는 단어를 미리 보여 줍니다 (예: '좋은' 다음에 하루·아침). "
-                                + "자신 있을 때만 보이며, 그동안은 도구 막대 오른쪽 버튼 자리에 추천이 나옵니다. "
-                                + "기본 사전의 자주 쓰는 단어 쌍과 내가 자주 이어 쓴 말로 예측하며, 사전 팩을 가져오면 더 많이 맞힙니다.",
+                        "앞 단어 다음에 자주 오는 단어를 미리 보여 줍니다 (예: '좋은' 다음에 하루·아침). ",
                         Prefs.PREDICT_NEXT, prefs.predictNext()));
-        suggest.addView(toggle("단어 추천", "입력 중인 단어에 맞는 단어를 도구 막대에 보여 줍니다. "
-                + "앞 단어와 자주 이어 쓰는 말, 내가 자주 쓰는 말을 먼저 보이고, 초성만 쳐도(ㄱㅅㅎㄴㄷ) 찾습니다. "
-                + "누르면 그 단어로 바꾸고, 학습한 단어를 길게 누르면 학습한 단어에서 지웁니다.",
+        suggest.addView(toggle("단어 추천", "입력 중에 예측되는 단어를 도구 막대에 보여 줍니다. ",
                 Prefs.SUGGEST_WORDS, prefs.suggestWords(), fullBar));
         suggest.addView(fullBar);
 
@@ -1896,16 +1888,15 @@ public final class SettingsActivity extends Activity {
         shortcut.addView(shortcutGroup);
 
         LinearLayout correct = section("자동 수정");
-        correct.addView(toggle("자동 수정", "스페이스바를 누를 때 사전에 없는 단어를 한 글자만 고치면 되는 흔한 단어로 바꿉니다. "
-                + "바꾼 직후 ⌫를 누르면 입력한 그대로 돌아오고, 같은 단어를 두 번 되돌리면 학습해서 더는 고치지 않습니다.",
+        correct.addView(toggle("자동 수정", "스페이스바를 누를 때 오타로 추정되는 단어를 사전에 있는 단어로 바꿉니다. "
+                + "바꾼 직후 ⌫를 누르면 되돌리고, 두 번 되돌리면 학습해서 더는 고치지 않습니다.",
                 Prefs.AUTO_CORRECT, prefs.autoCorrect()));
 
         LinearLayout learn = section("입력한 단어 학습");
-        learn.addView(toggle("입력한 단어 학습", "내가 자주 입력하는 단어를 기억해 추천에 먼저 보여 주고 자동 수정에서 빼 줍니다. "
-                + "한글은 자주 쓴 단어와 이어 쓴 단어의 기록으로 추천 순서도 내 말버릇에 맞춥니다 (이 기록은 기기에만 두고 백업에 넣지 않습니다). "
+        learn.addView(toggle("입력한 단어 학습", "내가 자주 입력하는 단어를 기억해 추천에 먼저 보여 주고 자동 수정에서 뺍니다. "
                 + "단어 추천이나 자동 수정을 켰을 때만 동작합니다.",
                 Prefs.LEARN_WORDS, prefs.learnWords()));
-        learn.addView(toggle("단어를 지울 때 확인", "학습한 단어 목록의 휴지통 버튼이나 추천 막대에서 길게 눌러 지울 때 정말 지울지 묻습니다.",
+        learn.addView(toggle("단어를 지울 때 확인", "학습한 단어를 지울 때 한 번 더 확인합니다.",
                 Prefs.CONFIRM_LEARNED_DELETE, prefs.confirmLearnedDelete()));
         learn.addView(button("학습한 단어 보기", v -> openSection(LEARNED)));
         learn.addView(trashButton("학습한 단어 모두 지우기", v -> AppTheme.dialogBuilder(this)
@@ -1924,11 +1915,9 @@ public final class SettingsActivity extends Activity {
         LinearLayout autofill = section("자동 완성");
         if (Build.VERSION.SDK_INT >= 30) {
             autofill.addView(toggle("자동 완성 제안",
-                    "자동 완성 서비스(Autofill with Google, 삼성 패스 등)가 채울 수 있는 칸에서 계정을 도구 막대에 칩으로 보여 줍니다. "
-                            + "칩을 누르면 그 계정으로 채워집니다.",
+                    "자동 완성 서비스의 내용(예: 아이디와 비밀번호, 인증 코드)을 도구 막대에 보여 줍니다. ",
                     Prefs.AUTOFILL_INLINE, prefs.autofillInline()));
-            autofill.addView(note("기기 설정에서 고른 자동 완성 서비스를 씁니다. 서비스가 키보드 칩을 지원하지 않으면 칩 대신 "
-                    + "앱 안에 원래의 자동 완성 목록이 뜹니다. 바꾼 설정은 다음 입력란부터 적용됩니다."));
+            autofill.addView(note("기기 설정에서 고른 자동 완성 서비스(Autofill with Google, 삼성 패스 등)를 사용합니다. "));
         } else {
             autofill.addView(note("Android 11 이상에서 쓸 수 있습니다. 이 기기에서는 앱 안에 뜨는 원래의 자동 완성 목록을 쓰세요."));
         }
@@ -1947,8 +1936,7 @@ public final class SettingsActivity extends Activity {
         LinearLayout dict = section("한국어 사전");
         DictionaryPack.Info info = DictionaryPack.installed(getFilesDir());
         if (info == null) {
-            dict.addView(note("기본 사전을 쓰고 있습니다 (앱에 포함). 단어 추천, 초성 검색, 조사 붙이기, 자동 수정, 내 말버릇 학습은 "
-                    + "기본 사전으로도 되며, 자주 쓰는 단어 쌍 5만 개로 다음 단어 예측과 앞 단어에 맞춘 추천도 합니다. "
+            dict.addView(note("NewSwipe에 포함된 기본 사전을 사용 중입니다. "
                     + "단어와 단어 쌍이 더 많은 사전 팩을 가져오면 추천이 더 잘 맞습니다."));
         } else {
             StringBuilder b = new StringBuilder();
@@ -1985,8 +1973,7 @@ public final class SettingsActivity extends Activity {
                     .setNegativeButton("취소", null)
                     .show()));
         }
-        dict.addView(note("사전 팩은 dict/build/make_dict_pack.py로 직접 만들 수도 있습니다. 팩마다 데이터의 출처와 라이선스가 다르니 "
-                + "가져오기 전에 확인하세요."));
+        dict.addView(note("사전 팩마다 데이터의 출처와 라이선스가 다르니 가져오기 전에 확인하세요."));
     }
 
     /** 고른 사전 팩을 검사해 설치한다 (크기가 커서 따로 처리한다). */
@@ -2235,7 +2222,7 @@ public final class SettingsActivity extends Activity {
                 toggle("키 종류별로 다르게", null,
                         Prefs.VIBRATE_PER_KEY, prefs.vibratePerKey(), perKeySub),
                 perKeySub,
-                toggle("밀기·길게 누르기 진동", "밀어서 입력하거나 길게 눌렀을 때도 진동합니다.",
+                toggle("밀기·길게 누르기 진동", "밀거나 길게 눌렀을 때도 진동합니다.",
                         Prefs.VIBRATE_GESTURE_ON, prefs.vibrateGestureOn(), gestureSub),
                 gestureSub);
         fb.addView(toggle("키 진동", null, Prefs.VIBRATE, prefs.vibrate(), vibrateOptions));
@@ -2255,24 +2242,23 @@ public final class SettingsActivity extends Activity {
         tools.addView(toolButtons);
         // 위치와 높이는 도구 막대를 꺼도 추천 단어 줄에 그대로 쓰이므로 스위치와 따로 둔다.
         tools.addView(toggle("자판 아래에 두기",
-                "도구 막대를 자판 위가 아니라 아래에 놓습니다. 추천 단어도 그 자리에 뜹니다. 엄지가 닿기 쉬워집니다.",
+                "도구 막대를 자판 위가 아니라 아래에 놓습니다. ",
                 Prefs.TOOLBAR_BOTTOM, prefs.toolbarBottom()));
         tools.addView(slider("도구 막대 높이", Prefs.TOOLBAR_HEIGHT, prefs.toolbarHeight(), 70, 150, 5, "%"));
         tools.addView(slider("도구 버튼 크기", Prefs.TOOL_BUTTON_SIZE, prefs.toolButtonSize(), 70, 150, 5, "%"));
         tools.addView(note("도구 버튼의 아이콘은 막대보다 커지지 않습니다."));
 
         LinearLayout clip = section("클립보드");
-        View clipImagesToggle = toggle("이미지 저장", "복사한 이미지도 클립보드에 저장됩니다 (최대 "
+        View clipImagesToggle = toggle("이미지 저장", "복사한 이미지도 클립보드에 저장합니다 (최대 "
                         + ClipboardHistory.MAX_IMAGES + "개).",
                 prefs.clipboardImages(), this::onClipImagesChanged);
         clipImagesSwitch = switchOf(clipImagesToggle);
         View clipSensitiveToggle = toggle("민감한 정보도 저장",
-                "비밀번호와 같이 민감한 정보도 복사하면 클립보드에 저장합니다. 보안에 주의하시기 바랍니다.",
+                "비밀번호와 같이 민감한 정보도 클립보드에 저장합니다. 보안에 주의하시기 바랍니다.",
                 Prefs.CLIPBOARD_SENSITIVE, prefs.clipboardSensitive());
         View clipImages = subGroup(clipImagesToggle, clipSensitiveToggle);
         clip.addView(toggle("클립보드 기록 저장", "복사·잘라낸 내용을 최근 " + ClipboardHistory.MAX_ITEMS
-                        + "개까지 모아 둡니다. 고정하지 않은 항목은 24시간 뒤 지워지고, "
-                        + "비밀번호처럼 민감한 정보로 표시된 복사는 기본으로 저장하지 않습니다.",
+                        + "개까지 모아 둡니다. 고정하지 않은 항목은 24시간 뒤 지워집니다. ",
                 Prefs.CLIPBOARD_HISTORY, prefs.clipboardHistory(), clipImages));
         clip.addView(clipImages);
         clip.addView(toggle("선택하면 편집 버튼 보이기",
@@ -2293,7 +2279,7 @@ public final class SettingsActivity extends Activity {
 
         LinearLayout emoji = section("이모지");
         emoji.addView(emojiSizeRow());
-        emoji.addView(toggle("이모지 추천", "이모지 창을 열면 커서 앞에 쓴 글(마지막 네 단어)에 맞는 이모지를 최근 탭 맨 위 한 줄에 보여 줍니다.", Prefs.EMOJI_SUGGEST, prefs.emojiSuggest()));
+        emoji.addView(toggle("이모지 추천", "이모지 창을 열면 커서 앞에 쓴 글(마지막 네 단어)에 맞는 이모지를 보여 줍니다.", Prefs.EMOJI_SUGGEST, prefs.emojiSuggest()));
     }
 
     /**
