@@ -242,6 +242,13 @@ final class KoreanForms {
             // '있다', '했다'처럼 다로 끝난 말은 이미 끝난 활용형이다 (있다잖아, 했다겠네가 나오지 않게)
             if (last != '다' && !quoted(base)) {
                 generate(pool, cx, word, base, STEM_EVIDENCE, 2, "고", endingsFor(cx, END_STEM, STEM_ENDINGS), t == 8);
+                if (MORE_STEM) generate(pool, cx, word, base, STEM_EVIDENCE, 2, "고", MORE_STEM_ENDINGS, t == 8);
+                if (VERB_ENDS && verbOnly(base)) generate(pool, cx, word, base, STEM_EVIDENCE, 2, "고",
+                        existential(base) ? NEUN_ENDINGS : VERB_STEM_ENDINGS, t == 8);
+                if (GUNA) generate(pool, cx, word, base, STEM_EVIDENCE, 2, "고", verbOnly(base) ? VERB_GUNA : ADJ_GUNA, t == 8);
+                if (MEDIAL) addMedial(pool, cx, word, base);
+                if (VERB_DA || FORMAL) addDirect(pool, cx, word, base);
+                if ((MORE_STEM || VERB_ENDS) && t == 0) addRieulDropped(pool, cx, word, base);
             }
         }
         for (int k = n; k >= Math.max(1, n - 3); k--) addEo(pool, cx, word, word.substring(0, k));
@@ -278,7 +285,14 @@ final class KoreanForms {
             verb = true;
         }
         generate(pool, cx, word, stem, KoreanMorph.HA_EVIDENCE, 1, null, verb ? HA_VERB_ENDINGS : HA_ADJ_ENDINGS, false);
+        if (HA_MORE) generate(pool, cx, word, stem, KoreanMorph.HA_EVIDENCE, 1, null, verb ? HA_VERB_MORE : HA_ADJ_MORE, false);
     }
+
+    /** 하다 어미 더 (문서 '어미'): 동사 -는지·-ㄴ다·-ㅂ시다, 과거 + -는지, 형용사 -ㄴ가·-구나. */
+    static boolean HA_MORE = false;
+    private static final String[] HA_VERB_MORE = {"하는지", "한다", "하는거", "하는게", "했는지", "한대", "한지", "하는구나",
+            "합시다", "하셨어요"};
+    private static final String[] HA_ADJ_MORE = {"한지", "한가", "하구나", "한가요", "했는지", "한거", "한게"};
 
     /** 만든 활용형을 이미 있는 후보 아래에 넣는다 (사전에 있는 '말자'가 만든 '말죠'에 밀리지 않게). 순서는 그대로 둔다. */
     void addBelow(Map<String, Double> pool, KoreanSuggest.Context cx, String word) {
@@ -325,7 +339,7 @@ final class KoreanForms {
         for (int i = 0; i < endings.length; i++) {
             String e = endings[i];
             String s = stem;
-            if (dropRieul && (e.startsWith("네") || e.startsWith("니"))) {
+            if (dropRieul && rieulDrops(e)) {
                 char l = stem.charAt(stem.length() - 1);
                 s = stem.substring(0, stem.length() - 1) + (char) (l - 8);
             }
@@ -335,6 +349,255 @@ final class KoreanForms {
             Double old = pool.get(cand);
             if (old == null || old < sc) pool.put(cand, sc);
         }
+    }
+
+    /**
+     * 어간에 더 붙일 어미: 자음으로 시작해 불규칙 활용과 상관없는 것, 동사에만 붙는 것, 매개모음 '-으-' 계열 (dev에서 셋 다
+     * 켜면 +0.12%p, 말뭉치마다 모두 올랐고 만들어 낸 후보의 적중률은 그대로).
+     */
+    static boolean MORE_STEM = true, VERB_ENDS = true, MEDIAL = true;
+
+    /** 동사·형용사 어간 모두에 붙고 자음으로 시작하는 어미 (STEM_ENDINGS에 더). 사람이 쓴 대화 문장(dev)에서 흔한 순서. */
+    private static final String[] MORE_STEM_ENDINGS = {"기", "던", "거나", "기도", "도록", "긴", "길", "기만", "길래", "진",
+            "지도", "기는", "지는"};
+
+    /** 동사 어간에만 붙는 어미 (형용사에는 '-는'이 없다: 예쁘는데 X). ㄹ 어간은 ㄴ 앞에서 ㄹ이 떨어진다 (만드는, 파는지). */
+    private static final String[] VERB_STEM_ENDINGS = {"는", "는데", "는지", "는게", "는거", "느라", "나", "나요", "는건", "는걸",
+            "고싶어", "고있어", "고싶다", "고있는데"};
+
+    /** ㄹ 어간에서 ㄹ이 떨어지는 어미인지 (ㄴ·ㅅ으로 시작: 만드니, 만드네, 만드는, 만드나, 만드세요, 만드신). */
+    private static boolean rieulDrops(String e) {
+        char c = e.charAt(0);
+        if (c < 0xAC00 || c > 0xD7A3) return false;
+        int cho = (c - 0xAC00) / 588;
+        return cho == 2 || cho == 9;   // ㄴ, ㅅ
+    }
+
+    /**
+     * '만드'처럼 ㄹ이 떨어진 꼴까지 친 말: 끝 글자에 ㄹ을 단 꼴(만들)이 ㄹ 어간이면, ㄴ·ㅅ으로 시작하는 어미를 ㄹ을 떼고 붙인다
+     * (만드는지, 만드니, 만드네요). 어간 '만들'은 입력 '만드'의 앞부분이 아니라 따로 찾는다.
+     */
+    private void addRieulDropped(Map<String, Double> pool, KoreanSuggest.Context cx, String word, String s) {
+        String sl = withFinal(s, 8);
+        if (sl == null) return;
+        List<String> es = new ArrayList<>();
+        for (String e : STEM_ENDINGS) if (rieulDrops(e)) es.add(e);
+        if (VERB_ENDS && verbOnly(sl)) for (String e : VERB_STEM_ENDINGS) if (rieulDrops(e)) es.add(e);
+        if (es.isEmpty()) return;
+        generate(pool, cx, word, sl, STEM_EVIDENCE, 2, "고", es.toArray(new String[0]), true);
+    }
+
+    /** VERB_STEM_ENDINGS 중 '-는' 계열만 (없다처럼 -는은 붙지만 동작을 나타내지 않는 말: 없고싶다 X). */
+    private static final String[] NEUN_ENDINGS = Arrays.copyOf(VERB_STEM_ENDINGS, 10);
+
+    /**
+     * 있다·없다(맛없다, 재밌다): -는이 붙지만 -ㄴ다·-려고·-ㅂ시다·-고 싶다 같은 동작의 어미나 관형 -(으)ㄴ은 붙지 않는다
+     * (없는다·없으러·재밌고싶다·없은 X). 받침 ㅆ·ㅄ인 어간.
+     */
+    private static boolean existential(String stem) {
+        int t = (stem.charAt(stem.length() - 1) - 0xAC00) % 28;
+        return t == 20 || t == 18;
+    }
+
+    /** 동사 어간인지 (사전에 어간 + 는이 있다. ㄹ 어간은 ㄹ을 뗀 꼴 + 는). */
+    private boolean verbOnly(String stem) {
+        if (dict.contains(stem + "는")) return true;
+        char l = stem.charAt(stem.length() - 1);
+        return (l - 0xAC00) % 28 == 8 && dict.contains(stem.substring(0, stem.length() - 1) + (char) (l - 8) + "는");
+    }
+
+    /** 매개모음 '-으-' 뒤의 어미: 앞 꼴(먹으·가·만들·들으·도우) 바로 뒤에 붙는 것. 사람이 쓴 대화 문장에서 흔한 순서. */
+    private static final String[] MEDIAL_ENDINGS = {"면", "니까", "려고", "면서", "세요", "러", "시면", "셨어", "시는", "려면",
+            "니깐", "시고", "셔서", "시나요", "실래요", "셨는데", "시네요", "셨나요"};
+
+    /** 앞 꼴 + ㄹ(먹을·갈·만들·들을·도울) 뒤에 붙는 어미. */
+    private static final String[] MEDIAL_L_ENDINGS = {"까", "게", "래", "거야", "수", "때", "걸", "텐데", "까요", "게요", "래요",
+            "지도", "거예요", "듯"};
+
+    /** 받침 ㄷ·ㅂ·ㅅ·ㅎ: 불규칙일 수 있어 (듣다 → 들으면, 춥다 → 추우면, 낫다 → 나으면, 파랗다 → 파라면) 사전에 규칙 꼴이 있을 때만 '으'를 넣는다. */
+    private static boolean irregularPossible(int jong) {
+        return jong == 7 || jong == 17 || jong == 19 || jong == 27;
+    }
+
+    /** 동사에만 붙는 '-으-' 계열 어미 (목적 -러, 의도 -려고·-ㄹ래, 약속 -ㄹ게: 좋으러·좋을게 X). */
+    private static final java.util.Set<String> MEDIAL_VERB_ONLY = new java.util.HashSet<>(Arrays.asList(
+            "려고", "러", "려면", "실래요", "게", "래", "게요", "래요"));
+
+    /**
+     * 사전에 앞 꼴 b의 '-으-' 계열 활용형이 몇 개 있는지 {모두, ㄹ이 떨어지지 않는 어미(면·려고·러 ...)로 된 것, 동사에만 붙는 어미로 된 것}.
+     * 같은 줄기로 다른 어미를 붙여도 되는 근거. ㄴ·ㅅ 앞의 꼴(만드니까·만드세요)만 있으면 b는 ㄹ이 떨어진 꼴일 수 있다.
+     */
+    private int[] medialEvidence(KoreanSuggest.Context cx, String b, double[] mass) {
+        int found = 0, plain = 0, verb = 0;
+        for (String e : new String[]{"면", "니까", "려고", "면서", "세요", "러", "시고", "시는"}) {
+            String w = cut(b, e) + e;
+            int id = dict.indexOf(w);
+            if (id < 0) continue;
+            found++;
+            if (!rieulDrops(e)) plain++;
+            if (MEDIAL_VERB_ONLY.contains(e)) verb++;
+            if (mass != null) mass[0] += cx.score(w, id);
+        }
+        String bl = withFinal(b, 8);
+        if (bl != null) {
+            for (String e : new String[]{"까", "게", "래", "거야", "수", "때"}) {
+                int id = dict.indexOf(bl + e);
+                if (id < 0) continue;
+                found++;   // ㄹ 꼴은 ㄹ 어간과 같아(만드 + ㄹ = 만들) 'ㄹ이 떨어지지 않는 근거'로 세지 않는다
+                if (MEDIAL_VERB_ONLY.contains(e)) verb++;
+                if (mass != null) mass[0] += cx.score(bl + e, id);
+            }
+        }
+        return new int[]{found, plain, verb};
+    }
+
+    /** ㄹ 어간이면 ㄴ·ㅅ 앞에서 ㄹ을 뗀 앞 꼴. */
+    private static String cut(String b, String e) {
+        char l = b.charAt(b.length() - 1);
+        if ((l - 0xAC00) % 28 == 8 && rieulDrops(e)) return b.substring(0, b.length() - 1) + (char) (l - 8);
+        return b;
+    }
+
+    /** b의 끝 글자에 받침(jong)을 단 꼴 (받침이 이미 ㄹ이면 ㄹ은 그대로, ㅁ이면 ㄻ). 붙일 수 없으면 null. */
+    private static String withFinal(String b, int jong) {
+        char l = b.charAt(b.length() - 1);
+        int t = (l - 0xAC00) % 28;
+        if (t == 0) return b.substring(0, b.length() - 1) + (char) (l + jong);
+        if (t == 8) return jong == 8 ? b : jong == 16 ? b.substring(0, b.length() - 1) + (char) (l + 2) : null;   // 만들 → 만들, 만듦
+        return null;
+    }
+
+    /**
+     * 매개모음 '-으-' 계열 어미 ('-(으)면', '-(으)니까', '-(으)려고', '-(으)시-', '-(으)ㄹ까', '-(으)ㅁ'). 앞 꼴은 어간에 따라 다르다:
+     * 받침 없는 어간과 ㄹ 어간은 그대로(가면, 만들면; ㄹ은 ㄴ·ㅅ 앞에서 떨어진다: 만드니까, 만드세요), 받침 있는 어간은 '으'를
+     * 넣는다(먹으면). 받침 ㄷ·ㅂ·ㅅ·ㅎ은 불규칙일 수 있어 사전에 '으'를 넣은 꼴이 있을 때만 넣는다. 불규칙 꼴(들으·도우·나으)은
+     * 사용자가 바뀐 꼴을 쳤을 때, 사전에 그 꼴의 '-으-' 계열 활용이 둘 이상 있으면 같은 앞 꼴에 붙인다.
+     */
+    private void addMedial(Map<String, Double> pool, KoreanSuggest.Context cx, String word, String s) {
+        char last = s.charAt(s.length() - 1);
+        int t = (last - 0xAC00) % 28;
+        if (t == 20) return;   // 받침 ㅆ(했·먹었)은 addPast가 맡는다
+        String b = null;
+        double fam = 0;
+        double[] mass = new double[1];
+        boolean verb, action = false, dropOnly = false;
+        double stem = family(cx, s, STEM_EVIDENCE, 2, "고");
+        boolean fromStem = stem > 0;
+        if (stem > 0) {
+            if (t == 0 || t == 8) {
+                b = s;
+            } else if (!irregularPossible(t) || regular(s)) {
+                b = s + "으";
+            }
+            fam = stem;
+            verb = verbOnly(s);
+            action = verb && !existential(s);
+        } else {
+            verb = false;
+        }
+        if (b == null && t == 0) {   // 사용자가 바뀐 꼴을 쳤다: 들으·도우·나으 (불규칙 활용), 만드 (ㄹ이 떨어진 꼴)
+            int[] ev = medialEvidence(cx, s, mass);
+            if (ev[0] >= 2) {
+                b = s;
+                fam = mass[0];
+                dropOnly = ev[1] == 0;   // 만드니까·만드세요만 있다: ㄹ 어간이 ㄴ·ㅅ 앞에서 떨어진 꼴이다 (만드면 X)
+                verb = action = ev[2] > 0;
+            }
+        }
+        if (b == null || fam <= 0) return;
+        int i = 0;
+        for (String e : MEDIAL_ENDINGS) {
+            if (dropOnly && !rieulDrops(e) || !action && MEDIAL_VERB_ONLY.contains(e)) continue;
+            put(pool, word, cut(b, e) + e, fam * ENDING_FACTOR * (1 - 0.002 * i++));
+        }
+        String bl = withFinal(b, 8);
+        if (bl != null) {
+            for (String e : MEDIAL_L_ENDINGS) {
+                if (!action && MEDIAL_VERB_ONLY.contains(e)) continue;
+                put(pool, word, bl + e, fam * ENDING_FACTOR * (1 - 0.002 * i++));
+            }
+        }
+        String bm = dropOnly ? null : withFinal(b, 16);
+        if (bm != null) put(pool, word, bm, fam * ENDING_FACTOR * (1 - 0.002 * i++));
+        String bn = finalOn(b, 4);   // 앞 꼴 + ㄴ: 좋은, 추운, 큰, 긴, 만든
+        if (ADJ_N && bn != null && !existential(s)) {
+            if (dropOnly) verb = action = verbOnly(withFinal(s, 8));
+            // 바뀐 꼴(추우·들으)은 형용사인지 확실하지 않으면 동사·형용사 모두에 맞는 것만 (들은데 X)
+            boolean adj = !verb && (fromStem || dict.contains(bn + "데") || dict.contains(bn + "지") || dict.contains(bn + "가"));
+            for (String e : adj ? N_ADJ_ENDINGS : N_VERB_ENDINGS) put(pool, word, bn + e, fam * ENDING_FACTOR * (1 - 0.002 * i++));
+        }
+        // 동사 -(으)ㅂ시다: 갑시다, 먹읍시다, 만듭시다, 들읍시다
+        String bp = FORMAL && action ? finalOn(b, 17) : null;
+        if (bp != null) put(pool, word, bp + "시다", fam * ENDING_FACTOR * (1 - 0.002 * i));
+    }
+
+    /** 어간에 바로 붙는 동사 -ㄴ다/-는다(간다, 만든다, 먹는대)와 -ㅂ니다/-습니다(갑니다, 만듭니다, 춥습니다). 만드처럼 ㄹ이 떨어진 꼴도. */
+    private void addDirect(Map<String, Double> pool, KoreanSuggest.Context cx, String word, String s) {
+        char last = s.charAt(s.length() - 1);
+        int t = (last - 0xAC00) % 28;
+        if (t == 20) return;
+        double fam = family(cx, s, STEM_EVIDENCE, 2, "고");
+        String stem = s;
+        if (fam <= 0 && t == 0) {
+            stem = withFinal(s, 8);
+            if (stem == null) return;
+            fam = family(cx, stem, STEM_EVIDENCE, 2, "고");
+            t = 8;
+        }
+        if (fam <= 0) return;
+        boolean verb = verbOnly(stem) && !existential(stem), open = t == 0 || t == 8;
+        double sc = fam * ENDING_FACTOR;
+        int i = 0;
+        if (VERB_DA && verb) {
+            String head = open ? finalOn(stem, 4) : stem + "는";
+            for (String e : DA_ENDINGS) put(pool, word, head + e, sc * (1 - 0.002 * i++));
+        }
+        if (FORMAL) {
+            String head = open ? finalOn(stem, 17) : stem + "습";
+            for (String e : FORMAL_ENDINGS) put(pool, word, head + e, sc * (1 - 0.002 * i++));
+        }
+    }
+
+    /**
+     * 문서(어미, 불규칙 활용)를 보고 더한 어미 (실험 스위치). 과거 뒤 '-는' 계열(갔는지, 했는게), 앞 꼴 + ㄴ(형용사 좋은데·추운지·
+     * 큰가, 동사 먹은거·간건), 동사 -ㄴ다/-는다(간다, 먹는대), -ㅂ니다/-습니다(갑니다, 만듭니다, 먹습니다), 동사 -는구나·형용사 -구나.
+     * 흔한 꼴은 이미 사전에 있어 키 절약률은 거의 그대로다 (조정에 쓰지 않은 16개 말뭉치에서 +0.004%p, 5개 오르고 내린 것 없음).
+     * 과거 + -는과 -구나는 dev 사투리 말뭉치에서 -는겨·-구먼 자리를 빼앗아 조금 내려가 꺼 둔다.
+     */
+    static boolean PAST_NEUN = false, ADJ_N = true, VERB_DA = true, FORMAL = true, GUNA = false;
+
+    private static final String[] PAST_NEUN_ENDINGS = {"는지", "는게", "는거", "는데요", "는건", "는걸", "는지도", "는구나", "는군요"};
+    private static final String[] N_ADJ_ENDINGS = {"데", "지", "가", "데요", "거", "건", "게", "걸", "가요", "지도"};
+    private static final String[] N_VERB_ENDINGS = {"거", "건", "게", "걸"};
+    private static final String[] DA_ENDINGS = {"다", "대", "다고", "대요", "다면"};
+    private static final String[] FORMAL_ENDINGS = {"니다", "니까"};
+    private static final String[] VERB_GUNA = {"는구나", "는군요", "는군"};
+    private static final String[] ADJ_GUNA = {"구나", "군요", "군"};
+
+    /** b의 끝 글자에 받침 ㄴ·ㄹ·ㅂ을 단 꼴. ㄹ 받침은 종성 ㄴ·ㄹ·ㅂ 앞에서 떨어진다 (만들 + ㄴ = 만든, 만들 + ㅂ = 만듭). */
+    private static String finalOn(String b, int jong) {
+        char l = b.charAt(b.length() - 1);
+        int t = (l - 0xAC00) % 28;
+        if (t == 0) return b.substring(0, b.length() - 1) + (char) (l + jong);
+        if (t == 8) return b.substring(0, b.length() - 1) + (char) (l - 8 + jong);
+        return null;
+    }
+
+    /**
+     * 받침 ㄷ·ㅂ·ㅅ·ㅎ 어간이 규칙 활용인지: 사전에 '으'를 넣은 꼴(닫으면)이나 어간 + 아/어 꼴(닫아, 붙잡아, 씻어, 좋아)이 있다.
+     * 불규칙이면 아/어 앞에서 어간이 바뀐다 (들어, 도와, 나아, 파래).
+     */
+    private boolean regular(String s) {
+        // 은·을은 보지 않는다: 명사 + 조사와 같은 꼴이 있다 (짓을 → 짓으면 X)
+        if (medialEvidence(null, s + "으", null)[0] > 0) return true;
+        for (String e : new String[]{"아", "어", "아서", "어서", "아요", "어요", "았", "었"}) if (dict.contains(s + e)) return true;
+        return false;
+    }
+
+    private void put(Map<String, Double> pool, String word, String cand, double sc) {
+        if (cand.equals(word) || !HangulRange.startsWith(cand, word) || dict.indexOf(cand) >= 0) return;
+        Double old = pool.get(cand);
+        if (old == null || old < sc) pool.put(cand, sc);
     }
 
     /** 어미 종류: 아/어 꼴 뒤(보여+줘서), 과거·추측 글자 뒤(했+는데, 하겠+더라), 어간 뒤(먹+더라고요). */
@@ -374,6 +637,53 @@ final class KoreanForms {
                 usage.recordEnding(END_STEM, base, tail, now);
             }
         }
+    }
+
+    /**
+     * w를 {종류, 앞 꼴, 어미}로 나눈다 ({@link #learnEndings}와 같은 기준으로, 어미가 가장 짧게). 나눌 수 없으면 null.
+     * 추천 순위에서 내 어미 버릇을 다른 말에도 옮길 때 쓴다 ({@link KoreanSuggest#E_MAX}). 화면 스레드에서 부르며 결과를 담아 둔다.
+     */
+    String[] split(String w) {
+        String[] c = splitCache.get(w);
+        if (c != null) return c.length == 0 ? null : c;
+        if (splitCache.size() >= 4096) splitCache.clear();
+        String[] r = splitNow(w);
+        splitCache.put(w, r == null ? new String[0] : r);
+        return r;
+    }
+
+    private final Map<String, String[]> splitCache = new HashMap<>();
+
+    private String[] splitNow(String w) {
+        int n = w.length();
+        if (n < 2 || n > 12 || KoreanMorph.hangulSyllables(w) != n) return null;
+        for (int k = n - 1; k >= 1 && n - k <= 4; k--) {
+            String base = w.substring(0, k), tail = w.substring(k);
+            if (WordSuggester.isParticle(tail)) continue;   // 가방이 → 가 + 방이: 어미가 아니다
+            int kind = kindOf(base, tail);
+            if (kind < 0) continue;
+            // 사전의 명사(사람 → 사 + 람)와 명사 + 조사(가방이 → 가 + 방이)는 나누지 않는다
+            if (dict.contains(w) && morph.nounLike(w)) return null;
+            String[] sp = WordSuggester.splitParticle(w);
+            if (sp != null && dict.contains(sp[0])) return null;
+            return new String[]{String.valueOf(kind), base, tail};
+        }
+        return null;
+    }
+
+    /** base + tail이 어미 종류 무엇의 활용인지 (사전으로 확인되는 것만, {@link #learnEndings}와 같은 기준). 아니면 -1. */
+    private int kindOf(String base, String tail) {
+        char c = base.charAt(base.length() - 1);
+        int t = (c - 0xAC00) % 28, jung = (c - 0xAC00) % 588 / 28;
+        if (t == 0 && (jung == 0 || jung == 4 || jung == 6 || jung == 9 || jung == 14 || jung == 1 || jung == 10)
+                && AFTER_AO.indexOf(tail.charAt(0)) >= 0 && dict.contains(base + "서")) {
+            return END_AO;
+        }
+        if (t == 20 && (dict.contains(base + "어") || dict.contains(base + "다") || dict.contains(base + "고"))) return END_PAST;
+        if (dict.contains(base + "고") && (dict.contains(base + "는") || dict.contains(base + "지") || dict.contains(base + "다"))) {
+            return END_STEM;
+        }
+        return -1;
     }
 
     /**
@@ -447,5 +757,6 @@ final class KoreanForms {
             }
         }
         emit(pool, word, base, endingsFor(cx, END_PAST, will ? WILL_ENDINGS : PAST_ENDINGS), false, fam);
+        if (PAST_NEUN && !will) emit(pool, word, base, PAST_NEUN_ENDINGS, false, fam);
     }
 }

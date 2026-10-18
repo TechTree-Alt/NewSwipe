@@ -238,6 +238,24 @@ public class KoreanSuggestTest {
     }
 
     @Test
+    public void vowelBeingDoubledByTap() {
+        // 모음 연속 탭(ㅓ+ㅓ → ㅕ) 중인 '안너'도 '안녀…'로 찾는다 (받침이 다음 글자로 넘어가는 '안녕핫'처럼)
+        assertEquals("안녀", HangulRange.doubledVowel("안너"));
+        assertEquals("교", HangulRange.doubledVowel("고"));
+        assertNull(HangulRange.doubledVowel("안넌"));   // 받침이 있으면 아니다
+        assertNull(HangulRange.doubledVowel("안니"));   // ㅣ는 이중모음이 되지 않는다
+        assertTrue(HangulRange.startsWith("안녕하세요", "안너"));
+        assertTrue(Arrays.asList(words(model().suggest("안너", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)))
+                .contains("안녕하세요"));
+        HangulRange.doubleTapVowel = false;   // 설정에서 끄면 그 꼴은 생기지 않는다
+        try {
+            assertFalse(HangulRange.startsWith("안녕하세요", "안너"));
+        } finally {
+            HangulRange.doubleTapVowel = true;
+        }
+    }
+
+    @Test
     public void searchFieldPrefersBareNouns() {
         KoreanSuggest m = model();
         String[] normal = words(m.suggest("친", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3));
@@ -274,8 +292,9 @@ public class KoreanSuggestTest {
         assertTrue(Arrays.asList(words(model().suggest("밥머", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)))
                 .contains("밥먹었어"));
         // '안녕' 다음에 '하'로 시작하는 말이 온다는 근거(단어 쌍)가 없으면 '안녕하루'처럼 이어 붙이지 않는다.
-        assertArrayEquals(new String[]{"안녕하세요"},
-                words(model().suggest("안녕하", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)));
+        List<String> hi = Arrays.asList(words(model().suggest("안녕하", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)));
+        assertEquals("안녕하세요", hi.get(0));
+        for (String w : hi) assertFalse(w, w.startsWith("안녕하") && !w.equals("안녕하세요"));   // 안녕히(ㅏ 옆의 ㅣ)는 오타 후보로 뒤에 올 수 있다
     }
 
     @Test

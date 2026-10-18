@@ -58,6 +58,11 @@ public final class WordSuggester {
         this.usage = usage;
     }
 
+    /** 모음 연속 탭(ㅓ+ㅓ → ㅕ)을 쓰는지 알려 준다: 쓰면 입력 중인 '안너'도 '안녀…'로 시작하는 말을 찾는다. */
+    public static void setDoubleTapVowel(boolean enabled) {
+        HangulRange.doubleTapVowel = enabled;
+    }
+
     /** 자동 수정에서 이웃한 키를 알 수 있게 지금 한글 자판의 글자 줄을 알려 준다. */
     public void setKeyRows(String[][] rows) {
         typo.setRows(rows);
@@ -102,7 +107,11 @@ public final class WordSuggester {
                           boolean korean, boolean strong, long now) {
         if (!learnable(word, korean)) return;
         if (korean && usage != null) {
-            usage.record(prev != null && learnable(prev, true) ? prev : null, word, now);
+            String p = prev != null && learnable(prev, true) ? prev : null;
+            usage.record(p, word, now);
+            // 앞 단어의 끝 글자(조사·어미) 다음에 쓴 말도 센다: '-고' 다음에 내가 쓰는 말을 다른 앞 단어 뒤에서도 예측한다
+            if (p != null && KoreanSuggest.K_END > 0) usage.recordContext(KoreanSuggest.endKey(p), word, now);
+            usage.noteRecent(word);
         }
         if (d == null || d.contains(korean ? word : word.toLowerCase(Locale.ROOT))) return;
         if (korean) {
@@ -123,6 +132,29 @@ public final class WordSuggester {
             }
         }
         user.add(word, korean, strong, now);
+    }
+
+    /**
+     * 앞 단어 prev 다음에 shown을 예측해 보였는데 사용자가 고르지 않고 typed를 쳤다 (백그라운드 스레드에서 부른다).
+     * typed가 shown에 있으면 (직접 쳤어도 맞힌 예측이니) 기록하지 않는다.
+     */
+    public void noteIgnoredPrediction(String prev, String[] shown, String typed) {
+        if (!useUser()) return;
+        noteIgnoredInto(usage, prev, shown, typed, System.currentTimeMillis());
+    }
+
+    /** 고르지 않은 예측 기록 (앱과 평가 도구가 같이 쓴다). */
+    static void noteIgnoredInto(UsageHistory usage, String prev, String[] shown, String typed, long now) {
+        if (usage == null || shown == null || shown.length == 0 || prev == null || !learnable(prev, true)
+                || typed == null || !learnable(typed, true)) {
+            return;
+        }
+        for (String w : shown) if (w.equals(typed)) return;
+        String ek = KoreanSuggest.endKey(prev);
+        for (String w : shown) {
+            usage.recordIgnored(prev, w, now);
+            if (KoreanSuggest.IGNORED_END > 0) usage.recordIgnored(ek, w, now);
+        }
     }
 
     /** 낱말의 끝 글자이기도 한 짧은 조사 (길냥이, 사이다, 오징어볶음밥도처럼 낱말에 들어 있을 수 있다). */

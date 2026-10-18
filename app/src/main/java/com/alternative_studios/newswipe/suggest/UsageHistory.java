@@ -15,7 +15,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 사용자가 실제로 쓴 한국어 단어와 단어 쌍(앞 단어 → 다음 단어)의 횟수. 추천 순서를 내 말버릇에 맞추는 데 쓴다.
+ * 사용자가 실제로 쓴 한국어 단어와 단어 쌍(앞 단어 → 다음 단어, 앞 단어의 끝 글자 → 다음 단어)의 횟수. 추천 순서를 내
+ * 말버릇에 맞추는 데 쓴다. 최근에 쓴 단어 몇 개는 메모리에만 둔다 (지금 대화의 주제어).
  * 기본 사전에 있는 단어도 센다 ({@link UserDictionary}는 사전에 없는 단어만 '아는 단어'로 기억한다).
  * 기기 안의 파일에만 저장하며 백업에도 넣지 않는다. 학습한 단어를 모두 지우면 함께 지운다.
  *
@@ -48,6 +49,8 @@ public final class UsageHistory {
     /** 단어 → 횟수. 사전 순이라 입력 중인 앞부분으로 찾을 때 모두 훑지 않고 구간만 본다. */
     private java.util.TreeMap<String, Entry> words = new java.util.TreeMap<>();
     private Map<String, Map<String, Entry>> pairs = new HashMap<>();
+    /** 앞 단어(문맥)마다 {쓴 횟수 합, 다른 단어 수} (contextStatsIfLoaded가 키마다 모두 세지 않게). 단어 쌍이 바뀌면 비운다. */
+    private final Map<String, int[]> ctxStats = new HashMap<>();
     private int pairCount;
     /**
      * 내가 쓴 어미: "종류:어미" → 그 어미를 붙인 앞 꼴 → 횟수 (보여+줘서, 했+는데). 앞 꼴이 둘 이상인 어미만 다른 말에도 붙인다
@@ -56,6 +59,16 @@ public final class UsageHistory {
     private Map<String, Map<String, Entry>> endings = new HashMap<>();
     private int endingCount;
     public static final int MAX_ENDINGS = 3000;
+    /** 예측을 보였지만 고르지 않은 기록: 앞 문맥 → 예측한 단어 → 횟수 ({@link #recordIgnored}). */
+    private Map<String, Map<String, Entry>> ignored = new HashMap<>();
+    private int ignoredCount;
+    public static final int MAX_IGNORED = 2000;
+    /** "종류:어미" → 쓴 횟수(앞 꼴을 모두 더해), "종류" → 그 종류의 합. 어미 기록이 바뀌면 비운다. */
+    private Map<String, Integer> endingTotals;
+    /** 최근에 쓴 단어 (메모리에만, 많아야 RECENT개, 오래된 것부터)와 그 횟수. */
+    public static final int RECENT = 32;
+    private final java.util.ArrayDeque<String> recent = new java.util.ArrayDeque<>();
+    private final Map<String, Integer> recentCount = new HashMap<>();
     /** endingsIfLoaded의 결과 (종류마다). 어미 기록이 바뀌면 비운다 (키마다 모두 훑지 않게). */
     private final Object[] endingCache = new Object[3];
     private int cacheMinBases = -1, cacheMax = -1;
@@ -74,6 +87,8 @@ public final class UsageHistory {
         int pairCount;
         final Map<String, Map<String, Entry>> endings = new HashMap<>();
         int endingCount;
+        final Map<String, Map<String, Entry>> ignored = new HashMap<>();
+        int ignoredCount;
     }
 
     private Data readFile() {
@@ -91,6 +106,12 @@ public final class UsageHistory {
                         Map<String, Entry> m = d.endings.computeIfAbsent(p[1], k -> new HashMap<>());
                         if (m.put(p[2], new Entry(clampCount(Integer.parseInt(p[3])), Long.parseLong(p[4]))) == null) {
                             d.endingCount++;
+                        }
+                    } else if (p.length == 5 && p[0].equals("i") && !p[1].isEmpty() && !p[2].isEmpty()
+                            && d.ignoredCount < MAX_IGNORED) {
+                        Map<String, Entry> m = d.ignored.computeIfAbsent(p[1], k -> new HashMap<>());
+                        if (m.put(p[2], new Entry(clampCount(Integer.parseInt(p[3])), Long.parseLong(p[4]))) == null) {
+                            d.ignoredCount++;
                         }
                     } else if (p.length == 5 && p[0].equals("p") && !p[1].isEmpty() && !p[2].isEmpty()
                             && d.pairCount < MAX_PAIRS) {
@@ -140,11 +161,21 @@ public final class UsageHistory {
                     if (merge(m, me.getKey(), me.getValue())) d.endingCount++;
                 }
             }
+            for (Map.Entry<String, Map<String, Entry>> ie : ignored.entrySet()) {
+                Map<String, Entry> m = d.ignored.computeIfAbsent(ie.getKey(), k -> new HashMap<>());
+                for (Map.Entry<String, Entry> me : ie.getValue().entrySet()) {
+                    if (merge(m, me.getKey(), me.getValue())) d.ignoredCount++;
+                }
+            }
+            ignored = d.ignored;
+            ignoredCount = d.ignoredCount;
             endings = d.endings;
             endingCount = d.endingCount;
             java.util.Arrays.fill(endingCache, null);
+            endingTotals = null;
             words = d.words;
             pairs = d.pairs;
+            ctxStats.clear();
             pairCount = d.pairCount;
             total = 0;
             for (Entry e : words.values()) total += e.count;
@@ -183,6 +214,8 @@ public final class UsageHistory {
         }
         total++;
         if (prev != null && !prev.isEmpty()) {
+            forgive(prev, word);
+            ctxStats.remove(prev);
             Map<String, Entry> m = pairs.computeIfAbsent(prev, k -> new HashMap<>());
             Entry pe = m.get(word);
             if (pe == null) {
@@ -196,6 +229,90 @@ public final class UsageHistory {
         dirty = true;
         sinceSave++;
         if (loaded) trimIfNeeded();
+    }
+
+    /** 최근 단어에 넣는다 (record와 함께 부른다. 파일에는 쓰지 않는다). */
+    public synchronized void noteRecent(String word) {
+        if (word == null || word.isEmpty()) return;
+        recent.addLast(word);
+        recentCount.merge(word, 1, Integer::sum);
+        while (recent.size() > RECENT) {
+            String old = recent.removeFirst();
+            recentCount.computeIfPresent(old, (k, v) -> v > 1 ? v - 1 : null);
+        }
+    }
+
+    /** 화면 스레드용: 최근 단어 수. */
+    public synchronized int recentSize() {
+        return recent.size();
+    }
+
+    /** 화면 스레드용: 최근 단어 중 word의 수. */
+    public synchronized int recentCount(String word) {
+        Integer c = recentCount.get(word);
+        return c == null ? 0 : c;
+    }
+
+    private void clearRecent() {
+        recent.clear();
+        recentCount.clear();
+    }
+
+    /**
+     * 앞 단어 대신 앞 문맥 key(앞 단어의 끝 글자 {@link KoreanSuggest#endKey} 등 낱말이 될 수 없는 꼴) 다음에 word를 썼다고
+     * 기록한다. 단어 쌍과 같은 곳에 같은 한도로 둔다. 단어 횟수는 세지 않는다.
+     */
+    public synchronized void recordContext(String key, String word, long now) {
+        if (key == null || key.isEmpty() || word == null || word.isEmpty()) return;
+        forgive(key, word);
+        ctxStats.remove(key);
+        Map<String, Entry> m = pairs.computeIfAbsent(key, k -> new HashMap<>());
+        Entry pe = m.get(word);
+        if (pe == null) {
+            m.put(word, new Entry(1, now));
+            pairCount++;
+        } else {
+            pe.count = clampCount(pe.count + 1);
+            pe.last = now;
+        }
+        dirty = true;
+        if (loaded) trimIfNeeded();
+    }
+
+    /**
+     * 앞 문맥 key(앞 단어나 그 끝 글자) 다음에 예측한 word를 보여 주었지만 고르지 않고 다른 말을 쳤다고 기록한다
+     * ({@link KoreanSuggest#IGNORED_FACTOR}). 나중에 그 문맥 다음에 word를 쓰면 지운다.
+     */
+    public synchronized void recordIgnored(String key, String word, long now) {
+        if (key == null || key.isEmpty() || word == null || word.isEmpty()) return;
+        Map<String, Entry> m = ignored.computeIfAbsent(key, k -> new HashMap<>());
+        Entry e = m.get(word);
+        if (e == null) {
+            m.put(word, new Entry(1, now));
+            ignoredCount++;
+        } else {
+            e.count = clampCount(e.count + 1);
+            e.last = now;
+        }
+        dirty = true;
+        if (loaded && ignoredCount > MAX_IGNORED) ignoredCount -= trimNested(ignored, MAX_IGNORED / 10);
+    }
+
+    /** 화면 스레드용: key 다음에 예측한 word를 고르지 않은 횟수. */
+    public synchronized int ignoredIfLoaded(String key, String word) {
+        if (!loaded || key == null || ignored.isEmpty()) return 0;
+        Map<String, Entry> m = ignored.get(key);
+        Entry e = m == null ? null : m.get(word);
+        return e == null ? 0 : e.count;
+    }
+
+    /** key 다음에 word를 썼으니 고르지 않은 기록을 지운다. */
+    private void forgive(String key, String word) {
+        Map<String, Entry> m = ignored.get(key);
+        if (m != null && m.remove(word) != null) {
+            ignoredCount--;
+            if (m.isEmpty()) ignored.remove(key);
+        }
     }
 
     /** 어미를 한 번 썼다고 기록한다 (kind: 어미 종류, base: 어미 앞의 꼴, tail: 어미). */
@@ -212,7 +329,24 @@ public final class UsageHistory {
         }
         dirty = true;
         java.util.Arrays.fill(endingCache, null);
+        endingTotals = null;
         if (loaded && endingCount > MAX_ENDINGS) endingCount -= trimNested(endings, MAX_ENDINGS / 10);
+    }
+
+    /** 화면 스레드용: 어미를 쓴 횟수 ("종류:어미"와 "종류" → 횟수, 읽지 않았으면 null). 받은 것을 고치지 않는다. */
+    public synchronized Map<String, Integer> endingTotalsIfLoaded() {
+        if (!loaded) return null;
+        if (endingTotals == null) {
+            Map<String, Integer> t = new HashMap<>();
+            for (Map.Entry<String, Map<String, Entry>> ee : endings.entrySet()) {
+                int n = 0;
+                for (Entry e : ee.getValue().values()) n += e.count;
+                t.put(ee.getKey(), n);
+                t.merge(ee.getKey().substring(0, ee.getKey().indexOf(':')), n, Integer::sum);
+            }
+            endingTotals = t;
+        }
+        return endingTotals;
     }
 
     /**
@@ -256,7 +390,10 @@ public final class UsageHistory {
                 if (e != null) total -= e.count;
             }
         }
-        if (pairCount > MAX_PAIRS) pairCount -= trimNested(pairs, MAX_PAIRS / 10);
+        if (pairCount > MAX_PAIRS) {
+            pairCount -= trimNested(pairs, MAX_PAIRS / 10);
+            ctxStats.clear();
+        }
     }
 
     /** 앞 키 → (뒤 키 → 횟수) 꼴의 기록에서 가장 오래 안 쓴 것부터(한 번만 쓴 것이 먼저) n개를 덜어 내고 덜어 낸 수를 돌려준다. */
@@ -324,13 +461,36 @@ public final class UsageHistory {
         return n;
     }
 
+    /** 화면 스레드용: prev 다음에 쓴 횟수의 합과 다른 단어 수 {합, 종류} (없으면 {0, 0}). */
+    public synchronized int[] contextStatsIfLoaded(String prev) {
+        if (!loaded || prev == null) return new int[2];
+        int[] st = ctxStats.get(prev);
+        if (st == null) {
+            Map<String, Entry> m = pairs.get(prev);
+            st = new int[2];
+            if (m != null) {
+                for (Entry e : m.values()) st[0] += e.count;
+                st[1] = m.size();
+            }
+            if (ctxStats.size() >= 256) ctxStats.clear();
+            ctxStats.put(prev, st);
+        }
+        return st.clone();
+    }
+
     /** 화면 스레드용: prev 다음에 쓴 단어와 횟수 (많이 쓴 순, 같으면 최근 순). */
     public synchronized List<Map.Entry<String, Integer>> nextIfLoaded(String prev) {
+        return nextIfLoaded(prev, 1);
+    }
+
+    /** nextIfLoaded 중 minCount번 이상 쓴 것만. */
+    public synchronized List<Map.Entry<String, Integer>> nextIfLoaded(String prev, int minCount) {
         List<Map.Entry<String, Integer>> out = new ArrayList<>();
         if (!loaded || prev == null) return out;
         Map<String, Entry> m = pairs.get(prev);
         if (m == null) return out;
-        List<Map.Entry<String, Entry>> all = new ArrayList<>(m.entrySet());
+        List<Map.Entry<String, Entry>> all = new ArrayList<>();
+        for (Map.Entry<String, Entry> me : m.entrySet()) if (me.getValue().count >= minCount) all.add(me);
         all.sort((a, b) -> {
             int c = Integer.compare(b.getValue().count, a.getValue().count);
             return c != 0 ? c : Long.compare(b.getValue().last, a.getValue().last);
@@ -367,10 +527,25 @@ public final class UsageHistory {
                 total -= e.count;
                 changed = true;
             }
+            ctxStats.clear();
+            if (recentCount.remove(word) != null) recent.removeIf(word::equals);
             Map<String, Entry> m = pairs.remove(word);
             if (m != null) {
                 pairCount -= m.size();
                 changed = true;
+            }
+            Map<String, Entry> im = ignored.remove(word);
+            if (im != null) {
+                ignoredCount -= im.size();
+                changed = true;
+            }
+            for (java.util.Iterator<Map<String, Entry>> it = ignored.values().iterator(); it.hasNext(); ) {
+                Map<String, Entry> pm = it.next();
+                if (pm.remove(word) != null) {
+                    ignoredCount--;
+                    changed = true;
+                    if (pm.isEmpty()) it.remove();
+                }
             }
             for (java.util.Iterator<Map<String, Entry>> it = pairs.values().iterator(); it.hasNext(); ) {
                 Map<String, Entry> pm = it.next();
@@ -413,6 +588,12 @@ public final class UsageHistory {
             for (Map.Entry<String, Map<String, Entry>> ee : endings.entrySet()) {
                 for (Map.Entry<String, Entry> me : ee.getValue().entrySet()) {
                     lines.add("e\t" + ee.getKey() + "\t" + me.getKey() + "\t" + me.getValue().count + "\t"
+                            + me.getValue().last);
+                }
+            }
+            for (Map.Entry<String, Map<String, Entry>> ie : ignored.entrySet()) {
+                for (Map.Entry<String, Entry> me : ie.getValue().entrySet()) {
+                    lines.add("i\t" + ie.getKey() + "\t" + me.getKey() + "\t" + me.getValue().count + "\t"
                             + me.getValue().last);
                 }
             }
@@ -459,11 +640,16 @@ public final class UsageHistory {
         synchronized (this) {
             if (dirty) return;
             generation++;
+            clearRecent();
             words = new java.util.TreeMap<>();
             endings = new HashMap<>();
+            ignored = new HashMap<>();
+            ignoredCount = 0;
             endingCount = 0;
             java.util.Arrays.fill(endingCache, null);
+            endingTotals = null;
             pairs = new HashMap<>();
+            ctxStats.clear();
             pairCount = 0;
             total = 0;
             loaded = false;
@@ -475,11 +661,16 @@ public final class UsageHistory {
         synchronized (fileLock) {
             synchronized (this) {
                 generation++;
+                clearRecent();
                 words = new java.util.TreeMap<>();
                 endings = new HashMap<>();
+                ignored = new HashMap<>();
+                ignoredCount = 0;
                 endingCount = 0;
                 java.util.Arrays.fill(endingCache, null);
+                endingTotals = null;
                 pairs = new HashMap<>();
+                ctxStats.clear();
                 pairCount = 0;
                 total = 0;
                 loaded = true;

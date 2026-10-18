@@ -23,6 +23,10 @@ import java.util.Random;
  *       이상적인 사용자와 얼마나 다른지 본다). 단어 종류(사전 단어, 사전 단어 + 조사, 그 밖)별로도 나눠 찍는다.</li>
  *   <li>잘못 고침 = 바르게 친 단어를 스페이스에서 다른 단어로 바꾼 비율</li>
  *   <li>오타 고침 = 일부러 넣은 오타(옆 키, 같은 키의 다른 동작, 빠뜨리기, 더 치기, 맞바꾸기)를 원래 단어로 고친 비율</li>
+ *   <li>예측(늘 보일 때) = 문턱(PREDICT_MIN) 없이 늘 예측을 보였다면 첫 칸·세 칸에 맞힌 비율과, 점수가 높은 순으로 n%만
+ *       보였을 때의 세 칸 적중률 (문턱을 맞출 때 본다)</li>
+ *   <li>마지막 글자 전까지 쳤을 때 = 단어의 마지막 글자만 남기고 쳤을 때(명사·어간까지 친 뒤) 맞는 꼴이 첫 칸·세 칸에 보인
+ *       비율. 명사 + 조사, 용언 활용(어간 + 어미로 나뉘는 말), 그 밖으로 나눈다. 조사·어미 추천을 따로 본다.</li>
  *   <li>만들어 낸 후보 = 보인 추천 칸 중 사전에도 내 기록에도 없는 말(이어 붙인 말, 조사를 붙인 말)의 비율과 그중 맞힌 비율.
  *       키 절약률은 틀린 후보가 보여도 깎이지 않으므로, 엉뚱한 후보가 늘지 않았는지 이것으로 함께 본다 (SHOW_MADE=1이면 예시 40개를, SHOW_MADE=500이면 500개까지 찍는다)</li>
  * </ul>
@@ -61,12 +65,17 @@ public final class SuggestEval {
     private static final String[] SAME_KEY_8 = {"ㄱㄲ", "ㄷㄸ", "ㅂㅃ", "ㅅㅆ", "ㅈㅉ", "ㅏㅑ", "ㅓㅕ", "ㅗㅛ", "ㅜㅠ", "ㅐㅒ", "ㅔㅖ", "ㅐㅔ"};
     private static final String[] SAME_KEY_7 = {"ㄱㄲㅋ", "ㄷㄸㅌ", "ㅂㅃㅍ", "ㅅㅆ", "ㅈㅉㅊ", "ㅏㅑ", "ㅓㅕ", "ㅗㅛ", "ㅜㅠ", "ㅐㅒ", "ㅔㅖ", "ㅐㅔ"};
     private static String[][] rows = ROWS_8;
+    /** ㅑㅕㅛㅠㅒㅖ를 밀지 않고 같은 모음을 두 번 탭해 치는 사용자 (--double-tap-vowel): 키가 하나 늘고 '안너' 같은 중간 꼴이 보인다. */
+    private static boolean doubleTapVowel;
+    /** 학습 자료를 쓸 때 (DUMP): 지금 치는 단어와, 지금 맞히면 아끼는 키 수. */
+    private static String dumpTarget;
+    private static int dumpKeys;
     private static String[] sameKey = SAME_KEY_8;
     private static long seed = 7;
 
     public static void main(String[] args) throws Exception {
         String dir = args[0], testFile = args[1];
-        boolean old = false, learn = false, predict = true, typoOnly = false, typo = true;
+        boolean old = false, learn = false, predict = true, typoOnly = false, typo = true, typoTyping = false;
         String perSentence = null;
         boolean learnGaps = false;
         int max = Integer.MAX_VALUE;
@@ -77,6 +86,7 @@ public final class SuggestEval {
                 case "--learn": learn = true; break;
                 case "--no-predict": predict = false; break;
                 case "--typo-only": typoOnly = true; break;
+                case "--typo-typing": typoTyping = true; break;
                 case "--per-sentence": perSentence = args[++i]; break;
                 case "--learn-gaps": learnGaps = true; break;
                 case "--no-typo": typo = false; break;
@@ -90,6 +100,9 @@ public final class SuggestEval {
                     break;
                 }
                 case "--seed": seed = Long.parseLong(args[++i]); break;
+                case "--double-tap-vowel": doubleTapVowel = true; break;
+                case "--rerank": KoreanSuggest.RERANK = readRerank(args[++i]); break;
+                case "--no-rerank": KoreanSuggest.RERANK = null; break;
                 default: throw new IllegalArgumentException(args[i]);
             }
         }
@@ -144,6 +157,10 @@ public final class SuggestEval {
             typoTest(d, ks, lines, old);
             return;
         }
+        if (typoTyping) {
+            typoTypingTest(d, ks, lines, field);
+            return;
+        }
         long keys = 0, saved = 0, predSaved = 0, words = 0, predHits = 0, predShown = 0, predTried = 0, savedTop1 = 0;
         long[] catKeys = new long[3], catSaved = new long[3], catWords = new long[3];   // 사전 단어, 사전 단어 + 조사, 그 밖
         long[] lat = new long[1 << 16];
@@ -154,6 +171,32 @@ public final class SuggestEval {
         int madeMax = made == null ? 0 : System.getenv("SHOW_MADE").matches("\\d{2,}") ? Integer.parseInt(System.getenv("SHOW_MADE")) : 40;
         StringBuilder rows = new StringBuilder();
         StringBuilder why = System.getenv("WHY") != null ? new StringBuilder() : null;
+        List<double[]> curve = new ArrayList<>();   // 예측 기회마다 {점수, 첫 칸 맞음, 세 칸 맞음}
+        long[] endTried = new long[3], endTop1 = new long[3], endTop3 = new long[3];   // 명사 + 조사, 용언 활용, 그 밖
+        double predictMin = KoreanSuggest.PREDICT_MIN;
+        boolean showEnd = System.getenv("SHOW_END") != null;   // 마지막 글자 전까지 쳤을 때 첫 칸이 아닌 예 (공개 말뭉치에서만)
+        java.io.PrintWriter dump = System.getenv("DUMP") == null ? null
+                : new java.io.PrintWriter(new java.io.BufferedWriter(new java.io.OutputStreamWriter(
+                new java.io.FileOutputStream(new File(System.getenv("DUMP"), new File(testFile).getName() + ".dump")),
+                StandardCharsets.UTF_8), 1 << 20));
+        if (dump != null) {
+            final java.io.PrintWriter dw = dump;
+            KoreanSuggest.sink = (cx, top, f) -> {
+                if (dumpTarget == null) return;
+                int at = top.indexOf(dumpTarget);
+                dw.print("G " + cx.state + " " + dumpKeys + " " + at + " " + (at >= 0 ? top.size() : 0) + "\n");
+                if (at < 0) return;
+                StringBuilder b = new StringBuilder();
+                for (double[] row : f) {
+                    for (int j = 0; j < row.length; j++) {
+                        if (j > 0) b.append(' ');
+                        b.append((float) row[j]);
+                    }
+                    b.append('\n');
+                }
+                dw.print(b);
+            };
+        }
         for (String line : lines) {
             long keys0 = keys, saved0 = saved;
             String prev = null;
@@ -178,12 +221,23 @@ public final class SuggestEval {
                 catWords[cat]++;
                 catKeys[cat] += k.length + 1;
                 boolean done = false, doneTop1 = false;
+                String[] shownPred = null;   // 이번 단어 앞에서 보인 예측 (고르지 않았는지 학습할 때 쓴다)
+                if (dump != null) dump.print("W " + k.length + "\n");   // 학습 자료: 단어마다 묶는다
                 if (predict && !old && prev != null) {
                     predTried++;
                     long c0 = System.nanoTime();
+                    KoreanSuggest.PREDICT_MIN = -1;   // 늘 예측해 보고 문턱은 여기서 견준다 (점수 곡선을 찍으려고)
+                    dumpTarget = core;
+                    dumpKeys = k.length;
                     KoreanSuggest.Result r = ks.predict(prev, field, user, usage, WordSuggester.MAX);
+                    dumpTarget = null;
+                    KoreanSuggest.PREDICT_MIN = predictMin;
                     if (latN < lat.length) lat[latN++] = System.nanoTime() - c0;
                     calls++;
+                    int ra = indexOf(r.words, core);
+                    if (r.words.length > 0) curve.add(new double[]{r.confidence, ra == 0 ? 1 : 0, ra >= 0 ? 1 : 0});
+                    if (r.confidence < predictMin) r = KoreanSuggest.Result.EMPTY;
+                    shownPred = r.words;
                     if (r.words.length > 0) predShown++;
                     int at = indexOf(r.words, core);
                     if (at >= 0) {
@@ -201,7 +255,7 @@ public final class SuggestEval {
                 HangulComposer hc = new HangulComposer();
                 StringBuilder committed = new StringBuilder();
                 for (int i = 0; i < k.length && !(done && doneTop1); i++) {
-                    hc.input(k[i], false, i * 1000L);
+                    hc.input(k[i], doubleTapVowel && isVowelKey(k[i]), i * 1000L);
                     committed.append(hc.takeCommit());
                     String typed = committed + hc.getComposing();
                     if (i == k.length - 1) break;   // 다 쳤으면 스페이스를 누른다
@@ -262,9 +316,38 @@ public final class SuggestEval {
                     why.append(core).append('\t').append(k.length).append('\t').append(savedWord).append('\t').append("DPO".charAt(cat))
                             .append('\t').append(prev == null ? "" : prev).append('\n');
                 }
+                if (dump != null) {
+                    // 학습 자료: 고르기와 상관없이 이 단어의 모든 접두에서 (재정렬 전의) 상위 후보를 쓴다
+                    // (고른 뒤의 키를 빼면 '앞에서 못 골랐다'는 조건이 붙어, 재정렬을 켜면 맞지 않게 된다)
+                    HangulComposer dc = new HangulComposer();
+                    StringBuilder dcm = new StringBuilder();
+                    dumpTarget = core;
+                    for (int i = 0; i < k.length - 1; i++) {
+                        dc.input(k[i], doubleTapVowel && isVowelKey(k[i]), i * 1000L);
+                        dcm.append(dc.takeCommit());
+                        dumpKeys = k.length - (i + 1);
+                        ks.suggest(dcm + dc.getComposing(), prev, field, user, usage, null, WordSuggester.MAX);
+                    }
+                    dumpTarget = null;
+                }
+                if (!old && core.length() >= 2) {
+                    // 마지막 글자만 남기고 쳤을 때 (명사·어간까지 친 뒤) 맞는 꼴(조사·어미)이 보이는지
+                    String[] sp = WordSuggester.splitParticle(core);
+                    int ec = sp != null && (d.contains(sp[0]) || userKnows(user, sp[0])) ? 0 : ks.inflected(core) ? 1 : 2;
+                    String[] sh = ks.suggest(core.substring(0, core.length() - 1), prev, field, user, usage, null,
+                            WordSuggester.MAX).words;
+                    int at = indexOf(sh, core);
+                    if (showEnd && at != 0) {
+                        System.out.println("  END" + "PVO".charAt(ec) + " " + prev + " | " + core + " → " + String.join(",", sh));
+                    }
+                    endTried[ec]++;
+                    if (at == 0) endTop1[ec]++;
+                    if (at >= 0) endTop3[ec]++;
+                }
                 boolean gap = learnGaps && (ti == lastWord || raw.matches(".*[ㄱ-ㅣ]$"));
                 if (learn && !gap) {
                     // 앱과 같은 학습 (WordSuggester.learnInto). 시각 대신 단어 순번을 쓴다.
+                    WordSuggester.noteIgnoredInto(usage, prev, shownPred, core, words);
                     WordSuggester.learnInto(d, user, usage, core, prev, true, false, words);
                     if (WordSuggester.learnable(core, true)) ks.noteLearned(core);
                     if (WordSuggester.learnable(core, true)) ks.learnEndings(core, usage, words);
@@ -273,6 +356,7 @@ public final class SuggestEval {
             }
             rows.append(keys - keys0).append('\t').append(saved - saved0).append('\n');
         }
+        if (dump != null) dump.close();
         if (why != null) Files.write(new File(System.getenv("WHY")).toPath(), why.toString().getBytes(StandardCharsets.UTF_8));
         if (perSentence != null) Files.write(new File(perSentence).toPath(), rows.toString().getBytes(StandardCharsets.UTF_8));
         double ms = (System.nanoTime() - t0) / 1e6;
@@ -290,6 +374,14 @@ public final class SuggestEval {
             System.out.printf("예측: 보인 비율 %.1f%%, 맞힌 비율(보인 것 중) %.1f%%%n",
                     100.0 * predShown / predTried, predShown == 0 ? 0 : 100.0 * predHits / predShown);
         }
+        printCurve(curve, predTried);
+        String[] endName = {"명사+조사", "용언 활용", "그 밖"};
+        StringBuilder ends = new StringBuilder("마지막 글자 전까지 쳤을 때 (첫 칸/세 칸):");
+        for (int c = 0; c < 3; c++) {
+            ends.append(String.format(" %s %.1f%%/%.1f%%(%d)", endName[c], 100.0 * endTop1[c] / Math.max(1, endTried[c]),
+                    100.0 * endTop3[c] / Math.max(1, endTried[c]), endTried[c]));
+        }
+        System.out.println(ends);
         System.out.printf("잘못 고침: 전체 단어의 %.2f%%, 사전에 없는 단어의 %.1f%% (%d/%d)%n",
                 100.0 * wrongFix / words, oovWords == 0 ? 0 : 100.0 * oovWrong / oovWords, oovWrong, oovWords);
         System.out.printf("추천 한 번에 평균 %.3f ms (중앙값 %.3f, 99%% %.3f, 최대 %.3f ms)%n", ms / Math.max(1, calls),
@@ -298,6 +390,39 @@ public final class SuggestEval {
                 100.0 * madeShown / Math.max(1, shownSlots), 100.0 * madeHit / Math.max(1, madeShown));
         if (made != null) for (String m : made) System.out.println("  " + m);
         if (typo) typoTest(d, ks, lines, old);
+    }
+
+    /** 예측을 늘 보였다면 맞힌 비율 (예측 기회 tried번 중)과, 점수가 높은 순으로 n%만 보였을 때의 세 칸 적중률과 그 문턱. */
+    private static void printCurve(List<double[]> c, long tried) {
+        if (c.isEmpty()) return;
+        c.sort((a, b) -> Double.compare(b[0], a[0]));
+        double h1 = 0, h3 = 0;
+        for (double[] x : c) {
+            h1 += x[1];
+            h3 += x[2];
+        }
+        StringBuilder b = new StringBuilder(String.format("예측(늘 보일 때): 첫 칸 %.1f%%, 세 칸 %.1f%% / 점수 상위 n%%의 세 칸:",
+                100 * h1 / tried, 100 * h3 / tried));
+        for (int q : new int[]{10, 20, 30, 50}) {
+            int n = (int) Math.max(1, Math.min(c.size(), tried * q / 100));
+            double h = 0;
+            for (int i = 0; i < n; i++) h += c.get(i)[2];
+            b.append(String.format(" %d%%→%.1f%%(≥%.3f)", q, 100 * h / n, c.get(n - 1)[0]));
+        }
+        System.out.println(b);
+    }
+
+    /** train_rerank.py가 쓴 가중치 (상태마다 한 줄). */
+    private static double[][] readRerank(String path) throws IOException {
+        List<String> ls = Files.readAllLines(new File(path).toPath(), StandardCharsets.UTF_8);
+        double[][] w = new double[4][];
+        for (int s = 0; s < 4 && s < ls.size(); s++) {
+            String[] p = ls.get(s).trim().split("\\s+");
+            if (p.length != KoreanSuggest.NF) throw new IOException("rerank: 특징 수가 다르다");
+            w[s] = new double[p.length];
+            for (int j = 0; j < p.length; j++) w[s][j] = Double.parseDouble(p[j]);
+        }
+        return w;
     }
 
     /** 걸린 시간(ns) 중 q 분위 (ms). */
@@ -399,6 +524,82 @@ public final class SuggestEval {
         System.out.printf("자동 수정 한 번에 평균 %.3f ms%n", correctNs / 1e6 / Math.max(1, tried));
     }
 
+    /**
+     * 오타를 섞어 치는 동안 원래 단어가 추천 칸에 보이는지 (자동 수정과 달리 치는 중의 추천). 사전 단어의 셋 중 하나에 오타를
+     * 하나 넣고, 여섯 키 이상인 말은 셋 중 하나에 하나 더 넣는다. 오타를 친 뒤(오타 키부터)의 추천만 센다: 그 전에 보인 것은
+     * 오타와 상관없는 보통의 추천이다. 오타 키 절약률 = (남은 키 + 스페이스)를 아낀 비율 (고르는 데 한 번 누른다고 보지 않는다:
+     * 본 평가와 같게).
+     */
+    private static void typoTypingTest(WordDictionary d, KoreanSuggest ks, List<String> lines, int field) {
+        Random rnd = new Random(seed);
+        int tried = 0, during = 0, top1 = 0, end = 0, two = 0, twoDuring = 0;
+        long keys = 0, saved = 0;
+        long[] lat = new long[1 << 16];
+        int latN = 0;
+        long ns = 0, calls = 0;
+        for (String line : lines) {
+            String prev = null;
+            for (String raw : line.split("\\s+")) {
+                String core = strip(raw);
+                if (core == null || core.length() < 2 || !d.contains(core) || rnd.nextInt(3) != 0) {
+                    prev = core;
+                    continue;
+                }
+                char[] k = keysOf(core);
+                char[] bad = typo(k, rnd.nextInt(10), rnd);
+                boolean second = k.length >= 6 && rnd.nextInt(3) == 0;
+                if (second) bad = typo(bad, rnd.nextInt(10), rnd);
+                String typed = compose(bad);
+                if (typed == null || typed.equals(core) || !allSyllables(typed)) {
+                    prev = core;
+                    continue;
+                }
+                int from = 0;   // 처음 어긋난 키
+                while (from < Math.min(k.length, bad.length) && k[from] == bad[from]) from++;
+                tried++;
+                if (second) two++;
+                keys += bad.length + 1;
+                HangulComposer hc = new HangulComposer();
+                StringBuilder committed = new StringBuilder();
+                boolean hit = false;
+                for (int i = 0; i < bad.length; i++) {
+                    hc.input(bad[i], doubleTapVowel && isVowelKey(bad[i]), i * 1000L);
+                    committed.append(hc.takeCommit());
+                    if (i < from) continue;
+                    String now = committed + hc.getComposing();
+                    long c0 = System.nanoTime();
+                    String[] shown = ks.suggest(now, prev, field, null, null, null, WordSuggester.MAX).words;
+                    long dt = System.nanoTime() - c0;
+                    ns += dt;
+                    calls++;
+                    if (latN < lat.length) lat[latN++] = dt;
+                    int at = indexOf(shown, core);
+                    if (at < 0) continue;
+                    if (i < bad.length - 1) {
+                        during++;
+                        if (second) twoDuring++;
+                        if (at == 0) top1++;
+                    }
+                    end++;
+                    saved += bad.length - (i + 1);
+                    hit = true;
+                    break;
+                }
+                if (!hit) {
+                    // 다 친 뒤 스페이스로 고쳐지면 스페이스 한 번만큼은 친 셈이다 (아낀 키 없음)
+                    String fix = ks.correct(typed, prev, field, null, null);
+                    if (core.equals(fix)) end++;
+                }
+                prev = core;
+            }
+        }
+        System.out.printf("오타 섞어 치기 %d개 (오타 둘 %d개): 치는 중에 보임 %.1f%% (첫 칸 %.1f%%), 다 친 뒤까지 보이거나 고침 %.1f%%, 오타 둘인 말 치는 중 %.1f%%%n",
+                tried, two, 100.0 * during / Math.max(1, tried), 100.0 * top1 / Math.max(1, tried), 100.0 * end / Math.max(1, tried),
+                100.0 * twoDuring / Math.max(1, two));
+        System.out.printf("오타 키 절약률 %.2f%%%n", 100.0 * saved / Math.max(1, keys));
+        System.out.printf("오타 추천 한 번에 평균 %.3f ms (99%% %.3f ms)%n", ns / 1e6 / Math.max(1, calls), percentile(lat, latN, 0.99));
+    }
+
     private static char[] typo(char[] k, int kind, Random rnd) {
         StringBuilder s = new StringBuilder(new String(k));
         int i = rnd.nextInt(k.length);
@@ -450,7 +651,7 @@ public final class SuggestEval {
         HangulComposer hc = new HangulComposer();
         StringBuilder out = new StringBuilder();
         for (int i = 0; i < k.length; i++) {
-            hc.input(k[i], false, i * 1000L);
+            hc.input(k[i], doubleTapVowel && isVowelKey(k[i]), i * 1000L);
             out.append(hc.takeCommit());
         }
         hc.flush();
@@ -463,12 +664,20 @@ public final class SuggestEval {
         return true;
     }
 
+    private static boolean isVowelKey(char c) {
+        return c >= 'ㅏ' && c <= 'ㅣ';
+    }
+
     /** 단어를 치는 키 (자모 하나 = 키 하나; 겹모음·겹받침·쌍자음도 밀기 한 번). */
     static char[] keysOf(String w) {
         StringBuilder b = new StringBuilder();
         for (int i = 0; i < w.length(); i++) {
             int s = w.charAt(i) - 0xAC00;
-            b.append(CHO.charAt(s / 588)).append(JUNG.charAt((s / 28) % 21));
+            b.append(CHO.charAt(s / 588));
+            char v = JUNG.charAt((s / 28) % 21);
+            int dv = "ㅑㅕㅛㅠㅒㅖ".indexOf(v);
+            if (doubleTapVowel && dv >= 0) b.append("ㅏㅓㅗㅜㅐㅔ".charAt(dv)).append("ㅏㅓㅗㅜㅐㅔ".charAt(dv));
+            else b.append(v);
             if (s % 28 != 0) b.append(JONG.charAt(s % 28));
         }
         return b.toString().toCharArray();
@@ -496,7 +705,8 @@ public final class SuggestEval {
     private static void set(String kv) throws Exception {
         String[] p = kv.split("=", 2);
         java.lang.reflect.Field f = null;   // 계수는 순위(KoreanSuggest), 만든 꼴(KoreanForms), 자동 수정(KoreanCorrect), 꼴 알아보기(KoreanMorph)에 있다
-        for (Class<?> c : new Class<?>[]{KoreanSuggest.class, KoreanForms.class, KoreanCorrect.class, KoreanMorph.class}) {
+        for (Class<?> c : new Class<?>[]{KoreanSuggest.class, KoreanForms.class, KoreanCorrect.class, KoreanMorph.class,
+                UsageHistory.class, HangulRange.class, WordDictionary.class}) {
             try {
                 f = c.getDeclaredField(p[0]);
                 break;

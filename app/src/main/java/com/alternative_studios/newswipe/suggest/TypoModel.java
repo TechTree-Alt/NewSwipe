@@ -186,4 +186,103 @@ public final class TypoModel {
         }
         return best;
     }
+
+    /**
+     * 입력 p로 여러 단어의 접두사 비용({@link #prefixDistance})을 차례로 잰다. 사전 순서대로 넣으면 앞 단어와 같은 자모만큼 계산을
+     * 다시 쓰고, 비용이 limit을 넘은 앞부분으로 시작하는 단어는 계산하지 않는다. 결과는 prefixDistance와 같다 (limit을 넘으면
+     * limit보다 큰 값).
+     */
+    PrefixScan prefixScan(char[] p, int pn, float limit) {
+        return new PrefixScan(p, pn, limit);
+    }
+
+    final class PrefixScan {
+        private final char[] p;
+        private final int pn;
+        private final float limit;
+        private float[][] rows = new float[0][];   // rows[j][i] = 단어의 앞 j자모를 입력의 앞 i자모로 친 비용
+        private float[] rowMin = new float[0];
+        private char[] last = new char[0];   // rows를 계산한 단어의 자모
+        private int valid;                   // rows[0..valid]가 last에 맞다
+        private char[] cut = new char[0];    // 이 앞부분으로 시작하는 말은 더 볼 필요가 없다 (값은 cutCost)
+        private int cutLen = -1;
+        private float cutCost;
+
+        PrefixScan(char[] p, int pn, float limit) {
+            this.p = p;
+            this.pn = pn;
+            this.limit = limit;
+            grow(8);
+            float[] r = rows[0];
+            r[0] = 0f;
+            for (int i = 1; i <= pn; i++) r[i] = i <= BAND ? r[i - 1] + ins(i) : INF;
+            rowMin[0] = 0f;
+        }
+
+        /** 입력의 i번째 자모가 더 들어간 비용 (같은 키를 한 번 더 친 것은 싸다). */
+        private float ins(int i) {
+            return i > 1 && p[i - 2] == p[i - 1] ? REPEAT : INSERT;
+        }
+
+        private void grow(int n) {
+            if (rows.length > n) return;
+            int m = Math.max(n + 1, rows.length * 2);
+            float[][] nr = java.util.Arrays.copyOf(rows, m);
+            for (int j = rows.length; j < m; j++) nr[j] = new float[pn + 1];
+            rows = nr;
+            rowMin = java.util.Arrays.copyOf(rowMin, m);
+            last = java.util.Arrays.copyOf(last, m);
+            cut = java.util.Arrays.copyOf(cut, m);
+        }
+
+        /** 단어(자모 t[0..tn))의 접두사 비용. */
+        float cost(char[] t, int tn) {
+            if (cutLen >= 0 && tn >= cutLen) {
+                int k = 0;
+                while (k < cutLen && t[k] == cut[k]) k++;
+                if (k == cutLen) return cutCost;
+            }
+            grow(tn);
+            int start = 0;
+            int lim = Math.min(valid, tn);
+            while (start < lim && t[start] == last[start]) start++;
+            float best = INF;
+            for (int j = Math.max(0, pn - BAND); j <= start; j++) best = Math.min(best, rows[j][pn]);
+            for (int j = start + 1; j <= tn; j++) {
+                char tc = t[j - 1];
+                last[j - 1] = tc;
+                float[] cur = rows[j], up = rows[j - 1], up2 = j > 1 ? rows[j - 2] : null;
+                float min = INF;
+                for (int i = 0; i <= pn; i++) {
+                    if (i < j - BAND || i > j + BAND) {
+                        cur[i] = INF;
+                        continue;
+                    }
+                    float v = up[i] + DELETE;   // 입력에서 글자가 빠졌다
+                    if (i > 0) {
+                        char pc = p[i - 1];
+                        v = Math.min(v, cur[i - 1] + ins(i));   // 입력에 글자가 더 들어갔다
+                        v = Math.min(v, up[i - 1] + substitute(pc, tc));
+                        if (i > 1 && j > 1 && pc == t[j - 2] && p[i - 2] == tc && pc != p[i - 2]) {
+                            v = Math.min(v, up2[i - 2] + TRANSPOSE);
+                        }
+                    }
+                    cur[i] = v;
+                    if (v < min) min = v;
+                }
+                rowMin[j] = min;
+                valid = j;
+                if (j >= pn - BAND) best = Math.min(best, cur[pn]);
+                // 이 줄과 앞 줄이 모두 limit을 넘으면 (맞바꾸기는 한 줄을 건너뛴다) 더 긴 앞부분은 비용이 줄지 않는다
+                if (min > limit && rowMin[j - 1] > limit) {
+                    System.arraycopy(t, 0, cut, 0, j);
+                    cutLen = j;
+                    cutCost = best;
+                    return best;
+                }
+            }
+            valid = tn;
+            return best;
+        }
+    }
 }

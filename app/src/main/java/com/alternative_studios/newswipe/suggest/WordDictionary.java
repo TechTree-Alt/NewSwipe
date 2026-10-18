@@ -173,12 +173,13 @@ public final class WordDictionary {
 
     /**
      * prefix로 시작할 수 있는 단어들의 번호 구간을 out에 {처음, 끝(제외)} 쌍으로 넣고 구간 수(0~2)를 돌려준다.
-     * 마지막 글자가 덜 만들어진 상태도 맞추고, 받침이 다음 글자 첫소리일 수 있는 구간도 넣는다. out은 4칸 이상.
+     * 마지막 글자가 덜 만들어진 상태도 맞추고, 받침이 다음 글자 첫소리일 수 있거나 모음을 한 번 더 탭해 이중모음이 될 수 있는
+     * 구간도 넣는다 ({@link HangulRange#alternate}). out은 4칸 이상.
      */
     public int ranges(String prefix, int[] out) {
         int nr = 0;
         if (range(prefix, out, 0)) nr++;
-        String moved = HangulRange.movedFinal(prefix);
+        String moved = HangulRange.alternate(prefix);
         if (moved != null && range(moved, out, 2 * nr)) nr++;
         return nr;
     }
@@ -335,25 +336,44 @@ public final class WordDictionary {
      * 그 자음으로 시작하는 단어 중 점수가 minScore 이상인 것의 앞부분과 typo 비용으로 견준다.
      * out에 단어 번호를, cost에 고친 비용을 넣고 찾은 수를 돌려준다 (비용이 maxCost 이하인 것, 점수순 상위 max개).
      */
+    /** 오타가 섞인 접두사를 찾을 때 앞 단어와 같은 자모만큼 계산을 다시 쓸지 (끄면 예전처럼 단어마다 잰다: 평가용). */
+    static boolean FAST_FUZZY = true;
+
+    /**
+     * 첫 초성을 잘못 친 말(체주도 → 제주도)도 찾을지, 그때 첫 초성 바꾸기의 최대 비용(옆 키, 같은 키의 다른 동작), 같은 초성에서
+     * 이만큼 못 찾았을 때만 찾는다 (늘 찾으면 초성 묶음을 여럿 훑어 느리다). dev에서 치는 중에 보이는 비율 +3~5%p.
+     */
+    static boolean FUZZY_FIRST = true;
+
+    static float FIRST_MAX = 0.6f;
+
+    static int FIRST_NEED = 3;
+
     public int fuzzyPrefix(String prefix, TypoModel typo, float maxCost, int minScore, int max, int[] out, float[] cost) {
         if (prefix.length() < 2 || max <= 0) return 0;
         char first = prefix.charAt(0);
         if (first < 0xAC00 || first > 0xD7A3) return 0;
         int l = (first - 0xAC00) / 588;
-        char[] a = {(char) (0xAC00 + l * 588)}, b = {(char) (0xAC00 + (l + 1) * 588)};
-        int from = lowerBound(a, 1), to = lowerBound(b, 1);
         char[] p = TypoModel.letters(prefix);
         char[] t = new char[64];
+        TypoModel.PrefixScan scan = FAST_FUZZY ? typo.prefixScan(p, p.length, maxCost) : null;
         int found = 0;
         int[] rank = new int[max];
-        for (int i = from; i < to; i++) {
+        for (int step = 0; step < 20; step++) {
+          // 먼저 첫 초성이 같은 말, 그것으로 FIRST_NEED개가 안 되면 첫 초성을 잘못 쳤을 만한 말(옆 키, 같은 키의 다른 동작)도
+          int l2 = step == 0 ? l : step - 1;
+          if (step > 0 && (l2 == l || !FUZZY_FIRST || found >= FIRST_NEED
+                  || typo.substitute(p[0], TypoModel.letters(String.valueOf((char) (0xAC00 + l2 * 588)))[0]) > FIRST_MAX)) continue;
+          char[] a = {(char) (0xAC00 + l2 * 588)}, b = {(char) (0xAC00 + (l2 + 1) * 588)};
+          int from = lowerBound(a, 1), to = lowerBound(b, 1);
+          for (int i = from; i < to; i++) {
             int sc = scores[i] & 0xFF;
             if (sc < minScore) continue;
             if (found == max && sc <= rank[max - 1]) continue;
             int s = offsets[i], e = offsets[i + 1];
             if (e - s > 21) continue;
             int tn = TypoModel.letters(chars, s, e, t);
-            float c = typo.prefixDistance(p, p.length, t, tn, maxCost);
+            float c = scan != null ? scan.cost(t, tn) : typo.prefixDistance(p, p.length, t, tn, maxCost);
             if (c > maxCost || c <= 0f) continue;   // 0이면 이미 맞는 접두사다 (lookup이 찾는다)
             int pos = found;
             while (pos > 0 && sc > rank[pos - 1]) pos--;
@@ -368,6 +388,7 @@ public final class WordDictionary {
             rank[pos] = sc;
             cost[pos] = c;
             if (found < max) found++;
+          }
         }
         return found;
     }
