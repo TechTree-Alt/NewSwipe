@@ -41,11 +41,23 @@ NewSwipe를 직접 빌드하고 서명하는 방법입니다. 사용법은 [READ
 `--mix-admit`은 리뷰가 Leipzig 말뭉치에 있는 단어의 빈도와 단어 쌍을 바꾸고, Leipzig에 없던 단어는 Leipzig가 아는 조각으로 풀리는
 말(대화체 활용형 `재밌음`·`못하겠네`, 띄어 쓰지 않은 두 어절 `볼때마다`)만 들입니다 (`dict/build/ko_admit.py`). 고유명사·리뷰 용어와
 맞춤법이 틀린 말(`봣는데`)은 들어오지 않습니다. 새 단어를 하나도 들이지 않으려면 `--mix-known-only`를 씁니다.
+`--admit-stems dict/lists/ko_stems_kiwi.txt`는 들일 말을 가릴 때 형태소 분석기로 센 용언 어간 5천여 개를 더 써서
+`진부한`·`어설프고`·`식상하다` 같은 대화체 꼴도 들입니다.
+
+어간 목록은 형태소 분석기 Kiwi(kiwipiepy, Apache License 2.0)로 말뭉치를 분석해 만듭니다. 앱에는 Kiwi가 들어가지 않습니다.
+`verb.txt`·`adjective.txt`는 open-korean-text 저장소의 `src/main/resources/org/openkoreantext/processor/util/` 아래에 있습니다.
+
+```bash
+pip install kiwipiepy==0.24.0
+python3 dict/build/count_ko_stems.py kiwi_stems.tsv 말뭉치들...                 # 300만 문장에 4코어로 20분쯤
+python3 dict/build/select_ko_stems.py kiwi_stems.tsv dict/lists/ko_stems.txt --check     # 손으로 고른 목록의 품사·불규칙 표시 검사
+python3 dict/build/select_ko_stems.py kiwi_stems.tsv dict/lists/ko_stems.txt dict/lists/ko_stems_kiwi.txt --okt verb.txt adjective.txt
+```
 
 ```bash
 # 기본 사전 (자주 쓰는 단어 쌍 5만 개를 담은 dict_ko_next.bin도 함께 나온다)
 python3 dict/build/build_ko_model.py out_base --cache counts.pkl --mix nsmc.pkl:0.5 --mix-exclude dict/lists/ko_mix_exclude_nsmc.txt --mix-admit \
-    --top 70000 --pairs 50000 --extra dict/lists/ko_colloquial.txt --extra dict/lists/ko_conjugated.txt --phrases dict/lists/ko_phrases.txt 말뭉치들...
+    --admit-stems dict/lists/ko_stems_kiwi.txt --top 70000 --pairs 50000 --extra dict/lists/ko_colloquial.txt --extra dict/lists/ko_conjugated.txt --phrases dict/lists/ko_phrases.txt 말뭉치들...
 cp out_base/dict_ko.bin out_base/dict_ko_next.bin app/src/main/assets/
 
 # 표준 사전 팩

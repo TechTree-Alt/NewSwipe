@@ -5,8 +5,8 @@
 
 | 폴더 | 내용 |
 |---|---|
-| `build/` | 사전을 만드는 도구. `build_ko_model.py`(한국어 단어 사전 + 다음 단어 사전), `build_ko_dict.py`(걸러 내기·저장 함수, 차단 목록), `build_en_dict.py`(영어), `gen_ko_conjugations.py`(용언 활용형 생성), `make_dict_pack.py`(사전 팩 zip 만들기) |
-| `lists/` | 직접 고른 목록. 구어체 단어(`ko_colloquial.txt`, `en_colloquial.txt`), 용언 어간(`ko_stems.txt`)과 그것으로 만든 활용형(`ko_conjugated.txt`), 구어체 문장(`ko_phrases.txt`), 말뭉치를 섞을 때 뺄 주제어(`ko_mix_exclude_nsmc.txt`) |
+| `build/` | 사전을 만드는 도구. `build_ko_model.py`(한국어 단어 사전 + 다음 단어 사전), `build_ko_dict.py`(걸러 내기·저장 함수, 차단 목록), `build_en_dict.py`(영어), `gen_ko_conjugations.py`(용언 활용형 생성), `count_ko_stems.py`·`select_ko_stems.py`(형태소 분석기 Kiwi로 말뭉치의 용언 어간 세기·고르기), `make_dict_pack.py`(사전 팩 zip 만들기) |
+| `lists/` | 직접 고른 목록. 구어체 단어(`ko_colloquial.txt`, `en_colloquial.txt`), 용언 어간(`ko_stems.txt`)과 그것으로 만든 활용형(`ko_conjugated.txt`), 말뭉치에서 센 어간(`ko_stems_kiwi.txt`, 만든 목록), 구어체 문장(`ko_phrases.txt`), 말뭉치를 섞을 때 뺄 주제어(`ko_mix_exclude_nsmc.txt`) |
 | `eval/` | 평가 도구. 앱의 추천 코드로 한 키씩 쳐서 키 절약률·잘못 고침·오타 고침을 잰다 (`run_eval.sh`, `SuggestEval.java`), 두 설정을 같은 문장끼리 견준다 (`compare_ksr.py`), 공개 평가 말뭉치를 받아 dev·test로 나눈다 (`fetch_public_sets.sh`) |
 | `packs/` | 설정에서 가져오는 사전 팩. `ko-standard.zip`(표준 사전: 단어 8만 개 + 단어 쌍 40만 개, 약 1.1MB)과 그 라이선스 |
 
