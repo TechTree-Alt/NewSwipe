@@ -73,7 +73,8 @@ dict/eval/run_eval.sh out_pack dict/eval/ko_chat_test.txt
 사전 팩은 앱에 들어가지 않으며, 앱 릴리스(`v*` 태그)와 따로 `dict-<버전>` 태그로 릴리스합니다. 팩을 다시 만들어 커밋한 뒤
 `make_dict_pack.py --version`에 준 버전으로 태그를 올리면 `.github/workflows/dict-pack.yml`이 팩을 버전을 붙인 이름(`ko-standard-2026.10.3.zip`)으로
 붙인 릴리스를 게시합니다 (태그와 팩의 버전이 다르면 멈춥니다). 이 릴리스는 'Latest release'로 표시하지 않아, README의 'Get it on GitHub'는 계속
-최신 앱을 가리킵니다. 설정의 '사전 팩 받는 곳'은 `dict-` 릴리스만 모아 보여 주는 페이지(`/releases?q=dict-`)를 엽니다.
+최신 앱을 가리킵니다. 설정의 '사전 팩 받는 곳'은 사전 팩 릴리스만 모아 보여 주는 검색 페이지(`/releases?q=ko-standard`)를 엽니다. GitHub의 릴리스 검색은
+태그가 아니라 릴리스 제목과 설명에서 찾으므로, 릴리스 설명에 `ko-standard`(파일 이름)가 꼭 들어가야 합니다.
 
 ```bash
 git tag dict-2026.10.3 && git push origin dict-2026.10.3
