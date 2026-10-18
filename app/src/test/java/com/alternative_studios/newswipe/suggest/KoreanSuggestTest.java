@@ -292,8 +292,9 @@ public class KoreanSuggestTest {
         assertTrue(Arrays.asList(words(model().suggest("밥머", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)))
                 .contains("밥먹었어"));
         // '안녕' 다음에 '하'로 시작하는 말이 온다는 근거(단어 쌍)가 없으면 '안녕하루'처럼 이어 붙이지 않는다.
-        assertArrayEquals(new String[]{"안녕하세요"},
-                words(model().suggest("안녕하", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)));
+        List<String> hi = Arrays.asList(words(model().suggest("안녕하", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 3)));
+        assertEquals("안녕하세요", hi.get(0));
+        for (String w : hi) assertFalse(w, w.startsWith("안녕하") && !w.equals("안녕하세요"));   // 안녕히(ㅏ 옆의 ㅣ)는 오타 후보로 뒤에 올 수 있다
     }
 
     @Test

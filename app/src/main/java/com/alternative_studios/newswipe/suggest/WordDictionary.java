@@ -339,19 +339,31 @@ public final class WordDictionary {
     /** 오타가 섞인 접두사를 찾을 때 앞 단어와 같은 자모만큼 계산을 다시 쓸지 (끄면 예전처럼 단어마다 잰다: 평가용). */
     static boolean FAST_FUZZY = true;
 
+    /** 첫 초성을 잘못 친 말도 찾을지와, 그때 첫 초성 바꾸기의 최대 비용 (평가용). */
+    static boolean FUZZY_FIRST = false;
+
+    static float FIRST_MAX = 0.6f;
+
+    static int FIRST_NEED = 99;
+
     public int fuzzyPrefix(String prefix, TypoModel typo, float maxCost, int minScore, int max, int[] out, float[] cost) {
         if (prefix.length() < 2 || max <= 0) return 0;
         char first = prefix.charAt(0);
         if (first < 0xAC00 || first > 0xD7A3) return 0;
         int l = (first - 0xAC00) / 588;
-        char[] a = {(char) (0xAC00 + l * 588)}, b = {(char) (0xAC00 + (l + 1) * 588)};
-        int from = lowerBound(a, 1), to = lowerBound(b, 1);
         char[] p = TypoModel.letters(prefix);
         char[] t = new char[64];
         TypoModel.PrefixScan scan = FAST_FUZZY ? typo.prefixScan(p, p.length, maxCost) : null;
         int found = 0;
         int[] rank = new int[max];
-        for (int i = from; i < to; i++) {
+        for (int step = 0; step < 20; step++) {
+          // 먼저 첫 초성이 같은 말, 그것으로 FIRST_NEED개가 안 되면 첫 초성을 잘못 쳤을 만한 말(옆 키, 같은 키의 다른 동작)도
+          int l2 = step == 0 ? l : step - 1;
+          if (step > 0 && (l2 == l || !FUZZY_FIRST || found >= FIRST_NEED
+                  || typo.substitute(p[0], TypoModel.letters(String.valueOf((char) (0xAC00 + l2 * 588)))[0]) > FIRST_MAX)) continue;
+          char[] a = {(char) (0xAC00 + l2 * 588)}, b = {(char) (0xAC00 + (l2 + 1) * 588)};
+          int from = lowerBound(a, 1), to = lowerBound(b, 1);
+          for (int i = from; i < to; i++) {
             int sc = scores[i] & 0xFF;
             if (sc < minScore) continue;
             if (found == max && sc <= rank[max - 1]) continue;
@@ -373,6 +385,7 @@ public final class WordDictionary {
             rank[pos] = sc;
             cost[pos] = c;
             if (found < max) found++;
+          }
         }
         return found;
     }

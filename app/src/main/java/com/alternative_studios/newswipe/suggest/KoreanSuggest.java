@@ -106,7 +106,7 @@ final class KoreanSuggest {
     /** 오타가 섞인 접두사를 찾을 때의 최대 비용과, 후보로 볼 최소 점수. */
     static float FUZZY_MAX = 1.0f;
 
-    static double FUZZY_MIN_FREQ = 85;
+    static double FUZZY_MIN_FREQ = 0;
 
     /** 접두사가 맞는 후보가 충분해도 오타가 섞인 접두사 후보를 찾을지, 그 후보의 오타 비용 1당 확률에 곱하는 값의 로그. */
     static boolean FUZZY_ALWAYS = false;
