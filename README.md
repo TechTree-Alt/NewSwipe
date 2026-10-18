@@ -136,4 +136,9 @@ NewSwipe는 비전공자가 **Claude Code**(Sonnet 5.5, Opus 5.5)를 사용해 �
   **영리적인 다른 키보드 앱에서 쓰려면 저작자의 허락이 필요합니다** (Apache License 2.0은 이 배열 디자인의 권리를 별도로 주지 않습니다).
 - 이모지 데이터는 Unicode License v3, 한국어 단어 사전은 CC BY 4.0(Leipzig Corpora Collection)·CC0(NSMC),
   영어 단어 사전은 MIT(SymSpell)·CC BY 3.0(Google Books Ngram)·SCOWL 라이선스를 따릅니다.
+- 한국어 자동 수정의 맞춤법 오타 규칙(재밋다 → 재밌다, 왠만하면 → 웬만하면 등)은
+  [open-korean-text](https://github.com/open-korean-text/open-korean-text)(Copyright 2014 Twitter, Inc.)의 오타 목록과
+  [Kiwi](https://github.com/bab2min/Kiwi)(Copyright 2017-2026 Minchul Lee and the Kiwi contributors)의 오타 정의에서 골랐습니다.
+  사전을 만들 때 쓰는 용언 어간 목록(`dict/lists/ko_stems_kiwi.txt`)은 Kiwi(kiwipiepy)로 말뭉치를 분석하고
+  open-korean-text의 동사·형용사 목록으로 걸러 만들었습니다. 두 프로젝트 모두 Apache License 2.0이며, Kiwi는 앱에 들어가지 않습니다.
   자세한 내용은 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)를 보세요.
