@@ -339,7 +339,10 @@ public final class WordDictionary {
     /** 오타가 섞인 접두사를 찾을 때 앞 단어와 같은 자모만큼 계산을 다시 쓸지 (끄면 예전처럼 단어마다 잰다: 평가용). */
     static boolean FAST_FUZZY = true;
 
-    /** 첫 초성을 잘못 친 말도 찾을지와, 그때 첫 초성 바꾸기의 최대 비용 (평가용). */
+    /**
+     * 첫 초성을 잘못 친 말(체주도 → 제주도)도 찾을지, 그때 첫 초성 바꾸기의 최대 비용(옆 키, 같은 키의 다른 동작), 같은 초성에서
+     * 이만큼 못 찾았을 때만 찾는다 (늘 찾으면 초성 묶음을 여럿 훑어 느리다). dev에서 치는 중에 보이는 비율 +3~5%p.
+     */
     static boolean FUZZY_FIRST = true;
 
     static float FIRST_MAX = 0.6f;
