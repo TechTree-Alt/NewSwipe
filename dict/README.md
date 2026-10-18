@@ -8,7 +8,7 @@
 | `build/` | 사전을 만드는 도구. `build_ko_model.py`(한국어 단어 사전 + 다음 단어 사전), `build_ko_dict.py`(걸러 내기·저장 함수, 차단 목록), `build_en_dict.py`(영어), `gen_ko_conjugations.py`(용언 활용형 생성), `count_ko_stems.py`·`select_ko_stems.py`(형태소 분석기 Kiwi로 말뭉치의 용언 어간 세기·고르기), `make_dict_pack.py`(사전 팩 zip 만들기) |
 | `lists/` | 직접 고른 목록. 구어체 단어(`ko_colloquial.txt`, `en_colloquial.txt`), 용언 어간(`ko_stems.txt`)과 그것으로 만든 활용형(`ko_conjugated.txt`), 말뭉치에서 센 어간(`ko_stems_kiwi.txt`, 만든 목록), 구어체 문장(`ko_phrases.txt`), 말뭉치를 섞을 때 뺄 주제어(`ko_mix_exclude_nsmc.txt`) |
 | `eval/` | 평가 도구. 앱의 추천 코드로 한 키씩 쳐서 키 절약률·잘못 고침·오타 고침을 잰다 (`run_eval.sh`, `SuggestEval.java`), 두 설정을 같은 문장끼리 견준다 (`compare_ksr.py`), 공개 평가 말뭉치를 받아 dev·test로 나눈다 (`fetch_public_sets.sh`) |
-| `packs/` | 설정에서 가져오는 사전 팩. `ko-standard.zip`(표준 사전: 단어 8만 개 + 단어 쌍 40만 개, 약 1.1MB)과 그 라이선스 |
+| `packs/` | 설정에서 가져오는 사전 팩. `ko-standard.zip`(표준 사전: 단어 8만 개 + 단어 쌍 40만 개, 약 1.1MB)과 그 라이선스, 폴더별 라이선스 안내(`README.md`) |
 
 ## 만들기
 
@@ -99,7 +99,8 @@ zip 안에 `manifest.properties`(형식 번호, 언어, 이름, 출처, 라이�
 사전 팩 사용자 모두 좋아지게 합니다. 키보드는 사용자가 치는 글을 모두 보므로 팩에 실행 코드를 넣지 않으며, Google Play도 앱 밖에서
 받은 코드를 실행하지 못하게 합니다. 사전을 크게 바꾸면 엔진의 가중치가 그 데이터에 맞춰져 있으므로 `eval/`로 다시 재 보세요.
 
-릴리스를 만들 때 `packs/ko-standard.zip`을 GitHub 릴리스에 첨부하세요 (설정의 '사전 팩 받는 곳'이 릴리스 페이지를 엽니다).
+사전 팩은 `dict-<버전>` 태그로 앱과 따로 릴리스합니다 (`.github/workflows/dict-pack.yml`, 자세한 것은 [BUILDING.md](../BUILDING.md)). 설정의
+'사전 팩 받는 곳'은 `dict-` 릴리스만 모아 보여 주는 페이지를 엽니다. 폴더별 라이선스는 [packs/README.md](packs/README.md)에 있습니다.
 
 ## 라이선스
 

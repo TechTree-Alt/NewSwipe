@@ -70,8 +70,17 @@ python3 dict/build/make_dict_pack.py out_pack dict/packs/ko-standard.zip --name 
 dict/eval/run_eval.sh out_pack dict/eval/ko_chat_test.txt
 ```
 
-사전 팩은 앱에 들어가지 않습니다. 릴리스를 만들 때 `dict/packs/ko-standard.zip`을 GitHub 릴리스에 첨부하면, 설정의 '사전 팩 받는 곳'이
-그 페이지를 엽니다. 팩 형식(zip 안의 `manifest.properties`, `dict_ko.bin`, `dict_ko_next.bin`, `LICENSE.txt`)은
+사전 팩은 앱에 들어가지 않으며, 앱 릴리스(`v*` 태그)와 따로 `dict-<버전>` 태그로 릴리스합니다. 팩을 다시 만들어 커밋한 뒤
+`make_dict_pack.py --version`에 준 버전으로 태그를 올리면 `.github/workflows/dict-pack.yml`이 `ko-standard.zip`을 붙인 릴리스를
+게시합니다 (태그와 팩의 버전이 다르면 멈춥니다). 이 릴리스는 'Latest release'로 표시하지 않아, README의 'Get it on GitHub'는 계속
+최신 앱을 가리킵니다. 설정의 '사전 팩 받는 곳'은 `dict-` 릴리스만 모아 보여 주는 페이지(`/releases?q=dict-`)를 엽니다.
+
+```bash
+git tag dict-2026.10.3 && git push origin dict-2026.10.3
+```
+
+사전 데이터의 라이선스(CC BY 4.0·CC0)는 저장소의 코드(Apache License 2.0)와 다릅니다. 폴더별 라이선스는
+[dict/packs/README.md](dict/packs/README.md)에 정리되어 있습니다. 팩 형식(zip 안의 `manifest.properties`, `dict_ko.bin`, `dict_ko_next.bin`, `LICENSE.txt`)은
 `app/src/main/java/com/alternative_studios/newswipe/suggest/DictionaryPack.java`에 설명되어 있습니다. 직접 만든 팩도 같은 방법으로
 가져올 수 있으며, 넣은 데이터의 라이선스와 출처는 `--license`, `--attribution`에 정확히 적어 주세요.
 

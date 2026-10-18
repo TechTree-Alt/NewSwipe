@@ -1964,7 +1964,7 @@ public final class SettingsActivity extends Activity {
             }
             dict.addView(note(b.toString()));
         }
-        dict.addView(button("사전 팩 받는 곳", v -> openUrl(SOURCE_URL + "/releases")));
+        dict.addView(button("사전 팩 받는 곳", v -> openUrl(SOURCE_URL + "/releases?q=dict-&expanded=true")));   // 사전 팩은 dict- 태그로 따로 릴리스한다
         dict.addView(iconButton("사전 팩 가져오기", Icons.IMPORT, v -> SettingsImport.pick(this, REQ_DICT)));
         if (info != null) {
             if (!info.licenseText.isEmpty()) {
