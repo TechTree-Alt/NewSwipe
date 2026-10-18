@@ -54,6 +54,11 @@ public final class Icons {
     public static final int ONE_HAND = 38;        // 한 손 모드 (휴대폰 아래 한쪽에 몰린 자판)
     public static final int EXPAND = 39;          // 한 손 모드 끄기 (양쪽으로 펼치는 화살표)
     public static final int MENU_LAB = 40;        // 실험실 (삼각 플라스크)
+    // 글자를 선택했을 때 뜨는 편집 칩
+    public static final int CUT = 41;             // 잘라내기 (가위)
+    public static final int COPY = 42;            // 복사 (겹친 두 장)
+    public static final int PASTE = 43;           // 붙여넣기 (아래 화살표가 든 클립보드)
+    public static final int SELECT_ALL = 44;      // 전체 선택 (점선 테두리 안의 네모)
 
     private static final Path path = new Path();
     private static final RectF oval = new RectF();
@@ -492,6 +497,68 @@ public final class Icons {
                 path.lineTo(15.5f, 13);
                 path.lineTo(18.25f, 10.25f);
                 c.drawPath(path, p);
+                break;
+            case CUT:
+                // 가위: 아래쪽 두 손잡이(원)에서 올라간 날이 가운데에서 엇갈린다.
+                c.drawCircle(7, 17.5f, 3, p);
+                c.drawCircle(17, 17.5f, 3, p);
+                c.drawLine(8.8f, 15.1f, 17, 3.5f, p);
+                c.drawLine(15.2f, 15.1f, 7, 3.5f, p);
+                break;
+            case COPY:
+                // 앞장은 온전한 둥근 네모, 뒷장은 앞장에 가리지 않는 왼쪽 위 부분만.
+                oval.set(8.5f, 8.5f, 20, 20);
+                c.drawRoundRect(oval, 2, 2, p);
+                path.moveTo(8.5f, 15.5f);
+                path.lineTo(6, 15.5f);
+                path.quadTo(4, 15.5f, 4, 13.5f);
+                path.lineTo(4, 6);
+                path.quadTo(4, 4, 6, 4);
+                path.lineTo(13.5f, 4);
+                path.quadTo(15.5f, 4, 15.5f, 6);
+                path.lineTo(15.5f, 8.5f);
+                c.drawPath(path, p);
+                break;
+            case PASTE:
+                // 클립보드(CLIPBOARD와 같은 판과 클립) 안에 아래쪽 화살표.
+                oval.set(5, 5, 19, 21);
+                c.drawRoundRect(oval, 2, 2, p);
+                oval.set(9, 3, 15, 7);
+                p.setStyle(Paint.Style.FILL_AND_STROKE);
+                c.drawRoundRect(oval, 1, 1, p);
+                p.setStyle(Paint.Style.STROKE);
+                c.drawLine(12, 10, 12, 17, p);
+                path.moveTo(9, 14);
+                path.lineTo(12, 17);
+                path.lineTo(15, 14);
+                c.drawPath(path, p);
+                break;
+            case SELECT_ALL:
+                // 네 모서리와 각 변 가운데의 짧은 선으로 그린 점선 테두리, 그 안에 꽉 찬 네모.
+                path.moveTo(4, 7);
+                path.lineTo(4, 4);
+                path.lineTo(7, 4);
+                path.moveTo(17, 4);
+                path.lineTo(20, 4);
+                path.lineTo(20, 7);
+                path.moveTo(20, 17);
+                path.lineTo(20, 20);
+                path.lineTo(17, 20);
+                path.moveTo(7, 20);
+                path.lineTo(4, 20);
+                path.lineTo(4, 17);
+                path.moveTo(11, 4);
+                path.lineTo(13, 4);
+                path.moveTo(20, 11);
+                path.lineTo(20, 13);
+                path.moveTo(11, 20);
+                path.lineTo(13, 20);
+                path.moveTo(4, 11);
+                path.lineTo(4, 13);
+                c.drawPath(path, p);
+                oval.set(8.5f, 8.5f, 15.5f, 15.5f);
+                p.setStyle(Paint.Style.FILL_AND_STROKE);
+                c.drawRoundRect(oval, 1, 1, p);
                 break;
             default:
                 break;

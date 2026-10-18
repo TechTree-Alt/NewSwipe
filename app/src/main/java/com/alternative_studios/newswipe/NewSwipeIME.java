@@ -56,6 +56,7 @@ import com.alternative_studios.newswipe.keyboard.KeyboardTheme;
 import com.alternative_studios.newswipe.keyboard.KeyboardView;
 import com.alternative_studios.newswipe.keyboard.SwipeAction;
 import com.alternative_studios.newswipe.ui.ClipChip;
+import com.alternative_studios.newswipe.ui.EditChip;
 import com.alternative_studios.newswipe.ui.IconButton;
 import com.alternative_studios.newswipe.ui.SwipeVertical;
 import com.alternative_studios.newswipe.ui.SwipeStrip;
@@ -843,6 +844,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /**
      * 글자를 선택했을 때 뜨는 편집 칩 줄: 잘라내기·복사·붙여넣기·전체 선택. 칩은 같은 폭으로 줄을 나눠 쓰고
      * (칩 하나가 EDIT_CHIP_MAX_DP보다 넓어지지 않게 줄 전체를 가운데에 모은다), 모양은 자동 완성 칩과 같다.
+     * 칩마다 이름 앞에 아이콘이 있고, 칩이 좁아 이름이 들어가지 않으면 아이콘만 보인다.
      */
     private FrameLayout buildEditBar() {
         FrameLayout frame = new FrameLayout(this);
@@ -856,27 +858,17 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             }
         };
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.addView(editChip("잘라내기", v -> contextAction(android.R.id.cut)));
-        row.addView(editChip("복사", v -> copySelection(false)));
-        row.addView(editChip("붙여넣기", v -> contextAction(android.R.id.paste)));
-        row.addView(editChip("전체 선택", v -> contextAction(android.R.id.selectAll)));
+        row.addView(editChip(Icons.CUT, "잘라내기", v -> contextAction(android.R.id.cut)));
+        row.addView(editChip(Icons.COPY, "복사", v -> copySelection(false)));
+        row.addView(editChip(Icons.PASTE, "붙여넣기", v -> contextAction(android.R.id.paste)));
+        row.addView(editChip(Icons.SELECT_ALL, "전체 선택", v -> contextAction(android.R.id.selectAll)));
         frame.addView(row, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER));
         return frame;
     }
 
-    private TextView editChip(String label, View.OnClickListener l) {
-        TextView t = new TextView(this);
-        t.setText(label);
-        t.setTextColor(theme.text);
-        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        t.setGravity(Gravity.CENTER);
-        t.setSingleLine(true);
-        t.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        int pad = Ui.dp(this, 6);
-        t.setPadding(pad, 0, pad, 0);
-        float r = Ui.chipRadius(this);
-        t.setBackground(Ui.ripple(theme.keyPressed, Ui.round(theme.key, r), r));
+    private EditChip editChip(int icon, String label, View.OnClickListener l) {
+        EditChip t = new EditChip(this, icon, label, theme.text, theme.key, theme.keyPressed);
         t.setOnClickListener(v -> {
             feedback.onToolbar();
             l.onClick(v);
