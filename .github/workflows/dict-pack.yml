@@ -16,6 +16,7 @@ jobs:
       - uses: actions/checkout@v7
 
       # 태그의 버전과 팩 안 manifest.properties의 version이 같아야 한다 (다른 팩을 잘못 올리지 않게).
+      # 저장소의 파일 이름은 ko-standard.zip으로 두고, 릴리스에는 버전을 붙인 이름(ko-standard-2026.10.3.zip)으로 올린다.
       - name: Check pack version
         run: |
           want="${GITHUB_REF_NAME#dict-}"
@@ -25,12 +26,16 @@ jobs:
             echo "::error::태그(dict-$want)와 팩의 version($got)이 다릅니다."
             exit 1
           fi
+          cp dict/packs/ko-standard.zip "ko-standard-$want.zip"
+          echo "PACK_VERSION=$want" >> "$GITHUB_ENV"
 
       - uses: softprops/action-gh-release@v3
         with:
-          name: 사전 팩 ${{ github.ref_name }}
-          files: dict/packs/ko-standard.zip
+          name: 사전 팩 ${{ env.PACK_VERSION }}
+          files: ko-standard-${{ env.PACK_VERSION }}.zip
           make_latest: false
           body: |
-            NewSwipe 한국어 표준 사전 팩입니다. 앱 설정의 '한국어 사전'에서 '사전 팩 가져오기'로 `ko-standard.zip`을 고르세요.
-            사전 데이터는 CC BY 4.0(Leipzig Corpora Collection)과 CC0(NSMC) 자료로 만들었습니다. 출처는 팩 안의 LICENSE.txt에 있습니다.
+            NewSwipe 1.5.0 이상을 위한 한국어 표준 사전 팩입니다.
+            NewSwipe 내장 사전에 없는 단어와 단어쌍을 포함하고 있어 단어 추천, 자동 수정 기능을 향상시킬 수 있습니다.
+            앱 설정의 '한국어 사전'에서 '사전 팩 가져오기'로 ko-standard-${{ env.PACK_VERSION }}.zip을 고르세요.
+            사전 데이터의 출처는 팩 안의 LICENSE.txt에 있습니다.
