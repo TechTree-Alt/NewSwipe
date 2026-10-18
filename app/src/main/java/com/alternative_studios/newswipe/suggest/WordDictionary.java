@@ -336,6 +336,9 @@ public final class WordDictionary {
      * 그 자음으로 시작하는 단어 중 점수가 minScore 이상인 것의 앞부분과 typo 비용으로 견준다.
      * out에 단어 번호를, cost에 고친 비용을 넣고 찾은 수를 돌려준다 (비용이 maxCost 이하인 것, 점수순 상위 max개).
      */
+    /** 오타가 섞인 접두사를 찾을 때 앞 단어와 같은 자모만큼 계산을 다시 쓸지 (끄면 예전처럼 단어마다 잰다: 평가용). */
+    static boolean FAST_FUZZY = true;
+
     public int fuzzyPrefix(String prefix, TypoModel typo, float maxCost, int minScore, int max, int[] out, float[] cost) {
         if (prefix.length() < 2 || max <= 0) return 0;
         char first = prefix.charAt(0);
@@ -345,6 +348,7 @@ public final class WordDictionary {
         int from = lowerBound(a, 1), to = lowerBound(b, 1);
         char[] p = TypoModel.letters(prefix);
         char[] t = new char[64];
+        TypoModel.PrefixScan scan = FAST_FUZZY ? typo.prefixScan(p, p.length, maxCost) : null;
         int found = 0;
         int[] rank = new int[max];
         for (int i = from; i < to; i++) {
@@ -354,7 +358,7 @@ public final class WordDictionary {
             int s = offsets[i], e = offsets[i + 1];
             if (e - s > 21) continue;
             int tn = TypoModel.letters(chars, s, e, t);
-            float c = typo.prefixDistance(p, p.length, t, tn, maxCost);
+            float c = scan != null ? scan.cost(t, tn) : typo.prefixDistance(p, p.length, t, tn, maxCost);
             if (c > maxCost || c <= 0f) continue;   // 0이면 이미 맞는 접두사다 (lookup이 찾는다)
             int pos = found;
             while (pos > 0 && sc > rank[pos - 1]) pos--;

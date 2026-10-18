@@ -75,7 +75,7 @@ public final class SuggestEval {
 
     public static void main(String[] args) throws Exception {
         String dir = args[0], testFile = args[1];
-        boolean old = false, learn = false, predict = true, typoOnly = false, typo = true;
+        boolean old = false, learn = false, predict = true, typoOnly = false, typo = true, typoTyping = false;
         String perSentence = null;
         boolean learnGaps = false;
         int max = Integer.MAX_VALUE;
@@ -86,6 +86,7 @@ public final class SuggestEval {
                 case "--learn": learn = true; break;
                 case "--no-predict": predict = false; break;
                 case "--typo-only": typoOnly = true; break;
+                case "--typo-typing": typoTyping = true; break;
                 case "--per-sentence": perSentence = args[++i]; break;
                 case "--learn-gaps": learnGaps = true; break;
                 case "--no-typo": typo = false; break;
@@ -154,6 +155,10 @@ public final class SuggestEval {
 
         if (typoOnly) {
             typoTest(d, ks, lines, old);
+            return;
+        }
+        if (typoTyping) {
+            typoTypingTest(d, ks, lines, field);
             return;
         }
         long keys = 0, saved = 0, predSaved = 0, words = 0, predHits = 0, predShown = 0, predTried = 0, savedTop1 = 0;
@@ -519,6 +524,82 @@ public final class SuggestEval {
         System.out.printf("자동 수정 한 번에 평균 %.3f ms%n", correctNs / 1e6 / Math.max(1, tried));
     }
 
+    /**
+     * 오타를 섞어 치는 동안 원래 단어가 추천 칸에 보이는지 (자동 수정과 달리 치는 중의 추천). 사전 단어의 셋 중 하나에 오타를
+     * 하나 넣고, 여섯 키 이상인 말은 셋 중 하나에 하나 더 넣는다. 오타를 친 뒤(오타 키부터)의 추천만 센다: 그 전에 보인 것은
+     * 오타와 상관없는 보통의 추천이다. 오타 키 절약률 = (남은 키 + 스페이스)를 아낀 비율 (고르는 데 한 번 누른다고 보지 않는다:
+     * 본 평가와 같게).
+     */
+    private static void typoTypingTest(WordDictionary d, KoreanSuggest ks, List<String> lines, int field) {
+        Random rnd = new Random(seed);
+        int tried = 0, during = 0, top1 = 0, end = 0, two = 0, twoDuring = 0;
+        long keys = 0, saved = 0;
+        long[] lat = new long[1 << 16];
+        int latN = 0;
+        long ns = 0, calls = 0;
+        for (String line : lines) {
+            String prev = null;
+            for (String raw : line.split("\\s+")) {
+                String core = strip(raw);
+                if (core == null || core.length() < 2 || !d.contains(core) || rnd.nextInt(3) != 0) {
+                    prev = core;
+                    continue;
+                }
+                char[] k = keysOf(core);
+                char[] bad = typo(k, rnd.nextInt(10), rnd);
+                boolean second = k.length >= 6 && rnd.nextInt(3) == 0;
+                if (second) bad = typo(bad, rnd.nextInt(10), rnd);
+                String typed = compose(bad);
+                if (typed == null || typed.equals(core) || !allSyllables(typed)) {
+                    prev = core;
+                    continue;
+                }
+                int from = 0;   // 처음 어긋난 키
+                while (from < Math.min(k.length, bad.length) && k[from] == bad[from]) from++;
+                tried++;
+                if (second) two++;
+                keys += bad.length + 1;
+                HangulComposer hc = new HangulComposer();
+                StringBuilder committed = new StringBuilder();
+                boolean hit = false;
+                for (int i = 0; i < bad.length; i++) {
+                    hc.input(bad[i], doubleTapVowel && isVowelKey(bad[i]), i * 1000L);
+                    committed.append(hc.takeCommit());
+                    if (i < from) continue;
+                    String now = committed + hc.getComposing();
+                    long c0 = System.nanoTime();
+                    String[] shown = ks.suggest(now, prev, field, null, null, null, WordSuggester.MAX).words;
+                    long dt = System.nanoTime() - c0;
+                    ns += dt;
+                    calls++;
+                    if (latN < lat.length) lat[latN++] = dt;
+                    int at = indexOf(shown, core);
+                    if (at < 0) continue;
+                    if (i < bad.length - 1) {
+                        during++;
+                        if (second) twoDuring++;
+                        if (at == 0) top1++;
+                    }
+                    end++;
+                    saved += bad.length - (i + 1);
+                    hit = true;
+                    break;
+                }
+                if (!hit) {
+                    // 다 친 뒤 스페이스로 고쳐지면 스페이스 한 번만큼은 친 셈이다 (아낀 키 없음)
+                    String fix = ks.correct(typed, prev, field, null, null);
+                    if (core.equals(fix)) end++;
+                }
+                prev = core;
+            }
+        }
+        System.out.printf("오타 섞어 치기 %d개 (오타 둘 %d개): 치는 중에 보임 %.1f%% (첫 칸 %.1f%%), 다 친 뒤까지 보이거나 고침 %.1f%%, 오타 둘인 말 치는 중 %.1f%%%n",
+                tried, two, 100.0 * during / Math.max(1, tried), 100.0 * top1 / Math.max(1, tried), 100.0 * end / Math.max(1, tried),
+                100.0 * twoDuring / Math.max(1, two));
+        System.out.printf("오타 키 절약률 %.2f%%%n", 100.0 * saved / Math.max(1, keys));
+        System.out.printf("오타 추천 한 번에 평균 %.3f ms (99%% %.3f ms)%n", ns / 1e6 / Math.max(1, calls), percentile(lat, latN, 0.99));
+    }
+
     private static char[] typo(char[] k, int kind, Random rnd) {
         StringBuilder s = new StringBuilder(new String(k));
         int i = rnd.nextInt(k.length);
@@ -625,7 +706,7 @@ public final class SuggestEval {
         String[] p = kv.split("=", 2);
         java.lang.reflect.Field f = null;   // 계수는 순위(KoreanSuggest), 만든 꼴(KoreanForms), 자동 수정(KoreanCorrect), 꼴 알아보기(KoreanMorph)에 있다
         for (Class<?> c : new Class<?>[]{KoreanSuggest.class, KoreanForms.class, KoreanCorrect.class, KoreanMorph.class,
-                UsageHistory.class, HangulRange.class}) {
+                UsageHistory.class, HangulRange.class, WordDictionary.class}) {
             try {
                 f = c.getDeclaredField(p[0]);
                 break;

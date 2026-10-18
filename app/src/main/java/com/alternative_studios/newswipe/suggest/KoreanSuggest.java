@@ -108,6 +108,14 @@ final class KoreanSuggest {
 
     static double FUZZY_MIN_FREQ = 85;
 
+    /** 접두사가 맞는 후보가 충분해도 오타가 섞인 접두사 후보를 찾을지, 그 후보의 오타 비용 1당 확률에 곱하는 값의 로그. */
+    static boolean FUZZY_ALWAYS = false;
+
+    static double FUZZY_PENALTY = 3.0;
+
+    /** 오타가 섞인 접두사 후보를 몇 개까지 찾을지 (사전 점수가 높은 것부터). */
+    static int FUZZY_N = 8;
+
     /** 검색 칸에서 사전 단어에 조사가 붙은 말에 곱하는 값. */
     static double SEARCH_PARTICLE = 0.45;
 
@@ -421,12 +429,13 @@ final class KoreanSuggest {
             cx.tag(pool, SRC_ENDING);
             if ((SPLIT_ALWAYS || pool.size() < max) && KoreanMorph.hangulSyllables(word) >= 2) addSplits(pool, cx, word);
             cx.tag(pool, SRC_SPLIT);
-            if (pool.size() < max && KoreanMorph.hangulSyllables(word) >= 2) {
-                int[] ids = new int[8];
-                float[] cost = new float[8];
-                int n = dict.fuzzyPrefix(word, typo, FUZZY_MAX, scoreFor(FUZZY_MIN_FREQ), 8, ids, cost);
+            if ((FUZZY_ALWAYS || pool.size() < max) && KoreanMorph.hangulSyllables(word) >= 2) {
+                int[] ids = new int[FUZZY_N];
+                float[] cost = new float[FUZZY_N];
+                int n = dict.fuzzyPrefix(word, typo, FUZZY_MAX, scoreFor(FUZZY_MIN_FREQ), FUZZY_N, ids, cost);
                 for (int i = 0; i < n; i++) {
-                    add(pool, cx, dict.word(ids[i]), ids[i], Math.exp(-TYPO_PENALTY * cost[i]));
+                    if (pool.containsKey(dict.word(ids[i]))) continue;
+                    add(pool, cx, dict.word(ids[i]), ids[i], Math.exp(-FUZZY_PENALTY * cost[i]));
                 }
             }
             cx.tag(pool, SRC_TYPO);
