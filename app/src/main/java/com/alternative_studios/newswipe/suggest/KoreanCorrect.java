@@ -42,6 +42,10 @@ final class KoreanCorrect {
         if (dict.contains(word) || WordSuggester.isDictWordWithParticle(dict, word)) return null;
         if (KEEP_PLAUSIBLE && plausible(word)) return null;
         KoreanSuggest.Context cx = ks.context(prev, field, user, usage);
+        if (SPELL_RULES) {
+            String r = spellFix(word, cx);
+            if (r != null) return r;
+        }
         char[] p = TypoModel.letters(word);
         float maxCost = syll <= 3 ? CORRECT_MAX_SHORT : CORRECT_MAX_LONG;
         char[] t = new char[72];
@@ -71,6 +75,73 @@ final class KoreanCorrect {
         }
         if (bestId < 0 || best - second < CORRECT_MARGIN) return null;
         return dict.word(bestId);
+    }
+
+    /**
+     * 맞춤법 오타 규칙으로 고친다 (끄면 평가용으로 자판 오타만 본다). 소리가 같아 받침·모음을 잘못 적은 말은 자판 거리로는 흔한
+     * 말에만 닿고(고칠 단어의 최소 빈도), 드문 활용형(재밋네요 → 재밌네요)은 놓친다. 규칙은 open-korean-text의 typos.txt와
+     * Kiwi의 typo.dict·basicTypoSet(둘 다 Apache License 2.0)에서 실제 글에서 틀리는 것만 골랐다. 결과가 사전 단어(조사가 붙은
+     * 것 포함)일 때만 고치므로, 사전에 있는 말(왠지, 잇다)은 건드리지 않는다.
+     */
+    static boolean SPELL_RULES = true;
+
+    /** 통째로 바꾸는 말 {틀린 꼴, 바른 꼴} (어절 안 어디에 있어도). */
+    private static final String[][] SPELL_WHOLE = {{"어자피", "어차피"}, {"댓가", "대가"}, {"오랫만", "오랜만"}};
+
+    /** 되 + 아/어 꼴로 줄어야 할 뒷말 (되요 → 돼요, 되서 → 돼서, 되버린 → 돼버린, 되야 → 돼야). */
+    private static final String DWAE_NEXT = "요서버야";
+
+    /** word를 맞춤법 오타 규칙으로 고친 사전 단어. 규칙을 두 군데까지 적용한다 (잇엇다 → 있었다). 없으면 null. */
+    private String spellFix(String word, KoreanSuggest.Context cx) {
+        String best = null;
+        double bestS = 0;
+        for (String a : spellEdits(word)) {
+            String fix = known(a) ? a : null;
+            if (fix == null) {
+                for (String b : spellEdits(a)) {
+                    if (known(b)) {
+                        fix = b;
+                        break;
+                    }
+                }
+            }
+            if (fix == null) continue;
+            int id = dict.indexOf(fix);
+            double s = id >= 0 ? cx.score(fix, id) : 1e-12;   // 조사가 붙은 말은 사전 단어보다 뒤로
+            if (best == null || s > bestS) {
+                best = fix;
+                bestS = s;
+            }
+        }
+        return best;
+    }
+
+    private boolean known(String w) {
+        return dict.contains(w) || WordSuggester.isDictWordWithParticle(dict, w);
+    }
+
+    /** 규칙 하나를 한 자리에 적용한 꼴들. */
+    static java.util.List<String> spellEdits(String w) {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        for (String[] r : SPELL_WHOLE) {
+            int at = w.indexOf(r[0]);
+            if (at >= 0) out.add(w.substring(0, at) + r[1] + w.substring(at + r[0].length()));
+        }
+        for (int i = 0; i < w.length(); i++) {
+            char c = w.charAt(i);
+            if (c < 0xAC00 || c > 0xD7A3) continue;
+            int jong = (c - 0xAC00) % 28;
+            char to = 0;
+            if (jong == 19) to = (char) (c + 1);   // ㅅ 받침 → ㅆ: 햇다 → 했다, 봣는데 → 봤는데, 겟 → 겠, 잇지만 → 있지만
+            else if (c == '찬') to = '찮';   // 괜찬 → 괜찮, 귀찬 → 귀찮
+            else if (c == '왠') to = '웬';   // 왠만하면 → 웬만하면 (왠지는 사전에 있다)
+            else if (c == '읍') to = '습';   // 있읍니다 → 있습니다
+            else if (c == '됬') to = '됐';
+            else if (c == '됀' || c == '됄' || c == '됌' || c == '됍') to = (char) (c + 28);   // 됀다 → 된다, 됌 → 됨
+            else if (c == '되' && i + 1 < w.length() && DWAE_NEXT.indexOf(w.charAt(i + 1)) >= 0) to = '돼';
+            if (to != 0) out.add(w.substring(0, i) + to + w.substring(i + 1));
+        }
+        return out;
     }
 
     /**
