@@ -34,6 +34,7 @@ jobs:
           name: 사전 팩 ${{ env.PACK_VERSION }}
           files: ko-standard-${{ env.PACK_VERSION }}.zip
           make_latest: false
+          # 앱의 '사전 팩 받는 곳'이 releases?q=ko-standard로 이 릴리스를 찾는다: 설명에서 파일 이름(ko-standard-...)을 빼지 않는다.
           body: |
             NewSwipe 1.5.0 이상을 위한 한국어 표준 사전 팩입니다.
             NewSwipe 내장 사전에 없는 단어와 단어쌍을 포함하고 있어 단어 추천, 자동 수정 기능을 향상시킬 수 있습니다.
