@@ -44,6 +44,7 @@ import com.alternative_studios.newswipe.clipboard.ClipboardPanel;
 import com.alternative_studios.newswipe.emoji.EmojiData;
 import com.alternative_studios.newswipe.emoji.EmojiPanel;
 import com.alternative_studios.newswipe.emoji.EmojiRepository;
+import com.alternative_studios.newswipe.hangul.Dubeolsik;
 import com.alternative_studios.newswipe.hangul.HangulComposer;
 import com.alternative_studios.newswipe.keyboard.FunctionSwipes;
 import com.alternative_studios.newswipe.keyboard.ToolbarButtons;
@@ -1157,6 +1158,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     public void onStartInput(EditorInfo attribute, boolean restarting) {
         super.onStartInput(attribute, restarting);
         initialTextFresh = true;
+        hwForwarded.clear();
+        // 외장 키보드를 쓰면 자판 화면이 뜨지 않아 onStartInputView가 불리지 않는다. 입력란에 맞는 언어는 여기서도 정한다.
+        applyFieldLanguage(attribute, restarting);
     }
 
     @Override
@@ -1402,6 +1406,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     private void setLayoutKind(int kind) {
         layoutKind = kind;
+        if (keyboard == null) return;   // 외장 키보드만 쓰면 자판 화면을 만들지 않은 채 언어를 바꿀 수 있다
         // 한 손 모드에서는 자·모음 균형 레이아웃의 가운데 빈틈을 없앤 배열을 쓴다.
         Prefs prefs = !Prefs.ONE_HAND_OFF.equals(activeOneHand()) ? this.prefs.oneHandView() : this.prefs;
         // 자·모음 균형 레이아웃의 키 폭·위치는 가로 모드·대화면일 때 세로 모드와 따로 정한 값을 쓴다.
@@ -2279,6 +2284,130 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
         updateAutoCap();
         if (panel == PANEL_SEARCH) updateSearch();
+    }
+
+    // ---------------------------------------------------------------- 외장 키보드
+
+    /** 조합 중인 글자를 확정한 뒤 입력란에 그대로 보낸 키 (뗄 때도 같이 보낸다). */
+    private final java.util.Set<Integer> hwForwarded = new java.util.HashSet<>();
+    /** 오른쪽 Alt를 누른 뒤 다른 키를 누르지 않았다 (떼면 한/영 전환). */
+    private boolean hwRightAltAlone;
+
+    /**
+     * 외장 키보드(블루투스·USB)의 키. 한글이면 글자 키를 두벌식 자모로 조합하고, 영어면 앱에 그대로 넘긴다.
+     * 한/영 전환: 한/영 키(언어 전환 키), Shift+Space, 오른쪽 Alt만 눌렀다 떼기.
+     * 자판의 키는 입력란에 직접 보내므로 여기로 오지 않는다.
+     */
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode != KeyEvent.KEYCODE_ALT_RIGHT) hwRightAltAlone = false;
+        InputConnection ic = getCurrentInputConnection();
+        // 뒤로 가기·볼륨 같은 시스템 키와 이모지 검색 화면에서는 예전처럼 시스템과 앱에 맡긴다.
+        if (ic == null || !isHardwareKey(event) || event.isSystem() || panel == PANEL_SEARCH) {
+            return super.onKeyDown(keyCode, event);
+        }
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_ALT_RIGHT:
+                if (event.getRepeatCount() == 0) {
+                    hwRightAltAlone = !event.isCtrlPressed() && !event.isShiftPressed() && !event.isMetaPressed();
+                }
+                return super.onKeyDown(keyCode, event);
+            case KeyEvent.KEYCODE_LANGUAGE_SWITCH:
+                if (event.getRepeatCount() == 0) hwToggleLanguage();
+                return true;
+            case KeyEvent.KEYCODE_SPACE:
+                if (event.hasModifiers(KeyEvent.META_SHIFT_ON)) {
+                    if (event.getRepeatCount() == 0) hwToggleLanguage();
+                    return true;
+                }
+                break;
+            default:
+                break;
+        }
+        if (event.isCtrlPressed() || event.isAltPressed() || event.isMetaPressed()) {
+            // 단축키(Ctrl+C 등)는 앱이 처리한다. 조합 중인 글자는 먼저 확정한다.
+            return hwForward(ic, keyCode, event);
+        }
+        char jamo = hwHangulAllowed() && keyCode >= KeyEvent.KEYCODE_A && keyCode <= KeyEvent.KEYCODE_Z
+                ? Dubeolsik.jamo((char) ('a' + keyCode - KeyEvent.KEYCODE_A), event.isShiftPressed()) : 0;
+        if (jamo != 0) {
+            correctedTo = null;
+            lastWasSpace = false;
+            composer.input(jamo, false, event.getEventTime());
+            syncComposer();
+            scheduleSuggest();
+            return true;
+        }
+        if (keyCode == KeyEvent.KEYCODE_DEL && !composer.isEmpty()) {
+            composer.backspace();
+            syncComposer();
+            scheduleSuggest();
+            return true;
+        }
+        if (KeyEvent.isModifierKey(keyCode)) return super.onKeyDown(keyCode, event);
+        return hwForward(ic, keyCode, event);
+    }
+
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_ALT_RIGHT && hwRightAltAlone) {
+            hwRightAltAlone = false;
+            hwToggleLanguage();
+            return super.onKeyUp(keyCode, event);   // Alt를 뗀 것은 앱도 알아야 한다
+        }
+        if (hwForwarded.remove(keyCode)) {
+            InputConnection ic = getCurrentInputConnection();
+            if (ic != null) ic.sendKeyEvent(event);
+            return true;
+        }
+        if (!isHardwareKey(event) || event.isSystem() || panel == PANEL_SEARCH) return super.onKeyUp(keyCode, event);
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_LANGUAGE_SWITCH:
+                return true;
+            case KeyEvent.KEYCODE_SPACE:
+                if (event.hasModifiers(KeyEvent.META_SHIFT_ON)) return true;
+                break;
+            default:
+                break;
+        }
+        if (hwHangulAllowed() && keyCode >= KeyEvent.KEYCODE_A && keyCode <= KeyEvent.KEYCODE_Z
+                && !event.isCtrlPressed() && !event.isAltPressed() && !event.isMetaPressed()) {
+            return true;   // 누를 때 자모로 넣은 키
+        }
+        return super.onKeyUp(keyCode, event);
+    }
+
+    /**
+     * 한글 조합과 상관없는 키. 조합 중인 글자가 없으면 앱이 그대로 받게 두고, 있으면 먼저 확정한 뒤 같은 입력 통로로 보낸다
+     * (그냥 넘기면 키가 확정한 글자보다 먼저 앱에 닿아 '안녕 '이 '안 녕'처럼 될 수 있다).
+     */
+    private boolean hwForward(InputConnection ic, int keyCode, KeyEvent event) {
+        mirror.forget();   // 앱이 키로 무엇을 바꿀지 모른다
+        if (composer.isEmpty() && !hadComposing) return super.onKeyDown(keyCode, event);
+        commitComposing();
+        ic.sendKeyEvent(event);
+        hwForwarded.add(keyCode);
+        return true;
+    }
+
+    /** 외장 키보드에서 온 키인지 (화면 키보드나 가상 장치에서 온 키는 건드리지 않는다). */
+    private static boolean isHardwareKey(KeyEvent event) {
+        android.view.InputDevice d = event.getDevice();
+        return d != null && !d.isVirtual() && event.isFromSource(android.view.InputDevice.SOURCE_KEYBOARD)
+                && d.getKeyboardType() == android.view.InputDevice.KEYBOARD_TYPE_ALPHABETIC;
+    }
+
+    /** 지금 입력란에 외장 키보드로 한글을 넣을지. 숫자·전화번호 입력란 등에서는 키를 그대로 둔다. */
+    private boolean hwHangulAllowed() {
+        if (!korean) return false;
+        EditorInfo ei = getCurrentInputEditorInfo();
+        return ei != null && (ei.inputType & InputType.TYPE_MASK_CLASS) == InputType.TYPE_CLASS_TEXT;
+    }
+
+    /** 외장 키보드로 한/영을 바꾼다. 자판 화면이 떠 있지 않으면 바뀐 언어를 짧게 알려 준다. */
+    private void hwToggleLanguage() {
+        toggleLanguage();
+        if (!isInputViewShown()) Toast.makeText(this, korean ? "한글" : "English", Toast.LENGTH_SHORT).show();
     }
 
     // ---------------------------------------------------------------- 단어 추천
