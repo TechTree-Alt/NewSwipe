@@ -286,6 +286,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 if (Prefs.PINNED_EMOJI.equals(key) && emojiPanel != null) {
                     emojiPanel.setPinned(EmojiRepository.parseRecent(prefs.pinnedEmoji()));
                 }
+                if (key == null || Prefs.HW_SHOW_KEYBOARD.equals(key)) updateInputViewShown();
                 // key가 null이면 설정 전체가 지워진 경우(설정 가져오기 등)라 반영한다.
                 if (keyboard == null || (key != null && !affectsKeyboard(key))) return;
                 main.removeCallbacks(applyPrefsRunnable);
@@ -297,7 +298,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return !(Prefs.LANGUAGE.equals(key) || Prefs.RECENT_EMOJI.equals(key) || Prefs.PINNED_EMOJI.equals(key)
                 || Prefs.CLIPBOARD_HISTORY.equals(key) || Prefs.CLIPBOARD_IMAGES.equals(key) || Prefs.CLIPBOARD_SENSITIVE.equals(key) || Prefs.CLIPBOARD_CHIP.equals(key) || Prefs.AUTO_CAP.equals(key)
                 || Prefs.DOUBLE_SPACE_PERIOD.equals(key) || Prefs.CONFIRM_LEARNED_DELETE.equals(key)
-                || Prefs.ONE_HAND_LAST.equals(key) || Prefs.ENGLISH_FIELDS.equals(key));
+                || Prefs.ONE_HAND_LAST.equals(key) || Prefs.ENGLISH_FIELDS.equals(key)
+                || key.startsWith(Prefs.HW_PREFIX));   // 외장 키보드 설정은 키를 누를 때 읽는다
     }
 
     @Override
@@ -390,6 +392,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     @Override
     public boolean onEvaluateFullscreenMode() {
         return false;   // 가로 화면에서도 전체 화면 입력창을 쓰지 않는다.
+    }
+
+    /** 외장 키보드를 연결하면 시스템이 자판을 감춘다. 실험실 '화면 자판도 보이기'를 켰으면 그래도 보인다. */
+    @Override
+    public boolean onEvaluateInputViewShown() {
+        return super.onEvaluateInputViewShown() || (prefs != null && prefs.hwShowKeyboard());
     }
 
     @Override
@@ -2290,39 +2298,31 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /** 조합 중인 글자를 확정한 뒤 입력란에 그대로 보낸 키 (뗄 때도 같이 보낸다). */
     private final java.util.Set<Integer> hwForwarded = new java.util.HashSet<>();
-    /** 오른쪽 Alt를 누른 뒤 다른 키를 누르지 않았다 (떼면 한/영 전환). */
-    private boolean hwRightAltAlone;
+    /** 혼자 눌렀다 떼면 한/영을 바꾸는 키(오른쪽 Alt, 직접 지정한 Ctrl 등)를 누른 뒤 다른 키를 누르지 않았으면 그 키 코드. 아니면 0. */
+    private int hwAloneKey;
 
     /**
      * 외장 키보드(블루투스·USB)의 키. 한글이면 글자 키를 두벌식 자모로 조합하고, 영어면 앱에 그대로 넘긴다.
-     * 한/영 전환: 한/영 키(언어 전환 키), Shift+Space, 오른쪽 Alt만 눌렀다 떼기.
-     * 자판의 키는 입력란에 직접 보내므로 여기로 오지 않는다.
+     * 한/영 전환 키는 실험실 '외장 키보드'에서 고른다. 자판의 키는 입력란에 직접 보내므로 여기로 오지 않는다.
      */
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (keyCode != KeyEvent.KEYCODE_ALT_RIGHT) hwRightAltAlone = false;
+        if (keyCode != hwAloneKey) hwAloneKey = 0;
         InputConnection ic = getCurrentInputConnection();
         // 뒤로 가기·볼륨 같은 시스템 키와 이모지 검색 화면에서는 예전처럼 시스템과 앱에 맡긴다.
-        if (ic == null || !isHardwareKey(event) || event.isSystem() || panel == PANEL_SEARCH) {
+        if (ic == null || !prefs.hwHangul() || !isHardwareKey(event) || event.isSystem() || panel == PANEL_SEARCH) {
             return super.onKeyDown(keyCode, event);
         }
-        switch (keyCode) {
-            case KeyEvent.KEYCODE_ALT_RIGHT:
-                if (event.getRepeatCount() == 0) {
-                    hwRightAltAlone = !event.isCtrlPressed() && !event.isShiftPressed() && !event.isMetaPressed();
-                }
-                return super.onKeyDown(keyCode, event);
-            case KeyEvent.KEYCODE_LANGUAGE_SWITCH:
-                if (event.getRepeatCount() == 0) hwToggleLanguage();
-                return true;
-            case KeyEvent.KEYCODE_SPACE:
-                if (event.hasModifiers(KeyEvent.META_SHIFT_ON)) {
-                    if (event.getRepeatCount() == 0) hwToggleLanguage();
-                    return true;
-                }
-                break;
-            default:
-                break;
+        if (isAloneLangKey(keyCode)) {
+            // 떼는 순간 바꾼다: 다른 키와 함께 누르면(Alt+Tab, Ctrl+C 등) 원래 키로 쓴다.
+            if (event.getRepeatCount() == 0) {
+                hwAloneKey = (event.getModifiers() & ~modifierMetaOf(keyCode)) == 0 ? keyCode : 0;
+            }
+            return super.onKeyDown(keyCode, event);
+        }
+        if (isLangKey(keyCode, event)) {
+            if (event.getRepeatCount() == 0) hwToggleLanguage();
+            return true;
         }
         if (event.isCtrlPressed() || event.isAltPressed() || event.isMetaPressed()) {
             // 단축키(Ctrl+C 등)는 앱이 처리한다. 조합 중인 글자는 먼저 확정한다.
@@ -2350,31 +2350,67 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_ALT_RIGHT && hwRightAltAlone) {
-            hwRightAltAlone = false;
+        if (keyCode == hwAloneKey && hwAloneKey != 0) {
+            hwAloneKey = 0;
             hwToggleLanguage();
-            return super.onKeyUp(keyCode, event);   // Alt를 뗀 것은 앱도 알아야 한다
+            return super.onKeyUp(keyCode, event);   // 수정 키를 뗀 것은 앱도 알아야 한다
         }
         if (hwForwarded.remove(keyCode)) {
             InputConnection ic = getCurrentInputConnection();
             if (ic != null) ic.sendKeyEvent(event);
             return true;
         }
-        if (!isHardwareKey(event) || event.isSystem() || panel == PANEL_SEARCH) return super.onKeyUp(keyCode, event);
-        switch (keyCode) {
-            case KeyEvent.KEYCODE_LANGUAGE_SWITCH:
-                return true;
-            case KeyEvent.KEYCODE_SPACE:
-                if (event.hasModifiers(KeyEvent.META_SHIFT_ON)) return true;
-                break;
-            default:
-                break;
+        if (!prefs.hwHangul() || !isHardwareKey(event) || event.isSystem() || panel == PANEL_SEARCH) {
+            return super.onKeyUp(keyCode, event);
         }
+        if (!isAloneLangKey(keyCode) && isLangKey(keyCode, event)) return true;   // 누를 때 한/영을 바꾼 키
         if (hwHangulAllowed() && keyCode >= KeyEvent.KEYCODE_A && keyCode <= KeyEvent.KEYCODE_Z
                 && !event.isCtrlPressed() && !event.isAltPressed() && !event.isMetaPressed()) {
             return true;   // 누를 때 자모로 넣은 키
         }
         return super.onKeyUp(keyCode, event);
+    }
+
+    /** 리눅스 입력 장치의 한/영 키 스캔 코드 (KEY_HANGEUL). 안드로이드 키 코드가 따로 없어 기기마다 다르게 온다. */
+    private static final int SCAN_HANGEUL = 122;
+
+    /** 누를 때 한/영을 바꾸는 키: 한/영 키, Shift+Space, Ctrl+Space, 직접 지정한 키 (실험실에서 고른 것만). */
+    private boolean isLangKey(int keyCode, KeyEvent event) {
+        if (prefs.hwLangKey() && (keyCode == KeyEvent.KEYCODE_LANGUAGE_SWITCH || event.getScanCode() == SCAN_HANGEUL)) {
+            return true;
+        }
+        if (keyCode == KeyEvent.KEYCODE_SPACE) {
+            if (event.hasModifiers(KeyEvent.META_SHIFT_ON)) return prefs.hwShiftSpace();
+            if (event.hasModifiers(KeyEvent.META_CTRL_ON)) return prefs.hwCtrlSpace();
+            return false;
+        }
+        int custom = prefs.hwCustomKey(), scan = prefs.hwCustomScan();
+        boolean hit = custom != 0 ? keyCode == custom
+                : scan != 0 && keyCode == KeyEvent.KEYCODE_UNKNOWN && event.getScanCode() == scan;
+        return hit && event.getModifiers() == 0;
+    }
+
+    /** 혼자 눌렀다 떼면 한/영을 바꾸는 수정 키: 오른쪽 Alt, 또는 직접 지정한 수정 키(오른쪽 Ctrl 등). */
+    private boolean isAloneLangKey(int keyCode) {
+        if (!KeyEvent.isModifierKey(keyCode)) return false;
+        return (keyCode == KeyEvent.KEYCODE_ALT_RIGHT && prefs.hwRightAlt()) || keyCode == prefs.hwCustomKey();
+    }
+
+    /** 수정 키를 누르고 있을 때 켜지는 메타 상태 (다른 수정 키 없이 그 키 혼자 눌렸는지 볼 때 쓴다). */
+    private static int modifierMetaOf(int keyCode) {
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_ALT_LEFT: case KeyEvent.KEYCODE_ALT_RIGHT:
+                return KeyEvent.META_ALT_MASK;
+            case KeyEvent.KEYCODE_CTRL_LEFT: case KeyEvent.KEYCODE_CTRL_RIGHT:
+                return KeyEvent.META_CTRL_MASK;
+            case KeyEvent.KEYCODE_SHIFT_LEFT: case KeyEvent.KEYCODE_SHIFT_RIGHT:
+                return KeyEvent.META_SHIFT_MASK;
+            case KeyEvent.KEYCODE_META_LEFT: case KeyEvent.KEYCODE_META_RIGHT:
+                return KeyEvent.META_META_MASK;
+            case KeyEvent.KEYCODE_SYM: return KeyEvent.META_SYM_ON;
+            case KeyEvent.KEYCODE_FUNCTION: return KeyEvent.META_FUNCTION_ON;
+            default: return 0;
+        }
     }
 
     /**
@@ -2404,10 +2440,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return ei != null && (ei.inputType & InputType.TYPE_MASK_CLASS) == InputType.TYPE_CLASS_TEXT;
     }
 
-    /** 외장 키보드로 한/영을 바꾼다. 자판 화면이 떠 있지 않으면 바뀐 언어를 짧게 알려 준다. */
+    /** 외장 키보드로 한/영을 바꾼다. 자판 화면이 떠 있지 않으면 바뀐 언어를 짧게 알려 준다 (실험실에서 끌 수 있다). */
     private void hwToggleLanguage() {
         toggleLanguage();
-        if (!isInputViewShown()) Toast.makeText(this, korean ? "한글" : "English", Toast.LENGTH_SHORT).show();
+        if (prefs.hwToast() && !isInputViewShown()) Toast.makeText(this, korean ? "한글" : "English", Toast.LENGTH_SHORT).show();
     }
 
     // ---------------------------------------------------------------- 단어 추천

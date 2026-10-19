@@ -79,6 +79,19 @@ public final class Prefs {
     public static final int LARGE_SCREEN_DP_DEFAULT = 600, LARGE_SCREEN_DP_MIN = 400, LARGE_SCREEN_DP_MAX = 1000;
     /** 대화면 키보드의 값은 모두 이 말로 시작한다 (예: large_split_port_danmoeum7, large_balanced_vowel_width_land_danmoeum7). */
     private static final String LARGE_PREFIX = "large_";
+    /** 실험실 '외장 키보드'(블루투스·USB 키보드)의 값은 모두 이 말로 시작한다. */
+    public static final String HW_PREFIX = "hw_";
+    public static final String HW_HANGUL = "hw_hangul";                 // 외장 키보드로 한글(두벌식) 입력 (기본 켜짐)
+    public static final String HW_LANG_KEY = "hw_lang_key";             // 한/영 전환: 한/영 키(언어 전환 키) (기본 켜짐)
+    public static final String HW_SHIFT_SPACE = "hw_shift_space";       // 한/영 전환: Shift+Space (기본 켜짐)
+    public static final String HW_RIGHT_ALT = "hw_right_alt";           // 한/영 전환: 오른쪽 Alt만 눌렀다 떼기 (기본 켜짐)
+    public static final String HW_CTRL_SPACE = "hw_ctrl_space";         // 한/영 전환: Ctrl+Space (기본 꺼짐)
+    /** 한/영 전환: 사용자가 직접 지정한 키의 키 코드 (KeyEvent.KEYCODE_*). 0이면 없음. */
+    public static final String HW_CUSTOM_KEY = "hw_custom_key";
+    /** 직접 지정한 키가 안드로이드 키 코드가 없는 키(KEYCODE_UNKNOWN)면 그 스캔 코드. 0이면 없음. */
+    public static final String HW_CUSTOM_SCAN = "hw_custom_scan";
+    public static final String HW_TOAST = "hw_toast";                   // 자판이 안 보일 때 바뀐 언어 알림 (기본 켜짐)
+    public static final String HW_SHOW_KEYBOARD = "hw_show_keyboard";   // 외장 키보드를 연결해도 화면 자판 보이기 (기본 꺼짐)
     /**
      * 키보드 모습의 묶음(프로필). 세로 모드는 기본 값을, 가로 모드는 '가로 모드 키보드 사용자화'의 값을,
      * 대화면 세로·가로는 '대화면 키보드 사용자화'의 값을 쓴다.
@@ -296,6 +309,15 @@ public final class Prefs {
 
     /** 실험실 '대화면 별도 레이아웃' (기본 꺼짐). */
     public boolean largeLayout() { return sp.getBoolean(LARGE_LAYOUT, false); }
+    public boolean hwHangul() { return sp.getBoolean(HW_HANGUL, true); }
+    public boolean hwLangKey() { return sp.getBoolean(HW_LANG_KEY, true); }
+    public boolean hwShiftSpace() { return sp.getBoolean(HW_SHIFT_SPACE, true); }
+    public boolean hwRightAlt() { return sp.getBoolean(HW_RIGHT_ALT, true); }
+    public boolean hwCtrlSpace() { return sp.getBoolean(HW_CTRL_SPACE, false); }
+    public int hwCustomKey() { return Math.max(0, sp.getInt(HW_CUSTOM_KEY, 0)); }
+    public int hwCustomScan() { return Math.max(0, sp.getInt(HW_CUSTOM_SCAN, 0)); }
+    public boolean hwToast() { return sp.getBoolean(HW_TOAST, true); }
+    public boolean hwShowKeyboard() { return sp.getBoolean(HW_SHOW_KEYBOARD, false); }
     public int largeScreenDp() {
         return clamp(sp.getInt(LARGE_SCREEN_DP, LARGE_SCREEN_DP_DEFAULT), LARGE_SCREEN_DP_MIN, LARGE_SCREEN_DP_MAX);
     }
@@ -358,7 +380,7 @@ public final class Prefs {
                 CONFIRM_LEARNED_DELETE, AUTOFILL_INLINE));
         // 실험실: 대화면 별도 레이아웃과 대화면 키보드 사용자화의 값은 모두 large_로 시작한다.
         MENU_KEYS.put("lab", keys(SWIPE_DOWN_RATIO, SWIPE_UP_RATIO));
-        MENU_PREFIXES.put("lab", keys(LARGE_PREFIX));
+        MENU_PREFIXES.put("lab", keys(LARGE_PREFIX, HW_PREFIX));
         MENU_KEYS.put("onehand", keys(ONE_HAND_WIDTH, ONE_HAND_WIDTH_LAND, ONE_HAND_HEIGHT, ONE_HAND_LIFT));
     }
 
