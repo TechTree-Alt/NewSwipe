@@ -44,6 +44,7 @@ import com.alternative_studios.newswipe.clipboard.ClipboardPanel;
 import com.alternative_studios.newswipe.emoji.EmojiData;
 import com.alternative_studios.newswipe.emoji.EmojiPanel;
 import com.alternative_studios.newswipe.emoji.EmojiRepository;
+import com.alternative_studios.newswipe.hangul.Dubeolsik;
 import com.alternative_studios.newswipe.hangul.HangulComposer;
 import com.alternative_studios.newswipe.keyboard.FunctionSwipes;
 import com.alternative_studios.newswipe.keyboard.ToolbarButtons;
@@ -285,6 +286,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 if (Prefs.PINNED_EMOJI.equals(key) && emojiPanel != null) {
                     emojiPanel.setPinned(EmojiRepository.parseRecent(prefs.pinnedEmoji()));
                 }
+                if (key == null || Prefs.HW_TOOLBAR.equals(key)) {
+                    updateInputViewShown();
+                    refreshHwToolbar();
+                }
                 // key가 null이면 설정 전체가 지워진 경우(설정 가져오기 등)라 반영한다.
                 if (keyboard == null || (key != null && !affectsKeyboard(key))) return;
                 main.removeCallbacks(applyPrefsRunnable);
@@ -296,7 +301,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return !(Prefs.LANGUAGE.equals(key) || Prefs.RECENT_EMOJI.equals(key) || Prefs.PINNED_EMOJI.equals(key)
                 || Prefs.CLIPBOARD_HISTORY.equals(key) || Prefs.CLIPBOARD_IMAGES.equals(key) || Prefs.CLIPBOARD_SENSITIVE.equals(key) || Prefs.CLIPBOARD_CHIP.equals(key) || Prefs.AUTO_CAP.equals(key)
                 || Prefs.DOUBLE_SPACE_PERIOD.equals(key) || Prefs.CONFIRM_LEARNED_DELETE.equals(key)
-                || Prefs.ONE_HAND_LAST.equals(key) || Prefs.ENGLISH_FIELDS.equals(key));
+                || Prefs.ONE_HAND_LAST.equals(key) || Prefs.ENGLISH_FIELDS.equals(key)
+                || key.startsWith(Prefs.HW_PREFIX));   // 외장 키보드 설정은 키를 누를 때 읽는다
     }
 
     @Override
@@ -389,6 +395,43 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     @Override
     public boolean onEvaluateFullscreenMode() {
         return false;   // 가로 화면에서도 전체 화면 입력창을 쓰지 않는다.
+    }
+
+    /** 외장 키보드를 연결하면 시스템이 자판을 감춘다. 실험실 '도구 막대 보이기'를 켰으면 도구 막대만 보인다. */
+    @Override
+    public boolean onEvaluateInputViewShown() {
+        return super.onEvaluateInputViewShown() || (prefs != null && prefs.hwToolbar());
+    }
+
+    /**
+     * 외장 키보드가 있으면 시스템은 입력란이 저절로 요청한 표시(SHOW_IMPLICIT)를 받지 않는다.
+     * 도구 막대만 보일 때는 화면을 가리지 않으므로 입력란에 들어갈 때마다 보인다.
+     */
+    @Override
+    public boolean onShowInputRequested(int flags, boolean configChange) {
+        return hwToolbarOnly() || super.onShowInputRequested(flags, configChange);
+    }
+
+    /** 외장 키보드를 연결해 화면 자판 대신 도구 막대만 보이는 상태인지 (실험실 '도구 막대 보이기'). */
+    private boolean hwToolbarOnly() {
+        return prefs != null && prefs.hwToolbar() && !super.onEvaluateInputViewShown();
+    }
+
+    /** 지금 자판 자리를 비우고 도구 막대만 보이는지. 이모지·클립보드·검색 화면은 원래 크기로 보인다. */
+    private boolean toolbarOnlyNow() {
+        return panel == PANEL_KEYBOARD && hwToolbarOnly();
+    }
+
+    /** 마지막으로 applySettings()를 한 때의 hwToolbarOnly(). 자판 높이·한 손 모드 배치가 이 상태를 따른다. */
+    private boolean appliedBarOnly;
+
+    /** 외장 키보드를 연결·해제했거나 '도구 막대 보이기'를 바꿨으면 자판 크기와 배치를 다시 맞춘다. */
+    private void refreshHwToolbar() {
+        if (keyboard == null || hwToolbarOnly() == appliedBarOnly) return;
+        keyboard.cancelAll();
+        applySettings();
+        setLayoutKind(layoutKind);
+        applyTopSlotVisibility();
     }
 
     @Override
@@ -515,6 +558,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     public void onWindowShown() {
         super.onWindowShown();
         windowHidden = false;
+        refreshHwToolbar();
         main.removeCallbacks(releaseWhileHidden);
         applyNavigationBarStyle();
         refreshBottomInset(null);
@@ -600,6 +644,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     public void onConfigurationChanged(android.content.res.Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         refreshBottomInset(null);   // 폴더블을 접고 펴거나 탐색 방법을 바꾸면 하단 바가 달라진다
+        refreshHwToolbar();   // 외장 키보드를 연결하거나 뺐다
     }
 
     @Override
@@ -1041,6 +1086,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             sizeToolbar();
             placeTopSlot();
         }
+        appliedBarOnly = hwToolbarOnly();
         // 한 손 모드에서는 키 높이를 '키 높이' 비율만큼 줄인다.
         keyboardHeight = Math.round(Ui.dp(this, 54) * rows * sizePrefs.keyboardHeight() / 100f * oneHandScale)
                 + Ui.dp(this, prefs.padTopDp()) + Ui.dp(this, prefs.padBottomDp());
@@ -1084,8 +1130,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return prefs.profileFor(this);
     }
 
-    /** 한 손 모드가 실제로 적용되는 상태. */
+    /** 한 손 모드가 실제로 적용되는 상태. 외장 키보드로 도구 막대만 보일 때는 쓰지 않는다 (막대가 좁아지지 않게). */
     private String activeOneHand() {
+        if (hwToolbarOnly()) return Prefs.ONE_HAND_OFF;
         return prefs.oneHand();
     }
 
@@ -1119,7 +1166,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         Prefs profilePrefs = prefs.profileView(profile());
         int width = profilePrefs.oneHandWidthForProfile();
         // 세로 위치: 한 손 모드는 한 손 모드의 값을, 아니면 가로 모드·대화면에서 정한 값을 쓴다 (세로 모드는 0).
-        int lift = Ui.dp(this, on ? prefs.oneHandLiftDp() : profilePrefs.profileLiftDp());
+        // 외장 키보드로 도구 막대만 보일 때는 띄우지 않는다 (막대 아래에 빈 칸만 남는다).
+        int lift = appliedBarOnly ? 0 : Ui.dp(this, on ? prefs.oneHandLiftDp() : profilePrefs.profileLiftDp());
         String signature = side + "/" + width + "/" + lift;
         if (signature.equals(appliedOneHand)) return;
         appliedOneHand = signature;
@@ -1157,6 +1205,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     public void onStartInput(EditorInfo attribute, boolean restarting) {
         super.onStartInput(attribute, restarting);
         initialTextFresh = true;
+        hwForwarded.clear();
+        // 외장 키보드를 쓰면 자판 화면이 뜨지 않아 onStartInputView가 불리지 않는다. 입력란에 맞는 언어는 여기서도 정한다.
+        applyFieldLanguage(attribute, restarting);
     }
 
     @Override
@@ -1402,6 +1453,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     private void setLayoutKind(int kind) {
         layoutKind = kind;
+        if (keyboard == null) return;   // 외장 키보드만 쓰면 자판 화면을 만들지 않은 채 언어를 바꿀 수 있다
         // 한 손 모드에서는 자·모음 균형 레이아웃의 가운데 빈틈을 없앤 배열을 쓴다.
         Prefs prefs = !Prefs.ONE_HAND_OFF.equals(activeOneHand()) ? this.prefs.oneHandView() : this.prefs;
         // 자·모음 균형 레이아웃의 키 폭·위치는 가로 모드·대화면일 때 세로 모드와 따로 정한 값을 쓴다.
@@ -1448,7 +1500,6 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         onAutofillChipsChanged();   // 자판이 아닌 화면에서는 칩 줄을 가린다
         searchBar.setVisibility(p == PANEL_SEARCH ? View.VISIBLE : View.GONE);
         resultScroll.setVisibility(p == PANEL_SEARCH ? View.VISIBLE : View.GONE);
-        keyboard.setVisibility(full ? View.GONE : View.VISIBLE);
         if (p != PANEL_KEYBOARD) clearSuggestions();
         else scheduleSuggest();
         keyboard.cancelAll();
@@ -1481,14 +1532,17 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /** 도구 막대를 끈 상태로 자판을 보여 주는 중인지. 검색 패널은 도구 막대 자리에 검색창이 있어 해당하지 않는다. */
     private boolean toolbarGone() {
-        return !prefs.toolbar() && !((cfgSuggest && suggestAllowed) || (!shortcuts.isEmpty() && shortcutAllowed))
+        return !prefs.toolbar() && !toolbarOnlyNow() && !((cfgSuggest && suggestAllowed) || (!shortcuts.isEmpty() && shortcutAllowed))
                 && panel == PANEL_KEYBOARD && !autofillShowing() && !editShowing();
     }
 
     private void updatePanelSizes() {
         if (content == null) return;
         boolean full = panel == PANEL_EMOJI || panel == PANEL_CLIPBOARD;
-        int h = keyboardHeight + (full ? toolbarHeight : 0);
+        // 외장 키보드로 도구 막대만 보일 때는 자판 자리를 비운다. 이모지·클립보드 창은 그때도 원래 크기로 연다.
+        boolean barOnly = toolbarOnlyNow();
+        keyboard.setVisibility(full || barOnly ? View.GONE : View.VISIBLE);
+        int h = barOnly ? 0 : keyboardHeight + (full ? toolbarHeight : 0);
         ViewGroup.LayoutParams lp = content.getLayoutParams();
         if (lp != null && lp.height != h) {
             lp.height = h;
@@ -2281,6 +2335,166 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (panel == PANEL_SEARCH) updateSearch();
     }
 
+    // ---------------------------------------------------------------- 외장 키보드
+
+    /** 조합 중인 글자를 확정한 뒤 입력란에 그대로 보낸 키 (뗄 때도 같이 보낸다). */
+    private final java.util.Set<Integer> hwForwarded = new java.util.HashSet<>();
+    /** 혼자 눌렀다 떼면 한·영을 바꾸는 키(오른쪽 Alt, 직접 지정한 Ctrl 등)를 누른 뒤 다른 키를 누르지 않았으면 그 키 코드. 아니면 0. */
+    private int hwAloneKey;
+
+    /**
+     * 외장 키보드(블루투스·USB)의 키. 한글이면 글자 키를 두벌식 자모로 조합하고, 영어면 앱에 그대로 넘긴다.
+     * 한·영 전환 키는 실험실 '외장 키보드'에서 고른다. 자판의 키는 입력란에 직접 보내므로 여기로 오지 않는다.
+     */
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode != hwAloneKey) hwAloneKey = 0;
+        InputConnection ic = getCurrentInputConnection();
+        // 뒤로 가기·볼륨 같은 시스템 키와 이모지 검색 화면에서는 예전처럼 시스템과 앱에 맡긴다.
+        if (ic == null || !isHardwareKey(event) || event.isSystem() || panel == PANEL_SEARCH) {
+            return super.onKeyDown(keyCode, event);
+        }
+        if (isAloneLangKey(keyCode)) {
+            // 떼는 순간 바꾼다: 다른 키와 함께 누르면(Alt+Tab, Ctrl+C 등) 원래 키로 쓴다.
+            if (event.getRepeatCount() == 0) {
+                hwAloneKey = (event.getModifiers() & ~modifierMetaOf(keyCode)) == 0 ? keyCode : 0;
+            }
+            return super.onKeyDown(keyCode, event);
+        }
+        if (isLangKey(keyCode, event)) {
+            if (event.getRepeatCount() == 0) hwToggleLanguage();
+            return true;
+        }
+        if (event.isCtrlPressed() || event.isAltPressed() || event.isMetaPressed()) {
+            // 단축키(Ctrl+C 등)는 앱이 처리한다. 조합 중인 글자는 먼저 확정한다.
+            return hwForward(ic, keyCode, event);
+        }
+        char jamo = hwHangulAllowed() && keyCode >= KeyEvent.KEYCODE_A && keyCode <= KeyEvent.KEYCODE_Z
+                ? Dubeolsik.jamo((char) ('a' + keyCode - KeyEvent.KEYCODE_A), event.isShiftPressed()) : 0;
+        if (jamo != 0) {
+            correctedTo = null;
+            lastWasSpace = false;
+            composer.input(jamo, false, event.getEventTime());
+            syncComposer();
+            scheduleSuggest();
+            return true;
+        }
+        if (keyCode == KeyEvent.KEYCODE_DEL && !composer.isEmpty()) {
+            composer.backspace();
+            syncComposer();
+            scheduleSuggest();
+            return true;
+        }
+        if (KeyEvent.isModifierKey(keyCode)) return super.onKeyDown(keyCode, event);
+        return hwForward(ic, keyCode, event);
+    }
+
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
+        if (keyCode == hwAloneKey && hwAloneKey != 0) {
+            hwAloneKey = 0;
+            hwToggleLanguage();
+            return super.onKeyUp(keyCode, event);   // 수정 키를 뗀 것은 앱도 알아야 한다
+        }
+        if (hwForwarded.remove(keyCode)) {
+            InputConnection ic = getCurrentInputConnection();
+            if (ic != null) ic.sendKeyEvent(event);
+            return true;
+        }
+        if (!isHardwareKey(event) || event.isSystem() || panel == PANEL_SEARCH) {
+            return super.onKeyUp(keyCode, event);
+        }
+        if (!isAloneLangKey(keyCode) && isLangKey(keyCode, event)) return true;   // 누를 때 한·영을 바꾼 키
+        if (hwHangulAllowed() && keyCode >= KeyEvent.KEYCODE_A && keyCode <= KeyEvent.KEYCODE_Z
+                && !event.isCtrlPressed() && !event.isAltPressed() && !event.isMetaPressed()) {
+            return true;   // 누를 때 자모로 넣은 키
+        }
+        return super.onKeyUp(keyCode, event);
+    }
+
+    /** 리눅스 입력 장치의 한·영 키 스캔 코드 (KEY_HANGEUL). 안드로이드 키 코드가 따로 없어 기기마다 다르게 온다. */
+    private static final int SCAN_HANGEUL = 122;
+
+    /**
+     * 누를 때 한·영을 바꾸는 키: 한·영 키, Shift+Space, Ctrl+Space, 직접 지정한 키.
+     * 실험실 '한·영 전환 키 바꾸기'를 켰을 때만 고른 대로 쓰고, 끄면 한·영 키와 Shift+Space(와 오른쪽 Alt)로 바꾼다.
+     */
+    private boolean isLangKey(int keyCode, KeyEvent event) {
+        boolean custom = prefs.hwLangCustom();
+        if ((!custom || prefs.hwLangKey())
+                && (keyCode == KeyEvent.KEYCODE_LANGUAGE_SWITCH || event.getScanCode() == SCAN_HANGEUL)) {
+            return true;
+        }
+        if (keyCode == KeyEvent.KEYCODE_SPACE) {
+            if (event.hasModifiers(KeyEvent.META_SHIFT_ON)) return !custom || prefs.hwShiftSpace();
+            if (event.hasModifiers(KeyEvent.META_CTRL_ON)) return custom && prefs.hwCtrlSpace();
+            return false;
+        }
+        if (!custom) return false;
+        int customKey = prefs.hwCustomKey(), scan = prefs.hwCustomScan();
+        boolean hit = customKey != 0 ? keyCode == customKey
+                : scan != 0 && keyCode == KeyEvent.KEYCODE_UNKNOWN && event.getScanCode() == scan;
+        return hit && event.getModifiers() == 0;
+    }
+
+    /** 혼자 눌렀다 떼면 한·영을 바꾸는 수정 키: 오른쪽 Alt, 또는 직접 지정한 수정 키(오른쪽 Ctrl 등). */
+    private boolean isAloneLangKey(int keyCode) {
+        if (!KeyEvent.isModifierKey(keyCode)) return false;
+        boolean custom = prefs.hwLangCustom();
+        return (keyCode == KeyEvent.KEYCODE_ALT_RIGHT && (!custom || prefs.hwRightAlt()))
+                || (custom && keyCode == prefs.hwCustomKey());
+    }
+
+    /** 수정 키를 누르고 있을 때 켜지는 메타 상태 (다른 수정 키 없이 그 키 혼자 눌렸는지 볼 때 쓴다). */
+    private static int modifierMetaOf(int keyCode) {
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_ALT_LEFT: case KeyEvent.KEYCODE_ALT_RIGHT:
+                return KeyEvent.META_ALT_MASK;
+            case KeyEvent.KEYCODE_CTRL_LEFT: case KeyEvent.KEYCODE_CTRL_RIGHT:
+                return KeyEvent.META_CTRL_MASK;
+            case KeyEvent.KEYCODE_SHIFT_LEFT: case KeyEvent.KEYCODE_SHIFT_RIGHT:
+                return KeyEvent.META_SHIFT_MASK;
+            case KeyEvent.KEYCODE_META_LEFT: case KeyEvent.KEYCODE_META_RIGHT:
+                return KeyEvent.META_META_MASK;
+            case KeyEvent.KEYCODE_SYM: return KeyEvent.META_SYM_ON;
+            case KeyEvent.KEYCODE_FUNCTION: return KeyEvent.META_FUNCTION_ON;
+            default: return 0;
+        }
+    }
+
+    /**
+     * 한글 조합과 상관없는 키. 조합 중인 글자가 없으면 앱이 그대로 받게 두고, 있으면 먼저 확정한 뒤 같은 입력 통로로 보낸다
+     * (그냥 넘기면 키가 확정한 글자보다 먼저 앱에 닿아 '안녕 '이 '안 녕'처럼 될 수 있다).
+     */
+    private boolean hwForward(InputConnection ic, int keyCode, KeyEvent event) {
+        mirror.forget();   // 앱이 키로 무엇을 바꿀지 모른다
+        if (composer.isEmpty() && !hadComposing) return super.onKeyDown(keyCode, event);
+        commitComposing();
+        ic.sendKeyEvent(event);
+        hwForwarded.add(keyCode);
+        return true;
+    }
+
+    /** 외장 키보드에서 온 키인지 (화면 키보드나 가상 장치에서 온 키는 건드리지 않는다). */
+    private static boolean isHardwareKey(KeyEvent event) {
+        android.view.InputDevice d = event.getDevice();
+        return d != null && !d.isVirtual() && event.isFromSource(android.view.InputDevice.SOURCE_KEYBOARD)
+                && d.getKeyboardType() == android.view.InputDevice.KEYBOARD_TYPE_ALPHABETIC;
+    }
+
+    /** 지금 입력란에 외장 키보드로 한글을 넣을지. 숫자·전화번호 입력란 등에서는 키를 그대로 둔다. */
+    private boolean hwHangulAllowed() {
+        if (!korean) return false;
+        EditorInfo ei = getCurrentInputEditorInfo();
+        return ei != null && (ei.inputType & InputType.TYPE_MASK_CLASS) == InputType.TYPE_CLASS_TEXT;
+    }
+
+    /** 외장 키보드로 한·영을 바꾼다. 자판이 보이지 않으면(도구 막대만 보일 때도) 바뀐 언어를 짧게 알려 준다 (실험실에서 끌 수 있다). */
+    private void hwToggleLanguage() {
+        toggleLanguage();
+        if (prefs.hwToast() && (!isInputViewShown() || toolbarOnlyNow())) Toast.makeText(this, korean ? "한글" : "English", Toast.LENGTH_SHORT).show();
+    }
+
     // ---------------------------------------------------------------- 단어 추천
 
     private static boolean suggestAllowedFor(EditorInfo info) {
@@ -2610,7 +2824,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (editBar != null) editBar.setVisibility(editing ? View.VISIBLE : View.GONE);
         boolean suggesting = (suggestBar != null && suggestBar.getVisibility() == View.VISIBLE) || autofillShowing()
                 || editing;
-        boolean on = prefs.toolbar();
+        boolean on = prefs.toolbar() || toolbarOnlyNow();   // 도구 막대만 보일 때는 꺼 두었어도 보인다
         toolbar.setVisibility(panel == PANEL_SEARCH || !(on || suggesting) ? View.GONE : View.VISIBLE);
         // 설정에서 '도구 막대 전체를 쓰기'를 켰으면 추천이 떠 있는 동안 왼쪽 버튼들도 사라진다.
         // 선택 편집 칩은 칩 네 개가 넉넉히 들어가도록 언제나 막대 전체를 쓴다.

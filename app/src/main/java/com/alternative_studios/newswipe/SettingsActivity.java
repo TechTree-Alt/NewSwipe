@@ -12,6 +12,7 @@ import android.provider.Settings;
 import android.text.InputType;
 import android.util.TypedValue;
 import android.view.Gravity;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
@@ -160,7 +161,7 @@ public final class SettingsActivity extends Activity {
             {"words", "추천, 학습 및 완성", "단어 추천, 학습, 단축어, 자동 완성"},
             {"onehand", "한 손 모드", "자판 폭·키 높이, 세로 위치"},
             {"backup", "설정 가져오기 및 내보내기", "모든 설정을 파일로 저장하거나 불러오기"},
-            {"lab", "실험실", "대화면 별도 레이아웃, 스와이프 방향 판정"},
+            {"lab", "실험실", "대화면 별도 레이아웃, 스와이프 방향 판정, 외장 키보드"},
     };
 
     /** 첫 화면 맨 위에 설정 메뉴와 따로 두는 항목. */
@@ -437,6 +438,11 @@ public final class SettingsActivity extends Activity {
             {"lab", "대화면 기준", "태블릿 폴더블 큰 화면 dp"},
             {"lab", "대화면 키보드 사용자화", "태블릿 폴더블 큰 화면"},
             {"lab", "대화면 별도 레이아웃", "태블릿 폴더블 큰 화면"},
+            {"lab", "한·영 전환 키 바꾸기", "한영 한/영 전환 언어 전환 키 외장 키보드 블루투스 USB 물리 하드웨어"},
+            {"lab", "한·영 키", "한영 한/영 전환 언어 전환 키 외장 키보드"},
+            {"lab", "한·영 키 직접 지정", "한영 한/영 전환 키 바꾸기 외장 키보드"},
+            {"lab", "언어 전환 알림", "한영 전환 외장 키보드"},
+            {"lab", "도구 막대 보이기", "외장 키보드 물리 키보드 블루투스 연결 툴바 클립보드 이모지"},
             {"app", "개인정보 처리방침", "프라이버시 privacy 정보"},
             {"app", "오픈소스 라이선스", "라이센스 license 정보"},
             {"app", "소스 코드", "깃허브 github 정보"},
@@ -1026,6 +1032,111 @@ public final class SettingsActivity extends Activity {
                 "폴더블 기기의 내부 화면이나 태블릿과 같은 대화면에서 키보드의 크기와 형태를 따로 정합니다.",
                 Prefs.LARGE_LAYOUT, prefs.largeLayout(), largeGroup));
         large.addView(largeGroup);
+
+        addHardwareKeyboard();
+    }
+
+    /** 실험실 '외장 키보드': 블루투스·USB 키보드의 한·영 전환 키, 언어 전환 알림, 도구 막대. */
+    private void addHardwareKeyboard() {
+        LinearLayout hw = section("외장 키보드");
+        hw.addView(note("한글은 두벌식 배열 기준입니다. 한·영 전환은 시스템 기본값을 쓰되, 바꿀 수 있습니다."));
+        TextView customValue = new TextView(this);
+        customValue.setTextColor(hintColor);
+        customValue.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        customValue.setText(hwKeyName(prefs.hwCustomKey(), prefs.hwCustomScan()));
+        View langGroup = subGroup(
+                toggle("한·영 키", "키보드의 한·영 키(언어 전환 키)로 바꿉니다. "
+                        + "기기에 따라 시스템이 이 키를 먼저 가져가 바뀌지 않으면 아래의 '한·영 키 직접 지정'을 써 보세요.",
+                        Prefs.HW_LANG_KEY, prefs.hwLangKey()),
+                toggle("Shift+Space", "Shift를 누른 채 스페이스바를 누르면 바꿉니다.",
+                        Prefs.HW_SHIFT_SPACE, prefs.hwShiftSpace()),
+                toggle("오른쪽 Alt", "오른쪽 Alt만 눌렀다 떼면 바꿉니다. 한·영 키를 누르면 오른쪽 Alt를 보내는 키보드가 많습니다. "
+                        + "다른 키와 함께 누르면 원래의 Alt로 쓰입니다.",
+                        Prefs.HW_RIGHT_ALT, prefs.hwRightAlt()),
+                toggle("Ctrl+Space", "Ctrl을 누른 채 스페이스바를 누르면 바꿉니다. "
+                        + "기기에 따라 시스템이 키보드 배열 전환에 먼저 쓸 수 있습니다.",
+                        Prefs.HW_CTRL_SPACE, prefs.hwCtrlSpace()),
+                button("한·영 키 직접 지정", customValue, v -> pickHardwareLangKey(customValue)),
+                note("위에 없는 키(오른쪽 Ctrl, 한자 키 등)를 한·영 전환에 씁니다. Ctrl·Alt 같은 수정 키는 혼자 눌렀다 뗄 때만 바꿉니다."));
+        hw.addView(toggle("한·영 전환 키 바꾸기", "한·영 전환을 다른 키 조합으로도 할 수 있게 바꿉니다.",
+                Prefs.HW_LANG_CUSTOM, prefs.hwLangCustom(), langGroup));
+        hw.addView(langGroup);
+        hw.addView(toggle("언어 전환 알림", "화면 자판이 보이지 않을 때 한·영을 바꾸면 '한글' 또는 'English'를 잠깐 띄웁니다.",
+                Prefs.HW_TOAST, prefs.hwToast()));
+        hw.addView(toggle("도구 막대 보이기",
+                "외장 키보드를 연결해 화면 자판이 감춰질 때도 도구 막대를 보입니다. "
+                        + "클립보드와 이모지 창은 원래 크기로 열립니다.",
+                Prefs.HW_TOOLBAR, prefs.hwToolbar()));
+    }
+
+    /** 외장 키보드에서 키를 하나 눌러 한·영 전환 키로 정한다. */
+    private void pickHardwareLangKey(TextView valueView) {
+        Context dc = AppTheme.dialogContext(this);
+        TextView message = new TextView(dc);
+        message.setText("외장 키보드에서 한·영 전환에 쓸 키를 누르세요.");
+        message.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        message.setTextColor(textColor);
+        int pad = Ui.dp(this, 24);
+        message.setPadding(pad, Ui.dp(this, 8), pad, 0);
+        android.app.AlertDialog dialog = AppTheme.accentBuilder(dc)
+                .setTitle("한·영 키 직접 지정")
+                .setView(message)
+                .setNeutralButton("지정 해제", (d, w) -> saveHardwareLangKey(valueView, 0, 0))
+                .setNegativeButton("취소", null)
+                .create();
+        dialog.setOnKeyListener((d, keyCode, event) -> {
+            // 시스템 키와 Esc는 그대로 둔다 (Esc는 창을 닫는 데 쓴다).
+            if (event.isSystem() || keyCode == KeyEvent.KEYCODE_ESCAPE
+                    || event.getDevice() == null || event.getDevice().isVirtual()) {
+                return false;
+            }
+            if (event.getAction() != KeyEvent.ACTION_DOWN) return true;
+            if (event.getRepeatCount() > 0) return true;
+            if (event.isPrintingKey() || keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_DEL
+                    || keyCode == KeyEvent.KEYCODE_TAB) {
+                message.setText("글자·스페이스·엔터·지우기·탭 키는 입력에 쓰이므로 지정할 수 없습니다. 다른 키를 누르세요.");
+                return true;
+            }
+            if (keyCode == KeyEvent.KEYCODE_CAPS_LOCK || keyCode == KeyEvent.KEYCODE_NUM_LOCK
+                    || keyCode == KeyEvent.KEYCODE_SCROLL_LOCK) {
+                // 잠금 키는 누를 때마다 시스템의 잠금 상태도 함께 바뀌어, 영어로 바꾸면 대문자로 입력되는 일이 생긴다.
+                message.setText("잠금 키(Caps Lock 등)는 잠금 상태가 함께 바뀌어 지정할 수 없습니다. 다른 키를 누르세요.");
+                return true;
+            }
+            int scan = keyCode == KeyEvent.KEYCODE_UNKNOWN ? event.getScanCode() : 0;
+            if (keyCode == KeyEvent.KEYCODE_UNKNOWN && scan == 0) {
+                message.setText("이 키는 알아볼 수 없습니다. 다른 키를 누르세요.");
+                return true;
+            }
+            saveHardwareLangKey(valueView, keyCode, scan);
+            dialog.dismiss();
+            return true;
+        });
+        dialog.show();
+    }
+
+    private void saveHardwareLangKey(TextView valueView, int keyCode, int scanCode) {
+        prefs.raw().edit().putInt(Prefs.HW_CUSTOM_KEY, keyCode).putInt(Prefs.HW_CUSTOM_SCAN, scanCode).apply();
+        valueView.setText(hwKeyName(keyCode, scanCode));
+    }
+
+    /** 직접 지정한 한·영 키의 이름 (설정 화면에 보인다). */
+    private static String hwKeyName(int keyCode, int scanCode) {
+        switch (keyCode) {
+            case 0: return scanCode != 0 ? "키 " + scanCode : "없음";
+            case KeyEvent.KEYCODE_CTRL_RIGHT: return "오른쪽 Ctrl";
+            case KeyEvent.KEYCODE_CTRL_LEFT: return "왼쪽 Ctrl";
+            case KeyEvent.KEYCODE_ALT_RIGHT: return "오른쪽 Alt";
+            case KeyEvent.KEYCODE_ALT_LEFT: return "왼쪽 Alt";
+            case KeyEvent.KEYCODE_SHIFT_RIGHT: return "오른쪽 Shift";
+            case KeyEvent.KEYCODE_SHIFT_LEFT: return "왼쪽 Shift";
+            case KeyEvent.KEYCODE_META_RIGHT: return "오른쪽 Meta";
+            case KeyEvent.KEYCODE_META_LEFT: return "왼쪽 Meta";
+            case KeyEvent.KEYCODE_LANGUAGE_SWITCH: return "언어 전환 키";
+            default:
+                String name = KeyEvent.keyCodeToString(keyCode);
+                return name.startsWith("KEYCODE_") ? name.substring(8) : name;
+        }
     }
 
     /**
@@ -1751,7 +1862,7 @@ public final class SettingsActivity extends Activity {
                 Prefs.SPACE_CURSOR, prefs.spaceCursor(), cursorGroup));
         standard.addView(cursorGroup);
         View lang = toggle("스페이스바를 밀어서 언어 전환",
-                "스페이스바를 좌우로 밀면 한/영을 전환합니다.",
+                "스페이스바를 좌우로 밀면 한·영을 전환합니다.",
                 prefs.spaceLangSwipe(), on -> {
                     prefs.raw().edit().putBoolean(Prefs.SPACE_LANG_SWIPE, on).apply();
                     if (on && cursorHSwitch[0].isChecked()) cursorHSwitch[0].toggle();
