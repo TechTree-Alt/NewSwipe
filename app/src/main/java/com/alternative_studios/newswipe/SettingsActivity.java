@@ -438,9 +438,9 @@ public final class SettingsActivity extends Activity {
             {"lab", "대화면 기준", "태블릿 폴더블 큰 화면 dp"},
             {"lab", "대화면 키보드 사용자화", "태블릿 폴더블 큰 화면"},
             {"lab", "대화면 별도 레이아웃", "태블릿 폴더블 큰 화면"},
-            {"lab", "한·영 전환 키 바꾸기", "한영 전환 언어 전환 키 외장 키보드 블루투스 USB 물리 하드웨어"},
-            {"lab", "한/영 키", "한영 전환 언어 전환 키 외장 키보드"},
-            {"lab", "한/영 키 직접 지정", "한영 전환 키 바꾸기 외장 키보드"},
+            {"lab", "한·영 전환 키 바꾸기", "한영 한/영 전환 언어 전환 키 외장 키보드 블루투스 USB 물리 하드웨어"},
+            {"lab", "한·영 키", "한영 한/영 전환 언어 전환 키 외장 키보드"},
+            {"lab", "한·영 키 직접 지정", "한영 한/영 전환 키 바꾸기 외장 키보드"},
             {"lab", "언어 전환 알림", "한영 전환 외장 키보드"},
             {"lab", "도구 막대 보이기", "외장 키보드 물리 키보드 블루투스 연결 툴바 클립보드 이모지"},
             {"app", "개인정보 처리방침", "프라이버시 privacy 정보"},
@@ -1039,25 +1039,24 @@ public final class SettingsActivity extends Activity {
     /** 실험실 '외장 키보드': 블루투스·USB 키보드의 한·영 전환 키, 언어 전환 알림, 도구 막대. */
     private void addHardwareKeyboard() {
         LinearLayout hw = section("외장 키보드");
-        hw.addView(note("블루투스·USB 키보드의 글자 키는 두벌식 배열로 한글 입력됩니다 (Shift: 쌍자음, ㅒ, ㅖ). "
-                + "한·영 전환은 한/영 키, Shift+Space, 오른쪽 Alt로 합니다."));
+        hw.addView(note("한글은 두벌식 배열 기준입니다. 한·영 전환은 시스템 기본값을 쓰되, 바꿀 수 있습니다."));
         TextView customValue = new TextView(this);
         customValue.setTextColor(hintColor);
         customValue.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         customValue.setText(hwKeyName(prefs.hwCustomKey(), prefs.hwCustomScan()));
         View langGroup = subGroup(
-                toggle("한/영 키", "키보드의 한/영 키(언어 전환 키)로 바꿉니다. "
-                        + "기기에 따라 시스템이 이 키를 먼저 가져가 바뀌지 않으면 아래의 '한/영 키 직접 지정'을 써 보세요.",
+                toggle("한·영 키", "키보드의 한·영 키(언어 전환 키)로 바꿉니다. "
+                        + "기기에 따라 시스템이 이 키를 먼저 가져가 바뀌지 않으면 아래의 '한·영 키 직접 지정'을 써 보세요.",
                         Prefs.HW_LANG_KEY, prefs.hwLangKey()),
                 toggle("Shift+Space", "Shift를 누른 채 스페이스바를 누르면 바꿉니다.",
                         Prefs.HW_SHIFT_SPACE, prefs.hwShiftSpace()),
-                toggle("오른쪽 Alt", "오른쪽 Alt만 눌렀다 떼면 바꿉니다. 한/영 키를 누르면 오른쪽 Alt를 보내는 키보드가 많습니다. "
+                toggle("오른쪽 Alt", "오른쪽 Alt만 눌렀다 떼면 바꿉니다. 한·영 키를 누르면 오른쪽 Alt를 보내는 키보드가 많습니다. "
                         + "다른 키와 함께 누르면 원래의 Alt로 쓰입니다.",
                         Prefs.HW_RIGHT_ALT, prefs.hwRightAlt()),
                 toggle("Ctrl+Space", "Ctrl을 누른 채 스페이스바를 누르면 바꿉니다. "
                         + "기기에 따라 시스템이 키보드 배열 전환에 먼저 쓸 수 있습니다.",
                         Prefs.HW_CTRL_SPACE, prefs.hwCtrlSpace()),
-                button("한/영 키 직접 지정", customValue, v -> pickHardwareLangKey(customValue)),
+                button("한·영 키 직접 지정", customValue, v -> pickHardwareLangKey(customValue)),
                 note("위에 없는 키(오른쪽 Ctrl, 한자 키 등)를 한·영 전환에 씁니다. Ctrl·Alt 같은 수정 키는 혼자 눌렀다 뗄 때만 바꿉니다."));
         hw.addView(toggle("한·영 전환 키 바꾸기", "한·영 전환을 다른 키 조합으로도 할 수 있게 바꿉니다.",
                 Prefs.HW_LANG_CUSTOM, prefs.hwLangCustom(), langGroup));
@@ -1070,17 +1069,17 @@ public final class SettingsActivity extends Activity {
                 Prefs.HW_TOOLBAR, prefs.hwToolbar()));
     }
 
-    /** 외장 키보드에서 키를 하나 눌러 한/영 전환 키로 정한다. */
+    /** 외장 키보드에서 키를 하나 눌러 한·영 전환 키로 정한다. */
     private void pickHardwareLangKey(TextView valueView) {
         Context dc = AppTheme.dialogContext(this);
         TextView message = new TextView(dc);
-        message.setText("외장 키보드에서 한/영 전환에 쓸 키를 누르세요.");
+        message.setText("외장 키보드에서 한·영 전환에 쓸 키를 누르세요.");
         message.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
         message.setTextColor(textColor);
         int pad = Ui.dp(this, 24);
         message.setPadding(pad, Ui.dp(this, 8), pad, 0);
         android.app.AlertDialog dialog = AppTheme.accentBuilder(dc)
-                .setTitle("한/영 키 직접 지정")
+                .setTitle("한·영 키 직접 지정")
                 .setView(message)
                 .setNeutralButton("지정 해제", (d, w) -> saveHardwareLangKey(valueView, 0, 0))
                 .setNegativeButton("취소", null)
@@ -1121,7 +1120,7 @@ public final class SettingsActivity extends Activity {
         valueView.setText(hwKeyName(keyCode, scanCode));
     }
 
-    /** 직접 지정한 한/영 키의 이름 (설정 화면에 보인다). */
+    /** 직접 지정한 한·영 키의 이름 (설정 화면에 보인다). */
     private static String hwKeyName(int keyCode, int scanCode) {
         switch (keyCode) {
             case 0: return scanCode != 0 ? "키 " + scanCode : "없음";
