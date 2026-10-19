@@ -1862,7 +1862,7 @@ public final class SettingsActivity extends Activity {
                 Prefs.SPACE_CURSOR, prefs.spaceCursor(), cursorGroup));
         standard.addView(cursorGroup);
         View lang = toggle("스페이스바를 밀어서 언어 전환",
-                "스페이스바를 좌우로 밀면 한/영을 전환합니다.",
+                "스페이스바를 좌우로 밀면 한·영을 전환합니다.",
                 prefs.spaceLangSwipe(), on -> {
                     prefs.raw().edit().putBoolean(Prefs.SPACE_LANG_SWIPE, on).apply();
                     if (on && cursorHSwitch[0].isChecked()) cursorHSwitch[0].toggle();

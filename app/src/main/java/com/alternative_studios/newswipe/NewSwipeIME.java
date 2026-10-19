@@ -2339,12 +2339,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /** 조합 중인 글자를 확정한 뒤 입력란에 그대로 보낸 키 (뗄 때도 같이 보낸다). */
     private final java.util.Set<Integer> hwForwarded = new java.util.HashSet<>();
-    /** 혼자 눌렀다 떼면 한/영을 바꾸는 키(오른쪽 Alt, 직접 지정한 Ctrl 등)를 누른 뒤 다른 키를 누르지 않았으면 그 키 코드. 아니면 0. */
+    /** 혼자 눌렀다 떼면 한·영을 바꾸는 키(오른쪽 Alt, 직접 지정한 Ctrl 등)를 누른 뒤 다른 키를 누르지 않았으면 그 키 코드. 아니면 0. */
     private int hwAloneKey;
 
     /**
      * 외장 키보드(블루투스·USB)의 키. 한글이면 글자 키를 두벌식 자모로 조합하고, 영어면 앱에 그대로 넘긴다.
-     * 한/영 전환 키는 실험실 '외장 키보드'에서 고른다. 자판의 키는 입력란에 직접 보내므로 여기로 오지 않는다.
+     * 한·영 전환 키는 실험실 '외장 키보드'에서 고른다. 자판의 키는 입력란에 직접 보내므로 여기로 오지 않는다.
      */
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
@@ -2404,7 +2404,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (!isHardwareKey(event) || event.isSystem() || panel == PANEL_SEARCH) {
             return super.onKeyUp(keyCode, event);
         }
-        if (!isAloneLangKey(keyCode) && isLangKey(keyCode, event)) return true;   // 누를 때 한/영을 바꾼 키
+        if (!isAloneLangKey(keyCode) && isLangKey(keyCode, event)) return true;   // 누를 때 한·영을 바꾼 키
         if (hwHangulAllowed() && keyCode >= KeyEvent.KEYCODE_A && keyCode <= KeyEvent.KEYCODE_Z
                 && !event.isCtrlPressed() && !event.isAltPressed() && !event.isMetaPressed()) {
             return true;   // 누를 때 자모로 넣은 키
@@ -2412,12 +2412,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return super.onKeyUp(keyCode, event);
     }
 
-    /** 리눅스 입력 장치의 한/영 키 스캔 코드 (KEY_HANGEUL). 안드로이드 키 코드가 따로 없어 기기마다 다르게 온다. */
+    /** 리눅스 입력 장치의 한·영 키 스캔 코드 (KEY_HANGEUL). 안드로이드 키 코드가 따로 없어 기기마다 다르게 온다. */
     private static final int SCAN_HANGEUL = 122;
 
     /**
-     * 누를 때 한/영을 바꾸는 키: 한/영 키, Shift+Space, Ctrl+Space, 직접 지정한 키.
-     * 실험실 '한·영 전환 키 바꾸기'를 켰을 때만 고른 대로 쓰고, 끄면 한/영 키와 Shift+Space(와 오른쪽 Alt)로 바꾼다.
+     * 누를 때 한·영을 바꾸는 키: 한·영 키, Shift+Space, Ctrl+Space, 직접 지정한 키.
+     * 실험실 '한·영 전환 키 바꾸기'를 켰을 때만 고른 대로 쓰고, 끄면 한·영 키와 Shift+Space(와 오른쪽 Alt)로 바꾼다.
      */
     private boolean isLangKey(int keyCode, KeyEvent event) {
         boolean custom = prefs.hwLangCustom();
@@ -2437,7 +2437,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return hit && event.getModifiers() == 0;
     }
 
-    /** 혼자 눌렀다 떼면 한/영을 바꾸는 수정 키: 오른쪽 Alt, 또는 직접 지정한 수정 키(오른쪽 Ctrl 등). */
+    /** 혼자 눌렀다 떼면 한·영을 바꾸는 수정 키: 오른쪽 Alt, 또는 직접 지정한 수정 키(오른쪽 Ctrl 등). */
     private boolean isAloneLangKey(int keyCode) {
         if (!KeyEvent.isModifierKey(keyCode)) return false;
         boolean custom = prefs.hwLangCustom();
@@ -2489,7 +2489,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return ei != null && (ei.inputType & InputType.TYPE_MASK_CLASS) == InputType.TYPE_CLASS_TEXT;
     }
 
-    /** 외장 키보드로 한/영을 바꾼다. 자판이 보이지 않으면(도구 막대만 보일 때도) 바뀐 언어를 짧게 알려 준다 (실험실에서 끌 수 있다). */
+    /** 외장 키보드로 한·영을 바꾼다. 자판이 보이지 않으면(도구 막대만 보일 때도) 바뀐 언어를 짧게 알려 준다 (실험실에서 끌 수 있다). */
     private void hwToggleLanguage() {
         toggleLanguage();
         if (prefs.hwToast() && (!isInputViewShown() || toolbarOnlyNow())) Toast.makeText(this, korean ? "한글" : "English", Toast.LENGTH_SHORT).show();

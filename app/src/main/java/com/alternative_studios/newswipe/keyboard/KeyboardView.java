@@ -203,7 +203,7 @@ public final class KeyboardView extends View {
     /** 커서 이동이 시작된 뒤 손가락이 움직이는 거리당 커서가 움직이는 빠르기 (1 = 기본). 스페이스바·문자 키, 좌우·상하 따로. */
     private float gapSpeed = 1f;
     private float spaceSpeedH = 1f, spaceSpeedV = 1f, charSpeedH = 1f, charSpeedV = 1f;
-    /** 스페이스바를 좌우로 밀어 한/영 전환 (손을 떼면 바꾼다). 스페이스바 좌우 커서 이동과 함께 쓰지 않는다. */
+    /** 스페이스바를 좌우로 밀어 한·영 전환 (손을 떼면 바꾼다). 스페이스바 좌우 커서 이동과 함께 쓰지 않는다. */
     private boolean spaceLangSwipe;
     /** 키보드 밀기 (한 손가락·두 손가락). 쓰지 않으면 null. */
     private KeyboardSwipes kbSwipes;
@@ -1025,7 +1025,7 @@ public final class KeyboardView extends View {
                 }
                 if (p.key.type == Key.SPACE && spaceLangSwipe && Math.abs(dx) > fnSwipeThreshold
                         && Math.abs(dx) > Math.abs(dy)) {
-                    // 스페이스바를 좌우로 밀어 한/영 전환: 손을 떼면 바꾼다 (되돌리면 취소).
+                    // 스페이스바를 좌우로 밀어 한·영 전환: 손을 떼면 바꾼다 (되돌리면 취소).
                     p.mode = FN_SWIPE;
                     p.fnAction = SwipeAction.LANGUAGE;
                     p.swipeDir = dx > 0 ? Key.SWIPE_RIGHT : Key.SWIPE_LEFT;

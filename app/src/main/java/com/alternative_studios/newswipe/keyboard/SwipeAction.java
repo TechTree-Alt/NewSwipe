@@ -73,7 +73,7 @@ public final class SwipeAction {
             {EMOJI_LATEST, "가장 최근 사용한 이모지 붙여넣기", "최근 이모지"},
             {EMOJI_PINNED, "첫 번째 고정 이모지 붙여넣기", "고정 이모지"},
             {IME_PICKER, "입력 방법 전환 창 열기", "입력기 선택"},
-            {LANGUAGE, "한/영 전환", "한/영 전환"},
+            {LANGUAGE, "한·영 전환", "한·영 전환"},
             {SYMBOLS, "기호 입력", "기호 입력"},
             {ENTER, "엔터", "엔터"},
             {SPACE, "띄어쓰기", "띄어쓰기"},
