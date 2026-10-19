@@ -1258,7 +1258,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             String[][] order = toolOrder != null ? toolOrder : prefs.toolOrder();
             for (String id : order[0]) {
                 if (!prefs.toolShown(id)) continue;
-                ViewGroup.LayoutParams lp = toolButtonOf(id).getLayoutParams();
+                // 시스템이 onCreateInputView보다 먼저 칩 요청을 부르면 도구 버튼이 아직 없다 (기본 폭으로 센다).
+                View button = toolButtonOf(id);
+                ViewGroup.LayoutParams lp = button != null ? button.getLayoutParams() : null;
                 width -= lp != null && lp.width > 0 ? lp.width : Ui.dp(this, 40);
             }
         }
