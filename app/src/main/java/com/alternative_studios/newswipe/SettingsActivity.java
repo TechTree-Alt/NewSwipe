@@ -438,10 +438,11 @@ public final class SettingsActivity extends Activity {
             {"lab", "대화면 기준", "태블릿 폴더블 큰 화면 dp"},
             {"lab", "대화면 키보드 사용자화", "태블릿 폴더블 큰 화면"},
             {"lab", "대화면 별도 레이아웃", "태블릿 폴더블 큰 화면"},
-            {"lab", "외장 키보드로 한글 입력", "블루투스 USB 물리 하드웨어 키보드 두벌식"},
+            {"lab", "한·영 전환 키 바꾸기", "한영 전환 언어 전환 키 외장 키보드 블루투스 USB 물리 하드웨어"},
             {"lab", "한/영 키", "한영 전환 언어 전환 키 외장 키보드"},
             {"lab", "한/영 키 직접 지정", "한영 전환 키 바꾸기 외장 키보드"},
-            {"lab", "화면 자판도 보이기", "외장 키보드 물리 키보드 연결 소프트 키보드"},
+            {"lab", "언어 전환 알림", "한영 전환 외장 키보드"},
+            {"lab", "도구 막대 보이기", "외장 키보드 물리 키보드 블루투스 연결 툴바 클립보드 이모지"},
             {"app", "개인정보 처리방침", "프라이버시 privacy 정보"},
             {"app", "오픈소스 라이선스", "라이센스 license 정보"},
             {"app", "소스 코드", "깃허브 github 정보"},
@@ -1035,15 +1036,16 @@ public final class SettingsActivity extends Activity {
         addHardwareKeyboard();
     }
 
-    /** 실험실 '외장 키보드': 블루투스·USB 키보드로 한글 입력과 한/영 전환 키. */
+    /** 실험실 '외장 키보드': 블루투스·USB 키보드의 한·영 전환 키, 언어 전환 알림, 도구 막대. */
     private void addHardwareKeyboard() {
         LinearLayout hw = section("외장 키보드");
+        hw.addView(note("블루투스·USB 키보드의 글자 키는 두벌식 배열로 한글 입력됩니다 (Shift: 쌍자음, ㅒ, ㅖ). "
+                + "한·영 전환은 한/영 키, Shift+Space, 오른쪽 Alt로 합니다."));
         TextView customValue = new TextView(this);
         customValue.setTextColor(hintColor);
         customValue.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         customValue.setText(hwKeyName(prefs.hwCustomKey(), prefs.hwCustomScan()));
-        View hangulGroup = subGroup(
-                note("한/영 전환 키 (여러 개를 함께 쓸 수 있습니다)"),
+        View langGroup = subGroup(
                 toggle("한/영 키", "키보드의 한/영 키(언어 전환 키)로 바꿉니다. "
                         + "기기에 따라 시스템이 이 키를 먼저 가져가 바뀌지 않으면 아래의 '한/영 키 직접 지정'을 써 보세요.",
                         Prefs.HW_LANG_KEY, prefs.hwLangKey()),
@@ -1056,17 +1058,16 @@ public final class SettingsActivity extends Activity {
                         + "기기에 따라 시스템이 키보드 배열 전환에 먼저 쓸 수 있습니다.",
                         Prefs.HW_CTRL_SPACE, prefs.hwCtrlSpace()),
                 button("한/영 키 직접 지정", customValue, v -> pickHardwareLangKey(customValue)),
-                note("위에 없는 키(오른쪽 Ctrl, 한자 키 등)를 한/영 전환에 씁니다. Ctrl·Alt 같은 수정 키는 혼자 눌렀다 뗄 때만 바꿉니다."),
-                toggle("언어 전환 알림", "화면 자판이 보이지 않을 때 한/영을 바꾸면 '한글' 또는 'English'를 잠깐 띄웁니다.",
-                        Prefs.HW_TOAST, prefs.hwToast()));
-        hw.addView(toggle("외장 키보드로 한글 입력",
-                "블루투스·USB 키보드의 글자 키를 두벌식 배열로 한글 입력합니다 (Shift: 쌍자음, ㅒ, ㅖ). "
-                        + "끄면 외장 키보드의 키를 앱에 그대로 보내 영어로만 입력됩니다.",
-                Prefs.HW_HANGUL, prefs.hwHangul(), hangulGroup));
-        hw.addView(hangulGroup);
-        hw.addView(toggle("화면 자판도 보이기",
-                "외장 키보드를 연결해도 화면 자판을 보입니다. 도구 막대, 이모지, 클립보드를 함께 쓸 때 켭니다.",
-                Prefs.HW_SHOW_KEYBOARD, prefs.hwShowKeyboard()));
+                note("위에 없는 키(오른쪽 Ctrl, 한자 키 등)를 한·영 전환에 씁니다. Ctrl·Alt 같은 수정 키는 혼자 눌렀다 뗄 때만 바꿉니다."));
+        hw.addView(toggle("한·영 전환 키 바꾸기", "한·영 전환을 다른 키 조합으로도 할 수 있게 바꿉니다.",
+                Prefs.HW_LANG_CUSTOM, prefs.hwLangCustom(), langGroup));
+        hw.addView(langGroup);
+        hw.addView(toggle("언어 전환 알림", "화면 자판이 보이지 않을 때 한·영을 바꾸면 '한글' 또는 'English'를 잠깐 띄웁니다.",
+                Prefs.HW_TOAST, prefs.hwToast()));
+        hw.addView(toggle("도구 막대 보이기",
+                "외장 키보드를 연결해 화면 자판이 감춰질 때도 도구 막대를 보입니다. "
+                        + "클립보드와 이모지 창은 원래 크기로 열립니다.",
+                Prefs.HW_TOOLBAR, prefs.hwToolbar()));
     }
 
     /** 외장 키보드에서 키를 하나 눌러 한/영 전환 키로 정한다. */
