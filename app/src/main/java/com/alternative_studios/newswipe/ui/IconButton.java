@@ -19,6 +19,7 @@ public final class IconButton extends View {
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private int icon;
     private float iconSize;
+    private boolean flipped;
 
     public IconButton(Context context, int icon, int color, int pressColor, String description) {
         super(context);
@@ -67,6 +68,13 @@ public final class IconButton extends View {
         invalidate();
     }
 
+    /** 아이콘만 180도 돌려 그린다 (칩 바탕은 그대로). */
+    public void setFlipped(boolean flipped) {
+        if (this.flipped == flipped) return;
+        this.flipped = flipped;
+        invalidate();
+    }
+
     /** 아이콘 크기 (px). 도구 막대 높이에 맞춰 바꾼다. */
     public void setIconSize(float px) {
         if (iconSize == px) return;
@@ -82,6 +90,7 @@ public final class IconButton extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         float size = Math.min(iconSize, Math.min(getWidth(), getHeight()) * 0.7f);
+        if (flipped) canvas.rotate(180, getWidth() / 2f, getHeight() / 2f);
         Icons.draw(canvas, icon, getWidth() / 2f, getHeight() / 2f, size, paint, stroke);
     }
 }

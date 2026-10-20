@@ -233,6 +233,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         super.onCreate();
         prefs = new Prefs(this);
         feedback = new Feedback(this);
+        inputManager = (android.hardware.input.InputManager) getSystemService(INPUT_SERVICE);
+        if (inputManager != null) inputManager.registerInputDeviceListener(inputDeviceListener, main);
+        hwKeyboardConnected = findHwKeyboard();
         if (Build.VERSION.SDK_INT >= 30) {
             autofill = new InlineAutofill(this, new InlineAutofill.Host() {
                 @Override
@@ -308,6 +311,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     @Override
     public void onDestroy() {
         if (clipboard != null) clipboard.removePrimaryClipChangedListener(this);
+        if (inputManager != null) inputManager.unregisterInputDeviceListener(inputDeviceListener);
         prefs.raw().unregisterOnSharedPreferenceChangeListener(prefListener);
         // 백그라운드 작업이 보내 둔 화면 갱신도 모두 버린다 (끝난 서비스를 붙잡거나, 닫힌 작업 줄에 다시 일을 맡기지 않게).
         main.removeCallbacksAndMessages(null);
@@ -400,7 +404,49 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 외장 키보드를 연결하면 시스템이 자판을 감춘다. 실험실 '도구 막대 보이기'를 켰으면 도구 막대만 보인다. */
     @Override
     public boolean onEvaluateInputViewShown() {
-        return super.onEvaluateInputViewShown() || (prefs != null && prefs.hwToolbar());
+        return super.onEvaluateInputViewShown() || (prefs != null && prefs.hwToolbar() && hwKeyboardConnected);
+    }
+
+    /** 외장 키보드가 연결되어 있는지. 장치가 붙고 빠질 때마다 다시 센다 (시스템 설정 값이 바뀌기를 기다리지 않는다). */
+    private boolean hwKeyboardConnected;
+
+    private android.hardware.input.InputManager inputManager;
+
+    private final android.hardware.input.InputManager.InputDeviceListener inputDeviceListener =
+            new android.hardware.input.InputManager.InputDeviceListener() {
+                @Override
+                public void onInputDeviceAdded(int deviceId) {
+                    onInputDevicesChanged();
+                }
+
+                @Override
+                public void onInputDeviceRemoved(int deviceId) {
+                    onInputDevicesChanged();
+                }
+
+                @Override
+                public void onInputDeviceChanged(int deviceId) {
+                    onInputDevicesChanged();
+                }
+            };
+
+    /** 외장 키보드를 연결하거나 빼면 곧바로 도구 막대만 보이기와 자판 전체 보이기를 바꾼다. */
+    private void onInputDevicesChanged() {
+        boolean connected = findHwKeyboard();
+        if (connected == hwKeyboardConnected) return;
+        hwKeyboardConnected = connected;
+        updateInputViewShown();
+        refreshHwToolbar();
+    }
+
+    /** 연결된 장치 가운데 외장 키보드(가상 장치가 아닌 글자 자판)가 있는지. isHardwareKey()와 같은 기준이다. */
+    private static boolean findHwKeyboard() {
+        for (int id : android.view.InputDevice.getDeviceIds()) {
+            android.view.InputDevice d = android.view.InputDevice.getDevice(id);
+            if (d != null && !d.isVirtual() && d.supportsSource(android.view.InputDevice.SOURCE_KEYBOARD)
+                    && d.getKeyboardType() == android.view.InputDevice.KEYBOARD_TYPE_ALPHABETIC) return true;
+        }
+        return false;
     }
 
     /**
@@ -414,7 +460,29 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /** 외장 키보드를 연결해 화면 자판 대신 도구 막대만 보이는 상태인지 (실험실 '도구 막대 보이기'). */
     private boolean hwToolbarOnly() {
-        return prefs != null && prefs.hwToolbar() && !super.onEvaluateInputViewShown();
+        return prefs != null && prefs.hwToolbar() && hwKeyboardConnected && !hwFullKeyboard
+                && !super.onEvaluateInputViewShown();
+    }
+
+    /** 도구 막대만 보일 때 '키보드 보이기' 버튼을 눌러, 외장 키보드가 있어도 자판 전체를 보이는 중인지. 키보드를 감추면 풀린다. */
+    private boolean hwFullKeyboard;
+
+    /** 도구 막대의 '키보드 숨기기' 버튼. 도구 막대만 보일 때는 자판 전체를 보이고, 아니면 키보드를 감춘다. */
+    private void onHideButton() {
+        if (hwToolbarOnly()) {
+            hwFullKeyboard = true;
+            refreshHwToolbar();
+        } else {
+            requestHideSelf(0);
+        }
+    }
+
+    /** 도구 막대만 보일 때는 '키보드 숨기기' 버튼을 위아래로 뒤집어 '키보드 보이기' 버튼으로 보인다. */
+    private void updateHideButton() {
+        if (hideButton == null) return;
+        boolean show = hwToolbarOnly();
+        hideButton.setFlipped(show);
+        hideButton.setContentDescription(show ? "키보드 보이기" : "키보드 숨기기");
     }
 
     /** 지금 자판 자리를 비우고 도구 막대만 보이는지. 이모지·클립보드·검색 화면은 원래 크기로 보인다. */
@@ -427,6 +495,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /** 외장 키보드를 연결·해제했거나 '도구 막대 보이기'를 바꿨으면 자판 크기와 배치를 다시 맞춘다. */
     private void refreshHwToolbar() {
+        if (!hwKeyboardConnected || super.onEvaluateInputViewShown()) hwFullKeyboard = false;   // 외장 키보드를 뺐다
         if (keyboard == null || hwToolbarOnly() == appliedBarOnly) return;
         keyboard.cancelAll();
         applySettings();
@@ -644,13 +713,16 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     public void onConfigurationChanged(android.content.res.Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         refreshBottomInset(null);   // 폴더블을 접고 펴거나 탐색 방법을 바꾸면 하단 바가 달라진다
-        refreshHwToolbar();   // 외장 키보드를 연결하거나 뺐다
+        hwKeyboardConnected = findHwKeyboard();   // 외장 키보드를 연결하거나 뺐다
+        updateInputViewShown();
+        refreshHwToolbar();
     }
 
     @Override
     public void onWindowHidden() {
         super.onWindowHidden();
         windowHidden = true;
+        hwFullKeyboard = false;   // 다음에 올라올 때는 다시 도구 막대만 보인다
         windowOnlyBottom = 0;   // 옛 값이 남아 다음에 올라올 때 자판 아래에 빈 띠가 생기지 않게 한다
         callbackBottom = -1;
         main.removeCallbacks(suggestRunnable);
@@ -692,7 +764,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         bar.addView(oneHandButton);
         settingsButton = toolButton(Icons.SETTINGS, "설정", v -> openSettings());
         bar.addView(settingsButton);
-        hideButton = toolButton(Icons.HIDE, "키보드 숨기기", v -> requestHideSelf(0));
+        hideButton = toolButton(Icons.HIDE, "키보드 숨기기", v -> onHideButton());
         bar.addView(hideButton);
         // 버튼을 위·아래·왼쪽·오른쪽으로 밀면 정해 둔 기능을 실행한다 (기본: 클립보드 위 = 복사·아래 = 붙여넣기,
         // 이모지 아래 = 최근 이모지, 실행 취소 아래 = 다시 실행, 한 손 모드 왼쪽·오른쪽 = 그쪽 한 손 모드).
@@ -1087,6 +1159,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             placeTopSlot();
         }
         appliedBarOnly = hwToolbarOnly();
+        updateHideButton();
         // 한 손 모드에서는 키 높이를 '키 높이' 비율만큼 줄인다.
         keyboardHeight = Math.round(Ui.dp(this, 54) * rows * sizePrefs.keyboardHeight() / 100f * oneHandScale)
                 + Ui.dp(this, prefs.padTopDp()) + Ui.dp(this, prefs.padBottomDp());

@@ -1065,7 +1065,8 @@ public final class SettingsActivity extends Activity {
                 Prefs.HW_TOAST, prefs.hwToast()));
         hw.addView(toggle("도구 막대 보이기",
                 "외장 키보드를 연결해 화면 자판이 감춰질 때도 도구 막대를 보입니다. "
-                        + "클립보드와 이모지 창은 원래 크기로 열립니다.",
+                        + "클립보드와 이모지 창은 원래 크기로 열립니다. "
+                        + "도구 막대의 '키보드 보이기' 버튼을 누르면 자판 전체가 보입니다.",
                 Prefs.HW_TOOLBAR, prefs.hwToolbar()));
     }
 
