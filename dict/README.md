@@ -5,7 +5,7 @@
 
 | 폴더 | 내용 |
 |---|---|
-| `build/` | 사전을 만드는 도구. `build_ko_model.py`(한국어 단어 사전 + 다음 단어 사전), `build_ko_dict.py`(걸러 내기·저장 함수, 차단 목록), `build_en_dict.py`(영어), `gen_ko_conjugations.py`(용언 활용형 생성), `count_ko_stems.py`·`select_ko_stems.py`(형태소 분석기 Kiwi로 말뭉치의 용언 어간 세기·고르기), `make_dict_pack.py`(사전 팩 zip 만들기) |
+| `build/` | 사전을 만드는 도구. `build_ko_model.py`(한국어 단어 사전 + 다음 단어 사전), `build_ko_dict.py`(걸러 내기·저장 함수, 차단 목록), `build_en_dict.py`(영어), `gen_ko_conjugations.py`(용언 활용형 생성), `gen_ko_pack_forms.py`(표준 사전 팩에 넣는 넓은 활용형: 높임·과거·보조 용언 꼴, Kiwi로 검사), `count_ko_stems.py`·`select_ko_stems.py`(형태소 분석기 Kiwi로 말뭉치의 용언 어간 세기·고르기), `make_dict_pack.py`(사전 팩 zip 만들기) |
 | `lists/` | 직접 고른 목록. 구어체 단어(`ko_colloquial.txt`, `en_colloquial.txt`), 용언 어간(`ko_stems.txt`)과 그것으로 만든 활용형(`ko_conjugated.txt`), 말뭉치에서 센 어간(`ko_stems_kiwi.txt`, 만든 목록), 구어체 문장(`ko_phrases.txt`), 말뭉치를 섞을 때 뺄 주제어(`ko_mix_exclude_nsmc.txt`) |
 | `eval/` | 평가 도구. 앱의 추천 코드로 한 키씩 쳐서 키 절약률·잘못 고침·오타 고침을 잰다 (`run_eval.sh`, `SuggestEval.java`), 두 설정을 같은 문장끼리 견준다 (`compare_ksr.py`), 공개 평가 말뭉치를 받아 dev·test로 나눈다 (`fetch_public_sets.sh`) |
 | `packs/` | 설정에서 가져오는 사전 팩. `ko-standard.zip`(표준 사전: 단어 8만 개 + 단어 쌍 40만 개, 약 1.1MB)과 그 라이선스, 폴더별 라이선스 안내(`README.md`) |
@@ -37,6 +37,9 @@ dict/eval/run_eval.sh app/src/main/assets dict/eval/data/chat_q_dev.txt --layout
 키 절약률, 다음 단어 예측이 보인 비율과 맞힌 비율, 예측을 늘 보였다면 맞힌 비율과 점수 상위 n%만 보였을 때의 적중률(예측 문턱을
 맞출 때 본다), 마지막 글자만 남기고 쳤을 때 맞는 조사·어미가 보인 비율(명사 + 조사 / 용언 활용 / 그 밖), 바르게 친 말을 잘못 고친 비율, 추천 시간(평균·중앙값·99%·최대), 일부러 넣은 오타를
 고친 비율(오타 종류별)과 고치지 못했어도 다 친 뒤 추천에 원래 단어가 보인 비율.
+
+두 사전의 자동 수정을 견줄 때는 `--typo-ref 기준_사전_폴더`를 붙여 같은 단어에 같은 오타를 넣습니다 (사전이 크면 오타가
+사전 단어가 되어 고칠 수 없게 되는 것도 그대로 센다). 풀어 놓은 사전 팩 폴더를 재면 팩의 `autocorrect_min_freq`를 씁니다.
 
 `--typo-typing`을 붙이면 오타를 섞어 치는 동안의 추천만 잽니다: 사전 단어의 셋 중 하나에 오타를 하나(여섯 키 이상인 말은 셋 중
 하나에 하나 더) 넣고 한 키씩 치면서, 오타 키를 친 뒤 원래 단어가 추천 칸에 보인 비율(치는 중 / 첫 칸 / 다 친 뒤 보이거나 스페이스로
@@ -91,8 +94,9 @@ dict/eval/run_private_eval.sh ~/corpora/messenger dict/packs/ko-standard.zip   #
 
 ## 사전 팩 형식
 
-zip 안에 `manifest.properties`(형식 번호, 언어, 이름, 출처, 라이선스, 해시), `dict_ko.bin`(필수), `dict_ko_next.bin`(선택),
-`LICENSE.txt`(선택)를 담습니다. 자세한 설명은 `app/src/main/java/com/alternative_studios/newswipe/suggest/DictionaryPack.java`에
+zip 안에 `manifest.properties`(형식 번호, 언어, 이름, 출처, 라이선스, 해시, 선택으로 자동 수정 최소 빈도
+`autocorrect_min_freq`), `dict_ko.bin`(필수), `dict_ko_next.bin`(선택), `LICENSE.txt`(선택)를 담습니다. `autocorrect_min_freq`는
+사전에 맞춘 값이라 데이터로 봅니다 (앱은 50~1000 밖의 값을 그 끝으로 누른다). 자세한 설명은 `app/src/main/java/com/alternative_studios/newswipe/suggest/DictionaryPack.java`에
 있습니다. 앱은 자기가 아는 것보다 높은 형식 번호의 팩을 거부하므로, 형식을 바꿀 때는 번호를 올리고 예전 형식도 계속 읽게 합니다.
 
 사전 팩에는 데이터(단어·빈도·단어 쌍)만 담습니다. 추천 방식(조사·어미 규칙, 순위 매기기)은 앱에 두어, 앱이 좋아지면 기본 사전과

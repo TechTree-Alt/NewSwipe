@@ -21,4 +21,8 @@ NewSwipe 한국어 표준 사전 팩 (ko-standard)
 3. NewSwipe의 구어체 보완 목록·활용형 목록·구어체 문장 목록 (dict/lists/ko_colloquial.txt, ko_conjugated.txt, ko_phrases.txt)
    License: Apache License 2.0 (NewSwipe 저장소와 같음)
 
+4. 만든 활용형 (2026.10.4부터): 위 1의 말뭉치를 형태소 분석기 Kiwi(kiwipiepy 0.24.0, Apache License 2.0)로 분석해 센 용언
+   어간에 어미를 붙여 만든 활용형 30만 개 (dict/build/gen_ko_pack_forms.py, 빈도는 말뭉치에서 잰 어미 몫으로 어림했다).
+   드문 어간은 open-korean-text(Apache License 2.0)의 동사·형용사 목록에 있는 것만 썼다.
+
 이 팩 전체는 CC BY 4.0으로 배포합니다. 다시 배포할 때는 위 출처를 함께 밝혀 주세요.

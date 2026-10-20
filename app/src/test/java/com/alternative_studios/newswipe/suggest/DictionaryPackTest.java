@@ -128,6 +128,24 @@ public class DictionaryPackTest {
     }
 
     @Test
+    public void readsAutocorrectMinFreq() throws Exception {
+        File files = tmp.newFolder();
+        assertEquals(0, DictionaryPack.load(installWith(files, "")).correctMinFreq, 0);   // 정하지 않으면 기본값
+        assertEquals(100, DictionaryPack.load(installWith(files, "autocorrect_min_freq=100\n")).correctMinFreq, 0);
+        // 범위 밖·잘못된 값: 자동 수정을 지나치게 세게 만들지 못한다
+        assertEquals(DictionaryPack.MIN_CORRECT_FREQ,
+                DictionaryPack.load(installWith(files, "autocorrect_min_freq=1\n")).correctMinFreq, 0);
+        assertEquals(0, DictionaryPack.load(installWith(files, "autocorrect_min_freq=abc\n")).correctMinFreq, 0);
+    }
+
+    private File installWith(File files, String extra) throws Exception {
+        Map<String, byte[]> m = goodPack();
+        m.put(DictionaryPack.MANIFEST, manifest(extra));
+        DictionaryPack.install(new ByteArrayInputStream(zip(m)), files);
+        return files;
+    }
+
+    @Test
     public void nextWordsAreOptional() throws Exception {
         File files = tmp.newFolder();
         Map<String, byte[]> m = goodPack();

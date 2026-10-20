@@ -382,6 +382,9 @@ The verb stem list `dict/lists/ko_stems_kiwi.txt` (used only when building the d
 app) was made by analysing the Leipzig corpora with Kiwi (kiwipiepy 0.24.0, Apache License 2.0), and its rarer
 stems were kept only when they also appear in the `verb/verb.txt` or `adjective/adjective.txt` lists of
 open-korean-text (Apache License 2.0). The irregular-conjugation exceptions of 르 stems follow Kiwi's
-`models/cong/base/combiningRule.txt`.
+`models/cong/base/combiningRule.txt`. The standard dictionary pack (`dict/packs/ko-standard.zip`) also holds
+verb and adjective forms that `dict/build/gen_ko_pack_forms.py` generated from such stems (counted the same
+way, with a lower frequency threshold) and checked by analysing each form with Kiwi; Kiwi itself is not
+distributed.
 
 The Apache License, Version 2.0 text is in `LICENSE`.

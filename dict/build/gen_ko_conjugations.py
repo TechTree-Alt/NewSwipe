@@ -176,19 +176,26 @@ ENDINGS = [
     ('ndan', '', 40, 'v', 'full'),
     # 그대로 붙이는 어미
     ('plain', '고', 120, 'va', 'lite'), ('plain', '지', 70, 'va', 'full'), ('plain', '지만', 70, 'va', 'full'),
-    ('plain', '네', 60, 'va', 'full'), ('plain', '네요', 60, 'va', 'full'), ('plain', '군요', 40, 'va', 'full'),
-    ('plain', '구나', 40, 'va', 'full'), ('plain', '죠', 40, 'va', 'full'), ('plain', '잖아', 40, 'va', 'full'),
+    ('plain', '네', 60, 'va', 'full'), ('plain', '네요', 60, 'va', 'full'), ('plain', '군요', 40, 'a', 'full'),
+    ('plain', '구나', 40, 'a', 'full'), ('plain', '는군요', 40, 'v', 'full'), ('plain', '는구나', 40, 'v', 'full'), ('plain', '죠', 40, 'va', 'full'), ('plain', '잖아', 40, 'va', 'full'),
     ('plain', '잖아요', 40, 'va', 'full'), ('plain', '다', 50, 'va', 'full'), ('plain', '겠다', 40, 'va', 'full'),
     ('plain', '겠어요', 40, 'va', 'full'), ('plain', '는', 90, 'v', 'lite'), ('plain', '는데', 80, 'v', 'full'),
     ('plain', '자', 40, 'v', 'full'),
 ]
 # ㄹ 받침 어간이 ㄴ으로 시작하는 어미 앞에서 ㄹ을 버리는 plain 어미
-L_DROP_PLAIN = {'네', '네요', '는', '는데'}
+L_DROP_PLAIN = {'네', '네요', '는', '는데', '는구나', '는군요'}
+
+
+# 모음으로 시작하는 어미(아/어, 으 ...)가 붙지 않는 준말 어간: 갖다 → 가져(갖아 X), 머물다 → 머물러, 서툴다 → 서툴러
+DEFECTIVE = {'갖', '머물', '서툴', '내딛', '딛', '건들', '뵙'}
 
 
 def conjugate(stem, flag, kind, ending, pos):
     """어간+어미 하나를 활용한 결과. 만들 수 없으면 None."""
     base_kind, tail = kind, ending
+    if stem in DEFECTIVE and (kind in ('ao', 'past', 'help', 'se') or kind in ('jong', 'eu') and final_of(stem) not in (
+            '', 'ㄹ') and not tail.startswith('ㅂ')):
+        return None
     ao = ao_base(stem, flag)
     if base_kind == 'ao':
         return ao + tail
@@ -361,6 +368,9 @@ EXPECTED = {
     ('따르', None): {('ao', ''): '따라', ('past', '어'): '따랐어'},
     ('끄', None): {('ao', ''): '꺼', ('past', '어'): '껐어'},
     ('맵', 'b'): {('ao', ''): '매워', ('jong', 'ㄴ'): '매운'},
+    ('갖', None): {('ao', ''): None, ('past', '어'): None, ('se', '세요'): None, ('eu', '면'): None, ('jong', 'ㄹ게'): None,
+                  ('plain', '고'): '갖고', ('jong', 'ㅂ니다'): '갖습니다', ('plain', '는'): '갖는'},
+    ('놀', None): {('plain', '는구나'): '노는구나', ('plain', '는군요'): '노는군요'},
     ('걷', 'd'): {('ao', ''): '걸어', ('past', '어'): '걸었어'},
 }
 

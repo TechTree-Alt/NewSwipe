@@ -21,7 +21,8 @@ import java.util.zip.ZipInputStream;
  * 팩은 zip 파일 하나이며 다음을 담는다 (dict/build/make_dict_pack.py가 만든다).
  * <ul>
  *   <li>{@code manifest.properties} (필수, UTF-8): format, lang=ko, name, version, description, license, attribution,
- *       sha256.dict_ko.bin, sha256.dict_ko_next.bin</li>
+ *       sha256.dict_ko.bin, sha256.dict_ko_next.bin, autocorrect_min_freq (선택: 자동 수정으로 고칠 단어의 최소 빈도,
+ *       100만 어절당. 활용형을 넓게 담아 맞게 친 말을 사전에 없다고 고칠 일이 적은 팩은 기본값보다 낮게 둔다)</li>
  *   <li>{@code dict_ko.bin} (필수): 단어 사전 ({@link WordDictionary})</li>
  *   <li>{@code dict_ko_next.bin} (선택): 다음 단어 사전 ({@link NextWords}, 단어 사전과 짝이 맞아야 한다)</li>
  *   <li>{@code LICENSE.txt} (선택): 데이터의 라이선스 전문</li>
@@ -64,14 +65,19 @@ public final class DictionaryPack {
         }
     }
 
-    /** 읽어 들인 사전 (next는 없을 수 있다). */
+    /** 팩이 정할 수 있는 자동 수정 최소 빈도의 범위 (남이 만든 팩이 자동 수정을 지나치게 세게 만들지 못하게). */
+    static final double MIN_CORRECT_FREQ = 50, MAX_CORRECT_FREQ = 1000;
+
+    /** 읽어 들인 사전 (next는 없을 수 있다). correctMinFreq = 팩이 정한 자동 수정 최소 빈도 (정하지 않았으면 0). */
     static final class Loaded {
         final WordDictionary dict;
         final NextWords next;
+        final double correctMinFreq;
 
-        Loaded(WordDictionary dict, NextWords next) {
+        Loaded(WordDictionary dict, NextWords next, double correctMinFreq) {
             this.dict = dict;
             this.next = next;
+            this.correctMinFreq = correctMinFreq;
         }
     }
 
@@ -254,7 +260,28 @@ public final class DictionaryPack {
                 if (strictNext) throw e;
             }
         }
-        return new Loaded(d, n);
+        double minFreq = 0;
+        File mf = new File(dir, MANIFEST);
+        if (mf.isFile()) {
+            try {
+                minFreq = parseCorrectMinFreq(readProperties(mf).getProperty("autocorrect_min_freq"));
+            } catch (IOException e) {
+                minFreq = 0;   // 정보 파일을 읽지 못하면 기본값으로 고친다
+            }
+        }
+        return new Loaded(d, n, minFreq);
+    }
+
+    /** autocorrect_min_freq 값 (없거나 숫자가 아니면 0 = 기본값, 범위를 벗어나면 범위 끝으로). */
+    static double parseCorrectMinFreq(String v) {
+        if (v == null) return 0;
+        try {
+            double f = Double.parseDouble(v.trim());
+            if (Double.isNaN(f) || f <= 0) return 0;
+            return Math.max(MIN_CORRECT_FREQ, Math.min(MAX_CORRECT_FREQ, f));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 
     private static Properties readProperties(File f) throws IOException {

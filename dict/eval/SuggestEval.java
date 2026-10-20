@@ -41,6 +41,8 @@ import java.util.Random;
  *   --set NAME=VAL   추천 엔진의 계수를 바꿔 본다 (KoreanSuggest·KoreanForms·KoreanCorrect·KoreanMorph의 static 값)
  *   --layout 8|7     오타를 넣을 자판 (8 = 8열 단모음, 7 = NewSwipe 단모음). 자동 수정의 이웃 키도 이 자판으로 맞춘다
  *   --seed N         오타를 넣는 난수 씨앗 (기본 7)
+ *   --typo-ref DIR   오타를 넣을 단어와 '오타가 사전 단어가 된 것'을 이 폴더의 사전으로 가린다 (크기가 다른 두 사전을 같은
+ *                    오타로 견준다: 사전이 크면 오타가 사전 단어가 되어 고칠 수 없게 되는 것도 그대로 센다)
  *
  * <p>평가 문장은 저장소에 든 ko_chat_test.txt(직접 쓴 문장, 작다) 말고도 fetch_public_sets.sh로 받는 공개 말뭉치
  * (NSMC 평가용 리뷰, Chatbot_data의 질문)를 dev(계수 맞추기)와 test(마지막 확인)로 나눠 쓴다. 계수는 dev로만 맞춘다.
@@ -72,6 +74,8 @@ public final class SuggestEval {
     private static int dumpKeys;
     private static String[] sameKey = SAME_KEY_8;
     private static long seed = 7;
+    /** --typo-ref: 오타를 넣을 단어를 고르는 사전 (없으면 평가하는 사전). */
+    private static WordDictionary typoRef;
 
     public static void main(String[] args) throws Exception {
         String dir = args[0], testFile = args[1];
@@ -100,6 +104,11 @@ public final class SuggestEval {
                     break;
                 }
                 case "--seed": seed = Long.parseLong(args[++i]); break;
+                case "--typo-ref":
+                    try (InputStream in = new FileInputStream(new File(args[++i], "dict_ko.bin"))) {
+                        typoRef = WordDictionary.load(in);
+                    }
+                    break;
                 case "--double-tap-vowel": doubleTapVowel = true; break;
                 case "--rerank": KoreanSuggest.RERANK = readRerank(args[++i]); break;
                 case "--no-rerank": KoreanSuggest.RERANK = null; break;
@@ -132,6 +141,18 @@ public final class SuggestEval {
         TypoModel tm = new TypoModel();
         tm.setRows(rows);
         KoreanSuggest ks = new KoreanSuggest(d, next, tm);
+        File manifest = new File(dir, "manifest.properties");   // 풀어 놓은 사전 팩이면 팩이 정한 자동 수정 최소 빈도를 쓴다
+        if (manifest.isFile()) {
+            java.util.Properties p = new java.util.Properties();
+            try (java.io.Reader r = new java.io.InputStreamReader(new FileInputStream(manifest), StandardCharsets.UTF_8)) {
+                p.load(r);
+            }
+            double minFreq = DictionaryPack.parseCorrectMinFreq(p.getProperty("autocorrect_min_freq"));
+            if (minFreq > 0) {
+                ks.setCorrectMinFreq(minFreq);
+                System.out.printf("사전 팩의 자동 수정 최소 빈도 %.0f%n", minFreq);
+            }
+        }
         System.out.printf("순위 모형 만들기 %.0f ms%n", (System.nanoTime() - b0) / 1e6);
         UserDictionary user = null;
         UsageHistory usage = null;
@@ -473,14 +494,15 @@ public final class SuggestEval {
     /** 일부러 오타를 넣어 고쳐지는지 본다. */
     private static void typoTest(WordDictionary d, KoreanSuggest ks, List<String> lines, boolean old) {
         Random rnd = new Random(seed);
-        int tried = 0, fixed = 0, wrong = 0, inBar = 0;
+        int tried = 0, fixed = 0, wrong = 0, inBar = 0, valid = 0;
         int[] kindTried = new int[5], kindFixed = new int[5];
+        WordDictionary ref = typoRef != null ? typoRef : d;
         long correctNs = 0;
         for (String line : lines) {
             String prev = null;
             for (String raw : line.split("\\s+")) {
                 String core = strip(raw);
-                if (core == null || core.length() < 2 || !d.contains(core) || rnd.nextInt(3) != 0) {
+                if (core == null || core.length() < 2 || !ref.contains(core) || rnd.nextInt(3) != 0) {
                     prev = core;
                     continue;
                 }
@@ -488,12 +510,13 @@ public final class SuggestEval {
                 int kind = rnd.nextInt(10);
                 char[] bad = typo(k, kind, rnd);
                 String typed = compose(bad);
-                if (typed == null || typed.equals(core) || d.contains(typed)
-                        || WordSuggester.isDictWordWithParticle(d, typed) || !allSyllables(typed)) {
+                if (typed == null || typed.equals(core) || ref.contains(typed)
+                        || WordSuggester.isDictWordWithParticle(ref, typed) || !allSyllables(typed)) {
                     prev = core;
                     continue;
                 }
                 tried++;
+                if (ref != d && (d.contains(typed) || WordSuggester.isDictWordWithParticle(d, typed))) valid++;
                 int kk = kind < 4 ? 0 : kind < 6 ? 1 : kind < 8 ? 2 : kind < 9 ? 3 : 4;
                 kindTried[kk]++;
                 long c0 = System.nanoTime();
@@ -515,6 +538,7 @@ public final class SuggestEval {
         System.out.printf("오타 %d개: 바르게 고침 %.1f%%, 다른 단어로 고침 %.1f%%%n", tried,
                 100.0 * fixed / Math.max(1, tried), 100.0 * wrong / Math.max(1, tried));
         if (!old) System.out.printf("오타: 다 친 뒤 추천에 원래 단어가 보임 %.1f%%%n", 100.0 * inBar / Math.max(1, tried));
+        if (ref != d) System.out.printf("오타: 평가하는 사전에서는 사전 단어라 고치지 않음 %.1f%%%n", 100.0 * valid / Math.max(1, tried));
         String[] kindName = {"옆 키", "같은 키 다른 동작", "빠뜨리기", "더 치기", "맞바꾸기"};
         StringBuilder kinds = new StringBuilder("오타 종류별 바르게 고침:");
         for (int i = 0; i < 5; i++) {

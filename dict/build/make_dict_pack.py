@@ -2,7 +2,8 @@
 """한국어 사전 팩(zip)을 만든다. 앱의 설정 > 단어 추천 > 한국어 사전 > '사전 팩 가져오기'로 가져온다.
 
   python3 dict/build/make_dict_pack.py MODEL_DIR OUT.zip --name "표준 사전" --version 2026.10 \\
-      --license "CC BY 4.0" --attribution "Leipzig Corpora Collection ..." [--description ...] [--license-file F]
+      --license "CC BY 4.0" --attribution "Leipzig Corpora Collection ..." [--description ...] [--license-file F] \\
+      [--autocorrect-min-freq 100]
 
 MODEL_DIR은 dict/build/build_ko_model.py의 결과 폴더다 (dict_ko.bin 필수, dict_ko_next.bin 선택).
 팩에 넣는 데이터의 라이선스와 출처를 정확히 적는다 (앱은 가져온 팩의 출처를 설정 화면에 보여 준다).
@@ -40,6 +41,8 @@ def main():
     ap.add_argument('--license', required=True, help='예: CC BY 4.0')
     ap.add_argument('--attribution', required=True, help='데이터 출처 (화면에 보인다)')
     ap.add_argument('--license-file', help='라이선스 전문 (팩에 LICENSE.txt로 넣는다)')
+    ap.add_argument('--autocorrect-min-freq', type=float,
+                    help='자동 수정으로 고칠 단어의 최소 빈도 (100만 어절당, 앱의 기본값은 200). 활용형을 넓게 담은 팩만 낮춘다')
     a = ap.parse_args()
 
     dict_path = os.path.join(a.model_dir, 'dict_ko.bin')
@@ -57,6 +60,8 @@ def main():
     ]
     if os.path.isfile(next_path):
         lines.append(f'sha256.dict_ko_next.bin={sha256(next_path)}')
+    if a.autocorrect_min_freq:
+        lines.append(f'autocorrect_min_freq={a.autocorrect_min_freq:g}')
     with zipfile.ZipFile(a.out, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
         z.writestr('manifest.properties', '\n'.join(lines) + '\n')
         z.write(dict_path, 'dict_ko.bin')

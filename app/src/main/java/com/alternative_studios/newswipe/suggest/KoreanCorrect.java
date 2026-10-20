@@ -26,6 +26,18 @@ final class KoreanCorrect {
 
     static double CORRECT_MARGIN = 0.7;
 
+    /** 이 사전에서 쓰는 최소 빈도 (사전 팩이 정할 수 있다, {@link #setMinFreq}). */
+    private double minFreq = CORRECT_MIN_FREQ, minFreqContext = CORRECT_MIN_FREQ_CONTEXT;
+
+    /**
+     * 최소 빈도를 바꾼다 (앞 단어와 이어질 때의 값도 같은 비율로). 활용형을 넓게 담은 사전은 맞게 친 말이 사전에 없어서 잘못
+     * 고치는 일이 적으므로 더 드문 단어로도 고칠 수 있다 (표준 사전 팩: 100, BUILDING.md).
+     */
+    void setMinFreq(double perMillion) {
+        minFreq = perMillion;
+        minFreqContext = perMillion * CORRECT_MIN_FREQ_CONTEXT / CORRECT_MIN_FREQ;
+    }
+
     /** 자동 수정에서 허용하는 오타 비용 (세 글자 이하, 네 글자 이상). */
     static float CORRECT_MAX_SHORT = 1.0f, CORRECT_MAX_LONG = 1.6f;
 
@@ -39,7 +51,7 @@ final class KoreanCorrect {
     String correct(String word, String prev, int field, UserDictionary user, UsageHistory usage) {
         int syll = KoreanMorph.hangulSyllables(word);
         if (syll < 2 || syll != word.length()) return null;
-        if (dict.contains(word) || WordSuggester.isDictWordWithParticle(dict, word)) return null;
+        if (dict.contains(word) || withParticle(word)) return null;
         if (KEEP_PLAUSIBLE && plausible(word)) return null;
         KoreanSuggest.Context cx = ks.context(prev, field, user, usage);
         if (SPELL_RULES) {
@@ -51,8 +63,8 @@ final class KoreanCorrect {
         char[] t = new char[72];
         double best = Double.NEGATIVE_INFINITY, second = Double.NEGATIVE_INFINITY;
         int bestId = -1;
-        int minScore = ks.scoreFor(CORRECT_MIN_FREQ);
-        for (int id : dict.strongWords(ks.scoreFor(CORRECT_MIN_FREQ_CONTEXT))) {
+        int minScore = ks.scoreFor(minFreq);
+        for (int id : dict.strongWords(ks.scoreFor(minFreqContext))) {
             int len = dict.length(id);
             if (len < syll - 1 || len > syll + 1 || len > 24) continue;
             String w = dict.word(id);
@@ -125,7 +137,18 @@ final class KoreanCorrect {
     }
 
     private boolean known(String w, boolean sound) {
-        return dict.contains(w) || !sound && WordSuggester.isDictWordWithParticle(dict, w);
+        return dict.contains(w) || !sound && withParticle(w);
+    }
+
+    /**
+     * 사전 단어 + 조사인지. 끝난 말(되니, 하냐, 먹다) 뒤의 '요'는 명사 뒤가 아니면 틀린 말이라 넣지 않는다
+     * (되니요 X → 되나요로 고칠 수 있다, 언니요·바다요 O).
+     */
+    private boolean withParticle(String w) {
+        String[] sp = WordSuggester.splitParticle(w);
+        if (sp == null || !dict.contains(sp[0])) return false;
+        String stem = sp[0];
+        return !sp[1].equals("요") || "니냐다".indexOf(stem.charAt(stem.length() - 1)) < 0 || morph.nounLike(stem);
     }
 
     /** 규칙 하나를 한 자리에 적용한 꼴들. 소리대로 적은 말의 규칙으로 만든 꼴은 sound에도 넣는다. */
