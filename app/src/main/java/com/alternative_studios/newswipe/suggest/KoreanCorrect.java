@@ -91,15 +91,23 @@ final class KoreanCorrect {
     /** 되 + 아/어 꼴로 줄어야 할 뒷말 (되요 → 돼요, 되서 → 돼서, 되버린 → 돼버린, 되야 → 돼야). */
     private static final String DWAE_NEXT = "요서버야";
 
-    /** word를 맞춤법 오타 규칙으로 고친 사전 단어. 규칙을 두 군데까지 적용한다 (잇엇다 → 있었다). 없으면 null. */
+    /**
+     * word를 맞춤법 오타 규칙으로 고친 사전 단어. 규칙을 두 군데까지 적용한다 (잇엇다 → 있었다, 힘들자나 → 힘들잖아). 소리대로
+     * 적은 말의 규칙({@link #soundEdits})을 하나라도 썼으면 조사가 붙은 말은 받지 않는다 (찾아오네 → 찾아온+에, 바늘 → 반+을).
+     * 없으면 null.
+     */
     private String spellFix(String word, KoreanSuggest.Context cx) {
         String best = null;
         double bestS = 0;
-        for (String a : spellEdits(word)) {
-            String fix = known(a) ? a : null;
+        java.util.List<String> sound1 = new java.util.ArrayList<>(), sound2 = new java.util.ArrayList<>();
+        java.util.List<String> edits = spellEdits(word, sound1);
+        for (String a : edits) {
+            boolean s1 = sound1.contains(a);
+            String fix = known(a, s1) ? a : null;
             if (fix == null) {
-                for (String b : spellEdits(a)) {
-                    if (known(b)) {
+                sound2.clear();
+                for (String b : spellEdits(a, sound2)) {
+                    if (known(b, s1 || sound2.contains(b))) {
                         fix = b;
                         break;
                     }
@@ -116,12 +124,12 @@ final class KoreanCorrect {
         return best;
     }
 
-    private boolean known(String w) {
-        return dict.contains(w) || WordSuggester.isDictWordWithParticle(dict, w);
+    private boolean known(String w, boolean sound) {
+        return dict.contains(w) || !sound && WordSuggester.isDictWordWithParticle(dict, w);
     }
 
-    /** 규칙 하나를 한 자리에 적용한 꼴들. */
-    static java.util.List<String> spellEdits(String w) {
+    /** 규칙 하나를 한 자리에 적용한 꼴들. 소리대로 적은 말의 규칙으로 만든 꼴은 sound에도 넣는다. */
+    static java.util.List<String> spellEdits(String w, java.util.List<String> sound) {
         java.util.List<String> out = new java.util.ArrayList<>();
         for (String[] r : SPELL_WHOLE) {
             int at = w.indexOf(r[0]);
@@ -140,8 +148,41 @@ final class KoreanCorrect {
             else if (c == '됀' || c == '됄' || c == '됌' || c == '됍') to = (char) (c + 28);   // 됀다 → 된다, 됌 → 됨
             else if (c == '되' && i + 1 < w.length() && DWAE_NEXT.indexOf(w.charAt(i + 1)) >= 0) to = '돼';
             if (to != 0) out.add(w.substring(0, i) + to + w.substring(i + 1));
+            if (SOUND_RULES) soundEdits(w, i, c, jong, sound);
         }
+        out.addAll(sound);
         return out;
+    }
+
+    /**
+     * 소리 나는 대로 적은 말을 되돌리는 규칙 (끄면 평가용). 감니다 → 갑니다, 그럴가요 → 그럴까요, 되네오 → 되네요,
+     * 드러오세요 → 들어오세요, 조아 → 좋아. 자판 거리로 고칠 때의 최소 빈도보다 드문 활용형도 고친다.
+     */
+    static boolean SOUND_RULES = true;
+
+    /** 받침으로 옮길 수 있는 첫소리(ㄱㄴㄷㄹㅁㅂㅅㅆㅈㅊㅌㅍ): 초성 번호 → 종성 번호 (0이면 옮기지 않는다). */
+    private static final int[] CHO_TO_JONG = {1, 0, 4, 7, 0, 8, 16, 17, 0, 19, 20, 0, 22, 0, 23, 0, 25, 26, 0};
+
+    private static void soundEdits(String w, int i, char c, int jong, java.util.List<String> out) {
+        char next = i + 1 < w.length() ? w.charAt(i + 1) : 0;
+        // ㅂ니다·ㅂ시다를 소리대로 ㅁ으로 적은 말: 감니다 → 갑니다, 드림니다 → 드립니다, 그럼시다 → 그럽시다
+        if (jong == 16 && (next == '니' || next == '시')) out.add(w.substring(0, i) + (char) (c + 1) + w.substring(i + 1));
+        // ㄹ 받침 뒤의 '까'를 '가'로 적은 말: 그럴가요 → 그럴까요
+        if (jong == 8 && next == '가') out.add(w.substring(0, i + 1) + '까' + w.substring(i + 2));
+        // 끝의 '요'를 '오'로 적은 말: 되네오 → 되네요, 하세오 → 하세요
+        if (c == '오' && i > 0 && next == 0) out.add(w.substring(0, i) + '요');
+        if (next < 0xAC00 || next > 0xD7A3) return;
+        int nextCho = (next - 0xAC00) / 588;
+        // 받침을 다음 글자의 첫소리로 넘겨 적은 말 (연음): 드러오세요 → 들어오세요, 머거서 → 먹어서. 두 글자 말은 사전의
+        // 명사 + 조사와 겹치기 쉽고(바늘 → 반을, 카레 → 칼에), 어미 '-서'는 '-ㅆ어'와 겹쳐(힘내서 → 힘냈어) 옮기지 않는다.
+        if (jong == 0 && CHO_TO_JONG[nextCho] > 0 && w.length() >= 3 && next != '서') {
+            out.add(w.substring(0, i) + (char) (c + CHO_TO_JONG[nextCho]) + (char) (next + (11 - nextCho) * 588) + w.substring(i + 2));
+        }
+        // 소리 나지 않는 ㅎ 받침을 빠뜨린 말: 조아 → 좋아, 조으면 → 좋으면, 괜차나 → 괜찮아 (연음과 함께)
+        if (nextCho == 11) {
+            int to = jong == 0 ? 27 : jong == 4 ? 6 : jong == 8 ? 15 : 0;
+            if (to > 0) out.add(w.substring(0, i) + (char) (c - jong + to) + w.substring(i + 1));
+        }
     }
 
     /**
