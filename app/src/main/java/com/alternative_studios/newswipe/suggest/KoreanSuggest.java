@@ -210,11 +210,6 @@ final class KoreanSuggest {
         return corrector.correct(word, prev, field, user, usage);
     }
 
-    /** 자동 수정으로 고칠 단어의 최소 빈도를 사전 팩이 정한 값으로 바꾼다 ({@link KoreanCorrect#setMinFreq}). */
-    void setCorrectMinFreq(double perMillion) {
-        corrector.setMinFreq(perMillion);
-    }
-
     /** 사전에 없는 word가 한국어 낱말로 그럴듯한지 ({@link KoreanCorrect#plausible}). */
     boolean plausible(String word) {
         return corrector.plausible(word);

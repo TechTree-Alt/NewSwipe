@@ -141,18 +141,6 @@ public final class SuggestEval {
         TypoModel tm = new TypoModel();
         tm.setRows(rows);
         KoreanSuggest ks = new KoreanSuggest(d, next, tm);
-        File manifest = new File(dir, "manifest.properties");   // 풀어 놓은 사전 팩이면 팩이 정한 자동 수정 최소 빈도를 쓴다
-        if (manifest.isFile()) {
-            java.util.Properties p = new java.util.Properties();
-            try (java.io.Reader r = new java.io.InputStreamReader(new FileInputStream(manifest), StandardCharsets.UTF_8)) {
-                p.load(r);
-            }
-            double minFreq = DictionaryPack.parseCorrectMinFreq(p.getProperty("autocorrect_min_freq"));
-            if (minFreq > 0) {
-                ks.setCorrectMinFreq(minFreq);
-                System.out.printf("사전 팩의 자동 수정 최소 빈도 %.0f%n", minFreq);
-            }
-        }
         System.out.printf("순위 모형 만들기 %.0f ms%n", (System.nanoTime() - b0) / 1e6);
         UserDictionary user = null;
         UsageHistory usage = null;

@@ -39,7 +39,24 @@ dict/eval/run_eval.sh app/src/main/assets dict/eval/data/chat_q_dev.txt --layout
 고친 비율(오타 종류별)과 고치지 못했어도 다 친 뒤 추천에 원래 단어가 보인 비율.
 
 두 사전의 자동 수정을 견줄 때는 `--typo-ref 기준_사전_폴더`를 붙여 같은 단어에 같은 오타를 넣습니다 (사전이 크면 오타가
-사전 단어가 되어 고칠 수 없게 되는 것도 그대로 센다). 풀어 놓은 사전 팩 폴더를 재면 팩의 `autocorrect_min_freq`를 씁니다.
+사전 단어가 되어 고칠 수 없게 되는 것도 그대로 센다).
+
+### 자동 수정의 판단 (KoreanCorrect.SHAPE_RULE)
+
+사전에 없는 말을 고칠지는 고칠 단어의 빈도, 오타 비용(같은 키의 다른 동작이 가장 싸다), 그리고 친 말과 고칠 말이 한국어 낱말처럼
+생겼는지(사전 단어로 배운 음절 바이그램 모형, `SyllableModel`)를 함께 보고 정합니다. 오타는 낯선 음절 이음을 만들기 쉽고(자댕입니다,
+사옹하세요), 사전에 없지만 맞는 말은 흔한 이음입니다(혼수, 통학, 미역). 예전에는 고칠 단어의 최소 빈도 하나(200)로 정했습니다.
+계수는 오타 사례와 사전에 없는 말을 문턱 없이 모두 뽑아 둔 뒤 dev(Chatbot_data·SmileStyle formal·NSMC)에서 골랐습니다.
+
+| (test: Chatbot_data / NSMC) | 오타 고침 | 잘못 고침 (전체 단어의) |
+|---|---|---|
+| 기본 사전, 최소 빈도 200 | 24.1% / 25.7% | 0.20% / 0.57% |
+| 기본 사전, SHAPE_RULE | 32.4% / 34.1% | 0.17% / 0.53% |
+| 표준 사전 팩, 최소 빈도 100 | 37.0% / 35.9% | 0.40% / 0.78% |
+| 표준 사전 팩, SHAPE_RULE | 35.7% / 38.7% | 0.16% / 0.58% |
+
+명사 + 조사에서 명사만 틀린 말(자댕입니다 → 자동입니다)도 같은 판단으로 명사를 고칩니다. 예전에 이렇게 고치면 사전에 없는 드문
+명사(미역하고 → 지역하고)를 망가뜨렸는데, 그런 명사는 낱말답게 생겨 이제는 고치지 않습니다.
 
 `--typo-typing`을 붙이면 오타를 섞어 치는 동안의 추천만 잽니다: 사전 단어의 셋 중 하나에 오타를 하나(여섯 키 이상인 말은 셋 중
 하나에 하나 더) 넣고 한 키씩 치면서, 오타 키를 친 뒤 원래 단어가 추천 칸에 보인 비율(치는 중 / 첫 칸 / 다 친 뒤 보이거나 스페이스로
@@ -94,9 +111,8 @@ dict/eval/run_private_eval.sh ~/corpora/messenger dict/packs/ko-standard.zip   #
 
 ## 사전 팩 형식
 
-zip 안에 `manifest.properties`(형식 번호, 언어, 이름, 출처, 라이선스, 해시, 선택으로 자동 수정 최소 빈도
-`autocorrect_min_freq`), `dict_ko.bin`(필수), `dict_ko_next.bin`(선택), `LICENSE.txt`(선택)를 담습니다. `autocorrect_min_freq`는
-사전에 맞춘 값이라 데이터로 봅니다 (앱은 50~1000 밖의 값을 그 끝으로 누른다). 자세한 설명은 `app/src/main/java/com/alternative_studios/newswipe/suggest/DictionaryPack.java`에
+zip 안에 `manifest.properties`(형식 번호, 언어, 이름, 출처, 라이선스, 해시), `dict_ko.bin`(필수), `dict_ko_next.bin`(선택),
+`LICENSE.txt`(선택)를 담습니다. 자세한 설명은 `app/src/main/java/com/alternative_studios/newswipe/suggest/DictionaryPack.java`에
 있습니다. 앱은 자기가 아는 것보다 높은 형식 번호의 팩을 거부하므로, 형식을 바꿀 때는 번호를 올리고 예전 형식도 계속 읽게 합니다.
 
 사전 팩에는 데이터(단어·빈도·단어 쌍)만 담습니다. 추천 방식(조사·어미 규칙, 순위 매기기)은 앱에 두어, 앱이 좋아지면 기본 사전과

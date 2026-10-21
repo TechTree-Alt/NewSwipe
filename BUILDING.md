@@ -46,9 +46,7 @@ NewSwipe를 직접 빌드하고 서명하는 방법입니다. 사용법은 [READ
 
 어간 목록은 형태소 분석기 Kiwi(kiwipiepy, Apache License 2.0)로 말뭉치를 분석해 만듭니다. 앱에는 Kiwi가 들어가지 않습니다.
 표준 사전 팩은 이 어간들에 어미를 두루 붙인 활용형(`dict/build/gen_ko_pack_forms.py`: 높임·과거·추측, 보조 용언 -아/어 주다·보다·
-지다 ...)을 더 담아, 사전에 없는 맞는 말을 자동 수정이 잘못 고치는 일이 적습니다. 그래서 팩은 자동 수정의 최소 빈도를 앱의 기본값
-(100만 어절당 200)보다 낮은 100으로 정해 둡니다(`--autocorrect-min-freq`, 팩의 `manifest.properties`). 기본 사전에서 100으로 낮추면
-잘못 고침이 세 배가 되지만, 팩에서는 두 배 아래로 늘고 오타 고침은 27% → 39%가 됩니다 (Chatbot_data dev).
+지다 ...)을 더 담아, 사전에 없는 맞는 말을 자동 수정이 잘못 고치는 일이 적습니다.
 `verb.txt`·`adjective.txt`는 open-korean-text 저장소의 `src/main/resources/org/openkoreantext/processor/util/` 아래에 있습니다.
 
 ```bash
@@ -72,7 +70,7 @@ python3 dict/build/gen_ko_pack_forms.py forms.txt --counts counts.pkl --mix nsmc
 python3 dict/build/build_ko_model.py out_pack ... --top 80000 --pairs 400000 ... --forms forms.txt --forms-max 300000
 python3 dict/build/make_dict_pack.py out_pack dict/packs/ko-standard.zip --name "표준 사전" --version 2026.10.4 \
     --license "CC BY 4.0" --attribution "Leipzig Corpora Collection (CC BY 4.0), NSMC (CC0), NewSwipe" \
-    --license-file dict/packs/ko-standard-LICENSE.txt --autocorrect-min-freq 100
+    --license-file dict/packs/ko-standard-LICENSE.txt
 
 # 성능 확인 (실제 조합기로 한 키씩 쳐서 키 절약률을 잰다)
 dict/eval/run_eval.sh out_pack dict/eval/ko_chat_test.txt

@@ -370,9 +370,7 @@ public final class WordSuggester {
                 }
             }
             if (korean) {
-                KoreanSuggest m = new KoreanSuggest(d, next, typo);
-                if (pack != null && pack.correctMinFreq > 0) m.setCorrectMinFreq(pack.correctMinFreq);   // 다 정한 뒤에 내놓는다
-                koModel = m;
+                koModel = new KoreanSuggest(d, next, typo);
                 ko = d;
             } else {
                 en = d;

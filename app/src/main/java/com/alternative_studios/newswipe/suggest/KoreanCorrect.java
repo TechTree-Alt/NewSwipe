@@ -11,11 +11,21 @@ final class KoreanCorrect {
     private final KoreanMorph morph;
     private final TypoModel typo;
 
+    /** 말이 한국어 낱말처럼 생겼는지 (SHAPE_RULE). */
+    private final SyllableModel shape;
+    /** 사전 단어마다 ln(빈도) + SHAPE_LM·ln P(단어) (미리 재 두어 고칠 단어를 찾을 때 편집 거리를 잴 단어를 빨리 거른다). */
+    private final float[] prior;
+
     KoreanCorrect(KoreanSuggest ks, WordDictionary dict, KoreanMorph morph, TypoModel typo) {
         this.ks = ks;
         this.dict = dict;
         this.morph = morph;
         this.typo = typo;
+        this.shape = new SyllableModel(dict);
+        prior = new float[dict.size()];
+        for (int id = 0; id < prior.length; id++) {
+            prior[id] = (float) (Math.log(morph.prob(dict.score(id)) * 1e6) + SHAPE_LM * shape.logProb(dict.word(id)));
+        }
     }
 
     /**
@@ -26,17 +36,26 @@ final class KoreanCorrect {
 
     static double CORRECT_MARGIN = 0.7;
 
-    /** 이 사전에서 쓰는 최소 빈도 (사전 팩이 정할 수 있다, {@link #setMinFreq}). */
-    private double minFreq = CORRECT_MIN_FREQ, minFreqContext = CORRECT_MIN_FREQ_CONTEXT;
-
     /**
-     * 최소 빈도를 바꾼다 (앞 단어와 이어질 때의 값도 같은 비율로). 활용형을 넓게 담은 사전은 맞게 친 말이 사전에 없어서 잘못
-     * 고치는 일이 적으므로 더 드문 단어로도 고칠 수 있다 (표준 사전 팩: 100, BUILDING.md).
+     * 고칠지를 단어의 빈도 하나(최소 빈도)가 아니라 세 가지를 함께 보고 정한다 (끄면 평가용으로 예전처럼 최소 빈도만 본다).
+     * <pre>  ln(빈도) − SHAPE_COST·(오타 비용 − 0.6) + SHAPE_LM·(ln P(고칠 말) − ln P(친 말)) [+ 앞 단어와 이어지면 SHAPE_CONTEXT] ≥ ln(SHAPE_MIN)</pre>
+     * 오타 비용이 싼 실수(같은 키의 다른 동작: 사옹하세요 → 사용하세요)는 드문 말로도 고치고, 비싼 편집(빠뜨리기·더 치기: 혼수 →
+     * 혼술)은 흔한 말로만 고친다. P는 음절 모형({@link SyllableModel})의 확률로, 친 말이 낯선 음절 이음(자댕)이고 고칠 말이 낱말다울수록
+     * 오타일 가능성이 크다. 사전에 없지만 맞는 말(통학, 미역)은 낱말다워서 덜 고친다. 계수는 Chatbot_data·NSMC·SmileStyle dev에서
+     * 맞췄다: 최소 빈도 100과 견주어 오타 고침은 비슷하거나 많고 잘못 고침은 3분의 1쯤 적다 (dict/README.md).
      */
-    void setMinFreq(double perMillion) {
-        minFreq = perMillion;
-        minFreqContext = perMillion * CORRECT_MIN_FREQ_CONTEXT / CORRECT_MIN_FREQ;
-    }
+    static boolean SHAPE_RULE = true;
+
+    static double SHAPE_COST = 8, SHAPE_LM = 0.2, SHAPE_CONTEXT = 0.32, SHAPE_MIN = 3000;
+
+    /** 틀린 꼴이 분명한 말(끝난 말 + 요: 되니요)의 기준. 맞는 말일 수 없으니 훨씬 낮다. */
+    static double SHAPE_MIN_WRONG = 100;
+
+    /** 명사 + 조사에서 명사만 고칠 때의 기준 (자댕입니다 → 자동입니다). */
+    static double SHAPE_MIN_NOUN = 3000;
+
+    /** SHAPE_RULE에서 고칠 단어로 보는 가장 드문 빈도 (100만 어절당). 더 드문 단어까지 보면 느리고 얻는 것이 거의 없다. */
+    static double SHAPE_SCAN_FREQ = 10;
 
     /** 자동 수정에서 허용하는 오타 비용 (세 글자 이하, 네 글자 이상). */
     static float CORRECT_MAX_SHORT = 1.0f, CORRECT_MAX_LONG = 1.6f;
@@ -58,15 +77,42 @@ final class KoreanCorrect {
             String r = spellFix(word, cx);
             if (r != null) return r;
         }
+        if (!SHAPE_RULE) return search(word, word, cx, false, 0);
+        // 사전 단어 + 요인데 조사로 받지 않은 말(되니요)은 틀린 꼴이 분명하다
+        String[] sp = WordSuggester.splitParticle(word);
+        boolean wrong = sp != null && dict.contains(sp[0]);
+        String r = search(word, word, cx, false, Math.log(wrong ? SHAPE_MIN_WRONG : SHAPE_MIN));
+        if (r != null || sp == null || wrong || sp[0].length() < 2) return r;
+        // 명사 + 조사에서 명사만 틀린 말: 명사를 고쳐 조사를 다시 붙인다 (자댕입니다 → 자동입니다)
+        String noun = search(sp[0], sp[0], cx, true, Math.log(SHAPE_MIN_NOUN));
+        if (noun == null) return null;
+        String[] back = WordSuggester.splitParticle(noun + sp[1]);   // 받침에 맞는 조사인지 (이/가, 은/는 ...)
+        return back != null && back[0].equals(noun) ? noun + sp[1] : null;
+    }
+
+    /**
+     * 사전에 없는 word를 고칠 사전 단어 (없으면 null). noun이면 명사만 본다. SHAPE_RULE이면 minLog = ln(기준)이고, 아니면 예전처럼
+     * 최소 빈도(minFreq)를 넘는 단어 중에서 고른다. 비슷하게 그럴듯한 후보가 둘 이상이면 고치지 않는다.
+     */
+    private String search(String word, String typed, KoreanSuggest.Context cx, boolean noun, double minLog) {
+        int syll = word.length();
         char[] p = TypoModel.letters(word);
         float maxCost = syll <= 3 ? CORRECT_MAX_SHORT : CORRECT_MAX_LONG;
         char[] t = new char[72];
         double best = Double.NEGATIVE_INFINITY, second = Double.NEGATIVE_INFINITY;
         int bestId = -1;
-        int minScore = ks.scoreFor(minFreq);
-        for (int id : dict.strongWords(ks.scoreFor(minFreqContext))) {
+        int minScore = ks.scoreFor(CORRECT_MIN_FREQ);
+        double lmTyped = SHAPE_RULE ? shape.logProb(typed) : 0;
+        for (int id : dict.strongWords(ks.scoreFor(SHAPE_RULE ? SHAPE_SCAN_FREQ : CORRECT_MIN_FREQ_CONTEXT))) {
             int len = dict.length(id);
             if (len < syll - 1 || len > syll + 1 || len > 24) continue;
+            double partial = 0;
+            if (SHAPE_RULE) {
+                // 오타 비용을 뺀 부분을 먼저 본다: 가장 싼 오타(같은 키의 다른 동작)여도 기준에 못 미치면 편집 거리를 재지 않는다
+                partial = prior[id] - SHAPE_LM * lmTyped;
+                if (partial + SHAPE_CONTEXT - SHAPE_COST * (TypoModel.VARIANT - 0.6) < minLog) continue;
+                if (cx.hasPair(id)) partial += SHAPE_CONTEXT;
+            }
             String w = dict.word(id);
             int tn = TypoModel.letters(w.toCharArray(), 0, len, t);
             if (Math.abs(tn - p.length) > 2) continue;
@@ -75,7 +121,12 @@ final class KoreanCorrect {
             // 짧은 말은 싼 편집 두 번(현타 → 한다, 파도 → 봐도)으로도 다른 흔한 말이 되기 쉬워 한 번의 편집만 고친다
             if (syll <= CORRECT_ONE_EDIT_SYLL && !oneEdit(p, p.length, t, tn)) continue;
             boolean context = cx.hasPair(id);
-            if (dict.score(id) < minScore && !context) continue;
+            if (SHAPE_RULE) {
+                if (partial - SHAPE_COST * (c - 0.6) < minLog) continue;
+            } else if (dict.score(id) < minScore && !context) {
+                continue;
+            }
+            if (noun && !morph.nounLike(w)) continue;
             double s = Math.log(cx.score(w, id)) - KoreanSuggest.TYPO_PENALTY * c;
             if (s > best) {
                 second = best;
