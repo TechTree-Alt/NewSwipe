@@ -370,7 +370,18 @@ public final class WordSuggester {
                 }
             }
             if (korean) {
-                koModel = new KoreanSuggest(d, next, typo);
+                KnownWords known = pack != null ? pack.known : null;
+                if (pack == null) {
+                    // 기본 사전의 맞는 말 목록. 없거나 깨져 있으면 쓰지 않는다 (자동 수정이 예전 기준으로 고친다).
+                    try (InputStream in = new java.io.BufferedInputStream(context.getAssets().open("dict_ko_known.bin"))) {
+                        known = KnownWords.load(in);
+                    } catch (IOException | RuntimeException e) {
+                        known = null;
+                    }
+                }
+                KoreanSuggest m = new KoreanSuggest(d, next, typo);
+                m.setKnownWords(known);   // 다 정한 뒤에 내놓는다
+                koModel = m;
                 ko = d;
             } else {
                 en = d;

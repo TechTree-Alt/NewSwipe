@@ -13,6 +13,8 @@ final class KoreanCorrect {
 
     /** 말이 한국어 낱말처럼 생겼는지 (SHAPE_RULE). */
     private final SyllableModel shape;
+    /** 사전에 없지만 맞는 말로 알아볼 말 (없으면 null). 있으면 그만큼 더 드문 단어로도 고친다 (SHAPE_MIN_KNOWN). */
+    private volatile KnownWords known;
     /** 사전 단어마다 ln(빈도) + SHAPE_LM·ln P(단어) (미리 재 두어 고칠 단어를 찾을 때 편집 거리를 잴 단어를 빨리 거른다). */
     private final float[] prior;
 
@@ -48,6 +50,12 @@ final class KoreanCorrect {
 
     static double SHAPE_COST = 8, SHAPE_LM = 0.2, SHAPE_CONTEXT = 0.32, SHAPE_MIN = 3000;
 
+    /**
+     * 맞는 말 목록({@link KnownWords})이 있을 때의 기준. 사전에 없지만 맞는 말(공황, 배탈)을 목록으로 알아보므로 기준을 낮춰
+     * 흔한 말의 오타(실다 → 싶다, 자덩입니다 → 자동입니다)를 더 고친다. 명사 + 조사의 명사를 고칠 때도 쓴다.
+     */
+    static double SHAPE_MIN_KNOWN = 1200;
+
     /** 틀린 꼴이 분명한 말(끝난 말 + 요: 되니요)의 기준. 맞는 말일 수 없으니 훨씬 낮다. */
     static double SHAPE_MIN_WRONG = 100;
 
@@ -67,6 +75,11 @@ final class KoreanCorrect {
      * 사전에 없는 word를 고칠 단어. 오타 비용(자판에서 가까운 키, 같은 키의 다른 동작 등)과 앞 단어와의 관계를 함께 본다.
      * 비슷하게 그럴듯한 후보가 둘 이상이면 고치지 않는다. 사전 단어(조사가 붙은 것 포함)인지는 부르는 쪽이 이미 보았다.
      */
+    /** 맞는 말 목록을 쓴다 (사전과 함께 읽은 뒤, null이면 쓰지 않는다). */
+    void setKnown(KnownWords k) {
+        known = k;
+    }
+
     String correct(String word, String prev, int field, UserDictionary user, UsageHistory usage) {
         int syll = KoreanMorph.hangulSyllables(word);
         if (syll < 2 || syll != word.length()) return null;
@@ -78,13 +91,15 @@ final class KoreanCorrect {
             if (r != null) return r;
         }
         if (!SHAPE_RULE) return search(word, word, cx, false, 0);
+        KnownWords k = known;
+        if (k != null && k.contains(word)) return null;   // 사전에 없지만 말뭉치에 나온 맞는 말
         // 사전 단어 + 요인데 조사로 받지 않은 말(되니요)은 틀린 꼴이 분명하다
         String[] sp = WordSuggester.splitParticle(word);
         boolean wrong = sp != null && dict.contains(sp[0]);
-        String r = search(word, word, cx, false, Math.log(wrong ? SHAPE_MIN_WRONG : SHAPE_MIN));
-        if (r != null || sp == null || wrong || sp[0].length() < 2) return r;
+        String r = search(word, word, cx, false, Math.log(wrong ? SHAPE_MIN_WRONG : k != null ? SHAPE_MIN_KNOWN : SHAPE_MIN));
+        if (r != null || sp == null || wrong || sp[0].length() < 2 || k != null && k.contains(sp[0])) return r;
         // 명사 + 조사에서 명사만 틀린 말: 명사를 고쳐 조사를 다시 붙인다 (자댕입니다 → 자동입니다)
-        String noun = search(sp[0], sp[0], cx, true, Math.log(SHAPE_MIN_NOUN));
+        String noun = search(sp[0], sp[0], cx, true, Math.log(k != null ? SHAPE_MIN_KNOWN : SHAPE_MIN_NOUN));
         if (noun == null) return null;
         String[] back = WordSuggester.splitParticle(noun + sp[1]);   // 받침에 맞는 조사인지 (이/가, 은/는 ...)
         return back != null && back[0].equals(noun) ? noun + sp[1] : null;

@@ -128,6 +128,26 @@ public class DictionaryPackTest {
     }
 
     @Test
+    public void readsKnownWords() throws Exception {
+        File files = tmp.newFolder();
+        assertNull(DictionaryPack.load(installWith(files, null)).known);   // 없어도 된다
+        DictionaryPack.Loaded l = DictionaryPack.load(installWith(files, KnownWordsTest.hex(KnownWordsTest.FILE)));
+        assertTrue(l.known.contains("공황"));
+        byte[] broken = KnownWordsTest.hex(KnownWordsTest.FILE);
+        broken[0] = 'X';
+        Map<String, byte[]> m = goodPack();
+        m.put(DictionaryPack.KNOWN, broken);
+        expectInvalid(m, tmp.newFolder());   // 가져올 때 깨진 목록은 받지 않는다
+    }
+
+    private File installWith(File files, byte[] known) throws Exception {
+        Map<String, byte[]> m = goodPack();
+        if (known != null) m.put(DictionaryPack.KNOWN, known);
+        DictionaryPack.install(new ByteArrayInputStream(zip(m)), files);
+        return files;
+    }
+
+    @Test
     public void nextWordsAreOptional() throws Exception {
         File files = tmp.newFolder();
         Map<String, byte[]> m = goodPack();

@@ -60,7 +60,9 @@ python3 dict/build/select_ko_stems.py kiwi_stems.tsv dict/lists/ko_stems.txt dic
 # 기본 사전 (자주 쓰는 단어 쌍 5만 개를 담은 dict_ko_next.bin도 함께 나온다)
 python3 dict/build/build_ko_model.py out_base --cache counts.pkl --mix nsmc.pkl:0.5 --mix-exclude dict/lists/ko_mix_exclude_nsmc.txt --mix-admit \
     --admit-stems dict/lists/ko_stems_kiwi.txt --top 70000 --pairs 50000 --extra dict/lists/ko_colloquial.txt --extra dict/lists/ko_conjugated.txt --phrases dict/lists/ko_phrases.txt 말뭉치들...
-cp out_base/dict_ko.bin out_base/dict_ko_next.bin app/src/main/assets/
+# 자동 수정이 맞는 말로 알아볼 목록 (사전에 없지만 Leipzig 말뭉치에 나온 말, 블룸 필터 510KB)
+python3 dict/build/build_known_words.py out_base/dict_ko_known.bin --counts counts.pkl --dict out_base/ko_rank.tsv --min-freq 0.1
+cp out_base/dict_ko.bin out_base/dict_ko_next.bin out_base/dict_ko_known.bin app/src/main/assets/
 
 # 표준 사전 팩: 말뭉치 단어 8만 개 뒤에 만든 활용형 30만 개를 더 넣는다 (말뭉치 단어를 밀어내지 않는다)
 python3 dict/build/select_ko_stems.py kiwi_stems.tsv dict/lists/ko_stems.txt stems_pack.txt --okt verb.txt adjective.txt \
@@ -68,6 +70,7 @@ python3 dict/build/select_ko_stems.py kiwi_stems.tsv dict/lists/ko_stems.txt ste
 python3 dict/build/gen_ko_pack_forms.py forms.txt --counts counts.pkl --mix nsmc.pkl:0.5 \
     --stems dict/lists/ko_stems.txt --stems stems_pack.txt                    # 활용형 340만 개 (Kiwi로 검사, 4코어로 5분쯤)
 python3 dict/build/build_ko_model.py out_pack ... --top 80000 --pairs 400000 ... --forms forms.txt --forms-max 300000
+python3 dict/build/build_known_words.py out_pack/dict_ko_known.bin --counts counts.pkl --dict out_pack/ko_rank.tsv --min-freq 0.1
 python3 dict/build/make_dict_pack.py out_pack dict/packs/ko-standard.zip --name "표준 사전" --version 2026.10.4 \
     --license "CC BY 4.0" --attribution "Leipzig Corpora Collection (CC BY 4.0), NSMC (CC0), NewSwipe" \
     --license-file dict/packs/ko-standard-LICENSE.txt

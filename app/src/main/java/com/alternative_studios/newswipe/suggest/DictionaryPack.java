@@ -21,9 +21,11 @@ import java.util.zip.ZipInputStream;
  * 팩은 zip 파일 하나이며 다음을 담는다 (dict/build/make_dict_pack.py가 만든다).
  * <ul>
  *   <li>{@code manifest.properties} (필수, UTF-8): format, lang=ko, name, version, description, license, attribution,
- *       sha256.dict_ko.bin, sha256.dict_ko_next.bin</li>
+ *       sha256.dict_ko.bin, sha256.dict_ko_next.bin, sha256.dict_ko_known.bin</li>
  *   <li>{@code dict_ko.bin} (필수): 단어 사전 ({@link WordDictionary})</li>
  *   <li>{@code dict_ko_next.bin} (선택): 다음 단어 사전 ({@link NextWords}, 단어 사전과 짝이 맞아야 한다)</li>
+ *   <li>{@code dict_ko_known.bin} (선택): 자동 수정이 맞는 말로 알아볼 단어 목록 ({@link KnownWords}). 예전 앱은 이 항목을
+ *       모르니 꺼내지 않는다</li>
  *   <li>{@code LICENSE.txt} (선택): 데이터의 라이선스 전문</li>
  * </ul>
  * 남이 만든 파일을 읽으므로 이름이 정해진 항목만 꺼내고, 크기에 상한을 두고, 다 읽어 본 뒤에만 바꿔 넣는다.
@@ -33,7 +35,7 @@ public final class DictionaryPack {
     /** 이 앱이 읽을 수 있는 가장 높은 팩 형식. */
     public static final int FORMAT = 1;
     static final String MANIFEST = "manifest.properties", DICT = "dict_ko.bin", NEXT = "dict_ko_next.bin",
-            LICENSE = "LICENSE.txt";
+            KNOWN = "dict_ko_known.bin", LICENSE = "LICENSE.txt";
     /** 항목별 크기 상한 (단어 사전의 글자 영역 상한 16MB, 단어 쌍 400만 개 정도). */
     static final long MAX_DICT = 17L << 20, MAX_NEXT = 40L << 20, MAX_TEXT = 256L << 10;
     private static final String DIR = "dictpack_ko";
@@ -64,14 +66,16 @@ public final class DictionaryPack {
         }
     }
 
-    /** 읽어 들인 사전 (next는 없을 수 있다). */
+    /** 읽어 들인 사전 (next·known은 없을 수 있다). */
     static final class Loaded {
         final WordDictionary dict;
         final NextWords next;
+        final KnownWords known;
 
-        Loaded(WordDictionary dict, NextWords next) {
+        Loaded(WordDictionary dict, NextWords next, KnownWords known) {
             this.dict = dict;
             this.next = next;
+            this.known = known;
         }
     }
 
@@ -118,7 +122,7 @@ public final class DictionaryPack {
     }
 
     private static Info unpackAndCheck(InputStream zip, File into) throws IOException {
-        boolean manifest = false, dict = false, next = false, license = false;
+        boolean manifest = false, dict = false, next = false, known = false, license = false;
         try (ZipInputStream z = new ZipInputStream(new java.io.BufferedInputStream(zip, 16 * 1024))) {
             ZipEntry e;
             while ((e = z.getNextEntry()) != null) {
@@ -129,6 +133,7 @@ public final class DictionaryPack {
                     case MANIFEST: max = MAX_TEXT; manifest = check(manifest, name); break;
                     case DICT: max = MAX_DICT; dict = check(dict, name); break;
                     case NEXT: max = MAX_NEXT; next = check(next, name); break;
+                    case KNOWN: max = KnownWords.MAX_BYTES + 64; known = check(known, name); break;
                     case LICENSE: max = MAX_TEXT; license = check(license, name); break;
                     default: continue;
                 }
@@ -147,6 +152,7 @@ public final class DictionaryPack {
         if (!"ko".equals(p.getProperty("lang"))) throw new InvalidPackException("한국어 사전 팩이 아닙니다");
         verifyHash(p, new File(into, DICT));
         if (next) verifyHash(p, new File(into, NEXT));
+        if (known) verifyHash(p, new File(into, KNOWN));
 
         Loaded l;
         try {
@@ -254,7 +260,16 @@ public final class DictionaryPack {
                 if (strictNext) throw e;
             }
         }
-        return new Loaded(d, n);
+        KnownWords k = null;
+        File kf = new File(dir, KNOWN);
+        if (kf.isFile()) {
+            try (InputStream in = new java.io.BufferedInputStream(new FileInputStream(kf))) {
+                k = KnownWords.load(in);
+            } catch (IOException | RuntimeException e) {
+                if (strictNext) throw e;   // 가져올 때 깨진 목록은 받지 않는다. 설치된 뒤에는 없는 것처럼 쓴다
+            }
+        }
+        return new Loaded(d, n, k);
     }
 
     private static Properties readProperties(File f) throws IOException {

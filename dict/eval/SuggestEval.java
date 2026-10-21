@@ -41,6 +41,7 @@ import java.util.Random;
  *   --set NAME=VAL   추천 엔진의 계수를 바꿔 본다 (KoreanSuggest·KoreanForms·KoreanCorrect·KoreanMorph의 static 값)
  *   --layout 8|7     오타를 넣을 자판 (8 = 8열 단모음, 7 = NewSwipe 단모음). 자동 수정의 이웃 키도 이 자판으로 맞춘다
  *   --seed N         오타를 넣는 난수 씨앗 (기본 7)
+ *   --no-known       사전 폴더의 dict_ko_known.bin(자동 수정이 맞는 말로 알아볼 목록)을 쓰지 않는다
  *   --typo-ref DIR   오타를 넣을 단어와 '오타가 사전 단어가 된 것'을 이 폴더의 사전으로 가린다 (크기가 다른 두 사전을 같은
  *                    오타로 견준다: 사전이 크면 오타가 사전 단어가 되어 고칠 수 없게 되는 것도 그대로 센다)
  *
@@ -76,6 +77,7 @@ public final class SuggestEval {
     private static long seed = 7;
     /** --typo-ref: 오타를 넣을 단어를 고르는 사전 (없으면 평가하는 사전). */
     private static WordDictionary typoRef;
+    private static boolean useKnown = true;
 
     public static void main(String[] args) throws Exception {
         String dir = args[0], testFile = args[1];
@@ -104,6 +106,7 @@ public final class SuggestEval {
                     break;
                 }
                 case "--seed": seed = Long.parseLong(args[++i]); break;
+                case "--no-known": useKnown = false; break;
                 case "--typo-ref":
                     try (InputStream in = new FileInputStream(new File(args[++i], "dict_ko.bin"))) {
                         typoRef = WordDictionary.load(in);
@@ -141,6 +144,13 @@ public final class SuggestEval {
         TypoModel tm = new TypoModel();
         tm.setRows(rows);
         KoreanSuggest ks = new KoreanSuggest(d, next, tm);
+        File kf = new File(dir, "dict_ko_known.bin");
+        if (useKnown && kf.isFile()) {
+            try (InputStream in = new java.io.BufferedInputStream(new FileInputStream(kf))) {
+                ks.setKnownWords(KnownWords.load(in));
+            }
+            System.out.println("맞는 말 목록: " + kf);
+        }
         System.out.printf("순위 모형 만들기 %.0f ms%n", (System.nanoTime() - b0) / 1e6);
         UserDictionary user = null;
         UsageHistory usage = null;

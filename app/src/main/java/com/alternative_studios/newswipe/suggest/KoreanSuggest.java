@@ -210,6 +210,11 @@ final class KoreanSuggest {
         return corrector.correct(word, prev, field, user, usage);
     }
 
+    /** 자동 수정이 맞는 말로 알아볼 목록 ({@link KoreanCorrect#setKnown}). */
+    void setKnownWords(KnownWords k) {
+        corrector.setKnown(k);
+    }
+
     /** 사전에 없는 word가 한국어 낱말로 그럴듯한지 ({@link KoreanCorrect#plausible}). */
     boolean plausible(String word) {
         return corrector.plausible(word);
