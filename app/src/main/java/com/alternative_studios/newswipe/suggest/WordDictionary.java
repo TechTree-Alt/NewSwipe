@@ -238,13 +238,16 @@ public final class WordDictionary {
 
     // ---------------------------------------------------------------- 초성 검색
 
-    /** (초성 9개를 5비트씩 << 17) | 단어 번호. 초성 순으로 정렬. 처음 쓸 때(백그라운드의 warmUpChosung) 만든다. */
+    /**
+     * (초성 8개를 5비트씩 << ID_BITS) | 단어 번호. 초성 순으로 정렬. 처음 쓸 때(백그라운드의 warmUpChosung) 만든다.
+     * 활용형을 더한 사전 팩(38만 개)도 담도록 번호에 22비트를 쓴다 (예전에는 17비트라 13만 개가 넘는 사전에서는 초성 검색이 꺼졌다).
+     */
     private volatile long[] chosung;
-    private static final int CHO_SLOTS = 9;
+    private static final int CHO_SLOTS = 8, ID_BITS = 22;
 
     /** 초성 검색 색인을 만들어 둔다 (두 글자 이상인 한글 단어만). 백그라운드 스레드에서 부른다. */
     public void warmUpChosung() {
-        if (chosung != null || count >= (1 << 17)) return;
+        if (chosung != null || count >= (1 << ID_BITS)) return;
         long[] keys = new long[count];
         int k = 0;
         for (int i = 0; i < count; i++) {
@@ -264,7 +267,7 @@ public final class WordDictionary {
                 }
                 key = (key << 5) | code;
             }
-            if (ok) keys[k++] = (key << 17) | i;
+            if (ok) keys[k++] = (key << ID_BITS) | i;
         }
         long[] idx = java.util.Arrays.copyOf(keys, k);
         java.util.Arrays.sort(idx);
@@ -294,14 +297,14 @@ public final class WordDictionary {
             }
             key = (key << 5) | code;
         }
-        long lo = key << 17;
-        long hi = (key + (1L << (5 * (CHO_SLOTS - n)))) << 17;
+        long lo = key << ID_BITS;
+        long hi = (key + (1L << (5 * (CHO_SLOTS - n)))) << ID_BITS;
         int from = lowerBound(idx, lo), to = lowerBound(idx, hi);
         int[] best = new int[max];
         int[] rank = new int[max];
         int found = 0;
         for (int p = from; p < to; p++) {
-            int i = (int) (idx[p] & 0x1FFFF);
+            int i = (int) (idx[p] & ((1 << ID_BITS) - 1));
             // 글자 수가 초성 수와 같으면 점수에 256을 더해 먼저 보인다.
             int sc = (scores[i] & 0xFF) + (length(i) == n ? 256 : 0);
             int pos = found;
