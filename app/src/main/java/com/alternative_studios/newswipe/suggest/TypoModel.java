@@ -78,7 +78,7 @@ public final class TypoModel {
                     for (int r2 = Math.max(0, r - 1); r2 <= Math.min(rows.length - 1, r + 1); r2++) {
                         for (int c2 = c - 1; c2 <= c + 1; c2++) {
                             if (c2 < 0 || c2 >= rows[r2].length || (r2 == r && c2 == c)) continue;
-                            String fa = family(rows[r][c], aspirateSwipe), fb = family(rows[r2][c2], aspirateSwipe);
+                            String fa = family(rows[r][c]), fb = family(rows[r2][c2]);
                             for (int i = 0; i < fa.length(); i++) {
                                 for (int j = 0; j < fb.length(); j++) {
                                     set(table, String.valueOf(fa.charAt(i)), String.valueOf(fb.charAt(j)), NEIGHBOR);
@@ -114,9 +114,8 @@ public final class TypoModel {
         }
     }
 
-    private static String family(String key, boolean aspirateSwipe) {
+    private static String family(String key) {
         if (key == null || key.length() != 1) return "";
-        if (aspirateSwipe) for (String f : ASPIRATE_SWIPE) if (f.charAt(0) == key.charAt(0)) return f;
         for (String f : KEY_FAMILY) if (f.charAt(0) == key.charAt(0)) return f;
         return key;
     }
