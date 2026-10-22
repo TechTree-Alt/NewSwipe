@@ -6,11 +6,12 @@
 (드문 단어로도) 할 수 있다. 앱은 이 목록을 추천에는 쓰지 않는다.
 
   python3 dict/build/build_known_words.py OUT_DIR/dict_ko_known.bin --counts counts.pkl --dict OUT_DIR/ko_rank.tsv \\
-      [--min-freq 0.2] [--fp 0.01]
+      [--min-freq 0.2] [--fp 0.01] [--exclude dict/lists/ko_known_exclude.txt]
 
   - counts.pkl: build_ko_model.py --cache가 만든 Leipzig 말뭉치 빈도. 리뷰(NSMC)는 맞춤법이 틀린 말이 많아 쓰지 않는다.
   - 100만 어절당 --min-freq 이상 나온 한글 2~12글자 말 중 단어 사전(--dict, build_ko_model.py의 ko_rank.tsv)에 없는 것.
   - --fp: 목록에 없는 말을 있다고 할 확률. 그만큼 오타를 덜 고친다. 단어 하나에 -ln(fp)/ln(2)² 비트를 쓴다.
+  - --exclude: 넣지 않을 말 (말뭉치에 나오지만 대화에서는 거의 쓰지 않아 흔한 말의 오타로 보는 편이 나은 말: 배일 → 매일).
 형식과 해시는 app/src/main/java/.../suggest/KnownWords.java의 설명과 같다.
 """
 import argparse
@@ -41,12 +42,18 @@ def main():
     ap.add_argument('--dict', required=True, help='단어 사전의 ko_rank.tsv (사전에 있는 말은 담지 않는다)')
     ap.add_argument('--min-freq', type=float, default=0.2)
     ap.add_argument('--fp', type=float, default=0.01)
+    ap.add_argument('--exclude', help='넣지 않을 말의 목록 (한 줄에 하나, #로 시작하면 설명)')
     a = ap.parse_args()
     with open(a.counts, 'rb') as f:
         freq = pickle.load(f)[0]
     with open(a.dict, encoding='utf-8') as f:
         have = {line.split('\t')[0] for line in f}
-    words = sorted(w for w, fr in freq.items() if fr >= a.min_freq and HANGUL.match(w) and w not in have)
+    exclude = set()
+    if a.exclude:
+        with open(a.exclude, encoding='utf-8') as f:
+            exclude = {line.strip() for line in f if line.strip() and not line.startswith('#')}
+    words = sorted(w for w, fr in freq.items()
+                   if fr >= a.min_freq and HANGUL.match(w) and w not in have and w not in exclude)
     n = len(words)
     m = max(64, int(math.ceil(-n * math.log(a.fp) / math.log(2) ** 2)))
     m = (m + 7) // 8 * 8

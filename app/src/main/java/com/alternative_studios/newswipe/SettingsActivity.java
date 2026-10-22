@@ -27,6 +27,7 @@ import com.alternative_studios.newswipe.keyboard.FunctionSwipes;
 import com.alternative_studios.newswipe.keyboard.Icons;
 import com.alternative_studios.newswipe.keyboard.KeyboardSwipes;
 import com.alternative_studios.newswipe.keyboard.ToolbarSwipes;
+import com.alternative_studios.newswipe.suggest.CorrectionMemory;
 import com.alternative_studios.newswipe.suggest.DictionaryPack;
 import com.alternative_studios.newswipe.suggest.UsageHistory;
 import com.alternative_studios.newswipe.suggest.UserDictionary;
@@ -2017,11 +2018,13 @@ public final class SettingsActivity extends Activity {
         learn.addView(button("학습하지 않는 단어 보기", v -> openSection(BLOCKED)));
         learn.addView(trashButton("학습한 단어 모두 지우기", v -> AppTheme.dialogBuilder(this)
                 .setTitle("학습한 단어 모두 지우기")
-                .setMessage("키보드가 기억한 단어와, 추천 순서에 쓰는 입력 기록(자주 쓴 단어·이어 쓴 단어)을 모두 지웁니다. "
+                .setMessage("키보드가 기억한 단어와, 추천 순서에 쓰는 입력 기록(자주 쓴 단어·이어 쓴 단어), "
+                        + "추천란에서 골라 자동 수정하게 된 단어를 모두 지웁니다. "
                         + "되돌릴 수 없습니다.")
                 .setPositiveButton("모두 지우기", (d, w) -> {
                     UserDictionary.shared(getFilesDir()).clear();
                     UsageHistory.shared(getFilesDir()).clear();
+                    CorrectionMemory.shared(getFilesDir()).clear();
                     Toast.makeText(this, "학습한 단어를 지웠습니다", Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("취소", null)

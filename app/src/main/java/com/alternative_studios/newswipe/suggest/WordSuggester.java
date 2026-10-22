@@ -41,6 +41,8 @@ public final class WordSuggester {
     private final UserDictionary user;
     /** 한국어 단어와 단어 쌍을 쓴 기록. null이면 기록하지 않는다. */
     private final UsageHistory usage;
+    /** 고치지 못한 말에서 추천란으로 고른 단어 (같은 단어를 여러 번 고르면 그 단어로 자동 수정한다). null이면 기억하지 않는다. */
+    private final CorrectionMemory picks;
     private volatile WordDictionary ko, en;
     /** 한국어 순위 모형 (단어 사전과 다음 단어 사전을 함께 읽은 뒤 만든다). */
     private volatile KoreanSuggest koModel;
@@ -56,6 +58,7 @@ public final class WordSuggester {
         this.context = context.getApplicationContext();
         this.user = user;
         this.usage = usage;
+        this.picks = CorrectionMemory.shared(this.context.getFilesDir());
     }
 
     /** 모음 연속 탭(ㅓ+ㅓ → ㅕ)을 쓰는지 알려 준다: 쓰면 입력 중인 '안너'도 '안녀…'로 시작하는 말을 찾는다. */
@@ -132,6 +135,35 @@ public final class WordSuggester {
             }
         }
         user.add(word, korean, strong, now);
+    }
+
+    /**
+     * 입력한 typed를 추천란의 chosen으로 바꿨다 (백그라운드 스레드에서 부른다). typed가 사전에도 학습한 말에도 없는 한국어이고
+     * chosen이 typed를 이어 쓴 말이 아니라 오타를 고친 말로 보이면 센다. 같은 말에서 같은 단어를
+     * {@link CorrectionMemory#CHOSEN}번 고르면 그다음부터는 그 단어로 자동 수정한다.
+     */
+    public void notePick(String typed, String chosen) {
+        WordDictionary d = ko;
+        if (!useUser() || picks == null || d == null) return;
+        if (pickCounts(d, user, typo, typed, chosen)) picks.record(typed, chosen, System.currentTimeMillis());
+    }
+
+    /** 자동 수정을 되돌렸다: typed에서 고른 단어를 잊는다 (백그라운드 스레드에서 부른다). */
+    public void forgetPick(String typed) {
+        if (picks != null) picks.forget(typed);
+    }
+
+    /** 오타를 고쳐 고른 것으로 볼 만큼 두 말이 비슷한 거리 (키 두 개를 잘못 누른 정도). */
+    static final float PICK_MAX_COST = 2.2f;
+
+    /** notePick이 셀 만한 고름인지. */
+    static boolean pickCounts(WordDictionary d, UserDictionary user, TypoModel typo, String typed, String chosen) {
+        if (typed.length() < 2 || typed.equals(chosen) || chosen.startsWith(typed)) return false;
+        if (!learnable(typed, true) || !learnable(chosen, true)) return false;
+        if (d.contains(typed) || user != null && (user.isKnownIfLoaded(typed, true) || userKnows(user, typed))) return false;
+        if (Math.abs(chosen.length() - typed.length()) > 1) return false;
+        char[] p = TypoModel.letters(typed), t = TypoModel.letters(chosen);
+        return typo.distance(p, p.length, t, t.length, PICK_MAX_COST) <= PICK_MAX_COST;
     }
 
     /**
@@ -282,6 +314,7 @@ public final class WordSuggester {
         if (useUser() && gen == generation) {
             user.load();
             if (korean && usage != null) usage.load();
+            if (korean && picks != null) picks.load();
         }
     }
 
@@ -477,6 +510,10 @@ public final class WordSuggester {
     public String autoCorrect(String word, String prev, boolean korean, int field) {
         WordDictionary d = korean ? ko : en;
         if (d == null) return null;
+        if (korean && useUser() && picks != null) {
+            String picked = picks.lookupIfLoaded(word);   // 이 말에서 추천란으로 여러 번 고른 단어
+            if (picked != null) return picked;
+        }
         if (useUser()) {
             // 내가 쓰는 단어는 고치지 않는다. 학습한 단어를 아직 읽지 않았으면 모르니 고치지 않는다.
             if (!user.isLoaded() || user.isKnownIfLoaded(word, korean)) return null;

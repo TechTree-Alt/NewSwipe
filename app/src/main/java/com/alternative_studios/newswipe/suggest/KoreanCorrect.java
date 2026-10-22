@@ -68,8 +68,19 @@ final class KoreanCorrect {
     /** 명사 + 조사에서 명사만 고칠 때의 기준 (자댕입니다 → 자동입니다). */
     static double SHAPE_MIN_NOUN = 3000;
 
-    /** SHAPE_RULE에서 고칠 단어로 보는 가장 드문 빈도 (100만 어절당). 더 드문 단어까지 보면 느리고 얻는 것이 거의 없다. */
-    static double SHAPE_SCAN_FREQ = 10;
+    /**
+     * SHAPE_RULE에서 고칠 단어로 보는 가장 드문 빈도 (100만 어절당). 뉴스·웹 말뭉치에서 드물지만 대화에서 흔한 말(글자 6.9,
+     * 이야기이다 2.6)도 키 하나 오타의 유일한 후보면 고친다 (SHAPE_MIN_UNIQUE). 미리 잰 값으로 걸러 느려지지 않는다.
+     */
+    static double SHAPE_SCAN_FREQ = 1;
+
+    /**
+     * 후보가 사실상 하나일 때의 기준 (맞는 말 목록이 있을 때만): 키 하나를 잘못 누른 오타(대각선 제외)로 고치는 단어가 다른
+     * 모든 후보보다 UNIQUE_MARGIN 이상 앞서면, 드문 단어여도 이 기준만 넘으면 고친다 (굴자 → 글자, 학습니 → 학습이).
+     */
+    static double SHAPE_MIN_UNIQUE = 300;
+
+    static double UNIQUE_MARGIN = 1.0;
 
     /**
      * 대각선으로 이웃한 키를 잘못 누른 것은 드물다: 대각선 키 없이(바로 옆·위·아래 키, 그 밖의 편집으로) 설명되는 고칠 단어가
@@ -103,7 +114,7 @@ final class KoreanCorrect {
             String r = spellFix(word, cx);
             if (r != null) return r;
         }
-        if (!SHAPE_RULE) return search(word, word, cx, false, 0, 0);
+        if (!SHAPE_RULE) return search(word, word, cx, false, 0, 0, Double.POSITIVE_INFINITY);
         KnownWords k = known;
         if (k != null && k.contains(word)) return null;   // 사전에 없지만 말뭉치에 나온 맞는 말
         // 사전 단어 + 요인데 조사로 받지 않은 말(되니요)은 틀린 꼴이 분명하다
@@ -111,11 +122,13 @@ final class KoreanCorrect {
         boolean wrong = sp != null && dict.contains(sp[0]);
         double min = wrong ? SHAPE_MIN_WRONG : k != null ? SHAPE_MIN_KNOWN : SHAPE_MIN;
         double oneKey = wrong ? SHAPE_MIN_WRONG : k != null ? Math.min(SHAPE_MIN_KNOWN, SHAPE_MIN_ONE_KEY) : SHAPE_MIN;
-        String r = search(word, word, cx, false, Math.log(min), Math.log(oneKey));
+        double unique = wrong || k == null ? Double.POSITIVE_INFINITY : Math.log(SHAPE_MIN_UNIQUE);
+        String r = search(word, word, cx, false, Math.log(min), Math.log(oneKey), unique);
         if (r != null || sp == null || wrong || sp[0].length() < 2 || k != null && k.contains(sp[0])) return r;
         // 명사 + 조사에서 명사만 틀린 말: 명사를 고쳐 조사를 다시 붙인다 (자댕입니다 → 자동입니다)
         double nounMin = k != null ? SHAPE_MIN_KNOWN : SHAPE_MIN_NOUN;
-        String noun = search(sp[0], sp[0], cx, true, Math.log(nounMin), Math.log(k != null ? Math.min(nounMin, SHAPE_MIN_ONE_KEY) : nounMin));
+        String noun = search(sp[0], sp[0], cx, true, Math.log(nounMin), Math.log(k != null ? Math.min(nounMin, SHAPE_MIN_ONE_KEY) : nounMin),
+                unique);
         if (noun == null) return null;
         String[] back = WordSuggester.splitParticle(noun + sp[1]);   // 받침에 맞는 조사인지 (이/가, 은/는 ...)
         return back != null && back[0].equals(noun) ? noun + sp[1] : null;
@@ -124,9 +137,11 @@ final class KoreanCorrect {
     /**
      * 사전에 없는 word를 고칠 사전 단어 (없으면 null). noun이면 명사만 본다. SHAPE_RULE이면 minLog = ln(기준)이고 키 하나를
      * 잘못 누른 오타로 고치는 단어는 oneKeyLog를 쓴다. 아니면 예전처럼 최소 빈도(CORRECT_MIN_FREQ)를 넘는 단어 중에서 고른다.
-     * 비슷하게 그럴듯한 후보가 둘 이상이면 고치지 않는다.
+     * 비슷하게 그럴듯한 후보가 둘 이상이면 고치지 않는다. 기준을 넘는 단어가 없어도, 키 하나 오타(대각선 제외)로 고치는 단어가
+     * 다른 모든 후보보다 UNIQUE_MARGIN 이상 앞서고 uniqueLog를 넘으면 그 단어로 고친다.
      */
-    private String search(String word, String typed, KoreanSuggest.Context cx, boolean noun, double minLog, double oneKeyLog) {
+    private String search(String word, String typed, KoreanSuggest.Context cx, boolean noun, double minLog, double oneKeyLog,
+                          double uniqueLog) {
         int syll = word.length();
         char[] p = TypoModel.letters(word);
         float maxCost = syll <= 3 ? CORRECT_MAX_SHORT : CORRECT_MAX_LONG;
@@ -135,8 +150,14 @@ final class KoreanCorrect {
         double[] best = {Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY};
         double[] second = {Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY};
         int[] bestId = {-1, -1};
+        float diagCost = 0;                                   // [1]의 가장 그럴듯한 단어의 오타 비용
+        float minDirect = Float.POSITIVE_INFINITY;            // 기준과 상관없이 본, 대각선 키 없이 설명되는 단어의 가장 싼 비용
+        double allBest = Double.NEGATIVE_INFINITY, allSecond = Double.NEGATIVE_INFINITY;   // 기준과 상관없이 본, 대각선 키 없이 설명되는 단어의 1·2위
+        int allBestId = -1, uniqueId = -1;
+        double uniqueS = Double.NEGATIVE_INFINITY;   // 키 하나 오타(대각선 제외)로 고치는 단어 중 가장 그럴듯한 것
         int minScore = ks.scoreFor(CORRECT_MIN_FREQ);
         double lmTyped = SHAPE_RULE ? shape.logProb(typed) : 0;
+        double scanLog = Math.min(Math.min(minLog, oneKeyLog), uniqueLog);
         for (int id : dict.strongWords(ks.scoreFor(SHAPE_RULE ? SHAPE_SCAN_FREQ : CORRECT_MIN_FREQ_CONTEXT))) {
             int len = dict.length(id);
             if (len < syll - 1 || len > syll + 1 || len > 24) continue;
@@ -144,7 +165,7 @@ final class KoreanCorrect {
             if (SHAPE_RULE) {
                 // 오타 비용을 뺀 부분을 먼저 본다: 가장 싼 오타(같은 키의 다른 동작)여도 기준에 못 미치면 편집 거리를 재지 않는다
                 partial = prior[id] - SHAPE_LM * lmTyped;
-                if (partial + SHAPE_CONTEXT - SHAPE_COST * (TypoModel.VARIANT - 0.6) < Math.min(minLog, oneKeyLog)) continue;
+                if (partial + SHAPE_CONTEXT - SHAPE_COST * (TypoModel.VARIANT - 0.6) < scanLog) continue;
                 if (cx.hasPair(id)) partial += SHAPE_CONTEXT;
             }
             String w = dict.word(id);
@@ -154,26 +175,49 @@ final class KoreanCorrect {
             if (c > maxCost || c <= 0f) continue;
             // 짧은 말은 싼 편집 두 번(현타 → 한다, 파도 → 봐도)으로도 다른 흔한 말이 되기 쉬워 한 번의 편집만 고친다
             if (syll <= CORRECT_ONE_EDIT_SYLL && !oneEdit(p, p.length, t, tn)) continue;
+            if (noun && !morph.nounLike(w)) continue;
             boolean context = cx.hasPair(id);
+            int pool = DIAGONAL_LAST && typo.distanceDirect(p, p.length, t, tn, maxCost) > c + 1e-4f ? 1 : 0;
+            double s = Math.log(cx.score(w, id)) - KoreanSuggest.TYPO_PENALTY * c;
+            if (pool == 0) {
+                minDirect = Math.min(minDirect, c);
+                if (s > allBest) {
+                    allSecond = allBest;
+                    allBest = s;
+                    allBestId = id;
+                } else if (s > allSecond) {
+                    allSecond = s;
+                }
+            }
+            boolean oneKey = c <= TypoModel.NEIGHBOR + 1e-4f;
             if (SHAPE_RULE) {
-                if (partial - SHAPE_COST * (c - 0.6) < (c <= TypoModel.NEIGHBOR + 1e-4f ? oneKeyLog : minLog)) continue;
+                double v = partial - SHAPE_COST * (c - 0.6);
+                if (oneKey && pool == 0 && v >= uniqueLog && s > uniqueS) {
+                    uniqueS = s;
+                    uniqueId = id;
+                }
+                if (v < (oneKey ? oneKeyLog : minLog)) continue;
             } else if (dict.score(id) < minScore && !context) {
                 continue;
             }
-            if (noun && !morph.nounLike(w)) continue;
-            int pool = DIAGONAL_LAST && typo.distanceDirect(p, p.length, t, tn, maxCost) > c + 1e-4f ? 1 : 0;
-            double s = Math.log(cx.score(w, id)) - KoreanSuggest.TYPO_PENALTY * c;
             if (s > best[pool]) {
                 second[pool] = best[pool];
                 best[pool] = s;
                 bestId[pool] = id;
+                if (pool == 1) diagCost = c;
             } else if (s > second[pool]) {
                 second[pool] = s;
             }
         }
-        int pool = bestId[0] >= 0 ? 0 : 1;
-        if (bestId[pool] < 0 || best[pool] - second[pool] < CORRECT_MARGIN) return null;
-        return dict.word(bestId[pool]);
+        if (bestId[0] >= 0) return best[0] - second[0] < CORRECT_MARGIN ? null : dict.word(bestId[0]);
+        // 대각선 키를 잘못 눌렀다고 봐야 하는 단어는, 같은 값싼 오타로 설명되는 다른 꼴(바로 옆·위·아래 키)이 없을 때만 고른다
+        // (배일 → 내일이 아니다: 매일은 기준에 조금 못 미쳐도 있는 꼴이다)
+        if (bestId[1] >= 0 && minDirect > diagCost + 1e-4f) {
+            return best[1] - second[1] < CORRECT_MARGIN ? null : dict.word(bestId[1]);
+        }
+        // 후보가 사실상 하나: 키 하나 오타로 고치는 단어가 (대각선 키를 뺀) 다른 모든 후보보다 뚜렷이 앞선다
+        if (uniqueId >= 0 && uniqueId == allBestId && allBest - allSecond >= UNIQUE_MARGIN) return dict.word(uniqueId);
+        return null;
     }
 
     /**
