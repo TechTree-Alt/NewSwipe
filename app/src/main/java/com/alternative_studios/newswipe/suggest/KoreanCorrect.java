@@ -83,6 +83,14 @@ final class KoreanCorrect {
     static double UNIQUE_MARGIN = 1.0;
 
     /**
+     * 후보가 사실상 하나이고 세 글자 이상인 말의 가운데(끝 글자가 아닌) 글자 모음 하나만 옆 키로 틀렸을 때의 기준 (키버드 → 키보드,
+     * 바이얼린 → 바이올린, 커풀의 → 커플의). 친 말이 낱말답지 않을 때만(음절 모형 UNIQUE_VOWEL_LM 이하) 쓴다. 끝 글자는 어미·조사가
+     * 바뀌어 맞는 말이 되기 쉽고(예민함 → 예민한, 비교돼 → 비교도), 두 글자 말은 맞는 구어가 많다(선톡 → 선택).
+     */
+    static double SHAPE_MIN_UNIQUE_VOWEL = 5;
+    static double UNIQUE_VOWEL_LM = -20;
+
+    /**
      * 대각선으로 이웃한 키를 잘못 누른 것은 드물다: 대각선 키 없이(바로 옆·위·아래 키, 그 밖의 편집으로) 설명되는 고칠 단어가
      * 하나라도 있으면 그중에서만 고르고, 대각선 키를 잘못 눌렀다고 봐야 하는 단어는 그런 단어가 없을 때만 고른다
      * (배일 → 매일, 내일이 아니라). 끄면 평가용으로 모두 함께 견준다.
@@ -114,7 +122,7 @@ final class KoreanCorrect {
             String r = spellFix(word, cx);
             if (r != null) return r;
         }
-        if (!SHAPE_RULE) return search(word, word, cx, false, 0, 0, Double.POSITIVE_INFINITY);
+        if (!SHAPE_RULE) return search(word, word, cx, false, 0, 0, Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY);
         KnownWords k = known;
         if (k != null && k.contains(word)) return null;   // 사전에 없지만 말뭉치에 나온 맞는 말
         // 사전 단어 + 요인데 조사로 받지 않은 말(되니요)은 틀린 꼴이 분명하다
@@ -123,15 +131,37 @@ final class KoreanCorrect {
         double min = wrong ? SHAPE_MIN_WRONG : k != null ? SHAPE_MIN_KNOWN : SHAPE_MIN;
         double oneKey = wrong ? SHAPE_MIN_WRONG : k != null ? Math.min(SHAPE_MIN_KNOWN, SHAPE_MIN_ONE_KEY) : SHAPE_MIN;
         double unique = wrong || k == null ? Double.POSITIVE_INFINITY : Math.log(SHAPE_MIN_UNIQUE);
-        String r = search(word, word, cx, false, Math.log(min), Math.log(oneKey), unique);
+        String r = search(word, word, cx, false, Math.log(min), Math.log(oneKey), unique, wrong ? Double.POSITIVE_INFINITY : vowelLog(word, k));
         if (r != null || sp == null || wrong || sp[0].length() < 2 || k != null && k.contains(sp[0])) return r;
         // 명사 + 조사에서 명사만 틀린 말: 명사를 고쳐 조사를 다시 붙인다 (자댕입니다 → 자동입니다)
         double nounMin = k != null ? SHAPE_MIN_KNOWN : SHAPE_MIN_NOUN;
         String noun = search(sp[0], sp[0], cx, true, Math.log(nounMin), Math.log(k != null ? Math.min(nounMin, SHAPE_MIN_ONE_KEY) : nounMin),
-                unique);
+                unique, vowelLog(sp[0], k));
         if (noun == null) return null;
         String[] back = WordSuggester.splitParticle(noun + sp[1]);   // 받침에 맞는 조사인지 (이/가, 은/는 ...)
         return back != null && back[0].equals(noun) ? noun + sp[1] : null;
+    }
+
+    /** word에 SHAPE_MIN_UNIQUE_VOWEL을 쓸 수 있으면 그 ln, 아니면 +∞. */
+    private double vowelLog(String word, KnownWords k) {
+        if (k == null || word.length() < 3 || shape.logProb(word) > UNIQUE_VOWEL_LM) return Double.POSITIVE_INFINITY;
+        return Math.log(SHAPE_MIN_UNIQUE_VOWEL);
+    }
+
+    /** typed와 w가 끝 글자가 아닌 한 글자의 모음만 다른지 (초성·받침은 같다). */
+    static boolean middleVowelEdit(String typed, String w) {
+        int n = typed.length();
+        if (w.length() != n) return false;
+        int at = -1;
+        for (int i = 0; i < n; i++) {
+            if (typed.charAt(i) == w.charAt(i)) continue;
+            if (at >= 0) return false;
+            at = i;
+        }
+        if (at < 0 || at == n - 1) return false;
+        int a = typed.charAt(at) - 0xAC00, b = w.charAt(at) - 0xAC00;
+        if (a < 0 || a > 11171 || b < 0 || b > 11171) return false;
+        return a / 588 == b / 588 && a % 28 == b % 28;
     }
 
     /**
@@ -141,7 +171,7 @@ final class KoreanCorrect {
      * 다른 모든 후보보다 UNIQUE_MARGIN 이상 앞서고 uniqueLog를 넘으면 그 단어로 고친다.
      */
     private String search(String word, String typed, KoreanSuggest.Context cx, boolean noun, double minLog, double oneKeyLog,
-                          double uniqueLog) {
+                          double uniqueLog, double vowelLog) {
         int syll = word.length();
         char[] p = TypoModel.letters(word);
         float maxCost = syll <= 3 ? CORRECT_MAX_SHORT : CORRECT_MAX_LONG;
@@ -157,7 +187,7 @@ final class KoreanCorrect {
         double uniqueS = Double.NEGATIVE_INFINITY;   // 키 하나 오타(대각선 제외)로 고치는 단어 중 가장 그럴듯한 것
         int minScore = ks.scoreFor(CORRECT_MIN_FREQ);
         double lmTyped = SHAPE_RULE ? shape.logProb(typed) : 0;
-        double scanLog = Math.min(Math.min(minLog, oneKeyLog), uniqueLog);
+        double scanLog = Math.min(Math.min(minLog, oneKeyLog), Math.min(uniqueLog, vowelLog));
         for (int id : dict.strongWords(ks.scoreFor(SHAPE_RULE ? SHAPE_SCAN_FREQ : CORRECT_MIN_FREQ_CONTEXT))) {
             int len = dict.length(id);
             if (len < syll - 1 || len > syll + 1 || len > 24) continue;
@@ -175,7 +205,8 @@ final class KoreanCorrect {
             if (c > maxCost || c <= 0f) continue;
             // 짧은 말은 싼 편집 두 번(현타 → 한다, 파도 → 봐도)으로도 다른 흔한 말이 되기 쉬워 한 번의 편집만 고친다
             if (syll <= CORRECT_ONE_EDIT_SYLL && !oneEdit(p, p.length, t, tn)) continue;
-            if (noun && !morph.nounLike(w)) continue;
+            // 드문 명사(키보드)는 조사가 붙은 꼴이 사전에 없어 명사로 보이지 않는다: 가운데 모음 하나만 틀린 경우는 그대로 본다
+            if (noun && !morph.nounLike(w) && !(vowelLog < Double.POSITIVE_INFINITY && middleVowelEdit(word, w))) continue;
             boolean context = cx.hasPair(id);
             int pool = DIAGONAL_LAST && typo.distanceDirect(p, p.length, t, tn, maxCost) > c + 1e-4f ? 1 : 0;
             double s = Math.log(cx.score(w, id)) - KoreanSuggest.TYPO_PENALTY * c;
@@ -192,7 +223,8 @@ final class KoreanCorrect {
             boolean oneKey = c <= TypoModel.NEIGHBOR + 1e-4f;
             if (SHAPE_RULE) {
                 double v = partial - SHAPE_COST * (c - 0.6);
-                if (oneKey && pool == 0 && v >= uniqueLog && s > uniqueS) {
+                double uLog = vowelLog < uniqueLog && middleVowelEdit(word, w) ? vowelLog : uniqueLog;
+                if (oneKey && pool == 0 && v >= uLog && s > uniqueS) {
                     uniqueS = s;
                     uniqueId = id;
                 }
@@ -355,12 +387,12 @@ final class KoreanCorrect {
             "음", "어", "아", "애", "여", "어요", "아요", "어서", "아서", "어도", "아도", "어야", "아야", "러", "려고", "려",
             "면", "며", "으면", "으러", "으려고", "은", "을", "는", "는데", "은데", "을까", "을게", "을래", "잖아", "거든",
             "구나", "군", "겠다", "겠어", "겠지", "겠네", "네요", "지요", "대요", "냐고", "자고", "다고", "라고", "더니",
-            "징", "당", "넹", "쥐", "셈", "듯", "음요",
+            "징", "당", "넹", "쥐", "셈", "듯", "음요", "는지라",
     };
 
     /** 어간의 마지막 글자에 받침으로 들어가는 어미 첫소리와 그 뒤 (가+ㄴ대 = 간대, 가+ㄹ게 = 갈게, 되+ㅁ = 됨, 가+ㅂ니다). */
     private static final String[][] MERGED_ENDINGS = {
-            {"ㄴ", "", "대", "데", "다", "지", "가", "거", "건", "걸", "게", "듯", "줄", "다고", "대요", "데요", "가요", "지도"},
+            {"ㄴ", "", "대", "데", "다", "지", "가", "거", "건", "걸", "게", "듯", "줄", "다고", "대요", "데요", "가요", "지도", "지라"},
             {"ㄹ", "", "게", "래", "까", "걸", "거", "건", "듯", "수", "때", "지", "께", "껄", "까요", "게요", "래요", "거야"},
             {"ㅁ", ""},
             {"ㅂ", "니다", "니까", "시다"},

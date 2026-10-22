@@ -56,4 +56,15 @@ public class ShapeRuleTest {
         assertTrue(m.logProb("자동") > m.logProb("자댕"));
         assertTrue(m.logProb("사용하세요") > m.logProb("사옹하세요"));
     }
+
+    @Test
+    public void middleVowelEditOnlyInsideTheWord() {
+        assertTrue(KoreanCorrect.middleVowelEdit("키버드", "키보드"));
+        assertTrue(KoreanCorrect.middleVowelEdit("바이얼린", "바이올린"));
+        assertTrue(!KoreanCorrect.middleVowelEdit("예민함", "예민한"));    // 끝 글자 (어미·조사)
+        assertTrue(!KoreanCorrect.middleVowelEdit("직장운", "직장은"));    // 끝 글자
+        assertTrue(!KoreanCorrect.middleVowelEdit("지망에서", "지방에서"));  // 자음
+        assertTrue(!KoreanCorrect.middleVowelEdit("키버드", "키보드가"));   // 길이가 다르다
+        assertTrue(!KoreanCorrect.middleVowelEdit("키버도", "키보드"));    // 두 글자
+    }
 }
