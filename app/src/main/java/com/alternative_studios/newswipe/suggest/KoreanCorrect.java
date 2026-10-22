@@ -78,7 +78,7 @@ final class KoreanCorrect {
      * 후보가 사실상 하나일 때의 기준 (맞는 말 목록이 있을 때만): 키 하나를 잘못 누른 오타(대각선 제외)로 고치는 단어가 다른
      * 모든 후보보다 UNIQUE_MARGIN 이상 앞서면, 드문 단어여도 이 기준만 넘으면 고친다 (굴자 → 글자, 학습니 → 학습이).
      */
-    static double SHAPE_MIN_UNIQUE = 300;
+    static double SHAPE_MIN_UNIQUE = 200;
 
     static double UNIQUE_MARGIN = 1.0;
 
