@@ -294,6 +294,8 @@ def main():
     ap.add_argument('--forms', help='말뭉치 단어 --top개 뒤에 더 넣을 활용형 목록 (gen_ko_pack_forms.py의 출력, --extra 형식). '
                          '말뭉치 단어를 밀어내지 않는다')
     ap.add_argument('--forms-max', type=int, default=0, help='--forms에서 어림한 빈도가 높은 순으로 이만큼 넣는다')
+    ap.add_argument('--forms-keep', help='--forms-max와 상관없이 다 넣을 활용형 목록 (attested_ko_forms.py의 출력: 말뭉치에 '
+                         '나온 활용형). 빈도는 말뭉치 빈도')
     ap.add_argument('--forms-cap', type=float, default=0,
                     help='넣는 활용형의 빈도를 말뭉치 단어 중 가장 드문 것의 이 배수로 누른다 (0이면 누르지 않는다)')
     ap.add_argument('--admit-stems', help='--mix-admit에서 어간 + 어미로 풀리는 말을 가릴 때 더 쓸 어간 목록 '
@@ -334,6 +336,9 @@ def main():
     kept = kd.select(per_million, extra, a.top)
     if a.forms:
         kept = add_forms(kept, per_million, kd.read_extra(a.forms), a.forms_max, a.forms_cap)
+    if a.forms_keep:
+        keep = kd.read_extra(a.forms_keep)
+        kept = add_forms(kept, per_million, keep, len(keep), 0)
     del per_million
     kd.write_nsd1(os.path.join(a.out_dir, 'dict_ko.bin'), kept)
     with open(os.path.join(a.out_dir, 'ko_rank.tsv'), 'w', encoding='utf-8') as f:

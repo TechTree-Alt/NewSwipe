@@ -384,7 +384,8 @@ stems were kept only when they also appear in the `verb/verb.txt` or `adjective/
 open-korean-text (Apache License 2.0). The irregular-conjugation exceptions of 르 stems follow Kiwi's
 `models/cong/base/combiningRule.txt`. The standard dictionary pack (`dict/packs/ko-standard.zip`) also holds
 verb and adjective forms that `dict/build/gen_ko_pack_forms.py` generated from such stems (counted the same
-way, with a lower frequency threshold) and checked by analysing each form with Kiwi; Kiwi itself is not
-distributed.
+way, with a lower frequency threshold) and checked by analysing each form with Kiwi, plus verb and adjective
+forms that occur in the Leipzig corpora and that `dict/build/attested_ko_forms.py` picked by analysing them
+with Kiwi; Kiwi itself is not distributed.
 
 The Apache License, Version 2.0 text is in `LICENSE`.

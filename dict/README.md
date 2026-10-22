@@ -5,10 +5,10 @@
 
 | 폴더 | 내용 |
 |---|---|
-| `build/` | 사전을 만드는 도구. `build_ko_model.py`(한국어 단어 사전 + 다음 단어 사전), `build_ko_dict.py`(걸러 내기·저장 함수, 차단 목록), `build_en_dict.py`(영어), `gen_ko_conjugations.py`(용언 활용형 생성), `gen_ko_pack_forms.py`(표준 사전 팩에 넣는 넓은 활용형: 높임·과거·보조 용언 꼴, Kiwi로 검사), `count_ko_stems.py`·`select_ko_stems.py`(형태소 분석기 Kiwi로 말뭉치의 용언 어간 세기·고르기), `make_dict_pack.py`(사전 팩 zip 만들기) |
-| `lists/` | 직접 고른 목록. 구어체 단어(`ko_colloquial.txt`, `en_colloquial.txt`), 용언 어간(`ko_stems.txt`)과 그것으로 만든 활용형(`ko_conjugated.txt`), 말뭉치에서 센 어간(`ko_stems_kiwi.txt`, 만든 목록), 구어체 문장(`ko_phrases.txt`), 말뭉치를 섞을 때 뺄 주제어(`ko_mix_exclude_nsmc.txt`) |
+| `build/` | 사전을 만드는 도구. `build_ko_model.py`(한국어 단어 사전 + 다음 단어 사전), `build_ko_dict.py`(걸러 내기·저장 함수, 차단 목록), `build_en_dict.py`(영어), `gen_ko_conjugations.py`(용언 활용형 생성), `gen_ko_pack_forms.py`(표준 사전 팩에 넣는 넓은 활용형: 높임·과거·보조 용언 꼴, Kiwi로 검사), `count_ko_stems.py`·`select_ko_stems.py`(형태소 분석기 Kiwi로 말뭉치의 용언 어간 세기·고르기), `attested_ko_forms.py`(말뭉치에 나왔지만 만든 활용형에 들지 못한 활용형 고르기, Kiwi로 검사), `make_dict_pack.py`(사전 팩 zip 만들기) |
+| `lists/` | 직접 고른 목록. 구어체 단어(`ko_colloquial.txt`, `en_colloquial.txt`), 용언 어간(`ko_stems.txt`)과 그것으로 만든 활용형(`ko_conjugated.txt`), 말뭉치에서 센 어간(`ko_stems_kiwi.txt`, 만든 목록), 구어체 문장(`ko_phrases.txt`), 말뭉치를 섞을 때 뺄 주제어(`ko_mix_exclude_nsmc.txt`), 맞는 말 목록에서 뺄 말(`ko_known_exclude.txt`), 말뭉치 활용형에서 뺄 틀린 꼴(`ko_attested_exclude.txt`) |
 | `eval/` | 평가 도구. 앱의 추천 코드로 한 키씩 쳐서 키 절약률·잘못 고침·오타 고침을 잰다 (`run_eval.sh`, `SuggestEval.java`), 두 설정을 같은 문장끼리 견준다 (`compare_ksr.py`), 공개 평가 말뭉치를 받아 dev·test로 나눈다 (`fetch_public_sets.sh`) |
-| `packs/` | 설정에서 가져오는 사전 팩. `ko-standard.zip`(표준 사전: 단어 8만 개 + 단어 쌍 40만 개, 약 1.1MB)과 그 라이선스, 폴더별 라이선스 안내(`README.md`) |
+| `packs/` | 설정에서 가져오는 사전 팩. `ko-standard.zip`(표준 사전: 말뭉치 단어 8만 개 + 만든 활용형 30만 개 + 말뭉치 활용형 3만 개, 단어 쌍 40만 개, 약 2.4MB)과 그 라이선스, 폴더별 라이선스 안내(`README.md`) |
 
 ## 만들기
 
@@ -80,6 +80,14 @@ dict/eval/run_eval.sh app/src/main/assets dict/eval/data/chat_q_dev.txt --layout
 꼴이 사전에 없어 명사로 보이지 않으므로 이 경우는 명사 + 조사도 고칩니다(키버드가 → 키보드가). 바로 옆·위아래 키 오타 고침
 66.6% → 69.7%, 원문을 바꾼 수는 chat 73 → 80, smile 37 → 46, nsmc 176 → 191이었고 늘어난 것의 약 60%는 원문의 오타를 바르게 고친
 것입니다(케릭터는 → 캐릭터는, 다룬것 → 다른것; 잘못은 상추도 → 상처도, 주온을 → 주연을).
+
+**말뭉치 활용형 (표준 사전 팩, `attested_ko_forms.py`)**: 만든 활용형은 어림한 빈도가 높은 순으로 30만 개만 넣습니다 (60만 개로
+늘려도 키 절약률은 같고 추천이 느려졌다: 99% 22 → 33ms). 그 뒤로 빠진 것 중 실제로 쓰는 꼴(아닌지라, 있는지라, 설계하였다)은
+Leipzig 말뭉치에 100만 어절당 0.05번 이상 나왔고 Kiwi가 '용언 어간 + 어미'로 나누는 말을 골라 상한과 상관없이 넣습니다
+(29,509개). Kiwi가 받아들이는 표준이 아닌 꼴(할께요, 있읍니다, 되야, 있겟습니다)은 빼서 자동 수정이 바른 꼴로 고칠 수 있게 둡니다.
+dev에서 추천 시간은 평균 0.95 → 1.0ms, 사전에 없는 단어는 16.1% → 15.7%, 키 절약률 22.72% → 22.79%, 잘못 고침은 chat 75 → 70,
+smile 50 → 45, nsmc 207 → 205 (맞는 말 일었던·움직이므로를 잃었던·움직임으로로 바꾸던 것이 없어진다), 바로 옆·위아래 키 오타 고침은
+69.3% → 68.5%였습니다.
 
 사전에 없는 꼴(아닌자라 → 아닌지라)은 고칠 후보가 될 수 없습니다. 맞는 말 목록에 있고 낱말로 그럴듯한 꼴로 고치는 방법도 재 봤지만,
 드문 맞는 말 쪽으로 끌려가는 일(직장운 → 직장은, 후회돼 → 후회도)이 바른 고침보다 훨씬 많아 쓰지 않습니다.

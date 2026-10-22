@@ -65,12 +65,17 @@ python3 dict/build/build_known_words.py out_base/dict_ko_known.bin --counts coun
     --fp 0.001 --exclude dict/lists/ko_known_exclude.txt
 cp out_base/dict_ko.bin out_base/dict_ko_next.bin out_base/dict_ko_known.bin app/src/main/assets/
 
-# 표준 사전 팩: 말뭉치 단어 8만 개 뒤에 만든 활용형 30만 개를 더 넣는다 (말뭉치 단어를 밀어내지 않는다)
+# 표준 사전 팩: 말뭉치 단어 8만 개 뒤에 만든 활용형 30만 개와, 말뭉치에 나왔지만 거기에 들지 못한 활용형 3만 개를 더 넣는다
+# (말뭉치 단어를 밀어내지 않는다)
 python3 dict/build/select_ko_stems.py kiwi_stems.tsv dict/lists/ko_stems.txt stems_pack.txt --okt verb.txt adjective.txt \
     --min 0.1 --free-one 2                                                   # 팩에 쓸 어간 (더 드문 것까지)
 python3 dict/build/gen_ko_pack_forms.py forms.txt --counts counts.pkl --mix nsmc.pkl:0.5 \
     --stems dict/lists/ko_stems.txt --stems stems_pack.txt                    # 활용형 340만 개 (Kiwi로 검사, 4코어로 5분쯤)
-python3 dict/build/build_ko_model.py out_pack ... --top 80000 --pairs 400000 ... --forms forms.txt --forms-max 300000
+python3 dict/build/build_ko_model.py out_forms ... --top 80000 --pairs 400000 ... --forms forms.txt --forms-max 300000
+python3 dict/build/attested_ko_forms.py attested.txt --counts counts.pkl --dict out_forms/ko_rank.tsv --min-freq 0.05 \
+    --exclude dict/lists/ko_attested_exclude.txt                              # 말뭉치에 나온 활용형 (Kiwi로 검사, 2분쯤)
+python3 dict/build/build_ko_model.py out_pack ... --top 80000 --pairs 400000 ... --forms forms.txt --forms-max 300000 \
+    --forms-keep attested.txt
 python3 dict/build/build_known_words.py out_pack/dict_ko_known.bin --counts counts.pkl --dict out_pack/ko_rank.tsv --min-freq 0.1 \
     --fp 0.001 --exclude dict/lists/ko_known_exclude.txt
 python3 dict/build/make_dict_pack.py out_pack dict/packs/ko-standard.zip --name "표준 사전" --version 2026.10.4 \
