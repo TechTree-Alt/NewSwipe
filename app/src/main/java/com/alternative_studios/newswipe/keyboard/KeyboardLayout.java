@@ -103,6 +103,11 @@ public final class KeyboardLayout {
         return newSwipe(prefs) ? D7_ROWS : KOREAN_GRID;
     }
 
+    /** 설정한 한글 배열에서 ㅂ·ㅈ·ㄷ·ㄱ를 오른쪽으로 밀어 ㅍ·ㅊ·ㅌ·ㅋ을 넣는지 (자동 수정이 같은 키의 오타로 본다). */
+    public static boolean koreanAspirateSwipe(Prefs prefs) {
+        return newSwipe(prefs) && !prefs.swipeCustom();
+    }
+
     /** 한글 자판 한 줄의 칸 수: NewSwipe 단모음은 7, 8열 단모음은 8. */
     public static int koreanColumns(Prefs prefs) {
         return newSwipe(prefs) ? 7 : 8;

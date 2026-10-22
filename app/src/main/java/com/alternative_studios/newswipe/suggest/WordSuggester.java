@@ -66,9 +66,12 @@ public final class WordSuggester {
         HangulRange.doubleTapVowel = enabled;
     }
 
-    /** 자동 수정에서 이웃한 키를 알 수 있게 지금 한글 자판의 글자 줄을 알려 준다. */
-    public void setKeyRows(String[][] rows) {
-        typo.setRows(rows);
+    /**
+     * 자동 수정에서 이웃한 키를 알 수 있게 지금 한글 자판의 글자 줄을 알려 준다. aspirateSwipe = ㅂ·ㅈ·ㄷ·ㄱ를 오른쪽으로 밀어
+     * ㅍ·ㅊ·ㅌ·ㅋ을 넣는 자판 (NewSwipe 단모음).
+     */
+    public void setKeyRows(String[][] rows, boolean aspirateSwipe) {
+        typo.setRows(rows, aspirateSwipe);
     }
 
     public UserDictionary user() {

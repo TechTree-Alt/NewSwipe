@@ -21,6 +21,45 @@ public class KeyProximityTest {
         assertTrue(cost(m, "배일", "내일", true) > TypoModel.NEIGHBOR);
     }
 
+    /** NewSwipe 단모음의 글자 줄 (KeyboardLayout.D7_ROWS와 같다). */
+    private static final String[][] D7 = {
+            {"ㅂ", "ㅈ", "ㄷ", "ㄱ", "ㅗ", "ㅐ", "ㅔ"},
+            {"ㅁ", "ㄴ", "ㅇ", "ㄹ", "ㅓ", "ㅏ", "ㅣ"},
+            {"ㅍ", "ㅋ", "ㅎ", "ㅅ", "ㅜ", "ㅡ"},
+    };
+
+    @Test
+    public void neighborsFollowTheLayout() {
+        TypoModel eight = new TypoModel(), ns = new TypoModel();
+        ns.setRows(D7, true);
+        // ㅅ: 8열은 ㄱ 옆·ㅎ 위, NewSwipe는 셋째 줄에서 ㄹ 아래·ㅎ 옆
+        assertEquals(TypoModel.NEIGHBOR, cost(eight, "가고", "사고", true), 1e-6);
+        assertTrue(cost(ns, "가고", "사고", false) >= TypoModel.SUBSTITUTE);
+        assertEquals(TypoModel.NEIGHBOR, cost(ns, "라고", "사고", true), 1e-6);
+        assertTrue(cost(eight, "라고", "사고", true) > TypoModel.NEIGHBOR);   // 8열에서는 대각선
+        assertEquals(TypoModel.NEIGHBOR, cost(eight, "하고", "사고", true), 1e-6);
+        assertEquals(TypoModel.NEIGHBOR, cost(ns, "하고", "사고", true), 1e-6);
+        // 모음은 두 자판에서 같은 자리 (ㅗ 아래 ㅓ, ㅓ 아래 ㅜ, ㅏ 아래 ㅡ)
+        for (TypoModel m : new TypoModel[]{eight, ns}) {
+            assertEquals(TypoModel.NEIGHBOR, cost(m, "자덩", "자동", true), 1e-6);
+            assertEquals(TypoModel.NEIGHBOR, cost(m, "굴자", "글자", true), 1e-6);
+            assertEquals(TypoModel.NEIGHBOR, cost(m, "이드", "이다", true), 1e-6);
+        }
+    }
+
+    @Test
+    public void aspirateIsSameKeyOnlyWhenSwiped() {
+        TypoModel eight = new TypoModel(), ns = new TypoModel();
+        ns.setRows(D7, true);
+        // NewSwipe 단모음은 ㄱ을 오른쪽으로 밀어 ㅋ: 같은 키의 다른 동작
+        assertEquals(TypoModel.VARIANT, cost(ns, "공", "콩", false), 1e-6);
+        assertEquals(TypoModel.VARIANT, cost(ns, "자고", "차고", false), 1e-6);
+        // 8열 단모음의 ㅋ·ㅊ은 셋째 줄의 다른 키
+        assertTrue(cost(eight, "공", "콩", false) >= TypoModel.SUBSTITUTE);
+        assertTrue(cost(eight, "자고", "차고", false) >= TypoModel.SUBSTITUTE);
+        assertEquals(TypoModel.VARIANT, cost(eight, "가금", "가끔", false), 1e-6);   // 된소리는 두 자판 모두 같은 키
+    }
+
     @Test
     public void typedTenseConsonantIsDeliberate() {
         TypoModel m = new TypoModel();

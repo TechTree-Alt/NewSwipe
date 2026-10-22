@@ -1073,7 +1073,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         cfgLearn = cfgWords && prefs.learnWords();
         cfgPredict = prefs.predictNext();
         suggester.setUserEnabled(cfgLearn);
-        suggester.setKeyRows(KeyboardLayout.koreanLetterRows(prefs));
+        suggester.setKeyRows(KeyboardLayout.koreanLetterRows(prefs), KeyboardLayout.koreanAspirateSwipe(prefs));
         if (suggester.packChanged()) {
             // 설정에서 사전 팩을 가져오거나 지웠다: 읽어 둔 사전을 놓고 필요할 때 새 사전을 읽는다.
             suggester.release();

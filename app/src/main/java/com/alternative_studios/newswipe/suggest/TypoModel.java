@@ -4,7 +4,9 @@ package com.alternative_studios.newswipe.suggest;
  * 한글 오타의 '그럴듯함'을 비용으로 매긴다 (작을수록 흔한 실수). 글자를 호환 자모(ㄱ, ㅏ, ㄺ, ㅘ 등 키 하나로 넣는 단위)로
  * 풀어서, 바꾸기·빠뜨리기·더 치기·맞바꾸기를 가중치를 둔 편집 거리로 잰다.
  * <ul>
- *   <li>같은 키의 다른 동작으로 나오는 글자 (ㄱ↔ㄲ·ㅋ, ㅗ↔ㅛ·ㅘ, ㄹ↔ㄺ)와 소리가 같아 헷갈리는 모음 (ㅐ↔ㅔ, ㅚ↔ㅙ↔ㅞ): 가장 싸다.</li>
+ *   <li>같은 키의 다른 동작으로 나오는 글자 (ㄱ↔ㄲ, ㅗ↔ㅛ·ㅘ, ㄹ↔ㄺ)와 소리가 같아 헷갈리는 모음 (ㅐ↔ㅔ, ㅚ↔ㅙ↔ㅞ): 가장 싸다.
+ *       ㄱ↔ㅋ·ㄷ↔ㅌ·ㅂ↔ㅍ·ㅈ↔ㅊ은 NewSwipe 단모음처럼 오른쪽으로 밀어 거센소리를 넣는 자판에서만 같은 키다 (8열 단모음에서는
+ *       ㅋ·ㅌ·ㅊ·ㅍ이 셋째 줄의 다른 키라 자판 거리로 잰다).</li>
  *   <li>자판에서 바로 옆 키: 싸다. 자판 배열은 {@link #setRows}로 받는다 (기본은 8열 단모음). 대각선 키도 이웃으로 치지만,
  *       대각선 키는 거의 잘못 누르지 않으므로 대각선 없이 재는 비용({@link #distanceDirect})을 따로 둔다.</li>
  *   <li>입력한 글자가 된소리(ㄲ·ㄸ·ㅃ·ㅆ·ㅉ)면 다른 글자로 바꾸는 비용이 비싸다: 된소리는 밀거나 Shift를 눌러 일부러 친다
@@ -26,10 +28,12 @@ public final class TypoModel {
     private static final String JONG = "\0ㄱㄲㄳㄴㄵㄶㄷㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅄㅅㅆㅇㅈㅊㅋㅌㅍㅎ";
     /** 같은 키의 다른 동작(아래·오른쪽으로 밀기, 겹받침·겹모음 밀기)이나 같은 소리로 헷갈리는 짝. */
     private static final String[] VARIANTS = {
-            "ㄱㄲㅋ", "ㄷㄸㅌ", "ㅂㅃㅍ", "ㅅㅆ", "ㅈㅉㅊ",
+            "ㄱㄲ", "ㄷㄸ", "ㅂㅃ", "ㅅㅆ", "ㅈㅉ",
             "ㄱㄳ", "ㄴㄵㄶ", "ㄹㄺㄻㄼㄽㄾㄿㅀ", "ㅂㅄ",
             "ㅏㅑㅘ", "ㅓㅕㅝ", "ㅗㅛㅘㅚㅙ", "ㅜㅠㅝㅟㅞ", "ㅐㅒㅔㅖㅙㅞ", "ㅚㅙㅞㅟ", "ㅡㅢ", "ㅣㅢㅚㅟ",
     };
+    /** 오른쪽으로 밀어 거센소리를 넣는 자판(NewSwipe 단모음)에서 같은 키에서 나오는 글자. */
+    private static final String[] ASPIRATE_SWIPE = {"ㄱㄲㅋ", "ㄷㄸㅌ", "ㅂㅃㅍ", "ㅈㅉㅊ"};
     /** 한 키에서 (밀기로) 나오는 글자들. 이웃한 키끼리는 이 글자들도 서로 이웃으로 본다 (ㅓ 옆의 ㅗ → ㅕ 옆의 ㅛ). */
     private static final String[] KEY_FAMILY = {
             "ㄱㄲ", "ㄷㄸ", "ㅂㅃ", "ㅅㅆ", "ㅈㅉ", "ㅏㅑ", "ㅓㅕ", "ㅗㅛㅘㅚㅙ", "ㅜㅠㅝㅟㅞ", "ㅐㅒ", "ㅔㅖ", "ㅡㅢ",
@@ -42,17 +46,25 @@ public final class TypoModel {
 
     /** 호환 자모 0x3131~0x3163 쌍의 비용 표 (51×51). direct는 대각선 키를 이웃으로 치지 않은 표. */
     private final float[] table = new float[51 * 51], direct = new float[51 * 51];
+    private boolean aspirateSwipe;
     private float[] r0 = new float[66], r1 = new float[66], r2 = new float[66];
 
     public TypoModel() {
-        setRows(DEFAULT_ROWS);
+        setRows(DEFAULT_ROWS, false);
+    }
+
+    /** 8열 단모음처럼 거센소리가 따로 있는 자판의 글자 줄. {@link #setRows(String[][], boolean)}. */
+    public void setRows(String[][] rows) {
+        setRows(rows, false);
     }
 
     /**
      * 자판의 글자 줄 (줄마다 키 글자, 화면의 칸 위치대로; 빈 문자열은 글자가 아닌 칸). 같은 줄의 양옆 키와, 위·아래 줄에서
-     * 칸이 하나 안쪽으로 차이 나는 키를 이웃으로 본다.
+     * 칸이 하나 안쪽으로 차이 나는 키를 이웃으로 본다. aspirateSwipe = ㅂ·ㅈ·ㄷ·ㄱ를 오른쪽으로 밀어 ㅍ·ㅊ·ㅌ·ㅋ을 넣는
+     * 자판 (NewSwipe 단모음): 그 짝을 같은 키의 다른 동작으로 본다.
      */
-    public synchronized void setRows(String[][] rows) {
+    public synchronized void setRows(String[][] rows, boolean aspirateSwipe) {
+        this.aspirateSwipe = aspirateSwipe;
         int n = 51;
         for (int a = 0; a < n; a++) {
             for (int b = 0; b < n; b++) {
@@ -66,7 +78,7 @@ public final class TypoModel {
                     for (int r2 = Math.max(0, r - 1); r2 <= Math.min(rows.length - 1, r + 1); r2++) {
                         for (int c2 = c - 1; c2 <= c + 1; c2++) {
                             if (c2 < 0 || c2 >= rows[r2].length || (r2 == r && c2 == c)) continue;
-                            String fa = family(rows[r][c]), fb = family(rows[r2][c2]);
+                            String fa = family(rows[r][c], aspirateSwipe), fb = family(rows[r2][c2], aspirateSwipe);
                             for (int i = 0; i < fa.length(); i++) {
                                 for (int j = 0; j < fb.length(); j++) {
                                     set(table, String.valueOf(fa.charAt(i)), String.valueOf(fb.charAt(j)), NEIGHBOR);
@@ -80,12 +92,14 @@ public final class TypoModel {
                 }
             }
         }
-        for (String g : VARIANTS) {
-            for (int i = 0; i < g.length(); i++) {
-                for (int j = 0; j < g.length(); j++) {
-                    if (i != j) {
-                        set(table, String.valueOf(g.charAt(i)), String.valueOf(g.charAt(j)), VARIANT);
-                        set(direct, String.valueOf(g.charAt(i)), String.valueOf(g.charAt(j)), VARIANT);
+        for (String[] groups : aspirateSwipe ? new String[][]{VARIANTS, ASPIRATE_SWIPE} : new String[][]{VARIANTS}) {
+            for (String g : groups) {
+                for (int i = 0; i < g.length(); i++) {
+                    for (int j = 0; j < g.length(); j++) {
+                        if (i != j) {
+                            set(table, String.valueOf(g.charAt(i)), String.valueOf(g.charAt(j)), VARIANT);
+                            set(direct, String.valueOf(g.charAt(i)), String.valueOf(g.charAt(j)), VARIANT);
+                        }
                     }
                 }
             }
@@ -100,8 +114,9 @@ public final class TypoModel {
         }
     }
 
-    private static String family(String key) {
+    private static String family(String key, boolean aspirateSwipe) {
         if (key == null || key.length() != 1) return "";
+        if (aspirateSwipe) for (String f : ASPIRATE_SWIPE) if (f.charAt(0) == key.charAt(0)) return f;
         for (String f : KEY_FAMILY) if (f.charAt(0) == key.charAt(0)) return f;
         return key;
     }

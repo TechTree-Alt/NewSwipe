@@ -142,7 +142,7 @@ public final class SuggestEval {
                 next == null ? 0 : next.pairs());
         long b0 = System.nanoTime();
         TypoModel tm = new TypoModel();
-        tm.setRows(rows);
+        tm.setRows(rows, rows == ROWS_7);   // NewSwipe 단모음은 오른쪽으로 밀어 거센소리
         KoreanSuggest ks = new KoreanSuggest(d, next, tm);
         File kf = new File(dir, "dict_ko_known.bin");
         if (useKnown && kf.isFile()) {
