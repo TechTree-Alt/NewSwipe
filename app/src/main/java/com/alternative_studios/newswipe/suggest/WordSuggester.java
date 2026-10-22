@@ -105,7 +105,7 @@ public final class WordSuggester {
      */
     static void learnInto(WordDictionary d, UserDictionary user, UsageHistory usage, String word, String prev,
                           boolean korean, boolean strong, long now) {
-        if (!learnable(word, korean)) return;
+        if (!learnable(word, korean) || user.isBlocked(word, korean)) return;   // 사용자가 지워 학습하지 않는 단어
         if (korean && usage != null) {
             String p = prev != null && learnable(prev, true) ? prev : null;
             usage.record(p, word, now);

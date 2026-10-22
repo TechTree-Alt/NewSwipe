@@ -727,7 +727,7 @@ public final class SuggestEval {
     private static void set(String kv) throws Exception {
         String[] p = kv.split("=", 2);
         java.lang.reflect.Field f = null;   // 계수는 순위(KoreanSuggest), 만든 꼴(KoreanForms), 자동 수정(KoreanCorrect), 꼴 알아보기(KoreanMorph)에 있다
-        for (Class<?> c : new Class<?>[]{KoreanSuggest.class, KoreanForms.class, KoreanCorrect.class, KoreanMorph.class,
+        for (Class<?> c : new Class<?>[]{KoreanSuggest.class, KoreanForms.class, KoreanCorrect.class, KoreanMorph.class, TypoModel.class,
                 UsageHistory.class, HangulRange.class, WordDictionary.class}) {
             try {
                 f = c.getDeclaredField(p[0]);

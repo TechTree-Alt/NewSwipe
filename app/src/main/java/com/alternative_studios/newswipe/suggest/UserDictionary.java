@@ -58,6 +58,105 @@ public final class UserDictionary {
 
     UserDictionary(File file) {
         this.file = file;
+        this.blockedFile = new File(file.getPath() + ".blocked");
+    }
+
+    /** 학습하지 않는 단어의 최대 개수. */
+    public static final int MAX_BLOCKED = 3000;
+    /**
+     * 사용자가 학습한 단어(또는 입력 기록)를 지워 다시 학습하지 않을 단어. 학습한 단어와 따로 저장하고 따로 잠근다 (작아서
+     * 처음 쓸 때 읽는다). 이 잠금을 쥔 채로 다른 잠금을 잡지 않는다.
+     */
+    private final File blockedFile;
+    private final Object blockedLock = new Object();
+    private java.util.TreeSet<String> blocked;
+
+    private java.util.TreeSet<String> blockedSet() {
+        if (blocked == null) {
+            blocked = new java.util.TreeSet<>();
+            if (blockedFile.exists()) {
+                try (BufferedReader r = new BufferedReader(new InputStreamReader(new FileInputStream(blockedFile), StandardCharsets.UTF_8))) {
+                    String line;
+                    while ((line = r.readLine()) != null && blocked.size() < MAX_BLOCKED) {
+                        if (!line.isEmpty()) blocked.add(line);
+                    }
+                } catch (IOException ignored) {
+                    // 읽은 데까지만 쓴다.
+                }
+            }
+        }
+        return blocked;
+    }
+
+    private void writeBlocked() {
+        File tmp = new File(blockedFile.getPath() + ".tmp");
+        try (BufferedWriter w = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmp), StandardCharsets.UTF_8))) {
+            for (String b : blocked) w.write(b + "\n");
+        } catch (IOException e) {
+            tmp.delete();
+            return;
+        }
+        if (!tmp.renameTo(blockedFile)) {
+            blockedFile.delete();
+            tmp.renameTo(blockedFile);
+        }
+    }
+
+    /** 다시 학습하지 않을 단어인지 (파일을 읽을 수 있으니 백그라운드 스레드에서 부른다). */
+    public boolean isBlocked(String word, boolean korean) {
+        synchronized (blockedLock) {
+            return blockedSet().contains(key(word, korean));
+        }
+    }
+
+    /** 학습한 단어를 지우고 다시 학습하지 않는다 (사용자가 지운 경우). 학습한 단어에 있었으면 true. */
+    public boolean forget(String word, boolean korean) {
+        block(word, korean);
+        return remove(word, korean);
+    }
+
+    /** 다시 학습하지 않을 단어로 둔다. */
+    public void block(String word, boolean korean) {
+        if (word.isEmpty() || word.length() > 24 || word.indexOf('\n') >= 0 || word.indexOf('\r') >= 0) return;
+        synchronized (blockedLock) {
+            java.util.TreeSet<String> b = blockedSet();
+            if (!b.add(key(word, korean))) return;
+            while (b.size() > MAX_BLOCKED) b.pollFirst();
+            writeBlocked();
+        }
+        editVersion++;
+    }
+
+    /** 학습하지 않는 단어에서 뺀다 (다시 학습할 수 있다). 목록에 있었으면 true. */
+    public boolean unblock(String word) {
+        synchronized (blockedLock) {
+            if (!blockedSet().remove(word)) return false;
+            writeBlocked();
+        }
+        editVersion++;
+        return true;
+    }
+
+    /** 학습하지 않는 단어 목록 (사전 순). */
+    public List<String> blockedSnapshot() {
+        synchronized (blockedLock) {
+            return new ArrayList<>(blockedSet());
+        }
+    }
+
+    /** 백업에서 가져오기: 학습하지 않는 단어 목록을 바꾼다. 들어간 개수. */
+    public int replaceBlocked(List<String> items) {
+        synchronized (blockedLock) {
+            blocked = new java.util.TreeSet<>();
+            for (String w : items) {
+                if (blocked.size() >= MAX_BLOCKED) break;
+                if (w == null || w.isEmpty() || w.length() > 24 || w.indexOf('\n') >= 0 || w.indexOf('\r') >= 0) continue;
+                blocked.add(w);
+            }
+            writeBlocked();
+            editVersion++;
+            return blocked.size();
+        }
     }
 
     private java.util.TreeMap<String, Entry> readFile() {
@@ -153,8 +252,12 @@ public final class UserDictionary {
         return isKnownIfLoaded(word, korean);
     }
 
-    /** 단어를 한 번 썼다고 기록한다. strong이면 곧바로 '아는 단어'가 된다 (사용자가 자동 수정을 되돌린 경우). */
+    /**
+     * 단어를 한 번 썼다고 기록한다. strong이면 곧바로 '아는 단어'가 된다 (사용자가 자동 수정을 되돌린 경우).
+     * 사용자가 지워 학습하지 않는 단어는 기록하지 않는다.
+     */
     public void add(String word, boolean korean, boolean strong, long now) {
+        if (isBlocked(word, korean)) return;
         ensureLoaded();
         addLoaded(word, korean, strong, now);
     }

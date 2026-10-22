@@ -5,7 +5,10 @@ package com.alternative_studios.newswipe.suggest;
  * 풀어서, 바꾸기·빠뜨리기·더 치기·맞바꾸기를 가중치를 둔 편집 거리로 잰다.
  * <ul>
  *   <li>같은 키의 다른 동작으로 나오는 글자 (ㄱ↔ㄲ·ㅋ, ㅗ↔ㅛ·ㅘ, ㄹ↔ㄺ)와 소리가 같아 헷갈리는 모음 (ㅐ↔ㅔ, ㅚ↔ㅙ↔ㅞ): 가장 싸다.</li>
- *   <li>자판에서 바로 옆 키: 싸다. 자판 배열은 {@link #setRows}로 받는다 (기본은 8열 단모음).</li>
+ *   <li>자판에서 바로 옆 키: 싸다. 자판 배열은 {@link #setRows}로 받는다 (기본은 8열 단모음). 대각선 키도 이웃으로 치지만,
+ *       대각선 키는 거의 잘못 누르지 않으므로 대각선 없이 재는 비용({@link #distanceDirect})을 따로 둔다.</li>
+ *   <li>입력한 글자가 된소리(ㄲ·ㄸ·ㅃ·ㅆ·ㅉ)면 다른 글자로 바꾸는 비용이 비싸다: 된소리는 밀거나 Shift를 눌러 일부러 친다
+ *       (반대로 예사소리를 친 것을 된소리로 바꾸는 것은 싸다).</li>
  *   <li>그 밖의 바꾸기, 빠뜨리기, 더 치기: 비싸다. 같은 키를 한 번 더 친 것은 덜 비싸다.</li>
  * </ul>
  * 화면 스레드에서만 쓴다 (계산용 버퍼를 다시 쓴다).
@@ -14,6 +17,9 @@ public final class TypoModel {
     public static final float VARIANT = 0.35f, NEIGHBOR = 0.6f, SUBSTITUTE = 1.1f, CROSS = 1.4f;
     public static final float INSERT = 0.9f, REPEAT = 0.5f, DELETE = 0.9f, TRANSPOSE = 0.7f;
     private static final float INF = 1e9f;
+    /** 입력한 된소리를 다른 글자로 바꾸는 가장 싼 비용 (평가에서 바꿔 본다). */
+    static float TENSE_TYPED = SUBSTITUTE;
+    private static final String TENSE = "ㄲㄸㅃㅆㅉ";
 
     private static final String CHO = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
     private static final String JUNG = "ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ";
@@ -34,8 +40,8 @@ public final class TypoModel {
             {"", "ㅋ", "ㅌ", "ㅊ", "ㅍ", "ㅜ", "ㅡ"},   // 맨 왼쪽은 Shift 자리 (ㅋ이 ㄴ 아래에 온다)
     };
 
-    /** 호환 자모 0x3131~0x3163 쌍의 비용 표 (51×51). */
-    private final float[] table = new float[51 * 51];
+    /** 호환 자모 0x3131~0x3163 쌍의 비용 표 (51×51). direct는 대각선 키를 이웃으로 치지 않은 표. */
+    private final float[] table = new float[51 * 51], direct = new float[51 * 51];
     private float[] r0 = new float[66], r1 = new float[66], r2 = new float[66];
 
     public TypoModel() {
@@ -51,7 +57,7 @@ public final class TypoModel {
         for (int a = 0; a < n; a++) {
             for (int b = 0; b < n; b++) {
                 char x = (char) (0x3131 + a), y = (char) (0x3131 + b);
-                table[a * n + b] = a == b ? 0f : isVowel(x) != isVowel(y) ? CROSS : SUBSTITUTE;
+                table[a * n + b] = direct[a * n + b] = a == b ? 0f : isVowel(x) != isVowel(y) ? CROSS : SUBSTITUTE;
             }
         }
         if (rows != null) {
@@ -63,7 +69,10 @@ public final class TypoModel {
                             String fa = family(rows[r][c]), fb = family(rows[r2][c2]);
                             for (int i = 0; i < fa.length(); i++) {
                                 for (int j = 0; j < fb.length(); j++) {
-                                    set(String.valueOf(fa.charAt(i)), String.valueOf(fb.charAt(j)), NEIGHBOR);
+                                    set(table, String.valueOf(fa.charAt(i)), String.valueOf(fb.charAt(j)), NEIGHBOR);
+                                    if (r2 == r || c2 == c) {
+                                        set(direct, String.valueOf(fa.charAt(i)), String.valueOf(fb.charAt(j)), NEIGHBOR);
+                                    }
                                 }
                             }
                         }
@@ -74,8 +83,19 @@ public final class TypoModel {
         for (String g : VARIANTS) {
             for (int i = 0; i < g.length(); i++) {
                 for (int j = 0; j < g.length(); j++) {
-                    if (i != j) set(String.valueOf(g.charAt(i)), String.valueOf(g.charAt(j)), VARIANT);
+                    if (i != j) {
+                        set(table, String.valueOf(g.charAt(i)), String.valueOf(g.charAt(j)), VARIANT);
+                        set(direct, String.valueOf(g.charAt(i)), String.valueOf(g.charAt(j)), VARIANT);
+                    }
                 }
+            }
+        }
+        for (int i = 0; i < TENSE.length(); i++) {
+            int a = TENSE.charAt(i) - 0x3131;
+            for (int b = 0; b < n; b++) {
+                if (b == a) continue;
+                table[a * n + b] = Math.max(table[a * n + b], TENSE_TYPED);
+                direct[a * n + b] = Math.max(direct[a * n + b], TENSE_TYPED);
             }
         }
     }
@@ -86,7 +106,7 @@ public final class TypoModel {
         return key;
     }
 
-    private void set(String a, String b, float cost) {
+    private static void set(float[] table, String a, String b, float cost) {
         if (a == null || b == null || a.length() != 1 || b.length() != 1) return;
         int x = a.charAt(0) - 0x3131, y = b.charAt(0) - 0x3131;
         if (x < 0 || x >= 51 || y < 0 || y >= 51) return;
@@ -100,6 +120,10 @@ public final class TypoModel {
 
     /** 입력한 글자 a를 b로 바꾸는 비용. */
     public float substitute(char a, char b) {
+        return substitute(table, a, b);
+    }
+
+    private static float substitute(float[] table, char a, char b) {
         if (a == b) return 0f;
         int x = a - 0x3131, y = b - 0x3131;
         if (x < 0 || x >= 51 || y < 0 || y >= 51) return CROSS;
@@ -132,17 +156,22 @@ public final class TypoModel {
 
     /** 입력 p 전체를 단어 t 전체로 고치는 비용. limit을 넘을 것이 확실하면 그보다 큰 값을 돌려준다. */
     public float distance(char[] p, int pn, char[] t, int tn, float limit) {
-        return align(p, pn, t, tn, limit, false);
+        return align(table, p, pn, t, tn, limit, false);
+    }
+
+    /** distance와 같지만 대각선 키를 이웃으로 치지 않는다 (대각선 키를 잘못 누른 것이 아닌 고칠 단어를 먼저 고를 때). */
+    public float distanceDirect(char[] p, int pn, char[] t, int tn, float limit) {
+        return align(direct, p, pn, t, tn, limit, false);
     }
 
     /** 입력 p 전체를 단어 t의 어떤 앞부분으로 고치는 가장 작은 비용 (아직 치는 중인 단어용). */
     public float prefixDistance(char[] p, int pn, char[] t, int tn, float limit) {
-        return align(p, pn, t, tn, limit, true);
+        return align(table, p, pn, t, tn, limit, true);
     }
 
     private static final int BAND = 3;
 
-    private synchronized float align(char[] p, int pn, char[] t, int tn, float limit, boolean prefix) {
+    private synchronized float align(float[] table, char[] p, int pn, char[] t, int tn, float limit, boolean prefix) {
         if (!prefix && Math.abs(pn - tn) > BAND) return INF;
         if (tn + 1 > r0.length) {
             r0 = new float[tn + 1];
@@ -162,7 +191,7 @@ public final class TypoModel {
                 float v = prev[j] + ins;   // 입력에 글자가 더 들어갔다
                 if (j > 0) {
                     v = Math.min(v, cur[j - 1] + DELETE);   // 입력에서 글자가 빠졌다
-                    v = Math.min(v, prev[j - 1] + substitute(pc, t[j - 1]));
+                    v = Math.min(v, prev[j - 1] + substitute(table, pc, t[j - 1]));
                     if (i > 1 && j > 1 && pc == t[j - 2] && p[i - 2] == t[j - 1] && pc != p[i - 2]) {
                         v = Math.min(v, prev2[j - 2] + TRANSPOSE);
                     }

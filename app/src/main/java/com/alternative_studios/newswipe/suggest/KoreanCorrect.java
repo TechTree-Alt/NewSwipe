@@ -56,6 +56,12 @@ final class KoreanCorrect {
      */
     static double SHAPE_MIN_KNOWN = 1200;
 
+    /**
+     * 맞는 말 목록이 있을 때, 키 하나를 잘못 누른 오타(바로 옆·위·아래 키, 같은 키의 다른 동작, 같은 키 두 번: 오타 비용
+     * {@link TypoModel#NEIGHBOR} 이하)로 고치는 단어의 기준. 빠뜨리기·더 치기보다 분명한 오타라 더 낮다 (다끔 → 가끔).
+     */
+    static double SHAPE_MIN_ONE_KEY = 500;
+
     /** 틀린 꼴이 분명한 말(끝난 말 + 요: 되니요)의 기준. 맞는 말일 수 없으니 훨씬 낮다. */
     static double SHAPE_MIN_WRONG = 100;
 
@@ -64,6 +70,13 @@ final class KoreanCorrect {
 
     /** SHAPE_RULE에서 고칠 단어로 보는 가장 드문 빈도 (100만 어절당). 더 드문 단어까지 보면 느리고 얻는 것이 거의 없다. */
     static double SHAPE_SCAN_FREQ = 10;
+
+    /**
+     * 대각선으로 이웃한 키를 잘못 누른 것은 드물다: 대각선 키 없이(바로 옆·위·아래 키, 그 밖의 편집으로) 설명되는 고칠 단어가
+     * 하나라도 있으면 그중에서만 고르고, 대각선 키를 잘못 눌렀다고 봐야 하는 단어는 그런 단어가 없을 때만 고른다
+     * (배일 → 매일, 내일이 아니라). 끄면 평가용으로 모두 함께 견준다.
+     */
+    static boolean DIAGONAL_LAST = true;
 
     /** 자동 수정에서 허용하는 오타 비용 (세 글자 이하, 네 글자 이상). */
     static float CORRECT_MAX_SHORT = 1.0f, CORRECT_MAX_LONG = 1.6f;
@@ -90,32 +103,38 @@ final class KoreanCorrect {
             String r = spellFix(word, cx);
             if (r != null) return r;
         }
-        if (!SHAPE_RULE) return search(word, word, cx, false, 0);
+        if (!SHAPE_RULE) return search(word, word, cx, false, 0, 0);
         KnownWords k = known;
         if (k != null && k.contains(word)) return null;   // 사전에 없지만 말뭉치에 나온 맞는 말
         // 사전 단어 + 요인데 조사로 받지 않은 말(되니요)은 틀린 꼴이 분명하다
         String[] sp = WordSuggester.splitParticle(word);
         boolean wrong = sp != null && dict.contains(sp[0]);
-        String r = search(word, word, cx, false, Math.log(wrong ? SHAPE_MIN_WRONG : k != null ? SHAPE_MIN_KNOWN : SHAPE_MIN));
+        double min = wrong ? SHAPE_MIN_WRONG : k != null ? SHAPE_MIN_KNOWN : SHAPE_MIN;
+        double oneKey = wrong ? SHAPE_MIN_WRONG : k != null ? Math.min(SHAPE_MIN_KNOWN, SHAPE_MIN_ONE_KEY) : SHAPE_MIN;
+        String r = search(word, word, cx, false, Math.log(min), Math.log(oneKey));
         if (r != null || sp == null || wrong || sp[0].length() < 2 || k != null && k.contains(sp[0])) return r;
         // 명사 + 조사에서 명사만 틀린 말: 명사를 고쳐 조사를 다시 붙인다 (자댕입니다 → 자동입니다)
-        String noun = search(sp[0], sp[0], cx, true, Math.log(k != null ? SHAPE_MIN_KNOWN : SHAPE_MIN_NOUN));
+        double nounMin = k != null ? SHAPE_MIN_KNOWN : SHAPE_MIN_NOUN;
+        String noun = search(sp[0], sp[0], cx, true, Math.log(nounMin), Math.log(k != null ? Math.min(nounMin, SHAPE_MIN_ONE_KEY) : nounMin));
         if (noun == null) return null;
         String[] back = WordSuggester.splitParticle(noun + sp[1]);   // 받침에 맞는 조사인지 (이/가, 은/는 ...)
         return back != null && back[0].equals(noun) ? noun + sp[1] : null;
     }
 
     /**
-     * 사전에 없는 word를 고칠 사전 단어 (없으면 null). noun이면 명사만 본다. SHAPE_RULE이면 minLog = ln(기준)이고, 아니면 예전처럼
-     * 최소 빈도(minFreq)를 넘는 단어 중에서 고른다. 비슷하게 그럴듯한 후보가 둘 이상이면 고치지 않는다.
+     * 사전에 없는 word를 고칠 사전 단어 (없으면 null). noun이면 명사만 본다. SHAPE_RULE이면 minLog = ln(기준)이고 키 하나를
+     * 잘못 누른 오타로 고치는 단어는 oneKeyLog를 쓴다. 아니면 예전처럼 최소 빈도(CORRECT_MIN_FREQ)를 넘는 단어 중에서 고른다.
+     * 비슷하게 그럴듯한 후보가 둘 이상이면 고치지 않는다.
      */
-    private String search(String word, String typed, KoreanSuggest.Context cx, boolean noun, double minLog) {
+    private String search(String word, String typed, KoreanSuggest.Context cx, boolean noun, double minLog, double oneKeyLog) {
         int syll = word.length();
         char[] p = TypoModel.letters(word);
         float maxCost = syll <= 3 ? CORRECT_MAX_SHORT : CORRECT_MAX_LONG;
         char[] t = new char[72];
-        double best = Double.NEGATIVE_INFINITY, second = Double.NEGATIVE_INFINITY;
-        int bestId = -1;
+        // [0] 대각선 키 없이 설명되는 단어, [1] 대각선 키를 잘못 눌렀다고 봐야 하는 단어
+        double[] best = {Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY};
+        double[] second = {Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY};
+        int[] bestId = {-1, -1};
         int minScore = ks.scoreFor(CORRECT_MIN_FREQ);
         double lmTyped = SHAPE_RULE ? shape.logProb(typed) : 0;
         for (int id : dict.strongWords(ks.scoreFor(SHAPE_RULE ? SHAPE_SCAN_FREQ : CORRECT_MIN_FREQ_CONTEXT))) {
@@ -125,7 +144,7 @@ final class KoreanCorrect {
             if (SHAPE_RULE) {
                 // 오타 비용을 뺀 부분을 먼저 본다: 가장 싼 오타(같은 키의 다른 동작)여도 기준에 못 미치면 편집 거리를 재지 않는다
                 partial = prior[id] - SHAPE_LM * lmTyped;
-                if (partial + SHAPE_CONTEXT - SHAPE_COST * (TypoModel.VARIANT - 0.6) < minLog) continue;
+                if (partial + SHAPE_CONTEXT - SHAPE_COST * (TypoModel.VARIANT - 0.6) < Math.min(minLog, oneKeyLog)) continue;
                 if (cx.hasPair(id)) partial += SHAPE_CONTEXT;
             }
             String w = dict.word(id);
@@ -137,22 +156,24 @@ final class KoreanCorrect {
             if (syll <= CORRECT_ONE_EDIT_SYLL && !oneEdit(p, p.length, t, tn)) continue;
             boolean context = cx.hasPair(id);
             if (SHAPE_RULE) {
-                if (partial - SHAPE_COST * (c - 0.6) < minLog) continue;
+                if (partial - SHAPE_COST * (c - 0.6) < (c <= TypoModel.NEIGHBOR + 1e-4f ? oneKeyLog : minLog)) continue;
             } else if (dict.score(id) < minScore && !context) {
                 continue;
             }
             if (noun && !morph.nounLike(w)) continue;
+            int pool = DIAGONAL_LAST && typo.distanceDirect(p, p.length, t, tn, maxCost) > c + 1e-4f ? 1 : 0;
             double s = Math.log(cx.score(w, id)) - KoreanSuggest.TYPO_PENALTY * c;
-            if (s > best) {
-                second = best;
-                best = s;
-                bestId = id;
-            } else if (s > second) {
-                second = s;
+            if (s > best[pool]) {
+                second[pool] = best[pool];
+                best[pool] = s;
+                bestId[pool] = id;
+            } else if (s > second[pool]) {
+                second[pool] = s;
             }
         }
-        if (bestId < 0 || best - second < CORRECT_MARGIN) return null;
-        return dict.word(bestId);
+        int pool = bestId[0] >= 0 ? 0 : 1;
+        if (bestId[pool] < 0 || best[pool] - second[pool] < CORRECT_MARGIN) return null;
+        return dict.word(bestId[pool]);
     }
 
     /**

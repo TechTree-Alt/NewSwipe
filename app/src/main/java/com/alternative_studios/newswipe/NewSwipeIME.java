@@ -3048,7 +3048,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         updateAutoCap();
     }
 
-    /** 추천을 길게 누르면: 학습한 단어면 학습한 단어에서 지운다. 기본 사전 단어는 내 입력 기록만 지운다. */
+    /**
+     * 추천을 길게 누르면: 학습한 단어면 학습한 단어에서 지운다. 기본 사전 단어는 내 입력 기록만 지운다.
+     * 지운 단어는 다시 학습하지 않는다 (설정의 '학습하지 않는 단어 보기'에서 되돌린다).
+     */
     private boolean forgetSuggestion(int index) {
         if (index >= suggestions.length || !cfgLearn || shortcutShown) return false;
         final String word = suggestions[index];
@@ -3059,8 +3062,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 feedback.onKey(null);
                 Runnable forget = () -> runIo(() -> {
                     usageHistory.remove(word);
+                    userWords.block(word, lang);
                     main.post(() -> {
-                        Toast.makeText(this, "'" + word + "'의 입력 기록을 지웠습니다", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, "'" + word + "'의 입력 기록을 지웠습니다. 다시 학습하지 않습니다",
+                                Toast.LENGTH_SHORT).show();
                         updateSuggestions();
                     });
                 });
@@ -3075,10 +3080,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
         feedback.onKey(null);
         Runnable delete = () -> runIo(() -> {
-            userWords.remove(word, lang);
+            userWords.forget(word, lang);
             if (lang) usageHistory.remove(word);
             main.post(() -> {
-                Toast.makeText(this, "'" + word + "'" + WordSuggester.objectParticle(word) + " 삭제했습니다",
+                Toast.makeText(this, "'" + word + "'" + WordSuggester.objectParticle(word) + " 삭제했습니다. 다시 학습하지 않습니다",
                         Toast.LENGTH_SHORT).show();
                 updateSuggestions();
             });

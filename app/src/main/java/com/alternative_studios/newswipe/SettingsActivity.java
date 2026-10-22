@@ -170,7 +170,7 @@ public final class SettingsActivity extends Activity {
     private static final String[] GUIDE = {"usage", "사용법", "NewSwipe의 간단한 사용법"};
 
     /** 메뉴에는 없고 다른 화면에서 여는 하위 화면. */
-    private static final String LEARNED = "learned", USAGE = "usage", PRIVACY = "privacy", LICENSES = "licenses",
+    private static final String LEARNED = "learned", BLOCKED = "blocked", USAGE = "usage", PRIVACY = "privacy", LICENSES = "licenses",
             KEY_AREA = "keyarea", LANDSCAPE_AREA = "landscapearea",
             LARGE_AREA = "largearea";
 
@@ -182,6 +182,7 @@ public final class SettingsActivity extends Activity {
         if (APP[0].equals(id)) return APP[1];
         switch (id) {
             case LEARNED: return "학습한 단어";
+            case BLOCKED: return "학습하지 않는 단어";
             case USAGE: return "사용법";
             case PRIVACY: return "개인정보 처리방침";
             case LICENSES: return "오픈소스 라이선스";
@@ -215,6 +216,7 @@ public final class SettingsActivity extends Activity {
             case "swipefn": buildSwipeFunctions(); break;
             case "words": buildWords(); break;
             case LEARNED: buildLearned(); break;
+            case BLOCKED: buildBlocked(); break;
             case "feedback": buildFeedback(); break;
             case "tools": buildTools(); break;
             case "backup": buildBackup(); break;
@@ -411,6 +413,7 @@ public final class SettingsActivity extends Activity {
             {"words", "입력한 단어 학습", "사용자 사전 개인화"},
             {"words", "단어를 지울 때 확인", "삭제 확인 학습한 단어"},
             {"words", "학습한 단어 보기", "사용자 사전 목록"},
+            {"words", "학습하지 않는 단어 보기", "학습 제외 차단 지운 단어 다시 학습"},
             {"words", "학습한 단어 모두 지우기", "사용자 사전 초기화 삭제"},
             {"words", "자동 완성 제안", "오토필 Autofill Google 삼성패스 비밀번호 아이디 계정 칩 인증번호"},
             {"feedback", "키 진동", "햅틱 진동 켜기 끄기"},
@@ -2011,6 +2014,7 @@ public final class SettingsActivity extends Activity {
         learn.addView(toggle("단어를 지울 때 확인", "학습한 단어를 지울 때 한 번 더 확인합니다.",
                 Prefs.CONFIRM_LEARNED_DELETE, prefs.confirmLearnedDelete()));
         learn.addView(button("학습한 단어 보기", v -> openSection(LEARNED)));
+        learn.addView(button("학습하지 않는 단어 보기", v -> openSection(BLOCKED)));
         learn.addView(trashButton("학습한 단어 모두 지우기", v -> AppTheme.dialogBuilder(this)
                 .setTitle("학습한 단어 모두 지우기")
                 .setMessage("키보드가 기억한 단어와, 추천 순서에 쓰는 입력 기록(자주 쓴 단어·이어 쓴 단어)을 모두 지웁니다. "
@@ -2217,7 +2221,7 @@ public final class SettingsActivity extends Activity {
         IconButton trash = new IconButton(this, Icons.TRASH, hintColor, hintColor & 0x00FFFFFF | 0x33000000, "'" + word + "' 지우기");
         Runnable delete = () -> {
             boolean korean = word.codePoints().anyMatch(c -> c >= 0xAC00 && c <= 0xD7A3);
-            dict.remove(word, korean);
+            dict.forget(word, korean);   // 지운 단어는 다시 학습하지 않는다
             if (korean) UsageHistory.shared(getFilesDir()).remove(word);
             // 줄과 그 위(첫 줄이면 아래)의 구분선을 함께 뗀다.
             int idx = words.indexOfChild(row);
@@ -2237,13 +2241,97 @@ public final class SettingsActivity extends Activity {
             }
             remaining[slot]--;
             updateSummary.run();
-            Toast.makeText(this, "'" + word + "'" + com.alternative_studios.newswipe.suggest.WordSuggester.objectParticle(word) + " 삭제했습니다", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "'" + word + "'" + com.alternative_studios.newswipe.suggest.WordSuggester.objectParticle(word)
+                    + " 삭제했습니다. 다시 학습하지 않습니다", Toast.LENGTH_SHORT).show();
         };
         trash.setOnClickListener(v -> {
             if (prefs.confirmLearnedDelete()) confirmLearnedDelete(word, delete);
             else delete.run();
         });
         row.addView(trash, new LinearLayout.LayoutParams(Ui.dp(this, 44), Ui.dp(this, 44)));
+        return row;
+    }
+
+    /**
+     * 학습하지 않는 단어 목록 (사용자가 학습한 단어나 입력 기록을 지운 단어, 사전 순). 줄마다 오른쪽 버튼으로 목록에서 빼면
+     * 다시 학습한다.
+     */
+    private void buildBlocked() {
+        UserDictionary dict = UserDictionary.shared(getFilesDir());
+        java.util.List<String> all = dict.blockedSnapshot();
+        if (all.isEmpty()) {
+            card().addView(note("학습하지 않는 단어가 없습니다. 학습한 단어를 지우면(설정이나 추천을 길게 눌러서) "
+                    + "그 단어는 다시 학습하지 않고 여기에 보입니다."));
+            return;
+        }
+        TextView summary = note("");
+        card().addView(summary);
+        int[] remaining = {all.size()};
+        Runnable updateSummary = () -> summary.setText(remaining[0] == 0
+                ? "학습하지 않는 단어가 없습니다."
+                : "학습하지 않는 단어 " + remaining[0] + "개. 지운 단어라 다시 입력해도 학습하지 않습니다. "
+                + "되돌림 버튼을 누르면 목록에서 빼고 다시 학습합니다.");
+        updateSummary.run();
+        LinearLayout words = learnedCard("학습하지 않는 단어");
+        addBlockedRows(words, all, 0, dict, remaining, updateSummary);
+    }
+
+    private void addBlockedRows(LinearLayout words, java.util.List<String> all, int from, UserDictionary dict,
+                                int[] remaining, Runnable updateSummary) {
+        int to = Math.min(all.size(), from + LEARNED_PAGE);
+        for (int i = from; i < to; i++) {
+            if (words.getChildCount() > 0) words.addView(divider());
+            words.addView(blockedRow(words, all.get(i), dict, remaining, updateSummary));
+        }
+        if (to < all.size()) {
+            TextView more = new TextView(this);
+            more.setText("더 보기 (" + (all.size() - to) + "개 남음)");
+            more.setTextColor(accentColor);
+            more.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+            more.setGravity(Gravity.CENTER);
+            more.setPadding(0, Ui.dp(this, 14), 0, Ui.dp(this, 14));
+            more.setBackground(Ui.ripple(hintColor & 0x00FFFFFF | 0x33000000, null, 0));
+            more.setOnClickListener(v -> {
+                words.removeView(more);
+                addBlockedRows(words, all, to, dict, remaining, updateSummary);
+            });
+            words.addView(divider());
+            words.addView(more);
+        }
+    }
+
+    private View blockedRow(LinearLayout words, String word, UserDictionary dict, int[] remaining, Runnable updateSummary) {
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(Ui.dp(this, 16), Ui.dp(this, 8), Ui.dp(this, 6), Ui.dp(this, 8));
+        TextView t = new TextView(this);
+        t.setText(word);
+        t.setTextColor(textColor);
+        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        row.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        IconButton restore = new IconButton(this, Icons.UNDO, hintColor, hintColor & 0x00FFFFFF | 0x33000000,
+                "'" + word + "' 다시 학습하기");
+        restore.setOnClickListener(v -> {
+            dict.unblock(word);
+            int idx = words.indexOfChild(row);
+            if (idx > 0) words.removeViewAt(idx - 1);
+            else if (words.getChildCount() > 1) words.removeViewAt(1);
+            words.removeView(row);
+            if (words.getChildCount() > 0 && !(words.getChildAt(0) instanceof TextView)
+                    && !(words.getChildAt(0) instanceof LinearLayout)) {
+                words.removeViewAt(0);
+            }
+            if (words.getChildCount() == 0) {
+                words.setVisibility(View.GONE);
+                int at = list.indexOfChild(words);
+                if (at > 0) list.getChildAt(at - 1).setVisibility(View.GONE);
+            }
+            remaining[0]--;
+            updateSummary.run();
+            Toast.makeText(this, "'" + word + "'" + com.alternative_studios.newswipe.suggest.WordSuggester.objectParticle(word)
+                    + " 다시 학습합니다", Toast.LENGTH_SHORT).show();
+        });
+        row.addView(restore, new LinearLayout.LayoutParams(Ui.dp(this, 44), Ui.dp(this, 44)));
         return row;
     }
 
@@ -2259,7 +2347,8 @@ public final class SettingsActivity extends Activity {
         box.addView(dontAsk);
         AppTheme.accentBuilder(dc)
                 .setTitle("학습한 단어 삭제")
-                .setMessage("'" + word + "'" + com.alternative_studios.newswipe.suggest.WordSuggester.objectParticle(word) + " 삭제하시겠습니까?")
+                .setMessage("'" + word + "'" + com.alternative_studios.newswipe.suggest.WordSuggester.objectParticle(word) + " 삭제하시겠습니까? "
+                        + "지운 단어는 다시 학습하지 않습니다 ('학습하지 않는 단어 보기'에서 되돌릴 수 있습니다).")
                 .setView(box)
                 .setPositiveButton("삭제", (d, w) -> {
                     // 취소했을 때는 체크해도 저장하지 않는다 (실수로 체크한 채 닫는 경우).
