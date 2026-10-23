@@ -16,9 +16,7 @@ final class KoreanCorrect {
     /** 사전에 없지만 맞는 말로 알아볼 말 (없으면 null). 있으면 그만큼 더 드문 단어로도 고친다 (SHAPE_MIN_KNOWN). */
     private volatile KnownWords known;
     /** 사전 단어마다 ln(빈도) + SHAPE_LM·ln P(단어) (미리 재 두어 고칠 단어를 찾을 때 편집 거리를 잴 단어를 빨리 거른다). */
-    private final short[] prior;
-    /** prior의 눈금: 0.001 단위로 담는다 (float의 절반 메모리, 사전 팩에서 0.8MB 덜 쓴다). */
-    private static final float PRIOR_SCALE = 1000f;
+    private final float[] prior;
 
     KoreanCorrect(KoreanSuggest ks, WordDictionary dict, KoreanMorph morph, TypoModel typo) {
         this.ks = ks;
@@ -26,10 +24,9 @@ final class KoreanCorrect {
         this.morph = morph;
         this.typo = typo;
         this.shape = new SyllableModel(dict);
-        prior = new short[dict.size()];
+        prior = new float[dict.size()];
         for (int id = 0; id < prior.length; id++) {
-            double v = Math.log(morph.prob(dict.score(id)) * 1e6) + SHAPE_LM * shape.logProb(dict.word(id));
-            prior[id] = (short) Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, Math.round(v * PRIOR_SCALE)));
+            prior[id] = (float) (Math.log(morph.prob(dict.score(id)) * 1e6) + SHAPE_LM * shape.logProb(dict.word(id)));
         }
         dict.idsByLength(ks.scoreFor(SHAPE_SCAN_FREQ));   // 처음 고칠 때 기다리지 않게 미리 만든다
     }
@@ -235,7 +232,7 @@ final class KoreanCorrect {
             double partial = 0;
             if (SHAPE_RULE) {
                 // 오타 비용을 뺀 부분을 먼저 본다: 가장 싼 오타(같은 키의 다른 동작)여도 기준에 못 미치면 편집 거리를 재지 않는다
-                partial = prior[id] / PRIOR_SCALE - SHAPE_LM * lmTyped;
+                partial = prior[id] - SHAPE_LM * lmTyped;
                 if (partial + SHAPE_CONTEXT - SHAPE_COST * (TypoModel.VARIANT - 0.6) < scanLog) continue;
                 if (pairs.has(id)) partial += SHAPE_CONTEXT;
             }
