@@ -247,6 +247,20 @@ public final class UserDictionary {
         return e != null && e.count >= KNOWN_COUNT ? e.count : 0;
     }
 
+    /** 화면 스레드용: 아는(두 번 이상 입력한) 한글 단어 중 글자 수가 minLen..maxLen인 것. 읽지 않았으면 빈 목록. */
+    public synchronized List<String> knownKoreanIfLoaded(int minLen, int maxLen) {
+        List<String> out = new ArrayList<>();
+        if (!loaded) return out;
+        for (Map.Entry<String, Entry> me : words.entrySet()) {
+            String w = me.getKey();
+            if (me.getValue().count < KNOWN_COUNT || w.length() < minLen || w.length() > maxLen) continue;
+            boolean hangul = true;
+            for (int i = 0; i < w.length() && hangul; i++) hangul = w.charAt(i) >= 0xAC00 && w.charAt(i) <= 0xD7A3;
+            if (hangul) out.add(w);
+        }
+        return out;
+    }
+
     public boolean isKnown(String word, boolean korean) {
         ensureLoaded();
         return isKnownIfLoaded(word, korean);

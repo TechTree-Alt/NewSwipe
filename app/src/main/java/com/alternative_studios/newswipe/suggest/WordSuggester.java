@@ -456,7 +456,14 @@ public final class WordSuggester {
         if (m == null) return Suggestions.EMPTY;
         String fix = correction ? autoCorrect(word, prev, true, field) : null;
         KoreanSuggest.Result r = m.suggest(word, prev, field, useUser() ? user : null, useUser() ? usage : null, fix, MAX);
-        return new Suggestions(r.words, r.correction, false);
+        String[] words = r.words;
+        if (words.length < MAX && fix == null) {
+            // 빈 칸에는 어미를 잘못 친 말의 바른 꼴을 보인다 (자동 수정은 하지 않는다: 골라 주면 CorrectionMemory가 배운다)
+            java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>(java.util.Arrays.asList(words));
+            for (String e : m.endingCandidates(word, MAX - words.length)) out.add(e);
+            words = out.toArray(new String[0]);
+        }
+        return new Suggestions(words, r.correction, false);
     }
 
     /** 입력 중인 단어 없이 앞 단어 prev 다음에 올 한국어 단어 (화면 스레드용). 자신이 없거나 사전을 읽지 않았으면 빈 결과. */
@@ -525,9 +532,47 @@ public final class WordSuggester {
         if (korean) {
             KoreanSuggest m = koModel;
             if (m == null) return null;
-            return m.correct(word, prev, field, useUser() ? user : null, useUser() ? usage : null);   // 덜 만든 글자·ㅋㅋ·사전 단어는 그대로 둔다
+            String fixed = m.correct(word, prev, field, useUser() ? user : null, useUser() ? usage : null);   // 덜 만든 글자·ㅋㅋ·사전 단어는 그대로 둔다
+            if (fixed == null && useUser()) fixed = userFix(d, m, user, typo, word);   // 학습한 단어의 오타 (자덩수정 → 자동수정)
+            return fixed;
         }
         return autoCorrect(d, word, false);
+    }
+
+    /** 학습한 단어로 고칠 때 친 말의 가장 짧은 글자 수 (두 글자 말은 이름 같은 비슷한 다른 말이 많다). */
+    static int USER_FIX_MIN_SYLL = 3;
+
+    /**
+     * 사전에 없고 낱말로 그럴듯하지 않은 word가, 학습한(두 번 이상 쓴) 단어 하나와 키 하나(대각선 제외)만 다르면 그 단어로
+     * 고친다 (자덩수정 → 자동수정). 조사가 붙은 말은 앞부분을 고쳐 조사를 다시 붙인다 (자덩수정을 → 자동수정을).
+     * 그런 단어가 둘 이상이면 고치지 않는다.
+     */
+    static String userFix(WordDictionary d, KoreanSuggest m, UserDictionary user, TypoModel typo, String word) {
+        if (user == null || word.length() < USER_FIX_MIN_SYLL || !learnable(word, true)) return null;
+        if (d.contains(word) || isDictWordWithParticle(d, word) || m.plausible(word)) return null;
+        String r = userMatch(user, typo, word);
+        if (r != null) return r;
+        String[] sp = splitParticle(word);
+        if (sp == null || sp[0].length() < USER_FIX_MIN_SYLL || d.contains(sp[0])) return null;
+        String stem = userMatch(user, typo, sp[0]);
+        if (stem == null) return null;
+        String[] back = splitParticle(stem + sp[1]);   // 받침에 맞는 조사인지
+        return back != null && back[0].equals(stem) ? stem + sp[1] : null;
+    }
+
+    /** 학습한 단어 중 word와 키 하나(대각선 제외)만 다른 단어가 꼭 하나면 그 단어. */
+    private static String userMatch(UserDictionary user, TypoModel typo, String word) {
+        char[] p = TypoModel.letters(word);
+        String found = null;
+        for (String w : user.knownKoreanIfLoaded(word.length() - 1, word.length() + 1)) {
+            if (w.equals(word)) return null;
+            char[] t = TypoModel.letters(w);
+            if (Math.abs(t.length - p.length) > 1) continue;
+            if (typo.distanceDirect(p, p.length, t, t.length, TypoModel.NEIGHBOR) > TypoModel.NEIGHBOR + 1e-4f) continue;
+            if (found != null) return null;
+            found = w;
+        }
+        return found;
     }
 
     static String autoCorrect(WordDictionary d, String word, boolean korean) {

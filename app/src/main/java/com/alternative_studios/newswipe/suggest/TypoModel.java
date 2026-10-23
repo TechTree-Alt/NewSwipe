@@ -176,6 +176,11 @@ public final class TypoModel {
         return substitute(table, a, b);
     }
 
+    /** substitute와 같지만 대각선 키를 이웃으로 치지 않는다. */
+    public float substituteDirect(char a, char b) {
+        return substitute(direct, a, b);
+    }
+
     private static float substitute(float[] table, char a, char b) {
         if (a == b) return 0f;
         int x = a - 0x3131, y = b - 0x3131;

@@ -143,6 +143,50 @@ final class KoreanCorrect {
         return back != null && back[0].equals(noun) ? noun + sp[1] : null;
     }
 
+    /** endingCandidates: 고친 말이 친 말보다 이만큼(음절 모형의 ln) 더 낱말다워야 한다. */
+    static double ENDING_LM_GAIN = 4;
+
+    private static final String CHO = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
+    private static final String JUNG = "ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ";
+    private static final String JONG = "\0ㄱㄲㄳㄴㄵㄶㄷㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅄㅅㅆㅇㅈㅊㅋㅌㅍㅎ";
+
+    /**
+     * 추천란에만 보일, 끝 글자의 어미를 키 하나(대각선 제외) 잘못 친 말의 바른 꼴 (강력해지깈 → 강력해지긴, 예약하라거 →
+     * 예약하라고). 사전에 없어도 용언 어간 + 어미로 그럴듯하고 친 말보다 훨씬 낱말다운 꼴 (많아야 max개). 자동 수정에는 쓰지
+     * 않는다: 재 보니 맞는 구어(갈궈, 극혐, 떨어지는게)를 바꾸는 일이 바른 고침보다 많았다. 사용자가 추천란에서 여러 번
+     * 고르면 CorrectionMemory가 그다음부터 고친다.
+     */
+    java.util.List<String> endingCandidates(String word, int max) {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        int n = word.length();
+        if (n < 2 || KoreanMorph.hangulSyllables(word) != n || dict.contains(word) || withParticle(word) || plausible(word)) return out;
+        KnownWords k = known;
+        if (k != null && k.contains(word)) return out;
+        int s = word.charAt(n - 1) - 0xAC00;
+        int[] part = {s / 588, (s / 28) % 21, s % 28};
+        String[] set = {CHO, JUNG, JONG};
+        double lmTyped = shape.logProb(word);
+        java.util.List<double[]> rank = new java.util.ArrayList<>();
+        for (int slot = 0; slot < 3; slot++) {
+            if (slot == 2 && part[2] == 0) continue;   // 받침을 더하는 것은 키 하나를 잘못 누른 것이 아니다
+            char a = set[slot].charAt(part[slot]);
+            for (int b = slot == 2 ? 1 : 0; b < set[slot].length(); b++) {
+                if (b == part[slot] || typo.substituteDirect(a, set[slot].charAt(b)) > TypoModel.NEIGHBOR + 1e-4f) continue;
+                int[] q = part.clone();
+                q[slot] = b;
+                String v = word.substring(0, n - 1) + (char) (0xAC00 + q[0] * 588 + q[1] * 28 + q[2]);
+                double gain = shape.logProb(v) - lmTyped;
+                if (gain < ENDING_LM_GAIN || !(dict.contains(v) || verbForm(v))) continue;
+                out.add(v);
+                rank.add(new double[]{gain, out.size() - 1});
+            }
+        }
+        rank.sort((x, y) -> Double.compare(y[0], x[0]));   // 더 낱말다운 꼴부터
+        java.util.List<String> best = new java.util.ArrayList<>();
+        for (double[] r : rank) if (best.size() < max) best.add(out.get((int) r[1]));
+        return best;
+    }
+
     /** word에 SHAPE_MIN_UNIQUE_VOWEL을 쓸 수 있으면 그 ln, 아니면 +∞. */
     private double vowelLog(String word, KnownWords k) {
         if (k == null || word.length() < 3 || shape.logProb(word) > UNIQUE_VOWEL_LM) return Double.POSITIVE_INFINITY;
@@ -352,7 +396,25 @@ final class KoreanCorrect {
         String[] sp = WordSuggester.splitParticle(w);
         if (sp == null || !dict.contains(sp[0])) return false;
         String stem = sp[0];
+        if (modifierForm(stem)) return false;   // 도운 + 이: 용언의 관형형(도운·먹은·하는)에는 조사가 붙지 않는다
         return !sp[1].equals("요") || "니냐다".indexOf(stem.charAt(stem.length() - 1)) < 0 || morph.nounLike(stem);
+    }
+
+    /**
+     * 사전에 있는 w가 명사가 아니라 용언의 관형형(도운, 먹은, 하는, 갈)인지: 끝 글자의 받침 ㄴ·ㄹ을 떼거나 '은·는·던'을 뗀
+     * 어간에 다른 어미가 붙은 꼴(도우면, 먹고, 하고)이 사전에 있고, 명사로 쓰인 흔적이 없을 때.
+     */
+    private boolean modifierForm(String w) {
+        int n = w.length();
+        char c = w.charAt(n - 1);
+        if (n < 2 || c < 0xAC00 || c > 0xD7A3 || morph.nounLike(w)) return false;   // 한 글자 말(알, 산)은 명사가 많다
+        int t = (c - 0xAC00) % 28;
+        if (t == 4 || t == 8) {   // ㄴ·ㄹ 받침
+            String s0 = w.substring(0, n - 1) + (char) (c - t);
+            if (dict.contains(s0 + "면") || dict.contains(s0 + "니까")) return true;
+        }
+        if (n >= 2 && "은는던".indexOf(c) >= 0 && dict.contains(w.substring(0, n - 1) + "고")) return true;
+        return false;
     }
 
     /** 규칙 하나를 한 자리에 적용한 꼴들. 소리대로 적은 말의 규칙으로 만든 꼴은 sound에도 넣는다. */
@@ -428,13 +490,15 @@ final class KoreanCorrect {
             "음", "어", "아", "애", "여", "어요", "아요", "어서", "아서", "어도", "아도", "어야", "아야", "러", "려고", "려",
             "면", "며", "으면", "으러", "으려고", "은", "을", "는", "는데", "은데", "을까", "을게", "을래", "잖아", "거든",
             "구나", "군", "겠다", "겠어", "겠지", "겠네", "네요", "지요", "대요", "냐고", "자고", "다고", "라고", "더니",
-            "징", "당", "넹", "쥐", "셈", "듯", "음요", "는지라",
+            "징", "당", "넹", "쥐", "셈", "듯", "음요", "는지라", "긴", "기는", "기도", "라고", "라며", "라는", "라면",
+            "다니", "다며", "다면", "다는", "냐며", "자며", "거든요", "더라고", "더라고요", "잖아요",
     };
 
     /** 어간의 마지막 글자에 받침으로 들어가는 어미 첫소리와 그 뒤 (가+ㄴ대 = 간대, 가+ㄹ게 = 갈게, 되+ㅁ = 됨, 가+ㅂ니다). */
     private static final String[][] MERGED_ENDINGS = {
             {"ㄴ", "", "대", "데", "다", "지", "가", "거", "건", "걸", "게", "듯", "줄", "다고", "대요", "데요", "가요", "지도", "지라"},
-            {"ㄹ", "", "게", "래", "까", "걸", "거", "건", "듯", "수", "때", "지", "께", "껄", "까요", "게요", "래요", "거야"},
+            {"ㄹ", "", "게", "래", "까", "걸", "거", "건", "듯", "수", "때", "지", "께", "껄", "까요", "게요", "래요", "거야",
+                    "꺼", "꺼야", "꺼에요", "거에요", "꺼라", "꺼니까"},
             {"ㅁ", ""},
             {"ㅂ", "니다", "니까", "시다"},
     };
@@ -445,6 +509,12 @@ final class KoreanCorrect {
         if (prefixFreq(word) * 1e6 >= PLAUSIBLE_PREFIX_FREQ) return true;
         String[] sp = WordSuggester.splitParticle(word);   // 명사 + 조사·서술격 (고민이야, 사람인듯, 친구예요)
         if (sp != null && dict.contains(sp[0]) && morph.nounLike(sp[0])) return true;
+        return verbForm(word);
+    }
+
+    /** word가 용언 어간 + 어미로 그럴듯한지 (plausible에서 명사 + 조사와 사전 단어의 앞부분을 뺀 것). */
+    boolean verbForm(String word) {
+        int n = word.length();
         for (int k = n - 1; k >= 1; k--) {
             if (contains(FREE_ENDINGS, word.substring(k)) && morph.verbStem(word.substring(0, k))) return true;
         }
