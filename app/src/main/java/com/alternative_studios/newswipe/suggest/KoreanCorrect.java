@@ -148,6 +148,20 @@ final class KoreanCorrect {
         return Math.log(SHAPE_MIN_UNIQUE_VOWEL);
     }
 
+    /** 자모열 p(개수 have)와 t에서 짝이 없는 자모의 수 (left는 계산용). 편집 한 번은 이 수를 많아야 둘 줄인다. */
+    static int jamoDiff(int[] have, int[] left, int pn, char[] t, int tn) {
+        System.arraycopy(have, 0, left, 0, have.length);
+        int diff = pn + tn;
+        for (int j = 0; j < tn; j++) {
+            int x = t[j] - 0x3131;
+            if (x >= 0 && x < left.length && left[x] > 0) {
+                left[x]--;
+                diff -= 2;
+            }
+        }
+        return diff;
+    }
+
     /** typed와 w가 끝 글자가 아닌 한 글자의 모음만 다른지 (초성·받침은 같다). */
     static boolean middleVowelEdit(String typed, String w) {
         int n = typed.length();
@@ -188,6 +202,10 @@ final class KoreanCorrect {
         int minScore = ks.scoreFor(CORRECT_MIN_FREQ);
         double lmTyped = SHAPE_RULE ? shape.logProb(typed) : 0;
         double scanLog = Math.min(Math.min(minLog, oneKeyLog), Math.min(uniqueLog, vowelLog));
+        // 자모 개수 차이로 편집 거리의 아래 한계를 먼저 본다 (가장 싼 바꾸기도 VARIANT라 다른 자모 둘마다 그 이상 든다)
+        int[] have = new int[51], left = new int[51];
+        for (char ch : p) if (ch >= 0x3131 && ch < 0x3131 + 51) have[ch - 0x3131]++;
+        int maxDiff = (int) Math.floor(maxCost / (TypoModel.VARIANT / 2)) + 1;   // 이만큼 다르면 maxCost를 넘는다
         for (int id : dict.strongWords(ks.scoreFor(SHAPE_RULE ? SHAPE_SCAN_FREQ : CORRECT_MIN_FREQ_CONTEXT))) {
             int len = dict.length(id);
             if (len < syll - 1 || len > syll + 1 || len > 24) continue;
@@ -198,11 +216,11 @@ final class KoreanCorrect {
                 if (partial + SHAPE_CONTEXT - SHAPE_COST * (TypoModel.VARIANT - 0.6) < scanLog) continue;
                 if (cx.hasPair(id)) partial += SHAPE_CONTEXT;
             }
-            String w = dict.word(id);
-            int tn = TypoModel.letters(w.toCharArray(), 0, len, t);
-            if (Math.abs(tn - p.length) > 2) continue;
+            int tn = dict.letters(id, t);
+            if (Math.abs(tn - p.length) > 2 || jamoDiff(have, left, p.length, t, tn) >= maxDiff) continue;
             float c = typo.distance(p, p.length, t, tn, maxCost);
             if (c > maxCost || c <= 0f) continue;
+            String w = dict.word(id);
             // 짧은 말은 싼 편집 두 번(현타 → 한다, 파도 → 봐도)으로도 다른 흔한 말이 되기 쉬워 한 번의 편집만 고친다
             if (syll <= CORRECT_ONE_EDIT_SYLL && !oneEdit(p, p.length, t, tn)) continue;
             // 드문 명사(키보드)는 조사가 붙은 꼴이 사전에 없어 명사로 보이지 않는다: 가운데 모음 하나만 틀린 경우는 그대로 본다

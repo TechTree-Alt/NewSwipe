@@ -83,6 +83,11 @@ public final class WordDictionary {
 
     public String word(int i) { return new String(chars, offsets[i], offsets[i + 1] - offsets[i]); }
 
+    /** 단어 i를 자모로 풀어 out에 쓰고 길이를 돌려준다 (TypoModel.letters, 글자열을 만들지 않는다). */
+    int letters(int i, char[] out) {
+        return TypoModel.letters(chars, offsets[i], offsets[i + 1], out);
+    }
+
     public int score(int i) { return scores[i] & 0xFF; }
 
     /** key보다 작지 않은 첫 단어의 위치. */

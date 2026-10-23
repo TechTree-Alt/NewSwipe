@@ -26,6 +26,8 @@ public final class TypoModel {
     private static final String CHO = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
     private static final String JUNG = "ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ";
     private static final String JONG = "\0ㄱㄲㄳㄴㄵㄶㄷㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅄㅅㅆㅇㅈㅊㅋㅌㅍㅎ";
+    /** letters()용 (자동 수정이 단어마다 부르므로 String.charAt 대신 배열로 찾는다). */
+    private static final char[] CHO_C = CHO.toCharArray(), JUNG_C = JUNG.toCharArray(), JONG_C = JONG.toCharArray();
     /** 같은 키의 다른 동작(아래·오른쪽으로 밀기, 겹받침·겹모음 밀기)이나 같은 소리로 헷갈리는 짝. */
     private static final String[] VARIANTS = {
             "ㄱㄲ", "ㄷㄸ", "ㅂㅃ", "ㅅㅆ", "ㅈㅉ",
@@ -158,9 +160,9 @@ public final class TypoModel {
             char c = src[i];
             if (c >= 0xAC00 && c <= 0xD7A3) {
                 int s = c - 0xAC00;
-                out[n++] = CHO.charAt(s / 588);
-                out[n++] = JUNG.charAt((s / 28) % 21);
-                if (s % 28 != 0) out[n++] = JONG.charAt(s % 28);
+                out[n++] = CHO_C[s / 588];
+                out[n++] = JUNG_C[(s / 28) % 21];
+                if (s % 28 != 0) out[n++] = JONG_C[s % 28];
             } else {
                 out[n++] = c;
             }
