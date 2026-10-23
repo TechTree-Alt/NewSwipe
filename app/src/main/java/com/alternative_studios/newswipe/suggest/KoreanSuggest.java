@@ -319,6 +319,22 @@ final class KoreanSuggest {
             return group >= 0 && next.find(group, id) >= 0;
         }
 
+        /** 번호가 커지는 순서로 hasPair를 물을 때 쓴다 (자동 수정이 사전 전체를 훑을 때 단어마다 이진 탐색하지 않는다). */
+        PairScan pairScan() {
+            return new PairScan();
+        }
+
+        final class PairScan {
+            private int at = group >= 0 ? next.lowerBound(group, 0) : 0;
+            private final int end = group >= 0 ? next.groupEnd(group) : 0;
+
+            /** hasPair(id)와 같다. id는 앞서 물은 것보다 작으면 안 된다. */
+            boolean has(int id) {
+                while (at < end && next.wordAt(at) < id) at++;
+                return at < end && next.wordAt(at) == id;
+            }
+        }
+
         /** 기본 사전 모형의 P(w|앞 단어). id = 사전 번호 (-1이면 사전에 없는 말). */
         double model(int id) {
             if (id < 0) return 0;

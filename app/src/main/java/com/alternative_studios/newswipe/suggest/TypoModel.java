@@ -28,6 +28,43 @@ public final class TypoModel {
     private static final String JONG = "\0ㄱㄲㄳㄴㄵㄶㄷㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅄㅅㅆㅇㅈㅊㅋㅌㅍㅎ";
     /** letters()용 (자동 수정이 단어마다 부르므로 String.charAt 대신 배열로 찾는다). */
     private static final char[] CHO_C = CHO.toCharArray(), JUNG_C = JUNG.toCharArray(), JONG_C = JONG.toCharArray();
+    /** 음절 11,172개를 미리 푼 자모 (음절마다 3칸, 받침이 없으면 셋째 칸은 쓰지 않는다): 나눗셈 없이 베껴 쓴다 (78KB). */
+    private static final char[] DECOMP = new char[11172 * 3];
+
+    /** 음절마다 든 자모의 종류(호환 자모 0x3131부터의 비트)와 자모 수: 단어를 풀지 않고 자모가 얼마나 다른지 어림한다. */
+    private static final long[] SYLL_MASK = new long[11172];
+    private static final byte[] SYLL_LEN = new byte[11172];
+
+    static {
+        for (int s = 0; s < 11172; s++) {
+            DECOMP[s * 3] = CHO_C[s / 588];
+            DECOMP[s * 3 + 1] = JUNG_C[(s / 28) % 21];
+            DECOMP[s * 3 + 2] = JONG_C[s % 28];   // 받침이 없으면 '\0'
+            SYLL_MASK[s] = 1L << (DECOMP[s * 3] - 0x3131) | 1L << (DECOMP[s * 3 + 1] - 0x3131);
+            SYLL_LEN[s] = 2;
+            if (s % 28 != 0) {
+                SYLL_MASK[s] |= 1L << (DECOMP[s * 3 + 2] - 0x3131);
+                SYLL_LEN[s] = 3;
+            }
+        }
+    }
+
+    /** 한글 음절 c에 든 자모 종류의 비트 (한글 음절이 아니면 0). */
+    static long syllableMask(char c) {
+        return c >= 0xAC00 && c <= 0xD7A3 ? SYLL_MASK[c - 0xAC00] : 0L;
+    }
+
+    /** 한글 음절 c를 풀면 나오는 자모 수 (한글 음절이 아니면 1). */
+    static int syllableLength(char c) {
+        return c >= 0xAC00 && c <= 0xD7A3 ? SYLL_LEN[c - 0xAC00] : 1;
+    }
+
+    /** 자모열에 든 자모 종류의 비트 (호환 자모가 아닌 글자는 넣지 않는다). */
+    static long jamoMask(char[] p, int n) {
+        long m = 0;
+        for (int i = 0; i < n; i++) if (p[i] >= 0x3131 && p[i] < 0x3131 + 51) m |= 1L << (p[i] - 0x3131);
+        return m;
+    }
     /** 같은 키의 다른 동작(아래·오른쪽으로 밀기, 겹받침·겹모음 밀기)이나 같은 소리로 헷갈리는 짝. */
     private static final String[] VARIANTS = {
             "ㄱㄲ", "ㄷㄸ", "ㅂㅃ", "ㅅㅆ", "ㅈㅉ",
@@ -159,15 +196,42 @@ public final class TypoModel {
         for (int i = from; i < to; i++) {
             char c = src[i];
             if (c >= 0xAC00 && c <= 0xD7A3) {
-                int s = c - 0xAC00;
-                out[n++] = CHO_C[s / 588];
-                out[n++] = JUNG_C[(s / 28) % 21];
-                if (s % 28 != 0) out[n++] = JONG_C[s % 28];
+                int k = (c - 0xAC00) * 3;
+                out[n++] = DECOMP[k];
+                out[n++] = DECOMP[k + 1];
+                char jong = DECOMP[k + 2];
+                if (jong != 0) out[n++] = jong;
             } else {
                 out[n++] = c;
             }
         }
         return n;
+    }
+
+    /**
+     * letters와 같지만 자모가 max개 이상이 되면 그 음절까지만 푼다. 접두사 비용({@link #prefixDistance}, {@link PrefixScan})은
+     * 입력보다 BAND개 넘게 긴 앞부분을 보지 않으므로, 입력 자모 수 + BAND + 1개만 풀어도 결과가 같다.
+     */
+    static int lettersUpTo(char[] src, int from, int to, char[] out, int max) {
+        int n = 0;
+        for (int i = from; i < to && n < max; i++) {
+            char c = src[i];
+            if (c >= 0xAC00 && c <= 0xD7A3) {
+                int k = (c - 0xAC00) * 3;
+                out[n++] = DECOMP[k];
+                out[n++] = DECOMP[k + 1];
+                char jong = DECOMP[k + 2];
+                if (jong != 0) out[n++] = jong;
+            } else {
+                out[n++] = c;
+            }
+        }
+        return n;
+    }
+
+    /** 접두사 비용을 잴 때 풀어야 하는 단어의 자모 수 (입력 자모 수 pn). */
+    static int prefixLetters(int pn) {
+        return pn + BAND + 1;
     }
 
     /** 입력 p 전체를 단어 t 전체로 고치는 비용. limit을 넘을 것이 확실하면 그보다 큰 값을 돌려준다. */
@@ -252,6 +316,7 @@ public final class TypoModel {
         private char[] cut = new char[0];    // 이 앞부분으로 시작하는 말은 더 볼 필요가 없다 (값은 cutCost)
         private int cutLen = -1;
         private float cutCost;
+        private int lastCut = -1;            // 마지막 cost()가 이 길이의 앞부분에서 끝났다 (아니면 -1)
 
         PrefixScan(char[] p, int pn, float limit) {
             this.p = p;
@@ -280,12 +345,23 @@ public final class TypoModel {
             cut = java.util.Arrays.copyOf(cut, m);
         }
 
+        /**
+         * 마지막 cost()가 단어의 앞 몇 자모만 보고 끝났으면 그 길이, 아니면 -1. 그 앞부분으로 시작하는 단어는 모두 같은 비용이다.
+         */
+        int lastCut() {
+            return lastCut;
+        }
+
         /** 단어(자모 t[0..tn))의 접두사 비용. */
         float cost(char[] t, int tn) {
+            lastCut = -1;
             if (cutLen >= 0 && tn >= cutLen) {
                 int k = 0;
                 while (k < cutLen && t[k] == cut[k]) k++;
-                if (k == cutLen) return cutCost;
+                if (k == cutLen) {
+                    lastCut = cutLen;
+                    return cutCost;
+                }
             }
             grow(tn);
             int start = 0;
@@ -323,6 +399,7 @@ public final class TypoModel {
                     System.arraycopy(t, 0, cut, 0, j);
                     cutLen = j;
                     cutCost = best;
+                    lastCut = j;
                     return best;
                 }
             }

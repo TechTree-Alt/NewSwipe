@@ -148,6 +148,16 @@ public final class NextWords implements WordGroups {
         return -1;
     }
 
+    /** 단어 쌍 k의 다음 단어 번호. */
+    public int wordAt(int k) {
+        return next[k];
+    }
+
+    /** 묶음 g의 단어 쌍 번호가 끝나는 곳 (이 번호 앞까지). */
+    public int groupEnd(int g) {
+        return start[g + 1];
+    }
+
     /** 묶음 g 안에서 번호가 from 이상인 첫 단어 쌍 번호 (구간 [from, to)의 단어를 훑을 때). */
     public int lowerBound(int g, int w) {
         int lo = start[g], hi = start[g + 1];

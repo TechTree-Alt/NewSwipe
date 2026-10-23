@@ -16,7 +16,9 @@ final class KoreanCorrect {
     /** 사전에 없지만 맞는 말로 알아볼 말 (없으면 null). 있으면 그만큼 더 드문 단어로도 고친다 (SHAPE_MIN_KNOWN). */
     private volatile KnownWords known;
     /** 사전 단어마다 ln(빈도) + SHAPE_LM·ln P(단어) (미리 재 두어 고칠 단어를 찾을 때 편집 거리를 잴 단어를 빨리 거른다). */
-    private final float[] prior;
+    private final short[] prior;
+    /** prior의 눈금: 0.001 단위로 담는다 (float의 절반 메모리, 사전 팩에서 0.8MB 덜 쓴다). */
+    private static final float PRIOR_SCALE = 1000f;
 
     KoreanCorrect(KoreanSuggest ks, WordDictionary dict, KoreanMorph morph, TypoModel typo) {
         this.ks = ks;
@@ -24,10 +26,12 @@ final class KoreanCorrect {
         this.morph = morph;
         this.typo = typo;
         this.shape = new SyllableModel(dict);
-        prior = new float[dict.size()];
+        prior = new short[dict.size()];
         for (int id = 0; id < prior.length; id++) {
-            prior[id] = (float) (Math.log(morph.prob(dict.score(id)) * 1e6) + SHAPE_LM * shape.logProb(dict.word(id)));
+            double v = Math.log(morph.prob(dict.score(id)) * 1e6) + SHAPE_LM * shape.logProb(dict.word(id));
+            prior[id] = (short) Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, Math.round(v * PRIOR_SCALE)));
         }
+        dict.idsByLength(ks.scoreFor(SHAPE_SCAN_FREQ));   // 처음 고칠 때 기다리지 않게 미리 만든다
     }
 
     /**
@@ -148,6 +152,12 @@ final class KoreanCorrect {
         return Math.log(SHAPE_MIN_UNIQUE_VOWEL);
     }
 
+    private static final int[] NO_IDS = new int[0];
+
+    private static int[] lengthList(int[][] byLen, int len) {
+        return len >= 1 && len < byLen.length ? byLen[len] : NO_IDS;
+    }
+
     /** 자모열 p(개수 have)와 t에서 짝이 없는 자모의 수 (left는 계산용). 편집 한 번은 이 수를 많아야 둘 줄인다. */
     static int jamoDiff(int[] have, int[] left, int pn, char[] t, int tn) {
         System.arraycopy(have, 0, left, 0, have.length);
@@ -206,16 +216,32 @@ final class KoreanCorrect {
         int[] have = new int[51], left = new int[51];
         for (char ch : p) if (ch >= 0x3131 && ch < 0x3131 + 51) have[ch - 0x3131]++;
         int maxDiff = (int) Math.floor(maxCost / (TypoModel.VARIANT / 2)) + 1;   // 이만큼 다르면 maxCost를 넘는다
-        for (int id : dict.strongWords(ks.scoreFor(SHAPE_RULE ? SHAPE_SCAN_FREQ : CORRECT_MIN_FREQ_CONTEXT))) {
+        long pMask = TypoModel.jamoMask(p, p.length);
+        KoreanSuggest.Context.PairScan pairs = cx.pairScan();
+        // 점수가 기준 이상이고 글자 수가 ±1인 단어를 사전 순서대로 본다 (글자 수별 목록 셋을 번호 순으로 합친다)
+        int[][] byLen = dict.idsByLength(ks.scoreFor(SHAPE_RULE ? SHAPE_SCAN_FREQ : CORRECT_MIN_FREQ_CONTEXT));
+        int[] la = lengthList(byLen, syll - 1), lb = lengthList(byLen, syll), lc = lengthList(byLen, syll + 1);
+        int ia = 0, ib = 0, ic = 0;
+        while (true) {
+            int va = ia < la.length ? la[ia] : Integer.MAX_VALUE, vb = ib < lb.length ? lb[ib] : Integer.MAX_VALUE,
+                    vc = ic < lc.length ? lc[ic] : Integer.MAX_VALUE;
+            int id = Math.min(va, Math.min(vb, vc));
+            if (id == Integer.MAX_VALUE) break;
+            if (id == va) ia++;
+            else if (id == vb) ib++;
+            else ic++;
             int len = dict.length(id);
             if (len < syll - 1 || len > syll + 1 || len > 24) continue;
             double partial = 0;
             if (SHAPE_RULE) {
                 // 오타 비용을 뺀 부분을 먼저 본다: 가장 싼 오타(같은 키의 다른 동작)여도 기준에 못 미치면 편집 거리를 재지 않는다
-                partial = prior[id] - SHAPE_LM * lmTyped;
+                partial = prior[id] / PRIOR_SCALE - SHAPE_LM * lmTyped;
                 if (partial + SHAPE_CONTEXT - SHAPE_COST * (TypoModel.VARIANT - 0.6) < scanLog) continue;
-                if (cx.hasPair(id)) partial += SHAPE_CONTEXT;
+                if (pairs.has(id)) partial += SHAPE_CONTEXT;
             }
+            // 풀기 전에 음절 표로 어림해 거른다 (대부분의 후보가 여기서 빠진다)
+            int bound = dict.jamoDiffBound(id, pMask, p.length);
+            if (bound >= maxDiff) continue;
             int tn = dict.letters(id, t);
             if (Math.abs(tn - p.length) > 2 || jamoDiff(have, left, p.length, t, tn) >= maxDiff) continue;
             float c = typo.distance(p, p.length, t, tn, maxCost);
@@ -225,7 +251,7 @@ final class KoreanCorrect {
             if (syll <= CORRECT_ONE_EDIT_SYLL && !oneEdit(p, p.length, t, tn)) continue;
             // 드문 명사(키보드)는 조사가 붙은 꼴이 사전에 없어 명사로 보이지 않는다: 가운데 모음 하나만 틀린 경우는 그대로 본다
             if (noun && !morph.nounLike(w) && !(vowelLog < Double.POSITIVE_INFINITY && middleVowelEdit(word, w))) continue;
-            boolean context = cx.hasPair(id);
+            boolean context = pairs.has(id);
             int pool = DIAGONAL_LAST && typo.distanceDirect(p, p.length, t, tn, maxCost) > c + 1e-4f ? 1 : 0;
             double s = Math.log(cx.score(w, id)) - KoreanSuggest.TYPO_PENALTY * c;
             if (pool == 0) {

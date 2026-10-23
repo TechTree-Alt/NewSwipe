@@ -27,6 +27,45 @@ public final class WordDictionary {
 
     private volatile Strong strong;
 
+    /** 글자 수별로 모은, 점수가 min 이상인 단어 번호 (오름차순). 자동 수정이 사전 전체를 훑지 않게 한다. */
+    private static final class ByLength {
+        final int min;
+        final int[][] ids;   // ids[글자 수]
+
+        ByLength(int min, int[][] ids) {
+            this.min = min;
+            this.ids = ids;
+        }
+    }
+
+    private volatile ByLength byLength;
+
+    /** 글자 수가 MAX_LEN_INDEX 이하인 단어만 담는다 (자동 수정은 24글자 넘는 말을 보지 않는다). */
+    static final int MAX_LEN_INDEX = 24;
+
+    /**
+     * 점수가 minScore 이상인 단어 번호를 글자 수별로 (오름차순). ids[n] = n글자 단어. 처음 쓸 때 만든다 (사전 팩 41만 개 중
+     * 9만 개쯤, 0.4MB).
+     */
+    int[][] idsByLength(int minScore) {
+        ByLength b = byLength;
+        if (b != null && b.min == minScore) return b.ids;
+        int[] n = new int[MAX_LEN_INDEX + 1];
+        for (int i = 0; i < count; i++) {
+            int len = offsets[i + 1] - offsets[i];
+            if ((scores[i] & 0xFF) >= minScore && len <= MAX_LEN_INDEX) n[len]++;
+        }
+        int[][] ids = new int[MAX_LEN_INDEX + 1][];
+        for (int len = 0; len <= MAX_LEN_INDEX; len++) ids[len] = new int[n[len]];
+        int[] at = new int[MAX_LEN_INDEX + 1];
+        for (int i = 0; i < count; i++) {
+            int len = offsets[i + 1] - offsets[i];
+            if ((scores[i] & 0xFF) >= minScore && len <= MAX_LEN_INDEX) ids[len][at[len]++] = i;
+        }
+        byLength = new ByLength(minScore, ids);
+        return ids;
+    }
+
     private WordDictionary(char[] chars, int[] offsets, byte[] scores) {
         this.chars = chars;
         this.offsets = offsets;
@@ -82,6 +121,35 @@ public final class WordDictionary {
     public int size() { return count; }
 
     public String word(int i) { return new String(chars, offsets[i], offsets[i + 1] - offsets[i]); }
+
+    /**
+     * 단어 i를 풀지 않고, 자모열 p(자모 종류 비트 pMask, 길이 pn)와 짝이 없는 자모 수의 아래 한계를 어림한다: 한쪽에만 있는
+     * 자모 종류의 수와 자모 수의 차이 중 큰 것 (KoreanCorrect.jamoDiff 이하).
+     */
+    int jamoDiffBound(int i, long pMask, int pn) {
+        long m = 0;
+        int n = 0;
+        for (int k = offsets[i], e = offsets[i + 1]; k < e; k++) {
+            char c = chars[k];
+            m |= TypoModel.syllableMask(c);
+            n += TypoModel.syllableLength(c);
+        }
+        return Math.max(Long.bitCount(m & ~pMask) + Long.bitCount(pMask & ~m), Math.abs(n - pn));
+    }
+
+    /**
+     * fuzzyPrefix에서 단어 i(chars[s..e))의 앞 cl자모만 보고 비용이 넘쳤을 때: 그 자모를 담는 앞 음절들로 시작하는 단어는 모두
+     * 같은 앞 자모라 같은 비용이므로, 그 덩어리(사전 순서로 이어져 있다)의 마지막 단어 위치를 돌려준다 (to 앞까지).
+     */
+    private int skipBlock(int i, int s, int e, int cl, int to) {
+        int k = 0, nj = 0;
+        while (s + k < e && nj < cl) nj += TypoModel.syllableLength(chars[s + k++]);
+        if (nj < cl || k == 0) return i;
+        char[] key = java.util.Arrays.copyOfRange(chars, s, s + k);
+        key[k - 1]++;   // 이 음절들로 시작하는 말 바로 뒤
+        int next = lowerBound(key, k);
+        return Math.max(i, Math.min(next, to) - 1);
+    }
 
     /** 단어 i를 자모로 풀어 out에 쓰고 길이를 돌려준다 (TypoModel.letters, 글자열을 만들지 않는다). */
     int letters(int i, char[] out) {
@@ -244,10 +312,10 @@ public final class WordDictionary {
     // ---------------------------------------------------------------- 초성 검색
 
     /**
-     * (초성 8개를 5비트씩 << ID_BITS) | 단어 번호. 초성 순으로 정렬. 처음 쓸 때(백그라운드의 warmUpChosung) 만든다.
-     * 활용형을 더한 사전 팩(38만 개)도 담도록 번호에 22비트를 쓴다 (예전에는 17비트라 13만 개가 넘는 사전에서는 초성 검색이 꺼졌다).
+     * 초성 순(초성 8개를 5비트씩 이은 열쇠, 같으면 단어 번호 순)으로 정렬한 단어 번호. 처음 쓸 때(백그라운드의 warmUpChosung)
+     * 만든다. 열쇠는 찾을 때 단어에서 다시 계산해 담지 않는다 (사전 팩 41만 개에서 3.3MB 대신 1.6MB).
      */
-    private volatile long[] chosung;
+    private volatile int[] chosung;
     private static final int CHO_SLOTS = 8, ID_BITS = 22;
 
     /** 초성 검색 색인을 만들어 둔다 (두 글자 이상인 한글 단어만). 백그라운드 스레드에서 부른다. */
@@ -274,9 +342,29 @@ public final class WordDictionary {
             }
             if (ok) keys[k++] = (key << ID_BITS) | i;
         }
-        long[] idx = java.util.Arrays.copyOf(keys, k);
-        java.util.Arrays.sort(idx);
+        java.util.Arrays.sort(keys, 0, k);
+        int[] idx = new int[k];
+        for (int j = 0; j < k; j++) idx[j] = (int) (keys[j] & ((1 << ID_BITS) - 1));
         chosung = idx;
+    }
+
+    /** 단어 i의 초성 열쇠 (warmUpChosung과 같은 계산; 한글 음절만으로 된 단어에만 쓴다). */
+    private long chosungKey(int i) {
+        int s = offsets[i], e = offsets[i + 1];
+        long key = 0;
+        for (int j = 0; j < CHO_SLOTS; j++) key = (key << 5) | (s + j < e ? (chars[s + j] - 0xAC00) / 588 + 1 : 0);
+        return key;
+    }
+
+    /** idx에서 열쇠가 key 이상인 첫 자리. */
+    private int lowerBoundKey(int[] idx, long key) {
+        int lo = 0, hi = idx.length;
+        while (lo < hi) {
+            int mid = (lo + hi) >>> 1;
+            if (chosungKey(idx[mid]) < key) lo = mid + 1;
+            else hi = mid;
+        }
+        return lo;
     }
 
     public boolean hasChosung() {
@@ -288,7 +376,7 @@ public final class WordDictionary {
      * 색인이 없거나 초성이 아닌 글자가 있으면 빈 배열.
      */
     public int[] chosungIds(String initials, int max) {
-        long[] idx = chosung;
+        int[] idx = chosung;
         int n = initials.length();
         if (idx == null || n == 0 || n > CHO_SLOTS || max <= 0) return new int[0];
         long key = 0;
@@ -302,14 +390,12 @@ public final class WordDictionary {
             }
             key = (key << 5) | code;
         }
-        long lo = key << ID_BITS;
-        long hi = (key + (1L << (5 * (CHO_SLOTS - n)))) << ID_BITS;
-        int from = lowerBound(idx, lo), to = lowerBound(idx, hi);
+        int from = lowerBoundKey(idx, key), to = lowerBoundKey(idx, key + (1L << (5 * (CHO_SLOTS - n))));
         int[] best = new int[max];
         int[] rank = new int[max];
         int found = 0;
         for (int p = from; p < to; p++) {
-            int i = (int) (idx[p] & ((1 << ID_BITS) - 1));
+            int i = idx[p];
             // 글자 수가 초성 수와 같으면 점수에 256을 더해 먼저 보인다.
             int sc = (scores[i] & 0xFF) + (length(i) == n ? 256 : 0);
             int pos = found;
@@ -325,16 +411,6 @@ public final class WordDictionary {
             if (found < max) found++;
         }
         return found == max ? best : java.util.Arrays.copyOf(best, found);
-    }
-
-    private static int lowerBound(long[] a, long key) {
-        int lo = 0, hi = a.length;
-        while (lo < hi) {
-            int mid = (lo + hi) >>> 1;
-            if (a[mid] < key) lo = mid + 1;
-            else hi = mid;
-        }
-        return lo;
     }
 
     // ---------------------------------------------------------------- 오타가 섞인 접두사
@@ -365,6 +441,7 @@ public final class WordDictionary {
         char[] p = TypoModel.letters(prefix);
         char[] t = new char[64];
         TypoModel.PrefixScan scan = FAST_FUZZY ? typo.prefixScan(p, p.length, maxCost) : null;
+        int need = TypoModel.prefixLetters(p.length);
         int found = 0;
         int[] rank = new int[max];
         for (int step = 0; step < 20; step++) {
@@ -380,9 +457,13 @@ public final class WordDictionary {
             if (found == max && sc <= rank[max - 1]) continue;
             int s = offsets[i], e = offsets[i + 1];
             if (e - s > 21) continue;
-            int tn = TypoModel.letters(chars, s, e, t);
+            int tn = TypoModel.lettersUpTo(chars, s, e, t, need);   // 앞부분만 푼다 (뒤는 비용에 들지 않는다)
             float c = scan != null ? scan.cost(t, tn) : typo.prefixDistance(p, p.length, t, tn, maxCost);
-            if (c > maxCost || c <= 0f) continue;   // 0이면 이미 맞는 접두사다 (lookup이 찾는다)
+            if (c > maxCost || c <= 0f) {   // 0이면 이미 맞는 접두사다 (lookup이 찾는다)
+                int cl = c > maxCost && scan != null ? scan.lastCut() : -1;
+                if (cl > 0) i = skipBlock(i, s, e, cl, to);
+                continue;
+            }
             int pos = found;
             while (pos > 0 && sc > rank[pos - 1]) pos--;
             if (pos >= max) continue;
