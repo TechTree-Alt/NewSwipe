@@ -21,7 +21,7 @@ import java.util.Map;
  */
 public final class CorrectionMemory {
     /** 이만큼 고르면 자동 수정한다. */
-    public static final int CHOSEN = 3;
+    public static final int CHOSEN = 2;
     static final int MAX = 2000;
 
     private static final class Entry {

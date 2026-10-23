@@ -16,15 +16,14 @@ public class CorrectionMemoryTest {
     @Rule public TemporaryFolder tmp = new TemporaryFolder();
 
     @Test
-    public void correctsAfterThreePicks() {
+    public void correctsAfterTwoPicks() {
         File f = new File(tmp.getRoot(), "p.txt");
         CorrectionMemory m = new CorrectionMemory(f);
         assertNull(m.lookupIfLoaded("굴자"));   // 아직 읽지 않았다
         m.load();
         m.record("굴자", "글자", 1);
-        m.record("굴자", "글자", 2);
         assertNull(m.lookupIfLoaded("굴자"));
-        m.record("굴자", "글자", 3);
+        m.record("굴자", "글자", 2);
         assertEquals("글자", m.lookupIfLoaded("굴자"));
         // 다시 읽어도 남는다
         CorrectionMemory again = new CorrectionMemory(f);
@@ -40,11 +39,9 @@ public class CorrectionMemoryTest {
         CorrectionMemory m = new CorrectionMemory(new File(tmp.getRoot(), "p.txt"));
         m.load();
         m.record("배일", "매일", 1);
-        m.record("배일", "매일", 2);
-        m.record("배일", "내일", 3);
-        m.record("배일", "내일", 4);
+        m.record("배일", "내일", 2);   // 다른 단어를 고르면 처음부터 센다
         assertNull(m.lookupIfLoaded("배일"));
-        m.record("배일", "내일", 5);
+        m.record("배일", "내일", 3);
         assertEquals("내일", m.lookupIfLoaded("배일"));
         m.clear();
         assertNull(m.lookupIfLoaded("배일"));
