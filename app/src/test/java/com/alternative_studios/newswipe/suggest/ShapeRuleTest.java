@@ -92,4 +92,16 @@ public class ShapeRuleTest {
         assertTrue(!ks.plausible("좋자"));           // 형용사에는 -자가 붙지 않는다
         assertTrue(!ks.plausible("좋는"));
     }
+
+    @Test
+    public void stemTypoUsesFamilyFrequency() throws Exception {
+        // 궁금하네 하나는 드물어도 궁금… 활용형이 많고, 궁근…으로 시작하는 말은 없다
+        WordDictionary d = KoreanSuggestTest.buildDict(new String[][]{
+                {"궁금하네", "60"}, {"궁금해", "200"}, {"궁금한", "200"}, {"궁금하다", "190"}, {"궁금해요", "190"}, {"궁금하면", "150"},
+                {"사람", "220"}, {"하고", "230"}, {"하네", "200"}, {"입니다", "230"},
+        });
+        KoreanSuggest ks = new KoreanSuggest(d, null, new TypoModel());
+        ks.setKnownWords(KnownWords.load(new java.io.ByteArrayInputStream(KnownWordsTest.hex(KnownWordsTest.FILE))));
+        assertEquals("궁금하네", ks.correct("궁근하네", null, KoreanSuggest.FIELD_NORMAL, null, null));
+    }
 }

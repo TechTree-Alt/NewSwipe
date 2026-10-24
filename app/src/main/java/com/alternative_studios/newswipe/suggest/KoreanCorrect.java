@@ -303,6 +303,32 @@ final class KoreanCorrect {
         return Math.log(SHAPE_MIN_UNIQUE_VOWEL);
     }
 
+    /** 용언의 어간을 잘못 친 말은 고칠 말의 활용형 전체 빈도로 본다 ({@link #stemFamilyGain}). */
+    static boolean STEM_FAMILY = true;
+
+    /**
+     * 친 말과 후보 w가 끝의 몇 글자(어미 쪽)는 같고 앞부분만 다를 때, 친 말의 앞부분으로 시작하는 말이 사전에 하나도 없으면
+     * (궁근하네: 궁근…) 앞부분을 잘못 친 것이 분명하므로, w 하나의 빈도 대신 w의 앞부분으로 시작하는 말 전체의 빈도(궁금하네 대신
+     * 궁금해·궁금한·궁금하다 …)로 본다. 그만큼의 ln 배수를 돌려준다 (해당하지 않으면 0). cache는 끝 글자 수마다의 결과.
+     */
+    private double stemFamilyGain(String word, String w, int id, int[] cache) {
+        int n = word.length(), m = w.length(), k = 0;
+        while (k < Math.min(n, m) - 1 && word.charAt(n - 1 - k) == w.charAt(m - 1 - k)) k++;
+        if (k == 0 || n - k < 2) return 0;
+        // 같은 끝이 조사면 명사를 잘못 친 것이라 다른 드문 명사(지망에서, 진담을)일 수 있다: 용언의 어간만 본다
+        String[] sp = WordSuggester.splitParticle(w);
+        if (sp != null && sp[1].length() >= k) return 0;
+        if (cache[k] == 0) {
+            int[] r = dict.prefixRange(word.substring(0, n - k));
+            cache[k] = r[0] >= r[1] ? 1 : 2;
+        }
+        if (cache[k] != 1) return 0;
+        String stem = w.substring(0, m - k);
+        int sid = dict.indexOf(stem);
+        double fam = prefixFreq(stem) + (sid >= 0 ? morph.prob(dict.score(sid)) : 0), f = morph.prob(dict.score(id));
+        return fam > f ? Math.log(fam / f) : 0;
+    }
+
     private static final int[] NO_IDS = new int[0];
 
     private static int[] lengthList(int[][] byLen, int len) {
@@ -369,6 +395,7 @@ final class KoreanCorrect {
         int maxDiff = (int) Math.floor(maxCost / (TypoModel.VARIANT / 2)) + 1;   // 이만큼 다르면 maxCost를 넘는다
         long pMask = TypoModel.jamoMask(p, p.length);
         KoreanSuggest.Context.PairScan pairs = cx.pairScan();
+        int[] noStem = new int[syll + 1];   // stemFamilyGain: 끝에서 k글자를 뗀 앞부분으로 시작하는 사전 단어가 없으면 1, 있으면 2 (0 = 아직)
         // 점수가 기준 이상이고 글자 수가 ±1인 단어를 사전 순서대로 본다 (글자 수별 목록 셋을 번호 순으로 합친다)
         int[][] byLen = dict.idsByLength(ks.scoreFor(SHAPE_RULE ? SHAPE_SCAN_FREQ : CORRECT_MIN_FREQ_CONTEXT));
         int[] la = lengthList(byLen, syll - 1), lb = lengthList(byLen, syll), lc = lengthList(byLen, syll + 1);
@@ -403,6 +430,7 @@ final class KoreanCorrect {
             // 드문 명사(키보드)는 조사가 붙은 꼴이 사전에 없어 명사로 보이지 않는다: 가운데 모음 하나만 틀린 경우는 그대로 본다
             if (noun && !morph.nounLike(w) && !(vowelLog < Double.POSITIVE_INFINITY && middleVowelEdit(word, w))) continue;
             boolean context = pairs.has(id);
+            boolean oneKey = c <= TypoModel.NEIGHBOR + 1e-4f;
             int pool = DIAGONAL_LAST && typo.distanceDirect(p, p.length, t, tn, maxCost) > c + 1e-4f ? 1 : 0;
             double s = Math.log(cx.score(w, id)) - KoreanSuggest.TYPO_PENALTY * c;
             if (pool == 0) {
@@ -417,9 +445,8 @@ final class KoreanCorrect {
                     allSecondId = id;
                 }
             }
-            boolean oneKey = c <= TypoModel.NEIGHBOR + 1e-4f;
             if (SHAPE_RULE) {
-                double v = partial - SHAPE_COST * (c - 0.6);
+                double v = partial - SHAPE_COST * (c - 0.6) + (STEM_FAMILY && oneKey ? stemFamilyGain(word, w, id, noStem) : 0);
                 double uLog = vowelLog < uniqueLog && middleVowelEdit(word, w) ? vowelLog : uniqueLog;
                 if (oneKey && pool == 0 && v >= uLog && s > uniqueS) {
                     uniqueS = s;
