@@ -110,19 +110,20 @@ public final class Neu {
     }
 
     /**
-     * 솟아오른 면의 밝은 그림자 색. 다크 모드의 강조색 면은 아주 밝아서, 옅은 흰 그림자(다른 키와 같은 값)가 면에 눌려
-     * 다른 키보다 작아 보인다. 그래서 다크 모드의 강조색 면에만 두 배로 진하게 해 다른 키와 같은 크기로 보이게 한다.
+     * 솟아오른 면의 밝은 그림자 색. 흰색(글자) 키·회색 키·강조색 키가 따로 정한다 (KeyboardTheme.neuShadow).
+     * 다크 모드의 강조색 면은 아주 밝아서 같은 값이면 그림자가 면에 눌려 작아 보이므로 기본값이 두 배다.
      */
     public static int raisedLight(KeyboardTheme t, int face) {
-        if (!t.dark || face != t.accent) return t.neuLight;
-        return Math.min(255, (t.neuLight >>> 24) * 2) << 24 | (t.neuLight & 0xFFFFFF);
+        if (face == t.accent) return t.neuLightAccent;
+        return face == t.functionKey ? t.neuLightFunction : t.neuLight;
     }
 
     /**
-     * 솟아오른 면의 어두운 그림자 색. 회색 기능키 면은 면 색이 보통 그림자와 거의 같아 면이 그림자로 번져 보이므로
-     * 더 진한 그림자를 쓴다. 강조색 면도 다른 키와 같은 그림자다.
+     * 솟아오른 면의 어두운 그림자 색. 흰색(글자) 키·회색 키·강조색 키가 따로 정한다 (KeyboardTheme.neuShadow).
+     * 라이트 모드의 회색 면은 면 색이 보통 그림자와 거의 같아 면이 그림자로 번져 보이므로 기본값이 더 진하다.
      */
     public static int darkShadow(KeyboardTheme t, int face) {
+        if (face == t.accent) return t.neuDarkAccent;
         return face == t.functionKey ? t.neuDarkFunction : t.neuDark;
     }
 

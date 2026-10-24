@@ -146,6 +146,19 @@ public final class Prefs {
     public static final String KEY_RADIUS = "key_radius";   // 키 모서리 곡률 dp, 0~24 (기본 7)
     public static final String KEY_SHADOW = "key_shadow";
     public static final String KEY_SHADOW_STRENGTH = "key_shadow_strength";   // %, 10~100
+    // 임시 슬라이더: Newmorphism 그림자 강도 % (0~100). 라이트/다크 × 흰색(글자) 키/회색(기능)키/강조색 키 × 밝은(HI)/어두운(LO).
+    public static final String NEU_SH_LIGHT_KEY_HI = "neu_sh_light_key_hi";
+    public static final String NEU_SH_LIGHT_KEY_LO = "neu_sh_light_key_lo";
+    public static final String NEU_SH_LIGHT_FN_HI = "neu_sh_light_fn_hi";
+    public static final String NEU_SH_LIGHT_FN_LO = "neu_sh_light_fn_lo";
+    public static final String NEU_SH_LIGHT_ACC_HI = "neu_sh_light_acc_hi";
+    public static final String NEU_SH_LIGHT_ACC_LO = "neu_sh_light_acc_lo";
+    public static final String NEU_SH_DARK_KEY_HI = "neu_sh_dark_key_hi";
+    public static final String NEU_SH_DARK_KEY_LO = "neu_sh_dark_key_lo";
+    public static final String NEU_SH_DARK_FN_HI = "neu_sh_dark_fn_hi";
+    public static final String NEU_SH_DARK_FN_LO = "neu_sh_dark_fn_lo";
+    public static final String NEU_SH_DARK_ACC_HI = "neu_sh_dark_acc_hi";
+    public static final String NEU_SH_DARK_ACC_LO = "neu_sh_dark_acc_lo";
     public static final String NEWMORPHISM = "newmorphism";   // 키·버튼을 바탕에서 솟아오른 모양으로 그리고, 누르면 안으로 들어가게
     public static final String TOOLBAR = "toolbar";
     public static final String TOOLBAR_BOTTOM = "toolbar_bottom";   // 도구 막대를 자판 아래에 둔다
@@ -356,7 +369,9 @@ public final class Prefs {
                 SPLIT_REACH_COLUMN, PROFILE_LIFT + LANDSCAPE_SUFFIX, BOTTOM_KEY_ORDER, COMMA_CHAR, PERIOD_CHAR, MODE_KEY_HIDDEN, PERIOD_COMMA, LANGUAGE_KEY_HIDDEN, SPACE_KEY_HIDDEN,
                 PERIOD_KEY_HIDDEN, ENTER_KEY_HIDDEN, DELETE_KEY_HIDDEN, KOREAN_SHIFT_HIDDEN, KOREAN_SHIFT_FN));
         MENU_PREFIXES.put("layout", keys("balanced_", LANDSCAPE_SPLIT + "_", "swipe_fk_"));
-        MENU_KEYS.put("theme", keys(THEME_MODE, ACCENT_MODE, ACCENT_COLOR, GRID_COLORS, NEWMORPHISM));
+        MENU_KEYS.put("theme", keys(THEME_MODE, ACCENT_MODE, ACCENT_COLOR, GRID_COLORS, NEWMORPHISM,
+                NEU_SH_LIGHT_KEY_HI, NEU_SH_LIGHT_KEY_LO, NEU_SH_LIGHT_FN_HI, NEU_SH_LIGHT_FN_LO, NEU_SH_LIGHT_ACC_HI, NEU_SH_LIGHT_ACC_LO,
+                NEU_SH_DARK_KEY_HI, NEU_SH_DARK_KEY_LO, NEU_SH_DARK_FN_HI, NEU_SH_DARK_FN_LO, NEU_SH_DARK_ACC_HI, NEU_SH_DARK_ACC_LO));
         MENU_KEYS.put("look", keys(KEYBOARD_HEIGHT, KEY_TEXT_SIZE, KEY_RADIUS, KEY_SHADOW, KEY_SHADOW_STRENGTH,
                 KEY_PREVIEW, POPUP_HINT_HIDDEN, NUMBER_HINT_HIDDEN, PAD_LEFT, PAD_RIGHT, PAD_TOP, PAD_BOTTOM, KEY_GAP_X, KEY_GAP_Y));
         MENU_KEYS.put("input", keys(AUTO_CAP, ENGLISH_FIELDS, DOUBLE_SPACE_PERIOD, DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT,
@@ -866,6 +881,16 @@ public final class Prefs {
     public int keyRadiusDp() { return clamp(sp.getInt(KEY_RADIUS, 7), 0, 24); }
     public int keyShadowStrength() { return sp.getInt(KEY_SHADOW_STRENGTH, 50); }
     public boolean newmorphism() { return sp.getBoolean(NEWMORPHISM, true); }
+    /** 임시 슬라이더의 그림자 강도 여섯 개 (%): {흰색 키 밝은·어두운, 회색 키 밝은·어두운, 강조색 키 밝은·어두운}. */
+    public int[] neuShadows(boolean dark) {
+        int[] v = dark
+                ? new int[]{sp.getInt(NEU_SH_DARK_KEY_HI, 12), sp.getInt(NEU_SH_DARK_KEY_LO, 80), sp.getInt(NEU_SH_DARK_FN_HI, 12),
+                        sp.getInt(NEU_SH_DARK_FN_LO, 80), sp.getInt(NEU_SH_DARK_ACC_HI, 24), sp.getInt(NEU_SH_DARK_ACC_LO, 80)}
+                : new int[]{sp.getInt(NEU_SH_LIGHT_KEY_HI, 100), sp.getInt(NEU_SH_LIGHT_KEY_LO, 50), sp.getInt(NEU_SH_LIGHT_FN_HI, 100),
+                        sp.getInt(NEU_SH_LIGHT_FN_LO, 65), sp.getInt(NEU_SH_LIGHT_ACC_HI, 100), sp.getInt(NEU_SH_LIGHT_ACC_LO, 50)};
+        for (int i = 0; i < v.length; i++) v[i] = clamp(v[i], 0, 100);
+        return v;
+    }
     public boolean suggestWords() { return sp.getBoolean(SUGGEST_WORDS, false); }
     /** 이모지 창을 열 때 커서 앞의 글에 맞는 이모지를 최근 탭 맨 위에 추천하는지. */
     public boolean emojiSuggest() { return sp.getBoolean(EMOJI_SUGGEST, true); }

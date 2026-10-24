@@ -1603,6 +1603,21 @@ public final class SettingsActivity extends Activity {
                 "키와 도구 막대·클립보드·이모지 창의 버튼이 바탕에서 부드럽게 솟아오르고, 누르면 안으로 쑥 들어가는 모양으로 그립니다. "
                         + "켜면 키 그림자 대신 쓰입니다.",
                 Prefs.NEWMORPHISM, prefs.newmorphism()));
+        // 임시: 그림자 강도를 키 종류마다 직접 맞춰 보는 슬라이더 (값을 정하면 지운다). 지금 화면 모드의 값만 키보드에 보인다.
+        neu.addView(note("임시 · 라이트 모드 그림자 강도"));
+        neu.addView(slider("흰색 키 밝은 그림자", Prefs.NEU_SH_LIGHT_KEY_HI, prefs.neuShadows(false)[0], 0, 100, 1, "%"));
+        neu.addView(slider("흰색 키 어두운 그림자", Prefs.NEU_SH_LIGHT_KEY_LO, prefs.neuShadows(false)[1], 0, 100, 1, "%"));
+        neu.addView(slider("회색 키 밝은 그림자", Prefs.NEU_SH_LIGHT_FN_HI, prefs.neuShadows(false)[2], 0, 100, 1, "%"));
+        neu.addView(slider("회색 키 어두운 그림자", Prefs.NEU_SH_LIGHT_FN_LO, prefs.neuShadows(false)[3], 0, 100, 1, "%"));
+        neu.addView(slider("강조색 키 밝은 그림자", Prefs.NEU_SH_LIGHT_ACC_HI, prefs.neuShadows(false)[4], 0, 100, 1, "%"));
+        neu.addView(slider("강조색 키 어두운 그림자", Prefs.NEU_SH_LIGHT_ACC_LO, prefs.neuShadows(false)[5], 0, 100, 1, "%"));
+        neu.addView(note("임시 · 다크 모드 그림자 강도 (흰색 키 = 글자 키)"));
+        neu.addView(slider("흰색 키 밝은 그림자", Prefs.NEU_SH_DARK_KEY_HI, prefs.neuShadows(true)[0], 0, 100, 1, "%"));
+        neu.addView(slider("흰색 키 어두운 그림자", Prefs.NEU_SH_DARK_KEY_LO, prefs.neuShadows(true)[1], 0, 100, 1, "%"));
+        neu.addView(slider("회색 키 밝은 그림자", Prefs.NEU_SH_DARK_FN_HI, prefs.neuShadows(true)[2], 0, 100, 1, "%"));
+        neu.addView(slider("회색 키 어두운 그림자", Prefs.NEU_SH_DARK_FN_LO, prefs.neuShadows(true)[3], 0, 100, 1, "%"));
+        neu.addView(slider("강조색 키 밝은 그림자", Prefs.NEU_SH_DARK_ACC_HI, prefs.neuShadows(true)[4], 0, 100, 1, "%"));
+        neu.addView(slider("강조색 키 어두운 그림자", Prefs.NEU_SH_DARK_ACC_LO, prefs.neuShadows(true)[5], 0, 100, 1, "%"));
     }
 
     private static int indexOf(String[] values, String v) {
