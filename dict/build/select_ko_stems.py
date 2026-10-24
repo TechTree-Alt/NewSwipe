@@ -77,6 +77,10 @@ def check(kiwi, have, min_freq):
     print(f'다른 것 {bad}개', file=sys.stderr)
 
 
+# 한 글자 어간 중 생성기가 바르게 활용하지 못하거나(푸다 → 퍼: 우 불규칙) 분석 실수·옛말인 것
+ONE_BAD = {'푸', '허', '앗', '외'}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('kiwi')
@@ -85,6 +89,7 @@ def main():
     ap.add_argument('--okt', nargs=2, metavar=('VERB', 'ADJ'))
     ap.add_argument('--min', type=float, default=1.0)
     ap.add_argument('--free', type=float, default=20.0)
+    ap.add_argument('--free-one', type=float, help='한 글자 어간의 최소 빈도 (목록에 있어야 한다, 기본은 --free)')
     ap.add_argument('--check', action='store_true')
     a = ap.parse_args()
     kiwi = read_kiwi(a.kiwi)
@@ -105,7 +110,7 @@ def main():
             continue
         listed = stem in okt['v'] or stem in okt['a']
         suffixed = len(stem) >= 2 and stem.endswith(SUFFIXES)
-        if len(stem) == 1 and (fr < a.free or not listed):
+        if len(stem) == 1 and (fr < (a.free if a.free_one is None else a.free_one) or not listed or stem in ONE_BAD):
             continue
         if fr < a.free and not listed and not suffixed:
             continue

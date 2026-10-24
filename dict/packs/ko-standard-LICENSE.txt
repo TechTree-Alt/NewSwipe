@@ -21,4 +21,13 @@ NewSwipe 한국어 표준 사전 팩 (ko-standard)
 3. NewSwipe의 구어체 보완 목록·활용형 목록·구어체 문장 목록 (dict/lists/ko_colloquial.txt, ko_conjugated.txt, ko_phrases.txt)
    License: Apache License 2.0 (NewSwipe 저장소와 같음)
 
+4. 만든 활용형 (2026.10.4부터): 위 1의 말뭉치를 형태소 분석기 Kiwi(kiwipiepy 0.24.0, Apache License 2.0)로 분석해 센 용언
+   어간에 어미를 붙여 만든 활용형 30만 개 (dict/build/gen_ko_pack_forms.py, 빈도는 말뭉치에서 잰 어미 몫으로 어림했다).
+   드문 어간은 open-korean-text(Apache License 2.0)의 동사·형용사 목록에 있는 것만 썼다. 그리고 위 1의 말뭉치에 100만
+   어절당 0.05번 이상 나왔지만 거기에 들지 못한 용언 활용형 3만 개 (dict/build/attested_ko_forms.py, Kiwi로 분석해 고름).
+
+5. 맞는 말 목록 (dict_ko_known.bin, 2026.10.4부터): 위 1의 말뭉치에 100만 어절당 0.1번 이상 나왔지만 단어 사전에 없는
+   말 35만 개의 블룸 필터 (dict/build/build_known_words.py). 단어는 담기지 않고 비트만 담긴다. 자동 수정이 이런 말을
+   고치지 않게 하는 데만 쓴다.
+
 이 팩 전체는 CC BY 4.0으로 배포합니다. 다시 배포할 때는 위 출처를 함께 밝혀 주세요.

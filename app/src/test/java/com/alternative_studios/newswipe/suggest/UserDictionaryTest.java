@@ -28,6 +28,44 @@ public class UserDictionaryTest {
     }
 
     @Test
+    public void forgottenWordIsNotLearnedAgain() throws Exception {
+        File f = new File(tmp.getRoot(), "w.txt");
+        UserDictionary d = new UserDictionary(f);
+        d.add("뚜비", true, false, 1);
+        d.add("뚜비", true, false, 2);
+        assertTrue(d.forget("뚜비", true));
+        assertTrue(d.isBlocked("뚜비", true));
+        d.add("뚜비", true, true, 3);                 // 되돌리기(강하게 학습)로도 다시 학습하지 않는다
+        assertFalse(d.isKnown("뚜비", true));
+        // 다시 읽어도 남는다
+        UserDictionary again = new UserDictionary(f);
+        assertTrue(again.isBlocked("뚜비", true));
+        assertEquals(java.util.Collections.singletonList("뚜비"), again.blockedSnapshot());
+        // 목록에서 빼면 다시 학습한다
+        assertTrue(again.unblock("뚜비"));
+        assertFalse(again.isBlocked("뚜비", true));
+        again.add("뚜비", true, true, 4);
+        assertTrue(again.isKnown("뚜비", true));
+        assertFalse(new UserDictionary(f).isBlocked("뚜비", true));
+    }
+
+    @Test
+    public void forgottenWordIsNotLearnedThroughLearnInto() throws Exception {
+        WordDictionary dict = KoreanSuggestTest.buildDict(new String[][]{{"친구", "200"}});
+        UserDictionary u = new UserDictionary(new File(tmp.getRoot(), "w.txt"));
+        UsageHistory h = new UsageHistory(new File(tmp.getRoot(), "h.txt"));
+        u.load();
+        h.load();
+        u.block("길냥", true);
+        WordSuggester.learnInto(dict, u, h, "길냥", null, true, true, 1);
+        WordSuggester.learnInto(dict, u, h, "길냥이랑", null, true, true, 2);   // 조사를 떼어 기억하는 길도 막는다
+        assertFalse(u.isKnown("길냥", true));
+        assertEquals(0, h.countIfLoaded("길냥"));
+        u.block("English", false);
+        assertTrue(u.isBlocked("english", false));   // 영어는 소문자로 본다
+    }
+
+    @Test
     public void strongAddIsKnownImmediately() throws Exception {
         UserDictionary d = new UserDictionary(new File(tmp.getRoot(), "w.txt"));
         d.add("recieve", false, true, 1);
@@ -246,5 +284,16 @@ public class UserDictionaryTest {
         int v2 = d.editVersion();
         d.release();
         assertEquals(v2, d.editVersion());   // 메모리에서 내리는 건 편집이 아니다
+    }
+
+    @Test
+    public void searchMatchesTextAndInitials() {
+        assertTrue(UserDictionary.matchesQuery("자동수정", ""));
+        assertTrue(UserDictionary.matchesQuery("자동수정", "수정"));
+        assertTrue(UserDictionary.matchesQuery("자동수정", "ㅈㄷㅅㅈ"));    // 초성
+        assertTrue(UserDictionary.matchesQuery("자동수정", "ㅅㅈ"));
+        assertFalse(UserDictionary.matchesQuery("자동수정", "ㅈㅅ"));      // 이어지지 않는 초성
+        assertFalse(UserDictionary.matchesQuery("자동수정", "자덩"));
+        assertTrue(UserDictionary.matchesQuery("NewSwipe", "swipe"));     // 영어는 대소문자 무시
     }
 }

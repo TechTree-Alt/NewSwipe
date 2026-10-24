@@ -85,6 +85,9 @@ public final class SettingsBackup {
                 arr.put(new org.json.JSONArray().put(w[0]).put(Integer.parseInt(w[1])).put(Long.parseLong(w[2])));
             }
             root.put("user_words", arr);
+            org.json.JSONArray blocked = new org.json.JSONArray();
+            for (String w : UserDictionary.shared(context.getFilesDir()).blockedSnapshot()) blocked.put(w);
+            root.put("blocked_words", blocked);
         }
         if (includeEmoji) {
             root.put("recent_emoji", new Prefs(context).recentEmoji());
@@ -195,6 +198,15 @@ public final class SettingsBackup {
                 userWords.add(new String[]{a.optString(0), String.valueOf(a.optLong(1, 1)), String.valueOf(a.optLong(2, 0))});
             }
         }
+        java.util.List<String> blockedWords = null;
+        org.json.JSONArray blockedArray = root.optJSONArray("blocked_words");
+        if (blockedArray != null) {
+            blockedWords = new java.util.ArrayList<>();
+            for (int i = 0; i < blockedArray.length() && i < UserDictionary.MAX_BLOCKED; i++) {
+                String w = blockedArray.optString(i, "");
+                if (!w.isEmpty()) blockedWords.add(w);
+            }
+        }
         java.util.List<String[]> clipEntries = null;
         org.json.JSONArray clipArray = root.optJSONArray("clipboard");
         if (clipArray != null) {
@@ -255,6 +267,7 @@ public final class SettingsBackup {
         ed.apply();
         if (root.has("launcher_icon_shown")) setLauncherShown(context, root.optBoolean("launcher_icon_shown", true));
         int words = userWords == null ? -1 : UserDictionary.shared(context.getFilesDir()).replaceAll(userWords);
+        if (blockedWords != null) UserDictionary.shared(context.getFilesDir()).replaceBlocked(blockedWords);
         if (clipEntries != null) clipboard(context).replaceAll(clipEntries, System.currentTimeMillis());
         return new int[]{keys.size(), words};
     }

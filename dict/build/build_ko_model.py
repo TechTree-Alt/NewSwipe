@@ -188,6 +188,25 @@ def mix_caches(base, other, weight, exclude=(), known_only=False, admit=False, a
     return dict(pm), vocab, dict(pw), dict(pr), cw, cr, tests
 
 
+def add_forms(kept, per_million, forms, n, cap):
+    """말뭉치 단어(kept) 뒤에 사전에 없는 활용형을 어림한 빈도가 높은 순으로 n개 더한다. 빈도는 어림한 빈도와 말뭉치 빈도 중
+    큰 것이고, cap이 있으면 말뭉치 단어 중 가장 드문 것의 cap배를 넘지 않게 누른다 (만든 꼴이 말뭉치 단어보다 앞서지 않게)."""
+    have = {w for w, _ in kept}
+    bottom = kept[-1][1]
+    cand = []
+    for w, est in forms.items():
+        if w in have or not 2 <= len(w) <= 12 or any(b in w for b in kd.BLOCKLIST):
+            continue
+        cand.append((max(est, per_million.get(w, 0.0)), w))
+    cand.sort(key=lambda x: (-x[0], x[1]))
+    added = [(w, min(f, bottom * cap) if cap else f) for f, w in cand[:n]]
+    print(f'forms: {len(cand):,} candidates, added {len(added):,} '
+          f'(est freq {cand[0][0] if cand else 0:.2f} .. {cand[min(n, len(cand)) - 1][0] if cand else 0:.4f})')
+    out = kept + added
+    out.sort(key=lambda x: (-x[1], x[0]))
+    return out
+
+
 def count(a, extra, phrases):
     """말뭉치를 세어 (단어 빈도, 넓은 단어 목록, 단어 쌍 횟수, 앞 단어 횟수, 평가 문장)을 돌려준다.
     단어 쌍은 사전 크기를 바꿔 보며 다시 쓸 수 있게 SUPER_TOP개의 넓은 목록으로 센다."""
@@ -272,6 +291,13 @@ def main():
     ap.add_argument('--mix-admit', action='store_true',
                     help='--mix-known-only처럼 섞되, 기본 말뭉치가 아는 조각으로 풀리는 새 단어(대화체 활용형, 띄어 쓰지 않은 '
                          '두 어절)는 들인다 (ko_admit.py: 고유명사·맞춤법이 틀린 말은 들이지 않는다)')
+    ap.add_argument('--forms', help='말뭉치 단어 --top개 뒤에 더 넣을 활용형 목록 (gen_ko_pack_forms.py의 출력, --extra 형식). '
+                         '말뭉치 단어를 밀어내지 않는다')
+    ap.add_argument('--forms-max', type=int, default=0, help='--forms에서 어림한 빈도가 높은 순으로 이만큼 넣는다')
+    ap.add_argument('--forms-keep', help='--forms-max와 상관없이 다 넣을 활용형 목록 (attested_ko_forms.py의 출력: 말뭉치에 '
+                         '나온 활용형). 빈도는 말뭉치 빈도')
+    ap.add_argument('--forms-cap', type=float, default=0,
+                    help='넣는 활용형의 빈도를 말뭉치 단어 중 가장 드문 것의 이 배수로 누른다 (0이면 누르지 않는다)')
     ap.add_argument('--admit-stems', help='--mix-admit에서 어간 + 어미로 풀리는 말을 가릴 때 더 쓸 어간 목록 '
                          '(dict/lists/ko_stems_kiwi.txt: 형태소 분석기로 센 어간)')
     a = ap.parse_args()
@@ -308,6 +334,11 @@ def main():
         per_million[w] = max(per_million.get(w, 0.0), sc)
 
     kept = kd.select(per_million, extra, a.top)
+    if a.forms:
+        kept = add_forms(kept, per_million, kd.read_extra(a.forms), a.forms_max, a.forms_cap)
+    if a.forms_keep:
+        keep = kd.read_extra(a.forms_keep)
+        kept = add_forms(kept, per_million, keep, len(keep), 0)
     del per_million
     kd.write_nsd1(os.path.join(a.out_dir, 'dict_ko.bin'), kept)
     with open(os.path.join(a.out_dir, 'ko_rank.tsv'), 'w', encoding='utf-8') as f:

@@ -187,4 +187,20 @@ public class WordDictionaryTest {
         assertTrue(WordSuggester.isDictWordWithParticle(ko, "감사를"));
         assertFalse(WordSuggester.isDictWordWithParticle(ko, "뚜비를"));
     }
+
+    @Test
+    public void chosungIndexCoversLargeDictionaries() throws Exception {
+        // 활용형을 더한 사전 팩처럼 13만 개(17비트)가 넘는 사전에서도 초성으로 찾는다
+        String[][] words = new String[140_000][];
+        for (int i = 0; i < words.length - 1; i++) {
+            words[i] = new String[]{"가" + (char) (0xAC00 + i / 100) + (char) (0xAC00 + i % 100 + 1000), "10"};
+        }
+        words[words.length - 1] = new String[]{"하늘", "200"};
+        WordDictionary d = KoreanSuggestTest.buildDict(words);
+        d.warmUpChosung();
+        assertTrue(d.hasChosung());
+        int[] ids = d.chosungIds("ㅎㄴ", 3);
+        assertEquals(1, ids.length);
+        assertEquals("하늘", d.word(ids[0]));
+    }
 }

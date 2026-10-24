@@ -210,7 +210,56 @@ final class KoreanSuggest {
         return corrector.correct(word, prev, field, user, usage);
     }
 
+    /**
+     * 앞 단어(cx) 다음에 오는 말의 조사 꼴(을·은·이 …, 받침 짝은 한 종류로)의 비율을 다음 단어 사전에서 모은다 (앞 단어 쌍이 없으면
+     * 앞 단어의 끝 글자로 모은 분포). out[k] = 조사 종류 k의 확률 합, 모은 것이 없으면 모두 0. 종류는 {@link #particleClass}.
+     */
+    void particleClassesAfter(Context cx, double[] out) {
+        java.util.Arrays.fill(out, 0);
+        if (cx.group >= 0) {
+            for (int i = next.from(cx.group); i < next.to(cx.group); i++) addClass(out, next.word(i), next.prob(i));
+        }
+        double sum = 0;
+        for (double v : out) sum += v;
+        if (sum > 0 || ending == null || cx.prev == null) return;
+        int eg = ending.group(cx.prev);
+        if (eg >= 0) for (int i = ending.from(eg); i < ending.to(eg); i++) addClass(out, ending.word(i), ending.prob(i));
+    }
+
+    private void addClass(double[] out, int id, double p) {
+        String w = dict.word(id);
+        int k = particleClass(w.substring(w.length() - 1));
+        if (k < 0) return;
+        String[] sp = WordSuggester.splitParticle(w);
+        if (sp != null && sp[1].length() == 1) out[k] += p;
+    }
+
+    /** 한 글자 조사의 종류 (받침에 따라 바뀌는 짝은 같은 종류: 을·를, 은·는, 이·가, 와·과). 조사가 아니면 -1. */
+    static int particleClass(String p) {
+        int i = PARTICLE_CLASSES.indexOf(p);
+        return p.length() != 1 || i < 0 ? -1 : PARTICLE_CLASS_OF[i];
+    }
+
+    static final String PARTICLE_CLASSES = "을를은는이가와과로에의도만랑";
+    private static final int[] PARTICLE_CLASS_OF = {0, 0, 1, 1, 2, 2, 3, 3, 4, 5, 6, 7, 8, 9};
+    static final int PARTICLE_CLASS_COUNT = 10;
+
+    /** 자동 수정이 맞는 말로 알아볼 목록 ({@link KoreanCorrect#setKnown}). */
+    void setKnownWords(KnownWords k) {
+        corrector.setKnown(k);
+    }
+
     /** 사전에 없는 word가 한국어 낱말로 그럴듯한지 ({@link KoreanCorrect#plausible}). */
+    /** word를 마지막으로 자동 수정할 때 고친 단어와 겨룬 다음 후보 (추천란에 보인다). */
+    String correctionAlternative(String word) {
+        return corrector.alternativeFor(word);
+    }
+
+    /** 추천란에만 보일, 끝 글자의 어미를 잘못 친 말의 바른 꼴 ({@link KoreanCorrect#endingCandidates}). */
+    java.util.List<String> endingCandidates(String word, int max) {
+        return corrector.endingCandidates(word, max);
+    }
+
     boolean plausible(String word) {
         return corrector.plausible(word);
     }
@@ -312,6 +361,22 @@ final class KoreanSuggest {
         /** 앞 단어와 id의 단어 쌍이 다음 단어 사전에 있는지. */
         boolean hasPair(int id) {
             return group >= 0 && next.find(group, id) >= 0;
+        }
+
+        /** 번호가 커지는 순서로 hasPair를 물을 때 쓴다 (자동 수정이 사전 전체를 훑을 때 단어마다 이진 탐색하지 않는다). */
+        PairScan pairScan() {
+            return new PairScan();
+        }
+
+        final class PairScan {
+            private int at = group >= 0 ? next.lowerBound(group, 0) : 0;
+            private final int end = group >= 0 ? next.groupEnd(group) : 0;
+
+            /** hasPair(id)와 같다. id는 앞서 물은 것보다 작으면 안 된다. */
+            boolean has(int id) {
+                while (at < end && next.wordAt(at) < id) at++;
+                return at < end && next.wordAt(at) == id;
+            }
         }
 
         /** 기본 사전 모형의 P(w|앞 단어). id = 사전 번호 (-1이면 사전에 없는 말). */

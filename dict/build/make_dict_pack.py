@@ -4,7 +4,8 @@
   python3 dict/build/make_dict_pack.py MODEL_DIR OUT.zip --name "표준 사전" --version 2026.10 \\
       --license "CC BY 4.0" --attribution "Leipzig Corpora Collection ..." [--description ...] [--license-file F]
 
-MODEL_DIR은 dict/build/build_ko_model.py의 결과 폴더다 (dict_ko.bin 필수, dict_ko_next.bin 선택).
+MODEL_DIR은 dict/build/build_ko_model.py의 결과 폴더다 (dict_ko.bin 필수, dict_ko_next.bin 선택). 그 폴더에
+build_known_words.py로 만든 dict_ko_known.bin(자동 수정이 맞는 말로 알아볼 목록)이 있으면 함께 넣는다.
 팩에 넣는 데이터의 라이선스와 출처를 정확히 적는다 (앱은 가져온 팩의 출처를 설정 화면에 보여 준다).
 팩 형식은 app/src/main/java/.../suggest/DictionaryPack.java의 설명을 따른다.
 """
@@ -44,6 +45,7 @@ def main():
 
     dict_path = os.path.join(a.model_dir, 'dict_ko.bin')
     next_path = os.path.join(a.model_dir, 'dict_ko_next.bin')
+    known_path = os.path.join(a.model_dir, 'dict_ko_known.bin')
     if not os.path.isfile(dict_path):
         sys.exit(f'{dict_path} 이 없습니다')
     with open(dict_path, 'rb') as f:
@@ -57,11 +59,15 @@ def main():
     ]
     if os.path.isfile(next_path):
         lines.append(f'sha256.dict_ko_next.bin={sha256(next_path)}')
+    if os.path.isfile(known_path):
+        lines.append(f'sha256.dict_ko_known.bin={sha256(known_path)}')
     with zipfile.ZipFile(a.out, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
         z.writestr('manifest.properties', '\n'.join(lines) + '\n')
         z.write(dict_path, 'dict_ko.bin')
         if os.path.isfile(next_path):
             z.write(next_path, 'dict_ko_next.bin')
+        if os.path.isfile(known_path):
+            z.write(known_path, 'dict_ko_known.bin')
         if a.license_file:
             z.write(a.license_file, 'LICENSE.txt')
     print(f'wrote {a.out}: {os.path.getsize(a.out):,} bytes')

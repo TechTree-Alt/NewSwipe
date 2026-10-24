@@ -35,6 +35,8 @@ final class SettingsFrame {
     private LinearLayout searchBar;
     private EditText searchInput;
     private boolean searchWanted;
+    /** 검색 버튼과 검색창에 보이는 이름 (설정 검색, 단어 검색). */
+    private String searchName = "설정 검색";
     /** Android 13+의 뒤로 가기 처리 (입력창이 열려 있는 동안만 등록한다). */
     private Object backCallback;
     /**
@@ -95,6 +97,12 @@ final class SettingsFrame {
         return this;
     }
 
+    /** withSearch와 같지만 검색 버튼·검색창에 name을 보인다 (학습한 단어 화면의 '단어 검색'). */
+    SettingsFrame withSearch(java.util.function.Consumer<String> onQuery, String name) {
+        this.searchName = name;
+        return withSearch(onQuery);
+    }
+
     /** 머리글·입력 시험 창과 content(스크롤 뷰)를 한 화면으로 묶어 돌려준다. setContentView에 넘기면 된다. */
     View wrap(View content) {
         LinearLayout root = new LinearLayout(activity);
@@ -142,7 +150,7 @@ final class SettingsFrame {
         if (onSearch != null) {
             // 강조색 동그라미 안에 검색 아이콘
             testButton = null;
-            searchButton = circleButton(c, Icons.SEARCH, "설정 검색", v -> toggleSearch());
+            searchButton = circleButton(c, Icons.SEARCH, searchName, v -> toggleSearch());
             header.addView(searchButton, new LinearLayout.LayoutParams(size, size));
             return header;
         }
@@ -167,7 +175,7 @@ final class SettingsFrame {
         int pad = Ui.dp(c, 16);
         searchBar.setPadding(pad, 0, pad, Ui.dp(c, 8));
         searchInput = new EditText(c);
-        searchInput.setHint("설정 검색");
+        searchInput.setHint(searchName);
         searchInput.setTextColor(colors.text);
         searchInput.setHintTextColor(colors.hint);
         searchInput.setSingleLine(true);

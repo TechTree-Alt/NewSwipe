@@ -4,8 +4,13 @@ package com.alternative_studios.newswipe.suggest;
  * 한글 오타의 '그럴듯함'을 비용으로 매긴다 (작을수록 흔한 실수). 글자를 호환 자모(ㄱ, ㅏ, ㄺ, ㅘ 등 키 하나로 넣는 단위)로
  * 풀어서, 바꾸기·빠뜨리기·더 치기·맞바꾸기를 가중치를 둔 편집 거리로 잰다.
  * <ul>
- *   <li>같은 키의 다른 동작으로 나오는 글자 (ㄱ↔ㄲ·ㅋ, ㅗ↔ㅛ·ㅘ, ㄹ↔ㄺ)와 소리가 같아 헷갈리는 모음 (ㅐ↔ㅔ, ㅚ↔ㅙ↔ㅞ): 가장 싸다.</li>
- *   <li>자판에서 바로 옆 키: 싸다. 자판 배열은 {@link #setRows}로 받는다 (기본은 8열 단모음).</li>
+ *   <li>같은 키의 다른 동작으로 나오는 글자 (ㄱ↔ㄲ, ㅗ↔ㅛ·ㅘ, ㄹ↔ㄺ)와 소리가 같아 헷갈리는 모음 (ㅐ↔ㅔ, ㅚ↔ㅙ↔ㅞ): 가장 싸다.
+ *       ㄱ↔ㅋ·ㄷ↔ㅌ·ㅂ↔ㅍ·ㅈ↔ㅊ은 NewSwipe 단모음처럼 오른쪽으로 밀어 거센소리를 넣는 자판에서만 같은 키다 (8열 단모음에서는
+ *       ㅋ·ㅌ·ㅊ·ㅍ이 셋째 줄의 다른 키라 자판 거리로 잰다).</li>
+ *   <li>자판에서 바로 옆 키: 싸다. 자판 배열은 {@link #setRows}로 받는다 (기본은 8열 단모음). 대각선 키도 이웃으로 치지만,
+ *       대각선 키는 거의 잘못 누르지 않으므로 대각선 없이 재는 비용({@link #distanceDirect})을 따로 둔다.</li>
+ *   <li>입력한 글자가 된소리(ㄲ·ㄸ·ㅃ·ㅆ·ㅉ)면 다른 글자로 바꾸는 비용이 비싸다: 된소리는 밀거나 Shift를 눌러 일부러 친다
+ *       (반대로 예사소리를 친 것을 된소리로 바꾸는 것은 싸다).</li>
  *   <li>그 밖의 바꾸기, 빠뜨리기, 더 치기: 비싸다. 같은 키를 한 번 더 친 것은 덜 비싸다.</li>
  * </ul>
  * 화면 스레드에서만 쓴다 (계산용 버퍼를 다시 쓴다).
@@ -14,16 +19,60 @@ public final class TypoModel {
     public static final float VARIANT = 0.35f, NEIGHBOR = 0.6f, SUBSTITUTE = 1.1f, CROSS = 1.4f;
     public static final float INSERT = 0.9f, REPEAT = 0.5f, DELETE = 0.9f, TRANSPOSE = 0.7f;
     private static final float INF = 1e9f;
+    /** 입력한 된소리를 다른 글자로 바꾸는 가장 싼 비용 (평가에서 바꿔 본다). */
+    static float TENSE_TYPED = SUBSTITUTE;
+    private static final String TENSE = "ㄲㄸㅃㅆㅉ";
 
     private static final String CHO = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
     private static final String JUNG = "ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ";
     private static final String JONG = "\0ㄱㄲㄳㄴㄵㄶㄷㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅄㅅㅆㅇㅈㅊㅋㅌㅍㅎ";
+    /** letters()용 (자동 수정이 단어마다 부르므로 String.charAt 대신 배열로 찾는다). */
+    private static final char[] CHO_C = CHO.toCharArray(), JUNG_C = JUNG.toCharArray(), JONG_C = JONG.toCharArray();
+    /** 음절 11,172개를 미리 푼 자모 (음절마다 3칸, 받침이 없으면 셋째 칸은 쓰지 않는다): 나눗셈 없이 베껴 쓴다 (78KB). */
+    private static final char[] DECOMP = new char[11172 * 3];
+
+    /** 음절마다 든 자모의 종류(호환 자모 0x3131부터의 비트)와 자모 수: 단어를 풀지 않고 자모가 얼마나 다른지 어림한다. */
+    private static final long[] SYLL_MASK = new long[11172];
+    private static final byte[] SYLL_LEN = new byte[11172];
+
+    static {
+        for (int s = 0; s < 11172; s++) {
+            DECOMP[s * 3] = CHO_C[s / 588];
+            DECOMP[s * 3 + 1] = JUNG_C[(s / 28) % 21];
+            DECOMP[s * 3 + 2] = JONG_C[s % 28];   // 받침이 없으면 '\0'
+            SYLL_MASK[s] = 1L << (DECOMP[s * 3] - 0x3131) | 1L << (DECOMP[s * 3 + 1] - 0x3131);
+            SYLL_LEN[s] = 2;
+            if (s % 28 != 0) {
+                SYLL_MASK[s] |= 1L << (DECOMP[s * 3 + 2] - 0x3131);
+                SYLL_LEN[s] = 3;
+            }
+        }
+    }
+
+    /** 한글 음절 c에 든 자모 종류의 비트 (한글 음절이 아니면 0). */
+    static long syllableMask(char c) {
+        return c >= 0xAC00 && c <= 0xD7A3 ? SYLL_MASK[c - 0xAC00] : 0L;
+    }
+
+    /** 한글 음절 c를 풀면 나오는 자모 수 (한글 음절이 아니면 1). */
+    static int syllableLength(char c) {
+        return c >= 0xAC00 && c <= 0xD7A3 ? SYLL_LEN[c - 0xAC00] : 1;
+    }
+
+    /** 자모열에 든 자모 종류의 비트 (호환 자모가 아닌 글자는 넣지 않는다). */
+    static long jamoMask(char[] p, int n) {
+        long m = 0;
+        for (int i = 0; i < n; i++) if (p[i] >= 0x3131 && p[i] < 0x3131 + 51) m |= 1L << (p[i] - 0x3131);
+        return m;
+    }
     /** 같은 키의 다른 동작(아래·오른쪽으로 밀기, 겹받침·겹모음 밀기)이나 같은 소리로 헷갈리는 짝. */
     private static final String[] VARIANTS = {
-            "ㄱㄲㅋ", "ㄷㄸㅌ", "ㅂㅃㅍ", "ㅅㅆ", "ㅈㅉㅊ",
+            "ㄱㄲ", "ㄷㄸ", "ㅂㅃ", "ㅅㅆ", "ㅈㅉ",
             "ㄱㄳ", "ㄴㄵㄶ", "ㄹㄺㄻㄼㄽㄾㄿㅀ", "ㅂㅄ",
             "ㅏㅑㅘ", "ㅓㅕㅝ", "ㅗㅛㅘㅚㅙ", "ㅜㅠㅝㅟㅞ", "ㅐㅒㅔㅖㅙㅞ", "ㅚㅙㅞㅟ", "ㅡㅢ", "ㅣㅢㅚㅟ",
     };
+    /** 오른쪽으로 밀어 거센소리를 넣는 자판(NewSwipe 단모음)에서 같은 키에서 나오는 글자. */
+    private static final String[] ASPIRATE_SWIPE = {"ㄱㄲㅋ", "ㄷㄸㅌ", "ㅂㅃㅍ", "ㅈㅉㅊ"};
     /** 한 키에서 (밀기로) 나오는 글자들. 이웃한 키끼리는 이 글자들도 서로 이웃으로 본다 (ㅓ 옆의 ㅗ → ㅕ 옆의 ㅛ). */
     private static final String[] KEY_FAMILY = {
             "ㄱㄲ", "ㄷㄸ", "ㅂㅃ", "ㅅㅆ", "ㅈㅉ", "ㅏㅑ", "ㅓㅕ", "ㅗㅛㅘㅚㅙ", "ㅜㅠㅝㅟㅞ", "ㅐㅒ", "ㅔㅖ", "ㅡㅢ",
@@ -34,24 +83,32 @@ public final class TypoModel {
             {"", "ㅋ", "ㅌ", "ㅊ", "ㅍ", "ㅜ", "ㅡ"},   // 맨 왼쪽은 Shift 자리 (ㅋ이 ㄴ 아래에 온다)
     };
 
-    /** 호환 자모 0x3131~0x3163 쌍의 비용 표 (51×51). */
-    private final float[] table = new float[51 * 51];
+    /** 호환 자모 0x3131~0x3163 쌍의 비용 표 (51×51). direct는 대각선 키를 이웃으로 치지 않은 표. */
+    private final float[] table = new float[51 * 51], direct = new float[51 * 51];
+    private boolean aspirateSwipe;
     private float[] r0 = new float[66], r1 = new float[66], r2 = new float[66];
 
     public TypoModel() {
-        setRows(DEFAULT_ROWS);
+        setRows(DEFAULT_ROWS, false);
+    }
+
+    /** 8열 단모음처럼 거센소리가 따로 있는 자판의 글자 줄. {@link #setRows(String[][], boolean)}. */
+    public void setRows(String[][] rows) {
+        setRows(rows, false);
     }
 
     /**
      * 자판의 글자 줄 (줄마다 키 글자, 화면의 칸 위치대로; 빈 문자열은 글자가 아닌 칸). 같은 줄의 양옆 키와, 위·아래 줄에서
-     * 칸이 하나 안쪽으로 차이 나는 키를 이웃으로 본다.
+     * 칸이 하나 안쪽으로 차이 나는 키를 이웃으로 본다. aspirateSwipe = ㅂ·ㅈ·ㄷ·ㄱ를 오른쪽으로 밀어 ㅍ·ㅊ·ㅌ·ㅋ을 넣는
+     * 자판 (NewSwipe 단모음): 그 짝을 같은 키의 다른 동작으로 본다.
      */
-    public synchronized void setRows(String[][] rows) {
+    public synchronized void setRows(String[][] rows, boolean aspirateSwipe) {
+        this.aspirateSwipe = aspirateSwipe;
         int n = 51;
         for (int a = 0; a < n; a++) {
             for (int b = 0; b < n; b++) {
                 char x = (char) (0x3131 + a), y = (char) (0x3131 + b);
-                table[a * n + b] = a == b ? 0f : isVowel(x) != isVowel(y) ? CROSS : SUBSTITUTE;
+                table[a * n + b] = direct[a * n + b] = a == b ? 0f : isVowel(x) != isVowel(y) ? CROSS : SUBSTITUTE;
             }
         }
         if (rows != null) {
@@ -63,7 +120,10 @@ public final class TypoModel {
                             String fa = family(rows[r][c]), fb = family(rows[r2][c2]);
                             for (int i = 0; i < fa.length(); i++) {
                                 for (int j = 0; j < fb.length(); j++) {
-                                    set(String.valueOf(fa.charAt(i)), String.valueOf(fb.charAt(j)), NEIGHBOR);
+                                    set(table, String.valueOf(fa.charAt(i)), String.valueOf(fb.charAt(j)), NEIGHBOR);
+                                    if (r2 == r || c2 == c) {
+                                        set(direct, String.valueOf(fa.charAt(i)), String.valueOf(fb.charAt(j)), NEIGHBOR);
+                                    }
                                 }
                             }
                         }
@@ -71,11 +131,24 @@ public final class TypoModel {
                 }
             }
         }
-        for (String g : VARIANTS) {
-            for (int i = 0; i < g.length(); i++) {
-                for (int j = 0; j < g.length(); j++) {
-                    if (i != j) set(String.valueOf(g.charAt(i)), String.valueOf(g.charAt(j)), VARIANT);
+        for (String[] groups : aspirateSwipe ? new String[][]{VARIANTS, ASPIRATE_SWIPE} : new String[][]{VARIANTS}) {
+            for (String g : groups) {
+                for (int i = 0; i < g.length(); i++) {
+                    for (int j = 0; j < g.length(); j++) {
+                        if (i != j) {
+                            set(table, String.valueOf(g.charAt(i)), String.valueOf(g.charAt(j)), VARIANT);
+                            set(direct, String.valueOf(g.charAt(i)), String.valueOf(g.charAt(j)), VARIANT);
+                        }
+                    }
                 }
+            }
+        }
+        for (int i = 0; i < TENSE.length(); i++) {
+            int a = TENSE.charAt(i) - 0x3131;
+            for (int b = 0; b < n; b++) {
+                if (b == a) continue;
+                table[a * n + b] = Math.max(table[a * n + b], TENSE_TYPED);
+                direct[a * n + b] = Math.max(direct[a * n + b], TENSE_TYPED);
             }
         }
     }
@@ -86,7 +159,7 @@ public final class TypoModel {
         return key;
     }
 
-    private void set(String a, String b, float cost) {
+    private static void set(float[] table, String a, String b, float cost) {
         if (a == null || b == null || a.length() != 1 || b.length() != 1) return;
         int x = a.charAt(0) - 0x3131, y = b.charAt(0) - 0x3131;
         if (x < 0 || x >= 51 || y < 0 || y >= 51) return;
@@ -100,6 +173,15 @@ public final class TypoModel {
 
     /** 입력한 글자 a를 b로 바꾸는 비용. */
     public float substitute(char a, char b) {
+        return substitute(table, a, b);
+    }
+
+    /** substitute와 같지만 대각선 키를 이웃으로 치지 않는다. */
+    public float substituteDirect(char a, char b) {
+        return substitute(direct, a, b);
+    }
+
+    private static float substitute(float[] table, char a, char b) {
         if (a == b) return 0f;
         int x = a - 0x3131, y = b - 0x3131;
         if (x < 0 || x >= 51 || y < 0 || y >= 51) return CROSS;
@@ -119,10 +201,11 @@ public final class TypoModel {
         for (int i = from; i < to; i++) {
             char c = src[i];
             if (c >= 0xAC00 && c <= 0xD7A3) {
-                int s = c - 0xAC00;
-                out[n++] = CHO.charAt(s / 588);
-                out[n++] = JUNG.charAt((s / 28) % 21);
-                if (s % 28 != 0) out[n++] = JONG.charAt(s % 28);
+                int k = (c - 0xAC00) * 3;
+                out[n++] = DECOMP[k];
+                out[n++] = DECOMP[k + 1];
+                char jong = DECOMP[k + 2];
+                if (jong != 0) out[n++] = jong;
             } else {
                 out[n++] = c;
             }
@@ -130,19 +213,50 @@ public final class TypoModel {
         return n;
     }
 
+    /**
+     * letters와 같지만 자모가 max개 이상이 되면 그 음절까지만 푼다. 접두사 비용({@link #prefixDistance}, {@link PrefixScan})은
+     * 입력보다 BAND개 넘게 긴 앞부분을 보지 않으므로, 입력 자모 수 + BAND + 1개만 풀어도 결과가 같다.
+     */
+    static int lettersUpTo(char[] src, int from, int to, char[] out, int max) {
+        int n = 0;
+        for (int i = from; i < to && n < max; i++) {
+            char c = src[i];
+            if (c >= 0xAC00 && c <= 0xD7A3) {
+                int k = (c - 0xAC00) * 3;
+                out[n++] = DECOMP[k];
+                out[n++] = DECOMP[k + 1];
+                char jong = DECOMP[k + 2];
+                if (jong != 0) out[n++] = jong;
+            } else {
+                out[n++] = c;
+            }
+        }
+        return n;
+    }
+
+    /** 접두사 비용을 잴 때 풀어야 하는 단어의 자모 수 (입력 자모 수 pn). */
+    static int prefixLetters(int pn) {
+        return pn + BAND + 1;
+    }
+
     /** 입력 p 전체를 단어 t 전체로 고치는 비용. limit을 넘을 것이 확실하면 그보다 큰 값을 돌려준다. */
     public float distance(char[] p, int pn, char[] t, int tn, float limit) {
-        return align(p, pn, t, tn, limit, false);
+        return align(table, p, pn, t, tn, limit, false);
+    }
+
+    /** distance와 같지만 대각선 키를 이웃으로 치지 않는다 (대각선 키를 잘못 누른 것이 아닌 고칠 단어를 먼저 고를 때). */
+    public float distanceDirect(char[] p, int pn, char[] t, int tn, float limit) {
+        return align(direct, p, pn, t, tn, limit, false);
     }
 
     /** 입력 p 전체를 단어 t의 어떤 앞부분으로 고치는 가장 작은 비용 (아직 치는 중인 단어용). */
     public float prefixDistance(char[] p, int pn, char[] t, int tn, float limit) {
-        return align(p, pn, t, tn, limit, true);
+        return align(table, p, pn, t, tn, limit, true);
     }
 
     private static final int BAND = 3;
 
-    private synchronized float align(char[] p, int pn, char[] t, int tn, float limit, boolean prefix) {
+    private synchronized float align(float[] table, char[] p, int pn, char[] t, int tn, float limit, boolean prefix) {
         if (!prefix && Math.abs(pn - tn) > BAND) return INF;
         if (tn + 1 > r0.length) {
             r0 = new float[tn + 1];
@@ -162,7 +276,7 @@ public final class TypoModel {
                 float v = prev[j] + ins;   // 입력에 글자가 더 들어갔다
                 if (j > 0) {
                     v = Math.min(v, cur[j - 1] + DELETE);   // 입력에서 글자가 빠졌다
-                    v = Math.min(v, prev[j - 1] + substitute(pc, t[j - 1]));
+                    v = Math.min(v, prev[j - 1] + substitute(table, pc, t[j - 1]));
                     if (i > 1 && j > 1 && pc == t[j - 2] && p[i - 2] == t[j - 1] && pc != p[i - 2]) {
                         v = Math.min(v, prev2[j - 2] + TRANSPOSE);
                     }
@@ -207,6 +321,7 @@ public final class TypoModel {
         private char[] cut = new char[0];    // 이 앞부분으로 시작하는 말은 더 볼 필요가 없다 (값은 cutCost)
         private int cutLen = -1;
         private float cutCost;
+        private int lastCut = -1;            // 마지막 cost()가 이 길이의 앞부분에서 끝났다 (아니면 -1)
 
         PrefixScan(char[] p, int pn, float limit) {
             this.p = p;
@@ -235,12 +350,23 @@ public final class TypoModel {
             cut = java.util.Arrays.copyOf(cut, m);
         }
 
+        /**
+         * 마지막 cost()가 단어의 앞 몇 자모만 보고 끝났으면 그 길이, 아니면 -1. 그 앞부분으로 시작하는 단어는 모두 같은 비용이다.
+         */
+        int lastCut() {
+            return lastCut;
+        }
+
         /** 단어(자모 t[0..tn))의 접두사 비용. */
         float cost(char[] t, int tn) {
+            lastCut = -1;
             if (cutLen >= 0 && tn >= cutLen) {
                 int k = 0;
                 while (k < cutLen && t[k] == cut[k]) k++;
-                if (k == cutLen) return cutCost;
+                if (k == cutLen) {
+                    lastCut = cutLen;
+                    return cutCost;
+                }
             }
             grow(tn);
             int start = 0;
@@ -278,6 +404,7 @@ public final class TypoModel {
                     System.arraycopy(t, 0, cut, 0, j);
                     cutLen = j;
                     cutCost = best;
+                    lastCut = j;
                     return best;
                 }
             }

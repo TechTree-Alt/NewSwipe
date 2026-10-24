@@ -185,6 +185,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private Shortcuts shortcuts = Shortcuts.of(null);
     private boolean cfgShortcuts;
     private String correctedFrom, correctedTo;   // 방금 자동 수정한 단어 (지우기 키로 되돌리기 위해)
+    private String correctedSuffix = " ";        // 자동 수정하며 뒤에 넣은 글자 (스페이스나 문장 부호)
     private final java.util.HashSet<String> correctionIgnored = new java.util.HashSet<>();
     /** correctionIgnored를 채울 때의 학습한 단어 편집 번호. 설정에서 단어를 지우면 바뀌어 비운다. */
     private int ignoredEditVersion;
@@ -1072,7 +1073,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         cfgLearn = cfgWords && prefs.learnWords();
         cfgPredict = prefs.predictNext();
         suggester.setUserEnabled(cfgLearn);
-        suggester.setKeyRows(KeyboardLayout.koreanLetterRows(prefs));
+        suggester.setKeyRows(KeyboardLayout.koreanLetterRows(prefs), KeyboardLayout.koreanAspirateSwipe(prefs));
         if (suggester.packChanged()) {
             // 설정에서 사전 팩을 가져오거나 지웠다: 읽어 둔 사전을 놓고 필요할 때 새 사전을 읽는다.
             suggester.release();
@@ -2162,6 +2163,17 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             syncComposer();
         } else {
             commitComposing();
+            if (s.length() == 1 && CORRECT_PUNCT.indexOf(s.charAt(0)) >= 0 && punctCorrectActive()) {
+                // 문장 부호도 스페이스처럼 단어를 끝내므로 앞 단어를 고친다 (굴자. → 글자.). 기호 자판으로 바꿔 친 물음표도.
+                InputConnection ic = getCurrentInputConnection();
+                CharSequence before = ic == null ? null : ic.getTextBeforeCursor(32, 0);
+                mirror.fill(before, 32);
+                if (ic != null && tryAutoCorrect(ic, before, s)) {
+                    if (shiftState == 1 && letters && !keyboard.isShiftHeld()) setShift(0);
+                    scheduleSuggest();
+                    return;
+                }
+            }
             if (letters && !Character.isLetterOrDigit(s.charAt(0))) learnCurrentWord(null);
             commitText(s);
         }
@@ -2272,7 +2284,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (autoCorrectActive()) {
             before = ic.getTextBeforeCursor(32, 0);
             mirror.fill(before, 32);
-            if (tryAutoCorrect(ic, before)) return;
+            if (tryAutoCorrect(ic, before, " ")) return;
         }
         learnCurrentWord(before);
         correctedTo = null;
@@ -2648,6 +2660,13 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return cfgAutoCorrect && wordsOn() && lettersLayout();
     }
 
+    /** 문장 부호로 앞 단어를 자동 수정하는지: 글자 자판과 기호 자판 (숫자 자판은 아니다). */
+    private boolean punctCorrectActive() {
+        KeyboardLayout l = keyboard == null ? null : keyboard.getLayout();
+        return cfgAutoCorrect && wordsOn() && l != null
+                && (l.isLetters() || l.kind == KeyboardLayout.SYMBOLS || l.kind == KeyboardLayout.SYMBOLS_2);
+    }
+
     private boolean learningOn() {
         return cfgLearn && wordsOn() && lettersLayout();
     }
@@ -3014,7 +3033,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         ic.endBatchEdit();
         mirror.replaceTail(word.length(), inserted);
         // 단축어의 문장은 학습하지 않는다
-        if (!shortcutShown) learnWord(replacement, korean ? WordSuggester.previousWord(before) : null, false);
+        if (!shortcutShown) {
+            if (korean && cfgLearn && learnAllowed && !replacement.equals(word)) {
+                runIo(() -> suggester.notePick(word, replacement));   // 같은 오타에서 여러 번 고르면 그 단어로 자동 수정한다
+            }
+            learnWord(replacement, korean ? WordSuggester.previousWord(before) : null, false);
+        }
         lastWasSpace = withSpace;
         if (withSpace) lastSpaceTime = SystemClock.uptimeMillis();
         composer.reset();
@@ -3048,7 +3072,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         updateAutoCap();
     }
 
-    /** 추천을 길게 누르면: 학습한 단어면 학습한 단어에서 지운다. 기본 사전 단어는 내 입력 기록만 지운다. */
+    /**
+     * 추천을 길게 누르면: 학습한 단어면 학습한 단어에서 지운다. 기본 사전 단어는 내 입력 기록만 지운다.
+     * 지운 단어는 다시 학습하지 않는다 (설정의 '학습하지 않는 단어 보기'에서 되돌린다).
+     */
     private boolean forgetSuggestion(int index) {
         if (index >= suggestions.length || !cfgLearn || shortcutShown) return false;
         final String word = suggestions[index];
@@ -3059,8 +3086,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 feedback.onKey(null);
                 Runnable forget = () -> runIo(() -> {
                     usageHistory.remove(word);
+                    userWords.block(word, lang);
                     main.post(() -> {
-                        Toast.makeText(this, "'" + word + "'의 입력 기록을 지웠습니다", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, "'" + word + "'의 입력 기록을 지웠습니다. 다시 학습하지 않습니다",
+                                Toast.LENGTH_SHORT).show();
                         updateSuggestions();
                     });
                 });
@@ -3075,10 +3104,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
         feedback.onKey(null);
         Runnable delete = () -> runIo(() -> {
-            userWords.remove(word, lang);
+            userWords.forget(word, lang);
             if (lang) usageHistory.remove(word);
             main.post(() -> {
-                Toast.makeText(this, "'" + word + "'" + WordSuggester.objectParticle(word) + " 삭제했습니다",
+                Toast.makeText(this, "'" + word + "'" + WordSuggester.objectParticle(word) + " 삭제했습니다. 다시 학습하지 않습니다",
                         Toast.LENGTH_SHORT).show();
                 updateSuggestions();
             });
@@ -3214,8 +3243,14 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
     }
 
-    /** 스페이스를 눌렀을 때 입력한 단어를 고칠 수 있으면 고치고 띄어 쓴다. 고쳤으면 true. before = 앱에서 읽은 커서 앞 글자. */
-    private boolean tryAutoCorrect(InputConnection ic, CharSequence before) {
+    /** 단어를 끝내며 자동 수정하는 문장 부호 (스페이스와 함께). */
+    private static final String CORRECT_PUNCT = ".,?!~…;:";
+
+    /**
+     * 스페이스나 문장 부호(suffix)를 눌렀을 때 입력한 단어를 고칠 수 있으면 고치고 suffix를 넣는다. 고쳤으면 true.
+     * before = 앱에서 읽은 커서 앞 글자.
+     */
+    private boolean tryAutoCorrect(InputConnection ic, CharSequence before, String suffix) {
         if (before == null) return false;
         String word = WordSuggester.currentWord(before, korean);
         // 읽은 글자 전체가 한 단어면 더 긴 글자 덩어리의 뒷부분일 수 있어 고치지 않는다.
@@ -3233,10 +3268,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         String fixed = suggester.autoCorrect(word, prev, korean, fieldKind);
         if (fixed == null) return false;
         learnWord(fixed, prev, false);   // 고친 단어도 내가 쓴 말로 센다 (되돌리면 입력한 그대로를 다시 센다)
-        replaceBeforeCursor(ic, word, fixed + " ");
-        mirror.replaceTail(word.length(), fixed + " ");
+        replaceBeforeCursor(ic, word, fixed + suffix);
+        mirror.replaceTail(word.length(), fixed + suffix);
         correctedFrom = word;
         correctedTo = fixed;
+        correctedSuffix = suffix;
         lastWasSpace = false;
         clearSuggestions();
         updateAutoCap();
@@ -3272,19 +3308,23 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         ic.endBatchEdit();
     }
 
-    /** 자동 수정 직후 지우기 키를 누르면 입력한 그대로 되돌리고, 같은 단어는 이번에 다시 고치지 않는다. */
+    /**
+     * 자동 수정 직후 지우기 키를 누르면 (함께 넣은 스페이스·문장 부호를 지우고) 입력한 그대로 되돌리고, 같은 단어는 이번에
+     * 다시 고치지 않는다. 추천란에서 여러 번 골라 고치게 된 단어였으면 그 기억도 지운다.
+     */
     private boolean undoAutoCorrect() {
         if (correctedTo == null) return false;
-        String from = correctedFrom, to = correctedTo;
+        String from = correctedFrom, to = correctedTo + correctedSuffix;
         correctedTo = null;
         InputConnection ic = getCurrentInputConnection();
         if (ic == null) return false;
-        CharSequence before = ic.getTextBeforeCursor(to.length() + 1, 0);
-        if (before == null || !before.toString().equals(to + " ")) return false;
-        replaceBeforeCursor(ic, to + " ", from);
-        mirror.replaceTail(to.length() + 1, from);
+        CharSequence before = ic.getTextBeforeCursor(to.length(), 0);
+        if (before == null || !before.toString().equals(to)) return false;
+        replaceBeforeCursor(ic, to, from);
+        mirror.replaceTail(to.length(), from);
         syncIgnoredWithUserWords();
         correctionIgnored.add(from);
+        if (korean) runIo(() -> suggester.forgetPick(from));
         learnWord(from, null, false);   // 되돌릴 때마다 한 번씩 센다. 두 번 되돌리면 학습되어 더는 고치지 않는다.
         scheduleSuggest();
         return true;
