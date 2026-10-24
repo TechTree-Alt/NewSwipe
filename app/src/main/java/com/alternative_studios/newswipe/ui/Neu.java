@@ -75,11 +75,12 @@ public final class Neu {
             fill.setShader(concave(w, h, blend(t.background, face, t.tune(KeyboardTheme.T_KEY_START)), face,
                     t.tune(KeyboardTheme.T_KEY_END)));
         } else {
-            // 회색 면: 면 색을 바탕색 쪽(+)이나 검정 쪽(-)으로 옮긴 뒤, 왼쪽 위는 검정 쪽으로, 오른쪽 아래는 바탕색 쪽으로 조금 옮긴다.
+            // 회색 면: 면 색을 밝은 쪽(+, t.lift)이나 검정 쪽(-)으로 옮긴 뒤, 왼쪽 위는 검정 쪽으로, 오른쪽 아래는 밝은 쪽으로 조금 옮긴다.
+            // 밝은 쪽을 바탕색으로 두면 다크 모드(바탕색이 면보다 어둡다)에서 '밝게'가 어두워진다.
             float shift = t.tune(KeyboardTheme.T_FN_SHIFT);
-            int base = shift >= 0 ? blend(face, t.background, shift) : blend(face, 0xFF000000, -shift);
+            int base = shift >= 0 ? blend(face, t.lift, shift) : blend(face, 0xFF000000, -shift);
             fill.setShader(concave(w, h, blend(base, 0xFF000000, t.tune(KeyboardTheme.T_FN_START)),
-                    blend(base, t.background, t.tune(KeyboardTheme.T_FN_END_TINT)), t.tune(KeyboardTheme.T_FN_END)));
+                    blend(base, t.lift, t.tune(KeyboardTheme.T_FN_END_TINT)), t.tune(KeyboardTheme.T_FN_END)));
         }
         c.save();
         c.translate(r.left, r.top);

@@ -19,6 +19,11 @@ public final class KeyboardTheme {
     public final int popup;
     public final int popupSelected;
     public final int divider;
+    /**
+     * 면을 '밝게' 할 때 섞는 색. 라이트 모드는 키 면보다 밝은 바탕색, 다크 모드는 바탕색이 키 면보다 어두워서
+     * 그쪽으로 섞으면 오히려 어두워지므로 흰색이다.
+     */
+    public final int lift;
     /** Newmorphism 모드: 키·버튼이 바탕에서 솟아오르고 누르면 안으로 들어간다 (ui.Neu). */
     public final boolean neu;
     /**
@@ -55,6 +60,7 @@ public final class KeyboardTheme {
             hint = 0xFF9A9CA3;
             popup = 0xFF4A4C52;
             divider = 0xFF33343A;
+            lift = 0xFFFFFFFF;
             neuLight = light << 24 | 0xFFFFFF;
             neuDark = shadow << 24;
             neuDarkFunction = shadow << 24;
@@ -67,6 +73,7 @@ public final class KeyboardTheme {
             hint = 0xFF7D828B;
             popup = 0xFFFFFFFF;
             divider = 0xFFD5D8DE;
+            lift = 0xFFE6E8EC;
             neuLight = 0xFFFFFFFF;
             neuDark = 0x59A0A8B6;
             neuDarkFunction = 0x73808A9A;
