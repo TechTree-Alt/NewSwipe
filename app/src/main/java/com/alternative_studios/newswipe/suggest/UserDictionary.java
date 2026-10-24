@@ -247,6 +247,27 @@ public final class UserDictionary {
         return e != null && e.count >= KNOWN_COUNT ? e.count : 0;
     }
 
+    /**
+     * 설정의 단어 검색에 맞는지: 검색어가 들어 있거나(영어는 대소문자 무시), 검색어가 자음만이면 단어의 초성에 들어 있으면
+     * (ㅈㄷㅅㅈ → 자동수정). 빈 검색어는 모두 맞는다.
+     */
+    public static boolean matchesQuery(String word, String query) {
+        if (query.isEmpty()) return true;
+        if (word.toLowerCase(Locale.ROOT).contains(query.toLowerCase(Locale.ROOT))) return true;
+        for (int i = 0; i < query.length(); i++) {
+            char c = query.charAt(i);
+            if (c < 'ㄱ' || c > 'ㅎ') return false;
+        }
+        StringBuilder initials = new StringBuilder();
+        for (int i = 0; i < word.length(); i++) {
+            char c = word.charAt(i);
+            initials.append(c >= 0xAC00 && c <= 0xD7A3 ? CHOSUNG.charAt((c - 0xAC00) / 588) : ' ');
+        }
+        return initials.indexOf(query) >= 0;
+    }
+
+    private static final String CHOSUNG = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
+
     /** 화면 스레드용: 아는(두 번 이상 입력한) 한글 단어 중 글자 수가 minLen..maxLen인 것. 읽지 않았으면 빈 목록. */
     public synchronized List<String> knownKoreanIfLoaded(int minLen, int maxLen) {
         List<String> out = new ArrayList<>();

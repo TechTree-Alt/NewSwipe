@@ -103,6 +103,8 @@ public final class SettingsActivity extends Activity {
         SettingsFrame frame = sectionName == null
                 ? new SettingsFrame(this, getString(R.string.app_name), "밀어서 입력하고 조작하는 한글 입력 시스템")
                         .withSearch(this::onSearchQuery)
+                : LEARNED.equals(sectionId) || BLOCKED.equals(sectionId)
+                ? new SettingsFrame(this, sectionName, getString(R.string.app_name)).withSearch(this::onWordSearch, "단어 검색")
                 : new SettingsFrame(this, sectionName, getString(R.string.app_name));
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
@@ -2121,6 +2123,26 @@ public final class SettingsActivity extends Activity {
         }).start();
     }
 
+    /** 학습한 단어·학습하지 않는 단어 화면의 검색어 (비어 있으면 모두 보인다). */
+    private String wordQuery = "";
+
+    /** 단어 검색: 검색어가 바뀔 때마다 목록을 그 검색어로 다시 그린다. */
+    private void onWordSearch(String raw) {
+        String q = raw == null ? "" : raw.trim();
+        if (q.equals(wordQuery)) return;
+        wordQuery = q;
+        String id = getIntent().getStringExtra(EXTRA_SECTION);
+        list.removeAllViews();
+        if (LEARNED.equals(id)) buildLearned();
+        else if (BLOCKED.equals(id)) buildBlocked();
+    }
+
+    /** 검색 결과가 없을 때의 안내. */
+    private void noWordMatch() {
+        card().addView(note("'" + wordQuery + "'" + com.alternative_studios.newswipe.suggest.WordSuggester.objectParticle(wordQuery)
+                + " 포함한 단어가 없습니다."));
+    }
+
     /** 한 번에 그리는 학습한 단어 줄 수. 더 있으면 '더 보기'로 이어서 그린다 (수천 줄을 한꺼번에 만들지 않도록). */
     private static final int LEARNED_PAGE = 200;
 
@@ -2137,6 +2159,14 @@ public final class SettingsActivity extends Activity {
                     + "자주 쓰는 단어를 기억해 여기에 보여 줍니다."));
             return;
         }
+        boolean searching = !wordQuery.isEmpty();
+        if (searching) {
+            all.removeIf(w -> !UserDictionary.matchesQuery(w[0], wordQuery));
+            if (all.isEmpty()) {
+                noWordMatch();
+                return;
+            }
+        }
         // 두 번 이상 쓴 단어(실제로 쓰이는 것)와, 한 번만 쓴 후보를 나눈다.
         java.util.List<String[]> known = new java.util.ArrayList<>(), candidates = new java.util.ArrayList<>();
         for (String[] w : all) {
@@ -2146,7 +2176,9 @@ public final class SettingsActivity extends Activity {
         card().addView(summary);
         int[] remaining = {known.size(), candidates.size()};
         Runnable updateSummary = () -> summary.setText(remaining[0] + remaining[1] == 0
-                ? "학습한 단어를 모두 지웠습니다."
+                ? (searching ? "찾은 단어를 모두 지웠습니다." : "학습한 단어를 모두 지웠습니다.")
+                : searching
+                ? "'" + wordQuery + "' 검색 결과: 학습한 단어 " + remaining[0] + "개, 후보 " + remaining[1] + "개 (많이 쓴 순서)"
                 : "학습한 단어 " + remaining[0] + "개, 후보 " + remaining[1] + "개. 많이 쓴 순서입니다. "
                 + "학습한 단어는 추천에 먼저 나오고 자동 수정에서 빠집니다.");
         updateSummary.run();
@@ -2155,7 +2187,10 @@ public final class SettingsActivity extends Activity {
             LinearLayout words = learnedCard("학습한 단어");
             addLearnedRows(words, known, 0, dict, remaining, 0, updateSummary);
         }
-        if (!candidates.isEmpty()) {
+        if (!candidates.isEmpty() && searching) {
+            // 검색 중에는 찾은 후보를 바로 보인다.
+            addLearnedRows(learnedCard("후보 (한 번 입력한 단어)"), candidates, 0, dict, remaining, 1, updateSummary);
+        } else if (!candidates.isEmpty()) {
             // 후보는 실제로 쓰이지 않으므로 접어 둔다.
             LinearLayout cands = learnedCard("후보 (한 번 입력한 단어)");
             TextView open = new TextView(this);
@@ -2267,11 +2302,22 @@ public final class SettingsActivity extends Activity {
                     + "그 단어는 다시 학습하지 않고 여기에 보입니다."));
             return;
         }
+        boolean searching = !wordQuery.isEmpty();
+        if (searching) {
+            all = new java.util.ArrayList<>(all);
+            all.removeIf(w -> !UserDictionary.matchesQuery(w, wordQuery));
+            if (all.isEmpty()) {
+                noWordMatch();
+                return;
+            }
+        }
         TextView summary = note("");
         card().addView(summary);
         int[] remaining = {all.size()};
         Runnable updateSummary = () -> summary.setText(remaining[0] == 0
-                ? "학습하지 않는 단어가 없습니다."
+                ? (searching ? "찾은 단어를 모두 목록에서 뺐습니다." : "학습하지 않는 단어가 없습니다.")
+                : searching
+                ? "'" + wordQuery + "' 검색 결과: 학습하지 않는 단어 " + remaining[0] + "개"
                 : "학습하지 않는 단어 " + remaining[0] + "개. 지운 단어라 다시 입력해도 학습하지 않습니다. "
                 + "되돌림 버튼을 누르면 목록에서 빼고 다시 학습합니다.");
         updateSummary.run();

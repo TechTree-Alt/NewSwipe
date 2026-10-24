@@ -285,4 +285,15 @@ public class UserDictionaryTest {
         d.release();
         assertEquals(v2, d.editVersion());   // 메모리에서 내리는 건 편집이 아니다
     }
+
+    @Test
+    public void searchMatchesTextAndInitials() {
+        assertTrue(UserDictionary.matchesQuery("자동수정", ""));
+        assertTrue(UserDictionary.matchesQuery("자동수정", "수정"));
+        assertTrue(UserDictionary.matchesQuery("자동수정", "ㅈㄷㅅㅈ"));    // 초성
+        assertTrue(UserDictionary.matchesQuery("자동수정", "ㅅㅈ"));
+        assertFalse(UserDictionary.matchesQuery("자동수정", "ㅈㅅ"));      // 이어지지 않는 초성
+        assertFalse(UserDictionary.matchesQuery("자동수정", "자덩"));
+        assertTrue(UserDictionary.matchesQuery("NewSwipe", "swipe"));     // 영어는 대소문자 무시
+    }
 }
