@@ -119,11 +119,11 @@ public final class Neu {
     }
 
     /**
-     * 눌려 들어간 면의 안쪽 밝은 그림자(오른쪽·아래 가장자리). 라이트 모드의 강조색 면은 채도가 높아 순백색 그림자가
-     * 하얀 띠로 보이므로, 다크 모드와 같은 옅은 흰색(13%)을 쓴다. 다른 면은 밝은 그림자 그대로다.
+     * 눌려 들어간 면의 안쪽 밝은 그림자(오른쪽·아래 가장자리). 강조색 면은 채도가 높아 순백색 그림자가 하얀 띠로
+     * 보이므로 따로 정한다 (KeyboardTheme.neuPressedAccent). 다른 면은 밝은 그림자 그대로다.
      */
     public static int pressedLight(KeyboardTheme t, int face) {
-        return face == t.accent && !t.dark ? 0x21FFFFFF : t.neuLight;
+        return face == t.accent ? t.neuPressedAccent : t.neuLight;
     }
 
     /**
