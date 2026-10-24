@@ -1,11 +1,8 @@
 package com.alternative_studios.newswipe.keyboard;
 
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.BlurMaskFilter;
 import android.graphics.Canvas;
 import android.graphics.Paint;
-import android.graphics.Path;
 import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.os.Handler;
@@ -13,6 +10,8 @@ import android.os.Looper;
 import android.util.TypedValue;
 import android.view.MotionEvent;
 import android.view.View;
+
+import com.alternative_studios.newswipe.ui.Neu;
 
 import java.util.ArrayList;
 import java.util.Locale;
@@ -198,8 +197,6 @@ public final class KeyboardView extends View {
     private boolean keyShadow;
     private int keyShadowStrength = 50;
     private Paint shadowPaint;
-    /** 뉴모피즘 키: 배경에서 솟아오른 키, 누르면 안으로 들어간다. 켜면 keyShadow는 쓰지 않는다. */
-    private boolean neu;
     private boolean spaceCursor = true;
     private boolean spaceSelect = true;
     private boolean gapCursor = true;
@@ -303,7 +300,6 @@ public final class KeyboardView extends View {
         if (gapX == x && gapY == y) return;
         gapX = x;
         gapY = y;
-        clearNeuCache();
         invalidate();
     }
 
@@ -331,7 +327,6 @@ public final class KeyboardView extends View {
     }
 
     public void setTheme(KeyboardTheme t) {
-        if (theme != t) clearNeuCache();
         theme = t;
         invalidate();
     }
@@ -364,7 +359,6 @@ public final class KeyboardView extends View {
     public void setKeyRadius(float px) {
         if (radius != px) {
             radius = px;
-            clearNeuCache();
             invalidate();
         }
     }
@@ -374,14 +368,6 @@ public final class KeyboardView extends View {
         if (keyShadow != on || keyShadowStrength != strength) {
             keyShadow = on;
             keyShadowStrength = strength;
-            invalidate();
-        }
-    }
-
-    public void setNeumorphic(boolean on) {
-        if (neu != on) {
-            neu = on;
-            clearNeuCache();
             invalidate();
         }
     }
@@ -652,7 +638,7 @@ public final class KeyboardView extends View {
         // 미리보기가 위로 넘어가려고 클리핑을 껐으므로, drawColor를 쓰면 위쪽 툴바까지 덮어 버린다.
         fill.setColor(theme.background);
         c.drawRect(0, 0, getWidth(), getHeight(), fill);
-        if (neu) {
+        if (theme.neu) {
             // 그림자를 먼저 모두 깔고 키 면을 그 위에 그려, 이웃 키의 그림자가 키 면을 덮지 않게 한다.
             for (KeyboardLayout.Row row : layout.rows) {
                 for (Key k : row.keys) {
@@ -732,12 +718,13 @@ public final class KeyboardView extends View {
             bg = k.isFunctional() ? theme.functionKey : theme.key;
         }
         float cx = r.centerX(), cy = r.centerY();
-        if (neu) {
+        if (theme.neu) {
             boolean accent = bg == theme.accent;
-            if (!accent) bg = bg == theme.functionKey ? theme.neuFunction : theme.neuKey;
             if (pressed) {
-                // 눌린 키는 배경 높이까지 가라앉고 안쪽에 그림자가 진다. 글자도 함께 살짝 내려간다.
-                drawNeuInset(c, r, accent ? blend(theme.accent, theme.text, 0.12f) : theme.background, accent);
+                // 눌린 키는 안으로 들어가 테두리 안쪽에 그림자가 진다. 글자도 함께 살짝 내려간다.
+                Neu.drawInset(c, r, radius, neuOffset(), neuBlur(),
+                        accent ? blend(theme.accent, theme.text, 0.12f) : theme.keyPressed, theme.neuLight,
+                        accent ? blend(theme.accent, 0xFF000000, 0.45f) & 0xB3FFFFFF : theme.neuDark, fill);
                 cy += dp(1);
             } else {
                 fill.setColor(bg);
@@ -801,25 +788,6 @@ public final class KeyboardView extends View {
 
     // ---------------------------------------------------------------- 뉴모피즘
 
-    /*
-     * 솟아오른 키의 부드러운 그림자는 흐림(blur)이 들어가 그리기 비싸다. 그래서 키 크기마다 한 번만
-     * 절반 해상도 비트맵으로 구워 두고, 다시 그릴 때는 비트맵 하나만 늘려 붙인다. 자판에 나오는 키 크기는
-     * 몇 가지뿐이라 비트맵 몇 장(한 장에 수십 KB)이면 된다. 흐림을 실제로 그리는 것은 눌린 키(보통 한두 개)뿐이다.
-     */
-    private static final int NEU_CACHE = 12;
-    private static final float NEU_SCALE = 0.5f;
-    private final Bitmap[] neuBitmaps = new Bitmap[NEU_CACHE];
-    private final int[] neuKeys = new int[NEU_CACHE * 3];
-    private int neuNext;
-    private Paint neuBitmapPaint, neuPaint;
-    private Path neuPath;
-    private final RectF neuRect = new RectF();
-
-    private void clearNeuCache() {
-        java.util.Arrays.fill(neuBitmaps, null);
-        neuNext = 0;
-    }
-
     /** 그림자가 키에서 비켜나는 거리. 키 사이 간격이 좁으면 그만큼 얕게 한다. */
     private float neuOffset() {
         return Math.max(dp(1), Math.min(dp(2.5f), Math.min(gapX, gapY) * 0.45f));
@@ -829,74 +797,12 @@ public final class KeyboardView extends View {
         return neuOffset() * 1.3f;
     }
 
+    /** 솟아오른 키의 그림자 (키 면은 drawKey가 그 위에 그린다). 그림자는 Neu가 크기마다 한 번만 구워 둔 비트맵이다. */
     private void drawNeuRaised(Canvas c, Key k) {
-        float w = k.rect.width() - gapX, h = k.rect.height() - gapY;
-        if (w <= 0 || h <= 0) return;
         boolean accent = k.type == Key.ENTER || k.type == Key.SHIFT && shiftState == 2 && !gridColors;
-        // 강조색 키(엔터)는 어두운 그림자 대신 강조색이 은은하게 번지게 한다.
-        int dark = accent ? (theme.accent & 0xFFFFFF) | (theme.dark ? 0x66000000 : 0x8C000000) : theme.neuDark;
-        Bitmap bm = neuShadow(Math.round(w), Math.round(h), dark);
-        float pad = neuOffset() + neuBlur() * 2;
-        float l = k.rect.left + gapX / 2, t = k.rect.top + gapY / 2;
-        neuRect.set(l - pad, t - pad, l + w + pad, t + h + pad);
-        c.drawBitmap(bm, null, neuRect, neuBitmapPaint);
-    }
-
-    private Bitmap neuShadow(int w, int h, int dark) {
-        for (int i = 0; i < NEU_CACHE; i++) {
-            if (neuBitmaps[i] != null && neuKeys[i * 3] == w && neuKeys[i * 3 + 1] == h && neuKeys[i * 3 + 2] == dark) {
-                return neuBitmaps[i];
-            }
-        }
-        if (neuBitmapPaint == null) neuBitmapPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
-        float s = NEU_SCALE, o = neuOffset() * s, b = neuBlur() * s, pad = o + b * 2, rr = radius * s;
-        Bitmap bm = Bitmap.createBitmap((int) Math.ceil(w * s + pad * 2), (int) Math.ceil(h * s + pad * 2),
-                Bitmap.Config.ARGB_8888);
-        Canvas bc = new Canvas(bm);
-        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-        p.setMaskFilter(new BlurMaskFilter(b, BlurMaskFilter.Blur.NORMAL));
-        // 빛은 왼쪽 위에서: 왼쪽 위로 밝은 그림자, 오른쪽 아래로 어두운 그림자.
-        p.setColor(theme.neuLight);
-        bc.drawRoundRect(pad - o, pad - o, pad - o + w * s, pad - o + h * s, rr, rr, p);
-        p.setColor(dark);
-        bc.drawRoundRect(pad + o, pad + o, pad + o + w * s, pad + o + h * s, rr, rr, p);
-        int i = neuNext;
-        neuNext = (neuNext + 1) % NEU_CACHE;
-        neuBitmaps[i] = bm;
-        neuKeys[i * 3] = w;
-        neuKeys[i * 3 + 1] = h;
-        neuKeys[i * 3 + 2] = dark;
-        return bm;
-    }
-
-    /** 눌린 키: 면을 칠하고 테두리 안쪽에 그림자를 넣어 오목하게 들어간 모양을 만든다. */
-    private void drawNeuInset(Canvas c, RectF r, int face, boolean accent) {
-        fill.setColor(face);
-        c.drawRoundRect(r, radius, radius, fill);
-        if (neuPaint == null) {
-            neuPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            neuPaint.setStyle(Paint.Style.STROKE);
-            neuPath = new Path();
-        }
-        float o = neuOffset(), b = neuBlur();
-        if (neuPaint.getStrokeWidth() != b * 2) {   // 흐림 필터는 간격·밀도가 바뀔 때만 새로 만든다
-            neuPaint.setMaskFilter(new BlurMaskFilter(b, BlurMaskFilter.Blur.NORMAL));
-            neuPaint.setStrokeWidth(b * 2);
-        }
-        neuPath.reset();
-        neuPath.addRoundRect(r, radius, radius, Path.Direction.CW);
-        c.save();
-        c.clipPath(neuPath);
-        // 테두리 바깥을 감싸는 굵은 선을 비켜 그리면, 선의 흐린 안쪽 가장자리만 키 안으로 들어와 안쪽 그림자가 된다.
-        neuPaint.setColor(accent ? blend(theme.accent, 0xFF000000, 0.45f) & 0xB3FFFFFF : theme.neuDark);
-        neuRect.set(r);
-        neuRect.offset(o, o);
-        neuRect.inset(-b, -b);
-        c.drawRoundRect(neuRect, radius + b, radius + b, neuPaint);
-        neuPaint.setColor(theme.neuLight);
-        neuRect.offset(-o * 2, -o * 2);
-        c.drawRoundRect(neuRect, radius + b, radius + b, neuPaint);
-        c.restore();
+        Neu.drawRaised(c, k.rect.left + gapX / 2, k.rect.top + gapY / 2, k.rect.right - gapX / 2,
+                k.rect.bottom - gapY / 2, radius, neuOffset(), neuBlur(),
+                theme.neuLight, accent ? Neu.accentShadow(theme) : theme.neuDark);
     }
 
     private void drawCentered(Canvas c, String s, float cx, float cy) {
@@ -1620,7 +1526,6 @@ public final class KeyboardView extends View {
         super.onConfigurationChanged(newConfig);
         density = getResources().getDisplayMetrics().density;
         updateTextSizes();
-        clearNeuCache();
     }
 
     /**

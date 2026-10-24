@@ -59,6 +59,7 @@ import com.alternative_studios.newswipe.keyboard.SwipeAction;
 import com.alternative_studios.newswipe.ui.ClipChip;
 import com.alternative_studios.newswipe.ui.EditChip;
 import com.alternative_studios.newswipe.ui.IconButton;
+import com.alternative_studios.newswipe.ui.Neu;
 import com.alternative_studios.newswipe.ui.SwipeVertical;
 import com.alternative_studios.newswipe.ui.SwipeStrip;
 import com.alternative_studios.newswipe.suggest.Shortcuts;
@@ -947,6 +948,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         ClipChip.Slot slot = new ClipChip.Slot(this);
         slot.setVisibility(View.GONE);
         clipChip = new ClipChip(this, theme.text, theme.hint, theme.key, theme.keyPressed);
+        Neu.apply(clipChip, theme, theme.key, Ui.chipRadius(this));
         clipChip.setOnClickListener(v -> {
             feedback.onToolbar();
             pasteClipChip();
@@ -990,6 +992,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     private EditChip editChip(int icon, String label, View.OnClickListener l) {
         EditChip t = new EditChip(this, icon, label, theme.text, theme.key, theme.keyPressed);
+        Neu.apply(t, theme, theme.key, Ui.chipRadius(this));
         t.setOnClickListener(v -> {
             feedback.onToolbar();
             l.onClick(v);
@@ -1044,6 +1047,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         searchPill = new LinearLayout(this);
         searchPill.setGravity(Gravity.CENTER_VERTICAL);
         searchPill.setBackground(Ui.round(theme.functionKey, Ui.chipRadius(this)));
+        Neu.apply(searchPill, theme, theme.functionKey, Ui.chipRadius(this));
         searchPill.setPadding(Ui.dp(this, 10), 0, Ui.dp(this, 12), 0);
         IconButton glass = new IconButton(this, Icons.SEARCH, theme.hint, theme.keyPressed, null);
         glass.setClickable(false);
@@ -1132,7 +1136,6 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                     Ui.dp(this, prefs.fnSwipeThresholdDp()) * 1.5f);
         }
         keyboard.setKeyShadow(prefs.keyShadow(), prefs.keyShadowStrength());
-        keyboard.setNeumorphic(prefs.keyNeumorphism());
         keyboard.setKeyRadius(Ui.dp(this, prefs.keyRadiusDp()));
         keyboard.setGridColors(prefs.gridColors());
         if (panel == PANEL_KEYBOARD) topSlot.setVisibility(toolbarGone() ? View.GONE : View.VISIBLE);
@@ -3168,6 +3171,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 확인 줄의 칩 버튼. 취소는 기능키 색, 확인은 강조 색 바탕이다. */
     private TextView forgetButton(String label, int color, int fill, View.OnClickListener l) {
         TextView b = Ui.chipButton(this, label, color, fill, toolbarHeightPx());
+        Neu.apply(b, theme, fill, Ui.chipRadius(this));
         b.setOnClickListener(l);
         return b;
     }

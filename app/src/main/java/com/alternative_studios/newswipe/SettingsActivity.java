@@ -867,9 +867,6 @@ public final class SettingsActivity extends Activity {
         look.addView(toggle("키 그림자", "키 아래에 그림자를 그려 입체감을 줍니다.",
                 Prefs.KEY_SHADOW, prefs.keyShadow(), shadowStrength));
         look.addView(shadowStrength);
-        look.addView(toggle("뉴모피즘 키",
-                "키가 배경에서 부드럽게 솟아오르고, 누르면 안으로 쑥 들어가는 모양으로 그립니다. 켜면 키 그림자 대신 쓰입니다.",
-                Prefs.KEY_NEUMORPHISM, prefs.keyNeumorphism()));
         look.addView(toggle("키 누름 미리보기", "누른 키를 말풍선으로 크게 보여 줍니다.",
                 Prefs.KEY_PREVIEW, prefs.keyPreview()));
         look.addView(toggle("길게 눌러 입력할 문자 힌트 없애기",
@@ -1378,7 +1375,6 @@ public final class SettingsActivity extends Activity {
         oneHandKeys.setTheme(kt);
         applyOneHandPreviewText();
         oneHandKeys.setKeyShadow(prefs.keyShadow(), prefs.keyShadowStrength());
-        oneHandKeys.setNeumorphic(prefs.keyNeumorphism());
         oneHandKeys.setKeyRadius(Ui.dp(this, prefs.keyRadiusDp()));
         oneHandKeys.setGridColors(prefs.gridColors());
         oneHandKeys.setPopupHints(prefs.longPressChars() && !prefs.popupHintHidden());
@@ -1533,7 +1529,6 @@ public final class SettingsActivity extends Activity {
         preview.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), false, prefs.longPressChars(),
                 false, Math.round(prefs.keyTextSize() * (landscape ? LANDSCAPE_PREVIEW_SCALE : 1f)));
         preview.setKeyShadow(prefs.keyShadow(), prefs.keyShadowStrength());
-        preview.setNeumorphic(prefs.keyNeumorphism());
         preview.setKeyRadius(Ui.dp(this, prefs.keyRadiusDp()));
         preview.setGridColors(prefs.gridColors());
         preview.setPopupHints(prefs.longPressChars() && !prefs.popupHintHidden());
@@ -1602,6 +1597,12 @@ public final class SettingsActivity extends Activity {
         keyColors.addView(toggle("색 정렬",
                 "Shift 키와 ⌫를 글자 키 색으로, 스페이스바는 다른 기능키 색으로 바꿉니다.",
                 Prefs.GRID_COLORS, prefs.gridColors()));
+
+        LinearLayout neu = section("Newmorphism");
+        neu.addView(toggle("Newmorphism 모드",
+                "키와 도구 막대·클립보드·이모지 창의 버튼이 바탕에서 부드럽게 솟아오르고, 누르면 안으로 쑥 들어가는 모양으로 그립니다. "
+                        + "켜면 키 그림자 대신 쓰입니다.",
+                Prefs.NEWMORPHISM, prefs.newmorphism()));
     }
 
     private static int indexOf(String[] values, String v) {

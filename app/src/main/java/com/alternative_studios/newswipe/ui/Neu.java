@@ -1,0 +1,220 @@
+package com.alternative_studios.newswipe.ui;
+
+import android.graphics.Bitmap;
+import android.graphics.BlurMaskFilter;
+import android.graphics.Canvas;
+import android.graphics.ColorFilter;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.PixelFormat;
+import android.graphics.Rect;
+import android.graphics.RectF;
+import android.graphics.drawable.Drawable;
+import android.view.View;
+
+import com.alternative_studios.newswipe.keyboard.KeyboardTheme;
+
+/**
+ * Newmorphism 모양: 바탕에서 부드럽게 솟아오른 면(왼쪽 위 밝은 그림자, 오른쪽 아래 어두운 그림자)과
+ * 누르면 안으로 들어간 면(테두리 안쪽 그림자). 자판 키, 도구 막대 버튼, 클립보드·이모지 창의 버튼이 같이 쓴다.
+ *
+ * <p>흐린 그림자는 그리기 비싸다. 솟아오른 그림자는 크기마다 한 번만 절반 해상도 비트맵으로 구워 두고(모든 뷰가 함께 쓴다)
+ * 다시 그릴 때는 비트맵 하나만 늘려 붙인다. 화면에 나오는 크기는 몇 가지뿐이라 비트맵 몇 장(한 장에 수십 KB)이면 된다.
+ * 흐림을 그때그때 그리는 것은 눌린 것(보통 한두 개)뿐이다. 모두 메인 스레드에서만 부른다.
+ */
+public final class Neu {
+    private Neu() {
+    }
+
+    private static final int CACHE = 24;
+    private static final int FIELDS = 6;
+    private static final float SCALE = 0.5f;
+    private static final Bitmap[] bitmaps = new Bitmap[CACHE];
+    private static final int[] keys = new int[CACHE * FIELDS];
+    private static int next;
+    private static final Paint bitmapPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
+    private static final Paint insetPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private static final Path path = new Path();
+    private static final RectF rect = new RectF();
+
+    static {
+        insetPaint.setStyle(Paint.Style.STROKE);
+    }
+
+    /** 강조색 면의 그림자: 어두운 그림자 대신 강조색이 은은하게 번진다. */
+    public static int accentShadow(KeyboardTheme t) {
+        return (t.accent & 0xFFFFFF) | (t.dark ? 0x66000000 : 0x8C000000);
+    }
+
+    /** 그림자가 면 밖으로 번지는 너비: 이만큼 둘레를 비워 두면 그림자가 잘리지 않는다. */
+    public static float spread(float offset, float blur) {
+        return offset + blur * 2;
+    }
+
+    /**
+     * 솟아오른 면의 그림자를 (l, t, r, b) 면 둘레에 그린다. 면은 그리지 않는다 (그림자를 모두 깐 뒤 면을 그려야
+     * 이웃의 그림자가 면을 덮지 않는다).
+     */
+    public static void drawRaised(Canvas c, float l, float t, float r, float b, float radius,
+                                  float offset, float blur, int light, int dark) {
+        int w = Math.round(r - l), h = Math.round(b - t);
+        if (w <= 0 || h <= 0) return;
+        Bitmap bm = shadow(w, h, radius, offset, blur, light, dark);
+        float pad = spread(offset, blur);
+        rect.set(l - pad, t - pad, r + pad, b + pad);
+        c.drawBitmap(bm, null, rect, bitmapPaint);
+    }
+
+    private static Bitmap shadow(int w, int h, float radius, float offset, float blur, int light, int dark) {
+        int rq = Math.round(radius * 4), oq = Math.round(offset * 16) << 16 | Math.round(blur * 16);
+        for (int i = 0; i < CACHE; i++) {
+            int k = i * FIELDS;
+            if (bitmaps[i] != null && keys[k] == w && keys[k + 1] == h && keys[k + 2] == rq && keys[k + 3] == oq
+                    && keys[k + 4] == light && keys[k + 5] == dark) {
+                return bitmaps[i];
+            }
+        }
+        float s = SCALE, o = offset * s, bl = blur * s, pad = spread(offset, blur) * s, rr = radius * s;
+        Bitmap bm = Bitmap.createBitmap((int) Math.ceil(w * s + pad * 2), (int) Math.ceil(h * s + pad * 2),
+                Bitmap.Config.ARGB_8888);
+        Canvas bc = new Canvas(bm);
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        if (bl > 0) p.setMaskFilter(new BlurMaskFilter(bl, BlurMaskFilter.Blur.NORMAL));
+        // 빛은 왼쪽 위에서: 왼쪽 위로 밝은 그림자, 오른쪽 아래로 어두운 그림자.
+        p.setColor(light);
+        bc.drawRoundRect(pad - o, pad - o, pad - o + w * s, pad - o + h * s, rr, rr, p);
+        p.setColor(dark);
+        bc.drawRoundRect(pad + o, pad + o, pad + o + w * s, pad + o + h * s, rr, rr, p);
+        int i = next;
+        next = (next + 1) % CACHE;
+        int k = i * FIELDS;
+        bitmaps[i] = bm;
+        keys[k] = w;
+        keys[k + 1] = h;
+        keys[k + 2] = rq;
+        keys[k + 3] = oq;
+        keys[k + 4] = light;
+        keys[k + 5] = dark;
+        return bm;
+    }
+
+    /** 눌린 면: face로 칠하고 테두리 안쪽에 그림자를 넣어 오목하게 들어간 모양을 만든다. */
+    public static void drawInset(Canvas c, RectF r, float radius, float offset, float blur, int face, int light, int dark,
+                                 Paint fill) {
+        fill.setColor(face);
+        c.drawRoundRect(r, radius, radius, fill);
+        if (insetPaint.getStrokeWidth() != blur * 2) {   // 흐림 필터는 크기가 바뀔 때만 새로 만든다
+            insetPaint.setMaskFilter(blur > 0 ? new BlurMaskFilter(blur, BlurMaskFilter.Blur.NORMAL) : null);
+            insetPaint.setStrokeWidth(blur * 2);
+        }
+        path.reset();
+        path.addRoundRect(r, radius, radius, Path.Direction.CW);
+        c.save();
+        c.clipPath(path);
+        // 테두리 바깥을 감싸는 굵은 선을 비켜 그리면, 선의 흐린 안쪽 가장자리만 면 안으로 들어와 안쪽 그림자가 된다.
+        insetPaint.setColor(dark);
+        rect.set(r);
+        rect.offset(offset, offset);
+        rect.inset(-blur, -blur);
+        c.drawRoundRect(rect, radius + blur, radius + blur, insetPaint);
+        insetPaint.setColor(light);
+        rect.offset(-offset * 2, -offset * 2);
+        c.drawRoundRect(rect, radius + blur, radius + blur, insetPaint);
+        c.restore();
+    }
+
+    /** Newmorphism 모드면 v의 바탕을 fill 색 면으로 바꾼다 (꺼져 있으면 그대로 둔다). */
+    public static void apply(View v, KeyboardTheme t, int fill, float radius) {
+        apply(v, t, fill, radius, 0, 0);
+    }
+
+    /** insetH·insetV: 면을 뷰 가장자리에서 들여 그리는 거리 (그림자 자리보다 좁으면 그림자 자리만큼 들인다). */
+    public static void apply(View v, KeyboardTheme t, int fill, float radius, int insetH, int insetV) {
+        if (t.neu) v.setBackground(new Chip(t, fill, radius, insetH, insetV));
+    }
+
+    /** 늘 안으로 들어가 있는 바탕 (고른 탭처럼 '켜진' 것을 나타낸다). */
+    public static Drawable sunken(KeyboardTheme t, int fill, float radius) {
+        Chip c = new Chip(t, fill, radius, 0, 0);
+        c.sunken = true;
+        return c;
+    }
+
+    /** 버튼·칩 바탕: 평소에는 솟아오르고, 누르고 있는 동안 안으로 들어간다. */
+    public static final class Chip extends Drawable {
+        private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final RectF face = new RectF();
+        private final int color, pressedColor, light, dark, pressedDark;
+        private final float radius, offset, blur;
+        private final int insetH, insetV;
+        private boolean pressed, sunken;
+
+        Chip(KeyboardTheme t, int color, float radius, int insetH, int insetV) {
+            boolean accent = color == t.accent;
+            this.color = color;
+            pressedColor = accent ? blend(t.accent, t.text, 0.12f) : t.keyPressed;
+            light = t.neuLight;
+            dark = accent ? accentShadow(t) : t.neuDark;
+            pressedDark = accent ? blend(t.accent, 0xFF000000, 0.45f) & 0xB3FFFFFF : t.neuDark;
+            this.radius = radius;
+            this.insetH = insetH;
+            this.insetV = insetV;
+            float density = android.content.res.Resources.getSystem().getDisplayMetrics().density;
+            offset = 1.5f * density;
+            blur = 2f * density;
+        }
+
+        @Override
+        public void draw(Canvas c) {
+            Rect b = getBounds();
+            // 그림자가 뷰 밖으로 나가 잘리지 않도록 면을 그림자 자리만큼 들여 그린다 (흐린 끝자락은 조금 잘려도 된다).
+            float room = offset + blur;
+            face.set(b.left + Math.max(insetH, room), b.top + Math.max(insetV, room),
+                    b.right - Math.max(insetH, room), b.bottom - Math.max(insetV, room));
+            if (face.width() <= 0 || face.height() <= 0) return;
+            float r = Math.min(radius, Math.min(face.width(), face.height()) / 2);
+            if (pressed || sunken) {
+                drawInset(c, face, r, offset, blur, sunken ? color : pressedColor, light, pressedDark, fill);
+            } else {
+                drawRaised(c, face.left, face.top, face.right, face.bottom, r, offset, blur, light, dark);
+                fill.setColor(color);
+                c.drawRoundRect(face, r, r, fill);
+            }
+        }
+
+        @Override
+        public boolean isStateful() {
+            return true;
+        }
+
+        @Override
+        protected boolean onStateChange(int[] state) {
+            boolean p = false;
+            for (int s : state) if (s == android.R.attr.state_pressed) p = true;
+            if (p == pressed) return false;
+            pressed = p;
+            invalidateSelf();
+            return true;
+        }
+
+        @Override
+        public void setAlpha(int alpha) {
+        }
+
+        @Override
+        public void setColorFilter(ColorFilter cf) {
+        }
+
+        @Override
+        public int getOpacity() {
+            return PixelFormat.TRANSLUCENT;
+        }
+    }
+
+    public static int blend(int a, int b, float t) {
+        int ar = (a >> 16) & 0xFF, ag = (a >> 8) & 0xFF, ab = a & 0xFF;
+        int br = (b >> 16) & 0xFF, bg = (b >> 8) & 0xFF, bb = b & 0xFF;
+        return 0xFF000000 | ((int) (ar + (br - ar) * t) << 16) | ((int) (ag + (bg - ag) * t) << 8)
+                | (int) (ab + (bb - ab) * t);
+    }
+}
