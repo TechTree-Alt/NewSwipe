@@ -60,7 +60,7 @@ public final class Neu {
      * 왼쪽 위는 흰 밝은 그림자보다 어둡게, 오른쪽 아래는 어두운 그림자보다 밝게 한다.
      * <ul>
      *   <li>흰 키: 왼쪽 위 바탕색 → 오른쪽 아래 흰색</li>
-     *   <li>회색 기능키: 왼쪽 위 기능키 색 → 오른쪽 아래 바탕색</li>
+     *   <li>회색 기능키: 왼쪽 위 기능키 색 → 오른쪽 아래 기능키 색과 바탕색 사이 (바탕색 쪽으로 40%)</li>
      * </ul>
      * 강조색 키와 다크 테마의 면은 한 가지 색이다.
      */
@@ -72,7 +72,9 @@ public final class Neu {
         }
         int w = Math.max(1, Math.round(r.width())), h = Math.max(1, Math.round(r.height()));
         fill.setColor(0xFF000000);
-        fill.setShader(face == t.key ? concave(w, h, t.background, face) : concave(w, h, face, t.background));
+        // 회색 면은 밝기 차이가 크면 움푹하기보다 얼룩져 보이므로, 바탕색 쪽으로 40%만 밝힌다.
+        fill.setShader(face == t.key ? concave(w, h, t.background, face)
+                : concave(w, h, face, blend(face, t.background, 0.4f)));
         c.save();
         c.translate(r.left, r.top);
         c.drawRoundRect(0, 0, r.width(), r.height(), radius, radius, fill);
