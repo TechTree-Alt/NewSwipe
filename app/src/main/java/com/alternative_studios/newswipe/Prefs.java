@@ -146,6 +146,7 @@ public final class Prefs {
     public static final String KEY_RADIUS = "key_radius";   // 키 모서리 곡률 dp, 0~24 (기본 7)
     public static final String KEY_SHADOW = "key_shadow";
     public static final String KEY_SHADOW_STRENGTH = "key_shadow_strength";   // %, 10~100
+    public static final String KEY_NEUMORPHISM = "key_neumorphism";   // 키를 배경에서 솟아오른 모양으로 그리고, 누르면 안으로 들어가게
     public static final String TOOLBAR = "toolbar";
     public static final String TOOLBAR_BOTTOM = "toolbar_bottom";   // 도구 막대를 자판 아래에 둔다
     public static final String TOOLBAR_HEIGHT = "toolbar_height";   // %, 70~150 (100 = 40dp)
@@ -356,7 +357,7 @@ public final class Prefs {
                 PERIOD_KEY_HIDDEN, ENTER_KEY_HIDDEN, DELETE_KEY_HIDDEN, KOREAN_SHIFT_HIDDEN, KOREAN_SHIFT_FN));
         MENU_PREFIXES.put("layout", keys("balanced_", LANDSCAPE_SPLIT + "_", "swipe_fk_"));
         MENU_KEYS.put("theme", keys(THEME_MODE, ACCENT_MODE, ACCENT_COLOR, GRID_COLORS));
-        MENU_KEYS.put("look", keys(KEYBOARD_HEIGHT, KEY_TEXT_SIZE, KEY_RADIUS, KEY_SHADOW, KEY_SHADOW_STRENGTH,
+        MENU_KEYS.put("look", keys(KEYBOARD_HEIGHT, KEY_TEXT_SIZE, KEY_RADIUS, KEY_SHADOW, KEY_SHADOW_STRENGTH, KEY_NEUMORPHISM,
                 KEY_PREVIEW, POPUP_HINT_HIDDEN, NUMBER_HINT_HIDDEN, PAD_LEFT, PAD_RIGHT, PAD_TOP, PAD_BOTTOM, KEY_GAP_X, KEY_GAP_Y));
         MENU_KEYS.put("input", keys(AUTO_CAP, ENGLISH_FIELDS, DOUBLE_SPACE_PERIOD, DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT,
                 DOUBLE_TAP_CONSONANT_MS, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, SPACE_HIT_SHRINK,
@@ -864,6 +865,7 @@ public final class Prefs {
     public boolean keyShadow() { return sp.getBoolean(KEY_SHADOW, false); }
     public int keyRadiusDp() { return clamp(sp.getInt(KEY_RADIUS, 7), 0, 24); }
     public int keyShadowStrength() { return sp.getInt(KEY_SHADOW_STRENGTH, 50); }
+    public boolean keyNeumorphism() { return sp.getBoolean(KEY_NEUMORPHISM, true); }
     public boolean suggestWords() { return sp.getBoolean(SUGGEST_WORDS, false); }
     /** 이모지 창을 열 때 커서 앞의 글에 맞는 이모지를 최근 탭 맨 위에 추천하는지. */
     public boolean emojiSuggest() { return sp.getBoolean(EMOJI_SUGGEST, true); }

@@ -18,6 +18,11 @@ public final class KeyboardTheme {
     public final int popup;
     public final int popupSelected;
     public final int divider;
+    /** 뉴모피즘 키: 글자 키·기능키 면, 왼쪽 위 밝은 그림자, 오른쪽 아래 어두운 그림자. */
+    public final int neuKey;
+    public final int neuFunction;
+    public final int neuLight;
+    public final int neuDark;
 
     private KeyboardTheme(boolean dark, int accentColor, int onAccentColor) {
         this.dark = dark;
@@ -30,6 +35,10 @@ public final class KeyboardTheme {
             hint = 0xFF9A9CA3;
             popup = 0xFF4A4C52;
             divider = 0xFF33343A;
+            neuKey = 0xFF242529;
+            neuFunction = 0xFF202125;
+            neuLight = 0x12FFFFFF;
+            neuDark = 0xB3000000;
         } else {
             background = 0xFFE6E8EC;
             key = 0xFFFFFFFF;
@@ -39,6 +48,10 @@ public final class KeyboardTheme {
             hint = 0xFF7D828B;
             popup = 0xFFFFFFFF;
             divider = 0xFFD5D8DE;
+            neuKey = 0xFFECEEF2;
+            neuFunction = 0xFFDCE0E6;
+            neuLight = 0xFFFFFFFF;
+            neuDark = 0x59A0A8B6;
         }
         accent = accentColor;
         onAccent = onAccentColor;

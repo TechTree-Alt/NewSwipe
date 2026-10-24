@@ -1132,6 +1132,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                     Ui.dp(this, prefs.fnSwipeThresholdDp()) * 1.5f);
         }
         keyboard.setKeyShadow(prefs.keyShadow(), prefs.keyShadowStrength());
+        keyboard.setNeumorphic(prefs.keyNeumorphism());
         keyboard.setKeyRadius(Ui.dp(this, prefs.keyRadiusDp()));
         keyboard.setGridColors(prefs.gridColors());
         if (panel == PANEL_KEYBOARD) topSlot.setVisibility(toolbarGone() ? View.GONE : View.VISIBLE);

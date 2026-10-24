@@ -88,6 +88,7 @@ public final class BottomKeysEditorActivity extends Activity {
         preview.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), false, prefs.longPressChars(),
                 false, prefs.keyTextSize());
         preview.setKeyShadow(prefs.keyShadow(), prefs.keyShadowStrength());
+        preview.setNeumorphic(prefs.keyNeumorphism());
         preview.setKeyRadius(Ui.dp(this, prefs.keyRadiusDp()));
         preview.setGridColors(prefs.gridColors());
         preview.setPopupHints(prefs.longPressChars() && !prefs.popupHintHidden());
