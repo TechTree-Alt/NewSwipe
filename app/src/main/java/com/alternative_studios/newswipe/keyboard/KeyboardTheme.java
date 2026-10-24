@@ -21,15 +21,19 @@ public final class KeyboardTheme {
     public final int divider;
     /** Newmorphism 모드: 키·버튼이 바탕에서 솟아오르고 누르면 안으로 들어간다 (ui.Neu). */
     public final boolean neu;
+    /** 임시(설정 슬라이더): 흰 키 면 그라데이션의 왼쪽 위 모서리(바탕색→흰색 비율)와 흰색에 이르는 대각선 위치. */
+    public final float neuWhiteStart, neuWhiteEnd;
     /** Newmorphism 그림자: 왼쪽 위 밝은 그림자, 오른쪽 아래 어두운 그림자. */
     public final int neuLight;
     public final int neuDark;
     /** 회색 기능키 면의 어두운 그림자 (면이 그림자로 번져 보이지 않게 neuDark보다 진하다). */
     public final int neuDarkFunction;
 
-    private KeyboardTheme(boolean dark, int accentColor, int onAccentColor, boolean neu) {
+    private KeyboardTheme(boolean dark, int accentColor, int onAccentColor, boolean neu, int whiteStart, int whiteEnd) {
         this.dark = dark;
         this.neu = neu;
+        neuWhiteStart = whiteStart / 100f;
+        neuWhiteEnd = whiteEnd / 100f;
         if (dark) {
             background = 0xFF1B1C1F;
             key = 0xFF3A3B40;
@@ -65,10 +69,12 @@ public final class KeyboardTheme {
     /** 설정(화면 모드, 강조 색, Newmorphism 모드)이 바뀌지 않았다면 같은 객체를 돌려준다. */
     public static synchronized KeyboardTheme of(Context context) {
         AppTheme t = AppTheme.of(context);
-        boolean neu = new Prefs(context).newmorphism();
+        Prefs prefs = new Prefs(context);
+        boolean neu = prefs.newmorphism();
+        float start = prefs.neuWhiteStart() / 100f, end = prefs.neuWhiteEnd() / 100f;
         if (cached == null || cached.dark != t.dark || cached.accent != t.accent || cached.onAccent != t.onAccent
-                || cached.neu != neu) {
-            cached = new KeyboardTheme(t.dark, t.accent, t.onAccent, neu);
+                || cached.neu != neu || cached.neuWhiteStart != start || cached.neuWhiteEnd != end) {
+            cached = new KeyboardTheme(t.dark, t.accent, t.onAccent, neu, prefs.neuWhiteStart(), prefs.neuWhiteEnd());
         }
         return cached;
     }

@@ -1603,6 +1603,10 @@ public final class SettingsActivity extends Activity {
                 "키와 도구 막대·클립보드·이모지 창의 버튼이 바탕에서 부드럽게 솟아오르고, 누르면 안으로 쑥 들어가는 모양으로 그립니다. "
                         + "켜면 키 그림자 대신 쓰입니다.",
                 Prefs.NEWMORPHISM, prefs.newmorphism()));
+        // 임시: 흰 키 면 그라데이션을 직접 맞춰 보는 슬라이더 (값을 정하면 지운다). 바꾸면 키보드가 바로 다시 그려진다.
+        neu.addView(note("임시 · 흰 키 면 그라데이션"));
+        neu.addView(slider("왼쪽 위 모서리 (바탕색 → 흰색)", Prefs.NEU_WHITE_START, prefs.neuWhiteStart(), 0, 100, 5, "%"));
+        neu.addView(slider("흰색에 이르는 지점 (대각선)", Prefs.NEU_WHITE_END, prefs.neuWhiteEnd(), 20, 100, 5, "%"));
     }
 
     private static int indexOf(String[] values, String v) {
