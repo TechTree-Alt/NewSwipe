@@ -356,7 +356,7 @@ public final class EmojiPanel extends LinearLayout {
         for (int i = 0; i < tabs.length; i++) {
             boolean sel = i == index;
             tabs[i].setAlpha(sel ? 1f : 0.55f);
-            // Newmorphism에서는 고른 탭이 안으로 눌려 들어간 모양이다.
+            // Neumorphism에서는 고른 탭이 안으로 눌려 들어간 모양이다.
             tabs[i].setBackground(sel
                     ? theme.neu ? Neu.sunken(tabs[i], theme, theme.functionKey, Ui.dp(getContext(), 16))
                     : Ui.round(theme.functionKey, Ui.dp(getContext(), 16))

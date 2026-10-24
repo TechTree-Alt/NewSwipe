@@ -18,7 +18,7 @@ import android.view.ViewGroup;
 import com.alternative_studios.newswipe.keyboard.KeyboardTheme;
 
 /**
- * Newmorphism 모양: 바탕에서 부드럽게 솟아오른 면(왼쪽 위 밝은 그림자, 오른쪽 아래 어두운 그림자)과
+ * Neumorphism 모양: 바탕에서 부드럽게 솟아오른 면(왼쪽 위 밝은 그림자, 오른쪽 아래 어두운 그림자)과
  * 누르면 안으로 들어간 면(테두리 안쪽 그림자). 자판 키, 도구 막대 버튼, 클립보드·이모지 창의 버튼이 같이 쓴다.
  *
  * <p>흐린 그림자는 그리기 비싸다. 솟아오른 그림자는 크기마다 한 번만 절반 해상도 비트맵으로 구워 두고(모든 뷰가 함께 쓴다)
@@ -212,7 +212,7 @@ public final class Neu {
         c.restore();
     }
 
-    /** Newmorphism 모드면 v의 바탕을 fill 색 면으로 바꾼다 (꺼져 있으면 그대로 둔다). */
+    /** Neumorphism 모드면 v의 바탕을 fill 색 면으로 바꾼다 (꺼져 있으면 그대로 둔다). */
     public static void apply(View v, KeyboardTheme t, int fill, float radius) {
         apply(v, t, fill, radius, 0, 0);
     }

@@ -24,7 +24,7 @@ public final class KeyboardTheme {
      * 그쪽으로 섞으면 오히려 어두워지므로 흰색이다.
      */
     public final int lift;
-    /** Newmorphism 모드: 키·버튼이 바탕에서 솟아오르고 누르면 안으로 들어간다 (ui.Neu). */
+    /** Neumorphism 모드: 키·버튼이 바탕에서 솟아오르고 누르면 안으로 들어간다 (ui.Neu). */
     public final boolean neu;
     /**
      * 글자 키(라이트 모드는 흰색)·기능키(회색) 면 그라데이션을 맞추는 값 (% 단위, 인덱스는 T_*).
@@ -47,7 +47,7 @@ public final class KeyboardTheme {
     public float tune(int i) {
         return neuTune[i] / 100f;
     }
-    /** Newmorphism 그림자: 왼쪽 위 밝은 그림자, 오른쪽 아래 어두운 그림자. 흰색(글자) 키 값이고 눌린 면 안쪽에도 쓴다. */
+    /** Neumorphism 그림자: 왼쪽 위 밝은 그림자, 오른쪽 아래 어두운 그림자. 흰색(글자) 키 값이고 눌린 면 안쪽에도 쓴다. */
     public final int neuLight;
     public final int neuDark;
     /** 회색 기능키 면의 그림자. */
@@ -101,11 +101,11 @@ public final class KeyboardTheme {
 
     private static KeyboardTheme cached;
 
-    /** 설정(화면 모드, 강조 색, Newmorphism 모드)이 바뀌지 않았다면 같은 객체를 돌려준다. */
+    /** 설정(화면 모드, 강조 색, Neumorphism 모드)이 바뀌지 않았다면 같은 객체를 돌려준다. */
     public static synchronized KeyboardTheme of(Context context) {
         AppTheme t = AppTheme.of(context);
         Prefs prefs = new Prefs(context);
-        boolean neu = prefs.newmorphism();
+        boolean neu = prefs.neumorphism();
         int[] tune = t.dark ? DARK_TUNE : LIGHT_TUNE;
         int[] shadows = t.dark ? DARK_SHADOW : LIGHT_SHADOW;
         if (cached == null || cached.dark != t.dark || cached.accent != t.accent || cached.onAccent != t.onAccent
