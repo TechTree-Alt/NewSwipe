@@ -119,6 +119,14 @@ public final class Neu {
     }
 
     /**
+     * 눌려 들어간 면의 안쪽 밝은 그림자(오른쪽·아래 가장자리). 라이트 모드의 강조색 면은 채도가 높아 순백색 그림자가
+     * 하얀 띠로 보이므로, 다크 모드와 같은 옅은 흰색(13%)을 쓴다. 다른 면은 밝은 그림자 그대로다.
+     */
+    public static int pressedLight(KeyboardTheme t, int face) {
+        return face == t.accent && !t.dark ? 0x21FFFFFF : t.neuLight;
+    }
+
+    /**
      * 솟아오른 면의 어두운 그림자 색. 흰색(글자) 키·회색 키·강조색 키가 따로 정한다 (KeyboardTheme.neuShadow).
      * 라이트 모드의 회색 면은 면 색이 보통 그림자와 거의 같아 면이 그림자로 번져 보이므로 흰색 키보다 진하다.
      */
@@ -288,7 +296,7 @@ public final class Neu {
             theme = t;
             this.color = color;
             pressedColor = accent ? blend(t.accent, t.text, 0.12f) : t.keyPressed;
-            light = t.neuLight;
+            light = pressedLight(t, color);
             dark = darkShadow(t, color);
             this.radius = radius;
             this.insetH = insetH;

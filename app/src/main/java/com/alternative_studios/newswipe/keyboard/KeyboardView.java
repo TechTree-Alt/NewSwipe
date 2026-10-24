@@ -725,7 +725,7 @@ public final class KeyboardView extends View {
             if (pressed) {
                 // 눌린 키는 안으로 들어가 테두리 안쪽에 그림자가 진다. 글자도 함께 살짝 내려간다.
                 Neu.drawInset(c, r, radius, neuOffset(), neuBlur(),
-                        accent ? blend(theme.accent, theme.text, 0.12f) : theme.keyPressed, theme.neuLight,
+                        accent ? blend(theme.accent, theme.text, 0.12f) : theme.keyPressed, Neu.pressedLight(theme, bg),
                         theme.neuDark, fill);
                 cy += dp(1);
             } else {
