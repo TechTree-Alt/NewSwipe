@@ -260,8 +260,7 @@ public final class ClipboardPanel extends LinearLayout {
         card.setOrientation(VERTICAL);
         card.setBackground(Ui.ripple(theme.keyPressed, Ui.round(theme.key, Ui.dp(c, 10)), Ui.dp(c, 10)));
         Neu.apply(card, theme, theme.key, Ui.dp(c, 10));
-        // Newmorphism에서는 그림자 자리만큼 면이 들어가므로 안쪽 여백도 그만큼 늘린다.
-        int p = Ui.dp(c, theme.neu ? 14 : 10);
+        int p = Ui.dp(c, 10);
         card.setPadding(p, p, p, item == null ? p : 0);
         if (item != null && item.isImage()) {
             card.addView(imageView(item), new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));

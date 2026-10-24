@@ -4,13 +4,16 @@ import android.graphics.Bitmap;
 import android.graphics.BlurMaskFilter;
 import android.graphics.Canvas;
 import android.graphics.ColorFilter;
+import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
 import android.graphics.RectF;
+import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
 import android.view.View;
+import android.view.ViewGroup;
 
 import com.alternative_studios.newswipe.keyboard.KeyboardTheme;
 
@@ -44,6 +47,60 @@ public final class Neu {
     /** 강조색 면의 그림자: 어두운 그림자 대신 강조색이 은은하게 번진다. */
     public static int accentShadow(KeyboardTheme t) {
         return (t.accent & 0xFFFFFF) | (t.dark ? 0x66000000 : 0x8C000000);
+    }
+
+    /**
+     * 솟아오른 면의 밝은 그림자 색. 면이 밝은 그림자보다 밝으면(밝은 테마의 흰 키처럼) 밝은 그림자가 면과 섞여
+     * 흐릿한 테두리로만 보이므로 그리지 않고 0을 돌려준다. 그런 면은 {@link #drawFace}가 위가 밝고 아래가 조금 어두운
+     * 볼록한 면으로 그려 입체감을 낸다.
+     */
+    public static int raisedLight(KeyboardTheme t, int face) {
+        int a = t.neuLight >>> 24;
+        int lit = blendRaw(t.background, t.neuLight | 0xFF000000, a / 255f);
+        return luma(face) + 8 >= luma(lit) ? 0 : t.neuLight;
+    }
+
+    private static final int SHADERS = 8;
+    private static final LinearGradient[] shaders = new LinearGradient[SHADERS];
+    private static final int[] shaderKeys = new int[SHADERS * 3];
+    private static int nextShader;
+
+    /** 솟아오른 면. 밝은 그림자를 그리지 않는 면({@link #raisedLight}이 0)은 위에서 아래로 살짝 어두워지는 볼록한 면이다. */
+    public static void drawFace(Canvas c, RectF r, float radius, int face, KeyboardTheme t, Paint fill) {
+        if (raisedLight(t, face) != 0) {
+            fill.setColor(face);
+            c.drawRoundRect(r, radius, radius, fill);
+            return;
+        }
+        int h = Math.max(1, Math.round(r.height())), bottom = blend(face, t.background, 0.4f);
+        fill.setColor(0xFF000000);
+        fill.setShader(gradient(h, face, bottom));
+        c.save();
+        c.translate(0, r.top);
+        c.drawRoundRect(r.left, 0, r.right, r.height(), radius, radius, fill);
+        c.restore();
+        fill.setShader(null);
+    }
+
+    /** 높이 h의 세로 그라데이션. 크기·색마다 한 번만 만든다 (그릴 때 새 객체를 만들지 않도록). */
+    private static LinearGradient gradient(int h, int top, int bottom) {
+        for (int i = 0; i < SHADERS; i++) {
+            int k = i * 3;
+            if (shaders[i] != null && shaderKeys[k] == h && shaderKeys[k + 1] == top && shaderKeys[k + 2] == bottom) {
+                return shaders[i];
+            }
+        }
+        int i = nextShader;
+        nextShader = (nextShader + 1) % SHADERS;
+        shaders[i] = new LinearGradient(0, 0, 0, h, top, bottom, Shader.TileMode.CLAMP);
+        shaderKeys[i * 3] = h;
+        shaderKeys[i * 3 + 1] = top;
+        shaderKeys[i * 3 + 2] = bottom;
+        return shaders[i];
+    }
+
+    private static int luma(int c) {
+        return (((c >> 16) & 0xFF) * 299 + ((c >> 8) & 0xFF) * 587 + (c & 0xFF) * 114) / 1000;
     }
 
     /** 그림자가 면 밖으로 번지는 너비: 이만큼 둘레를 비워 두면 그림자가 잘리지 않는다. */
@@ -128,13 +185,51 @@ public final class Neu {
         apply(v, t, fill, radius, 0, 0);
     }
 
-    /** insetH·insetV: 면을 뷰 가장자리에서 들여 그리는 거리 (그림자 자리보다 좁으면 그림자 자리만큼 들인다). */
+    /**
+     * insetH·insetV: 면을 뷰 가장자리에서 들여 그리는 거리. 면은 원래 바탕과 같은 크기이고 그림자만 뷰 밖으로 번지므로,
+     * 그림자가 잘리지 않게 붙은 뒤 부모 두 단계의 자식 자르기를 끈다.
+     */
     public static void apply(View v, KeyboardTheme t, int fill, float radius, int insetH, int insetV) {
-        if (t.neu) v.setBackground(new Chip(t, fill, radius, insetH, insetV));
+        if (!t.neu) return;
+        v.setBackground(new Chip(t, fill, radius, insetH, insetV));
+        unclipParents(v);
+    }
+
+    /** v의 그림자가 뷰 밖으로 번져도 잘리지 않도록 부모와 그 위 부모의 자식 자르기를 끈다 (붙어 있지 않으면 붙을 때). */
+    public static void unclipParents(View v) {
+        if (v.getParent() != null) {
+            unclip(v);
+            return;
+        }
+        v.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+            @Override
+            public void onViewAttachedToWindow(View view) {
+                view.removeOnAttachStateChangeListener(this);
+                unclip(view);
+            }
+
+            @Override
+            public void onViewDetachedFromWindow(View view) {
+            }
+        });
+    }
+
+    private static void unclip(View v) {
+        android.view.ViewParent p = v.getParent();
+        for (int i = 0; i < 2 && p instanceof ViewGroup; i++) {
+            // 스크롤하는 틀은 자르기를 끄면 스크롤한 내용이 틀 밖(머리 줄 등)까지 그려지므로 건드리지 않는다.
+            if (p instanceof android.widget.ScrollView || p instanceof android.widget.HorizontalScrollView
+                    || p instanceof android.widget.AbsListView) {
+                return;
+            }
+            ((ViewGroup) p).setClipChildren(false);
+            p = p.getParent();
+        }
     }
 
     /** 늘 안으로 들어가 있는 바탕 (고른 탭처럼 '켜진' 것을 나타낸다). */
-    public static Drawable sunken(KeyboardTheme t, int fill, float radius) {
+    public static Drawable sunken(View v, KeyboardTheme t, int fill, float radius) {
+        unclipParents(v);
         Chip c = new Chip(t, fill, radius, 0, 0);
         c.sunken = true;
         return c;
@@ -144,6 +239,7 @@ public final class Neu {
     public static final class Chip extends Drawable {
         private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final RectF face = new RectF();
+        private final KeyboardTheme theme;
         private final int color, pressedColor, light, dark, pressedDark;
         private final float radius, offset, blur;
         private final int insetH, insetV;
@@ -151,6 +247,7 @@ public final class Neu {
 
         Chip(KeyboardTheme t, int color, float radius, int insetH, int insetV) {
             boolean accent = color == t.accent;
+            theme = t;
             this.color = color;
             pressedColor = accent ? blend(t.accent, t.text, 0.12f) : t.keyPressed;
             light = t.neuLight;
@@ -167,18 +264,14 @@ public final class Neu {
         @Override
         public void draw(Canvas c) {
             Rect b = getBounds();
-            // 그림자가 뷰 밖으로 나가 잘리지 않도록 면을 그림자 자리만큼 들여 그린다 (흐린 끝자락은 조금 잘려도 된다).
-            float room = offset + blur;
-            face.set(b.left + Math.max(insetH, room), b.top + Math.max(insetV, room),
-                    b.right - Math.max(insetH, room), b.bottom - Math.max(insetV, room));
+            face.set(b.left + insetH, b.top + insetV, b.right - insetH, b.bottom - insetV);
             if (face.width() <= 0 || face.height() <= 0) return;
             float r = Math.min(radius, Math.min(face.width(), face.height()) / 2);
             if (pressed || sunken) {
                 drawInset(c, face, r, offset, blur, sunken ? color : pressedColor, light, pressedDark, fill);
             } else {
-                drawRaised(c, face.left, face.top, face.right, face.bottom, r, offset, blur, light, dark);
-                fill.setColor(color);
-                c.drawRoundRect(face, r, r, fill);
+                drawRaised(c, face.left, face.top, face.right, face.bottom, r, offset, blur, raisedLight(theme, color), dark);
+                drawFace(c, face, r, color, theme, fill);
             }
         }
 
@@ -212,6 +305,10 @@ public final class Neu {
     }
 
     public static int blend(int a, int b, float t) {
+        return blendRaw(a, b, t);
+    }
+
+    private static int blendRaw(int a, int b, float t) {
         int ar = (a >> 16) & 0xFF, ag = (a >> 8) & 0xFF, ab = a & 0xFF;
         int br = (b >> 16) & 0xFF, bg = (b >> 8) & 0xFF, bb = b & 0xFF;
         return 0xFF000000 | ((int) (ar + (br - ar) * t) << 16) | ((int) (ag + (bg - ag) * t) << 8)

@@ -694,29 +694,31 @@ public final class KeyboardView extends View {
         c.restore();
     }
 
-    private void drawKey(Canvas c, Key k) {
-        RectF r = tmp;
-        r.set(k.rect.left + gapX / 2, k.rect.top + gapY / 2, k.rect.right - gapX / 2, k.rect.bottom - gapY / 2);
-        boolean pressed = isPressed(k);
-        int bg;
-        int fg = theme.text;
+    /** 키 면의 색 (눌리지 않았을 때). 강조색이면 글자는 onAccent, 아니면 글자 색이다. */
+    private int faceColor(Key k) {
         if (k.type == Key.ENTER) {
-            bg = theme.accent;
-            fg = theme.onAccent;
+            return theme.accent;
         } else if (gridColors && (k.type == Key.SHIFT || k.type == Key.FUNCTION || k.type == Key.DELETE || k.type == Key.SYMBOL_PAGE
                 || layout.kind == KeyboardLayout.NUMBER && (k.type == Key.TO_SYMBOLS || ".".equals(k.label)))
                 && !(layout.kind == KeyboardLayout.NUMBER && k.type == Key.DELETE)) {
             // 색 정렬: 글자 사이의 Shift·⌫·기호 쪽 넘김 키는 글자 키 색 (Shift 고정도 강조색 없이).
             // 숫자 자판에서는 ?123·.를 숫자 키 색으로 맞추고, ⌫는 스페이스바·- 키와 같은 기능키 색으로 둔다.
-            bg = theme.key;
+            return theme.key;
         } else if (gridColors && k.type == Key.SPACE) {
-            bg = theme.functionKey;   // 스페이스바는 맨 아래 줄의 다른 기능키 색
+            return theme.functionKey;   // 스페이스바는 맨 아래 줄의 다른 기능키 색
         } else if (k.type == Key.SHIFT && shiftState == 2) {
-            bg = theme.accent;
-            fg = theme.onAccent;
+            return theme.accent;
         } else {
-            bg = k.isFunctional() ? theme.functionKey : theme.key;
+            return k.isFunctional() ? theme.functionKey : theme.key;
         }
+    }
+
+    private void drawKey(Canvas c, Key k) {
+        RectF r = tmp;
+        r.set(k.rect.left + gapX / 2, k.rect.top + gapY / 2, k.rect.right - gapX / 2, k.rect.bottom - gapY / 2);
+        boolean pressed = isPressed(k);
+        int bg = faceColor(k);
+        int fg = bg == theme.accent && (k.type == Key.ENTER || k.type == Key.SHIFT) ? theme.onAccent : theme.text;
         float cx = r.centerX(), cy = r.centerY();
         if (theme.neu) {
             boolean accent = bg == theme.accent;
@@ -727,8 +729,7 @@ public final class KeyboardView extends View {
                         accent ? blend(theme.accent, 0xFF000000, 0.45f) & 0xB3FFFFFF : theme.neuDark, fill);
                 cy += dp(1);
             } else {
-                fill.setColor(bg);
-                c.drawRoundRect(r, radius, radius, fill);
+                Neu.drawFace(c, r, radius, bg, theme, fill);
             }
         } else {
             if (pressed) bg = k.type == Key.ENTER ? blend(theme.accent, theme.text, 0.25f) : theme.keyPressed;
@@ -799,10 +800,10 @@ public final class KeyboardView extends View {
 
     /** 솟아오른 키의 그림자 (키 면은 drawKey가 그 위에 그린다). 그림자는 Neu가 크기마다 한 번만 구워 둔 비트맵이다. */
     private void drawNeuRaised(Canvas c, Key k) {
-        boolean accent = k.type == Key.ENTER || k.type == Key.SHIFT && shiftState == 2 && !gridColors;
+        int face = faceColor(k);
         Neu.drawRaised(c, k.rect.left + gapX / 2, k.rect.top + gapY / 2, k.rect.right - gapX / 2,
                 k.rect.bottom - gapY / 2, radius, neuOffset(), neuBlur(),
-                theme.neuLight, accent ? Neu.accentShadow(theme) : theme.neuDark);
+                Neu.raisedLight(theme, face), face == theme.accent ? Neu.accentShadow(theme) : theme.neuDark);
     }
 
     private void drawCentered(Canvas c, String s, float cx, float cy) {
