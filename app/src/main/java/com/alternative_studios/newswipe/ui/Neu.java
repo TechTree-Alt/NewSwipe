@@ -47,39 +47,10 @@ public final class Neu {
         return (t.accent & 0xFFFFFF) | (t.dark ? 0x66000000 : 0x8C000000);
     }
 
-    private static final Paint rimPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-
-    static {
-        rimPaint.setStyle(Paint.Style.STROKE);
-    }
-
-    /**
-     * 솟아오른 면. 면이 밝은 그림자보다 밝으면(밝은 테마의 흰 키·칩) 왼쪽 위의 밝은 그림자가 면과 섞여 면의 윤곽이
-     * 지워지고 키가 그쪽으로 번져 보인다. 그런 면에는 아주 옅은 실선 테두리(neuRim)를 둘러 윤곽을 살린다.
-     * 면은 그라데이션 없이 한 가지 색이다.
-     */
+    /** 솟아오른 면 (한 가지 색). */
     public static void drawFace(Canvas c, RectF r, float radius, int face, KeyboardTheme t, Paint fill) {
         fill.setColor(face);
         c.drawRoundRect(r, radius, radius, fill);
-        if (!brighterThanLight(t, face)) return;
-        float w = Math.max(1f, 0.75f * android.content.res.Resources.getSystem().getDisplayMetrics().density);
-        rimPaint.setStrokeWidth(w);
-        rimPaint.setColor(t.neuRim);
-        // 선이 면 밖으로 나가지 않도록 굵기의 절반만큼 들여 그린다.
-        rect.set(r);
-        rect.inset(w / 2, w / 2);
-        float rr = Math.max(0, radius - w / 2);
-        c.drawRoundRect(rect, rr, rr, rimPaint);
-    }
-
-    /** 면이 바탕 위에 깔린 밝은 그림자보다 밝은지 (밝은 그림자가 면에 묻히는지). */
-    private static boolean brighterThanLight(KeyboardTheme t, int face) {
-        int lit = blendRaw(t.background, t.neuLight | 0xFF000000, (t.neuLight >>> 24) / 255f);
-        return luma(face) + 8 >= luma(lit);
-    }
-
-    private static int luma(int c) {
-        return (((c >> 16) & 0xFF) * 299 + ((c >> 8) & 0xFF) * 587 + (c & 0xFF) * 114) / 1000;
     }
 
     /** 그림자가 면 밖으로 번지는 너비: 이만큼 둘레를 비워 두면 그림자가 잘리지 않는다. */
