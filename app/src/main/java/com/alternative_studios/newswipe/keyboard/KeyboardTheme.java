@@ -28,13 +28,13 @@ public final class KeyboardTheme {
     public final boolean neu;
     /**
      * 글자 키(라이트 모드는 흰색)·기능키(회색) 면 그라데이션과 그림자를 맞추는 값 (% 단위, 인덱스는 T_*).
-     * 그라데이션은 모드마다 고정({@link #LIGHT_TUNE}, {@link #DARK_TUNE})이고, 그림자 강도(뒤의 둘)만 라이트 모드의 설정 값이다.
+     * 모드마다 고정이다 ({@link #LIGHT_TUNE}, {@link #DARK_TUNE}).
      */
     public final int[] neuTune;
     public static final int T_KEY_START = 0, T_KEY_END = 1, T_FN_SHIFT = 2, T_FN_START = 3, T_FN_END_TINT = 4,
             T_FN_END = 5, T_LIGHT = 6, T_SHADOW = 7;
-    /** 라이트 모드 그라데이션 값 (뒤의 둘, 그림자 강도는 설정에서 채운다). */
-    private static final int[] LIGHT_TUNE = {0, 50, 5, 5, 0, 50};
+    /** 라이트 모드 값: 글자 키 면(왼쪽 위 0%, 끝 50%), 기능키 면(5%, 5%, 0%, 50%), 밝은 그림자 100%, 어두운 그림자 50%. */
+    private static final int[] LIGHT_TUNE = {0, 50, 5, 5, 0, 50, 100, 50};
     /** 다크 모드 값: 글자 키 면(왼쪽 위 20%, 끝 100%), 기능키 면(-30%, 20%, 0%, 100%), 밝은 그림자 12%, 어두운 그림자 80%. */
     private static final int[] DARK_TUNE = {20, 100, -30, 20, 0, 100, 12, 80};
 
@@ -92,8 +92,7 @@ public final class KeyboardTheme {
         AppTheme t = AppTheme.of(context);
         Prefs prefs = new Prefs(context);
         boolean neu = prefs.newmorphism();
-        int[] tune = t.dark ? DARK_TUNE : new int[]{LIGHT_TUNE[0], LIGHT_TUNE[1], LIGHT_TUNE[2], LIGHT_TUNE[3], LIGHT_TUNE[4],
-                LIGHT_TUNE[5], prefs.neuLightLight(), prefs.neuLightShadow()};
+        int[] tune = t.dark ? DARK_TUNE : LIGHT_TUNE;
         if (cached == null || cached.dark != t.dark || cached.accent != t.accent || cached.onAccent != t.onAccent
                 || cached.neu != neu || !java.util.Arrays.equals(cached.neuTune, tune)) {
             cached = new KeyboardTheme(t.dark, t.accent, t.onAccent, neu, tune);

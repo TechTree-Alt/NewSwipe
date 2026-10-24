@@ -1603,8 +1603,6 @@ public final class SettingsActivity extends Activity {
                 "키와 도구 막대·클립보드·이모지 창의 버튼이 바탕에서 부드럽게 솟아오르고, 누르면 안으로 쑥 들어가는 모양으로 그립니다. "
                         + "켜면 키 그림자 대신 쓰입니다.",
                 Prefs.NEWMORPHISM, prefs.newmorphism()));
-        neu.addView(slider("밝은 그림자 강도 (라이트 모드)", Prefs.NEU_LIGHT_LIGHT, prefs.neuLightLight(), 0, 100, 5, "%"));
-        neu.addView(slider("어두운 그림자 강도 (라이트 모드)", Prefs.NEU_LIGHT_SHADOW, prefs.neuLightShadow(), 0, 100, 5, "%"));
     }
 
     private static int indexOf(String[] values, String v) {
