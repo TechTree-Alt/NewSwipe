@@ -210,6 +210,40 @@ final class KoreanSuggest {
         return corrector.correct(word, prev, field, user, usage);
     }
 
+    /**
+     * 앞 단어(cx) 다음에 오는 말의 조사 꼴(을·은·이 …, 받침 짝은 한 종류로)의 비율을 다음 단어 사전에서 모은다 (앞 단어 쌍이 없으면
+     * 앞 단어의 끝 글자로 모은 분포). out[k] = 조사 종류 k의 확률 합, 모은 것이 없으면 모두 0. 종류는 {@link #particleClass}.
+     */
+    void particleClassesAfter(Context cx, double[] out) {
+        java.util.Arrays.fill(out, 0);
+        if (cx.group >= 0) {
+            for (int i = next.from(cx.group); i < next.to(cx.group); i++) addClass(out, next.word(i), next.prob(i));
+        }
+        double sum = 0;
+        for (double v : out) sum += v;
+        if (sum > 0 || ending == null || cx.prev == null) return;
+        int eg = ending.group(cx.prev);
+        if (eg >= 0) for (int i = ending.from(eg); i < ending.to(eg); i++) addClass(out, ending.word(i), ending.prob(i));
+    }
+
+    private void addClass(double[] out, int id, double p) {
+        String w = dict.word(id);
+        int k = particleClass(w.substring(w.length() - 1));
+        if (k < 0) return;
+        String[] sp = WordSuggester.splitParticle(w);
+        if (sp != null && sp[1].length() == 1) out[k] += p;
+    }
+
+    /** 한 글자 조사의 종류 (받침에 따라 바뀌는 짝은 같은 종류: 을·를, 은·는, 이·가, 와·과). 조사가 아니면 -1. */
+    static int particleClass(String p) {
+        int i = PARTICLE_CLASSES.indexOf(p);
+        return p.length() != 1 || i < 0 ? -1 : PARTICLE_CLASS_OF[i];
+    }
+
+    static final String PARTICLE_CLASSES = "을를은는이가와과로에의도만랑";
+    private static final int[] PARTICLE_CLASS_OF = {0, 0, 1, 1, 2, 2, 3, 3, 4, 5, 6, 7, 8, 9};
+    static final int PARTICLE_CLASS_COUNT = 10;
+
     /** 자동 수정이 맞는 말로 알아볼 목록 ({@link KoreanCorrect#setKnown}). */
     void setKnownWords(KnownWords k) {
         corrector.setKnown(k);

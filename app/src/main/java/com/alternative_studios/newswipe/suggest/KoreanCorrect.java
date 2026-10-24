@@ -29,6 +29,7 @@ final class KoreanCorrect {
             prior[id] = (float) (Math.log(morph.prob(dict.score(id)) * 1e6) + SHAPE_LM * shape.logProb(dict.word(id)));
         }
         dict.idsByLength(ks.scoreFor(SHAPE_SCAN_FREQ));   // 처음 고칠 때 기다리지 않게 미리 만든다
+        particlePrior();                                   // 사전을 읽는 백그라운드에서 미리 잰다
     }
 
     /**
@@ -133,7 +134,7 @@ final class KoreanCorrect {
         double oneKey = wrong ? SHAPE_MIN_WRONG : k != null ? Math.min(SHAPE_MIN_KNOWN, SHAPE_MIN_ONE_KEY) : SHAPE_MIN;
         double unique = wrong || k == null ? Double.POSITIVE_INFINITY : Math.log(SHAPE_MIN_UNIQUE);
         String r = search(word, word, cx, false, Math.log(min), Math.log(oneKey), unique, wrong ? Double.POSITIVE_INFINITY : vowelLog(word, k));
-        if (r == null && !wrong && PARTICLE_FIX) r = particleFix(word);
+        if (r == null && !wrong && PARTICLE_FIX) r = particleFix(word, cx);
         if (r != null || sp == null || wrong || sp[0].length() < 2 || k != null && k.contains(sp[0])) return r;
         // 명사 + 조사에서 명사만 틀린 말: 명사를 고쳐 조사를 다시 붙인다 (자댕입니다 → 자동입니다)
         double nounMin = k != null ? SHAPE_MIN_KNOWN : SHAPE_MIN_NOUN;
@@ -199,7 +200,7 @@ final class KoreanCorrect {
      * 받침에 맞는 조사가 되는 글자가 여럿이면(응 → 을·은) 명사 + 조사 꼴이 사전에서 두 배 넘게 흔한 쪽을 고르고, 비슷하면
      * 고치지 않는다 (사람응: 사람을·사람은). 초성까지 다르면 다른 말이기 쉬워(인형티, 낚시한) 보지 않는다.
      */
-    private String particleFix(String word) {
+    private String particleFix(String word, KoreanSuggest.Context cx) {
         int n = word.length();
         if (n < 3) return null;
         String noun = word.substring(0, n - 1), last = word.substring(n - 1);
@@ -210,9 +211,8 @@ final class KoreanCorrect {
         if (s < 0 || s > 11171) return null;
         int[] part = {s / 588, (s / 28) % 21, s % 28};
         String[] set = {CHO, JUNG, JONG};
-        String found = null;
-        double best = 0, second = 0;
-        int count = 0;
+        java.util.List<String> cands = new java.util.ArrayList<>();
+        java.util.List<Double> freqs = new java.util.ArrayList<>();
         for (int slot = 1; slot < 3; slot++) {   // 중성·받침만 (초성이 같아야 한다)
             char a = set[slot].charAt(part[slot]);
             for (int b = 0; b < set[slot].length(); b++) {
@@ -225,19 +225,56 @@ final class KoreanCorrect {
                 String[] back = WordSuggester.splitParticle(noun + p);   // 받침에 맞는 조사인지
                 if (back == null || !back[0].equals(noun) || !back[1].equals(p)) continue;
                 int id = dict.indexOf(noun + p);
-                double f = id >= 0 ? morph.prob(dict.score(id)) : 0;   // 명사 + 조사 꼴의 빈도 (사전에 없으면 0)
-                count++;
-                if (found == null || f > best) {
-                    second = Math.max(second, best);
-                    best = f;
-                    found = p;
-                } else {
-                    second = Math.max(second, f);
-                }
+                cands.add(p);
+                freqs.add(id >= 0 ? morph.prob(dict.score(id)) : 0);   // 명사 + 조사 꼴의 빈도 (사전에 없으면 0)
             }
         }
-        if (found == null || count > 1 && (best == 0 || best < 2 * second)) return null;   // 여럿인데 뚜렷이 흔한 꼴이 없다
+        if (cands.isEmpty()) return null;
+        if (cands.size() == 1) return noun + cands.get(0);
+        // 둘 이상이면 앞 단어 다음에 그 조사 종류가 얼마나 오는지(전체 비율에 견준 배수)를 곱한다 (dev에서 바른 고름 +1%p, 틀린 고름 그대로)
+        double[] after = new double[KoreanSuggest.PARTICLE_CLASS_COUNT];
+        ks.particleClassesAfter(cx, after);
+        double total = 0;
+        for (double v : after) total += v;
+        double[] prior = particlePrior();
+        String found = null;
+        double best = 0, second = 0;
+        for (int i = 0; i < cands.size(); i++) {
+            int k = KoreanSuggest.particleClass(cands.get(i));
+            double f = freqs.get(i);
+            if (total > 0 && k >= 0 && prior[k] > 0) f *= (after[k] + 0.5 * prior[k]) / (total + 0.5) / prior[k];
+            if (found == null || f > best) {
+                second = Math.max(second, best);
+                best = f;
+                found = cands.get(i);
+            } else {
+                second = Math.max(second, f);
+            }
+        }
+        if (best == 0 || best < 2 * second) return null;   // 뚜렷이 그럴듯한 꼴이 없다
         return noun + found;
+    }
+
+    private volatile double[] particlePrior;
+
+    /** 사전에서 명사 + 한 글자 조사 꼴의 조사 종류별 비율 (처음 쓸 때 한 번 잰다). */
+    private double[] particlePrior() {
+        double[] p = particlePrior;
+        if (p != null) return p;
+        p = new double[KoreanSuggest.PARTICLE_CLASS_COUNT];
+        double sum = 0;
+        for (int id = 0; id < dict.size(); id++) {
+            char last = dict.lastChar(id);
+            if (KoreanSuggest.PARTICLE_CLASSES.indexOf(last) < 0 || dict.length(id) < 2) continue;
+            String[] sp = WordSuggester.splitParticle(dict.word(id));
+            if (sp == null || sp[1].length() != 1) continue;
+            double f = morph.prob(dict.score(id));
+            p[KoreanSuggest.particleClass(sp[1])] += f;
+            sum += f;
+        }
+        if (sum > 0) for (int k = 0; k < p.length; k++) p[k] /= sum;
+        particlePrior = p;
+        return p;
     }
 
     /** word에 SHAPE_MIN_UNIQUE_VOWEL을 쓸 수 있으면 그 ln, 아니면 +∞. */
