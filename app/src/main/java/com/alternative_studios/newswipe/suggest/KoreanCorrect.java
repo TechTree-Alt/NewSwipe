@@ -133,6 +133,7 @@ final class KoreanCorrect {
         double oneKey = wrong ? SHAPE_MIN_WRONG : k != null ? Math.min(SHAPE_MIN_KNOWN, SHAPE_MIN_ONE_KEY) : SHAPE_MIN;
         double unique = wrong || k == null ? Double.POSITIVE_INFINITY : Math.log(SHAPE_MIN_UNIQUE);
         String r = search(word, word, cx, false, Math.log(min), Math.log(oneKey), unique, wrong ? Double.POSITIVE_INFINITY : vowelLog(word, k));
+        if (r == null && !wrong && PARTICLE_FIX) r = particleFix(word);
         if (r != null || sp == null || wrong || sp[0].length() < 2 || k != null && k.contains(sp[0])) return r;
         // 명사 + 조사에서 명사만 틀린 말: 명사를 고쳐 조사를 다시 붙인다 (자댕입니다 → 자동입니다)
         double nounMin = k != null ? SHAPE_MIN_KNOWN : SHAPE_MIN_NOUN;
@@ -185,6 +186,58 @@ final class KoreanCorrect {
         java.util.List<String> best = new java.util.ArrayList<>();
         for (double[] r : rank) if (best.size() < max) best.add(out.get((int) r[1]));
         return best;
+    }
+
+    /** 명사 + 조사에서 조사만 틀린 말을 고칠지 ({@link #particleFix}). */
+    static boolean PARTICLE_FIX = true;
+    /** 명사 뒤에 붙어 조사처럼 보이지만 조사가 아닌 말: 친 말이 이것으로 끝나면 조사를 잘못 친 것으로 보지 않는다. */
+    private static final String NOT_PARTICLE_TYPO = "들님씨적상성화일인임쯤별용간째형류짓감값질쪽편층돼되해하한할함된될기대으라여";
+
+    /**
+     * 명사 + 조사에서 조사 한 글자의 모음이나 받침만 키 하나(대각선 제외) 잘못 친 말 (생선응 → 생선을, 그림자릉 → 그림자를).
+     * 앞부분이 사전의 명사이고, 친 끝 글자가 조사·접미사(들, 님, 의)·용언 조각(돼, 한, 기)·명사(애)가 아니어야 한다.
+     * 받침에 맞는 조사가 되는 글자가 여럿이면(응 → 을·은) 명사 + 조사 꼴이 사전에서 두 배 넘게 흔한 쪽을 고르고, 비슷하면
+     * 고치지 않는다 (사람응: 사람을·사람은). 초성까지 다르면 다른 말이기 쉬워(인형티, 낚시한) 보지 않는다.
+     */
+    private String particleFix(String word) {
+        int n = word.length();
+        if (n < 3) return null;
+        String noun = word.substring(0, n - 1), last = word.substring(n - 1);
+        if (!dict.contains(noun) || !morph.nounLike(noun)) return null;
+        if (WordSuggester.isParticle(last) || NOT_PARTICLE_TYPO.indexOf(last.charAt(0)) >= 0
+                || dict.contains(last) && morph.nounLike(last)) return null;
+        int s = last.charAt(0) - 0xAC00;
+        if (s < 0 || s > 11171) return null;
+        int[] part = {s / 588, (s / 28) % 21, s % 28};
+        String[] set = {CHO, JUNG, JONG};
+        String found = null;
+        double best = 0, second = 0;
+        int count = 0;
+        for (int slot = 1; slot < 3; slot++) {   // 중성·받침만 (초성이 같아야 한다)
+            char a = set[slot].charAt(part[slot]);
+            for (int b = 0; b < set[slot].length(); b++) {
+                // 받침을 빼거나 더하는 것은 키 하나를 잘못 누른 것이 아니다
+                if (b == part[slot] || slot == 2 && (part[2] == 0 || b == 0)) continue;
+                if (typo.substituteDirect(a, set[slot].charAt(b)) > TypoModel.NEIGHBOR + 1e-4f) continue;
+                int[] q = part.clone();
+                q[slot] = b;
+                String p = String.valueOf((char) (0xAC00 + q[0] * 588 + q[1] * 28 + q[2]));
+                String[] back = WordSuggester.splitParticle(noun + p);   // 받침에 맞는 조사인지
+                if (back == null || !back[0].equals(noun) || !back[1].equals(p)) continue;
+                int id = dict.indexOf(noun + p);
+                double f = id >= 0 ? morph.prob(dict.score(id)) : 0;   // 명사 + 조사 꼴의 빈도 (사전에 없으면 0)
+                count++;
+                if (found == null || f > best) {
+                    second = Math.max(second, best);
+                    best = f;
+                    found = p;
+                } else {
+                    second = Math.max(second, f);
+                }
+            }
+        }
+        if (found == null || count > 1 && (best == 0 || best < 2 * second)) return null;   // 여럿인데 뚜렷이 흔한 꼴이 없다
+        return noun + found;
     }
 
     /** word에 SHAPE_MIN_UNIQUE_VOWEL을 쓸 수 있으면 그 ln, 아니면 +∞. */

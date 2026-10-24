@@ -67,4 +67,17 @@ public class ShapeRuleTest {
         assertTrue(!KoreanCorrect.middleVowelEdit("키버드", "키보드가"));   // 길이가 다르다
         assertTrue(!KoreanCorrect.middleVowelEdit("키버도", "키보드"));    // 두 글자
     }
+
+    @Test
+    public void particleTypoAfterNoun() throws Exception {
+        WordDictionary d = KoreanSuggestTest.buildDict(new String[][]{
+                {"생선", "150"}, {"생선을", "90"}, {"생선이", "90"}, {"생선의", "80"}, {"생선에", "80"}, {"생선과", "80"},
+                {"사람", "220"}, {"사람을", "200"}, {"사람은", "205"}, {"사람이", "200"}, {"사람의", "190"}, {"사람에게", "180"},
+                {"하고", "230"}, {"입니다", "230"},
+        });
+        KoreanSuggest ks = new KoreanSuggest(d, null, new TypoModel());
+        assertEquals("생선을", ks.correct("생선응", null, KoreanSuggest.FIELD_NORMAL, null, null));   // 을·은 중 사전에 있는 꼴
+        assertNull(ks.correct("사람응", null, KoreanSuggest.FIELD_NORMAL, null, null));          // 사람을·사람은 둘 다 흔하다
+        assertNull(ks.correct("생선돼", null, KoreanSuggest.FIELD_NORMAL, null, null));          // 용언 조각은 조사 오타로 보지 않는다
+    }
 }
