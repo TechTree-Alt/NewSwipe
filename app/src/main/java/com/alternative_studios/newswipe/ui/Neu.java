@@ -51,11 +51,11 @@ public final class Neu {
 
     private static final int SHADERS = 24;   // 키·칩 크기 × 흰색·회색. 모자라면 그릴 때마다 새로 만들게 되므로 넉넉히
     private static final LinearGradient[] shaders = new LinearGradient[SHADERS];
-    private static final int[] shaderKeys = new int[SHADERS * 4];
+    private static final int[] shaderKeys = new int[SHADERS * 5];
     private static int nextShader;
 
     /**
-     * 솟아오른 면. 밝은 테마의 흰 키 면은 왼쪽 위가 바탕색과 흰색의 중간이고 오른쪽 아래로 갈수록 흰색이 되는 대각선 그라데이션이라
+     * 솟아오른 면. 밝은 테마의 흰 키 면은 왼쪽 위가 바탕색이고 대각선을 따라 흰색이 되는 그라데이션이라
      * 살짝 오목하게 들어간 느낌이 든다. 면의 왼쪽 위가 흰 밝은 그림자보다 어두워져 그쪽 윤곽도 또렷하다.
      * 회색 기능키 면도 흰 키와 어울리도록 같은 방향으로 약하게 그라데이션을 준다 (회색이 그대로 보이도록 왼쪽 위는 기능키 색보다
      * 3% 어둡게, 오른쪽 아래는 바탕색 쪽으로 20%만 밝게). 회색 면이 그림자로 번져 보이지 않게 하는 것은 진한 그림자가 맡는다
@@ -69,10 +69,10 @@ public final class Neu {
         }
         int w = Math.max(1, Math.round(r.width())), h = Math.max(1, Math.round(r.height()));
         fill.setColor(0xFF000000);
-        // 흰 면은 왼쪽 위 모서리가 흰 밝은 그림자보다 어두워야 둘이 나뉜다. 바탕색에서 흰색 쪽으로 55%까지는 윤곽이 또렷하고,
-        // 그보다 밝히면 (75% 부근부터) 밝은 그림자와 섞여 번져 보인다.
-        fill.setShader(face == t.key ? concave(w, h, blend(t.background, face, 0.55f), face)
-                : concave(w, h, blend(face, 0xFF000000, 0.03f), blend(face, t.background, 0.2f)));
+        // 흰 면은 왼쪽 위 모서리를 바탕색까지 낮춰야 흰 밝은 그림자와 면이 확실히 나뉜다 (기기에서는 바탕색과 흰색의 중간만 돼도
+        // 밝은 그림자와 섞여 번져 보였다). 대신 대각선의 60% 지점에서 벌써 흰색이 되게 해 면 전체는 밝게 한다.
+        fill.setShader(face == t.key ? concave(w, h, t.background, face, WHITE_END)
+                : concave(w, h, blend(face, 0xFF000000, 0.03f), blend(face, t.background, 0.2f), 1f));
         c.save();
         c.translate(r.left, r.top);
         c.drawRoundRect(0, 0, r.width(), r.height(), radius, radius, fill);
@@ -80,23 +80,31 @@ public final class Neu {
         fill.setShader(null);
     }
 
-    /** w×h 면의 왼쪽 위(dark)에서 오른쪽 아래(lit)로 가는 그라데이션. 크기·색마다 한 번만 만든다. */
-    private static LinearGradient concave(int w, int h, int dark, int lit) {
+    /** 흰 면의 그라데이션이 흰색에 이르는 대각선 위치 (0~1). 작을수록 면이 밝고, 왼쪽 위 모서리 색은 그대로다. */
+    private static final float WHITE_END = 0.6f;
+
+    /**
+     * w×h 면의 왼쪽 위(dark)에서 오른쪽 아래(lit)로 가는 그라데이션. 대각선의 end 지점에서 lit이 되고 그 뒤는 lit이다.
+     * 크기·색마다 한 번만 만든다.
+     */
+    private static LinearGradient concave(int w, int h, int dark, int lit, float end) {
+        int e = Math.round(end * 100);
         for (int i = 0; i < SHADERS; i++) {
-            int k = i * 4;
+            int k = i * 5;
             if (shaders[i] != null && shaderKeys[k] == w && shaderKeys[k + 1] == h && shaderKeys[k + 2] == dark
-                    && shaderKeys[k + 3] == lit) {
+                    && shaderKeys[k + 3] == lit && shaderKeys[k + 4] == e) {
                 return shaders[i];
             }
         }
         int i = nextShader;
         nextShader = (nextShader + 1) % SHADERS;
-        shaders[i] = new LinearGradient(0, 0, w, h, dark, lit, Shader.TileMode.CLAMP);
-        int k = i * 4;
+        shaders[i] = new LinearGradient(0, 0, w * end, h * end, dark, lit, Shader.TileMode.CLAMP);
+        int k = i * 5;
         shaderKeys[k] = w;
         shaderKeys[k + 1] = h;
         shaderKeys[k + 2] = dark;
         shaderKeys[k + 3] = lit;
+        shaderKeys[k + 4] = e;
         return shaders[i];
     }
 
