@@ -126,6 +126,11 @@ public final class Neu {
         return face == t.accent ? t.neuPressedAccent : t.neuLight;
     }
 
+    /** 눌려 들어간 면의 안쪽 어두운 그림자(왼쪽·위 가장자리). 강조색 면은 따로 정한다 (KeyboardTheme.neuPressedAccentDark). */
+    public static int pressedDark(KeyboardTheme t, int face) {
+        return face == t.accent ? t.neuPressedAccentDark : t.neuDark;
+    }
+
     /**
      * 솟아오른 면의 어두운 그림자 색. 흰색(글자) 키·회색 키·강조색 키가 따로 정한다 (KeyboardTheme.neuShadow).
      * 라이트 모드의 회색 면은 면 색이 보통 그림자와 거의 같아 면이 그림자로 번져 보이므로 흰색 키보다 진하다.
@@ -313,7 +318,7 @@ public final class Neu {
             if (face.width() <= 0 || face.height() <= 0) return;
             float r = Math.min(radius, Math.min(face.width(), face.height()) / 2);
             if (pressed || sunken) {
-                drawInset(c, face, r, offset, blur, sunken ? color : pressedColor, light, theme.neuDark, fill);
+                drawInset(c, face, r, offset, blur, sunken ? color : pressedColor, light, pressedDark(theme, color), fill);
             } else {
                 drawRaised(c, face.left, face.top, face.right, face.bottom, r, offset, shadowBlur(theme, color, blur),
                         raisedLight(theme, color), dark);

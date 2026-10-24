@@ -1607,6 +1607,9 @@ public final class SettingsActivity extends Activity {
         neu.addView(note("임시 · 눌린 강조색 키 안쪽 흰 그림자"));
         neu.addView(slider("라이트 모드", Prefs.NEU_PRESSED_ACC_LIGHT, prefs.neuPressedAccent(false), 0, 100, 1, "%"));
         neu.addView(slider("다크 모드", Prefs.NEU_PRESSED_ACC_DARK, prefs.neuPressedAccent(true), 0, 100, 1, "%"));
+        neu.addView(note("임시 · 눌린 강조색 키 안쪽 어두운 그림자"));
+        neu.addView(slider("라이트 모드", Prefs.NEU_PRESSED_ACC_DARK_SHADOW_LIGHT, prefs.neuPressedAccentShadow(false), 0, 100, 1, "%"));
+        neu.addView(slider("다크 모드", Prefs.NEU_PRESSED_ACC_DARK_SHADOW_DARK, prefs.neuPressedAccentShadow(true), 0, 100, 1, "%"));
     }
 
     private static int indexOf(String[] values, String v) {

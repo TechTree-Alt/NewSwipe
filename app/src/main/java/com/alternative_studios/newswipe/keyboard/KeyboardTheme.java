@@ -39,7 +39,7 @@ public final class KeyboardTheme {
     private static final int[] DARK_TUNE = {20, 100, -30, 20, 0, 100};
     /**
      * 그림자 강도 % — {흰색(글자) 키 밝은·어두운, 회색 키 밝은·어두운, 강조색 키 밝은·어두운,
-     * 눌린 강조색 키 안쪽 흰 그림자(임시 슬라이더)}.
+     * 눌린 강조색 키 안쪽 흰 그림자, 눌린 강조색 키 안쪽 어두운 그림자(임시 슬라이더)}.
      */
     public final int[] neuShadow;
     private static final int[] LIGHT_SHADOW = {100, 45, 75, 55, 100, 75};
@@ -56,7 +56,7 @@ public final class KeyboardTheme {
     /** 회색 기능키 면의 그림자. */
     public final int neuLightFunction, neuDarkFunction;
     /** 눌려 들어간 강조색 면의 안쪽 밝은 그림자. */
-    public final int neuPressedAccent;
+    public final int neuPressedAccent, neuPressedAccentDark;
     /** 강조색 키 면의 그림자. */
     public final int neuLightAccent, neuDarkAccent;
 
@@ -73,6 +73,7 @@ public final class KeyboardTheme {
         neuDarkFunction = alpha(shadows[3]) | loFn;
         neuLightAccent = alpha(shadows[4]) | 0xFFFFFF;
         neuPressedAccent = alpha(shadows[6]) | 0xFFFFFF;
+        neuPressedAccentDark = alpha(shadows[7]) | lo;
         neuDarkAccent = alpha(shadows[5]) | lo;
         if (dark) {
             background = 0xFF1B1C1F;
@@ -113,8 +114,9 @@ public final class KeyboardTheme {
         Prefs prefs = new Prefs(context);
         boolean neu = prefs.neumorphism();
         int[] tune = t.dark ? DARK_TUNE : LIGHT_TUNE;
-        int[] shadows = java.util.Arrays.copyOf(t.dark ? DARK_SHADOW : LIGHT_SHADOW, 7);
+        int[] shadows = java.util.Arrays.copyOf(t.dark ? DARK_SHADOW : LIGHT_SHADOW, 8);
         shadows[6] = prefs.neuPressedAccent(t.dark);
+        shadows[7] = prefs.neuPressedAccentShadow(t.dark);
         if (cached == null || cached.dark != t.dark || cached.accent != t.accent || cached.onAccent != t.onAccent
                 || cached.neu != neu || !java.util.Arrays.equals(cached.neuTune, tune)
                 || !java.util.Arrays.equals(cached.neuShadow, shadows)) {
