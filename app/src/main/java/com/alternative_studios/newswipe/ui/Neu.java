@@ -240,7 +240,7 @@ public final class Neu {
         unclipParents(v);
     }
 
-    /** v의 그림자가 뷰 밖으로 번져도 잘리지 않도록 부모와 그 위 부모의 자식 자르기를 끈다 (붙어 있지 않으면 붙을 때). */
+    /** v의 그림자가 뷰 밖으로 번져도 잘리지 않도록 바로 위 부모(버튼이 놓인 줄)의 자식 자르기를 끈다 (붙어 있지 않으면 붙을 때). */
     public static void unclipParents(View v) {
         if (v.getParent() != null) {
             unclip(v);
@@ -259,17 +259,23 @@ public final class Neu {
         });
     }
 
+    /**
+     * 바로 위 부모만 끈다. 그림자를 쓰는 버튼은 모두 제 줄 안에 그림자가 들어갈 여유가 있다. 그 위(클립보드·이모지 창 전체)까지
+     * 끄면 창이 스크롤 목록·넘기는 격자를 제 영역으로 잘라 주지 않아, 스크롤한 항목이 머리 줄 위로 그려진다.
+     */
     private static void unclip(View v) {
         android.view.ViewParent p = v.getParent();
-        for (int i = 0; i < 2 && p instanceof ViewGroup; i++) {
-            // 스크롤하는 틀은 자르기를 끄면 스크롤한 내용이 틀 밖(머리 줄 등)까지 그려지므로 건드리지 않는다.
-            if (p instanceof android.widget.ScrollView || p instanceof android.widget.HorizontalScrollView
-                    || p instanceof android.widget.AbsListView) {
-                return;
-            }
-            ((ViewGroup) p).setClipChildren(false);
-            p = p.getParent();
-        }
+        if (!(p instanceof ViewGroup)) return;
+        ViewGroup g = (ViewGroup) p;
+        // 스크롤하는 틀이나 그것을 담은 줄은 자르기를 끄면 스크롤한 내용이 틀 밖까지 그려지므로 건드리지 않는다.
+        if (scrolls(g)) return;
+        for (int i = 0; i < g.getChildCount(); i++) if (scrolls(g.getChildAt(i))) return;
+        g.setClipChildren(false);
+    }
+
+    private static boolean scrolls(View v) {
+        return v instanceof android.widget.ScrollView || v instanceof android.widget.HorizontalScrollView
+                || v instanceof android.widget.AbsListView;
     }
 
     /** 늘 안으로 들어가 있는 바탕 (고른 탭처럼 '켜진' 것을 나타낸다). */
