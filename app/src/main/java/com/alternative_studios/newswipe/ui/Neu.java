@@ -111,7 +111,7 @@ public final class Neu {
 
     /**
      * 솟아오른 면의 밝은 그림자 색. 흰색(글자) 키·회색 키·강조색 키가 따로 정한다 (KeyboardTheme.neuShadow).
-     * 다크 모드의 강조색 면은 아주 밝아서 같은 값이면 그림자가 면에 눌려 작아 보이므로 기본값이 두 배다.
+     * 다크 모드의 강조색 면은 아주 밝아서 같은 값이면 그림자가 면에 눌려 작아 보이므로 두 배쯤 진하다.
      */
     public static int raisedLight(KeyboardTheme t, int face) {
         if (face == t.accent) return t.neuLightAccent;
@@ -120,7 +120,7 @@ public final class Neu {
 
     /**
      * 솟아오른 면의 어두운 그림자 색. 흰색(글자) 키·회색 키·강조색 키가 따로 정한다 (KeyboardTheme.neuShadow).
-     * 라이트 모드의 회색 면은 면 색이 보통 그림자와 거의 같아 면이 그림자로 번져 보이므로 기본값이 더 진하다.
+     * 라이트 모드의 회색 면은 면 색이 보통 그림자와 거의 같아 면이 그림자로 번져 보이므로 흰색 키보다 진하다.
      */
     public static int darkShadow(KeyboardTheme t, int face) {
         if (face == t.accent) return t.neuDarkAccent;
