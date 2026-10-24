@@ -146,7 +146,7 @@ public final class Prefs {
     public static final String KEY_RADIUS = "key_radius";   // 키 모서리 곡률 dp, 0~24 (기본 7)
     public static final String KEY_SHADOW = "key_shadow";
     public static final String KEY_SHADOW_STRENGTH = "key_shadow_strength";   // %, 10~100
-    // 임시 슬라이더: 다크 모드의 Newmorphism 면 그라데이션·그림자 (라이트 모드는 KeyboardTheme.LIGHT_TUNE으로 고정). 기본값은 평면.
+    // 임시 슬라이더: 다크 모드의 Newmorphism 면 그라데이션·그림자 (라이트 모드는 KeyboardTheme.LIGHT_TUNE으로 고정).
     public static final String NEU_DARK_KEY_START = "neu_dark_key_start";       // 글자 키 면 왼쪽 위 모서리, 바탕색→면 색 % (0~100)
     public static final String NEU_DARK_KEY_END = "neu_dark_key_end";           // 글자 키 면이 면 색에 이르는 대각선 위치 % (20~100)
     public static final String NEU_DARK_FN_SHIFT = "neu_dark_fn_shift";         // 기능키 면 색, 바탕색 쪽(+)/검정 쪽(-)으로 % (-30~60)
@@ -877,14 +877,14 @@ public final class Prefs {
     public int keyRadiusDp() { return clamp(sp.getInt(KEY_RADIUS, 7), 0, 24); }
     public int keyShadowStrength() { return sp.getInt(KEY_SHADOW_STRENGTH, 50); }
     public boolean newmorphism() { return sp.getBoolean(NEWMORPHISM, true); }
-    public int neuDarkKeyStart() { return clamp(sp.getInt(NEU_DARK_KEY_START, 100), 0, 100); }
+    public int neuDarkKeyStart() { return clamp(sp.getInt(NEU_DARK_KEY_START, 20), 0, 100); }
     public int neuDarkKeyEnd() { return clamp(sp.getInt(NEU_DARK_KEY_END, 100), 20, 100); }
-    public int neuDarkFnShift() { return clamp(sp.getInt(NEU_DARK_FN_SHIFT, 0), -30, 60); }
-    public int neuDarkFnStart() { return clamp(sp.getInt(NEU_DARK_FN_START, 0), 0, 30); }
+    public int neuDarkFnShift() { return clamp(sp.getInt(NEU_DARK_FN_SHIFT, -30), -30, 60); }
+    public int neuDarkFnStart() { return clamp(sp.getInt(NEU_DARK_FN_START, 20), 0, 30); }
     public int neuDarkFnEndTint() { return clamp(sp.getInt(NEU_DARK_FN_END_TINT, 0), 0, 100); }
     public int neuDarkFnEnd() { return clamp(sp.getInt(NEU_DARK_FN_END, 100), 20, 100); }
-    public int neuDarkLight() { return clamp(sp.getInt(NEU_DARK_LIGHT, 7), 0, 40); }
-    public int neuDarkShadow() { return clamp(sp.getInt(NEU_DARK_SHADOW, 70), 0, 100); }
+    public int neuDarkLight() { return clamp(sp.getInt(NEU_DARK_LIGHT, 12), 0, 40); }
+    public int neuDarkShadow() { return clamp(sp.getInt(NEU_DARK_SHADOW, 80), 0, 100); }
     /** 다크 모드 슬라이더 값 여덟 개 (KeyboardTheme.T_* 순서). */
     public int[] neuDarkTune() {
         return new int[]{neuDarkKeyStart(), neuDarkKeyEnd(), neuDarkFnShift(), neuDarkFnStart(), neuDarkFnEndTint(),
