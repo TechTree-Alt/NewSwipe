@@ -53,7 +53,7 @@ public final class KeyboardTheme {
             divider = 0xFFD5D8DE;
             neuLight = 0xFFFFFFFF;
             neuDark = 0x59A0A8B6;
-            neuDarkFunction = 0x8C808A9A;
+            neuDarkFunction = 0x73808A9A;
         }
         accent = accentColor;
         onAccent = onAccentColor;

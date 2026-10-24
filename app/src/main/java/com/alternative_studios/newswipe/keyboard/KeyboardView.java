@@ -802,7 +802,7 @@ public final class KeyboardView extends View {
     private void drawNeuRaised(Canvas c, Key k) {
         int face = faceColor(k);
         Neu.drawRaised(c, k.rect.left + gapX / 2, k.rect.top + gapY / 2, k.rect.right - gapX / 2,
-                k.rect.bottom - gapY / 2, radius, neuOffset(), neuBlur(),
+                k.rect.bottom - gapY / 2, radius, neuOffset(), Neu.shadowBlur(theme, face, neuBlur()),
                 theme.neuLight, Neu.darkShadow(theme, face));
     }
 

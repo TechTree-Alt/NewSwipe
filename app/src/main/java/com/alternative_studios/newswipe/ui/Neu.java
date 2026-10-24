@@ -105,6 +105,14 @@ public final class Neu {
         return face == t.functionKey ? t.neuDarkFunction : t.neuDark;
     }
 
+    /**
+     * 솟아오른 면의 그림자 흐림. 회색 면은 진한 그림자를 쓰므로, 흐림까지 같으면 가려지지 않는 아래쪽(맨 아래 줄·도구 막대)에서
+     * 그림자가 넓게 고여 오른쪽보다 크고 진해 보인다. 그래서 회색 면의 그림자는 덜 번지게(60%) 해 면에 붙어 보이게 한다.
+     */
+    public static float shadowBlur(KeyboardTheme t, int face, float blur) {
+        return face == t.functionKey && !t.dark ? blur * 0.6f : blur;
+    }
+
     /** 그림자가 면 밖으로 번지는 너비: 이만큼 둘레를 비워 두면 그림자가 잘리지 않는다. */
     public static float spread(float offset, float blur) {
         return offset + blur * 2;
@@ -272,7 +280,8 @@ public final class Neu {
             if (pressed || sunken) {
                 drawInset(c, face, r, offset, blur, sunken ? color : pressedColor, light, pressedDark, fill);
             } else {
-                drawRaised(c, face.left, face.top, face.right, face.bottom, r, offset, blur, light, dark);
+                drawRaised(c, face.left, face.top, face.right, face.bottom, r, offset, shadowBlur(theme, color, blur),
+                        light, dark);
                 drawFace(c, face, r, color, theme, fill);
             }
         }
