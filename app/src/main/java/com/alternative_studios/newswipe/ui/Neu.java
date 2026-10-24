@@ -49,26 +49,30 @@ public final class Neu {
         return (t.accent & 0xFFFFFF) | (t.dark ? 0x66000000 : 0x8C000000);
     }
 
-    private static final int SHADERS = 8;
+    private static final int SHADERS = 24;   // 키·칩 크기 × 흰색·회색. 모자라면 그릴 때마다 새로 만들게 되므로 넉넉히
     private static final LinearGradient[] shaders = new LinearGradient[SHADERS];
     private static final int[] shaderKeys = new int[SHADERS * 4];
     private static int nextShader;
 
     /**
-     * 솟아오른 면. 밝은 테마의 흰 키 면은 왼쪽 위가 바탕색이고 오른쪽 아래로 갈수록 흰색이 되는 대각선 그라데이션이라
-     * 살짝 오목하게 들어간 느낌이 든다. 면의 왼쪽 위가 흰 밝은 그림자보다 어두워져 그쪽 윤곽도 또렷하다.
-     * 다른 면(기능키·강조색 키, 다크 테마)은 한 가지 색이다.
+     * 솟아오른 면. 밝은 테마의 글자 키(흰색)·기능키(회색) 면은 왼쪽 위가 어둡고 오른쪽 아래로 갈수록 밝아지는 대각선
+     * 그라데이션이라 살짝 오목하게 들어간 느낌이 든다. 면의 가장자리가 그림자와 같은 색이 되면 면이 그림자로 번져 보이므로,
+     * 왼쪽 위는 흰 밝은 그림자보다 어둡게, 오른쪽 아래는 어두운 그림자보다 밝게 한다.
+     * <ul>
+     *   <li>흰 키: 왼쪽 위 바탕색 → 오른쪽 아래 흰색</li>
+     *   <li>회색 기능키: 왼쪽 위 기능키 색 → 오른쪽 아래 바탕색</li>
+     * </ul>
+     * 강조색 키와 다크 테마의 면은 한 가지 색이다.
      */
     public static void drawFace(Canvas c, RectF r, float radius, int face, KeyboardTheme t, Paint fill) {
-        if (t.dark || face != t.key) {
+        if (t.dark || face != t.key && face != t.functionKey) {
             fill.setColor(face);
             c.drawRoundRect(r, radius, radius, fill);
             return;
         }
         int w = Math.max(1, Math.round(r.width())), h = Math.max(1, Math.round(r.height()));
         fill.setColor(0xFF000000);
-        // 왼쪽 위 모서리를 바탕색까지 낮춰야 흰 밝은 그림자와 면이 확실히 나뉜다.
-        fill.setShader(concave(w, h, t.background, face));
+        fill.setShader(face == t.key ? concave(w, h, t.background, face) : concave(w, h, face, t.background));
         c.save();
         c.translate(r.left, r.top);
         c.drawRoundRect(0, 0, r.width(), r.height(), radius, radius, fill);
