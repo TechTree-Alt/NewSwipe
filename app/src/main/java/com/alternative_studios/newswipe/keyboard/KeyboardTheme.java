@@ -41,8 +41,7 @@ public final class KeyboardTheme {
             neuDark = 0xB3000000;
         } else {
             background = 0xFFE6E8EC;
-            // Newmorphism에서는 흰 밝은 그림자가 키 면보다 밝아야 왼쪽 위 윤곽이 또렷하므로 키 면을 아주 살짝 낮춘다.
-            key = neu ? 0xFFF5F6F8 : 0xFFFFFFFF;
+            key = 0xFFFFFFFF;
             keyPressed = 0xFFD2D6DC;
             functionKey = 0xFFCDD1D8;
             text = 0xFF1D1E21;

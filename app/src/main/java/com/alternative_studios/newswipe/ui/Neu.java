@@ -4,11 +4,13 @@ import android.graphics.Bitmap;
 import android.graphics.BlurMaskFilter;
 import android.graphics.Canvas;
 import android.graphics.ColorFilter;
+import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
 import android.graphics.RectF;
+import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
 import android.view.View;
 import android.view.ViewGroup;
@@ -47,10 +49,50 @@ public final class Neu {
         return (t.accent & 0xFFFFFF) | (t.dark ? 0x66000000 : 0x8C000000);
     }
 
-    /** 솟아오른 면 (한 가지 색). */
+    private static final int SHADERS = 8;
+    private static final LinearGradient[] shaders = new LinearGradient[SHADERS];
+    private static final int[] shaderKeys = new int[SHADERS * 4];
+    private static int nextShader;
+
+    /**
+     * 솟아오른 면. 밝은 테마의 흰 키 면은 왼쪽 위가 조금 어둡고 오른쪽 아래로 갈수록 흰색이 되는 대각선 그라데이션이라
+     * 살짝 오목하게 들어간 느낌이 든다. 면의 왼쪽 위가 흰 밝은 그림자보다 어두워져 그쪽 윤곽도 또렷하다.
+     * 다른 면(기능키·강조색 키, 다크 테마)은 한 가지 색이다.
+     */
     public static void drawFace(Canvas c, RectF r, float radius, int face, KeyboardTheme t, Paint fill) {
-        fill.setColor(face);
-        c.drawRoundRect(r, radius, radius, fill);
+        if (t.dark || face != t.key) {
+            fill.setColor(face);
+            c.drawRoundRect(r, radius, radius, fill);
+            return;
+        }
+        int w = Math.max(1, Math.round(r.width())), h = Math.max(1, Math.round(r.height()));
+        fill.setColor(0xFF000000);
+        fill.setShader(concave(w, h, blend(face, t.background, 0.5f), face));
+        c.save();
+        c.translate(r.left, r.top);
+        c.drawRoundRect(0, 0, r.width(), r.height(), radius, radius, fill);
+        c.restore();
+        fill.setShader(null);
+    }
+
+    /** w×h 면의 왼쪽 위(dark)에서 오른쪽 아래(lit)로 가는 그라데이션. 크기·색마다 한 번만 만든다. */
+    private static LinearGradient concave(int w, int h, int dark, int lit) {
+        for (int i = 0; i < SHADERS; i++) {
+            int k = i * 4;
+            if (shaders[i] != null && shaderKeys[k] == w && shaderKeys[k + 1] == h && shaderKeys[k + 2] == dark
+                    && shaderKeys[k + 3] == lit) {
+                return shaders[i];
+            }
+        }
+        int i = nextShader;
+        nextShader = (nextShader + 1) % SHADERS;
+        shaders[i] = new LinearGradient(0, 0, w, h, dark, lit, Shader.TileMode.CLAMP);
+        int k = i * 4;
+        shaderKeys[k] = w;
+        shaderKeys[k + 1] = h;
+        shaderKeys[k + 2] = dark;
+        shaderKeys[k + 3] = lit;
+        return shaders[i];
     }
 
     /** 그림자가 면 밖으로 번지는 너비: 이만큼 둘레를 비워 두면 그림자가 잘리지 않는다. */
