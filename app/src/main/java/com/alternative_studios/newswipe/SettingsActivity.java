@@ -1607,6 +1607,11 @@ public final class SettingsActivity extends Activity {
         neu.addView(note("임시 · 흰 키 면 그라데이션"));
         neu.addView(slider("왼쪽 위 모서리 (바탕색 → 흰색)", Prefs.NEU_WHITE_START, prefs.neuWhiteStart(), 0, 100, 5, "%"));
         neu.addView(slider("흰색에 이르는 지점 (대각선)", Prefs.NEU_WHITE_END, prefs.neuWhiteEnd(), 20, 100, 5, "%"));
+        neu.addView(note("임시 · 회색 키·버튼 면 그라데이션"));
+        neu.addView(slider("면 색 (+ 밝게 / - 어둡게)", Prefs.NEU_GRAY_SHIFT, prefs.neuGrayShift(), -30, 60, 5, "%"));
+        neu.addView(slider("왼쪽 위 모서리 (어둡게)", Prefs.NEU_GRAY_START, prefs.neuGrayStart(), 0, 30, 1, "%"));
+        neu.addView(slider("오른쪽 아래 모서리 (밝게)", Prefs.NEU_GRAY_END_TINT, prefs.neuGrayEndTint(), 0, 100, 5, "%"));
+        neu.addView(slider("그라데이션이 끝나는 지점 (대각선)", Prefs.NEU_GRAY_END, prefs.neuGrayEnd(), 20, 100, 5, "%"));
     }
 
     private static int indexOf(String[] values, String v) {

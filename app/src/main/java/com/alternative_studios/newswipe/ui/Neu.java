@@ -71,8 +71,16 @@ public final class Neu {
         fill.setColor(0xFF000000);
         // 흰 면은 왼쪽 위 모서리가 밝을수록 흰 밝은 그림자와 섞여 번져 보인다 (기기에서는 바탕색과 흰색의 중간에서 번졌다).
         // 모서리는 바탕색에서 흰색 쪽으로 30%만 올리고, 대신 대각선의 50% 지점에서 벌써 흰색이 되게 해 면 전체는 밝게 한다.
-        fill.setShader(face == t.key ? concave(w, h, blend(t.background, face, t.neuWhiteStart), face, t.neuWhiteEnd)
-                : concave(w, h, blend(face, 0xFF000000, 0.03f), blend(face, t.background, 0.2f), 1f));
+        if (face == t.key) {
+            fill.setShader(concave(w, h, blend(t.background, face, t.tune(KeyboardTheme.T_WHITE_START)), face,
+                    t.tune(KeyboardTheme.T_WHITE_END)));
+        } else {
+            // 회색 면: 면 색을 바탕색 쪽(+)이나 검정 쪽(-)으로 옮긴 뒤, 왼쪽 위는 검정 쪽으로, 오른쪽 아래는 바탕색 쪽으로 조금 옮긴다.
+            float shift = t.tune(KeyboardTheme.T_GRAY_SHIFT);
+            int base = shift >= 0 ? blend(face, t.background, shift) : blend(face, 0xFF000000, -shift);
+            fill.setShader(concave(w, h, blend(base, 0xFF000000, t.tune(KeyboardTheme.T_GRAY_START)),
+                    blend(base, t.background, t.tune(KeyboardTheme.T_GRAY_END_TINT)), t.tune(KeyboardTheme.T_GRAY_END)));
+        }
         c.save();
         c.translate(r.left, r.top);
         c.drawRoundRect(0, 0, r.width(), r.height(), radius, radius, fill);

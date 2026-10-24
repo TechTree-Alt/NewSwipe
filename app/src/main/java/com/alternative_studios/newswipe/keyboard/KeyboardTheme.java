@@ -21,19 +21,25 @@ public final class KeyboardTheme {
     public final int divider;
     /** Newmorphism 모드: 키·버튼이 바탕에서 솟아오르고 누르면 안으로 들어간다 (ui.Neu). */
     public final boolean neu;
-    /** 임시(설정 슬라이더): 흰 키 면 그라데이션의 왼쪽 위 모서리(바탕색→흰색 비율)와 흰색에 이르는 대각선 위치. */
-    public final float neuWhiteStart, neuWhiteEnd;
+    /** 임시(설정 슬라이더): 흰·회색 키 면 그라데이션을 맞추는 값 (% 단위, Prefs.neuTune()). 인덱스는 T_*. */
+    public final int[] neuTune;
+    public static final int T_WHITE_START = 0, T_WHITE_END = 1, T_GRAY_SHIFT = 2, T_GRAY_START = 3, T_GRAY_END_TINT = 4,
+            T_GRAY_END = 5;
+
+    /** neuTune의 i번째 값을 0~1 비율(회색 면 색은 -1~1)로. */
+    public float tune(int i) {
+        return neuTune[i] / 100f;
+    }
     /** Newmorphism 그림자: 왼쪽 위 밝은 그림자, 오른쪽 아래 어두운 그림자. */
     public final int neuLight;
     public final int neuDark;
     /** 회색 기능키 면의 어두운 그림자 (면이 그림자로 번져 보이지 않게 neuDark보다 진하다). */
     public final int neuDarkFunction;
 
-    private KeyboardTheme(boolean dark, int accentColor, int onAccentColor, boolean neu, int whiteStart, int whiteEnd) {
+    private KeyboardTheme(boolean dark, int accentColor, int onAccentColor, boolean neu, int[] tune) {
         this.dark = dark;
         this.neu = neu;
-        neuWhiteStart = whiteStart / 100f;
-        neuWhiteEnd = whiteEnd / 100f;
+        neuTune = tune;
         if (dark) {
             background = 0xFF1B1C1F;
             key = 0xFF3A3B40;
@@ -71,10 +77,10 @@ public final class KeyboardTheme {
         AppTheme t = AppTheme.of(context);
         Prefs prefs = new Prefs(context);
         boolean neu = prefs.newmorphism();
-        float start = prefs.neuWhiteStart() / 100f, end = prefs.neuWhiteEnd() / 100f;
+        int[] tune = prefs.neuTune();
         if (cached == null || cached.dark != t.dark || cached.accent != t.accent || cached.onAccent != t.onAccent
-                || cached.neu != neu || cached.neuWhiteStart != start || cached.neuWhiteEnd != end) {
-            cached = new KeyboardTheme(t.dark, t.accent, t.onAccent, neu, prefs.neuWhiteStart(), prefs.neuWhiteEnd());
+                || cached.neu != neu || !java.util.Arrays.equals(cached.neuTune, tune)) {
+            cached = new KeyboardTheme(t.dark, t.accent, t.onAccent, neu, tune);
         }
         return cached;
     }
