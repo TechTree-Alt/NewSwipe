@@ -117,6 +117,11 @@ public final class Neu {
         return shaders[i];
     }
 
+    /** 눌린 강조색 면의 안쪽 어두운 그림자. 다크 모드는 다른 키와 같은 색이고, 라이트 모드는 강조색을 어둡게 한 색이다. */
+    public static int accentInsetShadow(KeyboardTheme t) {
+        return t.dark ? t.neuDark : blend(t.accent, 0xFF000000, 0.45f) & 0xB3FFFFFF;
+    }
+
     /**
      * 솟아오른 면의 어두운 그림자 색. 면 색에 따라 정한다: 강조색 면은 강조색이 번지고, 회색 기능키 면은 면 색이
      * 보통 그림자와 거의 같아 면이 그림자로 번져 보이므로 더 진한 그림자를 쓴다.
@@ -283,7 +288,7 @@ public final class Neu {
             pressedColor = accent ? blend(t.accent, t.text, 0.12f) : t.keyPressed;
             light = t.neuLight;
             dark = darkShadow(t, color);
-            pressedDark = accent ? blend(t.accent, 0xFF000000, 0.45f) & 0xB3FFFFFF : t.neuDark;
+            pressedDark = accent ? accentInsetShadow(t) : t.neuDark;
             this.radius = radius;
             this.insetH = insetH;
             this.insetV = insetV;
