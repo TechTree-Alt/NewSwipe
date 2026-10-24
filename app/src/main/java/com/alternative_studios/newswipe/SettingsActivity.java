@@ -2126,11 +2126,33 @@ public final class SettingsActivity extends Activity {
     /** 학습한 단어·학습하지 않는 단어 화면의 검색어 (비어 있으면 모두 보인다). */
     private String wordQuery = "";
 
-    /** 단어 검색: 검색어가 바뀔 때마다 목록을 그 검색어로 다시 그린다. */
+    /**
+     * 처음 그릴 때 읽어 정렬해 둔 학습한 단어({단어, 횟수, 마지막 시각}, 많이 쓴 순)와 학습하지 않는 단어. 검색할 때는 파일을
+     * 다시 읽거나 정렬하지 않고 이것을 거른다. 지우거나 되돌리면 여기서도 뺀다.
+     */
+    private java.util.List<String[]> learnedCache;
+    private java.util.List<String> blockedCache;
+    /** 단어 검색은 입력이 멈추고 이만큼 지나서 다시 그린다 (한글은 자모를 칠 때마다 검색어가 바뀐다). */
+    private static final int WORD_SEARCH_DELAY_MS = 200;
+    private final Runnable wordSearchRedraw = this::redrawWordList;
+
+    /** 단어 검색: 검색어가 바뀌면 잠깐 기다렸다가 목록을 그 검색어로 다시 그린다. */
     private void onWordSearch(String raw) {
         String q = raw == null ? "" : raw.trim();
-        if (q.equals(wordQuery)) return;
-        wordQuery = q;
+        if (q.equals(wordQuery)) {
+            uiHandler.removeCallbacks(wordSearchRedraw);   // 바뀌었다가 되돌아왔으면 다시 그리지 않는다
+            return;
+        }
+        pendingWordQuery = q;
+        uiHandler.removeCallbacks(wordSearchRedraw);
+        uiHandler.postDelayed(wordSearchRedraw, q.isEmpty() ? 0 : WORD_SEARCH_DELAY_MS);
+    }
+
+    private String pendingWordQuery = "";
+
+    private void redrawWordList() {
+        if (isFinishing() || isDestroyed() || pendingWordQuery.equals(wordQuery)) return;
+        wordQuery = pendingWordQuery;
         String id = getIntent().getStringExtra(EXTRA_SECTION);
         list.removeAllViews();
         if (LEARNED.equals(id)) buildLearned();
@@ -2145,15 +2167,29 @@ public final class SettingsActivity extends Activity {
 
     /** 한 번에 그리는 학습한 단어 줄 수. 더 있으면 '더 보기'로 이어서 그린다 (수천 줄을 한꺼번에 만들지 않도록). */
     private static final int LEARNED_PAGE = 200;
+    /** 검색하는 동안 한 번에 그리는 줄 수 (칠 때마다 다시 그리므로 적게). */
+    private static final int SEARCH_PAGE = 50;
+
+    private int wordPage() {
+        return wordQuery.isEmpty() ? LEARNED_PAGE : SEARCH_PAGE;
+    }
 
     /** 학습한 단어 목록 (많이 쓴 순). 줄마다 오른쪽 휴지통 버튼으로 지운다. */
     private void buildLearned() {
         UserDictionary dict = UserDictionary.shared(getFilesDir());
-        java.util.List<String[]> all = dict.snapshot();
-        all.sort((a, b) -> {
-            int c = Integer.compare(Integer.parseInt(b[1]), Integer.parseInt(a[1]));
-            return c != 0 ? c : Long.compare(Long.parseLong(b[2]), Long.parseLong(a[2]));
-        });
+        if (learnedCache == null) {
+            java.util.List<String[]> read = dict.snapshot();
+            // 문자열을 비교할 때마다 숫자로 풀지 않게 한 번만 푼다
+            java.util.Map<String[], long[]> key = new java.util.IdentityHashMap<>();
+            for (String[] w : read) key.put(w, new long[]{Long.parseLong(w[1]), Long.parseLong(w[2])});
+            read.sort((a, b) -> {
+                long[] ka = key.get(a), kb = key.get(b);
+                int c = Long.compare(kb[0], ka[0]);
+                return c != 0 ? c : Long.compare(kb[1], ka[1]);
+            });
+            learnedCache = read;
+        }
+        java.util.List<String[]> all = new java.util.ArrayList<>(learnedCache);
         if (all.isEmpty()) {
             card().addView(note("아직 학습한 단어가 없습니다. 단어 추천이나 자동 수정을 켜고 입력하면, "
                     + "자주 쓰는 단어를 기억해 여기에 보여 줍니다."));
@@ -2215,7 +2251,7 @@ public final class SettingsActivity extends Activity {
     /** slot: remaining에서 이 목록의 개수가 들어 있는 칸 (0 = 학습한 단어, 1 = 후보). */
     private void addLearnedRows(LinearLayout words, java.util.List<String[]> all, int from, UserDictionary dict,
                                 int[] remaining, int slot, Runnable updateSummary) {
-        int to = Math.min(all.size(), from + LEARNED_PAGE);
+        int to = Math.min(all.size(), from + wordPage());
         for (int i = from; i < to; i++) {
             String[] w = all.get(i);
             if (words.getChildCount() > 0) words.addView(divider());
@@ -2260,6 +2296,8 @@ public final class SettingsActivity extends Activity {
         Runnable delete = () -> {
             boolean korean = word.codePoints().anyMatch(c -> c >= 0xAC00 && c <= 0xD7A3);
             dict.forget(word, korean);   // 지운 단어는 다시 학습하지 않는다
+            if (learnedCache != null) learnedCache.removeIf(w -> w[0].equals(word));
+            if (blockedCache != null && !blockedCache.contains(word)) blockedCache.add(word);
             if (korean) UsageHistory.shared(getFilesDir()).remove(word);
             // 줄과 그 위(첫 줄이면 아래)의 구분선을 함께 뗀다.
             int idx = words.indexOfChild(row);
@@ -2296,7 +2334,8 @@ public final class SettingsActivity extends Activity {
      */
     private void buildBlocked() {
         UserDictionary dict = UserDictionary.shared(getFilesDir());
-        java.util.List<String> all = dict.blockedSnapshot();
+        if (blockedCache == null) blockedCache = dict.blockedSnapshot();
+        java.util.List<String> all = new java.util.ArrayList<>(blockedCache);
         if (all.isEmpty()) {
             card().addView(note("학습하지 않는 단어가 없습니다. 학습한 단어를 지우면(설정이나 추천을 길게 눌러서) "
                     + "그 단어는 다시 학습하지 않고 여기에 보입니다."));
@@ -2304,7 +2343,6 @@ public final class SettingsActivity extends Activity {
         }
         boolean searching = !wordQuery.isEmpty();
         if (searching) {
-            all = new java.util.ArrayList<>(all);
             all.removeIf(w -> !UserDictionary.matchesQuery(w, wordQuery));
             if (all.isEmpty()) {
                 noWordMatch();
@@ -2327,7 +2365,7 @@ public final class SettingsActivity extends Activity {
 
     private void addBlockedRows(LinearLayout words, java.util.List<String> all, int from, UserDictionary dict,
                                 int[] remaining, Runnable updateSummary) {
-        int to = Math.min(all.size(), from + LEARNED_PAGE);
+        int to = Math.min(all.size(), from + wordPage());
         for (int i = from; i < to; i++) {
             if (words.getChildCount() > 0) words.addView(divider());
             words.addView(blockedRow(words, all.get(i), dict, remaining, updateSummary));
@@ -2362,6 +2400,7 @@ public final class SettingsActivity extends Activity {
                 "'" + word + "' 다시 학습하기");
         restore.setOnClickListener(v -> {
             dict.unblock(word);
+            if (blockedCache != null) blockedCache.remove(word);
             int idx = words.indexOfChild(row);
             if (idx > 0) words.removeViewAt(idx - 1);
             else if (words.getChildCount() > 1) words.removeViewAt(1);
