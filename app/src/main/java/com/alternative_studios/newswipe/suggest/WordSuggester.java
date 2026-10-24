@@ -457,6 +457,15 @@ public final class WordSuggester {
         String fix = correction ? autoCorrect(word, prev, true, field) : null;
         KoreanSuggest.Result r = m.suggest(word, prev, field, useUser() ? user : null, useUser() ? usage : null, fix, MAX);
         String[] words = r.words;
+        String alt = fix != null && r.correction >= 0 ? m.correctionAlternative(word) : null;
+        if (alt != null && !java.util.Arrays.asList(words).contains(alt)) {
+            // 자동 수정과 겨룬 다음 후보를 고친 단어 바로 뒤에 보인다: 골라 주면 CorrectionMemory가 다음부터 그것으로 고친다
+            java.util.List<String> out = new java.util.ArrayList<>(java.util.Arrays.asList(words));
+            int at = Math.min(out.size(), r.correction + 1);
+            out.add(at, alt);
+            if (out.size() > MAX) out.remove(out.size() - 1);
+            words = out.toArray(new String[0]);
+        }
         if (words.length < MAX && fix == null) {
             // 빈 칸에는 어미를 잘못 친 말의 바른 꼴을 보인다 (자동 수정은 하지 않는다: 골라 주면 CorrectionMemory가 배운다)
             java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>(java.util.Arrays.asList(words));

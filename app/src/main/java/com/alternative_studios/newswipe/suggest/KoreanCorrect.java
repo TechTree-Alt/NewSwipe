@@ -114,7 +114,19 @@ final class KoreanCorrect {
         known = k;
     }
 
+    /** 고친 단어와 겨룬 다음 후보를 추천란에 보일 만한 차이 (ln). */
+    static double ALT_MARGIN = 3;
+    /** 마지막 correct()의 다음 후보 (추천란에 보인다, 화면 스레드에서만 쓴다). */
+    private String alternative, alternativeFor;
+
+    /** word를 마지막으로 고칠 때 겨룬 다음 후보 (없으면 null). */
+    String alternativeFor(String word) {
+        return word.equals(alternativeFor) ? alternative : null;
+    }
+
     String correct(String word, String prev, int field, UserDictionary user, UsageHistory usage) {
+        alternativeFor = word;
+        alternative = null;
         int syll = KoreanMorph.hangulSyllables(word);
         if (syll < 2 || syll != word.length()) return null;
         if (dict.contains(word) || withParticle(word)) return null;
@@ -187,6 +199,14 @@ final class KoreanCorrect {
         java.util.List<String> best = new java.util.ArrayList<>();
         for (double[] r : rank) if (best.size() < max) best.add(out.get((int) r[1]));
         return best;
+    }
+
+    /** 동사에만 붙는 어미 (청유·현재 관형형 등): 형용사 어간에 붙은 말(좋자, 좋는)은 낱말다운 꼴로 보지 않는다. */
+    private static final String[] VERB_ONLY_ENDINGS = {"자", "자고", "자며", "는", "는데", "는다", "는지라", "려고", "러"};
+
+    /** 형용사 어간인지: 관형형이 -은이고(좋은) -는은 없다(좋는). 있다·없다처럼 -는을 쓰는 말은 형용사로 보지 않는다. */
+    private boolean adjectiveStem(String stem) {
+        return dict.contains(stem + "은") && !dict.contains(stem + "는");
     }
 
     /** 명사 + 조사에서 조사만 틀린 말을 고칠지 ({@link #particleFix}). */
@@ -338,7 +358,7 @@ final class KoreanCorrect {
         float diagCost = 0;                                   // [1]의 가장 그럴듯한 단어의 오타 비용
         float minDirect = Float.POSITIVE_INFINITY;            // 기준과 상관없이 본, 대각선 키 없이 설명되는 단어의 가장 싼 비용
         double allBest = Double.NEGATIVE_INFINITY, allSecond = Double.NEGATIVE_INFINITY;   // 기준과 상관없이 본, 대각선 키 없이 설명되는 단어의 1·2위
-        int allBestId = -1, uniqueId = -1;
+        int allBestId = -1, allSecondId = -1, uniqueId = -1;
         double uniqueS = Double.NEGATIVE_INFINITY;   // 키 하나 오타(대각선 제외)로 고치는 단어 중 가장 그럴듯한 것
         int minScore = ks.scoreFor(CORRECT_MIN_FREQ);
         double lmTyped = SHAPE_RULE ? shape.logProb(typed) : 0;
@@ -389,10 +409,12 @@ final class KoreanCorrect {
                 minDirect = Math.min(minDirect, c);
                 if (s > allBest) {
                     allSecond = allBest;
+                    allSecondId = allBestId;
                     allBest = s;
                     allBestId = id;
                 } else if (s > allSecond) {
                     allSecond = s;
+                    allSecondId = id;
                 }
             }
             boolean oneKey = c <= TypoModel.NEIGHBOR + 1e-4f;
@@ -416,7 +438,14 @@ final class KoreanCorrect {
                 second[pool] = s;
             }
         }
-        if (bestId[0] >= 0) return best[0] - second[0] < CORRECT_MARGIN ? null : dict.word(bestId[0]);
+        if (bestId[0] >= 0) {
+            if (best[0] - second[0] < CORRECT_MARGIN) return null;
+            // 고친 단어와 겨룬 다음 후보(기준과 상관없이)가 그리 뒤지지 않으면 추천란에도 보인다 (좋자 → 좋다, 그다음 좋지)
+            int alt = allBestId == bestId[0] ? allSecondId : allBestId;
+            double altS = allBestId == bestId[0] ? allSecond : allBest;
+            if (alt >= 0 && alt != bestId[0] && best[0] - altS < ALT_MARGIN) alternative = dict.word(alt);
+            return dict.word(bestId[0]);
+        }
         // 대각선 키를 잘못 눌렀다고 봐야 하는 단어는, 같은 값싼 오타로 설명되는 다른 꼴(바로 옆·위·아래 키)이 없을 때만 고른다
         // (배일 → 내일이 아니다: 매일은 기준에 조금 못 미쳐도 있는 꼴이다)
         if (bestId[1] >= 0 && minDirect > diagCost + 1e-4f) {
@@ -606,7 +635,8 @@ final class KoreanCorrect {
     boolean verbForm(String word) {
         int n = word.length();
         for (int k = n - 1; k >= 1; k--) {
-            if (contains(FREE_ENDINGS, word.substring(k)) && morph.verbStem(word.substring(0, k))) return true;
+            String end = word.substring(k), stem = word.substring(0, k);
+            if (contains(FREE_ENDINGS, end) && morph.verbStem(stem) && !(contains(VERB_ONLY_ENDINGS, end) && adjectiveStem(stem))) return true;
         }
         if (eoForm(word)) return true;
         // 받침에 어미가 섞인 말: 마지막 몇 글자 중 한 글자의 받침을 떼어 어간으로 본다 (간대 → 가 + ㄴ대)

@@ -250,6 +250,11 @@ final class KoreanSuggest {
     }
 
     /** 사전에 없는 word가 한국어 낱말로 그럴듯한지 ({@link KoreanCorrect#plausible}). */
+    /** word를 마지막으로 자동 수정할 때 고친 단어와 겨룬 다음 후보 (추천란에 보인다). */
+    String correctionAlternative(String word) {
+        return corrector.alternativeFor(word);
+    }
+
     /** 추천란에만 보일, 끝 글자의 어미를 잘못 친 말의 바른 꼴 ({@link KoreanCorrect#endingCandidates}). */
     java.util.List<String> endingCandidates(String word, int max) {
         return corrector.endingCandidates(word, max);

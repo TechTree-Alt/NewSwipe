@@ -80,4 +80,16 @@ public class ShapeRuleTest {
         assertNull(ks.correct("사람응", null, KoreanSuggest.FIELD_NORMAL, null, null));          // 사람을·사람은 둘 다 흔하다
         assertNull(ks.correct("생선돼", null, KoreanSuggest.FIELD_NORMAL, null, null));          // 용언 조각은 조사 오타로 보지 않는다
     }
+
+    @Test
+    public void adjectiveDoesNotTakeVerbOnlyEndings() throws Exception {
+        WordDictionary d = KoreanSuggestTest.buildDict(new String[][]{
+                {"좋고", "200"}, {"좋은", "200"}, {"좋지", "180"}, {"좋다", "220"},
+                {"먹고", "200"}, {"먹는", "200"}, {"먹지", "180"}, {"먹다", "180"},
+        });
+        KoreanSuggest ks = new KoreanSuggest(d, null, new TypoModel());
+        assertTrue(ks.plausible("먹자"));            // 동사 + 청유
+        assertTrue(!ks.plausible("좋자"));           // 형용사에는 -자가 붙지 않는다
+        assertTrue(!ks.plausible("좋는"));
+    }
 }
