@@ -44,9 +44,12 @@ public final class Neu {
         insetPaint.setStyle(Paint.Style.STROKE);
     }
 
-    /** 강조색 면의 그림자: 어두운 그림자 대신 강조색이 은은하게 번진다. */
+    /**
+     * 강조색 면의 어두운 그림자. 라이트 모드는 어두운 그림자 대신 강조색이 은은하게 번진다. 다크 모드의 강조색은 밝아서
+     * 번지면 다른 키와 달리 밝은 색 그림자로 보이므로, 다른 키와 같은 어두운 그림자를 쓴다.
+     */
     public static int accentShadow(KeyboardTheme t) {
-        return (t.accent & 0xFFFFFF) | (t.dark ? 0x66000000 : 0x8C000000);
+        return t.dark ? t.neuDark : (t.accent & 0xFFFFFF) | 0x8C000000;
     }
 
     private static final int SHADERS = 24;   // 키·칩 크기 × 흰색·회색. 모자라면 그릴 때마다 새로 만들게 되므로 넉넉히
