@@ -28,13 +28,15 @@ public final class KeyboardTheme {
     public final boolean neu;
     /**
      * 글자 키(라이트 모드는 흰색)·기능키(회색) 면 그라데이션과 그림자를 맞추는 값 (% 단위, 인덱스는 T_*).
-     * 라이트 모드는 {@link #LIGHT_TUNE}으로 고정이고, 다크 모드는 설정의 임시 슬라이더 값(Prefs.neuDarkTune())이다.
+     * 그라데이션은 모드마다 고정({@link #LIGHT_TUNE}, {@link #DARK_TUNE})이고, 그림자 강도(뒤의 둘)만 라이트 모드의 설정 값이다.
      */
     public final int[] neuTune;
     public static final int T_KEY_START = 0, T_KEY_END = 1, T_FN_SHIFT = 2, T_FN_START = 3, T_FN_END_TINT = 4,
             T_FN_END = 5, T_LIGHT = 6, T_SHADOW = 7;
-    /** 라이트 모드 값 (그림자는 아래 색으로 고정이라 뒤의 둘은 쓰지 않는다). */
-    private static final int[] LIGHT_TUNE = {0, 50, 5, 5, 0, 50, 0, 0};
+    /** 라이트 모드 그라데이션 값 (뒤의 둘, 그림자 강도는 설정에서 채운다). */
+    private static final int[] LIGHT_TUNE = {0, 50, 5, 5, 0, 50};
+    /** 다크 모드 값: 글자 키 면(왼쪽 위 20%, 끝 100%), 기능키 면(-30%, 20%, 0%, 100%), 밝은 그림자 12%, 어두운 그림자 80%. */
+    private static final int[] DARK_TUNE = {20, 100, -30, 20, 0, 100, 12, 80};
 
     /** neuTune의 i번째 값을 0~1 비율(회색 면 색은 -1~1)로. */
     public float tune(int i) {
@@ -50,8 +52,8 @@ public final class KeyboardTheme {
         this.dark = dark;
         this.neu = neu;
         neuTune = tune;
+        int light = Math.round(tune[T_LIGHT] * 2.55f), shadow = Math.round(tune[T_SHADOW] * 2.55f);
         if (dark) {
-            int light = Math.round(tune[T_LIGHT] * 2.55f), shadow = Math.round(tune[T_SHADOW] * 2.55f);
             background = 0xFF1B1C1F;
             key = 0xFF3A3B40;
             keyPressed = 0xFF55575D;
@@ -74,9 +76,9 @@ public final class KeyboardTheme {
             popup = 0xFFFFFFFF;
             divider = 0xFFD5D8DE;
             lift = 0xFFE6E8EC;
-            neuLight = 0xFFFFFFFF;
-            neuDark = 0x59A0A8B6;
-            neuDarkFunction = 0x73808A9A;
+            neuLight = light << 24 | 0xFFFFFF;
+            neuDark = shadow << 24 | 0xA0A8B6;
+            neuDarkFunction = Math.min(255, Math.round(shadow * 1.29f)) << 24 | 0x808A9A;   // 회색 면은 기본 강도의 1.29배
         }
         accent = accentColor;
         onAccent = onAccentColor;
@@ -90,7 +92,8 @@ public final class KeyboardTheme {
         AppTheme t = AppTheme.of(context);
         Prefs prefs = new Prefs(context);
         boolean neu = prefs.newmorphism();
-        int[] tune = t.dark ? prefs.neuDarkTune() : LIGHT_TUNE;
+        int[] tune = t.dark ? DARK_TUNE : new int[]{LIGHT_TUNE[0], LIGHT_TUNE[1], LIGHT_TUNE[2], LIGHT_TUNE[3], LIGHT_TUNE[4],
+                LIGHT_TUNE[5], prefs.neuLightLight(), prefs.neuLightShadow()};
         if (cached == null || cached.dark != t.dark || cached.accent != t.accent || cached.onAccent != t.onAccent
                 || cached.neu != neu || !java.util.Arrays.equals(cached.neuTune, tune)) {
             cached = new KeyboardTheme(t.dark, t.accent, t.onAccent, neu, tune);

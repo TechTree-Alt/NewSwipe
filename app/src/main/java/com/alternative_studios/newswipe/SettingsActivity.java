@@ -1603,19 +1603,8 @@ public final class SettingsActivity extends Activity {
                 "키와 도구 막대·클립보드·이모지 창의 버튼이 바탕에서 부드럽게 솟아오르고, 누르면 안으로 쑥 들어가는 모양으로 그립니다. "
                         + "켜면 키 그림자 대신 쓰입니다.",
                 Prefs.NEWMORPHISM, prefs.newmorphism()));
-        // 임시: 다크 모드의 Newmorphism 모양을 직접 맞춰 보는 슬라이더 (라이트 모드는 값이 정해져 있다). 값을 정하면 지운다.
-        // 바꾸면 키보드가 바로 다시 그려진다. 다크 모드로 바꿔 두고 조절한다.
-        neu.addView(note("임시 · 다크 모드에서만 적용 · 글자 키 면 그라데이션"));
-        neu.addView(slider("왼쪽 위 모서리 (바탕색 → 키 면 색)", Prefs.NEU_DARK_KEY_START, prefs.neuDarkKeyStart(), 0, 100, 5, "%"));
-        neu.addView(slider("키 면 색에 이르는 지점 (대각선)", Prefs.NEU_DARK_KEY_END, prefs.neuDarkKeyEnd(), 20, 100, 5, "%"));
-        neu.addView(note("임시 · 다크 모드에서만 적용 · 기능키·버튼 면 그라데이션"));
-        neu.addView(slider("면 색 (+ 밝게 / - 어둡게)", Prefs.NEU_DARK_FN_SHIFT, prefs.neuDarkFnShift(), -30, 60, 5, "%"));
-        neu.addView(slider("왼쪽 위 모서리 (어둡게)", Prefs.NEU_DARK_FN_START, prefs.neuDarkFnStart(), 0, 30, 1, "%"));
-        neu.addView(slider("오른쪽 아래 모서리 (밝게)", Prefs.NEU_DARK_FN_END_TINT, prefs.neuDarkFnEndTint(), 0, 100, 5, "%"));
-        neu.addView(slider("그라데이션이 끝나는 지점 (대각선)", Prefs.NEU_DARK_FN_END, prefs.neuDarkFnEnd(), 20, 100, 5, "%"));
-        neu.addView(note("임시 · 다크 모드에서만 적용 · 그림자"));
-        neu.addView(slider("밝은 그림자 강도", Prefs.NEU_DARK_LIGHT, prefs.neuDarkLight(), 0, 40, 1, "%"));
-        neu.addView(slider("어두운 그림자 강도", Prefs.NEU_DARK_SHADOW, prefs.neuDarkShadow(), 0, 100, 5, "%"));
+        neu.addView(slider("밝은 그림자 강도 (라이트 모드)", Prefs.NEU_LIGHT_LIGHT, prefs.neuLightLight(), 0, 100, 5, "%"));
+        neu.addView(slider("어두운 그림자 강도 (라이트 모드)", Prefs.NEU_LIGHT_SHADOW, prefs.neuLightShadow(), 0, 100, 5, "%"));
     }
 
     private static int indexOf(String[] values, String v) {

@@ -146,15 +146,8 @@ public final class Prefs {
     public static final String KEY_RADIUS = "key_radius";   // 키 모서리 곡률 dp, 0~24 (기본 7)
     public static final String KEY_SHADOW = "key_shadow";
     public static final String KEY_SHADOW_STRENGTH = "key_shadow_strength";   // %, 10~100
-    // 임시 슬라이더: 다크 모드의 Newmorphism 면 그라데이션·그림자 (라이트 모드는 KeyboardTheme.LIGHT_TUNE으로 고정).
-    public static final String NEU_DARK_KEY_START = "neu_dark_key_start";       // 글자 키 면 왼쪽 위 모서리, 바탕색→면 색 % (0~100)
-    public static final String NEU_DARK_KEY_END = "neu_dark_key_end";           // 글자 키 면이 면 색에 이르는 대각선 위치 % (20~100)
-    public static final String NEU_DARK_FN_SHIFT = "neu_dark_fn_shift";         // 기능키 면 색, 바탕색 쪽(+)/검정 쪽(-)으로 % (-30~60)
-    public static final String NEU_DARK_FN_START = "neu_dark_fn_start";         // 기능키 면 왼쪽 위 모서리를 검정 쪽으로 어둡게 % (0~30)
-    public static final String NEU_DARK_FN_END_TINT = "neu_dark_fn_end_tint";   // 기능키 면 오른쪽 아래 모서리를 바탕색 쪽으로 밝게 % (0~100)
-    public static final String NEU_DARK_FN_END = "neu_dark_fn_end";             // 기능키 면 그라데이션이 끝나는 대각선 위치 % (20~100)
-    public static final String NEU_DARK_LIGHT = "neu_dark_light";               // 다크 모드 밝은 그림자 강도 % (0~40)
-    public static final String NEU_DARK_SHADOW = "neu_dark_shadow";             // 다크 모드 어두운 그림자 강도 % (0~100)
+    public static final String NEU_LIGHT_LIGHT = "neu_light_light";     // 라이트 모드 Newmorphism 밝은 그림자 강도 % (0~100)
+    public static final String NEU_LIGHT_SHADOW = "neu_light_shadow";     // 라이트 모드 Newmorphism 어두운 그림자 강도 % (0~100)
     public static final String NEWMORPHISM = "newmorphism";   // 키·버튼을 바탕에서 솟아오른 모양으로 그리고, 누르면 안으로 들어가게
     public static final String TOOLBAR = "toolbar";
     public static final String TOOLBAR_BOTTOM = "toolbar_bottom";   // 도구 막대를 자판 아래에 둔다
@@ -365,9 +358,7 @@ public final class Prefs {
                 SPLIT_REACH_COLUMN, PROFILE_LIFT + LANDSCAPE_SUFFIX, BOTTOM_KEY_ORDER, COMMA_CHAR, PERIOD_CHAR, MODE_KEY_HIDDEN, PERIOD_COMMA, LANGUAGE_KEY_HIDDEN, SPACE_KEY_HIDDEN,
                 PERIOD_KEY_HIDDEN, ENTER_KEY_HIDDEN, DELETE_KEY_HIDDEN, KOREAN_SHIFT_HIDDEN, KOREAN_SHIFT_FN));
         MENU_PREFIXES.put("layout", keys("balanced_", LANDSCAPE_SPLIT + "_", "swipe_fk_"));
-        MENU_KEYS.put("theme", keys(THEME_MODE, ACCENT_MODE, ACCENT_COLOR, GRID_COLORS, NEWMORPHISM,
-                NEU_DARK_KEY_START, NEU_DARK_KEY_END, NEU_DARK_FN_SHIFT, NEU_DARK_FN_START, NEU_DARK_FN_END_TINT,
-                NEU_DARK_FN_END, NEU_DARK_LIGHT, NEU_DARK_SHADOW));
+        MENU_KEYS.put("theme", keys(THEME_MODE, ACCENT_MODE, ACCENT_COLOR, GRID_COLORS, NEWMORPHISM, NEU_LIGHT_LIGHT, NEU_LIGHT_SHADOW));
         MENU_KEYS.put("look", keys(KEYBOARD_HEIGHT, KEY_TEXT_SIZE, KEY_RADIUS, KEY_SHADOW, KEY_SHADOW_STRENGTH,
                 KEY_PREVIEW, POPUP_HINT_HIDDEN, NUMBER_HINT_HIDDEN, PAD_LEFT, PAD_RIGHT, PAD_TOP, PAD_BOTTOM, KEY_GAP_X, KEY_GAP_Y));
         MENU_KEYS.put("input", keys(AUTO_CAP, ENGLISH_FIELDS, DOUBLE_SPACE_PERIOD, DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT,
@@ -877,19 +868,8 @@ public final class Prefs {
     public int keyRadiusDp() { return clamp(sp.getInt(KEY_RADIUS, 7), 0, 24); }
     public int keyShadowStrength() { return sp.getInt(KEY_SHADOW_STRENGTH, 50); }
     public boolean newmorphism() { return sp.getBoolean(NEWMORPHISM, true); }
-    public int neuDarkKeyStart() { return clamp(sp.getInt(NEU_DARK_KEY_START, 20), 0, 100); }
-    public int neuDarkKeyEnd() { return clamp(sp.getInt(NEU_DARK_KEY_END, 100), 20, 100); }
-    public int neuDarkFnShift() { return clamp(sp.getInt(NEU_DARK_FN_SHIFT, -30), -30, 60); }
-    public int neuDarkFnStart() { return clamp(sp.getInt(NEU_DARK_FN_START, 20), 0, 30); }
-    public int neuDarkFnEndTint() { return clamp(sp.getInt(NEU_DARK_FN_END_TINT, 0), 0, 100); }
-    public int neuDarkFnEnd() { return clamp(sp.getInt(NEU_DARK_FN_END, 100), 20, 100); }
-    public int neuDarkLight() { return clamp(sp.getInt(NEU_DARK_LIGHT, 12), 0, 40); }
-    public int neuDarkShadow() { return clamp(sp.getInt(NEU_DARK_SHADOW, 80), 0, 100); }
-    /** 다크 모드 슬라이더 값 여덟 개 (KeyboardTheme.T_* 순서). */
-    public int[] neuDarkTune() {
-        return new int[]{neuDarkKeyStart(), neuDarkKeyEnd(), neuDarkFnShift(), neuDarkFnStart(), neuDarkFnEndTint(),
-                neuDarkFnEnd(), neuDarkLight(), neuDarkShadow()};
-    }
+    public int neuLightLight() { return clamp(sp.getInt(NEU_LIGHT_LIGHT, 100), 0, 100); }
+    public int neuLightShadow() { return clamp(sp.getInt(NEU_LIGHT_SHADOW, 35), 0, 100); }
     public boolean suggestWords() { return sp.getBoolean(SUGGEST_WORDS, false); }
     /** 이모지 창을 열 때 커서 앞의 글에 맞는 이모지를 최근 탭 맨 위에 추천하는지. */
     public boolean emojiSuggest() { return sp.getBoolean(EMOJI_SUGGEST, true); }

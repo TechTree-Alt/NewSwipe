@@ -59,7 +59,7 @@ public final class Neu {
      * 살짝 오목하게 들어간 느낌이 든다. 면의 왼쪽 위가 흰 밝은 그림자보다 어두워져 그쪽 윤곽도 또렷하다.
      * 회색 기능키 면도 흰 키와 어울리도록 같은 방향으로 약하게 그라데이션을 준다 (회색이 그대로 보이도록 왼쪽 위는 기능키 색보다
      * 3% 어둡게, 오른쪽 아래는 바탕색 쪽으로 20%만 밝게). 회색 면이 그림자로 번져 보이지 않게 하는 것은 진한 그림자가 맡는다
-     * ({@link #darkShadow}). 강조색 키의 면은 한 가지 색이다. 모양을 정하는 값은 라이트 모드는 고정이고 다크 모드는 설정의 임시 슬라이더다 ({@link KeyboardTheme#neuTune}).
+     * ({@link #darkShadow}). 강조색 키의 면은 한 가지 색이다. 모양을 정하는 값은 모드마다 고정이다 ({@link KeyboardTheme#neuTune}). 그림자 강도만 라이트 모드의 설정 값이다.
      */
     public static void drawFace(Canvas c, RectF r, float radius, int face, KeyboardTheme t, Paint fill) {
         if (face != t.key && face != t.functionKey) {
