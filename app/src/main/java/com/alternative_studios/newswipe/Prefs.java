@@ -865,7 +865,7 @@ public final class Prefs {
     public boolean keyShadow() { return sp.getBoolean(KEY_SHADOW, false); }
     public int keyRadiusDp() { return clamp(sp.getInt(KEY_RADIUS, 7), 0, 24); }
     public int keyShadowStrength() { return sp.getInt(KEY_SHADOW_STRENGTH, 50); }
-    public boolean neumorphism() { return sp.getBoolean(NEUMORPHISM, true); }
+    public boolean neumorphism() { return sp.getBoolean(NEUMORPHISM, false); }
     public boolean suggestWords() { return sp.getBoolean(SUGGEST_WORDS, false); }
     /** 이모지 창을 열 때 커서 앞의 글에 맞는 이모지를 최근 탭 맨 위에 추천하는지. */
     public boolean emojiSuggest() { return sp.getBoolean(EMOJI_SUGGEST, true); }
