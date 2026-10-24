@@ -44,11 +44,6 @@ public final class Neu {
         insetPaint.setStyle(Paint.Style.STROKE);
     }
 
-    /** 강조색 면의 그림자: 어두운 그림자 대신 강조색이 은은하게 번진다. */
-    public static int accentShadow(KeyboardTheme t) {
-        return (t.accent & 0xFFFFFF) | (t.dark ? 0x66000000 : 0x8C000000);
-    }
-
     private static final int SHADERS = 24;   // 키·칩 크기 × 흰색·회색. 모자라면 그릴 때마다 새로 만들게 되므로 넉넉히
     private static final LinearGradient[] shaders = new LinearGradient[SHADERS];
     private static final int[] shaderKeys = new int[SHADERS * 5];
@@ -123,17 +118,11 @@ public final class Neu {
         return Math.min(255, (t.neuLight >>> 24) * 2) << 24 | (t.neuLight & 0xFFFFFF);
     }
 
-    /** 눌린 강조색 면의 안쪽 어두운 그림자: 강조색을 어둡게 한 색. */
-    public static int accentInsetShadow(KeyboardTheme t) {
-        return blend(t.accent, 0xFF000000, 0.45f) & 0xB3FFFFFF;
-    }
-
     /**
-     * 솟아오른 면의 어두운 그림자 색. 면 색에 따라 정한다: 강조색 면은 강조색이 번지고, 회색 기능키 면은 면 색이
-     * 보통 그림자와 거의 같아 면이 그림자로 번져 보이므로 더 진한 그림자를 쓴다.
+     * 솟아오른 면의 어두운 그림자 색. 회색 기능키 면은 면 색이 보통 그림자와 거의 같아 면이 그림자로 번져 보이므로
+     * 더 진한 그림자를 쓴다. 강조색 면도 다른 키와 같은 그림자다.
      */
     public static int darkShadow(KeyboardTheme t, int face) {
-        if (face == t.accent) return accentShadow(t);
         return face == t.functionKey ? t.neuDarkFunction : t.neuDark;
     }
 
@@ -288,7 +277,7 @@ public final class Neu {
         private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final RectF face = new RectF();
         private final KeyboardTheme theme;
-        private final int color, pressedColor, light, dark, pressedDark;
+        private final int color, pressedColor, light, dark;
         private final float radius, offset, blur;
         private final int insetH, insetV;
         private boolean pressed, sunken;
@@ -300,7 +289,6 @@ public final class Neu {
             pressedColor = accent ? blend(t.accent, t.text, 0.12f) : t.keyPressed;
             light = t.neuLight;
             dark = darkShadow(t, color);
-            pressedDark = accent ? accentInsetShadow(t) : t.neuDark;
             this.radius = radius;
             this.insetH = insetH;
             this.insetV = insetV;
@@ -316,7 +304,7 @@ public final class Neu {
             if (face.width() <= 0 || face.height() <= 0) return;
             float r = Math.min(radius, Math.min(face.width(), face.height()) / 2);
             if (pressed || sunken) {
-                drawInset(c, face, r, offset, blur, sunken ? color : pressedColor, light, pressedDark, fill);
+                drawInset(c, face, r, offset, blur, sunken ? color : pressedColor, light, theme.neuDark, fill);
             } else {
                 drawRaised(c, face.left, face.top, face.right, face.bottom, r, offset, shadowBlur(theme, color, blur),
                         raisedLight(theme, color), dark);
