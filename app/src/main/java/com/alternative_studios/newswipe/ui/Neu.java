@@ -59,10 +59,10 @@ public final class Neu {
      * 살짝 오목하게 들어간 느낌이 든다. 면의 왼쪽 위가 흰 밝은 그림자보다 어두워져 그쪽 윤곽도 또렷하다.
      * 회색 기능키 면도 흰 키와 어울리도록 같은 방향으로 약하게 그라데이션을 준다 (회색이 그대로 보이도록 왼쪽 위는 기능키 색보다
      * 3% 어둡게, 오른쪽 아래는 바탕색 쪽으로 20%만 밝게). 회색 면이 그림자로 번져 보이지 않게 하는 것은 진한 그림자가 맡는다
-     * ({@link #darkShadow}). 강조색 키와 다크 테마의 면은 한 가지 색이다.
+     * ({@link #darkShadow}). 강조색 키의 면은 한 가지 색이다. 모양을 정하는 값은 라이트 모드는 고정이고 다크 모드는 설정의 임시 슬라이더다 ({@link KeyboardTheme#neuTune}).
      */
     public static void drawFace(Canvas c, RectF r, float radius, int face, KeyboardTheme t, Paint fill) {
-        if (t.dark || face != t.key && face != t.functionKey) {
+        if (face != t.key && face != t.functionKey) {
             fill.setColor(face);
             c.drawRoundRect(r, radius, radius, fill);
             return;
@@ -72,14 +72,14 @@ public final class Neu {
         // 흰 면은 왼쪽 위 모서리가 밝을수록 흰 밝은 그림자와 섞여 번져 보인다 (기기에서는 바탕색과 흰색의 중간에서 번졌다).
         // 모서리는 바탕색에서 흰색 쪽으로 30%만 올리고, 대신 대각선의 50% 지점에서 벌써 흰색이 되게 해 면 전체는 밝게 한다.
         if (face == t.key) {
-            fill.setShader(concave(w, h, blend(t.background, face, t.tune(KeyboardTheme.T_WHITE_START)), face,
-                    t.tune(KeyboardTheme.T_WHITE_END)));
+            fill.setShader(concave(w, h, blend(t.background, face, t.tune(KeyboardTheme.T_KEY_START)), face,
+                    t.tune(KeyboardTheme.T_KEY_END)));
         } else {
             // 회색 면: 면 색을 바탕색 쪽(+)이나 검정 쪽(-)으로 옮긴 뒤, 왼쪽 위는 검정 쪽으로, 오른쪽 아래는 바탕색 쪽으로 조금 옮긴다.
-            float shift = t.tune(KeyboardTheme.T_GRAY_SHIFT);
+            float shift = t.tune(KeyboardTheme.T_FN_SHIFT);
             int base = shift >= 0 ? blend(face, t.background, shift) : blend(face, 0xFF000000, -shift);
-            fill.setShader(concave(w, h, blend(base, 0xFF000000, t.tune(KeyboardTheme.T_GRAY_START)),
-                    blend(base, t.background, t.tune(KeyboardTheme.T_GRAY_END_TINT)), t.tune(KeyboardTheme.T_GRAY_END)));
+            fill.setShader(concave(w, h, blend(base, 0xFF000000, t.tune(KeyboardTheme.T_FN_START)),
+                    blend(base, t.background, t.tune(KeyboardTheme.T_FN_END_TINT)), t.tune(KeyboardTheme.T_FN_END)));
         }
         c.save();
         c.translate(r.left, r.top);
