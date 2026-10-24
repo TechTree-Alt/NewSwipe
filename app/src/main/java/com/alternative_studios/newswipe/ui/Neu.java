@@ -117,6 +117,15 @@ public final class Neu {
         return shaders[i];
     }
 
+    /**
+     * 솟아오른 면의 밝은 그림자 색. 다크 모드의 강조색 면은 아주 밝아서, 옅은 흰 그림자(다른 키와 같은 값)가 면에 눌려
+     * 다른 키보다 작아 보인다. 그래서 다크 모드의 강조색 면에만 두 배로 진하게 해 다른 키와 같은 크기로 보이게 한다.
+     */
+    public static int raisedLight(KeyboardTheme t, int face) {
+        if (!t.dark || face != t.accent) return t.neuLight;
+        return Math.min(255, (t.neuLight >>> 24) * 2) << 24 | (t.neuLight & 0xFFFFFF);
+    }
+
     /** 눌린 강조색 면의 안쪽 어두운 그림자. 다크 모드는 다른 키와 같은 색이고, 라이트 모드는 강조색을 어둡게 한 색이다. */
     public static int accentInsetShadow(KeyboardTheme t) {
         return t.dark ? t.neuDark : blend(t.accent, 0xFF000000, 0.45f) & 0xB3FFFFFF;
@@ -307,7 +316,7 @@ public final class Neu {
                 drawInset(c, face, r, offset, blur, sunken ? color : pressedColor, light, pressedDark, fill);
             } else {
                 drawRaised(c, face.left, face.top, face.right, face.bottom, r, offset, shadowBlur(theme, color, blur),
-                        light, dark);
+                        raisedLight(theme, color), dark);
                 drawFace(c, face, r, color, theme, fill);
             }
         }
