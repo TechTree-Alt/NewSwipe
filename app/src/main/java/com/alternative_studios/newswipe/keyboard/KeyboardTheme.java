@@ -73,7 +73,7 @@ public final class KeyboardTheme {
         neuDarkFunction = alpha(shadows[3]) | loFn;
         neuLightAccent = alpha(shadows[4]) | 0xFFFFFF;
         neuPressedAccent = alpha(shadows[6]) | 0xFFFFFF;
-        neuPressedAccentDark = alpha(shadows[7]) | lo;
+        neuPressedAccentDark = alpha(shadows[7]);   // 눌린 강조색 면의 안쪽 그림자는 모드와 상관없이 검은색
         neuDarkAccent = alpha(shadows[5]) | lo;
         if (dark) {
             background = 0xFF1B1C1F;
