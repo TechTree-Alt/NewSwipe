@@ -55,26 +55,20 @@ public final class Neu {
     private static int nextShader;
 
     /**
-     * 솟아오른 면. 밝은 테마의 글자 키(흰색)·기능키(회색) 면은 왼쪽 위가 어둡고 오른쪽 아래로 갈수록 밝아지는 대각선
-     * 그라데이션이라 살짝 오목하게 들어간 느낌이 든다. 면의 가장자리가 그림자와 같은 색이 되면 면이 그림자로 번져 보이므로,
-     * 왼쪽 위는 흰 밝은 그림자보다 어둡게, 오른쪽 아래는 어두운 그림자보다 밝게 한다.
-     * <ul>
-     *   <li>흰 키: 왼쪽 위 바탕색 → 오른쪽 아래 흰색</li>
-     *   <li>회색 기능키: 왼쪽 위 기능키 색 → 오른쪽 아래 기능키 색과 바탕색 사이 (바탕색 쪽으로 40%)</li>
-     * </ul>
-     * 강조색 키와 다크 테마의 면은 한 가지 색이다.
+     * 솟아오른 면. 밝은 테마의 흰 키 면은 왼쪽 위가 바탕색이고 오른쪽 아래로 갈수록 흰색이 되는 대각선 그라데이션이라
+     * 살짝 오목하게 들어간 느낌이 든다. 면의 왼쪽 위가 흰 밝은 그림자보다 어두워져 그쪽 윤곽도 또렷하다.
+     * 다른 면(회색 기능키·강조색 키, 다크 테마)은 한 가지 색이다. 회색 면은 대신 더 진한 그림자를 쓴다 ({@link #darkShadow}).
      */
     public static void drawFace(Canvas c, RectF r, float radius, int face, KeyboardTheme t, Paint fill) {
-        if (t.dark || face != t.key && face != t.functionKey) {
+        if (t.dark || face != t.key) {
             fill.setColor(face);
             c.drawRoundRect(r, radius, radius, fill);
             return;
         }
         int w = Math.max(1, Math.round(r.width())), h = Math.max(1, Math.round(r.height()));
         fill.setColor(0xFF000000);
-        // 회색 면은 밝기 차이가 크면 움푹하기보다 얼룩져 보이므로, 바탕색 쪽으로 40%만 밝힌다.
-        fill.setShader(face == t.key ? concave(w, h, t.background, face)
-                : concave(w, h, face, blend(face, t.background, 0.4f)));
+        // 왼쪽 위 모서리를 바탕색까지 낮춰야 흰 밝은 그림자와 면이 확실히 나뉜다.
+        fill.setShader(concave(w, h, t.background, face));
         c.save();
         c.translate(r.left, r.top);
         c.drawRoundRect(0, 0, r.width(), r.height(), radius, radius, fill);
@@ -100,6 +94,15 @@ public final class Neu {
         shaderKeys[k + 2] = dark;
         shaderKeys[k + 3] = lit;
         return shaders[i];
+    }
+
+    /**
+     * 솟아오른 면의 어두운 그림자 색. 면 색에 따라 정한다: 강조색 면은 강조색이 번지고, 회색 기능키 면은 면 색이
+     * 보통 그림자와 거의 같아 면이 그림자로 번져 보이므로 더 진한 그림자를 쓴다.
+     */
+    public static int darkShadow(KeyboardTheme t, int face) {
+        if (face == t.accent) return accentShadow(t);
+        return face == t.functionKey ? t.neuDarkFunction : t.neuDark;
     }
 
     /** 그림자가 면 밖으로 번지는 너비: 이만큼 둘레를 비워 두면 그림자가 잘리지 않는다. */
@@ -250,7 +253,7 @@ public final class Neu {
             this.color = color;
             pressedColor = accent ? blend(t.accent, t.text, 0.12f) : t.keyPressed;
             light = t.neuLight;
-            dark = accent ? accentShadow(t) : t.neuDark;
+            dark = darkShadow(t, color);
             pressedDark = accent ? blend(t.accent, 0xFF000000, 0.45f) & 0xB3FFFFFF : t.neuDark;
             this.radius = radius;
             this.insetH = insetH;

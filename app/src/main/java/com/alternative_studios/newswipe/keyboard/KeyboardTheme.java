@@ -24,6 +24,8 @@ public final class KeyboardTheme {
     /** Newmorphism 그림자: 왼쪽 위 밝은 그림자, 오른쪽 아래 어두운 그림자. */
     public final int neuLight;
     public final int neuDark;
+    /** 회색 기능키 면의 어두운 그림자 (면이 그림자로 번져 보이지 않게 neuDark보다 진하다). */
+    public final int neuDarkFunction;
 
     private KeyboardTheme(boolean dark, int accentColor, int onAccentColor, boolean neu) {
         this.dark = dark;
@@ -39,6 +41,7 @@ public final class KeyboardTheme {
             divider = 0xFF33343A;
             neuLight = 0x12FFFFFF;
             neuDark = 0xB3000000;
+            neuDarkFunction = 0xB3000000;
         } else {
             background = 0xFFE6E8EC;
             key = 0xFFFFFFFF;
@@ -50,6 +53,7 @@ public final class KeyboardTheme {
             divider = 0xFFD5D8DE;
             neuLight = 0xFFFFFFFF;
             neuDark = 0x59A0A8B6;
+            neuDarkFunction = 0x8C808A9A;
         }
         accent = accentColor;
         onAccent = onAccentColor;

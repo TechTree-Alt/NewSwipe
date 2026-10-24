@@ -803,7 +803,7 @@ public final class KeyboardView extends View {
         int face = faceColor(k);
         Neu.drawRaised(c, k.rect.left + gapX / 2, k.rect.top + gapY / 2, k.rect.right - gapX / 2,
                 k.rect.bottom - gapY / 2, radius, neuOffset(), neuBlur(),
-                theme.neuLight, face == theme.accent ? Neu.accentShadow(theme) : theme.neuDark);
+                theme.neuLight, Neu.darkShadow(theme, face));
     }
 
     private void drawCentered(Canvas c, String s, float cx, float cy) {
