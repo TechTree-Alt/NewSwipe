@@ -55,7 +55,7 @@ public final class Neu {
     private static int nextShader;
 
     /**
-     * 솟아오른 면. 밝은 테마의 흰 키 면은 왼쪽 위가 바탕색이고 오른쪽 아래로 갈수록 흰색이 되는 대각선 그라데이션이라
+     * 솟아오른 면. 밝은 테마의 흰 키 면은 왼쪽 위가 바탕색과 흰색의 중간이고 오른쪽 아래로 갈수록 흰색이 되는 대각선 그라데이션이라
      * 살짝 오목하게 들어간 느낌이 든다. 면의 왼쪽 위가 흰 밝은 그림자보다 어두워져 그쪽 윤곽도 또렷하다.
      * 회색 기능키 면도 흰 키와 어울리도록 같은 방향으로 약하게 그라데이션을 준다 (회색이 그대로 보이도록 왼쪽 위는 기능키 색보다
      * 3% 어둡게, 오른쪽 아래는 바탕색 쪽으로 20%만 밝게). 회색 면이 그림자로 번져 보이지 않게 하는 것은 진한 그림자가 맡는다
@@ -69,8 +69,9 @@ public final class Neu {
         }
         int w = Math.max(1, Math.round(r.width())), h = Math.max(1, Math.round(r.height()));
         fill.setColor(0xFF000000);
-        // 흰 면은 왼쪽 위 모서리를 바탕색까지 낮춰야 흰 밝은 그림자와 면이 확실히 나뉜다.
-        fill.setShader(face == t.key ? concave(w, h, t.background, face)
+        // 흰 면은 왼쪽 위 모서리가 흰 밝은 그림자보다 어두워야 둘이 나뉜다. 바탕색에서 흰색 쪽으로 55%까지는 윤곽이 또렷하고,
+        // 그보다 밝히면 (75% 부근부터) 밝은 그림자와 섞여 번져 보인다.
+        fill.setShader(face == t.key ? concave(w, h, blend(t.background, face, 0.55f), face)
                 : concave(w, h, blend(face, 0xFF000000, 0.03f), blend(face, t.background, 0.2f)));
         c.save();
         c.translate(r.left, r.top);
