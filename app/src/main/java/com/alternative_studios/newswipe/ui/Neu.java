@@ -88,7 +88,7 @@ public final class Neu {
             endAt = t.tune(KeyboardTheme.T_FN_END);
         }
         float density = android.content.res.Resources.getSystem().getDisplayMetrics().density;
-        if (Math.max(r.width(), r.height()) > LONG_DP * density) {
+        if (isLong(r.width(), r.height())) {
             fill.setColor(end);
             c.drawRoundRect(r, radius, radius, fill);
             drawEdgeShade(c, r, radius, start, t.neuEdgeDp, fill);
@@ -176,9 +176,18 @@ public final class Neu {
      * 솟아오른 면의 밝은 그림자 색. 흰색(글자) 키·회색 키·강조색 키가 따로 정한다 (KeyboardTheme.neuShadow).
      * 다크 모드의 강조색 면은 아주 밝아서 같은 값이면 그림자가 면에 눌려 작아 보이므로 두 배쯤 진하다.
      */
-    public static int raisedLight(KeyboardTheme t, int face) {
+    public static int raisedLight(KeyboardTheme t, int face, float w, float h) {
         if (face == t.accent) return t.neuLightAccent;
-        return face == t.functionKey ? t.neuLightFunction : t.neuLight;
+        int light = face == t.functionKey ? t.neuLightFunction : t.neuLight;
+        if (!isLong(w, h)) return light;
+        // 임시 슬라이더: 긴 항목의 밝은 그림자 강도 (원래 값에 대한 %)
+        int alpha = Math.min(255, Math.round((light >>> 24) * t.neuLongLight / 100f));
+        return alpha << 24 | (light & 0xFFFFFF);
+    }
+
+    /** 면의 한 변(px)이 {@link #LONG_DP}를 넘으면 긴 항목이다. */
+    private static boolean isLong(float w, float h) {
+        return Math.max(w, h) > LONG_DP * android.content.res.Resources.getSystem().getDisplayMetrics().density;
     }
 
     /**
@@ -384,7 +393,7 @@ public final class Neu {
                 drawInset(c, face, r, offset, blur, sunken ? color : pressedColor, light, pressedDark(theme, color), fill);
             } else {
                 drawRaised(c, face.left, face.top, face.right, face.bottom, r, offset, shadowBlur(theme, color, blur),
-                        raisedLight(theme, color), dark);
+                        raisedLight(theme, color, face.width(), face.height()), dark);
                 drawFace(c, face, r, color, theme, fill);
             }
         }
