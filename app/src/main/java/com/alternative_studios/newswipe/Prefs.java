@@ -875,7 +875,7 @@ public final class Prefs {
     /** 임시 슬라이더: 긴 항목 윗변·왼쪽 변 안쪽 띠의 폭 (dp). */
     /** 임시 슬라이더: 긴 흰색 항목(회색 면 제외)의 밝은 그림자 강도, 원래 밝은 그림자 값에 대한 % (100 = 지금 그대로). */
     public int neuLongLight(boolean dark) {
-        return clamp(sp.getInt(dark ? NEU_LONG_LIGHT_DARK : NEU_LONG_LIGHT_LIGHT, 200), 0, 200);
+        return clamp(dark ? sp.getInt(NEU_LONG_LIGHT_DARK, 130) : sp.getInt(NEU_LONG_LIGHT_LIGHT, 200), 0, 200);
     }
     /** 임시 토글: 긴 항목 중 글자 키 색(라이트 모드 흰색) 면을 바탕색 한 가지로 그린다. */
     public boolean neuLongAsBg() { return sp.getBoolean(NEU_LONG_AS_BG, false); }
