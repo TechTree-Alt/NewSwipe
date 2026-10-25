@@ -1604,6 +1604,10 @@ public final class SettingsActivity extends Activity {
                         + "켜면 키 그림자 대신 쓰입니다.",
                 Prefs.NEUMORPHISM, prefs.neumorphism()));
         // 임시: 긴 항목 윗변·왼쪽 변 안쪽 띠의 폭을 맞춰 보는 슬라이더 (값을 정하면 지운다).
+        // 임시: 다크 모드에서 보통 크기 글자 키에도 긴 항목처럼 윗변·왼쪽 변 띠를 두르는 토글 (써 보고 정하면 지운다).
+        neu.addView(toggle("임시 · 다크 모드 글자 키에도 윗변·왼쪽 변 띠",
+                "다크 모드의 글자 키를 대각선 그라데이션 대신 한 가지 색 면과 윗변·왼쪽 변 띠로 그립니다. 띠 폭은 아래 슬라이더를 따릅니다.",
+                Prefs.NEU_DARK_KEY_BAND, prefs.neuDarkKeyBand()));
         // 임시: 긴 항목 중 글자 키 색(라이트 모드 흰색) 면을 바탕색으로 해 보는 토글 (써 보고 정하면 지운다).
         neu.addView(toggle("임시 · 긴 글자 키 색 항목 면을 바탕색으로",
                 "편집 칩·복사 칩, 클립보드 카드처럼 긴 흰색(다크 모드는 글자 키 색) 면을 바탕색 한 가지로 그립니다. "

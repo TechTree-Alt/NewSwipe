@@ -88,8 +88,10 @@ public final class Neu {
             endAt = t.tune(KeyboardTheme.T_FN_END);
         }
         float density = android.content.res.Resources.getSystem().getDisplayMetrics().density;
-        if (isLong(r.width(), r.height())) {
-            if (face == t.key && t.neuLongAsBg) {
+        // 임시 토글: 다크 모드의 보통 크기 글자 키 면도 긴 항목처럼 띠로 처리한다.
+        boolean band = isLong(r.width(), r.height()) || t.dark && t.neuDarkKeyBand && face == t.key;
+        if (band) {
+            if (face == t.key && t.neuLongAsBg && isLong(r.width(), r.height())) {
                 // 임시 토글: 긴 글자 키 색 항목은 바탕색 한 가지로 그려, 그림자만으로 솟아오른 모양이 되게 한다 (띠도 없다).
                 fill.setColor(t.background);
                 c.drawRoundRect(r, radius, radius, fill);
