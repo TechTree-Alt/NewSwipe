@@ -104,4 +104,47 @@ public class ShapeRuleTest {
         ks.setKnownWords(KnownWords.load(new java.io.ByteArrayInputStream(KnownWordsTest.hex(KnownWordsTest.FILE))));
         assertEquals("궁금하네", ks.correct("궁근하네", null, KoreanSuggest.FIELD_NORMAL, null, null));
     }
+    @Test
+    public void syllableModelCountsPairs() {
+        SyllableModel m = new SyllableModel(dict);
+        assertTrue(m.pairCount('자', '동') > 0);
+        assertEquals(0, m.pairCount('자', '댕'));
+        assertTrue(m.pairCount('다', (char) 0) > 0);   // 입니다로 끝난다
+        assertTrue(m.unseenPair("자댕"));
+        assertTrue(!m.unseenPair("자동"));
+    }
+
+    private static KoreanSuggest withKnown(String[][] words) throws Exception {
+        KoreanSuggest ks = new KoreanSuggest(KoreanSuggestTest.buildDict(words), null, new TypoModel());
+        ks.setKnownWords(KnownWords.load(new java.io.ByteArrayInputStream(KnownWordsTest.hex(KnownWordsTest.FILE))));
+        return ks;
+    }
+
+    @Test
+    public void rareFormWithCommonEndingIsFixed() throws Exception {
+        // 확인하겠습니다는 아주 드물지만 끝(니다)은 흔하고, 친 말의 끝 이음(니드)은 사전에 없다
+        java.util.List<String[]> w = new java.util.ArrayList<>();
+        String heads = "가나다라마바사아자차카타파하고노도로모보소오조초";
+        for (int i = 0; i < heads.length(); i++) w.add(new String[]{heads.charAt(i) + "습니다", "150"});
+        w.add(new String[]{"확인하겠습니다", "40"});
+        w.add(new String[]{"확인", "200"});
+        w.add(new String[]{"중지된", "45"});
+        w.add(new String[]{"중지", "150"});
+        w.add(new String[]{"된", "200"});
+        KoreanSuggest ks = withKnown(w.toArray(new String[0][]));
+        assertEquals("확인하겠습니다", ks.correct("확인하겠습니드", null, KoreanSuggest.FIELD_NORMAL, null, null));
+        assertEquals("중지된", ks.correct("중지돤", null, KoreanSuggest.FIELD_NORMAL, null, null));   // 지돤은 낯선 이음이다
+    }
+
+    @Test
+    public void nominalFormDoesNotTakeParticles() throws Exception {
+        // 사름(사르다의 명사형) + 은이 아니라 사람은의 오타다
+        KoreanSuggest ks = withKnown(new String[][]{
+                {"사름", "0"}, {"사르고", "100"}, {"사르면", "90"}, {"사람", "220"}, {"사람은", "205"}, {"사람이", "200"},
+                {"사람을", "200"}, {"하고", "230"}, {"입니다", "230"},
+                {"느림", "150"}, {"느리고", "160"}, {"느리면", "150"}, {"느낌", "200"}, {"느낌이", "190"},
+        });
+        assertEquals("사람은", ks.correct("사름은", null, KoreanSuggest.FIELD_NORMAL, null, null));
+        assertNull(ks.correct("느림이", null, KoreanSuggest.FIELD_NORMAL, null, null));   // 흔한 명사형은 명사로도 쓴다
+    }
 }

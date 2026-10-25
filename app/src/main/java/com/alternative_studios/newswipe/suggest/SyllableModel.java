@@ -55,6 +55,26 @@ final class SyllableModel {
         return c >= 0xAC00 && c <= 0xD7A3 ? c - 0xAC00 : -1;
     }
 
+    /** 사전 단어에서 음절 a 뒤에 b가 나온 횟수 (b가 0이면 a로 끝난 횟수). */
+    int pairCount(char a, char b) {
+        int x = sym(a), y = b == 0 ? END : sym(b);
+        if (x < 0 || y < 0) return 0;
+        int at = Arrays.binarySearch(keys, x * SYMBOLS + y);
+        return at >= 0 ? counts[at] : 0;
+    }
+
+    /** w에 사전 단어에서 한 번도 나오지 않은 음절 이음(시작·끝 포함)이 있는지. */
+    boolean unseenPair(String w) {
+        int prev = START;
+        for (int i = 0; i <= w.length(); i++) {
+            int cur = i == w.length() ? END : sym(w.charAt(i));
+            if (cur < 0) return false;
+            if (Arrays.binarySearch(keys, prev * SYMBOLS + cur) < 0) return true;
+            prev = cur;
+        }
+        return false;
+    }
+
     /**
      * 단어의 로그 확률 (시작·끝 포함). P(뒤|앞) = (c(앞,뒤) + 2·P(뒤)) / (c(앞) + 2), P(뒤) = (c(뒤) + 0.5) / (전체 + 0.5·기호 수).
      * 한글 음절이 아닌 글자가 있으면 아주 작은 값.

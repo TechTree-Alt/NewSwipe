@@ -287,6 +287,15 @@ public final class WordDictionary {
         return new int[]{lowerBound(a, a.length), lowerBound(b, b.length)};
     }
 
+    /** 단어 i와 w의 글자 수가 같으면 서로 다른 글자 자리의 수, 다르면 -1. */
+    int syllablesOff(int i, String w) {
+        int from = offsets[i], n = offsets[i + 1] - from;
+        if (n != w.length()) return -1;
+        int off = 0;
+        for (int j = 0; j < n; j++) if (chars[from + j] != w.charAt(j)) off++;
+        return off;
+    }
+
     public boolean contains(String word) {
         return indexOf(word) >= 0;
     }
