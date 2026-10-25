@@ -69,7 +69,8 @@ public final class Neu {
         if (face == t.key && !t.dark) {
             fill.setColor(face);
             c.drawRoundRect(r, radius, radius, fill);
-            drawEdgeShade(c, r, radius, t.background, t.neuEdgeDp, fill);
+            // 면이 바탕색이면 띠가 보이지 않으므로 그리지 않는다 (임시 토글 '흰색 키 면을 바탕색으로').
+            if (face != t.background) drawEdgeShade(c, r, radius, t.background, t.neuEdgeDp, fill);
             return;
         } else if (face == t.key) {
             fill.setShader(concave(w, h, blend(t.background, face, t.tune(KeyboardTheme.T_KEY_START)), face,
