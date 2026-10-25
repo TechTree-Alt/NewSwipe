@@ -50,13 +50,21 @@ public final class Neu {
     private static int nextShader;
 
     /**
-     * 솟아오른 면. 밝은 테마의 흰 키 면은 흰색 한 가지이고, 윗변과 왼쪽 변 안쪽 {@link KeyboardTheme#neuEdgeDp}dp 폭에만 바탕색이 옅게
-     * 깔린다 ({@link #drawEdgeShade}). 흰 면이 같은 흰색의 밝은 그림자와 이어지면 윗변·왼쪽 변의 윤곽이 번져 보이는데, 이 띠가
-     * 그 윤곽을 만든다. 띠의 폭은 키 크기와 상관없이 일정해서, 면 전체에 그라데이션을 걸던 때와 달리 긴 칩에서도 그라데이션이
-     * 넓게 보이지 않는다. 어두운 테마의 글자 키 면은 대각선 그라데이션이다.
-     * 회색 기능키 면도 흰 키와 어울리도록 같은 방향으로 약하게 그라데이션을 준다 (회색이 그대로 보이도록 왼쪽 위는 기능키 색보다
-     * 3% 어둡게, 오른쪽 아래는 바탕색 쪽으로 20%만 밝게). 회색 면이 그림자로 번져 보이지 않게 하는 것은 진한 그림자가 맡는다
-     * ({@link #darkShadow}). 강조색 키의 면은 한 가지 색이다. 모양을 정하는 값은 모드마다 고정이다 ({@link KeyboardTheme#neuTune}).
+     * 면의 한 변이 이 길이(dp)를 넘으면 긴 항목이다 (키는 44~61dp, 편집 칩은 약 91dp, 스페이스바·클립보드 카드는 약 190dp).
+     */
+    private static final float LONG_DP = 72f;
+
+    /**
+     * 솟아오른 면. 글자 키 같은 보통 크기의 면은 왼쪽 위에서 오른쪽 아래로 가는 대각선 그라데이션이라 살짝 오목하게 들어간
+     * 느낌이 든다 (면의 왼쪽 위가 밝은 그림자보다 어두워져 윤곽이 번지지 않는다).
+     * <ul>
+     *   <li>글자 키: 왼쪽 위 바탕색 → 오른쪽 아래 키 색</li>
+     *   <li>기능키(회색): 왼쪽 위 기능키 색보다 조금 어둡게 → 오른쪽 아래 기능키 색 (모드마다 정한 값)</li>
+     * </ul>
+     * 그라데이션 길이가 면 크기에 비례해서 긴 항목에서는 그라데이션이 넓게 늘어나 어색하므로, 라이트 모드의 긴 항목(스페이스바, 칩,
+     * 클립보드 카드 등)은 면을 한 가지 색으로 두고 윗변·왼쪽 변 안쪽 {@link KeyboardTheme#neuEdgeDp}dp 폭에만 그라데이션의
+     * 왼쪽 위 색을 옅게 깐다 ({@link #drawEdgeShade}). 띠 폭은 크기와 상관없다. 강조색 키의 면은 한 가지 색이다.
+     * 어두운 테마는 긴 항목도 그라데이션이다 (밝은 그림자가 옅어 번지지 않는다).
      */
     public static void drawFace(Canvas c, RectF r, float radius, int face, KeyboardTheme t, Paint fill) {
         if (face != t.key && face != t.functionKey) {
@@ -65,24 +73,30 @@ public final class Neu {
             return;
         }
         int w = Math.max(1, Math.round(r.width())), h = Math.max(1, Math.round(r.height()));
-        fill.setColor(0xFF000000);
-        if (face == t.key && !t.dark) {
-            fill.setColor(face);
-            c.drawRoundRect(r, radius, radius, fill);
-            // 면이 바탕색이면 띠가 보이지 않으므로 그리지 않는다 (임시 토글 '흰색 키 면을 바탕색으로').
-            if (face != t.background) drawEdgeShade(c, r, radius, t.background, t.neuEdgeDp, fill);
-            return;
-        } else if (face == t.key) {
-            fill.setShader(concave(w, h, blend(t.background, face, t.tune(KeyboardTheme.T_KEY_START)), face,
-                    t.tune(KeyboardTheme.T_KEY_END)));
+        int start, end;
+        float endAt;
+        if (face == t.key) {
+            start = blend(t.background, face, t.tune(KeyboardTheme.T_KEY_START));
+            end = face;
+            endAt = t.tune(KeyboardTheme.T_KEY_END);
         } else {
             // 회색 면: 면 색을 밝은 쪽(+, t.lift)이나 검정 쪽(-)으로 옮긴 뒤, 왼쪽 위는 검정 쪽으로, 오른쪽 아래는 밝은 쪽으로 조금 옮긴다.
-            // 밝은 쪽을 바탕색으로 두면 다크 모드(바탕색이 면보다 어둡다)에서 '밝게'가 어두워진다.
+            // 밝은 쪽을 바탕색으로 두면 다크 모드(바탕색이 면보다 어두워서)에서 '밝게'가 어두워진다.
             float shift = t.tune(KeyboardTheme.T_FN_SHIFT);
             int base = shift >= 0 ? blend(face, t.lift, shift) : blend(face, 0xFF000000, -shift);
-            fill.setShader(concave(w, h, blend(base, 0xFF000000, t.tune(KeyboardTheme.T_FN_START)),
-                    blend(base, t.lift, t.tune(KeyboardTheme.T_FN_END_TINT)), t.tune(KeyboardTheme.T_FN_END)));
+            start = blend(base, 0xFF000000, t.tune(KeyboardTheme.T_FN_START));
+            end = blend(base, t.lift, t.tune(KeyboardTheme.T_FN_END_TINT));
+            endAt = t.tune(KeyboardTheme.T_FN_END);
         }
+        float density = android.content.res.Resources.getSystem().getDisplayMetrics().density;
+        if (!t.dark && Math.max(r.width(), r.height()) > LONG_DP * density) {
+            fill.setColor(end);
+            c.drawRoundRect(r, radius, radius, fill);
+            drawEdgeShade(c, r, radius, start, t.neuEdgeDp, fill);
+            return;
+        }
+        fill.setColor(0xFF000000);
+        fill.setShader(concave(w, h, start, end, endAt));
         c.save();
         c.translate(r.left, r.top);
         c.drawRoundRect(0, 0, r.width(), r.height(), radius, radius, fill);
@@ -90,37 +104,45 @@ public final class Neu {
         fill.setShader(null);
     }
 
-    /** 띠의 맨 가장자리에서 바탕색이 깔리는 정도. 두 띠가 겹치는 왼쪽 위 모서리는 더 진하다. */
+    /** 띠의 맨 가장자리에서 시작 색이 깔리는 정도. 두 띠가 겹치는 왼쪽 위 모서리는 더 진하다. */
     private static final float EDGE_ALPHA = 0.85f;
-    private static LinearGradient edgeTop, edgeLeft;
-    private static int edgeColor, edgePx;
+    /** 띠 그라데이션 캐시: 면 색(흰색·회색)마다 한 쌍, 폭이 바뀌면 다시 만든다. */
+    private static final int EDGE_CACHE = 4;
+    private static final LinearGradient[] edgeTops = new LinearGradient[EDGE_CACHE];
+    private static final LinearGradient[] edgeLefts = new LinearGradient[EDGE_CACHE];
+    private static final int[] edgeColors = new int[EDGE_CACHE], edgePxs = new int[EDGE_CACHE];
+    private static int nextEdge;
 
     /**
-     * 면 위에 윗변·왼쪽 변 안쪽으로 바탕색이 점점 옅어지는 띠 두 개를 덮는다 (바깥에서 안으로 제곱으로 옅어진다).
+     * 면 위에 윗변·왼쪽 변 안쪽으로 color가 점점 옅어지는 띠 두 개를 덮는다 (바깥에서 안으로 제곱으로 옅어진다).
      * 띠는 면 전체를 덮는 둥근 사각형에 그라데이션을 입혀 그리므로 모서리가 매끈하고 면 크기와 상관없다.
-     * 그라데이션은 면의 왼쪽 위를 원점으로 한 같은 두 개를 모든 면이 함께 쓴다.
+     * 그라데이션은 면의 왼쪽 위를 원점으로 한 같은 두 개를 같은 색의 면이 함께 쓴다.
      */
-    private static void drawEdgeShade(Canvas c, RectF r, float radius, int bg, int edgeDp, Paint fill) {
+    private static void drawEdgeShade(Canvas c, RectF r, float radius, int color, int edgeDp, Paint fill) {
         int px = Math.round(edgeDp * android.content.res.Resources.getSystem().getDisplayMetrics().density);
         if (px <= 0) return;
-        if (edgeTop == null || edgeColor != bg || edgePx != px) {
+        int i = 0;
+        while (i < EDGE_CACHE && !(edgeTops[i] != null && edgeColors[i] == color && edgePxs[i] == px)) i++;
+        if (i == EDGE_CACHE) {
+            i = nextEdge;
+            nextEdge = (nextEdge + 1) % EDGE_CACHE;
             int[] colors = new int[5];
             float[] pos = {0f, 0.25f, 0.5f, 0.75f, 1f};
-            for (int i = 0; i < 5; i++) {
-                float a = EDGE_ALPHA * (1 - pos[i]) * (1 - pos[i]);
-                colors[i] = (Math.round(a * 255) << 24) | (bg & 0xFFFFFF);
+            for (int k = 0; k < 5; k++) {
+                float a = EDGE_ALPHA * (1 - pos[k]) * (1 - pos[k]);
+                colors[k] = (Math.round(a * 255) << 24) | (color & 0xFFFFFF);
             }
-            edgeTop = new LinearGradient(0, 0, 0, px, colors, pos, Shader.TileMode.CLAMP);
-            edgeLeft = new LinearGradient(0, 0, px, 0, colors, pos, Shader.TileMode.CLAMP);
-            edgeColor = bg;
-            edgePx = px;
+            edgeTops[i] = new LinearGradient(0, 0, 0, px, colors, pos, Shader.TileMode.CLAMP);
+            edgeLefts[i] = new LinearGradient(0, 0, px, 0, colors, pos, Shader.TileMode.CLAMP);
+            edgeColors[i] = color;
+            edgePxs[i] = px;
         }
         c.save();
         c.translate(r.left, r.top);
         fill.setColor(0xFF000000);
-        fill.setShader(edgeTop);
+        fill.setShader(edgeTops[i]);
         c.drawRoundRect(0, 0, r.width(), r.height(), radius, radius, fill);
-        fill.setShader(edgeLeft);
+        fill.setShader(edgeLefts[i]);
         c.drawRoundRect(0, 0, r.width(), r.height(), radius, radius, fill);
         c.restore();
         fill.setShader(null);

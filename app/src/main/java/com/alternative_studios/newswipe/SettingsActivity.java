@@ -1603,12 +1603,8 @@ public final class SettingsActivity extends Activity {
                 "키와 도구 막대·클립보드·이모지 창의 버튼이 바탕에서 부드럽게 솟아오르고, 누르면 안으로 쑥 들어가는 모양으로 그립니다. "
                         + "켜면 키 그림자 대신 쓰입니다.",
                 Prefs.NEUMORPHISM, prefs.neumorphism()));
-        // 임시: 라이트 모드 흰 면 윗변·왼쪽 변 안쪽 바탕색 띠의 폭을 맞춰 보는 슬라이더 (값을 정하면 지운다).
-        // 임시: 라이트 모드의 흰색 키(글자 키, 각종 칩) 면을 바탕색으로 해 보는 토글 (써 보고 정하면 지운다).
-        neu.addView(toggle("임시 · 흰색 키 면을 바탕색으로 (라이트 모드)",
-                "글자 키와 도구 막대·편집 칩 등 흰색 면을 바탕색으로 그립니다. 그림자만으로 솟아오른 모양이 됩니다.",
-                Prefs.NEU_KEY_AS_BG, prefs.neuKeyAsBg()));
-        neu.addView(slider("임시 · 흰 면 윗변·왼쪽 변 안쪽 바탕색 폭 (라이트 모드)", Prefs.NEU_EDGE_DP, prefs.neuEdgeDp(), 0, 30, 1, "dp"));
+        // 임시: 라이트 모드 긴 항목 윗변·왼쪽 변 안쪽 띠의 폭을 맞춰 보는 슬라이더 (값을 정하면 지운다).
+        neu.addView(slider("임시 · 긴 항목(스페이스바·칩·카드)의 윗변·왼쪽 변 안쪽 띠 폭 (라이트 모드)", Prefs.NEU_EDGE_DP, prefs.neuEdgeDp(), 0, 30, 1, "dp"));
     }
 
     private static int indexOf(String[] values, String v) {

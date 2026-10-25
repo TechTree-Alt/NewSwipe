@@ -33,7 +33,7 @@ public final class KeyboardTheme {
     public final int[] neuTune;
     public static final int T_KEY_START = 0, T_KEY_END = 1, T_FN_SHIFT = 2, T_FN_START = 3, T_FN_END_TINT = 4,
             T_FN_END = 5;
-    /** 라이트 모드 값: 글자 키 면은 쓰지 않고(윗변·왼쪽 변 띠, Neu.drawEdgeShade), 기능키 면(5%, 5%, 0%, 50%). */
+    /** 라이트 모드 값: 글자 키 면(왼쪽 위 0%, 끝 50%), 기능키 면(5%, 5%, 0%, 50%). */
     private static final int[] LIGHT_TUNE = {0, 50, 5, 5, 0, 50};
     /** 다크 모드 값: 글자 키 면(왼쪽 위 20%, 끝 100%), 기능키 면(-30%, 20%, 0%, 100%). */
     private static final int[] DARK_TUNE = {20, 100, -30, 20, 0, 100};
@@ -42,10 +42,8 @@ public final class KeyboardTheme {
      * 눌린 강조색 키 안쪽 흰 그림자, 눌린 강조색 키 안쪽 어두운 그림자}.
      */
     public final int[] neuShadow;
-    /** 임시(설정 슬라이더): 라이트 모드 흰 면 윗변·왼쪽 변 안쪽 바탕색 띠의 폭 (dp). */
+    /** 임시(설정 슬라이더): 라이트 모드 긴 항목(스페이스바, 칩, 클립보드 카드 등) 윗변·왼쪽 변 안쪽 띠의 폭 (dp). */
     public final int neuEdgeDp;
-    /** 임시(설정 토글): 라이트 모드의 흰색 키 면을 바탕색으로 한다. */
-    public final boolean neuKeyAsBg;
     private static final int[] LIGHT_SHADOW = {100, 45, 75, 55, 100, 75, 60, 40};
     /** 다크 모드의 강조색 면은 아주 밝아 밝은 그림자가 눌려 작아 보이므로 다른 키의 두 배쯤이다. */
     private static final int[] DARK_SHADOW = {13, 80, 13, 80, 27, 80, 40, 70};
@@ -64,14 +62,12 @@ public final class KeyboardTheme {
     /** 강조색 키 면의 그림자. */
     public final int neuLightAccent, neuDarkAccent;
 
-    private KeyboardTheme(boolean dark, int accentColor, int onAccentColor, boolean neu, int[] tune, int[] shadows, int edgeDp,
-                          boolean keyAsBg) {
+    private KeyboardTheme(boolean dark, int accentColor, int onAccentColor, boolean neu, int[] tune, int[] shadows, int edgeDp) {
         this.dark = dark;
         this.neu = neu;
         neuTune = tune;
         neuShadow = shadows;
         neuEdgeDp = edgeDp;
-        neuKeyAsBg = keyAsBg;
         // 밝은 그림자는 흰색, 어두운 그림자는 다크 모드는 검은색이고 라이트 모드는 푸른 회색 (회색 키는 더 어두운 회색).
         int lo = dark ? 0 : 0xA0A8B6, loFn = dark ? 0 : 0x808A9A;
         neuLight = alpha(shadows[0]) | 0xFFFFFF;
@@ -94,7 +90,7 @@ public final class KeyboardTheme {
             lift = 0xFFFFFFFF;
         } else {
             background = 0xFFE6E8EC;
-            key = neu && keyAsBg ? 0xFFE6E8EC : 0xFFFFFFFF;   // 임시 토글: 흰색 키 면을 바탕색으로
+            key = 0xFFFFFFFF;
             keyPressed = 0xFFD2D6DC;
             functionKey = 0xFFCDD1D8;
             text = 0xFF1D1E21;
@@ -123,12 +119,10 @@ public final class KeyboardTheme {
         int[] tune = t.dark ? DARK_TUNE : LIGHT_TUNE;
         int[] shadows = t.dark ? DARK_SHADOW : LIGHT_SHADOW;
         int edgeDp = prefs.neuEdgeDp();
-        boolean keyAsBg = prefs.neuKeyAsBg();
         if (cached == null || cached.dark != t.dark || cached.accent != t.accent || cached.onAccent != t.onAccent
                 || cached.neu != neu || !java.util.Arrays.equals(cached.neuTune, tune)
-                || !java.util.Arrays.equals(cached.neuShadow, shadows) || cached.neuEdgeDp != edgeDp
-                || cached.neuKeyAsBg != keyAsBg) {
-            cached = new KeyboardTheme(t.dark, t.accent, t.onAccent, neu, tune, shadows, edgeDp, keyAsBg);
+                || !java.util.Arrays.equals(cached.neuShadow, shadows) || cached.neuEdgeDp != edgeDp) {
+            cached = new KeyboardTheme(t.dark, t.accent, t.onAccent, neu, tune, shadows, edgeDp);
         }
         return cached;
     }
