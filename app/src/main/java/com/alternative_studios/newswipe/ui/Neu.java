@@ -184,7 +184,7 @@ public final class Neu {
         if (face == t.accent) return t.neuLightAccent;
         int light = face == t.functionKey ? t.neuLightFunction : t.neuLight;
         if (face != t.key || !isLong(w, h)) return light;
-        // 임시 슬라이더: 긴 흰색 항목(회색 면은 제외)의 밝은 그림자 강도 (원래 값에 대한 %)
+        // 긴 흰색 항목(회색 면은 제외)의 밝은 그림자 강도 (원래 값에 대한 %)
         int alpha = Math.min(255, Math.round((light >>> 24) * t.neuLongLight / 100f));
         return alpha << 24 | (light & 0xFFFFFF);
     }

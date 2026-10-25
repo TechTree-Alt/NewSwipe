@@ -1603,11 +1603,6 @@ public final class SettingsActivity extends Activity {
                 "키와 도구 막대·클립보드·이모지 창의 버튼이 바탕에서 부드럽게 솟아오르고, 누르면 안으로 쑥 들어가는 모양으로 그립니다. "
                         + "켜면 키 그림자 대신 쓰입니다.",
                 Prefs.NEUMORPHISM, prefs.neumorphism()));
-        // 임시: 긴 항목 윗변·왼쪽 변 안쪽 띠의 폭을 맞춰 보는 슬라이더 (값을 정하면 지운다).
-        // 임시: 긴 흰색 항목(회색·강조색 면 제외)의 밝은 그림자 강도. 100% = 지금 그대로, 현재 화면 모드의 값만 키보드에 보인다.
-        neu.addView(slider("임시 · 긴 흰색 항목 밝은 그림자 강도 (라이트 모드, 100% = 지금)", Prefs.NEU_LONG_LIGHT_LIGHT, prefs.neuLongLight(false), 0, 200, 5, "%"));
-        neu.addView(slider("임시 · 긴 흰색 항목 밝은 그림자 강도 (다크 모드, 100% = 지금)", Prefs.NEU_LONG_LIGHT_DARK, prefs.neuLongLight(true), 0, 200, 5, "%"));
-        neu.addView(slider("임시 · 긴 항목의 윗변·왼쪽 변 안쪽 띠 폭 (라이트 모드의 흰색 긴 항목은 13dp 고정)", Prefs.NEU_EDGE_DP, prefs.neuEdgeDp(), 0, 30, 1, "dp"));
     }
 
     private static int indexOf(String[] values, String v) {

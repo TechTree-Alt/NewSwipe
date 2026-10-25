@@ -42,10 +42,12 @@ public final class KeyboardTheme {
      * 눌린 강조색 키 안쪽 흰 그림자, 눌린 강조색 키 안쪽 어두운 그림자}.
      */
     public final int[] neuShadow;
-    /** 임시(설정 슬라이더): 긴 항목(스페이스바, 칩, 클립보드 카드 등) 윗변·왼쪽 변 안쪽 띠의 폭 (dp). */
+    /** 긴 항목(스페이스바, 칩 등) 윗변·왼쪽 변 안쪽 띠의 폭 (dp). 라이트 모드의 흰색 긴 항목은 따로 정해져 있다 (Neu). */
     public final int neuEdgeDp;
-    /** 임시(설정 슬라이더): 긴 흰색 항목(회색·강조색 면 제외)의 밝은 그림자 강도, 원래 값에 대한 % (100 = 그대로). */
+    private static final int EDGE_DP = 20;
+    /** 긴 흰색 항목(회색·강조색 면 제외)의 밝은 그림자 강도, 그 면의 원래 값에 대한 % (100 = 그대로). */
     public final int neuLongLight;
+    private static final int LONG_LIGHT_LIGHT = 200, LONG_LIGHT_DARK = 130;
     private static final int[] LIGHT_SHADOW = {100, 45, 75, 55, 100, 75, 60, 40};
     /** 다크 모드의 강조색 면은 아주 밝아 밝은 그림자가 눌려 작아 보이므로 다른 키의 두 배쯤이다. */
     private static final int[] DARK_SHADOW = {13, 80, 13, 80, 27, 80, 40, 70};
@@ -64,14 +66,13 @@ public final class KeyboardTheme {
     /** 강조색 키 면의 그림자. */
     public final int neuLightAccent, neuDarkAccent;
 
-    private KeyboardTheme(boolean dark, int accentColor, int onAccentColor, boolean neu, int[] tune, int[] shadows, int edgeDp,
-                          int longLight) {
+    private KeyboardTheme(boolean dark, int accentColor, int onAccentColor, boolean neu, int[] tune, int[] shadows) {
         this.dark = dark;
         this.neu = neu;
         neuTune = tune;
         neuShadow = shadows;
-        neuEdgeDp = edgeDp;
-        neuLongLight = longLight;
+        neuEdgeDp = EDGE_DP;
+        neuLongLight = dark ? LONG_LIGHT_DARK : LONG_LIGHT_LIGHT;
         // 밝은 그림자는 흰색, 어두운 그림자는 다크 모드는 검은색이고 라이트 모드는 푸른 회색 (회색 키는 더 어두운 회색).
         int lo = dark ? 0 : 0xA0A8B6, loFn = dark ? 0 : 0x808A9A;
         neuLight = alpha(shadows[0]) | 0xFFFFFF;
@@ -122,13 +123,10 @@ public final class KeyboardTheme {
         boolean neu = prefs.neumorphism();
         int[] tune = t.dark ? DARK_TUNE : LIGHT_TUNE;
         int[] shadows = t.dark ? DARK_SHADOW : LIGHT_SHADOW;
-        int edgeDp = prefs.neuEdgeDp();
-        int longLight = prefs.neuLongLight(t.dark);
         if (cached == null || cached.dark != t.dark || cached.accent != t.accent || cached.onAccent != t.onAccent
                 || cached.neu != neu || !java.util.Arrays.equals(cached.neuTune, tune)
-                || !java.util.Arrays.equals(cached.neuShadow, shadows) || cached.neuEdgeDp != edgeDp
-                || cached.neuLongLight != longLight) {
-            cached = new KeyboardTheme(t.dark, t.accent, t.onAccent, neu, tune, shadows, edgeDp, longLight);
+                || !java.util.Arrays.equals(cached.neuShadow, shadows)) {
+            cached = new KeyboardTheme(t.dark, t.accent, t.onAccent, neu, tune, shadows);
         }
         return cached;
     }

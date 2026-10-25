@@ -146,9 +146,6 @@ public final class Prefs {
     public static final String KEY_RADIUS = "key_radius";   // 키 모서리 곡률 dp, 0~24 (기본 7)
     public static final String KEY_SHADOW = "key_shadow";
     public static final String KEY_SHADOW_STRENGTH = "key_shadow_strength";   // %, 10~100
-    public static final String NEU_LONG_LIGHT_LIGHT = "neu_long_light_light";   // 임시: 라이트 모드 긴 흰색 항목 밝은 그림자 강도 (원래 값의 %, 0~200)
-    public static final String NEU_LONG_LIGHT_DARK = "neu_long_light_dark";     // 임시: 다크 모드 긴 흰색 항목 밝은 그림자 강도 (원래 값의 %, 0~200)
-    public static final String NEU_EDGE_DP = "neu_edge_dp";   // 임시: 긴 항목 윗변·왼쪽 변 안쪽 띠의 폭 dp (0~30)
     public static final String NEUMORPHISM = "neumorphism";   // 키·버튼을 바탕에서 솟아오른 모양으로 그리고, 누르면 안으로 들어가게
     public static final String TOOLBAR = "toolbar";
     public static final String TOOLBAR_BOTTOM = "toolbar_bottom";   // 도구 막대를 자판 아래에 둔다
@@ -359,8 +356,7 @@ public final class Prefs {
                 SPLIT_REACH_COLUMN, PROFILE_LIFT + LANDSCAPE_SUFFIX, BOTTOM_KEY_ORDER, COMMA_CHAR, PERIOD_CHAR, MODE_KEY_HIDDEN, PERIOD_COMMA, LANGUAGE_KEY_HIDDEN, SPACE_KEY_HIDDEN,
                 PERIOD_KEY_HIDDEN, ENTER_KEY_HIDDEN, DELETE_KEY_HIDDEN, KOREAN_SHIFT_HIDDEN, KOREAN_SHIFT_FN));
         MENU_PREFIXES.put("layout", keys("balanced_", LANDSCAPE_SPLIT + "_", "swipe_fk_"));
-        MENU_KEYS.put("theme", keys(THEME_MODE, ACCENT_MODE, ACCENT_COLOR, GRID_COLORS, NEUMORPHISM, NEU_EDGE_DP,
-                NEU_LONG_LIGHT_LIGHT, NEU_LONG_LIGHT_DARK));
+        MENU_KEYS.put("theme", keys(THEME_MODE, ACCENT_MODE, ACCENT_COLOR, GRID_COLORS, NEUMORPHISM));
         MENU_KEYS.put("look", keys(KEYBOARD_HEIGHT, KEY_TEXT_SIZE, KEY_RADIUS, KEY_SHADOW, KEY_SHADOW_STRENGTH,
                 KEY_PREVIEW, POPUP_HINT_HIDDEN, NUMBER_HINT_HIDDEN, PAD_LEFT, PAD_RIGHT, PAD_TOP, PAD_BOTTOM, KEY_GAP_X, KEY_GAP_Y));
         MENU_KEYS.put("input", keys(AUTO_CAP, ENGLISH_FIELDS, DOUBLE_SPACE_PERIOD, DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT,
@@ -870,12 +866,6 @@ public final class Prefs {
     public int keyRadiusDp() { return clamp(sp.getInt(KEY_RADIUS, 7), 0, 24); }
     public int keyShadowStrength() { return sp.getInt(KEY_SHADOW_STRENGTH, 50); }
     public boolean neumorphism() { return sp.getBoolean(NEUMORPHISM, false); }
-    /** 임시 슬라이더: 긴 항목 윗변·왼쪽 변 안쪽 띠의 폭 (dp). */
-    /** 임시 슬라이더: 긴 흰색 항목(회색 면 제외)의 밝은 그림자 강도, 원래 밝은 그림자 값에 대한 % (100 = 지금 그대로). */
-    public int neuLongLight(boolean dark) {
-        return clamp(dark ? sp.getInt(NEU_LONG_LIGHT_DARK, 130) : sp.getInt(NEU_LONG_LIGHT_LIGHT, 200), 0, 200);
-    }
-    public int neuEdgeDp() { return clamp(sp.getInt(NEU_EDGE_DP, 20), 0, 30); }
     public boolean suggestWords() { return sp.getBoolean(SUGGEST_WORDS, false); }
     /** 이모지 창을 열 때 커서 앞의 글에 맞는 이모지를 최근 탭 맨 위에 추천하는지. */
     public boolean emojiSuggest() { return sp.getBoolean(EMOJI_SUGGEST, true); }
