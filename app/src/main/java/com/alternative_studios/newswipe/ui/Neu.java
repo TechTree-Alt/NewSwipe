@@ -50,7 +50,7 @@ public final class Neu {
     private static int nextShader;
 
     /**
-     * 솟아오른 면. 밝은 테마의 흰 키 면은 흰색 한 가지이고, 윗변과 왼쪽 변 안쪽 {@link #EDGE_DP}dp 폭에만 바탕색이 옅게
+     * 솟아오른 면. 밝은 테마의 흰 키 면은 흰색 한 가지이고, 윗변과 왼쪽 변 안쪽 {@link KeyboardTheme#neuEdgeDp}dp 폭에만 바탕색이 옅게
      * 깔린다 ({@link #drawEdgeShade}). 흰 면이 같은 흰색의 밝은 그림자와 이어지면 윗변·왼쪽 변의 윤곽이 번져 보이는데, 이 띠가
      * 그 윤곽을 만든다. 띠의 폭은 키 크기와 상관없이 일정해서, 면 전체에 그라데이션을 걸던 때와 달리 긴 칩에서도 그라데이션이
      * 넓게 보이지 않는다. 어두운 테마의 글자 키 면은 대각선 그라데이션이다.
@@ -69,7 +69,7 @@ public final class Neu {
         if (face == t.key && !t.dark) {
             fill.setColor(face);
             c.drawRoundRect(r, radius, radius, fill);
-            drawEdgeShade(c, r, radius, t.background, fill);
+            drawEdgeShade(c, r, radius, t.background, t.neuEdgeDp, fill);
             return;
         } else if (face == t.key) {
             fill.setShader(concave(w, h, blend(t.background, face, t.tune(KeyboardTheme.T_KEY_START)), face,
@@ -89,8 +89,6 @@ public final class Neu {
         fill.setShader(null);
     }
 
-    /** 흰 면 윗변·왼쪽 변 안쪽에 바탕색을 까는 띠의 폭 (dp). */
-    public static final float EDGE_DP = 12f;
     /** 띠의 맨 가장자리에서 바탕색이 깔리는 정도. 두 띠가 겹치는 왼쪽 위 모서리는 더 진하다. */
     private static final float EDGE_ALPHA = 0.85f;
     private static LinearGradient edgeTop, edgeLeft;
@@ -101,8 +99,9 @@ public final class Neu {
      * 띠는 면 전체를 덮는 둥근 사각형에 그라데이션을 입혀 그리므로 모서리가 매끈하고 면 크기와 상관없다.
      * 그라데이션은 면의 왼쪽 위를 원점으로 한 같은 두 개를 모든 면이 함께 쓴다.
      */
-    private static void drawEdgeShade(Canvas c, RectF r, float radius, int bg, Paint fill) {
-        int px = Math.round(EDGE_DP * android.content.res.Resources.getSystem().getDisplayMetrics().density);
+    private static void drawEdgeShade(Canvas c, RectF r, float radius, int bg, int edgeDp, Paint fill) {
+        int px = Math.round(edgeDp * android.content.res.Resources.getSystem().getDisplayMetrics().density);
+        if (px <= 0) return;
         if (edgeTop == null || edgeColor != bg || edgePx != px) {
             int[] colors = new int[5];
             float[] pos = {0f, 0.25f, 0.5f, 0.75f, 1f};
