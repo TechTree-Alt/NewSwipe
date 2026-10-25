@@ -44,7 +44,7 @@ public final class KeyboardTheme {
     public final int[] neuShadow;
     /** 임시(설정 슬라이더): 긴 항목(스페이스바, 칩, 클립보드 카드 등) 윗변·왼쪽 변 안쪽 띠의 폭 (dp). */
     public final int neuEdgeDp;
-    /** 임시(설정 슬라이더): 긴 항목(강조색 면 제외)의 밝은 그림자 강도, 원래 값에 대한 % (100 = 그대로). */
+    /** 임시(설정 슬라이더): 긴 흰색 항목(회색·강조색 면 제외)의 밝은 그림자 강도, 원래 값에 대한 % (100 = 그대로). */
     public final int neuLongLight;
     private static final int[] LIGHT_SHADOW = {100, 45, 75, 55, 100, 75, 60, 40};
     /** 다크 모드의 강조색 면은 아주 밝아 밝은 그림자가 눌려 작아 보이므로 다른 키의 두 배쯤이다. */

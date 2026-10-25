@@ -146,8 +146,8 @@ public final class Prefs {
     public static final String KEY_RADIUS = "key_radius";   // 키 모서리 곡률 dp, 0~24 (기본 7)
     public static final String KEY_SHADOW = "key_shadow";
     public static final String KEY_SHADOW_STRENGTH = "key_shadow_strength";   // %, 10~100
-    public static final String NEU_LONG_LIGHT_LIGHT = "neu_long_light_light";   // 임시: 라이트 모드 긴 항목 밝은 그림자 강도 (원래 값의 %, 0~200)
-    public static final String NEU_LONG_LIGHT_DARK = "neu_long_light_dark";     // 임시: 다크 모드 긴 항목 밝은 그림자 강도 (원래 값의 %, 0~200)
+    public static final String NEU_LONG_LIGHT_LIGHT = "neu_long_light_light";   // 임시: 라이트 모드 긴 흰색 항목 밝은 그림자 강도 (원래 값의 %, 0~200)
+    public static final String NEU_LONG_LIGHT_DARK = "neu_long_light_dark";     // 임시: 다크 모드 긴 흰색 항목 밝은 그림자 강도 (원래 값의 %, 0~200)
     public static final String NEU_EDGE_DP = "neu_edge_dp";   // 임시: 긴 항목 윗변·왼쪽 변 안쪽 띠의 폭 dp (0~30)
     public static final String NEUMORPHISM = "neumorphism";   // 키·버튼을 바탕에서 솟아오른 모양으로 그리고, 누르면 안으로 들어가게
     public static final String TOOLBAR = "toolbar";
@@ -871,7 +871,7 @@ public final class Prefs {
     public int keyShadowStrength() { return sp.getInt(KEY_SHADOW_STRENGTH, 50); }
     public boolean neumorphism() { return sp.getBoolean(NEUMORPHISM, false); }
     /** 임시 슬라이더: 긴 항목 윗변·왼쪽 변 안쪽 띠의 폭 (dp). */
-    /** 임시 슬라이더: 긴 항목(회색·흰색 면)의 밝은 그림자 강도, 그 면의 원래 밝은 그림자 값에 대한 % (100 = 지금 그대로). */
+    /** 임시 슬라이더: 긴 흰색 항목(회색 면 제외)의 밝은 그림자 강도, 원래 밝은 그림자 값에 대한 % (100 = 지금 그대로). */
     public int neuLongLight(boolean dark) {
         return clamp(sp.getInt(dark ? NEU_LONG_LIGHT_DARK : NEU_LONG_LIGHT_LIGHT, 100), 0, 200);
     }

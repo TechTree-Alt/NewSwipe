@@ -179,8 +179,8 @@ public final class Neu {
     public static int raisedLight(KeyboardTheme t, int face, float w, float h) {
         if (face == t.accent) return t.neuLightAccent;
         int light = face == t.functionKey ? t.neuLightFunction : t.neuLight;
-        if (!isLong(w, h)) return light;
-        // 임시 슬라이더: 긴 항목의 밝은 그림자 강도 (원래 값에 대한 %)
+        if (face != t.key || !isLong(w, h)) return light;
+        // 임시 슬라이더: 긴 흰색 항목(회색 면은 제외)의 밝은 그림자 강도 (원래 값에 대한 %)
         int alpha = Math.min(255, Math.round((light >>> 24) * t.neuLongLight / 100f));
         return alpha << 24 | (light & 0xFFFFFF);
     }
