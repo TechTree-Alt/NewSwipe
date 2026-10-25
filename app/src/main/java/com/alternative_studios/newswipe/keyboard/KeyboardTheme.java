@@ -46,6 +46,8 @@ public final class KeyboardTheme {
     public final int neuEdgeDp;
     /** 임시(설정 슬라이더): 긴 흰색 항목(회색·강조색 면 제외)의 밝은 그림자 강도, 원래 값에 대한 % (100 = 그대로). */
     public final int neuLongLight;
+    /** 임시(설정 토글): 긴 항목 중 글자 키 색 면을 바탕색 한 가지로 그린다. */
+    public final boolean neuLongAsBg;
     private static final int[] LIGHT_SHADOW = {100, 45, 75, 55, 100, 75, 60, 40};
     /** 다크 모드의 강조색 면은 아주 밝아 밝은 그림자가 눌려 작아 보이므로 다른 키의 두 배쯤이다. */
     private static final int[] DARK_SHADOW = {13, 80, 13, 80, 27, 80, 40, 70};
@@ -65,13 +67,14 @@ public final class KeyboardTheme {
     public final int neuLightAccent, neuDarkAccent;
 
     private KeyboardTheme(boolean dark, int accentColor, int onAccentColor, boolean neu, int[] tune, int[] shadows, int edgeDp,
-                          int longLight) {
+                          int longLight, boolean longAsBg) {
         this.dark = dark;
         this.neu = neu;
         neuTune = tune;
         neuShadow = shadows;
         neuEdgeDp = edgeDp;
         neuLongLight = longLight;
+        neuLongAsBg = longAsBg;
         // 밝은 그림자는 흰색, 어두운 그림자는 다크 모드는 검은색이고 라이트 모드는 푸른 회색 (회색 키는 더 어두운 회색).
         int lo = dark ? 0 : 0xA0A8B6, loFn = dark ? 0 : 0x808A9A;
         neuLight = alpha(shadows[0]) | 0xFFFFFF;
@@ -124,11 +127,12 @@ public final class KeyboardTheme {
         int[] shadows = t.dark ? DARK_SHADOW : LIGHT_SHADOW;
         int edgeDp = prefs.neuEdgeDp();
         int longLight = prefs.neuLongLight(t.dark);
+        boolean longAsBg = prefs.neuLongAsBg();
         if (cached == null || cached.dark != t.dark || cached.accent != t.accent || cached.onAccent != t.onAccent
                 || cached.neu != neu || !java.util.Arrays.equals(cached.neuTune, tune)
                 || !java.util.Arrays.equals(cached.neuShadow, shadows) || cached.neuEdgeDp != edgeDp
-                || cached.neuLongLight != longLight) {
-            cached = new KeyboardTheme(t.dark, t.accent, t.onAccent, neu, tune, shadows, edgeDp, longLight);
+                || cached.neuLongLight != longLight || cached.neuLongAsBg != longAsBg) {
+            cached = new KeyboardTheme(t.dark, t.accent, t.onAccent, neu, tune, shadows, edgeDp, longLight, longAsBg);
         }
         return cached;
     }

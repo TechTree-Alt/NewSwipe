@@ -89,6 +89,12 @@ public final class Neu {
         }
         float density = android.content.res.Resources.getSystem().getDisplayMetrics().density;
         if (isLong(r.width(), r.height())) {
+            if (face == t.key && t.neuLongAsBg) {
+                // 임시 토글: 긴 글자 키 색 항목은 바탕색 한 가지로 그려, 그림자만으로 솟아오른 모양이 되게 한다 (띠도 없다).
+                fill.setColor(t.background);
+                c.drawRoundRect(r, radius, radius, fill);
+                return;
+            }
             fill.setColor(end);
             c.drawRoundRect(r, radius, radius, fill);
             drawEdgeShade(c, r, radius, start, t.neuEdgeDp, fill);

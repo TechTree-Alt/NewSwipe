@@ -1604,6 +1604,11 @@ public final class SettingsActivity extends Activity {
                         + "켜면 키 그림자 대신 쓰입니다.",
                 Prefs.NEUMORPHISM, prefs.neumorphism()));
         // 임시: 긴 항목 윗변·왼쪽 변 안쪽 띠의 폭을 맞춰 보는 슬라이더 (값을 정하면 지운다).
+        // 임시: 긴 항목 중 글자 키 색(라이트 모드 흰색) 면을 바탕색으로 해 보는 토글 (써 보고 정하면 지운다).
+        neu.addView(toggle("임시 · 긴 글자 키 색 항목 면을 바탕색으로",
+                "편집 칩·복사 칩, 클립보드 카드처럼 긴 흰색(다크 모드는 글자 키 색) 면을 바탕색 한 가지로 그립니다. "
+                        + "라이트·다크 모드 모두 적용됩니다.",
+                Prefs.NEU_LONG_AS_BG, prefs.neuLongAsBg()));
         // 임시: 긴 흰색 항목(회색·강조색 면 제외)의 밝은 그림자 강도. 100% = 지금 그대로, 현재 화면 모드의 값만 키보드에 보인다.
         neu.addView(slider("임시 · 긴 흰색 항목 밝은 그림자 강도 (라이트 모드, 100% = 지금)", Prefs.NEU_LONG_LIGHT_LIGHT, prefs.neuLongLight(false), 0, 200, 5, "%"));
         neu.addView(slider("임시 · 긴 흰색 항목 밝은 그림자 강도 (다크 모드, 100% = 지금)", Prefs.NEU_LONG_LIGHT_DARK, prefs.neuLongLight(true), 0, 200, 5, "%"));
