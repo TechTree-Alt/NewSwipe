@@ -262,7 +262,7 @@ public final class ClipboardPanel extends LinearLayout {
         LinearLayout card = new LinearLayout(c);
         card.setOrientation(VERTICAL);
         card.setBackground(Ui.ripple(theme.keyPressed, Ui.round(theme.key, Ui.dp(c, 10)), Ui.dp(c, 10)));
-        Neu.applyLarge(card, theme, theme.key, Ui.dp(c, 10));
+        Neu.apply(card, theme, theme.key, Ui.dp(c, 10));
         int p = Ui.dp(c, 10);
         card.setPadding(p, p, p, item == null ? p : 0);
         if (item != null && item.isImage()) {

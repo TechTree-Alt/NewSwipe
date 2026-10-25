@@ -146,7 +146,7 @@ public final class Prefs {
     public static final String KEY_RADIUS = "key_radius";   // 키 모서리 곡률 dp, 0~24 (기본 7)
     public static final String KEY_SHADOW = "key_shadow";
     public static final String KEY_SHADOW_STRENGTH = "key_shadow_strength";   // %, 10~100
-    public static final String NEU_EDGE_DP = "neu_edge_dp";   // 임시: 라이트 모드 긴 항목 윗변·왼쪽 변 안쪽 띠의 폭 dp (0~30)
+    public static final String NEU_EDGE_DP = "neu_edge_dp";   // 임시: 긴 항목 윗변·왼쪽 변 안쪽 띠의 폭 dp (0~30)
     public static final String NEUMORPHISM = "neumorphism";   // 키·버튼을 바탕에서 솟아오른 모양으로 그리고, 누르면 안으로 들어가게
     public static final String TOOLBAR = "toolbar";
     public static final String TOOLBAR_BOTTOM = "toolbar_bottom";   // 도구 막대를 자판 아래에 둔다

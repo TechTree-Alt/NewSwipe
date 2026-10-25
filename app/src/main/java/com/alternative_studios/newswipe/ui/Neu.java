@@ -61,10 +61,9 @@ public final class Neu {
      *   <li>글자 키: 왼쪽 위 바탕색 → 오른쪽 아래 키 색</li>
      *   <li>기능키(회색): 왼쪽 위 기능키 색보다 조금 어둡게 → 오른쪽 아래 기능키 색 (모드마다 정한 값)</li>
      * </ul>
-     * 그라데이션 길이가 면 크기에 비례해서 긴 항목에서는 그라데이션이 넓게 늘어나 어색하므로, 라이트 모드의 긴 항목(스페이스바, 칩,
+     * 그라데이션 길이가 면 크기에 비례해서 긴 항목에서는 그라데이션이 넓게 늘어나 어색하므로, 라이트·다크 모드 모두 긴 항목(스페이스바, 칩,
      * 클립보드 카드 등)은 면을 한 가지 색으로 두고 윗변·왼쪽 변 안쪽 {@link KeyboardTheme#neuEdgeDp}dp 폭에만 그라데이션의
      * 왼쪽 위 색을 옅게 깐다 ({@link #drawEdgeShade}). 띠 폭은 크기와 상관없다. 강조색 키의 면은 한 가지 색이다.
-     * 어두운 테마는 긴 항목도 그라데이션이다 (밝은 그림자가 옅어 번지지 않는다).
      */
     public static void drawFace(Canvas c, RectF r, float radius, int face, KeyboardTheme t, Paint fill) {
         if (face != t.key && face != t.functionKey) {
@@ -89,7 +88,7 @@ public final class Neu {
             endAt = t.tune(KeyboardTheme.T_FN_END);
         }
         float density = android.content.res.Resources.getSystem().getDisplayMetrics().density;
-        if (!t.dark && Math.max(r.width(), r.height()) > LONG_DP * density) {
+        if (Math.max(r.width(), r.height()) > LONG_DP * density) {
             fill.setColor(end);
             c.drawRoundRect(r, radius, radius, fill);
             drawEdgeShade(c, r, radius, start, t.neuEdgeDp, fill);
@@ -358,7 +357,7 @@ public final class Neu {
         private final int color, pressedColor, light, dark;
         private final float radius, offset, blur;
         private final int insetH, insetV;
-        private boolean pressed, sunken, flatInDark;
+        private boolean pressed, sunken;
 
         Chip(KeyboardTheme t, int color, float radius, int insetH, int insetV) {
             boolean accent = color == t.accent;
@@ -386,12 +385,7 @@ public final class Neu {
             } else {
                 drawRaised(c, face.left, face.top, face.right, face.bottom, r, offset, shadowBlur(theme, color, blur),
                         raisedLight(theme, color), dark);
-                if (flatInDark && theme.dark) {
-                    fill.setColor(color);
-                    c.drawRoundRect(face, r, r, fill);
-                } else {
-                    drawFace(c, face, r, color, theme, fill);
-                }
+                drawFace(c, face, r, color, theme, fill);
             }
         }
 

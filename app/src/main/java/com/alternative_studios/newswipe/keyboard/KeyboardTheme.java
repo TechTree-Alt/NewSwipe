@@ -42,7 +42,7 @@ public final class KeyboardTheme {
      * 눌린 강조색 키 안쪽 흰 그림자, 눌린 강조색 키 안쪽 어두운 그림자}.
      */
     public final int[] neuShadow;
-    /** 임시(설정 슬라이더): 라이트 모드 긴 항목(스페이스바, 칩, 클립보드 카드 등) 윗변·왼쪽 변 안쪽 띠의 폭 (dp). */
+    /** 임시(설정 슬라이더): 긴 항목(스페이스바, 칩, 클립보드 카드 등) 윗변·왼쪽 변 안쪽 띠의 폭 (dp). */
     public final int neuEdgeDp;
     private static final int[] LIGHT_SHADOW = {100, 45, 75, 55, 100, 75, 60, 40};
     /** 다크 모드의 강조색 면은 아주 밝아 밝은 그림자가 눌려 작아 보이므로 다른 키의 두 배쯤이다. */
