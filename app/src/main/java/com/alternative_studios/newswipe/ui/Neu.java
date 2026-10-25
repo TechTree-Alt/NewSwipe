@@ -295,18 +295,6 @@ public final class Neu {
     }
 
     /**
-     * 클립보드 카드처럼 큰 면의 바탕. 다크 모드에서는 면 전체 그라데이션이 큰 면에서 또렷하게 보이므로 평평한 색으로 그린다
-     * (다크 모드의 밝은 그림자는 옅어서 윤곽이 번지지 않는다). 라이트 모드는 {@link #apply}와 같다.
-     */
-    public static void applyLarge(View v, KeyboardTheme t, int fill, float radius) {
-        if (!t.neu) return;
-        Chip chip = new Chip(t, fill, radius, 0, 0);
-        chip.flatInDark = true;
-        v.setBackground(chip);
-        unclipParents(v);
-    }
-
-    /**
      * insetH·insetV: 면을 뷰 가장자리에서 들여 그리는 거리. 면은 원래 바탕과 같은 크기이고 그림자만 뷰 밖으로 번지므로,
      * 그림자가 잘리지 않게 붙은 뒤 부모 두 단계의 자식 자르기를 끈다.
      */
