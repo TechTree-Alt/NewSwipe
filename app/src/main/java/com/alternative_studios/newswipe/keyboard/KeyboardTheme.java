@@ -33,7 +33,7 @@ public final class KeyboardTheme {
     public final int[] neuTune;
     public static final int T_KEY_START = 0, T_KEY_END = 1, T_FN_SHIFT = 2, T_FN_START = 3, T_FN_END_TINT = 4,
             T_FN_END = 5;
-    /** 라이트 모드 값: 글자 키 면(왼쪽 위 0%, 끝 50%), 기능키 면(5%, 5%, 0%, 50%). */
+    /** 라이트 모드 값: 글자 키 면은 쓰지 않고(윗변·왼쪽 변 띠, Neu.drawEdgeShade), 기능키 면(5%, 5%, 0%, 50%). */
     private static final int[] LIGHT_TUNE = {0, 50, 5, 5, 0, 50};
     /** 다크 모드 값: 글자 키 면(왼쪽 위 20%, 끝 100%), 기능키 면(-30%, 20%, 0%, 100%). */
     private static final int[] DARK_TUNE = {20, 100, -30, 20, 0, 100};

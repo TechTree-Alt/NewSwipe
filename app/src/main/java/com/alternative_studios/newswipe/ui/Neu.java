@@ -50,8 +50,10 @@ public final class Neu {
     private static int nextShader;
 
     /**
-     * 솟아오른 면. 밝은 테마의 흰 키 면은 왼쪽 위가 바탕색이고 대각선을 따라 흰색이 되는 그라데이션이라
-     * 살짝 오목하게 들어간 느낌이 든다. 면의 왼쪽 위가 흰 밝은 그림자보다 어두워져 그쪽 윤곽도 또렷하다.
+     * 솟아오른 면. 밝은 테마의 흰 키 면은 흰색 한 가지이고, 윗변과 왼쪽 변 안쪽 {@link #EDGE_DP}dp 폭에만 바탕색이 옅게
+     * 깔린다 ({@link #drawEdgeShade}). 흰 면이 같은 흰색의 밝은 그림자와 이어지면 윗변·왼쪽 변의 윤곽이 번져 보이는데, 이 띠가
+     * 그 윤곽을 만든다. 띠의 폭은 키 크기와 상관없이 일정해서, 면 전체에 그라데이션을 걸던 때와 달리 긴 칩에서도 그라데이션이
+     * 넓게 보이지 않는다. 어두운 테마의 글자 키 면은 대각선 그라데이션이다.
      * 회색 기능키 면도 흰 키와 어울리도록 같은 방향으로 약하게 그라데이션을 준다 (회색이 그대로 보이도록 왼쪽 위는 기능키 색보다
      * 3% 어둡게, 오른쪽 아래는 바탕색 쪽으로 20%만 밝게). 회색 면이 그림자로 번져 보이지 않게 하는 것은 진한 그림자가 맡는다
      * ({@link #darkShadow}). 강조색 키의 면은 한 가지 색이다. 모양을 정하는 값은 모드마다 고정이다 ({@link KeyboardTheme#neuTune}).
@@ -64,9 +66,12 @@ public final class Neu {
         }
         int w = Math.max(1, Math.round(r.width())), h = Math.max(1, Math.round(r.height()));
         fill.setColor(0xFF000000);
-        // 흰 면은 왼쪽 위 모서리가 밝을수록 흰 밝은 그림자와 섞여 번져 보인다 (기기에서는 바탕색과 흰색의 중간에서 번졌다).
-        // 모서리는 바탕색에서 흰색 쪽으로 30%만 올리고, 대신 대각선의 50% 지점에서 벌써 흰색이 되게 해 면 전체는 밝게 한다.
-        if (face == t.key) {
+        if (face == t.key && !t.dark) {
+            fill.setColor(face);
+            c.drawRoundRect(r, radius, radius, fill);
+            drawEdgeShade(c, r, radius, t.background, fill);
+            return;
+        } else if (face == t.key) {
             fill.setShader(concave(w, h, blend(t.background, face, t.tune(KeyboardTheme.T_KEY_START)), face,
                     t.tune(KeyboardTheme.T_KEY_END)));
         } else {
@@ -79,6 +84,43 @@ public final class Neu {
         }
         c.save();
         c.translate(r.left, r.top);
+        c.drawRoundRect(0, 0, r.width(), r.height(), radius, radius, fill);
+        c.restore();
+        fill.setShader(null);
+    }
+
+    /** 흰 면 윗변·왼쪽 변 안쪽에 바탕색을 까는 띠의 폭 (dp). */
+    public static final float EDGE_DP = 12f;
+    /** 띠의 맨 가장자리에서 바탕색이 깔리는 정도. 두 띠가 겹치는 왼쪽 위 모서리는 더 진하다. */
+    private static final float EDGE_ALPHA = 0.85f;
+    private static LinearGradient edgeTop, edgeLeft;
+    private static int edgeColor, edgePx;
+
+    /**
+     * 면 위에 윗변·왼쪽 변 안쪽으로 바탕색이 점점 옅어지는 띠 두 개를 덮는다 (바깥에서 안으로 제곱으로 옅어진다).
+     * 띠는 면 전체를 덮는 둥근 사각형에 그라데이션을 입혀 그리므로 모서리가 매끈하고 면 크기와 상관없다.
+     * 그라데이션은 면의 왼쪽 위를 원점으로 한 같은 두 개를 모든 면이 함께 쓴다.
+     */
+    private static void drawEdgeShade(Canvas c, RectF r, float radius, int bg, Paint fill) {
+        int px = Math.round(EDGE_DP * android.content.res.Resources.getSystem().getDisplayMetrics().density);
+        if (edgeTop == null || edgeColor != bg || edgePx != px) {
+            int[] colors = new int[5];
+            float[] pos = {0f, 0.25f, 0.5f, 0.75f, 1f};
+            for (int i = 0; i < 5; i++) {
+                float a = EDGE_ALPHA * (1 - pos[i]) * (1 - pos[i]);
+                colors[i] = (Math.round(a * 255) << 24) | (bg & 0xFFFFFF);
+            }
+            edgeTop = new LinearGradient(0, 0, 0, px, colors, pos, Shader.TileMode.CLAMP);
+            edgeLeft = new LinearGradient(0, 0, px, 0, colors, pos, Shader.TileMode.CLAMP);
+            edgeColor = bg;
+            edgePx = px;
+        }
+        c.save();
+        c.translate(r.left, r.top);
+        fill.setColor(0xFF000000);
+        fill.setShader(edgeTop);
+        c.drawRoundRect(0, 0, r.width(), r.height(), radius, radius, fill);
+        fill.setShader(edgeLeft);
         c.drawRoundRect(0, 0, r.width(), r.height(), radius, radius, fill);
         c.restore();
         fill.setShader(null);
