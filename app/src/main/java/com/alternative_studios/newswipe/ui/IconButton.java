@@ -60,6 +60,7 @@ public final class IconButton extends View {
         int insetV = Math.max(0, (barHeight - Ui.chipHeight(c, barHeight)) / 2);
         // 눌린 키 색은 밝은 테마의 기능키 색과 거의 같아서, 누를 때는 아이콘 색을 옅게 덮어 눌린 것이 보이게 한다.
         setChip(fill, Ui.tint(iconColor), Ui.dp(c, 2), insetV, Ui.chipRadius(c));
+        Neu.apply(this, theme, fill, Ui.chipRadius(c), Ui.dp(c, 2), insetV);
     }
 
     public void setIcon(int icon) {

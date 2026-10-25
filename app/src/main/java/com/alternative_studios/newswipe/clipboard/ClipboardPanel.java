@@ -22,6 +22,7 @@ import android.widget.TextView;
 import com.alternative_studios.newswipe.keyboard.Icons;
 import com.alternative_studios.newswipe.keyboard.KeyboardTheme;
 import com.alternative_studios.newswipe.ui.IconButton;
+import com.alternative_studios.newswipe.ui.Neu;
 import com.alternative_studios.newswipe.ui.Ui;
 
 import java.util.HashMap;
@@ -94,6 +95,7 @@ public final class ClipboardPanel extends LinearLayout {
         titleLp.leftMargin = Ui.dp(context, 10);   // 뒤로 가기 칩에 붙지 않게
         header.addView(title, titleLp);
         clear = Ui.chipButton(context, "모두 지우기", theme.onAccent, theme.accent, topBarHeight);   // 강조 색 위 글자는 밝기에 따라 읽기 좋은 색
+        Neu.apply(clear, theme, theme.accent, Ui.chipRadius(context));
         clear.setOnClickListener(v -> confirmClear());
         header.addView(clear);
         addView(header, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, topBarHeight));
@@ -111,9 +113,11 @@ public final class ClipboardPanel extends LinearLayout {
         ask.setEllipsize(TextUtils.TruncateAt.END);
         confirmRow.addView(ask, new LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         TextView cancel = Ui.chipButton(context, "취소", theme.text, theme.functionKey, topBarHeight);
+        Neu.apply(cancel, theme, theme.functionKey, Ui.chipRadius(context));
         cancel.setOnClickListener(v -> dismissDialog());
         confirmRow.addView(cancel);
         TextView ok = Ui.chipButton(context, "지우기", theme.onAccent, theme.accent, topBarHeight);
+        Neu.apply(ok, theme, theme.accent, Ui.chipRadius(context));
         ok.setOnClickListener(v -> {
             dismissDialog();
             listener.onClipClear();

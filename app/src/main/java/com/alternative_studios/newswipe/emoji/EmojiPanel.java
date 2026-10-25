@@ -28,6 +28,7 @@ import android.widget.TextView;
 import com.alternative_studios.newswipe.keyboard.Icons;
 import com.alternative_studios.newswipe.keyboard.KeyboardTheme;
 import com.alternative_studios.newswipe.ui.IconButton;
+import com.alternative_studios.newswipe.ui.Neu;
 import com.alternative_studios.newswipe.ui.Ui;
 
 import java.util.ArrayList;
@@ -148,6 +149,7 @@ public final class EmojiPanel extends LinearLayout {
         search.setGravity(Gravity.CENTER_VERTICAL);
         search.setBackground(Ui.ripple(Ui.tint(theme.text), Ui.round(theme.functionKey, Ui.chipRadius(context)),
                 Ui.chipRadius(context)));
+        Neu.apply(search, theme, theme.functionKey, Ui.chipRadius(context));
         search.setPadding(Ui.dp(context, 10), 0, Ui.dp(context, 12), 0);
         IconButton icon = new IconButton(context, Icons.SEARCH, theme.hint, theme.keyPressed, null);
         icon.setClickable(false);
@@ -184,6 +186,7 @@ public final class EmojiPanel extends LinearLayout {
         back.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         back.setBackground(Ui.ripple(theme.keyPressed, Ui.round(theme.functionKey, Ui.dp(context, 7)),
                 Ui.dp(context, 7)));
+        Neu.apply(back, theme, theme.functionKey, Ui.dp(context, 7));
         back.setOnClickListener(v -> {
             listener.onEmojiKeyPress();
             listener.onEmojiBack();
@@ -220,6 +223,7 @@ public final class EmojiPanel extends LinearLayout {
         IconButton del = new IconButton(context, Icons.DELETE, theme.text, theme.keyPressed, "지우기");
         del.setBackground(Ui.ripple(theme.keyPressed, Ui.round(theme.functionKey, Ui.dp(context, 7)),
                 Ui.dp(context, 7)));
+        Neu.apply(del, theme, theme.functionKey, Ui.dp(context, 7));
         setRepeating(del);
         bar.addView(del, new LayoutParams(Ui.dp(context, 52), Ui.dp(context, 36)));
         addView(bar, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(context, 46)));
@@ -352,8 +356,10 @@ public final class EmojiPanel extends LinearLayout {
         for (int i = 0; i < tabs.length; i++) {
             boolean sel = i == index;
             tabs[i].setAlpha(sel ? 1f : 0.55f);
+            // Neumorphism에서는 고른 탭이 안으로 눌려 들어간 모양이다.
             tabs[i].setBackground(sel
-                    ? Ui.round(theme.functionKey, Ui.dp(getContext(), 16))
+                    ? theme.neu ? Neu.sunken(tabs[i], theme, theme.functionKey, Ui.dp(getContext(), 16))
+                    : Ui.round(theme.functionKey, Ui.dp(getContext(), 16))
                     : Ui.ripple(theme.keyPressed, null, Ui.dp(getContext(), 16)));
         }
     }

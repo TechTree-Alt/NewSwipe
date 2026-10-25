@@ -11,6 +11,8 @@ import android.util.TypedValue;
 import android.view.MotionEvent;
 import android.view.View;
 
+import com.alternative_studios.newswipe.ui.Neu;
+
 import java.util.ArrayList;
 import java.util.Locale;
 
@@ -636,6 +638,14 @@ public final class KeyboardView extends View {
         // 미리보기가 위로 넘어가려고 클리핑을 껐으므로, drawColor를 쓰면 위쪽 툴바까지 덮어 버린다.
         fill.setColor(theme.background);
         c.drawRect(0, 0, getWidth(), getHeight(), fill);
+        if (theme.neu) {
+            // 그림자를 먼저 모두 깔고 키 면을 그 위에 그려, 이웃 키의 그림자가 키 면을 덮지 않게 한다.
+            for (KeyboardLayout.Row row : layout.rows) {
+                for (Key k : row.keys) {
+                    if (k.type != Key.SPACER && k.type != Key.GAP && !k.hidden && !isPressed(k)) drawNeuRaised(c, k);
+                }
+            }
+        }
         for (KeyboardLayout.Row row : layout.rows) {
             for (Key k : row.keys) if (k.type != Key.SPACER && k.type != Key.GAP && !k.hidden) drawKey(c, k);
         }
@@ -684,35 +694,50 @@ public final class KeyboardView extends View {
         c.restore();
     }
 
-    private void drawKey(Canvas c, Key k) {
-        RectF r = tmp;
-        r.set(k.rect.left + gapX / 2, k.rect.top + gapY / 2, k.rect.right - gapX / 2, k.rect.bottom - gapY / 2);
-        boolean pressed = isPressed(k);
-        int bg;
-        int fg = theme.text;
+    /** 키 면의 색 (눌리지 않았을 때). 강조색이면 글자는 onAccent, 아니면 글자 색이다. */
+    private int faceColor(Key k) {
         if (k.type == Key.ENTER) {
-            bg = theme.accent;
-            fg = theme.onAccent;
+            return theme.accent;
         } else if (gridColors && (k.type == Key.SHIFT || k.type == Key.FUNCTION || k.type == Key.DELETE || k.type == Key.SYMBOL_PAGE
                 || layout.kind == KeyboardLayout.NUMBER && (k.type == Key.TO_SYMBOLS || ".".equals(k.label)))
                 && !(layout.kind == KeyboardLayout.NUMBER && k.type == Key.DELETE)) {
             // 색 정렬: 글자 사이의 Shift·⌫·기호 쪽 넘김 키는 글자 키 색 (Shift 고정도 강조색 없이).
             // 숫자 자판에서는 ?123·.를 숫자 키 색으로 맞추고, ⌫는 스페이스바·- 키와 같은 기능키 색으로 둔다.
-            bg = theme.key;
+            return theme.key;
         } else if (gridColors && k.type == Key.SPACE) {
-            bg = theme.functionKey;   // 스페이스바는 맨 아래 줄의 다른 기능키 색
+            return theme.functionKey;   // 스페이스바는 맨 아래 줄의 다른 기능키 색
         } else if (k.type == Key.SHIFT && shiftState == 2) {
-            bg = theme.accent;
-            fg = theme.onAccent;
+            return theme.accent;
         } else {
-            bg = k.isFunctional() ? theme.functionKey : theme.key;
+            return k.isFunctional() ? theme.functionKey : theme.key;
         }
-        if (pressed) bg = k.type == Key.ENTER ? blend(theme.accent, theme.text, 0.25f) : theme.keyPressed;
-        if (keyShadow && !pressed) drawShadow(c, r);
-        fill.setColor(bg);
-        c.drawRoundRect(r, radius, radius, fill);
+    }
 
+    private void drawKey(Canvas c, Key k) {
+        RectF r = tmp;
+        r.set(k.rect.left + gapX / 2, k.rect.top + gapY / 2, k.rect.right - gapX / 2, k.rect.bottom - gapY / 2);
+        boolean pressed = isPressed(k);
+        int bg = faceColor(k);
+        int fg = bg == theme.accent && (k.type == Key.ENTER || k.type == Key.SHIFT) ? theme.onAccent : theme.text;
         float cx = r.centerX(), cy = r.centerY();
+        if (theme.neu) {
+            boolean accent = bg == theme.accent;
+            if (pressed) {
+                // 눌린 키는 안으로 들어가 테두리 안쪽에 그림자가 진다. 글자도 함께 살짝 내려간다.
+                Neu.drawInset(c, r, radius, neuOffset(), neuBlur(),
+                        accent ? blend(theme.accent, theme.text, 0.12f) : theme.keyPressed, Neu.pressedLight(theme, bg),
+                        Neu.pressedDark(theme, bg), fill);
+                cy += dp(1);
+            } else {
+                Neu.drawFace(c, r, radius, bg, theme, fill);
+            }
+        } else {
+            if (pressed) bg = k.type == Key.ENTER ? blend(theme.accent, theme.text, 0.25f) : theme.keyPressed;
+            if (keyShadow && !pressed) drawShadow(c, r);
+            fill.setColor(bg);
+            c.drawRoundRect(r, radius, radius, fill);
+        }
+
         float iconSize = Math.min(r.height(), r.width()) * 0.52f;
         icon.setColor(fg);
         switch (k.type) {
@@ -758,8 +783,27 @@ public final class KeyboardView extends View {
             text.setTypeface(Typeface.DEFAULT);
             text.setTextSize(spHint);
             text.getFontMetrics(fm);
-            c.drawText(hint, r.right - dp(7), r.top - fm.ascent + dp(2), text);
+            c.drawText(hint, r.right - dp(7), cy - r.centerY() + r.top - fm.ascent + dp(2), text);
         }
+    }
+
+    // ---------------------------------------------------------------- 뉴모피즘
+
+    /** 그림자가 키에서 비켜나는 거리. 키 사이 간격이 좁으면 그만큼 얕게 한다. */
+    private float neuOffset() {
+        return Math.max(dp(1), Math.min(dp(2.5f), Math.min(gapX, gapY) * 0.45f));
+    }
+
+    private float neuBlur() {
+        return neuOffset() * 1.3f;
+    }
+
+    /** 솟아오른 키의 그림자 (키 면은 drawKey가 그 위에 그린다). 그림자는 Neu가 크기마다 한 번만 구워 둔 비트맵이다. */
+    private void drawNeuRaised(Canvas c, Key k) {
+        int face = faceColor(k);
+        Neu.drawRaised(c, k.rect.left + gapX / 2, k.rect.top + gapY / 2, k.rect.right - gapX / 2,
+                k.rect.bottom - gapY / 2, radius, neuOffset(), Neu.shadowBlur(theme, face, neuBlur()),
+                Neu.raisedLight(theme, face, k.rect.width() - gapX, k.rect.height() - gapY), Neu.darkShadow(theme, face));
     }
 
     private void drawCentered(Canvas c, String s, float cx, float cy) {
