@@ -54,6 +54,9 @@ public final class Neu {
      */
     private static final float LONG_DP = 72f;
 
+    /** 라이트 모드 흰색 긴 항목의 윗변·왼쪽 변 안쪽 띠 폭 (dp). */
+    private static final int LIGHT_WHITE_EDGE_DP = 13;
+
     /**
      * 솟아오른 면. 글자 키 같은 보통 크기의 면은 왼쪽 위에서 오른쪽 아래로 가는 대각선 그라데이션이라 살짝 오목하게 들어간
      * 느낌이 든다 (면의 왼쪽 위가 밝은 그림자보다 어두워져 윤곽이 번지지 않는다).
@@ -99,7 +102,8 @@ public final class Neu {
             }
             fill.setColor(end);
             c.drawRoundRect(r, radius, radius, fill);
-            drawEdgeShade(c, r, radius, start, t.neuEdgeDp, fill);
+            // 라이트 모드의 흰색(글자 키 색) 긴 항목은 띠 폭이 따로 정해져 있다. 나머지는 슬라이더 값이다.
+            drawEdgeShade(c, r, radius, start, !t.dark && face == t.key ? LIGHT_WHITE_EDGE_DP : t.neuEdgeDp, fill);
             return;
         }
         fill.setColor(0xFF000000);

@@ -1616,7 +1616,7 @@ public final class SettingsActivity extends Activity {
         // 임시: 긴 흰색 항목(회색·강조색 면 제외)의 밝은 그림자 강도. 100% = 지금 그대로, 현재 화면 모드의 값만 키보드에 보인다.
         neu.addView(slider("임시 · 긴 흰색 항목 밝은 그림자 강도 (라이트 모드, 100% = 지금)", Prefs.NEU_LONG_LIGHT_LIGHT, prefs.neuLongLight(false), 0, 200, 5, "%"));
         neu.addView(slider("임시 · 긴 흰색 항목 밝은 그림자 강도 (다크 모드, 100% = 지금)", Prefs.NEU_LONG_LIGHT_DARK, prefs.neuLongLight(true), 0, 200, 5, "%"));
-        neu.addView(slider("임시 · 긴 항목(스페이스바·칩·카드)의 윗변·왼쪽 변 안쪽 띠 폭", Prefs.NEU_EDGE_DP, prefs.neuEdgeDp(), 0, 30, 1, "dp"));
+        neu.addView(slider("임시 · 긴 항목의 윗변·왼쪽 변 안쪽 띠 폭 (라이트 모드의 흰색 긴 항목은 13dp 고정)", Prefs.NEU_EDGE_DP, prefs.neuEdgeDp(), 0, 30, 1, "dp"));
     }
 
     private static int indexOf(String[] values, String v) {
