@@ -77,6 +77,21 @@ final class KoreanCorrect {
     static double SHAPE_SCAN_FREQ = 1;
 
     /**
+     * 친 말에 사전 단어에서 한 번도 나오지 않은 음절 이음이 있으면(중지돤의 지돤, 확인하겠습니드의 니드) 맞는 말일 가능성이 낮으니,
+     * 그 말만 이 빈도까지 고칠 단어로 본다 (중지돤 → 중지된 0.5). 더 드문 단어는 글자 수가 같고 첫 글자 뒤의 한 글자만 다른 것만
+     * 보아(첫 글자가 같은 사전 구간) 반응이 느려지지 않는다.
+     */
+    static double SHAPE_SCAN_FREQ_RARE = 0.05;
+
+    /**
+     * 네 글자 이상인 말의 끝 이음이 사전 단어에 없고(확인하겠습니드의 니드), 끝 글자 하나를 키 하나(대각선 제외) 잘못 친 꼴로 고치는
+     * 단어의 끝이 흔한 어미(니다: 끝 두 이음이 RARE_END_PAIR번 이상)이면, 드문 활용형이어도 후보가 사실상 하나일 때 이 기준으로
+     * 고친다 (확인하겠습니다 0.2).
+     */
+    static double SHAPE_MIN_RARE_END = 1;
+    static int RARE_END_PAIR = 20;
+
+    /**
      * 후보가 사실상 하나일 때의 기준 (맞는 말 목록이 있을 때만): 키 하나를 잘못 누른 오타(대각선 제외)로 고치는 단어가 다른
      * 모든 후보보다 UNIQUE_MARGIN 이상 앞서면, 드문 단어여도 이 기준만 넘으면 고친다 (굴자 → 글자, 학습니 → 학습이).
      */
@@ -136,7 +151,7 @@ final class KoreanCorrect {
             String r = spellFix(word, cx);
             if (r != null) return r;
         }
-        if (!SHAPE_RULE) return search(word, word, cx, false, 0, 0, Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY);
+        if (!SHAPE_RULE) return search(word, word, cx, false, 0, 0, Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY, false);
         KnownWords k = known;
         if (k != null && k.contains(word)) return null;   // 사전에 없지만 말뭉치에 나온 맞는 말
         // 사전 단어 + 요인데 조사로 받지 않은 말(되니요)은 틀린 꼴이 분명하다
@@ -145,13 +160,13 @@ final class KoreanCorrect {
         double min = wrong ? SHAPE_MIN_WRONG : k != null ? SHAPE_MIN_KNOWN : SHAPE_MIN;
         double oneKey = wrong ? SHAPE_MIN_WRONG : k != null ? Math.min(SHAPE_MIN_KNOWN, SHAPE_MIN_ONE_KEY) : SHAPE_MIN;
         double unique = wrong || k == null ? Double.POSITIVE_INFINITY : Math.log(SHAPE_MIN_UNIQUE);
-        String r = search(word, word, cx, false, Math.log(min), Math.log(oneKey), unique, wrong ? Double.POSITIVE_INFINITY : vowelLog(word, k));
+        String r = search(word, word, cx, false, Math.log(min), Math.log(oneKey), unique, wrong ? Double.POSITIVE_INFINITY : vowelLog(word, k), k != null);
         if (r == null && !wrong && PARTICLE_FIX) r = particleFix(word, cx);
         if (r != null || sp == null || wrong || sp[0].length() < 2 || k != null && k.contains(sp[0])) return r;
         // 명사 + 조사에서 명사만 틀린 말: 명사를 고쳐 조사를 다시 붙인다 (자댕입니다 → 자동입니다)
         double nounMin = k != null ? SHAPE_MIN_KNOWN : SHAPE_MIN_NOUN;
         String noun = search(sp[0], sp[0], cx, true, Math.log(nounMin), Math.log(k != null ? Math.min(nounMin, SHAPE_MIN_ONE_KEY) : nounMin),
-                unique, vowelLog(sp[0], k));
+                unique, vowelLog(sp[0], k), false);
         if (noun == null) return null;
         String[] back = WordSuggester.splitParticle(noun + sp[1]);   // 받침에 맞는 조사인지 (이/가, 은/는 ...)
         return back != null && back[0].equals(noun) ? noun + sp[1] : null;
@@ -349,6 +364,13 @@ final class KoreanCorrect {
         return diff;
     }
 
+    /** w가 typed와 끝 글자만 다르고, 그 끝(앞 글자와의 이음, 끝)이 사전 단어에 흔한지 (RARE_END_PAIR). */
+    private boolean commonEnding(String typed, String w) {
+        int n = typed.length();
+        if (w.length() != n || !typed.regionMatches(0, w, 0, n - 1) || typed.charAt(n - 1) == w.charAt(n - 1)) return false;
+        return shape.pairCount(w.charAt(n - 2), w.charAt(n - 1)) >= RARE_END_PAIR && shape.pairCount(w.charAt(n - 1), (char) 0) >= RARE_END_PAIR;
+    }
+
     /** typed와 w가 끝 글자가 아닌 한 글자의 모음만 다른지 (초성·받침은 같다). */
     static boolean middleVowelEdit(String typed, String w) {
         int n = typed.length();
@@ -372,7 +394,7 @@ final class KoreanCorrect {
      * 다른 모든 후보보다 UNIQUE_MARGIN 이상 앞서고 uniqueLog를 넘으면 그 단어로 고친다.
      */
     private String search(String word, String typed, KoreanSuggest.Context cx, boolean noun, double minLog, double oneKeyLog,
-                          double uniqueLog, double vowelLog) {
+                          double uniqueLog, double vowelLog, boolean rareScan) {
         int syll = word.length();
         char[] p = TypoModel.letters(word);
         float maxCost = syll <= 3 ? CORRECT_MAX_SHORT : CORRECT_MAX_LONG;
@@ -388,7 +410,12 @@ final class KoreanCorrect {
         double uniqueS = Double.NEGATIVE_INFINITY;   // 키 하나 오타(대각선 제외)로 고치는 단어 중 가장 그럴듯한 것
         int minScore = ks.scoreFor(CORRECT_MIN_FREQ);
         double lmTyped = SHAPE_RULE ? shape.logProb(typed) : 0;
+        // 낯선 음절 이음이 있는 말은 더 드문 단어까지 본다 (SHAPE_SCAN_FREQ_RARE). 끝 이음이 낯선 긴 말은 흔한 어미로 고친다
+        boolean rare = SHAPE_RULE && rareScan && shape.unseenPair(word);
+        double endLog = rare && syll >= 4 && shape.pairCount(word.charAt(syll - 2), word.charAt(syll - 1)) == 0
+                ? Math.log(SHAPE_MIN_RARE_END) : Double.POSITIVE_INFINITY;
         double scanLog = Math.min(Math.min(minLog, oneKeyLog), Math.min(uniqueLog, vowelLog));
+        String head = word.substring(0, syll - 1);
         // 자모 개수 차이로 편집 거리의 아래 한계를 먼저 본다 (가장 싼 바꾸기도 VARIANT라 다른 자모 둘마다 그 이상 든다)
         int[] have = new int[51], left = new int[51];
         for (char ch : p) if (ch >= 0x3131 && ch < 0x3131 + 51) have[ch - 0x3131]++;
@@ -397,24 +424,37 @@ final class KoreanCorrect {
         KoreanSuggest.Context.PairScan pairs = cx.pairScan();
         int[] noStem = new int[syll + 1];   // stemFamilyGain: 끝에서 k글자를 뗀 앞부분으로 시작하는 사전 단어가 없으면 1, 있으면 2 (0 = 아직)
         // 점수가 기준 이상이고 글자 수가 ±1인 단어를 사전 순서대로 본다 (글자 수별 목록 셋을 번호 순으로 합친다)
-        int[][] byLen = dict.idsByLength(ks.scoreFor(SHAPE_RULE ? SHAPE_SCAN_FREQ : CORRECT_MIN_FREQ_CONTEXT));
+        int scanMin = ks.scoreFor(SHAPE_RULE ? SHAPE_SCAN_FREQ : CORRECT_MIN_FREQ_CONTEXT);
+        int[][] byLen = dict.idsByLength(scanMin);
         int[] la = lengthList(byLen, syll - 1), lb = lengthList(byLen, syll), lc = lengthList(byLen, syll + 1);
         int ia = 0, ib = 0, ic = 0;
+        // 낯선 이음이 있는 말은 그다음에, 더 드문 단어 중 글자 수가 같고 첫 글자 뒤의 한 글자만 다른 것을 본다
+        // (첫 글자가 같은 단어는 사전에서 한 구간이라 사전 전체를 훑지 않는다)
+        int[] range = rare ? dict.prefixRange(word.substring(0, 1)) : null;
+        int next = rare ? range[0] : 0, rareMin = rare ? ks.scoreFor(SHAPE_SCAN_FREQ_RARE) : 0;
         while (true) {
             int va = ia < la.length ? la[ia] : Integer.MAX_VALUE, vb = ib < lb.length ? lb[ib] : Integer.MAX_VALUE,
                     vc = ic < lc.length ? lc[ic] : Integer.MAX_VALUE;
             int id = Math.min(va, Math.min(vb, vc));
-            if (id == Integer.MAX_VALUE) break;
-            if (id == va) ia++;
-            else if (id == vb) ib++;
-            else ic++;
+            if (id != Integer.MAX_VALUE) {
+                if (id == va) ia++;
+                else if (id == vb) ib++;
+                else ic++;
+            } else {
+                if (!rare || next >= range[1]) break;
+                id = next++;
+                int sc = dict.score(id);
+                if (sc < rareMin || sc >= scanMin || dict.syllablesOff(id, word) != 1) continue;
+            }
             int len = dict.length(id);
             if (len < syll - 1 || len > syll + 1 || len > 24) continue;
             double partial = 0;
             if (SHAPE_RULE) {
                 // 오타 비용을 뺀 부분을 먼저 본다: 가장 싼 오타(같은 키의 다른 동작)여도 기준에 못 미치면 편집 거리를 재지 않는다
                 partial = prior[id] - SHAPE_LM * lmTyped;
-                if (partial + SHAPE_CONTEXT - SHAPE_COST * (TypoModel.VARIANT - 0.6) < scanLog) continue;
+                double top = partial + SHAPE_CONTEXT - SHAPE_COST * (TypoModel.VARIANT - 0.6);
+                // endLog는 끝 글자만 다른 말에만 쓴다 (다른 말은 여느 기준으로 걸러 느려지지 않게)
+                if (top < scanLog && (top < endLog || len != syll || !dict.word(id).startsWith(head))) continue;
                 if (pairs.has(id)) partial += SHAPE_CONTEXT;
             }
             // 풀기 전에 음절 표로 어림해 거른다 (대부분의 후보가 여기서 빠진다)
@@ -448,6 +488,7 @@ final class KoreanCorrect {
             if (SHAPE_RULE) {
                 double v = partial - SHAPE_COST * (c - 0.6) + (STEM_FAMILY && oneKey ? stemFamilyGain(word, w, id, noStem) : 0);
                 double uLog = vowelLog < uniqueLog && middleVowelEdit(word, w) ? vowelLog : uniqueLog;
+                if (endLog < uLog && commonEnding(word, w)) uLog = endLog;
                 if (oneKey && pool == 0 && v >= uLog && s > uniqueS) {
                     uniqueS = s;
                     uniqueId = id;
@@ -546,9 +587,12 @@ final class KoreanCorrect {
         return !sp[1].equals("요") || "니냐다".indexOf(stem.charAt(stem.length() - 1)) < 0 || morph.nounLike(stem);
     }
 
+    /** 이보다 드문(100만 어절당) ㅁ 받침 명사형만 modifierForm으로 본다 (사름 0.0은 보고, 느림 2.8은 보지 않는다). */
+    static double NOMINAL_MAX_FREQ = 0.5;
+
     /**
      * 사전에 있는 w가 명사가 아니라 용언의 관형형(도운, 먹은, 하는, 갈)인지: 끝 글자의 받침 ㄴ·ㄹ을 떼거나 '은·는·던'을 뗀
-     * 어간에 다른 어미가 붙은 꼴(도우면, 먹고, 하고)이 사전에 있고, 명사로 쓰인 흔적이 없을 때.
+     * 어간에 다른 어미가 붙은 꼴(도우면, 먹고, 하고)이 사전에 있고(받침 ㅁ을 뗀 드문 명사형 사름은 사르고·사르면이 다 있고), 명사로 쓰인 흔적이 없을 때.
      */
     private boolean modifierForm(String w) {
         int n = w.length();
@@ -558,6 +602,11 @@ final class KoreanCorrect {
         if (t == 4 || t == 8) {   // ㄴ·ㄹ 받침
             String s0 = w.substring(0, n - 1) + (char) (c - t);
             if (dict.contains(s0 + "면") || dict.contains(s0 + "니까")) return true;
+        }
+        // ㅁ 받침: 드문 용언의 명사형(사름 ← 사르다)도 조사가 붙은 말로 보지 않는다. 흔한 명사형(느림, 기쁨)은 명사로도 쓴다
+        if (t == 16 && dict.score(dict.indexOf(w)) < ks.scoreFor(NOMINAL_MAX_FREQ)) {
+            String s0 = w.substring(0, n - 1) + (char) (c - t);
+            if (dict.contains(s0 + "고") && dict.contains(s0 + "면")) return true;
         }
         if (n >= 2 && "은는던".indexOf(c) >= 0 && dict.contains(w.substring(0, n - 1) + "고")) return true;
         return false;
