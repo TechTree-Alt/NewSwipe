@@ -130,6 +130,9 @@ public final class ClipboardPanel extends LinearLayout {
         scroll.setVerticalScrollBarEnabled(false);
         list = new LinearLayout(context);
         list.setOrientation(VERTICAL);
+        // Neumorphism 카드의 그림자가 줄 사이로 번져도 잘리지 않게 한다. 항목이 머리 줄 위로 지나가지 않도록 자르는 것은
+        // 바깥의 스크롤 틀이 맡으므로 이 목록만 끈다.
+        list.setClipChildren(false);
         int p = Ui.dp(context, 8);
         list.setPadding(p, 0, p, p);
         scroll.addView(list, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
@@ -259,6 +262,7 @@ public final class ClipboardPanel extends LinearLayout {
         LinearLayout card = new LinearLayout(c);
         card.setOrientation(VERTICAL);
         card.setBackground(Ui.ripple(theme.keyPressed, Ui.round(theme.key, Ui.dp(c, 10)), Ui.dp(c, 10)));
+        Neu.applyLarge(card, theme, theme.key, Ui.dp(c, 10));
         int p = Ui.dp(c, 10);
         card.setPadding(p, p, p, item == null ? p : 0);
         if (item != null && item.isImage()) {
