@@ -376,8 +376,18 @@ public final class WordDictionary {
         return lo;
     }
 
+    /** 초성 색인을 놓아 준다 (단어 추천을 껐을 때). 다시 쓰려면 warmUpChosung. */
+    public void releaseChosung() {
+        chosung = null;
+    }
+
     public boolean hasChosung() {
         return chosung != null;
+    }
+
+    /** 초성 색인을 만들었거나 만들 수 없는지 (단어가 너무 많다). */
+    public boolean chosungSettled() {
+        return chosung != null || count >= (1 << ID_BITS);
     }
 
     /**

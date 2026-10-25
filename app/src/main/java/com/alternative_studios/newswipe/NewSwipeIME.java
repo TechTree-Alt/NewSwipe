@@ -1064,7 +1064,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /** 설정값을 뷰에 적용한다. 설정 화면에서 돌아올 때마다 호출된다. */
     private void applySettings() {
-        boolean wasWords = cfgWords, wasLearn = cfgLearn;
+        boolean wasWords = cfgWords, wasLearn = cfgLearn, wasSuggest = cfgSuggest;
         cfgSuggest = prefs.suggestWords();
         cfgShortcuts = prefs.shortcutsEnabled();
         shortcuts = cfgShortcuts ? Shortcuts.of(prefs.shortcuts()) : Shortcuts.of(null);
@@ -1073,6 +1073,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         cfgLearn = cfgWords && prefs.learnWords();
         cfgPredict = prefs.predictNext();
         suggester.setUserEnabled(cfgLearn);
+        suggester.setSuggestEnabled(cfgSuggest);   // 자동 수정만 쓰면 추천에만 쓰는 초성 색인을 만들지 않는다
         suggester.setKeyRows(KeyboardLayout.koreanLetterRows(prefs), KeyboardLayout.koreanAspirateSwipe(prefs));
         if (suggester.packChanged()) {
             // 설정에서 사전 팩을 가져오거나 지웠다: 읽어 둔 사전을 놓고 필요할 때 새 사전을 읽는다.
@@ -1137,7 +1138,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (panel == PANEL_KEYBOARD) topSlot.setVisibility(toolbarGone() ? View.GONE : View.VISIBLE);
         refreshToolbarVisibility();
         if (cfgWords) {
-            if (!wasWords || (cfgLearn && !wasLearn)) warmSuggester();
+            if (!wasWords || (cfgLearn && !wasLearn) || (cfgSuggest && !wasSuggest)) warmSuggester();
             if (panel == PANEL_KEYBOARD) scheduleSuggest();   // 추천을 껐으면 이 안에서 지운다
         } else {
             clearSuggestions();
@@ -2676,7 +2677,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (!cfgWords || !suggestAllowed || windowHidden) return;
         final boolean lang = korean;
         if (lang ? warmingKo : warmingEn) return;
-        if (suggester.isSettled(lang) && (!cfgLearn || (userWords.isLoaded() && suggester.historyLoaded()))) return;
+        if (suggester.isSettled(lang) && (!cfgLearn || (userWords.isLoaded() && suggester.historyLoaded()))
+                && (!lang || suggester.chosungReady())) return;
         if (lang) warmingKo = true;
         else warmingEn = true;
         final int gen = suggester.generation();
@@ -3261,6 +3263,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
         if (cfgLearn && !userWords.isLoaded()) {
             // 학습한 단어를 아직(또는 설정에서 고친 뒤 다시) 읽지 않았다. 내 단어를 잘못 고치지 않도록 이번에는 두고, 읽어 둔다.
+            warmSuggester();
+            return false;
+        }
+        if (!suggester.isSettled(korean)) {
+            // 사전을 아직 읽지 않았다 (단어 추천을 끄고 자동 수정만 쓰면 추천이 대신 읽어 주지 않는다). 이번에는 두고 읽어 둔다.
             warmSuggester();
             return false;
         }

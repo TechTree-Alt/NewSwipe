@@ -202,5 +202,11 @@ public class WordDictionaryTest {
         int[] ids = d.chosungIds("ㅎㄴ", 3);
         assertEquals(1, ids.length);
         assertEquals("하늘", d.word(ids[0]));
+        assertTrue(d.chosungSettled());
+        d.releaseChosung();   // 단어 추천을 끄면 (자동 수정만 쓰면) 놓아 준다
+        assertTrue(!d.hasChosung() && !d.chosungSettled());
+        assertEquals(0, d.chosungIds("ㅎㄴ", 3).length);
+        d.warmUpChosung();
+        assertEquals(1, d.chosungIds("ㅎㄴ", 3).length);
     }
 }

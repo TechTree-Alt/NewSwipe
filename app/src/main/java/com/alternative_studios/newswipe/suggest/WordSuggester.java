@@ -53,6 +53,8 @@ public final class WordSuggester {
     private volatile int generation;
     /** 학습한 단어를 추천·자동 수정에 쓸지. 끄면 사용자 사전을 읽지도 않는다. */
     private volatile boolean userEnabled = true;
+    /** 단어 추천을 쓸지. 끄면(자동 수정만 쓰면) 추천에만 쓰는 초성 검색 색인을 만들지 않는다. */
+    private volatile boolean suggestEnabled = true;
 
     public WordSuggester(Context context, UserDictionary user, UsageHistory usage) {
         this.context = context.getApplicationContext();
@@ -80,6 +82,18 @@ public final class WordSuggester {
 
     public void setUserEnabled(boolean enabled) {
         userEnabled = enabled;
+    }
+
+    public void setSuggestEnabled(boolean enabled) {
+        suggestEnabled = enabled;
+        WordDictionary d = ko;
+        if (!enabled && d != null) d.releaseChosung();
+    }
+
+    /** 단어 추천에 쓸 초성 색인이 준비됐는지 (추천을 끄면 늘 true). */
+    public boolean chosungReady() {
+        WordDictionary d = ko;
+        return !suggestEnabled || d == null || d.chosungSettled();
     }
 
     private boolean useUser() {
@@ -313,7 +327,7 @@ public final class WordSuggester {
     public void warmUp(boolean korean, int gen) {
         if (gen != generation) return;
         WordDictionary d = dictionary(korean);
-        if (d != null && korean && gen == generation) d.warmUpChosung();
+        if (d != null && korean && suggestEnabled && gen == generation) d.warmUpChosung();
         if (useUser() && gen == generation) {
             user.load();
             if (korean && usage != null) usage.load();
