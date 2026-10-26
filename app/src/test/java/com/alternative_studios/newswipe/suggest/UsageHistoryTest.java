@@ -41,6 +41,33 @@ public class UsageHistoryTest {
     }
 
     @Test
+    public void snapshotRoundTripsThroughReplaceAll() throws Exception {
+        UsageHistory a = new UsageHistory(new File(tmp.getRoot(), "a.txt"));
+        a.load();
+        a.record(null, "안녕", 1);
+        a.record("안녕", "하세요", 2);
+        a.recordIgnored("안녕", "친구", 3);
+        List<String[]> rows = a.snapshot();
+        rows.add(new String[]{"u", "깨진\t줄", "1", "1"});   // 탭이 든 칸은 버린다
+        rows.add(new String[]{"x", "모름", "1", "1"});
+
+        File f = new File(tmp.getRoot(), "b.txt");
+        UsageHistory b = new UsageHistory(f);
+        b.load();
+        b.record(null, "지워질말", 1);
+        assertEquals(2, b.replaceAll(rows));
+        assertEquals(0, b.countIfLoaded("지워질말"));   // 전부 바꾼다
+        assertEquals(1, b.countIfLoaded("하세요"));
+        assertEquals(1, b.pairCountIfLoaded("안녕", "하세요"));
+        assertEquals(1, b.ignoredIfLoaded("안녕", "친구"));
+        assertEquals(2, b.totalIfLoaded());
+
+        UsageHistory again = new UsageHistory(f);   // 파일에도 썼다
+        again.load();
+        assertEquals(1, again.pairCountIfLoaded("안녕", "하세요"));
+    }
+
+    @Test
     public void recordsBeforeLoadAreMerged() throws Exception {
         File f = new File(tmp.getRoot(), "h.txt");
         UsageHistory a = new UsageHistory(f);

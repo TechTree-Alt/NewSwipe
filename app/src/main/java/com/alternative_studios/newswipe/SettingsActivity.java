@@ -101,7 +101,7 @@ public final class SettingsActivity extends Activity {
         String sectionId = getIntent().getStringExtra(EXTRA_SECTION);
         String sectionName = sectionId == null ? null : sectionTitle(sectionId);
         SettingsFrame frame = sectionName == null
-                ? new SettingsFrame(this, getString(R.string.app_name), "밀어서 입력하고 조작하는 한글 입력 시스템")
+                ? new SettingsFrame(this, getString(R.string.app_name), "밀어서 입력하고 조작하는 한국어 입력 시스템")
                         .withSearch(this::onSearchQuery)
                 : LEARNED.equals(sectionId) || BLOCKED.equals(sectionId)
                 ? new SettingsFrame(this, sectionName, getString(R.string.app_name)).withSearch(this::onWordSearch, "단어 검색")
@@ -1598,12 +1598,17 @@ public final class SettingsActivity extends Activity {
                 "Shift 키와 ⌫를 글자 키 색으로, 스페이스바는 다른 기능키 색으로 바꿉니다.",
                 Prefs.GRID_COLORS, prefs.gridColors()));
 
-        LinearLayout neu = section("Neumorphism");
-        neu.addView(toggle("Neumorphism 모드",
-                "키와 도구 막대·클립보드·이모지 창의 버튼이 바탕에서 부드럽게 솟아오르고, 누르면 안으로 쑥 들어가는 모양으로 그립니다. "
-                        + "켜면 키 그림자 대신 쓰입니다.",
-                Prefs.NEUMORPHISM, prefs.neumorphism()));
+        if (SHOW_NEUMORPHISM) {
+            LinearLayout neu = section("Neumorphism");
+            neu.addView(toggle("Neumorphism 모드",
+                    "키와 도구 막대·클립보드·이모지 창의 버튼이 바탕에서 부드럽게 솟아오르고, 누르면 안으로 쑥 들어가는 모양으로 그립니다. "
+                            + "켜면 키 그림자 대신 쓰입니다.",
+                    Prefs.NEUMORPHISM, prefs.neumorphism()));
+        }
     }
+
+    /** Neumorphism 모드 토글을 테마 화면에 보일지. 잠시 숨겨 두었다 (다시 살릴 때 true로). 기능과 저장된 값은 그대로다. */
+    private static final boolean SHOW_NEUMORPHISM = false;
 
     private static int indexOf(String[] values, String v) {
         for (int i = 0; i < values.length; i++) if (values[i].equals(v)) return i;
@@ -2728,7 +2733,9 @@ public final class SettingsActivity extends Activity {
      * 항목이 적을 때 목록이 스크롤되며 잘리지 않게 한다.
      */
     private void chooseExportExtras() {
-        boolean hasWords = !UserDictionary.shared(getFilesDir()).isEmpty();
+        boolean hasWords = !UserDictionary.shared(getFilesDir()).isEmpty()
+                || new File(getFilesDir(), "usage.txt").length() > 0
+                || new File(getFilesDir(), "picked_corrections.txt").length() > 0;   // 단어 사용 기록·자동 수정 기억
         boolean hasEmoji = !prefs.recentEmoji().isEmpty() || !prefs.pinnedEmoji().isEmpty();
         boolean hasClip = !new ClipboardHistory(new File(getFilesDir(), "clipboard.txt"))
                 .snapshot(System.currentTimeMillis()).isEmpty();   // 이미지는 백업에 넣지 않는다
@@ -2741,7 +2748,7 @@ public final class SettingsActivity extends Activity {
         box.setOrientation(LinearLayout.VERTICAL);
         int pad = Ui.dp(this, 20);
         box.setPadding(pad, Ui.dp(this, 4), pad, Ui.dp(this, 8));
-        android.widget.CheckBox words = hasWords ? exportCheck(dc, box, "학습한 단어") : null;
+        android.widget.CheckBox words = hasWords ? exportCheck(dc, box, "학습한 단어 (단어 사용 기록·자동 수정 기억 포함)") : null;
         android.widget.CheckBox emoji = hasEmoji ? exportCheck(dc, box, "최근 사용한 이모지 (고정한 이모지 포함)") : null;
         android.widget.CheckBox clip = hasClip ? exportCheck(dc, box, "클립보드 기록 (고정한 항목 포함, 이미지 제외)") : null;
         AppTheme.accentBuilder(dc)

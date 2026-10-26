@@ -35,6 +35,27 @@ public class CorrectionMemoryTest {
     }
 
     @Test
+    public void snapshotRoundTripsThroughReplaceAll() {
+        CorrectionMemory a = new CorrectionMemory(new File(tmp.getRoot(), "a.txt"));
+        a.load();
+        a.record("굴자", "글자", 1);
+        a.record("굴자", "글자", 2);
+        java.util.List<String[]> rows = a.snapshot();
+        rows.add(new String[]{"깨진", "줄", "숫자아님", "1"});
+
+        File f = new File(tmp.getRoot(), "b.txt");
+        CorrectionMemory b = new CorrectionMemory(f);
+        b.load();
+        b.record("배일", "매일", 1);
+        assertEquals(1, b.replaceAll(rows));
+        assertNull(b.lookupIfLoaded("배일"));   // 전부 바꾼다
+        assertEquals("글자", b.lookupIfLoaded("굴자"));
+        CorrectionMemory again = new CorrectionMemory(f);
+        again.load();
+        assertEquals("글자", again.lookupIfLoaded("굴자"));
+    }
+
+    @Test
     public void otherWordStartsOver() {
         CorrectionMemory m = new CorrectionMemory(new File(tmp.getRoot(), "p.txt"));
         m.load();

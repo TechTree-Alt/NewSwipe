@@ -1,8 +1,8 @@
 # NewSwipe
 <p align="center">
-  <img src="docs/banner.svg" alt="NewSwipe — 밀어서 입력하는 한글 키보드" width="100%" />
+  <img src="docs/play-store/feature-graphic@3x.png" alt="NewSwipe — 밀어서 입력하고 조작하는 한국어 입력 시스템" width="100%" />
 </p>
-NewSwipe는 가볍고 현대적이며 편안한 한글 입력 시스템입니다.
+NewSwipe는 가볍고 현대적이며 편안한 한국어 입력 시스템입니다.
 <br />
 <br />
 <p align="left">

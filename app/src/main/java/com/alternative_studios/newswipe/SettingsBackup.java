@@ -17,6 +17,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 import com.alternative_studios.newswipe.clipboard.ClipboardHistory;
+import com.alternative_studios.newswipe.suggest.CorrectionMemory;
+import com.alternative_studios.newswipe.suggest.UsageHistory;
 import com.alternative_studios.newswipe.suggest.UserDictionary;
 
 /**
@@ -24,7 +26,8 @@ import com.alternative_studios.newswipe.suggest.UserDictionary;
  *
  * <p>설정값 전체(길게 누르기 문자 편집 포함)와 런처 아이콘 표시 여부를 담는다.
  * 마지막 사용 언어는 설정이 아니라 사용 기록이라 제외한다.
- * 학습한 단어, 최근·고정 이모지, 클립보드 기록(고정 항목 포함, 이미지는 제외)은 내보낼 때 사용자가 고른 경우에만 담는다 (가져올 때 파일에 있으면 그대로 바꾼다).
+ * 학습한 단어(단어 사용 기록과 자동 수정 기억 포함), 최근·고정 이모지, 클립보드 기록(고정 항목 포함, 이미지는 제외)은
+ * 내보낼 때 사용자가 고른 경우에만 담는다 (가져올 때 파일에 있으면 그대로 바꾼다).
  */
 public final class SettingsBackup {
     private static final String APP = "newswipe-settings";
@@ -88,6 +91,8 @@ public final class SettingsBackup {
             org.json.JSONArray blocked = new org.json.JSONArray();
             for (String w : UserDictionary.shared(context.getFilesDir()).blockedSnapshot()) blocked.put(w);
             root.put("blocked_words", blocked);
+            root.put("word_usage", rows(UsageHistory.shared(context.getFilesDir()).snapshot()));
+            root.put("picked_corrections", rows(CorrectionMemory.shared(context.getFilesDir()).snapshot()));
         }
         if (includeEmoji) {
             root.put("recent_emoji", new Prefs(context).recentEmoji());
@@ -101,6 +106,35 @@ public final class SettingsBackup {
             root.put("clipboard", arr);
         }
         return root.toString(2);
+    }
+
+    private static org.json.JSONArray rows(java.util.List<String[]> rows) {
+        org.json.JSONArray arr = new org.json.JSONArray();
+        for (String[] r : rows) {
+            org.json.JSONArray a = new org.json.JSONArray();
+            for (String c : r) a.put(c);
+            arr.put(a);
+        }
+        return arr;
+    }
+
+    /** rows로 내보낸 배열을 다시 읽는다. 없으면 null. 너무 긴 칸이 든 줄은 버린다 (나머지 검사는 받는 쪽이 한다). */
+    private static java.util.List<String[]> readRows(JSONObject root, String key, int max) {
+        org.json.JSONArray arr = root.optJSONArray(key);
+        if (arr == null) return null;
+        java.util.List<String[]> out = new java.util.ArrayList<>();
+        for (int i = 0; i < arr.length() && out.size() < max; i++) {
+            org.json.JSONArray a = arr.optJSONArray(i);
+            if (a == null || a.length() > 5) continue;
+            String[] r = new String[a.length()];
+            boolean ok = true;
+            for (int j = 0; j < r.length && ok; j++) {
+                r[j] = a.optString(j, "");
+                ok = r[j].length() <= 200;
+            }
+            if (ok) out.add(r);
+        }
+        return out;
     }
 
     private static ClipboardHistory clipboard(Context context) {
@@ -207,6 +241,9 @@ public final class SettingsBackup {
                 if (!w.isEmpty()) blockedWords.add(w);
             }
         }
+        java.util.List<String[]> usageRows = readRows(root, "word_usage", UsageHistory.MAX_WORDS
+                + UsageHistory.MAX_PAIRS + UsageHistory.MAX_ENDINGS + UsageHistory.MAX_IGNORED);
+        java.util.List<String[]> correctionRows = readRows(root, "picked_corrections", 2000);
         java.util.List<String[]> clipEntries = null;
         org.json.JSONArray clipArray = root.optJSONArray("clipboard");
         if (clipArray != null) {
@@ -268,6 +305,8 @@ public final class SettingsBackup {
         if (root.has("launcher_icon_shown")) setLauncherShown(context, root.optBoolean("launcher_icon_shown", true));
         int words = userWords == null ? -1 : UserDictionary.shared(context.getFilesDir()).replaceAll(userWords);
         if (blockedWords != null) UserDictionary.shared(context.getFilesDir()).replaceBlocked(blockedWords);
+        if (usageRows != null) UsageHistory.shared(context.getFilesDir()).replaceAll(usageRows);
+        if (correctionRows != null) CorrectionMemory.shared(context.getFilesDir()).replaceAll(correctionRows);
         if (clipEntries != null) clipboard(context).replaceAll(clipEntries, System.currentTimeMillis());
         return new int[]{keys.size(), words};
     }
