@@ -101,7 +101,7 @@ public final class SettingsActivity extends Activity {
         String sectionId = getIntent().getStringExtra(EXTRA_SECTION);
         String sectionName = sectionId == null ? null : sectionTitle(sectionId);
         SettingsFrame frame = sectionName == null
-                ? new SettingsFrame(this, getString(R.string.app_name), "밀어서 입력하고 조작하는 한글 입력 시스템")
+                ? new SettingsFrame(this, getString(R.string.app_name), "밀어서 입력하고 조작하는 한국어 입력 시스템")
                         .withSearch(this::onSearchQuery)
                 : LEARNED.equals(sectionId) || BLOCKED.equals(sectionId)
                 ? new SettingsFrame(this, sectionName, getString(R.string.app_name)).withSearch(this::onWordSearch, "단어 검색")

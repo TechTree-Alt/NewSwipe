@@ -197,7 +197,7 @@ public final class OnboardingActivity extends Activity {
         root.addView(title, tlp);
         welcomeTitle = title;
 
-        TextView sub = text("밀어서 입력하고 조작하는 한글 입력 시스템", 15, colors.hint, false);
+        TextView sub = text("밀어서 입력하고 조작하는 한국어 입력 시스템", 15, colors.hint, false);
         sub.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams slp = wrap();
         slp.topMargin = Ui.dp(this, 8);
