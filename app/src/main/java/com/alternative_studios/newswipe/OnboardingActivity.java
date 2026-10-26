@@ -175,16 +175,17 @@ public final class OnboardingActivity extends Activity {
 
         root.addView(new View(this), new LinearLayout.LayoutParams(1, 0, 1f));
 
-        // 아이콘 뒤에 물결 모양(Material 3 Expressive 모양)이 옅은 강조색으로 천천히 돈다.
+        // 아이콘 바탕색의 물결 모양(Material 3 Expressive 모양)이 천천히 돌고, 그 위에 아이콘의 앞면(흰 키와 화살표)만 얹는다.
+        // 물결 모양 자체가 아이콘의 바탕이 되어, 아이콘 모양과 물결이 따로 보이지 않는다.
         FrameLayout hero = new FrameLayout(this);
         OnboardingArt.ShapeBadge halo = new OnboardingArt.ShapeBadge(this,
-                (colors.accent & 0x00FFFFFF) | 0x26000000, 9, 0.07f);
+                getColor(R.color.ic_launcher_background), 9, 0.07f);
         int haloSize = Ui.dp(this, 216);
         hero.addView(halo, new FrameLayout.LayoutParams(haloSize, haloSize, Gravity.CENTER));
         ImageView icon = new ImageView(this);
-        icon.setImageDrawable(getDrawable(R.mipmap.ic_launcher));   // 적응형 아이콘: 기기의 아이콘 모양으로 잘려 그려진다
+        icon.setImageDrawable(getDrawable(R.drawable.ic_launcher_foreground));
         icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        int size = Ui.dp(this, 136);
+        int size = Ui.dp(this, 184);
         hero.addView(icon, new FrameLayout.LayoutParams(size, size, Gravity.CENTER));
         root.addView(hero, new LinearLayout.LayoutParams(haloSize, haloSize));
         welcomeHero = hero;
