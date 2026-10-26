@@ -18,7 +18,8 @@ import java.util.Map;
  * 사용자가 실제로 쓴 한국어 단어와 단어 쌍(앞 단어 → 다음 단어, 앞 단어의 끝 글자 → 다음 단어)의 횟수. 추천 순서를 내
  * 말버릇에 맞추는 데 쓴다. 최근에 쓴 단어 몇 개는 메모리에만 둔다 (지금 대화의 주제어).
  * 기본 사전에 있는 단어도 센다 ({@link UserDictionary}는 사전에 없는 단어만 '아는 단어'로 기억한다).
- * 기기 안의 파일에만 저장하며 백업에도 넣지 않는다. 학습한 단어를 모두 지우면 함께 지운다.
+ * 기기 안의 파일에만 저장하며 시스템 백업에는 넣지 않는다 (설정 내보내기에서 학습한 단어를 고르면 담는다).
+ * 학습한 단어를 모두 지우면 함께 지운다.
  *
  * <p>화면 스레드는 *IfLoaded 메서드로 메모리에 올라온 것만 보고 기다리지 않는다. 파일은 백그라운드 스레드에서 읽고 쓴다.
  */
@@ -97,37 +98,41 @@ public final class UsageHistory {
         try (BufferedReader r = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
             String line;
             while ((line = r.readLine()) != null) {
-                String[] p = line.split("\t");
-                try {
-                    if (p.length == 4 && p[0].equals("u") && !p[1].isEmpty() && d.words.size() < MAX_WORDS) {
-                        d.words.put(p[1], new Entry(clampCount(Integer.parseInt(p[2])), Long.parseLong(p[3])));
-                    } else if (p.length == 5 && p[0].equals("e") && !p[1].isEmpty() && !p[2].isEmpty()
-                            && d.endingCount < MAX_ENDINGS) {
-                        Map<String, Entry> m = d.endings.computeIfAbsent(p[1], k -> new HashMap<>());
-                        if (m.put(p[2], new Entry(clampCount(Integer.parseInt(p[3])), Long.parseLong(p[4]))) == null) {
-                            d.endingCount++;
-                        }
-                    } else if (p.length == 5 && p[0].equals("i") && !p[1].isEmpty() && !p[2].isEmpty()
-                            && d.ignoredCount < MAX_IGNORED) {
-                        Map<String, Entry> m = d.ignored.computeIfAbsent(p[1], k -> new HashMap<>());
-                        if (m.put(p[2], new Entry(clampCount(Integer.parseInt(p[3])), Long.parseLong(p[4]))) == null) {
-                            d.ignoredCount++;
-                        }
-                    } else if (p.length == 5 && p[0].equals("p") && !p[1].isEmpty() && !p[2].isEmpty()
-                            && d.pairCount < MAX_PAIRS) {
-                        Map<String, Entry> m = d.pairs.computeIfAbsent(p[1], k -> new HashMap<>());
-                        if (m.put(p[2], new Entry(clampCount(Integer.parseInt(p[3])), Long.parseLong(p[4]))) == null) {
-                            d.pairCount++;
-                        }
-                    }
-                } catch (NumberFormatException ignored) {
-                    // 깨진 줄은 건너뛴다.
-                }
+                parse(d, line.split("\t"));
             }
         } catch (IOException ignored) {
             // 읽은 데까지만 쓴다.
         }
         return d;
+    }
+
+    /** 한 줄(탭으로 나눈 칸)을 읽어 d에 넣는다. 모르는 줄과 깨진 줄은 건너뛴다. */
+    private static void parse(Data d, String[] p) {
+        try {
+            if (p.length == 4 && p[0].equals("u") && !p[1].isEmpty() && d.words.size() < MAX_WORDS) {
+                d.words.put(p[1], new Entry(clampCount(Integer.parseInt(p[2])), Long.parseLong(p[3])));
+            } else if (p.length == 5 && p[0].equals("e") && !p[1].isEmpty() && !p[2].isEmpty()
+                    && d.endingCount < MAX_ENDINGS) {
+                Map<String, Entry> m = d.endings.computeIfAbsent(p[1], k -> new HashMap<>());
+                if (m.put(p[2], new Entry(clampCount(Integer.parseInt(p[3])), Long.parseLong(p[4]))) == null) {
+                    d.endingCount++;
+                }
+            } else if (p.length == 5 && p[0].equals("i") && !p[1].isEmpty() && !p[2].isEmpty()
+                    && d.ignoredCount < MAX_IGNORED) {
+                Map<String, Entry> m = d.ignored.computeIfAbsent(p[1], k -> new HashMap<>());
+                if (m.put(p[2], new Entry(clampCount(Integer.parseInt(p[3])), Long.parseLong(p[4]))) == null) {
+                    d.ignoredCount++;
+                }
+            } else if (p.length == 5 && p[0].equals("p") && !p[1].isEmpty() && !p[2].isEmpty()
+                    && d.pairCount < MAX_PAIRS) {
+                Map<String, Entry> m = d.pairs.computeIfAbsent(p[1], k -> new HashMap<>());
+                if (m.put(p[2], new Entry(clampCount(Integer.parseInt(p[3])), Long.parseLong(p[4]))) == null) {
+                    d.pairCount++;
+                }
+            }
+        } catch (NumberFormatException ignored) {
+            // 깨진 줄은 건너뛴다.
+        }
     }
 
     private static int clampCount(int c) {
@@ -574,6 +579,81 @@ public final class UsageHistory {
         return dirty && sinceSave >= 10;
     }
 
+    /** 파일에 쓸 줄들 (u 단어, e 어미, i 무시한 추천, p 단어 쌍). this를 잡고 부른다. */
+    private List<String> lines() {
+        List<String> lines = new ArrayList<>(words.size() + pairCount);
+        for (Map.Entry<String, Entry> me : words.entrySet()) {
+            lines.add("u\t" + me.getKey() + "\t" + me.getValue().count + "\t" + me.getValue().last);
+        }
+        for (Map.Entry<String, Map<String, Entry>> ee : endings.entrySet()) {
+            for (Map.Entry<String, Entry> me : ee.getValue().entrySet()) {
+                lines.add("e\t" + ee.getKey() + "\t" + me.getKey() + "\t" + me.getValue().count + "\t"
+                        + me.getValue().last);
+            }
+        }
+        for (Map.Entry<String, Map<String, Entry>> ie : ignored.entrySet()) {
+            for (Map.Entry<String, Entry> me : ie.getValue().entrySet()) {
+                lines.add("i\t" + ie.getKey() + "\t" + me.getKey() + "\t" + me.getValue().count + "\t"
+                        + me.getValue().last);
+            }
+        }
+        for (Map.Entry<String, Map<String, Entry>> pe : pairs.entrySet()) {
+            for (Map.Entry<String, Entry> me : pe.getValue().entrySet()) {
+                lines.add("p\t" + pe.getKey() + "\t" + me.getKey() + "\t" + me.getValue().count + "\t"
+                        + me.getValue().last);
+            }
+        }
+        return lines;
+    }
+
+    /** 내보내기용: 기록 전체를 파일과 같은 줄({종류, ..., 횟수, 마지막 시각})로 돌려준다. 백그라운드 스레드에서 부른다. */
+    public List<String[]> snapshot() {
+        ensureLoaded();
+        synchronized (this) {
+            List<String[]> out = new ArrayList<>();
+            for (String l : lines()) out.add(l.split("\t"));
+            return out;
+        }
+    }
+
+    /**
+     * 가져오기용: 기록 전체를 rows(snapshot과 같은 모양)로 바꾸고 파일에 쓴다. 모르는 줄과 깨진 줄, 한도를 넘는 줄은 버린다.
+     * 들어간 단어 수를 돌려준다.
+     */
+    public int replaceAll(List<String[]> rows) {
+        Data d = new Data();
+        for (String[] p : rows) {
+            boolean ok = p.length >= 4;
+            for (String c : p) ok &= c != null && c.indexOf('\t') < 0 && c.indexOf('\n') < 0;
+            if (ok) parse(d, p);
+        }
+        int n;
+        synchronized (fileLock) {
+            synchronized (this) {
+                generation++;   // 그전 기록으로 하던 저장은 버린다
+                clearRecent();
+                words = d.words;
+                pairs = d.pairs;
+                pairCount = d.pairCount;
+                endings = d.endings;
+                endingCount = d.endingCount;
+                ignored = d.ignored;
+                ignoredCount = d.ignoredCount;
+                java.util.Arrays.fill(endingCache, null);
+                endingTotals = null;
+                ctxStats.clear();
+                total = 0;
+                for (Entry e : words.values()) total += e.count;
+                loaded = true;
+                dirty = true;
+                sinceSave = 0;
+                n = words.size();
+            }
+        }
+        save();
+        return n;
+    }
+
     /** 바뀐 것이 있으면 파일에 쓴다 (임시 파일에 쓴 뒤 바꿔치기). 백그라운드 스레드에서 부른다. */
     public void save() {
         List<String> lines;
@@ -581,28 +661,7 @@ public final class UsageHistory {
         synchronized (this) {
             if (!dirty || !loaded) return;
             gen = generation;
-            lines = new ArrayList<>(words.size() + pairCount);
-            for (Map.Entry<String, Entry> me : words.entrySet()) {
-                lines.add("u\t" + me.getKey() + "\t" + me.getValue().count + "\t" + me.getValue().last);
-            }
-            for (Map.Entry<String, Map<String, Entry>> ee : endings.entrySet()) {
-                for (Map.Entry<String, Entry> me : ee.getValue().entrySet()) {
-                    lines.add("e\t" + ee.getKey() + "\t" + me.getKey() + "\t" + me.getValue().count + "\t"
-                            + me.getValue().last);
-                }
-            }
-            for (Map.Entry<String, Map<String, Entry>> ie : ignored.entrySet()) {
-                for (Map.Entry<String, Entry> me : ie.getValue().entrySet()) {
-                    lines.add("i\t" + ie.getKey() + "\t" + me.getKey() + "\t" + me.getValue().count + "\t"
-                            + me.getValue().last);
-                }
-            }
-            for (Map.Entry<String, Map<String, Entry>> pe : pairs.entrySet()) {
-                for (Map.Entry<String, Entry> me : pe.getValue().entrySet()) {
-                    lines.add("p\t" + pe.getKey() + "\t" + me.getKey() + "\t" + me.getValue().count + "\t"
-                            + me.getValue().last);
-                }
-            }
+            lines = lines();
             dirty = false;
             sinceSave = 0;
         }

@@ -2728,7 +2728,9 @@ public final class SettingsActivity extends Activity {
      * 항목이 적을 때 목록이 스크롤되며 잘리지 않게 한다.
      */
     private void chooseExportExtras() {
-        boolean hasWords = !UserDictionary.shared(getFilesDir()).isEmpty();
+        boolean hasWords = !UserDictionary.shared(getFilesDir()).isEmpty()
+                || new File(getFilesDir(), "usage.txt").length() > 0
+                || new File(getFilesDir(), "picked_corrections.txt").length() > 0;   // 단어 사용 기록·자동 수정 기억
         boolean hasEmoji = !prefs.recentEmoji().isEmpty() || !prefs.pinnedEmoji().isEmpty();
         boolean hasClip = !new ClipboardHistory(new File(getFilesDir(), "clipboard.txt"))
                 .snapshot(System.currentTimeMillis()).isEmpty();   // 이미지는 백업에 넣지 않는다
@@ -2741,7 +2743,7 @@ public final class SettingsActivity extends Activity {
         box.setOrientation(LinearLayout.VERTICAL);
         int pad = Ui.dp(this, 20);
         box.setPadding(pad, Ui.dp(this, 4), pad, Ui.dp(this, 8));
-        android.widget.CheckBox words = hasWords ? exportCheck(dc, box, "학습한 단어") : null;
+        android.widget.CheckBox words = hasWords ? exportCheck(dc, box, "학습한 단어 (단어 사용 기록·자동 수정 기억 포함)") : null;
         android.widget.CheckBox emoji = hasEmoji ? exportCheck(dc, box, "최근 사용한 이모지 (고정한 이모지 포함)") : null;
         android.widget.CheckBox clip = hasClip ? exportCheck(dc, box, "클립보드 기록 (고정한 항목 포함, 이미지 제외)") : null;
         AppTheme.accentBuilder(dc)
