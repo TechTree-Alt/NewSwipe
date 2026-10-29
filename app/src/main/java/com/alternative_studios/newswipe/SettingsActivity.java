@@ -339,6 +339,7 @@ public final class SettingsActivity extends Activity {
             {"look", "키 곡률", "둥글기 모서리 라운드"},
             {"look", "그림자 세기", "그림자"},
             {"look", "키 그림자", "입체감"},
+            {"layout", "숫자 줄 높이", "숫자 행 크기"},
             {"look", "키 누름 미리보기", "말풍선 팝업 확대"},
             {"look", "길게 눌러 입력할 문자 힌트 없애기", "힌트 숨기기 오른쪽 위"},
             {"look", "숫자 키 힌트 없애기", "힌트 숨기기"},
@@ -950,10 +951,16 @@ public final class SettingsActivity extends Activity {
         landscape.addView(note("화면을 가로로 돌렸을 때의 자판 모양을 따로 정합니다."));
 
         LinearLayout numberKeys = section("숫자 키");
+        // 켜면 보이는 하위 항목: 숫자 줄 높이 (일반 키 높이에 대한 비율).
+        View numberRowHeight = subGroup(slider("숫자 줄 높이", Prefs.NUMBER_ROW_HEIGHT, prefs.numberRowHeight(),
+                Prefs.NUMBER_ROW_HEIGHT_MIN, Prefs.NUMBER_ROW_HEIGHT_MAX, 5, "%", this::refreshLayoutPreview));
+        numberRowHeight.setVisibility(prefs.numberRow() ? View.VISIBLE : View.GONE);
         numberKeys.addView(toggle("숫자 줄 표시", "자판 위에 1~0 숫자 줄을 보여 줍니다.", prefs.numberRow(), on -> {
             prefs.raw().edit().putBoolean(Prefs.NUMBER_ROW, on).apply();
+            Ui.setVisibleAnimated(numberRowHeight, on);
             refreshLayoutPreview();
         }));
+        numberKeys.addView(numberRowHeight);
 
         LinearLayout layoutKeys = section("기능키");
         layoutKeys.addView(button("기능키 순서·유무 사용자화", v ->

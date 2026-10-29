@@ -31,6 +31,8 @@ public final class Prefs {
     public static final String SOUND_VOLUME = "sound_volume";         // %, 0~100
     public static final String KEY_PREVIEW = "key_preview";
     public static final String NUMBER_ROW = "number_row";
+    public static final String NUMBER_ROW_HEIGHT = "number_row_height";   // 숫자 줄 높이: 일반 키 높이의 %, 50~100
+    public static final int NUMBER_ROW_HEIGHT_MIN = 50, NUMBER_ROW_HEIGHT_MAX = 100, NUMBER_ROW_HEIGHT_DEFAULT = 80;
     public static final String LONG_PRESS_CHARS = "long_press_chars";   // 키를 길게 눌러 문자 입력
     public static final String LONG_PRESS_REPEAT = "long_press_repeat";   // 고른 글자 키를 길게 눌러 연속 입력
     public static final String AUTO_CAP = "auto_cap";
@@ -354,7 +356,7 @@ public final class Prefs {
     /** 메뉴별로 키 앞부분이 같은 값들 (배열·방향·칸마다 따로 저장하는 값). */
     private static final java.util.Map<String, String[]> MENU_PREFIXES = new java.util.HashMap<>();
     static {
-        MENU_KEYS.put("layout", keys(KOREAN_LAYOUT, GRID_LAYOUT, NUMBER_ROW, LANDSCAPE_SPLIT, LANDSCAPE_SIZE,
+        MENU_KEYS.put("layout", keys(KOREAN_LAYOUT, GRID_LAYOUT, NUMBER_ROW, NUMBER_ROW_HEIGHT, LANDSCAPE_SPLIT, LANDSCAPE_SIZE,
                 KEYBOARD_HEIGHT_LAND, KEY_TEXT_SIZE_LAND, SPLIT_GAP_CURSOR, SPLIT_GAP_SPEED, SPLIT_SPACE_JOIN, SPLIT_FN_WIDTH,
                 SPLIT_REACH_COLUMN, PROFILE_LIFT + LANDSCAPE_SUFFIX, BOTTOM_KEY_ORDER, COMMA_CHAR, PERIOD_CHAR, MODE_KEY_HIDDEN, PERIOD_COMMA, LANGUAGE_KEY_HIDDEN, SPACE_KEY_HIDDEN,
                 PERIOD_KEY_HIDDEN, ENTER_KEY_HIDDEN, DELETE_KEY_HIDDEN, KOREAN_SHIFT_HIDDEN, KOREAN_SHIFT_FN));
@@ -508,6 +510,10 @@ public final class Prefs {
     public int soundVolume() { return sp.getInt(SOUND_VOLUME, 50); }
     public boolean keyPreview() { return sp.getBoolean(KEY_PREVIEW, true); }
     public boolean numberRow() { return sp.getBoolean(NUMBER_ROW, false); }
+    /** 숫자 줄 높이: 일반 키 높이의 % (50~100, 기본 80). */
+    public int numberRowHeight() {
+        return clamp(sp.getInt(NUMBER_ROW_HEIGHT, NUMBER_ROW_HEIGHT_DEFAULT), NUMBER_ROW_HEIGHT_MIN, NUMBER_ROW_HEIGHT_MAX);
+    }
     public boolean longPressChars() { return sp.getBoolean(LONG_PRESS_CHARS, true); }
     public boolean longPressRepeat() { return sp.getBoolean(LONG_PRESS_REPEAT, false); }
     public boolean autoCap() { return sp.getBoolean(AUTO_CAP, true); }

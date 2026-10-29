@@ -491,10 +491,10 @@ public final class KeyboardLayout {
     private static KeyboardLayout symbols(boolean korean, Prefs prefs, boolean five) {
         String back = korean ? "가" : "ABC";
         List<Row> rows = new ArrayList<>();
-        // 숫자 줄을 켜면 한글/영어 자판과 같은 5줄(첫 줄 0.78)로 맞추고, 둘째 줄에 기호 줄을 더 넣는다.
+        // 숫자 줄을 켜면 한글/영어 자판과 같은 5줄(첫 줄은 숫자 줄 높이)로 맞추고, 둘째 줄에 기호 줄을 더 넣는다.
         rows.add(charRow(new String[]{"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"},
                 new String[][]{{"¹", "½", "⅓", "¼"}, {"²", "⅔"}, {"³", "¾"}, {"⁴"}, null, null, null, null,
-                        null, {"ⁿ", "∅"}}, five ? 0.78f : 1f));
+                        null, {"ⁿ", "∅"}}, five ? numberRowHeight(prefs) : 1f));
         if (five) {
             rows.add(charRow(new String[]{"~", "`", "$", "%", "^", "=", "[", "]", "{", "}"},
                     new String[][]{{"∼"}, null, {"€", "£", "¥", "¢", "₹"}, {"‰"}, {"ˆ"}, {"≠", "≈", "≤", "≥"},
@@ -528,7 +528,7 @@ public final class KeyboardLayout {
             // 숫자 줄을 켠 5줄 배열: 첫 줄은 1쪽과 같은 숫자 줄로 고정하고, 나머지는 1쪽과 겹치지 않는 기호로 채운다.
             rows.add(charRow(new String[]{"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"},
                     new String[][]{{"¹", "½", "⅓", "¼"}, {"²", "⅔"}, {"³", "¾"}, {"⁴"}, null, null, null, null,
-                            null, {"ⁿ", "∅"}}, 0.78f));
+                            null, {"ⁿ", "∅"}}, numberRowHeight(prefs)));
             rows.add(charRow(new String[]{"<", ">", "|", "\\", "×", "÷", "±", "≠", "≈", "°"},
                     new String[][]{{"〈", "《", "≤", "«"}, {"〉", "》", "≥", "»"}, {"¦"}, null, null, null, {"∓"},
                             {"≒"}, {"∼", "≅"}, {"℃", "℉", "′", "″"}}));
@@ -621,7 +621,12 @@ public final class KeyboardLayout {
     private static Row numberRow(Prefs prefs) {
         Key[] keys = new Key[NUMBER_KEYS.length];
         for (int i = 0; i < keys.length; i++) keys[i] = numberKey(NUMBER_KEYS[i], prefs);
-        return new Row(0.78f, keys);
+        return new Row(numberRowHeight(prefs), keys);
+    }
+
+    /** 숫자 줄의 높이 (일반 줄 = 1). '숫자 줄 높이' 설정을 따른다. */
+    public static float numberRowHeight(Prefs prefs) {
+        return (prefs == null ? Prefs.NUMBER_ROW_HEIGHT_DEFAULT : prefs.numberRowHeight()) / 100f;
     }
 
     /** 숫자 줄의 키. 길게 누르기 문자는 사용자가 정한 것만 있다 (정하지 않았으면 없다). */
@@ -1038,7 +1043,7 @@ public final class KeyboardLayout {
     private static Row splitNumberRow(Prefs prefs) {
         List<Key> left = new ArrayList<>(), right = new ArrayList<>();
         for (int i = 0; i < NUMBER_KEYS.length; i++) (i < 5 ? left : right).add(numberKey(NUMBER_KEYS[i], prefs));
-        return blockRow(left, right, 0.78f, 5, 5, prefs);
+        return blockRow(left, right, numberRowHeight(prefs), 5, 5, prefs);
     }
 
     /**
