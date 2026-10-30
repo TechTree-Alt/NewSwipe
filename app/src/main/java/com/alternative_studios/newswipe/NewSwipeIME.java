@@ -1151,7 +1151,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             if (panel == PANEL_KEYBOARD) scheduleSuggest();   // 단축어는 단어 추천을 꺼도 쓴다
         }
         if (wasLearn && !cfgLearn) runIo(this::releaseLearned);   // 학습을 끄면 학습한 단어도 메모리에서 내린다
-        float rows = 4 + (prefs.numberRow() ? 0.78f : 0f);
+        float rows = 4 + (prefs.numberRow() ? KeyboardLayout.numberRowHeight(prefs) : 0f);
         keyboard.setKeyGaps(Ui.dp(this, prefs.keyGapXDp()), Ui.dp(this, prefs.keyGapYDp()));
         keyboard.setInsets(Ui.dp(this, prefs.padLeftDp()), Ui.dp(this, prefs.padTopDp()),
                 Ui.dp(this, prefs.padRightDp()), Ui.dp(this, prefs.padBottomDp()));

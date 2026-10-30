@@ -264,8 +264,8 @@ public final class KeyboardLayout {
     }
 
     /**
-     * 자·모음 균형 레이아웃: 자판을 가운데에서 정확히 반으로 나눠 왼쪽 절반에는 자음이 꽉 차게(8열 단모음은 5열,
-     * NewSwipe 배열은 4열), 오른쪽 절반에는 모음 열(3열)을 놓는다. 모음 키 폭은 자음 키 폭의 '모음 폭'%이고
+     * 자·모음 균형 레이아웃: 자판을 자·모음 경계(기본 가운데)에서 나눠 왼쪽에는 자음이 꽉 차게(8열 단모음은 5열,
+     * NewSwipe 배열은 4열), 오른쪽에는 모음 열(3열)을 놓는다. 모음 키 폭은 자음 키 폭의 '모음 폭'%이고
      * (기본 같은 폭), 오른쪽 절반의 남는 폭 안에서 '모음 위치'에 따라 놓인다 (기본 가운데).
      * 자음도 '자음 폭'·'자음 위치'로 왼쪽 절반 안에서 폭과 위치를 바꿀 수 있다.
      */
@@ -329,21 +329,25 @@ public final class KeyboardLayout {
     }
 
     /**
-     * 가운데에서 반으로 나뉜 한 줄: 왼쪽 절반에 consonants, 오른쪽 절반에 vowels를 놓는다.
-     * 자음 키는 왼쪽 절반을 꽉 채우는 폭의 '자음 폭'%이고 남는 폭 안에서 '자음 위치'에 따라 놓인다.
-     * 모음 키는 오른쪽 절반을 꽉 채우는 폭의 '모음 폭'%이고(100%면 모음이 오른쪽 절반을 꽉 채운다) '모음 위치'에 따라 놓인다.
+     * 자·모음 경계에서 나뉜 한 줄: 경계 왼쪽(자음 쪽)에 consonants, 오른쪽(모음 쪽)에 vowels를 놓는다.
+     * 경계는 '자·모음 경계 위치'(자판 폭에서 자음 쪽이 차지하는 %, 기본 50 = 가운데)에 있다.
+     * 자음 키는 자음 쪽을 꽉 채우는 폭의 '자음 폭'%이고 남는 폭 안에서 '자음 위치'에 따라 놓인다.
+     * 모음 키는 모음 쪽을 꽉 채우는 폭의 '모음 폭'%이고(100%면 모음이 모음 쪽을 꽉 채운다) '모음 위치'에 따라 놓인다.
      * 세로 모드의 균형 레이아웃에서 쓴다 (분리 키보드는 {@link #blockRow}).
      */
     private static Row splitRow(List<Key> consonants, List<Key> vowels, float height, Prefs prefs) {
-        float cw = BALANCED_HALF / consonants.size()
+        float left = BALANCED_COLUMNS
+                * (prefs == null ? Prefs.BALANCED_BOUNDARY_DEFAULT : prefs.balancedBoundary()) / 100f;
+        float right = BALANCED_COLUMNS - left;
+        float cw = left / consonants.size()
                 * (prefs == null ? Prefs.BALANCED_WIDTH_DEFAULT : prefs.balancedConsonantWidth()) / 100f;
         float cpos = (prefs == null ? 50 : prefs.balancedConsonantPos()) / 100f;
-        float cfree = Math.max(0f, BALANCED_HALF - consonants.size() * cw);
+        float cfree = Math.max(0f, left - consonants.size() * cw);
         float cgapLeft = cfree * cpos, cgapRight = cfree - cgapLeft;
         int pct = prefs == null ? Prefs.BALANCED_WIDTH_DEFAULT : prefs.balancedVowelWidth();
-        float v = vowels.isEmpty() ? 0f : BALANCED_HALF / vowels.size() * pct / 100f;
+        float v = vowels.isEmpty() ? 0f : right / vowels.size() * pct / 100f;
         float pos = (prefs == null ? 50 : prefs.balancedVowelPos()) / 100f;
-        float free = Math.max(0f, BALANCED_HALF - vowels.size() * v);
+        float free = Math.max(0f, right - vowels.size() * v);
         float gapLeft = free * pos, gapRight = free - gapLeft;
         List<Key> keys = new ArrayList<>();
         if (cgapLeft > 0.001f) keys.add(fn(Key.GAP, "", cgapLeft));
@@ -487,10 +491,10 @@ public final class KeyboardLayout {
     private static KeyboardLayout symbols(boolean korean, Prefs prefs, boolean five) {
         String back = korean ? "가" : "ABC";
         List<Row> rows = new ArrayList<>();
-        // 숫자 줄을 켜면 한글/영어 자판과 같은 5줄(첫 줄 0.78)로 맞추고, 둘째 줄에 기호 줄을 더 넣는다.
+        // 숫자 줄을 켜면 한글/영어 자판과 같은 5줄(첫 줄은 숫자 줄 높이)로 맞추고, 둘째 줄에 기호 줄을 더 넣는다.
         rows.add(charRow(new String[]{"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"},
                 new String[][]{{"¹", "½", "⅓", "¼"}, {"²", "⅔"}, {"³", "¾"}, {"⁴"}, null, null, null, null,
-                        null, {"ⁿ", "∅"}}, five ? 0.78f : 1f));
+                        null, {"ⁿ", "∅"}}, five ? numberRowHeight(prefs) : 1f));
         if (five) {
             rows.add(charRow(new String[]{"~", "`", "$", "%", "^", "=", "[", "]", "{", "}"},
                     new String[][]{{"∼"}, null, {"€", "£", "¥", "¢", "₹"}, {"‰"}, {"ˆ"}, {"≠", "≈", "≤", "≥"},
@@ -524,7 +528,7 @@ public final class KeyboardLayout {
             // 숫자 줄을 켠 5줄 배열: 첫 줄은 1쪽과 같은 숫자 줄로 고정하고, 나머지는 1쪽과 겹치지 않는 기호로 채운다.
             rows.add(charRow(new String[]{"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"},
                     new String[][]{{"¹", "½", "⅓", "¼"}, {"²", "⅔"}, {"³", "¾"}, {"⁴"}, null, null, null, null,
-                            null, {"ⁿ", "∅"}}, 0.78f));
+                            null, {"ⁿ", "∅"}}, numberRowHeight(prefs)));
             rows.add(charRow(new String[]{"<", ">", "|", "\\", "×", "÷", "±", "≠", "≈", "°"},
                     new String[][]{{"〈", "《", "≤", "«"}, {"〉", "》", "≥", "»"}, {"¦"}, null, null, null, {"∓"},
                             {"≒"}, {"∼", "≅"}, {"℃", "℉", "′", "″"}}));
@@ -617,7 +621,12 @@ public final class KeyboardLayout {
     private static Row numberRow(Prefs prefs) {
         Key[] keys = new Key[NUMBER_KEYS.length];
         for (int i = 0; i < keys.length; i++) keys[i] = numberKey(NUMBER_KEYS[i], prefs);
-        return new Row(0.78f, keys);
+        return new Row(numberRowHeight(prefs), keys);
+    }
+
+    /** 숫자 줄의 높이 (일반 줄 = 1). '숫자 줄 높이' 설정을 따른다. */
+    public static float numberRowHeight(Prefs prefs) {
+        return (prefs == null ? Prefs.NUMBER_ROW_HEIGHT_DEFAULT : prefs.numberRowHeight()) / 100f;
     }
 
     /** 숫자 줄의 키. 길게 누르기 문자는 사용자가 정한 것만 있다 (정하지 않았으면 없다). */
@@ -788,7 +797,8 @@ public final class KeyboardLayout {
     private static final float SPACE_ROW_UNITS = 10f;
     /**
      * 격자 정렬에서 아래 줄 기능키 하나의 너비: 한글 자판의 글자 키 한 칸 (10 ÷ 8열, NewSwipe 단모음은 10 ÷ 7열).
-     * 자·모음 균형 레이아웃이면 나뉜 자음 키 한 칸.
+     * 자·모음 균형 레이아웃이면 반으로 나눴을 때의 자음 키 한 칸. 자·모음 경계 위치나 자음 폭을 바꿔도
+     * 아래 줄 키의 폭은 바뀌지 않는다.
      */
     private static float gridKey(Prefs prefs) {
         // 자·모음 균형 레이아웃: 왼쪽 절반을 나눠 가진 자음 키 한 칸 (5열이면 1칸, 4열이면 1.25칸).
@@ -1033,7 +1043,7 @@ public final class KeyboardLayout {
     private static Row splitNumberRow(Prefs prefs) {
         List<Key> left = new ArrayList<>(), right = new ArrayList<>();
         for (int i = 0; i < NUMBER_KEYS.length; i++) (i < 5 ? left : right).add(numberKey(NUMBER_KEYS[i], prefs));
-        return blockRow(left, right, 0.78f, 5, 5, prefs);
+        return blockRow(left, right, numberRowHeight(prefs), 5, 5, prefs);
     }
 
     /**

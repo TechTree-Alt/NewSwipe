@@ -339,6 +339,7 @@ public final class SettingsActivity extends Activity {
             {"look", "키 곡률", "둥글기 모서리 라운드"},
             {"look", "그림자 세기", "그림자"},
             {"look", "키 그림자", "입체감"},
+            {"layout", "숫자 줄 높이", "숫자 행 크기"},
             {"look", "키 누름 미리보기", "말풍선 팝업 확대"},
             {"look", "길게 눌러 입력할 문자 힌트 없애기", "힌트 숨기기 오른쪽 위"},
             {"look", "숫자 키 힌트 없애기", "힌트 숨기기"},
@@ -923,7 +924,7 @@ public final class SettingsActivity extends Activity {
         View keyArea = fold(subGroup(button("키 위치·폭 사용자화", v -> openSection(KEY_AREA))));
         keyArea.setVisibility(prefs.balancedLayout() ? View.VISIBLE : View.GONE);
         View balancedRow = toggle("자·모음 균형 레이아웃",
-                "자판을 정확히 반으로 나눠 왼쪽 절반에는 자음을, 오른쪽 절반에는 모음을 놓습니다.",
+                "자판을 둘로 나눠 왼쪽에는 자음을, 오른쪽에는 모음을 놓습니다.",
                 prefs.balancedLayout(), on -> {
                     prefs.raw().edit().putBoolean(prefs.balancedLayoutKey(), on).apply();
                     Ui.setVisibleAnimated(keyArea, on);
@@ -950,10 +951,16 @@ public final class SettingsActivity extends Activity {
         landscape.addView(note("화면을 가로로 돌렸을 때의 자판 모양을 따로 정합니다."));
 
         LinearLayout numberKeys = section("숫자 키");
+        // 켜면 보이는 하위 항목: 숫자 줄 높이 (일반 키 높이에 대한 비율).
+        View numberRowHeight = subGroup(slider("숫자 줄 높이", Prefs.NUMBER_ROW_HEIGHT, prefs.numberRowHeight(),
+                Prefs.NUMBER_ROW_HEIGHT_MIN, Prefs.NUMBER_ROW_HEIGHT_MAX, 5, "%", this::refreshLayoutPreview));
+        numberRowHeight.setVisibility(prefs.numberRow() ? View.VISIBLE : View.GONE);
         numberKeys.addView(toggle("숫자 줄 표시", "자판 위에 1~0 숫자 줄을 보여 줍니다.", prefs.numberRow(), on -> {
             prefs.raw().edit().putBoolean(Prefs.NUMBER_ROW, on).apply();
+            Ui.setVisibleAnimated(numberRowHeight, on);
             refreshLayoutPreview();
         }));
+        numberKeys.addView(numberRowHeight);
 
         LinearLayout layoutKeys = section("기능키");
         layoutKeys.addView(button("기능키 순서·유무 사용자화", v ->
@@ -979,14 +986,18 @@ public final class SettingsActivity extends Activity {
     private static final String GRID_DESC = "아래 줄의 기능키를 한글 키와 같은 폭으로 해 줄을 맞춥니다. "
             + "오쏘리니어 키보드에서 영감을 받았습니다.";
     /**
-     * 키 위치·폭 사용자화: 미리보기를 보면서 자·모음 균형 레이아웃의 자음 열(왼쪽 절반)과 모음 3열(오른쪽 절반)의
-     * 폭과 가로 위치를 정한다. 가로 모드의 값은 '가로 모드 키보드 사용자화'에서 따로 정한다.
+     * 키 위치·폭 사용자화: 미리보기를 보면서 자·모음 균형 레이아웃의 자·모음 경계 위치와, 자음 열(경계 왼쪽)·
+     * 모음 3열(경계 오른쪽)의 폭과 가로 위치를 정한다. 가로 모드의 값은 '가로 모드 키보드 사용자화'에서 따로 정한다.
      */
     private void buildKeyArea() {
         LinearLayout card = section("자음·모음 열");
         card.addView(layoutPreview(null));
-        card.addView(note("자음 키 폭은 왼쪽 절반을, 모음 키 폭은 오른쪽 절반을 꽉 채우는 폭에 대한 비율입니다 (100%면 꽉 참). 가로 위치는 각 절반 안에서 키들이 놓이는 곳입니다 "
-                + "(0 = 왼쪽 끝, 50 = 가운데, 100 = 오른쪽 끝)."));
+        card.addView(note("자·모음 경계 위치는 자판 폭에서 자음 쪽이 차지하는 비율입니다 (50%면 가운데). "
+                + "자음 키 폭은 경계 왼쪽을, 모음 키 폭은 경계 오른쪽을 꽉 채우는 폭에 대한 비율입니다 (100%면 꽉 참). "
+                + "가로 위치는 각 쪽 안에서 키들이 놓이는 곳입니다 (0 = 왼쪽 끝, 50 = 가운데, 100 = 오른쪽 끝). "
+                + "아래 줄의 키는 바뀌지 않습니다."));
+        card.addView(slider("자·모음 경계 위치", prefs.balancedBoundaryKey(), prefs.balancedBoundary(),
+                Prefs.BALANCED_BOUNDARY_MIN, Prefs.BALANCED_BOUNDARY_MAX, 5, "%", this::refreshLayoutPreview));
         addKeyAreaControls(card, prefs);
     }
 

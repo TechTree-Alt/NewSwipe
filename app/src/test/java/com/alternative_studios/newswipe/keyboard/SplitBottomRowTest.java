@@ -90,7 +90,7 @@ public class SplitBottomRowTest {
             }
             for (KeyboardLayout l : new KeyboardLayout[]{korean, english}) {
                 float[] number = extent(l.rows[0]);   // 숫자 줄
-                assertEquals(0.78f, l.rows[0].height, 0.001f);
+                assertEquals(0.8f, l.rows[0].height, 0.001f);   // 숫자 줄 높이 기본 80%
                 assertEquals("숫자 줄 왼쪽 끝", want[0], number[0], 0.001f);
                 assertEquals("숫자 줄 오른쪽 끝", want[1], number[1], 0.001f);
             }

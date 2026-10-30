@@ -31,6 +31,8 @@ public final class Prefs {
     public static final String SOUND_VOLUME = "sound_volume";         // %, 0~100
     public static final String KEY_PREVIEW = "key_preview";
     public static final String NUMBER_ROW = "number_row";
+    public static final String NUMBER_ROW_HEIGHT = "number_row_height";   // 숫자 줄 높이: 일반 키 높이의 %, 50~100
+    public static final int NUMBER_ROW_HEIGHT_MIN = 50, NUMBER_ROW_HEIGHT_MAX = 100, NUMBER_ROW_HEIGHT_DEFAULT = 80;
     public static final String LONG_PRESS_CHARS = "long_press_chars";   // 키를 길게 눌러 문자 입력
     public static final String LONG_PRESS_REPEAT = "long_press_repeat";   // 고른 글자 키를 길게 눌러 연속 입력
     public static final String AUTO_CAP = "auto_cap";
@@ -106,6 +108,9 @@ public final class Prefs {
     public static final String BALANCED_VOWEL_POS = "balanced_vowel_pos";       // 모음 3열 위치: 오른쪽 절반의 남는 폭에서 왼쪽 0 ~ 오른쪽 100
     public static final String BALANCED_CONSONANT_WIDTH = "balanced_consonant_width";   // 자음 키 폭: 기본 폭의 %
     public static final String BALANCED_CONSONANT_POS = "balanced_consonant_pos";       // 자음 열 위치: 왼쪽 절반의 남는 폭에서 왼쪽 0 ~ 오른쪽 100
+    public static final String BALANCED_BOUNDARY = "balanced_boundary";   // 자·모음 경계 위치: 자판 폭에서 자음 쪽이 차지하는 %
+    /** 자·모음 경계 위치의 범위 (%). 50이면 가운데에서 반으로 나눈다. */
+    public static final int BALANCED_BOUNDARY_MIN = 30, BALANCED_BOUNDARY_MAX = 70, BALANCED_BOUNDARY_DEFAULT = 50;
     /** 가로 모드의 값은 위 이름 뒤에 이 말을 붙여 따로 저장한다 (예: balanced_vowel_width_land_danmoeum7). */
     private static final String LANDSCAPE_SUFFIX = "_land";
     public static final int BALANCED_WIDTH_MIN = 60, BALANCED_WIDTH_DEFAULT = 100;
@@ -351,7 +356,7 @@ public final class Prefs {
     /** 메뉴별로 키 앞부분이 같은 값들 (배열·방향·칸마다 따로 저장하는 값). */
     private static final java.util.Map<String, String[]> MENU_PREFIXES = new java.util.HashMap<>();
     static {
-        MENU_KEYS.put("layout", keys(KOREAN_LAYOUT, GRID_LAYOUT, NUMBER_ROW, LANDSCAPE_SPLIT, LANDSCAPE_SIZE,
+        MENU_KEYS.put("layout", keys(KOREAN_LAYOUT, GRID_LAYOUT, NUMBER_ROW, NUMBER_ROW_HEIGHT, LANDSCAPE_SPLIT, LANDSCAPE_SIZE,
                 KEYBOARD_HEIGHT_LAND, KEY_TEXT_SIZE_LAND, SPLIT_GAP_CURSOR, SPLIT_GAP_SPEED, SPLIT_SPACE_JOIN, SPLIT_FN_WIDTH,
                 SPLIT_REACH_COLUMN, PROFILE_LIFT + LANDSCAPE_SUFFIX, BOTTOM_KEY_ORDER, COMMA_CHAR, PERIOD_CHAR, MODE_KEY_HIDDEN, PERIOD_COMMA, LANGUAGE_KEY_HIDDEN, SPACE_KEY_HIDDEN,
                 PERIOD_KEY_HIDDEN, ENTER_KEY_HIDDEN, DELETE_KEY_HIDDEN, KOREAN_SHIFT_HIDDEN, KOREAN_SHIFT_FN));
@@ -420,7 +425,7 @@ public final class Prefs {
     /** 이 보기(세로 또는 가로)에서 지금 한글 배열의 자음·모음 키 폭·가로 위치를 기본값으로 되돌린다. */
     public void resetBalancedKeys() {
         java.util.List<String> keys = new java.util.ArrayList<>(java.util.Arrays.asList(balancedVowelWidthKey(),
-                balancedVowelPosKey(), balancedConsonantWidthKey(), balancedConsonantPosKey()));
+                balancedVowelPosKey(), balancedConsonantWidthKey(), balancedConsonantPosKey(), balancedBoundaryKey()));
         // 배열별로 나누기 전의 값(세로 모드의 8열 단모음)이 이어지지 않게 그 값도 지운다.
         if (!profileValues() && !koreanNewSwipe()) {
             keys.addAll(java.util.Arrays.asList(BALANCED_VOWEL_WIDTH, BALANCED_VOWEL_POS, BALANCED_CONSONANT_WIDTH,
@@ -505,6 +510,10 @@ public final class Prefs {
     public int soundVolume() { return sp.getInt(SOUND_VOLUME, 50); }
     public boolean keyPreview() { return sp.getBoolean(KEY_PREVIEW, true); }
     public boolean numberRow() { return sp.getBoolean(NUMBER_ROW, false); }
+    /** 숫자 줄 높이: 일반 키 높이의 % (50~100, 기본 80). */
+    public int numberRowHeight() {
+        return clamp(sp.getInt(NUMBER_ROW_HEIGHT, NUMBER_ROW_HEIGHT_DEFAULT), NUMBER_ROW_HEIGHT_MIN, NUMBER_ROW_HEIGHT_MAX);
+    }
     public boolean longPressChars() { return sp.getBoolean(LONG_PRESS_CHARS, true); }
     public boolean longPressRepeat() { return sp.getBoolean(LONG_PRESS_REPEAT, false); }
     public boolean autoCap() { return sp.getBoolean(AUTO_CAP, true); }
@@ -783,6 +792,7 @@ public final class Prefs {
     public String balancedVowelPosKey() { return balancedKey(BALANCED_VOWEL_POS); }
     public String balancedConsonantWidthKey() { return balancedKey(BALANCED_CONSONANT_WIDTH); }
     public String balancedConsonantPosKey() { return balancedKey(BALANCED_CONSONANT_POS); }
+    public String balancedBoundaryKey() { return balancedKey(BALANCED_BOUNDARY); }
 
     /** 배열별 값이 있으면 그것을, 없으면 배열별로 나누기 전의 값(세로 모드의 8열 단모음만)을, 그것도 없으면 기본값을 쓴다. */
     private int perLayoutInt(String key, String legacyKey, int def) {
@@ -810,6 +820,15 @@ public final class Prefs {
     /** 지금 한글 배열의 자·모음 균형 레이아웃 자음 열 위치 (0 = 왼쪽 끝, 50 = 가운데, 100 = 가운데 선 쪽 끝). */
     public int balancedConsonantPos() {
         return Math.max(0, Math.min(100, perLayoutInt(balancedConsonantPosKey(), BALANCED_CONSONANT_POS, 50)));
+    }
+    /**
+     * 지금 한글 배열의 자·모음 경계 위치: 자판 폭에서 자음 쪽(왼쪽)이 차지하는 % (30~70, 기본 50 = 가운데).
+     * 세로 모드의 균형 레이아웃에만 있고, 분리 키보드(가로 모드·대화면)는 늘 가운데에서 나눈다.
+     */
+    public int balancedBoundary() {
+        if (profileValues()) return BALANCED_BOUNDARY_DEFAULT;
+        return clamp(sp.getInt(balancedBoundaryKey(), BALANCED_BOUNDARY_DEFAULT), BALANCED_BOUNDARY_MIN,
+                BALANCED_BOUNDARY_MAX);
     }
     /** 색 정렬: Shift·⌫·기호 쪽 넘김 키는 글자 키 색, 스페이스바는 기능키 색 (격자 정렬과 상관없이). */
     public boolean gridColors() { return sp.getBoolean(GRID_COLORS, false); }
