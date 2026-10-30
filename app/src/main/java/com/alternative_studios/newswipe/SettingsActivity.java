@@ -1618,8 +1618,8 @@ public final class SettingsActivity extends Activity {
         }
     }
 
-    /** Neumorphism 모드 토글을 테마 화면에 보일지. 잠시 숨겨 두었다 (다시 살릴 때 true로). 기능과 저장된 값은 그대로다. */
-    private static final boolean SHOW_NEUMORPHISM = false;
+    /** Neumorphism 모드 토글을 테마 화면에 보일지 (잠시 숨겨야 할 때 false로). 숨겨도 기능과 저장된 값은 그대로다. */
+    private static final boolean SHOW_NEUMORPHISM = true;
 
     private static int indexOf(String[] values, String v) {
         for (int i = 0; i < values.length; i++) if (values[i].equals(v)) return i;
