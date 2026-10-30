@@ -1611,14 +1611,14 @@ public final class SettingsActivity extends Activity {
 
         if (SHOW_NEUMORPHISM) {
             LinearLayout neu = section("Neumorphism");
-            neu.addView(toggle("Neumorphism 모드",
+            neu.addView(toggle("Neumorphism 디자인",
                     "키와 도구 막대·클립보드·이모지 창의 버튼이 바탕에서 부드럽게 솟아오르고, 누르면 안으로 쑥 들어가는 모양으로 그립니다. "
                             + "켜면 키 그림자 대신 쓰입니다.",
                     Prefs.NEUMORPHISM, prefs.neumorphism()));
         }
     }
 
-    /** Neumorphism 모드 토글을 테마 화면에 보일지 (잠시 숨겨야 할 때 false로). 숨겨도 기능과 저장된 값은 그대로다. */
+    /** Neumorphism 디자인 토글을 테마 화면에 보일지 (잠시 숨겨야 할 때 false로). 숨겨도 기능과 저장된 값은 그대로다. */
     private static final boolean SHOW_NEUMORPHISM = true;
 
     private static int indexOf(String[] values, String v) {
