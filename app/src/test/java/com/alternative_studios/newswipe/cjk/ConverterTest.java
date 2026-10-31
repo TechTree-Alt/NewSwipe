@@ -140,7 +140,7 @@ public class ConverterTest {
     public void chineseComposer() {
         CjkComposer c = new CjkComposer(CjkComposer.ZH, CjkTestData.dict(CjkTestData.ZH));
         for (char ch : "nihaoma".toCharArray()) assertNull(c.typeLetter(ch));
-        assertEquals("ni'hao'ma", c.composingText());
+        assertEquals("nihaoma", c.composingText());
         // 앞 단어만 고르면 나머지 병음이 남는다
         int ni = texts(c.candidates()).indexOf("你好");
         assertNull(c.pick(ni));
@@ -150,7 +150,7 @@ public class ConverterTest {
         assertEquals("你好m", c.composingText());
         assertTrue(c.backspace());
         assertTrue(c.backspace());
-        assertEquals("ni'hao", c.composingText());
+        assertEquals("nihao", c.composingText());
         for (char ch : "ma".toCharArray()) c.typeLetter(ch);
         assertEquals("你好吗", c.space());
         assertTrue(c.isEmpty());

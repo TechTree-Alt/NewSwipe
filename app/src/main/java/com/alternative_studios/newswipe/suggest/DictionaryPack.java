@@ -143,13 +143,17 @@ public final class DictionaryPack {
             throw new InvalidPackException("사전 팩(zip) 파일이 아닙니다");
         }
         if (!manifest) throw new InvalidPackException("사전 팩 정보(" + MANIFEST + ")가 없습니다");
+        Properties p = readProperties(new File(into, MANIFEST));
+        String lang = p.getProperty("lang");
+        if ("ja".equals(lang) || "zh".equals(lang)) {
+            throw new InvalidPackException("일본어·중국어 사전 팩입니다. 설정 › 실험실의 일본어·중국어 자판에서 가져와 주세요");
+        }
         if (!dict) throw new InvalidPackException("단어 사전(" + DICT + ")이 없습니다");
 
-        Properties p = readProperties(new File(into, MANIFEST));
         int format = parseInt(p.getProperty("format"));
         if (format <= 0) throw new InvalidPackException("사전 팩 형식을 알 수 없습니다");
         if (format > FORMAT) throw new InvalidPackException("이 버전의 앱이 읽을 수 없는 새 형식입니다. 앱을 업데이트해 주세요");
-        if (!"ko".equals(p.getProperty("lang"))) throw new InvalidPackException("한국어 사전 팩이 아닙니다");
+        if (!"ko".equals(lang)) throw new InvalidPackException("한국어 사전 팩이 아닙니다");
         verifyHash(p, new File(into, DICT));
         if (next) verifyHash(p, new File(into, NEXT));
         if (known) verifyHash(p, new File(into, KNOWN));

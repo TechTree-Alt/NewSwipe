@@ -2,6 +2,10 @@
 
 설정의 '한국어 사전'에서 '사전 팩 가져오기'로 가져오는 한국어 사전입니다. 앱에는 들어가지 않으며, GitHub 릴리스(`dict-` 태그)에 버전을 붙인 이름(`ko-standard-2026.10.3.zip`)으로 배포합니다.
 
+`ja-standard.zip`·`zh-standard.zip`은 실험실의 일본어·중국어 자판이 쓰는 변환 사전입니다. 앱에는 변환 엔진만 들어 있고
+이 팩을 가져와야 그 자판을 켤 수 있습니다. `cjk-` 태그(`cjk-2026.11.1`)로 릴리스하며(`.github/workflows/cjk-pack.yml`),
+만드는 법은 `dict/build/build_cjk_pack.py` 맨 위에 있습니다.
+
 ## 라이선스
 
 이 폴더는 저장소의 다른 부분과 라이선스가 다릅니다.
@@ -10,6 +14,8 @@
 |---|---|
 | `ko-standard.zip` 안의 사전 데이터 (`dict_ko.bin`, `dict_ko_next.bin`) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) (Leipzig Corpora Collection)과 CC0 1.0 (NSMC) 자료로 만들었습니다. 출처와 바꾼 내용은 `ko-standard-LICENSE.txt` (팩 안의 `LICENSE.txt`)에 있습니다. |
 | 앱에 든 기본 사전 (`app/src/main/assets/dict_ko.bin`, `dict_ko_next.bin`) | 팩과 같은 자료로 만들어 같은 라이선스입니다 (출처는 [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md)). |
+| `ja-standard.zip` 안의 변환 사전 (`convert.bin`) | Mozc 공개 사전(dictionary_oss)으로 만들었습니다: Mozc BSD-3-Clause, IPAdic(NAIST) 라이선스, 沖縄辞書(Public Domain). 전문은 `ja-standard-LICENSE.txt` (팩 안의 `LICENSE.txt`)에 있습니다. 바꾼 내용: 읽기·표기·비용만 남기고 품사로 비용을 보정했습니다. |
+| `zh-standard.zip` 안의 변환 사전 (`convert.bin`) | jieba 사전(단어·빈도, MIT)과 pypinyin(병음, MIT)으로 만들었습니다. 전문은 `zh-standard-LICENSE.txt`에 있습니다. 바꾼 내용: 성조를 뺀 병음과 빈도로 매긴 비용만 남겼습니다. |
 | 사전을 만드는 도구 (`dict/build/`, `dict/eval/`)와 목록 (`dict/lists/`) | Apache License 2.0 (저장소의 `LICENSE`) |
 
 사전 데이터를 다시 배포하거나 고쳐 쓸 때는 CC BY 4.0에 따라 출처(Leipzig Corpora Collection, NSMC, NewSwipe)를 밝히고 바꾼 내용을

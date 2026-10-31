@@ -317,6 +317,10 @@ public final class KeyboardView extends View {
     public void setLayout(KeyboardLayout l) {
         cancelAll();
         layout = l;
+        // 같은 한자라도 일본어·중국어 글꼴 모양이 다르다: 자판 언어에 맞춰 그린다 (글꼴은 시스템 것을 쓴다).
+        Locale textLocale = l.kind == KeyboardLayout.JAPANESE ? Locale.JAPAN
+                : l.kind == KeyboardLayout.CHINESE ? Locale.SIMPLIFIED_CHINESE : Locale.getDefault();
+        if (!textLocale.equals(text.getTextLocale())) text.setTextLocale(textLocale);
         requestLayout();
         layoutKeys(getWidth(), getHeight());
         invalidate();
@@ -669,6 +673,12 @@ public final class KeyboardView extends View {
         return false;
     }
 
+    /** Shift를 켜면 로마자를 대문자로 보이는 자판 (영어, 중국어 병음, 일본어 로마자). */
+    private boolean upperCaseLayout() {
+        return layout.kind == KeyboardLayout.ENGLISH || layout.kind == KeyboardLayout.CHINESE
+                || layout.kind == KeyboardLayout.JAPANESE;
+    }
+
     private String displayLabel(Key k) {
         if (k.type == Key.CHAR && layout.isLetters() && shiftState != 0) return k.shifted;
         return k.label;
@@ -776,7 +786,11 @@ public final class KeyboardView extends View {
         text.setTextSize(longLabel ? spLabel : layout.kind == KeyboardLayout.NUMBER ? spNumber : spChar);
         drawCentered(c, label, cx, cy);
 
-        String hint = shiftState != 0 && layout.kind == KeyboardLayout.ENGLISH ? k.hintUpper() : k.hint();
+        if (k.flick) {
+            drawFlickHints(c, k, r, cx, cy);
+            return;
+        }
+        String hint = shiftState != 0 && upperCaseLayout() ? k.hintUpper() : k.hint();
         if (showHints && hint != null && layout.kind != KeyboardLayout.NUMBER && !isRepeatChar(k)
                 && !(numberHintHidden && KeyboardLayout.isDigit(k.label))) {
             text.setColor(theme.hint);
@@ -804,6 +818,18 @@ public final class KeyboardView extends View {
         Neu.drawRaised(c, k.rect.left + gapX / 2, k.rect.top + gapY / 2, k.rect.right - gapX / 2,
                 k.rect.bottom - gapY / 2, radius, neuOffset(), Neu.shadowBlur(theme, face, neuBlur()),
                 Neu.raisedLight(theme, face, k.rect.width() - gapX, k.rect.height() - gapY), Neu.darkShadow(theme, face));
+    }
+
+    /** 12키 플릭 키: 밀면 들어갈 글자를 키의 네 가장자리에 작게 그린다 (왼쪽·위·오른쪽·아래). */
+    private void drawFlickHints(Canvas c, Key k, RectF r, float cx, float cy) {
+        text.setColor(theme.hint);
+        text.setTypeface(Typeface.DEFAULT);
+        text.setTextSize(spHint);
+        float inset = Math.min(r.width(), r.height()) * 0.17f;
+        if (k.swipeLeft != null) drawCentered(c, k.swipeLeft, r.left + inset, cy);
+        if (k.swipeRight != null) drawCentered(c, k.swipeRight, r.right - inset, cy);
+        if (k.swipeUp != null) drawCentered(c, k.swipeUp, cx, r.top + inset);
+        if (k.swipeDown != null) drawCentered(c, k.swipeDown, cx, r.bottom - inset);
     }
 
     private void drawCentered(Canvas c, String s, float cx, float cy) {
@@ -1437,7 +1463,7 @@ public final class KeyboardView extends View {
 
     private void openPopup(Pointer p) {
         String[] items = p.key.popup.clone();
-        if (shiftState != 0 && layout.kind == KeyboardLayout.ENGLISH) {
+        if (shiftState != 0 && upperCaseLayout()) {
             // 한 글자(é 같은 악센트 문자)만 Shift를 따른다. 두 글자 이상(단어)은 정해 둔 그대로 입력한다.
             for (int i = 0; i < items.length; i++) {
                 if (Key.isSingleChar(items[i])) items[i] = items[i].toUpperCase(Locale.ROOT);

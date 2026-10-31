@@ -147,9 +147,7 @@ public final class CjkComposer {
         if (c != null && highlight < c.size()) {
             Candidate h = c.get(highlight);
             b.append(h.text).append(reading, Math.min(h.consumed, reading.length()), reading.length());
-        } else if (chinese()) {
-            b.append(pinyin.display(reading.toString()));
-        } else {
+        } else {   // 중국어도 친 그대로 보인다 (커서를 옮기면 보이던 글자가 그대로 입력란에 남는다)
             b.append(reading);
         }
         return b.append(pending).toString();
@@ -182,7 +180,7 @@ public final class CjkComposer {
     /** 스페이스: 중국어는 후보를 고르고, 일본어는 다음 변환 후보를 조합 영역에 보인다. */
     public String space() {
         List<Candidate> c = candidates();
-        if (c.isEmpty()) return chinese() ? commitRaw() : null;
+        if (c.isEmpty()) return commitRaw();
         if (chinese()) return pick(highlight >= 0 ? highlight : 0);
         highlight = (highlight + 1) % c.size();
         return null;

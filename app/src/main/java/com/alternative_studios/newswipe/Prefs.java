@@ -47,7 +47,13 @@ public final class Prefs {
     public static final String CLIPBOARD_SENSITIVE = "clipboard_sensitive";   // 민감한 정보로 표시되었거나 비밀번호를 복사한 것도 기록에 저장
     public static final String CLIPBOARD_CHIP = "clipboard_chip";     // 방금 복사한 내용을 도구 막대에 칩으로
     public static final String ENGLISH_FIELDS = "english_fields";     // 이메일 입력란 등에서 영어 자판으로 시작
-    public static final String LANGUAGE = "language";                 // "ko" | "en"
+    public static final String LANGUAGE = "language";                 // "ko" | "en" | "ja" | "zh" (예전 앱은 en이 아니면 한글로 읽는다)
+    /** 실험실 '일본어·중국어 자판'의 값은 모두 이 말로 시작한다. 그 언어의 사전 팩을 가져와야 켤 수 있다. */
+    public static final String CJK_PREFIX = "cjk_";
+    public static final String CJK_JA = "cjk_ja", CJK_ZH = "cjk_zh";
+    /** 일본어 자판 배열: "flick"(12키, 밀어서 입력) | "qwerty"(로마자). */
+    public static final String CJK_JA_LAYOUT = "cjk_ja_layout";
+    public static final String JA_FLICK = "flick", JA_QWERTY = "qwerty";
     public static final String PAD_LEFT = "pad_left";                 // dp, 0~24
     public static final String PAD_RIGHT = "pad_right";               // dp, 0~24
     public static final String PAD_TOP = "pad_top";                   // dp, 0~24
@@ -388,7 +394,7 @@ public final class Prefs {
                 CONFIRM_LEARNED_DELETE, AUTOFILL_INLINE));
         // 실험실: 대화면 별도 레이아웃과 대화면 키보드 사용자화의 값은 모두 large_로 시작한다.
         MENU_KEYS.put("lab", keys(SWIPE_DOWN_RATIO, SWIPE_UP_RATIO));
-        MENU_PREFIXES.put("lab", keys(LARGE_PREFIX, HW_PREFIX));
+        MENU_PREFIXES.put("lab", keys(LARGE_PREFIX, HW_PREFIX, CJK_PREFIX));
         MENU_KEYS.put("onehand", keys(ONE_HAND_WIDTH, ONE_HAND_WIDTH_LAND, ONE_HAND_HEIGHT, ONE_HAND_LIFT));
     }
 
@@ -1038,6 +1044,23 @@ public final class Prefs {
     }
 
     public boolean korean() { return !"en".equals(sp.getString(LANGUAGE, "ko")); }
+
+    /** 마지막으로 쓴 언어: "ko" | "en" | "ja" | "zh". */
+    public String language() {
+        String l = sp.getString(LANGUAGE, "ko");
+        return "en".equals(l) || "ja".equals(l) || "zh".equals(l) ? l : "ko";
+    }
+
+    public void setLanguage(String lang) {
+        sp.edit().putString(LANGUAGE, lang).apply();
+    }
+
+    /** 실험실에서 이 언어(ja·zh)의 자판을 켰는지. 사전 팩이 있는지는 따로 본다. */
+    public boolean cjkEnabled(String lang) { return sp.getBoolean(CJK_PREFIX + lang, false); }
+
+    public void setCjkEnabled(String lang, boolean on) { sp.edit().putBoolean(CJK_PREFIX + lang, on).apply(); }
+
+    public boolean jaQwerty() { return JA_QWERTY.equals(sp.getString(CJK_JA_LAYOUT, JA_FLICK)); }
 
     public void setKorean(boolean korean) {
         sp.edit().putString(LANGUAGE, korean ? "ko" : "en").apply();
