@@ -196,6 +196,8 @@ public final class Prefs {
     public static final String SWIPE_FN_CUSTOM = "swipe_fn_custom";       // 기능키 밀어서 기능 완전 사용자화
     public static final String SWIPE_TOOLBAR_CUSTOM = "swipe_toolbar_custom"; // 도구 막대 밀어서 기능 완전 사용자화
     public static final String MODE_KEY_EMOJI = "mode_key_emoji";         // 왼쪽 아래 기호 키를 위로 밀어 이모지 열기
+    /** 🌐︎를 길게 누르면 시스템 입력기 선택 창 대신 켜 둔 언어를 고르는 말풍선을 띄운다 (기본 꺼짐). */
+    public static final String GLOBE_LANG_POPUP = "globe_lang_popup";
     public static final String MODE_KEY_LONG_PRESS = "mode_key_settings";  // 왼쪽 아래 기호 키를 길게 눌러 이모지 열기 (예전에는 설정 열기라 키 이름이 그대로)
     public static final String LONG_PRESS_CUSTOM = "long_press_custom";   // 기능키 길게 누르기 기능 완전 사용자화
     public static final String DELETE_PRESS_MS = "delete_press_ms";       // 기능키 길게 누르기 시간 200~800 (옛 이름 그대로 저장)
@@ -374,7 +376,7 @@ public final class Prefs {
                 DOUBLE_TAP_CONSONANT_MS, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, SPACE_HIT_SHRINK,
                 SPACE_HIT_SHRINK_PCT));
         MENU_KEYS.put("keys", keys(LONG_PRESS_CHARS, LONG_PRESS_REPEAT, LONG_PRESS_MS, LONG_PRESS_DELETE, DELETE_PRESS_MS,
-                MODE_KEY_LONG_PRESS, LONG_PRESS_CUSTOM));
+                MODE_KEY_LONG_PRESS, GLOBE_LANG_POPUP, LONG_PRESS_CUSTOM));
         MENU_PREFIXES.put("keys", keys("popup_", "repeat_", "swipe_lp_"));
         MENU_KEYS.put("swipe", keys(SWIPE_THRESHOLD, SWIPE_DOUBLE, D7_SS_UP, SWIPE_IOTIZED, SWIPE_COMPOUND_VOWEL,
                 SWIPE_FINAL, PERIOD_SWIPE_COMMA, SWIPE_CUSTOM));
@@ -947,6 +949,7 @@ public final class Prefs {
 
     public boolean longPressDelete() { return sp.getBoolean(LONG_PRESS_DELETE, true); }
     public boolean modeKeyLongPress() { return sp.getBoolean(MODE_KEY_LONG_PRESS, true); }
+    public boolean globeLangPopup() { return sp.getBoolean(GLOBE_LANG_POPUP, false); }
     public boolean longPressCustom() { return sp.getBoolean(LONG_PRESS_CUSTOM, false); }
     public boolean modeKeyEmoji() { return sp.getBoolean(MODE_KEY_EMOJI, true); }
     public int deletePressMs() { return sp.getInt(DELETE_PRESS_MS, 350); }

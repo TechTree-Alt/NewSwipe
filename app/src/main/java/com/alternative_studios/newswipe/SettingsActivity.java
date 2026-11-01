@@ -367,6 +367,7 @@ public final class SettingsActivity extends Activity {
             {"keys", "기능키 길게 누르기 시간", "롱프레스 시간"},
             {"keys", "길게 눌러 지우기", "백스페이스 연속 삭제 계속 지우기"},
             {"keys", "기호 키를 길게 눌러 이모지 창 열기", "이모티콘 ?123"},
+            {"keys", "🌐︎를 길게 눌러 언어 고르기", "지구본 언어 전환 키 한국어 영어 일본어 중국어 말풍선 팝업"},
             {"keys", "기능키 길게 누르기 기능 편집", "롱프레스 기능"},
             {"keys", "기능키 길게 누르기 기능 완전 사용자화", "롱프레스 기능 커스텀"},
             {"input", "쌍자음 인식 시간", "연속 탭 된소리 ㄲ ㅆ 시간"},
@@ -1840,6 +1841,11 @@ public final class SettingsActivity extends Activity {
         standard.addView(toggle("기호 키를 길게 눌러 이모지 창 열기",
                 "기호 키(숫자 자판의 ?123 포함)를 길게 누르면 이모지 창을 엽니다.",
                 Prefs.MODE_KEY_LONG_PRESS, prefs.modeKeyLongPress()));
+        standard.addView(toggle("🌐︎를 길게 눌러 언어 고르기",
+                "🌐︎를 길게 누르면 시스템 입력기 선택 창 대신, 다른 키를 길게 누를 때처럼 말풍선이 올라와 "
+                        + "켜 둔 언어(한국어·영어, 실험실에서 켠 일본어·중국어) 중에서 고릅니다. "
+                        + "손가락을 떼지 않은 채 원하는 언어로 옮긴 뒤 떼세요.",
+                Prefs.GLOBE_LANG_POPUP, prefs.globeLangPopup()));
         View customGroup = subGroup(
                 button("기능키 길게 누르기 기능 편집", v ->
                         startActivity(SwipeActionEditorActivity.intent(this,

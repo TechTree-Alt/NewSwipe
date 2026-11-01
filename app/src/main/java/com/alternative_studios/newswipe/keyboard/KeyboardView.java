@@ -1442,6 +1442,11 @@ public final class KeyboardView extends View {
         } else if (k.type == Key.DELETE) {
             p.mode = REPEAT;
             repeatRunnable.run();
+        } else if (k.type == Key.LANGUAGE && languagePopup != null) {
+            // 언어 고르기 말풍선: 다른 키의 길게 누르기와 같은 말풍선에 켜 둔 언어를 놓는다 (지금 언어가 처음 골라져 있다).
+            p.mode = POPUP;
+            openPopup(p, languagePopup.clone(), languagePopupSelected);
+            if (listener != null) listener.onGesture();
         } else if (k.type == Key.LANGUAGE || k.type == Key.TO_SYMBOLS || k.type == Key.TO_LETTERS) {
             p.mode = CONSUMED;
             if (listener != null) {
@@ -1461,8 +1466,21 @@ public final class KeyboardView extends View {
         invalidate();
     }
 
+    /** 🌐︎를 길게 눌렀을 때 고를 언어 이름들과 지금 언어의 번호. null이면 원래대로 입력기 선택 창을 연다. */
+    private String[] languagePopup;
+    private int languagePopupSelected;
+
+    /** 🌐︎ 길게 누르기 말풍선의 언어들 (둘 이상일 때만 쓴다). null이면 끈다. */
+    public void setLanguagePopup(String[] labels, int selected) {
+        languagePopup = labels != null && labels.length >= 2 ? labels : null;
+        languagePopupSelected = selected;
+    }
+
     private void openPopup(Pointer p) {
-        String[] items = p.key.popup.clone();
+        openPopup(p, p.key.popup.clone(), 0);
+    }
+
+    private void openPopup(Pointer p, String[] items, int selected) {
         if (shiftState != 0 && upperCaseLayout()) {
             // 한 글자(é 같은 악센트 문자)만 Shift를 따른다. 두 글자 이상(단어)은 정해 둔 그대로 입력한다.
             for (int i = 0; i < items.length; i++) {
@@ -1489,7 +1507,7 @@ public final class KeyboardView extends View {
         popupLeft = Math.max(margin, Math.min(getWidth() - margin - w, popupLeft));
         popupTop = p.key.rect.top + gapY / 2 - rows * popupCellH - dp(4);
         popupTop = Math.max(-overflowTop, popupTop);
-        popupSelected = 0;
+        popupSelected = Math.max(0, Math.min(items.length - 1, selected));
         popupMoved = false;
     }
 

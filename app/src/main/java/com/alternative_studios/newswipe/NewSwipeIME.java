@@ -1608,6 +1608,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
         if (domainField && kind != KeyboardLayout.NUMBER) KeyboardLayout.useDomainPeriodPopup(l);
         keyboard.setLayout(l);
+        updateLanguagePopup();
         boolean shiftable = kind == KeyboardLayout.ENGLISH || kind == KeyboardLayout.CHINESE
                 || (kind == KeyboardLayout.JAPANESE && this.prefs.jaQwerty());
         if (!shiftable && shiftState != 0) setShift(0);
@@ -1874,6 +1875,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     @Override
     public void onPopupChar(Key key, String text) {
         lastWasSpace = false;
+        if (key.type == Key.LANGUAGE) {   // 🌐︎ 길게 누르기 말풍선에서 고른 언어
+            int i = java.util.Arrays.asList(LANGUAGE_LABELS).indexOf(text);
+            if (i >= 0 && !LANGUAGE_IDS[i].equals(currentLanguage())) switchLanguage(LANGUAGE_IDS[i]);
+            return;
+        }
         typeText(text, false);
     }
 
@@ -2504,6 +2510,29 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             default: next = "ko"; break;
         }
         switchLanguage(next);
+    }
+
+    /** 🌐︎ 길게 누르기 말풍선의 언어 (이름은 기호 자판의 돌아가기 키와 같다). */
+    private static final String[] LANGUAGE_IDS = {"ko", "en", CjkComposer.JA, CjkComposer.ZH};
+    private static final String[] LANGUAGE_LABELS = {"가", "ABC", "あ", "中"};
+
+    /** 설정에서 켰으면 🌐︎ 길게 누르기에 켜 둔 언어를 놓는다 (꺼 두었으면 원래대로 입력기 선택 창). */
+    private void updateLanguagePopup() {
+        if (keyboard == null) return;
+        if (!prefs.globeLangPopup()) {
+            keyboard.setLanguagePopup(null, 0);
+            return;
+        }
+        java.util.List<String> labels = new java.util.ArrayList<>();
+        int selected = 0;
+        String now = currentLanguage();
+        for (int i = 0; i < LANGUAGE_IDS.length; i++) {
+            String id = LANGUAGE_IDS[i];
+            if (i >= 2 && !cjkAvailable(id)) continue;
+            if (id.equals(now)) selected = labels.size();
+            labels.add(LANGUAGE_LABELS[i]);
+        }
+        keyboard.setLanguagePopup(labels.toArray(new String[0]), selected);
     }
 
     /** 지금 언어: "ko" | "en" | "ja" | "zh". */
