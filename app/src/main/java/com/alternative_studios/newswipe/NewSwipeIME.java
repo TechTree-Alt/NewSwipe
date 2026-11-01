@@ -2355,6 +2355,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             commitText(" ");
             return;
         }
+        if (japaneseFullWidthSpace()) {   // Gboard처럼 일본어 입력 중의 스페이스는 전각 공백
+            commitText("\u3000");
+            return;
+        }
         InputConnection ic = getCurrentInputConnection();
         if (ic == null) return;
         long now = SystemClock.uptimeMillis();
@@ -2843,7 +2847,13 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             else commitCjk(c.typeKana(comma ? "、" : "。"));
             return true;
         }
-        if (c.isEmpty()) return false;
+        if (c.isEmpty()) {
+            if (keyCode == KeyEvent.KEYCODE_SPACE && !event.isShiftPressed() && japaneseFullWidthSpace()) {
+                commitText("\u3000");
+                return true;
+            }
+            return false;
+        }
         switch (keyCode) {
             case KeyEvent.KEYCODE_SPACE:
                 commitCjk(c.space());
@@ -2878,6 +2888,14 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             }
         }
         return false;   // 다른 키는 조합을 확정한 뒤 앱에 넘긴다 (hwForward)
+    }
+
+    /**
+     * 일본어 입력 중 스페이스로 전각 공백(　)을 넣을지: Gboard의 기본값과 같다 (일본어 입력이면 전각, 영어·숫자는 반각).
+     * 실험실의 '반각 공백 쓰기'를 켜면 늘 반각이다 (Gboard의 '半角スペースの使用').
+     */
+    private boolean japaneseFullWidthSpace() {
+        return CjkComposer.JA.equals(cjkLang) && layoutKind == KeyboardLayout.JAPANESE && !prefs.jaHalfSpace();
     }
 
     /** 외장 키보드로 글자를 조합할 입력란인지 (숫자·전화번호 입력란 등은 키를 그대로 둔다). */

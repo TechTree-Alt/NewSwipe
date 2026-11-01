@@ -54,6 +54,8 @@ public final class Prefs {
     /** 일본어 자판 배열: "flick"(12키, 밀어서 입력) | "qwerty"(로마자). */
     public static final String CJK_JA_LAYOUT = "cjk_ja_layout";
     public static final String JA_FLICK = "flick", JA_QWERTY = "qwerty";
+    /** 일본어 자판에서 스페이스로 반각 공백을 넣는다. 끄면(기본) Gboard처럼 일본어 입력 중에는 전각 공백(　)을 넣는다. */
+    public static final String CJK_JA_HALF_SPACE = "cjk_ja_half_space";
     public static final String PAD_LEFT = "pad_left";                 // dp, 0~24
     public static final String PAD_RIGHT = "pad_right";               // dp, 0~24
     public static final String PAD_TOP = "pad_top";                   // dp, 0~24
@@ -1065,6 +1067,8 @@ public final class Prefs {
     public boolean cjkEnabled(String lang) { return sp.getBoolean(CJK_PREFIX + lang, false); }
 
     public void setCjkEnabled(String lang, boolean on) { sp.edit().putBoolean(CJK_PREFIX + lang, on).apply(); }
+
+    public boolean jaHalfSpace() { return sp.getBoolean(CJK_JA_HALF_SPACE, false); }
 
     public boolean jaQwerty() { return JA_QWERTY.equals(sp.getString(CJK_JA_LAYOUT, JA_FLICK)); }
 

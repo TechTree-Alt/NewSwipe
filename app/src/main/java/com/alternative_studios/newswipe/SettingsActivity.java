@@ -443,6 +443,7 @@ public final class SettingsActivity extends Activity {
             {"onehand", "키 높이", "한 손 모드 높이"},
             {"onehand", "세로 위치", "한 손 모드 위치 올리기"},
             {"lab", "일본어 자판", "일본어 히라가나 가타카나 한자 변환 플릭 로마자 사전 팩 japanese"},
+            {"lab", "반각 공백 쓰기", "일본어 스페이스 전각 공백 반각 공백 띄어쓰기"},
             {"lab", "중국어 자판", "중국어 병음 한자 간체 사전 팩 chinese pinyin"},
             {"lab", "아래로 밀기 엄격도", "스와이프 방향 판정 민감도"},
             {"lab", "위로 밀기 엄격도", "스와이프 방향 판정 민감도"},
@@ -1086,7 +1087,10 @@ public final class SettingsActivity extends Activity {
                         i -> prefs.raw().edit().putString(Prefs.CJK_JA_LAYOUT, i == 1 ? Prefs.JA_QWERTY : Prefs.JA_FLICK).apply()),
                 note("12키 플릭: 키를 누르면 あ단, 왼쪽·위·오른쪽·아래로 밀면 い·う·え·お단이 들어갑니다. "
                         + "゛ 키는 앞 글자의 탁점·반탁점·작은 글자를 차례로 바꿉니다. "
-                        + "스페이스로 변환 후보를 고르고 엔터로 확정합니다."))
+                        + "스페이스로 변환 후보를 고르고 엔터로 확정합니다."),
+                toggle("반각 공백 쓰기", "스페이스로 반각 공백을 넣습니다. 끄면 Gboard처럼 일본어를 입력하는 동안에는 "
+                        + "전각 공백(　)을 넣습니다 (변환 중에는 변환 후보를 고릅니다).",
+                        Prefs.CJK_JA_HALF_SPACE, prefs.jaHalfSpace()))
                 : subGroup(note("스페이스로 첫 후보를 넣고, 엔터는 병음을 그대로 넣습니다. 음절을 직접 나누려면 '를 씁니다 (xi'an)."));
         box.addView(toggle(name, "지구본 키로 " + (ja ? "일본어" : "중국어") + " 자판으로 바꿀 수 있게 합니다.",
                 Prefs.CJK_PREFIX + lang, prefs.cjkEnabled(lang), group));
