@@ -122,6 +122,7 @@ public final class CandidateView extends View {
 
     public void setCandidates(List<String> list, int highlight) {
         boolean same = list.equals(items);
+        if (same && highlight == this.highlight) return;   // 그대로면 다시 그리지 않는다
         items = list;
         this.highlight = highlight;
         if (!same) {

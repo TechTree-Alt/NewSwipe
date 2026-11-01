@@ -21,8 +21,10 @@ public final class PinyinConverter implements Converter {
             "b", "p", "m", "f", "d", "t", "n", "l", "g", "k", "h", "j", "q", "x", "zh", "ch", "sh", "r", "z", "c", "s",
             "y", "w"));
     /** 한 번 바꿀 때 사전을 찾는 횟수의 상한 (성모만 길게 쳐도 느려지지 않게). */
-    private static final int MAX_LOOKUPS = 30000;
+    private static final int MAX_LOOKUPS = 8000;
     private int lookups;
+    /** 이번 변환에서 위치마다 찾아 둔 음절 (같은 위치를 여러 번 지나므로 한 번만 만든다). */
+    private List<Object[]>[] sylCache;
 
     private final ConversionDictionary dict;
     private final Set<String> syllables = new HashSet<>();
@@ -81,7 +83,8 @@ public final class PinyinConverter implements Converter {
 
     private void walk(Lattice lat, String in, int start, int at, String key, int depth, boolean partial) {
         if (depth >= MAX_WORD_SYLLABLES || at >= in.length() && depth > 0) return;
-        for (Object[] s : syllablesAt(in, at)) {
+        if (sylCache[at] == null) sylCache[at] = syllablesAt(in, at);
+        for (Object[] s : sylCache[at]) {
             String k = key.isEmpty() ? (String) s[0] : key + "'" + s[0];
             if (++lookups > MAX_LOOKUPS) return;
             byte[] kb = ConversionDictionary.utf8(k);
@@ -89,7 +92,7 @@ public final class PinyinConverter implements Converter {
             if (!dict.startsWithUnit(lb, kb, SEP)) continue;   // 이 음절로 이어지는 단어가 없다
             int end = (Integer) s[1];
             boolean part = partial || (Integer) s[2] == 1;
-            if (dict.startsWith(lb, kb) && dict.key(lb).equals(k)) {
+            if (dict.isKey(lb, kb)) {
                 lat.add(new Lattice.Edge(start, end, lb, dict.bestCost(lb) + (part ? PARTIAL_PENALTY : 0), null, part));
             }
             walk(lat, in, start, end, k, depth + 1, part);
@@ -102,6 +105,9 @@ public final class PinyinConverter implements Converter {
         int n = in.length();
         if (n == 0) return out;
         lookups = 0;
+        @SuppressWarnings("unchecked")
+        List<Object[]>[] cache = new List[n + 1];
+        sylCache = cache;
         Lattice lat = new Lattice(n);
         // 처음의 '는 건너뛴다 (단어가 0에서 시작하도록 0→1 빈 칸을 잇는다).
         boolean[] seen = new boolean[n + 1];

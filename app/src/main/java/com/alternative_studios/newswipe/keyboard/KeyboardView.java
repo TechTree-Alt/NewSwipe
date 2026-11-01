@@ -318,9 +318,11 @@ public final class KeyboardView extends View {
         cancelAll();
         layout = l;
         // 같은 한자라도 일본어·중국어 글꼴 모양이 다르다: 자판 언어에 맞춰 그린다 (글꼴은 시스템 것을 쓴다).
-        Locale textLocale = l.kind == KeyboardLayout.JAPANESE ? Locale.JAPAN
-                : l.kind == KeyboardLayout.CHINESE ? Locale.SIMPLIFIED_CHINESE : Locale.getDefault();
-        if (!textLocale.equals(text.getTextLocale())) text.setTextLocale(textLocale);
+        // 한글·영어 자판은 처음 값(시스템 언어 목록)을 그대로 쓴다.
+        if (defaultTextLocales == null) defaultTextLocales = text.getTextLocales();
+        android.os.LocaleList want = l.kind == KeyboardLayout.JAPANESE ? new android.os.LocaleList(Locale.JAPAN)
+                : l.kind == KeyboardLayout.CHINESE ? new android.os.LocaleList(Locale.SIMPLIFIED_CHINESE) : defaultTextLocales;
+        if (!want.equals(text.getTextLocales())) text.setTextLocales(want);
         requestLayout();
         layoutKeys(getWidth(), getHeight());
         invalidate();
@@ -1485,6 +1487,8 @@ public final class KeyboardView extends View {
 
     /** 글자 자판의 스페이스바에 보일 언어 이름. null이면 비워 둔다. */
     private String spaceLabel;
+    /** 글자 Paint의 처음 언어 목록 (일본어·중국어 자판에서 바꿨다가 되돌린다). */
+    private android.os.LocaleList defaultTextLocales;
 
     public void setSpaceLabel(String label) {
         if (!java.util.Objects.equals(spaceLabel, label)) {

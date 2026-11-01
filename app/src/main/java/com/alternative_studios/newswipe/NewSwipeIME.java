@@ -781,8 +781,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         suggestBar.setVisibility(View.GONE);
         bar.addView(suggestBar, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
         // 일본어·중국어 변환 후보도 같은 자리에 뜬다 (조합 중인 동안, 막대 전체를 쓴다).
-        candidateBar = buildCandidateBar();
-        bar.addView(candidateBar, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+        // 그 언어를 처음 쓸 때 만든다 (ensureCandidateBar): 쓰지 않는 사람은 뷰를 만들지 않는다.
+        candidateBar = null;
         // 글자를 선택하면 같은 자리에 편집 칩(잘라내기·복사·붙여넣기·전체 선택)이 뜬다.
         editBar = buildEditBar();
         bar.addView(editBar, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
@@ -839,14 +839,16 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         toolbar.removeView(toolSpacer);
         toolbar.removeView(clipChipSlot);
         toolbar.removeView(suggestBar);
-        toolbar.removeView(candidateBar);
+        if (candidateBar != null) toolbar.removeView(candidateBar);
         toolbar.removeView(editBar);
         if (autofillBar != null) toolbar.removeView(autofillBar);
         for (String id : order[0]) toolbar.addView(toolButtonOf(id));
         toolbar.addView(toolSpacer, new LinearLayout.LayoutParams(0, 1, 1f));
         toolbar.addView(clipChipSlot, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
         toolbar.addView(suggestBar, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
-        toolbar.addView(candidateBar, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+        if (candidateBar != null) {
+            toolbar.addView(candidateBar, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+        }
         toolbar.addView(editBar, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
         if (autofillBar != null) {
             toolbar.addView(autofillBar, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
@@ -1508,7 +1510,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             if (autoEnglishDeclined != null && (restarting || autoEnglishDeclined.equals(fieldKey(info)))) return;
             autoEnglishDeclined = null;
             if (korean || cjkLang != null) {
-                commitComposing();
+                if (cjkComposing()) commitComposing();   // 한글은 예전처럼 건드리지 않는다 (이미 비워져 있다)
                 autoEnglishFrom = cjkLang;
                 setCjkLang(null);
                 korean = false;
@@ -2580,8 +2582,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 실험실에서 켰고 사전 팩도 있는 언어를 다시 정한다. 팩이 바뀌었으면 읽어 둔 사전을 버린다. */
     private void refreshCjkAvailability() {
         File dir = getFilesDir();
-        cfgJa = prefs.cjkEnabled(CjkComposer.JA) && CjkPack.installed(dir, CjkComposer.JA) != null;
-        cfgZh = prefs.cjkEnabled(CjkComposer.ZH) && CjkPack.installed(dir, CjkComposer.ZH) != null;
+        // 입력란마다 불리므로 팩 정보는 읽지 않고 파일이 있는지만 본다 (켜지 않았으면 그것도 보지 않는다).
+        cfgJa = prefs.cjkEnabled(CjkComposer.JA) && CjkPack.isInstalled(dir, CjkComposer.JA);
+        cfgZh = prefs.cjkEnabled(CjkComposer.ZH) && CjkPack.isInstalled(dir, CjkComposer.ZH);
         if (cjkPackChanges != CjkPack.changes()) {
             cjkPackChanges = CjkPack.changes();
             cjkComposers.clear();
@@ -2737,12 +2740,16 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /** 조합 상태만 비운다 (입력란은 건드리지 않는다: 커서를 옮겼거나 입력란을 떠났다). */
     private void resetCjk() {
+        if (cjkComposers.isEmpty() && candidateBar == null) return;   // 일본어·중국어를 쓴 적이 없다
         for (CjkComposer c : cjkComposers.values()) c.reset();
         updateCandidates();
     }
 
     /** 후보 막대(와 펼친 격자)를 조합기의 후보로 채운다. 후보가 없으면 감춘다. */
     private void updateCandidates() {
+        // 일본어·중국어를 쓰지 않으면 할 일이 없다 (커서가 움직일 때마다 불리므로 바로 돌아간다).
+        if (cjkLang == null && !cjkEnterConfirm && (candidateBar == null || candidateBar.getVisibility() != View.VISIBLE)) return;
+        if (cjkLang != null) ensureCandidateBar();
         if (candidateBar == null) return;
         CjkComposer c = cjkComposer();
         java.util.List<String> texts = new java.util.ArrayList<>();
@@ -2772,6 +2779,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
     }
 
+    /** 변환 후보 때문에 자동 완성 칩 줄을 감춰 두었는지. */
+    private boolean autofillHiddenForCandidates;
+
     /** 엔터 키를 조합 확정 모양으로 바꿔 두었는지. */
     private boolean cjkEnterConfirm;
 
@@ -2796,12 +2806,16 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
     };
 
-    private CandidateView buildCandidateBar() {
+    /** 후보 막대를 도구 막대의 추천 단어 자리 바로 뒤에 만든다 (일본어·중국어를 처음 쓸 때). */
+    private void ensureCandidateBar() {
+        if (candidateBar != null || toolbar == null || suggestBar == null) return;
         CandidateView v = new CandidateView(this, false);
         v.setTheme(theme);
         v.setListener(candidateListener);
         v.setVisibility(View.GONE);
-        return v;
+        candidateBar = v;
+        toolbar.addView(v, toolbar.indexOfChild(suggestBar) + 1,
+                new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
     }
 
     /** 후보를 자판 자리를 덮는 격자로 펼치거나 접는다. */
@@ -3409,8 +3423,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         boolean candidates = candidatesShown();
         boolean editing = !candidates && editShowing();   // 조합 중에는 변환 후보가 먼저다
         if (editBar != null) editBar.setVisibility(editing ? View.VISIBLE : View.GONE);
-        if (autofillBar != null && autofill != null) {
+        // 변환 후보가 떠 있는 동안만 자동 완성 칩 줄을 감추고, 후보가 사라지면 되돌린다 (그 밖에는 손대지 않는다).
+        if (autofillBar != null && autofill != null && (candidates || autofillHiddenForCandidates)) {
             autofillBar.setVisibility(!candidates && autofill.shown() ? View.VISIBLE : View.GONE);
+            autofillHiddenForCandidates = candidates;
         }
         boolean suggesting = (suggestBar != null && suggestBar.getVisibility() == View.VISIBLE) || autofillShowing()
                 || editing || candidates;

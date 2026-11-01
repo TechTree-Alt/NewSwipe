@@ -150,6 +150,11 @@ public final class ConversionDictionary {
         return len == q.length || keys[keyOff[i] + q.length] == sep;
     }
 
+    /** i번째 키가 q와 똑같은지 (문자열로 바꾸지 않고 비교한다). */
+    public boolean isKey(int i, byte[] q) {
+        return startsWith(i, q) && keyOff[i + 1] - keyOff[i] == q.length;
+    }
+
     /** q로 시작하는 키가 하나라도 있는지. */
     public boolean hasPrefix(byte[] q) {
         return startsWith(lowerBound(q), q);

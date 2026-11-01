@@ -157,6 +157,12 @@ public final class CjkPack {
         return new Info(p, license ? readText(new File(into, LICENSE)) : "", size(into));
     }
 
+    /** 이 언어의 팩이 설치되어 있는지 (파일이 있는지만 본다. 키보드가 입력란마다 부른다). */
+    public static boolean isInstalled(File filesDir, String lang) {
+        File dir = dir(filesDir, lang);
+        return new File(dir, MANIFEST).isFile() && new File(dir, DICT).isFile();
+    }
+
     /** 설치된 팩의 정보. 없으면 null. 화면 스레드에서 불러도 된다 (사전은 읽지 않는다). */
     public static Info installed(File filesDir, String lang) {
         File dir = dir(filesDir, lang), m = new File(dir, MANIFEST);

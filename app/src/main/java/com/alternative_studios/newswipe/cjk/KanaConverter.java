@@ -36,7 +36,7 @@ public final class KanaConverter implements Converter {
                 byte[] k = ConversionDictionary.utf8(in.substring(i, j));
                 int lb = dict.lowerBound(k);
                 if (!dict.startsWith(lb, k)) break;   // 이 읽기로 시작하는 단어가 더 없다
-                if (dict.key(lb).length() == j - i) {
+                if (dict.isKey(lb, k)) {
                     boolean shortKanji = j - i == 1 && !isKana(dict.firstText(lb));
                     lat.add(new Lattice.Edge(i, j, lb, dict.bestCost(lb) + (shortKanji ? SHORT_KANJI_PENALTY : 0), null));
                 }
