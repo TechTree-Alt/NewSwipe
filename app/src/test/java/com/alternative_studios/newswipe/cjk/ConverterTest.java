@@ -117,6 +117,30 @@ public class ConverterTest {
         assertEquals("こんにちは", romajiOf("konnnitiha"));
         assertEquals("ちゃ", romajiOf("cha"));
         assertEquals("らーめん", romajiOf("ra-menn"));
+        // nn은 다음 글자를 보고 정한다 (MS-IME와 같다)
+        assertEquals("こんにちは", romajiOf("konnichiha"));
+        assertEquals("おんな", romajiOf("onna"));
+        assertEquals("たんい", romajiOf("tan'i"));
+        assertEquals("しんぶん", romajiOf("shinbun"));
+        assertEquals("くぁ", romajiOf("kwa"));
+    }
+
+    @Test
+    public void pinyinExactSyllableBeforeExpanded() {
+        PinyinConverter p = new PinyinConverter(CjkTestData.dict(CjkTestData.ZH));
+        List<String> t = texts(p.convert("e", 20));
+        assertEquals("饿", t.get(0));   // 끝까지 친 e가 넓혀 찾은 er(而)보다 먼저
+        assertTrue(t.indexOf("而") > t.indexOf("额"));
+    }
+
+    @Test
+    public void pinyinAbbreviation() {
+        PinyinConverter p = new PinyinConverter(CjkTestData.dict(CjkTestData.ZH));
+        assertEquals("北京", p.convert("bj", 20).get(0).text);   // 성모만 쳐도 (简拼)
+        assertEquals("你好", p.convert("nh", 20).get(0).text);
+        assertEquals("北京", p.convert("beij", 20).get(0).text);
+        // 성모 뒤에 모음이 오면 음절을 이어 친 것이라 간이 병음으로 보지 않는다
+        for (Candidate c : p.convert("nihao", 20)) assertTrue(c.consumed == 2 || c.consumed == 5);
     }
 
     private static String romajiOf(String keys) {
@@ -166,6 +190,7 @@ public class ConverterTest {
         c.typeKana("゛");   // よ에는 탁점이 없어 작은 글자로
         assertEquals("きょ", c.composingText());
         c.typeKana("う");
+        assertEquals("きょう", c.composingText());
         assertNull(c.space());   // 스페이스: 첫 변환 후보를 조합 영역에 보인다
         assertEquals("今日", c.composingText());
         assertTrue(c.backspace());   // 변환 취소

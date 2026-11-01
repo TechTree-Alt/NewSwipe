@@ -126,7 +126,7 @@ public final class CjkComposer {
     /** 변환할 읽기 (일본어 로마자의 남은 n은 ん으로 본다). */
     private String convertible() {
         if (chinese()) return reading.toString();
-        return pending.equals("n") ? reading + "ん" : reading.toString();
+        return pending.equals("n") || pending.equals("nn") ? reading + "ん" : reading.toString();
     }
 
     /** 지금 읽기의 후보. 같은 읽기면 다시 찾지 않는다. */
@@ -150,7 +150,8 @@ public final class CjkComposer {
         } else {   // 중국어도 친 그대로 보인다 (커서를 옮기면 보이던 글자가 그대로 입력란에 남는다)
             b.append(reading);
         }
-        return b.append(pending).toString();
+        // 기다리는 nn은 이미 ん으로 보인다 (다음 글자에 따라 ん + な행이 될 수 있다).
+        return b.append(chinese() || !pending.equals("nn") ? pending : "ん").toString();
     }
 
     /** i번째 후보를 고른다. 읽기를 다 썼으면 확정할 글자 전체를 돌려주고 비운다. */

@@ -66,7 +66,11 @@ public final class Kana {
         put("wa", "わ"); put("wo", "を"); put("wi", "うぃ"); put("we", "うぇ"); put("wu", "う");
         put("shi", "し"); put("chi", "ち"); put("tsu", "つ"); put("fu", "ふ"); put("ji", "じ");
         put("si", "し"); put("ti", "ち"); put("tu", "つ"); put("hu", "ふ"); put("zi", "じ"); put("di", "ぢ"); put("du", "づ");
-        put("nn", "ん"); put("n'", "ん"); put("xn", "ん"); put("-", "ー");
+        put("n'", "ん"); put("xn", "ん"); put("-", "ー");   // nn은 아래 romaji()가 다음 글자를 보고 정한다
+        put("kwa", "くぁ"); put("gwa", "ぐぁ"); put("xka", "ゕ"); put("xke", "ゖ"); put("lka", "ゕ"); put("lke", "ゖ");
+        put("tha", "てゃ"); put("thu", "てゅ"); put("the", "てぇ"); put("tho", "てょ");
+        put("dha", "でゃ"); put("dhu", "でゅ"); put("dhe", "でぇ"); put("dho", "でょ");
+        put("wyi", "ゐ"); put("wye", "ゑ"); put("whi", "うぃ"); put("whe", "うぇ"); put("who", "うぉ");
         put("xtu", "っ"); put("ltu", "っ"); put("xtsu", "っ"); put("xya", "ゃ"); put("xyu", "ゅ"); put("xyo", "ょ");
         put("lya", "ゃ"); put("lyu", "ゅ"); put("lyo", "ょ"); put("xwa", "ゎ"); put("lwa", "ゎ");
         put("fa", "ふぁ"); put("fi", "ふぃ"); put("fe", "ふぇ"); put("fo", "ふぉ");
@@ -92,10 +96,19 @@ public final class Kana {
     /**
      * 로마자 조각을 가나로 바꾼다. 바꾼 가나는 out에 더하고, 아직 더 칠 글자를 기다리는 나머지를 돌려준다.
      * 예: "k" → 그대로 "k", "ka" → か, "kk" → っ + "k", "nk" → ん + "k".
+     * nn은 MS-IME처럼 다음 글자를 보고 정한다: 모음·y가 오면 ん + な행(onna → おんな, konnichiha → こんにちは),
+     * 자음이 오거나(n 포함) 끝나면 ん (konnnichiha → こんにちは, shinbunn → しんぶん). ん 뒤에 모음을 쓰려면 n'을 친다 (tan'i).
      */
     public static String romaji(String pending, StringBuilder out) {
         String p = pending;
         while (!p.isEmpty()) {
+            if (p.startsWith("nn")) {
+                if (p.length() == 2) return p;   // 다음 글자를 기다린다
+                char c = p.charAt(2);
+                out.append('ん');
+                p = "aiueoy".indexOf(c) >= 0 ? p.substring(1) : p.substring(2);
+                continue;
+            }
             String hit = ROMAJI.get(p);
             if (hit != null) {
                 out.append(hit);
@@ -117,7 +130,7 @@ public final class Kana {
 
     /** 칠 글자가 끝났을 때 남은 로마자를 마무리한다 (n → ん, 나머지는 그대로). */
     public static String finishRomaji(String pending) {
-        if (pending.equals("n")) return "ん";
+        if (pending.equals("n") || pending.equals("nn")) return "ん";
         return pending;
     }
 

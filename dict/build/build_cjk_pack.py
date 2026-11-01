@@ -68,9 +68,9 @@ HAN = re.compile(r'^[\u4e00-\u9fff\u3400-\u4dbf]+$')
 
 
 def toneless(s):
-    s = unicodedata.normalize('NFD', s.strip())
-    s = ''.join(c for c in s if not unicodedata.combining(c))
-    return s.replace('ü', 'v').replace('u\u0308', 'v').lower()
+    # ü(u + 두 점)는 성조 부호를 지우기 전에 v로 바꾼다. 그대로 지우면 두 점도 지워져 lü가 lu가 된다.
+    s = unicodedata.normalize('NFD', s.strip().lower()).replace('u\u0308', 'v')
+    return ''.join(c for c in s if not unicodedata.combining(c))
 
 
 def build_zh(a):
@@ -143,7 +143,8 @@ def kata2hira(s):
 
 # Mozc의 단어 비용은 품사 연결 비용과 함께 쓰도록 매겨져, 어간·접미사 같은 조각(出ん, 者, 古-)이 아주 싸다.
 # 앱은 연결 비용 없이 단어 비용만 쓰므로 이런 조각은 비용을 올려 문장을 잘게 자르지 않게 한다.
-FRAGMENT = ('接頭詞', '接尾', '非自立', '体言接続特殊', '仮定縮約', '文語', 'ガル接続', '未然ウ接続', '未然特殊')
+FRAGMENT = ('接頭詞', '接尾', '非自立', '体言接続特殊', '仮定縮約', '文語', 'ガル接続', '未然ウ接続', '未然特殊',
+            '連用ゴザイ接続', '連用デ接続', '連用ニ接続', '体言接続')
 FRAGMENT_COST = 3000
 FUNCTION = ('助詞', '助動詞')
 
@@ -175,15 +176,21 @@ def build_ja(a):
                 c += FRAGMENT_COST
             if not KANA.match(reading) or not surface or '\t' in surface:
                 continue
-            if kata2hira(surface) == reading and surface != reading:   # 가타카나 그대로는 앱이 만든다
-                continue
             if re.search(r'[A-Za-z0-9０-９]', surface):   # 숫자·로마자 표기(2, TOKYO)는 뺀다
                 continue
             k = (reading, surface)
+            if surface != reading and kata2hira(surface) == reading and tag.split(',')[0] in FUNCTION:
+                continue   # 조사·조동사의 가타카나 표기(デス, ゴザイマス)는 가타카나 입력 모드용이라 뺀다
             if surface == reading and tag.split(',')[0] in FUNCTION:
                 functional.add(k)
             if c < best.get(k, 1 << 30):
                 best[k] = c
+    # 가타카나 표기는 웹에서 모은 말이 섞여 있다(ゴザイマス 등). 같은 읽기에 다른 표기가 있으면 비용을 올려
+    # ラーメン처럼 가타카나로만 쓰는 말만 문장 변환에 쓰이게 한다.
+    # 고르는 순위에는 넣지 않고(넣으면 ペン 같은 말이 사전에서 밀려난다) 비용에만 더한다.
+    others = set(r for (r, s) in best if kata2hira(s) != r)
+    extra = {k: a.katakana_penalty for k in best
+             if k[1] != k[0] and kata2hira(k[1]) == k[0] and k[0] in others}
     ranked = sorted(best.items(), key=lambda x: x[1])
     # 가나 표기 단어는 가장 흔한 것(조사·어미 등)만 남긴다. 많이 넣으면 문장을 가나 조각으로 잘게 나눈다.
     kana_kept, chosen = 0, []
@@ -200,7 +207,7 @@ def build_ja(a):
     span = max(1, hi - lo)
     entries = {}
     for (r, s), c in chosen:
-        add(entries, r, s, round((c - lo) * 250 / span))
+        add(entries, r, s, min(255, round((c + extra.get((r, s), 0) - lo) * 250 / span)))
     print(f'ja: entries {len(chosen)}, keys {len(entries)}')
     return entries, {
         'name': a.name or '일본어 표준 사전', 'license': 'BSD-3-Clause, IPAdic',
@@ -222,6 +229,7 @@ def main():
     ap.add_argument('--mozc')
     ap.add_argument('--words', type=int, default=100000)
     ap.add_argument('--kana-words', type=int, default=300, help='일본어: 남길 가나 표기 단어 수')
+    ap.add_argument('--katakana-penalty', type=int, default=1000, help='일본어: 다른 표기가 있는 가타카나 표기에 더할 비용')
     ap.add_argument('--name')
     ap.add_argument('--version', default='')
     ap.add_argument('--license-file', help='데이터 라이선스 전문 (팩에 LICENSE.txt로 넣는다)')

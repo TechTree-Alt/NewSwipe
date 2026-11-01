@@ -16,6 +16,13 @@ public final class PinyinConverter implements Converter {
     /** 덜 친 마지막 음절을 넓혀 찾은 단어에 더하는 비용. */
     static final int PARTIAL_PENALTY = 25;
     private static final int MAX_SYLLABLE = 6, MAX_WORD_SYLLABLES = 8;
+    /** 간이 병음(简拼)으로 쓰는 성모: 이것만 쳐도 그 성모로 시작하는 음절로 본다 (nh → 你好, bj → 北京). */
+    private static final Set<String> INITIALS = new HashSet<>(java.util.Arrays.asList(
+            "b", "p", "m", "f", "d", "t", "n", "l", "g", "k", "h", "j", "q", "x", "zh", "ch", "sh", "r", "z", "c", "s",
+            "y", "w"));
+    /** 한 번 바꿀 때 사전을 찾는 횟수의 상한 (성모만 길게 쳐도 느려지지 않게). */
+    private static final int MAX_LOOKUPS = 30000;
+    private int lookups;
 
     private final ConversionDictionary dict;
     private final Set<String> syllables = new HashSet<>();
@@ -55,7 +62,11 @@ public final class PinyinConverter implements Converter {
             int end = i + len;
             int next = end < n && in.charAt(end) == '\'' ? end + 1 : end;
             if (syllables.contains(norm)) out.add(new Object[]{norm, next, 0});
-            if (end == n) {   // 마지막: 덜 친 음절을 그 음절로 시작하는 음절들로 넓힌다
+            // 마지막 조각은 덜 친 음절로, 가운데의 성모만 친 조각은 간이 병음으로 보고 그 음절들로 넓힌다.
+            // 성모 바로 뒤에 모음이 오면 음절을 이어 친 것이다 (nihao의 h는 hao의 시작이지 간이 병음이 아니다).
+            boolean initialOnly = INITIALS.contains(norm) && !syllables.contains(norm)
+                    && (end >= n || "aeiouv".indexOf(in.charAt(end)) < 0);
+            if (end == n || initialOnly) {
                 List<String> more = byPrefix.get(norm);
                 if (more != null) for (String m : more) out.add(new Object[]{m, next, 1});
             }
@@ -72,15 +83,16 @@ public final class PinyinConverter implements Converter {
         if (depth >= MAX_WORD_SYLLABLES || at >= in.length() && depth > 0) return;
         for (Object[] s : syllablesAt(in, at)) {
             String k = key.isEmpty() ? (String) s[0] : key + "'" + s[0];
+            if (++lookups > MAX_LOOKUPS) return;
             byte[] kb = ConversionDictionary.utf8(k);
             int lb = dict.lowerBound(kb);
             if (!dict.startsWithUnit(lb, kb, SEP)) continue;   // 이 음절로 이어지는 단어가 없다
             int end = (Integer) s[1];
             boolean part = partial || (Integer) s[2] == 1;
             if (dict.startsWith(lb, kb) && dict.key(lb).equals(k)) {
-                lat.add(new Lattice.Edge(start, end, lb, dict.bestCost(lb) + (part ? PARTIAL_PENALTY : 0), null));
+                lat.add(new Lattice.Edge(start, end, lb, dict.bestCost(lb) + (part ? PARTIAL_PENALTY : 0), null, part));
             }
-            if (!part) walk(lat, in, start, end, k, depth + 1, false);
+            walk(lat, in, start, end, k, depth + 1, part);
         }
     }
 
@@ -89,6 +101,7 @@ public final class PinyinConverter implements Converter {
         List<Candidate> out = new ArrayList<>();
         int n = in.length();
         if (n == 0) return out;
+        lookups = 0;
         Lattice lat = new Lattice(n);
         // 처음의 '는 건너뛴다 (단어가 0에서 시작하도록 0→1 빈 칸을 잇는다).
         boolean[] seen = new boolean[n + 1];
@@ -119,7 +132,8 @@ public final class PinyinConverter implements Converter {
         // 처음에서 시작하는 단어: 많이 덮는 것부터, 같으면 자주 쓰는 것부터.
         List<Lattice.Edge> starts = new ArrayList<>(lat.edgesFrom(first));
         starts.removeIf(e -> e.dictIndex < 0);
-        starts.sort((a, b) -> a.to != b.to ? b.to - a.to : a.cost - b.cost);
+        // 같은 길이면 끝까지 친 음절로 찾은 단어를 덜 친 음절로 넓혀 찾은 단어보다 앞세운다 (e → 饿, 그 뒤에 er → 而).
+        starts.sort((a, b) -> a.to != b.to ? b.to - a.to : a.partial != b.partial ? (a.partial ? 1 : -1) : a.cost - b.cost);
         List<ConversionDictionary.Entry> es = new ArrayList<>();
         for (Lattice.Edge e : starts) {
             if (out.size() >= max) break;

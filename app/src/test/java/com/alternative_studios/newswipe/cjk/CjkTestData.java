@@ -38,7 +38,8 @@ final class CjkTestData {
             "ni=你:10,呢:20,泥:40", "hao=好:10,号:30", "ma=吗:10,妈:20", "ni'hao=你好:5", "hao'ma=号码:30",
             "xi=西:10,系:20", "an=安:10", "xian=先:10,县:20", "xi'an=西安:30", "wo=我:5", "men=们:10",
             "wo'men=我们:5", "zhong=中:10", "guo=国:10", "zhong'guo=中国:5", "he=和:10", "hui=会:10",
-            "ni'hui=你会:20",
+            "ni'hui=你会:20", "e=饿:40,额:45", "er=而:5,二:8", "bei=北:10", "jing=京:10", "bei'jing=北京:10",
+            "bei'jin=背筋:90",
     };
 
     static final String[] JA = {

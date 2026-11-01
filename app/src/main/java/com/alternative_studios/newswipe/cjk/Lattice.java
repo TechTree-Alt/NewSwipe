@@ -12,13 +12,20 @@ final class Lattice {
     static final class Edge {
         final int from, to, dictIndex, cost;
         final String literal;
+        /** 덜 친 음절(마지막 음절의 앞부분, 성모만 친 음절)로 찾은 단어인지. 같은 길이면 끝까지 친 단어를 앞세운다. */
+        final boolean partial;
 
         Edge(int from, int to, int dictIndex, int cost, String literal) {
+            this(from, to, dictIndex, cost, literal, false);
+        }
+
+        Edge(int from, int to, int dictIndex, int cost, String literal, boolean partial) {
             this.from = from;
             this.to = to;
             this.dictIndex = dictIndex;
             this.cost = cost;
             this.literal = literal;
+            this.partial = partial;
         }
     }
 

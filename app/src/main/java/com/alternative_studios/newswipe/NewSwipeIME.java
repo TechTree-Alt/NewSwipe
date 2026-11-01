@@ -610,6 +610,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         content.setClipChildren(false);
         candidateGrid = null;   // 예전 화면의 격자는 버린다
         candidateGridOpen = false;
+        cjkEnterConfirm = false;   // 새 자판의 엔터 키는 원래 모양이다
         keyboard = new KeyboardView(this);
         keyboard.setListener(this);
         keyboard.setTheme(theme);
@@ -2653,6 +2654,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private static final String ZH_PUNCT_FROM = ",.?!:;()", ZH_PUNCT_TO = "，。？！：；（）";
     /** 일본어 읽기에 그대로 넣는 기호 (변환하면 그대로 남는다). */
     private static final String JA_READING_MARKS = "゛、。ー「」『』（）？！…・～";
+    private static final String JA_ASCII_FROM = "?!~", JA_ASCII_TO = "？！～";
 
     private static boolean jaReadingText(String s) {
         for (int i = 0; i < s.length(); i++) {
@@ -2681,6 +2683,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             }
         } else if (prefs.jaQwerty() && ((ch >= 'a' && ch <= 'z') || ch == '-')) {
             done = c.typeLetter(ch);
+        } else if (ch != 0 && JA_ASCII_FROM.indexOf(ch) >= 0) {   // 길게 눌러 고른 ?·!·~는 전각으로 읽기에 넣는다
+            done = c.typeKana(String.valueOf(JA_ASCII_TO.charAt(JA_ASCII_FROM.indexOf(ch))));
         } else if (jaReadingText(s)) {
             done = c.typeKana(s);
         } else {   // 숫자·영어 대문자·다른 기호: 조합을 그대로 확정하고 넣는다
@@ -2748,11 +2752,21 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (candidateGrid != null) candidateGrid.setCandidates(texts, highlight);
         boolean show = !texts.isEmpty();
         if (!show) showCandidateGrid(false);
+        // 조합 중에는 엔터가 확정만 하므로(보내거나 줄을 바꾸지 않는다) 확정 모양으로 보인다.
+        boolean composing = c != null && !c.isEmpty() && panel == PANEL_KEYBOARD;
+        if (keyboard != null && composing != cjkEnterConfirm) {
+            cjkEnterConfirm = composing;
+            EditorInfo ei = getCurrentInputEditorInfo();
+            keyboard.setEnterIcon(composing ? Icons.DONE : ei != null ? enterIcon(ei) : Icons.ENTER);
+        }
         if ((candidateBar.getVisibility() == View.VISIBLE) != show) {
             candidateBar.setVisibility(show ? View.VISIBLE : View.GONE);
             refreshToolbarVisibility();
         }
     }
+
+    /** 엔터 키를 조합 확정 모양으로 바꿔 두었는지. */
+    private boolean cjkEnterConfirm;
 
     private boolean candidatesShown() {
         return candidateBar != null && candidateBar.getVisibility() == View.VISIBLE;
@@ -2820,6 +2834,13 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (keyCode >= KeyEvent.KEYCODE_A && keyCode <= KeyEvent.KEYCODE_Z && !event.isShiftPressed()) {
             correctedTo = null;
             commitCjk(c.typeLetter((char) ('a' + keyCode - KeyEvent.KEYCODE_A)));
+            return true;
+        }
+        // 쉼표·온점: 일본어는 、。를 읽기에 넣고(변환해도 그대로 남는다), 중국어는 조합을 끝내고 ，。를 넣는다.
+        if ((keyCode == KeyEvent.KEYCODE_COMMA || keyCode == KeyEvent.KEYCODE_PERIOD) && !event.isShiftPressed()) {
+            boolean comma = keyCode == KeyEvent.KEYCODE_COMMA;
+            if (c.chinese()) commitCjk(c.commitBest() + (comma ? "，" : "。"));
+            else commitCjk(c.typeKana(comma ? "、" : "。"));
             return true;
         }
         if (c.isEmpty()) return false;
