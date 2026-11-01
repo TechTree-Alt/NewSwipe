@@ -186,7 +186,7 @@ public final class EmojiData {
     // ---------------------------------------------------------------- 추천 (이모지 창을 열 때)
 
     /** 추천에 보는 단어 수 (커서에서 가까운 쪽부터). */
-    private static final int SUGGEST_TOKENS = 4;
+    private static final int SUGGEST_TOKENS = 12;
     /** 이보다 많은 이모지에 붙은 키워드(얼굴·손 등)는 너무 흔해 추천에 쓰지 않는다. */
     private static final int GENERIC_KEYWORD = 24;
     /** 영어 단어 끝에 붙어도 같은 단어로 보는 꼬리 (cakes, partying …). */
