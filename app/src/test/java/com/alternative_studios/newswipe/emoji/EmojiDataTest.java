@@ -150,10 +150,10 @@ public class EmojiDataTest {
     @Test
     public void suggestLooksAtLastWordsOnly() throws IOException {
         EmojiData d = load();
-        // 커서에서 먼 단어(열여섯 번째 앞)는 보지 않는다.
-        String fourteen = "그냥 ".repeat(14).trim();
-        assertTrue(d.suggest("피자 " + fourteen + " 그냥", 16).isEmpty());
-        assertTrue(d.suggest("피자 " + fourteen, 16).contains("🍕"));
+        // 커서에서 먼 단어(열세 번째 앞)는 보지 않는다.
+        String eleven = "그냥 ".repeat(11).trim();
+        assertTrue(d.suggest("피자 " + eleven + " 그냥", 16).isEmpty());
+        assertTrue(d.suggest("피자 " + eleven, 16).contains("🍕"));
     }
 
     @Test

@@ -1754,10 +1754,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     /**
-     * 이모지 추천에 넘기는 커서 앞 글의 길이. 추천은 마지막 15단어만 보므로(EmojiData.SUGGEST_TOKENS) 15단어가 넉넉히
+     * 이모지 추천에 넘기는 커서 앞 글의 길이. 추천은 마지막 12단어만 보므로(EmojiData.SUGGEST_TOKENS) 12단어가 넉넉히
      * 들어갈 만큼만 읽는다 (한국어 한 단어는 띄어쓰기를 더해 대개 4~5글자, 영어는 6~7글자).
      */
-    private static final int EMOJI_SUGGEST_CONTEXT = 192;
+    private static final int EMOJI_SUGGEST_CONTEXT = 160;
     /** 이모지 추천을 맡길 때마다 올리는 번호 (화면 스레드에서만 쓴다). 창을 다시 열면 이전 추천을 버린다. */
     private int emojiSuggestSeq;
 
