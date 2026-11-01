@@ -1,0 +1,45 @@
+name: Japanese/Chinese pack
+
+# 일본어·중국어 사전 팩 릴리스: cjk-<버전> 태그(예: cjk-2026.11.1)를 올리면 dict/packs/ja-standard.zip과
+# zh-standard.zip을 릴리스로 게시한다. 앱 릴리스(v* 태그)·한국어 사전 팩(dict-* 태그)과 따로 낸다.
+on:
+  push:
+    tags: [ 'cjk-*' ]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # 태그의 버전과 두 팩 안 manifest.properties의 version이 같아야 한다.
+      - name: Check pack versions
+        run: |
+          want="${GITHUB_REF_NAME#cjk-}"
+          for lang in ja zh; do
+            got=$(unzip -p "dict/packs/$lang-standard.zip" manifest.properties | sed -n 's/^version=//p' | tr -d '\r')
+            echo "$lang: tag $want, pack $got"
+            if [ "$want" != "$got" ]; then
+              echo "::error::태그(cjk-$want)와 $lang 팩의 version($got)이 다릅니다."
+              exit 1
+            fi
+            cp "dict/packs/$lang-standard.zip" "$lang-standard-$want.zip"
+          done
+          echo "PACK_VERSION=$want" >> "$GITHUB_ENV"
+
+      - uses: softprops/action-gh-release@v3
+        with:
+          name: 일본어·중국어 사전 팩 ${{ env.PACK_VERSION }}
+          files: |
+            ja-standard-${{ env.PACK_VERSION }}.zip
+            zh-standard-${{ env.PACK_VERSION }}.zip
+          make_latest: false
+          # 앱의 '사전 팩 받는 곳'이 releases?q=ja-standard / zh-standard로 이 릴리스를 찾는다: 설명에서 파일 이름을 빼지 않는다.
+          body: |
+            NewSwipe 실험실의 일본어·중국어 자판을 위한 변환 사전 팩입니다. 앱에는 변환 기능만 들어 있어 이 팩을 가져와야 켤 수 있습니다.
+            - 일본어: ja-standard-${{ env.PACK_VERSION }}.zip (Mozc 공개 사전, BSD-3 + IPAdic)
+            - 중국어: zh-standard-${{ env.PACK_VERSION }}.zip (jieba·pypinyin, MIT)
+            앱 설정 › 실험실 › 일본어 자판 / 중국어 자판에서 '사전 팩 가져오기'로 고르세요. 데이터의 출처와 라이선스 전문은 팩 안의 LICENSE.txt에 있습니다.

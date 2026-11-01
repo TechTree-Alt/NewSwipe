@@ -47,7 +47,15 @@ public final class Prefs {
     public static final String CLIPBOARD_SENSITIVE = "clipboard_sensitive";   // 민감한 정보로 표시되었거나 비밀번호를 복사한 것도 기록에 저장
     public static final String CLIPBOARD_CHIP = "clipboard_chip";     // 방금 복사한 내용을 도구 막대에 칩으로
     public static final String ENGLISH_FIELDS = "english_fields";     // 이메일 입력란 등에서 영어 자판으로 시작
-    public static final String LANGUAGE = "language";                 // "ko" | "en"
+    public static final String LANGUAGE = "language";                 // "ko" | "en" | "ja" | "zh" (예전 앱은 en이 아니면 한글로 읽는다)
+    /** 실험실 '일본어·중국어 자판'의 값은 모두 이 말로 시작한다. 그 언어의 사전 팩을 가져와야 켤 수 있다. */
+    public static final String CJK_PREFIX = "cjk_";
+    public static final String CJK_JA = "cjk_ja", CJK_ZH = "cjk_zh";
+    /** 일본어 자판 배열: "flick"(12키, 밀어서 입력) | "qwerty"(로마자). */
+    public static final String CJK_JA_LAYOUT = "cjk_ja_layout";
+    public static final String JA_FLICK = "flick", JA_QWERTY = "qwerty";
+    /** 일본어 자판에서 스페이스로 반각 공백을 넣는다. 끄면(기본) Gboard처럼 일본어 입력 중에는 전각 공백(　)을 넣는다. */
+    public static final String CJK_JA_HALF_SPACE = "cjk_ja_half_space";
     public static final String PAD_LEFT = "pad_left";                 // dp, 0~24
     public static final String PAD_RIGHT = "pad_right";               // dp, 0~24
     public static final String PAD_TOP = "pad_top";                   // dp, 0~24
@@ -122,7 +130,15 @@ public final class Prefs {
     public static final String SWIPE_PICK_SUGGESTION = "swipe_pick_suggestion"; // 자판 왼쪽·가운데·오른쪽을 위로 밀어 추천 단어 입력
     public static final String TWO_FINGER_UNDO = "two_finger_undo";           // 두 손가락으로 밀어 실행 취소·다시 실행
     public static final String SWIPE_KEYBOARD_CUSTOM = "swipe_keyboard_custom"; // 키보드 밀기 완전 사용자화
-    public static final String SPACE_LANG_SWIPE = "space_lang_swipe";         // 스페이스바를 좌우로 밀어 한·영 전환
+    /** 🌐︎를 위로 밀면 켜 둔 언어를 세로로 늘어놓은 말풍선을 띄워 고른다 (기본 꺼짐). */
+    public static final String GLOBE_SWIPE_LANG = "globe_swipe_lang";
+    /** 🌐︎를 위로 밀었을 때 말풍선의 언어 차례 (위에서 아래, "ko,en,ja,zh"). 일본어·중국어는 켰을 때만 보인다. */
+    public static final String LANGUAGE_ORDER = "language_order";
+    /** 언어 ID: 한국어, 영어, 일본어, 중국어 (기본 차례). */
+    public static final String[] LANGUAGES = {"ko", "en", "ja", "zh"};
+    public static final String SPACE_LANG_SWIPE = "space_lang_swipe";         // 스페이스바를 좌우로 밀어 언어 전환
+    /** 글자 자판의 스페이스바에 지금 언어 이름(한국어·English·日本語·中文)을 띄운다 (기본 꺼짐). */
+    public static final String SPACE_LANG_LABEL = "space_lang_label";
     public static final String NUMBER_HINT_HIDDEN = "number_hint_hidden";     // 숫자 키만 길게 눌러 입력할 문자 힌트 없애기
     public static final String POPUP_HINT_HIDDEN = "popup_hint_hidden";       // 키 오른쪽 위의 길게 눌러 입력할 문자 힌트 없애기
     // 커서 이동 속도 (%, 100 = 기본). 스페이스바·문자 키, 좌우·상하 따로.
@@ -147,7 +163,7 @@ public final class Prefs {
     public static final String BOTTOM_KEY_ORDER = "bottom_key_order";         // 맨 아래 줄 기능키 순서 (BottomKeys)
     public static final String ENTER_KEY_HIDDEN = "enter_key_hidden";         // 글자·기호 자판 아래 줄의 엔터 키 없애기
     public static final String MODE_KEY_HIDDEN = "mode_key_hidden";           // 글자 자판·기호 자판의 기호 키(?123·가·ABC) 없애기
-    public static final String LANGUAGE_KEY_HIDDEN = "language_key_hidden";   // 글자 자판의 지구본(한·영 전환) 키 없애기
+    public static final String LANGUAGE_KEY_HIDDEN = "language_key_hidden";   // 글자 자판의 지구본(언어 전환) 키 없애기
     public static final String KEY_RADIUS = "key_radius";   // 키 모서리 곡률 dp, 0~24 (기본 7)
     public static final String KEY_SHADOW = "key_shadow";
     public static final String KEY_SHADOW_STRENGTH = "key_shadow_strength";   // %, 10~100
@@ -363,7 +379,7 @@ public final class Prefs {
         MENU_PREFIXES.put("layout", keys("balanced_", LANDSCAPE_SPLIT + "_", "swipe_fk_"));
         MENU_KEYS.put("theme", keys(THEME_MODE, ACCENT_MODE, ACCENT_COLOR, GRID_COLORS, NEUMORPHISM));
         MENU_KEYS.put("look", keys(KEYBOARD_HEIGHT, KEY_TEXT_SIZE, KEY_RADIUS, KEY_SHADOW, KEY_SHADOW_STRENGTH,
-                KEY_PREVIEW, POPUP_HINT_HIDDEN, NUMBER_HINT_HIDDEN, PAD_LEFT, PAD_RIGHT, PAD_TOP, PAD_BOTTOM, KEY_GAP_X, KEY_GAP_Y));
+                KEY_PREVIEW, POPUP_HINT_HIDDEN, NUMBER_HINT_HIDDEN, SPACE_LANG_LABEL, PAD_LEFT, PAD_RIGHT, PAD_TOP, PAD_BOTTOM, KEY_GAP_X, KEY_GAP_Y));
         MENU_KEYS.put("input", keys(AUTO_CAP, ENGLISH_FIELDS, DOUBLE_SPACE_PERIOD, DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT,
                 DOUBLE_TAP_CONSONANT_MS, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, SPACE_HIT_SHRINK,
                 SPACE_HIT_SHRINK_PCT));
@@ -375,7 +391,7 @@ public final class Prefs {
         MENU_PREFIXES.put("swipe", keys("swipe_custom_", "swipe_final_", "swipe_vowel_"));
         MENU_KEYS.put("swipefn", keys(FN_SWIPE_THRESHOLD, SPACE_CURSOR, SPACE_CURSOR_H, SPACE_CURSOR_V,
                 SPACE_CURSOR_SPEED_H, SPACE_CURSOR_SPEED_V, CHAR_CURSOR, CHAR_CURSOR_H, CHAR_CURSOR_V,
-                CHAR_CURSOR_SPEED_H, CHAR_CURSOR_SPEED_V, SPACE_LANG_SWIPE, SPACE_SELECT, TWO_FINGER_UNDO, SWIPE_KEYBOARD_CUSTOM, SWIPE_PICK_SUGGESTION,
+                CHAR_CURSOR_SPEED_H, CHAR_CURSOR_SPEED_V, SPACE_LANG_SWIPE, GLOBE_SWIPE_LANG, LANGUAGE_ORDER, SPACE_SELECT, TWO_FINGER_UNDO, SWIPE_KEYBOARD_CUSTOM, SWIPE_PICK_SUGGESTION,
                 SWIPE_FN_CUSTOM, SWIPE_TOOLBAR_CUSTOM, DELETE_WORD_SWIPE, MODE_KEY_EMOJI, TOOLBAR_SWIPE,
                 TOOL_EMOJI_SWIPE, TOOL_CLIPBOARD_SWIPE, TOOL_UNDO_SWIPE));
         MENU_PREFIXES.put("swipefn", keys("swipe_fn_", "swipe_toolbar_", "swipe_kb_"));
@@ -388,7 +404,7 @@ public final class Prefs {
                 CONFIRM_LEARNED_DELETE, AUTOFILL_INLINE));
         // 실험실: 대화면 별도 레이아웃과 대화면 키보드 사용자화의 값은 모두 large_로 시작한다.
         MENU_KEYS.put("lab", keys(SWIPE_DOWN_RATIO, SWIPE_UP_RATIO));
-        MENU_PREFIXES.put("lab", keys(LARGE_PREFIX, HW_PREFIX));
+        MENU_PREFIXES.put("lab", keys(LARGE_PREFIX, HW_PREFIX, CJK_PREFIX));
         MENU_KEYS.put("onehand", keys(ONE_HAND_WIDTH, ONE_HAND_WIDTH_LAND, ONE_HAND_HEIGHT, ONE_HAND_LIFT));
     }
 
@@ -642,6 +658,7 @@ public final class Prefs {
     public boolean popupHintHidden() { return sp.getBoolean(POPUP_HINT_HIDDEN, false); }
     /** 숫자 키(1~0)에만 길게 눌러 입력할 문자 힌트를 보이지 않게 하는지. */
     public boolean numberHintHidden() { return sp.getBoolean(NUMBER_HINT_HIDDEN, false); }
+    public boolean spaceLangLabel() { return sp.getBoolean(SPACE_LANG_LABEL, false); }
     public boolean deleteHitShrink() { return sp.getBoolean(DELETE_HIT_SHRINK, false); }
     public int deleteHitShrinkPct() { return sp.getInt(DELETE_HIT_SHRINK_PCT, 10); }
     public boolean spaceHitShrink() { return sp.getBoolean(SPACE_HIT_SHRINK, false); }
@@ -941,6 +958,27 @@ public final class Prefs {
 
     public boolean longPressDelete() { return sp.getBoolean(LONG_PRESS_DELETE, true); }
     public boolean modeKeyLongPress() { return sp.getBoolean(MODE_KEY_LONG_PRESS, true); }
+    public boolean globeSwipeLang() { return sp.getBoolean(GLOBE_SWIPE_LANG, false); }
+
+    /** 말풍선의 언어 차례: 네 언어가 모두 한 번씩 든다 (저장된 값에 없거나 모르는 언어는 기본 차례로 채운다). */
+    public String[] languageOrder() {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        String saved = sp.getString(LANGUAGE_ORDER, null);
+        if (saved != null) {
+            for (String id : saved.split(",")) {
+                if (java.util.Arrays.asList(LANGUAGES).contains(id) && !out.contains(id)) out.add(id);
+            }
+        }
+        for (String id : LANGUAGES) if (!out.contains(id)) out.add(id);
+        return out.toArray(new String[0]);
+    }
+
+    public void setLanguageOrder(String[] order) {
+        sp.edit().putString(LANGUAGE_ORDER, String.join(",", order)).apply();
+    }
+
+    /** '언어 순서 사용자화' 화면의 값. */
+    public void resetLanguageOrder() { sp.edit().remove(LANGUAGE_ORDER).apply(); }
     public boolean longPressCustom() { return sp.getBoolean(LONG_PRESS_CUSTOM, false); }
     public boolean modeKeyEmoji() { return sp.getBoolean(MODE_KEY_EMOJI, true); }
     public int deletePressMs() { return sp.getInt(DELETE_PRESS_MS, 350); }
@@ -1038,6 +1076,25 @@ public final class Prefs {
     }
 
     public boolean korean() { return !"en".equals(sp.getString(LANGUAGE, "ko")); }
+
+    /** 마지막으로 쓴 언어: "ko" | "en" | "ja" | "zh". */
+    public String language() {
+        String l = sp.getString(LANGUAGE, "ko");
+        return "en".equals(l) || "ja".equals(l) || "zh".equals(l) ? l : "ko";
+    }
+
+    public void setLanguage(String lang) {
+        sp.edit().putString(LANGUAGE, lang).apply();
+    }
+
+    /** 실험실에서 이 언어(ja·zh)의 자판을 켰는지. 사전 팩이 있는지는 따로 본다. */
+    public boolean cjkEnabled(String lang) { return sp.getBoolean(CJK_PREFIX + lang, false); }
+
+    public void setCjkEnabled(String lang, boolean on) { sp.edit().putBoolean(CJK_PREFIX + lang, on).apply(); }
+
+    public boolean jaHalfSpace() { return sp.getBoolean(CJK_JA_HALF_SPACE, false); }
+
+    public boolean jaQwerty() { return JA_QWERTY.equals(sp.getString(CJK_JA_LAYOUT, JA_FLICK)); }
 
     public void setKorean(boolean korean) {
         sp.edit().putString(LANGUAGE, korean ? "ko" : "en").apply();

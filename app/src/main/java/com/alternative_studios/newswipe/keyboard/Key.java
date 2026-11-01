@@ -13,7 +13,7 @@ public final class Key {
     public static final int TO_SYMBOLS = 5;
     /** 문자 자판으로 돌아가기 (가/ABC). */
     public static final int TO_LETTERS = 6;
-    /** 한·영 전환 (지구본). */
+    /** 언어 전환 (지구본). */
     public static final int LANGUAGE = 7;
     /** 기호 자판 1/2쪽 전환. */
     public static final int SYMBOL_PAGE = 8;
@@ -58,6 +58,8 @@ public final class Key {
     boolean hidden;
     /** 분리 키보드의 가운데 빈 자리(SPACER): 누르면 아무 키도 입력되지 않지만, 옆으로 밀면 커서를 옮길 수 있다. */
     boolean dragCursor;
+    /** 일본어 12키 플릭 키: 키 위에 네 방향 글자를 작게 그린다. */
+    boolean flick;
     /** 길게 눌러 연속 입력으로 정해 둔 글자여도 연속 입력을 쓰지 않는다 (이메일·인터넷 주소 입력란의 온점 키). */
     boolean noRepeat;
 

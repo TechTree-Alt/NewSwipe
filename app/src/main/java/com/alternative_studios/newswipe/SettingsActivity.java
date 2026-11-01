@@ -164,7 +164,7 @@ public final class SettingsActivity extends Activity {
             {"words", "추천, 학습 및 완성", "단어 추천, 학습, 단축어, 자동 완성"},
             {"onehand", "한 손 모드", "자판 폭·키 높이, 세로 위치"},
             {"backup", "설정 가져오기 및 내보내기", "모든 설정을 파일로 저장하거나 불러오기"},
-            {"lab", "실험실", "대화면 별도 레이아웃, 스와이프 방향 판정, 외장 키보드"},
+            {"lab", "실험실", "일본어·중국어 자판, 대화면 별도 레이아웃, 외장 키보드"},
     };
 
     /** 첫 화면 맨 위에 설정 메뉴와 따로 두는 항목. */
@@ -343,6 +343,7 @@ public final class SettingsActivity extends Activity {
             {"look", "키 누름 미리보기", "말풍선 팝업 확대"},
             {"look", "길게 눌러 입력할 문자 힌트 없애기", "힌트 숨기기 오른쪽 위"},
             {"look", "숫자 키 힌트 없애기", "힌트 숨기기"},
+            {"look", "스페이스바에 언어 이름 보이기", "스페이스 띄어쓰기 언어 표시 한국어 영어 일본어 중국어"},
             {"look", "왼쪽 여백", "패딩 간격"},
             {"look", "오른쪽 여백", "패딩 간격"},
             {"look", "위쪽 여백", "패딩 간격"},
@@ -390,7 +391,9 @@ public final class SettingsActivity extends Activity {
             {"swipefn", "좌우 이동 속도", "커서 이동 속도 스페이스바 트랙패드"},
             {"swipefn", "상하 이동 속도", "커서 이동 속도 스페이스바 트랙패드"},
             {"swipefn", "스페이스바를 밀어서 커서 이동", "커서 트랙패드 이동"},
-            {"swipefn", "스페이스바를 밀어서 언어 전환", "한영 전환 한/영 스와이프"},
+            {"swipefn", "스페이스바를 밀어서 언어 전환", "한영 전환 한/영 언어 바꾸기 스와이프"},
+            {"swipefn", "🌐︎을 위로 밀어 언어 고르기", "지구본 언어 전환 키 한국어 영어 일본어 중국어 말풍선 팝업 선택"},
+            {"swipefn", "언어 순서 사용자화", "지구본 언어 차례 순서 바꾸기 한국어 영어 일본어 중국어"},
             {"swipefn", "스페이스바를 길게 누른 뒤 밀어서 선택", "텍스트 선택 범위 드래그 블록"},
             {"swipefn", "⌫ 밀어서 단위 삭제", "백스페이스 단어 삭제 줄 삭제 지우기"},
             {"swipefn", "기호 키를 위로 밀어서 이모지 열기", "이모티콘 스와이프 ?123"},
@@ -440,6 +443,9 @@ public final class SettingsActivity extends Activity {
             {"onehand", "가로 모드 자판 폭", "한 손 모드 너비 가로"},
             {"onehand", "키 높이", "한 손 모드 높이"},
             {"onehand", "세로 위치", "한 손 모드 위치 올리기"},
+            {"lab", "일본어 자판", "일본어 히라가나 가타카나 한자 변환 플릭 로마자 사전 팩 japanese"},
+            {"lab", "반각 공백 쓰기", "일본어 스페이스 전각 공백 반각 공백 띄어쓰기"},
+            {"lab", "중국어 자판", "중국어 병음 한자 간체 사전 팩 chinese pinyin"},
             {"lab", "아래로 밀기 엄격도", "스와이프 방향 판정 민감도"},
             {"lab", "위로 밀기 엄격도", "스와이프 방향 판정 민감도"},
             {"lab", "대화면 기준", "태블릿 폴더블 큰 화면 dp"},
@@ -876,6 +882,9 @@ public final class SettingsActivity extends Activity {
         look.addView(toggle("숫자 키 힌트 없애기",
                 "숫자 키(1~0)에서만 길게 눌러 입력할 문자 힌트를 없앱니다.",
                 Prefs.NUMBER_HINT_HIDDEN, prefs.numberHintHidden()));
+        look.addView(toggle("스페이스바에 언어 이름 보이기",
+                "글자 자판의 스페이스바에 지금 쓰는 언어(한국어·English, 실험실의 日本語·中文)를 작게 보여 줍니다.",
+                Prefs.SPACE_LANG_LABEL, prefs.spaceLangLabel()));
         LinearLayout pad = section("여백");
         pad.addView(slider("왼쪽 여백", Prefs.PAD_LEFT, prefs.padLeftDp(), 0, 24, 1, "dp"));
         pad.addView(slider("오른쪽 여백", Prefs.PAD_RIGHT, prefs.padRightDp(), 0, 24, 1, "dp"));
@@ -1050,7 +1059,101 @@ public final class SettingsActivity extends Activity {
                 Prefs.LARGE_LAYOUT, prefs.largeLayout(), largeGroup));
         large.addView(largeGroup);
 
+        addCjkKeyboard(com.alternative_studios.newswipe.cjk.CjkComposer.JA);
+        addCjkKeyboard(com.alternative_studios.newswipe.cjk.CjkComposer.ZH);
         addHardwareKeyboard();
+    }
+
+    /**
+     * 실험실 '일본어 자판'·'중국어 자판'. 앱에는 변환 엔진만 들어 있어, 그 언어의 사전 팩을 가져와야 켤 수 있다
+     * (쓰지 않는 사람의 앱 크기를 늘리지 않는다). 켜면 지구본 키가 한글 → 영어 → 일본어 → 중국어 차례로 바꾼다.
+     */
+    private void addCjkKeyboard(String lang) {
+        boolean ja = com.alternative_studios.newswipe.cjk.CjkComposer.JA.equals(lang);
+        String name = ja ? "일본어 자판" : "중국어 자판";
+        LinearLayout box = section(name);
+        com.alternative_studios.newswipe.cjk.CjkPack.Info info =
+                com.alternative_studios.newswipe.cjk.CjkPack.installed(getFilesDir(), lang);
+        int req = ja ? REQ_CJK_JA : REQ_CJK_ZH;
+        String release = SOURCE_URL + "/releases?q=" + (ja ? "ja-standard" : "zh-standard") + "&expanded=true";
+        if (info == null) {
+            box.addView(note((ja ? "히라가나 입력(12키 플릭·로마자)과 한자·가타카나 변환을 씁니다. "
+                    : "병음으로 간체자를 입력합니다. ")
+                    + "앱에는 변환 기능만 들어 있어, 사전 팩을 가져와야 켤 수 있습니다. 단어 추천·자동 수정·학습은 쓰지 않습니다."));
+            box.addView(button("사전 팩 받는 곳", v -> openUrl(release)));
+            box.addView(iconButton("사전 팩 가져오기", Icons.IMPORT, v -> SettingsImport.pick(this, req)));
+            return;
+        }
+        View group = ja ? subGroup(choiceRow(new String[]{"12키 플릭", "로마자 (QWERTY)"}, prefs.jaQwerty() ? 1 : 0,
+                        i -> prefs.raw().edit().putString(Prefs.CJK_JA_LAYOUT, i == 1 ? Prefs.JA_QWERTY : Prefs.JA_FLICK).apply()),
+                note("12키 플릭: 키를 누르면 あ단, 왼쪽·위·오른쪽·아래로 밀면 い·う·え·お단이 들어갑니다. "
+                        + "゛ 키는 앞 글자의 탁점·반탁점·작은 글자를 차례로 바꿉니다. "
+                        + "스페이스로 변환 후보를 고르고 엔터로 확정합니다."),
+                toggle("반각 공백 쓰기", "스페이스로 반각 공백을 넣습니다. 끄면 Gboard처럼 일본어를 입력하는 동안에는 "
+                        + "전각 공백(　)을 넣습니다 (변환 중에는 변환 후보를 고릅니다).",
+                        Prefs.CJK_JA_HALF_SPACE, prefs.jaHalfSpace()))
+                : subGroup(note("스페이스로 첫 후보를 넣고, 엔터는 병음을 그대로 넣습니다. 음절을 직접 나누려면 '를 씁니다 (xi'an)."));
+        box.addView(toggle(name, "지구본 키로 " + (ja ? "일본어" : "중국어") + " 자판으로 바꿀 수 있게 합니다.",
+                Prefs.CJK_PREFIX + lang, prefs.cjkEnabled(lang), group));
+        box.addView(group);
+        StringBuilder b = new StringBuilder(info.name);
+        if (!info.version.isEmpty()) b.append(" ").append(info.version);
+        b.append("\n읽기 ").append(String.format(java.util.Locale.ROOT, "%,d", info.words)).append("개 · ")
+                .append(String.format(java.util.Locale.ROOT, "%.1f", info.bytes / 1048576.0)).append("MB");
+        if (!info.description.isEmpty()) b.append("\n").append(info.description);
+        if (!info.attribution.isEmpty()) {
+            b.append("\n출처: ").append(info.attribution);
+            if (!info.license.isEmpty()) b.append(" (").append(info.license).append(")");
+        }
+        box.addView(note(b.toString()));
+        if (!info.licenseText.isEmpty()) {
+            box.addView(button("사전 팩의 라이선스 보기", v -> AppTheme.dialogBuilder(this)
+                    .setTitle(info.name)
+                    .setMessage(info.licenseText)
+                    .setPositiveButton("닫기", null)
+                    .show()));
+        }
+        box.addView(iconButton("다른 사전 팩 가져오기", Icons.IMPORT, v -> SettingsImport.pick(this, req)));
+        box.addView(trashButton("사전 팩 지우기", v -> AppTheme.dialogBuilder(this)
+                .setTitle("사전 팩 지우기")
+                .setMessage("가져온 사전 팩을 지우고 " + name + "을 끕니다. 다시 쓰려면 팩을 다시 가져와야 합니다.")
+                .setPositiveButton("지우기", (d, w) -> {
+                    prefs.setCjkEnabled(lang, false);
+                    com.alternative_studios.newswipe.cjk.CjkPack.remove(getFilesDir(), lang);
+                    Toast.makeText(this, "사전 팩을 지웠습니다", Toast.LENGTH_SHORT).show();
+                    recreate();
+                })
+                .setNegativeButton("취소", null)
+                .show()));
+    }
+
+    /** 고른 일본어·중국어 사전 팩을 검사해 설치하고, 그 언어의 자판을 켠다. */
+    private void importCjkPack(android.net.Uri uri, String lang) {
+        Toast.makeText(this, "사전 팩을 확인하는 중입니다…", Toast.LENGTH_SHORT).show();
+        android.content.Context app = getApplicationContext();
+        new Thread(() -> {
+            String message;
+            boolean ok = false;
+            try (java.io.InputStream in = app.getContentResolver().openInputStream(uri)) {
+                if (in == null) throw new java.io.IOException("파일을 열지 못했습니다");
+                com.alternative_studios.newswipe.cjk.CjkPack.Info info =
+                        com.alternative_studios.newswipe.cjk.CjkPack.install(in, app.getFilesDir(), lang);
+                message = "'" + info.name + "'을 가져와 " + com.alternative_studios.newswipe.cjk.CjkPack.languageName(lang)
+                        + " 자판을 켰습니다. 지구본 키로 바꿀 수 있습니다";
+                ok = true;
+            } catch (com.alternative_studios.newswipe.cjk.CjkPack.InvalidPackException e) {
+                message = "가져올 수 없는 사전 팩입니다: " + e.getMessage();
+            } catch (Exception e) {
+                message = "사전 팩을 가져오지 못했습니다: " + e.getMessage();
+            }
+            String m = message;
+            boolean done = ok;
+            runOnUiThread(() -> {
+                if (done) prefs.setCjkEnabled(lang, true);
+                Toast.makeText(app, m, Toast.LENGTH_LONG).show();
+                if (done && !isFinishing()) recreate();
+            });
+        }).start();
     }
 
     /** 실험실 '외장 키보드': 블루투스·USB 키보드의 한·영 전환 키, 언어 전환 알림, 도구 막대. */
@@ -1891,13 +1994,18 @@ public final class SettingsActivity extends Activity {
                 Prefs.SPACE_CURSOR, prefs.spaceCursor(), cursorGroup));
         standard.addView(cursorGroup);
         View lang = toggle("스페이스바를 밀어서 언어 전환",
-                "스페이스바를 좌우로 밀면 한·영을 전환합니다.",
+                "스페이스바를 좌우로 밀면 언어를 전환합니다.",
                 prefs.spaceLangSwipe(), on -> {
                     prefs.raw().edit().putBoolean(Prefs.SPACE_LANG_SWIPE, on).apply();
                     if (on && cursorHSwitch[0].isChecked()) cursorHSwitch[0].toggle();
                 });
         langSwitch[0] = switchOf(lang);
         standard.addView(lang);
+        View langOrder = subGroup(button("언어 순서 사용자화",
+                v -> startActivity(new Intent(this, LanguageOrderEditorActivity.class))));
+        standard.addView(toggle("🌐︎을 위로 밀어 언어 고르기", "🌐︎을 위로 밀어 언어를 선택합니다.",
+                Prefs.GLOBE_SWIPE_LANG, prefs.globeSwipeLang(), langOrder));
+        standard.addView(langOrder);
         standard.addView(toggle("⌫ 밀어서 단위 삭제",
                 "⌫를 왼쪽으로 밀면 단어를, 위로 밀면 줄에서 커서 왼쪽을 모두 지웁니다. "
                         + "커서가 줄의 맨 앞이면 위로 밀었을 때 윗줄과 합칩니다.",
@@ -2735,7 +2843,7 @@ public final class SettingsActivity extends Activity {
         return t;
     }
 
-    private static final int REQ_EXPORT = 1, REQ_IMPORT = 2, REQ_DICT = 3;
+    private static final int REQ_EXPORT = 1, REQ_IMPORT = 2, REQ_DICT = 3, REQ_CJK_JA = 4, REQ_CJK_ZH = 5;
     private boolean exportWithWords, exportWithEmoji, exportWithClipboard;
 
     /**
@@ -2880,6 +2988,9 @@ public final class SettingsActivity extends Activity {
             }).start();
         } else if (requestCode == REQ_DICT) {
             importDictionaryPack(uri);
+        } else if (requestCode == REQ_CJK_JA || requestCode == REQ_CJK_ZH) {
+            importCjkPack(uri, requestCode == REQ_CJK_JA ? com.alternative_studios.newswipe.cjk.CjkComposer.JA
+                    : com.alternative_studios.newswipe.cjk.CjkComposer.ZH);
         } else if (requestCode == REQ_IMPORT) {
             SettingsImport.onPicked(this, uri, () -> {
                 importGeneration++;

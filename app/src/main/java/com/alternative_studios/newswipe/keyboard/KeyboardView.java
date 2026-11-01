@@ -205,7 +205,7 @@ public final class KeyboardView extends View {
     /** 커서 이동이 시작된 뒤 손가락이 움직이는 거리당 커서가 움직이는 빠르기 (1 = 기본). 스페이스바·문자 키, 좌우·상하 따로. */
     private float gapSpeed = 1f;
     private float spaceSpeedH = 1f, spaceSpeedV = 1f, charSpeedH = 1f, charSpeedV = 1f;
-    /** 스페이스바를 좌우로 밀어 한·영 전환 (손을 떼면 바꾼다). 스페이스바 좌우 커서 이동과 함께 쓰지 않는다. */
+    /** 스페이스바를 좌우로 밀어 언어 전환 (손을 떼면 바꾼다). 스페이스바 좌우 커서 이동과 함께 쓰지 않는다. */
     private boolean spaceLangSwipe;
     /** 키보드 밀기 (한 손가락·두 손가락). 쓰지 않으면 null. */
     private KeyboardSwipes kbSwipes;
@@ -317,6 +317,12 @@ public final class KeyboardView extends View {
     public void setLayout(KeyboardLayout l) {
         cancelAll();
         layout = l;
+        // 같은 한자라도 일본어·중국어 글꼴 모양이 다르다: 자판 언어에 맞춰 그린다 (글꼴은 시스템 것을 쓴다).
+        // 한글·영어 자판은 처음 값(시스템 언어 목록)을 그대로 쓴다.
+        if (defaultTextLocales == null) defaultTextLocales = text.getTextLocales();
+        android.os.LocaleList want = l.kind == KeyboardLayout.JAPANESE ? new android.os.LocaleList(Locale.JAPAN)
+                : l.kind == KeyboardLayout.CHINESE ? new android.os.LocaleList(Locale.SIMPLIFIED_CHINESE) : defaultTextLocales;
+        if (!want.equals(text.getTextLocales())) text.setTextLocales(want);
         requestLayout();
         layoutKeys(getWidth(), getHeight());
         invalidate();
@@ -669,6 +675,12 @@ public final class KeyboardView extends View {
         return false;
     }
 
+    /** Shift를 켜면 로마자를 대문자로 보이는 자판 (영어, 중국어 병음, 일본어 로마자). */
+    private boolean upperCaseLayout() {
+        return layout.kind == KeyboardLayout.ENGLISH || layout.kind == KeyboardLayout.CHINESE
+                || layout.kind == KeyboardLayout.JAPANESE;
+    }
+
     private String displayLabel(Key k) {
         if (k.type == Key.CHAR && layout.isLetters() && shiftState != 0) return k.shifted;
         return k.label;
@@ -758,8 +770,16 @@ public final class KeyboardView extends View {
                 Icons.draw(c, Icons.EMOJI, cx, cy, Math.min(iconSize, dp(22)), icon);
                 return;
             case Key.SPACE:
-                // 글자·기호 자판의 스페이스바는 비워 두고, 숫자 자판에서만 ␣로 띄어쓰기 키임을 알린다.
-                if (layout.kind != KeyboardLayout.NUMBER) return;
+                // 글자·기호 자판의 스페이스바는 비워 두고(설정하면 글자 자판에 언어 이름), 숫자 자판에서만 ␣로 띄어쓰기 키임을 알린다.
+                if (layout.kind != KeyboardLayout.NUMBER) {
+                    if (spaceLabel != null && layout.isLetters() && r.width() > dp(48)) {
+                        text.setColor(theme.hint);
+                        text.setTypeface(Typeface.DEFAULT);
+                        text.setTextSize(spHint * 1.15f);
+                        drawCentered(c, spaceLabel, cx, cy);
+                    }
+                    return;
+                }
                 text.setColor(fg);
                 text.setTypeface(Typeface.DEFAULT);
                 text.setTextSize(spChar);
@@ -776,7 +796,11 @@ public final class KeyboardView extends View {
         text.setTextSize(longLabel ? spLabel : layout.kind == KeyboardLayout.NUMBER ? spNumber : spChar);
         drawCentered(c, label, cx, cy);
 
-        String hint = shiftState != 0 && layout.kind == KeyboardLayout.ENGLISH ? k.hintUpper() : k.hint();
+        if (k.flick) {
+            drawFlickHints(c, k, r, cx, cy);
+            return;
+        }
+        String hint = shiftState != 0 && upperCaseLayout() ? k.hintUpper() : k.hint();
         if (showHints && hint != null && layout.kind != KeyboardLayout.NUMBER && !isRepeatChar(k)
                 && !(numberHintHidden && KeyboardLayout.isDigit(k.label))) {
             text.setColor(theme.hint);
@@ -804,6 +828,18 @@ public final class KeyboardView extends View {
         Neu.drawRaised(c, k.rect.left + gapX / 2, k.rect.top + gapY / 2, k.rect.right - gapX / 2,
                 k.rect.bottom - gapY / 2, radius, neuOffset(), Neu.shadowBlur(theme, face, neuBlur()),
                 Neu.raisedLight(theme, face, k.rect.width() - gapX, k.rect.height() - gapY), Neu.darkShadow(theme, face));
+    }
+
+    /** 12키 플릭 키: 밀면 들어갈 글자를 키의 네 가장자리에 작게 그린다 (왼쪽·위·오른쪽·아래). */
+    private void drawFlickHints(Canvas c, Key k, RectF r, float cx, float cy) {
+        text.setColor(theme.hint);
+        text.setTypeface(Typeface.DEFAULT);
+        text.setTextSize(spHint);
+        float inset = Math.min(r.width(), r.height()) * 0.17f;
+        if (k.swipeLeft != null) drawCentered(c, k.swipeLeft, r.left + inset, cy);
+        if (k.swipeRight != null) drawCentered(c, k.swipeRight, r.right - inset, cy);
+        if (k.swipeUp != null) drawCentered(c, k.swipeUp, cx, r.top + inset);
+        if (k.swipeDown != null) drawCentered(c, k.swipeDown, cx, r.bottom - inset);
     }
 
     private void drawCentered(Canvas c, String s, float cx, float cy) {
@@ -1067,9 +1103,19 @@ public final class KeyboardView extends View {
                     moveFunctionKey(p, fnSlot, dx, dy, x, y);
                     break;
                 }
+                if (p.key.type == Key.LANGUAGE && languagePopup != null && -dy > fnSwipeThreshold
+                        && -dy > Math.abs(dx)) {
+                    // 🌐︎를 위로 밀었다: 켜 둔 언어를 세로로 늘어놓은 말풍선을 띄운다. 손가락을 위아래로 옮겨 고르고 떼면 바꾼다.
+                    cancelLongPress(p);
+                    p.mode = POPUP;
+                    openPopup(p, languagePopup.clone(), languagePopupSelected, true);
+                    popupMoved = true;   // 이미 밀고 있으므로 손가락 위치대로 바로 고른다
+                    if (listener != null) listener.onGesture();
+                    break;
+                }
                 if (p.key.type == Key.SPACE && spaceLangSwipe && Math.abs(dx) > fnSwipeThreshold
                         && Math.abs(dx) > Math.abs(dy)) {
-                    // 스페이스바를 좌우로 밀어 한·영 전환: 손을 떼면 바꾼다 (되돌리면 취소).
+                    // 스페이스바를 좌우로 밀어 언어 전환: 손을 떼면 바꾼다 (되돌리면 취소).
                     p.mode = FN_SWIPE;
                     p.fnAction = SwipeAction.LANGUAGE;
                     p.swipeDir = dx > 0 ? Key.SWIPE_RIGHT : Key.SWIPE_LEFT;
@@ -1435,9 +1481,40 @@ public final class KeyboardView extends View {
         invalidate();
     }
 
+    /** 🌐︎를 위로 밀었을 때 고를 언어 이름들(위에서 아래 차례)과 처음 골라져 있을 번호. null이면 쓰지 않는다. */
+    private String[] languagePopup;
+    private int languagePopupSelected;
+
+    /** 글자 자판의 스페이스바에 보일 언어 이름. null이면 비워 둔다. */
+    private String spaceLabel;
+    /** 글자 Paint의 처음 언어 목록 (일본어·중국어 자판에서 바꿨다가 되돌린다). */
+    private android.os.LocaleList defaultTextLocales;
+
+    public void setSpaceLabel(String label) {
+        if (!java.util.Objects.equals(spaceLabel, label)) {
+            spaceLabel = label;
+            invalidate();
+        }
+    }
+
+    /** 🌐︎를 위로 밀었을 때의 언어 말풍선 (위에서 아래 차례, 둘 이상일 때만 쓴다). null이면 끈다. */
+    public void setLanguagePopup(String[] labels, int selected) {
+        languagePopup = labels != null && labels.length >= 2 ? labels : null;
+        languagePopupSelected = selected;
+    }
+
     private void openPopup(Pointer p) {
-        String[] items = p.key.popup.clone();
-        if (shiftState != 0 && layout.kind == KeyboardLayout.ENGLISH) {
+        openPopup(p, p.key.popup.clone(), 0, false);
+    }
+
+    /** vertical: 항목을 한 줄에 하나씩 세로로 쌓는다 (언어 말풍선. 이름이 길어 칸을 넓게 쓴다). */
+    /** 세로 말풍선(언어)인지와 처음 골라져 있던 칸. 손가락이 말풍선 아래(키 쪽)로 내려오면 처음 칸으로 돌아간다. */
+    private boolean popupVertical;
+    private int popupInitial;
+
+    private void openPopup(Pointer p, String[] items, int selected, boolean vertical) {
+        popupVertical = vertical;
+        if (shiftState != 0 && upperCaseLayout()) {
             // 한 글자(é 같은 악센트 문자)만 Shift를 따른다. 두 글자 이상(단어)은 정해 둔 그대로 입력한다.
             for (int i = 0; i < items.length; i++) {
                 if (Key.isSingleChar(items[i])) items[i] = items[i].toUpperCase(Locale.ROOT);
@@ -1453,17 +1530,22 @@ public final class KeyboardView extends View {
         float widest = 0f;
         for (String item : items) widest = Math.max(widest, text.measureText(item));
         float pad = dp(10);
-        popupCellW = Math.max(popupCellW, Math.min(widest + pad, dp(64)));
+        popupCellW = Math.max(popupCellW, Math.min(widest + pad, dp(vertical ? 120 : 64)));
+        if (vertical) {
+            popupCellW = Math.max(popupCellW, widest + 2 * pad);
+            popupCellH = Math.min(popupCellH, dp(46));
+        }
         popupTextScale = widest + pad > popupCellW ? Math.max(0.3f, (popupCellW - pad) / widest) : 1f;
         float margin = dp(4);
-        popupCols = Math.max(1, Math.min(items.length, (int) ((getWidth() - 2 * margin) / popupCellW)));
+        popupCols = vertical ? 1 : Math.max(1, Math.min(items.length, (int) ((getWidth() - 2 * margin) / popupCellW)));
         int rows = (items.length + popupCols - 1) / popupCols;
         float w = popupCols * popupCellW;
         popupLeft = p.key.rect.centerX() - popupCellW / 2;
         popupLeft = Math.max(margin, Math.min(getWidth() - margin - w, popupLeft));
         popupTop = p.key.rect.top + gapY / 2 - rows * popupCellH - dp(4);
         popupTop = Math.max(-overflowTop, popupTop);
-        popupSelected = 0;
+        popupSelected = Math.max(0, Math.min(items.length - 1, selected));
+        popupInitial = popupSelected;
         popupMoved = false;
     }
 
@@ -1476,6 +1558,10 @@ public final class KeyboardView extends View {
             popupMoved = true;
         }
         int rows = (popupItems.length + popupCols - 1) / popupCols;
+        if (popupVertical && y > popupTop + rows * popupCellH) {
+            popupSelected = popupInitial;   // 아직 말풍선에 닿지 않았다 (떼면 그대로)
+            return;
+        }
         int col = (int) Math.floor((x - popupLeft) / popupCellW);
         int row = (int) Math.floor((y - popupTop) / popupCellH);
         col = Math.max(0, Math.min(popupCols - 1, col));

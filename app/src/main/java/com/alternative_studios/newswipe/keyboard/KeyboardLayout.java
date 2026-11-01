@@ -21,6 +21,10 @@ public final class KeyboardLayout {
     public static final int SYMBOLS = 2;
     public static final int SYMBOLS_2 = 3;
     public static final int NUMBER = 4;
+    /** 일본어 (12키 플릭 또는 로마자 QWERTY). 실험실에서 사전 팩을 가져와야 쓸 수 있다. */
+    public static final int JAPANESE = 5;
+    /** 중국어 병음 (QWERTY). 실험실에서 사전 팩을 가져와야 쓸 수 있다. */
+    public static final int CHINESE = 6;
 
     public static final class Row {
         public final Key[] keys;
@@ -45,7 +49,7 @@ public final class KeyboardLayout {
     }
 
     public boolean isLetters() {
-        return kind == KOREAN || kind == ENGLISH;
+        return kind == KOREAN || kind == ENGLISH || kind == JAPANESE || kind == CHINESE;
     }
 
     public float totalHeight() {
@@ -484,12 +488,20 @@ public final class KeyboardLayout {
     }
 
     public static KeyboardLayout symbols(boolean korean, Prefs prefs) {
-        return symbols(korean, prefs, prefs != null && prefs.numberRow());
+        return symbols(korean ? "가" : "ABC", prefs);
+    }
+
+    /** back: 글자 자판으로 돌아가는 키의 이름 (가, ABC, あ, 中). */
+    public static KeyboardLayout symbols(String back, Prefs prefs) {
+        return symbols(back, prefs, prefs != null && prefs.numberRow());
+    }
+
+    private static KeyboardLayout symbols(boolean korean, Prefs prefs, boolean five) {
+        return symbols(korean ? "가" : "ABC", prefs, five);
     }
 
     /** five: 숫자 줄을 켠 5줄 배열인지 (기본값을 찾을 때는 prefs 없이 두 배열을 모두 만든다). */
-    private static KeyboardLayout symbols(boolean korean, Prefs prefs, boolean five) {
-        String back = korean ? "가" : "ABC";
+    private static KeyboardLayout symbols(String back, Prefs prefs, boolean five) {
         List<Row> rows = new ArrayList<>();
         // 숫자 줄을 켜면 한글/영어 자판과 같은 5줄(첫 줄은 숫자 줄 높이)로 맞추고, 둘째 줄에 기호 줄을 더 넣는다.
         rows.add(charRow(new String[]{"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"},
@@ -516,11 +528,18 @@ public final class KeyboardLayout {
     }
 
     public static KeyboardLayout symbols2(boolean korean, Prefs prefs) {
-        return symbols2(korean, prefs, prefs != null && prefs.numberRow());
+        return symbols2(korean ? "가" : "ABC", prefs);
+    }
+
+    public static KeyboardLayout symbols2(String back, Prefs prefs) {
+        return symbols2(back, prefs, prefs != null && prefs.numberRow());
     }
 
     private static KeyboardLayout symbols2(boolean korean, Prefs prefs, boolean five) {
-        String back = korean ? "가" : "ABC";
+        return symbols2(korean ? "가" : "ABC", prefs, five);
+    }
+
+    private static KeyboardLayout symbols2(String back, Prefs prefs, boolean five) {
         List<Row> rows = new ArrayList<>();
         List<Key> r3 = new ArrayList<>();
         r3.add(fn(Key.SYMBOL_PAGE, "?123", 1.5f));
@@ -601,6 +620,82 @@ public final class KeyboardLayout {
             out.add(line);
         }
         return out;
+    }
+
+    // ---------------------------------------------------------------- 일본어·중국어 (실험실)
+
+    /**
+     * 12키 플릭 자판의 가나 키: {탭, 왼쪽, 위, 오른쪽, 아래}. 아래 줄의 ゛ 키는 앞 글자의 탁점·반탁점·작은 글자를 돌린다.
+     * 오른쪽 열은 ⌫, 장음 ー, 괄호, 물음표다.
+     */
+    private static final String[][][] FLICK_ROWS = {
+            {{"あ", "い", "う", "え", "お"}, {"か", "き", "く", "け", "こ"}, {"さ", "し", "す", "せ", "そ"}, null},
+            {{"た", "ち", "つ", "て", "と"}, {"な", "に", "ぬ", "ね", "の"}, {"は", "ひ", "ふ", "へ", "ほ"},
+                    {"ー", "～", "…", "・", null}},
+            {{"ま", "み", "む", "め", "も"}, {"や", "（", "ゆ", "）", "よ"}, {"ら", "り", "る", "れ", "ろ"},
+                    {"「", "」", "『", "』", null}},
+            {{"゛", null, null, null, null}, {"わ", "を", "ん", "ー", null}, {"、", "。", "？", "！", "…"},
+                    {"？", "！", null, null, null}},
+    };
+
+    /** 일본어 자판. qwerty면 로마자로 치는 QWERTY, 아니면 12키 플릭. 쉼표·온점 키는 、。로 바뀐다. */
+    public static KeyboardLayout japanese(Prefs prefs, boolean qwerty) {
+        if (qwerty) return cjkPunctuation(relabel(english(prefs), JAPANESE), "、", "。");
+        List<Row> rows = new ArrayList<>();
+        if (prefs != null && prefs.numberRow()) rows.add(numberRow(prefs));
+        for (String[][] r : FLICK_ROWS) {
+            Key[] keys = new Key[r.length];
+            for (int i = 0; i < r.length; i++) {
+                String[] f = r[i];
+                if (f == null) {
+                    keys[i] = fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1f);
+                    continue;
+                }
+                boolean side = i == 3;
+                Key k = side || f[0].equals("゛") || f[0].equals("、") ? fnChar(f[0], null) : ch(f[0], null);
+                k.swipeLeft = f[1];
+                k.swipeUp = f[2];
+                k.swipeRight = f[3];
+                k.swipeDown = f[4];
+                k.flick = true;
+                keys[i] = k;
+            }
+            rows.add(new Row(1f, keys));
+        }
+        rows.add(spaceRow(Key.TO_SYMBOLS, "?123", prefs));
+        return cjkPunctuation(new KeyboardLayout(JAPANESE, 4, rows), "、", "。");
+    }
+
+    /** 중국어 병음 자판: 영어 QWERTY와 같고, 쉼표·온점 키는 ，。로 바뀐다. */
+    public static KeyboardLayout chinese(Prefs prefs) {
+        return cjkPunctuation(relabel(english(prefs), CHINESE), "，", "。");
+    }
+
+    private static KeyboardLayout relabel(KeyboardLayout l, int kind) {
+        return new KeyboardLayout(kind, l.columns, java.util.Arrays.asList(l.rows));
+    }
+
+    /**
+     * 맨 아래 줄의 쉼표·온점 키를 전각 문장 부호로 바꾼다. 설정(길게 누르기 등)은 원래 자리 이름(",", ".")을 따른다.
+     * 사용자가 쉼표·온점 키를 다른 글자로 바꿨으면 그대로 둔다.
+     */
+    private static KeyboardLayout cjkPunctuation(KeyboardLayout l, String comma, String period) {
+        for (Row row : l.rows) {
+            for (int i = 0; i < row.keys.length; i++) {
+                Key k = row.keys[i];
+                if (k.type != Key.CHAR || !k.grayStyle) continue;
+                String to = ",".equals(k.label) ? comma : ".".equals(k.label) ? period : null;
+                if (to == null) continue;
+                Key c = new Key(Key.CHAR, to, to, to, ",".equals(k.swipeDown) ? comma : k.swipeDown, k.popup, k.weight);
+                c.swipeUp = ",".equals(k.swipeUp) ? comma : k.swipeUp;
+                c.swipeLeft = k.swipeLeft;
+                c.swipeRight = k.swipeRight;
+                c.grayStyle = true;
+                c.slot = k.slot();
+                row.keys[i] = c;
+            }
+        }
+        return l;
     }
 
     /** 숫자 입력란(전화번호, 숫자)용 자판. */

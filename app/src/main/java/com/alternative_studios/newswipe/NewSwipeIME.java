@@ -41,6 +41,9 @@ import com.alternative_studios.newswipe.clipboard.ClipImageProvider;
 import com.alternative_studios.newswipe.clipboard.ClipImages;
 import com.alternative_studios.newswipe.clipboard.ClipboardHistory;
 import com.alternative_studios.newswipe.clipboard.ClipboardPanel;
+import com.alternative_studios.newswipe.cjk.Candidate;
+import com.alternative_studios.newswipe.cjk.CjkComposer;
+import com.alternative_studios.newswipe.cjk.CjkPack;
 import com.alternative_studios.newswipe.emoji.EmojiData;
 import com.alternative_studios.newswipe.emoji.EmojiPanel;
 import com.alternative_studios.newswipe.emoji.EmojiRepository;
@@ -56,6 +59,7 @@ import com.alternative_studios.newswipe.keyboard.KeyboardLayout;
 import com.alternative_studios.newswipe.keyboard.KeyboardTheme;
 import com.alternative_studios.newswipe.keyboard.KeyboardView;
 import com.alternative_studios.newswipe.keyboard.SwipeAction;
+import com.alternative_studios.newswipe.ui.CandidateView;
 import com.alternative_studios.newswipe.ui.ClipChip;
 import com.alternative_studios.newswipe.ui.EditChip;
 import com.alternative_studios.newswipe.ui.IconButton;
@@ -158,6 +162,20 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     // 상태
     private boolean korean = true;
+    /** 실험실의 일본어("ja")·중국어("zh") 자판을 쓰는 중이면 그 언어. 한글·영어면 null (korean이 둘을 가른다). */
+    private String cjkLang;
+    /** 일본어·중국어 조합기 (사전을 읽은 뒤에 생긴다). 언어마다 하나씩 두고 다시 쓴다. */
+    private final java.util.Map<String, CjkComposer> cjkComposers = new java.util.HashMap<>();
+    /** 사전을 읽는 중인 언어. */
+    private final java.util.Set<String> cjkLoading = new java.util.HashSet<>();
+    /** 사전을 읽을 때의 {@link CjkPack#changes()}. 팩을 바꾸거나 지우면 다시 읽는다. */
+    private int cjkPackChanges = -1;
+    /** 실험실에서 켰고 사전 팩도 있는 언어 (applySettings에서 정한다). */
+    private boolean cfgJa, cfgZh;
+    /** 이메일 입력란 등에서 영어로 바꾸기 전에 쓰던 일본어·중국어 (그 칸을 떠나면 돌아간다). */
+    private String autoEnglishFrom;
+    private CandidateView candidateBar, candidateGrid;
+    private boolean candidateGridOpen;
     private int layoutKind = KeyboardLayout.KOREAN;
     private int panel = PANEL_KEYBOARD;
     private int shiftState;
@@ -251,7 +269,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 }
             });
         }
-        korean = prefs.korean();
+        String lang = prefs.language();
+        refreshCjkAvailability();
+        cjkLang = cjkAvailable(lang) ? lang : null;
+        korean = cjkLang == null && !"en".equals(lang);
         emojiRepo = new EmojiRepository(this, io);
         userWords = UserDictionary.shared(getFilesDir());
         usageHistory = UsageHistory.shared(getFilesDir());
@@ -333,6 +354,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             searchWaiting = false;
             releaseEmoji();
             if (!isInputViewShown()) {
+                releaseCjk();
                 suggester.release();
                 warmingKo = warmingEn = false;
                 runIo(this::releaseLearned);
@@ -354,6 +376,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         pruneClipboard();
         suggester.release();
         warmingKo = warmingEn = false;
+        releaseCjk();
         runIo(this::releaseLearned);
         correctionIgnored.clear();
     };
@@ -585,6 +608,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
         content = new FrameLayout(this);
         content.setClipChildren(false);
+        candidateGrid = null;   // 예전 화면의 격자는 버린다
+        candidateGridOpen = false;
+        cjkEnterConfirm = false;   // 새 자판의 엔터 키는 원래 모양이다
         keyboard = new KeyboardView(this);
         keyboard.setListener(this);
         keyboard.setTheme(theme);
@@ -754,6 +780,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         suggestBar = buildSuggestBar();
         suggestBar.setVisibility(View.GONE);
         bar.addView(suggestBar, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+        // 일본어·중국어 변환 후보도 같은 자리에 뜬다 (조합 중인 동안, 막대 전체를 쓴다).
+        // 그 언어를 처음 쓸 때 만든다 (ensureCandidateBar): 쓰지 않는 사람은 뷰를 만들지 않는다.
+        candidateBar = null;
         // 글자를 선택하면 같은 자리에 편집 칩(잘라내기·복사·붙여넣기·전체 선택)이 뜬다.
         editBar = buildEditBar();
         bar.addView(editBar, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
@@ -779,7 +808,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         attachToolSwipe(oneHandButton, ToolbarSwipes.ONE_HAND);
         // 기능이 있는 방향은 버튼이 처리하고, 없는 방향은 도구 막대를 그 방향으로 민 것으로 본다.
         // 자동 완성 칩 줄은 좌우로 밀어 스크롤하므로, 그 줄 위의 좌우 밀기는 도구 막대가 가로채지 않는다.
-        bar.setSwipeOwner((v, dir) -> v == autofillBar
+        bar.setSwipeOwner((v, dir) -> v == autofillBar || v == candidateBar
                 ? dir == Key.SWIPE_LEFT || dir == Key.SWIPE_RIGHT
                 : !SwipeAction.NONE.equals(toolButtonAction(toolSlotOf(v), dir)));
         return bar;
@@ -810,12 +839,16 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         toolbar.removeView(toolSpacer);
         toolbar.removeView(clipChipSlot);
         toolbar.removeView(suggestBar);
+        if (candidateBar != null) toolbar.removeView(candidateBar);
         toolbar.removeView(editBar);
         if (autofillBar != null) toolbar.removeView(autofillBar);
         for (String id : order[0]) toolbar.addView(toolButtonOf(id));
         toolbar.addView(toolSpacer, new LinearLayout.LayoutParams(0, 1, 1f));
         toolbar.addView(clipChipSlot, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
         toolbar.addView(suggestBar, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+        if (candidateBar != null) {
+            toolbar.addView(candidateBar, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+        }
         toolbar.addView(editBar, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
         if (autofillBar != null) {
             toolbar.addView(autofillBar, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
@@ -1068,6 +1101,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /** 설정값을 뷰에 적용한다. 설정 화면에서 돌아올 때마다 호출된다. */
     private void applySettings() {
+        refreshCjkAvailability();
+        if (cjkLang != null && !cjkAvailable(cjkLang)) {
+            switchLanguage("ko");   // 실험실에서 껐거나 팩을 지웠다
+        } else if (cjkLang != null) {
+            ensureCjk(cjkLang);
+        }
         boolean wasWords = cfgWords, wasLearn = cfgLearn, wasSuggest = cfgSuggest;
         cfgSuggest = prefs.suggestWords();
         cfgShortcuts = prefs.shortcutsEnabled();
@@ -1298,6 +1337,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
         applySettings();
         composer.reset();
+        resetCjk();
         hadComposing = false;
         // 다른 앱에 다녀오면 입력란에 조합 중 표시(밑줄)가 남아 있는 일이 있다. 조합 상태는 위에서 비웠으므로
         // 그 표시도 확정해 둔다. 그대로 두면 다음 글자의 setComposingText가 남은 조합 영역(마지막 글자)을 덮어 지운다.
@@ -1325,7 +1365,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 || cls == InputType.TYPE_CLASS_DATETIME) {
             setLayoutKind(KeyboardLayout.NUMBER);
         } else {
-            setLayoutKind(korean ? KeyboardLayout.KOREAN : KeyboardLayout.ENGLISH);
+            setLayoutKind(lettersKind());
         }
         keyboard.setEnterIcon(enterIcon(info));
         setShift(0);
@@ -1355,6 +1395,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         finishComposingOnLeave();
         super.onFinishInput();
         composer.reset();
+        resetCjk();
         hadComposing = false;
         mirror.forget();
         clearSuggestions();
@@ -1427,6 +1468,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         // 사용자가 커서를 옮기면 조합 중인 글자를 확정하고 조합을 끝낸다.
         if (hadComposing && (candidatesEnd == -1 || newSelStart != candidatesEnd || newSelEnd != candidatesEnd)) {
             composer.reset();
+            resetCjk();
             hadComposing = false;
             InputConnection ic = getCurrentInputConnection();
             if (ic != null) ic.finishComposingText();
@@ -1467,7 +1509,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (prefs.englishFields() && englishFieldFor(info)) {
             if (autoEnglishDeclined != null && (restarting || autoEnglishDeclined.equals(fieldKey(info)))) return;
             autoEnglishDeclined = null;
-            if (korean) {
+            if (korean || cjkLang != null) {
+                if (cjkComposing()) commitComposing();   // 한글은 예전처럼 건드리지 않는다 (이미 비워져 있다)
+                autoEnglishFrom = cjkLang;
+                setCjkLang(null);
                 korean = false;
                 autoEnglish = true;
             }
@@ -1476,7 +1521,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         autoEnglishDeclined = null;
         if (autoEnglish) {
             autoEnglish = false;
-            korean = true;
+            setCjkLang(cjkAvailable(autoEnglishFrom) ? autoEnglishFrom : null);
+            korean = cjkLang == null;
+            autoEnglishFrom = null;
         }
     }
 
@@ -1544,10 +1591,16 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 l = KeyboardLayout.english(prefs);
                 break;
             case KeyboardLayout.SYMBOLS:
-                l = KeyboardLayout.symbols(korean, prefs);
+                l = KeyboardLayout.symbols(backLabel(), prefs);
                 break;
             case KeyboardLayout.SYMBOLS_2:
-                l = KeyboardLayout.symbols2(korean, prefs);
+                l = KeyboardLayout.symbols2(backLabel(), prefs);
+                break;
+            case KeyboardLayout.JAPANESE:
+                l = KeyboardLayout.japanese(prefs, prefs.jaQwerty());
+                break;
+            case KeyboardLayout.CHINESE:
+                l = KeyboardLayout.chinese(prefs);
                 break;
             case KeyboardLayout.NUMBER:
                 l = KeyboardLayout.number();
@@ -1558,7 +1611,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
         if (domainField && kind != KeyboardLayout.NUMBER) KeyboardLayout.useDomainPeriodPopup(l);
         keyboard.setLayout(l);
-        if (kind != KeyboardLayout.ENGLISH && shiftState != 0) setShift(0);
+        updateLanguagePopup();
+        boolean shiftable = kind == KeyboardLayout.ENGLISH || kind == KeyboardLayout.CHINESE
+                || (kind == KeyboardLayout.JAPANESE && this.prefs.jaQwerty());
+        if (!shiftable && shiftState != 0) setShift(0);
         applySuggestLead();   // 분리 키보드인지에 따라 추천 단어 자리가 달라진다
     }
 
@@ -1591,7 +1647,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (p == PANEL_EMOJI) {
             ensureEmojiPanel();
             emojiPanel.setVisibility(View.VISIBLE);
-            emojiPanel.setBackLabel(korean ? "가" : "ABC");
+            emojiPanel.setBackLabel(backLabel());
             emojiPanel.reset();
             suggestEmoji();
         } else if (p == PANEL_CLIPBOARD) {
@@ -1599,10 +1655,13 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             clipPanel.setVisibility(View.VISIBLE);
             refreshClipboard();
         } else if (p == PANEL_SEARCH) {
-            if (!lettersLayout()) setLayoutKind(korean ? KeyboardLayout.KOREAN : KeyboardLayout.ENGLISH);
+            // 이모지 이름은 한글·영어로만 찾으므로 일본어·중국어에서는 검색창에만 영어 자판을 쓴다.
+            if (cjkLang != null) setLayoutKind(KeyboardLayout.ENGLISH);
+            else if (!lettersLayout()) setLayoutKind(lettersKind());
             keyboard.setEnterIcon(Icons.SEARCH);
             updateSearch();
         } else {
+            if (cjkLang != null && layoutKind == KeyboardLayout.ENGLISH) setLayoutKind(lettersKind());   // 검색에서 돌아왔다
             EditorInfo ei = getCurrentInputEditorInfo();
             if (ei != null) keyboard.setEnterIcon(enterIcon(ei));
         }
@@ -1611,7 +1670,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /** 도구 막대를 끈 상태로 자판을 보여 주는 중인지. 검색 패널은 도구 막대 자리에 검색창이 있어 해당하지 않는다. */
     private boolean toolbarGone() {
-        return !prefs.toolbar() && !toolbarOnlyNow() && !((cfgSuggest && suggestAllowed) || (!shortcuts.isEmpty() && shortcutAllowed))
+        // 일본어·중국어에서는 변환 후보가 뜰 자리를 늘 남겨 둔다 (후보가 뜰 때마다 자판이 움직이지 않게).
+        return cjkLang == null && !prefs.toolbar() && !toolbarOnlyNow() && !((cfgSuggest && suggestAllowed) || (!shortcuts.isEmpty() && shortcutAllowed))
                 && panel == PANEL_KEYBOARD && !autofillShowing() && !editShowing();
     }
 
@@ -1792,7 +1852,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 setLayoutKind(KeyboardLayout.SYMBOLS);
                 break;
             case Key.TO_LETTERS:
-                setLayoutKind(korean ? KeyboardLayout.KOREAN : KeyboardLayout.ENGLISH);
+                setLayoutKind(lettersKind());
                 updateAutoCap();
                 break;
             case Key.SYMBOL_PAGE:
@@ -1818,6 +1878,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     @Override
     public void onPopupChar(Key key, String text) {
         lastWasSpace = false;
+        if (key.type == Key.LANGUAGE) {   // 🌐︎를 위로 밀어 연 말풍선에서 고른 언어
+            int i = java.util.Arrays.asList(SPACE_NAMES).indexOf(text);
+            if (i >= 0 && !LANGUAGE_IDS[i].equals(currentLanguage())) switchLanguage(LANGUAGE_IDS[i]);
+            return;
+        }
         typeText(text, false);
     }
 
@@ -1851,7 +1916,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
      * 앱이 알려 준 커서 위치로 판단해 앱에 묻지 않는다. 위치를 모르면 지울 것이 있다고 본다.
      */
     private boolean nothingToDelete() {
-        if (!composer.isEmpty()) return false;
+        if (!composer.isEmpty() || cjkComposing()) return false;
         if (panel == PANEL_SEARCH) return search.length() == 0;
         return selStart == 0 && selEnd == 0;
     }
@@ -1866,6 +1931,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             search.setLength(0);
             searchComposing = "";
             updateSearch();
+            return;
+        }
+        if (cjkComposing()) {   // 조합 중인 읽기를 모두 지운다
+            cancelCjk();
             return;
         }
         commitComposing();
@@ -1904,6 +1973,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             search.setLength(0);
             searchComposing = "";
             updateSearch();
+            return;
+        }
+        if (cjkComposing()) {   // 조합 중인 읽기를 모두 지운다
+            cancelCjk();
             return;
         }
         commitComposing();
@@ -2163,6 +2236,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (s == null || s.isEmpty()) return;
         correctedTo = null;
         boolean letters = lettersLayout();
+        if (cjkTyping(letters)) {
+            typeCjk(s);
+            if (shiftState == 1 && !keyboard.isShiftHeld()) setShift(0);
+            return;
+        }
         if (korean && letters && s.length() == 1 && HangulComposer.isJamo(s.charAt(0))) {
             composer.input(s.charAt(0), tap, android.os.SystemClock.uptimeMillis());
             syncComposer();
@@ -2216,6 +2294,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
      * 조합 상태만 비우고 입력란의 조합 영역을 남겨 두면, 돌아와서 친 글자가 그 영역을 덮어 마지막 글자가 사라진다.
      */
     private void finishComposingOnLeave() {
+        if (cjkComposing() && panel != PANEL_SEARCH) {
+            commitComposing();   // 병음의 '처럼 조합 영역에만 보이던 글자가 남지 않게 읽기 그대로 확정한다
+            return;
+        }
         if (panel == PANEL_SEARCH || (!hadComposing && composer.isEmpty())) return;
         InputConnection ic = getCurrentInputConnection();
         if (ic != null) ic.finishComposingText();
@@ -2225,6 +2307,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     private void commitComposing() {
+        if (cjkComposing()) {
+            CjkComposer c = cjkComposer();
+            commitCjk(c.chinese() ? c.commitRaw() : c.enter());
+            return;
+        }
         if (composer.isEmpty() && !hadComposing) return;
         composer.flush();
         String s = composer.takeCommit();
@@ -2261,15 +2348,23 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     private void handleSpace() {
+        if (cjkComposing()) {
+            commitCjk(cjkComposer().space());
+            return;
+        }
         commitComposing();
         if (panel == PANEL_SEARCH) {
             commitText(" ");
             return;
         }
+        if (japaneseFullWidthSpace()) {   // Gboard처럼 일본어 입력 중의 스페이스는 전각 공백
+            commitText("\u3000");
+            return;
+        }
         InputConnection ic = getCurrentInputConnection();
         if (ic == null) return;
         long now = SystemClock.uptimeMillis();
-        if (prefs.doubleSpacePeriod() && lastWasSpace && now - lastSpaceTime < 1200) {
+        if (prefs.doubleSpacePeriod() && cjkLang == null && lastWasSpace && now - lastSpaceTime < 1200) {
             // 바로 앞이 스페이스라 고치거나 기억할 단어가 없다. 글자를 바꾸므로 앱에서 직접 읽는다.
             correctedTo = null;
             CharSequence before = ic.getTextBeforeCursor(2, 0);
@@ -2306,6 +2401,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** @param skipSelectionCheck 연속 삭제 중이라 선택 영역 확인을 건너뛴다. */
     private void handleDelete(boolean skipSelectionCheck) {
         lastWasSpace = false;
+        if (cjkComposing()) {
+            cjkComposer().backspace();
+            syncCjk(null);
+            return;
+        }
         if (!composer.isEmpty()) {
             composer.backspace();
             syncComposer();
@@ -2341,6 +2441,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     private void handleEnter() {
         correctedTo = null;
+        if (cjkComposing()) {   // 조합 중이면 엔터는 확정만 한다 (줄을 바꾸거나 보내지 않는다)
+            commitCjk(cjkComposer().enter());
+            return;
+        }
         commitComposing();
         if (panel == PANEL_SEARCH) return;
         EditorInfo ei = getCurrentInputEditorInfo();
@@ -2394,7 +2498,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 기호 키처럼: 기호 자판이면 글자 자판으로, 아니면 기호 자판으로 바꾼다. */
     private void toggleSymbols() {
         if (layoutKind == KeyboardLayout.SYMBOLS || layoutKind == KeyboardLayout.SYMBOLS_2) {
-            setLayoutKind(korean ? KeyboardLayout.KOREAN : KeyboardLayout.ENGLISH);
+            setLayoutKind(lettersKind());
             updateAutoCap();
         } else {
             commitComposing();
@@ -2403,7 +2507,53 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
     }
 
+    /** 지구본 키: 한글 → 영어 → (실험실에서 켰으면) 일본어 → 중국어 → 한글. */
     private void toggleLanguage() {
+        String now = currentLanguage(), next;
+        switch (now) {
+            case "ko": next = "en"; break;
+            case "en": next = cfgJa ? CjkComposer.JA : cfgZh ? CjkComposer.ZH : "ko"; break;
+            case CjkComposer.JA: next = cfgZh ? CjkComposer.ZH : "ko"; break;
+            default: next = "ko"; break;
+        }
+        switchLanguage(next);
+    }
+
+    /** 언어 전환 차례. */
+    private static final String[] LANGUAGE_IDS = {"ko", "en", CjkComposer.JA, CjkComposer.ZH};
+    /** 언어 이름: 스페이스바('자판 모양 > 스페이스바에 언어 이름 보이기')와 🌐︎를 위로 밀었을 때의 말풍선에 쓴다. */
+    private static final String[] SPACE_NAMES = {"한국어", "English", "日本語", "中文"};
+
+    /**
+     * 스페이스바의 언어 이름과, 설정에서 켰으면 🌐︎를 위로 밀 때의 언어 말풍선을 놓는다. 말풍선은 '언어 순서 사용자화'에서 정한
+     * 차례대로 위에서 아래로 늘 같은 자리에 놓인다 (켜 둔 언어만). 처음에는 지금 언어가 골라져 있다.
+     */
+    private void updateLanguagePopup() {
+        if (keyboard == null) return;
+        String now = currentLanguage();
+        int nowAt = java.util.Arrays.asList(LANGUAGE_IDS).indexOf(now);
+        keyboard.setSpaceLabel(prefs.spaceLangLabel() ? SPACE_NAMES[nowAt] : null);
+        if (!prefs.globeSwipeLang()) {
+            keyboard.setLanguagePopup(null, 0);
+            return;
+        }
+        java.util.List<String> names = new java.util.ArrayList<>();
+        int selected = 0;
+        for (String id : prefs.languageOrder()) {
+            int i = java.util.Arrays.asList(LANGUAGE_IDS).indexOf(id);
+            if (i >= 2 && !cjkAvailable(id)) continue;
+            if (i == nowAt) selected = names.size();
+            names.add(SPACE_NAMES[i]);
+        }
+        keyboard.setLanguagePopup(names.toArray(new String[0]), selected);
+    }
+
+    /** 지금 언어: "ko" | "en" | "ja" | "zh". */
+    private String currentLanguage() {
+        return cjkLang != null ? cjkLang : korean ? "ko" : "en";
+    }
+
+    private void switchLanguage(String next) {
         commitComposing();
         // 이메일 입력란 등에서 영어로 시작했어도 사용자가 직접 바꿨으면 그 선택을 따른다 (그 칸을 떠나도 되돌리지 않는다).
         if (autoEnglish) {
@@ -2411,18 +2561,364 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             autoEnglishDeclined = ei != null ? fieldKey(ei) : "";
         }
         autoEnglish = false;
-        korean = !korean;
+        autoEnglishFrom = null;
+        setCjkLang(cjkAvailable(next) ? next : null);
+        korean = cjkLang == null && !"en".equals(next);
         clearSuggestions();
         warmSuggester();
-        prefs.setKorean(korean);
+        prefs.setLanguage(currentLanguage());
         setShift(0);
-        if (layoutKind == KeyboardLayout.KOREAN || layoutKind == KeyboardLayout.ENGLISH) {
-            setLayoutKind(korean ? KeyboardLayout.KOREAN : KeyboardLayout.ENGLISH);
+        if (lettersKindOf(layoutKind)) {
+            setLayoutKind(lettersKind());
         } else {
             setLayoutKind(layoutKind);   // 기호 자판의 '가/ABC' 표시만 바뀐다.
         }
         updateAutoCap();
         if (panel == PANEL_SEARCH) updateSearch();
+    }
+
+    // ---------------------------------------------------------------- 일본어·중국어 (실험실)
+
+    /** 실험실에서 켰고 사전 팩도 있는 언어를 다시 정한다. 팩이 바뀌었으면 읽어 둔 사전을 버린다. */
+    private void refreshCjkAvailability() {
+        File dir = getFilesDir();
+        // 입력란마다 불리므로 팩 정보는 읽지 않고 파일이 있는지만 본다 (켜지 않았으면 그것도 보지 않는다).
+        cfgJa = prefs.cjkEnabled(CjkComposer.JA) && CjkPack.isInstalled(dir, CjkComposer.JA);
+        cfgZh = prefs.cjkEnabled(CjkComposer.ZH) && CjkPack.isInstalled(dir, CjkComposer.ZH);
+        if (cjkPackChanges != CjkPack.changes()) {
+            cjkPackChanges = CjkPack.changes();
+            cjkComposers.clear();
+        }
+    }
+
+    private boolean cjkAvailable(String lang) {
+        return CjkComposer.JA.equals(lang) ? cfgJa : CjkComposer.ZH.equals(lang) && cfgZh;
+    }
+
+    /** 일본어·중국어 자판으로 바꾸거나(lang) 그만 쓴다(null). 그 언어의 사전은 처음 쓸 때 백그라운드에서 읽는다. */
+    private void setCjkLang(String lang) {
+        if (!java.util.Objects.equals(lang, cjkLang)) {
+            resetCjk();
+            cjkLang = lang;
+        }
+        if (lang != null) ensureCjk(lang);
+        updateCandidates();
+    }
+
+    private void ensureCjk(String lang) {
+        if (cjkComposers.containsKey(lang) || cjkLoading.contains(lang)) return;
+        cjkLoading.add(lang);
+        final int gen = CjkPack.changes();
+        final File dir = getFilesDir();
+        runIo(() -> {
+            com.alternative_studios.newswipe.cjk.ConversionDictionary d = CjkPack.load(dir, lang);
+            CjkComposer c = d == null ? null : new CjkComposer(lang, d);   // 병음 음절표도 여기서 만든다
+            main.post(() -> {
+                cjkLoading.remove(lang);
+                if (c != null && gen == CjkPack.changes()) cjkComposers.put(lang, c);
+            });
+        });
+    }
+
+    /** 쓰지 않는 동안 사전을 놓아 준다 (다시 쓰면 읽는다). 조합 중이면 그대로 둔다. */
+    private void releaseCjk() {
+        if (!cjkComposing()) cjkComposers.clear();
+    }
+
+    private CjkComposer cjkComposer() {
+        return cjkLang == null ? null : cjkComposers.get(cjkLang);
+    }
+
+    /** 일본어·중국어 조합 중인 글자가 있는지. */
+    private boolean cjkComposing() {
+        CjkComposer c = cjkComposer();
+        return c != null && !c.isEmpty();
+    }
+
+    /** 지금 친 글자를 일본어·중국어 조합기로 보낼지 (그 언어의 글자 자판에서, 이모지 검색이 아닐 때). */
+    private boolean cjkTyping(boolean letters) {
+        return cjkLang != null && letters && panel == PANEL_KEYBOARD
+                && (layoutKind == KeyboardLayout.JAPANESE || layoutKind == KeyboardLayout.CHINESE);
+    }
+
+    /** 지금 언어의 글자 자판. */
+    private int lettersKind() {
+        if (CjkComposer.JA.equals(cjkLang)) return KeyboardLayout.JAPANESE;
+        if (CjkComposer.ZH.equals(cjkLang)) return KeyboardLayout.CHINESE;
+        return korean ? KeyboardLayout.KOREAN : KeyboardLayout.ENGLISH;
+    }
+
+    private static boolean lettersKindOf(int kind) {
+        return kind == KeyboardLayout.KOREAN || kind == KeyboardLayout.ENGLISH || kind == KeyboardLayout.JAPANESE
+                || kind == KeyboardLayout.CHINESE;
+    }
+
+    /** 기호 자판·이모지 창에서 글자 자판으로 돌아가는 키의 이름. */
+    private String backLabel() {
+        if (CjkComposer.JA.equals(cjkLang)) return "あ";
+        if (CjkComposer.ZH.equals(cjkLang)) return "中";
+        return korean ? "가" : "ABC";
+    }
+
+    /** 중국어 자판에서 조합을 끝내며 넣는 문장 부호는 전각으로. */
+    private static final String ZH_PUNCT_FROM = ",.?!:;()", ZH_PUNCT_TO = "，。？！：；（）";
+    /** 일본어 읽기에 그대로 넣는 기호 (변환하면 그대로 남는다). */
+    private static final String JA_READING_MARKS = "゛、。ー「」『』（）？！…・～";
+    private static final String JA_ASCII_FROM = "?!~", JA_ASCII_TO = "？！～";
+
+    private static boolean jaReadingText(String s) {
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            boolean kana = (c >= 'ぁ' && c <= 'ゖ') || (c >= 'ァ' && c <= 'ヶ');
+            if (!kana && JA_READING_MARKS.indexOf(c) < 0) return false;
+        }
+        return !s.isEmpty();
+    }
+
+    /** 일본어·중국어 자판에서 친 글자. */
+    private void typeCjk(String s) {
+        CjkComposer c = cjkComposer();
+        if (c == null) {   // 사전을 읽는 중이다 (처음 바꾼 직후 잠깐): 친 글자를 그대로 넣는다
+            commitText(s);
+            return;
+        }
+        char ch = s.length() == 1 ? s.charAt(0) : 0;
+        String done;
+        if (c.chinese()) {
+            if ((ch >= 'a' && ch <= 'z') || (ch == '\'' && !c.isEmpty())) {
+                done = c.typeLetter(ch);
+            } else {   // 대문자·숫자·문장 부호: 조합 중인 병음을 첫 후보로 끝내고 그 글자를 넣는다
+                int p = ch == 0 ? -1 : ZH_PUNCT_FROM.indexOf(ch);
+                done = c.commitBest() + (p >= 0 ? String.valueOf(ZH_PUNCT_TO.charAt(p)) : s);
+            }
+        } else if (prefs.jaQwerty() && ((ch >= 'a' && ch <= 'z') || ch == '-')) {
+            done = c.typeLetter(ch);
+        } else if (ch != 0 && JA_ASCII_FROM.indexOf(ch) >= 0) {   // 길게 눌러 고른 ?·!·~는 전각으로 읽기에 넣는다
+            done = c.typeKana(String.valueOf(JA_ASCII_TO.charAt(JA_ASCII_FROM.indexOf(ch))));
+        } else if (jaReadingText(s)) {
+            done = c.typeKana(s);
+        } else {   // 숫자·영어 대문자·다른 기호: 조합을 그대로 확정하고 넣는다
+            done = c.enter() + s;
+        }
+        commitCjk(done);
+    }
+
+    /** done을 확정하고(없으면 null), 조합기의 조합 영역과 후보를 입력란·후보 막대에 맞춘다. */
+    private void commitCjk(String done) {
+        CjkComposer c = cjkComposer();
+        String comp = c == null ? "" : c.composingText();
+        InputConnection ic = getCurrentInputConnection();
+        if (ic != null) {
+            ic.beginBatchEdit();
+            if (done != null && !done.isEmpty()) {
+                ic.commitText(done, 1);
+                mirror.commit(done);
+            } else if (comp.isEmpty() && hadComposing) {
+                ic.commitText("", 1);   // 조합 중이던 읽기를 모두 지웠다
+                mirror.forget();
+            }
+            if (!comp.isEmpty()) {
+                ic.setComposingText(comp, 1);
+                mirror.setComposing(comp);
+            }
+            ic.endBatchEdit();
+        }
+        hadComposing = !comp.isEmpty();
+        updateCandidates();
+    }
+
+    private void syncCjk(String done) {
+        commitCjk(done);
+    }
+
+    /** 조합 중인 읽기를 입력하지 않고 모두 지운다. */
+    private void cancelCjk() {
+        CjkComposer c = cjkComposer();
+        if (c != null) c.reset();
+        commitCjk(null);
+    }
+
+    /** 조합 상태만 비운다 (입력란은 건드리지 않는다: 커서를 옮겼거나 입력란을 떠났다). */
+    private void resetCjk() {
+        if (cjkComposers.isEmpty() && candidateBar == null) return;   // 일본어·중국어를 쓴 적이 없다
+        for (CjkComposer c : cjkComposers.values()) c.reset();
+        updateCandidates();
+    }
+
+    /** 후보 막대(와 펼친 격자)를 조합기의 후보로 채운다. 후보가 없으면 감춘다. */
+    private void updateCandidates() {
+        // 일본어·중국어를 쓰지 않으면 할 일이 없다 (커서가 움직일 때마다 불리므로 바로 돌아간다).
+        if (cjkLang == null && !cjkEnterConfirm && (candidateBar == null || candidateBar.getVisibility() != View.VISIBLE)) return;
+        if (cjkLang != null) ensureCandidateBar();
+        if (candidateBar == null) return;
+        CjkComposer c = cjkComposer();
+        java.util.List<String> texts = new java.util.ArrayList<>();
+        int highlight = -1;
+        if (c != null && !c.isEmpty() && panel == PANEL_KEYBOARD) {
+            for (Candidate x : c.candidates()) texts.add(x.text);
+            highlight = c.highlight();
+        }
+        if (cjkLang != null) {
+            candidateBar.setLanguage(cjkLang);
+            if (candidateGrid != null) candidateGrid.setLanguage(cjkLang);
+        }
+        candidateBar.setCandidates(texts, highlight);
+        if (candidateGrid != null) candidateGrid.setCandidates(texts, highlight);
+        boolean show = !texts.isEmpty();
+        if (!show) showCandidateGrid(false);
+        // 조합 중에는 엔터가 확정만 하므로(보내거나 줄을 바꾸지 않는다) 확정 모양으로 보인다.
+        boolean composing = c != null && !c.isEmpty() && panel == PANEL_KEYBOARD;
+        if (keyboard != null && composing != cjkEnterConfirm) {
+            cjkEnterConfirm = composing;
+            EditorInfo ei = getCurrentInputEditorInfo();
+            keyboard.setEnterIcon(composing ? Icons.DONE : ei != null ? enterIcon(ei) : Icons.ENTER);
+        }
+        if ((candidateBar.getVisibility() == View.VISIBLE) != show) {
+            candidateBar.setVisibility(show ? View.VISIBLE : View.GONE);
+            refreshToolbarVisibility();
+        }
+    }
+
+    /** 변환 후보 때문에 자동 완성 칩 줄을 감춰 두었는지. */
+    private boolean autofillHiddenForCandidates;
+
+    /** 엔터 키를 조합 확정 모양으로 바꿔 두었는지. */
+    private boolean cjkEnterConfirm;
+
+    private boolean candidatesShown() {
+        return candidateBar != null && candidateBar.getVisibility() == View.VISIBLE;
+    }
+
+    private final CandidateView.Listener candidateListener = new CandidateView.Listener() {
+        @Override
+        public void onCandidate(int index) {
+            feedback.onKey(null);
+            CjkComposer c = cjkComposer();
+            if (c == null) return;
+            showCandidateGrid(false);
+            commitCjk(c.pick(index));
+        }
+
+        @Override
+        public void onExpand() {
+            feedback.onToolbar();
+            showCandidateGrid(!candidateGridOpen);
+        }
+    };
+
+    /** 후보 막대를 도구 막대의 추천 단어 자리 바로 뒤에 만든다 (일본어·중국어를 처음 쓸 때). */
+    private void ensureCandidateBar() {
+        if (candidateBar != null || toolbar == null || suggestBar == null) return;
+        CandidateView v = new CandidateView(this, false);
+        v.setTheme(theme);
+        v.setListener(candidateListener);
+        v.setVisibility(View.GONE);
+        candidateBar = v;
+        toolbar.addView(v, toolbar.indexOfChild(suggestBar) + 1,
+                new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+    }
+
+    /** 후보를 자판 자리를 덮는 격자로 펼치거나 접는다. */
+    private void showCandidateGrid(boolean open) {
+        if (open == candidateGridOpen && (!open || candidateGrid != null)) return;
+        candidateGridOpen = open;
+        if (candidateBar != null) candidateBar.setExpanded(open);
+        if (open && candidateGrid == null && content != null) {
+            candidateGrid = new CandidateView(this, true);
+            candidateGrid.setTheme(theme);
+            candidateGrid.setListener(candidateListener);
+            content.addView(candidateGrid, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT));
+        }
+        if (candidateGrid != null) {
+            candidateGrid.setVisibility(open ? View.VISIBLE : View.GONE);
+            if (open) {
+                if (cjkLang != null) candidateGrid.setLanguage(cjkLang);
+                CjkComposer c = cjkComposer();
+                java.util.List<String> texts = new java.util.ArrayList<>();
+                if (c != null) for (Candidate x : c.candidates()) texts.add(x.text);
+                candidateGrid.setCandidates(texts, c == null ? -1 : c.highlight());
+            }
+        }
+    }
+
+    /** 외장 키보드에서 일본어·중국어 조합에 쓰는 키 (누른 키를 떼는 것도 앱에 보내지 않는다). */
+    private final java.util.Set<Integer> hwCjkKeys = new java.util.HashSet<>();
+
+    /**
+     * 외장 키보드의 키를 일본어(로마자)·중국어(병음) 조합에 쓴다. 조합 중에는 스페이스(변환·고르기), 엔터(확정),
+     * 지우기, Esc(취소), 숫자 1~9(그 후보 고르기)도 여기서 처리한다. 처리했으면 true.
+     */
+    private boolean hwCjkKey(int keyCode, KeyEvent event) {
+        CjkComposer c = cjkComposer();
+        if (c == null || !hwTextField()) return false;
+        if (keyCode >= KeyEvent.KEYCODE_A && keyCode <= KeyEvent.KEYCODE_Z && !event.isShiftPressed()) {
+            correctedTo = null;
+            commitCjk(c.typeLetter((char) ('a' + keyCode - KeyEvent.KEYCODE_A)));
+            return true;
+        }
+        // 쉼표·온점: 일본어는 、。를 읽기에 넣고(변환해도 그대로 남는다), 중국어는 조합을 끝내고 ，。를 넣는다.
+        if ((keyCode == KeyEvent.KEYCODE_COMMA || keyCode == KeyEvent.KEYCODE_PERIOD) && !event.isShiftPressed()) {
+            boolean comma = keyCode == KeyEvent.KEYCODE_COMMA;
+            if (c.chinese()) commitCjk(c.commitBest() + (comma ? "，" : "。"));
+            else commitCjk(c.typeKana(comma ? "、" : "。"));
+            return true;
+        }
+        if (c.isEmpty()) {
+            if (keyCode == KeyEvent.KEYCODE_SPACE && !event.isShiftPressed() && japaneseFullWidthSpace()) {
+                commitText("\u3000");
+                return true;
+            }
+            return false;
+        }
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_SPACE:
+                commitCjk(c.space());
+                return true;
+            case KeyEvent.KEYCODE_ENTER:
+            case KeyEvent.KEYCODE_NUMPAD_ENTER:
+                commitCjk(c.enter());
+                return true;
+            case KeyEvent.KEYCODE_DEL:
+                c.backspace();
+                commitCjk(null);
+                return true;
+            case KeyEvent.KEYCODE_ESCAPE:
+                cancelCjk();
+                return true;
+            case KeyEvent.KEYCODE_MINUS:
+                if (c.chinese() || event.isShiftPressed()) return false;
+                commitCjk(c.typeLetter('-'));
+                return true;
+            case KeyEvent.KEYCODE_APOSTROPHE:
+                if (!c.chinese() || event.isShiftPressed()) return false;
+                commitCjk(c.typeLetter('\''));
+                return true;
+            default:
+                break;
+        }
+        if (keyCode >= KeyEvent.KEYCODE_1 && keyCode <= KeyEvent.KEYCODE_9 && !event.isShiftPressed()) {
+            int i = keyCode - KeyEvent.KEYCODE_1;
+            if (i < c.candidates().size()) {
+                commitCjk(c.pick(i));
+                return true;
+            }
+        }
+        return false;   // 다른 키는 조합을 확정한 뒤 앱에 넘긴다 (hwForward)
+    }
+
+    /**
+     * 일본어 입력 중 스페이스로 전각 공백(　)을 넣을지: Gboard의 기본값과 같다 (일본어 입력이면 전각, 영어·숫자는 반각).
+     * 실험실의 '반각 공백 쓰기'를 켜면 늘 반각이다 (Gboard의 '半角スペースの使用').
+     */
+    private boolean japaneseFullWidthSpace() {
+        return CjkComposer.JA.equals(cjkLang) && layoutKind == KeyboardLayout.JAPANESE && !prefs.jaHalfSpace();
+    }
+
+    /** 외장 키보드로 글자를 조합할 입력란인지 (숫자·전화번호 입력란 등은 키를 그대로 둔다). */
+    private boolean hwTextField() {
+        EditorInfo ei = getCurrentInputEditorInfo();
+        return ei != null && (ei.inputType & InputType.TYPE_MASK_CLASS) == InputType.TYPE_CLASS_TEXT;
     }
 
     // ---------------------------------------------------------------- 외장 키보드
@@ -2459,6 +2955,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             // 단축키(Ctrl+C 등)는 앱이 처리한다. 조합 중인 글자는 먼저 확정한다.
             return hwForward(ic, keyCode, event);
         }
+        if (hwCjkKey(keyCode, event)) {
+            hwCjkKeys.add(keyCode);
+            return true;
+        }
         char jamo = hwHangulAllowed() && keyCode >= KeyEvent.KEYCODE_A && keyCode <= KeyEvent.KEYCODE_Z
                 ? Dubeolsik.jamo((char) ('a' + keyCode - KeyEvent.KEYCODE_A), event.isShiftPressed()) : 0;
         if (jamo != 0) {
@@ -2486,6 +2986,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             hwToggleLanguage();
             return super.onKeyUp(keyCode, event);   // 수정 키를 뗀 것은 앱도 알아야 한다
         }
+        if (hwCjkKeys.remove(keyCode)) return true;   // 누를 때 일본어·중국어 조합에 쓴 키
         if (hwForwarded.remove(keyCode)) {
             InputConnection ic = getCurrentInputConnection();
             if (ic != null) ic.sendKeyEvent(event);
@@ -2581,7 +3082,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /** 외장 키보드로 한·영을 바꾼다. 자판이 보이지 않으면(도구 막대만 보일 때도) 바뀐 언어를 짧게 알려 준다 (실험실에서 끌 수 있다). */
     private void hwToggleLanguage() {
-        toggleLanguage();
+        // 외장 키보드의 한·영 키는 한글과 영어만 오간다 (일본어·중국어에서 누르면 한글로).
+        switchLanguage(korean ? "en" : "ko");
         if (prefs.hwToast() && (!isInputViewShown() || toolbarOnlyNow())) Toast.makeText(this, korean ? "한글" : "English", Toast.LENGTH_SHORT).show();
     }
 
@@ -2648,17 +3150,17 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /** 지금 입력란에서 단어 추천을 쓰는지. */
     private boolean suggestOn() {
-        return cfgSuggest && suggestAllowed && panel == PANEL_KEYBOARD;
+        return cfgSuggest && suggestAllowed && panel == PANEL_KEYBOARD && cjkLang == null;
     }
 
     /** 지금 입력란에서 단축어를 쓰는지 (정해 둔 단축어가 있을 때). */
     private boolean shortcutsOn() {
-        return cfgShortcuts && !shortcuts.isEmpty() && shortcutAllowed && panel == PANEL_KEYBOARD;
+        return cfgShortcuts && !shortcuts.isEmpty() && shortcutAllowed && panel == PANEL_KEYBOARD && cjkLang == null;
     }
 
     /** 지금 입력란에서 사전을 쓰는 기능(추천·자동 수정·학습)을 쓰는지. */
     private boolean wordsOn() {
-        return cfgWords && suggestAllowed && panel == PANEL_KEYBOARD;
+        return cfgWords && suggestAllowed && panel == PANEL_KEYBOARD && cjkLang == null;
     }
 
     private boolean autoCorrectActive() {
@@ -2678,7 +3180,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /** 지금 언어의 사전(과 학습한 단어)을 백그라운드에서 읽어 둔다. 이미 읽었거나 읽는 중이면 아무것도 하지 않는다. */
     private void warmSuggester() {
-        if (!cfgWords || !suggestAllowed || windowHidden) return;
+        if (!cfgWords || !suggestAllowed || windowHidden || cjkLang != null) return;   // 일본어·중국어는 단어 추천을 쓰지 않는다
         final boolean lang = korean;
         if (lang ? warmingKo : warmingEn) return;
         if (suggester.isSettled(lang) && (!cfgLearn || (userWords.isLoaded() && suggester.historyLoaded()))
@@ -2918,15 +3420,21 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private void refreshToolbarVisibility() {
         if (toolbar == null) return;
         // 추천 단어 줄이나 자동 완성 칩 줄이 떠 있는 동안: 오른쪽 버튼들이 접히고 그 줄이 자리를 쓴다.
-        boolean editing = editShowing();
+        boolean candidates = candidatesShown();
+        boolean editing = !candidates && editShowing();   // 조합 중에는 변환 후보가 먼저다
         if (editBar != null) editBar.setVisibility(editing ? View.VISIBLE : View.GONE);
+        // 변환 후보가 떠 있는 동안만 자동 완성 칩 줄을 감추고, 후보가 사라지면 되돌린다 (그 밖에는 손대지 않는다).
+        if (autofillBar != null && autofill != null && (candidates || autofillHiddenForCandidates)) {
+            autofillBar.setVisibility(!candidates && autofill.shown() ? View.VISIBLE : View.GONE);
+            autofillHiddenForCandidates = candidates;
+        }
         boolean suggesting = (suggestBar != null && suggestBar.getVisibility() == View.VISIBLE) || autofillShowing()
-                || editing;
+                || editing || candidates;
         boolean on = prefs.toolbar() || toolbarOnlyNow();   // 도구 막대만 보일 때는 꺼 두었어도 보인다
         toolbar.setVisibility(panel == PANEL_SEARCH || !(on || suggesting) ? View.GONE : View.VISIBLE);
         // 설정에서 '도구 막대 전체를 쓰기'를 켰으면 추천이 떠 있는 동안 왼쪽 버튼들도 사라진다.
         // 선택 편집 칩은 칩 네 개가 넉넉히 들어가도록 언제나 막대 전체를 쓴다.
-        boolean left = on && !(suggesting && (editing || prefs.suggestFullBar()));
+        boolean left = on && !(suggesting && (editing || candidates || prefs.suggestFullBar()));
         // 오른쪽 버튼들은 추천이 떠 있는 동안 사라져서 추천이 쓸 공간을 내준다.
         boolean right = on && !suggesting;
         String[][] order = toolOrder != null ? toolOrder : prefs.toolOrder();
@@ -3229,7 +3737,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         String[] shown = prev != null && prev.equals(predictedAfter) ? predictedWords : null;
         predictedAfter = null;
         predictedWords = null;
-        if (!cfgLearn || !suggestAllowed || !learnAllowed) return;
+        if (!cfgLearn || !suggestAllowed || !learnAllowed || cjkLang != null) return;
         final boolean lang = korean;
         runIo(() -> {
             if (lang && shown != null) suggester.noteIgnoredPrediction(prev, shown, word);
@@ -3761,7 +4269,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             // 언어별 서브타입이 없으면 처음 찾은 음성 서브타입을 쓴다.
             InputMethodInfo firstImi = null, matchImi = null;
             InputMethodSubtype first = null, match = null;
-            String lang = korean ? "ko" : "en";
+            String lang = cjkLang != null ? cjkLang : korean ? "ko" : "en";
             for (InputMethodInfo imi : imm.getEnabledInputMethodList()) {
                 if (imi.getPackageName().equals(getPackageName())) continue;
                 for (InputMethodSubtype st : imm.getEnabledInputMethodSubtypeList(imi, true)) {
