@@ -368,7 +368,6 @@ public final class SettingsActivity extends Activity {
             {"keys", "기능키 길게 누르기 시간", "롱프레스 시간"},
             {"keys", "길게 눌러 지우기", "백스페이스 연속 삭제 계속 지우기"},
             {"keys", "기호 키를 길게 눌러 이모지 창 열기", "이모티콘 ?123"},
-            {"keys", "🌐︎를 길게 눌러 언어 고르기", "지구본 언어 전환 키 한국어 영어 일본어 중국어 말풍선 팝업"},
             {"keys", "기능키 길게 누르기 기능 편집", "롱프레스 기능"},
             {"keys", "기능키 길게 누르기 기능 완전 사용자화", "롱프레스 기능 커스텀"},
             {"input", "쌍자음 인식 시간", "연속 탭 된소리 ㄲ ㅆ 시간"},
@@ -392,7 +391,8 @@ public final class SettingsActivity extends Activity {
             {"swipefn", "좌우 이동 속도", "커서 이동 속도 스페이스바 트랙패드"},
             {"swipefn", "상하 이동 속도", "커서 이동 속도 스페이스바 트랙패드"},
             {"swipefn", "스페이스바를 밀어서 커서 이동", "커서 트랙패드 이동"},
-            {"swipefn", "스페이스바를 밀어서 언어 전환", "한영 전환 한/영 스와이프"},
+            {"swipefn", "스페이스바를 밀어서 언어 전환", "한영 전환 한/영 언어 바꾸기 스와이프"},
+            {"swipefn", "🌐︎을 위로 밀어 언어 고르기", "지구본 언어 전환 키 한국어 영어 일본어 중국어 말풍선 팝업 선택"},
             {"swipefn", "스페이스바를 길게 누른 뒤 밀어서 선택", "텍스트 선택 범위 드래그 블록"},
             {"swipefn", "⌫ 밀어서 단위 삭제", "백스페이스 단어 삭제 줄 삭제 지우기"},
             {"swipefn", "기호 키를 위로 밀어서 이모지 열기", "이모티콘 스와이프 ?123"},
@@ -1849,11 +1849,6 @@ public final class SettingsActivity extends Activity {
         standard.addView(toggle("기호 키를 길게 눌러 이모지 창 열기",
                 "기호 키(숫자 자판의 ?123 포함)를 길게 누르면 이모지 창을 엽니다.",
                 Prefs.MODE_KEY_LONG_PRESS, prefs.modeKeyLongPress()));
-        standard.addView(toggle("🌐︎를 길게 눌러 언어 고르기",
-                "🌐︎를 길게 누르면 시스템 입력기 선택 창 대신, 다른 키를 길게 누를 때처럼 말풍선이 올라와 "
-                        + "켜 둔 언어(한국어·영어, 실험실에서 켠 일본어·중국어) 중에서 고릅니다. "
-                        + "손가락을 떼지 않은 채 원하는 언어로 옮긴 뒤 떼세요.",
-                Prefs.GLOBE_LANG_POPUP, prefs.globeLangPopup()));
         View customGroup = subGroup(
                 button("기능키 길게 누르기 기능 편집", v ->
                         startActivity(SwipeActionEditorActivity.intent(this,
@@ -1998,13 +1993,15 @@ public final class SettingsActivity extends Activity {
                 Prefs.SPACE_CURSOR, prefs.spaceCursor(), cursorGroup));
         standard.addView(cursorGroup);
         View lang = toggle("스페이스바를 밀어서 언어 전환",
-                "스페이스바를 좌우로 밀면 한·영을 전환합니다.",
+                "스페이스바를 좌우로 밀면 언어를 전환합니다.",
                 prefs.spaceLangSwipe(), on -> {
                     prefs.raw().edit().putBoolean(Prefs.SPACE_LANG_SWIPE, on).apply();
                     if (on && cursorHSwitch[0].isChecked()) cursorHSwitch[0].toggle();
                 });
         langSwitch[0] = switchOf(lang);
         standard.addView(lang);
+        standard.addView(toggle("🌐︎을 위로 밀어 언어 고르기", "🌐︎을 위로 밀어 언어를 선택합니다.",
+                Prefs.GLOBE_SWIPE_LANG, prefs.globeSwipeLang()));
         standard.addView(toggle("⌫ 밀어서 단위 삭제",
                 "⌫를 왼쪽으로 밀면 단어를, 위로 밀면 줄에서 커서 왼쪽을 모두 지웁니다. "
                         + "커서가 줄의 맨 앞이면 위로 밀었을 때 윗줄과 합칩니다.",

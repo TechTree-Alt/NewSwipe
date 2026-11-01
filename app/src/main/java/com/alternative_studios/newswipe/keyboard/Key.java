@@ -13,7 +13,7 @@ public final class Key {
     public static final int TO_SYMBOLS = 5;
     /** 문자 자판으로 돌아가기 (가/ABC). */
     public static final int TO_LETTERS = 6;
-    /** 한·영 전환 (지구본). */
+    /** 언어 전환 (지구본). */
     public static final int LANGUAGE = 7;
     /** 기호 자판 1/2쪽 전환. */
     public static final int SYMBOL_PAGE = 8;

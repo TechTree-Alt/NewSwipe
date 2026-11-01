@@ -16,7 +16,7 @@ public final class LongPressActions {
     private static final String[] HINTS = {
             "영어 자판의 대문자 키",
             "글자 자판과 기호 자판을 오가는 왼쪽 아래 키",
-            "한·영 전환. 기호 자판에서는 이 자리의 이모지 키",
+            "언어 전환. 기호 자판에서는 이 자리의 이모지 키",
             "입력란에 따라 줄바꿈·보내기·검색 등",
             "지우기",
     };

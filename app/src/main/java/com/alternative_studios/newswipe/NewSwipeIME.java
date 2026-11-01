@@ -1876,8 +1876,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     @Override
     public void onPopupChar(Key key, String text) {
         lastWasSpace = false;
-        if (key.type == Key.LANGUAGE) {   // 🌐︎ 길게 누르기 말풍선에서 고른 언어
-            int i = java.util.Arrays.asList(LANGUAGE_LABELS).indexOf(text);
+        if (key.type == Key.LANGUAGE) {   // 🌐︎를 위로 밀어 연 말풍선에서 고른 언어
+            int i = java.util.Arrays.asList(SPACE_NAMES).indexOf(text);
             if (i >= 0 && !LANGUAGE_IDS[i].equals(currentLanguage())) switchLanguage(LANGUAGE_IDS[i]);
             return;
         }
@@ -2517,30 +2517,33 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         switchLanguage(next);
     }
 
-    /** 🌐︎ 길게 누르기 말풍선의 언어 (이름은 기호 자판의 돌아가기 키와 같다). */
+    /** 언어 전환 차례. */
     private static final String[] LANGUAGE_IDS = {"ko", "en", CjkComposer.JA, CjkComposer.ZH};
-    private static final String[] LANGUAGE_LABELS = {"가", "ABC", "あ", "中"};
-    /** 스페이스바에 보일 언어 이름 ('자판 모양 > 스페이스바에 언어 이름 보이기'). */
+    /** 언어 이름: 스페이스바('자판 모양 > 스페이스바에 언어 이름 보이기')와 🌐︎를 위로 밀었을 때의 말풍선에 쓴다. */
     private static final String[] SPACE_NAMES = {"한국어", "English", "日本語", "中文"};
 
-    /** 설정에서 켰으면 🌐︎ 길게 누르기에 켜 둔 언어를 놓는다 (꺼 두었으면 원래대로 입력기 선택 창). */
+    /**
+     * 스페이스바의 언어 이름과, 설정에서 켰으면 🌐︎를 위로 밀 때의 언어 말풍선을 놓는다. 말풍선은 지금 언어가 맨 아래(🌐︎ 바로 위)에
+     * 오고 그 위로 🌐︎를 누를 때의 차례대로 쌓인다: 조금만 밀면 다음 언어, 더 밀수록 그다음 언어다. 지금 언어에서 떼면 그대로다.
+     */
     private void updateLanguagePopup() {
         if (keyboard == null) return;
-        keyboard.setSpaceLabel(prefs.spaceLangLabel() ? SPACE_NAMES[java.util.Arrays.asList(LANGUAGE_IDS).indexOf(currentLanguage())] : null);
-        if (!prefs.globeLangPopup()) {
+        String now = currentLanguage();
+        int nowAt = java.util.Arrays.asList(LANGUAGE_IDS).indexOf(now);
+        keyboard.setSpaceLabel(prefs.spaceLangLabel() ? SPACE_NAMES[nowAt] : null);
+        if (!prefs.globeSwipeLang()) {
             keyboard.setLanguagePopup(null, 0);
             return;
         }
-        java.util.List<String> labels = new java.util.ArrayList<>();
-        int selected = 0;
-        String now = currentLanguage();
-        for (int i = 0; i < LANGUAGE_IDS.length; i++) {
-            String id = LANGUAGE_IDS[i];
-            if (i >= 2 && !cjkAvailable(id)) continue;
-            if (id.equals(now)) selected = labels.size();
-            labels.add(LANGUAGE_LABELS[i]);
+        java.util.List<String> bottomUp = new java.util.ArrayList<>();
+        for (int k = 0; k < LANGUAGE_IDS.length; k++) {
+            int i = (nowAt + k) % LANGUAGE_IDS.length;
+            if (i >= 2 && !cjkAvailable(LANGUAGE_IDS[i])) continue;
+            bottomUp.add(SPACE_NAMES[i]);
         }
-        keyboard.setLanguagePopup(labels.toArray(new String[0]), selected);
+        java.util.Collections.reverse(bottomUp);   // 말풍선은 위에서 아래 차례로 그린다
+        // 처음에는 지금 언어(맨 아래)가 골라져 있고, 손가락 위치를 따라 바뀐다.
+        keyboard.setLanguagePopup(bottomUp.toArray(new String[0]), bottomUp.size() - 1);
     }
 
     /** 지금 언어: "ko" | "en" | "ja" | "zh". */

@@ -205,7 +205,7 @@ public final class KeyboardView extends View {
     /** 커서 이동이 시작된 뒤 손가락이 움직이는 거리당 커서가 움직이는 빠르기 (1 = 기본). 스페이스바·문자 키, 좌우·상하 따로. */
     private float gapSpeed = 1f;
     private float spaceSpeedH = 1f, spaceSpeedV = 1f, charSpeedH = 1f, charSpeedV = 1f;
-    /** 스페이스바를 좌우로 밀어 한·영 전환 (손을 떼면 바꾼다). 스페이스바 좌우 커서 이동과 함께 쓰지 않는다. */
+    /** 스페이스바를 좌우로 밀어 언어 전환 (손을 떼면 바꾼다). 스페이스바 좌우 커서 이동과 함께 쓰지 않는다. */
     private boolean spaceLangSwipe;
     /** 키보드 밀기 (한 손가락·두 손가락). 쓰지 않으면 null. */
     private KeyboardSwipes kbSwipes;
@@ -1101,9 +1101,19 @@ public final class KeyboardView extends View {
                     moveFunctionKey(p, fnSlot, dx, dy, x, y);
                     break;
                 }
+                if (p.key.type == Key.LANGUAGE && languagePopup != null && -dy > fnSwipeThreshold
+                        && -dy > Math.abs(dx)) {
+                    // 🌐︎를 위로 밀었다: 켜 둔 언어를 세로로 늘어놓은 말풍선을 띄운다. 손가락을 위아래로 옮겨 고르고 떼면 바꾼다.
+                    cancelLongPress(p);
+                    p.mode = POPUP;
+                    openPopup(p, languagePopup.clone(), languagePopupSelected, true);
+                    popupMoved = true;   // 이미 밀고 있으므로 손가락 위치대로 바로 고른다
+                    if (listener != null) listener.onGesture();
+                    break;
+                }
                 if (p.key.type == Key.SPACE && spaceLangSwipe && Math.abs(dx) > fnSwipeThreshold
                         && Math.abs(dx) > Math.abs(dy)) {
-                    // 스페이스바를 좌우로 밀어 한·영 전환: 손을 떼면 바꾼다 (되돌리면 취소).
+                    // 스페이스바를 좌우로 밀어 언어 전환: 손을 떼면 바꾼다 (되돌리면 취소).
                     p.mode = FN_SWIPE;
                     p.fnAction = SwipeAction.LANGUAGE;
                     p.swipeDir = dx > 0 ? Key.SWIPE_RIGHT : Key.SWIPE_LEFT;
@@ -1450,11 +1460,6 @@ public final class KeyboardView extends View {
         } else if (k.type == Key.DELETE) {
             p.mode = REPEAT;
             repeatRunnable.run();
-        } else if (k.type == Key.LANGUAGE && languagePopup != null) {
-            // 언어 고르기 말풍선: 다른 키의 길게 누르기와 같은 말풍선에 켜 둔 언어를 놓는다 (지금 언어가 처음 골라져 있다).
-            p.mode = POPUP;
-            openPopup(p, languagePopup.clone(), languagePopupSelected);
-            if (listener != null) listener.onGesture();
         } else if (k.type == Key.LANGUAGE || k.type == Key.TO_SYMBOLS || k.type == Key.TO_LETTERS) {
             p.mode = CONSUMED;
             if (listener != null) {
@@ -1474,7 +1479,7 @@ public final class KeyboardView extends View {
         invalidate();
     }
 
-    /** 🌐︎를 길게 눌렀을 때 고를 언어 이름들과 지금 언어의 번호. null이면 원래대로 입력기 선택 창을 연다. */
+    /** 🌐︎를 위로 밀었을 때 고를 언어 이름들(위에서 아래 차례)과 처음 골라져 있을 번호. null이면 쓰지 않는다. */
     private String[] languagePopup;
     private int languagePopupSelected;
 
@@ -1488,17 +1493,18 @@ public final class KeyboardView extends View {
         }
     }
 
-    /** 🌐︎ 길게 누르기 말풍선의 언어들 (둘 이상일 때만 쓴다). null이면 끈다. */
+    /** 🌐︎를 위로 밀었을 때의 언어 말풍선 (위에서 아래 차례, 둘 이상일 때만 쓴다). null이면 끈다. */
     public void setLanguagePopup(String[] labels, int selected) {
         languagePopup = labels != null && labels.length >= 2 ? labels : null;
         languagePopupSelected = selected;
     }
 
     private void openPopup(Pointer p) {
-        openPopup(p, p.key.popup.clone(), 0);
+        openPopup(p, p.key.popup.clone(), 0, false);
     }
 
-    private void openPopup(Pointer p, String[] items, int selected) {
+    /** vertical: 항목을 한 줄에 하나씩 세로로 쌓는다 (언어 말풍선. 이름이 길어 칸을 넓게 쓴다). */
+    private void openPopup(Pointer p, String[] items, int selected, boolean vertical) {
         if (shiftState != 0 && upperCaseLayout()) {
             // 한 글자(é 같은 악센트 문자)만 Shift를 따른다. 두 글자 이상(단어)은 정해 둔 그대로 입력한다.
             for (int i = 0; i < items.length; i++) {
@@ -1515,10 +1521,14 @@ public final class KeyboardView extends View {
         float widest = 0f;
         for (String item : items) widest = Math.max(widest, text.measureText(item));
         float pad = dp(10);
-        popupCellW = Math.max(popupCellW, Math.min(widest + pad, dp(64)));
+        popupCellW = Math.max(popupCellW, Math.min(widest + pad, dp(vertical ? 120 : 64)));
+        if (vertical) {
+            popupCellW = Math.max(popupCellW, widest + 2 * pad);
+            popupCellH = Math.min(popupCellH, dp(46));
+        }
         popupTextScale = widest + pad > popupCellW ? Math.max(0.3f, (popupCellW - pad) / widest) : 1f;
         float margin = dp(4);
-        popupCols = Math.max(1, Math.min(items.length, (int) ((getWidth() - 2 * margin) / popupCellW)));
+        popupCols = vertical ? 1 : Math.max(1, Math.min(items.length, (int) ((getWidth() - 2 * margin) / popupCellW)));
         int rows = (items.length + popupCols - 1) / popupCols;
         float w = popupCols * popupCellW;
         popupLeft = p.key.rect.centerX() - popupCellW / 2;

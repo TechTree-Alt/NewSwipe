@@ -130,7 +130,9 @@ public final class Prefs {
     public static final String SWIPE_PICK_SUGGESTION = "swipe_pick_suggestion"; // 자판 왼쪽·가운데·오른쪽을 위로 밀어 추천 단어 입력
     public static final String TWO_FINGER_UNDO = "two_finger_undo";           // 두 손가락으로 밀어 실행 취소·다시 실행
     public static final String SWIPE_KEYBOARD_CUSTOM = "swipe_keyboard_custom"; // 키보드 밀기 완전 사용자화
-    public static final String SPACE_LANG_SWIPE = "space_lang_swipe";         // 스페이스바를 좌우로 밀어 한·영 전환
+    /** 🌐︎를 위로 밀면 켜 둔 언어를 세로로 늘어놓은 말풍선을 띄워 고른다 (기본 꺼짐). */
+    public static final String GLOBE_SWIPE_LANG = "globe_swipe_lang";
+    public static final String SPACE_LANG_SWIPE = "space_lang_swipe";         // 스페이스바를 좌우로 밀어 언어 전환
     /** 글자 자판의 스페이스바에 지금 언어 이름(한국어·English·日本語·中文)을 띄운다 (기본 꺼짐). */
     public static final String SPACE_LANG_LABEL = "space_lang_label";
     public static final String NUMBER_HINT_HIDDEN = "number_hint_hidden";     // 숫자 키만 길게 눌러 입력할 문자 힌트 없애기
@@ -157,7 +159,7 @@ public final class Prefs {
     public static final String BOTTOM_KEY_ORDER = "bottom_key_order";         // 맨 아래 줄 기능키 순서 (BottomKeys)
     public static final String ENTER_KEY_HIDDEN = "enter_key_hidden";         // 글자·기호 자판 아래 줄의 엔터 키 없애기
     public static final String MODE_KEY_HIDDEN = "mode_key_hidden";           // 글자 자판·기호 자판의 기호 키(?123·가·ABC) 없애기
-    public static final String LANGUAGE_KEY_HIDDEN = "language_key_hidden";   // 글자 자판의 지구본(한·영 전환) 키 없애기
+    public static final String LANGUAGE_KEY_HIDDEN = "language_key_hidden";   // 글자 자판의 지구본(언어 전환) 키 없애기
     public static final String KEY_RADIUS = "key_radius";   // 키 모서리 곡률 dp, 0~24 (기본 7)
     public static final String KEY_SHADOW = "key_shadow";
     public static final String KEY_SHADOW_STRENGTH = "key_shadow_strength";   // %, 10~100
@@ -200,8 +202,6 @@ public final class Prefs {
     public static final String SWIPE_FN_CUSTOM = "swipe_fn_custom";       // 기능키 밀어서 기능 완전 사용자화
     public static final String SWIPE_TOOLBAR_CUSTOM = "swipe_toolbar_custom"; // 도구 막대 밀어서 기능 완전 사용자화
     public static final String MODE_KEY_EMOJI = "mode_key_emoji";         // 왼쪽 아래 기호 키를 위로 밀어 이모지 열기
-    /** 🌐︎를 길게 누르면 시스템 입력기 선택 창 대신 켜 둔 언어를 고르는 말풍선을 띄운다 (기본 꺼짐). */
-    public static final String GLOBE_LANG_POPUP = "globe_lang_popup";
     public static final String MODE_KEY_LONG_PRESS = "mode_key_settings";  // 왼쪽 아래 기호 키를 길게 눌러 이모지 열기 (예전에는 설정 열기라 키 이름이 그대로)
     public static final String LONG_PRESS_CUSTOM = "long_press_custom";   // 기능키 길게 누르기 기능 완전 사용자화
     public static final String DELETE_PRESS_MS = "delete_press_ms";       // 기능키 길게 누르기 시간 200~800 (옛 이름 그대로 저장)
@@ -380,14 +380,14 @@ public final class Prefs {
                 DOUBLE_TAP_CONSONANT_MS, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, SPACE_HIT_SHRINK,
                 SPACE_HIT_SHRINK_PCT));
         MENU_KEYS.put("keys", keys(LONG_PRESS_CHARS, LONG_PRESS_REPEAT, LONG_PRESS_MS, LONG_PRESS_DELETE, DELETE_PRESS_MS,
-                MODE_KEY_LONG_PRESS, GLOBE_LANG_POPUP, LONG_PRESS_CUSTOM));
+                MODE_KEY_LONG_PRESS, LONG_PRESS_CUSTOM));
         MENU_PREFIXES.put("keys", keys("popup_", "repeat_", "swipe_lp_"));
         MENU_KEYS.put("swipe", keys(SWIPE_THRESHOLD, SWIPE_DOUBLE, D7_SS_UP, SWIPE_IOTIZED, SWIPE_COMPOUND_VOWEL,
                 SWIPE_FINAL, PERIOD_SWIPE_COMMA, SWIPE_CUSTOM));
         MENU_PREFIXES.put("swipe", keys("swipe_custom_", "swipe_final_", "swipe_vowel_"));
         MENU_KEYS.put("swipefn", keys(FN_SWIPE_THRESHOLD, SPACE_CURSOR, SPACE_CURSOR_H, SPACE_CURSOR_V,
                 SPACE_CURSOR_SPEED_H, SPACE_CURSOR_SPEED_V, CHAR_CURSOR, CHAR_CURSOR_H, CHAR_CURSOR_V,
-                CHAR_CURSOR_SPEED_H, CHAR_CURSOR_SPEED_V, SPACE_LANG_SWIPE, SPACE_SELECT, TWO_FINGER_UNDO, SWIPE_KEYBOARD_CUSTOM, SWIPE_PICK_SUGGESTION,
+                CHAR_CURSOR_SPEED_H, CHAR_CURSOR_SPEED_V, SPACE_LANG_SWIPE, GLOBE_SWIPE_LANG, SPACE_SELECT, TWO_FINGER_UNDO, SWIPE_KEYBOARD_CUSTOM, SWIPE_PICK_SUGGESTION,
                 SWIPE_FN_CUSTOM, SWIPE_TOOLBAR_CUSTOM, DELETE_WORD_SWIPE, MODE_KEY_EMOJI, TOOLBAR_SWIPE,
                 TOOL_EMOJI_SWIPE, TOOL_CLIPBOARD_SWIPE, TOOL_UNDO_SWIPE));
         MENU_PREFIXES.put("swipefn", keys("swipe_fn_", "swipe_toolbar_", "swipe_kb_"));
@@ -954,7 +954,7 @@ public final class Prefs {
 
     public boolean longPressDelete() { return sp.getBoolean(LONG_PRESS_DELETE, true); }
     public boolean modeKeyLongPress() { return sp.getBoolean(MODE_KEY_LONG_PRESS, true); }
-    public boolean globeLangPopup() { return sp.getBoolean(GLOBE_LANG_POPUP, false); }
+    public boolean globeSwipeLang() { return sp.getBoolean(GLOBE_SWIPE_LANG, false); }
     public boolean longPressCustom() { return sp.getBoolean(LONG_PRESS_CUSTOM, false); }
     public boolean modeKeyEmoji() { return sp.getBoolean(MODE_KEY_EMOJI, true); }
     public int deletePressMs() { return sp.getInt(DELETE_PRESS_MS, 350); }
