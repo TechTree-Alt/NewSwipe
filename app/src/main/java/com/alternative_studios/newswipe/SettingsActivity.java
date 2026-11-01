@@ -2698,7 +2698,7 @@ public final class SettingsActivity extends Activity {
 
         LinearLayout emoji = section("이모지");
         emoji.addView(emojiSizeRow());
-        emoji.addView(toggle("이모지 추천", "이모지 창을 열면 커서 앞에 쓴 글(마지막 네 단어)에 맞는 이모지를 보여 줍니다.", Prefs.EMOJI_SUGGEST, prefs.emojiSuggest()));
+        emoji.addView(toggle("이모지 추천", "이모지 창을 열면 커서 앞에 쓴 글(마지막 15단어)에 맞는 이모지를 보여 줍니다.", Prefs.EMOJI_SUGGEST, prefs.emojiSuggest()));
     }
 
     /**
