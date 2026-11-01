@@ -343,6 +343,7 @@ public final class SettingsActivity extends Activity {
             {"look", "키 누름 미리보기", "말풍선 팝업 확대"},
             {"look", "길게 눌러 입력할 문자 힌트 없애기", "힌트 숨기기 오른쪽 위"},
             {"look", "숫자 키 힌트 없애기", "힌트 숨기기"},
+            {"look", "스페이스바에 언어 이름 보이기", "스페이스 띄어쓰기 언어 표시 한국어 영어 일본어 중국어"},
             {"look", "왼쪽 여백", "패딩 간격"},
             {"look", "오른쪽 여백", "패딩 간격"},
             {"look", "위쪽 여백", "패딩 간격"},
@@ -879,6 +880,9 @@ public final class SettingsActivity extends Activity {
         look.addView(toggle("숫자 키 힌트 없애기",
                 "숫자 키(1~0)에서만 길게 눌러 입력할 문자 힌트를 없앱니다.",
                 Prefs.NUMBER_HINT_HIDDEN, prefs.numberHintHidden()));
+        look.addView(toggle("스페이스바에 언어 이름 보이기",
+                "글자 자판의 스페이스바에 지금 쓰는 언어(한국어·English, 실험실의 日本語·中文)를 작게 보여 줍니다.",
+                Prefs.SPACE_LANG_LABEL, prefs.spaceLangLabel()));
         LinearLayout pad = section("여백");
         pad.addView(slider("왼쪽 여백", Prefs.PAD_LEFT, prefs.padLeftDp(), 0, 24, 1, "dp"));
         pad.addView(slider("오른쪽 여백", Prefs.PAD_RIGHT, prefs.padRightDp(), 0, 24, 1, "dp"));

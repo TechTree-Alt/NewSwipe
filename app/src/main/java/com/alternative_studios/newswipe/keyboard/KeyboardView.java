@@ -768,8 +768,16 @@ public final class KeyboardView extends View {
                 Icons.draw(c, Icons.EMOJI, cx, cy, Math.min(iconSize, dp(22)), icon);
                 return;
             case Key.SPACE:
-                // 글자·기호 자판의 스페이스바는 비워 두고, 숫자 자판에서만 ␣로 띄어쓰기 키임을 알린다.
-                if (layout.kind != KeyboardLayout.NUMBER) return;
+                // 글자·기호 자판의 스페이스바는 비워 두고(설정하면 글자 자판에 언어 이름), 숫자 자판에서만 ␣로 띄어쓰기 키임을 알린다.
+                if (layout.kind != KeyboardLayout.NUMBER) {
+                    if (spaceLabel != null && layout.isLetters() && r.width() > dp(48)) {
+                        text.setColor(theme.hint);
+                        text.setTypeface(Typeface.DEFAULT);
+                        text.setTextSize(spHint * 1.15f);
+                        drawCentered(c, spaceLabel, cx, cy);
+                    }
+                    return;
+                }
                 text.setColor(fg);
                 text.setTypeface(Typeface.DEFAULT);
                 text.setTextSize(spChar);
@@ -1469,6 +1477,16 @@ public final class KeyboardView extends View {
     /** 🌐︎를 길게 눌렀을 때 고를 언어 이름들과 지금 언어의 번호. null이면 원래대로 입력기 선택 창을 연다. */
     private String[] languagePopup;
     private int languagePopupSelected;
+
+    /** 글자 자판의 스페이스바에 보일 언어 이름. null이면 비워 둔다. */
+    private String spaceLabel;
+
+    public void setSpaceLabel(String label) {
+        if (!java.util.Objects.equals(spaceLabel, label)) {
+            spaceLabel = label;
+            invalidate();
+        }
+    }
 
     /** 🌐︎ 길게 누르기 말풍선의 언어들 (둘 이상일 때만 쓴다). null이면 끈다. */
     public void setLanguagePopup(String[] labels, int selected) {

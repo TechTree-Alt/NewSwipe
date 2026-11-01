@@ -2515,10 +2515,13 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 🌐︎ 길게 누르기 말풍선의 언어 (이름은 기호 자판의 돌아가기 키와 같다). */
     private static final String[] LANGUAGE_IDS = {"ko", "en", CjkComposer.JA, CjkComposer.ZH};
     private static final String[] LANGUAGE_LABELS = {"가", "ABC", "あ", "中"};
+    /** 스페이스바에 보일 언어 이름 ('자판 모양 > 스페이스바에 언어 이름 보이기'). */
+    private static final String[] SPACE_NAMES = {"한국어", "English", "日本語", "中文"};
 
     /** 설정에서 켰으면 🌐︎ 길게 누르기에 켜 둔 언어를 놓는다 (꺼 두었으면 원래대로 입력기 선택 창). */
     private void updateLanguagePopup() {
         if (keyboard == null) return;
+        keyboard.setSpaceLabel(prefs.spaceLangLabel() ? SPACE_NAMES[java.util.Arrays.asList(LANGUAGE_IDS).indexOf(currentLanguage())] : null);
         if (!prefs.globeLangPopup()) {
             keyboard.setLanguagePopup(null, 0);
             return;
