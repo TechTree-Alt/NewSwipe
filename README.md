@@ -7,6 +7,7 @@ NewSwipe는 가볍고 현대적이며 편안한 한국어 입력 시스템입니
 <br />
 <p align="left">
   <a href="https://github.com/TechTree-Alt/NewSwipe/releases/latest"><img src="docs/get-apk-github.svg" alt="Get it on GitHub" height="50" /></a>
+  <a href="https://play.google.com/store/apps/details?id=com.alternative_studios.newswipe"><img src="docs/get-apk-github.svg" alt="Get it on Google Play" height="50" /></a>
 </p>
 <br />
 
