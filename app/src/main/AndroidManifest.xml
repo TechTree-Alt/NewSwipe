@@ -95,6 +95,12 @@
             android:label="@string/app_name" />
 
         <activity
+            android:name=".LanguageOrderEditorActivity"
+            android:screenOrientation="portrait"
+            android:exported="false"
+            android:label="@string/app_name" />
+
+        <activity
             android:name=".ToolbarButtonsEditorActivity"
             android:screenOrientation="portrait"
             android:exported="false"

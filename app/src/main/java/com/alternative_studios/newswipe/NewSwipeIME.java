@@ -2523,8 +2523,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private static final String[] SPACE_NAMES = {"한국어", "English", "日本語", "中文"};
 
     /**
-     * 스페이스바의 언어 이름과, 설정에서 켰으면 🌐︎를 위로 밀 때의 언어 말풍선을 놓는다. 말풍선은 지금 언어가 맨 아래(🌐︎ 바로 위)에
-     * 오고 그 위로 🌐︎를 누를 때의 차례대로 쌓인다: 조금만 밀면 다음 언어, 더 밀수록 그다음 언어다. 지금 언어에서 떼면 그대로다.
+     * 스페이스바의 언어 이름과, 설정에서 켰으면 🌐︎를 위로 밀 때의 언어 말풍선을 놓는다. 말풍선은 '언어 순서 사용자화'에서 정한
+     * 차례대로 위에서 아래로 늘 같은 자리에 놓인다 (켜 둔 언어만). 처음에는 지금 언어가 골라져 있다.
      */
     private void updateLanguagePopup() {
         if (keyboard == null) return;
@@ -2535,15 +2535,15 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             keyboard.setLanguagePopup(null, 0);
             return;
         }
-        java.util.List<String> bottomUp = new java.util.ArrayList<>();
-        for (int k = 0; k < LANGUAGE_IDS.length; k++) {
-            int i = (nowAt + k) % LANGUAGE_IDS.length;
-            if (i >= 2 && !cjkAvailable(LANGUAGE_IDS[i])) continue;
-            bottomUp.add(SPACE_NAMES[i]);
+        java.util.List<String> names = new java.util.ArrayList<>();
+        int selected = 0;
+        for (String id : prefs.languageOrder()) {
+            int i = java.util.Arrays.asList(LANGUAGE_IDS).indexOf(id);
+            if (i >= 2 && !cjkAvailable(id)) continue;
+            if (i == nowAt) selected = names.size();
+            names.add(SPACE_NAMES[i]);
         }
-        java.util.Collections.reverse(bottomUp);   // 말풍선은 위에서 아래 차례로 그린다
-        // 처음에는 지금 언어(맨 아래)가 골라져 있고, 손가락 위치를 따라 바뀐다.
-        keyboard.setLanguagePopup(bottomUp.toArray(new String[0]), bottomUp.size() - 1);
+        keyboard.setLanguagePopup(names.toArray(new String[0]), selected);
     }
 
     /** 지금 언어: "ko" | "en" | "ja" | "zh". */

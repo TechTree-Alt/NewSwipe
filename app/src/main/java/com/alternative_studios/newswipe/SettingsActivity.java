@@ -393,6 +393,7 @@ public final class SettingsActivity extends Activity {
             {"swipefn", "스페이스바를 밀어서 커서 이동", "커서 트랙패드 이동"},
             {"swipefn", "스페이스바를 밀어서 언어 전환", "한영 전환 한/영 언어 바꾸기 스와이프"},
             {"swipefn", "🌐︎을 위로 밀어 언어 고르기", "지구본 언어 전환 키 한국어 영어 일본어 중국어 말풍선 팝업 선택"},
+            {"swipefn", "언어 순서 사용자화", "지구본 언어 차례 순서 바꾸기 한국어 영어 일본어 중국어"},
             {"swipefn", "스페이스바를 길게 누른 뒤 밀어서 선택", "텍스트 선택 범위 드래그 블록"},
             {"swipefn", "⌫ 밀어서 단위 삭제", "백스페이스 단어 삭제 줄 삭제 지우기"},
             {"swipefn", "기호 키를 위로 밀어서 이모지 열기", "이모티콘 스와이프 ?123"},
@@ -2000,8 +2001,11 @@ public final class SettingsActivity extends Activity {
                 });
         langSwitch[0] = switchOf(lang);
         standard.addView(lang);
+        View langOrder = subGroup(button("언어 순서 사용자화",
+                v -> startActivity(new Intent(this, LanguageOrderEditorActivity.class))));
         standard.addView(toggle("🌐︎을 위로 밀어 언어 고르기", "🌐︎을 위로 밀어 언어를 선택합니다.",
-                Prefs.GLOBE_SWIPE_LANG, prefs.globeSwipeLang()));
+                Prefs.GLOBE_SWIPE_LANG, prefs.globeSwipeLang(), langOrder));
+        standard.addView(langOrder);
         standard.addView(toggle("⌫ 밀어서 단위 삭제",
                 "⌫를 왼쪽으로 밀면 단어를, 위로 밀면 줄에서 커서 왼쪽을 모두 지웁니다. "
                         + "커서가 줄의 맨 앞이면 위로 밀었을 때 윗줄과 합칩니다.",

@@ -1504,7 +1504,12 @@ public final class KeyboardView extends View {
     }
 
     /** vertical: 항목을 한 줄에 하나씩 세로로 쌓는다 (언어 말풍선. 이름이 길어 칸을 넓게 쓴다). */
+    /** 세로 말풍선(언어)인지와 처음 골라져 있던 칸. 손가락이 말풍선 아래(키 쪽)로 내려오면 처음 칸으로 돌아간다. */
+    private boolean popupVertical;
+    private int popupInitial;
+
     private void openPopup(Pointer p, String[] items, int selected, boolean vertical) {
+        popupVertical = vertical;
         if (shiftState != 0 && upperCaseLayout()) {
             // 한 글자(é 같은 악센트 문자)만 Shift를 따른다. 두 글자 이상(단어)은 정해 둔 그대로 입력한다.
             for (int i = 0; i < items.length; i++) {
@@ -1536,6 +1541,7 @@ public final class KeyboardView extends View {
         popupTop = p.key.rect.top + gapY / 2 - rows * popupCellH - dp(4);
         popupTop = Math.max(-overflowTop, popupTop);
         popupSelected = Math.max(0, Math.min(items.length - 1, selected));
+        popupInitial = popupSelected;
         popupMoved = false;
     }
 
@@ -1548,6 +1554,10 @@ public final class KeyboardView extends View {
             popupMoved = true;
         }
         int rows = (popupItems.length + popupCols - 1) / popupCols;
+        if (popupVertical && y > popupTop + rows * popupCellH) {
+            popupSelected = popupInitial;   // 아직 말풍선에 닿지 않았다 (떼면 그대로)
+            return;
+        }
         int col = (int) Math.floor((x - popupLeft) / popupCellW);
         int row = (int) Math.floor((y - popupTop) / popupCellH);
         col = Math.max(0, Math.min(popupCols - 1, col));

@@ -132,6 +132,10 @@ public final class Prefs {
     public static final String SWIPE_KEYBOARD_CUSTOM = "swipe_keyboard_custom"; // 키보드 밀기 완전 사용자화
     /** 🌐︎를 위로 밀면 켜 둔 언어를 세로로 늘어놓은 말풍선을 띄워 고른다 (기본 꺼짐). */
     public static final String GLOBE_SWIPE_LANG = "globe_swipe_lang";
+    /** 🌐︎를 위로 밀었을 때 말풍선의 언어 차례 (위에서 아래, "ko,en,ja,zh"). 일본어·중국어는 켰을 때만 보인다. */
+    public static final String LANGUAGE_ORDER = "language_order";
+    /** 언어 ID: 한국어, 영어, 일본어, 중국어 (기본 차례). */
+    public static final String[] LANGUAGES = {"ko", "en", "ja", "zh"};
     public static final String SPACE_LANG_SWIPE = "space_lang_swipe";         // 스페이스바를 좌우로 밀어 언어 전환
     /** 글자 자판의 스페이스바에 지금 언어 이름(한국어·English·日本語·中文)을 띄운다 (기본 꺼짐). */
     public static final String SPACE_LANG_LABEL = "space_lang_label";
@@ -387,7 +391,7 @@ public final class Prefs {
         MENU_PREFIXES.put("swipe", keys("swipe_custom_", "swipe_final_", "swipe_vowel_"));
         MENU_KEYS.put("swipefn", keys(FN_SWIPE_THRESHOLD, SPACE_CURSOR, SPACE_CURSOR_H, SPACE_CURSOR_V,
                 SPACE_CURSOR_SPEED_H, SPACE_CURSOR_SPEED_V, CHAR_CURSOR, CHAR_CURSOR_H, CHAR_CURSOR_V,
-                CHAR_CURSOR_SPEED_H, CHAR_CURSOR_SPEED_V, SPACE_LANG_SWIPE, GLOBE_SWIPE_LANG, SPACE_SELECT, TWO_FINGER_UNDO, SWIPE_KEYBOARD_CUSTOM, SWIPE_PICK_SUGGESTION,
+                CHAR_CURSOR_SPEED_H, CHAR_CURSOR_SPEED_V, SPACE_LANG_SWIPE, GLOBE_SWIPE_LANG, LANGUAGE_ORDER, SPACE_SELECT, TWO_FINGER_UNDO, SWIPE_KEYBOARD_CUSTOM, SWIPE_PICK_SUGGESTION,
                 SWIPE_FN_CUSTOM, SWIPE_TOOLBAR_CUSTOM, DELETE_WORD_SWIPE, MODE_KEY_EMOJI, TOOLBAR_SWIPE,
                 TOOL_EMOJI_SWIPE, TOOL_CLIPBOARD_SWIPE, TOOL_UNDO_SWIPE));
         MENU_PREFIXES.put("swipefn", keys("swipe_fn_", "swipe_toolbar_", "swipe_kb_"));
@@ -955,6 +959,26 @@ public final class Prefs {
     public boolean longPressDelete() { return sp.getBoolean(LONG_PRESS_DELETE, true); }
     public boolean modeKeyLongPress() { return sp.getBoolean(MODE_KEY_LONG_PRESS, true); }
     public boolean globeSwipeLang() { return sp.getBoolean(GLOBE_SWIPE_LANG, false); }
+
+    /** 말풍선의 언어 차례: 네 언어가 모두 한 번씩 든다 (저장된 값에 없거나 모르는 언어는 기본 차례로 채운다). */
+    public String[] languageOrder() {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        String saved = sp.getString(LANGUAGE_ORDER, null);
+        if (saved != null) {
+            for (String id : saved.split(",")) {
+                if (java.util.Arrays.asList(LANGUAGES).contains(id) && !out.contains(id)) out.add(id);
+            }
+        }
+        for (String id : LANGUAGES) if (!out.contains(id)) out.add(id);
+        return out.toArray(new String[0]);
+    }
+
+    public void setLanguageOrder(String[] order) {
+        sp.edit().putString(LANGUAGE_ORDER, String.join(",", order)).apply();
+    }
+
+    /** '언어 순서 사용자화' 화면의 값. */
+    public void resetLanguageOrder() { sp.edit().remove(LANGUAGE_ORDER).apply(); }
     public boolean longPressCustom() { return sp.getBoolean(LONG_PRESS_CUSTOM, false); }
     public boolean modeKeyEmoji() { return sp.getBoolean(MODE_KEY_EMOJI, true); }
     public int deletePressMs() { return sp.getInt(DELETE_PRESS_MS, 350); }
