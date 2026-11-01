@@ -1117,7 +1117,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         cfgPredict = prefs.predictNext();
         suggester.setUserEnabled(cfgLearn);
         suggester.setSuggestEnabled(cfgSuggest);   // 자동 수정만 쓰면 추천에만 쓰는 초성 색인을 만들지 않는다
-        suggester.setKeyRows(KeyboardLayout.koreanLetterRows(prefs), KeyboardLayout.koreanAspirateSwipe(prefs));
+        if (cfgWords) {   // 오타 이웃 표는 추천·자동 수정에만 쓴다
+            suggester.setKeyRows(KeyboardLayout.koreanLetterRows(prefs), KeyboardLayout.koreanAspirateSwipe(prefs));
+        }
         if (suggester.packChanged()) {
             // 설정에서 사전 팩을 가져오거나 지웠다: 읽어 둔 사전을 놓고 필요할 때 새 사전을 읽는다.
             suggester.release();
@@ -1486,6 +1488,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private void seedMirror(EditorInfo info) {
         if (Build.VERSION.SDK_INT < 30) return;
         if (!suggestAllowed && !shortcutAllowed) return;
+        if (!cfgWords && !cfgShortcuts) return;   // 따라 적은 글자는 추천·학습·단축어에만 쓴다 (applySettings가 먼저 불렸다)
         int sel = info.initialSelStart;
         if (sel < 0 || sel != info.initialSelEnd) return;
         CharSequence before;

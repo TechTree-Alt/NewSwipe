@@ -73,8 +73,15 @@ public final class WordSuggester {
      * ㅍ·ㅊ·ㅌ·ㅋ을 넣는 자판 (NewSwipe 단모음).
      */
     public void setKeyRows(String[][] rows, boolean aspirateSwipe) {
+        // 입력란마다 불리지만 자판이 바뀔 때만 이웃 표를 다시 만든다 (줄은 KeyboardLayout의 고정 배열이라 같은지 바로 안다).
+        if (rows == keyRows && aspirateSwipe == keyAspirate) return;
+        keyRows = rows;
+        keyAspirate = aspirateSwipe;
         typo.setRows(rows, aspirateSwipe);
     }
+
+    private String[][] keyRows;
+    private boolean keyAspirate;
 
     public UserDictionary user() {
         return user;
