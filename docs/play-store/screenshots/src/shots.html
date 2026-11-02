@@ -45,6 +45,9 @@
   .chip { position: absolute; z-index: 4; background: #fff; color: var(--ink); border-radius: 999px;
           padding: 18px 30px; font-size: 30px; font-weight: 700; letter-spacing: -.5px;
           box-shadow: 0 16px 36px rgba(11,30,92,.35); display: flex; align-items: center; gap: 14px; white-space: nowrap; }
+  .act { background:#fff; color:var(--ink); border-radius:28px; padding:18px 22px; display:flex; align-items:center; gap:18px;
+         font-size:28px; font-weight:700; line-height:1.35; letter-spacing:-.5px; box-shadow:0 14px 30px rgba(11,30,92,.28); }
+  .act .dot { flex:none; width:52px; height:52px; border-radius:50%; background:var(--blue); display:grid; place-items:center; }
   .chip .dot { width: 46px; height: 46px; border-radius: 50%; background: var(--blue); color: #fff;
                display: grid; place-items: center; font-size: 26px; }
 
@@ -102,14 +105,14 @@
     <h1>모든 키의 기능을<br>마음대로 정하세요</h1>
     <p>키마다 위·아래·왼쪽·오른쪽으로<br>밀었을 때 할 일을 상세하게 고르세요</p>
   </div>
-  <div class="device" style="left:300px; top:650px; width:740px; height:1600px;">
+  <div class="device" style="left:50px; top:650px; width:600px; height:1600px; border-radius:56px; padding:16px;">
     <div class="screen"><img src="img/settings.jpg" style="width:100%; display:block;"></div>
   </div>
 
   <!-- direction pad -->
-  <div style="position:absolute; left:30px; top:900px; width:330px; height:330px; z-index:5;
+  <div style="position:absolute; left:684px; top:690px; width:450px; height:330px; z-index:5; transform:scale(.8); transform-origin:top left;
               background:rgba(255,255,255,.96); border-radius:40px; box-shadow:0 26px 60px rgba(11,30,92,.4);">
-    <svg width="330" height="330" viewBox="0 0 330 330" style="position:absolute; inset:0;">
+    <svg width="330" height="330" viewBox="0 0 330 330" style="position:absolute; left:60px; top:0;">
       <g stroke="#2F62E8" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none">
         <path d="M165 105V45M140 68l25-25 25 25"/>
         <path d="M165 225v60M140 262l25 25 25-25"/>
@@ -117,16 +120,18 @@
         <path d="M225 165h60M262 140l25 25-25 25"/>
       </g>
     </svg>
-    <div style="position:absolute; left:115px; top:115px; width:100px; height:100px; border-radius:24px;
+    <div style="position:absolute; left:175px; top:115px; width:100px; height:100px; border-radius:24px;
                 background:#fff; box-shadow:0 6px 14px rgba(0,0,0,.18); display:grid; place-items:center;
                 "><svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#111827" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M8 5h12v14H8l-6-7z"/><path d="M11.5 9.5l5 5M16.5 9.5l-5 5"/></svg></div>
   </div>
-  <div class="chip" style="right:30px; top:1080px;"><span class="dot"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5h12v14H8l-6-7z"/><path d="M11.5 9.5l5 5M16.5 9.5l-5 5"/></svg></span>밀어서 단어 지우기</div>
-  <div class="chip" style="right:30px; top:1184px;"><span class="dot"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4"/></svg></span>스페이스바로 커서 이동</div>
-  <div class="chip" style="right:30px; top:1288px;"><span class="dot"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 010 11H11"/></svg></span>실행 취소 · 다시 실행</div>
-  <div class="chip" style="right:30px; top:1392px;"><span class="dot"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 01-1-1V4a1 1 0 011-1h10a1 1 0 011 1v1"/></svg></span>전체 선택 후 복사</div>
-  <div class="chip" style="right:30px; top:1496px;"><span class="dot"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 2h6v4H9zM9 11h6M9 15h4"/></svg></span>고정 클립보드 붙여넣기</div>
-  <div class="chip" style="right:30px; top:1600px;"><span class="dot"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01M15 9h.01"/></svg></span>최근 이모지 바로 입력</div>
+  <div style="position:absolute; left:684px; top:1000px; width:360px; display:flex; flex-direction:column; gap:18px; z-index:4;">
+    <div class="act"><span class="dot"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5h12v14H8l-6-7z"/><path d="M11.5 9.5l5 5M16.5 9.5l-5 5"/></svg></span><span>밀어서<br>단어 지우기</span></div>
+    <div class="act"><span class="dot"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4"/></svg></span><span>스페이스바로<br>커서 이동</span></div>
+    <div class="act"><span class="dot"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 010 11H11"/></svg></span><span>실행 취소<br>다시 실행</span></div>
+    <div class="act"><span class="dot"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 01-1-1V4a1 1 0 011-1h10a1 1 0 011 1v1"/></svg></span><span>전체 선택<br>후 복사</span></div>
+    <div class="act"><span class="dot"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 2h6v4H9zM9 11h6M9 15h4"/></svg></span><span>고정 클립보드<br>붙여넣기</span></div>
+    <div class="act"><span class="dot"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01M15 9h.01"/></svg></span><span>최근 이모지<br>바로 입력</span></div>
+  </div>
 </section>
 
 <!-- ============ 4. 자동 수정 ============ -->
