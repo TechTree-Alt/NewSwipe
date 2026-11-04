@@ -883,7 +883,7 @@ public final class SettingsActivity extends Activity {
                 "숫자 키(1~0)에서만 길게 눌러 입력할 문자 힌트를 없앱니다.",
                 Prefs.NUMBER_HINT_HIDDEN, prefs.numberHintHidden()));
         look.addView(toggle("스페이스바에 언어 이름 보이기",
-                "글자 자판의 스페이스바에 지금 쓰는 언어(한국어·English, 실험실의 日本語·中文)를 작게 보여 줍니다.",
+                "스페이스바에 지금 쓰는 언어를 작게 보여 줍니다.",
                 Prefs.SPACE_LANG_LABEL, prefs.spaceLangLabel()));
         LinearLayout pad = section("여백");
         pad.addView(slider("왼쪽 여백", Prefs.PAD_LEFT, prefs.padLeftDp(), 0, 24, 1, "dp"));
