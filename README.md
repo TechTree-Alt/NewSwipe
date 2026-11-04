@@ -7,6 +7,7 @@ NewSwipe는 가볍고 현대적이며 편안한 한국어 입력 시스템입니
 <br />
 <p align="left">
   <a href="https://github.com/TechTree-Alt/NewSwipe/releases/latest"><img src="docs/get-apk-github.svg" alt="Get it on GitHub" height="50" /></a>
+  <a href="https://techtree.tistory.com/280"><img src="docs/preregister-googleplay.png" alt="Preregister on Google Play" height="50" /></a>
 </p>
 <br />
 
@@ -102,12 +103,24 @@ NewSwipe는 하나의 경험을 모두에게 강제하지 않고, 다양한 사�
 
 ## 🔒 개인정보
 
-- 인터넷 권한이 없으므로 어떤 데이터도 외부로 보내지 않습니다.
+개인정보 보호와 보안은 입력 시스템의 기본기이자 핵심입니다. NewSwipe는 사용자의 편안함을 위해 개인정보를 수집하거나 외부로 보내지 않습니다.
+- **인터넷 권한이 없으므로 어떤 데이터도 외부로 보내지 않습니다.**
 - 학습한 단어와 클립보드 기록(텍스트·이미지)은 앱 전용 저장소에만 저장되며 시스템 백업에는 포함되지 않습니다(`allowBackup=false`).
   설정에서 저장을 끄거나 모두 지울 수 있습니다.
 - 비밀번호·이메일 입력란과 앱이 학습하지 말라고 표시한 입력란(시크릿 모드 등)에서는 단어를 학습하지 않습니다.
 - 설정 내보내기에서 학습한 단어·이모지·클립보드 기록(텍스트만)을 직접 고른 경우에만 백업 파일에 담기며,
   이때 비밀번호로 파일 전체를 암호화할 수 있습니다 (AES-256-GCM, 키는 PBKDF2-HMAC-SHA256으로 만듦).
+<br />
+
+## 🤝 NewSwipe의 약속 
+
+NewSwipe는 Github에 무료로 공개되어 있으나, Google Play에서는 유료로 판매하는 앱입니다. 그러나 유료로 판매하는 이유는 매출이나 추가 수입이 아닌, **제가 최선을 다해 만든 결과물이 좋은 사람들에게 얼마나 인정받을지가 궁금해서**입니다. 자세한 내용은 [NewSwipe 테스터 모집 글](https://techtree.tistory.com/280)을 참고해 주세요. 
+ 
+NewSwipe의 개발자 Alternative는 모든 사용자 분들과 두 가지를 약속하고자 합니다. 
+
+1. NewSwipe는 **오픈소스를 유지**하고, Github에서 계속 무료로 APK를 다운받아 사용할 수 있게 하겠습니다. NewSwipe의 철학은 사용자와의 신뢰에 기반하며, 이를 위해 오픈소스는 필수입니다.
+
+2. NewSwipe의 **Github 버전과 Play 버전에 차이를 두지 않겠습니다.** 즉, 유료로 구매하는 분들에게만 적용되는 기능이나 이득이 없도록 하겠습니다. 사용자가 Play 버전을 구매하는 이유는 오직 **Google Play를 통한 자동 업데이트**의 편의성과 **개발자를 응원하는 마음**, 두 가지뿐입니다.
 <br />
 
 ## 💡 영감을 받은 곳
