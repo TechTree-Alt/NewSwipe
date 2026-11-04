@@ -1684,7 +1684,23 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         // 외장 키보드로 도구 막대만 보일 때는 자판 자리를 비운다. 이모지·클립보드 창은 그때도 원래 크기로 연다.
         boolean barOnly = toolbarOnlyNow();
         keyboard.setVisibility(full || barOnly ? View.GONE : View.VISIBLE);
-        int h = barOnly ? 0 : keyboardHeight + (full ? toolbarHeight : 0);
+        // '자판 아래에 두기'에서는 도구 막대를 맨 아래 키 줄 바로 밑에 붙이고, 자판의 아래쪽 여백은 도구 막대 밑으로 옮긴다
+        // (전체 높이는 그대로다). 도구 막대가 안 보이거나 자판이 없으면 여백은 자판에 그대로 둔다.
+        int padB = Ui.dp(this, prefs.padBottomDp());
+        boolean liftBar = prefs.toolbarBottom() && panel == PANEL_KEYBOARD && !barOnly
+                && topSlot != null && topSlot.getVisibility() == View.VISIBLE;
+        int gap = liftBar ? padB : 0;
+        keyboard.setInsets(Ui.dp(this, prefs.padLeftDp()), Ui.dp(this, prefs.padTopDp()),
+                Ui.dp(this, prefs.padRightDp()), padB - gap);
+        keyboard.setKeyboardHeight(keyboardHeight - gap);
+        if (topSlot != null && topSlot.getLayoutParams() instanceof LinearLayout.LayoutParams) {
+            LinearLayout.LayoutParams slp = (LinearLayout.LayoutParams) topSlot.getLayoutParams();
+            if (slp.bottomMargin != gap) {
+                slp.bottomMargin = gap;
+                topSlot.setLayoutParams(slp);
+            }
+        }
+        int h = barOnly ? 0 : keyboardHeight - gap + (full ? toolbarHeight : 0);
         ViewGroup.LayoutParams lp = content.getLayoutParams();
         if (lp != null && lp.height != h) {
             lp.height = h;
