@@ -1040,10 +1040,12 @@ public final class KeyboardLayout {
         boolean grid = prefs != null && prefs.gridLayout();
         float wideW = grid ? gridKey(prefs) : 1.5f, narrowW = grid ? gridKey(prefs) : 1f;
         String[] order = prefs == null ? BottomKeys.DEFAULT_ORDER : prefs.bottomKeyOrder();
-        int spaceAt = -1;
+        int spaceAt = -1, placed = 0;
         for (String id : order) {
             boolean shown = prefs == null ? BottomKeys.shownByDefault(id) : prefs.bottomKeyShown(id);
             if (!shown) continue;
+            // 켤 수 있는 키는 MAX_SHOWN개까지다 (가져온 설정 등으로 더 켜져 있으면 순서상 앞의 키만 놓는다).
+            if (placed++ >= BottomKeys.MAX_SHOWN) continue;
             Key k;
             switch (id) {
                 case BottomKeys.MODE:

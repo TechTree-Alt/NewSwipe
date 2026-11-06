@@ -13,6 +13,8 @@ public final class BottomKeys {
             PERIOD = "period", ENTER = "enter";
     /** 더할 수 있는 키 (처음에는 꺼져 있다). */
     public static final String EMOJI = "emoji", CLIPBOARD = "clipboard", CURSOR = "cursor", VOICE = "voice";
+    /** 맨 아래 줄에 한꺼번에 켤 수 있는 키의 수 (스페이스바 포함, Shift·⌫ 제외). */
+    public static final int MAX_SHOWN = 8;
     /** 기본 순서. 더할 수 있는 키는 뒤에 온다 (예전에 저장한 순서에도 뒤에 붙는다). */
     public static final String[] DEFAULT_ORDER = {MODE, COMMA, GLOBE, SPACE, PERIOD, ENTER, EMOJI, CLIPBOARD, CURSOR, VOICE};
 
@@ -40,7 +42,7 @@ public final class BottomKeys {
     public static String hint(String id) {
         switch (id) {
             case GLOBE: return "기호 자판에서는 이모지 키도 함께 없어집니다.";
-            case CURSOR: return "상하좌우로 밀면 커서가 움직입니다 (스페이스바 커서 이동과 같은 속도).";
+            case CURSOR: return "상하좌우로 밀면 커서가 움직입니다.";
             default: return null;
         }
     }

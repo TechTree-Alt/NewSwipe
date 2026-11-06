@@ -78,7 +78,8 @@ public final class BottomKeysEditorActivity extends Activity {
 
     private void render() {
         list.removeAllViews();
-        TextView note = text("오른쪽의 ≡를 잡고 끌어 순서를 바꿀 수 있습니다.", 13, hintColor);
+        TextView note = text("오른쪽의 ≡를 잡고 끌어 순서를 바꿀 수 있습니다. 맨 아래 줄의 키는 스페이스바를 포함해 "
+                + BottomKeys.MAX_SHOWN + "개까지 켤 수 있습니다.", 13, hintColor);
         note.setPadding(Ui.dp(this, 4), 0, 0, Ui.dp(this, 4));
         list.addView(note);
 
@@ -373,6 +374,13 @@ public final class BottomKeysEditorActivity extends Activity {
             if (!checked && shownCount() <= 1) {
                 // 맨 아래 줄이 비지 않도록 마지막 키는 끌 수 없다.
                 Toast.makeText(this, "적어도 한 키는 남겨 두어야 합니다", Toast.LENGTH_SHORT).show();
+                sw.post(sw::toggle);
+                return;
+            }
+            if (checked && !prefs.bottomKeyShown(id) && shownCount() >= BottomKeys.MAX_SHOWN) {
+                // 맨 아래 줄에는 스페이스바를 포함해 MAX_SHOWN개까지만 켤 수 있다 (Shift 키·⌫는 세지 않는다).
+                Toast.makeText(this, "기능키는 스페이스바를 포함해 " + BottomKeys.MAX_SHOWN + "개까지 켤 수 있습니다",
+                        Toast.LENGTH_SHORT).show();
                 sw.post(sw::toggle);
                 return;
             }

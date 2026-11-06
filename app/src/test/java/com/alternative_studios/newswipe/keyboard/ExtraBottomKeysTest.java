@@ -165,4 +165,26 @@ public class ExtraBottomKeysTest {
         assertFalse(spec.shown(p, FunctionSwipes.DELETE));
         assertTrue(spec.shown(p, FunctionSwipes.SPACE));
     }
+
+    @Test
+    public void atMostEightBottomKeys() throws Exception {
+        assertEquals(8, BottomKeys.MAX_SHOWN);
+        // 모든 키를 켠 설정(가져온 설정 등)이어도 순서상 앞의 8개만 놓는다. Shift·⌫는 세지 않는다.
+        FakeSp sp = new FakeSp();
+        for (String k : PREF) sp.m.put(k, true);
+        sp.m.put(Prefs.PERIOD_COMMA, false);   // 쉼표 키도 보이기 → 모두 10개
+        Prefs p = view(sp, Prefs.PROFILE_PORTRAIT);
+        for (KeyboardLayout l : all(p)) {
+            KeyboardLayout.Row bottom = l.rows[l.rows.length - 1];
+            int keys = 0;
+            for (Key k : bottom.keys) if (k.type != Key.GAP && k.type != Key.SPACER) keys++;
+            assertEquals(8, keys);
+            assertEquals(0, count(l, Key.CURSOR_PAD));   // 기본 순서의 9·10번째 (커서 이동·음성 입력)
+            assertEquals(0, count(l, Key.VOICE));
+            assertEquals(1, count(l, Key.CLIPBOARD));
+        }
+        // 기본 설정은 다섯 키 (쉼표 꺼짐)
+        KeyboardLayout.Row bottom = KeyboardLayout.english(view(new FakeSp(), Prefs.PROFILE_PORTRAIT)).rows[3];
+        assertEquals(5, bottom.keys.length);
+    }
 }
