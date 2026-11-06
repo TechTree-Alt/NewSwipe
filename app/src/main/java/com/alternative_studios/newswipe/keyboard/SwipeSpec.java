@@ -72,6 +72,11 @@ public abstract class SwipeSpec {
 
     // ---------------------------------------------------------------- 편집 화면
 
+    /** 편집 화면에 이 칸을 보일지 (기능키 밀기는 켠 키만 보인다). 기본은 늘 보인다. */
+    public boolean shown(Prefs prefs, int slot) {
+        return true;
+    }
+
     /** 편집 화면 제목. */
     public abstract String title();
 

@@ -105,11 +105,64 @@ public class ExtraBottomKeysTest {
     }
 
     @Test
-    public void extraKeysHaveNoFunctionKeySlots() {
-        // 밀기·길게 누르기 사용자화의 대상이 아니다 (언어 전환 키 등의 설정을 따라가지 않는다)
-        for (int t : TYPES) {
-            assertEquals(-1, FunctionSwipes.slotOf(t));
-            assertEquals(-1, LongPressActions.slotOf(t));
+    public void extraKeysHaveTheirOwnFunctionSwipeSlots() {
+        int[] slots = {FunctionSwipes.EMOJI_KEY, FunctionSwipes.CLIPBOARD, FunctionSwipes.CURSOR, FunctionSwipes.VOICE};
+        for (int i = 0; i < TYPES.length; i++) {
+            assertEquals(slots[i], FunctionSwipes.slotOf(TYPES[i]));
+            assertEquals(-1, LongPressActions.slotOf(TYPES[i]));   // 길게 누르기 사용자화의 대상은 아니다
         }
+    }
+
+    @Test
+    public void functionSwipeDefaultsForExtraKeys() {
+        FunctionSwipes f = FunctionSwipes.from(null);
+        for (int dir = 0; dir < 4; dir++) {
+            // 커서 이동 키는 네 방향 모두 커서 이동, 나머지 새 키는 없음
+            assertEquals(SwipeAction.CURSOR_MOVE, f.action(FunctionSwipes.CURSOR, dir));
+            assertEquals(SwipeAction.NONE, f.action(FunctionSwipes.EMOJI_KEY, dir));
+            assertEquals(SwipeAction.NONE, f.action(FunctionSwipes.CLIPBOARD, dir));
+            assertEquals(SwipeAction.NONE, f.action(FunctionSwipes.VOICE, dir));
+        }
+        assertTrue(f.cursorH(FunctionSwipes.CURSOR));
+        assertTrue(f.cursorV(FunctionSwipes.CURSOR));
+        // 기존 키의 기본값은 그대로
+        assertEquals(SwipeAction.EMOJI_OPEN, f.action(FunctionSwipes.MODE, Key.SWIPE_UP));
+        assertEquals(SwipeAction.CURSOR_MOVE, f.action(FunctionSwipes.SPACE, Key.SWIPE_LEFT));
+    }
+
+    @Test
+    public void cursorMoveIsOnlyForSpaceAndCursorKey() {
+        Map<String, String> m = new HashMap<>();
+        m.put("cursor/left", SwipeAction.NONE);
+        m.put("cursor/up", SwipeAction.CLIPBOARD_OPEN);
+        m.put("voice/up", SwipeAction.CURSOR_MOVE);   // 커서 이동 키가 아닌 키에서는 없음
+        FunctionSwipes f = FunctionSwipes.from((slot, dir) -> m.get(slot + "/" + dir));
+        assertEquals(SwipeAction.NONE, f.action(FunctionSwipes.CURSOR, Key.SWIPE_LEFT));
+        assertEquals(SwipeAction.CLIPBOARD_OPEN, f.action(FunctionSwipes.CURSOR, Key.SWIPE_UP));
+        assertEquals(SwipeAction.NONE, f.action(FunctionSwipes.VOICE, Key.SWIPE_UP));
+        assertTrue(f.cursorH(FunctionSwipes.CURSOR));    // 오른쪽은 아직 커서 이동
+        assertTrue(f.cursorV(FunctionSwipes.CURSOR));    // 아래도
+        assertTrue(java.util.Arrays.asList(SwipeAction.idsFor(FunctionSwipes.CURSOR)).contains(SwipeAction.CURSOR_MOVE));
+        assertFalse(java.util.Arrays.asList(SwipeAction.idsFor(FunctionSwipes.VOICE)).contains(SwipeAction.CURSOR_MOVE));
+    }
+
+    @Test
+    public void editorShowsOnlyKeysThatAreOn() throws Exception {
+        FakeSp sp = new FakeSp();
+        Prefs p = view(sp, Prefs.PROFILE_PORTRAIT);
+        SwipeSpec spec = FunctionSwipes.SPEC;
+        // 처음: 원래 다섯 키만
+        for (int slot = 0; slot < spec.slotCount(); slot++) assertEquals(slot + "", slot <= FunctionSwipes.DELETE, spec.shown(p, slot));
+        sp.m.put(Prefs.BOTTOM_CURSOR_KEY, true);
+        sp.m.put(Prefs.BOTTOM_VOICE_KEY, true);
+        sp.m.put(Prefs.LANGUAGE_KEY_HIDDEN, true);
+        sp.m.put(Prefs.DELETE_KEY_HIDDEN, true);
+        assertTrue(spec.shown(p, FunctionSwipes.CURSOR));
+        assertTrue(spec.shown(p, FunctionSwipes.VOICE));
+        assertFalse(spec.shown(p, FunctionSwipes.EMOJI_KEY));
+        assertFalse(spec.shown(p, FunctionSwipes.CLIPBOARD));
+        assertFalse(spec.shown(p, FunctionSwipes.GLOBE));    // 끈 원래 키도 감춘다
+        assertFalse(spec.shown(p, FunctionSwipes.DELETE));
+        assertTrue(spec.shown(p, FunctionSwipes.SPACE));
     }
 }

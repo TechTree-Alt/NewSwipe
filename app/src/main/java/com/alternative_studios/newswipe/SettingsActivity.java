@@ -2047,7 +2047,8 @@ public final class SettingsActivity extends Activity {
         keys.addView(standard);
         keys.addView(toggle("기능키 밀어서 기능 완전 사용자화",
                 "기호 키·🌐︎·스페이스바·엔터 키·"
-                        + "⌫를 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 직접 정합니다.",
+                        + "⌫를 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 직접 정합니다. "
+                        + "'기능키 순서·유무 사용자화'에서 켠 이모지·클립보드·커서 이동·음성 입력 키도 정할 수 있습니다.",
                 custom, on -> {
                     prefs.raw().edit().putBoolean(Prefs.SWIPE_FN_CUSTOM, on).apply();
                     Ui.setVisibleAnimated(standard, !on);
