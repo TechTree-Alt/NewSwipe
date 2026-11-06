@@ -987,7 +987,7 @@ public final class SettingsActivity extends Activity {
         layoutKeys.addView(note("맨 아래 줄 기능키의 순서와 유무를 바꿉니다."));
         layoutKeys.addView(toggle("기호 자판 대신 숫자 패드 사용",
                 "기호 키(?123)를 누르면 기호 자판 대신 3×4 숫자 패드가 열립니다. "
-                        + "숫자 패드의 #+= 키로 기호 자판을, 가·ABC 키로 글자 자판을 엽니다.",
+                        + "숫자 패드의 ?!@ 키로 기호 자판을, 가·ABC 키로 글자 자판을 엽니다.",
                 Prefs.NUMBER_PAD_SYMBOLS, prefs.numberPadForSymbols()));
 
         LinearLayout keyLayout = section("키 정렬");

@@ -1881,7 +1881,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 break;
             case Key.TO_SYMBOLS:
                 commitComposing();
-                // '기호 자판 대신 숫자 패드 사용': 글자 자판의 기호 키는 숫자 패드를, 숫자 패드의 #+= 키는 기호 자판을 연다.
+                // '기호 자판 대신 숫자 패드 사용': 글자 자판의 기호 키는 숫자 패드를, 숫자 패드의 ?!@ 키는 기호 자판을 연다.
                 if (prefs.numberPadForSymbols() && !numberPadOpen()) openNumberPad();
                 else setLayoutKind(KeyboardLayout.SYMBOLS);
                 break;
@@ -1941,7 +1941,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return layoutKind == KeyboardLayout.NUMBER && numberPad;
     }
 
-    /** 3×4 숫자 패드를 연다 ('기호 자판 대신 숫자 패드 사용'). 패드의 #+= 키는 기호 자판을, 가·ABC 키는 글자 자판을 연다. */
+    /** 3×4 숫자 패드를 연다 ('기호 자판 대신 숫자 패드 사용'). 패드의 ?!@ 키는 기호 자판을, 가·ABC 키는 글자 자판을 연다. */
     private void openNumberPad() {
         commitComposing();
         numberPad = true;

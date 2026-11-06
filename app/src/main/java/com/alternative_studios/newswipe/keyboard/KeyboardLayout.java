@@ -42,11 +42,18 @@ public final class KeyboardLayout {
     /** 한 줄에 들어가는 1.0 너비 키의 수. */
     public final int columns;
     public final Row[] rows;
+    /** 기호 키로 연 3×4 숫자 패드인지 ({@link #numberPad}). 숫자 입력란의 숫자 자판({@link #number()})과 종류(NUMBER)는 같다. */
+    public final boolean numberPad;
 
     private KeyboardLayout(int kind, int columns, List<Row> rows) {
+        this(kind, columns, rows, false);
+    }
+
+    private KeyboardLayout(int kind, int columns, List<Row> rows, boolean numberPad) {
         this.kind = kind;
         this.columns = columns;
         this.rows = rows.toArray(new Row[0]);
+        this.numberPad = numberPad;
     }
 
     public boolean isLetters() {
@@ -773,7 +780,7 @@ public final class KeyboardLayout {
     }
 
     /** 숫자 패드에서 기호 자판(1쪽)으로 가는 키의 글자. */
-    public static final String NUMBER_PAD_SYMBOLS_LABEL = "#+=";
+    public static final String NUMBER_PAD_SYMBOLS_LABEL = "?!@";
 
     /**
      * '기호 자판 대신 숫자 패드 사용'을 켜면 기호 키로 여는 3×4 숫자 패드: 숫자 입력란의 자판({@link #number()})과 같은 배치에,
@@ -781,7 +788,7 @@ public final class KeyboardLayout {
      * 쉼표·온점을 둔다.
      * <pre>
      *  가    1  2  3  -
-     *  #+=   4  5  6  ␣
+     *  ?!@   4  5  6  ␣
      *  ,     7  8  9  ⌫
      *  .     *  0  #  ↵
      * </pre>
@@ -802,7 +809,7 @@ public final class KeyboardLayout {
             System.arraycopy(pad.rows[r].keys, 0, keys, 1, pad.rows[r].keys.length);
             rows.add(new Row(pad.rows[r].height, keys));
         }
-        return new KeyboardLayout(NUMBER, pad.columns + 1, rows);
+        return new KeyboardLayout(NUMBER, pad.columns + 1, rows, true);
     }
 
     // ---------------------------------------------------------------- 도우미

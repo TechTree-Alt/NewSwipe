@@ -710,12 +710,14 @@ public final class KeyboardView extends View {
     private int faceColor(Key k) {
         if (k.type == Key.ENTER) {
             return theme.accent;
-        } else if (gridColors && (k.type == Key.SHIFT || k.type == Key.FUNCTION || k.type == Key.DELETE || k.type == Key.SYMBOL_PAGE
-                || layout.kind == KeyboardLayout.NUMBER && (k.type == Key.TO_SYMBOLS || k.type == Key.TO_LETTERS
-                        || ".".equals(k.label) || ",".equals(k.label)))
-                && !(layout.kind == KeyboardLayout.NUMBER && k.type == Key.DELETE)) {
+        } else if (gridColors && layout.kind != KeyboardLayout.NUMBER && (k.type == Key.SHIFT || k.type == Key.FUNCTION
+                || k.type == Key.DELETE || k.type == Key.SYMBOL_PAGE)) {
             // 색 정렬: 글자 사이의 Shift·⌫·기호 쪽 넘김 키는 글자 키 색 (Shift 고정도 강조색 없이).
-            // 숫자 자판에서는 ?123·.를 숫자 키 색으로 맞추고, ⌫는 스페이스바·- 키와 같은 기능키 색으로 둔다.
+            // 숫자 자판의 ⌫는 스페이스바·- 키와 같은 기능키 색으로 둔다.
+            return theme.key;
+        } else if (gridColors && layout.numberPad && k.type == Key.CHAR && ("*".equals(k.label) || "#".equals(k.label))) {
+            // 기호 키로 연 숫자 패드: 숫자 사이의 *·#는 숫자 키 색. 왼쪽 줄(가·?!@·쉼표·온점)은 오른쪽 줄(-·스페이스바·⌫)과
+            // 같은 기능키 색으로 둔다 (아래의 기본 색).
             return theme.key;
         } else if (gridColors && k.type == Key.SPACE) {
             return theme.functionKey;   // 스페이스바는 맨 아래 줄의 다른 기능키 색
