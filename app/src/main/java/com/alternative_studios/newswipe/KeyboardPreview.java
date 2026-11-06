@@ -152,6 +152,7 @@ final class KeyboardPreview extends FrameLayout {
         selection = s;
         resolveSelection();
         overlay.invalidate();
+        overlay.post(overlay::updateExclusion);   // 보이는 손잡이가 바뀌었다
     }
 
     Selection selection() {
@@ -406,6 +407,13 @@ final class KeyboardPreview extends FrameLayout {
 
     /** 손잡이 h가 지금 보이는지. */
     private boolean handleShown(int h) {
+        // 무언가를 고른 동안에는 그것의 손잡이만 보인다: 키는 키 좌우·상하 여백, 도구 막대는 도구 막대 높이.
+        // 키보드 크기·여백 손잡이는 고른 것을 풀면 다시 보인다.
+        if (selection != null) {
+            if (selection.kind == SEL_TOOLBAR) return h == H_TOOLBAR && bar.getParent() != null;
+            if (selection.kind == SEL_TOOL_BUTTON) return false;
+            if (h != H_GAP_X && h != H_GAP_Y) return false;
+        }
         switch (h) {
             case H_TOOLBAR: return bar.getParent() != null;
             case H_NUMBER_ROW: return numberRowShown;
