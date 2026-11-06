@@ -15,7 +15,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-/** '기호 자판 대신 숫자 패드 사용'의 3×4 숫자 패드: 기호 자판·글자 자판으로 가는 키가 있고, 기호 자판은 그대로다. */
+/** 3×4 숫자 패드 (숫자 입력란과 '기호 자판 대신 숫자 패드 사용'이 같이 쓴다): 기호 자판·글자 자판으로 가는 키가 있다. */
 public class NumberPadKeyTest {
     private static final class FakeSp implements SharedPreferences {
         final Map<String, Object> m = new HashMap<>();
@@ -64,8 +64,6 @@ public class NumberPadKeyTest {
     public void numberPadHasWayBack() {
         KeyboardLayout pad = KeyboardLayout.numberPad(KeyboardLayout.NUMBER_PAD_SYMBOLS_LABEL, "가");
         assertEquals(KeyboardLayout.NUMBER, pad.kind);
-        assertTrue(pad.numberPad);   // 색 정렬에서 숫자 입력란의 자판과 따로 칠한다
-        assertFalse(KeyboardLayout.number().numberPad);
         assertEquals(5, pad.columns);
         assertEquals(4, pad.rows.length);
         for (KeyboardLayout.Row row : pad.rows) assertEquals(5, row.keys.length);
@@ -76,17 +74,13 @@ public class NumberPadKeyTest {
         assertEquals("?!@", symbols.label);
         assertEquals(",", pad.rows[2].keys[0].output);
         assertEquals(".", pad.rows[3].keys[0].output);
-        // 나머지는 숫자 입력란의 자판과 같다
-        KeyboardLayout field = KeyboardLayout.number();
+        // 3×4 숫자 부분: 1~9·*·0·# 과 오른쪽 줄 (-·스페이스바·⌫·엔터)
+        String[][] digits = {{"1", "2", "3"}, {"4", "5", "6"}, {"7", "8", "9"}, {"*", "0", "#"}};
+        int[] right = {Key.CHAR, Key.SPACE, Key.DELETE, Key.ENTER};
         for (int r = 0; r < 4; r++) {
-            for (int i = 0; i < field.rows[r].keys.length; i++) {
-                Key a = field.rows[r].keys[i], b = pad.rows[r].keys[i + 1];
-                assertEquals(a.type, b.type);
-                assertEquals(a.label, b.label);
-            }
+            for (int i = 0; i < 3; i++) assertEquals(digits[r][i], pad.rows[r].keys[i + 1].output);
+            assertEquals(right[r], pad.rows[r].keys[4].type);
         }
-        // 숫자 입력란의 자판에는 돌아가는 키가 없다
-        assertEquals(0, count(field, Key.TO_SYMBOLS));
-        assertEquals(0, count(field, Key.TO_LETTERS));
+        assertEquals("-", pad.rows[0].keys[4].output);
     }
 }

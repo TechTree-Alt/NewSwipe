@@ -42,18 +42,11 @@ public final class KeyboardLayout {
     /** 한 줄에 들어가는 1.0 너비 키의 수. */
     public final int columns;
     public final Row[] rows;
-    /** 기호 키로 연 3×4 숫자 패드인지 ({@link #numberPad}). 숫자 입력란의 숫자 자판({@link #number()})과 종류(NUMBER)는 같다. */
-    public final boolean numberPad;
 
     private KeyboardLayout(int kind, int columns, List<Row> rows) {
-        this(kind, columns, rows, false);
-    }
-
-    private KeyboardLayout(int kind, int columns, List<Row> rows, boolean numberPad) {
         this.kind = kind;
         this.columns = columns;
         this.rows = rows.toArray(new Row[0]);
-        this.numberPad = numberPad;
     }
 
     public boolean isLetters() {
@@ -766,50 +759,31 @@ public final class KeyboardLayout {
         return l;
     }
 
-    /** 숫자 입력란(전화번호, 숫자)용 자판. */
-    public static KeyboardLayout number() {
-        List<Row> rows = new ArrayList<>();
-        rows.add(new Row(1f, ch("1", null), ch("2", null), ch("3", null),
-                fnChar("-", new String[]{"+", "*", "/", "#", "(", ")", "=", "N", ";"})));
-        rows.add(new Row(1f, ch("4", null), ch("5", null), ch("6", null), fn(Key.SPACE, "", 1f)));
-        rows.add(new Row(1f, ch("7", null), ch("8", null), ch("9", null), fn(Key.DELETE, "", 1f)));
-        // 아래 줄 양옆은 전화번호 입력에 쓰는 * 키와 # 키다 (온점·쉼표는 # 키를 길게 눌러 입력한다).
-        rows.add(new Row(1f, fnChar("*", new String[]{"+", "/", "=", "(", ")", ";"}), ch("0", new String[]{"+"}),
-                fnChar("#", new String[]{".", ",", ":", "/", "+", "*"}), fn(Key.ENTER, "", 1f)));
-        return new KeyboardLayout(NUMBER, 4, rows);
-    }
-
     /** 숫자 패드에서 기호 자판(1쪽)으로 가는 키의 글자. */
     public static final String NUMBER_PAD_SYMBOLS_LABEL = "?!@";
 
     /**
-     * '기호 자판 대신 숫자 패드 사용'을 켜면 기호 키로 여는 3×4 숫자 패드: 숫자 입력란의 자판({@link #number()})과 같은 배치에,
-     * 왼쪽에 한 줄을 더해 글자 자판으로 돌아가는 키(lettersLabel: 가·ABC 등), 기호 자판으로 가는 키(symbolsLabel),
-     * 쉼표·온점을 둔다.
+     * 3×4 숫자 패드. 숫자 입력란(전화번호, 숫자, 날짜)에서 뜨고, '기호 자판 대신 숫자 패드 사용'을 켜면 기호 키로도 연다.
+     * 왼쪽 줄에는 글자 자판으로 가는 키(lettersLabel: 가·ABC 등), 기호 자판으로 가는 키(symbolsLabel), 쉼표·온점을 둔다.
      * <pre>
      *  가    1  2  3  -
      *  ?!@   4  5  6  ␣
      *  ,     7  8  9  ⌫
      *  .     *  0  #  ↵
      * </pre>
-     * 종류는 NUMBER라 숫자 입력란의 자판과 같은 모습(큰 숫자, ␣ 표시)으로 그린다.
+     * 아래 줄의 * 키와 # 키는 전화번호 입력에 쓴다.
      */
     public static KeyboardLayout numberPad(String symbolsLabel, String lettersLabel) {
-        KeyboardLayout pad = number();
-        Key[] left = {
-                fn(Key.TO_LETTERS, lettersLabel, 1f),
-                fn(Key.TO_SYMBOLS, symbolsLabel, 1f),
-                fnChar(",", COMMA_POPUP),
-                fnChar(".", PERIOD_POPUP),
-        };
         List<Row> rows = new ArrayList<>();
-        for (int r = 0; r < pad.rows.length; r++) {
-            Key[] keys = new Key[pad.rows[r].keys.length + 1];
-            keys[0] = left[r];
-            System.arraycopy(pad.rows[r].keys, 0, keys, 1, pad.rows[r].keys.length);
-            rows.add(new Row(pad.rows[r].height, keys));
-        }
-        return new KeyboardLayout(NUMBER, pad.columns + 1, rows, true);
+        rows.add(new Row(1f, fn(Key.TO_LETTERS, lettersLabel, 1f), ch("1", null), ch("2", null), ch("3", null),
+                fnChar("-", new String[]{"+", "*", "/", "#", "(", ")", "=", "N", ";"})));
+        rows.add(new Row(1f, fn(Key.TO_SYMBOLS, symbolsLabel, 1f), ch("4", null), ch("5", null), ch("6", null),
+                fn(Key.SPACE, "", 1f)));
+        rows.add(new Row(1f, fnChar(",", COMMA_POPUP), ch("7", null), ch("8", null), ch("9", null),
+                fn(Key.DELETE, "", 1f)));
+        rows.add(new Row(1f, fnChar(".", PERIOD_POPUP), fnChar("*", new String[]{"+", "/", "=", "(", ")", ";"}),
+                ch("0", new String[]{"+"}), fnChar("#", new String[]{".", ",", ":", "/", "+", "*"}), fn(Key.ENTER, "", 1f)));
+        return new KeyboardLayout(NUMBER, 5, rows);
     }
 
     // ---------------------------------------------------------------- 도우미

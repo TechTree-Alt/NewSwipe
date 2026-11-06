@@ -715,8 +715,9 @@ public final class KeyboardView extends View {
             // 색 정렬: 글자 사이의 Shift·⌫·기호 쪽 넘김 키는 글자 키 색 (Shift 고정도 강조색 없이).
             // 숫자 자판의 ⌫는 스페이스바·- 키와 같은 기능키 색으로 둔다.
             return theme.key;
-        } else if (gridColors && layout.numberPad && k.type == Key.CHAR && ("*".equals(k.label) || "#".equals(k.label))) {
-            // 기호 키로 연 숫자 패드: 숫자 사이의 *·#는 숫자 키 색. 왼쪽 줄(가·?!@·쉼표·온점)은 오른쪽 줄(-·스페이스바·⌫)과
+        } else if (gridColors && layout.kind == KeyboardLayout.NUMBER && k.type == Key.CHAR
+                && ("*".equals(k.label) || "#".equals(k.label))) {
+            // 숫자 패드: 숫자 사이의 *·#는 숫자 키 색. 왼쪽 줄(가·?!@·쉼표·온점)은 오른쪽 줄(-·스페이스바·⌫)과
             // 같은 기능키 색으로 둔다 (아래의 기본 색).
             return theme.key;
         } else if (gridColors && k.type == Key.SPACE) {
@@ -1137,7 +1138,7 @@ public final class KeyboardView extends View {
                 } else if (p.key.type == Key.DELETE && deleteWordSwipe && dx < -fnSwipeThreshold * 1.5f) {
                     p.mode = DELETE_WORD;
                     cancelLongPress(p);
-                } else if (modeKeyEmoji && isModeKey(p.key)) {   // 숫자 입력란의 자판에는 기호 키가 없다 (숫자 패드에는 있다)
+                } else if (modeKeyEmoji && isModeKey(p.key)) {
                     // 손가락이 많이 움직였으면 길게 누르기(이모지 열기)는 취소하고, 위로 충분히 밀었으면 이모지 열기.
                     if (Math.hypot(dx, dy) > fnSwipeThreshold) cancelLongPress(p);
                     if (-dy > fnSwipeThreshold && -dy > Math.abs(dx)) p.mode = EMOJI_SWIPE;

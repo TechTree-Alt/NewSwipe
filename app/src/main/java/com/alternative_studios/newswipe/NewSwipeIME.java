@@ -177,11 +177,6 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private CandidateView candidateBar, candidateGrid;
     private boolean candidateGridOpen;
     private int layoutKind = KeyboardLayout.KOREAN;
-    /**
-     * '기호 자판 대신 숫자 패드 사용'으로 연 3×4 숫자 패드인지. 숫자 입력란이 연 숫자 자판(layoutKind == NUMBER, 이 값 false)과
-     * 가른다: 숫자 패드에는 기호 자판·글자 자판으로 가는 키가 있다.
-     */
-    private boolean numberPad;
     private int panel = PANEL_KEYBOARD;
     private int shiftState;
     private long lastShiftTime;
@@ -1372,7 +1367,6 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         applyFieldLanguage(info, restarting);
         if (cls == InputType.TYPE_CLASS_NUMBER || cls == InputType.TYPE_CLASS_PHONE
                 || cls == InputType.TYPE_CLASS_DATETIME) {
-            numberPad = false;   // 숫자 입력란의 숫자 자판 (돌아가는 키 없음)
             setLayoutKind(KeyboardLayout.NUMBER);
         } else {
             setLayoutKind(lettersKind());
@@ -1589,7 +1583,6 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     // ---------------------------------------------------------------- 자판/패널 전환
 
     private void setLayoutKind(int kind) {
-        if (kind != KeyboardLayout.NUMBER) numberPad = false;   // 숫자 패드를 떠났다
         layoutKind = kind;
         if (keyboard == null) return;   // 외장 키보드만 쓰면 자판 화면을 만들지 않은 채 언어를 바꿀 수 있다
         // 한 손 모드에서는 자·모음 균형 레이아웃의 가운데 빈틈을 없앤 배열을 쓴다.
@@ -1615,8 +1608,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 l = KeyboardLayout.chinese(prefs);
                 break;
             case KeyboardLayout.NUMBER:
-                l = numberPad ? KeyboardLayout.numberPad(KeyboardLayout.NUMBER_PAD_SYMBOLS_LABEL, backLabel())
-                        : KeyboardLayout.number();
+                l = KeyboardLayout.numberPad(KeyboardLayout.NUMBER_PAD_SYMBOLS_LABEL, backLabel());
                 break;
             default:
                 l = KeyboardLayout.korean(prefs);
@@ -1932,19 +1924,17 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     @Override
     public void onModeKeySwipeUp(Key key) {
-        // 숫자 입력란에는 이모지를 쓰지 않는다 (기호 키로 연 숫자 패드는 글을 쓰는 칸이라 쓴다).
-        if (layoutKind != KeyboardLayout.NUMBER || numberPadOpen()) showPanel(PANEL_EMOJI);
+        showPanel(PANEL_EMOJI);
     }
 
-    /** 기호 키로 연 3×4 숫자 패드를 보이는 중인지 (숫자 입력란의 숫자 자판이 아니다). */
+    /** 3×4 숫자 패드를 보이는 중인지 (숫자 입력란에서 떴거나 '기호 자판 대신 숫자 패드 사용'으로 열었다). */
     private boolean numberPadOpen() {
-        return layoutKind == KeyboardLayout.NUMBER && numberPad;
+        return layoutKind == KeyboardLayout.NUMBER;
     }
 
     /** 3×4 숫자 패드를 연다 ('기호 자판 대신 숫자 패드 사용'). 패드의 ?!@ 키는 기호 자판을, 가·ABC 키는 글자 자판을 연다. */
     private void openNumberPad() {
         commitComposing();
-        numberPad = true;
         setLayoutKind(KeyboardLayout.NUMBER);
     }
 

@@ -1873,7 +1873,7 @@ public final class SettingsActivity extends Activity {
                 "⌫를 길게 누르고 있으면 계속 지웁니다. 끄면 한 글자씩만 지워집니다.",
                 Prefs.LONG_PRESS_DELETE, prefs.longPressDelete()));
         standard.addView(toggle("기호 키를 길게 눌러 이모지 창 열기",
-                "기호 키(숫자 자판의 ?123 포함)를 길게 누르면 이모지 창을 엽니다.",
+                "기호 키(숫자 패드의 ?!@·가·ABC 포함)를 길게 누르면 이모지 창을 엽니다.",
                 Prefs.MODE_KEY_LONG_PRESS, prefs.modeKeyLongPress()));
         View customGroup = subGroup(
                 button("기능키 길게 누르기 기능 편집", v ->
