@@ -41,8 +41,7 @@ import com.alternative_studios.newswipe.ui.Ui;
  * '키보드 편집'에서 미리보기의 키·도구 막대 버튼·도구 막대를 눌렀을 때 그 위에 뜨는 편집 칸.
  * 고른 것 하나의 누르기·길게 누르기·위아래 왼쪽 오른쪽 밀기·길게 눌러 연속 입력을 한곳에서 바꾼다.
  * <p>
- * 기본 밀기·길게 누르기 규칙(쌍자음, 겹받침, 단위 삭제 등)을 쓰는 동안에는 이 키에 해당하는 규칙 스위치를 보여 주고,
- * '완전 사용자화'를 켜면 방향마다 글자·기능을 직접 정하는 칸이 된다. 칸에 보이는 값은 실제 자판을 만들어 읽은 값이라
+ * 모든 방향의 글자·기능을 키마다 직접 정한다 (정하지 않은 칸은 기본 배치). 칸에 보이는 값은 실제 자판을 만들어 읽은 값이라
  * 키보드에서 일어나는 일과 같다.
  */
 final class KeyEditPanel {
@@ -299,65 +298,7 @@ final class KeyEditPanel {
         swipePad.setOrientation(LinearLayout.VERTICAL);
         card.addView(swipePad);
         fillCharPad();
-
-        LinearLayout standard = new LinearLayout(a);
-        standard.setOrientation(LinearLayout.VERTICAL);
-        addCharRules(standard);
-        View customNote = note("방향 칸을 눌러 입력할 글자를 직접 정합니다. 비워 두면 그 방향은 아무것도 입력하지 않습니다.");
-        boolean custom = prefs.swipeCustom();
-        standard.setVisibility(custom ? View.GONE : View.VISIBLE);
-        customNote.setVisibility(custom ? View.VISIBLE : View.GONE);
-        card.addView(standard);
-        card.addView(customNote);
-        card.addView(toggle("🛠️ 밀어서 글자 입력 완전 사용자화",
-                "모든 키를 위·아래·왼쪽·오른쪽으로 밀 때 입력할 글자를 키마다 직접 정합니다. 켜면 쌍자음·겹받침 같은 규칙 대신 정한 글자를 씁니다.",
-                custom, on -> {
-                    put(Prefs.SWIPE_CUSTOM, on);
-                    Ui.setVisibleAnimated(standard, !on);
-                    Ui.setVisibleAnimated(customNote, on);
-                    refreshCharPad();
-                }));
-    }
-
-    /** 이 키에 해당하는 기본 밀기 규칙 스위치 (완전 사용자화를 끈 동안 쓴다). */
-    private void addCharRules(LinearLayout box) {
-        if (".".equals(slot())) {
-            box.addView(toggle("온점 키를 위로 밀어서 쉼표 입력", "위로 밀면 쉼표(,)를 입력합니다.", prefs.periodSwipeComma(),
-                    on -> rule(Prefs.PERIOD_SWIPE_COMMA, on)));
-        }
-        if (!hangul()) {
-            if (!".".equals(slot())) box.addView(note("기본 설정에서는 이 키를 밀어 입력하는 글자가 없습니다. 직접 정하려면 아래 완전 사용자화를 켜세요."));
-            return;
-        }
-        char c = slot().charAt(0);
-        if (vowel()) {
-            if (VowelSwipes.iotizedFor(c) != null) {
-                box.addView(toggle("밀어서 ㅣ계 이중모음", "아래로 밀어 이중모음을 입력합니다 (" + c + " → " + VowelSwipes.iotizedFor(c) + "). 모든 모음에 적용됩니다.",
-                        prefs.swipeIotized(), on -> rule(Prefs.SWIPE_IOTIZED, on)));
-            }
-            if (!VowelSwipes.optionsFor(c).isEmpty()) {
-                box.addView(toggle("밀어서 조합형 이중모음", "위·왼쪽·오른쪽으로 밀어 조합형 이중모음을 입력합니다. 방향 칸을 눌러 고를 수 있습니다.",
-                        prefs.swipeCompoundVowel(), on -> rule(Prefs.SWIPE_COMPOUND_VOWEL, on)));
-            }
-            return;
-        }
-        if (HangulComposer.doubled(c) != 0) {
-            box.addView(toggle("밀어서 쌍자음", "아래로 밀어 쌍자음을 입력합니다 (" + c + " → " + HangulComposer.doubled(c) + "). 모든 자음에 적용됩니다.",
-                    prefs.swipeDouble(), on -> rule(Prefs.SWIPE_DOUBLE, on)));
-        }
-        if (c == 'ㅅ' && prefs.koreanNewSwipe()) {
-            box.addView(toggle("ㅅ을 위로 밀어서 ㅆ 입력", "아래로 밀 때뿐만 아니라 위로 밀 때도 ㅆ을 입력합니다 ('밀어서 쌍자음'을 켰을 때).",
-                    prefs.ssUp(), on -> rule(Prefs.D7_SS_UP, on)));
-        }
-        if (FinalSwipes.SOURCES.indexOf(c) >= 0) {
-            box.addView(toggle("밀어서 겹받침", "위·왼쪽·오른쪽으로 밀어 겹받침을 입력합니다. 방향 칸을 눌러 고를 수 있습니다.",
-                    prefs.swipeFinal(), on -> rule(Prefs.SWIPE_FINAL, on)));
-        }
-    }
-
-    private void rule(String prefKey, boolean on) {
-        put(prefKey, on);
-        refreshCharPad();
+        card.addView(note("방향 칸을 눌러 그 방향으로 밀 때 입력할 글자를 정합니다. 비워 두면 그 방향은 아무것도 입력하지 않습니다."));
     }
 
     private void refreshCharPad() {
@@ -374,159 +315,35 @@ final class KeyEditPanel {
             on[dir] = s != null && !s.isEmpty();
             labels[dir] = on[dir] ? s : "없음";
         }
-        swipePad.addView(dpad(key.label, labels, on, this::editCharSwipe));
-    }
-
-    /** 방향 칸을 눌렀을 때: 완전 사용자화면 글자를 적고, 아니면 그 방향의 규칙에 맞는 것을 고르거나 직접 정하기로 넘어간다. */
-    private void editCharSwipe(int dir) {
-        if (prefs.swipeCustom()) {
-            editSwipeText(dir);
-            return;
-        }
-        String title = dialogTitle(dir);
-        String cur = key.swipeText(dir);
-        if (hangul()) {
-            char c = slot().charAt(0);
-            if (vowel()) {
-                if (dir == Key.SWIPE_DOWN && VowelSwipes.iotizedFor(c) != null) {
-                    explainRule(dir, cur, "밀어서 ㅣ계 이중모음", Prefs.SWIPE_IOTIZED, prefs.swipeIotized());
-                    return;
-                }
-                if (dir != Key.SWIPE_DOWN && !VowelSwipes.optionsFor(c).isEmpty()) {
-                    if (!prefs.swipeCompoundVowel()) {
-                        explainRule(dir, null, "밀어서 조합형 이중모음", Prefs.SWIPE_COMPOUND_VOWEL, false);
-                    } else {
-                        pickVowel(c, dir, title);
-                    }
-                    return;
-                }
-            } else {
-                if (dir == Key.SWIPE_DOWN && HangulComposer.doubled(c) != 0) {
-                    explainRule(dir, cur, "밀어서 쌍자음", Prefs.SWIPE_DOUBLE, prefs.swipeDouble());
-                    return;
-                }
-                if (dir == Key.SWIPE_RIGHT && prefs.koreanNewSwipe() && KeyboardLayout.nsRight(slot()) != null) {
-                    explainFixed(dir, cur, "NewSwipe 단모음에서는 오른쪽으로 밀어 거센소리를 입력합니다 (" + key.label + " → " + cur + ").");
-                    return;
-                }
-                if (dir == Key.SWIPE_UP && c == 'ㅅ' && "ㅆ".equals(cur)) {
-                    explainRule(dir, cur, "ㅅ을 위로 밀어서 ㅆ 입력", Prefs.D7_SS_UP, true);
-                    return;
-                }
-                int fd = finalDir(dir);
-                if (fd >= 0 && FinalSwipes.SOURCES.indexOf(c) >= 0) {
-                    if (!prefs.swipeFinal()) explainRule(dir, null, "밀어서 겹받침", Prefs.SWIPE_FINAL, false);
-                    else pickFinal(c, fd, title);
-                    return;
-                }
-            }
-        }
-        if (".".equals(slot()) && dir == Key.SWIPE_UP) {
-            explainRule(dir, cur, "온점 키를 위로 밀어서 쉼표 입력", Prefs.PERIOD_SWIPE_COMMA, prefs.periodSwipeComma());
-            return;
-        }
-        explainFixed(dir, cur, null);
-    }
-
-    private static int finalDir(int dir) {
-        return dir == Key.SWIPE_UP ? FinalSwipes.UP : dir == Key.SWIPE_LEFT ? FinalSwipes.LEFT
-                : dir == Key.SWIPE_RIGHT ? FinalSwipes.RIGHT : -1;
+        swipePad.addView(dpad(key.label, labels, on, this::editSwipeText));
     }
 
     private String dialogTitle(int dir) {
         return "'" + key.label + "' " + SwipeCustom.label(dir) + "으로 밀기";
     }
 
-    private static final String CUSTOM_HELP = "글자를 직접 정하려면 '밀어서 글자 입력 완전 사용자화'를 켭니다. 켜면 모든 키의 밀기를 "
-            + "키마다 직접 정하고, 쌍자음·겹받침 같은 규칙 스위치 대신 정한 글자를 씁니다.";
-
-    /** 규칙 스위치 하나가 정하는 방향: 규칙을 켜고 끄거나, 직접 정하기로 넘어간다. */
-    private void explainRule(int dir, String cur, String ruleName, String prefKey, boolean ruleOn) {
-        String msg = ruleOn && cur != null
-                ? "지금 입력되는 글자: " + cur + " ('" + ruleName + "' 규칙)"
-                : "'" + ruleName + "' 규칙이 꺼져 있어 지금은 아무것도 입력하지 않습니다.";
-        AppTheme.dialogBuilder(a)
-                .setTitle(dialogTitle(dir))
-                .setMessage(msg + "\n\n" + CUSTOM_HELP)
-                .setPositiveButton("직접 정하기", (d, w) -> startCustom(dir))
-                .setNeutralButton(ruleOn ? "규칙 끄기" : "규칙 켜기", (d, w) -> {
-                    put(prefKey, !ruleOn);
-                    rebuild();
-                })
-                .setNegativeButton("취소", null)
-                .show();
+    /** 글자 칸 아래에 놓는 빠른 선택: 이 키에 흔히 두는 글자 (쌍자음·거센소리·겹받침·이중모음, 온점 키는 쉼표). */
+    private java.util.List<String> suggestions(int dir) {
+        java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
+        String def = SwipeCustom.defaultFor(korean, prefs.koreanNewSwipe(), slot(), dir);
+        if (def != null) out.add(def);
+        if (".".equals(slot())) out.add(",");
+        if (",".equals(slot())) out.add(".");
+        if (hangul()) {
+            char c = slot().charAt(0);
+            if (vowel()) {
+                if (VowelSwipes.iotizedFor(c) != null) out.add(VowelSwipes.iotizedFor(c));
+                for (char o : VowelSwipes.optionsFor(c).toCharArray()) out.add(String.valueOf(o));
+            } else {
+                if (HangulComposer.doubled(c) != 0) out.add(String.valueOf(HangulComposer.doubled(c)));
+                if (KeyboardLayout.nsRight(slot()) != null) out.add(KeyboardLayout.nsRight(slot()));
+                for (char o : FinalSwipes.options(c).toCharArray()) out.add(String.valueOf(o));
+            }
+        }
+        return new java.util.ArrayList<>(out);
     }
 
-    /** 규칙이 없거나 바꿀 수 없는 방향. */
-    private void explainFixed(int dir, String cur, String why) {
-        String msg = why != null ? why : cur != null
-                ? "지금 입력되는 글자: " + cur
-                : "지금은 이 방향으로 밀어도 글자를 입력하지 않습니다.";
-        AppTheme.dialogBuilder(a)
-                .setTitle(dialogTitle(dir))
-                .setMessage(msg + "\n\n" + CUSTOM_HELP)
-                .setPositiveButton("직접 정하기", (d, w) -> startCustom(dir))
-                .setNegativeButton("취소", null)
-                .show();
-    }
-
-    /** 밀어서 글자 입력 완전 사용자화를 켜고 바로 그 방향의 글자를 적게 한다. */
-    private void startCustom(int dir) {
-        put(Prefs.SWIPE_CUSTOM, true);
-        Toast.makeText(a, "'밀어서 글자 입력 완전 사용자화'를 켰습니다", Toast.LENGTH_SHORT).show();
-        rebuild();
-        editSwipeText(dir);
-    }
-
-    private void pickFinal(char c, int fd, String title) {
-        String options = FinalSwipes.options(c);
-        String[] items = new String[options.length() + 1];
-        for (int i = 0; i < options.length(); i++) items[i] = String.valueOf(options.charAt(i));
-        items[options.length()] = "없음";
-        String current = FinalSwipes.get(prefs, c, fd);
-        int checked = current == null ? options.length() : options.indexOf(current.charAt(0));
-        String dirName = FinalSwipes.DIR_NAMES[fd];
-        AppTheme.dialogBuilder(a)
-                .setTitle(title)
-                .setSingleChoiceItems(items, checked, (d, which) -> {
-                    prefs.setSwipeFinalOverride(c, dirName, which < options.length() ? items[which] : "");
-                    d.dismiss();
-                    confirmed();
-                    refreshCharPad();
-                })
-                .setNeutralButton("기본값", (d, w) -> {
-                    prefs.resetSwipeFinalOverride(c, dirName);
-                    refreshCharPad();
-                })
-                .setNegativeButton("취소", null)
-                .show();
-    }
-
-    private void pickVowel(char c, int dir, String title) {
-        String options = VowelSwipes.optionsFor(c);
-        String[] items = new String[options.length() + 1];
-        for (int i = 0; i < options.length(); i++) items[i] = String.valueOf(options.charAt(i));
-        items[options.length()] = "없음";
-        String current = VowelSwipes.compoundFor(prefs, c, dir);
-        int checked = current == null ? options.length() : Math.max(0, options.indexOf(current.charAt(0)));
-        String dirName = SwipeCustom.dirName(dir);
-        AppTheme.dialogBuilder(a)
-                .setTitle(title)
-                .setSingleChoiceItems(items, checked, (d, which) -> {
-                    prefs.setSwipeVowelOverride(c, dirName, which < options.length() ? items[which] : "");
-                    d.dismiss();
-                    confirmed();
-                    refreshCharPad();
-                })
-                .setNeutralButton("기본값", (d, w) -> {
-                    prefs.resetSwipeVowelOverride(c, dirName);
-                    refreshCharPad();
-                })
-                .setNegativeButton("취소", null)
-                .show();
-    }
-
-    /** 완전 사용자화: 한 방향에 입력할 글자를 적는다. */
+    /** 한 방향에 입력할 글자를 적는다. 아래의 빠른 선택을 누르면 그 글자가 칸에 들어간다. */
     private void editSwipeText(int dir) {
         String g = group(), s = slot();
         String dirName = SwipeCustom.dirName(dir);
@@ -542,6 +359,31 @@ final class KeyEditPanel {
         LinearLayout box = dialogBox("입력할 글자를 적어 주세요 (최대 " + MAX_SWIPE_LENGTH
                 + "자). 비워 두면 이 방향은 아무것도 입력하지 않습니다.");
         box.addView(input);
+        java.util.List<String> picks = suggestions(dir);
+        if (!picks.isEmpty()) {
+            LinearLayout chips = new LinearLayout(a);
+            chips.setPadding(0, Ui.dp(a, 4), 0, Ui.dp(a, 4));
+            for (String pick : picks) {
+                TextView chip = text(pick, 18, accentColor);
+                chip.setGravity(Gravity.CENTER);
+                chip.setMinWidth(Ui.dp(a, 44));
+                chip.setPadding(Ui.dp(a, 10), Ui.dp(a, 6), Ui.dp(a, 10), Ui.dp(a, 6));
+                chip.setBackground(Ui.ripple(accentColor & 0x00FFFFFF | 0x33000000,
+                        Ui.round(accentColor & 0x00FFFFFF | 0x1F000000, Ui.dp(a, 10)), Ui.dp(a, 10)));
+                chip.setOnClickListener(v -> {
+                    input.setText(pick);
+                    input.setSelection(input.getText().length());
+                });
+                LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT);
+                clp.rightMargin = Ui.dp(a, 6);
+                chips.addView(chip, clp);
+            }
+            android.widget.HorizontalScrollView hs = new android.widget.HorizontalScrollView(a);
+            hs.setHorizontalScrollBarEnabled(false);
+            hs.addView(chips);
+            box.addView(hs);
+        }
         AlertDialog d = AppTheme.dialogBuilder(a)
                 .setTitle(dialogTitle(dir))
                 .setView(box)
@@ -667,11 +509,6 @@ final class KeyEditPanel {
         prefs.resetPopupOverride(g, s);
         prefs.setRepeatChar(g, s, false);
         for (int dir : DIRS) prefs.resetSwipeCustomOverride(g, s, SwipeCustom.dirName(dir));
-        if (hangul()) {
-            char c = s.charAt(0);
-            if (FinalSwipes.SOURCES.indexOf(c) >= 0) for (String dn : FinalSwipes.DIR_NAMES) prefs.resetSwipeFinalOverride(c, dn);
-            if (vowel()) for (int dir : DIRS) prefs.resetSwipeVowelOverride(c, SwipeCustom.dirName(dir));
-        }
         rebuild();
     }
 
@@ -786,132 +623,21 @@ final class KeyEditPanel {
 
     private void buildLongPressAction(LinearLayout card) {
         int slot = lpSlot();
-        LinearLayout standard = new LinearLayout(a);
-        standard.setOrientation(LinearLayout.VERTICAL);
-        switch (key.type) {
-            case Key.DELETE:
-                standard.addView(toggle("길게 눌러 지우기", "길게 누르고 있으면 계속 지웁니다. 끄면 한 글자씩만 지워집니다.",
-                        prefs.longPressDelete(), on -> put(Prefs.LONG_PRESS_DELETE, on)));
-                break;
-            case Key.TO_SYMBOLS:
-            case Key.TO_LETTERS:
-                standard.addView(toggle("길게 눌러 이모지 창 열기", "기호 키(숫자 패드의 ?!@·가·ABC 포함)를 길게 누르면 이모지 창을 엽니다.",
-                        prefs.modeKeyLongPress(), on -> put(Prefs.MODE_KEY_LONG_PRESS, on)));
-                break;
-            case Key.LANGUAGE:
-            case Key.EMOJI:
-                standard.addView(note("길게 누르면 입력 방법 전환 창을 엽니다."));
-                break;
-            default:
-                standard.addView(note("기본 설정에서는 길게 눌러도 아무것도 하지 않습니다."));
-                break;
-        }
-        LinearLayout custom = new LinearLayout(a);
-        custom.setOrientation(LinearLayout.VERTICAL);
-        Runnable fill = () -> {
-            custom.removeAllViews();
-            String action = LongPressActions.SPEC.get(prefs, slot, LongPressActions.DIR);
-            custom.addView(valueRow("길게 누르면", SwipeAction.label(action),
-                    v -> pickAction(LongPressActions.SPEC, slot, LongPressActions.DIR,
-                            "'" + functionName() + "' 길게 누르기", this::rebuild)));
-        };
-        fill.run();
-        boolean on = prefs.longPressCustom();
-        standard.setVisibility(on ? View.GONE : View.VISIBLE);
-        custom.setVisibility(on ? View.VISIBLE : View.GONE);
-        card.addView(standard);
-        card.addView(custom);
-        card.addView(toggle("🛠️ 기능키 길게 누르기 기능 완전 사용자화",
-                "Shift 키·기호 키·🌐︎·엔터 키·⌫ 등을 길게 누를 때 실행할 기능을 키마다 직접 정합니다.", on, checked -> {
-                    put(Prefs.LONG_PRESS_CUSTOM, checked);
-                    Ui.setVisibleAnimated(standard, !checked);
-                    Ui.setVisibleAnimated(custom, checked);
-                }));
+        String action = LongPressActions.SPEC.get(prefs, slot, LongPressActions.DIR);
+        card.addView(valueRow("길게 누르면", SwipeAction.label(action),
+                v -> pickAction(LongPressActions.SPEC, slot, LongPressActions.DIR,
+                        "'" + functionName() + "' 길게 누르기", this::rebuild)));
     }
 
     private void buildFunctionSwipe() {
         int slot = fnSlot();
         LinearLayout card = section("밀기");
-        LinearLayout pad = new LinearLayout(a);
-        pad.setOrientation(LinearLayout.VERTICAL);
-        Runnable fillPad = () -> {
-            pad.removeAllViews();
-            pad.addView(actionPad(FunctionSwipes.SPEC, slot, shortName()));
-        };
-        fillPad.run();
-
-        LinearLayout standard = new LinearLayout(a);
-        standard.setOrientation(LinearLayout.VERTICAL);
-        addFunctionRules(standard);
-        boolean on = prefs.swipeFnCustom();
-        pad.setVisibility(on ? View.VISIBLE : View.GONE);
-        standard.setVisibility(on ? View.GONE : View.VISIBLE);
-        card.addView(pad);
-        card.addView(standard);
-        card.addView(toggle("🛠️ 기능키 밀어서 기능 완전 사용자화",
-                "기호 키·🌐︎·스페이스바·엔터 키·⌫ 등을 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 키마다 직접 정합니다.",
-                on, checked -> {
-                    put(Prefs.SWIPE_FN_CUSTOM, checked);
-                    Ui.setVisibleAnimated(standard, !checked);
-                    Ui.setVisibleAnimated(pad, checked);
-                }));
-    }
-
-    /** 기능키 밀기의 기본 규칙 중 이 키에 해당하는 것 (완전 사용자화를 끈 동안 쓴다). */
-    private void addFunctionRules(LinearLayout box) {
-        switch (key.type) {
-            case Key.SPACE: {
-                ExpressiveSwitch[] lang = new ExpressiveSwitch[1], horizontal = new ExpressiveSwitch[1];
-                View axes = subGroup(
-                        toggle("좌우 이동", "글자 단위로 커서를 옮깁니다.", prefs.spaceCursorH(), checked -> {
-                            put(Prefs.SPACE_CURSOR_H, checked);
-                            // 스페이스바를 좌우로 밀기는 커서 이동과 언어 전환 중 하나만 쓴다.
-                            if (checked && lang[0] != null && lang[0].isChecked()) lang[0].toggle();
-                        }),
-                        toggle("상하 이동", "줄 단위로 커서를 옮깁니다 (여러 줄 입력란).", prefs.spaceCursorV(),
-                                checked -> put(Prefs.SPACE_CURSOR_V, checked)));
-                horizontal[0] = switchOf(((ViewGroup) axes).getChildAt(0));
-                axes.setVisibility(prefs.spaceCursor() ? View.VISIBLE : View.GONE);
-                box.addView(toggle("밀어서 커서 이동", "스페이스바를 밀어 커서를 옮깁니다.", prefs.spaceCursor(), checked -> {
-                    put(Prefs.SPACE_CURSOR, checked);
-                    Ui.setVisibleAnimated(axes, checked);
-                }));
-                box.addView(axes);
-                View langRow = toggle("밀어서 언어 전환", "좌우로 밀면 언어를 전환합니다.", prefs.spaceLangSwipe(), checked -> {
-                    put(Prefs.SPACE_LANG_SWIPE, checked);
-                    if (checked && horizontal[0].isChecked()) horizontal[0].toggle();
-                });
-                lang[0] = switchOf(langRow);
-                box.addView(langRow);
-                break;
-            }
-            case Key.LANGUAGE:
-            case Key.EMOJI: {
-                View order = subGroup(button("언어 순서 사용자화", v -> open(new Intent(a, LanguageOrderEditorActivity.class))));
-                order.setVisibility(prefs.globeSwipeLang() ? View.VISIBLE : View.GONE);
-                box.addView(toggle("위로 밀어 언어 고르기", "🌐︎을 위로 밀어 언어를 선택합니다.", prefs.globeSwipeLang(), checked -> {
-                    put(Prefs.GLOBE_SWIPE_LANG, checked);
-                    Ui.setVisibleAnimated(order, checked);
-                }));
-                box.addView(order);
-                break;
-            }
-            case Key.DELETE:
-                box.addView(toggle("밀어서 단위 삭제", "왼쪽으로 밀면 단어를, 위로 밀면 줄에서 커서 왼쪽을 모두 지웁니다. "
-                                + "커서가 줄의 맨 앞이면 위로 밀었을 때 윗줄과 합칩니다.",
-                        prefs.deleteWordSwipe(), checked -> put(Prefs.DELETE_WORD_SWIPE, checked)));
-                break;
-            case Key.TO_SYMBOLS:
-            case Key.TO_LETTERS:
-                box.addView(toggle("위로 밀어서 이모지 열기", "기호 키를 위로 밀면 이모지 창이 열립니다.",
-                        prefs.modeKeyEmoji(), checked -> put(Prefs.MODE_KEY_EMOJI, checked)));
-                break;
-            case Key.CURSOR_PAD:
-                box.addView(note("상하좌우로 밀면 커서가 움직입니다 (스페이스바 커서 이동과 같은 속도)."));
-                break;
-            default:
-                box.addView(note("기본 설정에서는 밀어도 아무것도 하지 않습니다. 기능을 정하려면 아래 완전 사용자화를 켜세요."));
-                break;
+        card.addView(actionPad(FunctionSwipes.SPEC, slot, shortName()));
+        if (key.type == Key.LANGUAGE) {
+            card.addView(note("위쪽에 '언어 고르기'를 정하면 위로 밀었을 때 켜 둔 언어가 말풍선으로 올라옵니다. "
+                    + "손을 떼지 않고 위아래로 옮겨 고릅니다."));
+        } else if (key.type == Key.SPACE || key.type == Key.CURSOR_PAD) {
+            card.addView(note("'커서 자유 이동'을 정한 방향으로 밀면 커서가 움직입니다 (좌우는 글자, 위아래는 줄 단위)."));
         }
     }
 
@@ -974,47 +700,8 @@ final class KeyEditPanel {
 
     private void buildToolbarSwipe(int slot, String name) {
         LinearLayout card = section("밀기");
-        View pad = actionPad(ToolbarSwipes.SPEC, slot, name);
-        LinearLayout standard = new LinearLayout(a);
-        standard.setOrientation(LinearLayout.VERTICAL);
-        switch (slot) {
-            case ToolbarSwipes.BAR:
-                standard.addView(toggle("도구 막대를 밀어서 커서 이동", "왼쪽으로 밀면 줄의 맨 앞으로, 오른쪽으로 밀면 줄의 맨 뒤로, "
-                                + "위·아래로 밀면 한 줄 위·아래로 이동합니다 (여러 줄 입력란).",
-                        prefs.toolbarSwipe(), on -> put(Prefs.TOOLBAR_SWIPE, on)));
-                break;
-            case ToolbarSwipes.CLIPBOARD:
-                standard.addView(toggle("밀어서 복사·붙여넣기", "위로 밀면 선택한 텍스트를 복사하고, 아래로 밀면 지금 클립보드의 내용을 붙여 넣습니다.",
-                        prefs.toolClipboardSwipe(), on -> put(Prefs.TOOL_CLIPBOARD_SWIPE, on)));
-                break;
-            case ToolbarSwipes.EMOJI:
-                standard.addView(toggle("아래로 밀어서 최근 이모지 입력", "아래로 밀면 마지막으로 쓴 이모지를 바로 입력합니다.",
-                        prefs.toolEmojiSwipe(), on -> put(Prefs.TOOL_EMOJI_SWIPE, on)));
-                break;
-            case ToolbarSwipes.UNDO:
-                standard.addView(toggle("아래로 밀어서 다시 실행", "아래로 밀면 되돌린 것을 다시 실행합니다 (Ctrl+Shift+Z).",
-                        prefs.toolUndoSwipe(), on -> put(Prefs.TOOL_UNDO_SWIPE, on)));
-                break;
-            case ToolbarSwipes.ONE_HAND:
-                standard.addView(note("왼쪽·오른쪽으로 밀면 그쪽으로 쏠린 한 손 모드가 됩니다."));
-                break;
-            default:
-                standard.addView(note("기본 설정에서는 이 버튼을 밀면 도구 막대를 민 것으로 봅니다."));
-                break;
-        }
-        boolean on = prefs.swipeToolbarCustom();
-        pad.setVisibility(on ? View.VISIBLE : View.GONE);
-        standard.setVisibility(on ? View.GONE : View.VISIBLE);
-        card.addView(pad);
-        card.addView(standard);
-        card.addView(toggle("🛠️ 도구 막대 밀어서 기능 완전 사용자화",
-                "도구 막대와 도구 막대의 버튼을 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 직접 정합니다. "
-                        + "'없음'으로 둔 방향으로 밀면 도구 막대를 그 방향으로 민 것으로 봅니다.",
-                on, checked -> {
-                    put(Prefs.SWIPE_TOOLBAR_CUSTOM, checked);
-                    Ui.setVisibleAnimated(standard, !checked);
-                    Ui.setVisibleAnimated(pad, checked);
-                }));
+        card.addView(actionPad(ToolbarSwipes.SPEC, slot, name));
+        if (slot != ToolbarSwipes.BAR) card.addView(note("'없음'으로 둔 방향으로 밀면 도구 막대를 그 방향으로 민 것으로 봅니다."));
     }
 
     // ================================================================ 공통 조각
@@ -1134,29 +821,6 @@ final class KeyEditPanel {
         row.addView(sw, slp);
         row.setOnClickListener(v -> sw.performClick());
         return row;
-    }
-
-    private static ExpressiveSwitch switchOf(View toggleRow) {
-        ViewGroup row = (ViewGroup) toggleRow;
-        return (ExpressiveSwitch) row.getChildAt(row.getChildCount() - 1);
-    }
-
-    /** 위 스위치의 하위 항목: 왼쪽에 강조선을 두고 들여 쓴다. */
-    private View subGroup(View... children) {
-        LinearLayout box = new LinearLayout(a);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(Ui.dp(a, 14), 0, 0, 0);
-        android.graphics.drawable.GradientDrawable line = new android.graphics.drawable.GradientDrawable();
-        line.setColor((accentColor & 0x00FFFFFF) | 0x66000000);
-        line.setCornerRadius(Ui.dp(a, 2));
-        android.graphics.drawable.LayerDrawable bg = new android.graphics.drawable.LayerDrawable(
-                new android.graphics.drawable.Drawable[]{line});
-        bg.setLayerSize(0, Ui.dp(a, 3), -1);
-        bg.setLayerGravity(0, Gravity.START | Gravity.FILL_VERTICAL);
-        bg.setLayerInset(0, Ui.dp(a, 2), Ui.dp(a, 8), 0, Ui.dp(a, 8));
-        box.setBackground(bg);
-        for (View c : children) box.addView(c);
-        return box;
     }
 
     private View slider(String label, String prefKey, int value, int min, int max, int step, String unit) {

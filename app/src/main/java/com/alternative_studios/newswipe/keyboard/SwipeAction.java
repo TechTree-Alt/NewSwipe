@@ -39,6 +39,8 @@ public final class SwipeAction {
     public static final String CUT = "cut";
     public static final String PASTE = "paste";
     public static final String LANGUAGE = "language";
+    /** 🌐︎ 전용(위로 밀기): 켜 둔 언어를 세로로 늘어놓은 말풍선을 띄우고, 손가락을 옮겨 고른 언어로 바꾼다. */
+    public static final String LANGUAGE_PICK = "language_pick";
     /** 기호 자판을 연다. 이미 기호 자판이면 글자 자판으로 돌아간다 (기호 키와 같다). */
     public static final String SYMBOLS = "symbols";
     /** 엔터 키와 같다 (입력란에 따라 줄바꿈·보내기·검색 등). */
@@ -74,6 +76,7 @@ public final class SwipeAction {
             {EMOJI_PINNED, "첫 번째 고정 이모지 붙여넣기", "고정 이모지"},
             {IME_PICKER, "입력 방법 전환 창 열기", "입력기 선택"},
             {LANGUAGE, "언어 전환", "언어 전환"},
+            {LANGUAGE_PICK, "언어 고르기 (말풍선에서 골라 바꾸기)", "언어 고르기"},
             {SYMBOLS, "기호 입력", "기호 입력"},
             {ENTER, "엔터", "엔터"},
             {SPACE, "띄어쓰기", "띄어쓰기"},
@@ -107,11 +110,16 @@ public final class SwipeAction {
         return DELETE_REPEAT.equals(id) || CAPS_LOCK.equals(id);
     }
 
+    /** 🌐︎를 위로 밀 때만 쓰는 기능 (말풍선이 키 위로 펼쳐진다). */
+    static boolean globeUpOnly(String id) {
+        return LANGUAGE_PICK.equals(id);
+    }
+
     /** 기능키 길게 누르기에서 고를 수 있는 ID들 (밀어야 하는 '커서 자유 이동'은 뺀다). */
     public static String[] idsForLongPress() {
         java.util.List<String> ids = new java.util.ArrayList<>();
         for (String[] a : ALL) {
-            if (!CURSOR_MOVE.equals(a[0]) && !FREE_CURSOR.equals(a[0])) ids.add(a[0]);
+            if (!CURSOR_MOVE.equals(a[0]) && !FREE_CURSOR.equals(a[0]) && !globeUpOnly(a[0])) ids.add(a[0]);
         }
         return ids.toArray(new String[0]);
     }
@@ -125,6 +133,7 @@ public final class SwipeAction {
         java.util.List<String> ids = new java.util.ArrayList<>();
         for (String[] a : ALL) {
             if (FREE_CURSOR.equals(a[0]) || longPressOnly(a[0])) continue;
+            if (globeUpOnly(a[0]) && slot != FunctionSwipes.GLOBE) continue;
             if (space || !CURSOR_MOVE.equals(a[0])) ids.add(a[0]);
         }
         return ids.toArray(new String[0]);
@@ -134,7 +143,8 @@ public final class SwipeAction {
     public static String[] idsForKeyboard(boolean oneFinger) {
         java.util.List<String> ids = new java.util.ArrayList<>();
         for (String[] a : ALL) {
-            if (CURSOR_MOVE.equals(a[0]) || (!oneFinger && FREE_CURSOR.equals(a[0])) || longPressOnly(a[0])) continue;
+            if (CURSOR_MOVE.equals(a[0]) || (!oneFinger && FREE_CURSOR.equals(a[0])) || longPressOnly(a[0])
+                    || globeUpOnly(a[0])) continue;
             ids.add(a[0]);
         }
         return ids.toArray(new String[0]);

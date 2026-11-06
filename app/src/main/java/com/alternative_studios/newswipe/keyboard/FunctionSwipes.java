@@ -5,7 +5,7 @@ import com.alternative_studios.newswipe.Prefs;
 import java.util.function.BiFunction;
 
 /**
- * 기능키 밀어서 기능 완전 사용자화. 켜면 기호 키·언어 전환 키·스페이스바·엔터 키·지우기 키를 위·아래·왼쪽·오른쪽으로
+ * 기능키 밀기: 기호 키·언어 전환 키·스페이스바·엔터 키·지우기 키(와 더한 키)를 위·아래·왼쪽·오른쪽으로
  * 밀었을 때 실행할 기능을 키·방향마다 직접 정한다 (기능 목록은 {@link SwipeAction}).
  * 정하지 않은 방향은 기본 동작을 따른다: 기호 키 위 = 이모지 열기, 지우기 키 왼쪽 = 단어 지우기,
  * 지우기 키 위 = 줄에서 커서 왼쪽 모두 지우기, 스페이스바 = 커서 자유 이동, 나머지는 없음.
@@ -59,6 +59,7 @@ public final class FunctionSwipes {
                 return defaultAction(slot, dir);
             }
             if (SwipeAction.CURSOR_MOVE.equals(stored) && !cursorSlot(slot)) return SwipeAction.NONE;
+            if (SwipeAction.globeUpOnly(stored) && (slot != GLOBE || dir != Key.SWIPE_UP)) return SwipeAction.NONE;
             return stored;
         }
 
@@ -95,6 +96,16 @@ public final class FunctionSwipes {
         @Override
         public String[] choices(int slot) {
             return SwipeAction.idsFor(slot);
+        }
+
+        /** '언어 고르기'는 🌐︎를 위로 밀 때만 고를 수 있다. */
+        @Override
+        public String[] choices(int slot, int dir) {
+            String[] ids = choices(slot);
+            if (slot == GLOBE && dir == Key.SWIPE_UP) return ids;
+            java.util.List<String> out = new java.util.ArrayList<>();
+            for (String id : ids) if (!SwipeAction.globeUpOnly(id)) out.add(id);
+            return out.toArray(new String[0]);
         }
     };
 

@@ -156,9 +156,17 @@ public final class KeyboardLayout {
         return dubeolsik(prefs);
     }
 
-    /** 설정한 한글 배열에서 ㅂ·ㅈ·ㄷ·ㄱ를 오른쪽으로 밀어 ㅍ·ㅊ·ㅌ·ㅋ을 넣는지 (자동 수정이 같은 키의 오타로 본다). */
+    /**
+     * 설정한 한글 배열에서 ㅂ·ㅈ·ㄷ·ㄱ를 오른쪽으로 밀어 ㅍ·ㅊ·ㅌ·ㅋ을 넣는지 (자동 수정이 같은 키의 오타로 본다).
+     * NewSwipe 단모음이고, 네 키의 오른쪽 밀기를 다른 글자로 바꾸지 않았을 때.
+     */
     public static boolean koreanAspirateSwipe(Prefs prefs) {
-        return newSwipe(prefs) && !prefs.swipeCustom();
+        if (!newSwipe(prefs)) return false;
+        for (int i = 0; i < NS_RIGHT_FROM.length(); i++) {
+            String from = String.valueOf(NS_RIGHT_FROM.charAt(i));
+            if (!nsRight(from).equals(SwipeCustom.get(prefs, true, from, Key.SWIPE_RIGHT))) return false;
+        }
+        return true;
     }
 
     /** 한글 자판 한 줄의 칸 수: NewSwipe 단모음은 7, 8열 단모음은 8, 두벌식은 10. */
@@ -809,50 +817,21 @@ public final class KeyboardLayout {
         for (int i = 0; i < labels.length; i++) {
             String l = labels[i];
             String shifted;
-            String swipe = null;
-            boolean custom = prefs != null && prefs.swipeCustom();
             char c0 = l.charAt(0);
-            boolean vowel = korean && com.alternative_studios.newswipe.hangul.HangulComposer.isVowel(c0);
             if (korean) {
                 char d = com.alternative_studios.newswipe.hangul.HangulComposer.doubled(c0);
                 // 두벌식의 Shift는 표준대로 ㅂㅈㄷㄱㅅ·ㅐㅔ만 바꾼다 (ㅗ는 Shift를 눌러도 ㅗ: ㅛ 키가 따로 있다).
                 shifted = dubeolsik(prefs)
                         ? String.valueOf(com.alternative_studios.newswipe.hangul.Dubeolsik.shifted(c0))
                         : d != 0 ? String.valueOf(d) : l;
-                // 아래로 밀어 쌍자음. 모음의 이중모음은 아래에서 따로 정한다.
-                if (d != 0 && !vowel && !custom && (prefs == null || prefs.swipeDouble())) swipe = String.valueOf(d);
             } else {
                 shifted = l.toUpperCase(Locale.ROOT);
             }
-            keys[i] = new Key(Key.CHAR, l, l, shifted, swipe, popupFor(prefs, korean, l, popups[i]), 1f);
-            if (custom) {
-                applyCustomSwipes(keys[i], prefs, korean, l);
-            } else if (korean && (prefs == null || prefs.swipeFinal())) {
-                keys[i].swipeUp = FinalSwipes.get(prefs, l.charAt(0), FinalSwipes.UP);
-                keys[i].swipeLeft = FinalSwipes.get(prefs, l.charAt(0), FinalSwipes.LEFT);
-                keys[i].swipeRight = FinalSwipes.get(prefs, l.charAt(0), FinalSwipes.RIGHT);
-            }
-            // NewSwipe 배열: ㅂ·ㅈ·ㄷ·ㄱ를 오른쪽으로 밀어 ㅍ·ㅊ·ㅌ·ㅋ. 겹받침 설정과 상관없이 오른쪽은 이 자음이 쓴다.
-            if (korean && !custom && newSwipe(prefs) && nsRight(l) != null) keys[i].swipeRight = nsRight(l);
-            // ㅅ은 위로 밀어도 ㅆ: 'ㅅ을 위로 밀어서 ㅆ 입력'을 켰을 때 ('밀어서 쌍자음'을 켰을 때만).
-            if (korean && !custom && newSwipe(prefs) && prefs.swipeDouble() && prefs.ssUp() && "ㅅ".equals(l)) keys[i].swipeUp = "ㅆ";
-            if (vowel && !custom) {
-                // 밀어서 이중모음 (VowelSwipes): 아래로 ㅣ계 이중모음('밀어서 ㅣ계 이중모음'),
-                // 위·왼쪽·오른쪽으로 조합형 이중모음 ('밀어서 조합형 이중모음', 편집 가능. 모든 한글 배열 공통).
-                boolean iotized = prefs == null || prefs.swipeIotized();
-                boolean compound = compoundVowels(prefs);
-                keys[i].swipeDown = iotized ? VowelSwipes.iotizedFor(c0) : null;
-                keys[i].swipeUp = compound ? VowelSwipes.compoundFor(prefs, c0, Key.SWIPE_UP) : null;
-                keys[i].swipeLeft = compound ? VowelSwipes.compoundFor(prefs, c0, Key.SWIPE_LEFT) : null;
-                keys[i].swipeRight = compound ? VowelSwipes.compoundFor(prefs, c0, Key.SWIPE_RIGHT) : null;
-            }
+            keys[i] = new Key(Key.CHAR, l, l, shifted, null, popupFor(prefs, korean, l, popups[i]), 1f);
+            // 네 방향 밀기는 키마다 정한 글자 (정하지 않은 방향은 기본 배치: 쌍자음·겹받침·이중모음, NewSwipe 단모음의 거센소리).
+            applyCustomSwipes(keys[i], prefs, korean, l);
         }
         return keys;
-    }
-
-    /** 밀어서 조합형 이중모음을 쓰는지 (모든 한글 배열 공통). */
-    public static boolean compoundVowels(Prefs prefs) {
-        return prefs != null && prefs.swipeCompoundVowel();
     }
 
     /** 스와이프 완전 사용자화: 네 방향 모두 사용자 설정(없으면 기본 배치)을 따른다. */
@@ -1059,7 +1038,6 @@ public final class KeyboardLayout {
                     break;
                 case BottomKeys.PERIOD:
                     k = slotChar(".", prefs, popupFor(prefs, true, ".", periodPopup(periodComma)), narrowW);
-                    if (prefs == null || (!prefs.swipeCustom() && prefs.periodSwipeComma())) k.swipeUp = ",";
                     break;
                 case BottomKeys.ENTER:
                     k = fn(Key.ENTER, "", wideW);
@@ -1298,7 +1276,7 @@ public final class KeyboardLayout {
     }
 
     private static Key customSwipes(Key k, Prefs prefs, boolean korean) {
-        if (prefs != null && prefs.swipeCustom()) applyCustomSwipes(k, prefs, korean, k.slot());
+        applyCustomSwipes(k, prefs, korean, k.slot());
         return k;
     }
 

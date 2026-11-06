@@ -11,8 +11,7 @@ import java.util.function.BiFunction;
  *       '커서 자유 이동'을 고르면 '문자 키를 밀어서 커서 이동'과 똑같이 커서를 옮긴다.</li>
  *   <li>두 손가락: 두 손가락을 함께 같은 방향으로 밀 때. 그동안 누른 키는 입력하지 않는다.</li>
  * </ul>
- * 완전 사용자화를 끄면 '두 손가락으로 밀어서 실행 취소'만 쓴다 (왼쪽 = 실행 취소, 오른쪽 = 다시 실행).
- * 완전 사용자화에서 정하지 않은 칸도 이 기본값을 따른다.
+ * 정하지 않은 칸은 기본값을 따른다: 두 손가락 왼쪽 = 실행 취소, 오른쪽 = 다시 실행, 나머지는 없음.
  */
 public final class KeyboardSwipes {
     public static final int ONE = 0, TWO = 1;
@@ -83,14 +82,9 @@ public final class KeyboardSwipes {
         return new KeyboardSwipes(SPEC.table(overrides));
     }
 
-    /** 완전 사용자화를 켰을 때의 배치. */
+    /** 설정에 저장된 배치. */
     public static KeyboardSwipes load(Prefs prefs) {
         return new KeyboardSwipes(SPEC.table(prefs));
-    }
-
-    /** 완전 사용자화를 껐을 때: 두 손가락 실행 취소·다시 실행만. */
-    public static KeyboardSwipes twoFingerUndo() {
-        return from(null);
     }
 
     public String action(int slot, int dir) {

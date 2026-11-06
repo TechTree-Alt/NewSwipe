@@ -128,8 +128,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private IconButton sideSwap, sideExpand;
     /** 마지막으로 적용한 한 손 모드 배치 (상태·폭·띄우는 높이). 바뀌었을 때만 뷰를 다시 놓는다. */
     private String appliedOneHand;
-    /** 도구 막대 밀기 배치. 완전 사용자화를 켜면 편집한 배치, 끄면 기본 밀기 설정으로 만든 배치 (설정이 바뀔 때 만든다). */
-    private ToolbarSwipes toolbarSwipes = ToolbarSwipes.standard(true, true, true, true);
+    /** 도구 막대 밀기 배치: 도구 막대와 버튼마다 정한 기능 (설정이 바뀔 때 만든다). */
+    private ToolbarSwipes toolbarSwipes = ToolbarSwipes.load(null);
     /** 입력란이 알려 준 마지막 선택 영역 (모르면 -1). 단어 단위 커서 이동이 입력란에 다시 묻지 않도록 기억한다. */
     private int selStart = -1, selEnd = -1;
     private LinearLayout searchBar;
@@ -1138,39 +1138,27 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         // 한 손 모드에서는 키 높이를 줄인 만큼 키 글자도 같은 비율로 줄인다 (도구 막대는 줄어든 자판 바로 위에 붙어 따라온다).
         float oneHandScale = !Prefs.ONE_HAND_OFF.equals(activeOneHand()) ? prefs.oneHandHeight() / 100f : 1f;
         keyboard.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), prefs.keyPreview(),
-                prefs.longPressChars(), prefs.spaceCursor(), Math.round(sizePrefs.keyTextSize() * oneHandScale));
+                prefs.longPressChars(), Math.round(sizePrefs.keyTextSize() * oneHandScale));
         keyboard.setDirectionRatios(prefs.swipeDownRatio(), prefs.swipeUpRatio());
         keyboard.setFunctionSwipeThreshold(prefs.fnSwipeThresholdDp());
-        keyboard.setCursorAxes(prefs.spaceCursorH(), prefs.spaceCursorV());
         keyboard.setGapCursor(sizePrefs.splitGapCursor(), sizePrefs.splitGapSpeed());
         keyboard.setCursorSpeed(prefs.spaceCursorSpeedH(), prefs.spaceCursorSpeedV(),
                 prefs.charCursorSpeedH(), prefs.charCursorSpeedV());
-        keyboard.setSpaceLangSwipe(prefs.spaceLangSwipe());
         keyboard.setSpaceSelect(prefs.spaceSelect());
-        keyboard.setDeleteLongPress(prefs.longPressDelete(), prefs.deletePressMs());
-        keyboard.setModeKeyLongPress(prefs.modeKeyLongPress());
-        keyboard.setLongPressActions(prefs.longPressCustom()
-                ? com.alternative_studios.newswipe.keyboard.LongPressActions.actions(prefs) : null);
-        keyboard.setModeKeyEmoji(prefs.modeKeyEmoji());
-        keyboard.setFunctionSwipes(prefs.swipeFnCustom() ? FunctionSwipes.load(prefs) : null);
+        // 길게 누르기·밀기는 모두 키마다 정한 기능을 쓴다 (키보드 편집에서 키를 눌러 정한다).
+        keyboard.setFunctionLongPressMs(prefs.deletePressMs());
+        keyboard.setLongPressActions(com.alternative_studios.newswipe.keyboard.LongPressActions.actions(prefs));
+        keyboard.setFunctionSwipes(FunctionSwipes.load(prefs));
         keyboard.setFnKeyActions(com.alternative_studios.newswipe.keyboard.FnKeyActions.actions(prefs));
-        keyboard.setDeleteWordSwipe(prefs.deleteWordSwipe());
-        // 키보드 밀기 완전 사용자화를 켜면 문자 키 커서 이동은 편집 화면의 '커서 자유 이동'을 따른다.
         keyboard.setPopupHints(prefs.longPressChars() && !prefs.popupHintHidden());
         keyboard.setNumberHintHidden(prefs.numberHintHidden());
         keyboard.setRepeatChars(prefs.repeatChars());
         applySuggestLead();
         keyboard.setHitShrink(prefs.deleteHitShrink() ? prefs.deleteHitShrinkPct() / 100f : 0f,
                 prefs.spaceHitShrink() ? prefs.spaceHitShrinkPct() / 100f : 0f);
-        keyboard.setCharCursor(!prefs.swipeKeyboardCustom() && prefs.charCursor(),
-                prefs.charCursorH(), prefs.charCursorV());
-        // 키보드 밀기: 완전 사용자화를 켜면 편집한 배치를, 끄면 '두 손가락으로 밀어서 실행 취소'만 쓴다.
         keyboard.setPickSwipe(prefs.swipePickSuggestion());
-        keyboard.setKeyboardSwipes(prefs.swipeKeyboardCustom() ? KeyboardSwipes.load(prefs)
-                : prefs.twoFingerUndo() ? KeyboardSwipes.twoFingerUndo() : null);
-        toolbarSwipes = prefs.swipeToolbarCustom() ? ToolbarSwipes.load(prefs)
-                : ToolbarSwipes.standard(prefs.toolbarSwipe(), prefs.toolClipboardSwipe(), prefs.toolEmojiSwipe(),
-                        prefs.toolUndoSwipe());
+        keyboard.setKeyboardSwipes(KeyboardSwipes.load(prefs));
+        toolbarSwipes = ToolbarSwipes.load(prefs);
         // 지우기 키를 밀어 단어를 지울 때와 같은 거리('밀어서 기능'의 미는 거리의 1.5배)를 쓴다.
         if (toolbar != null) {
             toolbar.configure(!SwipeAction.NONE.equals(toolbarAction(Key.SWIPE_UP)),
@@ -1921,21 +1909,6 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         typeText(text, false);
     }
 
-    @Override
-    public void onKeyLongPress(Key key) {
-        if (key.type == Key.LANGUAGE) {
-            showImePicker();
-        } else if (key.type == Key.TO_SYMBOLS || key.type == Key.TO_LETTERS) {
-            // 숫자 자판의 ?123도 같은 기호 키로 본다 (완전 사용자화에서도 같은 칸을 쓴다).
-            showPanel(PANEL_EMOJI);
-        }
-    }
-
-    @Override
-    public void onModeKeySwipeUp(Key key) {
-        showPanel(PANEL_EMOJI);
-    }
-
     /** 3×4 숫자 패드를 보이는 중인지 (숫자 입력란에서 떴거나 '기호 자판 대신 숫자 패드 사용'으로 열었다). */
     private boolean numberPadOpen() {
         return layoutKind == KeyboardLayout.NUMBER;
@@ -1970,8 +1943,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 이번 지우기 키 누름에서 선택 영역을 이미 확인했는지. 키를 누를 때마다 초기화된다. */
     private boolean deleteRepeatChecked;
 
-    @Override
-    public void onDeleteWord() {
+    private void onDeleteWord() {
         if (panel == PANEL_SEARCH) {
             composer.reset();
             search.setLength(0);
@@ -2012,8 +1984,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
      * 지우기 키를 위로 밀었을 때: 커서가 있는 줄에서 커서 왼쪽을 모두 지운다 (줄바꿈은 지우지 않는다).
      * 커서가 이미 줄의 맨 앞이면 지우기 키를 한 번 누른 것처럼 윗줄과 합친다.
      */
-    @Override
-    public void onDeleteToLineStart() {
+    private void onDeleteToLineStart() {
         if (panel == PANEL_SEARCH) {
             composer.reset();
             search.setLength(0);
@@ -2572,7 +2543,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private static final String[] SPACE_NAMES = {"한국어", "English", "日本語", "中文"};
 
     /**
-     * 스페이스바의 언어 이름과, 설정에서 켰으면 🌐︎를 위로 밀 때의 언어 말풍선을 놓는다. 말풍선은 '언어 순서 사용자화'에서 정한
+     * 스페이스바의 언어 이름과, 🌐︎를 위로 밀어 '언어 고르기'를 할 때의 언어 말풍선을 놓는다. 말풍선은 '언어 순서 사용자화'에서 정한
      * 차례대로 위에서 아래로 늘 같은 자리에 놓인다 (켜 둔 언어만). 처음에는 지금 언어가 골라져 있다.
      */
     private void updateLanguagePopup() {
@@ -2580,10 +2551,6 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         String now = currentLanguage();
         int nowAt = java.util.Arrays.asList(LANGUAGE_IDS).indexOf(now);
         keyboard.setSpaceLabel(prefs.spaceLangLabel() ? SPACE_NAMES[nowAt] : null);
-        if (!prefs.globeSwipeLang()) {
-            keyboard.setLanguagePopup(null, 0);
-            return;
-        }
         java.util.List<String> names = new java.util.ArrayList<>();
         int selected = 0;
         for (String id : prefs.languageOrder()) {
@@ -4032,7 +3999,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         applySuggestion(index);
     }
 
-    /** 밀어서 기능 완전 사용자화로 정해 둔 기능(SwipeAction ID)을 실행한다. */
+    /** 키를 밀거나 길게 눌러 정해 둔 기능(SwipeAction ID)을 실행한다. */
     @Override
     public void onKeyFunction(Key key, String actionId) {
         if (actionId == null) return;

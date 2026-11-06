@@ -302,6 +302,8 @@ public final class SettingsBackup {
         if (recentEmoji != null) ed.putString(Prefs.RECENT_EMOJI, recentEmoji);
         if (pinnedEmoji != null) ed.putString(Prefs.PINNED_EMOJI, pinnedEmoji);
         ed.apply();
+        // 예전 버전에서 내보낸 파일이면 그때의 밀기 규칙 스위치를 키마다 정한 값으로 옮긴다 (새 파일은 이미 옮긴 표시가 있다).
+        LegacySwipeSettings.migrateIfNeeded(new Prefs(context));
         if (root.has("launcher_icon_shown")) setLauncherShown(context, root.optBoolean("launcher_icon_shown", true));
         int words = userWords == null ? -1 : UserDictionary.shared(context.getFilesDir()).replaceAll(userWords);
         if (blockedWords != null) UserDictionary.shared(context.getFilesDir()).replaceBlocked(blockedWords);

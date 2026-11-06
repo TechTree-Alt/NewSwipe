@@ -41,7 +41,6 @@ public final class Prefs {
     public static final String DOUBLE_TAP_VOWEL = "double_tap_vowel";
     public static final String DOUBLE_TAP_CONSONANT = "double_tap_consonant";       // 자음 두 번 탭 → 쌍자음
     public static final String DOUBLE_TAP_CONSONANT_MS = "double_tap_consonant_ms"; // 80~500
-    public static final String SPACE_CURSOR = "space_cursor";
     public static final String CLIPBOARD_HISTORY = "clipboard_history";
     public static final String CLIPBOARD_IMAGES = "clipboard_images";
     public static final String CLIPBOARD_SENSITIVE = "clipboard_sensitive";   // 민감한 정보로 표시되었거나 비밀번호를 복사한 것도 기록에 저장
@@ -137,15 +136,10 @@ public final class Prefs {
     public static final String SPACE_SELECT = "space_select";                 // 스페이스바를 길게 누른 뒤 밀어서 글자 선택
     public static final String SELECTION_CHIPS = "selection_chips";           // 글자를 선택하면 도구 막대에 편집 칩
     public static final String SWIPE_PICK_SUGGESTION = "swipe_pick_suggestion"; // 자판 왼쪽·가운데·오른쪽을 위로 밀어 추천 단어 입력
-    public static final String TWO_FINGER_UNDO = "two_finger_undo";           // 두 손가락으로 밀어 실행 취소·다시 실행
-    public static final String SWIPE_KEYBOARD_CUSTOM = "swipe_keyboard_custom"; // 키보드 밀기 완전 사용자화
-    /** 🌐︎를 위로 밀면 켜 둔 언어를 세로로 늘어놓은 말풍선을 띄워 고른다 (기본 꺼짐). */
-    public static final String GLOBE_SWIPE_LANG = "globe_swipe_lang";
     /** 🌐︎를 위로 밀었을 때 말풍선의 언어 차례 (위에서 아래, "ko,en,ja,zh"). 일본어·중국어는 켰을 때만 보인다. */
     public static final String LANGUAGE_ORDER = "language_order";
     /** 언어 ID: 한국어, 영어, 일본어, 중국어 (기본 차례). */
     public static final String[] LANGUAGES = {"ko", "en", "ja", "zh"};
-    public static final String SPACE_LANG_SWIPE = "space_lang_swipe";         // 스페이스바를 좌우로 밀어 언어 전환
     /** 글자 자판의 스페이스바에 지금 언어 이름(한국어·English·日本語·中文)을 띄운다 (기본 꺼짐). */
     public static final String SPACE_LANG_LABEL = "space_lang_label";
     public static final String NUMBER_HINT_HIDDEN = "number_hint_hidden";     // 숫자 키만 길게 눌러 입력할 문자 힌트 없애기
@@ -164,9 +158,6 @@ public final class Prefs {
     public static final String SPACE_CURSOR_SPEED_V = "space_cursor_speed_v";
     public static final String CHAR_CURSOR_SPEED_H = "char_cursor_speed_h";
     public static final String CHAR_CURSOR_SPEED_V = "char_cursor_speed_v";
-    public static final String CHAR_CURSOR = "char_cursor";                   // 문자·숫자 키를 밀어 커서 이동 (트랙패드)
-    public static final String CHAR_CURSOR_H = "char_cursor_h";               // 그중 좌우 이동
-    public static final String CHAR_CURSOR_V = "char_cursor_v";               // 그중 상하 이동
     public static final String DELETE_KEY_HIDDEN = "delete_key_hidden";       // 글자·기호 자판의 ⌫ 없애기 (빈칸으로 남김)
     public static final String SPACE_KEY_HIDDEN = "space_key_hidden";         // 스페이스바 없애기 (기능키 순서·유무 사용자화)
     public static final String BOTTOM_KEY_ORDER = "bottom_key_order";         // 맨 아래 줄 기능키 순서 (BottomKeys)
@@ -188,10 +179,6 @@ public final class Prefs {
     public static final String TOOL_EMOJI = "tool_emoji";
     public static final String TOOL_SETTINGS = "tool_settings";
     public static final String TOOL_HIDE = "tool_hide";
-    public static final String TOOL_EMOJI_SWIPE = "tool_emoji_swipe";     // 이모지 버튼을 아래로 밀어 마지막으로 쓴 이모지 입력
-    public static final String TOOL_CLIPBOARD_SWIPE = "tool_clipboard_swipe"; // 클립보드 버튼을 위로 밀어 복사, 아래로 밀어 붙여넣기
-    public static final String TOOL_UNDO_SWIPE = "tool_undo_swipe";       // 실행 취소 버튼을 아래로 밀어 다시 실행
-    public static final String TOOLBAR_SWIPE = "toolbar_swipe";   // 도구 막대를 밀어 줄 처음·끝, 한 줄 위·아래로 이동
     public static final String TOOL_ORDER = "tool_order";   // 도구 막대 버튼 순서와 붙는 쪽 (ToolbarButtons)
     public static final String TOOL_UNDO = "tool_undo";   // 도구 막대의 실행 취소 버튼
     public static final String TOOL_ONE_HAND = "tool_one_hand";   // 도구 막대의 한 손 모드 버튼
@@ -212,18 +199,7 @@ public final class Prefs {
     public static final String ACCENT_COLOR = "accent_color";
     public static final String THEME_SYSTEM = "system", THEME_LIGHT = "light", THEME_DARK = "dark";
     public static final String ACCENT_SYSTEM = "system", ACCENT_CUSTOM = "custom";
-    public static final String SPACE_CURSOR_H = "space_cursor_h";   // 스페이스바 좌우 이동
-    public static final String SPACE_CURSOR_V = "space_cursor_v";   // 스페이스바 상하 이동
-    public static final String LONG_PRESS_DELETE = "long_press_delete";   // 지우기 키를 길게 눌러 연속 삭제
-    public static final String SWIPE_FN_CUSTOM = "swipe_fn_custom";       // 기능키 밀어서 기능 완전 사용자화
-    public static final String SWIPE_TOOLBAR_CUSTOM = "swipe_toolbar_custom"; // 도구 막대 밀어서 기능 완전 사용자화
-    public static final String MODE_KEY_EMOJI = "mode_key_emoji";         // 왼쪽 아래 기호 키를 위로 밀어 이모지 열기
-    public static final String MODE_KEY_LONG_PRESS = "mode_key_settings";  // 왼쪽 아래 기호 키를 길게 눌러 이모지 열기 (예전에는 설정 열기라 키 이름이 그대로)
-    public static final String LONG_PRESS_CUSTOM = "long_press_custom";   // 기능키 길게 누르기 기능 완전 사용자화
     public static final String DELETE_PRESS_MS = "delete_press_ms";       // 기능키 길게 누르기 시간 200~800 (옛 이름 그대로 저장)
-    public static final String DELETE_WORD_SWIPE = "delete_word_swipe";   // 지우기 키를 왼쪽으로 밀어 단어 삭제
-    public static final String SWIPE_DOUBLE = "swipe_double";             // 아래로 밀어 쌍자음
-    public static final String D7_SS_UP = "d7_ss_up";                     // NewSwipe 단모음: ㅅ을 위로 밀어도 ㅆ
     /** 실험실 '스와이프 방향 판정': 세로 움직임이 가로 움직임의 몇 %를 넘어야 아래·위로 치는지 (100~300). */
     public static final String SWIPE_DOWN_RATIO = "swipe_down_ratio", SWIPE_UP_RATIO = "swipe_up_ratio";
     public static final int SWIPE_DOWN_RATIO_DEFAULT = 150, SWIPE_UP_RATIO_DEFAULT = 120,
@@ -234,11 +210,6 @@ public final class Prefs {
     public static final String SPACE_HIT_SHRINK_PCT = "space_hit_shrink_pct";     // %, 5~50
     public static final String SETUP_DONE = "setup_done";   // 시작하기를 한 번 마쳤는지 (그전까지 설정 메뉴를 막는다)
     public static final String ONBOARDING_DONE = "onboarding_done";   // 첫 시작 가이드를 끝까지 봤는지
-    public static final String SWIPE_IOTIZED = "swipe_iotized";           // 모음 키를 밀어 ㅣ계 이중모음 (ㅑ ㅕ ㅛ ㅠ ㅒ ㅖ)
-    public static final String SWIPE_COMPOUND_VOWEL = "swipe_compound_vowel"; // 모음 키를 밀어 조합형 이중모음 (ㅘ ㅙ ㅚ ㅝ ㅞ ㅟ ㅢ)
-    public static final String SWIPE_FINAL = "swipe_final";               // 밀어서 겹받침
-    public static final String PERIOD_SWIPE_COMMA = "period_swipe_comma"; // 온점 키를 위로 밀어 쉼표
-    public static final String SWIPE_CUSTOM = "swipe_custom";             // 스와이프 입력 완전 사용자화
     public static final String EMOJI_SUGGEST = "emoji_suggest";           // 이모지 창을 열 때 입력한 글에 맞는 이모지 추천
     public static final String SUGGEST_WORDS = "suggest_words";           // 입력 중인 단어에 맞는 추천 단어
     public static final String SUGGEST_FULL_BAR = "suggest_full_bar";     // 추천이 뜨는 동안 도구 막대 전체를 추천에 쓴다
@@ -260,6 +231,7 @@ public final class Prefs {
 
     public Prefs(Context context) {
         this(new SafePrefs(context.getSharedPreferences(FILE, Context.MODE_PRIVATE)), false, PROFILE_PORTRAIT, false);
+        LegacySwipeSettings.migrateIfNeeded(this);   // 예전 밀기 규칙 스위치를 키마다 정한 값으로 한 번 옮긴다
     }
 
     private Prefs(SharedPreferences sp, boolean oneHandView, String profile, boolean profileEdit) {
@@ -396,17 +368,12 @@ public final class Prefs {
         MENU_KEYS.put("input", keys(AUTO_CAP, ENGLISH_FIELDS, DOUBLE_SPACE_PERIOD, DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT,
                 DOUBLE_TAP_CONSONANT_MS, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, SPACE_HIT_SHRINK,
                 SPACE_HIT_SHRINK_PCT));
-        MENU_KEYS.put("keys", keys(LONG_PRESS_CHARS, LONG_PRESS_REPEAT, LONG_PRESS_MS, LONG_PRESS_DELETE, DELETE_PRESS_MS,
-                MODE_KEY_LONG_PRESS, LONG_PRESS_CUSTOM));
+        MENU_KEYS.put("keys", keys(LONG_PRESS_CHARS, LONG_PRESS_REPEAT, LONG_PRESS_MS, DELETE_PRESS_MS));
         MENU_PREFIXES.put("keys", keys("popup_", "repeat_", "swipe_lp_"));
-        MENU_KEYS.put("swipe", keys(SWIPE_THRESHOLD, SWIPE_DOUBLE, D7_SS_UP, SWIPE_IOTIZED, SWIPE_COMPOUND_VOWEL,
-                SWIPE_FINAL, PERIOD_SWIPE_COMMA, SWIPE_CUSTOM));
+        MENU_KEYS.put("swipe", keys(SWIPE_THRESHOLD));
         MENU_PREFIXES.put("swipe", keys("swipe_custom_", "swipe_final_", "swipe_vowel_"));
-        MENU_KEYS.put("swipefn", keys(FN_SWIPE_THRESHOLD, SPACE_CURSOR, SPACE_CURSOR_H, SPACE_CURSOR_V,
-                SPACE_CURSOR_SPEED_H, SPACE_CURSOR_SPEED_V, CHAR_CURSOR, CHAR_CURSOR_H, CHAR_CURSOR_V,
-                CHAR_CURSOR_SPEED_H, CHAR_CURSOR_SPEED_V, SPACE_LANG_SWIPE, GLOBE_SWIPE_LANG, LANGUAGE_ORDER, SPACE_SELECT, TWO_FINGER_UNDO, SWIPE_KEYBOARD_CUSTOM, SWIPE_PICK_SUGGESTION,
-                SWIPE_FN_CUSTOM, SWIPE_TOOLBAR_CUSTOM, DELETE_WORD_SWIPE, MODE_KEY_EMOJI, TOOLBAR_SWIPE,
-                TOOL_EMOJI_SWIPE, TOOL_CLIPBOARD_SWIPE, TOOL_UNDO_SWIPE));
+        MENU_KEYS.put("swipefn", keys(FN_SWIPE_THRESHOLD, SPACE_CURSOR_SPEED_H, SPACE_CURSOR_SPEED_V,
+                CHAR_CURSOR_SPEED_H, CHAR_CURSOR_SPEED_V, LANGUAGE_ORDER, SPACE_SELECT, SWIPE_PICK_SUGGESTION));
         MENU_PREFIXES.put("swipefn", keys("swipe_fn_", "swipe_toolbar_", "swipe_kb_"));
         MENU_KEYS.put("feedback", keys(VIBRATE, VIBRATE_MS, VIBRATE_STYLE, VIBRATE_AMP, VIBRATE_PER_KEY,
                 VIBRATE_DELETE, VIBRATE_SPACE, VIBRATE_ENTER, VIBRATE_SHIFT, VIBRATE_SYMBOL, VIBRATE_LANGUAGE, VIBRATE_TOOLBAR,
@@ -484,23 +451,10 @@ public final class Prefs {
                 TOOL_ONE_HAND, TOOL_HIDE}, NONE);
     }
 
-    /** '길게 누르기 문자 편집' 화면의 값. */
-    public void resetPopups() { removeKeys(NONE, new String[]{"popup_"}); }
-    public void resetRepeatChars() { removeKeys(NONE, new String[]{"repeat_"}); }
-
-    /** 기능 편집 화면(기능키·도구 막대·키보드 밀기·길게 누르기·Fn 키)의 값. 같은 이름으로 시작하는 '완전 사용자화' 스위치는 그대로 둔다. */
+    /** 기능 배치(기능키·도구 막대·키보드 밀기·길게 누르기·Fn 키) 하나의 값. */
     public void resetSwipeActions(String group) {
-        removeKeys(NONE, new String[]{"swipe_" + group + "_"}, SWIPE_FN_CUSTOM, SWIPE_TOOLBAR_CUSTOM);
+        removeKeys(NONE, new String[]{"swipe_" + group + "_"});
     }
-
-    /** '밀어서 글자 입력 편집' 화면의 값. */
-    public void resetSwipeCustoms() { removeKeys(NONE, new String[]{"swipe_custom_"}); }
-
-    /** '겹받침 밀어서 글자 입력 편집' 화면의 값. */
-    public void resetFinalSwipes() { removeKeys(NONE, new String[]{"swipe_final_"}); }
-
-    /** '밀어서 조합형 이중모음 입력 편집' 화면의 값. */
-    public void resetVowelSwipes() { removeKeys(NONE, new String[]{"swipe_vowel_"}); }
 
     public SharedPreferences raw() {
         return sp;
@@ -552,9 +506,6 @@ public final class Prefs {
     /** 기본은 꺼짐: 쌍자음은 밀어서 입력하므로 '학교→하꾜' 문제가 없다. 켜면 예전 단모음처럼 두 번 탭으로도 입력. */
     public boolean doubleTapConsonant() { return sp.getBoolean(DOUBLE_TAP_CONSONANT, false); }
     public int doubleTapConsonantMs() { return sp.getInt(DOUBLE_TAP_CONSONANT_MS, 200); }
-    public boolean spaceCursorH() { return sp.getBoolean(SPACE_CURSOR_H, true); }
-    public boolean spaceCursorV() { return sp.getBoolean(SPACE_CURSOR_V, true); }
-    public boolean spaceCursor() { return sp.getBoolean(SPACE_CURSOR, true); }
     /** 이 프로필의 '스페이스바 잇기'와 '하단 기능키 폭' 설정 키. */
     public String splitSpaceJoinKey() { return large() ? LARGE_PREFIX + SPLIT_SPACE_JOIN + "_" + LARGE_LAYOUT_SIDE : SPLIT_SPACE_JOIN; }
     public String splitFnWidthKey() { return large() ? LARGE_PREFIX + SPLIT_FN_WIDTH + "_" + LARGE_LAYOUT_SIDE : SPLIT_FN_WIDTH; }
@@ -663,11 +614,8 @@ public final class Prefs {
     public boolean periodKeyHidden() { return sp.getBoolean(PERIOD_KEY_HIDDEN, false); }
     public boolean spaceSelect() { return sp.getBoolean(SPACE_SELECT, true); }
     public boolean selectionChips() { return sp.getBoolean(SELECTION_CHIPS, true); }
-    public boolean twoFingerUndo() { return sp.getBoolean(TWO_FINGER_UNDO, false); }
     public boolean swipePickSuggestion() { return sp.getBoolean(SWIPE_PICK_SUGGESTION, false); }
-    public boolean swipeKeyboardCustom() { return sp.getBoolean(SWIPE_KEYBOARD_CUSTOM, false); }
 
-    public boolean spaceLangSwipe() { return sp.getBoolean(SPACE_LANG_SWIPE, false); }
     public boolean popupHintHidden() { return sp.getBoolean(POPUP_HINT_HIDDEN, false); }
     /** 숫자 키(1~0)에만 길게 눌러 입력할 문자 힌트를 보이지 않게 하는지. */
     public boolean numberHintHidden() { return sp.getBoolean(NUMBER_HINT_HIDDEN, false); }
@@ -688,9 +636,6 @@ public final class Prefs {
     public int spaceCursorSpeedV() { return sp.getInt(SPACE_CURSOR_SPEED_V, 100); }
     public int charCursorSpeedH() { return sp.getInt(CHAR_CURSOR_SPEED_H, 100); }
     public int charCursorSpeedV() { return sp.getInt(CHAR_CURSOR_SPEED_V, 100); }
-    public boolean charCursor() { return sp.getBoolean(CHAR_CURSOR, false); }
-    public boolean charCursorH() { return sp.getBoolean(CHAR_CURSOR_H, true); }
-    public boolean charCursorV() { return sp.getBoolean(CHAR_CURSOR_V, true); }
     public boolean deleteKeyHidden() { return sp.getBoolean(DELETE_KEY_HIDDEN, false); }
     public boolean spaceKeyHidden() { return sp.getBoolean(SPACE_KEY_HIDDEN, false); }
 
@@ -985,18 +930,11 @@ public final class Prefs {
 
     public void setToolShown(String id, boolean shown) { sp.edit().putBoolean(toolShownKey(id), shown).apply(); }
 
-    public boolean toolbarSwipe() { return sp.getBoolean(TOOLBAR_SWIPE, true); }
-    public boolean toolEmojiSwipe() { return sp.getBoolean(TOOL_EMOJI_SWIPE, true); }
-    public boolean toolClipboardSwipe() { return sp.getBoolean(TOOL_CLIPBOARD_SWIPE, true); }
-    public boolean toolUndoSwipe() { return sp.getBoolean(TOOL_UNDO_SWIPE, true); }
 
     public String themeMode() { return sp.getString(THEME_MODE, THEME_SYSTEM); }
     public String accentMode() { return sp.getString(ACCENT_MODE, ACCENT_CUSTOM); }
     public int accentColor() { return sp.getInt(ACCENT_COLOR, AppTheme.DEFAULT_ACCENT); }
 
-    public boolean longPressDelete() { return sp.getBoolean(LONG_PRESS_DELETE, true); }
-    public boolean modeKeyLongPress() { return sp.getBoolean(MODE_KEY_LONG_PRESS, true); }
-    public boolean globeSwipeLang() { return sp.getBoolean(GLOBE_SWIPE_LANG, false); }
 
     /** 말풍선의 언어 차례: 네 언어가 모두 한 번씩 든다 (저장된 값에 없거나 모르는 언어는 기본 차례로 채운다). */
     public String[] languageOrder() {
@@ -1017,28 +955,13 @@ public final class Prefs {
 
     /** '언어 순서 사용자화' 화면의 값. */
     public void resetLanguageOrder() { sp.edit().remove(LANGUAGE_ORDER).apply(); }
-    public boolean longPressCustom() { return sp.getBoolean(LONG_PRESS_CUSTOM, false); }
-    public boolean modeKeyEmoji() { return sp.getBoolean(MODE_KEY_EMOJI, true); }
     public int deletePressMs() { return sp.getInt(DELETE_PRESS_MS, 350); }
 
-    public boolean deleteWordSwipe() { return sp.getBoolean(DELETE_WORD_SWIPE, true); }
-
-    public boolean swipeDouble() { return sp.getBoolean(SWIPE_DOUBLE, true); }
-    /** NewSwipe 단모음에서 ㅅ을 위로 밀어도 ㅆ을 입력하는지. */
-    public boolean d7SsUp() { return sp.getBoolean(D7_SS_UP, false); }
-    /** 지금 배열에서 ㅅ을 위로 밀어도 ㅆ을 입력하는지 (NewSwipe 단모음만). */
-    public boolean ssUp() { return koreanD7() && d7SsUp(); }
-
-    public boolean swipeIotized() { return sp.getBoolean(SWIPE_IOTIZED, true); }
-    public boolean swipeCompoundVowel() { return sp.getBoolean(SWIPE_COMPOUND_VOWEL, true); }
-    public boolean swipeFinal() { return sp.getBoolean(SWIPE_FINAL, true); }
-    public boolean periodSwipeComma() { return sp.getBoolean(PERIOD_SWIPE_COMMA, true); }
-
-    public boolean swipeCustom() { return sp.getBoolean(SWIPE_CUSTOM, false); }
-    public boolean swipeFnCustom() { return sp.getBoolean(SWIPE_FN_CUSTOM, false); }
 
 
-    public boolean swipeToolbarCustom() { return sp.getBoolean(SWIPE_TOOLBAR_CUSTOM, false); }
+
+
+
 
     // 밀어서 기능 완전 사용자화(기능키 "fn"·도구 막대 "toolbar"·키보드 밀기 "kb", SwipeSpec).
     // 값은 기능 ID(SwipeAction)이며, 정한 적이 없으면 null이다.
@@ -1082,17 +1005,9 @@ public final class Prefs {
         return "swipe_final_" + consonant + "_" + dir;
     }
 
-    /** 사용자가 고른 겹받침. 고른 적이 없으면 null, "없음"을 골랐으면 빈 문자열. */
+    /** 예전 '겹받침 편집'에서 고른 값 (예전 설정을 옮길 때만 읽는다, LegacySwipeSettings). 없으면 null, "없음"이면 빈 문자열. */
     public String swipeFinalOverride(char consonant, String dir) {
         return sp.getString(swipeFinalKey(consonant, dir), null);
-    }
-
-    public void setSwipeFinalOverride(char consonant, String dir, String value) {
-        sp.edit().putString(swipeFinalKey(consonant, dir), value).apply();
-    }
-
-    public void resetSwipeFinalOverride(char consonant, String dir) {
-        sp.edit().remove(swipeFinalKey(consonant, dir)).apply();
     }
 
     // 조합형 이중모음 밀어서 입력 편집. 값은 이중모음 한 글자이며, 빈 문자열은 "없음"이다.
@@ -1100,17 +1015,9 @@ public final class Prefs {
         return "swipe_vowel_" + vowel + "_" + dir;
     }
 
-    /** 사용자가 고른 조합형 이중모음. 고른 적이 없으면 null, "없음"을 골랐으면 빈 문자열. */
+    /** 예전 '조합형 이중모음 편집'에서 고른 값 (예전 설정을 옮길 때만 읽는다). 없으면 null, "없음"이면 빈 문자열. */
     public String swipeVowelOverride(char vowel, String dir) {
         return sp.getString(swipeVowelKey(vowel, dir), null);
-    }
-
-    public void setSwipeVowelOverride(char vowel, String dir, String value) {
-        sp.edit().putString(swipeVowelKey(vowel, dir), value).apply();
-    }
-
-    public void resetSwipeVowelOverride(char vowel, String dir) {
-        sp.edit().remove(swipeVowelKey(vowel, dir)).apply();
     }
 
     public boolean korean() { return !"en".equals(sp.getString(LANGUAGE, "ko")); }

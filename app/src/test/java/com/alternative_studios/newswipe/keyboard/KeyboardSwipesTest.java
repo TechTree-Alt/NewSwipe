@@ -16,7 +16,7 @@ public class KeyboardSwipesTest {
 
     @Test
     public void defaultsAreTwoFingerUndoRedo() {
-        KeyboardSwipes k = KeyboardSwipes.twoFingerUndo();
+        KeyboardSwipes k = KeyboardSwipes.from(null);
         assertEquals(SwipeAction.UNDO, k.action(KeyboardSwipes.TWO, Key.SWIPE_LEFT));
         assertEquals(SwipeAction.REDO, k.action(KeyboardSwipes.TWO, Key.SWIPE_RIGHT));
         assertEquals(SwipeAction.NONE, k.action(KeyboardSwipes.TWO, Key.SWIPE_UP));

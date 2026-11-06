@@ -174,7 +174,7 @@ final class KeyboardPreview extends FrameLayout {
         theme = KeyboardTheme.of(c);
         setBackgroundColor(theme.background);
         keys.setTheme(theme);
-        keys.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), false, prefs.longPressChars(), false,
+        keys.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), false, prefs.longPressChars(),
                 prefs.keyTextSize());
         keys.setKeyShadow(prefs.keyShadow(), prefs.keyShadowStrength());
         keys.setKeyRadius(Ui.dp(c, prefs.keyRadiusDp()));

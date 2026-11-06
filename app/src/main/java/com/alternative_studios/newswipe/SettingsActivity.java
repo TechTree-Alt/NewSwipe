@@ -370,15 +370,9 @@ public final class SettingsActivity extends Activity {
             {"theme", "강조 색", "색상 컬러 포인트 테마 색"},
             {"theme", "색 정렬", "키 색"},
             {KEYBOARD, "문자 길게 누르기 시간", "롱프레스 길게 누르기 시간 지연"},
-            {KEYBOARD, "길게 눌러 입력할 문자 편집", "특수문자 팝업 롱프레스"},
             {KEYBOARD, "길게 눌러 문자 입력", "특수문자 롱프레스"},
-            {KEYBOARD, "길게 눌러 연속 입력 편집", "반복 입력 연타"},
             {KEYBOARD, "길게 눌러 연속 입력", "반복 입력 연타"},
-            {KEYBOARD, "기능키 길게 누르기 시간", "롱프레스 시간"},
-            {KEYBOARD, "길게 눌러 지우기", "백스페이스 연속 삭제 계속 지우기"},
-            {KEYBOARD, "기호 키를 길게 눌러 이모지 창 열기", "이모티콘 ?123"},
-            {KEYBOARD, "기능키 길게 누르기 기능 편집", "롱프레스 기능"},
-            {KEYBOARD, "🛠️ 기능키 길게 누르기 기능 완전 사용자화", "롱프레스 기능 커스텀"},
+            {KEYBOARD, "기능키 길게 누르기 시간", "롱프레스 시간 길게 눌러 지우기 이모지 입력기 선택"},
             {KEYBOARD, "쌍자음 인식 시간", "연속 탭 된소리 ㄲ ㅆ 시간"},
             {KEYBOARD, "자음 연속 탭으로 쌍자음", "된소리 ㄲ ㅆ ㅃ"},
             {KEYBOARD, "모음 연속 탭으로 이중모음", "ㅑ ㅛ ㅕ"},
@@ -386,38 +380,14 @@ public final class SettingsActivity extends Activity {
             {KEYBOARD, "스페이스바 두 번으로 마침표", "점 온점 더블 스페이스"},
             {KEYBOARD, "⌫ 버튼 인식 범위 좁히기", "지우기 백스페이스 오타 오입력 터치 영역"},
             {KEYBOARD, "스페이스바 인식 범위 좁히기", "스페이스 오타 오입력 터치 영역"},
-            {KEYBOARD, "미는 거리", "스와이프 거리 민감도"},
-            {KEYBOARD, "ㅅ을 위로 밀어서 ㅆ 입력", "쌍시옷 스와이프"},
-            {KEYBOARD, "밀어서 쌍자음", "스와이프 된소리 ㄲ ㅃ"},
-            {KEYBOARD, "밀어서 겹받침", "ㄺ ㄳ 받침"},
-            {KEYBOARD, "겹받침 밀어서 글자 입력 편집", "받침 스와이프"},
-            {KEYBOARD, "밀어서 ㅣ계 이중모음", "ㅑ ㅕ ㅛ ㅠ ㅒ ㅖ 스와이프"},
-            {KEYBOARD, "밀어서 조합형 이중모음", "ㅘ ㅝ ㅢ 스와이프"},
-            {KEYBOARD, "밀어서 조합형 이중모음 입력 편집", "ㅘ ㅝ ㅢ"},
-            {KEYBOARD, "온점 키를 위로 밀어서 쉼표 입력", "마침표 콤마 쉼표 스와이프"},
-            {KEYBOARD, "밀어서 글자 입력 편집", "스와이프 글자 커스텀"},
-            {KEYBOARD, "🛠️ 밀어서 글자 입력 완전 사용자화", "스와이프 커스텀 모든 키"},
-            {KEYBOARD, "좌우 이동 속도", "커서 이동 속도 스페이스바 트랙패드"},
-            {KEYBOARD, "상하 이동 속도", "커서 이동 속도 스페이스바 트랙패드"},
-            {KEYBOARD, "스페이스바를 밀어서 커서 이동", "커서 트랙패드 이동"},
-            {KEYBOARD, "스페이스바를 밀어서 언어 전환", "한영 전환 한/영 언어 바꾸기 스와이프"},
-            {KEYBOARD, "🌐︎을 위로 밀어 언어 고르기", "지구본 언어 전환 키 한국어 영어 일본어 중국어 말풍선 팝업 선택"},
+            {KEYBOARD, "미는 거리", "스와이프 거리 민감도 밀어서 쌍자음 겹받침 이중모음 ㄲ ㅆ ㅘ 쉼표 글자 입력"},
+            {KEYBOARD, "기능 미는 거리", "스와이프 기능 스페이스바 커서 이동 언어 전환 단어 삭제 이모지 도구 막대 밀기 복사 붙여넣기"},
+            {KEYBOARD, "키보드 밀기 편집", "두 손가락 실행 취소 다시 실행 undo redo 트랙패드 커서 자유 이동 문자 키"},
+            {KEYBOARD, "스페이스바·커서 키 좌우", "커서 이동 속도 트랙패드"},
+            {KEYBOARD, "자판 트랙패드 좌우", "커서 이동 속도 문자 키"},
             {KEYBOARD, "언어 순서 사용자화", "지구본 언어 차례 순서 바꾸기 한국어 영어 일본어 중국어"},
             {KEYBOARD, "스페이스바를 길게 누른 뒤 밀어서 선택", "텍스트 선택 범위 드래그 블록"},
-            {KEYBOARD, "⌫ 밀어서 단위 삭제", "백스페이스 단어 삭제 줄 삭제 지우기"},
-            {KEYBOARD, "기호 키를 위로 밀어서 이모지 열기", "이모티콘 스와이프 ?123"},
-            {KEYBOARD, "기능키 밀어서 기능 편집", "스와이프 기능 커스텀"},
-            {KEYBOARD, "🛠️ 기능키 밀어서 기능 완전 사용자화", "스와이프 기능 커스텀"},
-            {KEYBOARD, "도구 막대를 밀어서 커서 이동", "툴바 커서 줄 맨 앞 맨 뒤"},
-            {KEYBOARD, "클립보드 버튼을 밀어서 복사·붙여넣기", "복사 붙여넣기 스와이프"},
-            {KEYBOARD, "이모지 버튼을 아래로 밀어서 입력", "최근 이모티콘"},
-            {KEYBOARD, "실행 취소 버튼을 아래로 밀어서 다시 실행", "redo undo 되돌리기"},
-            {KEYBOARD, "도구 막대 밀어서 기능 편집", "툴바 스와이프 기능"},
-            {KEYBOARD, "🛠️ 도구 막대 밀어서 기능 완전 사용자화", "툴바 스와이프 커스텀"},
-            {KEYBOARD, "문자 키를 밀어서 커서 이동", "트랙패드 커서"},
-            {KEYBOARD, "두 손가락으로 밀어서 실행 취소", "undo redo 되돌리기 다시 실행"},
             {KEYBOARD, "키보드 밀기 편집", "자판 스와이프 기능"},
-            {KEYBOARD, "🛠️ 키보드 밀기 완전 사용자화", "자판 스와이프 커스텀"},
             {KEYBOARD, "위로 밀어서 추천 단어 입력", "추천 단어 스와이프 고르기 자판 위로"},
             {"words", "도구 막대 전체를 쓰기", "추천 툴바 전체"},
             {"words", "추천 단어 뒤에 공백 포함", "띄어쓰기 스페이스"},
@@ -903,7 +873,7 @@ public final class SettingsActivity extends Activity {
             {"look", "키보드 높이, 여백, 키 모양"},
             {"layout", "자판 배열, 숫자 줄, 기능키 순서, 가로 모드"},
             {"input", "입력 동작"},
-            {"keys", "길게 누르기 (키마다 정한 문자·연속 입력 포함)"},
+            {"keys", "길게 누르기 (키마다 정한 문자·연속 입력·기능 포함)"},
             {"swipe", "밀어서 글자 입력 (키마다 정한 글자 포함)"},
             {"swipefn", "밀어서 기능 (키·버튼마다 정한 기능 포함)"},
             {"tools", "도구 막대, 클립보드, 이모지"},
@@ -1810,8 +1780,7 @@ public final class SettingsActivity extends Activity {
 
     /** 한 손 모드 미리보기의 키 글자 크기: 키 높이를 줄인 만큼 같은 비율로 줄인다 (키보드와 같다). */
     private void applyOneHandPreviewText() {
-        oneHandKeys.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), false, prefs.longPressChars(),
-                false, Math.round(prefs.keyTextSize() * prefs.oneHandHeight() / 100f));
+        oneHandKeys.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), false, prefs.longPressChars(), Math.round(prefs.keyTextSize() * prefs.oneHandHeight() / 100f));
     }
 
     /** 키보드 도구 막대와 같은 자리·순서로 보이는 버튼들 (누를 수 없음). */
@@ -1908,7 +1877,7 @@ public final class SettingsActivity extends Activity {
     private void applyPreviewSize(com.alternative_studios.newswipe.keyboard.KeyboardView view, Prefs p,
                                   com.alternative_studios.newswipe.keyboard.KeyboardLayout l, boolean landscape) {
         float scale = landscape ? LANDSCAPE_PREVIEW_SCALE : 1f;
-        view.configure(p.longPressMs(), p.swipeThresholdDp(), false, p.longPressChars(), false,
+        view.configure(p.longPressMs(), p.swipeThresholdDp(), false, p.longPressChars(),
                 Math.round(p.keyTextSize() * scale));
         int pad = Ui.dp(this, 4);
         view.setKeyboardHeight(Math.round(Ui.dp(this, 54) * l.totalHeight() * p.keyboardHeight() / 100f * scale) + 2 * pad);
@@ -1933,8 +1902,7 @@ public final class SettingsActivity extends Activity {
                 new com.alternative_studios.newswipe.keyboard.KeyboardView(this);
         preview.setTheme(kt);
         // 가로 모드 미리보기는 키가 낮아진 만큼 글자도 작게 그려 키 안에 들어가게 한다.
-        preview.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), false, prefs.longPressChars(),
-                false, Math.round(prefs.keyTextSize() * (landscape ? LANDSCAPE_PREVIEW_SCALE : 1f)));
+        preview.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), false, prefs.longPressChars(), Math.round(prefs.keyTextSize() * (landscape ? LANDSCAPE_PREVIEW_SCALE : 1f)));
         preview.setKeyShadow(prefs.keyShadow(), prefs.keyShadowStrength());
         preview.setKeyRadius(Ui.dp(this, prefs.keyRadiusDp()));
         preview.setGridColors(prefs.gridColors());
@@ -2123,33 +2091,10 @@ public final class SettingsActivity extends Activity {
                 Prefs.LONG_PRESS_CHARS, prefs.longPressChars()));
         chars.addView(toggle("길게 눌러 연속 입력", "고른 글자를 길게 누르고 있으면 계속 입력합니다.",
                 Prefs.LONG_PRESS_REPEAT, prefs.longPressRepeat()));
-        chars.addView(note(EDIT_ON_PREVIEW + "길게 눌러 고를 문자나 연속 입력을 그 키마다 바꿀 수 있습니다."));
-
-        LinearLayout fn = section("기능키 길게 누르기");
-        // 모든 기능키(⌫·기호 키·🌐︎·Shift 키·엔터 키·Fn 키)가 같은 시간을 쓴다. 기본 설정·완전 사용자화 모두 같다.
-        fn.addView(slider("기능키 길게 누르기 시간", Prefs.DELETE_PRESS_MS, prefs.deletePressMs(), 200, 800, 50, "ms"));
-        // 완전 사용자화를 켜면 아래 기본 설정은 쓰지 않으므로 숨기고, 편집 버튼을 보여 준다.
-        LinearLayout standard = new LinearLayout(this);
-        standard.setOrientation(LinearLayout.VERTICAL);
-        standard.addView(toggle("길게 눌러 지우기",
-                "⌫를 길게 누르고 있으면 계속 지웁니다. 끄면 한 글자씩만 지워집니다.",
-                Prefs.LONG_PRESS_DELETE, prefs.longPressDelete()));
-        standard.addView(toggle("기호 키를 길게 눌러 이모지 창 열기",
-                "기호 키(숫자 패드의 ?!@·가·ABC 포함)를 길게 누르면 이모지 창을 엽니다.",
-                Prefs.MODE_KEY_LONG_PRESS, prefs.modeKeyLongPress()));
-        View customGroup = subGroup(note(EDIT_ON_PREVIEW + "길게 누를 때 실행할 기능을 고를 수 있습니다."));
-        boolean custom = prefs.longPressCustom();
-        standard.setVisibility(custom ? View.GONE : View.VISIBLE);
-        customGroup.setVisibility(custom ? View.VISIBLE : View.GONE);
-        fn.addView(standard);
-        fn.addView(toggle("🛠️ 기능키 길게 누르기 기능 완전 사용자화",
-                "Shift 키·기호 키·🌐︎·엔터 키·⌫를 길게 누를 때 실행할 기능을 직접 정합니다.",
-                custom, on -> {
-                    prefs.raw().edit().putBoolean(Prefs.LONG_PRESS_CUSTOM, on).apply();
-                    Ui.setVisibleAnimated(standard, !on);
-                    Ui.setVisibleAnimated(customGroup, on);
-                }));
-        fn.addView(customGroup);
+        // 모든 기능키(⌫·기호 키·🌐︎·Shift 키·엔터 키·Fn 키 등)가 같은 시간을 쓴다.
+        chars.addView(slider("기능키 길게 누르기 시간", Prefs.DELETE_PRESS_MS, prefs.deletePressMs(), 200, 800, 50, "ms"));
+        chars.addView(note(EDIT_ON_PREVIEW + "길게 눌러 고를 문자, 연속 입력, 기능키를 길게 누를 때 실행할 기능을 "
+                + "그 키마다 정할 수 있습니다."));
     }
 
     private void buildInput() {
@@ -2160,7 +2105,7 @@ public final class SettingsActivity extends Activity {
                 note("두 번째 탭이 이 시간 안에 들어와야 쌍자음이 됩니다. 값을 줄이면 '학교'가 '하꾜'로 바뀌는 일이 줄고, "
                         + "대신 쌍자음을 낼 때 더 빨리 눌러야 합니다."));
         input.addView(toggle("자음 연속 탭으로 쌍자음",
-                "같은 자음을 빠르게 두 번 누르면 쌍자음을 입력합니다 (예: ㄱㄱ→ㄲ, ㅅㅅ→ㅆ). 기존 단모음 자판과 같은 방식이며, 밀어서 쌍자음과 함께 쓸 수 있습니다.",
+                "같은 자음을 빠르게 두 번 누르면 쌍자음을 입력합니다 (예: ㄱㄱ→ㄲ, ㅅㅅ→ㅆ). 기존 단모음 자판과 같은 방식이며, 아래로 밀어 쌍자음을 입력하는 것과 함께 쓸 수 있습니다.",
                 Prefs.DOUBLE_TAP_CONSONANT, prefs.doubleTapConsonant(), doubleTapTime));
         input.addView(doubleTapTime);
         input.addView(toggle("모음 연속 탭으로 이중모음", "같은 모음을 연달아 누르면 이중모음을 입력합니다 (예: ㅏㅏ→ㅑ, ㅗㅗ→ㅛ)."
@@ -2190,201 +2135,39 @@ public final class SettingsActivity extends Activity {
     private void buildSwipe() {
         LinearLayout swipe = section("밀어서 글자 입력");
         swipe.addView(slider("미는 거리", Prefs.SWIPE_THRESHOLD, prefs.swipeThresholdDp(), 12, 48, 2, "dp"));
-        swipe.addView(note("값이 작을수록 살짝만 밀어도 인식합니다."));
-        // 완전 사용자화를 켜면 쌍자음·겹받침 설정은 쓰지 않으므로 숨기고, 편집 버튼을 보여 준다.
-        LinearLayout standard = new LinearLayout(this);
-        standard.setOrientation(LinearLayout.VERTICAL);
-        // NewSwipe 배열 전용 (ㅅ을 위로 밀어도 ㅆ). 밀어서 쌍자음의 하위 설정이다.
-        // 기본 꺼짐.
-        if (prefs.koreanNewSwipe()) {
-            View ssUp = subGroup(toggle("ㅅ을 위로 밀어서 ㅆ 입력",
-                    "ㅅ을 아래로 밀 때뿐만 아니라 위로 밀 때도 ㅆ을 입력합니다. NewSwipe 단모음에서만 쓰입니다.",
-                    Prefs.D7_SS_UP, prefs.ssUp()));
-            standard.addView(toggle("밀어서 쌍자음", "자음 키를 아래로 밀어 쌍자음을 입력합니다 (예: ㄱ→ㄲ, ㅂ→ㅃ).",
-                    Prefs.SWIPE_DOUBLE, prefs.swipeDouble(), ssUp));
-            standard.addView(ssUp);
-        } else {
-            standard.addView(toggle("밀어서 쌍자음", "자음 키를 아래로 밀어 쌍자음을 입력합니다 (예: ㄱ→ㄲ, ㅂ→ㅃ).",
-                    Prefs.SWIPE_DOUBLE, prefs.swipeDouble()));
-        }
-        standard.addView(toggle("밀어서 겹받침", "자음 키를 밀어 겹받침을 입력합니다 (예: ㄹ을 위로 밀면 ㄺ).",
-                Prefs.SWIPE_FINAL, prefs.swipeFinal()));
-        standard.addView(toggle("밀어서 ㅣ계 이중모음",
-                "모음 키를 아래로 밀어 ㅣ계 이중모음(ㅑ, ㅕ, ㅛ, ㅠ, ㅒ, ㅖ)을 입력합니다.",
-                Prefs.SWIPE_IOTIZED, prefs.swipeIotized()));
-        standard.addView(toggle("밀어서 조합형 이중모음",
-                "모음 키를 위·왼쪽·오른쪽으로 밀어 조합형 이중모음을 입력합니다. 기본은 "
-                        + "ㅜ를 왼쪽·위·오른쪽으로 ㅝ·ㅟ·ㅞ, ㅗ를 왼쪽·위·오른쪽으로 ㅘ·ㅚ·ㅙ, ㅡ를 위로 ㅢ입니다.",
-                Prefs.SWIPE_COMPOUND_VOWEL, prefs.swipeCompoundVowel()));
-        standard.addView(note(EDIT_ON_PREVIEW + "겹받침·조합형 이중모음을 방향마다 고를 수 있습니다."));
-        standard.addView(toggle("온점 키를 위로 밀어서 쉼표 입력", "온점 키를 위로 밀면 쉼표(,)를 입력합니다.",
-                Prefs.PERIOD_SWIPE_COMMA, prefs.periodSwipeComma()));
-        View customEdit = subGroup(note(EDIT_ON_PREVIEW + "방향마다 입력할 글자를 정할 수 있습니다."));
-        boolean custom = prefs.swipeCustom();
-        standard.setVisibility(custom ? View.GONE : View.VISIBLE);
-        customEdit.setVisibility(custom ? View.VISIBLE : View.GONE);
-        swipe.addView(standard);
-        swipe.addView(toggle("🛠️ 밀어서 글자 입력 완전 사용자화", "모든 키를 위·아래·왼쪽·오른쪽으로 밀 때 입력할 글자를 직접 정합니다.",
-                custom, on -> {
-                    prefs.raw().edit().putBoolean(Prefs.SWIPE_CUSTOM, on).apply();
-                    Ui.setVisibleAnimated(standard, !on);
-                    Ui.setVisibleAnimated(customEdit, on);
-                }));
-        swipe.addView(customEdit);
+        swipe.addView(note("값이 작을수록 살짝만 밀어도 인식합니다. " + EDIT_ON_PREVIEW
+                + "위·아래·왼쪽·오른쪽으로 밀 때 입력할 글자를 그 키마다 정할 수 있습니다."));
     }
 
     /**
-     * 한글 입력이 아니라 기능을 하는 키·버튼을 미는 동작들. 미는 거리는 '밀어서 글자 입력'과 따로 정한다.
-     * 맨 아래의 완전 사용자화를 켜면 스페이스바·지우기 키·기호 키의 기본 밀기 설정은 쓰지 않고,
-     * 다섯 기능 키를 밀 때 실행할 기능을 편집 화면에서 직접 정한다.
+     * 한글 입력이 아니라 기능을 하는 키·버튼·자판을 미는 동작. 키·버튼마다 실행할 기능은 미리보기에서 그 키를 눌러 정하고,
+     * 여기에는 미는 거리, 커서 이동 속도와 키에 매이지 않는 동작(자판 밀기, 스페이스바로 선택, 추천 단어 입력)만 둔다.
      */
     private void buildSwipeFunctions() {
         LinearLayout common = section("밀어서 기능");
         common.addView(slider("기능 미는 거리", Prefs.FN_SWIPE_THRESHOLD, prefs.fnSwipeThresholdDp(), 12, 48, 2, "dp"));
-        common.addView(note("기능키·도구 막대·자판을 밀어 기능을 실행할 때의 거리입니다. 값이 작을수록 살짝만 밀어도 인식합니다."));
-
-        // 기본 밀기 설정: 완전 사용자화를 켜면 쓰지 않으므로 숨기고, 미리보기에서 키를 눌러 정한다고 알려 준다.
-        LinearLayout keys = section("기능키 밀기");
-        LinearLayout standard = new LinearLayout(this);
-        standard.setOrientation(LinearLayout.VERTICAL);
-        // 스페이스바를 좌우로 밀기는 커서 좌우 이동과 언어 전환 중 하나만 쓴다: 한쪽을 켜면 다른 쪽을 끈다.
-        ExpressiveSwitch[] cursorHSwitch = new ExpressiveSwitch[1], langSwitch = new ExpressiveSwitch[1];
-        // 속도 슬라이더는 그 방향 이동을 켰을 때만 보인다 (설명은 둘 중 하나라도 켜져 있을 때).
-        View speedH = slider("좌우 이동 속도", Prefs.SPACE_CURSOR_SPEED_H, prefs.spaceCursorSpeedH(), 50, 300, 10, "%");
-        View speedV = slider("상하 이동 속도", Prefs.SPACE_CURSOR_SPEED_V, prefs.spaceCursorSpeedV(), 50, 300, 10, "%");
-        View speedNote = note("값이 클수록 손가락을 조금만 밀어도 커서가 빠르게 움직입니다.");
-        boolean[] axes = {prefs.spaceCursorH(), prefs.spaceCursorV()};
-        Runnable showSpeeds = speedVisibility(speedH, speedV, speedNote, axes);
-        View cursorH = toggle("좌우 이동", "글자 단위로 커서를 옮깁니다.", axes[0], on -> {
-            prefs.raw().edit().putBoolean(Prefs.SPACE_CURSOR_H, on).apply();
-            axes[0] = on;
-            showSpeeds.run();
-            if (on && langSwitch[0] != null && langSwitch[0].isChecked()) langSwitch[0].toggle();
-        });
-        cursorHSwitch[0] = switchOf(cursorH);
-        View cursorV = toggle("상하 이동", "줄 단위로 커서를 옮깁니다 (여러 줄 입력란).", axes[1], on -> {
-            prefs.raw().edit().putBoolean(Prefs.SPACE_CURSOR_V, on).apply();
-            axes[1] = on;
-            showSpeeds.run();
-        });
-        View cursorGroup = subGroup(cursorH, speedH, cursorV, speedV, speedNote);
-        standard.addView(toggle("스페이스바를 밀어서 커서 이동", "스페이스바를 밀어 커서를 옮깁니다.",
-                Prefs.SPACE_CURSOR, prefs.spaceCursor(), cursorGroup));
-        standard.addView(cursorGroup);
-        View lang = toggle("스페이스바를 밀어서 언어 전환",
-                "스페이스바를 좌우로 밀면 언어를 전환합니다.",
-                prefs.spaceLangSwipe(), on -> {
-                    prefs.raw().edit().putBoolean(Prefs.SPACE_LANG_SWIPE, on).apply();
-                    if (on && cursorHSwitch[0].isChecked()) cursorHSwitch[0].toggle();
-                });
-        langSwitch[0] = switchOf(lang);
-        standard.addView(lang);
-        View langOrder = subGroup(button("언어 순서 사용자화",
-                v -> startActivity(new Intent(this, LanguageOrderEditorActivity.class))));
-        standard.addView(toggle("🌐︎을 위로 밀어 언어 고르기", "🌐︎을 위로 밀어 언어를 선택합니다.",
-                Prefs.GLOBE_SWIPE_LANG, prefs.globeSwipeLang(), langOrder));
-        standard.addView(langOrder);
-        standard.addView(toggle("⌫ 밀어서 단위 삭제",
-                "⌫를 왼쪽으로 밀면 단어를, 위로 밀면 줄에서 커서 왼쪽을 모두 지웁니다. "
-                        + "커서가 줄의 맨 앞이면 위로 밀었을 때 윗줄과 합칩니다.",
-                Prefs.DELETE_WORD_SWIPE, prefs.deleteWordSwipe()));
-        standard.addView(toggle("기호 키를 위로 밀어서 이모지 열기",
-                "기호 키를 위로 밀면 이모지 창이 열립니다.",
-                Prefs.MODE_KEY_EMOJI, prefs.modeKeyEmoji()));
-        View customEdit = subGroup(note(EDIT_ON_PREVIEW + "방향마다 실행할 기능을 고를 수 있습니다."));
-        boolean custom = prefs.swipeFnCustom();
-        standard.setVisibility(custom ? View.GONE : View.VISIBLE);
-        customEdit.setVisibility(custom ? View.VISIBLE : View.GONE);
-        keys.addView(standard);
-        keys.addView(toggle("🛠️ 기능키 밀어서 기능 완전 사용자화",
-                "기호 키·🌐︎·스페이스바·엔터 키·"
-                        + "⌫를 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 직접 정합니다.",
-                custom, on -> {
-                    prefs.raw().edit().putBoolean(Prefs.SWIPE_FN_CUSTOM, on).apply();
-                    Ui.setVisibleAnimated(standard, !on);
-                    Ui.setVisibleAnimated(customEdit, on);
-                }));
-        keys.addView(customEdit);
-        keys.addView(toggle("스페이스바를 길게 누른 뒤 밀어서 선택",
+        common.addView(note("기능키·도구 막대·자판을 밀어 기능을 실행할 때의 거리입니다. 값이 작을수록 살짝만 밀어도 인식합니다. "
+                + EDIT_ON_PREVIEW + "기능키나 도구 막대 버튼을 각 방향으로 밀 때 실행할 기능을 정할 수 있습니다."));
+        common.addView(toggle("스페이스바를 길게 누른 뒤 밀어서 선택",
                 "스페이스바를 길게 눌러 진동이 오면, 손을 떼지 않고 좌우로 밀어 글자 단위로, "
                         + "위아래로 밀어 줄 단위로(여러 줄 입력란) 글자를 선택합니다. 밀지 않고 떼면 띄어쓰기가 입력됩니다.",
                 Prefs.SPACE_SELECT, prefs.spaceSelect()));
+        common.addView(button("언어 순서 사용자화", v -> startActivity(new Intent(this, LanguageOrderEditorActivity.class))));
+        common.addView(note("🌐︎로 바꿀 언어와 '언어 고르기' 말풍선의 차례를 정합니다."));
 
-        // 기본 밀기 설정: 완전 사용자화를 켜면 쓰지 않으므로 숨기고, 편집 버튼을 보여 준다.
-        LinearLayout bar = section("도구 막대 밀기");
-        LinearLayout barStandard = new LinearLayout(this);
-        barStandard.setOrientation(LinearLayout.VERTICAL);
-        barStandard.addView(toggle("도구 막대를 밀어서 커서 이동",
-                "도구 막대에서 왼쪽으로 밀면 줄의 맨 앞으로, 오른쪽으로 밀면 줄의 맨 뒤로, "
-                        + "위·아래로 밀면 한 줄 위·아래로 이동합니다 (여러 줄 입력란).",
-                Prefs.TOOLBAR_SWIPE, prefs.toolbarSwipe()));
-        barStandard.addView(toggle("클립보드 버튼을 밀어서 복사·붙여넣기",
-                "클립보드 버튼을 위로 밀면 선택한 텍스트를 복사하고, 아래로 밀면 지금 클립보드의 내용을 붙여 넣습니다.",
-                Prefs.TOOL_CLIPBOARD_SWIPE, prefs.toolClipboardSwipe()));
-        barStandard.addView(toggle("이모지 버튼을 아래로 밀어서 입력",
-                "이모지 버튼을 아래로 밀면 마지막으로 쓴 이모지를 바로 입력합니다.",
-                Prefs.TOOL_EMOJI_SWIPE, prefs.toolEmojiSwipe()));
-        barStandard.addView(toggle("실행 취소 버튼을 아래로 밀어서 다시 실행",
-                "실행 취소 버튼을 아래로 밀면 되돌린 것을 다시 실행합니다 (Ctrl+Shift+Z).",
-                Prefs.TOOL_UNDO_SWIPE, prefs.toolUndoSwipe()));
-        View barCustomEdit = subGroup(note("미리보기에서 도구 막대나 도구 막대 버튼을 누르면 방향마다 실행할 기능을 고를 수 있습니다."));
-        boolean barCustom = prefs.swipeToolbarCustom();
-        barStandard.setVisibility(barCustom ? View.GONE : View.VISIBLE);
-        barCustomEdit.setVisibility(barCustom ? View.VISIBLE : View.GONE);
-        bar.addView(barStandard);
-        bar.addView(toggle("🛠️ 도구 막대 밀어서 기능 완전 사용자화",
-                "도구 막대와 도구 막대의 버튼을 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 직접 정합니다.",
-                barCustom, on -> {
-                    prefs.raw().edit().putBoolean(Prefs.SWIPE_TOOLBAR_CUSTOM, on).apply();
-                    Ui.setVisibleAnimated(barStandard, !on);
-                    Ui.setVisibleAnimated(barCustomEdit, on);
-                }));
-        bar.addView(barCustomEdit);
+        LinearLayout speed = section("커서 이동 속도");
+        speed.addView(slider("스페이스바·커서 키 좌우", Prefs.SPACE_CURSOR_SPEED_H, prefs.spaceCursorSpeedH(), 50, 300, 10, "%"));
+        speed.addView(slider("스페이스바·커서 키 상하", Prefs.SPACE_CURSOR_SPEED_V, prefs.spaceCursorSpeedV(), 50, 300, 10, "%"));
+        speed.addView(slider("자판 트랙패드 좌우", Prefs.CHAR_CURSOR_SPEED_H, prefs.charCursorSpeedH(), 50, 300, 10, "%"));
+        speed.addView(slider("자판 트랙패드 상하", Prefs.CHAR_CURSOR_SPEED_V, prefs.charCursorSpeedV(), 50, 300, 10, "%"));
+        speed.addView(note("'커서 자유 이동'을 정한 방향으로 밀 때의 속도입니다. 값이 클수록 손가락을 조금만 밀어도 커서가 빠르게 "
+                + "움직입니다. 자판 트랙패드는 키보드 밀기에서 한 손가락에 '커서 자유 이동'을 정했을 때 씁니다."));
 
-        // 커서 이동과 키보드 밀기. 키보드 밀기 완전 사용자화를 켜면 문자 키 커서 이동과 두 손가락 실행 취소는
-        // 편집 화면('커서 자유 이동' 등)이 대신하므로 숨긴다. 스페이스바 커서 이동은 위 '기능키' 섹션에 있다.
         LinearLayout board = section("키보드 밀기");
-        LinearLayout boardStandard = new LinearLayout(this);
-        boardStandard.setOrientation(LinearLayout.VERTICAL);
-        View charSpeedH = slider("좌우 이동 속도", Prefs.CHAR_CURSOR_SPEED_H, prefs.charCursorSpeedH(), 50, 300, 10, "%");
-        View charSpeedV = slider("상하 이동 속도", Prefs.CHAR_CURSOR_SPEED_V, prefs.charCursorSpeedV(), 50, 300, 10, "%");
-        View charSpeedNote = note("값이 클수록 손가락을 조금만 밀어도 커서가 빠르게 움직입니다.");
-        boolean[] charAxes = {prefs.charCursorH(), prefs.charCursorV()};
-        Runnable showCharSpeeds = speedVisibility(charSpeedH, charSpeedV, charSpeedNote, charAxes);
-        View charCursorGroup = subGroup(
-                toggle("좌우 이동", "글자 단위로 커서를 옮깁니다.", charAxes[0], on -> {
-                    prefs.raw().edit().putBoolean(Prefs.CHAR_CURSOR_H, on).apply();
-                    charAxes[0] = on;
-                    showCharSpeeds.run();
-                }),
-                charSpeedH,
-                toggle("상하 이동", "줄 단위로 커서를 옮깁니다 (여러 줄 입력란).", charAxes[1], on -> {
-                    prefs.raw().edit().putBoolean(Prefs.CHAR_CURSOR_V, on).apply();
-                    charAxes[1] = on;
-                    showCharSpeeds.run();
-                }),
-                charSpeedV, charSpeedNote);
-        boardStandard.addView(toggle("문자 키를 밀어서 커서 이동",
-                "문자·숫자 키 전체를 트랙패드처럼 밀어 커서를 옮깁니다. ",
-                Prefs.CHAR_CURSOR, prefs.charCursor(), charCursorGroup));
-        boardStandard.addView(charCursorGroup);
-        boardStandard.addView(toggle("두 손가락으로 밀어서 실행 취소",
-                "자판을 두 손가락으로 왼쪽으로 밀면 실행 취소(Ctrl+Z), 오른쪽으로 밀면 다시 실행합니다.",
-                Prefs.TWO_FINGER_UNDO, prefs.twoFingerUndo()));
-        View boardCustomEdit = subGroup(button("키보드 밀기 편집", v ->
+        board.addView(button("키보드 밀기 편집", v ->
                 startActivity(SwipeActionEditorActivity.intent(this, KeyboardSwipes.SPEC))));
-        boolean boardCustom = prefs.swipeKeyboardCustom();
-        boardStandard.setVisibility(boardCustom ? View.GONE : View.VISIBLE);
-        boardCustomEdit.setVisibility(boardCustom ? View.VISIBLE : View.GONE);
-        board.addView(boardStandard);
-        board.addView(toggle("🛠️ 키보드 밀기 완전 사용자화",
-                "자판을 한 손가락·두 손가락으로 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 직접 정합니다.",
-                boardCustom, on -> {
-                    prefs.raw().edit().putBoolean(Prefs.SWIPE_KEYBOARD_CUSTOM, on).apply();
-                    Ui.setVisibleAnimated(boardStandard, !on);
-                    Ui.setVisibleAnimated(boardCustomEdit, on);
-                }));
-        board.addView(boardCustomEdit);
+        board.addView(note("자판을 한 손가락·두 손가락으로 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 정합니다. "
+                + "한 손가락은 그 방향에 밀어서 입력할 글자가 없을 때 쓰입니다."));
         board.addView(toggle("위로 밀어서 추천 단어 입력",
                 "추천 단어가 떠 있을 때 자판의 왼쪽·가운데·오른쪽에서 위로 밀면 첫째·둘째·셋째 추천 단어를 입력합니다. ",
                 Prefs.SWIPE_PICK_SUGGESTION, prefs.swipePickSuggestion()));

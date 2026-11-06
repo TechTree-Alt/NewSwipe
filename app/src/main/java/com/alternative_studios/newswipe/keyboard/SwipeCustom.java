@@ -4,10 +4,9 @@ import com.alternative_studios.newswipe.Prefs;
 import com.alternative_studios.newswipe.hangul.HangulComposer;
 
 /**
- * 스와이프 입력 완전 사용자화. 켜면 쌍자음·겹받침 스와이프 설정은 쓰지 않고,
- * 키마다 위·왼쪽·오른쪽·아래로 밀었을 때 입력할 글자를 직접 정한다.
- * 정하지 않은 방향은 기본 배치(자음 아래 = 쌍자음, 자음 나머지 = 겹받침 기본값,
- * 모음 아래·왼쪽·오른쪽·위 = 이중모음)를 따른다.
+ * 밀어서 글자 입력: 키마다 위·왼쪽·오른쪽·아래로 밀었을 때 입력할 글자를 정한다.
+ * 정하지 않은 방향은 기본 배치(자음 아래 = 쌍자음, 자음 나머지 = 겹받침 기본값, NewSwipe 단모음의 ㅂ·ㅈ·ㄷ·ㄱ 오른쪽 = 거센소리,
+ * 모음 아래·왼쪽·오른쪽·위 = 이중모음, 온점 키 위 = 쉼표)를 따른다.
  */
 public final class SwipeCustom {
     /** 편집 화면에 보이는 방향 순서. */
@@ -33,6 +32,7 @@ public final class SwipeCustom {
      * newSwipe면 NewSwipe 배열(ㅂ·ㅈ·ㄷ·ㄱ 오른쪽 = ㅍ·ㅊ·ㅌ·ㅋ). 모음은 모든 배열이 같다.
      */
     public static String defaultFor(boolean korean, boolean newSwipe, String label, int dir) {
+        if (".".equals(label) && dir == Key.SWIPE_UP) return ",";   // 온점 키를 위로 밀어 쉼표
         if (!korean || label.length() != 1 || !KeyboardLayout.GROUP_KO.equals(KeyboardLayout.groupOf(true, label))) {
             return null;
         }
