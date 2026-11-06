@@ -388,6 +388,17 @@ public final class Prefs {
         MENU_KEYS.put("onehand", keys(ONE_HAND_WIDTH, ONE_HAND_WIDTH_LAND, ONE_HAND_HEIGHT, ONE_HAND_LIFT));
     }
 
+    /** 키보드 편집 화면(예전 일곱 메뉴)이 다루는 값인지: 키 편집 창을 저장하지 않고 닫을 때 이 값들만 되돌린다. */
+    public static boolean isEditorKey(String key) {
+        for (String menu : new String[]{"layout", "look", "input", "keys", "swipe", "swipefn", "tools"}) {
+            String[] exact = MENU_KEYS.get(menu);
+            if (exact != null) for (String k : exact) if (k.equals(key)) return true;
+            String[] prefixes = MENU_PREFIXES.get(menu);
+            if (prefixes != null) for (String p : prefixes) if (key.startsWith(p)) return true;
+        }
+        return false;
+    }
+
     /** 이 메뉴가 저장한 모든 값을 지워 기본값으로 되돌린다 (학습한 단어·클립보드 기록 같은 사용 기록과 한 손 모드의 켜짐 상태는 그대로). */
     public void resetSection(String menu) {
         java.util.Set<String> exact = new java.util.HashSet<>(java.util.Arrays.asList(

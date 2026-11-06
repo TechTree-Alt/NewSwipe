@@ -50,11 +50,21 @@ final class KeyEditPanel {
         /** 설정을 다시 읽어 미리보기를 바로 그리고, 고른 키를 새 자판에서 다시 찾아 돌려준다 (없으면 null). */
         Key refreshNow();
 
-        /** 편집 칸을 닫는다 (고른 것도 푼다). */
+        /** 편집 창을 닫는다. 이 창에서 바꾼 값은 저장한다 (고른 키가 사라지게 바꾼 경우 등). */
         void close();
 
         /** 크기 설정(prefKey)이 이 칸에서 바뀌었다. */
         void onSizeChanged(String prefKey);
+
+        /** 다른 편집 화면(기능키 순서 등)으로 넘어가기 직전. 그 화면에서 바꾼 값은 그 화면에서 이미 저장한 것으로 본다. */
+        void beforeSubScreen();
+    }
+
+    /** 맨 위 헤더 가운데에 보일 이름 (show()에서 정한다). */
+    private String title = "";
+
+    String title() {
+        return title;
     }
 
     private static final int[] DIRS = SwipeCustom.DIRS;   // 위, 아래, 왼쪽, 오른쪽
@@ -727,6 +737,7 @@ final class KeyEditPanel {
     }
 
     private void open(Intent i) {
+        host.beforeSubScreen();
         a.startActivity(i);
     }
 
@@ -734,32 +745,25 @@ final class KeyEditPanel {
         if (android.os.Build.VERSION.SDK_INT >= 30) root.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM);
     }
 
-    /** 맨 위: 키 모양 그림, 이름, 설명, 닫기 버튼. */
+    /** 맨 위: 키 모양 그림과 설명. 이름은 창 헤더 가운데에 보인다 (title()). */
     private void header(String keyFace, String title, String subtitle) {
+        this.title = title;
         LinearLayout row = new LinearLayout(a);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(Ui.dp(a, 4), Ui.dp(a, 14), 0, Ui.dp(a, 2));
+        row.setPadding(Ui.dp(a, 4), Ui.dp(a, 6), 0, Ui.dp(a, 2));
         if (keyFace != null) {
             TextView face = text(keyFace, 24, kt.text);
             face.setGravity(Gravity.CENTER);
             face.setBackground(Ui.round(kt.key, Ui.dp(a, 12)));
             face.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-            LinearLayout.LayoutParams flp = new LinearLayout.LayoutParams(Ui.dp(a, 52), Ui.dp(a, 52));
+            LinearLayout.LayoutParams flp = new LinearLayout.LayoutParams(Ui.dp(a, 48), Ui.dp(a, 48));
             flp.rightMargin = Ui.dp(a, 14);
             row.addView(face, flp);
         }
-        LinearLayout texts = new LinearLayout(a);
-        texts.setOrientation(LinearLayout.VERTICAL);
-        TextView t = text(title, 20, textColor);
-        t.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-        texts.addView(t);
-        if (subtitle != null && !subtitle.isEmpty()) texts.addView(text(subtitle, 13, hintColor));
-        row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        int press = (textColor & 0x00FFFFFF) | 0x33000000;
-        IconButton close = new IconButton(a, Icons.CLOSE, textColor, press, "편집 닫기");
-        close.setOnClickListener(v -> host.close());
-        row.addView(close, new LinearLayout.LayoutParams(Ui.dp(a, 44), Ui.dp(a, 44)));
-        root.addView(row);
+        if (subtitle != null && !subtitle.isEmpty()) {
+            row.addView(text(subtitle, 14, hintColor), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        }
+        if (row.getChildCount() > 0) root.addView(row);
     }
 
     private LinearLayout section(String name) {
