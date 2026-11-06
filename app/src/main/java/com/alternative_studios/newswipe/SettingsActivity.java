@@ -925,7 +925,7 @@ public final class SettingsActivity extends Activity {
     private void buildKeyboardLayout() {
         LinearLayout korean = section("한글 자판 배열");
         boolean dubeolsik = prefs.koreanDubeolsik();
-        if (dubeolsik) {
+        if (dubeolsik && !harvesting) {
             korean.addView(note("실험실의 '두벌식 자판'이 켜져 있어 아래에서 고른 배열 대신 두벌식으로 보입니다. "
                     + "고른 배열은 두벌식 자판을 끄면 쓰입니다."));
         }
@@ -958,8 +958,9 @@ public final class SettingsActivity extends Activity {
         korean.addView(choices);
         korean.addView(layoutPreview());
         korean.addView(layoutNote);
-        if (!dubeolsik) {
-            // 두벌식 자판에는 자·모음 균형 레이아웃이 없다 (자음이 왼쪽, 모음이 오른쪽에 이미 모여 있다).
+        // 두벌식 자판에는 자·모음 균형 레이아웃이 없다 (자음이 왼쪽, 모음이 오른쪽에 이미 모여 있다).
+        // 설정 검색의 목록은 앱 버전마다 한 번만 만들어 저장하므로, 그때는 두벌식 자판과 상관없이 넣는다.
+        if (!dubeolsik || harvesting) {
             korean.addView(balancedRow);
             korean.addView(keyArea);
         }
@@ -1344,7 +1345,8 @@ public final class SettingsActivity extends Activity {
         splitOnly.add(box);
 
         String reachKey = edit.splitReachColumnKey();
-        if (!prefs.koreanDubeolsik()) {   // 두벌식 자판은 영어 자판처럼 일반 배열을 가운데에서 나눠, 4열로 맞추지 않는다
+        // 두벌식 자판은 영어 자판처럼 일반 배열을 가운데에서 나눠, 4열로 맞추지 않는다 (검색 목록에는 늘 넣는다).
+        if (!prefs.koreanDubeolsik() || harvesting) {
             box.addView(toggle("좌·우 균형 레이아웃",
                     "한글 자판의 왼쪽·오른쪽 묶음을 4열로 맞춥니다.",
                     edit.splitReachColumn(), on -> {
@@ -1905,7 +1907,7 @@ public final class SettingsActivity extends Activity {
                 Prefs.DOUBLE_TAP_CONSONANT, prefs.doubleTapConsonant(), doubleTapTime));
         input.addView(doubleTapTime);
         input.addView(toggle("모음 연속 탭으로 이중모음", "같은 모음을 연달아 누르면 이중모음을 입력합니다 (예: ㅏㅏ→ㅑ, ㅗㅗ→ㅛ)."
-                        + (prefs.koreanDubeolsik() ? " 두벌식 자판(실험실)에서는 쓰지 않습니다." : ""),
+                        + (prefs.koreanDubeolsik() && !harvesting ? " 두벌식 자판(실험실)에서는 쓰지 않습니다." : ""),
                 Prefs.DOUBLE_TAP_VOWEL, prefs.doubleTapVowel()));
         input.addView(toggle("영어 자동 대문자", "문장 첫 글자를 대문자로 시작합니다.", Prefs.AUTO_CAP, prefs.autoCap()));
         input.addView(toggle("이메일 입력란은 영어로 시작",

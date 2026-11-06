@@ -161,9 +161,18 @@ public class ExtraBottomKeysTest {
         assertTrue(spec.shown(p, FunctionSwipes.VOICE));
         assertFalse(spec.shown(p, FunctionSwipes.EMOJI_KEY));
         assertFalse(spec.shown(p, FunctionSwipes.CLIPBOARD));
-        assertFalse(spec.shown(p, FunctionSwipes.GLOBE));    // 끈 원래 키도 감춘다
-        assertFalse(spec.shown(p, FunctionSwipes.DELETE));
-        assertTrue(spec.shown(p, FunctionSwipes.SPACE));
+        assertFalse(spec.shown(p, FunctionSwipes.GLOBE));    // 끈 언어 전환 키도 감춘다
+        // 기호 키·스페이스바·엔터·⌫는 꺼도 숫자 패드에 늘 있어 보인다
+        sp.m.put(Prefs.MODE_KEY_HIDDEN, true);
+        sp.m.put(Prefs.SPACE_KEY_HIDDEN, true);
+        sp.m.put(Prefs.ENTER_KEY_HIDDEN, true);
+        for (int slot : new int[]{FunctionSwipes.MODE, FunctionSwipes.SPACE, FunctionSwipes.ENTER, FunctionSwipes.DELETE}) {
+            assertTrue(slot + "", spec.shown(p, slot));
+        }
+        KeyboardLayout pad = KeyboardLayout.numberPad(KeyboardLayout.NUMBER_PAD_SYMBOLS_LABEL, "가");
+        for (int type : new int[]{Key.TO_LETTERS, Key.TO_SYMBOLS, Key.SPACE, Key.ENTER, Key.DELETE}) {
+            assertEquals(1, count(pad, type));
+        }
     }
 
     @Test

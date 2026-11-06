@@ -3214,11 +3214,15 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return cfgAutoCorrect && wordsOn() && lettersLayout();
     }
 
-    /** 문장 부호로 앞 단어를 자동 수정하는지: 글자 자판과 기호 자판 (숫자 자판은 아니다). */
+    /**
+     * 문장 부호로 앞 단어를 자동 수정하는지: 글자 자판·기호 자판과, 기호 키로 연 숫자 패드 (쉼표·온점 키가 있다).
+     * 숫자 입력란은 추천을 쓰지 않아(wordsOn) 숫자 패드가 떠도 고치지 않는다.
+     */
     private boolean punctCorrectActive() {
         KeyboardLayout l = keyboard == null ? null : keyboard.getLayout();
         return cfgAutoCorrect && wordsOn() && l != null
-                && (l.isLetters() || l.kind == KeyboardLayout.SYMBOLS || l.kind == KeyboardLayout.SYMBOLS_2);
+                && (l.isLetters() || l.kind == KeyboardLayout.SYMBOLS || l.kind == KeyboardLayout.SYMBOLS_2
+                || l.kind == KeyboardLayout.NUMBER);
     }
 
     private boolean learningOn() {

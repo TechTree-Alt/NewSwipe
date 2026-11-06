@@ -29,7 +29,7 @@ public final class FunctionSwipes {
             "밀어서 커서 이동 (처음에는 네 방향 모두 커서 이동)",
             "음성 입력",
     };
-    /** 칸마다 맨 아래 줄 키의 ID (BottomKeys). 지우기 키는 맨 아래 줄 키가 아니라 null. */
+    /** 칸마다 맨 아래 줄 키의 ID (BottomKeys). 지우기 키는 맨 아래 줄 키가 아니라 null. 편집 화면에 보일지 정할 때 쓴다. */
     private static final String[] BOTTOM_IDS = {BottomKeys.MODE, BottomKeys.GLOBE, BottomKeys.SPACE, BottomKeys.ENTER, null,
             BottomKeys.EMOJI, BottomKeys.CLIPBOARD, BottomKeys.CURSOR, BottomKeys.VOICE};
 
@@ -62,11 +62,13 @@ public final class FunctionSwipes {
             return stored;
         }
 
-        /** 켠 기능키의 칸만 편집 화면에 보인다 (기능키 순서·유무 사용자화에서 끈 키는 감춘다). */
+        /**
+         * 켠 기능키의 칸만 편집 화면에 보인다 (기능키 순서·유무 사용자화에서 끈 키는 감춘다). 기호 키·스페이스바·엔터 키·⌫는
+         * 맨 아래 줄에서 꺼도 숫자 패드(숫자 입력란 등)에 늘 있어 그 설정이 쓰이므로 늘 보인다.
+         */
         @Override
         public boolean shown(Prefs prefs, int slot) {
-            if (prefs == null) return true;
-            if (slot == DELETE) return !prefs.deleteKeyHidden();
+            if (prefs == null || slot == MODE || slot == SPACE || slot == ENTER || slot == DELETE) return true;
             return prefs.bottomKeyShown(BOTTOM_IDS[slot]);
         }
 
