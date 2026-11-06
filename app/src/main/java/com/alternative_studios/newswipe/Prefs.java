@@ -71,9 +71,8 @@ public final class Prefs {
     public static final String KOREAN_SHIFT_HIDDEN = "korean_shift_hidden";
     public static final String KOREAN_SHIFT_FN = "korean_shift_fn";           // Shift 키를 껐을 때 그 자리에 Fn 키 놓기
     public static final String PERIOD_KEY_HIDDEN = "period_key_hidden";       // 글자·기호 자판 아래 줄의 온점 키 없애기
-    /** 기호 자판에서 지구본 자리에 놓는 키: "emoji"(기본, 이모지 창) | "numpad"(3×4 숫자 패드). */
-    public static final String SYMBOL_GLOBE_KEY = "symbol_globe_key";
-    public static final String SYMBOL_GLOBE_EMOJI = "emoji", SYMBOL_GLOBE_NUMPAD = "numpad";
+    /** 기호 자판 대신 숫자 패드 사용: 글자 자판의 기호 키(?123)를 누르면 기호 자판 대신 3×4 숫자 패드가 열린다 (기본 꺼짐). */
+    public static final String NUMBER_PAD_SYMBOLS = "number_pad_symbols";
     /** 한글 자판 배열: "danmoeum8"(기본), "danmoeum7". 없앤 배열의 값이 남아 있으면 기본 배열로 본다. */
     public static final String KOREAN_LAYOUT = "korean_layout";
     public static final String KOREAN_LAYOUT_8 = "danmoeum8";       // 단모음 (8열)
@@ -385,7 +384,7 @@ public final class Prefs {
         MENU_KEYS.put("layout", keys(KOREAN_LAYOUT, GRID_LAYOUT, NUMBER_ROW, NUMBER_ROW_HEIGHT, LANDSCAPE_SPLIT, LANDSCAPE_SIZE,
                 KEYBOARD_HEIGHT_LAND, KEY_TEXT_SIZE_LAND, SPLIT_GAP_CURSOR, SPLIT_GAP_SPEED, SPLIT_SPACE_JOIN, SPLIT_FN_WIDTH,
                 SPLIT_REACH_COLUMN, PROFILE_LIFT + LANDSCAPE_SUFFIX, BOTTOM_KEY_ORDER, COMMA_CHAR, PERIOD_CHAR, MODE_KEY_HIDDEN, PERIOD_COMMA, LANGUAGE_KEY_HIDDEN, SPACE_KEY_HIDDEN,
-                PERIOD_KEY_HIDDEN, ENTER_KEY_HIDDEN, DELETE_KEY_HIDDEN, KOREAN_SHIFT_HIDDEN, KOREAN_SHIFT_FN, SYMBOL_GLOBE_KEY));
+                PERIOD_KEY_HIDDEN, ENTER_KEY_HIDDEN, DELETE_KEY_HIDDEN, KOREAN_SHIFT_HIDDEN, KOREAN_SHIFT_FN, NUMBER_PAD_SYMBOLS));
         MENU_PREFIXES.put("layout", keys("balanced_", LANDSCAPE_SPLIT + "_", "swipe_fk_"));
         MENU_KEYS.put("theme", keys(THEME_MODE, ACCENT_MODE, ACCENT_COLOR, GRID_COLORS, NEUMORPHISM));
         MENU_KEYS.put("look", keys(KEYBOARD_HEIGHT, KEY_TEXT_SIZE, KEY_RADIUS, KEY_SHADOW, KEY_SHADOW_STRENGTH,
@@ -472,7 +471,7 @@ public final class Prefs {
     public void resetBottomKeys() {
         removeKeys(new String[]{BOTTOM_KEY_ORDER, COMMA_CHAR, PERIOD_CHAR, MODE_KEY_HIDDEN, PERIOD_COMMA, LANGUAGE_KEY_HIDDEN,
                 SPACE_KEY_HIDDEN, PERIOD_KEY_HIDDEN, ENTER_KEY_HIDDEN, DELETE_KEY_HIDDEN, KOREAN_SHIFT_HIDDEN,
-                KOREAN_SHIFT_FN, SYMBOL_GLOBE_KEY}, NONE);
+                KOREAN_SHIFT_FN}, NONE);
     }
 
     /** '도구 막대 버튼 사용자화' 화면의 값. */
@@ -883,8 +882,8 @@ public final class Prefs {
     public boolean koreanShiftHidden() { return sp.getBoolean(KOREAN_SHIFT_HIDDEN, true); }
     /** 한글 자판에서 Shift 키를 껐을 때 그 자리에 Fn 키를 놓는지. */
     public boolean koreanShiftFn() { return sp.getBoolean(KOREAN_SHIFT_FN, false); }
-    /** 기호 자판의 지구본 자리에 이모지 키 대신 3×4 숫자 패드 키를 놓는지. */
-    public boolean symbolNumberPad() { return SYMBOL_GLOBE_NUMPAD.equals(sp.getString(SYMBOL_GLOBE_KEY, SYMBOL_GLOBE_EMOJI)); }
+    /** 글자 자판의 기호 키로 기호 자판 대신 3×4 숫자 패드를 여는지. */
+    public boolean numberPadForSymbols() { return sp.getBoolean(NUMBER_PAD_SYMBOLS, false); }
 
     // 길게 누르기 문자 편집. 값은 글자들을 줄바꿈으로 이은 문자열이며, 빈 문자열은 "없음"이다.
     private static String popupKey(String group, String label) { return "popup_" + group + "_" + label; }

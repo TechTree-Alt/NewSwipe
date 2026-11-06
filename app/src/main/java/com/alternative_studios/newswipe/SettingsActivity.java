@@ -446,6 +446,7 @@ public final class SettingsActivity extends Activity {
             {"lab", "일본어 자판", "일본어 히라가나 가타카나 한자 변환 플릭 로마자 사전 팩 japanese"},
             {"lab", "반각 공백 쓰기", "일본어 스페이스 전각 공백 반각 공백 띄어쓰기"},
             {"lab", "중국어 자판", "중국어 병음 한자 간체 사전 팩 chinese pinyin"},
+            {"layout", "기호 자판 대신 숫자 패드 사용", "숫자 패드 넘버 패드 3×4 숫자 자판 기호 키 ?123 계산기 전화"},
             {"lab", "두벌식 자판", "두벌식 표준 쿼티 qwerty 자판 배열 레이아웃 Shift 쌍자음"},
             {"lab", "아래로 밀기 엄격도", "스와이프 방향 판정 민감도"},
             {"lab", "위로 밀기 엄격도", "스와이프 방향 판정 민감도"},
@@ -984,6 +985,10 @@ public final class SettingsActivity extends Activity {
         layoutKeys.addView(button("기능키 순서·유무 사용자화", v ->
                 startActivity(new Intent(this, BottomKeysEditorActivity.class))));
         layoutKeys.addView(note("맨 아래 줄 기능키의 순서와 유무를 바꿉니다."));
+        layoutKeys.addView(toggle("기호 자판 대신 숫자 패드 사용",
+                "기호 키(?123)를 누르면 기호 자판 대신 3×4 숫자 패드가 열립니다. "
+                        + "숫자 패드의 #+= 키로 기호 자판을, 가·ABC 키로 글자 자판을 엽니다.",
+                Prefs.NUMBER_PAD_SYMBOLS, prefs.numberPadForSymbols()));
 
         LinearLayout keyLayout = section("키 정렬");
         // 바꾸면 위의 미리보기도 바로 다시 그린다.

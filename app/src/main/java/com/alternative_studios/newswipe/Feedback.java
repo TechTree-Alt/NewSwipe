@@ -134,7 +134,7 @@ final class Feedback {
                     case Key.TO_SYMBOLS: case Key.TO_LETTERS: case Key.SYMBOL_PAGE:
                         e = levels[symbolLevel];
                         break;
-                    case Key.LANGUAGE: case Key.EMOJI: case Key.NUMBER_PAD: e = levels[languageLevel]; break;
+                    case Key.LANGUAGE: case Key.EMOJI: e = levels[languageLevel]; break;
                     default: break;
                 }
             }

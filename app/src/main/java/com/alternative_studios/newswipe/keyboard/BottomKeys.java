@@ -31,7 +31,7 @@ public final class BottomKeys {
 
     /** 편집 화면에 보이는 작은 설명. 없으면 null. */
     public static String hint(String id) {
-        return GLOBE.equals(id) ? "기호 자판에서는 이 자리에 이모지 키나 숫자 패드 키가 오며, 끄면 함께 없어집니다." : null;
+        return GLOBE.equals(id) ? "기호 자판에서는 이모지 키도 함께 없어집니다." : null;
     }
 
     /**

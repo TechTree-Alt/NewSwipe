@@ -91,8 +91,7 @@ public final class LongPressActions {
             case Key.TO_SYMBOLS:
             case Key.TO_LETTERS: return MODE;
             case Key.LANGUAGE:
-            case Key.EMOJI:
-            case Key.NUMBER_PAD: return GLOBE;
+            case Key.EMOJI: return GLOBE;
             case Key.ENTER: return ENTER;
             case Key.DELETE: return DELETE;
             default: return -1;

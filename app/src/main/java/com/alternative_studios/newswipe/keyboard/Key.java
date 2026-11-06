@@ -29,11 +29,6 @@ public final class Key {
      * (SPACER는 그 자리를 눌러도 반응하지 않는 빈 자리다.)
      */
     public static final int GAP = 12;
-    /**
-     * 3×4 숫자 패드 열기 (기호 자판에서 지구본 자리). '기능키 순서·유무 사용자화'에서 이모지 키 대신 고른다.
-     * 숫자 패드에서는 TO_SYMBOLS가 연 기호 자판 쪽으로, TO_LETTERS가 글자 자판으로 돌아간다.
-     */
-    public static final int NUMBER_PAD = 13;
 
     /** 스와이프 방향. */
     public static final int SWIPE_DOWN = 0, SWIPE_UP = 1, SWIPE_LEFT = 2, SWIPE_RIGHT = 3;

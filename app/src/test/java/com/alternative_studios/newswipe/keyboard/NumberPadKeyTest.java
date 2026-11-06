@@ -15,7 +15,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-/** 기호 자판의 언어 전환 키 자리: 이모지 키 또는 3×4 숫자 패드 키, 그리고 숫자 패드의 돌아가는 키. */
+/** '기호 자판 대신 숫자 패드 사용'의 3×4 숫자 패드: 기호 자판·글자 자판으로 가는 키가 있고, 기호 자판은 그대로다. */
 public class NumberPadKeyTest {
     private static final class FakeSp implements SharedPreferences {
         final Map<String, Object> m = new HashMap<>();
@@ -50,51 +50,19 @@ public class NumberPadKeyTest {
     }
 
     @Test
-    public void emojiKeyIsTheDefault() throws Exception {
-        Prefs p = view(new FakeSp(), Prefs.PROFILE_PORTRAIT);
-        assertFalse(p.symbolNumberPad());
-        for (KeyboardLayout l : symbolPages(p)) {
-            assertEquals(1, count(l, Key.EMOJI));
-            assertEquals(0, count(l, Key.NUMBER_PAD));
-        }
-    }
-
-    @Test
-    public void numberPadKeyReplacesTheEmojiKeyOnSymbolsOnly() throws Exception {
-        for (String profile : new String[]{Prefs.PROFILE_PORTRAIT, Prefs.PROFILE_LANDSCAPE}) {
-            for (boolean numberRow : new boolean[]{false, true}) {
-                FakeSp sp = new FakeSp();
-                sp.m.put(Prefs.SYMBOL_GLOBE_KEY, Prefs.SYMBOL_GLOBE_NUMPAD);
-                sp.m.put(Prefs.NUMBER_ROW, numberRow);
-                sp.m.put(Prefs.LANDSCAPE_SPLIT, true);
-                Prefs p = view(sp, profile);
-                assertTrue(p.symbolNumberPad());
-                for (KeyboardLayout l : symbolPages(p)) {
-                    assertEquals(profile, 0, count(l, Key.EMOJI));
-                    assertEquals(profile, 1, count(l, Key.NUMBER_PAD));
-                }
-                // 글자 자판의 지구본 키는 그대로다
-                assertEquals(1, count(KeyboardLayout.korean(p), Key.LANGUAGE));
-                assertEquals(1, count(KeyboardLayout.english(p), Key.LANGUAGE));
-                assertEquals(0, count(KeyboardLayout.korean(p), Key.NUMBER_PAD));
-            }
-        }
-    }
-
-    @Test
-    public void hidingTheGlobeKeyHidesTheNumberPadKeyToo() throws Exception {
+    public void offByDefaultAndSymbolsKeepTheEmojiKey() throws Exception {
         FakeSp sp = new FakeSp();
-        sp.m.put(Prefs.SYMBOL_GLOBE_KEY, Prefs.SYMBOL_GLOBE_NUMPAD);
-        sp.m.put(Prefs.LANGUAGE_KEY_HIDDEN, true);
-        for (KeyboardLayout l : symbolPages(view(sp, Prefs.PROFILE_PORTRAIT))) {
-            assertEquals(0, count(l, Key.NUMBER_PAD));
-            assertEquals(0, count(l, Key.EMOJI));
-        }
+        assertFalse(view(sp, Prefs.PROFILE_PORTRAIT).numberPadForSymbols());
+        sp.m.put(Prefs.NUMBER_PAD_SYMBOLS, true);
+        Prefs p = view(sp, Prefs.PROFILE_PORTRAIT);
+        assertTrue(p.numberPadForSymbols());
+        // 숫자 패드를 써도 기호 자판은 그대로다 (지구본 자리는 이모지 키)
+        for (KeyboardLayout l : symbolPages(p)) assertEquals(1, count(l, Key.EMOJI));
     }
 
     @Test
     public void numberPadHasWayBack() {
-        KeyboardLayout pad = KeyboardLayout.numberPad("?123", "가");
+        KeyboardLayout pad = KeyboardLayout.numberPad(KeyboardLayout.NUMBER_PAD_SYMBOLS_LABEL, "가");
         assertEquals(KeyboardLayout.NUMBER, pad.kind);
         assertEquals(5, pad.columns);
         assertEquals(4, pad.rows.length);
@@ -103,7 +71,7 @@ public class NumberPadKeyTest {
         assertEquals(Key.TO_LETTERS, letters.type);
         assertEquals("가", letters.label);
         assertEquals(Key.TO_SYMBOLS, symbols.type);
-        assertEquals("?123", symbols.label);
+        assertEquals("#+=", symbols.label);
         assertEquals(",", pad.rows[2].keys[0].output);
         assertEquals(".", pad.rows[3].keys[0].output);
         // 나머지는 숫자 입력란의 자판과 같다
@@ -118,11 +86,5 @@ public class NumberPadKeyTest {
         // 숫자 입력란의 자판에는 돌아가는 키가 없다
         assertEquals(0, count(field, Key.TO_SYMBOLS));
         assertEquals(0, count(field, Key.TO_LETTERS));
-    }
-
-    @Test
-    public void numberPadKeyUsesTheGlobeSlot() {
-        assertEquals(FunctionSwipes.GLOBE, FunctionSwipes.slotOf(Key.NUMBER_PAD));
-        assertEquals(LongPressActions.GLOBE, LongPressActions.slotOf(Key.NUMBER_PAD));
     }
 }

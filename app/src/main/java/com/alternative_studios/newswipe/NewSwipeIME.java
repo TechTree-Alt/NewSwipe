@@ -178,10 +178,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private boolean candidateGridOpen;
     private int layoutKind = KeyboardLayout.KOREAN;
     /**
-     * 기호 자판의 숫자 패드 키로 3×4 숫자 패드를 열었으면 연 기호 자판 쪽 (SYMBOLS·SYMBOLS_2), 아니면 -1.
-     * 숫자 입력란이 연 숫자 자판(layoutKind == NUMBER, 이 값 -1)과 가른다: 숫자 패드에는 돌아가는 키가 있다.
+     * '기호 자판 대신 숫자 패드 사용'으로 연 3×4 숫자 패드인지. 숫자 입력란이 연 숫자 자판(layoutKind == NUMBER, 이 값 false)과
+     * 가른다: 숫자 패드에는 기호 자판·글자 자판으로 가는 키가 있다.
      */
-    private int numberPadFrom = -1;
+    private boolean numberPad;
     private int panel = PANEL_KEYBOARD;
     private int shiftState;
     private long lastShiftTime;
@@ -1372,7 +1372,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         applyFieldLanguage(info, restarting);
         if (cls == InputType.TYPE_CLASS_NUMBER || cls == InputType.TYPE_CLASS_PHONE
                 || cls == InputType.TYPE_CLASS_DATETIME) {
-            numberPadFrom = -1;   // 숫자 입력란의 숫자 자판 (돌아가는 키 없음)
+            numberPad = false;   // 숫자 입력란의 숫자 자판 (돌아가는 키 없음)
             setLayoutKind(KeyboardLayout.NUMBER);
         } else {
             setLayoutKind(lettersKind());
@@ -1589,7 +1589,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     // ---------------------------------------------------------------- 자판/패널 전환
 
     private void setLayoutKind(int kind) {
-        if (kind != KeyboardLayout.NUMBER) numberPadFrom = -1;   // 숫자 패드를 떠났다
+        if (kind != KeyboardLayout.NUMBER) numberPad = false;   // 숫자 패드를 떠났다
         layoutKind = kind;
         if (keyboard == null) return;   // 외장 키보드만 쓰면 자판 화면을 만들지 않은 채 언어를 바꿀 수 있다
         // 한 손 모드에서는 자·모음 균형 레이아웃의 가운데 빈틈을 없앤 배열을 쓴다.
@@ -1615,7 +1615,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 l = KeyboardLayout.chinese(prefs);
                 break;
             case KeyboardLayout.NUMBER:
-                l = numberPadFrom >= 0 ? KeyboardLayout.numberPad(numberPadBackLabel(), backLabel())
+                l = numberPad ? KeyboardLayout.numberPad(KeyboardLayout.NUMBER_PAD_SYMBOLS_LABEL, backLabel())
                         : KeyboardLayout.number();
                 break;
             default:
@@ -1881,11 +1881,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 break;
             case Key.TO_SYMBOLS:
                 commitComposing();
-                // 숫자 패드에서는 연 기호 자판 쪽(1쪽·2쪽)으로 돌아간다.
-                setLayoutKind(numberPadOpen() ? numberPadFrom : KeyboardLayout.SYMBOLS);
-                break;
-            case Key.NUMBER_PAD:
-                openNumberPad();
+                // '기호 자판 대신 숫자 패드 사용': 글자 자판의 기호 키는 숫자 패드를, 숫자 패드의 #+= 키는 기호 자판을 연다.
+                if (prefs.numberPadForSymbols() && !numberPadOpen()) openNumberPad();
+                else setLayoutKind(KeyboardLayout.SYMBOLS);
                 break;
             case Key.TO_LETTERS:
                 setLayoutKind(lettersKind());
@@ -1934,26 +1932,20 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     @Override
     public void onModeKeySwipeUp(Key key) {
-        // 숫자 입력란에는 이모지를 쓰지 않는다 (기호 자판에서 연 숫자 패드는 글을 쓰는 칸이라 쓴다).
+        // 숫자 입력란에는 이모지를 쓰지 않는다 (기호 키로 연 숫자 패드는 글을 쓰는 칸이라 쓴다).
         if (layoutKind != KeyboardLayout.NUMBER || numberPadOpen()) showPanel(PANEL_EMOJI);
     }
 
-    /** 기호 자판의 숫자 패드 키로 연 3×4 숫자 패드를 보이는 중인지 (숫자 입력란의 숫자 자판이 아니다). */
+    /** 기호 키로 연 3×4 숫자 패드를 보이는 중인지 (숫자 입력란의 숫자 자판이 아니다). */
     private boolean numberPadOpen() {
-        return layoutKind == KeyboardLayout.NUMBER && numberPadFrom >= 0;
+        return layoutKind == KeyboardLayout.NUMBER && numberPad;
     }
 
-    /** 기호 자판에서 3×4 숫자 패드를 연다. 돌아가는 키는 지금 기호 자판 쪽(1쪽·2쪽)으로 간다. */
+    /** 3×4 숫자 패드를 연다 ('기호 자판 대신 숫자 패드 사용'). 패드의 #+= 키는 기호 자판을, 가·ABC 키는 글자 자판을 연다. */
     private void openNumberPad() {
-        int from = layoutKind == KeyboardLayout.SYMBOLS_2 ? KeyboardLayout.SYMBOLS_2 : KeyboardLayout.SYMBOLS;
         commitComposing();
-        numberPadFrom = from;
+        numberPad = true;
         setLayoutKind(KeyboardLayout.NUMBER);
-    }
-
-    /** 숫자 패드에서 연 기호 자판으로 돌아가는 키의 글자: 그 쪽으로 가는 기호 자판의 쪽 넘김 키와 같은 이름. */
-    private String numberPadBackLabel() {
-        return numberPadFrom == KeyboardLayout.SYMBOLS_2 ? "=\\<" : "?123";
     }
 
     @Override
@@ -2558,7 +2550,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         } else {
             commitComposing();
             learnCurrentWord(null);   // 기호 자판에서 ?·! 등을 치면 단어가 끝난 것이다 (글자 자판일 때 기록해 둔다)
-            setLayoutKind(KeyboardLayout.SYMBOLS);
+            if (prefs.numberPadForSymbols()) openNumberPad();   // 기호 키와 같게
+            else setLayoutKind(KeyboardLayout.SYMBOLS);
         }
     }
 
