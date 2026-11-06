@@ -50,14 +50,11 @@ final class KeyEditPanel {
         /** 설정을 다시 읽어 미리보기를 바로 그리고, 고른 키를 새 자판에서 다시 찾아 돌려준다 (없으면 null). */
         Key refreshNow();
 
-        /** 편집 창을 닫는다. 이 창에서 바꾼 값은 저장한다 (고른 키가 사라지게 바꾼 경우 등). */
+        /** 편집 창을 닫는다 (고른 키가 사라지게 바꾼 경우 등). */
         void close();
 
         /** 크기 설정(prefKey)이 이 칸에서 바뀌었다. */
         void onSizeChanged(String prefKey);
-
-        /** 다른 편집 화면(기능키 순서 등)으로 넘어가기 직전. 그 화면에서 바꾼 값은 그 화면에서 이미 저장한 것으로 본다. */
-        void beforeSubScreen();
     }
 
     /** 맨 위 헤더 가운데에 보일 이름 (show()에서 정한다). */
@@ -737,7 +734,6 @@ final class KeyEditPanel {
     }
 
     private void open(Intent i) {
-        host.beforeSubScreen();
         a.startActivity(i);
     }
 

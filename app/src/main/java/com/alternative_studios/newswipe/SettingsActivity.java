@@ -904,8 +904,6 @@ public final class SettingsActivity extends Activity {
                 @Override
                 public void onSizeChanged(String prefKey) {
                     syncSizeSliders(prefKey);
-                    // 미리보기의 손잡이로 바꾼 크기는 편집 창과 따로 바로 저장한다 (창을 저장하지 않고 닫아도 그대로).
-                    if (session != null) acceptIntoSession(java.util.Collections.singleton(prefKey));
                 }
             });
             keyPanel = new KeyEditPanel(this, prefs, new KeyEditPanel.Host() {
@@ -917,7 +915,7 @@ public final class SettingsActivity extends Activity {
 
                 @Override
                 public void close() {
-                    saveAndClose();
+                    closeKeyPanel();
                 }
 
                 @Override
@@ -925,10 +923,6 @@ public final class SettingsActivity extends Activity {
                     syncSizeSliders(prefKey);
                 }
 
-                @Override
-                public void beforeSubScreen() {
-                    beforeSub = editorValues();
-                }
             });
             // 미리보기 바로 위: 어느 자판을 보며 편집할지.
             LinearLayout tabs = new LinearLayout(this);
@@ -938,8 +932,7 @@ public final class SettingsActivity extends Activity {
             tabs.setBackgroundColor(AppTheme.of(this).bg);
             tabs.addView(Ui.choiceRow(this, new String[]{"한글", "영어", "기호"}, 0, accentColor, onAccentColor,
                     textColor, hintColor, 0, i -> {
-                        // 다른 자판을 보려면 창을 닫는다: 바꾼 것이 있으면 저장한다 (자판을 고르는 것은 닫기 요청이 아니다).
-                        saveAndClose();
+                        closeKeyPanel();   // 다른 자판을 보려면 창을 닫는다
                         editorPreview.setTab(i);
                     }));
             pinnedBottom.addView(tabs, matchWrap());
@@ -1015,17 +1008,16 @@ public final class SettingsActivity extends Activity {
         if (editorPreview == null || isFinishing() || isDestroyed()) return;
         editorPreview.refresh();
         // 고른 키가 없어졌으면(기능키를 끄거나 숫자 줄을 껐다) 편집 칸을 닫는다.
-        if (panelOpen() && editorPreview.selection() == null) saveAndClose();
+        if (panelOpen() && editorPreview.selection() == null) closeKeyPanel();
     }
 
     /** 다른 화면에서 돌아왔을 때: 미리보기와 열려 있는 편집 칸을 지금 설정으로 다시 만든다. */
     private void refreshEditorPanel() {
         if (editorPreview == null) return;
-        afterSubScreen();
         editorPreview.refresh();
         if (!panelOpen()) return;
         KeyboardPreview.Selection s = editorPreview.selection();
-        if (s == null) saveAndClose();
+        if (s == null) closeKeyPanel();
         else {
             keyPanel.show(s, editorPreview.selectedKey());
             sheetTitle.setText(keyPanel.title());
@@ -1042,8 +1034,8 @@ public final class SettingsActivity extends Activity {
     }
 
     /**
-     * 키 편집 창: 설정 목록 위에 겹친 시트. 위쪽 모서리가 둥글고 그림자가 지며, 헤더의 체크로 저장하고 X로 되돌린다.
-     * 뒤의 목록은 어두운 막으로 가려(누르면 X와 같다) 지금 보는 것이 목록 위에 뜬 창이라는 것을 알 수 있게 한다.
+     * 키 편집 창: 설정 목록 위에 겹친 시트. 위쪽 모서리가 둥글고 그림자가 지며, 헤더의 X로 닫는다. 바꾼 값은 바로 저장된다.
+     * 뒤의 목록은 어두운 막으로 가려(누르면 닫힌다) 지금 보는 것이 목록 위에 뜬 창이라는 것을 알 수 있게 한다.
      * 미리보기(화면 아래)는 가리지 않아 창을 연 채 다른 키를 눌러 바로 바꿀 수 있다.
      */
     private void buildSheet() {
@@ -1052,8 +1044,8 @@ public final class SettingsActivity extends Activity {
         scrim.setBackgroundColor(0x66000000);
         scrim.setAlpha(0f);
         scrim.setVisibility(View.GONE);
-        scrim.setOnClickListener(v -> requestCloseSheet());
-        scrim.setContentDescription("저장하지 않고 닫기");
+        scrim.setOnClickListener(v -> closeKeyPanel());
+        scrim.setContentDescription("편집 닫기");
         middle.addView(scrim, new android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
 
@@ -1073,14 +1065,14 @@ public final class SettingsActivity extends Activity {
         int overshoot = Ui.dp(this, 40);
         sheet.setPadding(0, 0, 0, overshoot);
 
-        // 헤더: 왼쪽 X(저장하지 않고 닫기), 가운데 고른 것의 이름, 오른쪽 체크(저장하고 닫기).
+        // 헤더: 왼쪽 X(닫기), 가운데 고른 것의 이름. 바꾼 값은 그때그때 바로 저장된다.
         android.widget.FrameLayout header = new android.widget.FrameLayout(this);
         int hp = Ui.dp(this, 12);
         header.setPadding(hp, Ui.dp(this, 12), hp, Ui.dp(this, 4));
         int press = (colors.text & 0x00FFFFFF) | 0x33000000;
         com.alternative_studios.newswipe.ui.IconButton cancel = new com.alternative_studios.newswipe.ui.IconButton(this,
-                Icons.CLOSE, colors.text, press, "저장하지 않고 닫기");
-        cancel.setOnClickListener(v -> requestCloseSheet());
+                Icons.CLOSE, colors.text, press, "편집 닫기");
+        cancel.setOnClickListener(v -> closeKeyPanel());
         int size = Ui.dp(this, 44);
         header.addView(cancel, new android.widget.FrameLayout.LayoutParams(size, size, Gravity.START | Gravity.CENTER_VERTICAL));
         sheetTitle = new TextView(this);
@@ -1094,10 +1086,6 @@ public final class SettingsActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
         tlp.leftMargin = tlp.rightMargin = size + Ui.dp(this, 8);
         header.addView(sheetTitle, tlp);
-        com.alternative_studios.newswipe.ui.ExpressiveIconButton save = new com.alternative_studios.newswipe.ui.ExpressiveIconButton(
-                this, Icons.DONE, colors.accent, colors.onAccent, "저장");
-        save.setOnClickListener(v -> saveAndClose());
-        header.addView(save, new android.widget.FrameLayout.LayoutParams(size, size, Gravity.END | Gravity.CENTER_VERTICAL));
         sheet.addView(header, matchWrap());
 
         sheetScroll = new ScrollView(this);
@@ -1127,16 +1115,10 @@ public final class SettingsActivity extends Activity {
     /** 미리보기에서 키·버튼·도구 막대를 눌렀다: 그것을 편집하는 창을 연다. 빈 곳이면 닫는다. */
     private void onPreviewTap(KeyboardPreview.Selection s) {
         if (s == null) {
-            requestCloseSheet();
+            closeKeyPanel();
             return;
         }
         if (panelOpen() && s.same(editorPreview.selection())) return;
-        if (panelOpen() && hasUnsavedChanges()) {
-            // 바꾼 것이 있는 채로 다른 키를 골랐다: 저장할지 먼저 묻는다.
-            confirmUnsaved(() -> onPreviewTap(s));
-            return;
-        }
-        if (panelOpen()) session = editorValues();   // 새 키의 편집은 여기서부터 센다
         editorPreview.select(s);
         KeyboardPreview.Selection now = editorPreview.selection();
         if (now == null) return;   // 지금 자판에 없는 키
@@ -1157,7 +1139,6 @@ public final class SettingsActivity extends Activity {
     /** 시트를 아래에서 위로 올린다: Material 3 Expressive의 공간 스프링 (살짝 넘었다가 자리 잡는다). */
     private void openSheet() {
         sheetClosing = false;
-        session = editorValues();
         sheet.animate().cancel();
         scrim.animate().cancel();
         keyPanel.view().setAlpha(1f);
@@ -1170,132 +1151,12 @@ public final class SettingsActivity extends Activity {
         setPanelBack(true);
     }
 
-    // ---- 편집 창의 저장과 되돌리기
-    //
-    // 창에서 바꾼 값은 미리보기(와 떠 있는 키보드)에 바로 보이도록 곧장 설정에 쓰고, 창을 열 때 키보드 편집 값을 모두 기억해 둔다.
-    // 체크를 누르면 그대로 두고, X(뒤로 가기, 바깥 누르기)로 닫으면 기억해 둔 값으로 되돌린다.
-
-    /** 창을 열 때(또는 마지막으로 저장할 때)의 키보드 편집 값. 창이 닫혀 있으면 null. */
-    private java.util.Map<String, Object> session;
-    /** 창에서 다른 편집 화면(기능키 순서 등)으로 넘어가기 직전의 값. 그 화면은 스스로 저장하므로 돌아오면 그 변경은 받아들인다. */
-    private java.util.Map<String, Object> beforeSub;
     private TextView sheetTitle;
 
-    /** 지금 저장된 키보드 편집 값들 (Prefs.isEditorKey). */
-    private java.util.Map<String, Object> editorValues() {
-        java.util.Map<String, Object> out = new java.util.HashMap<>();
-        for (java.util.Map.Entry<String, ?> e : prefs.raw().getAll().entrySet()) {
-            if (Prefs.isEditorKey(e.getKey())) out.put(e.getKey(), e.getValue());
-        }
-        return out;
-    }
-
-    private boolean hasUnsavedChanges() {
-        return session != null && !session.equals(editorValues());
-    }
-
-    /** keys의 지금 값을 기억해 둔 값에 넣는다 (저장한 것으로 본다). */
-    private void acceptIntoSession(java.util.Collection<String> keys) {
-        java.util.Map<String, Object> now = editorValues();
-        for (String k : keys) {
-            if (now.containsKey(k)) session.put(k, now.get(k));
-            else session.remove(k);
-        }
-    }
-
-    /** 다른 편집 화면에서 돌아왔다: 그 화면에서 바꾼 값은 저장한 것으로 본다. */
-    private void afterSubScreen() {
-        if (beforeSub == null || session == null) {
-            beforeSub = null;
-            return;
-        }
-        java.util.Map<String, Object> now = editorValues();
-        java.util.Set<String> changed = new java.util.HashSet<>();
-        for (String k : now.keySet()) if (!java.util.Objects.equals(now.get(k), beforeSub.get(k))) changed.add(k);
-        for (String k : beforeSub.keySet()) if (!now.containsKey(k)) changed.add(k);
-        acceptIntoSession(changed);
-        beforeSub = null;
-    }
-
-    /** 기억해 둔 값으로 되돌린다: 창에서 새로 생긴 값은 지우고, 바뀐 값은 원래대로 쓴다. */
-    private void revertSession() {
-        if (session == null) return;
-        java.util.Map<String, Object> now = editorValues();
-        android.content.SharedPreferences.Editor e = prefs.raw().edit();
-        for (String k : now.keySet()) if (!session.containsKey(k)) e.remove(k);
-        for (java.util.Map.Entry<String, Object> en : session.entrySet()) {
-            Object v = en.getValue();
-            if (java.util.Objects.equals(v, now.get(en.getKey()))) continue;
-            if (v instanceof Boolean) e.putBoolean(en.getKey(), (Boolean) v);
-            else if (v instanceof Integer) e.putInt(en.getKey(), (Integer) v);
-            else if (v instanceof Long) e.putLong(en.getKey(), (Long) v);
-            else if (v instanceof Float) e.putFloat(en.getKey(), (Float) v);
-            else if (v instanceof String) e.putString(en.getKey(), (String) v);
-            else if (v instanceof java.util.Set) {
-                @SuppressWarnings("unchecked") java.util.Set<String> set = (java.util.Set<String>) v;
-                e.putStringSet(en.getKey(), set);
-            }
-        }
-        e.apply();
-        editorPreview.refresh();
-    }
-
-    /** 체크: 바꾼 값을 그대로 두고 닫는다. */
-    private void saveAndClose() {
-        session = null;
-        closeKeyPanel();
-    }
-
-    /** X·뒤로 가기·바깥 누르기: 바꾼 것이 있으면 묻고, 없으면 그냥 닫는다. */
-    private void requestCloseSheet() {
-        if (!panelOpen()) {
-            closeKeyPanel();
-            return;
-        }
-        if (!hasUnsavedChanges()) {
-            session = null;
-            closeKeyPanel();
-            return;
-        }
-        confirmUnsaved(null);
-    }
-
-    /**
-     * 저장하지 않은 변경이 있을 때 묻는다: 저장(그대로 두기), 저장 안 함(되돌리기), 계속 편집.
-     * then이 있으면 저장하거나 되돌린 뒤 창을 닫지 않고 그것을 한다 (다른 키를 골랐을 때). 없으면 창을 닫는다.
-     */
-    private void confirmUnsaved(Runnable then) {
-        AppTheme.dialogBuilder(this)
-                .setTitle("변경사항을 저장할까요?")
-                .setMessage(sheetTitle.getText() + " 편집 창에서 바꾼 내용이 아직 저장되지 않았습니다. "
-                        + "저장하지 않으면 창을 열기 전으로 되돌립니다.")
-                .setPositiveButton("저장", (d, w) -> {
-                    if (then != null) {
-                        session = editorValues();
-                        then.run();
-                    } else {
-                        saveAndClose();
-                    }
-                })
-                .setNegativeButton("저장 안 함", (d, w) -> {
-                    revertSession();
-                    if (then != null) {
-                        session = editorValues();
-                        then.run();
-                    } else {
-                        session = null;
-                        closeKeyPanel();
-                    }
-                })
-                .setNeutralButton("계속 편집", null)
-                .show();
-    }
-
-    /** 편집 창을 내려 닫고 목록으로 돌아간다 (창에서 바꾼 값이 있으면 목록을 다시 만든다). 저장·되돌리기는 부르는 쪽이 정한다. */
+    /** 편집 창을 내려 닫고 목록으로 돌아간다 (창에서 바꾼 값이 있으면 목록을 다시 만든다). */
     private void closeKeyPanel() {
         if (editorPreview != null) editorPreview.select(null);
         if (!panelOpen()) return;
-        session = null;
         sheetClosing = true;
         setPanelBack(false);
         // Material 3 강조 가속 곡선으로 빠르게 내려간다 (나갈 때는 들어올 때보다 짧게).
@@ -1326,7 +1187,7 @@ public final class SettingsActivity extends Activity {
         if (Build.VERSION.SDK_INT < 33) return;
         android.window.OnBackInvokedDispatcher dispatcher = getOnBackInvokedDispatcher();
         if (on && panelBackCallback == null) {
-            android.window.OnBackInvokedCallback cb = this::requestCloseSheet;
+            android.window.OnBackInvokedCallback cb = this::closeKeyPanel;
             panelBackCallback = cb;
             dispatcher.registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, cb);
         } else if (!on && panelBackCallback != null) {
@@ -3665,7 +3526,7 @@ public final class SettingsActivity extends Activity {
     public void onBackPressed() {
         if (SettingsFrame.consumeBack(this)) return;
         if (panelOpen()) {
-            requestCloseSheet();
+            closeKeyPanel();
             return;
         }
         super.onBackPressed();
