@@ -369,7 +369,7 @@ public final class SettingsActivity extends Activity {
             {"keys", "길게 눌러 지우기", "백스페이스 연속 삭제 계속 지우기"},
             {"keys", "기호 키를 길게 눌러 이모지 창 열기", "이모티콘 ?123"},
             {"keys", "기능키 길게 누르기 기능 편집", "롱프레스 기능"},
-            {"keys", "기능키 길게 누르기 기능 완전 사용자화", "롱프레스 기능 커스텀"},
+            {"keys", "🛠️ 기능키 길게 누르기 기능 완전 사용자화", "롱프레스 기능 커스텀"},
             {"input", "쌍자음 인식 시간", "연속 탭 된소리 ㄲ ㅆ 시간"},
             {"input", "자음 연속 탭으로 쌍자음", "된소리 ㄲ ㅆ ㅃ"},
             {"input", "모음 연속 탭으로 이중모음", "ㅑ ㅛ ㅕ"},
@@ -387,7 +387,7 @@ public final class SettingsActivity extends Activity {
             {"swipe", "밀어서 조합형 이중모음 입력 편집", "ㅘ ㅝ ㅢ"},
             {"swipe", "온점 키를 위로 밀어서 쉼표 입력", "마침표 콤마 쉼표 스와이프"},
             {"swipe", "밀어서 글자 입력 편집", "스와이프 글자 커스텀"},
-            {"swipe", "밀어서 글자 입력 완전 사용자화", "스와이프 커스텀 모든 키"},
+            {"swipe", "🛠️ 밀어서 글자 입력 완전 사용자화", "스와이프 커스텀 모든 키"},
             {"swipefn", "좌우 이동 속도", "커서 이동 속도 스페이스바 트랙패드"},
             {"swipefn", "상하 이동 속도", "커서 이동 속도 스페이스바 트랙패드"},
             {"swipefn", "스페이스바를 밀어서 커서 이동", "커서 트랙패드 이동"},
@@ -398,17 +398,17 @@ public final class SettingsActivity extends Activity {
             {"swipefn", "⌫ 밀어서 단위 삭제", "백스페이스 단어 삭제 줄 삭제 지우기"},
             {"swipefn", "기호 키를 위로 밀어서 이모지 열기", "이모티콘 스와이프 ?123"},
             {"swipefn", "기능키 밀어서 기능 편집", "스와이프 기능 커스텀"},
-            {"swipefn", "기능키 밀어서 기능 완전 사용자화", "스와이프 기능 커스텀"},
+            {"swipefn", "🛠️ 기능키 밀어서 기능 완전 사용자화", "스와이프 기능 커스텀"},
             {"swipefn", "도구 막대를 밀어서 커서 이동", "툴바 커서 줄 맨 앞 맨 뒤"},
             {"swipefn", "클립보드 버튼을 밀어서 복사·붙여넣기", "복사 붙여넣기 스와이프"},
             {"swipefn", "이모지 버튼을 아래로 밀어서 입력", "최근 이모티콘"},
             {"swipefn", "실행 취소 버튼을 아래로 밀어서 다시 실행", "redo undo 되돌리기"},
             {"swipefn", "도구 막대 밀어서 기능 편집", "툴바 스와이프 기능"},
-            {"swipefn", "도구 막대 밀어서 기능 완전 사용자화", "툴바 스와이프 커스텀"},
+            {"swipefn", "🛠️ 도구 막대 밀어서 기능 완전 사용자화", "툴바 스와이프 커스텀"},
             {"swipefn", "문자 키를 밀어서 커서 이동", "트랙패드 커서"},
             {"swipefn", "두 손가락으로 밀어서 실행 취소", "undo redo 되돌리기 다시 실행"},
             {"swipefn", "키보드 밀기 편집", "자판 스와이프 기능"},
-            {"swipefn", "키보드 밀기 완전 사용자화", "자판 스와이프 커스텀"},
+            {"swipefn", "🛠️ 키보드 밀기 완전 사용자화", "자판 스와이프 커스텀"},
             {"swipefn", "위로 밀어서 추천 단어 입력", "추천 단어 스와이프 고르기 자판 위로"},
             {"words", "도구 막대 전체를 쓰기", "추천 툴바 전체"},
             {"words", "추천 단어 뒤에 공백 포함", "띄어쓰기 스페이스"},
@@ -1883,7 +1883,7 @@ public final class SettingsActivity extends Activity {
         standard.setVisibility(custom ? View.GONE : View.VISIBLE);
         customGroup.setVisibility(custom ? View.VISIBLE : View.GONE);
         fn.addView(standard);
-        fn.addView(toggle("기능키 길게 누르기 기능 완전 사용자화",
+        fn.addView(toggle("🛠️ 기능키 길게 누르기 기능 완전 사용자화",
                 "Shift 키·기호 키·🌐︎·엔터 키·⌫를 길게 누를 때 실행할 기능을 직접 정합니다.",
                 custom, on -> {
                     prefs.raw().edit().putBoolean(Prefs.LONG_PRESS_CUSTOM, on).apply();
@@ -1972,7 +1972,7 @@ public final class SettingsActivity extends Activity {
         standard.setVisibility(custom ? View.GONE : View.VISIBLE);
         customEdit.setVisibility(custom ? View.VISIBLE : View.GONE);
         swipe.addView(standard);
-        swipe.addView(toggle("밀어서 글자 입력 완전 사용자화", "모든 키를 위·아래·왼쪽·오른쪽으로 밀 때 입력할 글자를 직접 정합니다.",
+        swipe.addView(toggle("🛠️ 밀어서 글자 입력 완전 사용자화", "모든 키를 위·아래·왼쪽·오른쪽으로 밀 때 입력할 글자를 직접 정합니다.",
                 custom, on -> {
                     prefs.raw().edit().putBoolean(Prefs.SWIPE_CUSTOM, on).apply();
                     Ui.setVisibleAnimated(standard, !on);
@@ -2045,10 +2045,9 @@ public final class SettingsActivity extends Activity {
         standard.setVisibility(custom ? View.GONE : View.VISIBLE);
         customEdit.setVisibility(custom ? View.VISIBLE : View.GONE);
         keys.addView(standard);
-        keys.addView(toggle("기능키 밀어서 기능 완전 사용자화",
+        keys.addView(toggle("🛠️ 기능키 밀어서 기능 완전 사용자화",
                 "기호 키·🌐︎·스페이스바·엔터 키·"
-                        + "⌫를 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 직접 정합니다. "
-                        + "'기능키 순서·유무 사용자화'에서 켠 이모지·클립보드·커서 이동·음성 입력 키도 정할 수 있습니다.",
+                        + "⌫를 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 직접 정합니다.",
                 custom, on -> {
                     prefs.raw().edit().putBoolean(Prefs.SWIPE_FN_CUSTOM, on).apply();
                     Ui.setVisibleAnimated(standard, !on);
@@ -2083,7 +2082,7 @@ public final class SettingsActivity extends Activity {
         barStandard.setVisibility(barCustom ? View.GONE : View.VISIBLE);
         barCustomEdit.setVisibility(barCustom ? View.VISIBLE : View.GONE);
         bar.addView(barStandard);
-        bar.addView(toggle("도구 막대 밀어서 기능 완전 사용자화",
+        bar.addView(toggle("🛠️ 도구 막대 밀어서 기능 완전 사용자화",
                 "도구 막대와 도구 막대의 버튼을 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 직접 정합니다.",
                 barCustom, on -> {
                     prefs.raw().edit().putBoolean(Prefs.SWIPE_TOOLBAR_CUSTOM, on).apply();
@@ -2128,7 +2127,7 @@ public final class SettingsActivity extends Activity {
         boardStandard.setVisibility(boardCustom ? View.GONE : View.VISIBLE);
         boardCustomEdit.setVisibility(boardCustom ? View.VISIBLE : View.GONE);
         board.addView(boardStandard);
-        board.addView(toggle("키보드 밀기 완전 사용자화",
+        board.addView(toggle("🛠️ 키보드 밀기 완전 사용자화",
                 "자판을 한 손가락·두 손가락으로 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 직접 정합니다.",
                 boardCustom, on -> {
                     prefs.raw().edit().putBoolean(Prefs.SWIPE_KEYBOARD_CUSTOM, on).apply();
