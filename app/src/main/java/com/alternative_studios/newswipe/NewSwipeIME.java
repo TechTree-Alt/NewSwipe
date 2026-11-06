@@ -1118,7 +1118,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         suggester.setUserEnabled(cfgLearn);
         suggester.setSuggestEnabled(cfgSuggest);   // 자동 수정만 쓰면 추천에만 쓰는 초성 색인을 만들지 않는다
         if (cfgWords) {   // 오타 이웃 표는 추천·자동 수정에만 쓴다
-            suggester.setKeyRows(KeyboardLayout.koreanLetterRows(prefs), KeyboardLayout.koreanAspirateSwipe(prefs));
+            suggester.setKeyRows(KeyboardLayout.koreanLetterRows(prefs), KeyboardLayout.koreanRowOffsets(prefs),
+                    KeyboardLayout.koreanAspirateSwipe(prefs), KeyboardLayout.koreanIotizedKeys(prefs));
         }
         if (suggester.packChanged()) {
             // 설정에서 사전 팩을 가져오거나 지웠다: 읽어 둔 사전을 놓고 필요할 때 새 사전을 읽는다.
@@ -1128,8 +1129,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         feedback.configure(prefs);
         if (emojiPanel != null) emojiPanel.setSizeLevel(prefs.emojiSize());
         applyResultSize();
-        composer.setDoubleTapVowel(prefs.doubleTapVowel());
-        WordSuggester.setDoubleTapVowel(prefs.doubleTapVowel());   // '안너'도 '안녀…'로 찾는다
+        // 두벌식 자판(실험실)은 ㅑ·ㅕ·ㅛ·ㅠ 키가 따로 있어 모음 연속 탭을 쓰지 않는다 (ㅗㅗ는 'ㅗㅗ' 그대로).
+        composer.setDoubleTapVowel(prefs.doubleTapVowelActive());
+        WordSuggester.setDoubleTapVowel(prefs.doubleTapVowelActive());   // '안너'도 '안녀…'로 찾는다
         composer.setDoubleTapConsonant(prefs.doubleTapConsonant(), prefs.doubleTapConsonantMs());
         // 가로 모드·대화면에서 따로 정한 키보드 높이·글자 크기는 그 화면에서만 쓴다.
         Prefs sizePrefs = prefs.profileView(profile());
@@ -1606,7 +1608,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 l = KeyboardLayout.chinese(prefs);
                 break;
             case KeyboardLayout.NUMBER:
-                l = KeyboardLayout.number();
+                l = KeyboardLayout.numberPad(KeyboardLayout.NUMBER_PAD_SYMBOLS_LABEL, backLabel());
                 break;
             default:
                 l = KeyboardLayout.korean(prefs);
@@ -1871,7 +1873,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 break;
             case Key.TO_SYMBOLS:
                 commitComposing();
-                setLayoutKind(KeyboardLayout.SYMBOLS);
+                // '기호 자판 대신 숫자 패드 사용': 글자 자판의 기호 키는 숫자 패드를, 숫자 패드의 ?!@ 키는 기호 자판을 연다.
+                if (prefs.numberPadForSymbols() && !numberPadOpen()) openNumberPad();
+                else setLayoutKind(KeyboardLayout.SYMBOLS);
                 break;
             case Key.TO_LETTERS:
                 setLayoutKind(lettersKind());
@@ -1884,8 +1888,17 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 toggleLanguage();
                 break;
             case Key.EMOJI:
+            case Key.EMOJI_KEY:
                 showPanel(PANEL_EMOJI);
                 break;
+            case Key.CLIPBOARD:
+                showPanel(PANEL_CLIPBOARD);
+                break;
+            case Key.VOICE:
+                startVoiceInput();
+                break;
+            case Key.CURSOR_PAD:
+                break;   // 밀어야 커서가 움직인다 (KeyboardView)
             default:
                 break;
         }
@@ -1920,7 +1933,18 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     @Override
     public void onModeKeySwipeUp(Key key) {
-        if (layoutKind != KeyboardLayout.NUMBER) showPanel(PANEL_EMOJI);   // 숫자 입력란에는 이모지를 쓰지 않는다
+        showPanel(PANEL_EMOJI);
+    }
+
+    /** 3×4 숫자 패드를 보이는 중인지 (숫자 입력란에서 떴거나 '기호 자판 대신 숫자 패드 사용'으로 열었다). */
+    private boolean numberPadOpen() {
+        return layoutKind == KeyboardLayout.NUMBER;
+    }
+
+    /** 3×4 숫자 패드를 연다 ('기호 자판 대신 숫자 패드 사용'). 패드의 ?!@ 키는 기호 자판을, 가·ABC 키는 글자 자판을 연다. */
+    private void openNumberPad() {
+        commitComposing();
+        setLayoutKind(KeyboardLayout.NUMBER);
     }
 
     @Override
@@ -2519,13 +2543,14 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /** 기호 키처럼: 기호 자판이면 글자 자판으로, 아니면 기호 자판으로 바꾼다. */
     private void toggleSymbols() {
-        if (layoutKind == KeyboardLayout.SYMBOLS || layoutKind == KeyboardLayout.SYMBOLS_2) {
+        if (layoutKind == KeyboardLayout.SYMBOLS || layoutKind == KeyboardLayout.SYMBOLS_2 || numberPadOpen()) {
             setLayoutKind(lettersKind());
             updateAutoCap();
         } else {
             commitComposing();
             learnCurrentWord(null);   // 기호 자판에서 ?·! 등을 치면 단어가 끝난 것이다 (글자 자판일 때 기록해 둔다)
-            setLayoutKind(KeyboardLayout.SYMBOLS);
+            if (prefs.numberPadForSymbols()) openNumberPad();   // 기호 키와 같게
+            else setLayoutKind(KeyboardLayout.SYMBOLS);
         }
     }
 
@@ -3189,11 +3214,15 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return cfgAutoCorrect && wordsOn() && lettersLayout();
     }
 
-    /** 문장 부호로 앞 단어를 자동 수정하는지: 글자 자판과 기호 자판 (숫자 자판은 아니다). */
+    /**
+     * 문장 부호로 앞 단어를 자동 수정하는지: 글자 자판·기호 자판과, 기호 키로 연 숫자 패드 (쉼표·온점 키가 있다).
+     * 숫자 입력란은 추천을 쓰지 않아(wordsOn) 숫자 패드가 떠도 고치지 않는다.
+     */
     private boolean punctCorrectActive() {
         KeyboardLayout l = keyboard == null ? null : keyboard.getLayout();
         return cfgAutoCorrect && wordsOn() && l != null
-                && (l.isLetters() || l.kind == KeyboardLayout.SYMBOLS || l.kind == KeyboardLayout.SYMBOLS_2);
+                && (l.isLetters() || l.kind == KeyboardLayout.SYMBOLS || l.kind == KeyboardLayout.SYMBOLS_2
+                || l.kind == KeyboardLayout.NUMBER);
     }
 
     private boolean learningOn() {

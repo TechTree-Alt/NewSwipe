@@ -14,6 +14,7 @@ import java.util.Locale;
  * NewSwipe 단모음은 Shift 키가 없고, ㅂ·ㅈ·ㄷ·ㄱ를 오른쪽으로 밀어 ㅍ·ㅊ·ㅌ·ㅋ을 입력한다.
  * 획을 더하는 방향이라 자연스러워 키에 ㅊ·ㅌ을 함께 적지는 않는다.
  * 겹받침의 앞 자음(ㄱ ㄴ ㄹ ㅂ)은 위·왼쪽·오른쪽으로 스와이프해 겹받침을 입력한다 ({@link FinalSwipes}).
+ * 실험실 '두벌식 자판'을 켜면 고른 배열 대신 표준 두벌식(10열, 영어 자판과 같은 모양)을 쓴다.
  */
 public final class KeyboardLayout {
     public static final int KOREAN = 0;
@@ -93,6 +94,38 @@ public final class KeyboardLayout {
     }
 
     /**
+     * 실험실 '두벌식 자판'(표준 두벌식)을 쓰는지. 쓰면 고른 배열과 상관없이 영어 자판과 같은 모양(10 · 9 · Shift+7+⌫)이고,
+     * Shift는 ㅂㅈㄷㄱㅅ → 쌍자음, ㅐㅔ → ㅒㅖ만 바꾼다. 밀기(쌍자음·이중모음·겹받침)와 길게 누르기는 다른 배열처럼 쓴다.
+     */
+    public static boolean dubeolsik(Prefs prefs) {
+        return prefs != null && prefs.koreanDubeolsik();
+    }
+
+    /** 두벌식 자판의 글자 줄 (쿼티 자리). */
+    private static final String[][] DUBEOLSIK_ROWS = com.alternative_studios.newswipe.hangul.Dubeolsik.rows();
+    /** 두벌식 자판의 길게 누르기 기본값: 첫 줄은 숫자, 둘째·셋째 줄은 단모음 자판의 기호를 같은 자리쯤에 둔다. */
+    private static final String[][][] DUBEOLSIK_POPUPS = {
+            {{"1"}, {"2"}, {"3"}, {"4"}, {"5"}, {"6"}, {"7"}, {"8"}, {"9"}, {"0"}},
+            {{"@"}, {"#"}, {"₩", "$", "€", "£", "¥"}, {"%", "‰"}, {"&"}, {"*", "★", "☆", "※"},
+                    {"-", "–", "—", "·"}, {"(", "[", "{", "<", "「", "『"}, {")", "]", "}", ">", "」", "』"}},
+            {{"_", "~"}, {"\""}, {"'"}, {":"}, {";"}, {"!", "¡"}, {"?", "¿"}},
+    };
+    /**
+     * 두벌식 자판 글자 줄의 시작 위치 (키 한 칸 단위): 둘째 줄은 반 칸 들어가고, 셋째 줄은 1.5칸 폭의 Shift 다음에 온다.
+     * 자동 수정이 엇갈린 줄의 이웃 키를 알기 위해 쓴다 ({@link #koreanRowOffsets}).
+     */
+    private static final float[] DUBEOLSIK_OFFSETS = {0f, 0.5f, 1.5f};
+
+    /** 설정한 한글 배열의 글자 줄 (Shift·⌫ 자리는 빼고, 글자만). */
+    private static String[][] koreanRows(Prefs prefs) {
+        return dubeolsik(prefs) ? DUBEOLSIK_ROWS : newSwipe(prefs) ? D7_ROWS : KOREAN_ROWS;
+    }
+
+    private static String[][][] koreanPopups(Prefs prefs) {
+        return dubeolsik(prefs) ? DUBEOLSIK_POPUPS : newSwipe(prefs) ? D7_POPUPS : KOREAN_POPUPS;
+    }
+
+    /**
      * 8열 단모음의 글자 줄을 화면의 칸 위치대로 적은 것: 셋째 줄은 맨 왼쪽에 Shift 자리가 있어 ㅋ이 ㄴ 아래에 온다.
      * 빈 문자열은 글자가 아닌 칸이다.
      */
@@ -104,7 +137,23 @@ public final class KeyboardLayout {
      * 고치지 않는다.
      */
     public static String[][] koreanLetterRows(Prefs prefs) {
-        return newSwipe(prefs) ? D7_ROWS : KOREAN_GRID;
+        return dubeolsik(prefs) ? DUBEOLSIK_ROWS : newSwipe(prefs) ? D7_ROWS : KOREAN_GRID;
+    }
+
+    /**
+     * {@link #koreanLetterRows}의 줄마다 첫 칸이 놓인 가로 위치 (키 한 칸 단위). 칸이 반듯한 격자인 배열(단모음)은 null이고,
+     * 두벌식처럼 줄이 엇갈리면 그 위치를 준다. 고치지 않는다.
+     */
+    public static float[] koreanRowOffsets(Prefs prefs) {
+        return dubeolsik(prefs) ? DUBEOLSIK_OFFSETS : null;
+    }
+
+    /**
+     * 설정한 한글 배열에 ㅑ·ㅕ·ㅛ·ㅠ 키가 따로 있는지 (두벌식). 있으면 자동 수정이 ㅏ와 ㅑ를 같은 키로 묶지 않고, 각자 자판의
+     * 자리에서 이웃을 잰다.
+     */
+    public static boolean koreanIotizedKeys(Prefs prefs) {
+        return dubeolsik(prefs);
     }
 
     /** 설정한 한글 배열에서 ㅂ·ㅈ·ㄷ·ㄱ를 오른쪽으로 밀어 ㅍ·ㅊ·ㅌ·ㅋ을 넣는지 (자동 수정이 같은 키의 오타로 본다). */
@@ -112,8 +161,9 @@ public final class KeyboardLayout {
         return newSwipe(prefs) && !prefs.swipeCustom();
     }
 
-    /** 한글 자판 한 줄의 칸 수: NewSwipe 단모음은 7, 8열 단모음은 8. */
+    /** 한글 자판 한 줄의 칸 수: NewSwipe 단모음은 7, 8열 단모음은 8, 두벌식은 10. */
     public static int koreanColumns(Prefs prefs) {
+        if (dubeolsik(prefs)) return 10;
         return newSwipe(prefs) ? 7 : 8;
     }
 
@@ -157,7 +207,7 @@ public final class KeyboardLayout {
 
     /** 편집할 수 있는 키들(줄 단위). 마지막 줄은 쉼표/온점으로, 두 언어가 함께 쓴다. 한글은 설정한 배열을 따른다. */
     public static String[][] editableRows(boolean korean, Prefs prefs) {
-        String[][] letters = korean ? (newSwipe(prefs) ? D7_ROWS : KOREAN_ROWS) : ENGLISH_ROWS;
+        String[][] letters = korean ? koreanRows(prefs) : ENGLISH_ROWS;
         String[][] rows = new String[letters.length + 1][];
         System.arraycopy(letters, 0, rows, 0, letters.length);
         rows[letters.length] = new String[]{",", "."};
@@ -205,9 +255,8 @@ public final class KeyboardLayout {
         if (label.equals(".")) return periodPopup(periodComma);
         if (isDigit(label)) return null;   // 숫자 줄의 키는 기본 문자가 없다
         if (isSymbol(label)) return symbolDefault(label);
-        boolean ns = newSwipe(prefs);
-        String[][] letters = korean ? (ns ? D7_ROWS : KOREAN_ROWS) : ENGLISH_ROWS;
-        String[][][] popups = korean ? (ns ? D7_POPUPS : KOREAN_POPUPS) : ENGLISH_POPUPS;
+        String[][] letters = korean ? koreanRows(prefs) : ENGLISH_ROWS;
+        String[][][] popups = korean ? koreanPopups(prefs) : ENGLISH_POPUPS;
         for (int r = 0; r < letters.length; r++) {
             for (int i = 0; i < letters[r].length; i++) {
                 if (letters[r][i].equals(label)) return popups[r][i];
@@ -233,6 +282,7 @@ public final class KeyboardLayout {
     }
 
     public static KeyboardLayout korean(Prefs prefs) {
+        if (dubeolsik(prefs)) return qwertyLayout(KOREAN, DUBEOLSIK_ROWS, DUBEOLSIK_POPUPS, true, prefs);
         if (balanced(prefs)) return balancedLayout(prefs, prefs.numberRow());
         if (newSwipe(prefs)) return nsLayout(prefs, prefs.numberRow());
         boolean numberRow = prefs != null && prefs.numberRow();
@@ -373,22 +423,24 @@ public final class KeyboardLayout {
      * 가로 모드 분리 키보드의 영어 자판: 줄마다 왼쪽 절반(자음 설정)과 오른쪽 절반(모음 설정)으로 나눈다.
      * 왼쪽은 q w e r t / a s d f g / Shift z x c v, 오른쪽은 y u i o p / h j k l / b n m ⌫이다.
      */
-    private static KeyboardLayout splitEnglish(Prefs prefs) {
-        List<Row> rows = new ArrayList<>(englishSplitRows(prefs));
+    private static KeyboardLayout splitQwerty(int kind, String[][] letterRows, String[][][] popups, boolean korean,
+                                              Prefs prefs) {
+        List<Row> rows = new ArrayList<>(qwertySplitRows(letterRows, popups, korean, prefs));
         if (prefs.numberRow()) rows.add(0, splitNumberRow(prefs));
         rows.add(splitBottom(prefs));
-        return new KeyboardLayout(ENGLISH, BALANCED_COLUMNS, rows);
+        return new KeyboardLayout(kind, BALANCED_COLUMNS, rows);
     }
 
     /**
-     * 분리 키보드 영어 자판의 글자 줄 세 개. 일반 자판의 줄(격자 정렬 포함)을 그대로 만들어 가운데에서 나눈다
+     * 분리 키보드 영어·두벌식 자판의 글자 줄 세 개. 일반 자판의 줄(격자 정렬 포함)을 그대로 만들어 가운데에서 나눈다
      * ({@link #splitNormal}). 그래서 a~l 줄의 들여쓰기, 셋째 줄의 Shift·⌫ 폭과 여백이 일반 자판과 같다.
+     * 두벌식은 쿼티와 자리가 같아 자음(ㅂ~ㅅ, ㅁ~ㅎ, ㅋ~ㅍ)이 왼쪽, 모음이 오른쪽 묶음으로 간다.
      */
-    private static List<Row> englishSplitRows(Prefs prefs) {
+    private static List<Row> qwertySplitRows(String[][] rows, String[][][] popups, boolean korean, Prefs prefs) {
         List<Row> letterRows = new ArrayList<>();
         int[] leftCount = {5, 5, 4};   // 줄마다 왼쪽 묶음으로 가는 글자 수 (q~t, a~g, z~v)
         for (int r = 0; r < 3; r++) {
-            Key[] letters = letterKeys(ENGLISH_ROWS[r], ENGLISH_POPUPS[r], false, prefs);
+            Key[] letters = letterKeys(rows[r], popups[r], korean, prefs);
             // 일반 자판과 똑같은 줄을 만든 뒤 가운데에서 나눈다.
             Row normal = r < 2 ? new Row(1f, letters)
                     : prefs.gridLayout() ? gridBottomLetterRow(letters, deleteKey(prefs), prefs)
@@ -474,17 +526,26 @@ public final class KeyboardLayout {
     }
 
     public static KeyboardLayout english(Prefs prefs) {
-        if (prefs != null && prefs.splitView()) return splitEnglish(prefs);   // 가로 모드 분리 키보드
+        return qwertyLayout(ENGLISH, ENGLISH_ROWS, ENGLISH_POPUPS, false, prefs);
+    }
+
+    /**
+     * 쿼티 모양의 자판 (영어, 두벌식): 10 · 9(반 칸 들여쓰기) · Shift+7+⌫ 줄. Shift 키는 늘 있다 (두벌식의 쌍자음·ㅒ·ㅖ).
+     * 가로 모드·대화면의 분리 키보드에서는 가운데에서 나눈다.
+     */
+    private static KeyboardLayout qwertyLayout(int kind, String[][] letterRows, String[][][] popups, boolean korean,
+                                               Prefs prefs) {
+        if (prefs != null && prefs.splitView()) return splitQwerty(kind, letterRows, popups, korean, prefs);   // 가로 모드 분리 키보드
         boolean numberRow = prefs != null && prefs.numberRow();
         List<Row> rows = new ArrayList<>();
         if (numberRow) rows.add(numberRow(prefs));
-        rows.add(letterRow(ENGLISH_ROWS[0], ENGLISH_POPUPS[0], false, prefs));
-        rows.add(letterRow(ENGLISH_ROWS[1], ENGLISH_POPUPS[1], false, prefs));
-        Key[] bottomLetters = letterKeys(ENGLISH_ROWS[2], ENGLISH_POPUPS[2], false, prefs);
+        rows.add(letterRow(letterRows[0], popups[0], korean, prefs));
+        rows.add(letterRow(letterRows[1], popups[1], korean, prefs));
+        Key[] bottomLetters = letterKeys(letterRows[2], popups[2], korean, prefs);
         rows.add(prefs != null && prefs.gridLayout() ? gridBottomLetterRow(bottomLetters, deleteKey(prefs), prefs)
                 : bottomLetterRow(bottomLetters, 1.5f, Key.SHIFT, deleteKey(prefs)));
         rows.add(spaceRow(Key.TO_SYMBOLS, "?123", prefs));
-        return new KeyboardLayout(ENGLISH, 10, rows);
+        return new KeyboardLayout(kind, 10, rows);
     }
 
     public static KeyboardLayout symbols(boolean korean, Prefs prefs) {
@@ -698,17 +759,31 @@ public final class KeyboardLayout {
         return l;
     }
 
-    /** 숫자 입력란(전화번호, 숫자)용 자판. */
-    public static KeyboardLayout number() {
+    /** 숫자 패드에서 기호 자판(1쪽)으로 가는 키의 글자. */
+    public static final String NUMBER_PAD_SYMBOLS_LABEL = "?!@";
+
+    /**
+     * 3×4 숫자 패드. 숫자 입력란(전화번호, 숫자, 날짜)에서 뜨고, '기호 자판 대신 숫자 패드 사용'을 켜면 기호 키로도 연다.
+     * 왼쪽 줄에는 글자 자판으로 가는 키(lettersLabel: 가·ABC 등), 기호 자판으로 가는 키(symbolsLabel), 쉼표·온점을 둔다.
+     * <pre>
+     *  가    1  2  3  -
+     *  ?!@   4  5  6  ␣
+     *  ,     7  8  9  ⌫
+     *  .     *  0  #  ↵
+     * </pre>
+     * 아래 줄의 * 키와 # 키는 전화번호 입력에 쓴다.
+     */
+    public static KeyboardLayout numberPad(String symbolsLabel, String lettersLabel) {
         List<Row> rows = new ArrayList<>();
-        rows.add(new Row(1f, ch("1", null), ch("2", null), ch("3", null),
+        rows.add(new Row(1f, fn(Key.TO_LETTERS, lettersLabel, 1f), ch("1", null), ch("2", null), ch("3", null),
                 fnChar("-", new String[]{"+", "*", "/", "#", "(", ")", "=", "N", ";"})));
-        rows.add(new Row(1f, ch("4", null), ch("5", null), ch("6", null), fn(Key.SPACE, "", 1f)));
-        rows.add(new Row(1f, ch("7", null), ch("8", null), ch("9", null), fn(Key.DELETE, "", 1f)));
-        // 아래 줄 양옆은 전화번호 입력에 쓰는 * 키와 # 키다 (온점·쉼표는 # 키를 길게 눌러 입력한다).
-        rows.add(new Row(1f, fnChar("*", new String[]{"+", "/", "=", "(", ")", ";"}), ch("0", new String[]{"+"}),
-                fnChar("#", new String[]{".", ",", ":", "/", "+", "*"}), fn(Key.ENTER, "", 1f)));
-        return new KeyboardLayout(NUMBER, 4, rows);
+        rows.add(new Row(1f, fn(Key.TO_SYMBOLS, symbolsLabel, 1f), ch("4", null), ch("5", null), ch("6", null),
+                fn(Key.SPACE, "", 1f)));
+        rows.add(new Row(1f, fnChar(",", COMMA_POPUP), ch("7", null), ch("8", null), ch("9", null),
+                fn(Key.DELETE, "", 1f)));
+        rows.add(new Row(1f, fnChar(".", PERIOD_POPUP), fnChar("*", new String[]{"+", "/", "=", "(", ")", ";"}),
+                ch("0", new String[]{"+"}), fnChar("#", new String[]{".", ",", ":", "/", "+", "*"}), fn(Key.ENTER, "", 1f)));
+        return new KeyboardLayout(NUMBER, 5, rows);
     }
 
     // ---------------------------------------------------------------- 도우미
@@ -740,9 +815,12 @@ public final class KeyboardLayout {
             boolean vowel = korean && com.alternative_studios.newswipe.hangul.HangulComposer.isVowel(c0);
             if (korean) {
                 char d = com.alternative_studios.newswipe.hangul.HangulComposer.doubled(c0);
-                shifted = d != 0 ? String.valueOf(d) : l;
+                // 두벌식의 Shift는 표준대로 ㅂㅈㄷㄱㅅ·ㅐㅔ만 바꾼다 (ㅗ는 Shift를 눌러도 ㅗ: ㅛ 키가 따로 있다).
+                shifted = dubeolsik(prefs)
+                        ? String.valueOf(com.alternative_studios.newswipe.hangul.Dubeolsik.shifted(c0))
+                        : d != 0 ? String.valueOf(d) : l;
                 // 아래로 밀어 쌍자음. 모음의 이중모음은 아래에서 따로 정한다.
-                if (d != 0 && !vowel && !custom && (prefs == null || prefs.swipeDouble())) swipe = shifted;
+                if (d != 0 && !vowel && !custom && (prefs == null || prefs.swipeDouble())) swipe = String.valueOf(d);
             } else {
                 shifted = l.toUpperCase(Locale.ROOT);
             }
@@ -861,6 +939,13 @@ public final class KeyboardLayout {
     /** 기능키 순서·유무 편집 화면의 미리보기용: 한글 자판의 아래 두 줄 (Shift·⌫가 있는 줄과 맨 아래 줄). */
     public static KeyboardLayout bottomRowPreview(Prefs prefs) {
         List<Row> rows = new ArrayList<>();
+        if (dubeolsik(prefs)) {
+            // 두벌식: 실제 자판의 Shift·⌫ 줄과 맨 아래 줄 (분리 키보드면 나뉜 줄 그대로).
+            KeyboardLayout full = korean(prefs);
+            rows.add(full.rows[full.rows.length - 2]);
+            rows.add(full.rows[full.rows.length - 1]);
+            return new KeyboardLayout(KOREAN, full.columns, rows);
+        }
         int shift = koreanShiftSlot(prefs);
         if (balanced(prefs)) {
             List<Row> letters = new ArrayList<>();
@@ -955,10 +1040,12 @@ public final class KeyboardLayout {
         boolean grid = prefs != null && prefs.gridLayout();
         float wideW = grid ? gridKey(prefs) : 1.5f, narrowW = grid ? gridKey(prefs) : 1f;
         String[] order = prefs == null ? BottomKeys.DEFAULT_ORDER : prefs.bottomKeyOrder();
-        int spaceAt = -1;
+        int spaceAt = -1, placed = 0;
         for (String id : order) {
-            boolean shown = prefs == null ? !BottomKeys.COMMA.equals(id) : prefs.bottomKeyShown(id);
+            boolean shown = prefs == null ? BottomKeys.shownByDefault(id) : prefs.bottomKeyShown(id);
             if (!shown) continue;
+            // 켤 수 있는 키는 MAX_SHOWN개까지다 (가져온 설정 등으로 더 켜져 있으면 순서상 앞의 키만 놓는다).
+            if (placed++ >= BottomKeys.MAX_SHOWN) continue;
             Key k;
             switch (id) {
                 case BottomKeys.MODE:
@@ -976,6 +1063,18 @@ public final class KeyboardLayout {
                     break;
                 case BottomKeys.ENTER:
                     k = fn(Key.ENTER, "", wideW);
+                    break;
+                case BottomKeys.EMOJI:
+                    k = fn(Key.EMOJI_KEY, "", narrowW);
+                    break;
+                case BottomKeys.CLIPBOARD:
+                    k = fn(Key.CLIPBOARD, "", narrowW);
+                    break;
+                case BottomKeys.CURSOR:
+                    k = fn(Key.CURSOR_PAD, "", narrowW);
+                    break;
+                case BottomKeys.VOICE:
+                    k = fn(Key.VOICE, "", narrowW);
                     break;
                 default:   // 스페이스바: 폭은 다른 키를 다 놓은 뒤에 정한다
                     spaceAt = keys.size();

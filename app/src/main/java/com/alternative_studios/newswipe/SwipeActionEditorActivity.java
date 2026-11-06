@@ -104,7 +104,9 @@ public final class SwipeActionEditorActivity extends Activity {
         TextView note = text(spec.note(), 13, hintColor);
         note.setPadding(Ui.dp(this, 4), 0, 0, Ui.dp(this, 4));
         list.addView(note);
-        for (int slot = 0; slot < spec.slotCount(); slot++) list.addView(slotCard(slot));
+        for (int slot = 0; slot < spec.slotCount(); slot++) {
+            if (spec.shown(prefs, slot)) list.addView(slotCard(slot));   // 끈 기능키는 감춘다
+        }
         list.addView(ResetDialog.button(this, spec.title(), () -> {
             prefs.resetSwipeActions(spec.group);
             render();

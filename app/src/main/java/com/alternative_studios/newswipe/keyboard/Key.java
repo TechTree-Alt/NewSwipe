@@ -29,6 +29,14 @@ public final class Key {
      * (SPACER는 그 자리를 눌러도 반응하지 않는 빈 자리다.)
      */
     public static final int GAP = 12;
+    /** 맨 아래 줄에 더할 수 있는 키 (기능키 순서·유무 사용자화, 기본 꺼짐): 이모지 창 열기. */
+    public static final int EMOJI_KEY = 13;
+    /** 맨 아래 줄에 더할 수 있는 키: 클립보드 창 열기. */
+    public static final int CLIPBOARD = 14;
+    /** 맨 아래 줄에 더할 수 있는 키: 상하좌우로 밀면 커서가 움직인다 (스페이스바 커서 이동과 같은 속도). 누르기만 하면 아무것도 하지 않는다. */
+    public static final int CURSOR_PAD = 15;
+    /** 맨 아래 줄에 더할 수 있는 키: 음성 입력. */
+    public static final int VOICE = 16;
 
     /** 스와이프 방향. */
     public static final int SWIPE_DOWN = 0, SWIPE_UP = 1, SWIPE_LEFT = 2, SWIPE_RIGHT = 3;

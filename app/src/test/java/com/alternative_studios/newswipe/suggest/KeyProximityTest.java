@@ -84,4 +84,90 @@ public class KeyProximityTest {
             KoreanCorrect.DIAGONAL_LAST = true;
         }
     }
+
+    /** 두벌식 자판의 글자 줄과 줄마다의 시작 위치 (KeyboardLayout과 같다: 둘째 줄은 반 칸, 셋째 줄은 Shift 1.5칸 뒤). */
+    private static TypoModel dubeolsik() {
+        TypoModel m = new TypoModel();
+        m.setRows(com.alternative_studios.newswipe.hangul.Dubeolsik.rows(), new float[]{0f, 0.5f, 1.5f}, false, true);
+        return m;
+    }
+
+    @Test
+    public void dubeolsikStaggeredRows() {
+        TypoModel m = dubeolsik(), eight = new TypoModel();
+        // ㅁ은 ㅂ·ㅈ 사이 아래: 둘 다 바로 위 키다 (8열 단모음에서 ㅈ은 대각선)
+        assertEquals(TypoModel.NEIGHBOR, cost(m, "바다", "마다", true), 1e-6);
+        assertEquals(TypoModel.NEIGHBOR, cost(m, "자다", "마다", true), 1e-6);
+        assertTrue(cost(eight, "자다", "마다", true) > TypoModel.NEIGHBOR);
+        // ㅂ과 ㄴ은 1.5칸 떨어져 이웃이 아니다 (8열 단모음에서는 대각선 이웃)
+        assertTrue(cost(m, "배일", "내일", false) >= TypoModel.SUBSTITUTE);
+        assertEquals(TypoModel.NEIGHBOR, cost(eight, "배일", "내일", false), 1e-6);
+        // ㅋ은 ㄴ 바로 아래, ㅁ·ㅇ은 대각선
+        assertEquals(TypoModel.NEIGHBOR, cost(m, "나다", "카다", true), 1e-6);
+        assertEquals(TypoModel.NEIGHBOR, cost(m, "마다", "카다", false), 1e-6);
+        assertTrue(cost(m, "마다", "카다", true) > TypoModel.NEIGHBOR);
+        assertTrue(cost(m, "라다", "카다", false) >= TypoModel.SUBSTITUTE);   // 두 칸 떨어진 키
+        // 같은 줄은 바로 옆 키만: ㅅ 옆에 ㅛ, ㄱ
+        assertEquals(TypoModel.NEIGHBOR, cost(m, "고", "소", true), 1e-6);
+        assertTrue(cost(m, "도", "소", false) >= TypoModel.SUBSTITUTE);
+        // 모음: ㅐ 아래 ㅏ·ㅣ (8열 단모음에서 ㅣ는 대각선), ㅜ 옆 ㅠ·ㅡ, ㅗ 위 ㅛ·ㅅ 쪽은 자음이라 비싸다
+        assertEquals(TypoModel.NEIGHBOR, cost(m, "새", "시", true), 1e-6);
+        assertTrue(cost(eight, "새", "시", true) > TypoModel.NEIGHBOR);
+        assertEquals(TypoModel.NEIGHBOR, cost(m, "구", "그", true), 1e-6);
+        assertEquals(TypoModel.NEIGHBOR, cost(m, "구", "규", true), 1e-6);
+    }
+
+    @Test
+    public void dubeolsikIotizedVowelsAreTheirOwnKeys() {
+        TypoModel m = dubeolsik(), eight = new TypoModel();
+        // ㅑ는 ㅏ 키를 민 것이 아니라 옆 키: 같은 키의 다른 동작(VARIANT)이 아니라 자판 거리
+        assertEquals(TypoModel.NEIGHBOR, cost(m, "갸", "가", true), 1e-6);
+        assertEquals(TypoModel.VARIANT, cost(eight, "갸", "가", true), 1e-6);
+        assertEquals(TypoModel.NEIGHBOR, cost(m, "교", "고", true), 1e-6);
+        // ㅑ의 이웃은 제 자리 (ㅕ·ㅐ·ㅓ·ㅏ)에서 잰다: ㅏ 아래의 ㅡ는 ㅑ와 이웃이 아니다
+        assertEquals(TypoModel.NEIGHBOR, cost(m, "갸", "개", true), 1e-6);
+        assertEquals(TypoModel.NEIGHBOR, cost(m, "갸", "겨", true), 1e-6);
+        assertTrue(cost(m, "갸", "그", false) >= TypoModel.SUBSTITUTE);
+        assertEquals(TypoModel.NEIGHBOR, cost(eight, "갸", "그", false), 1e-6);   // 8열: ㅏ 키의 아래 밀기라 ㅏ의 이웃
+        // Shift로 같은 키에서 나오는 글자, 소리가 같은 모음은 그대로 싸다
+        assertEquals(TypoModel.VARIANT, cost(m, "가금", "가끔", false), 1e-6);
+        assertEquals(TypoModel.VARIANT, cost(m, "개", "걔", false), 1e-6);
+        assertEquals(TypoModel.VARIANT, cost(m, "게", "개", false), 1e-6);
+        // ㅋ·ㅊ은 따로 있는 키 (NewSwipe 단모음처럼 밀어서 넣지 않는다)
+        assertTrue(cost(m, "공", "콩", false) >= TypoModel.SUBSTITUTE);
+    }
+
+    @Test
+    public void dubeolsikCorrection() throws Exception {
+        WordDictionary dict = KoreanSuggestTest.buildDict(new String[][]{
+                {"내일", "250"}, {"매일", "240"}, {"사람", "220"}, {"하고", "230"}, {"일이", "200"},
+        });
+        // ㅂ의 이웃은 ㅁ뿐이라 '배일'은 매일로 고친다
+        assertEquals("매일", new KoreanSuggest(dict, null, dubeolsik())
+                .correct("배일", null, KoreanSuggest.FIELD_NORMAL, null, null));
+        // 두벌식의 ㅈ은 ㅁ·ㄴ 사이 위라 둘 다 바로 위·아래 키: 하나로 정할 수 없어 고치지 않는다
+        // (8열 단모음은 ㅈ 바로 아래가 ㄴ이라 내일로 고친다)
+        assertEquals(null, new KoreanSuggest(dict, null, dubeolsik())
+                .correct("재일", null, KoreanSuggest.FIELD_NORMAL, null, null));
+        assertEquals("내일", new KoreanSuggest(dict, null, new TypoModel())
+                .correct("재일", null, KoreanSuggest.FIELD_NORMAL, null, null));
+    }
+
+    /** 반듯한 격자(줄 시작 위치 0)는 줄 시작 위치를 주지 않은 것과 같은 표를 만든다. */
+    @Test
+    public void zeroOffsetsMatchTheGridTable() {
+        TypoModel a = new TypoModel(), b = new TypoModel();
+        String[][] rows = {
+                {"ㅂ", "ㅈ", "ㄷ", "ㄱ", "ㅅ", "ㅗ", "ㅐ", "ㅔ"},
+                {"ㅁ", "ㄴ", "ㅇ", "ㄹ", "ㅎ", "ㅓ", "ㅏ", "ㅣ"},
+                {"", "ㅋ", "ㅌ", "ㅊ", "ㅍ", "ㅜ", "ㅡ"},
+        };
+        b.setRows(rows, new float[]{0f, 0f, 0f}, false, false);
+        for (char x = 0x3131; x < 0x3131 + 51; x++) {
+            for (char y = 0x3131; y < 0x3131 + 51; y++) {
+                assertEquals(a.substitute(x, y), b.substitute(x, y), 0f);
+                assertEquals(a.substituteDirect(x, y), b.substituteDirect(x, y), 0f);
+            }
+        }
+    }
 }

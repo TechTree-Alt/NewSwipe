@@ -1,27 +1,37 @@
 package com.alternative_studios.newswipe.keyboard;
 
 /**
- * 기능키 길게 누르기 기능 완전 사용자화. 켜면 Shift 키·기호 키·언어 전환 키·엔터 키·지우기 키를 길게 눌렀을 때
- * 실행할 기능을 키마다 직접 정한다 (기능 목록은 {@link SwipeAction}).
+ * 기능키 길게 누르기 기능 완전 사용자화. 켜면 Shift 키·기호 키·언어 전환 키·엔터 키·지우기 키와 더한 키(이모지·클립보드·
+ * 커서 이동·음성 입력)를 길게 눌렀을 때 실행할 기능을 키마다 직접 정한다 (기능 목록은 {@link SwipeAction}).
  * 정하지 않은 키는 기본 동작을 따른다: 기호 키 = 이모지 열기, 언어 전환 키 = 입력 방법 전환 창, 지우기 키 = 계속 지우기,
  * Shift 키·엔터 키 = 없음.
  * 밀어서 기능 편집과 같은 틀({@link SwipeSpec})을 쓰고, 방향 대신 '길게 누르기' 칸 하나({@link #DIR})만 둔다.
  */
 public final class LongPressActions {
     public static final int SHIFT = 0, MODE = 1, GLOBE = 2, ENTER = 3, DELETE = 4;
+    /** 기능키 순서·유무 사용자화에서 더할 수 있는 키 (켰을 때만 편집 화면에 보인다, 처음에는 없음). */
+    public static final int EMOJI_KEY = 5, CLIPBOARD = 6, CURSOR = 7, VOICE = 8;
     /** 길게 누르기를 저장하는 칸 (SwipeSpec의 방향 자리를 하나만 쓴다). */
     public static final int DIR = Key.SWIPE_DOWN;
     private static final String[] LABELS = {
-            "Shift 키 (⇧)", "기호 키 (?123·가·ABC)", "언어 전환 키 (🌐︎)", "엔터 키 (↵)", "지우기 키 (⌫)"};
+            "Shift 키 (⇧)", "기호 키 (?123·가·ABC)", "언어 전환 키 (🌐︎)", "엔터 키 (↵)", "지우기 키 (⌫)",
+            "이모지 키", "클립보드 키", "커서 이동 키", "음성 입력 키"};
     private static final String[] HINTS = {
             "영어 자판의 대문자 키",
             "글자 자판과 기호 자판을 오가는 왼쪽 아래 키",
             "언어 전환. 기호 자판에서는 이 자리의 이모지 키",
             "입력란에 따라 줄바꿈·보내기·검색 등",
             "지우기",
+            "이모지 창 열기",
+            "클립보드 창 열기",
+            "상하좌우로 밀면 커서가 움직입니다.",
+            "음성 입력",
     };
+    /** 더할 수 있는 키 칸의 맨 아래 줄 키 ID (BottomKeys). 편집 화면에 보일지 정할 때 쓴다. */
+    private static final String[] EXTRA_IDS = {BottomKeys.EMOJI, BottomKeys.CLIPBOARD, BottomKeys.CURSOR, BottomKeys.VOICE};
 
-    public static final SwipeSpec SPEC = new SwipeSpec("lp", new String[]{"shift", "mode", "globe", "enter", "delete"}) {
+    public static final SwipeSpec SPEC = new SwipeSpec("lp", new String[]{"shift", "mode", "globe", "enter", "delete",
+            "emoji", "clipboard", "cursor", "voice"}) {
         @Override
         public String defaultAction(int slot, int dir) {
             switch (slot) {
@@ -30,6 +40,19 @@ public final class LongPressActions {
                 case DELETE: return SwipeAction.DELETE_REPEAT;
                 default: return SwipeAction.NONE;
             }
+        }
+
+        /**
+         * 켠 키의 칸만 편집 화면에 보인다: 언어 전환 키와 더한 키(이모지·클립보드·커서 이동·음성 입력)는 '기능키 순서·유무
+         * 사용자화'에서 끄면 감춘다. Shift 키는 영어 자판에, 기호 키·엔터 키·⌫는 숫자 패드(숫자 입력란 등)에 늘 있어 그 설정이
+         * 쓰이므로 늘 보인다.
+         */
+        @Override
+        public boolean shown(com.alternative_studios.newswipe.Prefs prefs, int slot) {
+            if (prefs == null) return true;
+            if (slot == GLOBE) return prefs.bottomKeyShown(BottomKeys.GLOBE);
+            if (slot >= EMOJI_KEY) return prefs.bottomKeyShown(EXTRA_IDS[slot - EMOJI_KEY]);
+            return true;
         }
 
         /** 모르는 값은 기본값으로, 밀어야 하는 '커서 자유 이동'은 없음으로 본다. */
@@ -94,11 +117,15 @@ public final class LongPressActions {
             case Key.EMOJI: return GLOBE;
             case Key.ENTER: return ENTER;
             case Key.DELETE: return DELETE;
+            case Key.EMOJI_KEY: return EMOJI_KEY;
+            case Key.CLIPBOARD: return CLIPBOARD;
+            case Key.CURSOR_PAD: return CURSOR;
+            case Key.VOICE: return VOICE;
             default: return -1;
         }
     }
 
-    /** 설정의 배치로 칸마다 기능 ID를 담은 배열 (SHIFT~DELETE 순서). */
+    /** 설정의 배치로 칸마다 기능 ID를 담은 배열 (SHIFT~VOICE 순서). */
     public static String[] actions(com.alternative_studios.newswipe.Prefs prefs) {
         String[][] t = SPEC.table(prefs);
         String[] out = new String[t.length];

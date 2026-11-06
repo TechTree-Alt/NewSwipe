@@ -144,6 +144,8 @@ public final class KeyboardView extends View {
         boolean freeCursor, freeH, freeV;
         /** 분리 키보드 가운데 빈 공간에서 시작한 커서 이동: 스페이스바의 좌우·상하 설정을 따른다. */
         boolean gap;
+        /** 커서 이동 키에서 시작한 커서 이동: 늘 좌우·상하로 움직이고, 속도는 스페이스바 커서 이동과 같다. */
+        boolean cursorKey;
         boolean chord;
         /** 선택 모드에서 선택 영역을 한 번이라도 움직였는지 (움직이지 않고 떼면 그냥 스페이스로 입력한다). */
         boolean selectMoved;
@@ -710,11 +712,15 @@ public final class KeyboardView extends View {
     private int faceColor(Key k) {
         if (k.type == Key.ENTER) {
             return theme.accent;
-        } else if (gridColors && (k.type == Key.SHIFT || k.type == Key.FUNCTION || k.type == Key.DELETE || k.type == Key.SYMBOL_PAGE
-                || layout.kind == KeyboardLayout.NUMBER && (k.type == Key.TO_SYMBOLS || ".".equals(k.label)))
-                && !(layout.kind == KeyboardLayout.NUMBER && k.type == Key.DELETE)) {
+        } else if (gridColors && layout.kind != KeyboardLayout.NUMBER && (k.type == Key.SHIFT || k.type == Key.FUNCTION
+                || k.type == Key.DELETE || k.type == Key.SYMBOL_PAGE)) {
             // 색 정렬: 글자 사이의 Shift·⌫·기호 쪽 넘김 키는 글자 키 색 (Shift 고정도 강조색 없이).
-            // 숫자 자판에서는 ?123·.를 숫자 키 색으로 맞추고, ⌫는 스페이스바·- 키와 같은 기능키 색으로 둔다.
+            // 숫자 자판의 ⌫는 스페이스바·- 키와 같은 기능키 색으로 둔다.
+            return theme.key;
+        } else if (gridColors && layout.kind == KeyboardLayout.NUMBER && k.type == Key.CHAR
+                && ("*".equals(k.label) || "#".equals(k.label))) {
+            // 숫자 패드: 숫자 사이의 *·#는 숫자 키 색. 왼쪽 줄(가·?!@·쉼표·온점)은 오른쪽 줄(-·스페이스바·⌫)과
+            // 같은 기능키 색으로 둔다 (아래의 기본 색).
             return theme.key;
         } else if (gridColors && k.type == Key.SPACE) {
             return theme.functionKey;   // 스페이스바는 맨 아래 줄의 다른 기능키 색
@@ -767,7 +773,17 @@ public final class KeyboardView extends View {
                 Icons.draw(c, Icons.GLOBE, cx, cy, Math.min(iconSize, dp(22)), icon);
                 return;
             case Key.EMOJI:
+            case Key.EMOJI_KEY:
                 Icons.draw(c, Icons.EMOJI, cx, cy, Math.min(iconSize, dp(22)), icon);
+                return;
+            case Key.CLIPBOARD:
+                Icons.draw(c, Icons.CLIPBOARD, cx, cy, Math.min(iconSize, dp(22)), icon);
+                return;
+            case Key.VOICE:
+                Icons.draw(c, Icons.MIC, cx, cy, Math.min(iconSize, dp(22)), icon);
+                return;
+            case Key.CURSOR_PAD:
+                Icons.draw(c, Icons.MENU_MOVE, cx, cy, Math.min(iconSize, dp(22)), icon);
                 return;
             case Key.SPACE:
                 // 글자·기호 자판의 스페이스바는 비워 두고(설정하면 글자 자판에 언어 이름), 숫자 자판에서만 ␣로 띄어쓰기 키임을 알린다.
@@ -1094,6 +1110,18 @@ public final class KeyboardView extends View {
                     }
                     break;
                 }
+                if (p.key.type == Key.CURSOR_PAD && fnSwipes == null) {
+                    // 커서 이동 키: 스페이스바처럼 밀면 커서가 움직인다 (좌우는 글자, 위아래는 줄 단위). 누르기만 하면 아무것도 없다.
+                    // 기능키 밀어서 기능 완전 사용자화를 켰으면 아래 moveFunctionKey가 정한 대로 한다.
+                    if (deferred == null && (Math.abs(dx) > fnSwipeThreshold || Math.abs(dy) > fnSwipeThreshold)) {
+                        p.mode = CURSOR;
+                        p.cursorKey = true;
+                        p.cursorAnchorX = x;
+                        p.cursorAnchorY = y;
+                        cancelLongPress(p);
+                    }
+                    break;
+                }
                 if (p.key.type == Key.FUNCTION) {
                     moveFnKey(p, dx, dy);
                     break;
@@ -1134,7 +1162,7 @@ public final class KeyboardView extends View {
                 } else if (p.key.type == Key.DELETE && deleteWordSwipe && dx < -fnSwipeThreshold * 1.5f) {
                     p.mode = DELETE_WORD;
                     cancelLongPress(p);
-                } else if (modeKeyEmoji && isModeKey(p.key) && layout.kind != KeyboardLayout.NUMBER) {
+                } else if (modeKeyEmoji && isModeKey(p.key)) {
                     // 손가락이 많이 움직였으면 길게 누르기(이모지 열기)는 취소하고, 위로 충분히 밀었으면 이모지 열기.
                     if (Math.hypot(dx, dy) > fnSwipeThreshold) cancelLongPress(p);
                     if (-dy > fnSwipeThreshold && -dy > Math.abs(dx)) p.mode = EMOJI_SWIPE;
@@ -1201,9 +1229,11 @@ public final class KeyboardView extends View {
             case CURSOR: {
                 // 완전 사용자화를 켰으면 '커서 이동'을 정한 방향의 축만 움직인다.
                 // 분리 키보드 가운데 빈 공간은 늘 좌우·상하로 모두 움직이고 속도도 따로 정한다.
-                boolean curH = p.gap || (p.freeCursor ? p.freeH
-                        : fnSwipes != null ? fnSwipes.cursorH() : cursorH && !spaceLangSwipe);
-                boolean curV = p.gap || (p.freeCursor ? p.freeV : fnSwipes != null ? fnSwipes.cursorV() : cursorV);
+                // 커서 이동 키는 늘 네 방향 (완전 사용자화를 켰으면 그 키에 '커서 이동'을 정한 축만).
+                boolean curH = p.gap || (p.cursorKey ? fnSwipes == null || fnSwipes.cursorH(FunctionSwipes.CURSOR)
+                        : p.freeCursor ? p.freeH : fnSwipes != null ? fnSwipes.cursorH() : cursorH && !spaceLangSwipe);
+                boolean curV = p.gap || (p.cursorKey ? fnSwipes == null || fnSwipes.cursorV(FunctionSwipes.CURSOR)
+                        : p.freeCursor ? p.freeV : fnSwipes != null ? fnSwipes.cursorV() : cursorV);
                 // 커서 이동 속도: 한 칸(한 줄) 움직이는 데 필요한 손가락 거리를 속도만큼 줄이거나 늘린다.
                 float stepX = cursorStep / (p.gap ? gapSpeed : p.freeCursor ? charSpeedH : spaceSpeedH);
                 float stepY = cursorStepY / (p.gap ? gapSpeed : p.freeCursor ? charSpeedV : spaceSpeedV);
@@ -1378,6 +1408,7 @@ public final class KeyboardView extends View {
         if (SwipeAction.CURSOR_MOVE.equals(action)) {
             if (deferred != null) return;   // 두 손가락 밀기를 지켜보는 동안에는 커서를 움직이지 않는다
             p.mode = CURSOR;
+            p.cursorKey = slot == FunctionSwipes.CURSOR;   // 커서 이동 키는 자기 칸의 방향 설정을 따른다
             p.cursorAnchorX = x;
             p.cursorAnchorY = y;
             cancelLongPress(p);

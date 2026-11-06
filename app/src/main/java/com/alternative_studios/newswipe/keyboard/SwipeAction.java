@@ -121,7 +121,7 @@ public final class SwipeAction {
 
     /** 키 slot(FunctionSwipes.SPACE 등)에서 고를 수 있는 ID들. 화면에 보이는 순서. */
     public static String[] idsFor(int slot) {
-        boolean space = slot == FunctionSwipes.SPACE;
+        boolean space = FunctionSwipes.cursorSlot(slot);   // 스페이스바·커서 이동 키
         java.util.List<String> ids = new java.util.ArrayList<>();
         for (String[] a : ALL) {
             if (FREE_CURSOR.equals(a[0]) || longPressOnly(a[0])) continue;

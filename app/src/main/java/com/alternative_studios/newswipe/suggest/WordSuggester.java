@@ -73,15 +73,26 @@ public final class WordSuggester {
      * ㅍ·ㅊ·ㅌ·ㅋ을 넣는 자판 (NewSwipe 단모음).
      */
     public void setKeyRows(String[][] rows, boolean aspirateSwipe) {
+        setKeyRows(rows, null, aspirateSwipe, false);
+    }
+
+    /**
+     * {@link #setKeyRows(String[][], boolean)}와 같되, 줄이 엇갈린 자판(두벌식)은 줄마다 시작 위치 offsets를, ㅑ·ㅕ·ㅛ·ㅠ 키가
+     * 따로 있으면 iotizedKeys를 준다 ({@link TypoModel#setRows(String[][], float[], boolean, boolean)}).
+     */
+    public void setKeyRows(String[][] rows, float[] offsets, boolean aspirateSwipe, boolean iotizedKeys) {
         // 입력란마다 불리지만 자판이 바뀔 때만 이웃 표를 다시 만든다 (줄은 KeyboardLayout의 고정 배열이라 같은지 바로 안다).
-        if (rows == keyRows && aspirateSwipe == keyAspirate) return;
+        if (rows == keyRows && offsets == keyOffsets && aspirateSwipe == keyAspirate && iotizedKeys == keyIotized) return;
         keyRows = rows;
+        keyOffsets = offsets;
         keyAspirate = aspirateSwipe;
-        typo.setRows(rows, aspirateSwipe);
+        keyIotized = iotizedKeys;
+        typo.setRows(rows, offsets, aspirateSwipe, iotizedKeys);
     }
 
     private String[][] keyRows;
-    private boolean keyAspirate;
+    private float[] keyOffsets;
+    private boolean keyAspirate, keyIotized;
 
     public UserDictionary user() {
         return user;

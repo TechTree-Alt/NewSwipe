@@ -369,7 +369,7 @@ public final class SettingsActivity extends Activity {
             {"keys", "길게 눌러 지우기", "백스페이스 연속 삭제 계속 지우기"},
             {"keys", "기호 키를 길게 눌러 이모지 창 열기", "이모티콘 ?123"},
             {"keys", "기능키 길게 누르기 기능 편집", "롱프레스 기능"},
-            {"keys", "기능키 길게 누르기 기능 완전 사용자화", "롱프레스 기능 커스텀"},
+            {"keys", "🛠️ 기능키 길게 누르기 기능 완전 사용자화", "롱프레스 기능 커스텀"},
             {"input", "쌍자음 인식 시간", "연속 탭 된소리 ㄲ ㅆ 시간"},
             {"input", "자음 연속 탭으로 쌍자음", "된소리 ㄲ ㅆ ㅃ"},
             {"input", "모음 연속 탭으로 이중모음", "ㅑ ㅛ ㅕ"},
@@ -387,7 +387,7 @@ public final class SettingsActivity extends Activity {
             {"swipe", "밀어서 조합형 이중모음 입력 편집", "ㅘ ㅝ ㅢ"},
             {"swipe", "온점 키를 위로 밀어서 쉼표 입력", "마침표 콤마 쉼표 스와이프"},
             {"swipe", "밀어서 글자 입력 편집", "스와이프 글자 커스텀"},
-            {"swipe", "밀어서 글자 입력 완전 사용자화", "스와이프 커스텀 모든 키"},
+            {"swipe", "🛠️ 밀어서 글자 입력 완전 사용자화", "스와이프 커스텀 모든 키"},
             {"swipefn", "좌우 이동 속도", "커서 이동 속도 스페이스바 트랙패드"},
             {"swipefn", "상하 이동 속도", "커서 이동 속도 스페이스바 트랙패드"},
             {"swipefn", "스페이스바를 밀어서 커서 이동", "커서 트랙패드 이동"},
@@ -398,17 +398,17 @@ public final class SettingsActivity extends Activity {
             {"swipefn", "⌫ 밀어서 단위 삭제", "백스페이스 단어 삭제 줄 삭제 지우기"},
             {"swipefn", "기호 키를 위로 밀어서 이모지 열기", "이모티콘 스와이프 ?123"},
             {"swipefn", "기능키 밀어서 기능 편집", "스와이프 기능 커스텀"},
-            {"swipefn", "기능키 밀어서 기능 완전 사용자화", "스와이프 기능 커스텀"},
+            {"swipefn", "🛠️ 기능키 밀어서 기능 완전 사용자화", "스와이프 기능 커스텀"},
             {"swipefn", "도구 막대를 밀어서 커서 이동", "툴바 커서 줄 맨 앞 맨 뒤"},
             {"swipefn", "클립보드 버튼을 밀어서 복사·붙여넣기", "복사 붙여넣기 스와이프"},
             {"swipefn", "이모지 버튼을 아래로 밀어서 입력", "최근 이모티콘"},
             {"swipefn", "실행 취소 버튼을 아래로 밀어서 다시 실행", "redo undo 되돌리기"},
             {"swipefn", "도구 막대 밀어서 기능 편집", "툴바 스와이프 기능"},
-            {"swipefn", "도구 막대 밀어서 기능 완전 사용자화", "툴바 스와이프 커스텀"},
+            {"swipefn", "🛠️ 도구 막대 밀어서 기능 완전 사용자화", "툴바 스와이프 커스텀"},
             {"swipefn", "문자 키를 밀어서 커서 이동", "트랙패드 커서"},
             {"swipefn", "두 손가락으로 밀어서 실행 취소", "undo redo 되돌리기 다시 실행"},
             {"swipefn", "키보드 밀기 편집", "자판 스와이프 기능"},
-            {"swipefn", "키보드 밀기 완전 사용자화", "자판 스와이프 커스텀"},
+            {"swipefn", "🛠️ 키보드 밀기 완전 사용자화", "자판 스와이프 커스텀"},
             {"swipefn", "위로 밀어서 추천 단어 입력", "추천 단어 스와이프 고르기 자판 위로"},
             {"words", "도구 막대 전체를 쓰기", "추천 툴바 전체"},
             {"words", "추천 단어 뒤에 공백 포함", "띄어쓰기 스페이스"},
@@ -446,6 +446,8 @@ public final class SettingsActivity extends Activity {
             {"lab", "일본어 자판", "일본어 히라가나 가타카나 한자 변환 플릭 로마자 사전 팩 japanese"},
             {"lab", "반각 공백 쓰기", "일본어 스페이스 전각 공백 반각 공백 띄어쓰기"},
             {"lab", "중국어 자판", "중국어 병음 한자 간체 사전 팩 chinese pinyin"},
+            {"layout", "기호 자판 대신 숫자 패드 사용", "숫자 패드 넘버 패드 3×4 숫자 자판 기호 키 ?123 계산기 전화"},
+            {"lab", "두벌식 자판", "두벌식 표준 쿼티 qwerty 자판 배열 레이아웃 Shift 쌍자음"},
             {"lab", "아래로 밀기 엄격도", "스와이프 방향 판정 민감도"},
             {"lab", "위로 밀기 엄격도", "스와이프 방향 판정 민감도"},
             {"lab", "대화면 기준", "태블릿 폴더블 큰 화면 dp"},
@@ -922,6 +924,11 @@ public final class SettingsActivity extends Activity {
     /** 자판 레이아웃: 한글 자판 배열을 고르고, 고른 배열을 실제 키보드 뷰로 미리 보여 준다. */
     private void buildKeyboardLayout() {
         LinearLayout korean = section("한글 자판 배열");
+        boolean dubeolsik = prefs.koreanDubeolsik();
+        if (dubeolsik && !harvesting) {
+            korean.addView(note("실험실의 '두벌식 자판'이 켜져 있어 아래에서 고른 배열 대신 두벌식으로 보입니다. "
+                    + "고른 배열은 두벌식 자판을 끄면 쓰입니다."));
+        }
         String[] koreanLayouts = {Prefs.KOREAN_LAYOUT_8, Prefs.KOREAN_LAYOUT_D7};
         int selected = prefs.koreanD7() ? 1 : 0;
         // 배열을 고르면 화면을 다시 만들지 않고 안내문·토글·미리보기를 그 자리에서 바꾼다 (선택 버튼의 스프링이 끊기지 않게).
@@ -951,8 +958,12 @@ public final class SettingsActivity extends Activity {
         korean.addView(choices);
         korean.addView(layoutPreview());
         korean.addView(layoutNote);
-        korean.addView(balancedRow);
-        korean.addView(keyArea);
+        // 두벌식 자판에는 자·모음 균형 레이아웃이 없다 (자음이 왼쪽, 모음이 오른쪽에 이미 모여 있다).
+        // 설정 검색의 목록은 앱 버전마다 한 번만 만들어 저장하므로, 그때는 두벌식 자판과 상관없이 넣는다.
+        if (!dubeolsik || harvesting) {
+            korean.addView(balancedRow);
+            korean.addView(keyArea);
+        }
 
         // 가로 모드일 때의 자판 모양(분리 키보드, 키보드 높이·글자 크기·세로 위치)을 세로 모드와 따로 정한다.
         LinearLayout landscape = section("가로 모드");
@@ -975,6 +986,10 @@ public final class SettingsActivity extends Activity {
         layoutKeys.addView(button("기능키 순서·유무 사용자화", v ->
                 startActivity(new Intent(this, BottomKeysEditorActivity.class))));
         layoutKeys.addView(note("맨 아래 줄 기능키의 순서와 유무를 바꿉니다."));
+        layoutKeys.addView(toggle("기호 자판 대신 숫자 패드 사용",
+                "기호 키(?123)를 누르면 기호 자판 대신 3×4 숫자 패드가 열립니다. "
+                        + "숫자 패드의 ?!@ 키로 기호 자판을, 가·ABC 키로 글자 자판을 엽니다.",
+                Prefs.NUMBER_PAD_SYMBOLS, prefs.numberPadForSymbols()));
 
         LinearLayout keyLayout = section("키 정렬");
         // 바꾸면 위의 미리보기도 바로 다시 그린다.
@@ -1046,6 +1061,15 @@ public final class SettingsActivity extends Activity {
         direction.addView(note("글자 키를 밀 때 위·아래로 인정되려면 세로로 움직인 거리가 가로로 움직인 거리의 이 비율을 넘어야 합니다. "
                 + "값이 클수록 위·아래 판정이 엄격해져 좌우로 밀 때 손가락이 처져도 좌우로 인식됩니다. "
                 + "기본값은 아래 150%, 위 120%입니다."));
+
+        LinearLayout dubeolsik = section("두벌식 자판");
+        dubeolsik.addView(toggle("두벌식 자판",
+                "자판 레이아웃에서 고른 배열과 상관없이 한글 자판을 표준 두벌식(ㅂㅈㄷㄱㅅㅛㅕㅑㅐㅔ)으로 보입니다. "
+                        + "끄면 고른 배열로 돌아갑니다.",
+                Prefs.LAB_DUBEOLSIK, prefs.koreanDubeolsik()));
+        dubeolsik.addView(note("Shift를 누르고 ㅂ·ㅈ·ㄷ·ㄱ·ㅅ·ㅐ·ㅔ를 치면 ㅃ·ㅉ·ㄸ·ㄲ·ㅆ·ㅒ·ㅖ가 들어갑니다. "
+                + "두벌식 자판에서는 Shift 키가 늘 보이고, 자·모음 균형 레이아웃과 모음 연속 탭(ㅏㅏ→ㅑ)은 쓰지 않습니다. "
+                + "밀어서 입력, 길게 눌러 입력, 단어 추천과 자동 수정은 그대로 쓸 수 있으며, 자동 수정은 두벌식의 키 위치로 이웃한 키를 잽니다."));
 
         LinearLayout large = section("대화면 별도 레이아웃");
         View largeGroup = subGroup(
@@ -1321,12 +1345,15 @@ public final class SettingsActivity extends Activity {
         splitOnly.add(box);
 
         String reachKey = edit.splitReachColumnKey();
-        box.addView(toggle("좌·우 균형 레이아웃",
-                "한글 자판의 왼쪽·오른쪽 묶음을 4열로 맞춥니다.",
-                edit.splitReachColumn(), on -> {
-                    prefs.raw().edit().putBoolean(reachKey, on).apply();
-                    refreshLayoutPreview();
-                }));
+        // 두벌식 자판은 영어 자판처럼 일반 배열을 가운데에서 나눠, 4열로 맞추지 않는다 (검색 목록에는 늘 넣는다).
+        if (!prefs.koreanDubeolsik() || harvesting) {
+            box.addView(toggle("좌·우 균형 레이아웃",
+                    "한글 자판의 왼쪽·오른쪽 묶음을 4열로 맞춥니다.",
+                    edit.splitReachColumn(), on -> {
+                        prefs.raw().edit().putBoolean(reachKey, on).apply();
+                        refreshLayoutPreview();
+                    }));
+        }
 
         // 스페이스바 잇기: 이었을 때만 하단 기능키 폭을 정한다.
         View fnWidth = subGroup(
@@ -1848,7 +1875,7 @@ public final class SettingsActivity extends Activity {
                 "⌫를 길게 누르고 있으면 계속 지웁니다. 끄면 한 글자씩만 지워집니다.",
                 Prefs.LONG_PRESS_DELETE, prefs.longPressDelete()));
         standard.addView(toggle("기호 키를 길게 눌러 이모지 창 열기",
-                "기호 키(숫자 자판의 ?123 포함)를 길게 누르면 이모지 창을 엽니다.",
+                "기호 키(숫자 패드의 ?!@·가·ABC 포함)를 길게 누르면 이모지 창을 엽니다.",
                 Prefs.MODE_KEY_LONG_PRESS, prefs.modeKeyLongPress()));
         View customGroup = subGroup(
                 button("기능키 길게 누르기 기능 편집", v ->
@@ -1858,7 +1885,7 @@ public final class SettingsActivity extends Activity {
         standard.setVisibility(custom ? View.GONE : View.VISIBLE);
         customGroup.setVisibility(custom ? View.VISIBLE : View.GONE);
         fn.addView(standard);
-        fn.addView(toggle("기능키 길게 누르기 기능 완전 사용자화",
+        fn.addView(toggle("🛠️ 기능키 길게 누르기 기능 완전 사용자화",
                 "Shift 키·기호 키·🌐︎·엔터 키·⌫를 길게 누를 때 실행할 기능을 직접 정합니다.",
                 custom, on -> {
                     prefs.raw().edit().putBoolean(Prefs.LONG_PRESS_CUSTOM, on).apply();
@@ -1879,7 +1906,8 @@ public final class SettingsActivity extends Activity {
                 "같은 자음을 빠르게 두 번 누르면 쌍자음을 입력합니다 (예: ㄱㄱ→ㄲ, ㅅㅅ→ㅆ). 기존 단모음 자판과 같은 방식이며, 밀어서 쌍자음과 함께 쓸 수 있습니다.",
                 Prefs.DOUBLE_TAP_CONSONANT, prefs.doubleTapConsonant(), doubleTapTime));
         input.addView(doubleTapTime);
-        input.addView(toggle("모음 연속 탭으로 이중모음", "같은 모음을 연달아 누르면 이중모음을 입력합니다 (예: ㅏㅏ→ㅑ, ㅗㅗ→ㅛ).",
+        input.addView(toggle("모음 연속 탭으로 이중모음", "같은 모음을 연달아 누르면 이중모음을 입력합니다 (예: ㅏㅏ→ㅑ, ㅗㅗ→ㅛ)."
+                        + (prefs.koreanDubeolsik() && !harvesting ? " 두벌식 자판(실험실)에서는 쓰지 않습니다." : ""),
                 Prefs.DOUBLE_TAP_VOWEL, prefs.doubleTapVowel()));
         input.addView(toggle("영어 자동 대문자", "문장 첫 글자를 대문자로 시작합니다.", Prefs.AUTO_CAP, prefs.autoCap()));
         input.addView(toggle("이메일 입력란은 영어로 시작",
@@ -1946,7 +1974,7 @@ public final class SettingsActivity extends Activity {
         standard.setVisibility(custom ? View.GONE : View.VISIBLE);
         customEdit.setVisibility(custom ? View.VISIBLE : View.GONE);
         swipe.addView(standard);
-        swipe.addView(toggle("밀어서 글자 입력 완전 사용자화", "모든 키를 위·아래·왼쪽·오른쪽으로 밀 때 입력할 글자를 직접 정합니다.",
+        swipe.addView(toggle("🛠️ 밀어서 글자 입력 완전 사용자화", "모든 키를 위·아래·왼쪽·오른쪽으로 밀 때 입력할 글자를 직접 정합니다.",
                 custom, on -> {
                     prefs.raw().edit().putBoolean(Prefs.SWIPE_CUSTOM, on).apply();
                     Ui.setVisibleAnimated(standard, !on);
@@ -2019,7 +2047,7 @@ public final class SettingsActivity extends Activity {
         standard.setVisibility(custom ? View.GONE : View.VISIBLE);
         customEdit.setVisibility(custom ? View.VISIBLE : View.GONE);
         keys.addView(standard);
-        keys.addView(toggle("기능키 밀어서 기능 완전 사용자화",
+        keys.addView(toggle("🛠️ 기능키 밀어서 기능 완전 사용자화",
                 "기호 키·🌐︎·스페이스바·엔터 키·"
                         + "⌫를 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 직접 정합니다.",
                 custom, on -> {
@@ -2056,7 +2084,7 @@ public final class SettingsActivity extends Activity {
         barStandard.setVisibility(barCustom ? View.GONE : View.VISIBLE);
         barCustomEdit.setVisibility(barCustom ? View.VISIBLE : View.GONE);
         bar.addView(barStandard);
-        bar.addView(toggle("도구 막대 밀어서 기능 완전 사용자화",
+        bar.addView(toggle("🛠️ 도구 막대 밀어서 기능 완전 사용자화",
                 "도구 막대와 도구 막대의 버튼을 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 직접 정합니다.",
                 barCustom, on -> {
                     prefs.raw().edit().putBoolean(Prefs.SWIPE_TOOLBAR_CUSTOM, on).apply();
@@ -2101,7 +2129,7 @@ public final class SettingsActivity extends Activity {
         boardStandard.setVisibility(boardCustom ? View.GONE : View.VISIBLE);
         boardCustomEdit.setVisibility(boardCustom ? View.VISIBLE : View.GONE);
         board.addView(boardStandard);
-        board.addView(toggle("키보드 밀기 완전 사용자화",
+        board.addView(toggle("🛠️ 키보드 밀기 완전 사용자화",
                 "자판을 한 손가락·두 손가락으로 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 직접 정합니다.",
                 boardCustom, on -> {
                     prefs.raw().edit().putBoolean(Prefs.SWIPE_KEYBOARD_CUSTOM, on).apply();
