@@ -32,6 +32,15 @@ public final class LongPressActions {
             }
         }
 
+        /**
+         * 켠 키의 칸만 편집 화면에 보인다: 언어 전환 키는 '기능키 순서·유무 사용자화'에서 끄면 감춘다. Shift 키는 영어 자판에,
+         * 기호 키·엔터 키·⌫는 숫자 패드(숫자 입력란 등)에 늘 있어 그 설정이 쓰이므로 늘 보인다.
+         */
+        @Override
+        public boolean shown(com.alternative_studios.newswipe.Prefs prefs, int slot) {
+            return prefs == null || slot != GLOBE || prefs.bottomKeyShown(BottomKeys.GLOBE);
+        }
+
         /** 모르는 값은 기본값으로, 밀어야 하는 '커서 자유 이동'은 없음으로 본다. */
         @Override
         public String resolve(String stored, int slot, int dir) {

@@ -196,4 +196,51 @@ public class ExtraBottomKeysTest {
         KeyboardLayout.Row bottom = KeyboardLayout.english(view(new FakeSp(), Prefs.PROFILE_PORTRAIT)).rows[3];
         assertEquals(5, bottom.keys.length);
     }
+
+    @Test
+    public void longPressEditorHidesOnlyTheGlobeKeyWhenOff() throws Exception {
+        FakeSp sp = new FakeSp();
+        Prefs p = view(sp, Prefs.PROFILE_PORTRAIT);
+        SwipeSpec spec = LongPressActions.SPEC;
+        for (int slot = 0; slot < spec.slotCount(); slot++) assertTrue(spec.shown(p, slot));
+        sp.m.put(Prefs.LANGUAGE_KEY_HIDDEN, true);
+        sp.m.put(Prefs.MODE_KEY_HIDDEN, true);
+        sp.m.put(Prefs.ENTER_KEY_HIDDEN, true);
+        sp.m.put(Prefs.DELETE_KEY_HIDDEN, true);
+        sp.m.put(Prefs.KOREAN_SHIFT_HIDDEN, true);
+        assertFalse(spec.shown(p, LongPressActions.GLOBE));
+        // Shift는 영어 자판에, 기호 키·엔터·⌫는 숫자 패드에 늘 있다
+        for (int slot : new int[]{LongPressActions.SHIFT, LongPressActions.MODE, LongPressActions.ENTER,
+                LongPressActions.DELETE}) {
+            assertTrue(slot + "", spec.shown(p, slot));
+        }
+        assertEquals(1, count(KeyboardLayout.english(p), Key.SHIFT));
+    }
+
+    @Test
+    public void toolbarEditorShowsOnlyButtonsThatAreOn() throws Exception {
+        FakeSp sp = new FakeSp();
+        Prefs p = view(sp, Prefs.PROFILE_PORTRAIT);
+        SwipeSpec spec = ToolbarSwipes.SPEC;
+        for (int slot = 0; slot < spec.slotCount(); slot++) {
+            assertTrue(slot + "", spec.shown(p, slot));
+            // 칸 이름이 도구 막대 버튼 ID와 같다 (막대 자체 제외)
+            if (slot != ToolbarSwipes.BAR) {
+                assertTrue(java.util.Arrays.asList(ToolbarButtons.ALL).contains(spec.slotName(slot)));
+            }
+        }
+        sp.m.put(Prefs.TOOL_CLIPBOARD, false);
+        sp.m.put(Prefs.VOICE_KEY, false);
+        assertFalse(spec.shown(p, ToolbarSwipes.CLIPBOARD));
+        assertFalse(spec.shown(p, ToolbarSwipes.VOICE));
+        assertTrue(spec.shown(p, ToolbarSwipes.EMOJI));
+        assertTrue(spec.shown(p, ToolbarSwipes.BAR));
+        // 도구 막대를 끄면 버튼은 모두 감추고 막대 자체만 남긴다 (외장 키보드의 '도구 막대 보이기'를 켰으면 버튼도 보인다)
+        sp.m.put(Prefs.TOOLBAR, false);
+        for (int slot = 1; slot < spec.slotCount(); slot++) assertFalse(slot + "", spec.shown(p, slot));
+        assertTrue(spec.shown(p, ToolbarSwipes.BAR));
+        sp.m.put(Prefs.HW_TOOLBAR, true);
+        assertTrue(spec.shown(p, ToolbarSwipes.EMOJI));
+        assertFalse(spec.shown(p, ToolbarSwipes.CLIPBOARD));
+    }
 }
