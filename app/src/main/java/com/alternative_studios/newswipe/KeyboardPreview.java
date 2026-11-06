@@ -773,13 +773,12 @@ final class KeyboardPreview extends FrameLayout {
                         fill.setColor(withAlpha(accent, 0.12f * areaAlpha));
                         c.drawRoundRect(area, rr, rr, fill);
                     }
-                    // 이름표: 테두리 위 왼쪽에 걸친 작은 알약 (가운데는 높이 손잡이 자리라 비켜 둔다).
+                    // 이름표: 영역 한가운데의 작은 알약 (높이 손잡이는 영역 위 가장자리에 있어 겹치지 않는다).
                     String name = AREA_NAMES[a];
                     float tw = areaLabel.measureText(name), th = fm.descent - fm.ascent;
-                    float cx = area.left + Ui.dp(ctx, 14) + tw / 2f + Ui.dp(ctx, 7), cy = area.top;
-                    float ph = Ui.dp(ctx, 7), pv = Ui.dp(ctx, 2);
+                    float cx = area.centerX(), cy = area.centerY();
+                    float ph = Ui.dp(ctx, 8), pv = Ui.dp(ctx, 3);
                     tmp.set(cx - tw / 2 - ph, cy - th / 2 - pv, cx + tw / 2 + ph, cy + th / 2 + pv);
-                    if (tmp.top < 0) tmp.offset(0, -tmp.top);   // 맨 위 영역은 잘리지 않게 안으로
                     fill.setColor(withAlpha(accent, areaAlpha));
                     c.drawRoundRect(tmp, tmp.height() / 2, tmp.height() / 2, fill);
                     areaLabel.setColor(withAlpha(theme.onAccent, areaAlpha));
