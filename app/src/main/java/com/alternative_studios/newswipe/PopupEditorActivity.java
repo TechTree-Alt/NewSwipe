@@ -151,6 +151,8 @@ public final class PopupEditorActivity extends Activity {
         // 실제 자판과 비슷한 위치에 놓는다: 줄마다 앞/뒤 빈 칸(칸 단위)을 두어 키 위치를 맞춘다.
         boolean noShift = korean && prefs.koreanNewSwipe();   // Shift 자리가 없는 NewSwipe 배열 (NewSwipe 단모음)
         boolean seven = korean && KeyboardLayout.koreanColumns(prefs) == 7;   // 한 줄 7칸 (NewSwipe 단모음)
+        // 실험실 두벌식 자판은 영어 자판과 같은 모양 (10 · 9 · Shift+7+⌫)이라 영어 자판의 배치를 쓴다.
+        boolean qwerty = !korean || KeyboardLayout.dubeolsik(prefs);
         String[][] rows = KeyboardLayout.editableRows(korean, prefs);
         int columns = korean ? KeyboardLayout.koreanColumns(prefs) : 10;
         repeatChars = repeatMode ? java.util.Collections.emptySet() : prefs.repeatChars();
@@ -174,9 +176,9 @@ public final class PopupEditorActivity extends Activity {
             float lead, between = 0;
             if (r == rows.length - 1) {
                 // 맨 아래 줄: 쉼표는 지구본 키 왼쪽, 온점은 스페이스바 오른쪽 (칸 중심을 실제 키 중심에 맞춘다)
-                lead = korean ? (seven ? 0.96f : 1.1f) : 1.5f;
-                between = korean ? (seven ? 3.33f : 3.8f) : 5.0f;
-            } else if (korean) {
+                lead = !qwerty ? (seven ? 0.96f : 1.1f) : 1.5f;
+                between = !qwerty ? (seven ? 3.33f : 3.8f) : 5.0f;
+            } else if (!qwerty) {
                 lead = r == 2 && !noShift ? 1f : 0f;   // 셋째 줄은 앞뒤에 Shift/지우기 자리 (7칸 배열은 없음)
             } else {
                 lead = r == 0 ? 0f : r == 1 ? 0.5f : 1.5f;   // 둘째 줄은 가운데 정렬, 셋째 줄은 Shift/지우기 자리

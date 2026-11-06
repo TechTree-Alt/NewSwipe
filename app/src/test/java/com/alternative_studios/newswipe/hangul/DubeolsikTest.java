@@ -58,4 +58,34 @@ public class DubeolsikTest {
         assertEquals("까닭", type("Rkekfr"));
         assertEquals("있어 봐", type("dlTdj qhk"));
     }
+
+    @Test
+    public void screenRowsAndShift() {
+        String[][] rows = Dubeolsik.rows();
+        assertEquals("ㅂㅈㄷㄱㅅㅛㅕㅑㅐㅔ", String.join("", rows[0]));
+        assertEquals("ㅁㄴㅇㄹㅎㅗㅓㅏㅣ", String.join("", rows[1]));
+        assertEquals("ㅋㅌㅊㅍㅠㅜㅡ", String.join("", rows[2]));
+        assertEquals('ㅃ', Dubeolsik.shifted('ㅂ'));
+        assertEquals('ㅆ', Dubeolsik.shifted('ㅅ'));
+        assertEquals('ㅒ', Dubeolsik.shifted('ㅐ'));
+        assertEquals('ㅖ', Dubeolsik.shifted('ㅔ'));
+        assertEquals('ㅗ', Dubeolsik.shifted('ㅗ'));   // 단모음 자판의 Shift(ㅗ → ㅛ)와 다르다
+        assertEquals('ㅏ', Dubeolsik.shifted('ㅏ'));
+        assertEquals('ㅋ', Dubeolsik.shifted('ㅋ'));
+        assertEquals('1', Dubeolsik.shifted('1'));
+    }
+
+    /** 화면 두벌식 자판은 모음 연속 탭을 끈 채로 조합한다: 같은 모음을 두 번 친 그대로 둔다. */
+    @Test
+    public void repeatedVowelTapStaysWithoutDoubleTap() {
+        HangulComposer h = new HangulComposer();
+        h.setDoubleTapVowel(false);
+        for (char c : "ㅇㅗㅗ".toCharArray()) h.input(c, true);
+        h.flush();
+        assertEquals("오ㅗ", h.takeCommit());
+        // ㅗ 다음 ㅏ는 그대로 겹모음 (두벌식으로 '과'를 치는 법)
+        for (char c : "ㄱㅗㅏ".toCharArray()) h.input(c, true);
+        h.flush();
+        assertEquals("과", h.takeCommit());
+    }
 }

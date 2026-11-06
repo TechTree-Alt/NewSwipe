@@ -8,7 +8,8 @@ package com.alternative_studios.newswipe.suggest;
  *       ㄱ↔ㅋ·ㄷ↔ㅌ·ㅂ↔ㅍ·ㅈ↔ㅊ은 NewSwipe 단모음처럼 오른쪽으로 밀어 거센소리를 넣는 자판에서만 같은 키다 (8열 단모음에서는
  *       ㅋ·ㅌ·ㅊ·ㅍ이 셋째 줄의 다른 키라 자판 거리로 잰다).</li>
  *   <li>자판에서 바로 옆 키: 싸다. 자판 배열은 {@link #setRows}로 받는다 (기본은 8열 단모음). 대각선 키도 이웃으로 치지만,
- *       대각선 키는 거의 잘못 누르지 않으므로 대각선 없이 재는 비용({@link #distanceDirect})을 따로 둔다.</li>
+ *       대각선 키는 거의 잘못 누르지 않으므로 대각선 없이 재는 비용({@link #distanceDirect})을 따로 둔다.
+ *       두벌식처럼 줄이 엇갈린 자판은 줄마다 시작 위치를 받아, 실제로 맞닿은 키만 이웃으로 본다.</li>
  *   <li>입력한 글자가 된소리(ㄲ·ㄸ·ㅃ·ㅆ·ㅉ)면 다른 글자로 바꾸는 비용이 비싸다: 된소리는 밀거나 Shift를 눌러 일부러 친다
  *       (반대로 예사소리를 친 것을 된소리로 바꾸는 것은 싸다).</li>
  *   <li>그 밖의 바꾸기, 빠뜨리기, 더 치기: 비싸다. 같은 키를 한 번 더 친 것은 덜 비싸다.</li>
@@ -71,11 +72,27 @@ public final class TypoModel {
             "ㄱㄳ", "ㄴㄵㄶ", "ㄹㄺㄻㄼㄽㄾㄿㅀ", "ㅂㅄ",
             "ㅏㅑㅘ", "ㅓㅕㅝ", "ㅗㅛㅘㅚㅙ", "ㅜㅠㅝㅟㅞ", "ㅐㅒㅔㅖㅙㅞ", "ㅚㅙㅞㅟ", "ㅡㅢ", "ㅣㅢㅚㅟ",
     };
+    /**
+     * ㅑ·ㅕ·ㅛ·ㅠ 키가 따로 있는 자판(두벌식)의 VARIANTS: ㅏ↔ㅑ 같은 짝은 같은 키가 아니라 옆 키라 자판 거리(NEIGHBOR)로 잰다.
+     * 쌍자음·ㅒ·ㅖ는 Shift로 같은 키, 겹받침·겹모음과 소리가 같은 모음은 다른 자판과 같다.
+     */
+    private static final String[] VARIANTS_IOTIZED_KEYS = {
+            "ㄱㄲ", "ㄷㄸ", "ㅂㅃ", "ㅅㅆ", "ㅈㅉ",
+            "ㄱㄳ", "ㄴㄵㄶ", "ㄹㄺㄻㄼㄽㄾㄿㅀ", "ㅂㅄ",
+            "ㅏㅘ", "ㅓㅝ", "ㅗㅘㅚㅙ", "ㅜㅝㅟㅞ", "ㅐㅒㅔㅖㅙㅞ", "ㅚㅙㅞㅟ", "ㅡㅢ", "ㅣㅢㅚㅟ",
+    };
     /** 오른쪽으로 밀어 거센소리를 넣는 자판(NewSwipe 단모음)에서 같은 키에서 나오는 글자. */
     private static final String[] ASPIRATE_SWIPE = {"ㄱㄲㅋ", "ㄷㄸㅌ", "ㅂㅃㅍ", "ㅈㅉㅊ"};
     /** 한 키에서 (밀기로) 나오는 글자들. 이웃한 키끼리는 이 글자들도 서로 이웃으로 본다 (ㅓ 옆의 ㅗ → ㅕ 옆의 ㅛ). */
     private static final String[] KEY_FAMILY = {
             "ㄱㄲ", "ㄷㄸ", "ㅂㅃ", "ㅅㅆ", "ㅈㅉ", "ㅏㅑ", "ㅓㅕ", "ㅗㅛㅘㅚㅙ", "ㅜㅠㅝㅟㅞ", "ㅐㅒ", "ㅔㅖ", "ㅡㅢ",
+    };
+    /**
+     * ㅑ·ㅕ·ㅛ·ㅠ 키가 따로 있는 자판(두벌식)의 KEY_FAMILY: ㅣ계 이중모음은 제 자리의 키라 단모음 키에 묶지 않는다
+     * (ㅏ 옆의 ㅣ를 ㅑ 옆으로 치지 않는다). 쌍자음과 ㅒ·ㅖ는 Shift로 같은 키에서 나온다.
+     */
+    private static final String[] KEY_FAMILY_IOTIZED_KEYS = {
+            "ㄱㄲ", "ㄷㄸ", "ㅂㅃ", "ㅅㅆ", "ㅈㅉ", "ㅗㅘㅚㅙ", "ㅜㅝㅟㅞ", "ㅐㅒ", "ㅔㅖ", "ㅡㅢ",
     };
     private static final String[][] DEFAULT_ROWS = {
             {"ㅂ", "ㅈ", "ㄷ", "ㄱ", "ㅅ", "ㅗ", "ㅐ", "ㅔ"},
@@ -86,6 +103,7 @@ public final class TypoModel {
     /** 호환 자모 0x3131~0x3163 쌍의 비용 표 (51×51). direct는 대각선 키를 이웃으로 치지 않은 표. */
     private final float[] table = new float[51 * 51], direct = new float[51 * 51];
     private boolean aspirateSwipe;
+    private String[] families = KEY_FAMILY;
     private float[] r0 = new float[66], r1 = new float[66], r2 = new float[66];
 
     public TypoModel() {
@@ -103,7 +121,24 @@ public final class TypoModel {
      * 자판 (NewSwipe 단모음): 그 짝을 같은 키의 다른 동작으로 본다.
      */
     public synchronized void setRows(String[][] rows, boolean aspirateSwipe) {
+        setRows(rows, null, aspirateSwipe, false);
+    }
+
+    /** 엇갈린 줄의 이웃 키: 가로 거리가 이보다 작으면 이웃 (키 한 칸 단위, 반듯한 격자에서는 바로 옆·대각선 칸). */
+    private static final float NEAR = 1.01f;
+    /** 위·아래 줄에서 가로 거리가 이보다 작으면 대각선이 아닌 바로 위·아래 키 (엇갈린 줄은 반 칸 비낀 두 키 모두). */
+    private static final float STRAIGHT = 0.51f;
+
+    /**
+     * {@link #setRows(String[][], boolean)}와 같되, offsets[r]는 r번째 줄의 첫 칸이 놓인 가로 위치다 (키 한 칸 단위, null이면
+     * 모두 0인 반듯한 격자). 이웃은 같은 줄의 양옆 키와, 위·아래 줄에서 가로 거리가 한 칸 이내인 키다. 그중 거리가 반 칸 이내면
+     * 바로 위·아래 키로 본다 (두벌식의 ㅁ은 ㅂ·ㅈ 사이 아래에 있어 둘 다 바로 위 키, ㅋ은 ㄴ 바로 아래이고 ㅁ·ㅇ이 대각선).
+     * iotizedKeys = ㅑ·ㅕ·ㅛ·ㅠ 키가 따로 있는 자판 (두벌식): 이 글자들을 ㅏ·ㅓ·ㅗ·ㅜ 키의 다른 동작으로 묶지 않고, 제 자리의
+     * 이웃을 쓴다.
+     */
+    public synchronized void setRows(String[][] rows, float[] offsets, boolean aspirateSwipe, boolean iotizedKeys) {
         this.aspirateSwipe = aspirateSwipe;
+        this.families = iotizedKeys ? KEY_FAMILY_IOTIZED_KEYS : KEY_FAMILY;
         int n = 51;
         for (int a = 0; a < n; a++) {
             for (int b = 0; b < n; b++) {
@@ -115,13 +150,17 @@ public final class TypoModel {
             for (int r = 0; r < rows.length; r++) {
                 for (int c = 0; c < rows[r].length; c++) {
                     for (int r2 = Math.max(0, r - 1); r2 <= Math.min(rows.length - 1, r + 1); r2++) {
-                        for (int c2 = c - 1; c2 <= c + 1; c2++) {
-                            if (c2 < 0 || c2 >= rows[r2].length || (r2 == r && c2 == c)) continue;
+                        for (int c2 = 0; c2 < rows[r2].length; c2++) {
+                            if (r2 == r && c2 == c) continue;
+                            // 두 키 사이의 가로 거리 (칸 단위). 같은 줄은 바로 양옆만 이웃이다.
+                            float dx = Math.abs(c2 + offset(offsets, r2) - c - offset(offsets, r));
+                            if (r2 == r ? Math.abs(c2 - c) != 1 : dx > NEAR) continue;
+                            boolean straight = r2 == r || dx < STRAIGHT;
                             String fa = family(rows[r][c]), fb = family(rows[r2][c2]);
                             for (int i = 0; i < fa.length(); i++) {
                                 for (int j = 0; j < fb.length(); j++) {
                                     set(table, String.valueOf(fa.charAt(i)), String.valueOf(fb.charAt(j)), NEIGHBOR);
-                                    if (r2 == r || c2 == c) {
+                                    if (straight) {
                                         set(direct, String.valueOf(fa.charAt(i)), String.valueOf(fb.charAt(j)), NEIGHBOR);
                                     }
                                 }
@@ -131,7 +170,8 @@ public final class TypoModel {
                 }
             }
         }
-        for (String[] groups : aspirateSwipe ? new String[][]{VARIANTS, ASPIRATE_SWIPE} : new String[][]{VARIANTS}) {
+        String[] variants = iotizedKeys ? VARIANTS_IOTIZED_KEYS : VARIANTS;
+        for (String[] groups : aspirateSwipe ? new String[][]{variants, ASPIRATE_SWIPE} : new String[][]{variants}) {
             for (String g : groups) {
                 for (int i = 0; i < g.length(); i++) {
                     for (int j = 0; j < g.length(); j++) {
@@ -153,9 +193,13 @@ public final class TypoModel {
         }
     }
 
-    private static String family(String key) {
+    private static float offset(float[] offsets, int row) {
+        return offsets == null || row >= offsets.length ? 0f : offsets[row];
+    }
+
+    private String family(String key) {
         if (key == null || key.length() != 1) return "";
-        for (String f : KEY_FAMILY) if (f.charAt(0) == key.charAt(0)) return f;
+        for (String f : families) if (f.charAt(0) == key.charAt(0)) return f;
         return key;
     }
 

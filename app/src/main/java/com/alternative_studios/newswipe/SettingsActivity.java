@@ -446,6 +446,7 @@ public final class SettingsActivity extends Activity {
             {"lab", "일본어 자판", "일본어 히라가나 가타카나 한자 변환 플릭 로마자 사전 팩 japanese"},
             {"lab", "반각 공백 쓰기", "일본어 스페이스 전각 공백 반각 공백 띄어쓰기"},
             {"lab", "중국어 자판", "중국어 병음 한자 간체 사전 팩 chinese pinyin"},
+            {"lab", "두벌식 자판", "두벌식 표준 쿼티 qwerty 자판 배열 레이아웃 Shift 쌍자음"},
             {"lab", "아래로 밀기 엄격도", "스와이프 방향 판정 민감도"},
             {"lab", "위로 밀기 엄격도", "스와이프 방향 판정 민감도"},
             {"lab", "대화면 기준", "태블릿 폴더블 큰 화면 dp"},
@@ -922,6 +923,11 @@ public final class SettingsActivity extends Activity {
     /** 자판 레이아웃: 한글 자판 배열을 고르고, 고른 배열을 실제 키보드 뷰로 미리 보여 준다. */
     private void buildKeyboardLayout() {
         LinearLayout korean = section("한글 자판 배열");
+        boolean dubeolsik = prefs.koreanDubeolsik();
+        if (dubeolsik) {
+            korean.addView(note("실험실의 '두벌식 자판'이 켜져 있어 아래에서 고른 배열 대신 두벌식으로 보입니다. "
+                    + "고른 배열은 두벌식 자판을 끄면 쓰입니다."));
+        }
         String[] koreanLayouts = {Prefs.KOREAN_LAYOUT_8, Prefs.KOREAN_LAYOUT_D7};
         int selected = prefs.koreanD7() ? 1 : 0;
         // 배열을 고르면 화면을 다시 만들지 않고 안내문·토글·미리보기를 그 자리에서 바꾼다 (선택 버튼의 스프링이 끊기지 않게).
@@ -951,8 +957,11 @@ public final class SettingsActivity extends Activity {
         korean.addView(choices);
         korean.addView(layoutPreview());
         korean.addView(layoutNote);
-        korean.addView(balancedRow);
-        korean.addView(keyArea);
+        if (!dubeolsik) {
+            // 두벌식 자판에는 자·모음 균형 레이아웃이 없다 (자음이 왼쪽, 모음이 오른쪽에 이미 모여 있다).
+            korean.addView(balancedRow);
+            korean.addView(keyArea);
+        }
 
         // 가로 모드일 때의 자판 모양(분리 키보드, 키보드 높이·글자 크기·세로 위치)을 세로 모드와 따로 정한다.
         LinearLayout landscape = section("가로 모드");
@@ -1046,6 +1055,15 @@ public final class SettingsActivity extends Activity {
         direction.addView(note("글자 키를 밀 때 위·아래로 인정되려면 세로로 움직인 거리가 가로로 움직인 거리의 이 비율을 넘어야 합니다. "
                 + "값이 클수록 위·아래 판정이 엄격해져 좌우로 밀 때 손가락이 처져도 좌우로 인식됩니다. "
                 + "기본값은 아래 150%, 위 120%입니다."));
+
+        LinearLayout dubeolsik = section("두벌식 자판");
+        dubeolsik.addView(toggle("두벌식 자판",
+                "자판 레이아웃에서 고른 배열과 상관없이 한글 자판을 표준 두벌식(ㅂㅈㄷㄱㅅㅛㅕㅑㅐㅔ)으로 보입니다. "
+                        + "끄면 고른 배열로 돌아갑니다.",
+                Prefs.LAB_DUBEOLSIK, prefs.koreanDubeolsik()));
+        dubeolsik.addView(note("Shift를 누르고 ㅂ·ㅈ·ㄷ·ㄱ·ㅅ·ㅐ·ㅔ를 치면 ㅃ·ㅉ·ㄸ·ㄲ·ㅆ·ㅒ·ㅖ가 들어갑니다. "
+                + "두벌식 자판에서는 Shift 키가 늘 보이고, 자·모음 균형 레이아웃과 모음 연속 탭(ㅏㅏ→ㅑ)은 쓰지 않습니다. "
+                + "밀어서 입력, 길게 눌러 입력, 단어 추천과 자동 수정은 그대로 쓸 수 있으며, 자동 수정은 두벌식의 키 위치로 이웃한 키를 잽니다."));
 
         LinearLayout large = section("대화면 별도 레이아웃");
         View largeGroup = subGroup(
@@ -1321,12 +1339,14 @@ public final class SettingsActivity extends Activity {
         splitOnly.add(box);
 
         String reachKey = edit.splitReachColumnKey();
-        box.addView(toggle("좌·우 균형 레이아웃",
-                "한글 자판의 왼쪽·오른쪽 묶음을 4열로 맞춥니다.",
-                edit.splitReachColumn(), on -> {
-                    prefs.raw().edit().putBoolean(reachKey, on).apply();
-                    refreshLayoutPreview();
-                }));
+        if (!prefs.koreanDubeolsik()) {   // 두벌식 자판은 영어 자판처럼 일반 배열을 가운데에서 나눠, 4열로 맞추지 않는다
+            box.addView(toggle("좌·우 균형 레이아웃",
+                    "한글 자판의 왼쪽·오른쪽 묶음을 4열로 맞춥니다.",
+                    edit.splitReachColumn(), on -> {
+                        prefs.raw().edit().putBoolean(reachKey, on).apply();
+                        refreshLayoutPreview();
+                    }));
+        }
 
         // 스페이스바 잇기: 이었을 때만 하단 기능키 폭을 정한다.
         View fnWidth = subGroup(
@@ -1879,7 +1899,8 @@ public final class SettingsActivity extends Activity {
                 "같은 자음을 빠르게 두 번 누르면 쌍자음을 입력합니다 (예: ㄱㄱ→ㄲ, ㅅㅅ→ㅆ). 기존 단모음 자판과 같은 방식이며, 밀어서 쌍자음과 함께 쓸 수 있습니다.",
                 Prefs.DOUBLE_TAP_CONSONANT, prefs.doubleTapConsonant(), doubleTapTime));
         input.addView(doubleTapTime);
-        input.addView(toggle("모음 연속 탭으로 이중모음", "같은 모음을 연달아 누르면 이중모음을 입력합니다 (예: ㅏㅏ→ㅑ, ㅗㅗ→ㅛ).",
+        input.addView(toggle("모음 연속 탭으로 이중모음", "같은 모음을 연달아 누르면 이중모음을 입력합니다 (예: ㅏㅏ→ㅑ, ㅗㅗ→ㅛ)."
+                        + (prefs.koreanDubeolsik() ? " 두벌식 자판(실험실)에서는 쓰지 않습니다." : ""),
                 Prefs.DOUBLE_TAP_VOWEL, prefs.doubleTapVowel()));
         input.addView(toggle("영어 자동 대문자", "문장 첫 글자를 대문자로 시작합니다.", Prefs.AUTO_CAP, prefs.autoCap()));
         input.addView(toggle("이메일 입력란은 영어로 시작",
