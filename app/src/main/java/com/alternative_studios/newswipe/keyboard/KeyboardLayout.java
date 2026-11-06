@@ -772,6 +772,38 @@ public final class KeyboardLayout {
         return new KeyboardLayout(NUMBER, 4, rows);
     }
 
+    /** 기호 자판에서 3×4 숫자 패드를 여는 키의 글자. */
+    public static final String NUMBER_PAD_LABEL = "123";
+
+    /**
+     * 기호 자판의 숫자 패드 키로 여는 3×4 숫자 패드: 숫자 입력란의 자판({@link #number()})과 같은 배치에, 왼쪽에 한 줄을 더해
+     * 글자 자판으로 돌아가는 키(lettersLabel: 가·ABC 등), 연 기호 자판으로 돌아가는 키(symbolsLabel), 쉼표·온점을 둔다.
+     * <pre>
+     *  가    1  2  3  -
+     *  ?123  4  5  6  ␣
+     *  ,     7  8  9  ⌫
+     *  .     *  0  #  ↵
+     * </pre>
+     * 종류는 NUMBER라 숫자 입력란의 자판과 같은 모습(큰 숫자, ␣ 표시)으로 그린다.
+     */
+    public static KeyboardLayout numberPad(String symbolsLabel, String lettersLabel) {
+        KeyboardLayout pad = number();
+        Key[] left = {
+                fn(Key.TO_LETTERS, lettersLabel, 1f),
+                fn(Key.TO_SYMBOLS, symbolsLabel, 1f),
+                fnChar(",", COMMA_POPUP),
+                fnChar(".", PERIOD_POPUP),
+        };
+        List<Row> rows = new ArrayList<>();
+        for (int r = 0; r < pad.rows.length; r++) {
+            Key[] keys = new Key[pad.rows[r].keys.length + 1];
+            keys[0] = left[r];
+            System.arraycopy(pad.rows[r].keys, 0, keys, 1, pad.rows[r].keys.length);
+            rows.add(new Row(pad.rows[r].height, keys));
+        }
+        return new KeyboardLayout(NUMBER, pad.columns + 1, rows);
+    }
+
     // ---------------------------------------------------------------- 도우미
 
     private static Row numberRow(Prefs prefs) {
@@ -982,7 +1014,7 @@ public final class KeyboardLayout {
      * 기호 키·엔터 키는 1.5칸, 나머지는 1칸이고 (격자 정렬이면 모두 한글 키 한 칸), 스페이스바는 남는 폭을 모두 쓴다.
      * 스페이스바를 없앴으면 남은 키들이 같은 비율로 늘어나 줄을 채운다.
      *
-     * @param emojiKey 지구본 자리에 이모지 키를 둔다 (기호 자판). 지구본 키를 없애면 이모지 키도 함께 없어진다.
+     * @param emojiKey 지구본 자리에 이모지 키(또는 설정에 따라 숫자 패드 키)를 둔다 (기호 자판). 지구본 키를 없애면 함께 없어진다.
      */
     private static Row spaceRow(int modeType, String modeLabel, Prefs prefs, boolean emojiKey) {
         return spaceRow(modeType, modeLabel, prefs, emojiKey, 0f, SPACE_ROW_UNITS);
@@ -1039,7 +1071,12 @@ public final class KeyboardLayout {
                     k = slotChar(",", prefs, popupFor(prefs, true, ",", COMMA_POPUP), narrowW);
                     break;
                 case BottomKeys.GLOBE:
-                    k = fn(emojiKey ? Key.EMOJI : Key.LANGUAGE, "", narrowW);
+                    // 기호 자판에서는 지구본 자리에 이모지 키나 (고르면) 3×4 숫자 패드 키를 둔다.
+                    if (emojiKey && prefs != null && prefs.symbolNumberPad()) {
+                        k = fn(Key.NUMBER_PAD, NUMBER_PAD_LABEL, narrowW);
+                    } else {
+                        k = fn(emojiKey ? Key.EMOJI : Key.LANGUAGE, "", narrowW);
+                    }
                     break;
                 case BottomKeys.PERIOD:
                     k = slotChar(".", prefs, popupFor(prefs, true, ".", periodPopup(periodComma)), narrowW);

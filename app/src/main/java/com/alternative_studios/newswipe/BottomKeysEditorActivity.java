@@ -218,6 +218,29 @@ public final class BottomKeysEditorActivity extends Activity {
         return row;
     }
 
+    /**
+     * 기호 자판에서 언어 전환 키 자리에 놓을 키: 이모지 키(이모지 창) 또는 숫자 패드 키(3×4 숫자 패드).
+     * 숫자 패드에는 연 기호 자판으로 돌아가는 키와 글자 자판으로 돌아가는 키가 있다.
+     */
+    private View symbolGlobeChoice() {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(0, Ui.dp(this, 8), Ui.dp(this, 10), Ui.dp(this, 6));
+        box.addView(text("기호 자판에서 이 자리의 키", 14, textColor));
+        LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        clp.topMargin = Ui.dp(this, 6);
+        box.addView(Ui.choiceRow(this, new String[]{"이모지 키", "숫자 패드 키 (123)"}, prefs.symbolNumberPad() ? 1 : 0,
+                accentColor, onAccentColor, textColor, hintColor, 0,
+                i -> prefs.raw().edit().putString(Prefs.SYMBOL_GLOBE_KEY,
+                        i == 1 ? Prefs.SYMBOL_GLOBE_NUMPAD : Prefs.SYMBOL_GLOBE_EMOJI).apply()), clp);
+        TextView note = text("숫자 패드 키를 누르면 3×4 숫자 패드가 열립니다. 숫자 패드의 ?123(또는 =\\<)은 연 기호 자판으로, "
+                + "가·ABC는 글자 자판으로 바로 돌아갑니다.", 12, hintColor);
+        note.setPadding(0, Ui.dp(this, 6), 0, 0);
+        box.addView(note);
+        return box;
+    }
+
     /** 쉼표·온점 키가 입력할 한 글자를 적는 대화상자. */
     private void editChar(String slot, Runnable done) {
         android.widget.EditText input = new android.widget.EditText(this);
@@ -360,6 +383,11 @@ public final class BottomKeysEditorActivity extends Activity {
             edit.setOrientation(LinearLayout.VERTICAL);
             edit.addView(charButton(id, nameView));
             charGroup = subGroup(0, edit);
+            charGroup.setVisibility(prefs.bottomKeyShown(id) ? View.VISIBLE : View.GONE);
+            texts.addView(charGroup);
+        } else if (BottomKeys.GLOBE.equals(id)) {
+            // 언어 전환 키는 켜면 하위 항목으로 기호 자판에서 이 자리에 놓을 키(이모지 키·숫자 패드 키)를 고른다.
+            charGroup = subGroup(0, symbolGlobeChoice());
             charGroup.setVisibility(prefs.bottomKeyShown(id) ? View.VISIBLE : View.GONE);
             texts.addView(charGroup);
         }
