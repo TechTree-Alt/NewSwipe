@@ -107,9 +107,10 @@ public class ExtraBottomKeysTest {
     @Test
     public void extraKeysHaveTheirOwnFunctionSwipeSlots() {
         int[] slots = {FunctionSwipes.EMOJI_KEY, FunctionSwipes.CLIPBOARD, FunctionSwipes.CURSOR, FunctionSwipes.VOICE};
+        int[] lp = {LongPressActions.EMOJI_KEY, LongPressActions.CLIPBOARD, LongPressActions.CURSOR, LongPressActions.VOICE};
         for (int i = 0; i < TYPES.length; i++) {
             assertEquals(slots[i], FunctionSwipes.slotOf(TYPES[i]));
-            assertEquals(-1, LongPressActions.slotOf(TYPES[i]));   // 길게 누르기 사용자화의 대상은 아니다
+            assertEquals(lp[i], LongPressActions.slotOf(TYPES[i]));
         }
     }
 
@@ -202,7 +203,16 @@ public class ExtraBottomKeysTest {
         FakeSp sp = new FakeSp();
         Prefs p = view(sp, Prefs.PROFILE_PORTRAIT);
         SwipeSpec spec = LongPressActions.SPEC;
-        for (int slot = 0; slot < spec.slotCount(); slot++) assertTrue(spec.shown(p, slot));
+        // 처음: 원래 다섯 키만 (더한 키는 꺼져 있다)
+        for (int slot = 0; slot < spec.slotCount(); slot++) {
+            assertEquals(slot + "", slot <= LongPressActions.DELETE, spec.shown(p, slot));
+        }
+        sp.m.put(Prefs.BOTTOM_CLIPBOARD_KEY, true);
+        sp.m.put(Prefs.BOTTOM_CURSOR_KEY, true);
+        assertTrue(spec.shown(p, LongPressActions.CLIPBOARD));
+        assertTrue(spec.shown(p, LongPressActions.CURSOR));
+        assertFalse(spec.shown(p, LongPressActions.EMOJI_KEY));
+        assertFalse(spec.shown(p, LongPressActions.VOICE));
         sp.m.put(Prefs.LANGUAGE_KEY_HIDDEN, true);
         sp.m.put(Prefs.MODE_KEY_HIDDEN, true);
         sp.m.put(Prefs.ENTER_KEY_HIDDEN, true);
@@ -242,5 +252,23 @@ public class ExtraBottomKeysTest {
         sp.m.put(Prefs.HW_TOOLBAR, true);
         assertTrue(spec.shown(p, ToolbarSwipes.EMOJI));
         assertFalse(spec.shown(p, ToolbarSwipes.CLIPBOARD));
+    }
+
+    @Test
+    public void longPressOnExtraKeys() {
+        // 정하지 않으면 없음 (길게 눌러도 아무것도 하지 않고, 떼면 그냥 누른 것)
+        String[] none = LongPressActions.actions(null);
+        assertEquals(LongPressActions.SPEC.slotCount(), none.length);
+        for (int slot = LongPressActions.EMOJI_KEY; slot <= LongPressActions.VOICE; slot++) {
+            assertEquals(SwipeAction.NONE, none[slot]);
+        }
+        // 정한 기능은 그 키의 칸에 들어간다. 밀어야 하는 커서 이동은 길게 누르기에서 고를 수 없다.
+        Map<String, String> m = new HashMap<>();
+        m.put("clipboard/" + SwipeCustom.dirName(LongPressActions.DIR), SwipeAction.PASTE);
+        m.put("cursor/" + SwipeCustom.dirName(LongPressActions.DIR), SwipeAction.CURSOR_MOVE);
+        String[][] t = LongPressActions.SPEC.table((slot, dir) -> m.get(slot + "/" + dir));
+        assertEquals(SwipeAction.PASTE, t[LongPressActions.CLIPBOARD][LongPressActions.DIR]);
+        assertEquals(SwipeAction.NONE, t[LongPressActions.CURSOR][LongPressActions.DIR]);
+        assertEquals(SwipeAction.IME_PICKER, t[LongPressActions.GLOBE][LongPressActions.DIR]);   // 기존 기본값 그대로
     }
 }
