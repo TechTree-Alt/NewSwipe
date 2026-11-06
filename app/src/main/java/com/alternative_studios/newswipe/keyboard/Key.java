@@ -71,6 +71,11 @@ public final class Key {
     /** 길게 눌러 연속 입력으로 정해 둔 글자여도 연속 입력을 쓰지 않는다 (이메일·인터넷 주소 입력란의 온점 키). */
     boolean noRepeat;
 
+    /** 그리지 않는 키인지 (분리 키보드의 빈 자리에 둔 g, v). */
+    public boolean isHidden() {
+        return hidden;
+    }
+
     /** 설정에 저장된 이 키의 이름 (label과 다를 수 있다). */
     public String slot() {
         return slot != null ? slot : label;
