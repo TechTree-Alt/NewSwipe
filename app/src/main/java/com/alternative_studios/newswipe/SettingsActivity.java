@@ -55,6 +55,8 @@ public final class SettingsActivity extends Activity {
     /** 스크롤 목록 아래(화면 맨 아래)에 고정되는 곳: 키보드 편집의 미리보기가 실제 키보드 자리에 놓인다. */
     private LinearLayout pinnedBottom;
     private ScrollView scrollView;
+    /** 스크롤 목록을 감싼 틀. 키 편집 창(시트)이 그 위에 겹친다. */
+    private android.widget.FrameLayout middle;
     private TextView status;
     private View setupCard, setupHeading, appCard;
     /** 첫 화면의 설정 메뉴 (제목과 카드). 시작하기를 처음 마치기 전에는 흐리게 하고 막는다. */
@@ -125,7 +127,11 @@ public final class SettingsActivity extends Activity {
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
         content.addView(pinned, matchWrap());
-        content.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        // 스크롤 목록 위에 겹쳐 띄우는 층 (키보드 편집의 키 편집 창)을 놓을 수 있게 틀로 감싼다.
+        middle = new android.widget.FrameLayout(this);
+        middle.addView(scroll, new android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+        content.addView(middle, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
         pinnedBottom = new LinearLayout(this);
         pinnedBottom.setOrientation(LinearLayout.VERTICAL);
         pinnedBottom.setVisibility(View.GONE);
@@ -855,10 +861,14 @@ public final class SettingsActivity extends Activity {
     /** 키보드 편집 화면 아래에 붙는 미리보기와, 고른 키를 편집하는 칸. 다른 화면에서는 null이다. */
     private KeyboardPreview editorPreview;
     private KeyEditPanel keyPanel;
-    /** 고른 것이 없을 때 보이는 모든 설정(overviewBox)과 고른 것을 편집하는 칸(panelBox). 한 번에 하나만 보인다. */
-    private LinearLayout overviewBox, panelBox;
-    /** 편집 칸을 열기 전 모든 설정 목록의 스크롤 위치 (닫으면 그 자리로 돌아간다). */
-    private int overviewScroll;
+    /** 모든 설정 목록. */
+    private LinearLayout overviewBox;
+    /** 키 편집 창: 목록 위에 겹쳐 아래에서 올라오는 시트와, 그 뒤에서 목록을 어둡게 가리는 막. */
+    private LinearLayout sheet;
+    private ScrollView sheetScroll;
+    private View scrim;
+    /** 시트를 닫는 애니메이션이 도는 중인지 (그동안은 닫힌 것으로 본다). */
+    private boolean sheetClosing;
     /** 편집 칸을 연 동안 설정이 바뀌어, 닫을 때 모든 설정 목록을 다시 만들어야 하는지. */
     private boolean overviewStale;
     /** 미리보기 손잡이로도 바뀌는 크기 슬라이더: 설정 키 → 값을 다시 읽어 맞추는 일들. */
@@ -928,11 +938,7 @@ public final class SettingsActivity extends Activity {
             pinnedBottom.addView(editorPreview, matchWrap());
             pinnedBottom.setVisibility(View.VISIBLE);
 
-            panelBox = new LinearLayout(this);
-            panelBox.setOrientation(LinearLayout.VERTICAL);
-            panelBox.setVisibility(View.GONE);
-            panelBox.addView(keyPanel.view(), matchWrap());
-            list.addView(panelBox, matchWrap());
+            buildSheet();
 
             // 목록의 스위치·슬라이더나 다른 편집 화면에서 값을 바꾸면 미리보기를 다시 그린다 (한 프레임에 한 번).
             editorPrefListener = (sp, key) -> {
@@ -1015,10 +1021,123 @@ public final class SettingsActivity extends Activity {
     }
 
     private boolean panelOpen() {
-        return panelBox != null && panelBox.getVisibility() == View.VISIBLE;
+        return sheet != null && sheet.getVisibility() == View.VISIBLE && !sheetClosing;
     }
 
-    /** 미리보기에서 키·버튼·도구 막대를 눌렀다: 그것을 편집하는 칸을 연다. 빈 곳이면 닫는다. */
+    /** 시트를 연 위치에서 아래로 내려 숨기는 거리 (틀의 높이만큼, 아직 배치 전이면 넉넉히). */
+    private float sheetHiddenY() {
+        return middle.getHeight() > 0 ? middle.getHeight() : Ui.dp(this, 800);
+    }
+
+    /**
+     * 키 편집 창: 설정 목록 위에 겹친 시트. 위쪽 모서리가 둥글고 그림자가 지며, 맨 위 손잡이를 아래로 끌어 닫을 수 있다.
+     * 뒤의 목록은 어두운 막으로 가려(누르면 닫힌다) 지금 보는 것이 목록 위에 뜬 창이라는 것을 알 수 있게 한다.
+     * 미리보기(화면 아래)는 가리지 않아 창을 연 채 다른 키를 눌러 바로 바꿀 수 있다.
+     */
+    private void buildSheet() {
+        AppTheme colors = AppTheme.of(this);
+        scrim = new View(this);
+        scrim.setBackgroundColor(0x66000000);
+        scrim.setAlpha(0f);
+        scrim.setVisibility(View.GONE);
+        scrim.setOnClickListener(v -> closeKeyPanel());
+        scrim.setContentDescription("편집 닫기");
+        middle.addView(scrim, new android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+
+        sheet = new LinearLayout(this);
+        sheet.setOrientation(LinearLayout.VERTICAL);
+        float r = Ui.dp(this, 28);   // Material 3 바텀 시트의 큰 모서리
+        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+        // 다크 모드에서는 그림자가 잘 보이지 않으므로 Material 3처럼 시트 바탕을 한 단계 밝게 해 층을 구분한다.
+        boolean darkBg = android.graphics.Color.luminance(colors.bg) < 0.2f;
+        bg.setColor(darkBg ? blendColor(colors.bg, colors.card, 0.55f) : colors.bg);
+        bg.setCornerRadii(new float[]{r, r, r, r, 0, 0, 0, 0});
+        sheet.setBackground(bg);
+        sheet.setElevation(Ui.dp(this, 12));
+        sheet.setClickable(true);   // 시트 위의 빈 곳을 눌러도 뒤의 막(닫기)으로 넘어가지 않게
+        sheet.setVisibility(View.GONE);
+        // 스프링이 목표를 살짝 넘어 올라갈 때 아래가 비어 보이지 않게 시트를 틀 아래로 조금 더 길게 둔다 (넘친 부분은 잘린다).
+        int overshoot = Ui.dp(this, 40);
+        sheet.setPadding(0, 0, 0, overshoot);
+
+        FrameLayoutHandle handle = new FrameLayoutHandle(colors.hint);
+        sheet.addView(handle, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 22)));
+        handle.setOnTouchListener(new View.OnTouchListener() {
+            float downY;
+
+            @Override
+            public boolean onTouch(View v, android.view.MotionEvent e) {
+                switch (e.getActionMasked()) {
+                    case android.view.MotionEvent.ACTION_DOWN:
+                        downY = e.getRawY();
+                        sheet.animate().cancel();
+                        return true;
+                    case android.view.MotionEvent.ACTION_MOVE:
+                        sheet.setTranslationY(Math.max(0, e.getRawY() - downY));
+                        scrim.setAlpha(1f - Math.min(1f, sheet.getTranslationY() / sheetHiddenY()));
+                        return true;
+                    case android.view.MotionEvent.ACTION_UP:
+                    case android.view.MotionEvent.ACTION_CANCEL:
+                        // 시트 높이의 5분의 1 넘게 끌어 내렸으면 닫고, 아니면 제자리로 튕겨 돌아간다.
+                        if (sheet.getTranslationY() > sheetHiddenY() / 5f) {
+                            closeKeyPanel();
+                        } else {
+                            sheet.animate().translationY(0).setInterpolator(com.alternative_studios.newswipe.ui.Spring.SOFT)
+                                    .setDuration(320).start();
+                            scrim.animate().alpha(1f).setDuration(150).start();
+                        }
+                        return true;
+                    default:
+                        return true;
+                }
+            }
+        });
+
+        sheetScroll = new ScrollView(this);
+        sheetScroll.setFillViewport(true);
+        LinearLayout body = new LinearLayout(this);
+        body.setOrientation(LinearLayout.VERTICAL);
+        int pad = Ui.dp(this, 16);
+        body.setPadding(pad, 0, pad, Ui.dp(this, 32));
+        body.addView(keyPanel.view(), matchWrap());
+        sheetScroll.addView(body);
+        sheet.addView(sheetScroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+
+        android.widget.FrameLayout.LayoutParams lp = new android.widget.FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        lp.topMargin = Ui.dp(this, 14);   // 뒤의 목록이 조금 보여 그 위에 뜬 창이라는 것을 알 수 있게
+        lp.bottomMargin = -overshoot;
+        middle.addView(sheet, lp);
+    }
+
+    private static int blendColor(int a, int b, float t) {
+        int r = Math.round(android.graphics.Color.red(a) + (android.graphics.Color.red(b) - android.graphics.Color.red(a)) * t);
+        int g = Math.round(android.graphics.Color.green(a) + (android.graphics.Color.green(b) - android.graphics.Color.green(a)) * t);
+        int bl = Math.round(android.graphics.Color.blue(a) + (android.graphics.Color.blue(b) - android.graphics.Color.blue(a)) * t);
+        return 0xFF000000 | (r << 16) | (g << 8) | bl;
+    }
+
+    /** 시트 맨 위의 손잡이 (가운데 짧은 막대). 끌어서 시트를 내린다. */
+    private final class FrameLayoutHandle extends View {
+        private final android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.RectF bar = new android.graphics.RectF();
+
+        FrameLayoutHandle(int color) {
+            super(SettingsActivity.this);
+            paint.setColor((color & 0x00FFFFFF) | 0x99000000);
+            setContentDescription("끌어 내려 편집 닫기");
+        }
+
+        @Override
+        protected void onDraw(android.graphics.Canvas c) {
+            float w = Ui.dp(getContext(), 32), h = Ui.dp(getContext(), 4);
+            bar.set((getWidth() - w) / 2f, Ui.dp(getContext(), 10), (getWidth() + w) / 2f, Ui.dp(getContext(), 10) + h);
+            c.drawRoundRect(bar, h / 2, h / 2, paint);
+        }
+    }
+
+    /** 미리보기에서 키·버튼·도구 막대를 눌렀다: 그것을 편집하는 창을 연다. 빈 곳이면 닫는다. */
     private void onPreviewTap(KeyboardPreview.Selection s) {
         if (s == null) {
             closeKeyPanel();
@@ -1028,33 +1147,62 @@ public final class SettingsActivity extends Activity {
         editorPreview.select(s);
         KeyboardPreview.Selection now = editorPreview.selection();
         if (now == null) return;   // 지금 자판에 없는 키
-        if (!panelOpen()) {
-            overviewScroll = scrollView.getScrollY();
-            overviewBox.setVisibility(View.GONE);
-            panelBox.setVisibility(View.VISIBLE);
-            setPanelBack(true);
-        }
         keyPanel.show(now, editorPreview.selectedKey());
-        scrollView.scrollTo(0, 0);
-        panelBox.setAlpha(0f);
-        panelBox.animate().alpha(1f).setDuration(150).start();
+        sheetScroll.scrollTo(0, 0);
+        if (panelOpen()) {
+            // 이미 열려 있으면 내용만 바꾼다: 짧게 흐렸다가 또렷해져 다른 키로 바뀐 것을 알린다.
+            View body = keyPanel.view();
+            body.animate().cancel();
+            body.setAlpha(0.3f);
+            body.animate().alpha(1f).setDuration(160).start();
+            return;
+        }
+        openSheet();
     }
 
-    /** 편집 칸을 닫고 모든 설정 목록으로 돌아간다 (칸에서 바꾼 값이 있으면 목록을 다시 만든다). */
+    /** 시트를 아래에서 위로 올린다: Material 3 Expressive의 공간 스프링 (살짝 넘었다가 자리 잡는다). */
+    private void openSheet() {
+        sheetClosing = false;
+        sheet.animate().cancel();
+        scrim.animate().cancel();
+        keyPanel.view().setAlpha(1f);
+        if (sheet.getVisibility() != View.VISIBLE) sheet.setTranslationY(sheetHiddenY());
+        sheet.setVisibility(View.VISIBLE);
+        scrim.setVisibility(View.VISIBLE);
+        sheet.animate().translationY(0).setInterpolator(com.alternative_studios.newswipe.ui.Spring.SOFT)
+                .setDuration(420).setListener(null).start();
+        scrim.animate().alpha(1f).setDuration(200).setListener(null).start();
+        setPanelBack(true);
+    }
+
+    /** 편집 창을 내려 닫고 목록으로 돌아간다 (창에서 바꾼 값이 있으면 목록을 다시 만든다). */
     private void closeKeyPanel() {
         if (editorPreview != null) editorPreview.select(null);
         if (!panelOpen()) return;
-        panelBox.setVisibility(View.GONE);
+        sheetClosing = true;
+        setPanelBack(false);
+        // Material 3 강조 가속 곡선으로 빠르게 내려간다 (나갈 때는 들어올 때보다 짧게).
+        sheet.animate().translationY(sheetHiddenY())
+                .setInterpolator(new android.view.animation.PathInterpolator(0.3f, 0f, 0.8f, 0.15f))
+                .setDuration(220)
+                .setListener(new android.animation.AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationEnd(android.animation.Animator animation) {
+                        if (!sheetClosing) return;   // 닫히는 사이에 다시 열었다
+                        sheetClosing = false;
+                        sheet.setVisibility(View.GONE);
+                        scrim.setVisibility(View.GONE);
+                    }
+                }).start();
+        scrim.animate().alpha(0f).setDuration(220).setListener(null).start();
         if (overviewStale) {
             overviewStale = false;
+            int y = scrollView.getScrollY();
             overviewBox.removeAllViews();
             sizeSliders.clear();
             fillOverview(overviewBox);
+            scrollView.post(() -> scrollView.scrollTo(0, y));
         }
-        overviewBox.setVisibility(View.VISIBLE);
-        setPanelBack(false);
-        int y = overviewScroll;
-        scrollView.post(() -> scrollView.scrollTo(0, y));
     }
 
     private void setPanelBack(boolean on) {
