@@ -232,10 +232,10 @@ final class KeyEditPanel {
         }
         prefs.setRepeatChar(g, s, false);
         if (mode == 2) {
-            prefs.setPopupOverride(g, s, new String[0]);
+            prefs.turnOffPopup(g, s);   // 정해 둔 문자는 넣어 두었다가 '문자 입력'으로 돌아오면 되살린다
         } else {
             String[] o = prefs.popupOverride(g, s);
-            if (o != null && o.length == 0) prefs.resetPopupOverride(g, s);   // '없음'에서 돌아오면 기본 문자로
+            if (o != null && o.length == 0) prefs.turnOnPopup(g, s);   // '없음'에서 돌아오면 그전 문자로
             if (currentPopup().length == 0) editPopup();   // 기본 문자가 없는 키(숫자 등)는 바로 적게 한다
             if (!prefs.longPressChars()) {
                 put(Prefs.LONG_PRESS_CHARS, true);
@@ -682,15 +682,21 @@ final class KeyEditPanel {
     private void buildToolbar() {
         header(null, "도구 막대", "자판 위(또는 아래)의 버튼 줄. 추천 단어도 여기에 뜹니다.");
         LinearLayout look = section("모양");
+        View toolButtons = subGroup(button("도구 막대 버튼 사용자화", v -> open(new Intent(a, ToolbarButtonsEditorActivity.class))),
+                note("도구 막대 버튼의 유무와 순서를 바꿉니다."));
+        boolean shown = prefs.toolbar();
+        toolButtons.setVisibility(shown ? View.VISIBLE : View.GONE);
+        look.addView(toggle("도구 막대 표시", "다양한 도구를 빠르게 쓸 수 있는 막대를 보여 줍니다.", shown, on -> {
+            put(Prefs.TOOLBAR, on);
+            Ui.setVisibleAnimated(toolButtons, on);
+        }));
+        look.addView(toolButtons);
+        // 위치와 높이는 도구 막대를 꺼도 추천 단어 줄에 그대로 쓰이므로 스위치와 따로 둔다.
+        look.addView(toggle("자판 아래에 두기", "도구 막대를 자판 위가 아니라 아래에 놓습니다. ", prefs.toolbarBottom(),
+                on -> put(Prefs.TOOLBAR_BOTTOM, on)));
         look.addView(slider("도구 막대 높이", Prefs.TOOLBAR_HEIGHT, prefs.toolbarHeight(), 70, 150, 1, "%"));
         look.addView(slider("도구 버튼 크기", Prefs.TOOL_BUTTON_SIZE, prefs.toolButtonSize(), 70, 150, 1, "%"));
-        look.addView(toggle("자판 아래에 두기", "도구 막대를 자판 위가 아니라 아래에 놓습니다.", prefs.toolbarBottom(),
-                on -> put(Prefs.TOOLBAR_BOTTOM, on)));
-        look.addView(button("도구 막대 버튼 순서·유무 바꾸기", v -> open(new Intent(a, ToolbarButtonsEditorActivity.class))));
-        look.addView(toggle("도구 막대 표시", "끄면 추천 단어가 뜰 때만 이 줄이 보입니다.", true, on -> {
-            put(Prefs.TOOLBAR, on);
-            if (!on) host.close();
-        }));
+        look.addView(note("도구 버튼의 아이콘은 막대보다 커지지 않습니다."));
         buildToolbarSwipe(ToolbarSwipes.BAR, "도구 막대");
         resetRow("도구 막대 밀기 기능", () -> {
             for (int dir : DIRS) ToolbarSwipes.SPEC.reset(prefs, ToolbarSwipes.BAR, dir);
@@ -821,6 +827,24 @@ final class KeyEditPanel {
         row.addView(sw, slp);
         row.setOnClickListener(v -> sw.performClick());
         return row;
+    }
+
+    /** 위 스위치의 하위 항목: 왼쪽에 강조선을 두고 들여 쓴다. */
+    private View subGroup(View... children) {
+        LinearLayout box = new LinearLayout(a);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(Ui.dp(a, 14), 0, 0, 0);
+        android.graphics.drawable.GradientDrawable line = new android.graphics.drawable.GradientDrawable();
+        line.setColor((accentColor & 0x00FFFFFF) | 0x66000000);
+        line.setCornerRadius(Ui.dp(a, 2));
+        android.graphics.drawable.LayerDrawable bg = new android.graphics.drawable.LayerDrawable(
+                new android.graphics.drawable.Drawable[]{line});
+        bg.setLayerSize(0, Ui.dp(a, 3), -1);
+        bg.setLayerGravity(0, Gravity.START | Gravity.FILL_VERTICAL);
+        bg.setLayerInset(0, Ui.dp(a, 2), Ui.dp(a, 8), 0, Ui.dp(a, 8));
+        box.setBackground(bg);
+        for (View c : children) box.addView(c);
+        return box;
     }
 
     private View slider(String label, String prefKey, int value, int min, int max, int step, String unit) {

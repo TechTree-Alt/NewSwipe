@@ -2711,21 +2711,6 @@ public final class SettingsActivity extends Activity {
     }
 
     private void buildTools() {
-        LinearLayout tools = section("도구 막대");
-        View toolButtons = subGroup(button("도구 막대 버튼 사용자화", v ->
-                startActivity(new Intent(this, ToolbarButtonsEditorActivity.class))),
-                note("도구 막대 버튼의 유무와 순서를 바꿉니다."));
-        tools.addView(toggle("도구 막대 표시", "다양한 도구를 빠르게 쓸 수 있는 막대를 보여 줍니다.",
-                Prefs.TOOLBAR, prefs.toolbar(), toolButtons));
-        tools.addView(toolButtons);
-        // 위치와 높이는 도구 막대를 꺼도 추천 단어 줄에 그대로 쓰이므로 스위치와 따로 둔다.
-        tools.addView(toggle("자판 아래에 두기",
-                "도구 막대를 자판 위가 아니라 아래에 놓습니다. ",
-                Prefs.TOOLBAR_BOTTOM, prefs.toolbarBottom()));
-        tools.addView(sizeSlider("도구 막대 높이", Prefs.TOOLBAR_HEIGHT, prefs::toolbarHeight, 70, 150, 1, "%"));
-        tools.addView(sizeSlider("도구 버튼 크기", Prefs.TOOL_BUTTON_SIZE, prefs::toolButtonSize, 70, 150, 1, "%"));
-        tools.addView(note("도구 버튼의 아이콘은 막대보다 커지지 않습니다."));
-
         LinearLayout clip = section("클립보드");
         View clipImagesToggle = toggle("이미지 저장", "복사한 이미지도 클립보드에 저장합니다 (최대 "
                         + ClipboardHistory.MAX_IMAGES + "개).",

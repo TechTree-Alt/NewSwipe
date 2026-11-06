@@ -369,7 +369,7 @@ public final class Prefs {
                 DOUBLE_TAP_CONSONANT_MS, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, SPACE_HIT_SHRINK,
                 SPACE_HIT_SHRINK_PCT));
         MENU_KEYS.put("keys", keys(LONG_PRESS_CHARS, LONG_PRESS_REPEAT, LONG_PRESS_MS, DELETE_PRESS_MS));
-        MENU_PREFIXES.put("keys", keys("popup_", "repeat_", "swipe_lp_"));
+        MENU_PREFIXES.put("keys", keys("popup_", "popupkept_", "repeat_", "swipe_lp_"));
         MENU_KEYS.put("swipe", keys(SWIPE_THRESHOLD));
         MENU_PREFIXES.put("swipe", keys("swipe_custom_", "swipe_final_", "swipe_vowel_"));
         MENU_KEYS.put("swipefn", keys(FN_SWIPE_THRESHOLD, SPACE_CURSOR_SPEED_H, SPACE_CURSOR_SPEED_V,
@@ -854,7 +854,8 @@ public final class Prefs {
     }
 
     public void setPopupOverride(String group, String label, String[] items) {
-        sp.edit().putString(popupKey(group, label), String.join("\n", items)).apply();
+        // 새로 정했으면 '없음'으로 바꿀 때 넣어 둔 문자는 더 쓰지 않는다.
+        sp.edit().putString(popupKey(group, label), String.join("\n", items)).remove(keptPopupKey(group, label)).apply();
     }
 
     // 길게 눌러 연속 입력할 글자. 키는 "repeat_<자판>_<글자>"이고, 켠 글자만 true로 저장한다.
@@ -878,7 +879,33 @@ public final class Prefs {
     }
 
     public void resetPopupOverride(String group, String label) {
-        sp.edit().remove(popupKey(group, label)).apply();
+        sp.edit().remove(popupKey(group, label)).remove(keptPopupKey(group, label)).apply();
+    }
+
+    // 길게 누르기를 '없음'으로 바꾸기 전에 정해 두었던 문자. 다시 '문자 입력'을 고르면 되살린다.
+    private static String keptPopupKey(String group, String label) { return "popupkept_" + group + "_" + label; }
+
+    /** 길게 누르기를 끄면서 넣어 둔 문자 (없으면 null). */
+    public String[] keptPopup(String group, String label) {
+        String v = sp.getString(keptPopupKey(group, label), null);
+        return v == null || v.isEmpty() ? null : v.split("\n");
+    }
+
+    /** 길게 누르기를 '없음'으로 바꾼다. 정해 둔 문자가 있으면 넣어 두었다가 '문자 입력'으로 돌아올 때 되살린다. */
+    public void turnOffPopup(String group, String label) {
+        String[] now = popupOverride(group, label);
+        SharedPreferences.Editor e = sp.edit();
+        if (now != null && now.length > 0) e.putString(keptPopupKey(group, label), String.join("\n", now));
+        e.putString(popupKey(group, label), "").apply();
+    }
+
+    /** '없음'으로 꺼 둔 길게 누르기를 되살린다: 넣어 둔 문자가 있으면 그것, 없으면 기본 문자. */
+    public void turnOnPopup(String group, String label) {
+        String[] kept = keptPopup(group, label);
+        SharedPreferences.Editor e = sp.edit().remove(keptPopupKey(group, label));
+        if (kept != null) e.putString(popupKey(group, label), String.join("\n", kept));
+        else e.remove(popupKey(group, label));
+        e.apply();
     }
 
     public boolean keyShadow() { return sp.getBoolean(KEY_SHADOW, false); }

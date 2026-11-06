@@ -184,7 +184,9 @@ final class KeyboardPreview extends FrameLayout {
         keys.setRepeatChars(prefs.repeatChars());
         keys.setKeyGaps(Ui.dp(c, prefs.keyGapXDp()), Ui.dp(c, prefs.keyGapYDp()));
         int padT = Ui.dp(c, prefs.padTopDp()), padB = Ui.dp(c, prefs.padBottomDp());
-        keys.setInsets(Ui.dp(c, prefs.padLeftDp()), padT, Ui.dp(c, prefs.padRightDp()), padB);
+        // 키보드와 같다: 도구 막대를 자판 아래에 두면 자판의 아래쪽 여백은 도구 막대 밑으로 옮긴다 (전체 높이는 그대로).
+        int lift = barLifted() ? padB : 0;
+        keys.setInsets(Ui.dp(c, prefs.padLeftDp()), padT, Ui.dp(c, prefs.padRightDp()), padB - lift);
         keys.setSpaceLabel(prefs.spaceLangLabel() ? (tab == TAB_ENGLISH ? "English" : tab == TAB_KOREAN ? "한국어" : null) : null);
         KeyboardLayout l;
         if (tab == TAB_ENGLISH) l = KeyboardLayout.english(prefs);
@@ -194,9 +196,9 @@ final class KeyboardPreview extends FrameLayout {
                 && KeyboardLayout.isDigit(l.rows[0].keys[0].label);
         // 키보드와 같은 높이: 글자 4줄 + 숫자 줄 (기호 자판도 같은 높이를 쓴다).
         float rows = 4 + (prefs.numberRow() ? KeyboardLayout.numberRowHeight(prefs) : 0f);
-        keys.setKeyboardHeight(Math.round(Ui.dp(c, 54) * rows * prefs.keyboardHeight() / 100f) + padT + padB);
+        keys.setKeyboardHeight(Math.round(Ui.dp(c, 54) * rows * prefs.keyboardHeight() / 100f) + padT + padB - lift);
         keys.setLayout(l);
-        rebuildToolbar();
+        rebuildToolbar(lift);
         resolveSelection();
         overlay.invalidate();
         overlay.post(overlay::updateExclusion);   // 여백이 바뀌면 손잡이 자리도 바뀐다 (배치가 끝난 뒤에 잰다)
@@ -205,8 +207,42 @@ final class KeyboardPreview extends FrameLayout {
     /** 도구 막대와 자판의 배치를 마지막으로 만든 설정 (같으면 뷰를 다시 만들지 않는다: 손잡이를 끄는 동안 자주 불린다). */
     private String barSignature, columnSignature;
 
+    /**
+     * 도구 막대 줄이 보이는지. '도구 막대 표시'를 꺼도 단어 추천·단축어를 쓰면 키보드는 그 줄(버튼 없이)을 남겨 둔다.
+     * 일본어·중국어 자판(실험실)을 켜도 변환 후보 자리로 남지만, 미리보기는 한글·영어·기호 자판이라 따지지 않는다.
+     */
+    boolean barShown() {
+        return prefs.toolbar() || prefs.suggestWords()
+                || (prefs.shortcutsEnabled() && !com.alternative_studios.newswipe.suggest.Shortcuts.of(prefs.shortcuts()).isEmpty());
+    }
+
+    /** 도구 막대를 자판 아래에 두어 아래쪽 여백이 도구 막대 밑으로 옮겨졌는지. */
+    private boolean barLifted() {
+        return barShown() && prefs.toolbarBottom();
+    }
+
+    /** 도구 막대 줄이 아예 없을 때 그 자리를 알리는 띠 (실제 키보드에는 없다): 눌러서 도구 막대 설정을 연다. */
+    private android.widget.TextView placeholder;
+
+    private android.widget.TextView placeholder() {
+        if (placeholder != null) return placeholder;
+        Context c = getContext();
+        AppTheme app = AppTheme.of(c);
+        placeholder = new android.widget.TextView(c);
+        placeholder.setText("도구 막대 꺼짐 · 눌러서 설정");
+        placeholder.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 12);
+        placeholder.setTextColor(app.hint);
+        placeholder.setGravity(android.view.Gravity.CENTER);
+        android.graphics.drawable.GradientDrawable d = new android.graphics.drawable.GradientDrawable();
+        d.setColor(app.bg);
+        d.setStroke(Ui.dp(c, 1), app.hint, Ui.dp(c, 4), Ui.dp(c, 3));
+        d.setCornerRadius(Ui.dp(c, 8));
+        placeholder.setBackground(new android.graphics.drawable.InsetDrawable(d, Ui.dp(c, 8), Ui.dp(c, 3), Ui.dp(c, 8), Ui.dp(c, 3)));
+        return placeholder;
+    }
+
     /** 도구 막대: 실제와 같은 자리·순서·크기의 버튼들 (누를 수 없고, 누르면 그 버튼을 고른다). */
-    private void rebuildToolbar() {
+    private void rebuildToolbar(int lift) {
         Context c = getContext();
         int height = Math.round(Ui.dp(c, 40) * prefs.toolbarHeight() / 100f);
         float scale = prefs.toolButtonSize() / 100f;
@@ -215,6 +251,8 @@ final class KeyboardPreview extends FrameLayout {
         StringBuilder sig = new StringBuilder().append(height).append(',').append(width).append(',')
                 .append(prefs.padLeftDp()).append(',').append(prefs.padRightDp()).append(',')
                 .append(theme.background).append(',').append(theme.functionKey).append(',').append(theme.text).append('|');
+        boolean buttons = prefs.toolbar();   // 꺼 두면 버튼 없이 추천 단어 자리만 남는다
+        sig.append(buttons).append('|');
         for (String[] side : order) {
             for (String id : side) if (prefs.toolShown(id)) sig.append(id).append(',');
             sig.append('|');
@@ -223,7 +261,7 @@ final class KeyboardPreview extends FrameLayout {
             barSignature = sig.toString();
             bar.removeAllViews();
             bar.setPadding(Ui.dp(c, prefs.padLeftDp()), 0, Ui.dp(c, prefs.padRightDp()), 0);
-            for (int side = 0; side < 2; side++) {
+            for (int side = 0; side < 2 && buttons; side++) {
                 if (side == 1) bar.addView(new View(c), new LinearLayout.LayoutParams(0, 1, 1f));
                 for (String id : order[side]) {
                     if (!prefs.toolShown(id)) continue;
@@ -237,16 +275,21 @@ final class KeyboardPreview extends FrameLayout {
                 }
             }
         }
-        boolean shown = prefs.toolbar();
+        boolean shown = barShown();
         boolean bottom = prefs.toolbarBottom();
-        String colSig = shown + "," + bottom + "," + height;
+        String colSig = shown + "," + bottom + "," + height + "," + lift;
         if (colSig.equals(columnSignature)) return;
         columnSignature = colSig;
         column.removeAllViews();
         LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height);
+        blp.bottomMargin = lift;   // 자판 아래에 두면 아래쪽 여백이 도구 막대 밑에 온다
         LinearLayout.LayoutParams klp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
-        if (shown && !bottom) column.addView(bar, blp);
+        if (!shown) {
+            column.addView(placeholder(), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(c, 30)));
+        } else if (!bottom) {
+            column.addView(bar, blp);
+        }
         column.addView(keys, klp);
         if (shown && bottom) column.addView(bar, blp);
     }
@@ -255,10 +298,7 @@ final class KeyboardPreview extends FrameLayout {
     private void resolveSelection() {
         selectedKey = null;
         if (selection == null) return;
-        if (selection.kind == SEL_TOOLBAR) {
-            if (!prefs.toolbar()) selection = null;
-            return;
-        }
+        if (selection.kind == SEL_TOOLBAR) return;   // 도구 막대를 꺼도 그 자리(또는 알림 띠)는 고를 수 있다
         if (selection.kind == SEL_TOOL_BUTTON) {
             if (!prefs.toolbar() || !prefs.toolShown(selection.toolId)) selection = null;
             return;
@@ -309,6 +349,10 @@ final class KeyboardPreview extends FrameLayout {
     // ---------------------------------------------------------------- 눌러 고르기
 
     private void tapAt(float x, float y) {
+        if (placeholder != null && placeholder.getParent() != null && y >= placeholder.getTop() && y < placeholder.getBottom()) {
+            listener.onTap(Selection.toolbar());
+            return;
+        }
         if (bar.getParent() != null && y >= bar.getTop() && y < bar.getBottom()) {
             for (int i = 0; i < bar.getChildCount(); i++) {
                 View b = bar.getChildAt(i);
@@ -378,7 +422,9 @@ final class KeyboardPreview extends FrameLayout {
         int w = getWidth();
         int kTop = keys.getTop(), kBottom = keys.getBottom();
         float padL = Ui.dp(c, prefs.padLeftDp()), padR = Ui.dp(c, prefs.padRightDp());
-        float padT = Ui.dp(c, prefs.padTopDp()), padB = Ui.dp(c, prefs.padBottomDp());
+        float padT = Ui.dp(c, prefs.padTopDp());
+        // 자판 뷰 안의 아래쪽 여백 (도구 막대를 자판 아래에 두면 0이고, 여백은 도구 막대 밑에 있다).
+        float padB = barLifted() ? 0 : Ui.dp(c, prefs.padBottomDp());
         KeyboardLayout l = keys.getLayout();
         switch (h) {
             case H_TOOLBAR:
@@ -408,7 +454,9 @@ final class KeyboardPreview extends FrameLayout {
                 return true;
             case H_PAD_BOTTOM:
                 out[0] = w / 2f;
-                out[1] = Math.min(kBottom - padB, kBottom - Ui.dp(c, 3));
+                // 여백의 위 가장자리: 보통은 자판의 맨 아래 키 줄 밑, 도구 막대를 자판 아래에 두면 도구 막대 밑.
+                float edge = barLifted() ? bar.getBottom() : kBottom - padB;
+                out[1] = Math.min(edge, getHeight() - Ui.dp(c, 3));
                 return true;
             case H_GAP_X: {
                 RectF r = selectedKey.rect;
@@ -420,7 +468,7 @@ final class KeyboardPreview extends FrameLayout {
                 RectF r = selectedKey.rect;
                 // 맨 아래 줄 키의 아래 가장자리는 아래쪽 여백 손잡이와 겹칠 수 있어 키의 왼쪽 1/4에 둔다.
                 float x = r.centerX();
-                if (Math.abs(x - w / 2f) < Ui.dp(c, 40) && kBottom - padB - (kTop + r.bottom) < Ui.dp(c, 8)) {
+                if (!barLifted() && Math.abs(x - w / 2f) < Ui.dp(c, 40) && kBottom - padB - (kTop + r.bottom) < Ui.dp(c, 8)) {
                     x = r.left + r.width() / 4f;
                 }
                 out[0] = x;
@@ -603,7 +651,13 @@ final class KeyboardPreview extends FrameLayout {
                 tmp.set(r.left + gx - out, keys.getTop() + r.top + gy - out, r.right - gx + out, keys.getTop() + r.bottom - gy + out);
                 return tmp;
             }
-            if (bar.getParent() == null) return null;
+            if (bar.getParent() == null) {
+                // 도구 막대 줄이 없을 때는 알림 띠를 고른 것으로 보인다.
+                if (selection.kind != SEL_TOOLBAR || placeholder == null || placeholder.getParent() == null) return null;
+                tmp.set(placeholder.getLeft() + Ui.dp(ctx, 6), placeholder.getTop() + Ui.dp(ctx, 1),
+                        placeholder.getRight() - Ui.dp(ctx, 6), placeholder.getBottom() - Ui.dp(ctx, 1));
+                return tmp;
+            }
             if (selection.kind == SEL_TOOLBAR) {
                 tmp.set(bar.getLeft() + out, bar.getTop() + out, bar.getRight() - out, bar.getBottom() - out);
                 return tmp;
