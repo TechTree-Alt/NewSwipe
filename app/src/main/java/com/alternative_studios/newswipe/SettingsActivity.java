@@ -111,6 +111,7 @@ public final class SettingsActivity extends Activity {
                 : LEARNED.equals(sectionId) || BLOCKED.equals(sectionId)
                 ? new SettingsFrame(this, sectionName, getString(R.string.app_name)).withSearch(this::onWordSearch, "단어 검색")
                 : new SettingsFrame(this, sectionName, getString(R.string.app_name));
+        if (KEYBOARD.equals(sectionId)) frame.withAction(Icons.UNDO, "마지막 변경 되돌리기", v -> undoLast());
         ScrollView scroll = new ScrollView(this);
         scrollView = scroll;
         scroll.setFillViewport(true);
@@ -137,6 +138,7 @@ public final class SettingsActivity extends Activity {
         pinnedBottom.setVisibility(View.GONE);
         content.addView(pinnedBottom, matchWrap());
         setContentView(frame.wrap(content));
+        undoButton = frame.actionButton();
         build();
         // 검색 결과에서 들어왔으면 그 항목까지 스크롤하고 깜빡여 알려 준다.
         String highlight = getIntent().getStringExtra(EXTRA_HIGHLIGHT);
@@ -159,6 +161,10 @@ public final class SettingsActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (isFinishing() && editorPreview != null) {   // 키보드 편집을 떠난다: 되돌리기 기록도 버린다
+            undoSteps.clear();
+            prefSnapshot = null;
+        }
         if (editorPrefListener != null) prefs.raw().unregisterOnSharedPreferenceChangeListener(editorPrefListener);
         super.onDestroy();
     }
@@ -905,6 +911,12 @@ public final class SettingsActivity extends Activity {
                 public void onSizeChanged(String prefKey) {
                     syncSizeSliders(prefKey);
                 }
+
+                @Override
+                public void onLayerChanged(int layer) {
+                    closeKeyPanel();   // 다른 층으로 넘기면 고른 것이 풀린다
+                    updatePageDots(layer);
+                }
             });
             keyPanel = new KeyEditPanel(this, prefs, new KeyEditPanel.Host() {
                 @Override
@@ -936,13 +948,17 @@ public final class SettingsActivity extends Activity {
                         editorPreview.setTab(i);
                     }));
             pinnedBottom.addView(tabs, matchWrap());
+            pinnedBottom.addView(buildPageDots(), matchWrap());
             pinnedBottom.addView(editorPreview, matchWrap());
             pinnedBottom.setVisibility(View.VISIBLE);
 
             buildSheet();
 
             // 목록의 스위치·슬라이더나 다른 편집 화면에서 값을 바꾸면 미리보기를 다시 그린다 (한 프레임에 한 번).
+            if (prefSnapshot == null) prefSnapshot = editorValuesForUndo();
+            updateUndoButton();
             editorPrefListener = (sp, key) -> {
+                recordChange(key);
                 uiHandler.removeCallbacks(editorRefresh);
                 uiHandler.post(editorRefresh);
                 if (panelOpen()) overviewStale = true;
@@ -964,7 +980,9 @@ public final class SettingsActivity extends Activity {
             LinearLayout tip = card();
             tip.addView(note("• 아래 미리보기의 손잡이(작은 막대)를 끌면 크기가 바로 바뀝니다. 위쪽 가장자리의 손잡이는 "
                     + "도구 막대·숫자 줄·키보드의 높이, 양옆과 아래의 손잡이는 여백입니다.\n"
-                    + "• 키나 도구 막대 버튼을 누르면 그 키를 누르기·길게 누르기·밀기 했을 때의 동작을 한곳에서 바꿉니다."));
+                    + "• 미리보기에는 두 페이지가 있어 좌우로 밀어 넘깁니다. '영역' 페이지에서는 도구 막대·숫자 줄·글자 키·기능키를 "
+                    + "눌러 그 영역 전체의 설정을, '키' 페이지에서는 키 하나를 눌러 그 키의 누르기·길게 누르기·밀기를 바꿉니다.\n"
+                    + "• 머리글의 되돌리기 버튼으로 마지막으로 바꾼 설정을 원래대로 돌릴 수 있습니다."));
             buildSizes();
             buildKeyboardLayout();
             buildLook();
@@ -989,7 +1007,7 @@ public final class SettingsActivity extends Activity {
             ViewGroup g = (ViewGroup) box;
             TextView valueView = (TextView) ((ViewGroup) g.getChildAt(0)).getChildAt(1);
             ExpressiveSlider bar = (ExpressiveSlider) g.getChildAt(1);
-            sizeSliders.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(() -> {
+            sliderSink.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(() -> {
                 int v = Math.max(min, Math.min(max, current.getAsInt()));
                 valueView.setText(v + unit);
                 bar.setProgress(Math.round((v - min) / (float) step));
@@ -998,9 +1016,131 @@ public final class SettingsActivity extends Activity {
         return box;
     }
 
+    // ---- 되돌리기: 키보드 편집에서 마지막으로 바꾼 설정을 원래대로
+    //
+    // 키보드 편집 값(Prefs.isEditorKey)이 바뀔 때마다 바뀌기 전 값을 기억해 한 단계로 쌓는다. 한 번에 함께 바뀐 값들(키 하나를
+    // 기본값으로, 길게 누르기 '없음' 등)은 한 단계이고, 슬라이더·손잡이를 끄는 동안 같은 값이 잇달아 바뀌면 한 단계로 합친다.
+    // 화면을 다시 만들어도(기본값으로 되돌리기, 화면 모드) 남도록 정적으로 두고, 키보드 편집을 떠나면 버린다.
+
+    /** 기억해 둔 값이 '없었음'을 나타내는 표시. */
+    private static final Object ABSENT = new Object();
+    private static final java.util.ArrayDeque<java.util.Map<String, Object>> undoSteps = new java.util.ArrayDeque<>();
+    /** 키보드 편집 값의 마지막 모습 (바뀐 값의 이전 값을 알려고 둔다). */
+    private static java.util.Map<String, Object> prefSnapshot;
+    private static long lastStepTime;
+    private static String lastStepKey;
+    /** 되돌리는 중 (그 변경은 기록하지 않는다). */
+    private static boolean undoing;
+    /** 지금 메시지 안에서 바뀐 값들 (다음 메시지에서 한 단계로 묶는다). */
+    private java.util.Map<String, Object> pendingStep;
+    private View undoButton;
+    private static final int MAX_UNDO = 50;
+
+    private java.util.Map<String, Object> editorValuesForUndo() {
+        java.util.Map<String, Object> out = new java.util.HashMap<>();
+        for (java.util.Map.Entry<String, ?> e : prefs.raw().getAll().entrySet()) {
+            if (Prefs.isEditorKey(e.getKey())) out.put(e.getKey(), e.getValue());
+        }
+        return out;
+    }
+
+    private void recordChange(String key) {
+        if (prefSnapshot == null) return;
+        if (key == null) {   // 설정이 통째로 지워졌다 (가져오기 등): 기록을 새로 시작한다
+            prefSnapshot = editorValuesForUndo();
+            undoSteps.clear();
+            updateUndoButton();
+            return;
+        }
+        if (!Prefs.isEditorKey(key)) return;
+        Object now = prefs.raw().getAll().get(key);
+        Object old = prefSnapshot.containsKey(key) ? prefSnapshot.get(key) : ABSENT;
+        if (now == null) prefSnapshot.remove(key);
+        else prefSnapshot.put(key, now);
+        if (undoing || java.util.Objects.equals(old, now == null ? ABSENT : now)) return;
+        if (pendingStep == null) {
+            pendingStep = new java.util.LinkedHashMap<>();
+            uiHandler.post(this::sealStep);
+        }
+        pendingStep.putIfAbsent(key, old);
+    }
+
+    /** 한 메시지 안에서 바뀐 값들을 한 단계로 쌓는다. 같은 값 하나를 잇달아 바꾸는 중이면 앞 단계에 합친다. */
+    private void sealStep() {
+        java.util.Map<String, Object> step = pendingStep;
+        pendingStep = null;
+        if (step == null || step.isEmpty()) return;
+        long t = android.os.SystemClock.uptimeMillis();
+        String single = step.size() == 1 ? step.keySet().iterator().next() : null;
+        boolean merge = single != null && single.equals(lastStepKey) && t - lastStepTime < 1500 && !undoSteps.isEmpty();
+        if (!merge) undoSteps.addLast(step);   // 합칠 때는 앞 단계의 '바뀌기 전 값'을 그대로 둔다
+        lastStepKey = single;
+        lastStepTime = t;
+        // 합쳐서 결국 원래 값으로 돌아왔으면 (스위치를 켰다 끔) 되돌릴 것이 없다.
+        java.util.Map<String, Object> top = undoSteps.peekLast();
+        if (top != null && isNoop(top)) undoSteps.removeLast();
+        while (undoSteps.size() > MAX_UNDO) undoSteps.removeFirst();
+        updateUndoButton();
+    }
+
+    private boolean isNoop(java.util.Map<String, Object> step) {
+        for (java.util.Map.Entry<String, Object> e : step.entrySet()) {
+            Object now = prefSnapshot.containsKey(e.getKey()) ? prefSnapshot.get(e.getKey()) : ABSENT;
+            if (!java.util.Objects.equals(now, e.getValue())) return false;
+        }
+        return true;
+    }
+
+    /** 마지막 단계를 되돌린다: 그 단계에서 바뀐 값들을 바뀌기 전 값으로 (없던 값은 지운다). */
+    private void undoLast() {
+        if (pendingStep != null) sealStep();
+        java.util.Map<String, Object> step = undoSteps.pollLast();
+        if (step == null) return;
+        undoing = true;
+        android.content.SharedPreferences.Editor e = prefs.raw().edit();
+        for (java.util.Map.Entry<String, Object> en : step.entrySet()) {
+            String k = en.getKey();
+            Object v = en.getValue();
+            if (v == ABSENT) e.remove(k);
+            else if (v instanceof Boolean) e.putBoolean(k, (Boolean) v);
+            else if (v instanceof Integer) e.putInt(k, (Integer) v);
+            else if (v instanceof Long) e.putLong(k, (Long) v);
+            else if (v instanceof Float) e.putFloat(k, (Float) v);
+            else if (v instanceof String) e.putString(k, (String) v);
+            else if (v instanceof java.util.Set) {
+                @SuppressWarnings("unchecked") java.util.Set<String> set = (java.util.Set<String>) v;
+                e.putStringSet(k, set);
+            }
+        }
+        e.apply();
+        // 바뀐 값 알림이 나중에 오더라도 기록하지 않게, 알림이 다 지난 뒤에 푼다.
+        uiHandler.post(() -> {
+            undoing = false;
+            prefSnapshot = editorValuesForUndo();
+        });
+        lastStepKey = null;
+        updateUndoButton();
+        if (Build.VERSION.SDK_INT >= 30) undoButton.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM);
+        Toast.makeText(this, "마지막 변경을 되돌렸습니다", Toast.LENGTH_SHORT).show();
+        // 미리보기·열린 편집 창·목록을 되돌린 값으로 다시 그린다.
+        editorPreview.refresh();
+        overviewStale = true;
+        if (panelOpen()) showSelection(editorPreview.selection());
+        else rebuildOverviewIfStale();
+    }
+
+    private void updateUndoButton() {
+        if (undoButton == null) return;
+        boolean any = !undoSteps.isEmpty() || pendingStep != null;
+        undoButton.setEnabled(any);
+        undoButton.setAlpha(any ? 1f : 0.38f);
+    }
+
     private void syncSizeSliders(String key) {
         java.util.List<Runnable> syncs = sizeSliders.get(key);
         if (syncs != null) for (Runnable r : syncs) r.run();
+        java.util.List<Runnable> area = areaSliders.get(key);
+        if (area != null) for (Runnable r : area) r.run();
         if (keyPanel != null) keyPanel.syncSize(key);
     }
 
@@ -1016,12 +1156,7 @@ public final class SettingsActivity extends Activity {
         if (editorPreview == null) return;
         editorPreview.refresh();
         if (!panelOpen()) return;
-        KeyboardPreview.Selection s = editorPreview.selection();
-        if (s == null) closeKeyPanel();
-        else {
-            keyPanel.show(s, editorPreview.selectedKey());
-            sheetTitle.setText(keyPanel.title());
-        }
+        showSelection(editorPreview.selection());
     }
 
     private boolean panelOpen() {
@@ -1095,6 +1230,10 @@ public final class SettingsActivity extends Activity {
         int pad = Ui.dp(this, 16);
         body.setPadding(pad, 0, pad, Ui.dp(this, 32));
         body.addView(keyPanel.view(), matchWrap());
+        areaBox = new LinearLayout(this);
+        areaBox.setOrientation(LinearLayout.VERTICAL);
+        areaBox.setVisibility(View.GONE);
+        body.addView(areaBox, matchWrap());
         sheetScroll.addView(body);
         sheet.addView(sheetScroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
 
@@ -1122,12 +1261,11 @@ public final class SettingsActivity extends Activity {
         editorPreview.select(s);
         KeyboardPreview.Selection now = editorPreview.selection();
         if (now == null) return;   // 지금 자판에 없는 키
-        keyPanel.show(now, editorPreview.selectedKey());
-        sheetTitle.setText(keyPanel.title());
+        showSelection(now);
         sheetScroll.scrollTo(0, 0);
         if (panelOpen()) {
-            // 이미 열려 있으면 내용만 바꾼다: 짧게 흐렸다가 또렷해져 다른 키로 바뀐 것을 알린다.
-            View body = keyPanel.view();
+            // 이미 열려 있으면 내용만 바꾼다: 짧게 흐렸다가 또렷해져 다른 것으로 바뀐 것을 알린다.
+            View body = sheetScroll.getChildAt(0);
             body.animate().cancel();
             body.setAlpha(0.3f);
             body.animate().alpha(1f).setDuration(160).start();
@@ -1136,51 +1274,220 @@ public final class SettingsActivity extends Activity {
         openSheet();
     }
 
+    /**
+     * 고른 것의 편집 내용을 창에 채운다. 키·도구 막대 버튼·도구 막대는 키 편집 칸(KeyEditPanel)이, 영역은 그 영역 전체에
+     * 해당하는 설정(areaBox)이 맡는다. 도구 막대 영역은 도구 막대 칸 아래에 클립보드·이모지를 더한다.
+     */
+    private void showSelection(KeyboardPreview.Selection s) {
+        if (s == null) {
+            closeKeyPanel();
+            return;
+        }
+        boolean area = s.kind == KeyboardPreview.SEL_AREA;
+        int areaId = area ? s.area() : -1;
+        boolean panel = !area || areaId == KeyboardPreview.AREA_TOOLBAR;
+        if (panel) keyPanel.show(area ? KeyboardPreview.Selection.toolbar() : s, editorPreview.selectedKey());
+        keyPanel.view().setVisibility(panel ? View.VISIBLE : View.GONE);
+        fillArea(areaId);
+        sheetTitle.setText(area ? KeyboardPreview.AREA_NAMES[areaId] : keyPanel.title());
+    }
+
+    /** 영역 편집 창의 크기 슬라이더 (손잡이를 끌면 같이 맞춘다). 창을 채울 때마다 새로 모은다. */
+    private final java.util.Map<String, java.util.List<Runnable>> areaSliders = new java.util.HashMap<>();
+    /** sizeSlider가 맞출 일을 넣을 곳: 보통은 목록(sizeSliders), 영역 창을 채우는 동안은 areaSliders. */
+    private java.util.Map<String, java.util.List<Runnable>> sliderSink = sizeSliders;
+    private LinearLayout areaBox;
+
+    /** 영역 편집 내용을 areaBox에 만든다 (영역이 아니면 비운다). 목록을 만드는 조각을 그대로 써서 이름·설명이 같다. */
+    private void fillArea(int areaId) {
+        areaBox.removeAllViews();
+        areaSliders.clear();
+        areaBox.setVisibility(areaId < 0 ? View.GONE : View.VISIBLE);
+        if (areaId < 0) return;
+        LinearLayout saved = list;
+        list = areaBox;
+        sliderSink = areaSliders;
+        try {
+            buildArea(areaId);
+        } finally {
+            list = saved;
+            sliderSink = sizeSliders;
+        }
+    }
+
+    private static final String KEY_PAGE_NOTE = "키 하나하나의 누르기·길게 누르기·밀기는 미리보기를 왼쪽으로 넘겨 '키' 페이지에서 "
+            + "그 키를 눌러 바꿉니다.";
+
+    private void buildArea(int areaId) {
+        switch (areaId) {
+            case KeyboardPreview.AREA_TOOLBAR:
+                buildTools();   // 클립보드·이모지 (도구 막대 칸은 위의 KeyEditPanel)
+                break;
+            case KeyboardPreview.AREA_NUMBER: {
+                LinearLayout c = section("숫자 줄");
+                c.addView(toggle("숫자 줄 표시", "자판 위에 1~0 숫자 줄을 보여 줍니다.", Prefs.NUMBER_ROW, prefs.numberRow()));
+                c.addView(sizeSlider("숫자 줄 높이", Prefs.NUMBER_ROW_HEIGHT, prefs::numberRowHeight,
+                        Prefs.NUMBER_ROW_HEIGHT_MIN, Prefs.NUMBER_ROW_HEIGHT_MAX, 1, "%"));
+                c.addView(numberHintToggle());
+                c.addView(note(KEY_PAGE_NOTE));
+                break;
+            }
+            case KeyboardPreview.AREA_LETTERS: {
+                buildKoreanLayoutSection();
+                addLetterInput(section("입력"));
+                LinearLayout lp = section("길게 누르기");
+                addLetterLongPress(lp);
+                LinearLayout swipe = section("밀기");
+                swipe.addView(swipeDistanceSlider());
+                addKeyboardSwipe(swipe);
+                addTrackpadSpeed(swipe);
+                buildLook();   // 키 모양 (글자 크기·곡률·그림자·힌트)
+                LinearLayout more = card();
+                more.addView(note(KEY_PAGE_NOTE));
+                break;
+            }
+            default: {
+                addFunctionKeyLayout(section("기능키"));
+                LinearLayout space = section("스페이스바");
+                addSpaceInput(space);
+                space.addView(spaceSelectToggle());
+                space.addView(spaceLangLabelToggle());
+                LinearLayout swipe = section("밀기·길게 누르기");
+                swipe.addView(fnSwipeDistanceSlider());
+                swipe.addView(fnLongPressSlider());
+                addSpaceCursorSpeed(swipe);
+                addLanguageOrder(swipe);
+                LinearLayout more = card();
+                more.addView(note(KEY_PAGE_NOTE));
+                break;
+            }
+        }
+    }
+
+    /** 미리보기 위의 페이지 표시: 점 두 개(영역 · 키)와 지금 페이지 이름. 누르면 그 페이지로 넘긴다. */
+    private LinearLayout pageDots;
+    private TextView pageName;
+
+    private View buildPageDots() {
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER);
+        row.setPadding(0, Ui.dp(this, 2), 0, Ui.dp(this, 6));
+        row.setBackgroundColor(AppTheme.of(this).bg);
+        pageDots = new LinearLayout(this);
+        pageDots.setGravity(Gravity.CENTER_VERTICAL);
+        for (int i = 0; i < 2; i++) {
+            final int layer = i;
+            View dot = new View(this);
+            LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(Ui.dp(this, 8), Ui.dp(this, 8));
+            dlp.setMargins(Ui.dp(this, 4), 0, Ui.dp(this, 4), 0);
+            pageDots.addView(dot, dlp);
+            dot.setContentDescription(i == 0 ? "영역 페이지" : "키 페이지");
+            dot.setOnClickListener(v -> editorPreview.setLayer(layer));
+        }
+        row.addView(pageDots);
+        pageName = new TextView(this);
+        pageName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        pageName.setTextColor(hintColor);
+        LinearLayout.LayoutParams nlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        nlp.leftMargin = Ui.dp(this, 6);
+        row.addView(pageName, nlp);
+        // 점이 작아도 누르기 쉽게 줄 전체를 누르면 다음 페이지로.
+        row.setOnClickListener(v -> editorPreview.setLayer(1 - editorPreview.layer()));
+        updatePageDots(editorPreview.layer());
+        return row;
+    }
+
+    private void updatePageDots(int layer) {
+        if (pageDots == null) return;
+        for (int i = 0; i < pageDots.getChildCount(); i++) {
+            View dot = pageDots.getChildAt(i);
+            boolean on = i == layer;
+            dot.setBackground(Ui.round(on ? accentColor : (hintColor & 0x00FFFFFF) | 0x66000000, Ui.dp(this, 4)));
+            dot.animate().scaleX(on ? 1.25f : 1f).scaleY(on ? 1.25f : 1f).setDuration(160).start();
+        }
+        pageName.setText(layer == KeyboardPreview.LAYER_AREA
+                ? "영역 · 눌러서 영역 설정 · 좌우로 밀어 넘기기" : "키 · 눌러서 키 하나 설정 · 좌우로 밀어 넘기기");
+    }
+
     /** 시트를 아래에서 위로 올린다: Material 3 Expressive의 공간 스프링 (살짝 넘었다가 자리 잡는다). */
+    /** 시트를 움직이는 스프링 (열 때). 닫을 때는 sheet.animate()를 쓴다. */
+    private android.animation.ValueAnimator sheetSpring;
+
+    /**
+     * 시트를 아래에서 위로 올린다: Material 3 Expressive 기본 공간 스프링 (SpringMotion, 강성 700·감쇠비 0.85).
+     * 빠르게 올라와 아주 살짝 넘었다가 반 픽셀 안으로 들어올 때까지 매끄럽게 자리 잡는다.
+     * 방금 만든 내용의 배치가 첫 프레임을 잡아먹어 움직임이 늦게 시작해 보이지 않도록, 배치가 끝난 다음 프레임에 시작한다.
+     */
     private void openSheet() {
         sheetClosing = false;
-        sheet.animate().cancel();
-        scrim.animate().cancel();
-        keyPanel.view().setAlpha(1f);
+        cancelSheetMotion();
         if (sheet.getVisibility() != View.VISIBLE) sheet.setTranslationY(sheetHiddenY());
         sheet.setVisibility(View.VISIBLE);
         scrim.setVisibility(View.VISIBLE);
-        sheet.animate().translationY(0).setInterpolator(com.alternative_studios.newswipe.ui.Spring.SOFT)
-                .setDuration(420).setListener(null).start();
-        scrim.animate().alpha(1f).setDuration(200).setListener(null).start();
+        scrim.animate().alpha(1f).setDuration(180).setInterpolator(new android.view.animation.PathInterpolator(0.2f, 0f, 0f, 1f))
+                .setListener(null).start();
+        sheet.post(() -> {
+            if (sheetClosing || sheet.getVisibility() != View.VISIBLE) return;
+            sheetSpring = com.alternative_studios.newswipe.ui.SpringMotion.translateY(sheet, 0f,
+                    com.alternative_studios.newswipe.ui.SpringMotion.STIFFNESS_DEFAULT,
+                    com.alternative_studios.newswipe.ui.SpringMotion.DAMPING_EXPRESSIVE, null);
+        });
         setPanelBack(true);
+    }
+
+    private void cancelSheetMotion() {
+        if (sheetSpring != null) sheetSpring.cancel();
+        sheetSpring = null;
+        sheet.animate().cancel();
+        scrim.animate().cancel();
     }
 
     private TextView sheetTitle;
 
-    /** 편집 창을 내려 닫고 목록으로 돌아간다 (창에서 바꾼 값이 있으면 목록을 다시 만든다). */
+    /** 편집 창을 내려 닫고 목록으로 돌아간다 (창에서 바꾼 값이 있으면 다 내려간 뒤 목록을 다시 만든다). */
     private void closeKeyPanel() {
         if (editorPreview != null) editorPreview.select(null);
         if (!panelOpen()) return;
         sheetClosing = true;
         setPanelBack(false);
+        cancelSheetMotion();
         // Material 3 강조 가속 곡선으로 빠르게 내려간다 (나갈 때는 들어올 때보다 짧게).
         sheet.animate().translationY(sheetHiddenY())
                 .setInterpolator(new android.view.animation.PathInterpolator(0.3f, 0f, 0.8f, 0.15f))
-                .setDuration(220)
+                .setDuration(200)
+                .withLayer()
                 .setListener(new android.animation.AnimatorListenerAdapter() {
+                    private boolean cancelled;
+
+                    @Override
+                    public void onAnimationCancel(android.animation.Animator animation) {
+                        cancelled = true;
+                    }
+
                     @Override
                     public void onAnimationEnd(android.animation.Animator animation) {
-                        if (!sheetClosing) return;   // 닫히는 사이에 다시 열었다
+                        sheet.animate().setListener(null);
+                        if (cancelled || !sheetClosing) return;   // 닫히는 사이에 다시 열었다
                         sheetClosing = false;
                         sheet.setVisibility(View.GONE);
                         scrim.setVisibility(View.GONE);
+                        rebuildOverviewIfStale();
                     }
                 }).start();
-        scrim.animate().alpha(0f).setDuration(220).setListener(null).start();
-        if (overviewStale) {
-            overviewStale = false;
-            int y = scrollView.getScrollY();
-            overviewBox.removeAllViews();
-            sizeSliders.clear();
-            fillOverview(overviewBox);
-            scrollView.post(() -> scrollView.scrollTo(0, y));
-        }
+        scrim.animate().alpha(0f).setDuration(200).setInterpolator(new android.view.animation.PathInterpolator(0.3f, 0f, 0.8f, 0.15f))
+                .setListener(null).start();
+    }
+
+    /** 편집 창에서 바꾼 값이 있으면 목록을 다시 만든다 (보던 자리는 그대로). */
+    private void rebuildOverviewIfStale() {
+        if (!overviewStale || overviewBox == null) return;
+        overviewStale = false;
+        int y = scrollView.getScrollY();
+        overviewBox.removeAllViews();
+        sizeSliders.clear();
+        fillOverview(overviewBox);
+        scrollView.post(() -> scrollView.scrollTo(0, y));
     }
 
     private void setPanelBack(boolean on) {
@@ -1239,12 +1546,130 @@ public final class SettingsActivity extends Activity {
         look.addView(toggle("길게 눌러 입력할 문자 힌트 없애기",
                 "키의 오른쪽 위에 표시되는 길게 눌러 입력할 문자 힌트를 없앱니다.",
                 Prefs.POPUP_HINT_HIDDEN, prefs.popupHintHidden()));
-        look.addView(toggle("숫자 키 힌트 없애기",
-                "숫자 키(1~0)에서만 길게 눌러 입력할 문자 힌트를 없앱니다.",
-                Prefs.NUMBER_HINT_HIDDEN, prefs.numberHintHidden()));
-        look.addView(toggle("스페이스바에 언어 이름 보이기",
-                "스페이스바에 지금 쓰는 언어를 작게 보여 줍니다.",
-                Prefs.SPACE_LANG_LABEL, prefs.spaceLangLabel()));
+        look.addView(numberHintToggle());
+        look.addView(spaceLangLabelToggle());
+    }
+
+    // ---- 목록과 영역 편집 창이 함께 쓰는 항목 (같은 설정이 두 곳에 보여도 이름·설명이 어긋나지 않게 한곳에서 만든다)
+
+    private View numberHintToggle() {
+        return toggle("숫자 키 힌트 없애기", "숫자 키(1~0)에서만 길게 눌러 입력할 문자 힌트를 없앱니다.",
+                Prefs.NUMBER_HINT_HIDDEN, prefs.numberHintHidden());
+    }
+
+    private View spaceLangLabelToggle() {
+        return toggle("스페이스바에 언어 이름 보이기", "스페이스바에 지금 쓰는 언어를 작게 보여 줍니다.",
+                Prefs.SPACE_LANG_LABEL, prefs.spaceLangLabel());
+    }
+
+    /** 맨 아래 줄 기능키의 순서·유무, 숫자 패드, 격자 정렬. */
+    private void addFunctionKeyLayout(LinearLayout c) {
+        c.addView(button("기능키 순서·유무 사용자화", v -> startActivity(new Intent(this, BottomKeysEditorActivity.class))));
+        c.addView(note("맨 아래 줄 기능키의 순서와 유무를 바꿉니다."));
+        c.addView(toggle("기호 자판 대신 숫자 패드 사용",
+                "기호 키(?123)를 누르면 기호 자판 대신 3×4 숫자 패드가 열립니다. "
+                        + "숫자 패드의 ?!@ 키로 기호 자판을, 가·ABC 키로 글자 자판을 엽니다.",
+                Prefs.NUMBER_PAD_SYMBOLS, prefs.numberPadForSymbols()));
+        // 바꾸면 미리보기도 바로 다시 그린다.
+        c.addView(toggle("격자 정렬", GRID_DESC, prefs.gridLayout(), on -> {
+            prefs.raw().edit().putBoolean(Prefs.GRID_LAYOUT, on).apply();
+            refreshLayoutPreview();
+        }));
+    }
+
+    /** 글자 키의 입력 동작: 자음·모음 연속 탭, 영어 자동 대문자, 이메일 입력란, ⌫ 인식 범위. */
+    private void addLetterInput(LinearLayout input) {
+        View doubleTapTime = subGroup(
+                slider("쌍자음 인식 시간", Prefs.DOUBLE_TAP_CONSONANT_MS, prefs.doubleTapConsonantMs(),
+                        80, 500, 10, "ms"),
+                note("두 번째 탭이 이 시간 안에 들어와야 쌍자음이 됩니다. 값을 줄이면 '학교'가 '하꾜'로 바뀌는 일이 줄고, "
+                        + "대신 쌍자음을 낼 때 더 빨리 눌러야 합니다."));
+        input.addView(toggle("자음 연속 탭으로 쌍자음",
+                "같은 자음을 빠르게 두 번 누르면 쌍자음을 입력합니다 (예: ㄱㄱ→ㄲ, ㅅㅅ→ㅆ). 기존 단모음 자판과 같은 방식이며, 아래로 밀어 쌍자음을 입력하는 것과 함께 쓸 수 있습니다.",
+                Prefs.DOUBLE_TAP_CONSONANT, prefs.doubleTapConsonant(), doubleTapTime));
+        input.addView(doubleTapTime);
+        input.addView(toggle("모음 연속 탭으로 이중모음", "같은 모음을 연달아 누르면 이중모음을 입력합니다 (예: ㅏㅏ→ㅑ, ㅗㅗ→ㅛ)."
+                        + (prefs.koreanDubeolsik() && !harvesting ? " 두벌식 자판(실험실)에서는 쓰지 않습니다." : ""),
+                Prefs.DOUBLE_TAP_VOWEL, prefs.doubleTapVowel()));
+        input.addView(toggle("영어 자동 대문자", "문장 첫 글자를 대문자로 시작합니다.", Prefs.AUTO_CAP, prefs.autoCap()));
+        input.addView(toggle("이메일 입력란은 영어로 시작",
+                "이메일 주소 입력란이나 앱이 영어 입력을 요청한 칸(아이디 입력란 등)에서는 영어 자판으로 시작하고, "
+                        + "그 칸을 떠나면 원래 언어로 돌아갑니다. 웹 브라우저 주소창은 검색에도 쓰이므로 바꾸지 않습니다.",
+                Prefs.ENGLISH_FIELDS, prefs.englishFields()));
+        View deleteShrink = subGroup(slider("줄이는 정도", Prefs.DELETE_HIT_SHRINK_PCT, prefs.deleteHitShrinkPct(),
+                5, 50, 5, "%"));
+        input.addView(toggle("⌫ 버튼 인식 범위 좁히기",
+                "⌫의 가장자리를 누르면 ⌫ 대신 이웃 키를 누른 것으로 간주해 잘못 지워지는 일을 줄입니다. 아래쪽은 아랫줄이 글자 키일 때만 적용됩니다.",
+                Prefs.DELETE_HIT_SHRINK, prefs.deleteHitShrink(), deleteShrink));
+        input.addView(deleteShrink);
+    }
+
+    /** 스페이스바의 입력 동작: 두 번으로 마침표, 인식 범위. */
+    private void addSpaceInput(LinearLayout input) {
+        input.addView(toggle("스페이스바 두 번으로 마침표", "스페이스바를 빠르게 두 번 누르면 '. '을 넣습니다.",
+                Prefs.DOUBLE_SPACE_PERIOD, prefs.doubleSpacePeriod()));
+        View spaceShrink = subGroup(slider("줄이는 정도", Prefs.SPACE_HIT_SHRINK_PCT, prefs.spaceHitShrinkPct(),
+                5, 50, 5, "%"));
+        input.addView(toggle("스페이스바 인식 범위 좁히기",
+                "스페이스바의 위쪽 가장자리를 누르면 윗줄 키를 누른 것으로 간주해 스페이스바가 잘못 눌리는 일을 줄입니다.",
+                Prefs.SPACE_HIT_SHRINK, prefs.spaceHitShrink(), spaceShrink));
+        input.addView(spaceShrink);
+    }
+
+    /** 글자 키 길게 누르기: 시간, 길게 눌러 문자 입력, 길게 눌러 연속 입력. */
+    private void addLetterLongPress(LinearLayout c) {
+        // 길게 눌러 문자 입력과 길게 눌러 연속 입력이 함께 쓰는 시간이라 두 토글 위에 둔다.
+        c.addView(slider("문자 길게 누르기 시간", Prefs.LONG_PRESS_MS, prefs.longPressMs(), 100, 800, 20, "ms"));
+        c.addView(toggle("길게 눌러 문자 입력", "키를 길게 눌러 특수문자를 입력합니다.",
+                Prefs.LONG_PRESS_CHARS, prefs.longPressChars()));
+        c.addView(toggle("길게 눌러 연속 입력", "고른 글자를 길게 누르고 있으면 계속 입력합니다.",
+                Prefs.LONG_PRESS_REPEAT, prefs.longPressRepeat()));
+    }
+
+    /** 모든 기능키(⌫·기호 키·🌐︎·Shift 키·엔터 키·Fn 키 등)가 같은 시간을 쓴다. */
+    private View fnLongPressSlider() {
+        return slider("기능키 길게 누르기 시간", Prefs.DELETE_PRESS_MS, prefs.deletePressMs(), 200, 800, 50, "ms");
+    }
+
+    private View swipeDistanceSlider() {
+        return slider("미는 거리", Prefs.SWIPE_THRESHOLD, prefs.swipeThresholdDp(), 12, 48, 2, "dp");
+    }
+
+    private View fnSwipeDistanceSlider() {
+        return slider("기능 미는 거리", Prefs.FN_SWIPE_THRESHOLD, prefs.fnSwipeThresholdDp(), 12, 48, 2, "dp");
+    }
+
+    private View spaceSelectToggle() {
+        return toggle("스페이스바를 길게 누른 뒤 밀어서 선택",
+                "스페이스바를 길게 눌러 진동이 오면, 손을 떼지 않고 좌우로 밀어 글자 단위로, "
+                        + "위아래로 밀어 줄 단위로(여러 줄 입력란) 글자를 선택합니다. 밀지 않고 떼면 띄어쓰기가 입력됩니다.",
+                Prefs.SPACE_SELECT, prefs.spaceSelect());
+    }
+
+    private void addLanguageOrder(LinearLayout c) {
+        c.addView(button("언어 순서 사용자화", v -> startActivity(new Intent(this, LanguageOrderEditorActivity.class))));
+        c.addView(note("🌐︎로 바꿀 언어와 '언어 고르기' 말풍선의 차례를 정합니다."));
+    }
+
+    private void addSpaceCursorSpeed(LinearLayout c) {
+        c.addView(slider("스페이스바·커서 키 좌우", Prefs.SPACE_CURSOR_SPEED_H, prefs.spaceCursorSpeedH(), 50, 300, 10, "%"));
+        c.addView(slider("스페이스바·커서 키 상하", Prefs.SPACE_CURSOR_SPEED_V, prefs.spaceCursorSpeedV(), 50, 300, 10, "%"));
+    }
+
+    private void addTrackpadSpeed(LinearLayout c) {
+        c.addView(slider("자판 트랙패드 좌우", Prefs.CHAR_CURSOR_SPEED_H, prefs.charCursorSpeedH(), 50, 300, 10, "%"));
+        c.addView(slider("자판 트랙패드 상하", Prefs.CHAR_CURSOR_SPEED_V, prefs.charCursorSpeedV(), 50, 300, 10, "%"));
+    }
+
+    /** 키보드 밀기 편집(한 손가락·두 손가락)과 위로 밀어서 추천 단어 입력. */
+    private void addKeyboardSwipe(LinearLayout board) {
+        board.addView(button("키보드 밀기 편집", v ->
+                startActivity(SwipeActionEditorActivity.intent(this, KeyboardSwipes.SPEC))));
+        board.addView(note("자판을 한 손가락·두 손가락으로 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 정합니다. "
+                + "한 손가락은 그 방향에 밀어서 입력할 글자가 없을 때 쓰입니다."));
+        board.addView(toggle("위로 밀어서 추천 단어 입력",
+                "추천 단어가 떠 있을 때 자판의 왼쪽·가운데·오른쪽에서 위로 밀면 첫째·둘째·셋째 추천 단어를 입력합니다. ",
+                Prefs.SWIPE_PICK_SUGGESTION, prefs.swipePickSuggestion()));
     }
 
     /**
@@ -1299,6 +1724,16 @@ public final class SettingsActivity extends Activity {
 
     /** 자판 배열: 한글 자판 배열, 자·모음 균형 레이아웃, 가로 모드, 기능키 순서·유무, 격자 정렬 (미리보기는 화면 아래). */
     private void buildKeyboardLayout() {
+        buildKoreanLayoutSection();
+        addFunctionKeyLayout(section("기능키"));
+        // 가로 모드일 때의 자판 모양(분리 키보드, 키보드 높이·글자 크기·세로 위치)을 세로 모드와 따로 정한다.
+        LinearLayout landscape = section("가로 모드");
+        landscape.addView(button("가로 모드 키보드 사용자화", v -> openSection(LANDSCAPE_AREA)));
+        landscape.addView(note("화면을 가로로 돌렸을 때의 자판 모양을 따로 정합니다."));
+    }
+
+    /** 한글 자판 배열: 배열 고르기와 설명, 자·모음 균형 레이아웃(키 위치·폭 사용자화). */
+    private void buildKoreanLayoutSection() {
         LinearLayout korean = section("한글 자판 배열");
         boolean dubeolsik = prefs.koreanDubeolsik();
         if (dubeolsik && !harvesting) {
@@ -1340,25 +1775,6 @@ public final class SettingsActivity extends Activity {
             korean.addView(keyArea);
         }
 
-        LinearLayout layoutKeys = section("기능키");
-        layoutKeys.addView(button("기능키 순서·유무 사용자화", v ->
-                startActivity(new Intent(this, BottomKeysEditorActivity.class))));
-        layoutKeys.addView(note("맨 아래 줄 기능키의 순서와 유무를 바꿉니다."));
-        layoutKeys.addView(toggle("기호 자판 대신 숫자 패드 사용",
-                "기호 키(?123)를 누르면 기호 자판 대신 3×4 숫자 패드가 열립니다. "
-                        + "숫자 패드의 ?!@ 키로 기호 자판을, 가·ABC 키로 글자 자판을 엽니다.",
-                Prefs.NUMBER_PAD_SYMBOLS, prefs.numberPadForSymbols()));
-
-        // 바꾸면 미리보기도 바로 다시 그린다.
-        layoutKeys.addView(toggle("격자 정렬", GRID_DESC, prefs.gridLayout(), on -> {
-            prefs.raw().edit().putBoolean(Prefs.GRID_LAYOUT, on).apply();
-            refreshLayoutPreview();
-        }));
-
-        // 가로 모드일 때의 자판 모양(분리 키보드, 키보드 높이·글자 크기·세로 위치)을 세로 모드와 따로 정한다.
-        LinearLayout landscape = section("가로 모드");
-        landscape.addView(button("가로 모드 키보드 사용자화", v -> openSection(LANDSCAPE_AREA)));
-        landscape.addView(note("화면을 가로로 돌렸을 때의 자판 모양을 따로 정합니다."));
     }
 
     /** 고른 한글 배열의 설명. */
@@ -2211,56 +2627,21 @@ public final class SettingsActivity extends Activity {
 
     private void buildKeys() {
         LinearLayout chars = section("길게 누르기");
-        // 길게 눌러 문자 입력과 길게 눌러 연속 입력이 함께 쓰는 시간이라 두 토글 위에 둔다.
-        chars.addView(slider("문자 길게 누르기 시간", Prefs.LONG_PRESS_MS, prefs.longPressMs(), 100, 800, 20, "ms"));
-        chars.addView(toggle("길게 눌러 문자 입력", "키를 길게 눌러 특수문자를 입력합니다.",
-                Prefs.LONG_PRESS_CHARS, prefs.longPressChars()));
-        chars.addView(toggle("길게 눌러 연속 입력", "고른 글자를 길게 누르고 있으면 계속 입력합니다.",
-                Prefs.LONG_PRESS_REPEAT, prefs.longPressRepeat()));
-        // 모든 기능키(⌫·기호 키·🌐︎·Shift 키·엔터 키·Fn 키 등)가 같은 시간을 쓴다.
-        chars.addView(slider("기능키 길게 누르기 시간", Prefs.DELETE_PRESS_MS, prefs.deletePressMs(), 200, 800, 50, "ms"));
+        addLetterLongPress(chars);
+        chars.addView(fnLongPressSlider());
         chars.addView(note(EDIT_ON_PREVIEW + "길게 눌러 고를 문자, 연속 입력, 기능키를 길게 누를 때 실행할 기능을 "
                 + "그 키마다 정할 수 있습니다."));
     }
 
     private void buildInput() {
         LinearLayout input = section("입력 동작");
-        View doubleTapTime = subGroup(
-                slider("쌍자음 인식 시간", Prefs.DOUBLE_TAP_CONSONANT_MS, prefs.doubleTapConsonantMs(),
-                        80, 500, 10, "ms"),
-                note("두 번째 탭이 이 시간 안에 들어와야 쌍자음이 됩니다. 값을 줄이면 '학교'가 '하꾜'로 바뀌는 일이 줄고, "
-                        + "대신 쌍자음을 낼 때 더 빨리 눌러야 합니다."));
-        input.addView(toggle("자음 연속 탭으로 쌍자음",
-                "같은 자음을 빠르게 두 번 누르면 쌍자음을 입력합니다 (예: ㄱㄱ→ㄲ, ㅅㅅ→ㅆ). 기존 단모음 자판과 같은 방식이며, 아래로 밀어 쌍자음을 입력하는 것과 함께 쓸 수 있습니다.",
-                Prefs.DOUBLE_TAP_CONSONANT, prefs.doubleTapConsonant(), doubleTapTime));
-        input.addView(doubleTapTime);
-        input.addView(toggle("모음 연속 탭으로 이중모음", "같은 모음을 연달아 누르면 이중모음을 입력합니다 (예: ㅏㅏ→ㅑ, ㅗㅗ→ㅛ)."
-                        + (prefs.koreanDubeolsik() && !harvesting ? " 두벌식 자판(실험실)에서는 쓰지 않습니다." : ""),
-                Prefs.DOUBLE_TAP_VOWEL, prefs.doubleTapVowel()));
-        input.addView(toggle("영어 자동 대문자", "문장 첫 글자를 대문자로 시작합니다.", Prefs.AUTO_CAP, prefs.autoCap()));
-        input.addView(toggle("이메일 입력란은 영어로 시작",
-                "이메일 주소 입력란이나 앱이 영어 입력을 요청한 칸(아이디 입력란 등)에서는 영어 자판으로 시작하고, "
-                        + "그 칸을 떠나면 원래 언어로 돌아갑니다. 웹 브라우저 주소창은 검색에도 쓰이므로 바꾸지 않습니다.",
-                Prefs.ENGLISH_FIELDS, prefs.englishFields()));
-        input.addView(toggle("스페이스바 두 번으로 마침표", "스페이스바를 빠르게 두 번 누르면 '. '을 넣습니다.",
-                Prefs.DOUBLE_SPACE_PERIOD, prefs.doubleSpacePeriod()));
-        View deleteShrink = subGroup(slider("줄이는 정도", Prefs.DELETE_HIT_SHRINK_PCT, prefs.deleteHitShrinkPct(),
-                5, 50, 5, "%"));
-        input.addView(toggle("⌫ 버튼 인식 범위 좁히기",
-                "⌫의 가장자리를 누르면 ⌫ 대신 이웃 키를 누른 것으로 간주해 잘못 지워지는 일을 줄입니다. 아래쪽은 아랫줄이 글자 키일 때만 적용됩니다.",
-                Prefs.DELETE_HIT_SHRINK, prefs.deleteHitShrink(), deleteShrink));
-        input.addView(deleteShrink);
-        View spaceShrink = subGroup(slider("줄이는 정도", Prefs.SPACE_HIT_SHRINK_PCT, prefs.spaceHitShrinkPct(),
-                5, 50, 5, "%"));
-        input.addView(toggle("스페이스바 인식 범위 좁히기",
-                "스페이스바의 위쪽 가장자리를 누르면 윗줄 키를 누른 것으로 간주해 스페이스바가 잘못 눌리는 일을 줄입니다.",
-                Prefs.SPACE_HIT_SHRINK, prefs.spaceHitShrink(), spaceShrink));
-        input.addView(spaceShrink);
+        addLetterInput(input);
+        addSpaceInput(input);
     }
 
     private void buildSwipe() {
         LinearLayout swipe = section("밀어서 글자 입력");
-        swipe.addView(slider("미는 거리", Prefs.SWIPE_THRESHOLD, prefs.swipeThresholdDp(), 12, 48, 2, "dp"));
+        swipe.addView(swipeDistanceSlider());
         swipe.addView(note("값이 작을수록 살짝만 밀어도 인식합니다. " + EDIT_ON_PREVIEW
                 + "위·아래·왼쪽·오른쪽으로 밀 때 입력할 글자를 그 키마다 정할 수 있습니다."));
     }
@@ -2271,32 +2652,19 @@ public final class SettingsActivity extends Activity {
      */
     private void buildSwipeFunctions() {
         LinearLayout common = section("밀어서 기능");
-        common.addView(slider("기능 미는 거리", Prefs.FN_SWIPE_THRESHOLD, prefs.fnSwipeThresholdDp(), 12, 48, 2, "dp"));
+        common.addView(fnSwipeDistanceSlider());
         common.addView(note("기능키·도구 막대·자판을 밀어 기능을 실행할 때의 거리입니다. 값이 작을수록 살짝만 밀어도 인식합니다. "
                 + EDIT_ON_PREVIEW + "기능키나 도구 막대 버튼을 각 방향으로 밀 때 실행할 기능을 정할 수 있습니다."));
-        common.addView(toggle("스페이스바를 길게 누른 뒤 밀어서 선택",
-                "스페이스바를 길게 눌러 진동이 오면, 손을 떼지 않고 좌우로 밀어 글자 단위로, "
-                        + "위아래로 밀어 줄 단위로(여러 줄 입력란) 글자를 선택합니다. 밀지 않고 떼면 띄어쓰기가 입력됩니다.",
-                Prefs.SPACE_SELECT, prefs.spaceSelect()));
-        common.addView(button("언어 순서 사용자화", v -> startActivity(new Intent(this, LanguageOrderEditorActivity.class))));
-        common.addView(note("🌐︎로 바꿀 언어와 '언어 고르기' 말풍선의 차례를 정합니다."));
+        common.addView(spaceSelectToggle());
+        addLanguageOrder(common);
 
         LinearLayout speed = section("커서 이동 속도");
-        speed.addView(slider("스페이스바·커서 키 좌우", Prefs.SPACE_CURSOR_SPEED_H, prefs.spaceCursorSpeedH(), 50, 300, 10, "%"));
-        speed.addView(slider("스페이스바·커서 키 상하", Prefs.SPACE_CURSOR_SPEED_V, prefs.spaceCursorSpeedV(), 50, 300, 10, "%"));
-        speed.addView(slider("자판 트랙패드 좌우", Prefs.CHAR_CURSOR_SPEED_H, prefs.charCursorSpeedH(), 50, 300, 10, "%"));
-        speed.addView(slider("자판 트랙패드 상하", Prefs.CHAR_CURSOR_SPEED_V, prefs.charCursorSpeedV(), 50, 300, 10, "%"));
+        addSpaceCursorSpeed(speed);
+        addTrackpadSpeed(speed);
         speed.addView(note("'커서 자유 이동'을 정한 방향으로 밀 때의 속도입니다. 값이 클수록 손가락을 조금만 밀어도 커서가 빠르게 "
                 + "움직입니다. 자판 트랙패드는 키보드 밀기에서 한 손가락에 '커서 자유 이동'을 정했을 때 씁니다."));
 
-        LinearLayout board = section("키보드 밀기");
-        board.addView(button("키보드 밀기 편집", v ->
-                startActivity(SwipeActionEditorActivity.intent(this, KeyboardSwipes.SPEC))));
-        board.addView(note("자판을 한 손가락·두 손가락으로 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 정합니다. "
-                + "한 손가락은 그 방향에 밀어서 입력할 글자가 없을 때 쓰입니다."));
-        board.addView(toggle("위로 밀어서 추천 단어 입력",
-                "추천 단어가 떠 있을 때 자판의 왼쪽·가운데·오른쪽에서 위로 밀면 첫째·둘째·셋째 추천 단어를 입력합니다. ",
-                Prefs.SWIPE_PICK_SUGGESTION, prefs.swipePickSuggestion()));
+        addKeyboardSwipe(section("키보드 밀기"));
     }
 
     private void buildWords() {
