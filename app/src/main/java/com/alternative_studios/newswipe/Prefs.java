@@ -170,6 +170,9 @@ public final class Prefs {
     public static final String DELETE_KEY_HIDDEN = "delete_key_hidden";       // 글자·기호 자판의 ⌫ 없애기 (빈칸으로 남김)
     public static final String SPACE_KEY_HIDDEN = "space_key_hidden";         // 스페이스바 없애기 (기능키 순서·유무 사용자화)
     public static final String BOTTOM_KEY_ORDER = "bottom_key_order";         // 맨 아래 줄 기능키 순서 (BottomKeys)
+    /** 맨 아래 줄에 더할 수 있는 키를 보이는지 (기능키 순서·유무 사용자화, 기본 꺼짐). */
+    public static final String BOTTOM_EMOJI_KEY = "bottom_emoji_key", BOTTOM_CLIPBOARD_KEY = "bottom_clipboard_key",
+            BOTTOM_CURSOR_KEY = "bottom_cursor_key", BOTTOM_VOICE_KEY = "bottom_voice_key";
     public static final String ENTER_KEY_HIDDEN = "enter_key_hidden";         // 글자·기호 자판 아래 줄의 엔터 키 없애기
     public static final String MODE_KEY_HIDDEN = "mode_key_hidden";           // 글자 자판·기호 자판의 기호 키(?123·가·ABC) 없애기
     public static final String LANGUAGE_KEY_HIDDEN = "language_key_hidden";   // 글자 자판의 지구본(언어 전환) 키 없애기
@@ -384,7 +387,8 @@ public final class Prefs {
         MENU_KEYS.put("layout", keys(KOREAN_LAYOUT, GRID_LAYOUT, NUMBER_ROW, NUMBER_ROW_HEIGHT, LANDSCAPE_SPLIT, LANDSCAPE_SIZE,
                 KEYBOARD_HEIGHT_LAND, KEY_TEXT_SIZE_LAND, SPLIT_GAP_CURSOR, SPLIT_GAP_SPEED, SPLIT_SPACE_JOIN, SPLIT_FN_WIDTH,
                 SPLIT_REACH_COLUMN, PROFILE_LIFT + LANDSCAPE_SUFFIX, BOTTOM_KEY_ORDER, COMMA_CHAR, PERIOD_CHAR, MODE_KEY_HIDDEN, PERIOD_COMMA, LANGUAGE_KEY_HIDDEN, SPACE_KEY_HIDDEN,
-                PERIOD_KEY_HIDDEN, ENTER_KEY_HIDDEN, DELETE_KEY_HIDDEN, KOREAN_SHIFT_HIDDEN, KOREAN_SHIFT_FN, NUMBER_PAD_SYMBOLS));
+                PERIOD_KEY_HIDDEN, ENTER_KEY_HIDDEN, DELETE_KEY_HIDDEN, KOREAN_SHIFT_HIDDEN, KOREAN_SHIFT_FN, NUMBER_PAD_SYMBOLS,
+                BOTTOM_EMOJI_KEY, BOTTOM_CLIPBOARD_KEY, BOTTOM_CURSOR_KEY, BOTTOM_VOICE_KEY));
         MENU_PREFIXES.put("layout", keys("balanced_", LANDSCAPE_SPLIT + "_", "swipe_fk_"));
         MENU_KEYS.put("theme", keys(THEME_MODE, ACCENT_MODE, ACCENT_COLOR, GRID_COLORS, NEUMORPHISM));
         MENU_KEYS.put("look", keys(KEYBOARD_HEIGHT, KEY_TEXT_SIZE, KEY_RADIUS, KEY_SHADOW, KEY_SHADOW_STRENGTH,
@@ -471,7 +475,7 @@ public final class Prefs {
     public void resetBottomKeys() {
         removeKeys(new String[]{BOTTOM_KEY_ORDER, COMMA_CHAR, PERIOD_CHAR, MODE_KEY_HIDDEN, PERIOD_COMMA, LANGUAGE_KEY_HIDDEN,
                 SPACE_KEY_HIDDEN, PERIOD_KEY_HIDDEN, ENTER_KEY_HIDDEN, DELETE_KEY_HIDDEN, KOREAN_SHIFT_HIDDEN,
-                KOREAN_SHIFT_FN}, NONE);
+                KOREAN_SHIFT_FN, BOTTOM_EMOJI_KEY, BOTTOM_CLIPBOARD_KEY, BOTTOM_CURSOR_KEY, BOTTOM_VOICE_KEY}, NONE);
     }
 
     /** '도구 막대 버튼 사용자화' 화면의 값. */
@@ -711,6 +715,10 @@ public final class Prefs {
             case com.alternative_studios.newswipe.keyboard.BottomKeys.SPACE: return !spaceKeyHidden();
             case com.alternative_studios.newswipe.keyboard.BottomKeys.PERIOD: return !periodKeyHidden();
             case com.alternative_studios.newswipe.keyboard.BottomKeys.ENTER: return !enterKeyHidden();
+            case com.alternative_studios.newswipe.keyboard.BottomKeys.EMOJI: return sp.getBoolean(BOTTOM_EMOJI_KEY, false);
+            case com.alternative_studios.newswipe.keyboard.BottomKeys.CLIPBOARD: return sp.getBoolean(BOTTOM_CLIPBOARD_KEY, false);
+            case com.alternative_studios.newswipe.keyboard.BottomKeys.CURSOR: return sp.getBoolean(BOTTOM_CURSOR_KEY, false);
+            case com.alternative_studios.newswipe.keyboard.BottomKeys.VOICE: return sp.getBoolean(BOTTOM_VOICE_KEY, false);
             default: return false;
         }
     }
@@ -725,6 +733,11 @@ public final class Prefs {
             case com.alternative_studios.newswipe.keyboard.BottomKeys.SPACE: key = SPACE_KEY_HIDDEN; break;
             case com.alternative_studios.newswipe.keyboard.BottomKeys.PERIOD: key = PERIOD_KEY_HIDDEN; break;
             case com.alternative_studios.newswipe.keyboard.BottomKeys.ENTER: key = ENTER_KEY_HIDDEN; break;
+            // 더할 수 있는 키는 '보이기'로 저장한다 (기본 꺼짐).
+            case com.alternative_studios.newswipe.keyboard.BottomKeys.EMOJI: key = BOTTOM_EMOJI_KEY; value = shown; break;
+            case com.alternative_studios.newswipe.keyboard.BottomKeys.CLIPBOARD: key = BOTTOM_CLIPBOARD_KEY; value = shown; break;
+            case com.alternative_studios.newswipe.keyboard.BottomKeys.CURSOR: key = BOTTOM_CURSOR_KEY; value = shown; break;
+            case com.alternative_studios.newswipe.keyboard.BottomKeys.VOICE: key = BOTTOM_VOICE_KEY; value = shown; break;
             default: return;
         }
         sp.edit().putBoolean(key, value).apply();

@@ -144,6 +144,8 @@ public final class KeyboardView extends View {
         boolean freeCursor, freeH, freeV;
         /** 분리 키보드 가운데 빈 공간에서 시작한 커서 이동: 스페이스바의 좌우·상하 설정을 따른다. */
         boolean gap;
+        /** 커서 이동 키에서 시작한 커서 이동: 늘 좌우·상하로 움직이고, 속도는 스페이스바 커서 이동과 같다. */
+        boolean cursorKey;
         boolean chord;
         /** 선택 모드에서 선택 영역을 한 번이라도 움직였는지 (움직이지 않고 떼면 그냥 스페이스로 입력한다). */
         boolean selectMoved;
@@ -771,7 +773,17 @@ public final class KeyboardView extends View {
                 Icons.draw(c, Icons.GLOBE, cx, cy, Math.min(iconSize, dp(22)), icon);
                 return;
             case Key.EMOJI:
+            case Key.EMOJI_KEY:
                 Icons.draw(c, Icons.EMOJI, cx, cy, Math.min(iconSize, dp(22)), icon);
+                return;
+            case Key.CLIPBOARD:
+                Icons.draw(c, Icons.CLIPBOARD, cx, cy, Math.min(iconSize, dp(22)), icon);
+                return;
+            case Key.VOICE:
+                Icons.draw(c, Icons.MIC, cx, cy, Math.min(iconSize, dp(22)), icon);
+                return;
+            case Key.CURSOR_PAD:
+                Icons.draw(c, Icons.MENU_MOVE, cx, cy, Math.min(iconSize, dp(22)), icon);
                 return;
             case Key.SPACE:
                 // 글자·기호 자판의 스페이스바는 비워 두고(설정하면 글자 자판에 언어 이름), 숫자 자판에서만 ␣로 띄어쓰기 키임을 알린다.
@@ -1098,6 +1110,17 @@ public final class KeyboardView extends View {
                     }
                     break;
                 }
+                if (p.key.type == Key.CURSOR_PAD) {
+                    // 커서 이동 키: 스페이스바처럼 밀면 커서가 움직인다 (좌우는 글자, 위아래는 줄 단위). 누르기만 하면 아무것도 없다.
+                    if (deferred == null && (Math.abs(dx) > fnSwipeThreshold || Math.abs(dy) > fnSwipeThreshold)) {
+                        p.mode = CURSOR;
+                        p.cursorKey = true;
+                        p.cursorAnchorX = x;
+                        p.cursorAnchorY = y;
+                        cancelLongPress(p);
+                    }
+                    break;
+                }
                 if (p.key.type == Key.FUNCTION) {
                     moveFnKey(p, dx, dy);
                     break;
@@ -1205,9 +1228,10 @@ public final class KeyboardView extends View {
             case CURSOR: {
                 // 완전 사용자화를 켰으면 '커서 이동'을 정한 방향의 축만 움직인다.
                 // 분리 키보드 가운데 빈 공간은 늘 좌우·상하로 모두 움직이고 속도도 따로 정한다.
-                boolean curH = p.gap || (p.freeCursor ? p.freeH
+                boolean curH = p.gap || p.cursorKey || (p.freeCursor ? p.freeH
                         : fnSwipes != null ? fnSwipes.cursorH() : cursorH && !spaceLangSwipe);
-                boolean curV = p.gap || (p.freeCursor ? p.freeV : fnSwipes != null ? fnSwipes.cursorV() : cursorV);
+                boolean curV = p.gap || p.cursorKey
+                        || (p.freeCursor ? p.freeV : fnSwipes != null ? fnSwipes.cursorV() : cursorV);
                 // 커서 이동 속도: 한 칸(한 줄) 움직이는 데 필요한 손가락 거리를 속도만큼 줄이거나 늘린다.
                 float stepX = cursorStep / (p.gap ? gapSpeed : p.freeCursor ? charSpeedH : spaceSpeedH);
                 float stepY = cursorStepY / (p.gap ? gapSpeed : p.freeCursor ? charSpeedV : spaceSpeedV);

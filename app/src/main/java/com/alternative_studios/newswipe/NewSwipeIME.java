@@ -1888,8 +1888,17 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 toggleLanguage();
                 break;
             case Key.EMOJI:
+            case Key.EMOJI_KEY:
                 showPanel(PANEL_EMOJI);
                 break;
+            case Key.CLIPBOARD:
+                showPanel(PANEL_CLIPBOARD);
+                break;
+            case Key.VOICE:
+                startVoiceInput();
+                break;
+            case Key.CURSOR_PAD:
+                break;   // 밀어야 커서가 움직인다 (KeyboardView)
             default:
                 break;
         }

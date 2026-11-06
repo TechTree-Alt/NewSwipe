@@ -1042,7 +1042,7 @@ public final class KeyboardLayout {
         String[] order = prefs == null ? BottomKeys.DEFAULT_ORDER : prefs.bottomKeyOrder();
         int spaceAt = -1;
         for (String id : order) {
-            boolean shown = prefs == null ? !BottomKeys.COMMA.equals(id) : prefs.bottomKeyShown(id);
+            boolean shown = prefs == null ? BottomKeys.shownByDefault(id) : prefs.bottomKeyShown(id);
             if (!shown) continue;
             Key k;
             switch (id) {
@@ -1061,6 +1061,18 @@ public final class KeyboardLayout {
                     break;
                 case BottomKeys.ENTER:
                     k = fn(Key.ENTER, "", wideW);
+                    break;
+                case BottomKeys.EMOJI:
+                    k = fn(Key.EMOJI_KEY, "", narrowW);
+                    break;
+                case BottomKeys.CLIPBOARD:
+                    k = fn(Key.CLIPBOARD, "", narrowW);
+                    break;
+                case BottomKeys.CURSOR:
+                    k = fn(Key.CURSOR_PAD, "", narrowW);
+                    break;
+                case BottomKeys.VOICE:
+                    k = fn(Key.VOICE, "", narrowW);
                     break;
                 default:   // 스페이스바: 폭은 다른 키를 다 놓은 뒤에 정한다
                     spaceAt = keys.size();
