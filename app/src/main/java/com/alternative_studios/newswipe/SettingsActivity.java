@@ -1105,7 +1105,7 @@ public final class SettingsActivity extends Activity {
             // 숫자 줄은 꺼 두면 미리보기에 없어 누를 수 없으므로 여기서도 그 설정 창을 연다.
             LinearLayout numberRow = section("숫자 줄");
             numberRow.addView(button("숫자 줄 설정", v -> openNumberRowSheet()));
-            numberRow.addView(note("숫자 줄을 켜고 끄거나 높이를 바꿉니다. 켜 두었으면 미리보기의 숫자 줄을 눌러도 됩니다."));
+            numberRow.addView(note("자판 위에 숫자 줄을 보이도록 설정할 수 있습니다."));
             LinearLayout landscape = section("가로 모드");
             landscape.addView(button("가로 모드 키보드 사용자화", v -> openSection(LANDSCAPE_AREA)));
             landscape.addView(note("화면을 가로로 돌렸을 때의 자판 모양을 따로 정합니다."));
