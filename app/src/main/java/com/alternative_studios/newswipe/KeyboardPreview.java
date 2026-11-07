@@ -632,6 +632,25 @@ final class KeyboardPreview extends FrameLayout {
 
     /** 손잡이의 가운데 (미리보기 좌표). 보이지 않으면 false. */
     private boolean handleCenter(int h, float[] out) {
+        if (!handleEdge(h, out)) return false;
+        // 경계선 위가 아니라 윤곽선 안쪽에 둔다: 화면 가장자리의 시스템 몸짓(뒤로 가기·홈)과 겹치지 않게.
+        float in = Ui.dp(getContext(), 9);
+        switch (h) {
+            case H_PAD_LEFT:
+            case H_AREA_L: out[0] += in; break;
+            case H_PAD_RIGHT:
+            case H_AREA_R:
+            case H_GAP_X: out[0] -= in; break;
+            case H_PAD_BOTTOM:
+            case H_AREA_B:
+            case H_GAP_Y: out[1] -= in; break;
+            default: out[1] += in; break;   // 위 가장자리의 손잡이 (높이·위쪽 여백)
+        }
+        return true;
+    }
+
+    /** 손잡이가 조절하는 경계선 위의 점 (미리보기 좌표). 보이지 않으면 false. */
+    private boolean handleEdge(int h, float[] out) {
         if (!handleShown(h)) return false;
         Context c = getContext();
         int w = getWidth();
