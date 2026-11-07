@@ -756,15 +756,23 @@ final class KeyboardPreview extends FrameLayout {
         return h == H_TOOLBAR || h == H_NUMBER_ROW || h == H_HEIGHT || h == H_FN_ROW;
     }
 
-    /** 높이 버튼을 눌렀을 때 옆에 잠깐 보이는 안내 (그 버튼과 사라질 시각). */
+    /** 높이 버튼 옆의 안내: 누르는 순간부터 손가락을 떼고 잠깐까지 보인다 (그 버튼과 사라질 시각). */
     private int knobHint = -1;
     private long knobHintUntil;
 
-    private void showKnobHint(int h) {
+    /** 높이 버튼을 눌렀다: 떼기 전까지 안내를 보인다. */
+    private void holdKnobHint(int h) {
         knobHint = h;
-        knobHintUntil = android.os.SystemClock.uptimeMillis() + 1800;
+        knobHintUntil = Long.MAX_VALUE;
         overlay.invalidate();
-        overlay.postDelayed(overlay::invalidate, 1850);
+    }
+
+    /** 손가락을 뗐다: 안내는 잠깐 더 보였다가 사라진다. */
+    private void releaseKnobHint() {
+        if (knobHint < 0 || knobHintUntil != Long.MAX_VALUE) return;
+        knobHintUntil = android.os.SystemClock.uptimeMillis() + 1200;
+        overlay.invalidate();
+        overlay.postDelayed(overlay::invalidate, 1250);
     }
 
     private int handleAt(float x, float y) {
@@ -1211,6 +1219,7 @@ final class KeyboardPreview extends FrameLayout {
                     downRawX = e.getRawX();
                     downRawY = e.getRawY();
                     active = handleAt(downX, downY);
+                    if (active >= 0 && isKnob(active)) holdKnobHint(active);
                     dragging = false;
                     moved = false;
                     paging = false;
@@ -1262,12 +1271,13 @@ final class KeyboardPreview extends FrameLayout {
                         setLayer(target);
                     } else if (dragging) {
                         dragging = false;
+                        knobHint = -1;   // 끌고 난 뒤에는 안내를 다시 보이지 않는다
                         active = -1;
                         invalidate();
                         updateExclusion();
                     } else if (!moved && active >= 0 && isKnob(active)) {
-                        // 높이 버튼을 눌렀다: 끄는 법을 알려 준다.
-                        showKnobHint(active);
+                        // 높이 버튼을 눌렀다 뗐다: 안내는 이미 보였다가 잠깐 뒤 사라진다.
+                        releaseKnobHint();
                         active = -1;
                     } else if (!moved) {
                         playSoundEffect(android.view.SoundEffectConstants.CLICK);
@@ -1280,6 +1290,7 @@ final class KeyboardPreview extends FrameLayout {
                         animateLayerTo(layer);
                     }
                     dragging = false;
+                    knobHint = -1;
                     active = -1;
                     invalidate();
                     return true;
