@@ -11,8 +11,6 @@ public final class FinalSwipes {
     public static final int UP = 0, LEFT = 1, RIGHT = 2;
     /** 설정 이름에 쓰는 방향 이름. */
     public static final String[] DIR_NAMES = {"up", "left", "right"};
-    /** 화면에 보이는 방향 이름. */
-    public static final String[] DIR_LABELS = {"위쪽", "왼쪽", "오른쪽"};
     /** 겹받침의 앞 자음이 되는 키들. */
     public static final String SOURCES = "ㄱㄴㄹㅂ";
 

@@ -844,7 +844,7 @@ public final class KeyboardLayout {
         return keys;
     }
 
-    /** 스와이프 완전 사용자화: 네 방향 모두 사용자 설정(없으면 기본 배치)을 따른다. */
+    /** 글자 키 밀기: 네 방향 모두 키마다 정한 글자(없으면 기본 배치)를 따른다. */
     private static void applyCustomSwipes(Key k, Prefs prefs, boolean korean, String label) {
         k.swipeDown = SwipeCustom.get(prefs, korean, label, Key.SWIPE_DOWN);
         k.swipeUp = SwipeCustom.get(prefs, korean, label, Key.SWIPE_UP);
@@ -981,7 +981,7 @@ public final class KeyboardLayout {
     }
 
     /**
-     * 하단 키 완전 사용자화에서 정한 순서·표시 여부대로 맨 아래 줄을 만든다.
+     * 기능키 순서·유무 사용자화에서 정한 순서·표시 여부대로 맨 아래 줄을 만든다.
      * 기호 키·엔터 키는 1.5칸, 나머지는 1칸이고 (격자 정렬이면 모두 한글 키 한 칸), 스페이스바는 남는 폭을 모두 쓴다.
      * 스페이스바를 없앴으면 남은 키들이 같은 비율로 늘어나 줄을 채운다.
      *
@@ -1018,7 +1018,7 @@ public final class KeyboardLayout {
     }
 
     /**
-     * 맨 아래 줄의 키들을 하단 키 완전 사용자화의 순서·표시 여부대로 keys에 담는다 (스페이스바 제외).
+     * 맨 아래 줄의 키들을 기능키 순서·유무 사용자화의 순서·표시 여부대로 keys에 담는다 (스페이스바 제외).
      * 기호 키·엔터 키는 1.5칸, 나머지는 1칸이다 (격자 정렬이면 모두 한글 키 한 칸).
      *
      * @return 스페이스바가 들어갈 자리 (keys 안의 번호). 스페이스바를 없앴으면 -1.

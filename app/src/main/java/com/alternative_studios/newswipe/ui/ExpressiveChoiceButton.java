@@ -40,13 +40,6 @@ public final class ExpressiveChoiceButton extends TextView {
     private final android.text.TextPaint subPaint = new android.text.TextPaint(Paint.ANTI_ALIAS_FLAG);
     private CharSequence subShown;     // 칸 폭에 맞춰 줄인 보조 글자 (폭이 바뀔 때만 다시 계산)
     private float subShownRoom = -1f;
-    private Extra extra;
-
-    /** 칸 안에 글자 말고 더 그릴 것 (예: 키 둘레의 방향별 글자). 모양과 같이 찌그러지는 캔버스에 그려진다. */
-    public interface Extra {
-        /** @param ink 보조 글자색: 고르지 않으면 힌트색, 고르면 강조색 위의 글자색 */
-        void draw(Canvas canvas, float w, float h, int ink);
-    }
     private ExpressiveChoiceButton prev, next;
     private float extL, extR;   // 누르거나 고를 때 옆 칸 쪽으로 늘어난 폭 (px). 옆 칸은 그만큼 마주 보는 가장자리가 줄어든다.
 
@@ -89,24 +82,11 @@ public final class ExpressiveChoiceButton extends TextView {
         setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
     }
 
-    public void setExtra(Extra extra) {
-        this.extra = extra;
-        invalidate();
-    }
-
     /** 줄 안에서의 자리: 줄 양 끝 칸은 바깥 모서리가 알약이다. 한 칸씩 떨어진 칸은 둘 다 false. */
     public void setPosition(boolean first, boolean last) {
         this.first = first;
         this.last = last;
         invalidate();
-    }
-
-    /** 칸들을 한 줄로 잇는다: 양 끝 칸의 바깥 모서리를 알약으로 하고 서로 옆 칸으로 연결한다. */
-    public static void link(ExpressiveChoiceButton... cells) {
-        for (int i = 0; i < cells.length; i++) {
-            cells[i].setPosition(i == 0, i == cells.length - 1);
-            cells[i].setNeighbors(i > 0 ? cells[i - 1] : null, i + 1 < cells.length ? cells[i + 1] : null);
-        }
     }
 
     public void setSubLabel(String s) {
@@ -280,7 +260,6 @@ public final class ExpressiveChoiceButton extends TextView {
             subPaint.setColor(ink);
             canvas.drawText(subShown, 0, subShown.length(), w / 2f, h - Ui.dp(getContext(), 10), subPaint);
         }
-        if (extra != null) extra.draw(canvas, w, h, ink);
         canvas.restore();
     }
 

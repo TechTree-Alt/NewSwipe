@@ -269,11 +269,6 @@ final class KoreanSuggest {
         forms.learnEndings(w, usage, now);
     }
 
-    /** 용언 활용형으로 나뉘는지 ({@link KoreanForms#split}, 평가용). */
-    boolean inflected(String w) {
-        return forms.split(w) != null;
-    }
-
     /** 사전에 격조사를 붙인 말이 있는 명사인지 ({@link KoreanMorph#nounLike}). */
     boolean nounLike(String w) {
         return morph.nounLike(w);

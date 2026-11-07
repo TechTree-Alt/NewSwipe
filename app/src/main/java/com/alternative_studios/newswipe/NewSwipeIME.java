@@ -700,12 +700,6 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 창 관리자에게 물을 수 없는 기기에서 인셋 콜백이 마지막으로 준 하단 높이 (-1 = 아직 모른다). */
     private int callbackBottom = -1;
 
-    /** 창 관리자가 지금 알려 주는 하단 바 높이. 알 수 없으면 -1. */
-    private int freshBottomInset() {
-        WindowInsets insets = freshInsets();
-        return insets == null ? -1 : legacyBottomInset(insets);
-    }
-
     /** 창 관리자가 지금 새로 계산해 주는 이 창의 인셋. 물을 수 없으면 null. */
     private WindowInsets freshInsets() {
         if (Build.VERSION.SDK_INT < 30) return null;
@@ -1150,7 +1144,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         // 한 손 모드에서는 키 높이를 줄인 만큼 키 글자도 같은 비율로 줄인다 (도구 막대는 줄어든 자판 바로 위에 붙어 따라온다).
         float oneHandScale = !Prefs.ONE_HAND_OFF.equals(activeOneHand()) ? prefs.oneHandHeight() / 100f : 1f;
         keyboard.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), prefs.keyPreview(),
-                true, Math.round(sizePrefs.keyTextSize() * oneHandScale));
+                Math.round(sizePrefs.keyTextSize() * oneHandScale));
         keyboard.setDirectionRatios(prefs.swipeDownRatio(), prefs.swipeUpRatio());
         keyboard.setFunctionSwipeThreshold(prefs.fnSwipeThresholdDp());
         keyboard.setGapCursor(sizePrefs.splitGapCursor(), sizePrefs.splitGapSpeed());
@@ -1171,7 +1165,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         keyboard.setPickSwipe(prefs.swipePickSuggestion());
         keyboard.setKeyboardSwipes(KeyboardSwipes.load(prefs));
         toolbarSwipes = ToolbarSwipes.load(prefs);
-        // 지우기 키를 밀어 단어를 지울 때와 같은 거리('밀어서 기능'의 미는 거리의 1.5배)를 쓴다.
+        // 지우기 키를 밀어 단어를 지울 때와 같은 거리('기능 미는 거리'의 1.5배)를 쓴다.
         if (toolbar != null) {
             toolbar.configure(!SwipeAction.NONE.equals(toolbarAction(Key.SWIPE_UP)),
                     !SwipeAction.NONE.equals(toolbarAction(Key.SWIPE_DOWN)),
@@ -1199,7 +1193,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         keyboard.setInsets(Ui.dp(this, prefs.padLeftDp()), Ui.dp(this, prefs.padTopDp()),
                 Ui.dp(this, prefs.padRightDp()), Ui.dp(this, prefs.padBottomDp()));
         keyboard.setAreaInsets(areaPadsPx());
-        // 도구 막대의 양 끝 버튼이 자판의 양 끝 키와 같은 선에 오도록 '자판 모양'의 좌우 여백을 따른다 (도구 막대 영역 여백을 더한다).
+        // 도구 막대의 양 끝 버튼이 자판의 양 끝 키와 같은 선에 오도록 키보드 좌우 여백을 따른다 (도구 막대 영역 여백을 더한다).
         int barL = Ui.dp(this, prefs.padLeftDp() + prefs.areaPadDp(0, Prefs.SIDE_LEFT));
         int barR = Ui.dp(this, prefs.padRightDp() + prefs.areaPadDp(0, Prefs.SIDE_RIGHT));
         if (toolbar != null) toolbar.setPadding(barL, 0, barR, 0);

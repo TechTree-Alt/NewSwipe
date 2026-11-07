@@ -73,7 +73,7 @@ public final class VowelSwipes {
     }
 
     /**
-     * vowel 키를 dir(Key.SWIPE_*)로 밀었을 때 입력되는 기본 이중모음 (밀어서 글자 입력 완전 사용자화의 기본값). 없으면 null.
+     * vowel 키를 dir(Key.SWIPE_*)로 밀었을 때 입력되는 기본 이중모음 (글자 키 밀기의 기본값). 없으면 null.
      * 아래 = ㅣ계 이중모음, 위·왼쪽·오른쪽 = 조합형 이중모음 기본 배치 (모든 한글 배열 공통).
      */
     public static String defaultFor(char vowel, int dir) {

@@ -522,24 +522,6 @@ final class KeyEditPanel {
         }
     }
 
-    private boolean bottomRowKey() {
-        switch (key.type) {
-            case Key.TO_SYMBOLS:
-            case Key.TO_LETTERS:
-            case Key.LANGUAGE:
-            case Key.EMOJI:
-            case Key.SPACE:
-            case Key.ENTER:
-            case Key.EMOJI_KEY:
-            case Key.CLIPBOARD:
-            case Key.CURSOR_PAD:
-            case Key.VOICE:
-                return true;
-            default:
-                return false;
-        }
-    }
-
     private void buildFunctionKey() {
         String name = functionName();
         header(null, name, functionHint());

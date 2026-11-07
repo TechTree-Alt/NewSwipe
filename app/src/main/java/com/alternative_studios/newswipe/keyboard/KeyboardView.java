@@ -160,18 +160,17 @@ public final class KeyboardView extends View {
     private FunctionSwipes fnSwipes;
     /** 기능키 길게 누르기 시간 (모든 기능키 공통). */
     private int fnPressMs = 350;
-    /** 글자를 밀어 입력하는 거리 ('밀어서 글자 입력'의 미는 거리). */
+    /** 글자를 밀어 입력하는 거리 (글자 키 영역의 '미는 거리'). */
     private float swipeThreshold;
     /** 글자 키 스와이프 방향 판정 비율 (SwipeDirection): 세로가 가로의 몇 배를 넘어야 아래·위로 치는지. */
     private float downRatio = SwipeDirection.DOWN_OVER_HORIZONTAL, upRatio = SwipeDirection.UP_OVER_HORIZONTAL;
-    /** 기능키·키보드를 밀어 기능을 실행하는 거리 ('밀어서 기능'의 미는 거리). */
+    /** 기능키·키보드를 밀어 기능을 실행하는 거리 ('기능 미는 거리'). */
     private float fnSwipeThreshold;
     private boolean showPreview = true;
     private boolean showHints = true;
     /** 숫자 키(1~0)의 힌트만 숨긴다. */
     private boolean numberHintHidden;
     /** 키를 길게 눌러 문자를 입력하는 기능. 끄면 팝업도, 키 위의 작은 글자도 없다. */
-    private boolean longPressChars = true;
     private boolean keyShadow;
     private int keyShadowStrength = 50;
     private Paint shadowPaint;
@@ -474,7 +473,7 @@ public final class KeyboardView extends View {
         gapSpeed = Math.max(10, speedPercent) / 100f;
     }
 
-    /** '밀어서 기능'의 미는 거리. */
+    /** '기능 미는 거리'. */
     public void setFunctionSwipeThreshold(int dpValue) {
         fnSwipeThreshold = dp(dpValue);
     }
@@ -485,12 +484,11 @@ public final class KeyboardView extends View {
         upRatio = up;
     }
 
-    public void configure(int longPressMs, int swipeThresholdDp, boolean preview, boolean hints, int textScalePercent) {
+    /** 길게 누르기 시간, 미는 거리, 누름 미리보기, 글자 크기(%). 힌트는 setPopupHints로 따로 정한다. */
+    public void configure(int longPressMs, int swipeThresholdDp, boolean preview, int textScalePercent) {
         this.longPressMs = longPressMs;
         this.swipeThreshold = dp(swipeThresholdDp);
         this.showPreview = preview;
-        this.showHints = hints;
-        this.longPressChars = hints;
         this.textScale = textScalePercent / 100f;
         updateTextSizes();
         invalidate();
@@ -1043,7 +1041,7 @@ public final class KeyboardView extends View {
         boolean del = SwipeAction.holdRepeat(action);
         boolean select = SwipeAction.SPACE_SELECT.equals(action);
         boolean lang = action != null && !del && !select;
-        boolean chars = k.type == Key.CHAR && (k.popup != null && longPressChars || isRepeatChar(k));
+        boolean chars = k.type == Key.CHAR && (k.popup != null || isRepeatChar(k));
         if (del || lang || chars || select) {
             longPressTarget = p;
             // 기능키는 모두 '기능키 길게 누르기 시간'을, 문자 키는 '문자 길게 누르기 시간'을 따른다.
@@ -1124,7 +1122,7 @@ public final class KeyboardView extends View {
                     // 감안해 좌우는 후하게, 아래는 엄격하게 판정한다 (SwipeDirection).
                     int dir = SwipeDirection.of(dx, dy, downRatio, upRatio);
                     // 그 방향에 밀어서 입력할 글자가 있으면 커서 이동·키보드 밀기보다 글자 입력이 먼저다
-                    // ('밀어서 기능'의 미는 거리가 더 짧아도 글자를 밀다가 커서가 움직이지 않게).
+                    // ('기능 미는 거리'가 더 짧아도 글자를 밀다가 커서가 움직이지 않게).
                     boolean letterThere = p.key.swipeText(dir) != null;
                     if (swipeDistance(dir, dx, dy) > swipeThreshold && letterThere) {
                         p.mode = SWIPED;
@@ -1417,7 +1415,7 @@ public final class KeyboardView extends View {
             charRepeatPointer = p;
             charRepeatRunnable.run();
             markChord();
-        } else if (k.popup != null && longPressChars) {
+        } else if (k.popup != null) {
             p.mode = POPUP;
             openPopup(p);
             if (listener != null) listener.onGesture();

@@ -20,7 +20,7 @@ import com.alternative_studios.newswipe.ui.Chevron;
 import com.alternative_studios.newswipe.ui.ExpressiveSwitch;
 import com.alternative_studios.newswipe.ui.Ui;
 
-/** 맨 아래 줄 키(기호 키, 쉼표, 지구본 키, 스페이스바, 온점, 엔터)를 켜고 끄고 순서를 바꾸고, Shift 키·⌫를 켜고 끄는 화면 (하단 키 완전 사용자화). */
+/** 맨 아래 줄 키(기호 키, 쉼표, 지구본 키, 스페이스바, 온점, 엔터)를 켜고 끄고 순서를 바꾸고, Shift 키·⌫를 켜고 끄는 화면 (기능키 순서·유무 사용자화). */
 public final class BottomKeysEditorActivity extends Activity {
 
     private Prefs prefs;
@@ -86,7 +86,7 @@ public final class BottomKeysEditorActivity extends Activity {
         // 미리보기: 실제 키보드 뷰에 아래 두 줄(Shift·⌫ 줄과 맨 아래 줄)만 넣어 그린다. 눌러도 반응하지 않는다.
         preview = new KeyboardView(this);
         preview.setTheme(keyboardTheme);
-        preview.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), false, true, prefs.keyTextSize());
+        preview.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), false, prefs.keyTextSize());
         preview.setKeyShadow(prefs.keyShadow(), prefs.keyShadowStrength());
         preview.setKeyRadius(Ui.dp(this, prefs.keyRadiusDp()));
         preview.setGridColors(prefs.gridColors());

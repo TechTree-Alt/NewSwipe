@@ -36,21 +36,15 @@ public final class Icons {
     public static final int UNDO = 22;
 
     // 설정 메뉴의 항목 아이콘
-    public static final int MENU_KEYBOARD = 23;   // 자판 모양
+    public static final int MENU_KEYBOARD = 23;   // 키보드 편집 (자판)
     public static final int MENU_THEME = 24;      // 테마 (팔레트)
-    public static final int MENU_LONG_PRESS = 25; // 길게 누르기
-    public static final int MENU_INPUT = 26;      // 입력 동작 (글자 커서)
-    public static final int MENU_SWIPE = 27;      // 밀어서 글자 입력 (ㄱ 키와 오른쪽 화살표)
-    public static final int MENU_MOVE = 28;       // 밀어서 기능 (사방으로 밀기)
+    public static final int MENU_MOVE = 28;       // 사방 화살표 (커서 이동 키)
     public static final int MENU_WORDS = 29;      // 단어 추천 (전구)
     public static final int MENU_SOUND = 30;      // 소리 및 진동
-    public static final int MENU_TOOLBAR = 31;    // 도구 막대, 클립보드, 이모지
     public static final int MENU_INFO = 32;       // 정보
     public static final int MENU_BACKUP = 33;     // 설정 가져오기 및 내보내기
-    public static final int MENU_USAGE = 34;      // 사용법 (펼친 책)
     public static final int EXPORT = 35;          // 설정 내보내기 (받침 위로 나가는 화살표)
     public static final int IMPORT = 36;          // 설정 가져오기 (받침으로 들어오는 화살표)
-    public static final int MENU_LAYOUT = 37;     // 자판 레이아웃 (네 칸으로 놓인 키)
     public static final int ONE_HAND = 38;        // 한 손 모드 (휴대폰 아래 한쪽에 몰린 자판)
     public static final int EXPAND = 39;          // 한 손 모드 끄기 (양쪽으로 펼치는 화살표)
     public static final int MENU_LAB = 40;        // 실험실 (삼각 플라스크)
@@ -316,16 +310,6 @@ public final class Icons {
                 path.lineTo(10, 19.5f);
                 c.drawPath(path, p);
                 break;
-            case MENU_LAYOUT:
-                // 2×2로 놓인 둥근 키 네 개: 키를 어떻게 배열하는지.
-                for (int r = 0; r < 2; r++) {
-                    for (int col = 0; col < 2; col++) {
-                        float x = 3.5f + col * 9.5f, y = 3.5f + r * 9.5f;
-                        oval.set(x, y, x + 7.5f, y + 7.5f);
-                        c.drawRoundRect(oval, 2f, 2f, p);
-                    }
-                }
-                break;
             case MENU_THEME:
                 // 화가의 팔레트: 오른쪽 아래가 움푹 들어간 둥근 판, 엄지 구멍, 물감 자리
                 path.moveTo(12, 3);
@@ -344,35 +328,6 @@ public final class Icons {
                 c.drawCircle(17.2f, 10.3f, 1.35f, p);
                 p.setStyle(Paint.Style.STROKE);
                 c.drawCircle(8.6f, 15, 2, p);      // 엄지 구멍
-                break;
-            case MENU_LONG_PRESS:
-                p.setStyle(Paint.Style.FILL);
-                c.drawCircle(12, 12, 2.3f, p);
-                p.setStyle(Paint.Style.STROKE);
-                c.drawCircle(12, 12, 5.8f, p);
-                oval.set(3, 3, 21, 21);
-                c.drawArc(oval, 195, 60, false, p);   // 눌렀을 때 퍼지는 물결
-                c.drawArc(oval, 15, 60, false, p);
-                break;
-            case MENU_INPUT:
-                c.drawLine(12, 5, 12, 19, p);
-                c.drawLine(9, 5, 15, 5, p);
-                c.drawLine(9, 19, 15, 19, p);
-                break;
-            case MENU_SWIPE:
-                // ㄱ 키: 둥근 네모(키) 안에 ㄱ. ㄱ은 획이 위·오른쪽에 몰려 있어 살짝 왼쪽 아래로 놓아야 가운데로 보인다.
-                oval.set(1, 5.5f, 14, 18.5f);
-                c.drawRoundRect(oval, 3, 3, p);
-                path.moveTo(4.6f, 10);
-                path.lineTo(9.6f, 10);
-                path.lineTo(9.6f, 14.4f);
-                // 오른쪽 화살표: 키를 밀어서 입력한다는 뜻 (키와 띄워 둔다)
-                path.moveTo(17.2f, 12);
-                path.lineTo(22.8f, 12);
-                path.moveTo(20.2f, 9.4f);
-                path.lineTo(22.8f, 12);
-                path.lineTo(20.2f, 14.6f);
-                c.drawPath(path, p);
                 break;
             case MENU_MOVE:
                 c.drawLine(12, 3.5f, 12, 20.5f, p);
@@ -415,15 +370,6 @@ public final class Icons {
                 oval.set(4, 4, 20, 20);
                 c.drawArc(oval, -40, 80, false, p);
                 break;
-            case MENU_TOOLBAR:
-                oval.set(2.5f, 7, 21.5f, 17);
-                c.drawRoundRect(oval, 2.5f, 2.5f, p);
-                p.setStyle(Paint.Style.FILL);
-                c.drawCircle(7, 12, 1.1f, p);
-                c.drawCircle(12, 12, 1.1f, p);
-                c.drawCircle(17, 12, 1.1f, p);
-                p.setStyle(Paint.Style.STROKE);
-                break;
             case MENU_INFO:
                 c.drawCircle(12, 12, 9, p);
                 c.drawLine(12, 11, 12, 16.5f, p);
@@ -449,18 +395,6 @@ public final class Icons {
                     path.lineTo(12, 15);
                     path.lineTo(16, 11);
                 }
-                c.drawPath(path, p);
-                break;
-            case MENU_USAGE:
-                // 가운데 책등을 사이에 두고 좌우 대칭으로 펼친 책.
-                path.moveTo(12, 7);
-                path.cubicTo(9.6f, 5.4f, 6.4f, 5, 3, 5.6f);
-                path.lineTo(3, 18.4f);
-                path.cubicTo(6.4f, 17.8f, 9.6f, 18.2f, 12, 19.8f);
-                path.cubicTo(14.4f, 18.2f, 17.6f, 17.8f, 21, 18.4f);
-                path.lineTo(21, 5.6f);
-                path.cubicTo(17.6f, 5, 14.4f, 5.4f, 12, 7);
-                path.lineTo(12, 19.8f);
                 c.drawPath(path, p);
                 break;
             case MENU_LAB:

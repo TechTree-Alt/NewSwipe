@@ -50,7 +50,6 @@ public final class Prefs {
     public static final String LANGUAGE = "language";                 // "ko" | "en" | "ja" | "zh" (예전 앱은 en이 아니면 한글로 읽는다)
     /** 실험실 '일본어·중국어 자판'의 값은 모두 이 말로 시작한다. 그 언어의 사전 팩을 가져와야 켤 수 있다. */
     public static final String CJK_PREFIX = "cjk_";
-    public static final String CJK_JA = "cjk_ja", CJK_ZH = "cjk_zh";
     /** 일본어 자판 배열: "flick"(12키, 밀어서 입력) | "qwerty"(로마자). */
     public static final String CJK_JA_LAYOUT = "cjk_ja_layout";
     public static final String JA_FLICK = "flick", JA_QWERTY = "qwerty";
@@ -536,7 +535,7 @@ public final class Prefs {
     }
     public int longPressMs() { return sp.getInt(LONG_PRESS_MS, 340); }   // 설정 단위(20ms)에 맞춘 기본값
     public int swipeThresholdDp() { return sp.getInt(SWIPE_THRESHOLD, 22); }
-    /** '밀어서 기능'의 미는 거리. 따로 정한 적이 없으면 (나누기 전처럼) 글자 입력의 미는 거리를 따른다. */
+    /** '기능 미는 거리'. 따로 정한 적이 없으면 (나누기 전처럼) 글자 입력의 미는 거리를 따른다. */
     public int fnSwipeThresholdDp() { return sp.getInt(FN_SWIPE_THRESHOLD, swipeThresholdDp()); }
     public int emojiSize() { return Math.max(0, Math.min(2, sp.getInt(EMOJI_SIZE, 0))); }
     public boolean vibrate() { return sp.getBoolean(VIBRATE, true); }
@@ -567,7 +566,6 @@ public final class Prefs {
     }
     public boolean autoCap() { return sp.getBoolean(AUTO_CAP, true); }
     public boolean doubleSpacePeriod() { return sp.getBoolean(DOUBLE_SPACE_PERIOD, true); }
-    public boolean voiceKey() { return sp.getBoolean(VOICE_KEY, true); }
     public boolean doubleTapVowel() { return sp.getBoolean(DOUBLE_TAP_VOWEL, true); }
     /** 기본은 꺼짐: 쌍자음은 밀어서 입력하므로 '학교→하꾜' 문제가 없다. 켜면 예전 단모음처럼 두 번 탭으로도 입력. */
     public boolean doubleTapConsonant() { return sp.getBoolean(DOUBLE_TAP_CONSONANT, false); }
@@ -1018,11 +1016,6 @@ public final class Prefs {
     public boolean toolbarBottom() { return sp.getBoolean(TOOLBAR_BOTTOM, false); }
     public int toolbarHeight() { return clamp(sp.getInt(TOOLBAR_HEIGHT, 100), 70, 150); }
     public int toolButtonSize() { return clamp(sp.getInt(TOOL_BUTTON_SIZE, 100), 70, 150); }
-    public boolean toolClipboard() { return sp.getBoolean(TOOL_CLIPBOARD, true); }
-    public boolean toolEmoji() { return sp.getBoolean(TOOL_EMOJI, true); }
-    public boolean toolSettings() { return sp.getBoolean(TOOL_SETTINGS, true); }
-    public boolean toolHide() { return sp.getBoolean(TOOL_HIDE, true); }
-    public boolean toolUndo() { return sp.getBoolean(TOOL_UNDO, true); }
 
     /** 도구 막대 버튼 배치 {왼쪽, 오른쪽} (ToolbarButtons). */
     public String[][] toolOrder() {
@@ -1083,7 +1076,7 @@ public final class Prefs {
 
 
 
-    // 밀어서 기능 완전 사용자화(기능키 "fn"·도구 막대 "toolbar"·키보드 밀기 "kb", SwipeSpec).
+    // 키·버튼마다 정한 밀기·길게 누르기 기능 (기능키 "fn"·도구 막대 "toolbar"·키보드 밀기 "kb" 등, SwipeSpec).
     // 값은 기능 ID(SwipeAction)이며, 정한 적이 없으면 null이다.
     private static String swipeActionKey(String group, String slot, String dir) {
         return "swipe_" + group + "_" + slot + "_" + dir;
@@ -1102,7 +1095,7 @@ public final class Prefs {
     }
 
 
-    // 스와이프 완전 사용자화. 값은 입력할 글자이며, 빈 문자열은 "없음"이다.
+    // 글자 키를 밀어 입력할 글자 (키·방향마다). 값은 입력할 글자이며, 빈 문자열은 "없음"이다.
     private static String swipeCustomKey(String group, String label, String dir) {
         return "swipe_custom_" + group + "_" + label + "_" + dir;
     }
@@ -1160,10 +1153,6 @@ public final class Prefs {
     public boolean jaHalfSpace() { return sp.getBoolean(CJK_JA_HALF_SPACE, false); }
 
     public boolean jaQwerty() { return JA_QWERTY.equals(sp.getString(CJK_JA_LAYOUT, JA_FLICK)); }
-
-    public void setKorean(boolean korean) {
-        sp.edit().putString(LANGUAGE, korean ? "ko" : "en").apply();
-    }
 
     public String recentEmoji() { return sp.getString(RECENT_EMOJI, ""); }
 
