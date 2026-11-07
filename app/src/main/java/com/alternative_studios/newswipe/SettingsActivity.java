@@ -623,6 +623,11 @@ public final class SettingsActivity extends Activity {
                 collectLabels(EDITOR_PART + "a:" + a + ":" + KeyboardPreview.AREA_NAMES[a], scratch, out, new View[1],
                         new String[1][]);
             }
+            LinearLayout boardScratch = new LinearLayout(this);
+            boardScratch.setOrientation(LinearLayout.VERTICAL);
+            list = boardScratch;
+            buildPad(-1);
+            collectLabels(EDITOR_PART + "b:0:키보드 여백", boardScratch, out, new View[1], new String[1][]);
             com.alternative_studios.newswipe.keyboard.KeyboardLayout l =
                     com.alternative_studios.newswipe.keyboard.KeyboardLayout.korean(prefs);
             for (int type : HARVEST_KEYS) {
@@ -669,6 +674,9 @@ public final class SettingsActivity extends Activity {
             if ("a".equals(parts[1])) {
                 editorPreview.setLayer(KeyboardPreview.LAYER_AREA);
                 sel = KeyboardPreview.Selection.area(n);
+            } else if ("b".equals(parts[1])) {
+                editorPreview.setLayer(KeyboardPreview.LAYER_BOARD);
+                sel = KeyboardPreview.Selection.board();
             } else {
                 com.alternative_studios.newswipe.keyboard.Key k = firstKey(editorPreview.layout(), n);
                 if (k == null) return;
@@ -761,7 +769,7 @@ public final class SettingsActivity extends Activity {
     private String searchCacheStamp() {
         try {
             // 뒤의 꼬리표는 메뉴 구성이 바뀌면 올린다 (같은 앱 버전이라도 예전 메뉴로 모은 목록을 쓰지 않게).
-            return "v" + getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode() + "-k4";
+            return "v" + getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode() + "-k5";
         } catch (PackageManager.NameNotFoundException e) {
             return "v?";
         }
@@ -1090,7 +1098,7 @@ public final class SettingsActivity extends Activity {
         try {
             // 여기에는 키보드 전체에 걸리고 어느 영역·키 창에도 없는 것만 둔다. 나머지는 미리보기에서 영역이나 키를 눌러 바꾼다.
             LinearLayout tip = card();
-            tip.addView(note("미리보기는 좌우로 넘기는 세 페이지입니다. '키보드'에서는 키보드 전체나 영역을 눌러 그 여백을, '영역'에서는 도구 막대·숫자 줄·"
+            tip.addView(note("미리보기는 좌우로 넘기는 네 페이지입니다. '키보드'에서는 키보드 전체의 여백을, '여백'에서는 영역마다의 여백을, '영역'에서는 도구 막대·숫자 줄·"
                     + "글자 키·기능키를, '키'에서는 키 하나를 눌러 설정합니다. 손잡이(작은 막대)를 끌면 크기가 바로 바뀝니다."));
             buildSizes();
             buildLook();
@@ -1370,11 +1378,6 @@ public final class SettingsActivity extends Activity {
     }
 
     private void onPreviewTap(KeyboardPreview.Selection s) {
-        if (editorPreview.layer() == KeyboardPreview.LAYER_BOARD) {
-            // 키보드 층: 창 없이 영역을 고르기만 한다 (그 영역의 여백 손잡이가 뜬다). 같은 영역을 다시 누르면 푼다.
-            editorPreview.select(s == null || s.same(editorPreview.selection()) ? null : s);
-            return;
-        }
         if (s == null) {
             closeKeyPanel();
             return;
@@ -1407,6 +1410,14 @@ public final class SettingsActivity extends Activity {
         }
         boolean area = s.kind == KeyboardPreview.SEL_AREA;
         int areaId = area ? s.area() : -1;
+        // 키보드 층(키보드 전체)과 여백 층(영역)은 여백 슬라이더 창.
+        boolean board = s.kind == KeyboardPreview.SEL_BOARD;
+        if (board || (area && editorPreview.layer() == KeyboardPreview.LAYER_PAD)) {
+            keyPanel.view().setVisibility(View.GONE);
+            fillAreaBox(() -> buildPad(board ? -1 : areaId));
+            sheetTitle.setText(board ? "키보드 여백" : KeyboardPreview.AREA_NAMES[areaId] + " 여백");
+            return;
+        }
         boolean panel = !area || areaId == KeyboardPreview.AREA_TOOLBAR;
         if (panel) keyPanel.show(area ? KeyboardPreview.Selection.toolbar() : s, editorPreview.selectedKey());
         keyPanel.view().setVisibility(panel ? View.VISIBLE : View.GONE);
@@ -1422,19 +1433,60 @@ public final class SettingsActivity extends Activity {
 
     /** 영역 편집 내용을 areaBox에 만든다 (영역이 아니면 비운다). 목록을 만드는 조각을 그대로 써서 이름·설명이 같다. */
     private void fillArea(int areaId) {
+        if (areaId < 0) {
+            areaBox.removeAllViews();
+            areaSliders.clear();
+            areaBox.setVisibility(View.GONE);
+            return;
+        }
+        fillAreaBox(() -> buildArea(areaId));
+    }
+
+    /** areaBox를 비우고 build로 다시 채운다 (목록을 만드는 조각을 그대로 쓰도록 list를 잠깐 areaBox로 돌린다). */
+    private void fillAreaBox(Runnable build) {
         areaBox.removeAllViews();
         areaSliders.clear();
-        areaBox.setVisibility(areaId < 0 ? View.GONE : View.VISIBLE);
-        if (areaId < 0) return;
+        areaBox.setVisibility(View.VISIBLE);
         LinearLayout saved = list;
         list = areaBox;
         sliderSink = areaSliders;
         try {
-            buildArea(areaId);
+            build.run();
         } finally {
             list = saved;
             sliderSink = sizeSliders;
         }
+    }
+
+    /**
+     * 여백 창: area가 -1이면 키보드 전체 둘레의 여백, 아니면 그 영역의 여백 (키보드 전체 여백 안쪽에 더한다).
+     * 미리보기의 손잡이를 끌면 이 슬라이더도 같이 움직인다.
+     */
+    private void buildPad(int area) {
+        if (area < 0) {
+            LinearLayout c = section("키보드 여백");
+            c.addView(sizeSlider("왼쪽 여백", Prefs.PAD_LEFT, prefs::padLeftDp, 0, 24, 1, "dp"));
+            c.addView(sizeSlider("오른쪽 여백", Prefs.PAD_RIGHT, prefs::padRightDp, 0, 24, 1, "dp"));
+            c.addView(sizeSlider("위쪽 여백", Prefs.PAD_TOP, prefs::padTopDp, 0, 24, 1, "dp"));
+            c.addView(sizeSlider("아래쪽 여백", Prefs.PAD_BOTTOM, prefs::padBottomDp, 0, 48, 1, "dp"));
+            c.addView(note("키보드 전체 둘레의 여백입니다. 영역마다 따로 주는 여백은 미리보기를 왼쪽으로 넘긴 '여백' 페이지에서 "
+                    + "그 영역을 눌러 정합니다."));
+            return;
+        }
+        LinearLayout c = section(KeyboardPreview.AREA_NAMES[area] + " 여백");
+        c.addView(areaPadSlider("왼쪽 여백", area, Prefs.SIDE_LEFT));
+        c.addView(areaPadSlider("오른쪽 여백", area, Prefs.SIDE_RIGHT));
+        if (area != KeyboardPreview.AREA_TOOLBAR) {
+            c.addView(areaPadSlider("위쪽 여백", area, Prefs.SIDE_TOP));
+            c.addView(areaPadSlider("아래쪽 여백", area, Prefs.SIDE_BOTTOM));
+        }
+        c.addView(note(area == KeyboardPreview.AREA_TOOLBAR
+                ? "도구 막대 양 끝의 여백입니다. 키보드 전체 여백에 더해집니다."
+                : "이 영역 둘레의 여백입니다. 키보드 전체 여백에 더해지고, 위·아래 여백만큼 키보드가 높아집니다."));
+    }
+
+    private View areaPadSlider(String label, int area, int side) {
+        return sizeSlider(label, Prefs.areaPadKey(area, side), () -> prefs.areaPadDp(area, side), 0, Prefs.AREA_PAD_MAX, 1, "dp");
     }
 
     private static final String KEY_PAGE_NOTE = "키 하나하나의 누르기·길게 누르기·밀기는 미리보기를 왼쪽으로 넘겨 '키' 페이지에서 "
@@ -1493,7 +1545,7 @@ public final class SettingsActivity extends Activity {
     private LinearLayout pageDots;
     private View pageRow;
     /** 미리보기 페이지 이름 (KeyboardPreview.LAYER_* 차례). */
-    private static final String[] PAGE_NAMES = {"키보드", "영역", "키"};
+    private static final String[] PAGE_NAMES = {"키보드", "여백", "영역", "키"};
 
     private View buildPageDots() {
         LinearLayout row = new LinearLayout(this);
@@ -1656,7 +1708,7 @@ public final class SettingsActivity extends Activity {
         return b;
     }
 
-    /** 키 모양: 글자 크기, 곡률, 그림자, 누름 미리보기, 힌트, 스페이스바 언어 이름. 크기·여백은 '크기·여백'에 있다. */
+    /** 키 모양: 글자 크기, 곡률, 그림자, 누름 미리보기, 힌트, 스페이스바 언어 이름. 크기는 '크기·간격'에, 여백은 미리보기의 키보드·여백 페이지에 있다. */
     private void buildLook() {
         LinearLayout look = section("키 모양");
         look.addView(slider("키 글자 크기", Prefs.KEY_TEXT_SIZE, prefs.keyTextSize(), 70, 140, 5, "%"));
@@ -1748,20 +1800,16 @@ public final class SettingsActivity extends Activity {
     }
 
     /**
-     * 크기·여백: 미리보기의 손잡이로도 바꾸는 값들. 손잡이를 끌면 이 슬라이더도 같이 움직이고(sizeSlider),
+     * 크기·간격: 미리보기의 손잡이로도 바꾸는 값들. 손잡이를 끌면 이 슬라이더도 같이 움직이고(sizeSlider),
      * 슬라이더를 움직이면 미리보기가 바로 바뀐다.
      */
     private void buildSizes() {
-        LinearLayout size = section("크기·여백");
+        LinearLayout size = section("크기·간격");
         size.addView(sizeSlider("키보드 높이", Prefs.KEYBOARD_HEIGHT, prefs::keyboardHeight, 70, 140, 1, "%"));
-        size.addView(sizeSlider("왼쪽 여백", Prefs.PAD_LEFT, prefs::padLeftDp, 0, 24, 1, "dp"));
-        size.addView(sizeSlider("오른쪽 여백", Prefs.PAD_RIGHT, prefs::padRightDp, 0, 24, 1, "dp"));
-        size.addView(sizeSlider("위쪽 여백", Prefs.PAD_TOP, prefs::padTopDp, 0, 24, 1, "dp"));
-        size.addView(sizeSlider("아래쪽 여백", Prefs.PAD_BOTTOM, prefs::padBottomDp, 0, 48, 1, "dp"));
         size.addView(sizeSlider("키 좌우 여백", Prefs.KEY_GAP_X, prefs::keyGapXDp, 0, 12, 1, "dp"));
         size.addView(sizeSlider("키 상하 여백", Prefs.KEY_GAP_Y, prefs::keyGapYDp, 0, 20, 1, "dp"));
-        size.addView(note("숫자 줄·기능키·도구 막대의 높이는 미리보기에서 그 영역을 눌러 바꿉니다. 키 좌우·상하 여백은 키 사이의 "
-                + "간격으로, 키 페이지에서 키를 누르면 생기는 손잡이로도 바꿉니다."));
+        size.addView(note("숫자 줄·기능키·도구 막대의 높이는 미리보기에서 그 영역을, 여백은 맨 왼쪽 '키보드'·'여백' 페이지를 눌러 바꿉니다. "
+                + "키 좌우·상하 여백은 키 사이의 간격으로, 키 페이지에서 키를 누르면 생기는 손잡이로도 바꿉니다."));
     }
 
     /** 이모지 창의 이모지 크기 (기본·크게·더 크게). 고르면 아래 견본 글자도 같은 크기로 바뀐다. */
