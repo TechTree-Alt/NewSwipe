@@ -71,7 +71,7 @@ public class NumberPadKeyTest {
         assertEquals("+", pad.rows[0].keys[0].output);
         assertEquals(",", pad.rows[1].keys[0].output);
         assertEquals(".", pad.rows[2].keys[0].output);
-        Key symbols = pad.rows[3].keys[0], letters = pad.rows[3].keys[1];
+        Key letters = pad.rows[3].keys[0], symbols = pad.rows[3].keys[1];
         assertEquals(Key.TO_SYMBOLS, symbols.type);
         assertEquals("?!@", symbols.label);
         assertEquals(Key.TO_LETTERS, letters.type);
