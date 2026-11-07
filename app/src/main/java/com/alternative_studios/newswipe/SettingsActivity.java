@@ -640,6 +640,13 @@ public final class SettingsActivity extends Activity {
             list = savedList;
             clipImagesSwitch = savedClipSwitch;
         }
+        // 키 창의 '길게 누르면' 옆에 보이는 지금 기능 이름(없음·이모지 열기 등)과 되돌리기 버튼은 설정 이름이 아니다.
+        java.util.Set<String> values = new java.util.HashSet<>();
+        for (String id : com.alternative_studios.newswipe.keyboard.SwipeAction.idsForSpaceLongPress()) {
+            values.add(com.alternative_studios.newswipe.keyboard.SwipeAction.label(id));
+        }
+        values.add("기본값으로 되돌리기");
+        out.removeIf(e -> e[0].startsWith(EDITOR_PART) && values.contains(e[1]));
     }
 
     private static com.alternative_studios.newswipe.keyboard.Key firstKey(
@@ -1083,8 +1090,8 @@ public final class SettingsActivity extends Activity {
         try {
             // 여기에는 키보드 전체에 걸리고 어느 영역·키 창에도 없는 것만 둔다. 나머지는 미리보기에서 영역이나 키를 눌러 바꾼다.
             LinearLayout tip = card();
-            tip.addView(note("미리보기의 '영역' 페이지에서 도구 막대·숫자 줄·글자 키·기능키를, 좌우로 넘긴 '키' 페이지에서 키 하나를 "
-                    + "눌러 설정합니다. 손잡이(작은 막대)를 끌면 크기가 바로 바뀝니다."));
+            tip.addView(note("미리보기는 좌우로 넘기는 세 페이지입니다. '키보드'에서는 손잡이로 여백을, '영역'에서는 도구 막대·숫자 줄·"
+                    + "글자 키·기능키를, '키'에서는 키 하나를 눌러 설정합니다. 손잡이(작은 막대)를 끌면 크기가 바로 바뀝니다."));
             buildSizes();
             buildLook();
             LinearLayout landscape = section("가로 모드");
@@ -1465,6 +1472,8 @@ public final class SettingsActivity extends Activity {
     /** 미리보기 위의 페이지 표시: 점 두 개(영역 · 키)와 지금 페이지 이름. 누르면 그 페이지로 넘긴다. */
     private LinearLayout pageDots;
     private View pageRow;
+    /** 미리보기 페이지 이름 (KeyboardPreview.LAYER_* 차례). */
+    private static final String[] PAGE_NAMES = {"키보드", "영역", "키"};
 
     private View buildPageDots() {
         LinearLayout row = new LinearLayout(this);
@@ -1476,19 +1485,19 @@ public final class SettingsActivity extends Activity {
         pageDots.setGravity(Gravity.CENTER_VERTICAL);
         // 고른 점은 1.25배로 커지므로 점보다 높은 줄에 놓아 위아래가 잘리지 않게 한다.
         pageDots.setClipChildren(false);
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < KeyboardPreview.LAYERS; i++) {
             final int layer = i;
             View dot = new View(this);
             LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(Ui.dp(this, 8), Ui.dp(this, 8));
             dlp.setMargins(Ui.dp(this, 4), 0, Ui.dp(this, 4), 0);
             pageDots.addView(dot, dlp);
-            dot.setContentDescription(i == 0 ? "영역 페이지" : "키 페이지");
+            dot.setContentDescription(PAGE_NAMES[i] + " 페이지");
             dot.setOnClickListener(v -> editorPreview.setLayer(layer));
         }
         row.addView(pageDots, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, Ui.dp(this, 14)));
         pageRow = row;
         // 점이 작아도 누르기 쉽게 줄 전체를 누르면 다음 페이지로.
-        row.setOnClickListener(v -> editorPreview.setLayer(1 - editorPreview.layer()));
+        row.setOnClickListener(v -> editorPreview.setLayer((editorPreview.layer() + 1) % KeyboardPreview.LAYERS));
         updatePageDots(editorPreview.layer());
         return row;
     }
@@ -1501,8 +1510,8 @@ public final class SettingsActivity extends Activity {
             dot.setBackground(Ui.round(on ? accentColor : (hintColor & 0x00FFFFFF) | 0x66000000, Ui.dp(this, 4)));
             dot.animate().scaleX(on ? 1.25f : 1f).scaleY(on ? 1.25f : 1f).setDuration(160).start();
         }
-        pageRow.setContentDescription(layer == KeyboardPreview.LAYER_AREA ? "영역 페이지. 눌러서 키 페이지로 넘기기"
-                : "키 페이지. 눌러서 영역 페이지로 넘기기");
+        pageRow.setContentDescription(PAGE_NAMES[layer] + " 페이지. 눌러서 "
+                + PAGE_NAMES[(layer + 1) % KeyboardPreview.LAYERS] + " 페이지로 넘기기");
     }
 
     /** 시트를 아래에서 위로 올린다: Material 3 Expressive의 공간 스프링 (살짝 넘었다가 자리 잡는다). */
