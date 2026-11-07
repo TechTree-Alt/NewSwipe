@@ -139,6 +139,11 @@ public final class Prefs {
     /** 가로 모드의 값은 위 이름 뒤에 이 말을 붙여 따로 저장한다 (예: balanced_vowel_width_land_danmoeum7). */
     private static final String LANDSCAPE_SUFFIX = "_land";
     public static final int BALANCED_WIDTH_MIN = 60, BALANCED_WIDTH_DEFAULT = 100;
+    /**
+     * 분리 키보드(가로 모드·대화면)의 두 묶음 기본 모양: 왼쪽 묶음은 폭 80%에 가로 위치 20, 오른쪽 묶음은 폭 80%에 가로 위치 80
+     * (두 묶음이 가운데에서 살짝 벌어지고 바깥쪽 가장자리 쪽에 모인다). 세로 모드의 균형 레이아웃은 폭 100%·위치 50이 기본이다.
+     */
+    public static final int SPLIT_WIDTH_DEFAULT = 80, SPLIT_LEFT_POS_DEFAULT = 20, SPLIT_RIGHT_POS_DEFAULT = 80;
     public static final int BALANCED_CONSONANT_WIDTH_MAX = 100;
     /** 가로 모드는 키를 더 좁게 (30%까지) 줄일 수 있다. */
     public static final int BALANCED_WIDTH_MIN_LANDSCAPE = 30;
@@ -883,23 +888,30 @@ public final class Prefs {
     /** 지금 보기에서 자음·모음 키 폭의 최솟값 (%): 가로 모드·대화면 값은 30, 세로 모드는 60. */
     public int balancedWidthMin() { return profileValues() ? BALANCED_WIDTH_MIN_LANDSCAPE : BALANCED_WIDTH_MIN; }
 
+    /** 키 폭 기본값 (%): 분리 키보드는 80, 그 밖(세로 모드)은 100. */
+    private int widthDefault() {
+        return profileValues() ? SPLIT_WIDTH_DEFAULT : BALANCED_WIDTH_DEFAULT;
+    }
+
     /** 모음 키 폭: 모음 키들이 오른쪽 절반을 꽉 채우는 폭의 % (100이면 꽉 참). 분리 키보드는 오른쪽 묶음의 폭이다. */
     public int balancedVowelWidth() {
-        int v = perLayoutInt(balancedVowelWidthKey(), BALANCED_VOWEL_WIDTH, BALANCED_WIDTH_DEFAULT);
+        int v = perLayoutInt(balancedVowelWidthKey(), BALANCED_VOWEL_WIDTH, widthDefault());
         return Math.max(balancedWidthMin(), Math.min(BALANCED_CONSONANT_WIDTH_MAX, v));
     }
     /** 지금 한글 배열의 자·모음 균형 레이아웃 모음 3열 위치 (0 = 오른쪽 절반의 왼쪽 끝, 50 = 가운데, 100 = 오른쪽 끝). */
     public int balancedVowelPos() {
-        return Math.max(0, Math.min(100, perLayoutInt(balancedVowelPosKey(), BALANCED_VOWEL_POS, 50)));
+        return Math.max(0, Math.min(100, perLayoutInt(balancedVowelPosKey(), BALANCED_VOWEL_POS,
+                profileValues() ? SPLIT_RIGHT_POS_DEFAULT : 50)));
     }
     /** 지금 한글 배열의 자·모음 균형 레이아웃 자음 키 폭 (왼쪽 절반을 꽉 채우는 폭의 %). */
     public int balancedConsonantWidth() {
-        int v = perLayoutInt(balancedConsonantWidthKey(), BALANCED_CONSONANT_WIDTH, BALANCED_WIDTH_DEFAULT);
+        int v = perLayoutInt(balancedConsonantWidthKey(), BALANCED_CONSONANT_WIDTH, widthDefault());
         return Math.max(balancedWidthMin(), Math.min(BALANCED_CONSONANT_WIDTH_MAX, v));
     }
     /** 지금 한글 배열의 자·모음 균형 레이아웃 자음 열 위치 (0 = 왼쪽 끝, 50 = 가운데, 100 = 가운데 선 쪽 끝). */
     public int balancedConsonantPos() {
-        return Math.max(0, Math.min(100, perLayoutInt(balancedConsonantPosKey(), BALANCED_CONSONANT_POS, 50)));
+        return Math.max(0, Math.min(100, perLayoutInt(balancedConsonantPosKey(), BALANCED_CONSONANT_POS,
+                profileValues() ? SPLIT_LEFT_POS_DEFAULT : 50)));
     }
     /**
      * 지금 한글 배열의 자·모음 경계 위치: 자판 폭에서 자음 쪽(왼쪽)이 차지하는 % (30~70, 기본 50 = 가운데).
