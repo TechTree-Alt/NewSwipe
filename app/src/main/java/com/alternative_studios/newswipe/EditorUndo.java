@@ -91,7 +91,8 @@ final class EditorUndo {
     private void seal() {
         Map<String, Object> step = pending;
         pending = null;
-        if (step == null || step.isEmpty()) return;
+        // 그사이 키보드 편집을 떠나 기록을 버렸으면 (clearAll) 쌓지 않는다.
+        if (step == null || step.isEmpty() || snapshot == null) return;
         long t = SystemClock.uptimeMillis();
         String single = step.size() == 1 ? step.keySet().iterator().next() : null;
         boolean merge = single != null && single.equals(lastStepKey) && t - lastStepTime < MERGE_MS && !steps.isEmpty();
@@ -138,7 +139,7 @@ final class EditorUndo {
         // 바뀐 값 알림이 나중에 오더라도 기록하지 않게, 알림이 다 지난 뒤에 푼다.
         handler.post(() -> {
             undoing = false;
-            snapshot = editorValues();
+            if (snapshot != null) snapshot = editorValues();   // 그사이 키보드 편집을 떠났으면 다시 시작하지 않는다
         });
         lastStepKey = null;
         onChange.run();

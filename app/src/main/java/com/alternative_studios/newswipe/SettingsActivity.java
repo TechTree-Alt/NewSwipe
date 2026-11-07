@@ -384,7 +384,7 @@ public final class SettingsActivity extends Activity {
             {KEYBOARD, "키 사이 상하 간격", "키 간격 갭"},
             {"clipemoji", "이모지 크기", "이모티콘 크기 글자 키우기 크게 이모지 창"},
             {KEYBOARD, "키 위치·폭 사용자화", "자음 모음 열 폭 위치 배치"},
-            {KEYBOARD, "자·모음 균형 레이아웃", "자음 모음 반반 균형"},
+            {KEYBOARD, "자·모음 균형 레이아웃", "자음 모음 반반 균형 한글 자판 배열 두벌식 단모음 쿼티 qwerty 레이아웃"},
             {KEYBOARD, "가로 모드 키보드 사용자화", "가로 화면 landscape"},
             {KEYBOARD, "숫자 줄 표시", "숫자 줄 1234567890 숫자열"},
             {KEYBOARD, "기능키 순서·유무 사용자화", "맨 아래 줄 하단 키 쉼표 지구본 온점 엔터"},
@@ -445,7 +445,6 @@ public final class SettingsActivity extends Activity {
             {"lab", "반각 공백 쓰기", "일본어 스페이스 전각 공백 반각 공백 띄어쓰기"},
             {"lab", "중국어 자판", "중국어 병음 한자 간체 사전 팩 chinese pinyin"},
             {KEYBOARD, "기호 자판 대신 숫자 패드 사용", "숫자 패드 넘버 패드 3×4 숫자 자판 기호 키 ?123 계산기 전화"},
-            {"lab", "두벌식 자판", "두벌식 표준 쿼티 qwerty 자판 배열 레이아웃 Shift 쌍자음"},
             {"lab", "아래로 밀기 엄격도", "스와이프 방향 판정 민감도"},
             {"lab", "위로 밀기 엄격도", "스와이프 방향 판정 민감도"},
             {"lab", "대화면 기준", "태블릿 폴더블 큰 화면 dp"},
@@ -1499,8 +1498,7 @@ public final class SettingsActivity extends Activity {
                 "같은 자음을 빠르게 두 번 누르면 쌍자음을 입력합니다 (예: ㄱㄱ→ㄲ, ㅅㅅ→ㅆ). 기존 단모음 자판과 같은 방식이며, 아래로 밀어 쌍자음을 입력하는 것과 함께 쓸 수 있습니다.",
                 Prefs.DOUBLE_TAP_CONSONANT, prefs.doubleTapConsonant(), doubleTapTime));
         input.addView(doubleTapTime);
-        input.addView(toggle("모음 연속 탭으로 이중모음", "같은 모음을 연달아 누르면 이중모음을 입력합니다 (예: ㅏㅏ→ㅑ, ㅗㅗ→ㅛ)."
-                        + (prefs.koreanDubeolsik() && !harvesting ? " 두벌식 자판(실험실)에서는 쓰지 않습니다." : ""),
+        input.addView(toggle("모음 연속 탭으로 이중모음", "같은 모음을 연달아 누르면 이중모음을 입력합니다 (예: ㅏㅏ→ㅑ, ㅗㅗ→ㅛ).",
                 Prefs.DOUBLE_TAP_VOWEL, prefs.doubleTapVowel()));
         input.addView(toggle("영어 자동 대문자", "문장 첫 글자를 대문자로 시작합니다.", Prefs.AUTO_CAP, prefs.autoCap()));
         input.addView(toggle("이메일 입력란은 영어로 시작",
@@ -1571,13 +1569,8 @@ public final class SettingsActivity extends Activity {
     /** 한글 자판 배열: 배열 고르기와 설명, 자·모음 균형 레이아웃(키 위치·폭 사용자화). */
     private void buildKoreanLayoutSection() {
         LinearLayout korean = section("한글 자판 배열");
-        boolean dubeolsik = prefs.koreanDubeolsik();
-        if (dubeolsik && !harvesting) {
-            korean.addView(note("실험실의 '두벌식 자판'이 켜져 있어 아래에서 고른 배열 대신 두벌식으로 보입니다. "
-                    + "고른 배열은 두벌식 자판을 끄면 쓰입니다."));
-        }
-        String[] koreanLayouts = {Prefs.KOREAN_LAYOUT_8, Prefs.KOREAN_LAYOUT_D7};
-        int selected = prefs.koreanD7() ? 1 : 0;
+        String[] koreanLayouts = {Prefs.KOREAN_LAYOUT_DUBEOLSIK, Prefs.KOREAN_LAYOUT_8, Prefs.KOREAN_LAYOUT_D7};
+        int selected = prefs.koreanDubeolsik() ? 0 : prefs.koreanD7() ? 2 : 1;
         // 배열을 고르면 화면을 다시 만들지 않고 안내문·토글·미리보기를 그 자리에서 바꾼다 (선택 버튼의 스프링이 끊기지 않게).
         TextView layoutNote = note(layoutNoteText());
         // 모든 한글 배열에서 쓸 수 있고, 배열마다 따로 켜고 끈다. 격자 정렬과 함께 쓰면 기능키가 나뉜 자음 키 폭에 맞춰진다.
@@ -1593,9 +1586,9 @@ public final class SettingsActivity extends Activity {
                     Ui.setVisibleAnimated(keyArea, on);
                     refreshLayoutPreview();
                 });
-        LinearLayout choices = choiceRowNow(new String[]{"단모음", "NewSwipe 단모음"}, selected,
+        LinearLayout choices = choiceRowNow(new String[]{"두벌식", "단모음", "NewSwipe 단모음"}, selected,
                 i -> {
-                    prefs.raw().edit().putString(Prefs.KOREAN_LAYOUT, koreanLayouts[i]).apply();
+                    prefs.setKoreanLayout(koreanLayouts[i]);
                     layoutNote.setText(layoutNoteText());
                     // 균형 레이아웃은 배열마다 따로 기억하므로 고른 배열의 값으로 스위치를 맞춘다.
                     ((ExpressiveSwitch) ((ViewGroup) balancedRow).getChildAt(1)).setCheckedSilently(prefs.balancedLayout());
@@ -1604,17 +1597,16 @@ public final class SettingsActivity extends Activity {
                 });
         korean.addView(choices);
         korean.addView(layoutNote);
-        // 두벌식 자판에는 자·모음 균형 레이아웃이 없다 (자음이 왼쪽, 모음이 오른쪽에 이미 모여 있다).
-        // 설정 검색의 목록은 앱 버전마다 한 번만 만들어 저장하므로, 그때는 두벌식 자판과 상관없이 넣는다.
-        if (!dubeolsik || harvesting) {
-            korean.addView(balancedRow);
-            korean.addView(keyArea);
-        }
-
+        korean.addView(balancedRow);
+        korean.addView(keyArea);
     }
 
     /** 고른 한글 배열의 설명. */
     private String layoutNoteText() {
+        if (prefs.koreanDubeolsik()) {
+            return "두벌식은 컴퓨터 키보드와 같은 표준 한글 배열입니다. Shift를 누르고 ㅂ·ㅈ·ㄷ·ㄱ·ㅅ·ㅐ·ㅔ를 치면 "
+                    + "ㅃ·ㅉ·ㄸ·ㄲ·ㅆ·ㅒ·ㅖ가 들어갑니다.";
+        }
         return prefs.koreanD7()
                 ? "NewSwipe 단모음은 거센소리 일부(ㅊ, ㅌ)를 빼 한 줄을 7칸으로 줄인 배열입니다. "
                         + "ㅊ·ㅌ은 ㅈ·ㄷ을 오른쪽으로 밀어 입력합니다."
@@ -1675,15 +1667,6 @@ public final class SettingsActivity extends Activity {
         direction.addView(note("글자 키를 밀 때 위·아래로 인정되려면 세로로 움직인 거리가 가로로 움직인 거리의 이 비율을 넘어야 합니다. "
                 + "값이 클수록 위·아래 판정이 엄격해져 좌우로 밀 때 손가락이 처져도 좌우로 인식됩니다. "
                 + "기본값은 아래 150%, 위 120%입니다."));
-
-        LinearLayout dubeolsik = section("두벌식 자판");
-        dubeolsik.addView(toggle("두벌식 자판",
-                "키보드 편집에서 고른 배열과 상관없이 한글 자판을 표준 두벌식(ㅂㅈㄷㄱㅅㅛㅕㅑㅐㅔ)으로 보입니다. "
-                        + "끄면 고른 배열로 돌아갑니다.",
-                Prefs.LAB_DUBEOLSIK, prefs.koreanDubeolsik()));
-        dubeolsik.addView(note("Shift를 누르고 ㅂ·ㅈ·ㄷ·ㄱ·ㅅ·ㅐ·ㅔ를 치면 ㅃ·ㅉ·ㄸ·ㄲ·ㅆ·ㅒ·ㅖ가 들어갑니다. "
-                + "두벌식 자판에서는 Shift 키가 늘 보이고, 자·모음 균형 레이아웃과 모음 연속 탭(ㅏㅏ→ㅑ)은 쓰지 않습니다. "
-                + "밀어서 입력, 길게 눌러 입력, 단어 추천과 자동 수정은 그대로 쓸 수 있으며, 자동 수정은 두벌식의 키 위치로 이웃한 키를 잽니다."));
 
         LinearLayout large = section("대화면 별도 레이아웃");
         View largeGroup = subGroup(
@@ -1959,7 +1942,7 @@ public final class SettingsActivity extends Activity {
         splitOnly.add(box);
 
         String reachKey = edit.splitReachColumnKey();
-        // 두벌식 자판은 영어 자판처럼 일반 배열을 가운데에서 나눠, 4열로 맞추지 않는다 (검색 목록에는 늘 넣는다).
+        // 두벌식은 영어 자판처럼 일반 배열을 가운데에서 나눠, 4열로 맞추지 않는다 (검색 목록에는 늘 넣는다).
         if (!prefs.koreanDubeolsik() || harvesting) {
             box.addView(toggle("좌·우 균형 레이아웃",
                     "한글 자판의 왼쪽·오른쪽 묶음을 4열로 맞춥니다.",

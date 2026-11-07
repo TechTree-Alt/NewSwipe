@@ -157,12 +157,12 @@ public final class BottomKeysEditorActivity extends Activity {
         fnToggle.setPadding(0, fnToggle.getPaddingTop(), fnToggle.getPaddingRight(), fnToggle.getPaddingBottom());
         View fnGroup = subGroup(16, fnToggle, fnEdit);   // 카드 안 줄의 왼쪽 여백(10dp) + 설정 화면의 들여쓰기(6dp)
         // NewSwipe 단모음에는 Shift 자리가 없어, 꺼진 채 흐리게 두고 바꿀 수 없게 한다 (저장된 값은 건드리지 않는다).
-        // 실험실 두벌식 자판은 쌍자음·ㅒ·ㅖ에 Shift를 써서 Shift 키가 늘 있다: 켜진 채 흐리게 둔다.
+        // 두벌식은 쌍자음·ㅒ·ㅖ에 Shift를 써서 Shift 키가 늘 있다: 켜진 채 흐리게 둔다.
         boolean noShiftSlot = prefs.koreanNewSwipe();
         boolean alwaysShift = prefs.koreanDubeolsik();
         View shiftRow = fixedRow("Shift 키 (⇧)",
                 noShiftSlot ? "이 레이아웃에서는 사용할 수 없습니다."
-                        : alwaysShift ? "두벌식 자판(실험실)에서는 늘 보입니다." : "꺼도 한글 자판에서만 사라집니다.",
+                        : alwaysShift ? "두벌식에서는 늘 보입니다." : "꺼도 한글 자판에서만 사라집니다.",
                 alwaysShift || (!noShiftSlot && !prefs.koreanShiftHidden()),
                 on -> {
                     prefs.raw().edit().putBoolean(Prefs.KOREAN_SHIFT_HIDDEN, !on).apply();

@@ -81,17 +81,16 @@ public final class Prefs {
     public static final String PERIOD_KEY_HIDDEN = "period_key_hidden";       // 글자·기호 자판 아래 줄의 온점 키 없애기
     /** 기호 자판 대신 숫자 패드 사용: 글자 자판의 기호 키(?123)를 누르면 기호 자판 대신 3×4 숫자 패드가 열린다 (기본 꺼짐). */
     public static final String NUMBER_PAD_SYMBOLS = "number_pad_symbols";
-    /** 한글 자판 배열: "danmoeum8"(기본), "danmoeum7". 없앤 배열의 값이 남아 있으면 기본 배열로 본다. */
+    /** 한글 자판 배열: "dubeolsik", "danmoeum8"(기본), "danmoeum7". 없앤 배열의 값이 남아 있으면 기본 배열로 본다. */
     public static final String KOREAN_LAYOUT = "korean_layout";
+    public static final String KOREAN_LAYOUT_DUBEOLSIK = "dubeolsik"; // 표준 두벌식 (10열, Shift 있음)
     public static final String KOREAN_LAYOUT_8 = "danmoeum8";       // 단모음 (8열)
     public static final String KOREAN_LAYOUT_D7 = "danmoeum7";      // NewSwipe 단모음 (7열)
     /**
-     * 실험실 '두벌식 자판': 켜면 위에서 고른 배열과 상관없이 표준 두벌식(10열, Shift 있음)으로 보인다.
-     * 고른 배열(KOREAN_LAYOUT)은 그대로 두어, 끄면 원래 배열로 돌아간다.
+     * 예전 실험실 '두벌식 자판' 스위치. 켜 두었으면 한글 배열을 두벌식으로 옮기고 지운다 ({@link #migrateLabDubeolsik}).
+     * 옮기기 전(예: 예전 백업을 가져온 직후)에도 켜져 있으면 두벌식으로 본다.
      */
     public static final String LAB_DUBEOLSIK = "lab_dubeolsik";
-    /** 두벌식 자판의 배열별 값에 붙는 이름 (예: balanced_vowel_width_land_dubeolsik). KOREAN_LAYOUT에 저장하지는 않는다. */
-    public static final String KOREAN_LAYOUT_DUBEOLSIK = "dubeolsik";
     public static final String GRID_COLORS = "grid_colors";   // 색 정렬 (테마): Shift·⌫는 글자 키 색, 스페이스바는 기능키 색
     public static final String GRID_LAYOUT = "grid_layout";                   // 아래 줄 기능키를 한글 키 폭에 맞춰 격자로 정렬
     /** 자·모음 균형 레이아웃. 한글 배열마다 따로 저장한다: 이 이름 + "_" + 배열 값 (예: balanced_layout_danmoeum7). */
@@ -250,6 +249,26 @@ public final class Prefs {
     public Prefs(Context context) {
         this(new SafePrefs(context.getSharedPreferences(FILE, Context.MODE_PRIVATE)), false, PROFILE_PORTRAIT, false);
         LegacySwipeSettings.migrateIfNeeded(this);   // 예전 밀기 규칙 스위치를 키마다 정한 값으로 한 번 옮긴다
+        migrateLabDubeolsik();
+    }
+
+    /** 예전 실험실 '두벌식 자판' 스위치를 한글 배열 값으로 옮긴다: 켜 두었으면 배열을 두벌식으로 하고, 스위치는 지운다. */
+    public void migrateLabDubeolsik() {
+        if (!sp.contains(LAB_DUBEOLSIK)) return;
+        SharedPreferences.Editor e = sp.edit();
+        if (sp.getBoolean(LAB_DUBEOLSIK, false)) e.putString(KOREAN_LAYOUT, KOREAN_LAYOUT_DUBEOLSIK);
+        e.remove(LAB_DUBEOLSIK).apply();
+    }
+
+    /** 고른 한글 배열 값 (KOREAN_LAYOUT_*). 예전 실험실 두벌식 스위치가 아직 남아 켜져 있으면 두벌식. */
+    private String koreanLayoutValue() {
+        if (sp.getBoolean(LAB_DUBEOLSIK, false)) return KOREAN_LAYOUT_DUBEOLSIK;
+        return sp.getString(KOREAN_LAYOUT, null);
+    }
+
+    /** 한글 배열을 고른다 (KOREAN_LAYOUT_*). 예전 실험실 두벌식 스위치가 남아 있으면 함께 지운다. */
+    public void setKoreanLayout(String layout) {
+        sp.edit().putString(KOREAN_LAYOUT, layout).remove(LAB_DUBEOLSIK).apply();
     }
 
     private Prefs(SharedPreferences sp, boolean oneHandView, String profile, boolean profileEdit) {
@@ -384,7 +403,7 @@ public final class Prefs {
         MENU_KEYS.put("words", keys(SHORTCUTS_ENABLED, SUGGEST_WORDS, SUGGEST_FULL_BAR, SUGGEST_SPACE, PREDICT_NEXT, AUTO_CORRECT, LEARN_WORDS,
                 CONFIRM_LEARNED_DELETE, AUTOFILL_INLINE));
         // 실험실: 대화면 별도 레이아웃과 대화면 키보드 사용자화의 값은 모두 large_로 시작한다.
-        MENU_KEYS.put("lab", keys(SWIPE_DOWN_RATIO, SWIPE_UP_RATIO, LAB_DUBEOLSIK));
+        MENU_KEYS.put("lab", keys(SWIPE_DOWN_RATIO, SWIPE_UP_RATIO));
         MENU_PREFIXES.put("lab", keys(LARGE_PREFIX, HW_PREFIX, CJK_PREFIX));
         MENU_KEYS.put("onehand", keys(ONE_HAND_WIDTH, ONE_HAND_WIDTH_LAND, ONE_HAND_HEIGHT, ONE_HAND_LIFT));
     }
@@ -810,7 +829,7 @@ public final class Prefs {
 
     /** 격자 정렬. 자·모음 균형 레이아웃에서는 기능키 폭을 나뉜 자음 키 폭에 맞춘다. */
     public boolean gridLayout() { return sp.getBoolean(GRID_LAYOUT, false); }
-    /** 지금 한글 배열의 이름 ("danmoeum8", "danmoeum7", 실험실 두벌식 자판을 켰으면 "dubeolsik"). 배열별 값의 키에 붙는다. */
+    /** 지금 한글 배열의 이름 ("dubeolsik", "danmoeum8", "danmoeum7"). 배열별 값의 키에 붙는다. */
     public String koreanLayoutId() {
         if (koreanDubeolsik()) return KOREAN_LAYOUT_DUBEOLSIK;
         return koreanD7() ? KOREAN_LAYOUT_D7 : KOREAN_LAYOUT_8;
@@ -825,13 +844,13 @@ public final class Prefs {
      */
     public boolean balancedLayout() {
         if (oneHandView) return false;
-        // 두벌식 자판은 쿼티처럼 자음이 왼쪽, 모음이 오른쪽에 이미 모여 있어 균형 레이아웃이 없다.
-        // 분리 키보드(가로 모드·대화면)는 영어 자판처럼 일반 배열을 가운데에서 나눈다.
-        if (koreanDubeolsik()) return false;
-        if (profileValues()) return true;   // 가로 모드·대화면 분리 키보드는 세로 모드의 균형 레이아웃과 상관없이 나눈다
+        // 가로 모드·대화면 분리 키보드는 세로 모드의 균형 레이아웃과 상관없이 나눈다.
+        // 두벌식은 쿼티와 자리가 같아, 분리 키보드에서는 영어 자판처럼 일반 배열을 가운데에서 나눈다 (자음이 왼쪽, 모음이 오른쪽).
+        if (profileValues()) return !koreanDubeolsik();
         String key = balancedLayoutKey();
         if (sp.contains(key)) return sp.getBoolean(key, false);
-        return !koreanNewSwipe() && sp.getBoolean(BALANCED_LAYOUT, false);
+        // 배열별로 나누기 전의 값은 8열 단모음의 것이다.
+        return KOREAN_LAYOUT_8.equals(koreanLayoutId()) && sp.getBoolean(BALANCED_LAYOUT, false);
     }
     private boolean large() { return profile.startsWith(LARGE_PREFIX); }
 
@@ -852,7 +871,7 @@ public final class Prefs {
         return large() ? LARGE_PREFIX + "split_" + LARGE_LAYOUT_SIDE : LANDSCAPE_SPLIT;
     }
 
-    /** 예전에 배열마다 따로 저장하던 '분리 키보드' 설정 키 (두벌식 자판은 그때 없었으므로 고른 배열의 값). */
+    /** 예전에 배열마다 따로 저장하던 '분리 키보드' 설정 키 (두벌식은 그때 배열이 아니었으므로 8열 단모음의 값). */
     private String legacySplitKey() { return splitKey() + "_" + (koreanD7() ? KOREAN_LAYOUT_D7 : KOREAN_LAYOUT_8); }
 
     /**
@@ -948,19 +967,11 @@ public final class Prefs {
     /** 색 정렬: Shift·⌫·기호 쪽 넘김 키는 글자 키 색, 스페이스바는 기능키 색 (격자 정렬과 상관없이). */
     public boolean gridColors() { return sp.getBoolean(GRID_COLORS, false); }
     /** 한글 자판이 NewSwipe 단모음인지. */
-    public boolean koreanD7() { return KOREAN_LAYOUT_D7.equals(sp.getString(KOREAN_LAYOUT, null)); }
-    /**
-     * 한글 자판이 NewSwipe 배열(NewSwipe 단모음)인지: Shift 자리가 없고, ㅂ·ㅈ·ㄷ·ㄱ를 오른쪽으로 밀어 ㅍ·ㅊ·ㅌ·ㅋ을 입력한다.
-     * 실험실 두벌식 자판을 켜면 고른 배열과 상관없이 아니다.
-     */
-    public boolean koreanNewSwipe() { return koreanD7() && !koreanDubeolsik(); }
-    /**
-     * 실험실 '두벌식 자판'을 켰는지: 고른 한글 배열과 상관없이 표준 두벌식(ㅂㅈㄷㄱㅅㅛㅕㅑㅐㅔ …, Shift 있음)으로 보인다.
-     * {@link #koreanD7()}는 고른 배열 그대로라, 설정 화면의 배열 선택은 끄면 돌아갈 배열을 보여 준다.
-     */
-    public boolean koreanDubeolsik() { return sp.getBoolean(LAB_DUBEOLSIK, false); }
-    /** 모음 연속 탭(ㅏㅏ → ㅑ)을 실제로 쓰는지: 두벌식 자판은 ㅑ·ㅕ·ㅛ·ㅠ 키가 따로 있어 같은 모음을 두 번 친 그대로 둔다. */
-    public boolean doubleTapVowelActive() { return doubleTapVowel() && !koreanDubeolsik(); }
+    public boolean koreanD7() { return KOREAN_LAYOUT_D7.equals(koreanLayoutValue()); }
+    /** 한글 자판이 NewSwipe 배열(NewSwipe 단모음)인지: Shift 자리가 없고, ㅂ·ㅈ·ㄷ·ㄱ를 오른쪽으로 밀어 ㅍ·ㅊ·ㅌ·ㅋ을 입력한다. */
+    public boolean koreanNewSwipe() { return koreanD7(); }
+    /** 한글 자판이 표준 두벌식(ㅂㅈㄷㄱㅅㅛㅕㅑㅐㅔ …, Shift 있음)인지. */
+    public boolean koreanDubeolsik() { return KOREAN_LAYOUT_DUBEOLSIK.equals(koreanLayoutValue()); }
     public boolean enterKeyHidden() { return sp.getBoolean(ENTER_KEY_HIDDEN, false); }
     public boolean modeKeyHidden() { return sp.getBoolean(MODE_KEY_HIDDEN, false); }
     public boolean languageKeyHidden() { return sp.getBoolean(LANGUAGE_KEY_HIDDEN, false); }

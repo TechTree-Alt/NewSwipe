@@ -14,7 +14,7 @@ import java.util.Locale;
  * NewSwipe 단모음은 Shift 키가 없고, ㅂ·ㅈ·ㄷ·ㄱ를 오른쪽으로 밀어 ㅍ·ㅊ·ㅌ·ㅋ을 입력한다.
  * 획을 더하는 방향이라 자연스러워 키에 ㅊ·ㅌ을 함께 적지는 않는다.
  * 겹받침의 앞 자음(ㄱ ㄴ ㄹ ㅂ)은 위·왼쪽·오른쪽으로 스와이프해 겹받침을 입력한다 ({@link FinalSwipes}).
- * 실험실 '두벌식 자판'을 켜면 고른 배열 대신 표준 두벌식(10열, 영어 자판과 같은 모양)을 쓴다.
+ * 표준 두벌식(10열, 영어 자판과 같은 모양)도 고를 수 있다.
  */
 public final class KeyboardLayout {
     public static final int KOREAN = 0;
@@ -94,7 +94,7 @@ public final class KeyboardLayout {
     }
 
     /**
-     * 실험실 '두벌식 자판'(표준 두벌식)을 쓰는지. 쓰면 고른 배열과 상관없이 영어 자판과 같은 모양(10 · 9 · Shift+7+⌫)이고,
+     * 한글 배열이 표준 두벌식인지. 영어 자판과 같은 모양(10 · 9 · Shift+7+⌫)이고,
      * Shift는 ㅂㅈㄷㄱㅅ → 쌍자음, ㅐㅔ → ㅒㅖ만 바꾼다. 밀기(쌍자음·이중모음·겹받침)와 길게 누르기는 다른 배열처럼 쓴다.
      */
     public static boolean dubeolsik(Prefs prefs) {
@@ -137,15 +137,23 @@ public final class KeyboardLayout {
      * 고치지 않는다.
      */
     public static String[][] koreanLetterRows(Prefs prefs) {
-        return dubeolsik(prefs) ? DUBEOLSIK_ROWS : newSwipe(prefs) ? D7_ROWS : KOREAN_GRID;
+        if (dubeolsik(prefs)) return balanced(prefs) ? DUBEOLSIK_BALANCED_GRID : DUBEOLSIK_ROWS;
+        return newSwipe(prefs) ? D7_ROWS : KOREAN_GRID;
     }
+
+    /**
+     * 두벌식 균형 레이아웃의 글자 줄을 칸 위치대로: 자음 쪽은 5열 격자라 셋째 줄 맨 왼쪽이 Shift 자리다 (ㅋ이 ㄴ 아래).
+     * 모음 쪽은 실제로 반 칸씩 엇갈리지만 격자로 어림한다.
+     */
+    private static final String[][] DUBEOLSIK_BALANCED_GRID = {DUBEOLSIK_ROWS[0], DUBEOLSIK_ROWS[1],
+            {"", "ㅋ", "ㅌ", "ㅊ", "ㅍ", "ㅠ", "ㅜ", "ㅡ"}};
 
     /**
      * {@link #koreanLetterRows}의 줄마다 첫 칸이 놓인 가로 위치 (키 한 칸 단위). 칸이 반듯한 격자인 배열(단모음)은 null이고,
      * 두벌식처럼 줄이 엇갈리면 그 위치를 준다. 고치지 않는다.
      */
     public static float[] koreanRowOffsets(Prefs prefs) {
-        return dubeolsik(prefs) ? DUBEOLSIK_OFFSETS : null;
+        return dubeolsik(prefs) && !balanced(prefs) ? DUBEOLSIK_OFFSETS : null;
     }
 
     /**
@@ -290,8 +298,9 @@ public final class KeyboardLayout {
     }
 
     public static KeyboardLayout korean(Prefs prefs) {
-        if (dubeolsik(prefs)) return qwertyLayout(KOREAN, DUBEOLSIK_ROWS, DUBEOLSIK_POPUPS, true, prefs);
         if (balanced(prefs)) return balancedLayout(prefs, prefs.numberRow());
+        // 두벌식은 쿼티 모양 (분리 키보드에서는 영어 자판처럼 가운데에서 나눈다: Prefs.balancedLayout은 거기서 늘 false).
+        if (dubeolsik(prefs)) return qwertyLayout(KOREAN, DUBEOLSIK_ROWS, DUBEOLSIK_POPUPS, true, prefs);
         if (newSwipe(prefs)) return nsLayout(prefs, prefs.numberRow());
         boolean numberRow = prefs != null && prefs.numberRow();
         int shift = koreanShiftSlot(prefs);
@@ -315,7 +324,7 @@ public final class KeyboardLayout {
     /** 오른쪽 절반의 모음 열 수. */
     private static final int BALANCED_VOWEL_COLUMNS = 3;
 
-    /** 자·모음 균형 레이아웃에서 한 줄의 자음 수: 8열 단모음은 5개 (Shift 자리 포함), NewSwipe 배열은 4개. */
+    /** 자·모음 균형 레이아웃에서 한 줄의 자음 수: 8열 단모음·두벌식은 5개 (셋째 줄은 Shift 자리 포함), NewSwipe 배열은 4개. */
     private static int balancedConsonants(Prefs prefs) {
         return newSwipe(prefs) ? 4 : 5;
     }
@@ -348,6 +357,7 @@ public final class KeyboardLayout {
      * 자음과 모음 사이·모음 오른쪽의 빈틈은 누르면 가까운 키가 눌린다.
      */
     private static Row balancedRow(int r, Prefs prefs) {
+        if (dubeolsik(prefs)) return dubeolsikBalancedRow(r, prefs);
         boolean ns = newSwipe(prefs);
         String[][] rows = ns ? D7_ROWS : KOREAN_ROWS;
         String[][][] popups = ns ? D7_POPUPS : KOREAN_POPUPS;
@@ -391,36 +401,58 @@ public final class KeyboardLayout {
     }
 
     /**
+     * 두벌식의 자·모음 균형 레이아웃 r번째 줄 (세로 모드만: 분리 키보드는 영어 자판처럼 나눈다).
+     * 자음 쪽은 5열 격자다: ㅂㅈㄷㄱㅅ / ㅁㄴㅇㄹㅎ / Shift ㅋㅌㅊㅍ (단모음 자판의 자음 쪽과 같은 자리).
+     * 모음 쪽은 5열 폭에 두벌식 자판의 오른쪽 절반을 그대로 옮긴다: ㅛㅕㅑㅐㅔ / 반 칸 들어간 ㅗㅓㅏㅣ /
+     * 반 칸 들어간 ㅠㅜㅡ와 1.5칸 ⌫. 그래서 모든 줄이 5칸이고 모음 키 폭이 줄마다 같다.
+     */
+    private static Row dubeolsikBalancedRow(int r, Prefs prefs) {
+        Key[] letters = letterKeys(DUBEOLSIK_ROWS[r], DUBEOLSIK_POPUPS[r], true, prefs);
+        List<Key> consonants = new ArrayList<>(), vowels = new ArrayList<>();
+        if (r == 2) consonants.add(fn(koreanShiftSlot(prefs), "", 1f));
+        for (Key k : letters) {
+            boolean vowel = com.alternative_studios.newswipe.hangul.HangulComposer.isVowel(k.label.charAt(0));
+            (vowel ? vowels : consonants).add(k);
+        }
+        if (r > 0) vowels.add(0, fn(Key.GAP, "", 0.5f));
+        if (r == 1) vowels.add(fn(Key.GAP, "", 0.5f));
+        if (r == 2) vowels.add(fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1.5f));
+        return splitRow(consonants, vowels, 1f, prefs);
+    }
+
+    /**
      * 자·모음 경계에서 나뉜 한 줄: 경계 왼쪽(자음 쪽)에 consonants, 오른쪽(모음 쪽)에 vowels를 놓는다.
      * 경계는 '자·모음 경계 위치'(자판 폭에서 자음 쪽이 차지하는 %, 기본 50 = 가운데)에 있다.
      * 자음 키는 자음 쪽을 꽉 채우는 폭의 '자음 폭'%이고 남는 폭 안에서 '자음 위치'에 따라 놓인다.
      * 모음 키는 모음 쪽을 꽉 채우는 폭의 '모음 폭'%이고(100%면 모음이 모음 쪽을 꽉 채운다) '모음 위치'에 따라 놓인다.
+     * 키끼리의 폭 비율(키의 weight, 예: 두벌식의 1.5칸 ⌫·반 칸 빈틈)은 지킨다.
      * 세로 모드의 균형 레이아웃에서 쓴다 (분리 키보드는 {@link #blockRow}).
      */
     private static Row splitRow(List<Key> consonants, List<Key> vowels, float height, Prefs prefs) {
         float left = BALANCED_COLUMNS
                 * (prefs == null ? Prefs.BALANCED_BOUNDARY_DEFAULT : prefs.balancedBoundary()) / 100f;
         float right = BALANCED_COLUMNS - left;
-        float cw = left / consonants.size()
+        float cunits = width(consonants), vunits = width(vowels);
+        float cw = left / cunits
                 * (prefs == null ? Prefs.BALANCED_WIDTH_DEFAULT : prefs.balancedConsonantWidth()) / 100f;
         float cpos = (prefs == null ? 50 : prefs.balancedConsonantPos()) / 100f;
-        float cfree = Math.max(0f, left - consonants.size() * cw);
+        float cfree = Math.max(0f, left - cunits * cw);
         float cgapLeft = cfree * cpos, cgapRight = cfree - cgapLeft;
         int pct = prefs == null ? Prefs.BALANCED_WIDTH_DEFAULT : prefs.balancedVowelWidth();
-        float v = vowels.isEmpty() ? 0f : right / vowels.size() * pct / 100f;
+        float v = vowels.isEmpty() ? 0f : right / vunits * pct / 100f;
         float pos = (prefs == null ? 50 : prefs.balancedVowelPos()) / 100f;
-        float free = Math.max(0f, right - vowels.size() * v);
+        float free = Math.max(0f, right - vunits * v);
         float gapLeft = free * pos, gapRight = free - gapLeft;
         List<Key> keys = new ArrayList<>();
         if (cgapLeft > 0.001f) keys.add(fn(Key.GAP, "", cgapLeft));
         for (Key k : consonants) {
-            k.weight = cw;
+            k.weight *= cw;
             keys.add(k);
         }
         if (cgapRight > 0.001f) keys.add(fn(Key.GAP, "", cgapRight));
         if (gapLeft > 0.001f) keys.add(fn(Key.GAP, "", gapLeft));
         for (Key k : vowels) {
-            k.weight = v;
+            k.weight *= v;
             keys.add(k);
         }
         if (gapRight > 0.001f) keys.add(fn(Key.GAP, "", gapRight));
@@ -861,9 +893,12 @@ public final class KeyboardLayout {
         return prefs == null || !prefs.deleteKeyHidden();
     }
 
-    /** 한글 자판 Shift 자리의 키: Shift 키, (Shift 키를 끄고 Fn 키를 켰으면) Fn 키, 아니면 빈 칸. */
+    /**
+     * 한글 자판 Shift 자리의 키: Shift 키, (Shift 키를 끄고 Fn 키를 켰으면) Fn 키, 아니면 빈 칸.
+     * 두벌식은 쌍자음·ㅒ·ㅖ에 Shift를 써서 늘 Shift 키다.
+     */
     private static int koreanShiftSlot(Prefs prefs) {
-        if (prefs == null || !prefs.koreanShiftHidden()) return Key.SHIFT;
+        if (prefs == null || !prefs.koreanShiftHidden() || dubeolsik(prefs)) return Key.SHIFT;
         return prefs.koreanShiftFn() ? Key.FUNCTION : Key.SPACER;
     }
 
