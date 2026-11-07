@@ -66,20 +66,24 @@ public class NumberPadKeyTest {
         assertEquals(KeyboardLayout.NUMBER, pad.kind);
         assertEquals(5, pad.columns);
         assertEquals(4, pad.rows.length);
-        for (KeyboardLayout.Row row : pad.rows) assertEquals(5, row.keys.length);
-        Key letters = pad.rows[0].keys[0], symbols = pad.rows[1].keys[0];
-        assertEquals(Key.TO_LETTERS, letters.type);
-        assertEquals("가", letters.label);
+        for (int r = 0; r < 3; r++) assertEquals(5, pad.rows[r].keys.length);
+        assertEquals(6, pad.rows[3].keys.length);   // 맨 아래 왼쪽 칸은 둘로 나뉜다
+        assertEquals("+", pad.rows[0].keys[0].output);
+        assertEquals(",", pad.rows[1].keys[0].output);
+        assertEquals(".", pad.rows[2].keys[0].output);
+        Key symbols = pad.rows[3].keys[0], letters = pad.rows[3].keys[1];
         assertEquals(Key.TO_SYMBOLS, symbols.type);
         assertEquals("?!@", symbols.label);
-        assertEquals(",", pad.rows[2].keys[0].output);
-        assertEquals(".", pad.rows[3].keys[0].output);
+        assertEquals(Key.TO_LETTERS, letters.type);
+        assertEquals("가", letters.label);
+        assertEquals(1f, symbols.weight + letters.weight, 0.001f);
         // 3×4 숫자 부분: 1~9·*·0·# 과 오른쪽 줄 (-·스페이스바·⌫·엔터)
         String[][] digits = {{"1", "2", "3"}, {"4", "5", "6"}, {"7", "8", "9"}, {"*", "0", "#"}};
         int[] right = {Key.CHAR, Key.SPACE, Key.DELETE, Key.ENTER};
         for (int r = 0; r < 4; r++) {
-            for (int i = 0; i < 3; i++) assertEquals(digits[r][i], pad.rows[r].keys[i + 1].output);
-            assertEquals(right[r], pad.rows[r].keys[4].type);
+            int off = r == 3 ? 2 : 1;
+            for (int i = 0; i < 3; i++) assertEquals(digits[r][i], pad.rows[r].keys[i + off].output);
+            assertEquals(right[r], pad.rows[r].keys[off + 3].type);
         }
         assertEquals("-", pad.rows[0].keys[4].output);
     }
