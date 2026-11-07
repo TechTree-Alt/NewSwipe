@@ -49,6 +49,11 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    // 키보드 편집 UI 시험(EditorUiTest, Robolectric)이 앱 리소스와 매니페스트를 쓴다.
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
+
     dependenciesInfo {
         includeInApk = false
         includeInBundle = false
@@ -57,4 +62,5 @@ android {
 
 dependencies {
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
 }

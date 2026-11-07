@@ -25,13 +25,11 @@ import android.widget.Toast;
 import com.alternative_studios.newswipe.clipboard.ClipboardHistory;
 import com.alternative_studios.newswipe.keyboard.Icons;
 import com.alternative_studios.newswipe.keyboard.KeyboardSwipes;
-import com.alternative_studios.newswipe.keyboard.ToolbarSwipes;
 import com.alternative_studios.newswipe.suggest.CorrectionMemory;
 import com.alternative_studios.newswipe.suggest.DictionaryPack;
 import com.alternative_studios.newswipe.suggest.UsageHistory;
 import com.alternative_studios.newswipe.suggest.UserDictionary;
 import com.alternative_studios.newswipe.ui.Chevron;
-import com.alternative_studios.newswipe.ui.ExpressiveSlider;
 import com.alternative_studios.newswipe.ui.ExpressiveSwitch;
 import com.alternative_studios.newswipe.ui.IconView;
 import com.alternative_studios.newswipe.ui.IconButton;
@@ -73,6 +71,8 @@ public final class SettingsActivity extends Activity {
     /** 클립보드 '이미지 저장' 스위치 (끄기를 취소하면 되돌린다). */
     private ExpressiveSwitch clipImagesSwitch;
     private String themeSignature;
+    /** 설정 화면의 공통 조각 (키 창과 같은 모양). */
+    private SettingsWidgets widgets;
     /**
      * 설정을 가져올 때마다 늘어난다. 뒤에 쌓여 있던 다른 설정 화면은 돌아왔을 때 이 값이 바뀌었으면
      * 가져온 값으로 다시 그린다 (옛 값이 보이거나, 옛 화면에서 만진 값이 가져온 설정을 덮지 않게).
@@ -109,6 +109,7 @@ public final class SettingsActivity extends Activity {
         hintColor = colors.hint;
         accentColor = colors.accent;
         onAccentColor = colors.onAccent;
+        widgets = new SettingsWidgets(this, colors, this::markItem);
 
         // 위쪽 머리글(고정) + 아래 스크롤 목록
         String sectionId = getIntent().getStringExtra(EXTRA_SECTION);
@@ -175,8 +176,7 @@ public final class SettingsActivity extends Activity {
     @Override
     protected void onDestroy() {
         if (isFinishing() && editorPreview != null) {   // 키보드 편집을 떠난다: 되돌리기 기록도 버린다
-            undoSteps.clear();
-            prefSnapshot = null;
+            EditorUndo.clearAll();
         }
         if (editorPrefListener != null) prefs.raw().unregisterOnSharedPreferenceChangeListener(editorPrefListener);
         super.onDestroy();
@@ -191,8 +191,8 @@ public final class SettingsActivity extends Activity {
     // ---------------------------------------------------------------- 화면 구성
 
     /**
-     * 키보드 편집: 예전의 자판 레이아웃·자판 모양·입력 동작·길게 누르기·밀어서 글자 입력·밀어서 기능·도구 막대 메뉴를 하나로 합친 화면.
-     * 기본값으로 되돌리기는 예전 메뉴 단위(EDITOR_GROUPS)로 고른다.
+     * 키보드 편집: 미리보기에서 키보드·영역·키를 눌러 설정하는 화면 (예전의 자판 레이아웃·자판 모양·입력 동작·길게 누르기·
+     * 밀어서 글자 입력·밀어서 기능·도구 막대 메뉴를 합쳤다). 목록의 기본값으로 되돌리기는 설정 범위(Prefs.editorResetChoices)로 고른다.
      */
     private static final String KEYBOARD = "keyboard";
 
@@ -679,7 +679,7 @@ public final class SettingsActivity extends Activity {
         }
         onPreviewTap(sel);
         // 창이 올라온 뒤에 찾는다 (배치가 끝나야 위치를 안다).
-        sheetScroll.postDelayed(() -> highlightItem(sheetScroll, (ViewGroup) sheetScroll.getChildAt(0), label), 450);
+        sheet.scroll().postDelayed(() -> highlightItem(sheet.scroll(), sheet.body(), label), 450);
     }
 
     /** 화면 하나를 보이지 않는 곳에 만들어 항목 이름을 모으고 버린다. 진짜 화면이 쓰는 값은 건드리지 않게 되돌려 놓는다. */
@@ -979,12 +979,8 @@ public final class SettingsActivity extends Activity {
     private KeyEditPanel keyPanel;
     /** 모든 설정 목록. */
     private LinearLayout overviewBox;
-    /** 키 편집 창: 목록 위에 겹쳐 아래에서 올라오는 시트와, 그 뒤에서 목록을 어둡게 가리는 막. */
-    private LinearLayout sheet;
-    private ScrollView sheetScroll;
-    private View scrim;
-    /** 시트를 닫는 애니메이션이 도는 중인지 (그동안은 닫힌 것으로 본다). */
-    private boolean sheetClosing;
+    /** 설정 창: 목록 위에 겹쳐 아래에서 올라오는 시트 (영역·키·키보드 여백). */
+    private EditorSheet sheet;
     /** 편집 칸을 연 동안 설정이 바뀌어, 닫을 때 모든 설정 목록을 다시 만들어야 하는지. */
     private boolean overviewStale;
     /** 미리보기 손잡이로도 바뀌는 크기 슬라이더: 설정 키 → 값을 다시 읽어 맞추는 일들. */
@@ -994,16 +990,6 @@ public final class SettingsActivity extends Activity {
     /** Android 13+: 편집 칸이 열린 동안 뒤로 가기로 칸을 닫는다. */
     private Object panelBackCallback;
 
-    /** 키보드 편집의 '기본값으로 되돌리기'에서 고를 수 있는 묶음: {Prefs.resetSection의 메뉴 이름, 보이는 이름}. */
-    private static final String[][] EDITOR_GROUPS = {
-            {"look", "키보드 높이, 여백, 키 모양"},
-            {"layout", "자판 배열, 숫자 줄, 기능키 순서, 가로 모드"},
-            {"input", "입력 동작"},
-            {"keys", "길게 누르기 (키마다 정한 문자·연속 입력·기능 포함)"},
-            {"swipe", "밀어서 글자 입력 (키마다 정한 글자 포함)"},
-            {"swipefn", "밀어서 기능 (키·버튼마다 정한 기능 포함)"},
-            {"tools", "도구 막대"},
-    };
 
     /**
      * 키보드 편집: 화면 아래에 실제 키보드와 같은 미리보기를 붙이고(키보드·영역·키 세 페이지), 위쪽 목록에는 어느 영역·키
@@ -1025,7 +1011,8 @@ public final class SettingsActivity extends Activity {
                 @Override
                 public void onLayerChanged(int layer) {
                     closeKeyPanel();   // 다른 층으로 넘기면 고른 것이 풀린다
-                    updatePageDots(layer);
+                    pageDots.setPage(layer);
+                    pageDots.flashName(layer);
                 }
             });
             keyPanel = new KeyEditPanel(this, prefs, new KeyEditPanel.Host() {
@@ -1058,17 +1045,19 @@ public final class SettingsActivity extends Activity {
                         editorPreview.setTab(i);
                     }));
             pinnedBottom.addView(tabs, matchWrap());
-            pinnedBottom.addView(buildPageDots(), matchWrap());
+            pageDots = new PageDots(this, PAGE_NAMES, AppTheme.of(this), editorPreview::setLayer);
+            pageDots.setPage(editorPreview.layer());
+            pinnedBottom.addView(pageDots, matchWrap());
             pinnedBottom.addView(editorPreview, matchWrap());
             pinnedBottom.setVisibility(View.VISIBLE);
 
             buildSheet();
 
             // 목록의 스위치·슬라이더나 다른 편집 화면에서 값을 바꾸면 미리보기를 다시 그린다 (한 프레임에 한 번).
-            if (prefSnapshot == null) prefSnapshot = editorValuesForUndo();
+            editorUndo = new EditorUndo(prefs, uiHandler, this::updateUndoButton);
             updateUndoButton();
             editorPrefListener = (sp, key) -> {
-                recordChange(key);
+                editorUndo.record(key);
                 uiHandler.removeCallbacks(editorRefresh);
                 uiHandler.post(editorRefresh);
                 if (panelOpen()) overviewStale = true;
@@ -1105,129 +1094,25 @@ public final class SettingsActivity extends Activity {
     /** 손잡이로도 바뀌는 크기 슬라이더. 손잡이를 끌면 syncSizeSliders가 값을 다시 읽어 맞춘다. */
     private View sizeSlider(String label, String key, java.util.function.IntSupplier current, int min, int max, int step,
                             String unit) {
-        View box = slider(label, key, current.getAsInt(), min, max, step, unit, () -> {
+        SettingsWidgets.Slider sl = sliderRow(label, key, current.getAsInt(), min, max, step, unit, () -> {
             if (keyPanel != null) keyPanel.syncSize(key);
         });
         if (!harvesting) {
-            ViewGroup g = (ViewGroup) box;
-            TextView valueView = (TextView) ((ViewGroup) g.getChildAt(0)).getChildAt(1);
-            ExpressiveSlider bar = (ExpressiveSlider) g.getChildAt(1);
-            sliderSink.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(() -> {
-                int v = Math.max(min, Math.min(max, current.getAsInt()));
-                valueView.setText(v + unit);
-                bar.setProgress(Math.round((v - min) / (float) step));
-            });
+            sliderSink.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(() -> sl.set(current.getAsInt()));
         }
-        return box;
+        return sl.view;
     }
 
-    // ---- 되돌리기: 키보드 편집에서 마지막으로 바꾼 설정을 원래대로
-    //
-    // 키보드 편집 값(Prefs.isEditorKey)이 바뀔 때마다 바뀌기 전 값을 기억해 한 단계로 쌓는다. 한 번에 함께 바뀐 값들(키 하나를
-    // 기본값으로, 길게 누르기 '없음' 등)은 한 단계이고, 슬라이더·손잡이를 끄는 동안 같은 값이 잇달아 바뀌면 한 단계로 합친다.
-    // 화면을 다시 만들어도(기본값으로 되돌리기, 화면 모드) 남도록 정적으로 두고, 키보드 편집을 떠나면 버린다.
+    // ---- 되돌리기: 키보드 편집에서 마지막으로 바꾼 설정을 원래대로 (기록은 EditorUndo)
 
-    /** 기억해 둔 값이 '없었음'을 나타내는 표시. */
-    private static final Object ABSENT = new Object();
-    private static final java.util.ArrayDeque<java.util.Map<String, Object>> undoSteps = new java.util.ArrayDeque<>();
-    /** 키보드 편집 값의 마지막 모습 (바뀐 값의 이전 값을 알려고 둔다). */
-    private static java.util.Map<String, Object> prefSnapshot;
-    private static long lastStepTime;
-    private static String lastStepKey;
-    /** 되돌리는 중 (그 변경은 기록하지 않는다). */
-    private static boolean undoing;
-    /** 지금 메시지 안에서 바뀐 값들 (다음 메시지에서 한 단계로 묶는다). */
-    private java.util.Map<String, Object> pendingStep;
+    private EditorUndo editorUndo;
     private View undoButton;
-    private static final int MAX_UNDO = 50;
 
-    private java.util.Map<String, Object> editorValuesForUndo() {
-        java.util.Map<String, Object> out = new java.util.HashMap<>();
-        for (java.util.Map.Entry<String, ?> e : prefs.raw().getAll().entrySet()) {
-            if (Prefs.isEditorKey(e.getKey())) out.put(e.getKey(), e.getValue());
-        }
-        return out;
-    }
-
-    private void recordChange(String key) {
-        if (prefSnapshot == null) return;
-        if (key == null) {   // 설정이 통째로 지워졌다 (가져오기 등): 기록을 새로 시작한다
-            prefSnapshot = editorValuesForUndo();
-            undoSteps.clear();
-            updateUndoButton();
-            return;
-        }
-        if (!Prefs.isEditorKey(key)) return;
-        Object now = prefs.raw().getAll().get(key);
-        Object old = prefSnapshot.containsKey(key) ? prefSnapshot.get(key) : ABSENT;
-        if (now == null) prefSnapshot.remove(key);
-        else prefSnapshot.put(key, now);
-        if (undoing || java.util.Objects.equals(old, now == null ? ABSENT : now)) return;
-        if (pendingStep == null) {
-            pendingStep = new java.util.LinkedHashMap<>();
-            uiHandler.post(this::sealStep);
-        }
-        pendingStep.putIfAbsent(key, old);
-    }
-
-    /** 한 메시지 안에서 바뀐 값들을 한 단계로 쌓는다. 같은 값 하나를 잇달아 바꾸는 중이면 앞 단계에 합친다. */
-    private void sealStep() {
-        java.util.Map<String, Object> step = pendingStep;
-        pendingStep = null;
-        if (step == null || step.isEmpty()) return;
-        long t = android.os.SystemClock.uptimeMillis();
-        String single = step.size() == 1 ? step.keySet().iterator().next() : null;
-        boolean merge = single != null && single.equals(lastStepKey) && t - lastStepTime < 1500 && !undoSteps.isEmpty();
-        if (!merge) undoSteps.addLast(step);   // 합칠 때는 앞 단계의 '바뀌기 전 값'을 그대로 둔다
-        lastStepKey = single;
-        lastStepTime = t;
-        // 합쳐서 결국 원래 값으로 돌아왔으면 (스위치를 켰다 끔) 되돌릴 것이 없다.
-        java.util.Map<String, Object> top = undoSteps.peekLast();
-        if (top != null && isNoop(top)) undoSteps.removeLast();
-        while (undoSteps.size() > MAX_UNDO) undoSteps.removeFirst();
-        updateUndoButton();
-    }
-
-    private boolean isNoop(java.util.Map<String, Object> step) {
-        for (java.util.Map.Entry<String, Object> e : step.entrySet()) {
-            Object now = prefSnapshot.containsKey(e.getKey()) ? prefSnapshot.get(e.getKey()) : ABSENT;
-            if (!java.util.Objects.equals(now, e.getValue())) return false;
-        }
-        return true;
-    }
-
-    /** 마지막 단계를 되돌린다: 그 단계에서 바뀐 값들을 바뀌기 전 값으로 (없던 값은 지운다). */
+    /** 머리글의 되돌리기 버튼: 마지막 단계를 되돌리고 미리보기·열린 창·목록을 되돌린 값으로 다시 그린다. */
     private void undoLast() {
-        if (pendingStep != null) sealStep();
-        java.util.Map<String, Object> step = undoSteps.pollLast();
-        if (step == null) return;
-        undoing = true;
-        android.content.SharedPreferences.Editor e = prefs.raw().edit();
-        for (java.util.Map.Entry<String, Object> en : step.entrySet()) {
-            String k = en.getKey();
-            Object v = en.getValue();
-            if (v == ABSENT) e.remove(k);
-            else if (v instanceof Boolean) e.putBoolean(k, (Boolean) v);
-            else if (v instanceof Integer) e.putInt(k, (Integer) v);
-            else if (v instanceof Long) e.putLong(k, (Long) v);
-            else if (v instanceof Float) e.putFloat(k, (Float) v);
-            else if (v instanceof String) e.putString(k, (String) v);
-            else if (v instanceof java.util.Set) {
-                @SuppressWarnings("unchecked") java.util.Set<String> set = (java.util.Set<String>) v;
-                e.putStringSet(k, set);
-            }
-        }
-        e.apply();
-        // 바뀐 값 알림이 나중에 오더라도 기록하지 않게, 알림이 다 지난 뒤에 푼다.
-        uiHandler.post(() -> {
-            undoing = false;
-            prefSnapshot = editorValuesForUndo();
-        });
-        lastStepKey = null;
-        updateUndoButton();
+        if (editorUndo == null || !editorUndo.undo()) return;
         if (Build.VERSION.SDK_INT >= 30) undoButton.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM);
         Toast.makeText(this, "마지막 변경을 되돌렸습니다", Toast.LENGTH_SHORT).show();
-        // 미리보기·열린 편집 창·목록을 되돌린 값으로 다시 그린다.
         editorPreview.refresh();
         overviewStale = true;
         if (panelOpen()) showSelection(editorPreview.selection());
@@ -1236,7 +1121,7 @@ public final class SettingsActivity extends Activity {
 
     private void updateUndoButton() {
         if (undoButton == null) return;
-        boolean any = !undoSteps.isEmpty() || pendingStep != null;
+        boolean any = editorUndo != null && editorUndo.canUndo();
         undoButton.setEnabled(any);
         undoButton.setAlpha(any ? 1f : 0.38f);
     }
@@ -1265,95 +1150,22 @@ public final class SettingsActivity extends Activity {
     }
 
     private boolean panelOpen() {
-        return sheet != null && sheet.getVisibility() == View.VISIBLE && !sheetClosing;
+        return sheet != null && sheet.isOpen();
     }
 
-    /** 시트를 연 위치에서 아래로 내려 숨기는 거리 (틀의 높이만큼, 아직 배치 전이면 넉넉히). */
-    private float sheetHiddenY() {
-        return middle.getHeight() > 0 ? middle.getHeight() : Ui.dp(this, 800);
-    }
-
-    /**
-     * 키 편집 창: 설정 목록 위에 겹친 시트. 위쪽 모서리가 둥글고 그림자가 지며, 헤더의 X로 닫는다. 바꾼 값은 바로 저장된다.
-     * 뒤의 목록은 어두운 막으로 가려(누르면 닫힌다) 지금 보는 것이 목록 위에 뜬 창이라는 것을 알 수 있게 한다.
-     * 미리보기(화면 아래)는 가리지 않아 창을 연 채 다른 키를 눌러 바로 바꿀 수 있다.
-     */
+    /** 설정 창을 만든다: 키 창(KeyEditPanel)과 그 아래 영역·여백 창(areaBox)을 담는다. */
     private void buildSheet() {
-        AppTheme colors = AppTheme.of(this);
-        scrim = new View(this);
-        scrim.setBackgroundColor(0x66000000);
-        scrim.setAlpha(0f);
-        scrim.setVisibility(View.GONE);
-        scrim.setOnClickListener(v -> closeKeyPanel());
-        scrim.setContentDescription("편집 닫기");
-        middle.addView(scrim, new android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT));
-
-        sheet = new LinearLayout(this);
-        sheet.setOrientation(LinearLayout.VERTICAL);
-        float r = Ui.dp(this, 28);   // Material 3 바텀 시트의 큰 모서리
-        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
-        // 다크 모드에서는 그림자가 잘 보이지 않으므로 Material 3처럼 시트 바탕을 한 단계 밝게 해 층을 구분한다.
-        boolean darkBg = android.graphics.Color.luminance(colors.bg) < 0.2f;
-        bg.setColor(darkBg ? blendColor(colors.bg, colors.card, 0.55f) : colors.bg);
-        bg.setCornerRadii(new float[]{r, r, r, r, 0, 0, 0, 0});
-        sheet.setBackground(bg);
-        sheet.setElevation(Ui.dp(this, 12));
-        sheet.setClickable(true);   // 시트 위의 빈 곳을 눌러도 뒤의 막(닫기)으로 넘어가지 않게
-        sheet.setVisibility(View.GONE);
-        // 스프링이 목표를 살짝 넘어 올라갈 때 아래가 비어 보이지 않게 시트를 틀 아래로 조금 더 길게 둔다 (넘친 부분은 잘린다).
-        int overshoot = Ui.dp(this, 40);
-        sheet.setPadding(0, 0, 0, overshoot);
-
-        // 헤더: 왼쪽 X(닫기), 가운데 고른 것의 이름. 바꾼 값은 그때그때 바로 저장된다.
-        android.widget.FrameLayout header = new android.widget.FrameLayout(this);
-        int hp = Ui.dp(this, 12);
-        header.setPadding(hp, Ui.dp(this, 12), hp, Ui.dp(this, 4));
-        int press = (colors.text & 0x00FFFFFF) | 0x33000000;
-        com.alternative_studios.newswipe.ui.IconButton cancel = new com.alternative_studios.newswipe.ui.IconButton(this,
-                Icons.CLOSE, colors.text, press, "편집 닫기");
-        cancel.setOnClickListener(v -> closeKeyPanel());
-        int size = Ui.dp(this, 44);
-        header.addView(cancel, new android.widget.FrameLayout.LayoutParams(size, size, Gravity.START | Gravity.CENTER_VERTICAL));
-        sheetTitle = new TextView(this);
-        sheetTitle.setTextColor(colors.text);
-        sheetTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
-        sheetTitle.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-        sheetTitle.setGravity(Gravity.CENTER);
-        sheetTitle.setSingleLine(true);
-        sheetTitle.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        android.widget.FrameLayout.LayoutParams tlp = new android.widget.FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
-        tlp.leftMargin = tlp.rightMargin = size + Ui.dp(this, 8);
-        header.addView(sheetTitle, tlp);
-        sheet.addView(header, matchWrap());
-
-        sheetScroll = new ScrollView(this);
-        sheetScroll.setFillViewport(true);
-        LinearLayout body = new LinearLayout(this);
-        body.setOrientation(LinearLayout.VERTICAL);
-        int pad = Ui.dp(this, 16);
-        body.setPadding(pad, 0, pad, Ui.dp(this, 32));
-        body.addView(keyPanel.view(), matchWrap());
+        sheet = new EditorSheet(this, middle, this::closeKeyPanel);
+        sheet.body().addView(keyPanel.view(), matchWrap());
         areaBox = new LinearLayout(this);
         areaBox.setOrientation(LinearLayout.VERTICAL);
         areaBox.setVisibility(View.GONE);
-        body.addView(areaBox, matchWrap());
-        sheetScroll.addView(body);
-        sheet.addView(sheetScroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
-
-        android.widget.FrameLayout.LayoutParams lp = new android.widget.FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-        lp.topMargin = Ui.dp(this, 14);   // 뒤의 목록이 조금 보여 그 위에 뜬 창이라는 것을 알 수 있게
-        lp.bottomMargin = -overshoot;
-        middle.addView(sheet, lp);
+        sheet.body().addView(areaBox, matchWrap());
     }
 
-    private static int blendColor(int a, int b, float t) {
-        int r = Math.round(android.graphics.Color.red(a) + (android.graphics.Color.red(b) - android.graphics.Color.red(a)) * t);
-        int g = Math.round(android.graphics.Color.green(a) + (android.graphics.Color.green(b) - android.graphics.Color.green(a)) * t);
-        int bl = Math.round(android.graphics.Color.blue(a) + (android.graphics.Color.blue(b) - android.graphics.Color.blue(a)) * t);
-        return 0xFF000000 | (r << 16) | (g << 8) | bl;
+    private void openSheet() {
+        sheet.open();
+        setPanelBack(true);
     }
 
     /** 미리보기에서 키·버튼·도구 막대를 눌렀다: 그것을 편집하는 창을 연다. 빈 곳이면 닫는다. */
@@ -1374,10 +1186,10 @@ public final class SettingsActivity extends Activity {
         KeyboardPreview.Selection now = editorPreview.selection();
         if (now == null) return;   // 지금 자판에 없는 키
         showSelection(now);
-        sheetScroll.scrollTo(0, 0);
+        sheet.scroll().scrollTo(0, 0);
         if (panelOpen()) {
             // 이미 열려 있으면 내용만 바꾼다: 짧게 흐렸다가 또렷해져 다른 것으로 바뀐 것을 알린다.
-            View body = sheetScroll.getChildAt(0);
+            View body = sheet.scroll().getChildAt(0);
             body.animate().cancel();
             body.setAlpha(0.3f);
             body.animate().alpha(1f).setDuration(160).start();
@@ -1405,15 +1217,14 @@ public final class SettingsActivity extends Activity {
                 buildPad(-1);
                 addAreaReset(-1);
             });
-            sheetTitle.setText("키보드 여백");
+            sheet.setTitle("키보드 여백");
             return;
         }
         boolean panel = !area || areaId == KeyboardPreview.AREA_TOOLBAR;
-        keyPanel.setOmitReset(area);   // 도구 막대 영역 창의 되돌리기는 맨 아래 한 곳에서
         if (panel) keyPanel.show(area ? KeyboardPreview.Selection.toolbar() : s, editorPreview.selectedKey());
         keyPanel.view().setVisibility(panel ? View.VISIBLE : View.GONE);
         fillArea(areaId);
-        sheetTitle.setText(area ? KeyboardPreview.AREA_NAMES[areaId] : keyPanel.title());
+        sheet.setTitle(area ? KeyboardPreview.AREA_NAMES[areaId] : keyPanel.title());
     }
 
     /** 영역 편집 창의 크기 슬라이더 (손잡이를 끌면 같이 맞춘다). 창을 채울 때마다 새로 모은다. */
@@ -1440,14 +1251,7 @@ public final class SettingsActivity extends Activity {
     private void addAreaReset(int area) {
         String name = area < 0 ? "키보드 여백" : KeyboardPreview.AREA_NAMES[area] + " 설정";
         list.addView(ResetDialog.button(this, name, () -> {
-            if (area < 0) prefs.resetBoardPadding();
-            else prefs.resetArea(area);
-            if (area == KeyboardPreview.AREA_TOOLBAR) {
-                for (int dir : com.alternative_studios.newswipe.keyboard.SwipeCustom.DIRS) {
-                    com.alternative_studios.newswipe.keyboard.ToolbarSwipes.SPEC.reset(prefs,
-                            com.alternative_studios.newswipe.keyboard.ToolbarSwipes.BAR, dir);
-                }
-            }
+            prefs.resetEditorScope(area < 0 ? Prefs.SCOPE_BOARD : Prefs.AREA_SCOPES[area]);
             editorPreview.refresh();
             showSelection(editorPreview.selection());   // 창의 슬라이더·스위치를 되돌린 값으로 다시 만든다
         }));
@@ -1563,118 +1367,17 @@ public final class SettingsActivity extends Activity {
         }
     }
 
-    /** 미리보기 위의 페이지 표시: 점 두 개(영역 · 키)와 지금 페이지 이름. 누르면 그 페이지로 넘긴다. */
-    private LinearLayout pageDots;
-    private View pageRow;
+    /** 미리보기 위의 페이지 표시 (키보드 · 영역 · 키). */
+    private PageDots pageDots;
     /** 미리보기 페이지 이름 (KeyboardPreview.LAYER_* 차례). */
     private static final String[] PAGE_NAMES = {"키보드", "영역", "키"};
-
-    private View buildPageDots() {
-        LinearLayout row = new LinearLayout(this);
-        row.setGravity(Gravity.CENTER);
-        row.setPadding(0, Ui.dp(this, 4), 0, Ui.dp(this, 4));
-        row.setBackgroundColor(AppTheme.of(this).bg);
-        row.setClipChildren(false);
-        pageDots = new LinearLayout(this);
-        pageDots.setGravity(Gravity.CENTER_VERTICAL);
-        // 고른 점은 1.25배로 커지므로 점보다 높은 줄에 놓아 위아래가 잘리지 않게 한다.
-        pageDots.setClipChildren(false);
-        for (int i = 0; i < KeyboardPreview.LAYERS; i++) {
-            final int layer = i;
-            View dot = new View(this);
-            LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(Ui.dp(this, 8), Ui.dp(this, 8));
-            dlp.setMargins(Ui.dp(this, 4), 0, Ui.dp(this, 4), 0);
-            pageDots.addView(dot, dlp);
-            dot.setContentDescription(PAGE_NAMES[i] + " 페이지");
-            dot.setOnClickListener(v -> editorPreview.setLayer(layer));
-        }
-        row.addView(pageDots, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, Ui.dp(this, 14)));
-        pageRow = row;
-        // 점이 작아도 누르기 쉽게 줄 전체를 누르면 다음 페이지로.
-        row.setOnClickListener(v -> editorPreview.setLayer((editorPreview.layer() + 1) % KeyboardPreview.LAYERS));
-        updatePageDots(editorPreview.layer());
-        return row;
-    }
-
-    private void updatePageDots(int layer) {
-        if (pageDots == null) return;
-        for (int i = 0; i < pageDots.getChildCount(); i++) {
-            View dot = pageDots.getChildAt(i);
-            boolean on = i == layer;
-            dot.setBackground(Ui.round(on ? accentColor : (hintColor & 0x00FFFFFF) | 0x66000000, Ui.dp(this, 4)));
-            dot.animate().scaleX(on ? 1.25f : 1f).scaleY(on ? 1.25f : 1f).setDuration(160).start();
-        }
-        pageRow.setContentDescription(PAGE_NAMES[layer] + " 페이지. 눌러서 "
-                + PAGE_NAMES[(layer + 1) % KeyboardPreview.LAYERS] + " 페이지로 넘기기");
-    }
-
-    /** 시트를 아래에서 위로 올린다: Material 3 Expressive의 공간 스프링 (살짝 넘었다가 자리 잡는다). */
-    /** 시트를 움직이는 스프링 (열 때). 닫을 때는 sheet.animate()를 쓴다. */
-    private android.animation.ValueAnimator sheetSpring;
-
-    /**
-     * 시트를 아래에서 위로 올린다: Material 3 Expressive 기본 공간 스프링 (SpringMotion, 강성 700·감쇠비 0.85).
-     * 빠르게 올라와 아주 살짝 넘었다가 반 픽셀 안으로 들어올 때까지 매끄럽게 자리 잡는다.
-     * 방금 만든 내용의 배치가 첫 프레임을 잡아먹어 움직임이 늦게 시작해 보이지 않도록, 배치가 끝난 다음 프레임에 시작한다.
-     */
-    private void openSheet() {
-        sheetClosing = false;
-        cancelSheetMotion();
-        if (sheet.getVisibility() != View.VISIBLE) sheet.setTranslationY(sheetHiddenY());
-        sheet.setVisibility(View.VISIBLE);
-        scrim.setVisibility(View.VISIBLE);
-        scrim.animate().alpha(1f).setDuration(180).setInterpolator(new android.view.animation.PathInterpolator(0.2f, 0f, 0f, 1f))
-                .setListener(null).start();
-        sheet.post(() -> {
-            if (sheetClosing || sheet.getVisibility() != View.VISIBLE) return;
-            sheetSpring = com.alternative_studios.newswipe.ui.SpringMotion.translateY(sheet, 0f,
-                    com.alternative_studios.newswipe.ui.SpringMotion.STIFFNESS_DEFAULT,
-                    com.alternative_studios.newswipe.ui.SpringMotion.DAMPING_EXPRESSIVE, null);
-        });
-        setPanelBack(true);
-    }
-
-    private void cancelSheetMotion() {
-        if (sheetSpring != null) sheetSpring.cancel();
-        sheetSpring = null;
-        sheet.animate().cancel();
-        scrim.animate().cancel();
-    }
-
-    private TextView sheetTitle;
 
     /** 편집 창을 내려 닫고 목록으로 돌아간다 (창에서 바꾼 값이 있으면 다 내려간 뒤 목록을 다시 만든다). */
     private void closeKeyPanel() {
         if (editorPreview != null) editorPreview.select(null);
         if (!panelOpen()) return;
-        sheetClosing = true;
         setPanelBack(false);
-        cancelSheetMotion();
-        // Material 3 강조 가속 곡선으로 빠르게 내려간다 (나갈 때는 들어올 때보다 짧게).
-        sheet.animate().translationY(sheetHiddenY())
-                .setInterpolator(new android.view.animation.PathInterpolator(0.3f, 0f, 0.8f, 0.15f))
-                .setDuration(200)
-                .withLayer()
-                .setListener(new android.animation.AnimatorListenerAdapter() {
-                    private boolean cancelled;
-
-                    @Override
-                    public void onAnimationCancel(android.animation.Animator animation) {
-                        cancelled = true;
-                    }
-
-                    @Override
-                    public void onAnimationEnd(android.animation.Animator animation) {
-                        sheet.animate().setListener(null);
-                        if (cancelled || !sheetClosing) return;   // 닫히는 사이에 다시 열었다
-                        sheetClosing = false;
-                        sheet.setVisibility(View.GONE);
-                        scrim.setVisibility(View.GONE);
-                        rebuildOverviewIfStale();
-                    }
-                }).start();
-        scrim.animate().alpha(0f).setDuration(200).setInterpolator(new android.view.animation.PathInterpolator(0.3f, 0f, 0.8f, 0.15f))
-                .setListener(null).start();
+        sheet.close(this::rebuildOverviewIfStale);
     }
 
     /** 편집 창에서 바꾼 값이 있으면 목록을 다시 만든다 (보던 자리는 그대로). */
@@ -1705,9 +1408,10 @@ public final class SettingsActivity extends Activity {
     private View editorResetButton() {
         TextView b = ResetDialog.button(this, "키보드 편집", () -> { });
         b.setOnClickListener(v -> {
-            String[] names = new String[EDITOR_GROUPS.length];
+            String[][] groups = Prefs.editorResetChoices();
+            String[] names = new String[groups.length];
             boolean[] checked = new boolean[names.length];
-            for (int i = 0; i < names.length; i++) names[i] = EDITOR_GROUPS[i][1];
+            for (int i = 0; i < names.length; i++) names[i] = groups[i][1];
             android.app.AlertDialog[] dialog = new android.app.AlertDialog[1];
             dialog[0] = AppTheme.dialogBuilder(this)
                     .setTitle("기본값으로 되돌릴 설정")
@@ -1718,7 +1422,7 @@ public final class SettingsActivity extends Activity {
                         dialog[0].getButton(android.app.AlertDialog.BUTTON_POSITIVE).setEnabled(any);
                     })
                     .setPositiveButton("되돌리기", (d, w) -> {
-                        for (int i = 0; i < checked.length; i++) if (checked[i]) prefs.resetSection(EDITOR_GROUPS[i][0]);
+                        for (int i = 0; i < checked.length; i++) if (checked[i]) prefs.resetEditorScope(groups[i][0]);
                         importGeneration++;   // 뒤에 쌓인 설정 화면도 돌아오면 기본값으로 다시 그린다
                         recreate();
                         Toast.makeText(this, "기본값으로 되돌렸습니다", Toast.LENGTH_SHORT).show();
@@ -2277,7 +1981,7 @@ public final class SettingsActivity extends Activity {
     }
 
     /**
-     * '키보드 모양' 섹션: 자음·모음 묶음의 폭·가로 위치(분리 키보드를 켰을 때만 보인다), 키보드 높이, 키 글자 크기,
+     * '키보드 모양' 섹션: 자음·모음 묶음의 폭·가로 위치(분리 키보드를 켰을 때만 보인다), 글자 키 높이, 키 글자 크기,
      * 세로 위치. 가로 모드, 대화면 세로·가로가 각각 따로 정한다.
      */
     private void addSplitShape(String profile, String when, java.util.List<View> splitOnly) {
@@ -2292,14 +1996,16 @@ public final class SettingsActivity extends Activity {
                 + "묶음 폭은 각 묶음의 폭으로, 100%면 자기 절반을 꽉 채웁니다. 가로 위치는 각 절반 안에서 묶음이 놓이는 곳입니다 "
                 + "(0 = 왼쪽 끝, 50 = 가운데, 100 = 오른쪽 끝)."));
         card.addView(columns);
-        card.addView(slider("키보드 높이", edit.heightKey(), edit.keyboardHeight(), Prefs.PROFILE_HEIGHT_MIN, 140, 5, "%",
+        card.addView(slider("글자 키 높이", edit.heightKey(), edit.keyboardHeight(), Prefs.PROFILE_HEIGHT_MIN, 140, 5, "%",
                 this::refreshLayoutPreview));
         card.addView(slider("키 글자 크기", edit.textSizeKey(), edit.keyTextSize(), Prefs.PROFILE_HEIGHT_MIN, 140, 5, "%",
                 this::refreshLayoutPreview));
         card.addView(slider("세로 위치", edit.liftKey(), edit.profileLiftDp(), 0, 160, 4, "dp"));
-        card.addView(note(when + " 쓰는 값입니다. 키보드 높이·키 글자 크기는 정하기 전에는 세로 모드('키보드 편집')의 값을 따릅니다. "
+        card.addView(note(when + " 쓰는 값입니다. 글자 키 높이·키 글자 크기는 정하기 전에는 세로 모드('키보드 편집')의 값을 따릅니다. "
                 + "세로 위치는 키보드를 화면 아래에서 띄우는 높이로, 값이 클수록 키보드가 위로 올라갑니다 "
-                + "(한 손 모드에서는 한 손 모드의 세로 위치를 씁니다)."));
+                + "(한 손 모드에서는 한 손 모드의 세로 위치를 씁니다).\n"
+                + "그 밖의 값(도구 막대·숫자 줄·기능키 높이, 키보드·영역 여백, 키 사이 여백과 키 모양, 키마다 정한 설정)은 "
+                + "세로 모드와 같은 값을 씁니다. 바꾸려면 '키보드 편집'에서 바꿉니다."));
     }
 
     /** '분리 키보드 기능' 섹션: 두 묶음 사이 빈 공간을 밀어서 커서 이동. 프로필마다 따로 정하고, 분리 키보드를 켰을 때만 보인다. */
@@ -3607,33 +3313,6 @@ public final class SettingsActivity extends Activity {
     }
 
     /**
-     * 위 설정의 하위 설정들을 묶는다. 왼쪽 들여쓰기와 세로 안내선으로 위계를 보여 준다.
-     * 위 설정이 꺼지면 묶음 전체가 숨겨진다.
-     */
-    private View subGroup(View... children) {
-        LinearLayout group = new LinearLayout(this);
-        group.setOrientation(LinearLayout.HORIZONTAL);
-        LinearLayout.LayoutParams glp = matchWrap();
-        glp.leftMargin = Ui.dp(this, 6);
-        group.setLayoutParams(glp);
-
-        View bar = new View(this);
-        bar.setBackground(Ui.round((accentColor & 0x00FFFFFF) | 0x66000000, Ui.dp(this, 2)));
-        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(Ui.dp(this, 3),
-                ViewGroup.LayoutParams.MATCH_PARENT);
-        blp.topMargin = Ui.dp(this, 6);
-        blp.bottomMargin = Ui.dp(this, 6);
-        group.addView(bar, blp);
-
-        LinearLayout column = new LinearLayout(this);
-        column.setOrientation(LinearLayout.VERTICAL);
-        column.setPadding(Ui.dp(this, 14), 0, 0, 0);
-        for (View child : children) column.addView(child);
-        group.addView(column, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        return group;
-    }
-
-    /**
      * view를 여백 없는 틀로 감싼다. 위아래 여백이 있는 줄(버튼 등)을 펼치고 접을 때는 줄 자체가 아니라 이 틀을
      * setVisibleAnimated로 움직여야 여백이 높이와 함께 부드럽게 줄어든다.
      */
@@ -3701,19 +3380,6 @@ public final class SettingsActivity extends Activity {
         return row;
     }
 
-    /** 제목 없는 카드. 하위 화면의 첫 카드에 쓴다. */
-    private LinearLayout card() {
-        LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackground(Ui.round(cardColor, Ui.dp(this, 16)));
-        int p = Ui.dp(this, 16);
-        card.setPadding(p, Ui.dp(this, 8), p, Ui.dp(this, 8));
-        LinearLayout.LayoutParams lp = matchWrap();
-        lp.topMargin = Ui.dp(this, 8);
-        list.addView(card, lp);
-        return card;
-    }
-
     /** 런처 아이콘 표시 여부는 설정값이 아니라 별칭의 사용 상태로 저장된다. */
     private View launcherToggle() {
         return toggle("런처에 앱 아이콘 표시",
@@ -3774,16 +3440,55 @@ public final class SettingsActivity extends Activity {
 
     // ---------------------------------------------------------------- 화면 조각
 
+    // ---- 공통 조각 (SettingsWidgets): 목록(list)에 더하거나, 만든 조각을 돌려준다.
+
     private LinearLayout section(String name) {
-        TextView h = new TextView(this);
-        h.setText(name);
-        h.setTextColor(accentColor);
-        h.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        h.setPadding(Ui.dp(this, 4), Ui.dp(this, 20), 0, Ui.dp(this, 8));
-        list.addView(h);
-        LinearLayout card = card();
-        ((LinearLayout.LayoutParams) card.getLayoutParams()).topMargin = 0;
-        return card;
+        return widgets.section(list, name);
+    }
+
+    private LinearLayout card() {
+        return widgets.card(list);
+    }
+
+    private View toggle(String label, String desc, boolean value, java.util.function.Consumer<Boolean> onChange) {
+        return widgets.toggle(label, desc, value, onChange);
+    }
+
+    private static ExpressiveSwitch switchOf(View toggleRow) {
+        return SettingsWidgets.switchOf(toggleRow);
+    }
+
+    /** @param onChange 사용자가 값을 바꿀 때마다 (저장한 뒤에) 부를 작업. 없으면 null. */
+    private SettingsWidgets.Slider sliderRow(String label, String key, int value, int min, int max, int step, String unit,
+                                             Runnable onChange) {
+        return widgets.slider(label, value, min, max, step, unit, val -> {
+            prefs.raw().edit().putInt(key, val).apply();
+            if (onChange != null) onChange.run();
+        });
+    }
+
+    private View slider(String label, String key, int value, int min, int max, int step, String unit, Runnable onChange) {
+        return sliderRow(label, key, value, min, max, step, unit, onChange).view;
+    }
+
+    private View button(String label, View.OnClickListener l) {
+        return widgets.button(label, l);
+    }
+
+    private View button(String label, View trailing, View.OnClickListener l) {
+        return widgets.button(label, trailing, l);
+    }
+
+    private View subGroup(View... children) {
+        return widgets.subGroup(children);
+    }
+
+    private TextView note(String s) {
+        return widgets.note(s);
+    }
+
+    private static LinearLayout.LayoutParams matchWrap() {
+        return SettingsWidgets.matchWrap();
     }
 
     private View toggle(String label, String desc, String key, boolean value) {
@@ -3799,84 +3504,8 @@ public final class SettingsActivity extends Activity {
         });
     }
 
-    private View toggle(String label, String desc, boolean value, java.util.function.Consumer<Boolean> onChange) {
-        LinearLayout row = new LinearLayout(this);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(0, Ui.dp(this, 8), 0, Ui.dp(this, 8));
-        LinearLayout texts = new LinearLayout(this);
-        texts.setOrientation(LinearLayout.VERTICAL);
-        TextView t = new TextView(this);
-        t.setText(label);
-        t.setTextColor(textColor);
-        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-        markItem(t, row);
-        texts.addView(t);
-        if (desc != null) {
-            TextView d = new TextView(this);
-            d.setText(desc);
-            d.setTextColor(hintColor);
-            d.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-            texts.addView(d);
-        }
-        row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        ExpressiveSwitch sw = new ExpressiveSwitch(this, accentColor, onAccentColor, hintColor, cardColor);
-        sw.setCheckedImmediately(value);
-        sw.setOnCheckedChangeListener(checked -> onChange.accept(checked));
-        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        slp.leftMargin = Ui.dp(this, 12);
-        row.addView(sw, slp);
-        row.setOnClickListener(v -> sw.performClick());
-        return row;
-    }
-
-    /** toggle()로 만든 줄의 스위치 (줄의 맨 오른쪽). */
-    private static ExpressiveSwitch switchOf(View toggleRow) {
-        ViewGroup row = (ViewGroup) toggleRow;
-        return (ExpressiveSwitch) row.getChildAt(row.getChildCount() - 1);
-    }
-
     private View slider(String label, String key, int value, int min, int max, int step, String unit) {
         return slider(label, key, value, min, max, step, unit, null);
-    }
-
-    /** @param onChange 사용자가 값을 바꿀 때마다 (저장한 뒤에) 부를 작업. 없으면 null. */
-    private View slider(String label, String key, int value, int min, int max, int step, String unit, Runnable onChange) {
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(0, Ui.dp(this, 8), 0, Ui.dp(this, 4));
-        LinearLayout top = new LinearLayout(this);
-        TextView t = new TextView(this);
-        t.setText(label);
-        t.setTextColor(textColor);
-        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-        markItem(t, box);
-        top.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        TextView v = new TextView(this);
-        v.setTextColor(hintColor);
-        v.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        v.setText(value + unit);
-        top.addView(v);
-        box.addView(top);
-        ExpressiveSlider bar = new ExpressiveSlider(this, accentColor);
-        bar.setMax((max - min) / step);
-        // 단위에 맞지 않는 값(단위를 바꾸기 전에 저장한 값 등)은 가장 가까운 칸에 둔다.
-        bar.setProgress(Math.round((Math.max(min, Math.min(max, value)) - min) / (float) step));
-        bar.setOnChangeListener((progress, fromUser) -> {
-            int val = min + progress * step;
-            v.setText(val + unit);
-            if (fromUser) {
-                prefs.raw().edit().putInt(key, val).apply();
-                if (onChange != null) onChange.run();
-            }
-        });
-        box.addView(bar, matchWrap());
-        return box;
-    }
-
-    /** 눌러서 실행하는 항목. 제목 글자와 구분되도록 옅은 강조색 바탕과 화살표를 둔다. */
-    private View button(String label, View.OnClickListener l) {
-        return button(label, new Chevron(this, accentColor), l);
     }
 
     /** 무언가를 모두 지우는 항목. 화살표 대신 학습한 단어 목록과 같은 휴지통 아이콘을 둔다. */
@@ -3903,46 +3532,6 @@ public final class SettingsActivity extends Activity {
         };
         iconView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         return button(label, iconView, l);
-    }
-
-    private View button(String label, View trailing, View.OnClickListener l) {
-        LinearLayout row = new LinearLayout(this);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        int h = Ui.dp(this, 14);
-        row.setPadding(h, Ui.dp(this, 12), h, Ui.dp(this, 12));
-        int tint = (accentColor & 0x00FFFFFF) | 0x1F000000;
-        row.setBackground(Ui.ripple(accentColor & 0x00FFFFFF | 0x33000000,
-                Ui.round(tint, Ui.dp(this, 12)), Ui.dp(this, 12)));
-        TextView t = new TextView(this);
-        t.setText(label);
-        t.setTextColor(accentColor);
-        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        markItem(t, row);
-        row.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        row.addView(trailing);
-        row.setClickable(true);
-        row.setFocusable(true);
-        row.setOnClickListener(l);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.topMargin = Ui.dp(this, 6);
-        lp.bottomMargin = Ui.dp(this, 6);
-        row.setLayoutParams(lp);
-        return row;
-    }
-
-    private TextView note(String s) {
-        TextView t = new TextView(this);
-        t.setText(s);
-        t.setTextColor(hintColor);
-        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        t.setLineSpacing(Ui.dp(this, 3), 1f);
-        t.setPadding(0, Ui.dp(this, 6), 0, Ui.dp(this, 6));
-        return t;
-    }
-
-    private static LinearLayout.LayoutParams matchWrap() {
-        return new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
     }
 
     /** 뒤로 가기: 검색창이나 키보드 시험 입력창이 열려 있으면 그것부터 닫고, 그다음에 이전 화면으로 간다 (Android 12 이하). */

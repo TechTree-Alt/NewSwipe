@@ -369,36 +369,15 @@ public final class Prefs {
 
     private static String[] keys(String... k) { return k; }
 
-    /** 메뉴(SettingsActivity의 하위 메뉴 id)별로 그 메뉴가 저장하는 값의 키. */
+    /** 메뉴(SettingsActivity의 하위 메뉴 id)별로 그 메뉴가 저장하는 값의 키. 키보드 편집의 값은 EDITOR_SCOPES에 따로 있다. */
     private static final java.util.Map<String, String[]> MENU_KEYS = new java.util.HashMap<>();
     /** 메뉴별로 키 앞부분이 같은 값들 (배열·방향·칸마다 따로 저장하는 값). */
     private static final java.util.Map<String, String[]> MENU_PREFIXES = new java.util.HashMap<>();
     static {
-        MENU_KEYS.put("layout", keys(KOREAN_LAYOUT, GRID_LAYOUT, NUMBER_ROW, NUMBER_ROW_HEIGHT, FN_ROW_HEIGHT, LANDSCAPE_SPLIT, LANDSCAPE_SIZE,
-                KEYBOARD_HEIGHT_LAND, KEY_TEXT_SIZE_LAND, SPLIT_GAP_CURSOR, SPLIT_GAP_SPEED, SPLIT_SPACE_JOIN, SPLIT_FN_WIDTH,
-                SPLIT_REACH_COLUMN, PROFILE_LIFT + LANDSCAPE_SUFFIX, BOTTOM_KEY_ORDER, COMMA_CHAR, PERIOD_CHAR, MODE_KEY_HIDDEN, PERIOD_COMMA, LANGUAGE_KEY_HIDDEN, SPACE_KEY_HIDDEN,
-                PERIOD_KEY_HIDDEN, ENTER_KEY_HIDDEN, DELETE_KEY_HIDDEN, KOREAN_SHIFT_HIDDEN, KOREAN_SHIFT_FN, NUMBER_PAD_SYMBOLS,
-                BOTTOM_EMOJI_KEY, BOTTOM_CLIPBOARD_KEY, BOTTOM_CURSOR_KEY, BOTTOM_VOICE_KEY));
-        MENU_PREFIXES.put("layout", keys("balanced_", LANDSCAPE_SPLIT + "_", "swipe_fk_"));
         MENU_KEYS.put("theme", keys(THEME_MODE, ACCENT_MODE, ACCENT_COLOR, GRID_COLORS, NEUMORPHISM));
-        MENU_KEYS.put("look", keys(KEYBOARD_HEIGHT, KEY_TEXT_SIZE, KEY_RADIUS, KEY_SHADOW, KEY_SHADOW_STRENGTH,
-                KEY_PREVIEW, POPUP_HINT_HIDDEN, NUMBER_HINT_HIDDEN, SPACE_LANG_LABEL, PAD_LEFT, PAD_RIGHT, PAD_TOP, PAD_BOTTOM, KEY_GAP_X, KEY_GAP_Y));
-        MENU_PREFIXES.put("look", keys(AREA_PAD_PREFIX));
-        MENU_KEYS.put("input", keys(AUTO_CAP, ENGLISH_FIELDS, DOUBLE_SPACE_PERIOD, DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT,
-                DOUBLE_TAP_CONSONANT_MS, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, SPACE_HIT_SHRINK,
-                SPACE_HIT_SHRINK_PCT));
-        MENU_KEYS.put("keys", keys(LONG_PRESS_MS, DELETE_PRESS_MS, DELETE_REPEAT_RATE, DELETE_WORD_REPEAT_RATE));
-        MENU_PREFIXES.put("keys", keys("popup_", "popupkept_", "repeat_", "swipe_lp_"));
-        MENU_KEYS.put("swipe", keys(SWIPE_THRESHOLD));
-        MENU_PREFIXES.put("swipe", keys("swipe_custom_", "swipe_final_", "swipe_vowel_"));
-        MENU_KEYS.put("swipefn", keys(FN_SWIPE_THRESHOLD, SPACE_CURSOR_SPEED_H, SPACE_CURSOR_SPEED_V,
-                CHAR_CURSOR_SPEED_H, CHAR_CURSOR_SPEED_V, LANGUAGE_ORDER, SWIPE_PICK_SUGGESTION));
-        MENU_PREFIXES.put("swipefn", keys("swipe_fn_", "swipe_toolbar_", "swipe_kb_"));
         MENU_KEYS.put("feedback", keys(VIBRATE, VIBRATE_MS, VIBRATE_STYLE, VIBRATE_AMP, VIBRATE_PER_KEY,
                 VIBRATE_DELETE, VIBRATE_SPACE, VIBRATE_ENTER, VIBRATE_SHIFT, VIBRATE_SYMBOL, VIBRATE_LANGUAGE, VIBRATE_TOOLBAR,
                 VIBRATE_GESTURE_ON, VIBRATE_GESTURE_LEVEL, SOUND, SOUND_VOLUME));
-        MENU_KEYS.put("tools", keys(TOOLBAR, TOOLBAR_BOTTOM, TOOLBAR_HEIGHT, TOOL_BUTTON_SIZE, TOOL_ORDER, TOOL_CLIPBOARD,
-                TOOL_EMOJI, VOICE_KEY, TOOL_UNDO, TOOL_SETTINGS, TOOL_ONE_HAND, TOOL_HIDE));
         // 클립보드 및 이모지: 메인 화면의 따로 된 메뉴.
         MENU_KEYS.put("clipemoji", keys(CLIPBOARD_HISTORY, CLIPBOARD_IMAGES, CLIPBOARD_SENSITIVE, CLIPBOARD_CHIP, SELECTION_CHIPS,
                 EMOJI_SIZE, EMOJI_SUGGEST));
@@ -410,15 +389,98 @@ public final class Prefs {
         MENU_KEYS.put("onehand", keys(ONE_HAND_WIDTH, ONE_HAND_WIDTH_LAND, ONE_HAND_HEIGHT, ONE_HAND_LIFT));
     }
 
-    /** 키보드 편집 화면(예전 일곱 메뉴)이 다루는 값인지: 키보드 편집의 '되돌리기'가 이 값들의 변경을 기억한다. */
+    // ---------------------------------------------------------------- 키보드 편집의 값 묶음
+    //
+    // 키보드 편집이 다루는 값을 창(설정 범위)마다 한곳에 적어 둔다. 영역·여백 창의 '기본값으로 되돌리기', 목록의 '기본값으로
+    // 되돌리기'에서 고르는 묶음, 되돌리기 기록(isEditorKey)이 모두 이 표를 쓴다. 새 설정을 더할 때는 여기에만 더하면 된다.
+
+    /** 빈 목록 (키 앞부분이 없는 범위 등). 아래 표보다 먼저 만들어져야 한다. */
+    private static final String[] NONE = {};
+
+    /** 기능키 순서·유무 사용자화 화면의 값. */
+    private static final String[] BOTTOM_KEY_VALUES = {BOTTOM_KEY_ORDER, COMMA_CHAR, PERIOD_CHAR, MODE_KEY_HIDDEN, PERIOD_COMMA,
+            LANGUAGE_KEY_HIDDEN, SPACE_KEY_HIDDEN, PERIOD_KEY_HIDDEN, ENTER_KEY_HIDDEN, DELETE_KEY_HIDDEN, KOREAN_SHIFT_HIDDEN,
+            KOREAN_SHIFT_FN, BOTTOM_EMOJI_KEY, BOTTOM_CLIPBOARD_KEY, BOTTOM_CURSOR_KEY, BOTTOM_VOICE_KEY};
+    /** 도구 막대 버튼 사용자화 화면의 값. */
+    private static final String[] TOOL_BUTTON_VALUES = {TOOL_ORDER, TOOL_CLIPBOARD, TOOL_EMOJI, VOICE_KEY, TOOL_UNDO,
+            TOOL_SETTINGS, TOOL_ONE_HAND, TOOL_HIDE};
+
+    /** 키보드 편집의 한 설정 범위: 목록의 되돌리기에 보이는 이름(null이면 보이지 않음)과 그 범위의 값 키·키 앞부분. */
+    private static final class EditorScope {
+        final String id, label;
+        final String[] keys, prefixes;
+
+        EditorScope(String id, String label, String[] keys, String[] prefixes) {
+            this.id = id;
+            this.label = label;
+            this.keys = keys;
+            this.prefixes = prefixes;
+        }
+    }
+
+    private static String[] concat(String[] a, String... b) {
+        String[] out = java.util.Arrays.copyOf(a, a.length + b.length);
+        System.arraycopy(b, 0, out, a.length, b.length);
+        return out;
+    }
+
+    /** 영역(미리보기의 영역 번호 차례)마다의 범위 id. */
+    public static final String[] AREA_SCOPES = {"area_toolbar", "area_number", "area_letters", "area_fn"};
+    public static final String SCOPE_BOARD = "board";
+
+    private static final EditorScope[] EDITOR_SCOPES = {
+            new EditorScope(SCOPE_BOARD, "키보드 여백", keys(PAD_LEFT, PAD_RIGHT, PAD_TOP, PAD_BOTTOM), NONE),
+            new EditorScope("look", "키 모양 (글자 크기·곡률·키 사이 여백·그림자·누름 미리보기)", keys(KEY_TEXT_SIZE, KEY_RADIUS,
+                    KEY_GAP_X, KEY_GAP_Y, KEY_SHADOW, KEY_SHADOW_STRENGTH, KEY_PREVIEW), NONE),
+            new EditorScope(AREA_SCOPES[0], "도구 막대", concat(TOOL_BUTTON_VALUES, TOOLBAR, TOOLBAR_BOTTOM, TOOLBAR_HEIGHT,
+                    TOOL_BUTTON_SIZE), keys(AREA_PAD_PREFIX + PAD_AREAS[0] + "_", "swipe_toolbar_bar_")),
+            new EditorScope(AREA_SCOPES[1], "숫자 줄", keys(NUMBER_ROW, NUMBER_ROW_HEIGHT, NUMBER_HINT_HIDDEN),
+                    keys(AREA_PAD_PREFIX + PAD_AREAS[1] + "_")),
+            new EditorScope(AREA_SCOPES[2], "글자 키", keys(KOREAN_LAYOUT, KEYBOARD_HEIGHT, AUTO_CAP, ENGLISH_FIELDS,
+                    DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT, DOUBLE_TAP_CONSONANT_MS, LONG_PRESS_MS, POPUP_HINT_HIDDEN,
+                    SWIPE_THRESHOLD, CHAR_CURSOR_SPEED_H, CHAR_CURSOR_SPEED_V, SWIPE_PICK_SUGGESTION),
+                    keys(AREA_PAD_PREFIX + PAD_AREAS[2] + "_", BALANCED_LAYOUT, "swipe_kb_")),
+            new EditorScope(AREA_SCOPES[3], "기능키", concat(BOTTOM_KEY_VALUES, FN_ROW_HEIGHT, GRID_LAYOUT, DELETE_PRESS_MS,
+                    FN_SWIPE_THRESHOLD), keys(AREA_PAD_PREFIX + PAD_AREAS[3] + "_")),
+            new EditorScope("keys", "키마다 정한 설정 (길게 누르기·밀기·키 창의 누르기 항목)", keys(NUMBER_PAD_SYMBOLS,
+                    DOUBLE_SPACE_PERIOD, SPACE_HIT_SHRINK, SPACE_HIT_SHRINK_PCT, SPACE_LANG_LABEL, SPACE_CURSOR_SPEED_H,
+                    SPACE_CURSOR_SPEED_V, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, DELETE_REPEAT_RATE, DELETE_WORD_REPEAT_RATE,
+                    LANGUAGE_ORDER), keys("popup_", "popupkept_", "repeat_", "swipe_custom_", "swipe_final_", "swipe_vowel_",
+                    "swipe_lp_", "swipe_fn_", "swipe_fk_", "swipe_toolbar_")),
+            // 가로 모드 키보드 사용자화·키 위치·폭 사용자화 화면의 값: 그 화면에 따로 되돌리기가 있어 목록에는 보이지 않지만,
+            // 키보드 편집을 연 채 바꾸면 되돌리기 기록에는 남는다.
+            new EditorScope("landscape", null, keys(LANDSCAPE_SPLIT, LANDSCAPE_SIZE, KEYBOARD_HEIGHT_LAND, KEY_TEXT_SIZE_LAND,
+                    SPLIT_GAP_CURSOR, SPLIT_GAP_SPEED, SPLIT_SPACE_JOIN, SPLIT_FN_WIDTH, SPLIT_REACH_COLUMN,
+                    PROFILE_LIFT + LANDSCAPE_SUFFIX), keys(LANDSCAPE_SPLIT + "_", "balanced_")),
+    };
+
+    private static EditorScope scope(String id) {
+        for (EditorScope sc : EDITOR_SCOPES) if (sc.id.equals(id)) return sc;
+        throw new IllegalArgumentException(id);
+    }
+
+    /** 목록의 '기본값으로 되돌리기'에서 고를 수 있는 범위들 ({id, 이름}, 보이는 차례). */
+    public static String[][] editorResetChoices() {
+        java.util.List<String[]> out = new java.util.ArrayList<>();
+        for (EditorScope sc : EDITOR_SCOPES) if (sc.label != null) out.add(new String[]{sc.id, sc.label});
+        return out.toArray(new String[0][]);
+    }
+
+    /** 키보드 편집이 다루는 값인지: 키보드 편집의 '되돌리기'가 이 값들의 변경을 기억한다. */
     public static boolean isEditorKey(String key) {
-        for (String menu : new String[]{"layout", "look", "input", "keys", "swipe", "swipefn", "tools"}) {
-            String[] exact = MENU_KEYS.get(menu);
-            if (exact != null) for (String k : exact) if (k.equals(key)) return true;
-            String[] prefixes = MENU_PREFIXES.get(menu);
-            if (prefixes != null) for (String p : prefixes) if (key.startsWith(p)) return true;
+        for (EditorScope sc : EDITOR_SCOPES) {
+            for (String k : sc.keys) if (k.equals(key)) return true;
+            for (String p : sc.prefixes) if (key.startsWith(p)) return true;
         }
         return false;
+    }
+
+    /** 키보드 편집의 한 범위를 기본값으로 되돌린다. */
+    public void resetEditorScope(String id) {
+        EditorScope sc = scope(id);
+        removeKeys(sc.keys, sc.prefixes);
+        // 자·모음 균형 레이아웃의 키 폭·위치는 배열마다 따로 저장되므로 지금 배열의 것을 지운다.
+        if (AREA_SCOPES[2].equals(id)) resetBalancedKeys();
     }
 
     /** 이 메뉴가 저장한 모든 값을 지워 기본값으로 되돌린다 (학습한 단어·클립보드 기록 같은 사용 기록과 한 손 모드의 켜짐 상태는 그대로). */
@@ -449,7 +511,6 @@ public final class Prefs {
         e.apply();
     }
 
-    private static final String[] NONE = {};
 
     /** 이 보기(세로 또는 가로)에서 지금 한글 배열의 자음·모음 키 폭·가로 위치를 기본값으로 되돌린다. */
     public void resetBalancedKeys() {
@@ -473,50 +534,12 @@ public final class Prefs {
 
     /** '기능키 순서·유무 사용자화' 화면의 값. */
     public void resetBottomKeys() {
-        removeKeys(new String[]{BOTTOM_KEY_ORDER, COMMA_CHAR, PERIOD_CHAR, MODE_KEY_HIDDEN, PERIOD_COMMA, LANGUAGE_KEY_HIDDEN,
-                SPACE_KEY_HIDDEN, PERIOD_KEY_HIDDEN, ENTER_KEY_HIDDEN, DELETE_KEY_HIDDEN, KOREAN_SHIFT_HIDDEN,
-                KOREAN_SHIFT_FN, BOTTOM_EMOJI_KEY, BOTTOM_CLIPBOARD_KEY, BOTTOM_CURSOR_KEY, BOTTOM_VOICE_KEY}, NONE);
+        removeKeys(BOTTOM_KEY_VALUES, NONE);
     }
 
     /** '도구 막대 버튼 사용자화' 화면의 값. */
     public void resetToolButtons() {
-        removeKeys(new String[]{TOOL_ORDER, TOOL_CLIPBOARD, TOOL_EMOJI, VOICE_KEY, TOOL_UNDO, TOOL_SETTINGS,
-                TOOL_ONE_HAND, TOOL_HIDE}, NONE);
-    }
-
-    /** 키보드 편집의 영역 설정 창이 담당하는 값 (그 영역의 여백 포함). 키 하나하나에 정한 값은 건드리지 않는다. 영역 번호는 미리보기와 같다. */
-    public void resetArea(int area) {
-        java.util.List<String> keys = new java.util.ArrayList<>();
-        for (int side = 0; side < 4; side++) keys.add(areaPadKey(area, side));
-        java.util.List<String> prefixes = new java.util.ArrayList<>();
-        switch (area) {
-            case 0:   // 도구 막대: 모양·버튼 구성·막대 밀기
-                keys.addAll(java.util.Arrays.asList(TOOLBAR, TOOLBAR_BOTTOM, TOOLBAR_HEIGHT, TOOL_BUTTON_SIZE, TOOL_ORDER,
-                        TOOL_CLIPBOARD, TOOL_EMOJI, VOICE_KEY, TOOL_UNDO, TOOL_SETTINGS, TOOL_ONE_HAND, TOOL_HIDE));
-                prefixes.add("swipe_toolbar_bar_");
-                break;
-            case 1:   // 숫자 줄
-                keys.addAll(java.util.Arrays.asList(NUMBER_ROW, NUMBER_ROW_HEIGHT, NUMBER_HINT_HIDDEN));
-                break;
-            case 2:   // 글자 키: 배열·높이·입력·길게 누르기 시간·미는 거리·키보드 밀기
-                keys.addAll(java.util.Arrays.asList(KOREAN_LAYOUT, BALANCED_LAYOUT, KEYBOARD_HEIGHT, AUTO_CAP, ENGLISH_FIELDS,
-                        DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT, DOUBLE_TAP_CONSONANT_MS, LONG_PRESS_MS, POPUP_HINT_HIDDEN,
-                        SWIPE_THRESHOLD, CHAR_CURSOR_SPEED_H, CHAR_CURSOR_SPEED_V, SWIPE_PICK_SUGGESTION));
-                prefixes.add("swipe_kb_");
-                break;
-            default:  // 기능키: 높이·순서와 유무·격자·길게 누르기 시간·미는 거리
-                keys.addAll(java.util.Arrays.asList(FN_ROW_HEIGHT, NUMBER_PAD_SYMBOLS, GRID_LAYOUT, DELETE_PRESS_MS,
-                        FN_SWIPE_THRESHOLD));
-                break;
-        }
-        removeKeys(keys.toArray(new String[0]), prefixes.toArray(new String[0]));
-        if (area == 2) resetBalancedKeys();
-        if (area == 3) resetBottomKeys();
-    }
-
-    /** 키보드 전체 둘레의 여백. */
-    public void resetBoardPadding() {
-        removeKeys(new String[]{PAD_LEFT, PAD_RIGHT, PAD_TOP, PAD_BOTTOM}, NONE);
+        removeKeys(TOOL_BUTTON_VALUES, NONE);
     }
 
     /** 기능 배치(기능키·도구 막대·키보드 밀기·길게 누르기·Fn 키) 하나의 값. */

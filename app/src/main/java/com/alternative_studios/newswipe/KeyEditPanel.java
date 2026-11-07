@@ -32,8 +32,6 @@ import com.alternative_studios.newswipe.keyboard.ToolbarSwipes;
 import com.alternative_studios.newswipe.keyboard.VowelSwipes;
 import com.alternative_studios.newswipe.ui.Chevron;
 import com.alternative_studios.newswipe.ui.ExpressiveChoiceButton;
-import com.alternative_studios.newswipe.ui.ExpressiveSlider;
-import com.alternative_studios.newswipe.ui.ExpressiveSwitch;
 import com.alternative_studios.newswipe.ui.IconButton;
 import com.alternative_studios.newswipe.ui.Ui;
 
@@ -74,6 +72,8 @@ final class KeyEditPanel {
     private final int textColor, hintColor, accentColor, onAccentColor, cardColor;
     /** 칸을 이루는 뷰들. */
     private final LinearLayout root;
+    /** 설정 화면과 같은 모양의 공통 조각. */
+    private final SettingsWidgets widgets;
     /** 손잡이로 바뀔 수 있는 크기 슬라이더: 설정 키 → 값을 다시 읽어 맞추는 일. */
     private final java.util.Map<String, Runnable> sizeSync = new java.util.HashMap<>();
 
@@ -93,6 +93,7 @@ final class KeyEditPanel {
         accentColor = colors.accent;
         onAccentColor = colors.onAccent;
         cardColor = colors.card;
+        widgets = new SettingsWidgets(a, colors, null);
         root = new LinearLayout(a);
         root.setOrientation(LinearLayout.VERTICAL);
     }
@@ -101,12 +102,7 @@ final class KeyEditPanel {
         return root;
     }
 
-    /** 영역 창 안에 놓일 때는 '기본값으로 되돌리기'를 창 맨 아래에 한 번만 두므로 여기서는 만들지 않는다. */
-    private boolean omitReset;
 
-    void setOmitReset(boolean omit) {
-        omitReset = omit;
-    }
 
     /** 고른 것을 편집하는 칸을 새로 만든다. */
     void show(KeyboardPreview.Selection s, Key k) {
@@ -189,7 +185,7 @@ final class KeyEditPanel {
         // ---- 밀기
         if (swipeEditable()) buildCharSwipe();
 
-        resetRow("'" + shown + "' 키의 길게 누르기·밀기", this::resetCharKey);
+        resetRow("'" + shown + "' 키 설정", this::resetCharKey);
     }
 
     /** 0 = 문자 입력, 1 = 연속 입력, 2 = 없음. */
@@ -473,6 +469,9 @@ final class KeyEditPanel {
         prefs.resetPopupOverride(g, s);
         prefs.setRepeatChar(g, s, false);
         for (int dir : DIRS) prefs.resetSwipeCustomOverride(g, s, SwipeCustom.dirName(dir));
+        // 쉼표·온점 자리의 '입력할 글자'도 이 창에 있다.
+        if (",".equals(s)) prefs.raw().edit().remove(Prefs.COMMA_CHAR).apply();
+        if (".".equals(s)) prefs.raw().edit().remove(Prefs.PERIOD_CHAR).apply();
         rebuild();
     }
 
@@ -552,11 +551,38 @@ final class KeyEditPanel {
         // ---- 밀기
         if (fnSlot() >= 0) buildFunctionSwipe();
 
-        resetRow(name + "의 길게 누르기·밀기 기능", () -> {
+        resetRow(name + " 설정", () -> {
+            // 이 창에 보이는 값 모두: 누르기 항목, 길게 누르기(와 그 지우는 속도), 밀기(와 커서 속도).
+            android.content.SharedPreferences.Editor e = prefs.raw().edit();
+            for (String k : pressKeys()) e.remove(k);
+            if (lpSlot() >= 0) {
+                String action = LongPressActions.SPEC.get(prefs, lpSlot(), LongPressActions.DIR);
+                if (SwipeAction.DELETE_REPEAT.equals(action)) e.remove(Prefs.DELETE_REPEAT_RATE);
+                if (SwipeAction.DELETE_WORD_REPEAT.equals(action)) e.remove(Prefs.DELETE_WORD_REPEAT_RATE);
+            }
+            e.apply();
             if (lpSlot() >= 0) LongPressActions.SPEC.reset(prefs, lpSlot(), LongPressActions.DIR);
             if (fnSlot() >= 0) for (int dir : DIRS) FunctionSwipes.SPEC.reset(prefs, fnSlot(), dir);
             rebuild();
         });
+    }
+
+    /** 이 기능키 창의 '누르기'·밀기 칸에 보이는 키 하나짜리 설정들 (되돌리기가 함께 지운다). */
+    private String[] pressKeys() {
+        switch (key.type) {
+            case Key.TO_SYMBOLS:
+            case Key.TO_LETTERS:
+                return new String[]{Prefs.NUMBER_PAD_SYMBOLS};
+            case Key.SPACE:
+                return new String[]{Prefs.DOUBLE_SPACE_PERIOD, Prefs.SPACE_HIT_SHRINK, Prefs.SPACE_HIT_SHRINK_PCT,
+                        Prefs.SPACE_LANG_LABEL, Prefs.SPACE_CURSOR_SPEED_H, Prefs.SPACE_CURSOR_SPEED_V};
+            case Key.CURSOR_PAD:
+                return new String[]{Prefs.SPACE_CURSOR_SPEED_H, Prefs.SPACE_CURSOR_SPEED_V};
+            case Key.DELETE:
+                return new String[]{Prefs.DELETE_HIT_SHRINK, Prefs.DELETE_HIT_SHRINK_PCT};
+            default:
+                return new String[0];
+        }
     }
 
     private void buildLongPressAction(LinearLayout card) {
@@ -647,7 +673,7 @@ final class KeyEditPanel {
         addLongPressDetail(press, FnKeyActions.SPEC.get(prefs, FnKeyActions.PRESS, FnKeyActions.LONG));
         LinearLayout swipe = section("밀기");
         swipe.addView(actionPad(FnKeyActions.SPEC, FnKeyActions.SWIPE, "Fn"));
-        resetRow("Fn 키의 기능", () -> {
+        resetRow("Fn 키 설정", () -> {
             prefs.resetSwipeActions(FnKeyActions.SPEC.group);
             rebuild();
         });
@@ -661,7 +687,7 @@ final class KeyEditPanel {
         int slot = toolSlot(id);
         if (slot >= 0) buildToolbarSwipe(slot, ToolbarButtons.label(id));
         else section("버튼").addView(note("이 버튼은 따로 정할 것이 없습니다. 순서·유무는 도구 막대에서 바꿉니다."));
-        resetRow(ToolbarButtons.label(id) + "의 밀기 기능", () -> {
+        resetRow(ToolbarButtons.label(id) + " 버튼 설정", () -> {
             if (slot >= 0) for (int dir : DIRS) ToolbarSwipes.SPEC.reset(prefs, slot, dir);
             rebuild();
         });
@@ -691,10 +717,7 @@ final class KeyEditPanel {
         look.addView(slider("도구 버튼 크기", Prefs.TOOL_BUTTON_SIZE, prefs.toolButtonSize(), 70, 150, 1, "%"));
         look.addView(note("도구 버튼의 아이콘은 막대보다 커지지 않습니다."));
         buildToolbarSwipe(ToolbarSwipes.BAR, "도구 막대");
-        resetRow("도구 막대 밀기 기능", () -> {
-            for (int dir : DIRS) ToolbarSwipes.SPEC.reset(prefs, ToolbarSwipes.BAR, dir);
-            rebuild();
-        });
+        // 되돌리기는 이 칸 아래(영역 창 맨 아래)에 도구 막대 영역 전체를 맡는 버튼 하나로 둔다.
     }
 
     private void buildToolbarSwipe(int slot, String name) {
@@ -748,34 +771,6 @@ final class KeyEditPanel {
         if (row.getChildCount() > 0) root.addView(row);
     }
 
-    private LinearLayout section(String name) {
-        TextView h = text(name, 14, accentColor);
-        h.setPadding(Ui.dp(a, 4), Ui.dp(a, 16), 0, Ui.dp(a, 8));
-        root.addView(h);
-        LinearLayout card = new LinearLayout(a);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackground(Ui.round(cardColor, Ui.dp(a, 16)));
-        int p = Ui.dp(a, 16);
-        card.setPadding(p, Ui.dp(a, 8), p, Ui.dp(a, 8));
-        root.addView(card, matchWrap());
-        return card;
-    }
-
-    private TextView text(String s, int sp, int color) {
-        TextView t = new TextView(a);
-        t.setText(s);
-        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
-        t.setTextColor(color);
-        return t;
-    }
-
-    private TextView note(String s) {
-        TextView t = text(s, 13, hintColor);
-        t.setLineSpacing(Ui.dp(a, 3), 1f);
-        t.setPadding(0, Ui.dp(a, 6), 0, Ui.dp(a, 6));
-        return t;
-    }
-
     private LinearLayout dialogBox(String help) {
         int pad = Ui.dp(a, 20);
         LinearLayout box = new LinearLayout(a);
@@ -795,90 +790,40 @@ final class KeyEditPanel {
         input.requestFocus();
     }
 
+    // ---- 공통 조각 (SettingsWidgets)
+
+    private LinearLayout section(String name) {
+        return widgets.section(root, name);
+    }
+
+    private TextView text(String s, int sp, int color) {
+        return widgets.text(s, sp, color);
+    }
+
+    private TextView note(String s) {
+        return widgets.note(s);
+    }
+
     private View toggle(String label, String desc, boolean value, java.util.function.Consumer<Boolean> onChange) {
-        LinearLayout row = new LinearLayout(a);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(0, Ui.dp(a, 8), 0, Ui.dp(a, 8));
-        LinearLayout texts = new LinearLayout(a);
-        texts.setOrientation(LinearLayout.VERTICAL);
-        texts.addView(text(label, 16, textColor));
-        if (desc != null) texts.addView(text(desc, 13, hintColor));
-        row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        ExpressiveSwitch sw = new ExpressiveSwitch(a, accentColor, onAccentColor, hintColor, cardColor);
-        sw.setCheckedImmediately(value);
-        sw.setOnCheckedChangeListener(checked -> onChange.accept(checked));
-        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        slp.leftMargin = Ui.dp(a, 12);
-        row.addView(sw, slp);
-        row.setOnClickListener(v -> sw.performClick());
-        return row;
+        return widgets.toggle(label, desc, value, onChange);
     }
 
-    /** 위 스위치의 하위 항목: 왼쪽에 강조선을 두고 들여 쓴다. */
     private View subGroup(View... children) {
-        LinearLayout box = new LinearLayout(a);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(Ui.dp(a, 14), 0, 0, 0);
-        android.graphics.drawable.GradientDrawable line = new android.graphics.drawable.GradientDrawable();
-        line.setColor((accentColor & 0x00FFFFFF) | 0x66000000);
-        line.setCornerRadius(Ui.dp(a, 2));
-        android.graphics.drawable.LayerDrawable bg = new android.graphics.drawable.LayerDrawable(
-                new android.graphics.drawable.Drawable[]{line});
-        bg.setLayerSize(0, Ui.dp(a, 3), -1);
-        bg.setLayerGravity(0, Gravity.START | Gravity.FILL_VERTICAL);
-        bg.setLayerInset(0, Ui.dp(a, 2), Ui.dp(a, 8), 0, Ui.dp(a, 8));
-        box.setBackground(bg);
-        for (View c : children) box.addView(c);
-        return box;
+        return widgets.subGroup(children);
     }
 
+    /** 저장하고 미리보기에 알리는 슬라이더. 손잡이로 같은 값이 바뀌면 syncSize가 맞춘다. */
     private View slider(String label, String prefKey, int value, int min, int max, int step, String unit) {
-        LinearLayout box = new LinearLayout(a);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(0, Ui.dp(a, 8), 0, Ui.dp(a, 4));
-        LinearLayout top = new LinearLayout(a);
-        top.addView(text(label, 16, textColor), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        TextView v = text(value + unit, 14, hintColor);
-        top.addView(v);
-        box.addView(top);
-        ExpressiveSlider bar = new ExpressiveSlider(a, accentColor);
-        bar.setMax((max - min) / step);
-        bar.setProgress(Math.round((Math.max(min, Math.min(max, value)) - min) / (float) step));
-        bar.setOnChangeListener((progress, fromUser) -> {
-            int val = min + progress * step;
-            v.setText(val + unit);
-            if (fromUser) {
-                prefs.raw().edit().putInt(prefKey, val).apply();
-                host.onSizeChanged(prefKey);
-            }
+        SettingsWidgets.Slider sl = widgets.slider(label, value, min, max, step, unit, val -> {
+            prefs.raw().edit().putInt(prefKey, val).apply();
+            host.onSizeChanged(prefKey);
         });
-        box.addView(bar, matchWrap());
-        sizeSync.put(prefKey, () -> {
-            int now = prefs.raw().getInt(prefKey, value);
-            v.setText(Math.max(min, Math.min(max, now)) + unit);
-            bar.setProgress(Math.round((Math.max(min, Math.min(max, now)) - min) / (float) step));
-        });
-        return box;
+        sizeSync.put(prefKey, () -> sl.set(prefs.raw().getInt(prefKey, value)));
+        return sl.view;
     }
 
     private View button(String label, View.OnClickListener l) {
-        LinearLayout row = new LinearLayout(a);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        int h = Ui.dp(a, 14);
-        row.setPadding(h, Ui.dp(a, 12), h, Ui.dp(a, 12));
-        int tint = (accentColor & 0x00FFFFFF) | 0x1F000000;
-        row.setBackground(Ui.ripple(accentColor & 0x00FFFFFF | 0x33000000, Ui.round(tint, Ui.dp(a, 12)), Ui.dp(a, 12)));
-        row.addView(text(label, 15, accentColor), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        row.addView(new Chevron(a, accentColor));
-        row.setClickable(true);
-        row.setFocusable(true);
-        row.setOnClickListener(l);
-        LinearLayout.LayoutParams lp = matchWrap();
-        lp.topMargin = Ui.dp(a, 6);
-        lp.bottomMargin = Ui.dp(a, 6);
-        row.setLayoutParams(lp);
-        return row;
+        return widgets.button(label, l);
     }
 
     /** 이름과 지금 값을 보여 주는 누를 수 있는 줄 (누르면 값을 고치는 창이 뜬다). */
@@ -906,7 +851,6 @@ final class KeyEditPanel {
 
     /** 맨 아래 '기본값으로 되돌리기' (이 키·버튼의 값만). */
     private void resetRow(String name, Runnable onReset) {
-        if (omitReset) return;
         root.addView(ResetDialog.button(a, name, onReset));
     }
 
@@ -995,7 +939,4 @@ final class KeyEditPanel {
                 .show();
     }
 
-    private static LinearLayout.LayoutParams matchWrap() {
-        return new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-    }
 }
