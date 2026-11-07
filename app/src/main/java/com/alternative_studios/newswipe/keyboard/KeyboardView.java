@@ -52,7 +52,8 @@ public final class KeyboardView extends View {
         /** 키를 밀거나 길게 눌러 정해 둔 기능(SwipeAction ID)을 실행하라는 요청. */
         void onKeyFunction(Key key, String actionId);
 
-        void onDeleteRepeat();
+        /** 길게 눌러 계속 지우기의 한 번 (word: 단어 단위). */
+        void onDeleteRepeat(boolean word);
 
         /** 이번 터치에서 처음으로 밀어서 커서를 옮기려 한다 (바로 뒤에 onCursorMove·onCursorMoveVertical이 온다). */
         default void onCursorStart() {
@@ -174,7 +175,6 @@ public final class KeyboardView extends View {
     private boolean keyShadow;
     private int keyShadowStrength = 50;
     private Paint shadowPaint;
-    private boolean spaceSelect = true;
     private boolean gapCursor = true;
     /** 커서 이동이 시작된 뒤 손가락이 움직이는 거리당 커서가 움직이는 빠르기 (1 = 기본). 스페이스바·문자 키, 좌우·상하 따로. */
     private float gapSpeed = 1f;
@@ -204,8 +204,8 @@ public final class KeyboardView extends View {
     private final Runnable repeatRunnable = new Runnable() {
         @Override
         public void run() {
-            if (listener != null) listener.onDeleteRepeat();
-            handler.postDelayed(this, 50);
+            if (listener != null) listener.onDeleteRepeat(repeatWord);
+            handler.postDelayed(this, repeatWord ? wordRepeatMs : charRepeatMs);
         }
     };
 
@@ -348,9 +348,14 @@ public final class KeyboardView extends View {
         }
     }
 
-    /** 스페이스바를 길게 누른 뒤 밀어서 글자 선택. */
-    public void setSpaceSelect(boolean on) {
-        spaceSelect = on;
+    /** 길게 눌러 계속 지우기의 간격: 지금 누르고 있는 것이 단어 지우기인지와 글자·단어 사이 시간 (ms). */
+    private boolean repeatWord;
+    private long charRepeatMs = 50, wordRepeatMs = 200;
+
+    /** 길게 눌러 계속 지우기의 속도 (초당 글자 수, 초당 단어 수). */
+    public void setDeleteRepeatRates(int charsPerSecond, int wordsPerSecond) {
+        charRepeatMs = 1000L / Math.max(1, charsPerSecond);
+        wordRepeatMs = 1000L / Math.max(1, wordsPerSecond);
     }
 
     /** 커서 이동 속도 (%). 100 = 기본. */
@@ -980,10 +985,10 @@ public final class KeyboardView extends View {
         // 길게 누를 수 있는 기능키인지 정한다 (시간은 모든 기능키가 같다).
         // 기능키는 정한 기능이 있는 키만 길게 누를 수 있다.
         String action = customLongPress(k);
-        boolean del = SwipeAction.DELETE_REPEAT.equals(action);
-        boolean lang = action != null && !del;
+        boolean del = SwipeAction.holdRepeat(action);
+        boolean select = SwipeAction.SPACE_SELECT.equals(action);
+        boolean lang = action != null && !del && !select;
         boolean chars = k.type == Key.CHAR && (k.popup != null && longPressChars || isRepeatChar(k));
-        boolean select = k.type == Key.SPACE && spaceSelect;
         if (del || lang || chars || select) {
             longPressTarget = p;
             // 기능키는 모두 '기능키 길게 누르기 시간'을, 문자 키는 '문자 길게 누르기 시간'을 따른다.
@@ -1327,9 +1332,20 @@ public final class KeyboardView extends View {
         if (p.mode != NORMAL && !shiftHeld) return;
         String custom = customLongPress(k);
         if (custom != null) {
-            if (SwipeAction.DELETE_REPEAT.equals(custom)) {
+            if (SwipeAction.holdRepeat(custom)) {
                 p.mode = REPEAT;
+                repeatWord = SwipeAction.DELETE_WORD_REPEAT.equals(custom);
                 repeatRunnable.run();
+            } else if (SwipeAction.SPACE_SELECT.equals(custom)) {
+                // 선택 모드: 이제부터 밀면 커서 대신 선택 영역의 끝이 움직인다. 손가락이 지금 있는 자리에서 잰다.
+                p.mode = SELECT;
+                p.selectMoved = false;
+                p.cursorAnchorX = p.lastX;
+                p.cursorAnchorY = p.lastY;
+                if (listener != null) {
+                    listener.onGesture();
+                    listener.onSelectStart();
+                }
             } else {
                 p.mode = CONSUMED;
                 if (listener != null) {
@@ -1341,17 +1357,7 @@ public final class KeyboardView extends View {
             return;
         }
         if (shiftHeld) return;
-        if (k.type == Key.SPACE && spaceSelect) {
-            // 선택 모드: 이제부터 밀면 커서 대신 선택 영역의 끝이 움직인다. 손가락이 지금 있는 자리에서 잰다.
-            p.mode = SELECT;
-            p.selectMoved = false;
-            p.cursorAnchorX = p.lastX;
-            p.cursorAnchorY = p.lastY;
-            if (listener != null) {
-                listener.onGesture();
-                listener.onSelectStart();
-            }
-        } else if (isRepeatChar(k)) {
+        if (isRepeatChar(k)) {
             p.mode = CHAR_REPEAT;
             charRepeatPointer = p;
             charRepeatRunnable.run();

@@ -134,7 +134,11 @@ public final class Prefs {
     public static final int BALANCED_CONSONANT_WIDTH_MAX = 100;
     /** 가로 모드는 키를 더 좁게 (30%까지) 줄일 수 있다. */
     public static final int BALANCED_WIDTH_MIN_LANDSCAPE = 30;
-    public static final String SPACE_SELECT = "space_select";                 // 스페이스바를 길게 누른 뒤 밀어서 글자 선택
+    // (예전 '스페이스바를 길게 누른 뒤 밀어서 선택' 스위치 "space_select"는 스페이스바 길게 누르기 기능으로 옮겼다: LegacySwipeSettings)
+    /** 길게 눌러 계속 지우기의 속도 (초당 글자 수)와 단어 지우기의 속도 (초당 단어 수). */
+    public static final String DELETE_REPEAT_RATE = "delete_repeat_rate", DELETE_WORD_REPEAT_RATE = "delete_word_repeat_rate";
+    public static final int DELETE_REPEAT_RATE_MIN = 5, DELETE_REPEAT_RATE_MAX = 40, DELETE_REPEAT_RATE_DEFAULT = 20;
+    public static final int DELETE_WORD_REPEAT_RATE_MIN = 1, DELETE_WORD_REPEAT_RATE_MAX = 15, DELETE_WORD_REPEAT_RATE_DEFAULT = 5;
     public static final String SELECTION_CHIPS = "selection_chips";           // 글자를 선택하면 도구 막대에 편집 칩
     public static final String SWIPE_PICK_SUGGESTION = "swipe_pick_suggestion"; // 자판 왼쪽·가운데·오른쪽을 위로 밀어 추천 단어 입력
     /** 🌐︎를 위로 밀었을 때 말풍선의 언어 차례 (위에서 아래, "ko,en,ja,zh"). 일본어·중국어는 켰을 때만 보인다. */
@@ -369,12 +373,12 @@ public final class Prefs {
         MENU_KEYS.put("input", keys(AUTO_CAP, ENGLISH_FIELDS, DOUBLE_SPACE_PERIOD, DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT,
                 DOUBLE_TAP_CONSONANT_MS, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, SPACE_HIT_SHRINK,
                 SPACE_HIT_SHRINK_PCT));
-        MENU_KEYS.put("keys", keys(LONG_PRESS_MS, DELETE_PRESS_MS));
+        MENU_KEYS.put("keys", keys(LONG_PRESS_MS, DELETE_PRESS_MS, DELETE_REPEAT_RATE, DELETE_WORD_REPEAT_RATE));
         MENU_PREFIXES.put("keys", keys("popup_", "popupkept_", "repeat_", "swipe_lp_"));
         MENU_KEYS.put("swipe", keys(SWIPE_THRESHOLD));
         MENU_PREFIXES.put("swipe", keys("swipe_custom_", "swipe_final_", "swipe_vowel_"));
         MENU_KEYS.put("swipefn", keys(FN_SWIPE_THRESHOLD, SPACE_CURSOR_SPEED_H, SPACE_CURSOR_SPEED_V,
-                CHAR_CURSOR_SPEED_H, CHAR_CURSOR_SPEED_V, LANGUAGE_ORDER, SPACE_SELECT, SWIPE_PICK_SUGGESTION));
+                CHAR_CURSOR_SPEED_H, CHAR_CURSOR_SPEED_V, LANGUAGE_ORDER, SWIPE_PICK_SUGGESTION));
         MENU_PREFIXES.put("swipefn", keys("swipe_fn_", "swipe_toolbar_", "swipe_kb_"));
         MENU_KEYS.put("feedback", keys(VIBRATE, VIBRATE_MS, VIBRATE_STYLE, VIBRATE_AMP, VIBRATE_PER_KEY,
                 VIBRATE_DELETE, VIBRATE_SPACE, VIBRATE_ENTER, VIBRATE_SHIFT, VIBRATE_SYMBOL, VIBRATE_LANGUAGE, VIBRATE_TOOLBAR,
@@ -629,7 +633,15 @@ public final class Prefs {
         else sp.edit().putString(key, c).apply();
     }
     public boolean periodKeyHidden() { return sp.getBoolean(PERIOD_KEY_HIDDEN, false); }
-    public boolean spaceSelect() { return sp.getBoolean(SPACE_SELECT, true); }
+    /** 길게 눌러 계속 지우기: 초당 지우는 글자 수 (5~40, 기본 20). */
+    public int deleteRepeatRate() {
+        return clamp(sp.getInt(DELETE_REPEAT_RATE, DELETE_REPEAT_RATE_DEFAULT), DELETE_REPEAT_RATE_MIN, DELETE_REPEAT_RATE_MAX);
+    }
+    /** 길게 눌러 단어 지우기: 초당 지우는 단어 수 (1~15, 기본 5). */
+    public int deleteWordRepeatRate() {
+        return clamp(sp.getInt(DELETE_WORD_REPEAT_RATE, DELETE_WORD_REPEAT_RATE_DEFAULT), DELETE_WORD_REPEAT_RATE_MIN,
+                DELETE_WORD_REPEAT_RATE_MAX);
+    }
     public boolean selectionChips() { return sp.getBoolean(SELECTION_CHIPS, true); }
     public boolean swipePickSuggestion() { return sp.getBoolean(SWIPE_PICK_SUGGESTION, false); }
 

@@ -203,9 +203,9 @@ public class ExtraBottomKeysTest {
         FakeSp sp = new FakeSp();
         Prefs p = view(sp, Prefs.PROFILE_PORTRAIT);
         SwipeSpec spec = LongPressActions.SPEC;
-        // 처음: 원래 다섯 키만 (더한 키는 꺼져 있다)
+        // 처음: 원래 다섯 키와 스페이스바만 (더한 키는 꺼져 있다)
         for (int slot = 0; slot < spec.slotCount(); slot++) {
-            assertEquals(slot + "", slot <= LongPressActions.DELETE, spec.shown(p, slot));
+            assertEquals(slot + "", slot <= LongPressActions.DELETE || slot == LongPressActions.SPACE, spec.shown(p, slot));
         }
         sp.m.put(Prefs.BOTTOM_CLIPBOARD_KEY, true);
         sp.m.put(Prefs.BOTTOM_CURSOR_KEY, true);

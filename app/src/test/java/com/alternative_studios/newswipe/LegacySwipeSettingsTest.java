@@ -187,7 +187,8 @@ public class LegacySwipeSettingsTest {
         MapSp sp = new MapSp();
         Prefs p = prefs(sp);
         LegacySwipeSettings.migrateIfNeeded(p);
-        assertEquals(2, sp.getAll().size());   // 옮김 표시 두 개뿐
+        assertEquals(3, sp.getAll().size());   // 옮김 표시 세 개뿐
+        assertEquals(SwipeAction.SPACE_SELECT, LongPressActions.SPEC.get(p, LongPressActions.SPACE, LongPressActions.DIR));
         assertEquals(SwipeAction.UNDO, KeyboardSwipes.SPEC.get(p, KeyboardSwipes.TWO, Key.SWIPE_LEFT));
     }
 
@@ -236,5 +237,32 @@ public class LegacySwipeSettingsTest {
         assertTrue(p.repeatChars().contains("ko_ㄴ"));
         assertEquals(null, p.popupOverride("ko", "ㄱ"));   // 문자 입력은 그대로
         assertFalse(sp.contains("long_press_repeat"));
+    }
+
+    @Test
+    public void spaceSelectSwitchOffBecomesNone() throws Exception {
+        MapSp sp = new MapSp();
+        sp.m.put(Prefs.ONBOARDING_DONE, true);
+        sp.m.put("space_select", false);
+        Prefs p = prefs(sp);
+        LegacySwipeSettings.migrateIfNeeded(p);
+        assertEquals(SwipeAction.NONE, LongPressActions.SPEC.get(p, LongPressActions.SPACE, LongPressActions.DIR));
+        assertFalse(sp.contains("space_select"));
+        // 다른 키 길게 누르기는 그대로
+        assertEquals(SwipeAction.DELETE_REPEAT, LongPressActions.SPEC.get(p, LongPressActions.DELETE, LongPressActions.DIR));
+    }
+
+    @Test
+    public void spaceSelectSwitchOnKeepsSelect() throws Exception {
+        MapSp sp = new MapSp();
+        sp.m.put(Prefs.ONBOARDING_DONE, true);
+        sp.m.put("space_select", true);
+        Prefs p = prefs(sp);
+        LegacySwipeSettings.migrateIfNeeded(p);
+        assertEquals(SwipeAction.SPACE_SELECT, LongPressActions.SPEC.get(p, LongPressActions.SPACE, LongPressActions.DIR));
+        assertEquals(SwipeAction.NONE, LongPressActions.SPEC.get(p, LongPressActions.ENTER, LongPressActions.DIR));
+        // 스페이스바 전용 기능은 다른 키에서 쓰지 않는다
+        LongPressActions.SPEC.set(p, LongPressActions.ENTER, LongPressActions.DIR, SwipeAction.SPACE_SELECT);
+        assertEquals(SwipeAction.NONE, LongPressActions.SPEC.get(p, LongPressActions.ENTER, LongPressActions.DIR));
     }
 }

@@ -73,7 +73,19 @@ final class LegacySwipeSettings {
             if (!sp.getAll().isEmpty()) migrateLongPressSwitches(prefs, sp);
             sp.edit().remove(LONG_PRESS_CHARS).remove(LONG_PRESS_REPEAT).putBoolean(LONG_PRESS_DONE, true).apply();
         }
+        if (!sp.getBoolean(SPACE_SELECT_DONE, false)) {
+            // 예전 '스페이스바를 길게 누른 뒤 밀어서 선택'(기본 켬)을 꺼 두었으면 스페이스바 길게 누르기를 '없음'으로.
+            if (!sp.getBoolean(SPACE_SELECT, true)) {
+                LongPressActions.SPEC.set(prefs, LongPressActions.SPACE, LongPressActions.DIR, SwipeAction.NONE);
+            }
+            sp.edit().remove(SPACE_SELECT).putBoolean(SPACE_SELECT_DONE, true).apply();
+        }
     }
+
+    /** 스페이스바 '밀어서 선택' 스위치를 스페이스바 길게 누르기 기능으로 옮겼다는 표시. */
+    static final String SPACE_SELECT_DONE = "space_long_press_v1";
+    /** 예전 '스페이스바를 길게 누른 뒤 밀어서 선택' 스위치. */
+    static final String SPACE_SELECT = "space_select";
 
     // ---------------------------------------------------------------- 길게 누르기 스위치
 
@@ -211,6 +223,7 @@ final class LegacySwipeSettings {
 
     private static void migrateLongPress(Prefs prefs, SharedPreferences sp) {
         for (int slot = 0; slot < LongPressActions.SPEC.slotCount(); slot++) {
+            if (slot == LongPressActions.SPACE) continue;   // 스페이스바는 따로 옮긴다 (migrateSpaceSelect)
             String old = SwipeAction.NONE;
             if (slot == LongPressActions.MODE && sp.getBoolean(MODE_KEY_LONG_PRESS, true)) old = SwipeAction.EMOJI_OPEN;
             if (slot == LongPressActions.GLOBE) old = SwipeAction.IME_PICKER;

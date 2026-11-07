@@ -399,7 +399,6 @@ public final class SettingsActivity extends Activity {
             {KEYBOARD, "스페이스바·커서 키 좌우", "커서 이동 속도 트랙패드"},
             {KEYBOARD, "자판 트랙패드 좌우", "커서 이동 속도 문자 키"},
             {KEYBOARD, "언어 순서 사용자화", "지구본 언어 차례 순서 바꾸기 한국어 영어 일본어 중국어"},
-            {KEYBOARD, "스페이스바를 길게 누른 뒤 밀어서 선택", "텍스트 선택 범위 드래그 블록"},
             {KEYBOARD, "키보드 밀기 편집", "자판 스와이프 기능"},
             {KEYBOARD, "위로 밀어서 추천 단어 입력", "추천 단어 스와이프 고르기 자판 위로"},
             {"words", "도구 막대 전체를 쓰기", "추천 툴바 전체"},
@@ -1633,13 +1632,6 @@ public final class SettingsActivity extends Activity {
         return slider("기능 미는 거리", Prefs.FN_SWIPE_THRESHOLD, prefs.fnSwipeThresholdDp(), 12, 48, 2, "dp");
     }
 
-    private View spaceSelectToggle() {
-        return toggle("스페이스바를 길게 누른 뒤 밀어서 선택",
-                "스페이스바를 길게 눌러 진동이 오면, 손을 떼지 않고 좌우로 밀어 글자 단위로, "
-                        + "위아래로 밀어 줄 단위로(여러 줄 입력란) 글자를 선택합니다. 밀지 않고 떼면 띄어쓰기가 입력됩니다.",
-                Prefs.SPACE_SELECT, prefs.spaceSelect());
-    }
-
     private void addLanguageOrder(LinearLayout c) {
         c.addView(button("언어 순서 사용자화", v -> startActivity(new Intent(this, LanguageOrderEditorActivity.class))));
         c.addView(note("🌐︎로 바꿀 언어와 '언어 고르기' 말풍선의 차례를 정합니다."));
@@ -2651,7 +2643,6 @@ public final class SettingsActivity extends Activity {
         common.addView(fnSwipeDistanceSlider());
         common.addView(note("기능키·도구 막대·자판을 밀어 기능을 실행할 때의 거리입니다. 값이 작을수록 살짝만 밀어도 인식합니다. "
                 + EDIT_ON_PREVIEW + "기능키나 도구 막대 버튼을 각 방향으로 밀 때 실행할 기능을 정할 수 있습니다."));
-        common.addView(spaceSelectToggle());
         addLanguageOrder(common);
 
         LinearLayout speed = section("커서 이동 속도");

@@ -56,6 +56,10 @@ public final class SwipeAction {
     public static final String ONE_HAND_RIGHT = "one_hand_right";
     /** 길게 누르기 전용: 누르고 있는 동안 계속 지우기. */
     public static final String DELETE_REPEAT = "delete_repeat";
+    /** 길게 누르기 전용: 누르고 있는 동안 단어 단위로 계속 지우기. */
+    public static final String DELETE_WORD_REPEAT = "delete_word_repeat";
+    /** 스페이스바 길게 누르기 전용: 길게 누른 뒤 손을 떼지 않고 밀어 글자를 선택한다. */
+    public static final String SPACE_SELECT = "space_select";
     /** 길게 누르기 전용: 영어 자판에서 Caps Lock(대문자 고정) 켜기. */
     public static final String CAPS_LOCK = "caps_lock";
 
@@ -102,12 +106,19 @@ public final class SwipeAction {
             {ONE_HAND_RIGHT, "한 손 모드 (오른쪽)", "한 손 오른쪽"},
             {SETTINGS, "NewSwipe 설정 열기", "설정 열기"},
             {DELETE_REPEAT, "계속 지우기 (누르고 있는 동안)", "계속 지우기"},
+            {DELETE_WORD_REPEAT, "단어 지우기 (누르고 있는 동안)", "계속 단어 지우기"},
+            {SPACE_SELECT, "밀어서 선택 (길게 누른 뒤 밀어 글자 선택)", "밀어서 선택"},
             {CAPS_LOCK, "Caps Lock 켜기 (영어 대문자 고정)", "Caps Lock"},
     };
 
     /** 길게 누르기에서만 쓰는 기능 (밀기 목록에는 보이지 않는다). */
     private static boolean longPressOnly(String id) {
-        return DELETE_REPEAT.equals(id) || CAPS_LOCK.equals(id);
+        return holdRepeat(id) || CAPS_LOCK.equals(id) || SPACE_SELECT.equals(id);
+    }
+
+    /** 누르고 있는 동안 되풀이하는 길게 누르기 기능 (계속 지우기·단어 지우기). 지우는 속도를 따로 정한다. */
+    public static boolean holdRepeat(String id) {
+        return DELETE_REPEAT.equals(id) || DELETE_WORD_REPEAT.equals(id);
     }
 
     /** 🌐︎를 위로 밀 때만 쓰는 기능 (말풍선이 키 위로 펼쳐진다). */
@@ -119,8 +130,17 @@ public final class SwipeAction {
     public static String[] idsForLongPress() {
         java.util.List<String> ids = new java.util.ArrayList<>();
         for (String[] a : ALL) {
-            if (!CURSOR_MOVE.equals(a[0]) && !FREE_CURSOR.equals(a[0]) && !globeUpOnly(a[0])) ids.add(a[0]);
+            if (!CURSOR_MOVE.equals(a[0]) && !FREE_CURSOR.equals(a[0]) && !globeUpOnly(a[0]) && !SPACE_SELECT.equals(a[0])) {
+                ids.add(a[0]);
+            }
         }
+        return ids.toArray(new String[0]);
+    }
+
+    /** 스페이스바 길게 누르기에서 고를 수 있는 ID들: 기능키와 같은 목록에 '밀어서 선택'을 '없음' 바로 다음에 더한다. */
+    public static String[] idsForSpaceLongPress() {
+        java.util.List<String> ids = new java.util.ArrayList<>(java.util.Arrays.asList(idsForLongPress()));
+        ids.add(1, SPACE_SELECT);
         return ids.toArray(new String[0]);
     }
 

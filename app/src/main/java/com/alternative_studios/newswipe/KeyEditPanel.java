@@ -558,14 +558,7 @@ final class KeyEditPanel {
 
         // ---- 길게 누르기
         LinearLayout lp = section("길게 누르기");
-        if (key.type == Key.SPACE) {
-            lp.addView(toggle("스페이스바를 길게 누른 뒤 밀어서 선택",
-                    "길게 눌러 진동이 오면, 손을 떼지 않고 좌우로 밀어 글자 단위로, 위아래로 밀어 줄 단위로 글자를 선택합니다. "
-                            + "밀지 않고 떼면 띄어쓰기가 입력됩니다.",
-                    prefs.spaceSelect(), on -> put(Prefs.SPACE_SELECT, on)));
-        } else if (lpSlot() >= 0) {
-            buildLongPressAction(lp);
-        }
+        if (lpSlot() >= 0) buildLongPressAction(lp);
 
         // ---- 밀기
         if (fnSlot() >= 0) buildFunctionSwipe();
@@ -583,6 +576,24 @@ final class KeyEditPanel {
         card.addView(valueRow("길게 누르면", SwipeAction.label(action),
                 v -> pickAction(LongPressActions.SPEC, slot, LongPressActions.DIR,
                         "'" + functionName() + "' 길게 누르기", this::rebuild)));
+        addLongPressDetail(card, action);
+    }
+
+    /**
+     * 고른 길게 누르기 기능의 하위 항목: 누르고 있는 동안 지우는 기능이면 지우는 속도, 밀어서 선택이면 쓰는 법.
+     * 지우는 속도는 같은 기능을 고른 모든 키가 함께 쓴다.
+     */
+    private void addLongPressDetail(LinearLayout card, String action) {
+        if (SwipeAction.DELETE_REPEAT.equals(action)) {
+            card.addView(subGroup(slider("지우는 속도", Prefs.DELETE_REPEAT_RATE, prefs.deleteRepeatRate(),
+                    Prefs.DELETE_REPEAT_RATE_MIN, Prefs.DELETE_REPEAT_RATE_MAX, 1, "글자/초")));
+        } else if (SwipeAction.DELETE_WORD_REPEAT.equals(action)) {
+            card.addView(subGroup(slider("지우는 속도", Prefs.DELETE_WORD_REPEAT_RATE, prefs.deleteWordRepeatRate(),
+                    Prefs.DELETE_WORD_REPEAT_RATE_MIN, Prefs.DELETE_WORD_REPEAT_RATE_MAX, 1, "단어/초")));
+        } else if (SwipeAction.SPACE_SELECT.equals(action)) {
+            card.addView(note("길게 눌러 진동이 오면, 손을 떼지 않고 좌우로 밀어 글자 단위로, 위아래로 밀어 줄 단위로 글자를 "
+                    + "선택합니다. 밀지 않고 떼면 띄어쓰기가 입력됩니다."));
+        }
     }
 
     private void buildFunctionSwipe() {
@@ -644,6 +655,7 @@ final class KeyEditPanel {
                     v -> pickAction(FnKeyActions.SPEC, FnKeyActions.PRESS, dir,
                             FnKeyActions.SPEC.dialogTitle(FnKeyActions.PRESS, dir), this::rebuild)));
         }
+        addLongPressDetail(press, FnKeyActions.SPEC.get(prefs, FnKeyActions.PRESS, FnKeyActions.LONG));
         LinearLayout swipe = section("밀기");
         swipe.addView(actionPad(FnKeyActions.SPEC, FnKeyActions.SWIPE, "Fn"));
         resetRow("Fn 키의 기능", () -> {

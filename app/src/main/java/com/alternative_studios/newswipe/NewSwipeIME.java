@@ -1144,7 +1144,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         keyboard.setGapCursor(sizePrefs.splitGapCursor(), sizePrefs.splitGapSpeed());
         keyboard.setCursorSpeed(prefs.spaceCursorSpeedH(), prefs.spaceCursorSpeedV(),
                 prefs.charCursorSpeedH(), prefs.charCursorSpeedV());
-        keyboard.setSpaceSelect(prefs.spaceSelect());
+        keyboard.setDeleteRepeatRates(prefs.deleteRepeatRate(), prefs.deleteWordRepeatRate());
         // 길게 누르기·밀기는 모두 키마다 정한 기능을 쓴다 (키보드 편집에서 키를 눌러 정한다).
         keyboard.setFunctionLongPressMs(prefs.deletePressMs());
         keyboard.setLongPressActions(com.alternative_studios.newswipe.keyboard.LongPressActions.actions(prefs));
@@ -1921,9 +1921,13 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     @Override
-    public void onDeleteRepeat() {
+    public void onDeleteRepeat(boolean word) {
         // 더 지울 것이 없어 커서가 멈췄으면 진동하지 않는다 (지우기 자체는 예전처럼 보낸다).
         if (!nothingToDelete()) feedback.onRepeat();
+        if (word) {
+            onDeleteWord();
+            return;
+        }
         // 선택 영역 확인(앱에 묻고 기다리는 호출)은 연속 삭제의 첫 번째에서만 한다.
         // 첫 삭제 뒤에는 선택 영역이 사라지므로 이후에는 묻지 않아도 된다.
         handleDelete(deleteRepeatChecked);
@@ -4081,6 +4085,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 if (layoutKind == KeyboardLayout.ENGLISH) setShift(2);
                 break;
             case SwipeAction.DELETE_WORD:
+            case SwipeAction.DELETE_WORD_REPEAT:   // 길게 누르기 전용 (한 번 실행하는 곳에서는 단어 하나)
                 onDeleteWord();
                 break;
             case SwipeAction.DELETE_LINE_START:
