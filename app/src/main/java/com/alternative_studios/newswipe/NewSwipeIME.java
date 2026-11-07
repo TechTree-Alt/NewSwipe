@@ -920,7 +920,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
      */
     private void sizeToolbar() {
         toolbarHeight = toolbarHeightPx();
-        setHeight(topSlot, toolbarHeight);
+        // 도구 막대 영역의 위·아래 여백: 막대 자리를 그만큼 높이고 안쪽 여백으로 둔다 (막대 자체의 높이는 그대로).
+        barPadTop = Ui.dp(this, prefs.areaPadDp(0, Prefs.SIDE_TOP));
+        barPadBottom = Ui.dp(this, prefs.areaPadDp(0, Prefs.SIDE_BOTTOM));
+        topSlot.setPadding(topSlot.getPaddingLeft(), barPadTop, topSlot.getPaddingRight(), barPadBottom);
+        setHeight(topSlot, barSlotHeight());
         dropStalePanels();
         float scale = prefs.toolButtonSize() / 100f;
         int width = Math.round(Ui.dp(this, 40) * scale);
@@ -971,6 +975,14 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         column.removeView(topSlot);
         if (bottom) column.addView(topSlot, lp);
         else column.addView(topSlot, 0, lp);
+    }
+
+    /** 도구 막대 영역의 위·아래 여백 (px). */
+    private int barPadTop, barPadBottom;
+
+    /** 도구 막대 자리의 전체 높이: 막대 + 도구 막대 영역의 위·아래 여백. 이모지·클립보드 창은 이 자리까지 덮는다. */
+    private int barSlotHeight() {
+        return toolbarHeight + barPadTop + barPadBottom;
     }
 
     /** 추천 단어 앞의 빈 칸. 분리 키보드에서는 남는 폭을 모두 가져 추천 단어 세 개가 오른쪽 끝에 붙는다. */
@@ -1706,17 +1718,17 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 topSlot.setLayoutParams(slp);
             }
         }
-        int h = barOnly ? 0 : keyboardHeight - gap - gapTop + (full ? toolbarHeight : 0);
+        int h = barOnly ? 0 : keyboardHeight - gap - gapTop + (full ? barSlotHeight() : 0);
         ViewGroup.LayoutParams lp = content.getLayoutParams();
         if (lp != null && lp.height != h) {
             lp.height = h;
             content.setLayoutParams(lp);
         }
-        if (emojiPanel != null) setHeight(emojiPanel, keyboardHeight + toolbarHeight);
-        if (clipPanel != null) setHeight(clipPanel, keyboardHeight + toolbarHeight);
+        if (emojiPanel != null) setHeight(emojiPanel, keyboardHeight + barSlotHeight());
+        if (clipPanel != null) setHeight(clipPanel, keyboardHeight + barSlotHeight());
         // 자판 위에 도구 막대가 있으면 키 미리보기가 그 위까지 올라갈 수 있다 (아래에 두었거나 껐으면 자판 안에서 멈춘다).
         keyboard.setOverflowTop(panel == PANEL_SEARCH ? toolbarHeight + resultStripHeight()
-                : toolbarGone() || prefs.toolbarBottom() ? 0 : toolbarHeight);
+                : toolbarGone() || prefs.toolbarBottom() ? 0 : barSlotHeight());
     }
 
     private static void setHeight(View v, int h) {
@@ -1767,7 +1779,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         emojiPanel.setRecent(EmojiRepository.parseRecent(prefs.recentEmoji()));
         emojiPanel.setPinned(EmojiRepository.parseRecent(prefs.pinnedEmoji()));
         content.addView(emojiPanel, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                keyboardHeight + toolbarHeight));
+                keyboardHeight + barSlotHeight()));
         final EmojiPanel target = emojiPanel;
         emojiRepo.load(d -> {
             if (target == emojiPanel) target.setData(d, EmojiRepository.parseRecent(prefs.recentEmoji()),
@@ -1827,7 +1839,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         clipPanel = new ClipboardPanel(this, theme, toolbarHeight, this);
         applyPanelInsets();
         content.addView(clipPanel, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                keyboardHeight + toolbarHeight));
+                keyboardHeight + barSlotHeight()));
     }
 
     // ---------------------------------------------------------------- KeyboardView.Listener

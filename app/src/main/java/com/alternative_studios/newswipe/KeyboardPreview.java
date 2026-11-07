@@ -386,13 +386,16 @@ final class KeyboardPreview extends FrameLayout {
         }
         boolean shown = barShown();
         boolean bottom = prefs.toolbarBottom();
-        String colSig = shown + "," + bottom + "," + height + "," + lift + "," + raise;
+        int barT = Ui.dp(c, prefs.areaPadDp(AREA_TOOLBAR, Prefs.SIDE_TOP));
+        int barB = Ui.dp(c, prefs.areaPadDp(AREA_TOOLBAR, Prefs.SIDE_BOTTOM));
+        String colSig = shown + "," + bottom + "," + height + "," + lift + "," + raise + "," + barT + "," + barB;
         if (colSig.equals(columnSignature)) return;
         columnSignature = colSig;
         column.removeAllViews();
         LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height);
-        blp.bottomMargin = lift;   // 자판 아래에 두면 아래쪽 여백이 도구 막대 밑에 온다
-        blp.topMargin = raise;     // 자판 위에 두면 위쪽 여백이 도구 막대 위에 온다
+        // 도구 막대 영역의 위·아래 여백은 막대 바로 둘레에, 키보드 전체 여백은 그 바깥에 온다.
+        blp.bottomMargin = lift + barB;   // 자판 아래에 두면 아래쪽 여백이 도구 막대 밑에 온다
+        blp.topMargin = raise + barT;     // 자판 위에 두면 위쪽 여백이 도구 막대 위에 온다
         LinearLayout.LayoutParams klp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         if (!shown) {
@@ -612,7 +615,7 @@ final class KeyboardPreview extends FrameLayout {
             // 여백 층: 고른 영역의 여백 (도구 막대는 왼쪽·오른쪽만).
             if (selection == null || selection.kind != SEL_AREA || h < H_AREA_L) return false;
             int a = selection.area();
-            if (a == AREA_TOOLBAR) return (h == H_AREA_L || h == H_AREA_R) && bar.getParent() != null;
+            if (a == AREA_TOOLBAR) return bar.getParent() != null;
             if (a == AREA_NUMBER && !numberRowShown) return false;
             return true;
         }
@@ -682,7 +685,8 @@ final class KeyboardPreview extends FrameLayout {
                 // 위쪽 여백의 안쪽 가장자리: 도구 막대가 위에 있으면 도구 막대 위, 아니면 자판 뷰의 위.
                 // 끌어 올리면 여백이 늘어 키보드가 위로 자란다.
                 out[0] = w / 2f;
-                out[1] = Math.max(barRaised() ? bar.getTop() : kTop, Ui.dp(c, 4));
+                out[1] = Math.max(barRaised() ? bar.getTop() - Ui.dp(c, prefs.areaPadDp(AREA_TOOLBAR, Prefs.SIDE_TOP)) : kTop,
+                        Ui.dp(c, 4));
                 return true;
             case H_PAD_LEFT:
                 out[0] = Math.max(padL, Ui.dp(c, 3));
@@ -695,7 +699,8 @@ final class KeyboardPreview extends FrameLayout {
             case H_PAD_BOTTOM:
                 out[0] = w / 2f;
                 // 여백의 위 가장자리: 보통은 자판의 맨 아래 키 줄 밑, 도구 막대를 자판 아래에 두면 도구 막대 밑.
-                float edge = barLifted() ? bar.getBottom() : kBottom - padB;
+                float edge = barLifted() ? bar.getBottom() + Ui.dp(c, prefs.areaPadDp(AREA_TOOLBAR, Prefs.SIDE_BOTTOM))
+                        : kBottom - padB;
                 out[1] = Math.min(edge, getHeight() - Ui.dp(c, 3));
                 return true;
             case H_AREA_L:

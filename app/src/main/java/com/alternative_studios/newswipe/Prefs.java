@@ -61,7 +61,7 @@ public final class Prefs {
     public static final String PAD_TOP = "pad_top";                   // dp, 0~24
     /**
      * 영역별 여백 (dp, 0~32): "area_pad_" + 영역 이름 + "_" + 방향(l·t·r·b). 키보드 전체 여백 안쪽에 더한다.
-     * 영역 차례는 미리보기의 영역 번호와 같다 (도구 막대·숫자 줄·글자 키·기능키). 도구 막대는 왼쪽·오른쪽만 쓴다.
+     * 영역 차례는 미리보기의 영역 번호와 같다 (도구 막대·숫자 줄·글자 키·기능키). 도구 막대의 위·아래 여백은 막대 자리에 더한다.
      */
     public static final String AREA_PAD_PREFIX = "area_pad_";
     public static final String[] PAD_AREAS = {"toolbar", "number", "letters", "fn"};
