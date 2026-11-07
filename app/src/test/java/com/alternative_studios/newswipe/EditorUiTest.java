@@ -1184,6 +1184,10 @@ public class EditorUiTest {
         p.areaBounds(KeyboardPreview.AREA_FUNCTION, fn);
         log("outlines bar.bottom=" + bar.bottom + " num.top=" + num.top + " num.bottom=" + num.bottom + " let.top=" + let.top
                 + " let.bottom=" + let.bottom + " fn.top=" + fn.top);
+        // 좌우 가장자리도 다른 영역들과 같은 선 (도구 막대만 튀어나오지 않는다)
+        assertEquals(num.left, bar.left, 1.5f);
+        assertEquals(num.right, bar.right, 1.5f);
+        assertEquals(let.left, bar.left, 1.5f);
         assertTrue(bar.bottom >= num.top);   // 도구 막대와 숫자 줄도 겹친다
         assertTrue(num.bottom >= let.top);
         assertTrue(let.bottom >= fn.top);

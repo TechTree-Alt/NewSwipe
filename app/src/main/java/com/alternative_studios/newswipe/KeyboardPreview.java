@@ -618,8 +618,10 @@ final class KeyboardPreview extends FrameLayout {
             View v = bar.getParent() != null ? bar : placeholder != null && placeholder.getParent() != null ? placeholder : null;
             if (v == null) return false;
             // 도구 막대의 좌우는 버튼 자리(막대의 좌우 여백 안쪽)를 따라간다: 자판의 키 윤곽선과 같은 선.
-            float inL = v == bar ? Math.max(pad, bar.getPaddingLeft() - pad) : pad;
-            float inR = v == bar ? Math.max(pad, bar.getPaddingRight() - pad) : pad;
+            // 키 윤곽선은 키 모양 가장자리(자리에서 키 좌우 간격의 절반 안쪽)에서 pad만큼 나온다: 도구 막대도 같은 규칙.
+            float gx = Ui.dp(c, prefs.keyGapXDp()) / 2f;
+            float inL = v == bar ? Math.max(pad, bar.getPaddingLeft() + gx - pad) : pad;
+            float inR = v == bar ? Math.max(pad, bar.getPaddingRight() + gx - pad) : pad;
             // 위·아래는 키 영역과 같은 규칙: 줄 가장자리에서 키 상하 간격의 절반만큼 들어갔다가 윤곽선 여유(pad)만큼 나온다.
             // 그래서 간격이 0이면 도구 막대와 숫자 줄 윤곽선이 다른 영역들처럼 빈틈없이 겹친다.
             float gy = v == bar ? Ui.dp(c, prefs.keyGapYDp()) / 2f : 0f;
