@@ -554,10 +554,32 @@ final class KeyboardPreview extends FrameLayout {
     /** 키보드 전체(도구 막대·자판)를 감싼 테두리 자리. */
     boolean boardBounds(RectF out) {
         if (column.getChildCount() == 0) return false;
-        // 바깥 여백까지 모두 감싼다 (도구 막대 위·아래로 옮긴 여백 포함).
-        float pad = Ui.dp(getContext(), 2);
-        out.set(pad, column.getTop() + pad, getWidth() - pad, column.getBottom() - pad);
+        // 좌우는 키(와 영역 여백)를 따라가는 안쪽 가장자리, 위아래는 키보드 전체 여백의 바깥 가장자리.
+        // 어느 쪽이든 그 여백을 늘리면 손가락을 따라 움직이는 변이다.
+        Context c = getContext();
+        float pad = Ui.dp(c, 2);
+        float left = Float.MAX_VALUE, right = -Float.MAX_VALUE;
+        RectF r = new RectF();
+        for (int a = 0; a < AREAS; a++) {
+            if (!areaBounds(a, r)) continue;
+            left = Math.min(left, r.left - Ui.dp(c, prefs.areaPadDp(a, Prefs.SIDE_LEFT)));
+            right = Math.max(right, r.right + Ui.dp(c, prefs.areaPadDp(a, Prefs.SIDE_RIGHT)));
+        }
+        if (left > right) {
+            left = pad;
+            right = getWidth() - pad;
+        }
+        out.set(Math.max(left, pad), column.getTop() + pad, Math.min(right, getWidth() - pad), column.getBottom() - pad);
         return out.height() > 0;
+    }
+
+    /** 여백 층의 영역 윤곽선: 영역에 그 영역의 위·아래 여백을 더한 자리 (여백의 바깥 가장자리). */
+    boolean padBounds(int area, RectF out) {
+        if (!areaBounds(area, out)) return false;
+        Context c = getContext();
+        out.top -= Ui.dp(c, prefs.areaPadDp(area, Prefs.SIDE_TOP));
+        out.bottom += Ui.dp(c, prefs.areaPadDp(area, Prefs.SIDE_BOTTOM));
+        return true;
     }
 
     boolean areaBounds(int area, RectF out) {
@@ -566,7 +588,10 @@ final class KeyboardPreview extends FrameLayout {
         if (area == AREA_TOOLBAR) {
             View v = bar.getParent() != null ? bar : placeholder != null && placeholder.getParent() != null ? placeholder : null;
             if (v == null) return false;
-            out.set(v.getLeft() + pad, v.getTop() + pad, v.getRight() - pad, v.getBottom() - pad);
+            // 도구 막대의 좌우는 버튼 자리(막대의 좌우 여백 안쪽)를 따라간다: 자판의 키 윤곽선과 같은 선.
+            float inL = v == bar ? Math.max(pad, bar.getPaddingLeft() - pad) : pad;
+            float inR = v == bar ? Math.max(pad, bar.getPaddingRight() - pad) : pad;
+            out.set(v.getLeft() + inL, v.getTop() + pad, v.getRight() - inR, v.getBottom() - pad);
             return true;
         }
         KeyboardLayout l = keys.getLayout();
@@ -682,34 +707,23 @@ final class KeyboardPreview extends FrameLayout {
                 return true;
             }
             case H_PAD_TOP:
-                // 위쪽 여백의 안쪽 가장자리: 도구 막대가 위에 있으면 도구 막대 위, 아니면 자판 뷰의 위.
-                // 끌어 올리면 여백이 늘어 키보드가 위로 자란다.
-                out[0] = w / 2f;
-                out[1] = Math.max(barRaised() ? bar.getTop() - Ui.dp(c, prefs.areaPadDp(AREA_TOOLBAR, Prefs.SIDE_TOP)) : kTop,
-                        Ui.dp(c, 4));
-                return true;
             case H_PAD_LEFT:
-                out[0] = Math.max(padL, Ui.dp(c, 3));
-                out[1] = (kTop + padT + kBottom - padB) / 2f;
-                return true;
             case H_PAD_RIGHT:
-                out[0] = Math.min(w - padR, w - Ui.dp(c, 3));
-                out[1] = (kTop + padT + kBottom - padB) / 2f;
+            case H_PAD_BOTTOM: {
+                // 키보드 층 윤곽선의 각 변 가운데 (손잡이는 윤곽선과 늘 같은 간격을 둔다).
+                RectF r = new RectF();
+                if (!boardBounds(r)) return false;
+                out[0] = h == H_PAD_LEFT ? r.left : h == H_PAD_RIGHT ? r.right : r.centerX();
+                out[1] = h == H_PAD_TOP ? r.top : h == H_PAD_BOTTOM ? r.bottom : r.centerY();
                 return true;
-            case H_PAD_BOTTOM:
-                out[0] = w / 2f;
-                // 여백의 위 가장자리: 보통은 자판의 맨 아래 키 줄 밑, 도구 막대를 자판 아래에 두면 도구 막대 밑.
-                float edge = barLifted() ? bar.getBottom() + Ui.dp(c, prefs.areaPadDp(AREA_TOOLBAR, Prefs.SIDE_BOTTOM))
-                        : kBottom - padB;
-                out[1] = Math.min(edge, getHeight() - Ui.dp(c, 3));
-                return true;
+            }
             case H_AREA_L:
             case H_AREA_T:
             case H_AREA_R:
             case H_AREA_B: {
-                // 고른 영역 윤곽선의 각 변 가운데.
+                // 고른 영역 윤곽선(위·아래 여백 포함)의 각 변 가운데.
                 RectF r = new RectF();
-                if (!areaBounds(selection.area(), r)) return false;
+                if (!padBounds(selection.area(), r)) return false;
                 out[0] = h == H_AREA_L ? Math.max(r.left, Ui.dp(c, 3)) : h == H_AREA_R ? Math.min(r.right, w - Ui.dp(c, 3))
                         : r.centerX();
                 out[1] = h == H_AREA_T ? Math.max(r.top, Ui.dp(c, 4)) : h == H_AREA_B ? Math.min(r.bottom, getHeight() - Ui.dp(c, 3))
@@ -891,7 +905,7 @@ final class KeyboardPreview extends FrameLayout {
             areaLabel.setFakeBoldText(true);
             float r = Ui.dp(ctx, prefs.keyRadiusDp()) + Ui.dp(ctx, 4);
             for (int a = 0; a < AREAS; a++) {
-                if (!areaBounds(a, area)) continue;
+                if (!(which == LAYER_PAD ? padBounds(a, area) : areaBounds(a, area))) continue;
                 boolean chosen = layer == which && selection != null && selection.kind == SEL_AREA && selection.area() == a;
                 stroke.setColor(withAlpha(accent, (chosen ? 1f : 0.55f) * alpha));
                 // 고른 영역은 고른 키와 같은 굵기로 굵게.
