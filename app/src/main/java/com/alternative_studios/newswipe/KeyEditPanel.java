@@ -698,7 +698,7 @@ final class KeyEditPanel {
         // 위치와 높이는 도구 막대를 꺼도 추천 단어 줄에 그대로 쓰이므로 스위치와 따로 둔다.
         look.addView(toggle("자판 아래에 두기", "도구 막대를 자판 위가 아니라 아래에 놓습니다. ", prefs.toolbarBottom(),
                 on -> put(Prefs.TOOLBAR_BOTTOM, on)));
-        look.addView(slider("도구 막대 높이", Prefs.TOOLBAR_HEIGHT, prefs.toolbarHeight(), 70, 150, 1, "%"));
+        look.addView(slider("도구 막대 높이", Prefs.TOOLBAR_HEIGHT, prefs.toolbarHeight(), 70, 150, 5, "%"));
         look.addView(slider("도구 버튼 크기", Prefs.TOOL_BUTTON_SIZE, prefs.toolButtonSize(), 70, 150, 1, "%"));
         look.addView(note("도구 버튼의 아이콘은 막대보다 커지지 않습니다."));
         buildToolbarSwipe(ToolbarSwipes.BAR, "도구 막대");

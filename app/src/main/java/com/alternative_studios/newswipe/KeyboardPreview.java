@@ -849,6 +849,11 @@ final class KeyboardPreview extends FrameLayout {
         }
     }
 
+    /** 높이 값(%)은 5% 단위로 움직인다. */
+    private static int snap5(float v) {
+        return Math.round(v / 5f) * 5;
+    }
+
     private static int clamp(int v, int min, int max) {
         return Math.max(min, Math.min(max, v));
     }
@@ -860,18 +865,18 @@ final class KeyboardPreview extends FrameLayout {
         int v;
         switch (h) {
             case H_TOOLBAR:
-                v = clamp(Math.round((dragStart - dy) / Ui.dp(c, 40) * 100f), 70, 150);
+                v = clamp(snap5((dragStart - dy) / Ui.dp(c, 40) * 100f), 70, 150);
                 break;
             case H_NUMBER_ROW:
-                v = clamp(Math.round((dragStart - dy) / (Ui.dp(c, 54) * prefs.keyboardHeight() / 100f) * 100f),
+                v = clamp(snap5((dragStart - dy) / (Ui.dp(c, 54) * prefs.keyboardHeight() / 100f) * 100f),
                         Prefs.NUMBER_ROW_HEIGHT_MIN, Prefs.NUMBER_ROW_HEIGHT_MAX);
                 break;
             case H_FN_ROW:
-                v = clamp(Math.round((dragStart - dy) / (Ui.dp(c, 54) * prefs.keyboardHeight() / 100f) * 100f),
+                v = clamp(snap5((dragStart - dy) / (Ui.dp(c, 54) * prefs.keyboardHeight() / 100f) * 100f),
                         Prefs.FN_ROW_HEIGHT_MIN, Prefs.FN_ROW_HEIGHT_MAX);
                 break;
             case H_HEIGHT:
-                v = clamp(Math.round((dragStart - dy) / (Ui.dp(c, 54) * rowUnits()) * 100f), 70, 140);
+                v = clamp(snap5((dragStart - dy) / (Ui.dp(c, 54) * rowUnits()) * 100f), 70, 140);
                 break;
             case H_PAD_LEFT: v = clamp(Math.round(dragStart + dx / density), 0, 24); break;
             case H_PAD_RIGHT: v = clamp(Math.round(dragStart - dx / density), 0, 24); break;
@@ -942,6 +947,10 @@ final class KeyboardPreview extends FrameLayout {
             float r = Ui.dp(ctx, prefs.keyRadiusDp()) + Ui.dp(ctx, 4);
             for (int a = 0; a < AREAS; a++) {
                 if (!padBounds(a, area)) continue;   // 영역과 그 위·아래 여백까지
+                // 맨 위·맨 아래 윤곽선이 미리보기 가장자리에서 잘리지 않게 테두리 굵기의 절반만큼은 안쪽에 둔다.
+                float edge = Ui.dp(ctx, 1.5f);
+                area.top = Math.max(area.top, edge);
+                area.bottom = Math.min(area.bottom, getHeight() - edge);
                 boolean chosen = layer == which && selection != null && selection.kind == SEL_AREA && selection.area() == a;
                 stroke.setColor(withAlpha(accent, (chosen ? 1f : 0.55f) * alpha));
                 // 고른 영역은 고른 키와 같은 굵기로 굵게.

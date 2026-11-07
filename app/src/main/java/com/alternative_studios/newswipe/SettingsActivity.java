@@ -1501,7 +1501,7 @@ public final class SettingsActivity extends Activity {
                 LinearLayout rest = new LinearLayout(this);
                 rest.setOrientation(LinearLayout.VERTICAL);
                 rest.addView(sizeSlider("숫자 줄 높이", Prefs.NUMBER_ROW_HEIGHT, prefs::numberRowHeight,
-                        Prefs.NUMBER_ROW_HEIGHT_MIN, Prefs.NUMBER_ROW_HEIGHT_MAX, 1, "%"));
+                        Prefs.NUMBER_ROW_HEIGHT_MIN, Prefs.NUMBER_ROW_HEIGHT_MAX, 5, "%"));
                 rest.addView(numberHintToggle());
                 rest.addView(note(KEY_PAGE_NOTE));
                 // 여백 섹션도 숫자 줄을 켰을 때만 보인다.
@@ -1522,8 +1522,7 @@ public final class SettingsActivity extends Activity {
             case KeyboardPreview.AREA_LETTERS: {
                 buildKoreanLayoutSection();
                 LinearLayout size = section("모양");
-                size.addView(sizeSlider("글자 키 높이", Prefs.KEYBOARD_HEIGHT, prefs::keyboardHeight, 70, 140, 1, "%"));
-                size.addView(note("글자 키 줄의 높이로, 숫자 줄과 기능키 줄도 같은 비율로 커집니다. 미리보기의 ↕ 버튼으로도 바꿉니다."));
+                size.addView(sizeSlider("글자 키 높이", Prefs.KEYBOARD_HEIGHT, prefs::keyboardHeight, 70, 140, 5, "%"));
                 addLetterInput(section("입력"));   // ⌫ 인식 범위는 ⌫ 키 설정에
                 LinearLayout lp = section("길게 누르기");
                 addLetterLongPress(lp);
@@ -1541,7 +1540,7 @@ public final class SettingsActivity extends Activity {
                 // 기능키 전체에 걸리는 것만 둔다. 스페이스바·⌫·기호 키·🌐︎처럼 키 하나에 매인 설정은 '키' 페이지의 그 키에 있다.
                 LinearLayout fn = section("모양");
                 fn.addView(sizeSlider("기능키 높이", Prefs.FN_ROW_HEIGHT, prefs::fnRowHeight,
-                        Prefs.FN_ROW_HEIGHT_MIN, Prefs.FN_ROW_HEIGHT_MAX, 1, "%"));
+                        Prefs.FN_ROW_HEIGHT_MIN, Prefs.FN_ROW_HEIGHT_MAX, 5, "%"));
                 addFunctionKeyLayout(fn);
                 LinearLayout swipe = section("길게 누르기·밀기");
                 swipe.addView(fnLongPressSlider());
