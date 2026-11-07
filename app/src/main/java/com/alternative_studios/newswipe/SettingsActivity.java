@@ -199,7 +199,7 @@ public final class SettingsActivity extends Activity {
 
     /** 하위 메뉴 정의: {id, 제목, 설명}. */
     private static final String[][] SECTIONS = {
-            {KEYBOARD, "키보드 편집", "미리보기에서 크기·여백과 키마다 누르기·길게 누르기·밀기, 도구 막대"},
+            {KEYBOARD, "키보드 편집", "레이아웃, 모양, 동작"},
             {"theme", "테마", "화면 모드, 강조 색"},
             {"feedback", "소리 및 진동", "키를 누를 때의 진동과 소리"},
             {"words", "추천, 학습 및 완성", "단어 추천, 학습, 단축어, 자동 완성"},
