@@ -192,6 +192,8 @@ public final class KeyboardView extends View {
 
     // 크기
     private float gapX, gapY;   // 키 사이 간격 (좌우·상하)
+    /** 일반 줄(높이 1.0) 하나의 높이 (px). 기능키 줄·숫자 줄의 높이를 바꿔도 아이콘 크기는 이것을 기준으로 정한다. */
+    private float rowUnitPx;
     private float radius;   // 키 모서리 곡률 (설정의 '키 곡률')
     private final float cursorStep, cursorStepY;
     private float padL, padT, padR, padB;
@@ -468,6 +470,7 @@ public final class KeyboardView extends View {
         if (layout == null || w == 0 || h == 0) return;
         float unit = (w - padL - padR) / layout.columns;
         float rowUnit = (h - padT - padB) / layout.totalHeight();
+        rowUnitPx = rowUnit;
         float y = padT;
         for (KeyboardLayout.Row row : layout.rows) {
             float rh = row.height * rowUnit;
@@ -642,6 +645,11 @@ public final class KeyboardView extends View {
         c.restore();
     }
 
+    /** 아이콘 크기: 기준 크기(최대 capDp)에 글자 크기 배율을 곱하고, 키 안에 들어가게 maxPx로 막는다. */
+    private float iconSize(float base, int capDp, float maxPx) {
+        return Math.min(Math.min(base, dp(capDp)) * textScale, maxPx);
+    }
+
     /** 키 면의 색 (눌리지 않았을 때). 강조색이면 글자는 onAccent, 아니면 글자 색이다. */
     private int faceColor(Key k) {
         if (k.type == Key.ENTER) {
@@ -690,34 +698,38 @@ public final class KeyboardView extends View {
             c.drawRoundRect(r, radius, radius, fill);
         }
 
-        float iconSize = Math.min(r.height(), r.width()) * 0.52f;
+        // 아이콘 크기: 이 줄의 높이가 아니라 일반 줄 높이를 기준으로 해서 기능키 줄의 높이를 바꿔도 그대로이고,
+        // 글자처럼 '키 글자 크기'를 따라 커지고 작아진다. 키 밖으로 넘치지 않게만 막는다.
+        float baseH = rowUnitPx > 0 ? rowUnitPx - gapY : r.height();
+        float iconSize = Math.min(baseH, r.width()) * 0.52f;
+        float iconMax = Math.min(r.height(), r.width()) * 0.8f;
         icon.setColor(fg);
         switch (k.type) {
             case Key.SHIFT:
                 Icons.draw(c, shiftState == 0 ? Icons.SHIFT : shiftState == 1 ? Icons.SHIFT_ON : Icons.SHIFT_LOCK,
-                        cx, cy, Math.min(iconSize, dp(24)), icon);
+                        cx, cy, iconSize(iconSize, 24, iconMax), icon);
                 return;
             case Key.DELETE:
-                Icons.draw(c, Icons.DELETE, cx, cy, Math.min(iconSize, dp(24)), icon);
+                Icons.draw(c, Icons.DELETE, cx, cy, iconSize(iconSize, 24, iconMax), icon);
                 return;
             case Key.ENTER:
-                Icons.draw(c, enterIcon, cx, cy, Math.min(iconSize, dp(24)), icon);
+                Icons.draw(c, enterIcon, cx, cy, iconSize(iconSize, 24, iconMax), icon);
                 return;
             case Key.LANGUAGE:
-                Icons.draw(c, Icons.GLOBE, cx, cy, Math.min(iconSize, dp(22)), icon);
+                Icons.draw(c, Icons.GLOBE, cx, cy, iconSize(iconSize, 22, iconMax), icon);
                 return;
             case Key.EMOJI:
             case Key.EMOJI_KEY:
-                Icons.draw(c, Icons.EMOJI, cx, cy, Math.min(iconSize, dp(22)), icon);
+                Icons.draw(c, Icons.EMOJI, cx, cy, iconSize(iconSize, 22, iconMax), icon);
                 return;
             case Key.CLIPBOARD:
-                Icons.draw(c, Icons.CLIPBOARD, cx, cy, Math.min(iconSize, dp(22)), icon);
+                Icons.draw(c, Icons.CLIPBOARD, cx, cy, iconSize(iconSize, 22, iconMax), icon);
                 return;
             case Key.VOICE:
-                Icons.draw(c, Icons.MIC, cx, cy, Math.min(iconSize, dp(22)), icon);
+                Icons.draw(c, Icons.MIC, cx, cy, iconSize(iconSize, 22, iconMax), icon);
                 return;
             case Key.CURSOR_PAD:
-                Icons.draw(c, Icons.MENU_MOVE, cx, cy, Math.min(iconSize, dp(22)), icon);
+                Icons.draw(c, Icons.MENU_MOVE, cx, cy, iconSize(iconSize, 22, iconMax), icon);
                 return;
             case Key.SPACE:
                 // 글자·기호 자판의 스페이스바는 비워 두고(설정하면 글자 자판에 언어 이름), 숫자 자판에서만 ␣로 띄어쓰기 키임을 알린다.

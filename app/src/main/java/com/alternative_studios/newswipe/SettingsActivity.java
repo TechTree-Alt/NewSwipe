@@ -189,6 +189,7 @@ public final class SettingsActivity extends Activity {
             {"theme", "테마", "화면 모드, 강조 색"},
             {"feedback", "소리 및 진동", "키를 누를 때의 진동과 소리"},
             {"words", "추천, 학습 및 완성", "단어 추천, 학습, 단축어, 자동 완성"},
+            {"clipemoji", "클립보드 및 이모지", "클립보드 기록, 편집 버튼, 이모지 크기·추천"},
             {"onehand", "한 손 모드", "자판 폭·키 높이, 세로 위치"},
             {"backup", "설정 가져오기 및 내보내기", "모든 설정을 파일로 저장하거나 불러오기"},
             {"lab", "실험실", "대화면 레이아웃, 외국어 자판, 외장 키보드"},
@@ -240,6 +241,7 @@ public final class SettingsActivity extends Activity {
             case "onehand": buildOneHand(); break;
             case "theme": buildTheme(); break;
             case "words": buildWords(); break;
+            case "clipemoji": buildTools(); break;
             case LEARNED: buildLearned(); break;
             case BLOCKED: buildBlocked(); break;
             case "feedback": buildFeedback(); break;
@@ -372,7 +374,7 @@ public final class SettingsActivity extends Activity {
             {KEYBOARD, "아래쪽 여백", "패딩 간격"},
             {KEYBOARD, "키 좌우 여백", "키 간격 갭"},
             {KEYBOARD, "키 상하 여백", "키 간격 갭"},
-            {KEYBOARD, "이모지 크기", "이모티콘 크기 글자 키우기 크게 이모지 창"},
+            {"clipemoji", "이모지 크기", "이모티콘 크기 글자 키우기 크게 이모지 창"},
             {KEYBOARD, "키 위치·폭 사용자화", "자음 모음 열 폭 위치 배치"},
             {KEYBOARD, "자·모음 균형 레이아웃", "자음 모음 반반 균형"},
             {KEYBOARD, "가로 모드 키보드 사용자화", "가로 화면 landscape"},
@@ -403,7 +405,7 @@ public final class SettingsActivity extends Activity {
             {"words", "도구 막대 전체를 쓰기", "추천 툴바 전체"},
             {"words", "추천 단어 뒤에 공백 포함", "띄어쓰기 스페이스"},
             {"words", "단어 추천", "자동 완성 예측 추천"},
-            {KEYBOARD, "이모지 추천", "이모티콘 추천"},
+            {"clipemoji", "이모지 추천", "이모티콘 추천"},
             {"words", "단축어 편집", "줄임말 약어 텍스트 확장"},
             {"words", "단축어 사용", "줄임말 약어 텍스트 확장"},
             {"words", "자동 수정", "오타 교정 자동 고침"},
@@ -425,10 +427,10 @@ public final class SettingsActivity extends Activity {
             {KEYBOARD, "자판 아래에 두기", "툴바 위치 아래 위"},
             {KEYBOARD, "도구 막대 높이", "툴바 높이 크기"},
             {KEYBOARD, "도구 버튼 크기", "툴바 아이콘 크기"},
-            {KEYBOARD, "이미지 저장", "클립보드 사진"},
-            {KEYBOARD, "클립보드 기록 저장", "복사 기록 히스토리"},
-            {KEYBOARD, "선택하면 편집 버튼 보이기", "잘라내기 복사 붙여넣기 전체 선택 편집 칩"},
-            {KEYBOARD, "클립보드 기록 모두 지우기", "복사 기록 삭제"},
+            {"clipemoji", "이미지 저장", "클립보드 사진"},
+            {"clipemoji", "클립보드 기록 저장", "복사 기록 히스토리"},
+            {"clipemoji", "선택하면 편집 버튼 보이기", "잘라내기 복사 붙여넣기 전체 선택 편집 칩"},
+            {"clipemoji", "클립보드 기록 모두 지우기", "복사 기록 삭제"},
             {"onehand", "자판 폭", "한 손 모드 너비"},
             {"onehand", "가로 모드 자판 폭", "한 손 모드 너비 가로"},
             {"onehand", "키 높이", "한 손 모드 높이"},
@@ -544,7 +546,7 @@ public final class SettingsActivity extends Activity {
     private final android.os.Handler uiHandler = new android.os.Handler(android.os.Looper.getMainLooper());
 
     /** 검색 목록에 넣을 화면 (정보 화면과 사용법·방침 같은 안내문, 학습한 단어는 뺀다). */
-    private static final String[] HARVEST_IDS = {KEYBOARD, "theme", "feedback", "words", "onehand", "backup", "lab", "app",
+    private static final String[] HARVEST_IDS = {KEYBOARD, "theme", "feedback", "words", "clipemoji", "onehand", "backup", "lab", "app",
             KEY_AREA, LANDSCAPE_AREA, LARGE_AREA};
 
     private void ensureSearchIndex() {
@@ -655,7 +657,7 @@ public final class SettingsActivity extends Activity {
     private String searchCacheStamp() {
         try {
             // 뒤의 꼬리표는 메뉴 구성이 바뀌면 올린다 (같은 앱 버전이라도 예전 메뉴로 모은 목록을 쓰지 않게).
-            return "v" + getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode() + "-k2";
+            return "v" + getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode() + "-k3";
         } catch (PackageManager.NameNotFoundException e) {
             return "v?";
         }
@@ -891,7 +893,7 @@ public final class SettingsActivity extends Activity {
             {"keys", "길게 누르기 (키마다 정한 문자·연속 입력·기능 포함)"},
             {"swipe", "밀어서 글자 입력 (키마다 정한 글자 포함)"},
             {"swipefn", "밀어서 기능 (키·버튼마다 정한 기능 포함)"},
-            {"tools", "도구 막대, 클립보드, 이모지"},
+            {"tools", "도구 막대"},
     };
 
     /**
@@ -989,7 +991,6 @@ public final class SettingsActivity extends Activity {
             buildKeys();
             buildSwipe();
             buildSwipeFunctions();
-            buildTools();
             if (!harvesting) list.addView(editorResetButton());
         } finally {
             list = saved;
@@ -1275,7 +1276,7 @@ public final class SettingsActivity extends Activity {
 
     /**
      * 고른 것의 편집 내용을 창에 채운다. 키·도구 막대 버튼·도구 막대는 키 편집 칸(KeyEditPanel)이, 영역은 그 영역 전체에
-     * 해당하는 설정(areaBox)이 맡는다. 도구 막대 영역은 도구 막대 칸 아래에 클립보드·이모지를 더한다.
+     * 해당하는 설정(areaBox)이 맡는다. 도구 막대 영역은 도구 막대 칸(KeyEditPanel)이 맡는다.
      */
     private void showSelection(KeyboardPreview.Selection s) {
         if (s == null) {
@@ -1320,7 +1321,7 @@ public final class SettingsActivity extends Activity {
     private void buildArea(int areaId) {
         switch (areaId) {
             case KeyboardPreview.AREA_TOOLBAR:
-                buildTools();   // 클립보드·이모지 (도구 막대 칸은 위의 KeyEditPanel)
+                // 도구 막대 칸은 위의 KeyEditPanel이 맡는다. 클립보드·이모지는 메인 화면의 '클립보드 및 이모지' 메뉴에 있다.
                 break;
             case KeyboardPreview.AREA_NUMBER: {
                 LinearLayout c = section("숫자 줄");
@@ -3588,6 +3589,7 @@ public final class SettingsActivity extends Activity {
             case "onehand": return Icons.ONE_HAND;
             case "theme": return Icons.MENU_THEME;
             case "words": return Icons.MENU_WORDS;
+            case "clipemoji": return Icons.CLIPBOARD;
             case "feedback": return Icons.MENU_SOUND;
             case "backup": return Icons.MENU_BACKUP;
             case "lab": return Icons.MENU_LAB;
