@@ -605,7 +605,9 @@ final class KeyboardPreview extends FrameLayout {
     private boolean handleShown(int h) {
         if (keys.getLayout() == null) return false;
         // 키보드 층: 키보드 전체의 여백 (위·아래·왼쪽·오른쪽). 다른 층에는 여백 손잡이가 없다.
-        if (layer == LAYER_BOARD) return h == H_PAD_TOP || h == H_PAD_BOTTOM || h == H_PAD_LEFT || h == H_PAD_RIGHT;
+        // 키보드 층: 키보드 전체를 눌러 골랐을 때만 그 여백 손잡이.
+        if (layer == LAYER_BOARD) return selection != null && selection.kind == SEL_BOARD
+                && (h == H_PAD_TOP || h == H_PAD_BOTTOM || h == H_PAD_LEFT || h == H_PAD_RIGHT);
         if (layer == LAYER_PAD) {
             // 여백 층: 고른 영역의 여백 (도구 막대는 왼쪽·오른쪽만).
             if (selection == null || selection.kind != SEL_AREA || h < H_AREA_L) return false;
@@ -625,7 +627,7 @@ final class KeyboardPreview extends FrameLayout {
                     case AREA_LETTERS: return h == H_HEIGHT;
                     default: return h == H_FN_ROW;
                 }
-            case SEL_KEY: return (h == H_GAP_X || h == H_GAP_Y) && selectedKey != null && selectable(selectedKey);
+            case SEL_KEY: return false;   // 키 간격은 '키 모양'의 슬라이더로만 바꾼다
             default: return false;
         }
     }

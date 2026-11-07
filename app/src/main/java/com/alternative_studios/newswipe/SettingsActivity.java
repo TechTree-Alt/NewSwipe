@@ -1100,7 +1100,6 @@ public final class SettingsActivity extends Activity {
             LinearLayout tip = card();
             tip.addView(note("미리보기는 좌우로 넘기는 네 페이지입니다. '키보드'에서는 키보드 전체의 여백을, '여백'에서는 영역마다의 여백을, '영역'에서는 도구 막대·숫자 줄·"
                     + "글자 키·기능키를, '키'에서는 키 하나를 눌러 설정합니다. 손잡이(작은 막대)를 끌면 크기가 바로 바뀝니다."));
-            buildSizes();
             buildLook();
             // 숫자 줄은 꺼 두면 미리보기에 없어 누를 수 없으므로 여기서도 그 설정 창을 연다.
             LinearLayout numberRow = section("숫자 줄");
@@ -1520,6 +1519,9 @@ public final class SettingsActivity extends Activity {
                 swipe.addView(swipeDistanceSlider());
                 addKeyboardSwipe(swipe);
                 addTrackpadSpeed(swipe);
+                LinearLayout size = section("크기");
+                size.addView(sizeSlider("키보드 높이", Prefs.KEYBOARD_HEIGHT, prefs::keyboardHeight, 70, 140, 1, "%"));
+                size.addView(note("글자 키 줄의 높이로, 숫자 줄과 기능키 줄도 같은 비율로 커집니다. 미리보기의 손잡이로도 바꿉니다."));
                 LinearLayout more = card();
                 more.addView(note(KEY_PAGE_NOTE));
                 break;
@@ -1708,11 +1710,13 @@ public final class SettingsActivity extends Activity {
         return b;
     }
 
-    /** 키 모양: 글자 크기, 곡률, 그림자, 누름 미리보기, 힌트, 스페이스바 언어 이름. 크기는 '크기·간격'에, 여백은 미리보기의 키보드·여백 페이지에 있다. */
+    /** 키 모양: 글자 크기, 곡률, 키 간격, 그림자, 누름 미리보기. 키보드 높이는 글자 키 영역 창에, 여백은 미리보기의 키보드·여백 페이지에 있다. */
     private void buildLook() {
         LinearLayout look = section("키 모양");
         look.addView(slider("키 글자 크기", Prefs.KEY_TEXT_SIZE, prefs.keyTextSize(), 70, 140, 5, "%"));
         look.addView(slider("키 곡률", Prefs.KEY_RADIUS, prefs.keyRadiusDp(), 0, 24, 1, "dp"));
+        look.addView(slider("키 좌우 여백", Prefs.KEY_GAP_X, prefs.keyGapXDp(), 0, 12, 1, "dp"));
+        look.addView(slider("키 상하 여백", Prefs.KEY_GAP_Y, prefs.keyGapYDp(), 0, 20, 1, "dp"));
         View shadowStrength = subGroup(slider("그림자 세기", Prefs.KEY_SHADOW_STRENGTH, prefs.keyShadowStrength(), 10, 100, 5, "%"));
         look.addView(toggle("키 그림자", "키 아래에 그림자를 그려 입체감을 줍니다.",
                 Prefs.KEY_SHADOW, prefs.keyShadow(), shadowStrength));
@@ -1797,19 +1801,6 @@ public final class SettingsActivity extends Activity {
         board.addView(toggle("위로 밀어서 추천 단어 입력",
                 "추천 단어가 떠 있을 때 자판의 왼쪽·가운데·오른쪽에서 위로 밀면 첫째·둘째·셋째 추천 단어를 입력합니다. ",
                 Prefs.SWIPE_PICK_SUGGESTION, prefs.swipePickSuggestion()));
-    }
-
-    /**
-     * 크기·간격: 미리보기의 손잡이로도 바꾸는 값들. 손잡이를 끌면 이 슬라이더도 같이 움직이고(sizeSlider),
-     * 슬라이더를 움직이면 미리보기가 바로 바뀐다.
-     */
-    private void buildSizes() {
-        LinearLayout size = section("크기·간격");
-        size.addView(sizeSlider("키보드 높이", Prefs.KEYBOARD_HEIGHT, prefs::keyboardHeight, 70, 140, 1, "%"));
-        size.addView(sizeSlider("키 좌우 여백", Prefs.KEY_GAP_X, prefs::keyGapXDp, 0, 12, 1, "dp"));
-        size.addView(sizeSlider("키 상하 여백", Prefs.KEY_GAP_Y, prefs::keyGapYDp, 0, 20, 1, "dp"));
-        size.addView(note("숫자 줄·기능키·도구 막대의 높이는 미리보기에서 그 영역을, 여백은 맨 왼쪽 '키보드'·'여백' 페이지를 눌러 바꿉니다. "
-                + "키 좌우·상하 여백은 키 사이의 간격으로, 키 페이지에서 키를 누르면 생기는 손잡이로도 바꿉니다."));
     }
 
     /** 이모지 창의 이모지 크기 (기본·크게·더 크게). 고르면 아래 견본 글자도 같은 크기로 바뀐다. */
