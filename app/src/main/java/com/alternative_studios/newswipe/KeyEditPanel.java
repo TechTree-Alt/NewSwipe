@@ -495,15 +495,6 @@ final class KeyEditPanel {
         return fn >= 0 ? FunctionSwipes.SPEC.cardTitle(fn) : "기능키";
     }
 
-    private String functionHint() {
-        if (key.type == Key.FUNCTION) return "한글 자판의 Shift 자리. 누르기·길게 누르기·밀기마다 기능을 정합니다.";
-        if (key.type == Key.SPACE) return "띄어쓰기";
-        int lp = lpSlot();
-        if (lp >= 0) return LongPressActions.SPEC.cardHint(lp);
-        int fn = fnSlot();
-        return fn >= 0 ? FunctionSwipes.SPEC.cardHint(fn) : "";
-    }
-
     /** 네 방향 판 가운데에 쓰는 짧은 이름. */
     private String shortName() {
         switch (key.type) {
@@ -523,7 +514,7 @@ final class KeyEditPanel {
 
     private void buildFunctionKey() {
         String name = functionName();
-        header(null, name, functionHint());
+        header(null, name, null);
         if (key.type == Key.FUNCTION) {
             buildFnKey();
             return;
@@ -682,7 +673,7 @@ final class KeyEditPanel {
     // ================================================================ 도구 막대
 
     private void buildToolButton(String id) {
-        header(null, ToolbarButtons.label(id), ToolbarButtons.hint(id) != null ? ToolbarButtons.hint(id) : "도구 막대 버튼");
+        header(null, ToolbarButtons.label(id), null);
         // 버튼의 순서·유무는 도구 막대(영역)에서 바꾼다.
         int slot = toolSlot(id);
         if (slot >= 0) buildToolbarSwipe(slot, ToolbarButtons.label(id));
