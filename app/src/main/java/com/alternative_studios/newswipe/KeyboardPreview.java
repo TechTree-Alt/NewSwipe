@@ -492,8 +492,9 @@ final class KeyboardPreview extends FrameLayout {
             listener.onTap(best < 0 ? null : Selection.area(best));
             return;
         }
+        // 키 페이지에서는 도구 막대 전체를 고르지 않는다 (도구 막대는 영역 페이지에서, 버튼은 하나씩 고른다).
         if (placeholder != null && placeholder.getParent() != null && y >= placeholder.getTop() && y < placeholder.getBottom()) {
-            listener.onTap(Selection.toolbar());
+            listener.onTap(null);
             return;
         }
         if (bar.getParent() != null && y >= bar.getTop() && y < bar.getBottom()) {
@@ -504,7 +505,7 @@ final class KeyboardPreview extends FrameLayout {
                     return;
                 }
             }
-            listener.onTap(Selection.toolbar());
+            listener.onTap(null);
             return;
         }
         Key k = keyAt(x, y - keys.getTop());
@@ -661,7 +662,7 @@ final class KeyboardPreview extends FrameLayout {
     /** 손잡이의 가운데 (미리보기 좌표). 보이지 않으면 false. */
     private boolean handleCenter(int h, float[] out) {
         if (!handleEdge(h, out)) return false;
-        if (isKnob(h)) return true;   // 높이 버튼은 영역 한가운데
+        if (isKnob(h)) return true;   // 높이 버튼은 영역 안쪽에 이미 있다
         // 경계선 위가 아니라 윤곽선 안쪽에 둔다: 화면 가장자리의 시스템 몸짓(뒤로 가기·홈)과 겹치지 않게.
         float in = Ui.dp(getContext(), 9);
         switch (h) {
@@ -694,11 +695,12 @@ final class KeyboardPreview extends FrameLayout {
             case H_NUMBER_ROW:
             case H_HEIGHT:
             case H_FN_ROW: {
-                // 높이 버튼(↕): 영역 한가운데. 위·아래로 끌어 그 영역의 높이를 바꾼다.
+                // 높이 버튼(↕): 영역 세로 가운데, 가운데보다 왼쪽 (가운데의 위·아래 여백 손잡이와 겹치지 않게).
+                // 위·아래로 끌어 그 영역의 높이를 바꾼다.
                 RectF r = new RectF();
                 int a = h == H_TOOLBAR ? AREA_TOOLBAR : h == H_NUMBER_ROW ? AREA_NUMBER : h == H_FN_ROW ? AREA_FUNCTION : AREA_LETTERS;
                 if (!areaBounds(a, r)) return false;
-                out[0] = r.centerX();
+                out[0] = Math.max(r.left + Ui.dp(c, 30), r.centerX() - Ui.dp(c, 64));
                 out[1] = r.centerY();
                 return true;
             }
@@ -720,9 +722,8 @@ final class KeyboardPreview extends FrameLayout {
                 // 고른 영역 윤곽선(위·아래 여백 포함)의 각 변 가운데.
                 RectF r = new RectF();
                 if (!padBounds(selection.area(), r)) return false;
-                // 위·아래 손잡이는 가운데의 높이 버튼(↕)과 겹치지 않게 왼쪽으로 비켜 둔다.
                 out[0] = h == H_AREA_L ? Math.max(r.left, Ui.dp(c, 3)) : h == H_AREA_R ? Math.min(r.right, w - Ui.dp(c, 3))
-                        : r.centerX() - Ui.dp(c, 56);
+                        : r.centerX();
                 out[1] = h == H_AREA_T ? Math.max(r.top, Ui.dp(c, 4)) : h == H_AREA_B ? Math.min(r.bottom, getHeight() - Ui.dp(c, 3))
                         : r.centerY();
                 return true;
