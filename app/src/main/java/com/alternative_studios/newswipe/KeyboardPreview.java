@@ -788,7 +788,7 @@ final class KeyboardPreview extends FrameLayout {
         for (int h = 0; h < HANDLES; h++) {
             if (!handleCenter(h, p)) continue;
             // 손잡이 모양(긴 쪽 28dp)을 따라 잰 거리.
-            float half = Ui.dp(getContext(), 18);
+            float half = Ui.dp(getContext(), 15);
             float dx = Math.abs(x - p[0]), dy = Math.abs(y - p[1]);
             if (isKnob(h)) {
                 // 동그란 버튼: 가운데에서의 거리 (반지름만큼은 버튼 안).
@@ -1103,7 +1103,7 @@ final class KeyboardPreview extends FrameLayout {
                     drawKnob(c, h, point[0], point[1], on);
                     continue;
                 }
-                float lenHalf = Ui.dp(ctx, on ? 20 : 14), thickHalf = Ui.dp(ctx, on ? 3.5f : 2.5f);
+                float lenHalf = Ui.dp(ctx, on ? 16 : 11), thickHalf = Ui.dp(ctx, on ? 3.5f : 2.5f);
                 if (VERTICAL[h]) tmp.set(point[0] - lenHalf, point[1] - thickHalf, point[0] + lenHalf, point[1] + thickHalf);
                 else tmp.set(point[0] - thickHalf, point[1] - lenHalf, point[0] + thickHalf, point[1] + lenHalf);
                 stroke.setStrokeWidth(Ui.dp(ctx, 2));
