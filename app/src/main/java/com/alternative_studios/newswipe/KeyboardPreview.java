@@ -792,7 +792,7 @@ final class KeyboardPreview extends FrameLayout {
             float dx = Math.abs(x - p[0]), dy = Math.abs(y - p[1]);
             if (isKnob(h)) {
                 // 동그란 버튼: 가운데에서의 거리 (반지름만큼은 버튼 안).
-                float d = Math.max(0, (float) Math.hypot(dx, dy) - Ui.dp(getContext(), 16));
+                float d = Math.max(0, (float) Math.hypot(dx, dy) - Ui.dp(getContext(), 13));
                 if (d <= reach && d < bestDist) {
                     bestDist = d;
                     best = h;
@@ -1132,7 +1132,7 @@ final class KeyboardPreview extends FrameLayout {
         /** 높이 버튼: 강조색 원에 ↕, 바탕색 테두리. 눌렀으면 옆에 안내 알약. */
         private void drawKnob(Canvas c, int h, float x, float y, boolean on) {
             Context ctx = getContext();
-            float rad = Ui.dp(ctx, on ? 17 : 15);
+            float rad = Ui.dp(ctx, on ? 14 : 12);
             stroke.setStrokeWidth(Ui.dp(ctx, 2));
             stroke.setColor(theme.background);
             fill.setColor(theme.accent);
@@ -1142,7 +1142,7 @@ final class KeyboardPreview extends FrameLayout {
             stroke.setColor(theme.onAccent);
             stroke.setStrokeWidth(Ui.dp(ctx, 2));
             stroke.setStrokeCap(Paint.Cap.ROUND);
-            float len = Ui.dp(ctx, 8), head = Ui.dp(ctx, 4);
+            float len = Ui.dp(ctx, 6.5f), head = Ui.dp(ctx, 3.5f);
             c.drawLine(x, y - len, x, y + len, stroke);
             c.drawLine(x - head, y - len + head, x, y - len, stroke);
             c.drawLine(x + head, y - len + head, x, y - len, stroke);
