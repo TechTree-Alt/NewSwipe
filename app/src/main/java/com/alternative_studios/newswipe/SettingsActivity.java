@@ -1478,8 +1478,6 @@ public final class SettingsActivity extends Activity {
         c.addView(areaPadSlider("오른쪽 여백", area, Prefs.SIDE_RIGHT));
         c.addView(areaPadSlider("위쪽 여백", area, Prefs.SIDE_TOP));
         c.addView(areaPadSlider("아래쪽 여백", area, Prefs.SIDE_BOTTOM));
-        c.addView(note("이 영역 둘레의 여백입니다. 키보드 전체 여백에 더해지고, 위·아래 여백만큼 키보드가 높아집니다. "
-                + "미리보기에서 영역 가장자리의 손잡이를 끌어도 됩니다."));
     }
 
     private View areaPadSlider(String label, int area, int side) {
