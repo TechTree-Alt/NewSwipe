@@ -704,7 +704,8 @@ final class KeyboardPreview extends FrameLayout {
                 RectF r = new RectF();
                 int a = h == H_TOOLBAR ? AREA_TOOLBAR : h == H_NUMBER_ROW ? AREA_NUMBER : h == H_FN_ROW ? AREA_FUNCTION : AREA_LETTERS;
                 if (!areaBounds(a, r)) return false;
-                out[0] = Math.max(r.left + Ui.dp(c, 30), r.centerX() - Ui.dp(c, 64));
+                // 글자 키 영역은 높아서 가운데에 둬도 위·아래 여백 손잡이와 겹치지 않는다.
+                out[0] = h == H_HEIGHT ? r.centerX() : Math.max(r.left + Ui.dp(c, 30), r.centerX() - Ui.dp(c, 64));
                 out[1] = r.centerY();
                 return true;
             }
@@ -1148,10 +1149,17 @@ final class KeyboardPreview extends FrameLayout {
                 float tw = areaLabel.measureText(text), th = fm.descent - fm.ascent;
                 float ph = Ui.dp(ctx, 8), pv = Ui.dp(ctx, 4), gap = Ui.dp(ctx, 8);
                 float pillW = tw + 2 * ph;
-                // 오른쪽에 자리가 없으면 왼쪽에 둔다.
-                float left = x + rad + gap;
-                if (left + pillW > getWidth() - Ui.dp(ctx, 4)) left = x - rad - gap - pillW;
-                tmp.set(left, y - th / 2 - pv, left + pillW, y + th / 2 + pv);
+                if (h == H_HEIGHT) {
+                    // 글자 키: 버튼 바로 아래에 가운데 맞춰 놓는다.
+                    float left = Math.max(Ui.dp(ctx, 4), Math.min(x - pillW / 2, getWidth() - Ui.dp(ctx, 4) - pillW));
+                    float top = y + rad + gap;
+                    tmp.set(left, top, left + pillW, top + th + 2 * pv);
+                } else {
+                    // 그 밖의 영역: 오른쪽, 자리가 없으면 왼쪽.
+                    float left = x + rad + gap;
+                    if (left + pillW > getWidth() - Ui.dp(ctx, 4)) left = x - rad - gap - pillW;
+                    tmp.set(left, y - th / 2 - pv, left + pillW, y + th / 2 + pv);
+                }
                 fill.setColor(theme.text);
                 c.drawRoundRect(tmp, tmp.height() / 2, tmp.height() / 2, fill);
                 areaLabel.setColor(theme.background);
