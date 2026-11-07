@@ -387,8 +387,8 @@ public final class SettingsActivity extends Activity {
             {KEYBOARD, "오른쪽 여백", "패딩 간격"},
             {KEYBOARD, "위쪽 여백", "패딩 간격"},
             {KEYBOARD, "아래쪽 여백", "패딩 간격"},
-            {KEYBOARD, "키 좌우 여백", "키 간격 갭"},
-            {KEYBOARD, "키 상하 여백", "키 간격 갭"},
+            {KEYBOARD, "키 사이 좌우 여백", "키 간격 갭"},
+            {KEYBOARD, "키 사이 상하 여백", "키 간격 갭"},
             {"clipemoji", "이모지 크기", "이모티콘 크기 글자 키우기 크게 이모지 창"},
             {KEYBOARD, "키 위치·폭 사용자화", "자음 모음 열 폭 위치 배치"},
             {KEYBOARD, "자·모음 균형 레이아웃", "자음 모음 반반 균형"},
@@ -769,7 +769,7 @@ public final class SettingsActivity extends Activity {
     private String searchCacheStamp() {
         try {
             // 뒤의 꼬리표는 메뉴 구성이 바뀌면 올린다 (같은 앱 버전이라도 예전 메뉴로 모은 목록을 쓰지 않게).
-            return "v" + getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode() + "-k6";
+            return "v" + getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode() + "-k7";
         } catch (PackageManager.NameNotFoundException e) {
             return "v?";
         }
@@ -1726,8 +1726,8 @@ public final class SettingsActivity extends Activity {
         LinearLayout look = section("키 모양");
         look.addView(slider("키 글자 크기", Prefs.KEY_TEXT_SIZE, prefs.keyTextSize(), 70, 140, 5, "%"));
         look.addView(slider("키 곡률", Prefs.KEY_RADIUS, prefs.keyRadiusDp(), 0, 24, 1, "dp"));
-        look.addView(slider("키 좌우 여백", Prefs.KEY_GAP_X, prefs.keyGapXDp(), 0, 12, 1, "dp"));
-        look.addView(slider("키 상하 여백", Prefs.KEY_GAP_Y, prefs.keyGapYDp(), 0, 20, 1, "dp"));
+        look.addView(slider("키 사이 좌우 여백", Prefs.KEY_GAP_X, prefs.keyGapXDp(), 0, 12, 1, "dp"));
+        look.addView(slider("키 사이 상하 여백", Prefs.KEY_GAP_Y, prefs.keyGapYDp(), 0, 20, 1, "dp"));
         View shadowStrength = subGroup(slider("그림자 세기", Prefs.KEY_SHADOW_STRENGTH, prefs.keyShadowStrength(), 10, 100, 5, "%"));
         look.addView(toggle("키 그림자", "키 아래에 그림자를 그려 입체감을 줍니다.",
                 Prefs.KEY_SHADOW, prefs.keyShadow(), shadowStrength));

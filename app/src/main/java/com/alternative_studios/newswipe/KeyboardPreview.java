@@ -124,7 +124,7 @@ final class KeyboardPreview extends FrameLayout {
     private static final boolean[] VERTICAL = {true, true, true, false, false, true, false, true, true, true,
             false, true, false, true};
     private static final String[] HANDLE_NAMES = {"도구 막대 높이", "숫자 줄 높이", "글자 키 높이", "왼쪽 여백", "오른쪽 여백",
-            "아래쪽 여백", "키 좌우 여백", "키 상하 여백", "위쪽 여백", "기능키 높이",
+            "아래쪽 여백", "키 사이 좌우 여백", "키 사이 상하 여백", "위쪽 여백", "기능키 높이",
             "왼쪽 여백", "위쪽 여백", "오른쪽 여백", "아래쪽 여백"};
     private static final String[] HANDLE_KEYS = {Prefs.TOOLBAR_HEIGHT, Prefs.NUMBER_ROW_HEIGHT, Prefs.KEYBOARD_HEIGHT,
             Prefs.PAD_LEFT, Prefs.PAD_RIGHT, Prefs.PAD_BOTTOM, Prefs.KEY_GAP_X, Prefs.KEY_GAP_Y, Prefs.PAD_TOP, Prefs.FN_ROW_HEIGHT,
