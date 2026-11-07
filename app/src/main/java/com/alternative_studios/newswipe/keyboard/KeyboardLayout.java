@@ -764,24 +764,27 @@ public final class KeyboardLayout {
 
     /**
      * 3×4 숫자 패드. 숫자 입력란(전화번호, 숫자, 날짜)에서 뜨고, '기호 자판 대신 숫자 패드 사용'을 켜면 기호 키로도 연다.
-     * 왼쪽 줄에는 글자 자판으로 가는 키(lettersLabel: 가·ABC 등), 기호 자판으로 가는 키(symbolsLabel), 쉼표·온점을 둔다.
+     * 왼쪽 줄에는 위에서부터 +, 쉼표, 온점을 두고, 맨 아래 칸은 반으로 나눠 글자 자판으로 가는 키(lettersLabel: 가·ABC 등)와
+     * 기호 자판으로 가는 키(symbolsLabel)를 둔다.
      * <pre>
-     *  가    1  2  3  -
-     *  ?!@   4  5  6  ␣
-     *  ,     7  8  9  ⌫
-     *  .     *  0  #  ↵
+     *  +      1  2  3  -
+     *  ,      4  5  6  ␣
+     *  .      7  8  9  ⌫
+     *  가 ?!@  *  0  #  ↵
      * </pre>
      * 아래 줄의 * 키와 # 키는 전화번호 입력에 쓴다.
      */
     public static KeyboardLayout numberPad(String symbolsLabel, String lettersLabel) {
         List<Row> rows = new ArrayList<>();
-        rows.add(new Row(1f, fn(Key.TO_LETTERS, lettersLabel, 1f), ch("1", null), ch("2", null), ch("3", null),
+        rows.add(new Row(1f, fnChar("+", null), ch("1", null), ch("2", null), ch("3", null),
                 fnChar("-", new String[]{"+", "*", "/", "#", "(", ")", "=", "N", ";"})));
-        rows.add(new Row(1f, fn(Key.TO_SYMBOLS, symbolsLabel, 1f), ch("4", null), ch("5", null), ch("6", null),
+        rows.add(new Row(1f, fnChar(",", COMMA_POPUP), ch("4", null), ch("5", null), ch("6", null),
                 fn(Key.SPACE, "", 1f)));
-        rows.add(new Row(1f, fnChar(",", COMMA_POPUP), ch("7", null), ch("8", null), ch("9", null),
+        rows.add(new Row(1f, fnChar(".", PERIOD_POPUP), ch("7", null), ch("8", null), ch("9", null),
                 fn(Key.DELETE, "", 1f)));
-        rows.add(new Row(1f, fnChar(".", PERIOD_POPUP), fnChar("*", new String[]{"+", "/", "=", "(", ")", ";"}),
+        // 맨 아래 왼쪽 칸은 세로로 반씩 나눠 왼쪽에 글자(가/ABC) 키, 오른쪽에 기호 키를 둔다
+        rows.add(new Row(1f, fn(Key.TO_LETTERS, lettersLabel, 0.5f), fn(Key.TO_SYMBOLS, symbolsLabel, 0.5f),
+                fnChar("*", new String[]{"+", "/", "=", "(", ")", ";"}),
                 ch("0", new String[]{"+"}), fnChar("#", new String[]{".", ",", ":", "/", "+", "*"}), fn(Key.ENTER, "", 1f)));
         return new KeyboardLayout(NUMBER, 5, rows);
     }
