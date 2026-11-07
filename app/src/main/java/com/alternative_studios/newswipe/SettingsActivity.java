@@ -211,11 +211,9 @@ public final class SettingsActivity extends Activity {
 
     /** 첫 화면 맨 위에 설정 메뉴와 따로 두는 항목. */
     private static final String[] APP = {"app", "정보", "앱 버전, 개인정보 처리방침, 라이선스, 문의"};
-    /** 첫 화면에서 정보 바로 아래에 두는 사용법. */
-    private static final String[] GUIDE = {"usage", "사용법", "NewSwipe의 간단한 사용법"};
 
     /** 메뉴에는 없고 다른 화면에서 여는 하위 화면. */
-    private static final String LEARNED = "learned", BLOCKED = "blocked", USAGE = "usage", PRIVACY = "privacy", LICENSES = "licenses",
+    private static final String LEARNED = "learned", BLOCKED = "blocked", PRIVACY = "privacy", LICENSES = "licenses",
             KEY_AREA = "keyarea", LANDSCAPE_AREA = "landscapearea",
             LARGE_AREA = "largearea";
 
@@ -229,7 +227,6 @@ public final class SettingsActivity extends Activity {
         switch (id) {
             case LEARNED: return "학습한 단어";
             case BLOCKED: return "학습하지 않는 단어";
-            case USAGE: return "사용법";
             case PRIVACY: return "개인정보 처리방침";
             case LICENSES: return "오픈소스 라이선스";
             case KEY_AREA: return "키 위치·폭 사용자화";
@@ -261,7 +258,6 @@ public final class SettingsActivity extends Activity {
             case BLOCKED: buildBlocked(); break;
             case "feedback": buildFeedback(); break;
             case "backup": buildBackup(); break;
-            case USAGE: buildUsage(); break;
             case PRIVACY: buildPrivacy(); break;
             case LICENSES: buildLicenses(); break;
             case KEY_AREA: buildKeyArea(); break;
@@ -315,12 +311,10 @@ public final class SettingsActivity extends Activity {
             if (imm != null) imm.showInputMethodPicker();
         }));
 
-        // 정보와 사용법: 설정 메뉴와 따로 둔다.
+        // 정보: 설정 메뉴와 따로 둔다.
         LinearLayout app = menuCard(card());
         appCard = app;
         app.addView(menuRow(menuIcon(APP[0]), APP[1], APP[2], v -> openSection(APP[0])));
-        app.addView(divider());
-        app.addView(menuRow(Icons.MENU_USAGE, GUIDE[1], GUIDE[2], v -> openSection(USAGE)));
 
         LinearLayout menu = menuCard(section("설정"));
         menuCard = menu;
@@ -494,7 +488,6 @@ public final class SettingsActivity extends Activity {
         java.util.List<String[]> entries = new java.util.ArrayList<>();
         for (String[] sec : SECTIONS) entries.add(new String[]{sec[0], sec[1], sec[2], "m"});
         entries.add(new String[]{APP[0], APP[1], APP[2], "m"});
-        entries.add(new String[]{USAGE, GUIDE[1], GUIDE[2], "m"});
         for (String[] e : searchEntries) {
             String extra = synonyms().get((e[0].startsWith(EDITOR_PART) ? KEYBOARD : e[0]) + "\0" + e[1]);
             entries.add(new String[]{e[0], e[1], extra == null ? e[2] : e[2] + " " + extra, ""});
@@ -3381,11 +3374,6 @@ public final class SettingsActivity extends Activity {
                 + "암호 없이 내보낸 파일은 공유 시 주의하시기 바랍니다."));
         backup.addView(iconButton("설정 가져오기", Icons.IMPORT, v -> SettingsImport.pick(this, REQ_IMPORT)));
         backup.addView(iconButton("설정 내보내기", Icons.EXPORT, v -> chooseExportExtras()));
-    }
-
-    /** 사용법 화면. 설정 화면의 설명보다 크고 진한 글자로, 처음 쓰는 사람도 따라 할 수 있게 풀어 쓴다. */
-    private void buildUsage() {
-        buildGuide("guide/usage.txt", false);
     }
 
     private void buildPrivacy() {
