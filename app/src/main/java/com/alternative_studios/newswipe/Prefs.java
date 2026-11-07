@@ -67,8 +67,8 @@ public final class Prefs {
     public static final int AREA_PAD_MAX = 32;
     /** 영역 여백의 방향 번호. */
     public static final int SIDE_LEFT = 0, SIDE_TOP = 1, SIDE_RIGHT = 2, SIDE_BOTTOM = 3;
-    public static final String KEY_GAP_X = "key_gap_x";               // 키 사이 좌우 여백 dp, 0~12
-    public static final String KEY_GAP_Y = "key_gap_y";               // 키 사이 상하 여백 dp, 0~20
+    public static final String KEY_GAP_X = "key_gap_x";               // 키 사이 좌우 간격 dp, 0~12
+    public static final String KEY_GAP_Y = "key_gap_y";               // 키 사이 상하 간격 dp, 0~20
     public static final String PAD_BOTTOM = "pad_bottom";             // dp, 0~48
     public static final String COMMA_CHAR = "bottom_comma_char";           // 하단 쉼표 키가 입력하는 한 글자 (기본 ",")
     public static final String PERIOD_CHAR = "bottom_period_char";         // 하단 온점 키가 입력하는 한 글자 (기본 ".")
@@ -430,7 +430,7 @@ public final class Prefs {
 
     private static final EditorScope[] EDITOR_SCOPES = {
             new EditorScope(SCOPE_BOARD, "키보드 여백", keys(PAD_LEFT, PAD_RIGHT, PAD_TOP, PAD_BOTTOM), NONE),
-            new EditorScope("look", "키 모양 (글자 크기·곡률·키 사이 여백·그림자·누름 미리보기)", keys(KEY_TEXT_SIZE, KEY_RADIUS,
+            new EditorScope("look", "키 모양 (글자 크기·곡률·키 사이 간격·그림자·누름 미리보기)", keys(KEY_TEXT_SIZE, KEY_RADIUS,
                     KEY_GAP_X, KEY_GAP_Y, KEY_SHADOW, KEY_SHADOW_STRENGTH, KEY_PREVIEW), NONE),
             new EditorScope(AREA_SCOPES[0], "도구 막대", concat(TOOL_BUTTON_VALUES, TOOLBAR, TOOLBAR_BOTTOM, TOOLBAR_HEIGHT,
                     TOOL_BUTTON_SIZE), keys(AREA_PAD_PREFIX + PAD_AREAS[0] + "_", "swipe_toolbar_bar_")),

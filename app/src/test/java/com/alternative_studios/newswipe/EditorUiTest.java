@@ -302,7 +302,7 @@ public class EditorUiTest {
         a.onBackPressed();
         idle();
         assertNull(p.selection());
-        assertTrue(visibleTexts(cur(a)).contains("키 모양") && visibleTexts(cur(a)).contains("키 사이 좌우 여백"));
+        assertTrue(visibleTexts(cur(a)).contains("키 모양") && visibleTexts(cur(a)).contains("키 사이 좌우 간격"));
         assertFalse(visibleTexts(cur(a)).contains("글자 키 높이"));
 
         // ---- 영어 자판, 기호 자판
@@ -734,7 +734,7 @@ public class EditorUiTest {
         p.setLayer(KeyboardPreview.LAYER_KEY);
         idle();
         tapKey(p, key(p, "ㄱ", Key.CHAR));
-        assertNotNull(findText(decor, "'ㄱ' 키"));
+        assertNotNull(findText(decor, "'ㄱ' 키 설정"));
         assertFalse(visibleTexts(cur(a)).contains("쌍자음"));
         tapKey(p, key(p, null, Key.SPACE));
         String t = visibleTexts(cur(a));
@@ -789,7 +789,7 @@ public class EditorUiTest {
         cur(a).scrollTo(0, 1100);
         shot(a, "71-sheet-swipe");
         tapKey(p, key(p, "ㄴ", Key.CHAR));   // 묻지 않고 바로 바뀐다
-        assertNotNull(findText(decor, "'ㄴ' 키"));
+        assertNotNull(findText(decor, "'ㄴ' 키 설정"));
         findText(cur(a), "없음").performClick(); idle();
         byDesc(decor, "편집 닫기").performClick(); idle();
         assertFalse(open(a));
@@ -829,7 +829,7 @@ public class EditorUiTest {
         shot(a, "80-area-layer");
         // 영역: 글자 키
         tapArea(p, KeyboardPreview.AREA_LETTERS);
-        assertNotNull(findText(decor, "글자 키"));
+        assertNotNull(findText(decor, "글자 키 설정"));
         String t = visibleTexts(cur(a));
         log("LETTERS:\n" + t);
         assertTrue(t.contains("한글 자판 배열") && t.contains("자음 연속 탭으로 쌍자음") && t.contains("영어 자동 대문자")
@@ -923,7 +923,7 @@ public class EditorUiTest {
         shot(a, "85-key-layer");
         // 키 페이지에서 키를 누르면 키 편집
         tapKey(p, key(p, "ㄱ", Key.CHAR));
-        assertNotNull(findText(decor, "'ㄱ' 키"));
+        assertNotNull(findText(decor, "'ㄱ' 키 설정"));
         // 넘기면 창이 닫힌다
         swipe(p.getChildAt(1), p.getWidth() * 0.2f, p.getHeight() / 2f, p.getWidth() * 0.5f, 0);
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(400));

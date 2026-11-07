@@ -380,8 +380,8 @@ public final class SettingsActivity extends Activity {
             {KEYBOARD, "오른쪽 여백", "패딩 간격"},
             {KEYBOARD, "위쪽 여백", "패딩 간격"},
             {KEYBOARD, "아래쪽 여백", "패딩 간격"},
-            {KEYBOARD, "키 사이 좌우 여백", "키 간격 갭"},
-            {KEYBOARD, "키 사이 상하 여백", "키 간격 갭"},
+            {KEYBOARD, "키 사이 좌우 간격", "키 간격 갭"},
+            {KEYBOARD, "키 사이 상하 간격", "키 간격 갭"},
             {"clipemoji", "이모지 크기", "이모티콘 크기 글자 키우기 크게 이모지 창"},
             {KEYBOARD, "키 위치·폭 사용자화", "자음 모음 열 폭 위치 배치"},
             {KEYBOARD, "자·모음 균형 레이아웃", "자음 모음 반반 균형"},
@@ -1012,7 +1012,7 @@ public final class SettingsActivity extends Activity {
                 public void onLayerChanged(int layer) {
                     closeKeyPanel();   // 다른 층으로 넘기면 고른 것이 풀린다
                     pageDots.setPage(layer);
-                    pageDots.flashName(layer);
+                    pageDots.announce(layer);
                 }
             });
             keyPanel = new KeyEditPanel(this, prefs, new KeyEditPanel.Host() {
@@ -1045,7 +1045,7 @@ public final class SettingsActivity extends Activity {
                         editorPreview.setTab(i);
                     }));
             pinnedBottom.addView(tabs, matchWrap());
-            pageDots = new PageDots(this, PAGE_NAMES, AppTheme.of(this), editorPreview::setLayer);
+            pageDots = new PageDots(this, PAGE_NAMES, PAGE_DESCS, AppTheme.of(this), editorPreview::setLayer);
             pageDots.setPage(editorPreview.layer());
             pinnedBottom.addView(pageDots, matchWrap());
             pinnedBottom.addView(editorPreview, matchWrap());
@@ -1217,14 +1217,14 @@ public final class SettingsActivity extends Activity {
                 buildPad(-1);
                 addAreaReset(-1);
             });
-            sheet.setTitle("키보드 여백");
+            sheet.setTitle("키보드 여백 설정");
             return;
         }
         boolean panel = !area || areaId == KeyboardPreview.AREA_TOOLBAR;
         if (panel) keyPanel.show(area ? KeyboardPreview.Selection.toolbar() : s, editorPreview.selectedKey());
         keyPanel.view().setVisibility(panel ? View.VISIBLE : View.GONE);
         fillArea(areaId);
-        sheet.setTitle(area ? KeyboardPreview.AREA_NAMES[areaId] : keyPanel.title());
+        sheet.setTitle((area ? KeyboardPreview.AREA_NAMES[areaId] : keyPanel.title()) + " 설정");
     }
 
     /** 영역 편집 창의 크기 슬라이더 (손잡이를 끌면 같이 맞춘다). 창을 채울 때마다 새로 모은다. */
@@ -1284,7 +1284,7 @@ public final class SettingsActivity extends Activity {
             c.addView(sizeSlider("오른쪽 여백", Prefs.PAD_RIGHT, prefs::padRightDp, 0, 24, 1, "dp"));
             c.addView(sizeSlider("위쪽 여백", Prefs.PAD_TOP, prefs::padTopDp, 0, 24, 1, "dp"));
             c.addView(sizeSlider("아래쪽 여백", Prefs.PAD_BOTTOM, prefs::padBottomDp, 0, 48, 1, "dp"));
-            c.addView(note("키보드 전체 둘레의 여백입니다. 영역마다 따로 주는 여백은 '영역' 페이지에서 그 영역을 눌러 "
+            c.addView(note("키보드 전체 둘레의 여백입니다. 영역마다 따로 주는 여백은 '영역 설정' 페이지에서 그 영역을 눌러 "
                     + "창 맨 아래의 '여백'에서 정합니다."));
             return;
         }
@@ -1299,7 +1299,7 @@ public final class SettingsActivity extends Activity {
         return sizeSlider(label, Prefs.areaPadKey(area, side), () -> prefs.areaPadDp(area, side), 0, Prefs.AREA_PAD_MAX, 1, "dp");
     }
 
-    private static final String KEY_PAGE_NOTE = "키 하나하나의 누르기·길게 누르기·밀기는 미리보기를 왼쪽으로 넘겨 '키' 페이지에서 "
+    private static final String KEY_PAGE_NOTE = "키 하나하나의 누르기·길게 누르기·밀기는 미리보기를 왼쪽으로 넘겨 '키 설정' 페이지에서 "
             + "그 키를 눌러 바꿉니다.";
 
     private void buildArea(int areaId) {
@@ -1359,7 +1359,7 @@ public final class SettingsActivity extends Activity {
                 swipe.addView(fnLongPressSlider());
                 swipe.addView(fnSwipeDistanceSlider());
                 LinearLayout more = card();
-                more.addView(note("스페이스바·⌫·기호 키·🌐︎ 같은 키 하나하나의 설정은 미리보기를 왼쪽으로 넘겨 '키' 페이지에서 "
+                more.addView(note("스페이스바·⌫·기호 키·🌐︎ 같은 키 하나하나의 설정은 미리보기를 왼쪽으로 넘겨 '키 설정' 페이지에서 "
                         + "그 키를 눌러 바꿉니다."));
                 buildPad(areaId);
                 break;
@@ -1370,7 +1370,10 @@ public final class SettingsActivity extends Activity {
     /** 미리보기 위의 페이지 표시 (키보드 · 영역 · 키). */
     private PageDots pageDots;
     /** 미리보기 페이지 이름 (KeyboardPreview.LAYER_* 차례). */
-    private static final String[] PAGE_NAMES = {"키보드", "영역", "키"};
+    private static final String[] PAGE_NAMES = {"키보드 여백 설정", "영역 설정", "키 설정"};
+    /** 미리보기 페이지 설명 (PAGE_NAMES와 같은 차례). */
+    private static final String[] PAGE_DESCS = {"키보드 상하좌우 여백을 조절합니다", "각 부분의 모습과 기능을 설정합니다",
+            "각 키의 기능과 동작을 설정합니다"};
 
     /** 편집 창을 내려 닫고 목록으로 돌아간다 (창에서 바꾼 값이 있으면 다 내려간 뒤 목록을 다시 만든다). */
     private void closeKeyPanel() {
@@ -1439,8 +1442,8 @@ public final class SettingsActivity extends Activity {
         LinearLayout look = section("키 모양");
         look.addView(slider("키 글자 크기", Prefs.KEY_TEXT_SIZE, prefs.keyTextSize(), 70, 140, 5, "%"));
         look.addView(slider("키 곡률", Prefs.KEY_RADIUS, prefs.keyRadiusDp(), 0, 24, 1, "dp"));
-        look.addView(slider("키 사이 좌우 여백", Prefs.KEY_GAP_X, prefs.keyGapXDp(), 0, 12, 1, "dp"));
-        look.addView(slider("키 사이 상하 여백", Prefs.KEY_GAP_Y, prefs.keyGapYDp(), 0, 20, 1, "dp"));
+        look.addView(slider("키 사이 좌우 간격", Prefs.KEY_GAP_X, prefs.keyGapXDp(), 0, 12, 1, "dp"));
+        look.addView(slider("키 사이 상하 간격", Prefs.KEY_GAP_Y, prefs.keyGapYDp(), 0, 20, 1, "dp"));
         View shadowStrength = subGroup(slider("그림자 세기", Prefs.KEY_SHADOW_STRENGTH, prefs.keyShadowStrength(), 10, 100, 5, "%"));
         look.addView(toggle("키 그림자", "키 아래에 그림자를 그려 입체감을 줍니다.",
                 Prefs.KEY_SHADOW, prefs.keyShadow(), shadowStrength));
@@ -2004,7 +2007,7 @@ public final class SettingsActivity extends Activity {
         card.addView(note(when + " 쓰는 값입니다. 글자 키 높이·키 글자 크기는 정하기 전에는 세로 모드('키보드 편집')의 값을 따릅니다. "
                 + "세로 위치는 키보드를 화면 아래에서 띄우는 높이로, 값이 클수록 키보드가 위로 올라갑니다 "
                 + "(한 손 모드에서는 한 손 모드의 세로 위치를 씁니다).\n"
-                + "그 밖의 값(도구 막대·숫자 줄·기능키 높이, 키보드·영역 여백, 키 사이 여백과 키 모양, 키마다 정한 설정)은 "
+                + "그 밖의 값(도구 막대·숫자 줄·기능키 높이, 키보드·영역 여백, 키 사이 간격과 키 모양, 키마다 정한 설정)은 "
                 + "세로 모드와 같은 값을 씁니다. 바꾸려면 '키보드 편집'에서 바꿉니다."));
     }
 
