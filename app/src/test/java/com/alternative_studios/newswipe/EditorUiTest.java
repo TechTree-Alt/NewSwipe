@@ -1218,6 +1218,8 @@ public class EditorUiTest {
         key(p, null, Key.SHIFT);
         assertTrue(visibleTexts(cur(a)).contains("두벌식은 컴퓨터 키보드와 같은 표준 한글 배열입니다."));
         assertTrue(visibleTexts(cur(a)).contains("자·모음 균형 레이아웃"));
+        assertFalse(visibleTexts(cur(a)).contains("영어 자판도 균형 레이아웃"));   // 균형 레이아웃을 켠 뒤에만 보인다
+        assertTrue(visibleTexts(cur(a)).contains("영어 자판 아래로 밀어 대문자 입력"));
         shot(a, "a0-dubeolsik");
         // 균형 레이아웃: 자음은 왼쪽 절반, 모음은 오른쪽 절반으로 나누되 각 쪽 안의 자리는 일반 두벌식 그대로
         View row = (View) findText(cur(a), "자·모음 균형 레이아웃").getParent().getParent();
@@ -1225,6 +1227,14 @@ public class EditorUiTest {
         idle();
         assertTrue(prefs.balancedLayout());
         assertTrue(prefs.raw().getBoolean(Prefs.BALANCED_LAYOUT + "_" + Prefs.KOREAN_LAYOUT_DUBEOLSIK, false));
+        assertTrue(visibleTexts(cur(a)).contains("영어 자판도 균형 레이아웃"));
+        View enRow = (View) findText(cur(a), "영어 자판도 균형 레이아웃").getParent().getParent();
+        enRow.performClick();
+        idle();
+        assertTrue(prefs.englishBalanced());
+        enRow.performClick();   // 다시 끈다
+        idle();
+        assertFalse(prefs.englishBalanced());
         KeyboardView kv = find(p, KeyboardView.class);
         Key m = key(p, "ㅁ", Key.CHAR), b = key(p, "ㅂ", Key.CHAR), o = key(p, "ㅗ", Key.CHAR), yo = key(p, "ㅛ", Key.CHAR);
         assertEquals(b.rect.left + b.rect.width() / 2f, m.rect.left, 1.5f);   // ㅁ은 ㅂ보다 반 칸 들어간다
@@ -1259,9 +1269,42 @@ public class EditorUiTest {
         // 기능키 순서·유무: 두벌식은 Shift가 늘 있다
         Activity bk = Robolectric.buildActivity(BottomKeysEditorActivity.class).setup().get();
         idle();
-        assertTrue(visibleTexts(bk.getWindow().getDecorView()).contains("두벌식에서는 늘 보입니다."));
+        // 두벌식도 Shift 키를 없앨 수 있다 (두벌식만의 설정)
+        ViewGroup shiftRow = (ViewGroup) findText(bk.getWindow().getDecorView(), "Shift 키 (⇧)").getParent().getParent();
+        View shiftSwitch = shiftRow.getChildAt(1);
+        assertTrue(shiftSwitch.isEnabled());
+        shiftSwitch.performClick();
+        idle();
+        assertTrue(prefs.raw().getBoolean(Prefs.DUBEOLSIK_SHIFT_HIDDEN, false));
+        assertFalse(prefs.raw().contains(Prefs.KOREAN_SHIFT_HIDDEN));
+        pre.raw().edit().remove(Prefs.DUBEOLSIK_SHIFT_HIDDEN).commit();
         pre.raw().edit().remove(Prefs.KOREAN_LAYOUT).remove(Prefs.LANDSCAPE_SPLIT).remove(Prefs.NUMBER_ROW)
                 .remove(Prefs.BALANCED_LAYOUT + "_" + Prefs.KOREAN_LAYOUT_DUBEOLSIK).commit();
+    }
+
+    /** 영어 자판 아래로 밀어 대문자 입력: 키 설정 창의 아래로 밀기는 대문자로 고정되어 바꿀 수 없다. */
+    @Test
+    public void englishSwipeDownUpperLocksTheKeySetting() throws Exception {
+        Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
+        pre.raw().edit().putBoolean(Prefs.ENGLISH_SWIPE_UPPER, true).commit();
+        SettingsActivity a = launch("keyboard");
+        View decor = a.getWindow().getDecorView();
+        KeyboardPreview p = find(decor, KeyboardPreview.class);
+        p.setTab(KeyboardPreview.TAB_ENGLISH);
+        idle();
+        p.setLayer(KeyboardPreview.LAYER_KEY);
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(400));
+        assertEquals("Q", key(p, "q", Key.CHAR).swipeText(Key.SWIPE_DOWN));
+        tapKey(p, key(p, "q", Key.CHAR));
+        assertNotNull(findText(decor, "'q' 키 설정"));
+        assertTrue(visibleTexts(cur(a)).contains("대문자로 고정됩니다"));
+        // 아래쪽 칸을 눌러도 입력 창이 열리지 않는다 (알림만)
+        View down = findSub(cur(a), "아래쪽");
+        assertNotNull(down);
+        down.performClick();
+        idle();
+        assertNull(ShadowDialog.getLatestDialog());
+        pre.raw().edit().remove(Prefs.ENGLISH_SWIPE_UPPER).commit();
     }
 
     static int count(View v, String text) {

@@ -52,8 +52,16 @@ public final class SwipeCustom {
         }
     }
 
+    /** 영어 글자 키의 아래로 밀기가 대문자로 고정되어 있는지 ('영어 자판 아래로 밀어 대문자' 스위치). */
+    public static boolean englishUpperSwipe(Prefs prefs, boolean korean, String label, int dir) {
+        return prefs != null && !korean && dir == Key.SWIPE_DOWN && prefs.englishSwipeUpper() && label != null
+                && label.length() == 1 && Character.isLetter(label.charAt(0))
+                && KeyboardLayout.GROUP_EN.equals(KeyboardLayout.groupOf(false, label));
+    }
+
     /** 사용자가 정한 값이 있으면 그것을, 없으면 기본값을 돌려준다. "없음"이면 null. */
     public static String get(Prefs prefs, boolean korean, String label, int dir) {
+        if (englishUpperSwipe(prefs, korean, label, dir)) return label.toUpperCase(java.util.Locale.ROOT);
         String v = prefs == null ? null
                 : prefs.swipeCustomOverride(KeyboardLayout.groupOf(korean, label), label, NAMES[dir]);
         if (v == null) {

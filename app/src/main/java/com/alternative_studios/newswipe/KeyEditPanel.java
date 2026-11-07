@@ -259,6 +259,9 @@ final class KeyEditPanel {
         card.addView(swipePad);
         fillCharPad();
         card.addView(note("방향 칸을 눌러 그 방향으로 밀 때 입력할 글자를 정합니다. 비워 두면 그 방향은 아무것도 입력하지 않습니다."));
+        if (SwipeCustom.englishUpperSwipe(prefs, korean, slot(), Key.SWIPE_DOWN)) {
+            card.addView(note("영어 자판의 '아래로 밀어 대문자 입력'이 켜져 있어 아래쪽은 대문자로 고정됩니다. 글자 키 설정에서 끌 수 있습니다."));
+        }
     }
 
     private void refreshCharPad() {
@@ -306,6 +309,11 @@ final class KeyEditPanel {
     /** 한 방향에 입력할 글자를 적는다. 아래의 빠른 선택을 누르면 그 글자가 칸에 들어간다. */
     private void editSwipeText(int dir) {
         String g = group(), s = slot();
+        if (SwipeCustom.englishUpperSwipe(prefs, korean, s, dir)) {
+            android.widget.Toast.makeText(a, "'아래로 밀어 대문자 입력'이 켜져 있어 아래쪽은 대문자로 고정됩니다.",
+                    android.widget.Toast.LENGTH_SHORT).show();
+            return;
+        }
         String dirName = SwipeCustom.dirName(dir);
         EditText input = new EditText(a);
         input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);

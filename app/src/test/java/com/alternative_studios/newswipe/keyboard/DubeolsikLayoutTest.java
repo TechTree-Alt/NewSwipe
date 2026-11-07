@@ -146,7 +146,7 @@ public class DubeolsikLayoutTest {
                     int first = numberRow ? 1 : 0;
                     assertEquals(what, first + 4, l.rows.length);
                     for (int r = 0; r < 3; r++) assertArrayEquals(what, STANDARD[r], labels(l.rows[first + r]));
-                    // 셋째 줄은 Shift + 글자 + ⌫ (Shift는 '한글 Shift 키 없애기'와 상관없이 늘 있다)
+                    // 셋째 줄은 Shift + 글자 + ⌫ (다른 배열의 '한글 Shift 키 없애기'와는 따로다: 두벌식은 기본으로 보인다)
                     KeyboardLayout.Row third = l.rows[first + 2];
                     assertEquals(what, Key.SHIFT, third.keys[0].type);
                     assertEquals(what, Key.DELETE, third.keys[third.keys.length - 1].type);
@@ -223,7 +223,7 @@ public class DubeolsikLayoutTest {
                     FakeSp sp = dubeolsik(true);
                     sp.m.put(Prefs.NUMBER_ROW, numberRow);
                     sp.m.put(Prefs.GRID_LAYOUT, grid);
-                    sp.m.put(Prefs.KOREAN_SHIFT_HIDDEN, true);   // 두벌식은 균형 레이아웃에서도 Shift가 늘 있다
+                    sp.m.put(Prefs.KOREAN_SHIFT_HIDDEN, true);   // 다른 배열의 Shift 설정은 두벌식에 영향이 없다
                     Prefs p0 = portrait(sp);
                     if (width != 90) {
                         sp.m.put(p0.balancedConsonantWidthKey(), width);
@@ -428,6 +428,145 @@ public class DubeolsikLayoutTest {
             assertArrayEquals(STANDARD[2], labels(l.rows[0]));
             assertEquals(Key.SHIFT, firstKey(l.rows[0]).type);
         }
+    }
+
+    /** 두벌식도 Shift 키를 없앨 수 있다 (자기 설정, 기본은 보임). 없앤 자리는 빈 칸이거나 Fn 키이고 배치는 그대로다. */
+    @Test
+    public void shiftCanBeRemoved() throws Exception {
+        for (boolean balanced : new boolean[]{false, true}) {
+            for (boolean grid : new boolean[]{false, true}) {
+                for (boolean fnKey : new boolean[]{false, true}) {
+                    FakeSp sp = dubeolsik(balanced);
+                    sp.m.put(Prefs.GRID_LAYOUT, grid);
+                    Prefs shown = portrait(sp);
+                    assertFalse(shown.koreanShiftHidden());
+                    KeyboardLayout with = KeyboardLayout.korean(shown);
+                    sp.m.put(Prefs.DUBEOLSIK_SHIFT_HIDDEN, true);
+                    sp.m.put(Prefs.KOREAN_SHIFT_FN, fnKey);
+                    Prefs p = portrait(sp);
+                    assertTrue(p.koreanShiftHidden());
+                    KeyboardLayout l = KeyboardLayout.korean(p);
+                    String what = "balanced=" + balanced + " grid=" + grid + " fn=" + fnKey;
+                    assertEquals(what, 0, count(l, Key.SHIFT));
+                    assertEquals(what, fnKey ? 1 : 0, count(l, Key.FUNCTION));
+                    KeyboardLayout.Row row = l.rows[2], rowWith = with.rows[2];
+                    assertArrayEquals(what, STANDARD[2], labels(row));
+                    // 그 자리는 그대로 남아 글자 키의 자리가 바뀌지 않는다
+                    for (Key k : letters(row)) {
+                        assertEquals(what + " " + k.label, leftOf(rowWith, key(with, k.label), 10), leftOf(row, k, 10), 1e-3f);
+                    }
+                    // Shift 자리의 키는 Fn 키이거나, 없으면 빈 칸이라 그 줄의 첫 키가 글자다
+                    assertEquals(what, fnKey ? Key.FUNCTION : Key.CHAR, firstKey(row).type);
+                    assertEquals(what, Key.DELETE, row.keys[row.keys.length - 1].type == Key.GAP
+                            ? row.keys[row.keys.length - 2].type : row.keys[row.keys.length - 1].type);
+                }
+            }
+        }
+        // 분리 키보드도 같다
+        FakeSp sp = dubeolsik(false);
+        Prefs lp = view(sp, Prefs.PROFILE_LANDSCAPE);
+        sp.m.put(lp.splitKey(), true);
+        sp.m.put(Prefs.DUBEOLSIK_SHIFT_HIDDEN, true);
+        KeyboardLayout split = KeyboardLayout.korean(view(sp, Prefs.PROFILE_LANDSCAPE));
+        assertEquals(0, count(split, Key.SHIFT));
+        assertEquals(1, count(split, Key.DELETE));
+        // 다른 배열의 '한글 Shift 키 없애기' 설정은 두벌식에 영향이 없다
+        FakeSp other = dubeolsik(false);
+        other.m.put(Prefs.KOREAN_SHIFT_HIDDEN, true);
+        assertEquals(1, count(KeyboardLayout.korean(portrait(other)), Key.SHIFT));
+        // 두벌식의 설정도 다른 배열에 영향이 없다
+        FakeSp d8 = new FakeSp();
+        d8.m.put(Prefs.DUBEOLSIK_SHIFT_HIDDEN, false);
+        assertTrue(portrait(d8).koreanShiftHidden());   // 단모음의 기본은 없앰
+    }
+
+    /** 영어 자판: 글자 키를 아래로 밀면 대문자 (켜면 키마다 정한 값은 쓰지 않는다). */
+    @Test
+    public void englishSwipeDownTypesUpperCase() throws Exception {
+        FakeSp sp = new FakeSp();
+        KeyboardLayout off = KeyboardLayout.english(portrait(sp));
+        assertNull(key(off, "q").swipeDown);
+        sp.m.put(Prefs.ENGLISH_SWIPE_UPPER, true);
+        sp.m.put("swipe_custom_en_q_down", "x");   // 키마다 정한 값이 있어도 대문자로 고정
+        Prefs p = portrait(sp);
+        KeyboardLayout on = KeyboardLayout.english(p);
+        for (String row : new String[]{"qwertyuiop", "asdfghjkl", "zxcvbnm"}) {
+            for (char c : row.toCharArray()) {
+                assertEquals(String.valueOf(c), String.valueOf(Character.toUpperCase(c)), key(on, String.valueOf(c)).swipeDown);
+            }
+        }
+        // 한글 자판과 기호 키는 영향이 없다
+        KeyboardLayout ko = KeyboardLayout.korean(p);
+        assertEquals("ㄲ", key(ko, "ㄱ").swipeDown);
+        assertNull(key(on, ".") == null ? null : key(on, ".").swipeDown);
+        assertTrue(SwipeCustom.englishUpperSwipe(p, false, "q", Key.SWIPE_DOWN));
+        assertFalse(SwipeCustom.englishUpperSwipe(p, false, "q", Key.SWIPE_UP));
+        assertFalse(SwipeCustom.englishUpperSwipe(p, true, "ㄱ", Key.SWIPE_DOWN));
+        assertFalse(SwipeCustom.englishUpperSwipe(p, false, "1", Key.SWIPE_DOWN));
+        assertFalse(SwipeCustom.englishUpperSwipe(portrait(new FakeSp()), false, "q", Key.SWIPE_DOWN));
+    }
+
+    private static String[] qwertyLabels(KeyboardLayout.Row row) {
+        return labels(row);
+    }
+
+    /** 두벌식 균형 레이아웃을 켜고 '영어 자판도 균형 레이아웃'을 켜면 영어 자판도 같은 모양으로 나뉜다. */
+    @Test
+    public void englishFollowsTheBalancedLayout() throws Exception {
+        String[][] english = {{"q", "w", "e", "r", "t", "y", "u", "i", "o", "p"}, {"a", "s", "d", "f", "g", "h", "j", "k", "l"},
+                {"z", "x", "c", "v", "b", "n", "m"}};
+        for (boolean numberRow : new boolean[]{false, true}) {
+            FakeSp sp = dubeolsik(true);
+            sp.m.put(Prefs.NUMBER_ROW, numberRow);
+            // 옵션을 켜지 않으면 일반 영어 자판
+            assertEquals(10, KeyboardLayout.english(portrait(sp)).columns);
+            assertEquals(1f, key(KeyboardLayout.english(portrait(sp)), "a").weight, 1e-3f);
+            sp.m.put(Prefs.ENGLISH_BALANCED, true);
+            Prefs p = portrait(sp);
+            assertTrue(p.englishBalanced());
+            KeyboardLayout en = KeyboardLayout.english(p), ko = KeyboardLayout.korean(p);
+            int first = numberRow ? 1 : 0;
+            assertEquals(ko.rows.length, en.rows.length);
+            for (int r = 0; r < 3; r++) {
+                KeyboardLayout.Row row = en.rows[first + r], kr = ko.rows[first + r];
+                assertArrayEquals(english[r], qwertyLabels(row));
+                assertEquals(10f, total(row), 1e-3f);
+                // 한글 두벌식 줄과 키 하나하나의 자리·폭이 같다
+                java.util.List<Key> e = letters(row), k = letters(kr);
+                assertEquals(e.size(), k.size());
+                for (int i = 0; i < e.size(); i++) {
+                    assertEquals(r + ":" + i, leftOf(kr, k.get(i), 10), leftOf(row, e.get(i), 10), 1e-3f);
+                    assertEquals(r + ":" + i, k.get(i).weight, e.get(i).weight, 1e-3f);
+                }
+            }
+            KeyboardLayout.Row third = en.rows[first + 2];
+            assertEquals(Key.SHIFT, firstKey(third).type);   // 영어는 늘 Shift (한글 두벌식에서 Shift를 없애도)
+            // 두벌식의 Shift를 없애도 영어 Shift는 그대로
+            sp.m.put(Prefs.DUBEOLSIK_SHIFT_HIDDEN, true);
+            assertEquals(1, count(KeyboardLayout.english(portrait(sp)), Key.SHIFT));
+            sp.m.remove(Prefs.DUBEOLSIK_SHIFT_HIDDEN);
+            // 경계·키 폭 설정도 함께 따른다
+            sp.m.put(p.balancedBoundaryKey(), 60);
+            KeyboardLayout moved = KeyboardLayout.english(portrait(sp));
+            assertEquals(KeyboardLayout.korean(portrait(sp)).rows[first].keys.length, moved.rows[first].keys.length);
+        }
+        // 켜지지 않는 경우: 균형 레이아웃이 꺼짐, 두벌식이 아님, 한 손 모드, 가로 모드 분리 키보드
+        FakeSp off = dubeolsik(false);
+        off.m.put(Prefs.ENGLISH_BALANCED, true);
+        assertFalse(portrait(off).englishBalanced());
+        assertEquals(1f, key(KeyboardLayout.english(portrait(off)), "a").weight, 1e-3f);
+        FakeSp d8 = new FakeSp();
+        d8.m.put(Prefs.ENGLISH_BALANCED, true);
+        d8.m.put(Prefs.BALANCED_LAYOUT + "_" + Prefs.KOREAN_LAYOUT_8, true);
+        assertFalse(portrait(d8).englishBalanced());
+        FakeSp on = dubeolsik(true);
+        on.m.put(Prefs.ENGLISH_BALANCED, true);
+        assertFalse(portrait(on).oneHandView().englishBalanced());
+        // 가로 모드 분리 키보드는 영어 자판도 늘 영어 자판처럼 가운데에서 나눈다
+        Prefs land = view(on, Prefs.PROFILE_LANDSCAPE);
+        on.m.put(land.splitKey(), true);
+        assertFalse(view(on, Prefs.PROFILE_LANDSCAPE).englishBalanced());
+        assertEquals(1, count(KeyboardLayout.english(view(on, Prefs.PROFILE_LANDSCAPE)), Key.SHIFT));
     }
 
     @Test

@@ -77,6 +77,12 @@ public final class Prefs {
     public static final String PERIOD_COMMA = "period_comma";         // 쉼표 키 대신 온점 길게 누르기
     /** 한글 자판의 Shift 키를 없앤다 (켜짐 = Shift 키 없음, 그 자리는 빈칸). */
     public static final String KOREAN_SHIFT_HIDDEN = "korean_shift_hidden";
+    /** 두벌식에서 Shift 키 없애기 (기본: 보인다. 다른 배열은 KOREAN_SHIFT_HIDDEN, 기본 없앰). */
+    public static final String DUBEOLSIK_SHIFT_HIDDEN = "dubeolsik_shift_hidden";
+    /** 영어 자판의 글자 키를 아래로 밀면 그 키의 대문자를 입력 (켜면 키마다 정한 아래로 밀기는 쓰지 않는다). */
+    public static final String ENGLISH_SWIPE_UPPER = "english_swipe_upper";
+    /** 두벌식에서 자·모음 균형 레이아웃을 켰을 때 영어 자판도 같은 모양으로 나눈다. */
+    public static final String ENGLISH_BALANCED = "english_balanced";
     public static final String KOREAN_SHIFT_FN = "korean_shift_fn";           // Shift 키를 껐을 때 그 자리에 Fn 키 놓기
     public static final String PERIOD_KEY_HIDDEN = "period_key_hidden";       // 글자·기호 자판 아래 줄의 온점 키 없애기
     /** 기호 자판 대신 숫자 패드 사용: 글자 자판의 기호 키(?123)를 누르면 기호 자판 대신 3×4 숫자 패드가 열린다 (기본 꺼짐). */
@@ -421,7 +427,7 @@ public final class Prefs {
     /** 기능키 순서·유무 사용자화 화면의 값. */
     private static final String[] BOTTOM_KEY_VALUES = {BOTTOM_KEY_ORDER, COMMA_CHAR, PERIOD_CHAR, MODE_KEY_HIDDEN, PERIOD_COMMA,
             LANGUAGE_KEY_HIDDEN, SPACE_KEY_HIDDEN, PERIOD_KEY_HIDDEN, ENTER_KEY_HIDDEN, DELETE_KEY_HIDDEN, KOREAN_SHIFT_HIDDEN,
-            KOREAN_SHIFT_FN, BOTTOM_EMOJI_KEY, BOTTOM_CLIPBOARD_KEY, BOTTOM_CURSOR_KEY, BOTTOM_VOICE_KEY};
+            DUBEOLSIK_SHIFT_HIDDEN, KOREAN_SHIFT_FN, BOTTOM_EMOJI_KEY, BOTTOM_CLIPBOARD_KEY, BOTTOM_CURSOR_KEY, BOTTOM_VOICE_KEY};
     /** 도구 막대 버튼 사용자화 화면의 값. */
     private static final String[] TOOL_BUTTON_VALUES = {TOOL_ORDER, TOOL_CLIPBOARD, TOOL_EMOJI, VOICE_KEY, TOOL_UNDO,
             TOOL_SETTINGS, TOOL_ONE_HAND, TOOL_HIDE};
@@ -459,6 +465,7 @@ public final class Prefs {
                     keys(AREA_PAD_PREFIX + PAD_AREAS[1] + "_")),
             new EditorScope(AREA_SCOPES[2], "글자 키", keys(KOREAN_LAYOUT, KEYBOARD_HEIGHT, AUTO_CAP, ENGLISH_FIELDS,
                     DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT, DOUBLE_TAP_CONSONANT_MS, LONG_PRESS_MS, POPUP_HINT_HIDDEN,
+                    ENGLISH_SWIPE_UPPER, ENGLISH_BALANCED,
                     SWIPE_THRESHOLD, CHAR_CURSOR_SPEED_H, CHAR_CURSOR_SPEED_V, SWIPE_PICK_SUGGESTION),
                     keys(AREA_PAD_PREFIX + PAD_AREAS[2] + "_", BALANCED_LAYOUT, "swipe_kb_")),
             new EditorScope(AREA_SCOPES[3], "기능키", concat(BOTTOM_KEY_VALUES, FN_ROW_HEIGHT, GRID_LAYOUT, DELETE_PRESS_MS,
@@ -978,7 +985,14 @@ public final class Prefs {
     public boolean enterKeyHidden() { return sp.getBoolean(ENTER_KEY_HIDDEN, false); }
     public boolean modeKeyHidden() { return sp.getBoolean(MODE_KEY_HIDDEN, false); }
     public boolean languageKeyHidden() { return sp.getBoolean(LANGUAGE_KEY_HIDDEN, false); }
-    public boolean koreanShiftHidden() { return sp.getBoolean(KOREAN_SHIFT_HIDDEN, true); }
+    public boolean koreanShiftHidden() {
+        // 두벌식은 쌍자음·ㅒ·ㅖ에 Shift를 쓰므로 기본으로 보이고, 원하면 없앨 수 있다.
+        return koreanDubeolsik() ? sp.getBoolean(DUBEOLSIK_SHIFT_HIDDEN, false) : sp.getBoolean(KOREAN_SHIFT_HIDDEN, true);
+    }
+    /** 영어 자판의 글자 키를 아래로 밀면 대문자를 입력하는지. */
+    public boolean englishSwipeUpper() { return sp.getBoolean(ENGLISH_SWIPE_UPPER, false); }
+    /** 영어 자판도 두벌식의 자·모음 균형 레이아웃을 따르는지 (두벌식이고 균형 레이아웃이 켜져 있을 때만, 세로 모드). */
+    public boolean englishBalanced() { return sp.getBoolean(ENGLISH_BALANCED, false) && koreanDubeolsik() && balancedLayout(); }
     /** 한글 자판에서 Shift 키를 껐을 때 그 자리에 Fn 키를 놓는지. */
     public boolean koreanShiftFn() { return sp.getBoolean(KOREAN_SHIFT_FN, false); }
     /** 글자 자판의 기호 키로 기호 자판 대신 3×4 숫자 패드를 여는지. */

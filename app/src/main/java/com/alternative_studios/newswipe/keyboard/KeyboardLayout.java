@@ -349,7 +349,7 @@ public final class KeyboardLayout {
      * 자음과 모음 사이·모음 오른쪽의 빈틈은 누르면 가까운 키가 눌린다.
      */
     private static Row balancedRow(int r, Prefs prefs) {
-        if (dubeolsik(prefs)) return dubeolsikBalancedRow(r, prefs);
+        if (dubeolsik(prefs)) return qwertyBalancedRow(r, DUBEOLSIK_ROWS, DUBEOLSIK_POPUPS, true, prefs);
         boolean ns = newSwipe(prefs);
         String[][] rows = ns ? D7_ROWS : KOREAN_ROWS;
         String[][][] popups = ns ? D7_POPUPS : KOREAN_POPUPS;
@@ -392,27 +392,38 @@ public final class KeyboardLayout {
         return splitRow(consonants, vowels, 1f, prefs);
     }
 
+    /** 쿼티 모양 자판을 자·모음 균형 레이아웃으로 나눌 때 줄마다 자음(왼쪽) 쪽에 가는 글자 수: q~t, a~g, z~v / ㅂ~ㅅ, ㅁ~ㅎ, ㅋ~ㅍ. */
+    private static final int[] QWERTY_LEFT_COUNT = {5, 5, 4};
+
     /**
-     * 두벌식의 자·모음 균형 레이아웃 r번째 줄 (세로 모드만: 분리 키보드는 영어 자판처럼 나눈다).
-     * 일반 두벌식 자판을 자음과 모음 사이에서 나누기만 하고, 각 쪽 안에서 키의 상대적인 자리와 폭은 그대로 둔다:
-     * 자음 쪽은 ㅂㅈㄷㄱㅅ / 반 칸 들어간 ㅁㄴㅇㄹㅎ / 1.5칸 Shift와 ㅋㅌㅊㅍ (5.5칸),
-     * 모음 쪽은 ㅛㅕㅑㅐㅔ / 반 칸 들어간 ㅗㅓㅏㅣ / 반 칸 들어간 ㅠㅜㅡ와 1.5칸 ⌫ (5칸).
+     * 쿼티 모양 자판(두벌식, 영어)의 자·모음 균형 레이아웃 r번째 줄 (세로 모드만: 분리 키보드는 {@link #splitNormal}로 나눈다).
+     * 일반 자판을 가운데에서 나누기만 하고, 각 쪽 안에서 키의 상대적인 자리와 폭은 그대로 둔다:
+     * 왼쪽은 5키 / 반 칸 들어간 5키 / 1.5칸 Shift와 4키 (5.5칸), 오른쪽은 5키 / 반 칸 들어간 4키 / 반 칸 들어간 3키와 1.5칸 ⌫ (5칸).
      * 줄마다 각 쪽의 폭이 같아 키 폭과 엇갈림이 줄 사이에서 맞는다.
      */
-    private static Row dubeolsikBalancedRow(int r, Prefs prefs) {
-        Key[] letters = letterKeys(DUBEOLSIK_ROWS[r], DUBEOLSIK_POPUPS[r], true, prefs);
+    private static Row qwertyBalancedRow(int r, String[][] rows, String[][][] popups, boolean korean, Prefs prefs) {
+        Key[] letters = letterKeys(rows[r], popups[r], korean, prefs);
         List<Key> consonants = new ArrayList<>(), vowels = new ArrayList<>();
         if (r == 1) consonants.add(fn(Key.GAP, "", 0.5f));
-        if (r == 2) consonants.add(fn(koreanShiftSlot(prefs), "", 1.5f));
-        for (Key k : letters) {
-            boolean vowel = com.alternative_studios.newswipe.hangul.HangulComposer.isVowel(k.label.charAt(0));
-            (vowel ? vowels : consonants).add(k);
+        if (r == 2) {
+            int shift = qwertyShiftSlot(korean, prefs);
+            consonants.add(fn(shift, shift == Key.FUNCTION ? "Fn" : "", 1.5f));
         }
+        for (int i = 0; i < letters.length; i++) (i < QWERTY_LEFT_COUNT[r] ? consonants : vowels).add(letters[i]);
         if (r == 0) consonants.add(fn(Key.GAP, "", 0.5f));
         if (r > 0) vowels.add(0, fn(Key.GAP, "", 0.5f));
         if (r == 1) vowels.add(fn(Key.GAP, "", 0.5f));
         if (r == 2) vowels.add(fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1.5f));
         return splitRow(consonants, vowels, 1f, prefs);
+    }
+
+    /** 쿼티 모양 자판의 자·모음 균형 레이아웃 (두벌식, 두벌식 균형 레이아웃을 따르는 영어 자판). */
+    private static KeyboardLayout balancedQwerty(int kind, String[][] rows, String[][][] popups, boolean korean, Prefs prefs) {
+        List<Row> out = new ArrayList<>();
+        if (prefs.numberRow()) out.add(numberRow(prefs));
+        for (int r = 0; r < 3; r++) out.add(qwertyBalancedRow(r, rows, popups, korean, prefs));
+        out.add(splitBottom(prefs));
+        return new KeyboardLayout(kind, BALANCED_COLUMNS, out);
     }
 
     /**
@@ -477,9 +488,10 @@ public final class KeyboardLayout {
         for (int r = 0; r < 3; r++) {
             Key[] letters = letterKeys(rows[r], popups[r], korean, prefs);
             // 일반 자판과 똑같은 줄을 만든 뒤 가운데에서 나눈다.
+            int shift = qwertyShiftSlot(korean, prefs);
             Row normal = r < 2 ? new Row(1f, letters)
-                    : prefs.gridLayout() ? gridBottomLetterRow(letters, deleteKey(prefs), prefs)
-                    : bottomLetterRow(letters, 1.5f, Key.SHIFT, deleteKey(prefs));
+                    : prefs.gridLayout() ? gridBottomLetterRow(letters, shift, deleteKey(prefs), prefs)
+                    : bottomLetterRow(letters, 1.5f, shift, deleteKey(prefs));
             Row row = splitNormal(normal, prefs);
             // h 왼쪽의 빈 자리를 누르면 g가, b 왼쪽의 빈 자리를 누르면 v가 입력된다 (왼손·오른손 모두 치기 쉽게).
             // 키를 더 그리는 것이 아니라서 줄의 폭과 열은 그대로다.
@@ -564,6 +576,11 @@ public final class KeyboardLayout {
         return qwertyLayout(ENGLISH, ENGLISH_ROWS, ENGLISH_POPUPS, false, prefs);
     }
 
+    /** 쿼티 모양 자판 왼쪽 아래 키: 영어는 늘 Shift, 한글(두벌식)은 한글 Shift 설정을 따른다 (없앴으면 빈 칸 또는 Fn). */
+    private static int qwertyShiftSlot(boolean korean, Prefs prefs) {
+        return korean ? koreanShiftSlot(prefs) : Key.SHIFT;
+    }
+
     /**
      * 쿼티 모양의 자판 (영어, 두벌식): 10 · 9(반 칸 들여쓰기) · Shift+7+⌫ 줄. Shift 키는 늘 있다 (두벌식의 쌍자음·ㅒ·ㅖ).
      * 가로 모드·대화면의 분리 키보드에서는 가운데에서 나눈다.
@@ -571,14 +588,16 @@ public final class KeyboardLayout {
     private static KeyboardLayout qwertyLayout(int kind, String[][] letterRows, String[][][] popups, boolean korean,
                                                Prefs prefs) {
         if (prefs != null && prefs.splitView()) return splitQwerty(kind, letterRows, popups, korean, prefs);   // 가로 모드 분리 키보드
+        if (!korean && prefs != null && prefs.englishBalanced()) return balancedQwerty(kind, letterRows, popups, false, prefs);
         boolean numberRow = prefs != null && prefs.numberRow();
         List<Row> rows = new ArrayList<>();
         if (numberRow) rows.add(numberRow(prefs));
         rows.add(letterRow(letterRows[0], popups[0], korean, prefs));
         rows.add(letterRow(letterRows[1], popups[1], korean, prefs));
         Key[] bottomLetters = letterKeys(letterRows[2], popups[2], korean, prefs);
-        rows.add(prefs != null && prefs.gridLayout() ? gridBottomLetterRow(bottomLetters, deleteKey(prefs), prefs)
-                : bottomLetterRow(bottomLetters, 1.5f, Key.SHIFT, deleteKey(prefs)));
+        int shift = qwertyShiftSlot(korean, prefs);
+        rows.add(prefs != null && prefs.gridLayout() ? gridBottomLetterRow(bottomLetters, shift, deleteKey(prefs), prefs)
+                : bottomLetterRow(bottomLetters, 1.5f, shift, deleteKey(prefs)));
         rows.add(spaceRow(Key.TO_SYMBOLS, "?123", prefs));
         return new KeyboardLayout(kind, 10, rows);
     }
@@ -890,10 +909,10 @@ public final class KeyboardLayout {
 
     /**
      * 한글 자판 Shift 자리의 키: Shift 키, (Shift 키를 끄고 Fn 키를 켰으면) Fn 키, 아니면 빈 칸.
-     * 두벌식은 쌍자음·ㅒ·ㅖ에 Shift를 써서 늘 Shift 키다.
+     * 두벌식은 Shift가 기본으로 보이고 (쌍자음·ㅒ·ㅖ), 원하면 없앨 수 있다.
      */
     private static int koreanShiftSlot(Prefs prefs) {
-        if (prefs == null || !prefs.koreanShiftHidden() || dubeolsik(prefs)) return Key.SHIFT;
+        if (prefs == null || !prefs.koreanShiftHidden()) return Key.SHIFT;
         return prefs.koreanShiftFn() ? Key.FUNCTION : Key.SPACER;
     }
 
@@ -909,9 +928,9 @@ public final class KeyboardLayout {
     /**
      * 격자 정렬일 때 영어 자판의 맨 아래 글자 줄: Shift·지우기 키를 아래 줄 기능키와 같은 폭(한글 키 한 칸)으로 맞춘다.
      */
-    private static Row gridBottomLetterRow(Key[] letters, boolean delete, Prefs prefs) {
+    private static Row gridBottomLetterRow(Key[] letters, int leftType, boolean delete, Prefs prefs) {
         List<Key> keys = new ArrayList<>();
-        keys.add(fn(Key.SHIFT, "", 1.5f));
+        keys.add(fn(leftType, leftType == Key.FUNCTION ? "Fn" : "", 1.5f));
         for (Key k : letters) keys.add(k);
         keys.add(fn(delete ? Key.DELETE : Key.SPACER, "", 1.5f));
         return gridSides(keys, prefs, true);

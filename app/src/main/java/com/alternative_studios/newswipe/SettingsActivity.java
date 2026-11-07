@@ -1501,6 +1501,9 @@ public final class SettingsActivity extends Activity {
         input.addView(toggle("모음 연속 탭으로 이중모음", "같은 모음을 연달아 누르면 이중모음을 입력합니다 (예: ㅏㅏ→ㅑ, ㅗㅗ→ㅛ).",
                 Prefs.DOUBLE_TAP_VOWEL, prefs.doubleTapVowel()));
         input.addView(toggle("영어 자동 대문자", "문장 첫 글자를 대문자로 시작합니다.", Prefs.AUTO_CAP, prefs.autoCap()));
+        input.addView(toggle("영어 자판 아래로 밀어 대문자 입력",
+                "영어 자판에서 글자 키를 아래로 밀면 그 키의 대문자를 입력합니다. 켜면 각 키 설정의 아래로 밀기는 대문자로 고정됩니다.",
+                Prefs.ENGLISH_SWIPE_UPPER, prefs.englishSwipeUpper()));
         input.addView(toggle("이메일 입력란은 영어로 시작",
                 "이메일 주소 입력란이나 앱이 영어 입력을 요청한 칸(아이디 입력란 등)에서는 영어 자판으로 시작하고, "
                         + "그 칸을 떠나면 원래 언어로 돌아갑니다. 웹 브라우저 주소창은 검색에도 쓰이므로 바꾸지 않습니다.",
@@ -1579,11 +1582,20 @@ public final class SettingsActivity extends Activity {
         // 그래서 여백 없는 틀(fold)로 감싸 그 틀을 펼치고 접는다.
         View keyArea = fold(subGroup(button("키 위치·폭 사용자화", v -> openSection(KEY_AREA))));
         keyArea.setVisibility(prefs.balancedLayout() ? View.VISIBLE : View.GONE);
+        // 두벌식에서 균형 레이아웃을 켰을 때만: 영어 자판도 같은 모양으로 나눈다.
+        View englishBalanced = fold(subGroup(toggle("영어 자판도 균형 레이아웃",
+                "영어 자판도 두벌식처럼 가운데에서 나눠 왼쪽 5·5·4키, 오른쪽 5·4·3키로 놓습니다. 경계와 키 폭·위치 설정을 함께 씁니다.",
+                prefs.raw().getBoolean(Prefs.ENGLISH_BALANCED, false), on -> {
+                    prefs.raw().edit().putBoolean(Prefs.ENGLISH_BALANCED, on).apply();
+                    refreshLayoutPreview();
+                })));
+        englishBalanced.setVisibility(englishBalancedShown() ? View.VISIBLE : View.GONE);
         View balancedRow = toggle("자·모음 균형 레이아웃",
                 "자판을 둘로 나눠 왼쪽에는 자음을, 오른쪽에는 모음을 놓습니다.",
                 prefs.balancedLayout(), on -> {
                     prefs.raw().edit().putBoolean(prefs.balancedLayoutKey(), on).apply();
                     Ui.setVisibleAnimated(keyArea, on);
+                    Ui.setVisibleAnimated(englishBalanced, englishBalancedShown());
                     refreshLayoutPreview();
                 });
         LinearLayout choices = choiceRowNow(new String[]{"두벌식", "단모음", "NewSwipe 단모음"}, selected,
@@ -1593,12 +1605,19 @@ public final class SettingsActivity extends Activity {
                     // 균형 레이아웃은 배열마다 따로 기억하므로 고른 배열의 값으로 스위치를 맞춘다.
                     ((ExpressiveSwitch) ((ViewGroup) balancedRow).getChildAt(1)).setCheckedSilently(prefs.balancedLayout());
                     Ui.setVisibleAnimated(keyArea, prefs.balancedLayout());
+                    Ui.setVisibleAnimated(englishBalanced, englishBalancedShown());
                     refreshLayoutPreview();
                 });
         korean.addView(choices);
         korean.addView(layoutNote);
         korean.addView(balancedRow);
         korean.addView(keyArea);
+        korean.addView(englishBalanced);
+    }
+
+    /** '영어 자판도 균형 레이아웃'은 두벌식의 균형 레이아웃을 켰을 때만 보인다 (설정 검색 목록에는 늘 넣는다). */
+    private boolean englishBalancedShown() {
+        return harvesting || prefs.koreanDubeolsik() && prefs.balancedLayout();
     }
 
     /** 고른 한글 배열의 설명. */
