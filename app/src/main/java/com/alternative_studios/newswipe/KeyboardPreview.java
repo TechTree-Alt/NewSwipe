@@ -278,7 +278,9 @@ final class KeyboardPreview extends FrameLayout {
         int padT = Ui.dp(c, prefs.padTopDp()), padB = Ui.dp(c, prefs.padBottomDp());
         // 키보드와 같다: 도구 막대를 자판 아래에 두면 자판의 아래쪽 여백은 도구 막대 밑으로 옮긴다 (전체 높이는 그대로).
         int lift = barLifted() ? padB : 0;
-        keys.setInsets(Ui.dp(c, prefs.padLeftDp()), padT, Ui.dp(c, prefs.padRightDp()), padB - lift);
+        // 위쪽 여백도 키보드 전체의 바깥 여백: 도구 막대가 자판 위에 있으면 도구 막대 위로 옮긴다 (키보드와 같다).
+        int raise = barRaised() ? padT : 0;
+        keys.setInsets(Ui.dp(c, prefs.padLeftDp()), padT - raise, Ui.dp(c, prefs.padRightDp()), padB - lift);
         float[][] areaPads = new float[AREAS][4];
         for (int a = 0; a < AREAS; a++) for (int side = 0; side < 4; side++) areaPads[a][side] = Ui.dp(c, prefs.areaPadDp(a, side));
         keys.setAreaInsets(areaPads);
@@ -291,10 +293,10 @@ final class KeyboardPreview extends FrameLayout {
                 && KeyboardLayout.isDigit(l.rows[0].keys[0].label);
         // 키보드와 같은 높이: 글자 4줄 + 숫자 줄 (기호 자판도 같은 높이를 쓴다).
         float rows = KeyboardLayout.rowUnits(prefs);
-        keys.setKeyboardHeight(Math.round(Ui.dp(c, 54) * rows * prefs.keyboardHeight() / 100f) + padT + padB - lift
+        keys.setKeyboardHeight(Math.round(Ui.dp(c, 54) * rows * prefs.keyboardHeight() / 100f) + padT + padB - lift - raise
                 + Ui.dp(c, prefs.areaPadVerticalDp()));
         keys.setLayout(l);
-        rebuildToolbar(lift);
+        rebuildToolbar(lift, raise);
         resolveSelection();
         overlay.invalidate();
         overlay.post(overlay::updateExclusion);   // 여백이 바뀌면 손잡이 자리도 바뀐다 (배치가 끝난 뒤에 잰다)
@@ -313,6 +315,11 @@ final class KeyboardPreview extends FrameLayout {
     }
 
     /** 도구 막대를 자판 아래에 두어 아래쪽 여백이 도구 막대 밑으로 옮겨졌는지. */
+    /** 도구 막대 줄이 자판 위에 있어 위쪽 여백을 그 위로 옮기는지. */
+    private boolean barRaised() {
+        return barShown() && !prefs.toolbarBottom();
+    }
+
     private boolean barLifted() {
         return barShown() && prefs.toolbarBottom();
     }
@@ -344,7 +351,7 @@ final class KeyboardPreview extends FrameLayout {
     }
 
     /** 도구 막대: 실제와 같은 자리·순서·크기의 버튼들 (누를 수 없고, 누르면 그 버튼을 고른다). */
-    private void rebuildToolbar(int lift) {
+    private void rebuildToolbar(int lift, int raise) {
         Context c = getContext();
         int height = Math.round(Ui.dp(c, 40) * prefs.toolbarHeight() / 100f);
         float scale = prefs.toolButtonSize() / 100f;
@@ -379,12 +386,13 @@ final class KeyboardPreview extends FrameLayout {
         }
         boolean shown = barShown();
         boolean bottom = prefs.toolbarBottom();
-        String colSig = shown + "," + bottom + "," + height + "," + lift;
+        String colSig = shown + "," + bottom + "," + height + "," + lift + "," + raise;
         if (colSig.equals(columnSignature)) return;
         columnSignature = colSig;
         column.removeAllViews();
         LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height);
         blp.bottomMargin = lift;   // 자판 아래에 두면 아래쪽 여백이 도구 막대 밑에 온다
+        blp.topMargin = raise;     // 자판 위에 두면 위쪽 여백이 도구 막대 위에 온다
         LinearLayout.LayoutParams klp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         if (!shown) {
@@ -543,9 +551,9 @@ final class KeyboardPreview extends FrameLayout {
     /** 키보드 전체(도구 막대·자판)를 감싼 테두리 자리. */
     boolean boardBounds(RectF out) {
         if (column.getChildCount() == 0) return false;
+        // 바깥 여백까지 모두 감싼다 (도구 막대 위·아래로 옮긴 여백 포함).
         float pad = Ui.dp(getContext(), 2);
-        View first = column.getChildAt(0), last = column.getChildAt(column.getChildCount() - 1);
-        out.set(pad, column.getTop() + first.getTop() + pad, getWidth() - pad, column.getTop() + last.getBottom() - pad);
+        out.set(pad, column.getTop() + pad, getWidth() - pad, column.getBottom() - pad);
         return out.height() > 0;
     }
 
@@ -629,7 +637,7 @@ final class KeyboardPreview extends FrameLayout {
         int w = getWidth();
         int kTop = keys.getTop(), kBottom = keys.getBottom();
         float padL = Ui.dp(c, prefs.padLeftDp()), padR = Ui.dp(c, prefs.padRightDp());
-        float padT = Ui.dp(c, prefs.padTopDp());
+        float padT = barRaised() ? 0 : Ui.dp(c, prefs.padTopDp());   // 자판 뷰 안의 위쪽 여백
         // 자판 뷰 안의 아래쪽 여백 (도구 막대를 자판 아래에 두면 0이고, 여백은 도구 막대 밑에 있다).
         float padB = barLifted() ? 0 : Ui.dp(c, prefs.padBottomDp());
         KeyboardLayout l = keys.getLayout();
@@ -650,9 +658,10 @@ final class KeyboardPreview extends FrameLayout {
                 return true;
             }
             case H_PAD_TOP:
-                // 자판 뷰의 위 가장자리 (위쪽 여백의 바깥쪽). 끌어 올리면 여백이 늘어 키보드가 위로 자란다.
+                // 위쪽 여백의 안쪽 가장자리: 도구 막대가 위에 있으면 도구 막대 위, 아니면 자판 뷰의 위.
+                // 끌어 올리면 여백이 늘어 키보드가 위로 자란다.
                 out[0] = w / 2f;
-                out[1] = Math.max(kTop, Ui.dp(c, 4));
+                out[1] = Math.max(barRaised() ? bar.getTop() : kTop, Ui.dp(c, 4));
                 return true;
             case H_PAD_LEFT:
                 out[0] = Math.max(padL, Ui.dp(c, 3));

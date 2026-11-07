@@ -1690,17 +1690,23 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         boolean liftBar = prefs.toolbarBottom() && panel == PANEL_KEYBOARD && !barOnly
                 && topSlot != null && topSlot.getVisibility() == View.VISIBLE;
         int gap = liftBar ? padB : 0;
-        keyboard.setInsets(Ui.dp(this, prefs.padLeftDp()), Ui.dp(this, prefs.padTopDp()),
+        // 위쪽 여백도 키보드 전체의 바깥 여백이다: 도구 막대가 자판 위에 있으면 여백을 도구 막대 위로 옮긴다 (전체 높이는 그대로).
+        int padT = Ui.dp(this, prefs.padTopDp());
+        boolean raiseBar = !prefs.toolbarBottom() && panel == PANEL_KEYBOARD && !barOnly
+                && topSlot != null && topSlot.getVisibility() == View.VISIBLE;
+        int gapTop = raiseBar ? padT : 0;
+        keyboard.setInsets(Ui.dp(this, prefs.padLeftDp()), padT - gapTop,
                 Ui.dp(this, prefs.padRightDp()), padB - gap);
-        keyboard.setKeyboardHeight(keyboardHeight - gap);
+        keyboard.setKeyboardHeight(keyboardHeight - gap - gapTop);
         if (topSlot != null && topSlot.getLayoutParams() instanceof LinearLayout.LayoutParams) {
             LinearLayout.LayoutParams slp = (LinearLayout.LayoutParams) topSlot.getLayoutParams();
-            if (slp.bottomMargin != gap) {
+            if (slp.bottomMargin != gap || slp.topMargin != gapTop) {
                 slp.bottomMargin = gap;
+                slp.topMargin = gapTop;
                 topSlot.setLayoutParams(slp);
             }
         }
-        int h = barOnly ? 0 : keyboardHeight - gap + (full ? toolbarHeight : 0);
+        int h = barOnly ? 0 : keyboardHeight - gap - gapTop + (full ? toolbarHeight : 0);
         ViewGroup.LayoutParams lp = content.getLayoutParams();
         if (lp != null && lp.height != h) {
             lp.height = h;
