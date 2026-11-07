@@ -480,6 +480,41 @@ public final class Prefs {
                 TOOL_ONE_HAND, TOOL_HIDE}, NONE);
     }
 
+    /** 키보드 편집의 영역 설정 창이 담당하는 값 (그 영역의 여백 포함). 키 하나하나에 정한 값은 건드리지 않는다. 영역 번호는 미리보기와 같다. */
+    public void resetArea(int area) {
+        java.util.List<String> keys = new java.util.ArrayList<>();
+        for (int side = 0; side < 4; side++) keys.add(areaPadKey(area, side));
+        java.util.List<String> prefixes = new java.util.ArrayList<>();
+        switch (area) {
+            case 0:   // 도구 막대: 모양·버튼 구성·막대 밀기
+                keys.addAll(java.util.Arrays.asList(TOOLBAR, TOOLBAR_BOTTOM, TOOLBAR_HEIGHT, TOOL_BUTTON_SIZE, TOOL_ORDER,
+                        TOOL_CLIPBOARD, TOOL_EMOJI, VOICE_KEY, TOOL_UNDO, TOOL_SETTINGS, TOOL_ONE_HAND, TOOL_HIDE));
+                prefixes.add("swipe_toolbar_bar_");
+                break;
+            case 1:   // 숫자 줄
+                keys.addAll(java.util.Arrays.asList(NUMBER_ROW, NUMBER_ROW_HEIGHT, NUMBER_HINT_HIDDEN));
+                break;
+            case 2:   // 글자 키: 배열·높이·입력·길게 누르기 시간·미는 거리·키보드 밀기
+                keys.addAll(java.util.Arrays.asList(KOREAN_LAYOUT, BALANCED_LAYOUT, KEYBOARD_HEIGHT, AUTO_CAP, ENGLISH_FIELDS,
+                        DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT, DOUBLE_TAP_CONSONANT_MS, LONG_PRESS_MS, POPUP_HINT_HIDDEN,
+                        SWIPE_THRESHOLD, CHAR_CURSOR_SPEED_H, CHAR_CURSOR_SPEED_V, SWIPE_PICK_SUGGESTION));
+                prefixes.add("swipe_kb_");
+                break;
+            default:  // 기능키: 높이·순서와 유무·격자·길게 누르기 시간·미는 거리
+                keys.addAll(java.util.Arrays.asList(FN_ROW_HEIGHT, NUMBER_PAD_SYMBOLS, GRID_LAYOUT, DELETE_PRESS_MS,
+                        FN_SWIPE_THRESHOLD));
+                break;
+        }
+        removeKeys(keys.toArray(new String[0]), prefixes.toArray(new String[0]));
+        if (area == 2) resetBalancedKeys();
+        if (area == 3) resetBottomKeys();
+    }
+
+    /** 키보드 전체 둘레의 여백. */
+    public void resetBoardPadding() {
+        removeKeys(new String[]{PAD_LEFT, PAD_RIGHT, PAD_TOP, PAD_BOTTOM}, NONE);
+    }
+
     /** 기능 배치(기능키·도구 막대·키보드 밀기·길게 누르기·Fn 키) 하나의 값. */
     public void resetSwipeActions(String group) {
         removeKeys(NONE, new String[]{"swipe_" + group + "_"});

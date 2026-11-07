@@ -101,6 +101,13 @@ final class KeyEditPanel {
         return root;
     }
 
+    /** 영역 창 안에 놓일 때는 '기본값으로 되돌리기'를 창 맨 아래에 한 번만 두므로 여기서는 만들지 않는다. */
+    private boolean omitReset;
+
+    void setOmitReset(boolean omit) {
+        omitReset = omit;
+    }
+
     /** 고른 것을 편집하는 칸을 새로 만든다. */
     void show(KeyboardPreview.Selection s, Key k) {
         sel = s;
@@ -917,6 +924,7 @@ final class KeyEditPanel {
 
     /** 맨 아래 '기본값으로 되돌리기' (이 키·버튼의 값만). */
     private void resetRow(String name, Runnable onReset) {
+        if (omitReset) return;
         root.addView(ResetDialog.button(a, name, onReset));
     }
 

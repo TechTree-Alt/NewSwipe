@@ -1407,11 +1407,15 @@ public final class SettingsActivity extends Activity {
         boolean board = s.kind == KeyboardPreview.SEL_BOARD;
         if (board) {
             keyPanel.view().setVisibility(View.GONE);
-            fillAreaBox(() -> buildPad(-1));
+            fillAreaBox(() -> {
+                buildPad(-1);
+                addAreaReset(-1);
+            });
             sheetTitle.setText("키보드 여백");
             return;
         }
         boolean panel = !area || areaId == KeyboardPreview.AREA_TOOLBAR;
+        keyPanel.setOmitReset(area);   // 도구 막대 영역 창의 되돌리기는 맨 아래 한 곳에서
         if (panel) keyPanel.show(area ? KeyboardPreview.Selection.toolbar() : s, editorPreview.selectedKey());
         keyPanel.view().setVisibility(panel ? View.VISIBLE : View.GONE);
         fillArea(areaId);
@@ -1432,7 +1436,27 @@ public final class SettingsActivity extends Activity {
             areaBox.setVisibility(View.GONE);
             return;
         }
-        fillAreaBox(() -> buildArea(areaId));
+        fillAreaBox(() -> {
+            buildArea(areaId);
+            addAreaReset(areaId);
+        });
+    }
+
+    /** 영역·키보드 여백 창 맨 아래의 '기본값으로 되돌리기' (그 창이 담당하는 값만). area -1은 키보드 전체 여백. */
+    private void addAreaReset(int area) {
+        String name = area < 0 ? "키보드 여백" : KeyboardPreview.AREA_NAMES[area] + " 설정";
+        list.addView(ResetDialog.button(this, name, () -> {
+            if (area < 0) prefs.resetBoardPadding();
+            else prefs.resetArea(area);
+            if (area == KeyboardPreview.AREA_TOOLBAR) {
+                for (int dir : com.alternative_studios.newswipe.keyboard.SwipeCustom.DIRS) {
+                    com.alternative_studios.newswipe.keyboard.ToolbarSwipes.SPEC.reset(prefs,
+                            com.alternative_studios.newswipe.keyboard.ToolbarSwipes.BAR, dir);
+                }
+            }
+            editorPreview.refresh();
+            showSelection(editorPreview.selection());   // 창의 슬라이더·스위치를 되돌린 값으로 다시 만든다
+        }));
     }
 
     /** areaBox를 비우고 build로 다시 채운다 (목록을 만드는 조각을 그대로 쓰도록 list를 잠깐 areaBox로 돌린다). */
