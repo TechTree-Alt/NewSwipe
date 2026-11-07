@@ -78,6 +78,11 @@ final class KeyboardPreview extends FrameLayout {
             return new Selection(SEL_TOOL_BUTTON, -1, null, 0, id, -1);
         }
 
+        /** 키 하나 (같은 키가 여럿이면 첫 번째). */
+        static Selection key(Key k, int tab) {
+            return new Selection(SEL_KEY, k.type, k.slot(), 0, null, tab);
+        }
+
         static Selection area(int id) {
             return new Selection(SEL_AREA, id, null, 0, null, -1);
         }
@@ -761,7 +766,7 @@ final class KeyboardPreview extends FrameLayout {
             if (areaAlpha > 0.01f) {
                 c.save();
                 c.translate(-layerPos * shift, 0);
-                stroke.setStrokeWidth(Ui.dp(ctx, 2));
+                stroke.setStrokeWidth(Ui.dp(ctx, 1.25f));   // 키 층의 테두리와 같은 굵기
                 areaLabel.setTextSize(Ui.dp(ctx, 11));
                 areaLabel.setTextAlign(Paint.Align.CENTER);
                 areaLabel.setFakeBoldText(true);
@@ -770,7 +775,7 @@ final class KeyboardPreview extends FrameLayout {
                 for (int a = 0; a < AREAS; a++) {
                     if (!areaBounds(a, area)) continue;
                     boolean chosen = selection != null && selection.kind == SEL_AREA && selection.area() == a;
-                    stroke.setColor(withAlpha(accent, (chosen ? 1f : 0.7f) * areaAlpha));
+                    stroke.setColor(withAlpha(accent, (chosen ? 1f : 0.55f) * areaAlpha));
                     float rr = Math.min(r, Math.min(area.width(), area.height()) / 2f);
                     c.drawRoundRect(area, rr, rr, stroke);
                     if (chosen) {

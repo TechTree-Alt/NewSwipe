@@ -111,6 +111,16 @@ final class SettingsFrame {
     }
 
     /** 키보드 열기 대신 검색 버튼과 검색창을 둔다. 검색창을 닫으면 빈 검색어로 알린다. */
+    /** 키보드가 화면 아래를 그대로 덮게 한다 (화면을 줄이지 않는다). 키보드 편집처럼 아래에 미리보기를 둔 화면에서 쓴다. */
+    private boolean keyboardOverlays;
+
+    SettingsFrame keyboardOverlays() {
+        keyboardOverlays = true;
+        activity.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING
+                | android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN);
+        return this;
+    }
+
     SettingsFrame withSearch(java.util.function.Consumer<String> onQuery) {
         this.onSearch = onQuery;
         return this;
@@ -136,7 +146,7 @@ final class SettingsFrame {
             root.addView(testBar, matchWrap());
         }
         root.addView(content, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
-        Ui.padForSystemBars(root);
+        Ui.padForSystemBars(root, !keyboardOverlays);
         return root;
     }
 
