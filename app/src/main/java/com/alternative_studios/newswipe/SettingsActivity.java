@@ -372,7 +372,7 @@ public final class SettingsActivity extends Activity {
      * 이름이 바뀌어 맞는 항목이 없어진 줄은 그냥 무시된다 (검색이 깨지지 않고, 그 낱말로만 못 찾게 된다).
      */
     private static final String[][] SEARCH_SYNONYMS = {
-            {KEYBOARD, "키보드 높이", "키 높이 크기"},
+            {KEYBOARD, "글자 키 높이", "키보드 높이 키 높이 크기"},
             {KEYBOARD, "키 글자 크기", "폰트 글씨 크기"},
             {KEYBOARD, "키 곡률", "둥글기 모서리 라운드"},
             {KEYBOARD, "그림자 세기", "그림자"},
@@ -1521,6 +1521,9 @@ public final class SettingsActivity extends Activity {
             }
             case KeyboardPreview.AREA_LETTERS: {
                 buildKoreanLayoutSection();
+                LinearLayout size = section("모양");
+                size.addView(sizeSlider("글자 키 높이", Prefs.KEYBOARD_HEIGHT, prefs::keyboardHeight, 70, 140, 1, "%"));
+                size.addView(note("글자 키 줄의 높이로, 숫자 줄과 기능키 줄도 같은 비율로 커집니다. 미리보기의 ↕ 버튼으로도 바꿉니다."));
                 addLetterInput(section("입력"));   // ⌫ 인식 범위는 ⌫ 키 설정에
                 LinearLayout lp = section("길게 누르기");
                 addLetterLongPress(lp);
@@ -1529,9 +1532,6 @@ public final class SettingsActivity extends Activity {
                 swipe.addView(swipeDistanceSlider());
                 addKeyboardSwipe(swipe);
                 addTrackpadSpeed(swipe);
-                LinearLayout size = section("크기");
-                size.addView(sizeSlider("키보드 높이", Prefs.KEYBOARD_HEIGHT, prefs::keyboardHeight, 70, 140, 1, "%"));
-                size.addView(note("글자 키 줄의 높이로, 숫자 줄과 기능키 줄도 같은 비율로 커집니다. 미리보기의 손잡이로도 바꿉니다."));
                 LinearLayout more = card();
                 more.addView(note(KEY_PAGE_NOTE));
                 buildPad(areaId);
@@ -1722,7 +1722,7 @@ public final class SettingsActivity extends Activity {
         return b;
     }
 
-    /** 키 모양: 글자 크기, 곡률, 키 간격, 그림자, 누름 미리보기. 키보드 높이는 글자 키 영역 창에, 여백은 미리보기의 키보드·여백 페이지에 있다. */
+    /** 키 모양: 글자 크기, 곡률, 키 간격, 그림자, 누름 미리보기. 글자 키 높이는 글자 키 영역 창에, 여백은 미리보기의 키보드·여백 페이지에 있다. */
     private void buildLook() {
         LinearLayout look = section("키 모양");
         look.addView(slider("키 글자 크기", Prefs.KEY_TEXT_SIZE, prefs.keyTextSize(), 70, 140, 5, "%"));

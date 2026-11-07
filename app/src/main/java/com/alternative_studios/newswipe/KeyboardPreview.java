@@ -123,7 +123,7 @@ final class KeyboardPreview extends FrameLayout {
     /** 손잡이마다 위아래로 끄는지 (아니면 좌우). */
     private static final boolean[] VERTICAL = {true, true, true, false, false, true, false, true, true, true,
             false, true, false, true};
-    private static final String[] HANDLE_NAMES = {"도구 막대 높이", "숫자 줄 높이", "키보드 높이", "왼쪽 여백", "오른쪽 여백",
+    private static final String[] HANDLE_NAMES = {"도구 막대 높이", "숫자 줄 높이", "글자 키 높이", "왼쪽 여백", "오른쪽 여백",
             "아래쪽 여백", "키 좌우 여백", "키 상하 여백", "위쪽 여백", "기능키 높이",
             "왼쪽 여백", "위쪽 여백", "오른쪽 여백", "아래쪽 여백"};
     private static final String[] HANDLE_KEYS = {Prefs.TOOLBAR_HEIGHT, Prefs.NUMBER_ROW_HEIGHT, Prefs.KEYBOARD_HEIGHT,
