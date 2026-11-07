@@ -1186,9 +1186,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         keyboard.setKeyGaps(Ui.dp(this, prefs.keyGapXDp()), Ui.dp(this, prefs.keyGapYDp()));
         keyboard.setInsets(Ui.dp(this, prefs.padLeftDp()), Ui.dp(this, prefs.padTopDp()),
                 Ui.dp(this, prefs.padRightDp()), Ui.dp(this, prefs.padBottomDp()));
-        // 도구 막대의 양 끝 버튼이 자판의 양 끝 키와 같은 선에 오도록 '자판 모양'의 좌우 여백을 따른다.
-        if (toolbar != null) toolbar.setPadding(Ui.dp(this, prefs.padLeftDp()), 0, Ui.dp(this, prefs.padRightDp()), 0);
-        if (searchBar != null) searchBar.setPadding(Ui.dp(this, prefs.padLeftDp()), 0, Ui.dp(this, prefs.padRightDp()), 0);
+        keyboard.setAreaInsets(areaPadsPx());
+        // 도구 막대의 양 끝 버튼이 자판의 양 끝 키와 같은 선에 오도록 '자판 모양'의 좌우 여백을 따른다 (도구 막대 영역 여백을 더한다).
+        int barL = Ui.dp(this, prefs.padLeftDp() + prefs.areaPadDp(0, Prefs.SIDE_LEFT));
+        int barR = Ui.dp(this, prefs.padRightDp() + prefs.areaPadDp(0, Prefs.SIDE_RIGHT));
+        if (toolbar != null) toolbar.setPadding(barL, 0, barR, 0);
+        if (searchBar != null) searchBar.setPadding(barL, 0, barR, 0);
         applyPanelInsets();
         arrangeToolbar();
         if (topSlot != null) {
@@ -1199,10 +1202,17 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         updateHideButton();
         // 한 손 모드에서는 키 높이를 '키 높이' 비율만큼 줄인다.
         keyboardHeight = Math.round(Ui.dp(this, 54) * rows * sizePrefs.keyboardHeight() / 100f * oneHandScale)
-                + Ui.dp(this, prefs.padTopDp()) + Ui.dp(this, prefs.padBottomDp());
+                + Ui.dp(this, prefs.padTopDp()) + Ui.dp(this, prefs.padBottomDp()) + Ui.dp(this, prefs.areaPadVerticalDp());
         keyboard.setKeyboardHeight(keyboardHeight);
         applyOneHand();
         updatePanelSizes();
+    }
+
+    /** 영역별 여백 (px, [영역][왼·위·오른·아래]). */
+    private float[][] areaPadsPx() {
+        float[][] pads = new float[4][4];
+        for (int a = 0; a < 4; a++) for (int side = 0; side < 4; side++) pads[a][side] = Ui.dp(this, prefs.areaPadDp(a, side));
+        return pads;
     }
 
     // ---------------------------------------------------------------- 한 손 모드

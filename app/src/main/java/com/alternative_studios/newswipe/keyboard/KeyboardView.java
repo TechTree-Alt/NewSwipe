@@ -273,6 +273,37 @@ public final class KeyboardView extends View {
         invalidate();
     }
 
+    /** 영역별 여백(px): [영역][왼·위·오른·아래]. 영역 번호: 1 숫자 줄, 2 글자 키, 3 기능키 (0 도구 막대는 쓰지 않는다). */
+    private final float[][] areaPad = new float[4][4];
+    public static final int AREA_NUMBER = 1, AREA_LETTERS = 2, AREA_FN = 3;
+
+    public void setAreaInsets(float[][] pads) {
+        boolean same = true;
+        for (int a = 0; a < 4; a++) for (int s = 0; s < 4; s++) if (areaPad[a][s] != pads[a][s]) same = false;
+        if (same) return;
+        for (int a = 0; a < 4; a++) System.arraycopy(pads[a], 0, areaPad[a], 0, 4);
+        layoutKeys(getWidth(), getHeight());
+        invalidate();
+    }
+
+    /**
+     * 줄 i가 속한 영역: 글자 자판 맨 위의 숫자 줄, 맨 아래 기능키 줄, 그 사이의 글자 키. 숫자 패드처럼 영역이 없는 자판은 -1.
+     */
+    public int rowArea(int i) {
+        if (layout == null || layout.kind == KeyboardLayout.NUMBER || layout.rows.length < 2) return -1;
+        if (i == layout.rows.length - 1) return AREA_FN;
+        if (i == 0 && layout.isLetters() && digitRow(layout.rows[0])) return AREA_NUMBER;
+        return AREA_LETTERS;
+    }
+
+    private static boolean digitRow(KeyboardLayout.Row row) {
+        for (Key k : row.keys) {
+            if (k.type == Key.GAP || k.type == Key.SPACER) continue;
+            return KeyboardLayout.isDigit(k.label);
+        }
+        return false;
+    }
+
     /** 자판 둘레의 여백(px). */
     public void setInsets(int left, int top, int right, int bottom) {
         if (padL == left && padT == top && padR == right && padB == bottom) return;
@@ -473,16 +504,33 @@ public final class KeyboardView extends View {
 
     private void layoutKeys(int w, int h) {
         if (layout == null || w == 0 || h == 0) return;
-        float unit = (w - padL - padR) / layout.columns;
-        float rowUnit = (h - padT - padB) / layout.totalHeight();
+        // 영역별 위·아래 여백은 그 영역의 첫 줄 위와 마지막 줄 아래에 두고, 그만큼 줄 높이에서 뺀다.
+        boolean[] present = new boolean[4];
+        for (int i = 0; i < layout.rows.length; i++) {
+            int a = rowArea(i);
+            if (a >= 0) present[a] = true;
+        }
+        float extraV = 0;
+        for (int a = 0; a < 4; a++) if (present[a]) extraV += areaPad[a][1] + areaPad[a][3];
+        float rowUnit = (h - padT - padB - extraV) / layout.totalHeight();
         rowUnitPx = rowUnit;
         float y = padT;
-        for (KeyboardLayout.Row row : layout.rows) {
+        int prevArea = -2;
+        for (int i = 0; i < layout.rows.length; i++) {
+            KeyboardLayout.Row row = layout.rows[i];
+            int a = rowArea(i);
+            if (a != prevArea) {
+                if (prevArea >= 0) y += areaPad[prevArea][3];
+                if (a >= 0) y += areaPad[a][1];
+                prevArea = a;
+            }
+            float left = padL + (a >= 0 ? areaPad[a][0] : 0), right = padR + (a >= 0 ? areaPad[a][2] : 0);
+            float unit = (w - left - right) / layout.columns;
             float rh = row.height * rowUnit;
             float sum = 0;
             for (Key k : row.keys) sum += k.weight;
             float scale = sum > layout.columns ? layout.columns / sum : 1f;
-            float x = padL + (layout.columns - sum * scale) * unit / 2f;
+            float x = left + (layout.columns - sum * scale) * unit / 2f;
             for (Key k : row.keys) {
                 float kw = k.weight * scale * unit;
                 k.rect.set(x, y, x + kw, y + rh);

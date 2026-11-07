@@ -1090,10 +1090,14 @@ public final class SettingsActivity extends Activity {
         try {
             // 여기에는 키보드 전체에 걸리고 어느 영역·키 창에도 없는 것만 둔다. 나머지는 미리보기에서 영역이나 키를 눌러 바꾼다.
             LinearLayout tip = card();
-            tip.addView(note("미리보기는 좌우로 넘기는 세 페이지입니다. '키보드'에서는 손잡이로 여백을, '영역'에서는 도구 막대·숫자 줄·"
+            tip.addView(note("미리보기는 좌우로 넘기는 세 페이지입니다. '키보드'에서는 키보드 전체나 영역을 눌러 그 여백을, '영역'에서는 도구 막대·숫자 줄·"
                     + "글자 키·기능키를, '키'에서는 키 하나를 눌러 설정합니다. 손잡이(작은 막대)를 끌면 크기가 바로 바뀝니다."));
             buildSizes();
             buildLook();
+            // 숫자 줄은 꺼 두면 미리보기에 없어 누를 수 없으므로 여기서도 그 설정 창을 연다.
+            LinearLayout numberRow = section("숫자 줄");
+            numberRow.addView(button("숫자 줄 설정", v -> openNumberRowSheet()));
+            numberRow.addView(note("숫자 줄을 켜고 끄거나 높이를 바꿉니다. 켜 두었으면 미리보기의 숫자 줄을 눌러도 됩니다."));
             LinearLayout landscape = section("가로 모드");
             landscape.addView(button("가로 모드 키보드 사용자화", v -> openSection(LANDSCAPE_AREA)));
             landscape.addView(note("화면을 가로로 돌렸을 때의 자판 모양을 따로 정합니다."));
@@ -1358,7 +1362,19 @@ public final class SettingsActivity extends Activity {
     }
 
     /** 미리보기에서 키·버튼·도구 막대를 눌렀다: 그것을 편집하는 창을 연다. 빈 곳이면 닫는다. */
+    /** 숫자 줄 영역의 설정 창을 연다 (숫자 줄을 꺼서 미리보기에 없을 때도). */
+    private void openNumberRowSheet() {
+        if (editorPreview == null) return;
+        if (editorPreview.layer() != KeyboardPreview.LAYER_AREA) editorPreview.setLayer(KeyboardPreview.LAYER_AREA);
+        onPreviewTap(KeyboardPreview.Selection.area(KeyboardPreview.AREA_NUMBER));
+    }
+
     private void onPreviewTap(KeyboardPreview.Selection s) {
+        if (editorPreview.layer() == KeyboardPreview.LAYER_BOARD) {
+            // 키보드 층: 창 없이 영역을 고르기만 한다 (그 영역의 여백 손잡이가 뜬다). 같은 영역을 다시 누르면 푼다.
+            editorPreview.select(s == null || s.same(editorPreview.selection()) ? null : s);
+            return;
+        }
         if (s == null) {
             closeKeyPanel();
             return;
@@ -1431,11 +1447,15 @@ public final class SettingsActivity extends Activity {
                 break;
             case KeyboardPreview.AREA_NUMBER: {
                 LinearLayout c = section("숫자 줄");
-                c.addView(toggle("숫자 줄 표시", "자판 위에 1~0 숫자 줄을 보여 줍니다.", Prefs.NUMBER_ROW, prefs.numberRow()));
-                c.addView(sizeSlider("숫자 줄 높이", Prefs.NUMBER_ROW_HEIGHT, prefs::numberRowHeight,
+                // 숫자 줄을 끄면 나머지 항목은 쓸 일이 없어 감춘다.
+                LinearLayout rest = new LinearLayout(this);
+                rest.setOrientation(LinearLayout.VERTICAL);
+                rest.addView(sizeSlider("숫자 줄 높이", Prefs.NUMBER_ROW_HEIGHT, prefs::numberRowHeight,
                         Prefs.NUMBER_ROW_HEIGHT_MIN, Prefs.NUMBER_ROW_HEIGHT_MAX, 1, "%"));
-                c.addView(numberHintToggle());
-                c.addView(note(KEY_PAGE_NOTE));
+                rest.addView(numberHintToggle());
+                rest.addView(note(KEY_PAGE_NOTE));
+                c.addView(toggle("숫자 줄 표시", "자판 위에 1~0 숫자 줄을 보여 줍니다.", Prefs.NUMBER_ROW, prefs.numberRow(), rest));
+                c.addView(rest, matchWrap());
                 break;
             }
             case KeyboardPreview.AREA_LETTERS: {

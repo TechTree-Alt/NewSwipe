@@ -59,6 +59,15 @@ public final class Prefs {
     public static final String PAD_LEFT = "pad_left";                 // dp, 0~24
     public static final String PAD_RIGHT = "pad_right";               // dp, 0~24
     public static final String PAD_TOP = "pad_top";                   // dp, 0~24
+    /**
+     * 영역별 여백 (dp, 0~32): "area_pad_" + 영역 이름 + "_" + 방향(l·t·r·b). 키보드 전체 여백 안쪽에 더한다.
+     * 영역 차례는 미리보기의 영역 번호와 같다 (도구 막대·숫자 줄·글자 키·기능키). 도구 막대는 왼쪽·오른쪽만 쓴다.
+     */
+    public static final String AREA_PAD_PREFIX = "area_pad_";
+    public static final String[] PAD_AREAS = {"toolbar", "number", "letters", "fn"};
+    public static final int AREA_PAD_MAX = 32;
+    /** 영역 여백의 방향 번호. */
+    public static final int SIDE_LEFT = 0, SIDE_TOP = 1, SIDE_RIGHT = 2, SIDE_BOTTOM = 3;
     public static final String KEY_GAP_X = "key_gap_x";               // 키 좌우 여백 dp, 0~12
     public static final String KEY_GAP_Y = "key_gap_y";               // 키 상하 여백 dp, 0~20
     public static final String PAD_BOTTOM = "pad_bottom";             // dp, 0~48
@@ -370,6 +379,7 @@ public final class Prefs {
         MENU_KEYS.put("theme", keys(THEME_MODE, ACCENT_MODE, ACCENT_COLOR, GRID_COLORS, NEUMORPHISM));
         MENU_KEYS.put("look", keys(KEYBOARD_HEIGHT, KEY_TEXT_SIZE, KEY_RADIUS, KEY_SHADOW, KEY_SHADOW_STRENGTH,
                 KEY_PREVIEW, POPUP_HINT_HIDDEN, NUMBER_HINT_HIDDEN, SPACE_LANG_LABEL, PAD_LEFT, PAD_RIGHT, PAD_TOP, PAD_BOTTOM, KEY_GAP_X, KEY_GAP_Y));
+        MENU_PREFIXES.put("look", keys(AREA_PAD_PREFIX));
         MENU_KEYS.put("input", keys(AUTO_CAP, ENGLISH_FIELDS, DOUBLE_SPACE_PERIOD, DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT,
                 DOUBLE_TAP_CONSONANT_MS, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, SPACE_HIT_SHRINK,
                 SPACE_HIT_SHRINK_PCT));
@@ -586,6 +596,26 @@ public final class Prefs {
     public int padLeftDp() { return sp.getInt(PAD_LEFT, 3); }
     public int padRightDp() { return sp.getInt(PAD_RIGHT, 3); }
     public int padTopDp() { return sp.getInt(PAD_TOP, 0); }
+
+    /** 영역 area(0 도구 막대·1 숫자 줄·2 글자 키·3 기능키)의 side(SIDE_*) 여백 설정 키. */
+    public static String areaPadKey(int area, int side) {
+        return AREA_PAD_PREFIX + PAD_AREAS[area] + "_" + "ltrb".charAt(side);
+    }
+
+    /** 영역별 여백 (dp, 0~32). */
+    public int areaPadDp(int area, int side) {
+        return clamp(sp.getInt(areaPadKey(area, side), 0), 0, AREA_PAD_MAX);
+    }
+
+    /** 영역별 위·아래 여백의 합 (dp): 키보드 높이에 더한다. 숫자 줄은 켰을 때만. */
+    public int areaPadVerticalDp() {
+        int sum = 0;
+        for (int a = 1; a < PAD_AREAS.length; a++) {
+            if (a == 1 && !numberRow()) continue;
+            sum += areaPadDp(a, SIDE_TOP) + areaPadDp(a, SIDE_BOTTOM);
+        }
+        return sum;
+    }
     public int padBottomDp() { return sp.getInt(PAD_BOTTOM, 4); }
     public boolean periodComma() { return sp.getBoolean(PERIOD_COMMA, true); }
 
