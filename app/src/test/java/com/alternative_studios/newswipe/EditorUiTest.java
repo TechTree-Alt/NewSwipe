@@ -1219,7 +1219,7 @@ public class EditorUiTest {
         assertTrue(visibleTexts(cur(a)).contains("두벌식은 컴퓨터 키보드와 같은 표준 한글 배열입니다."));
         assertTrue(visibleTexts(cur(a)).contains("자·모음 균형 레이아웃"));
         shot(a, "a0-dubeolsik");
-        // 균형 레이아웃: 자음이 왼쪽 절반, 모음이 오른쪽 절반 (가운데 빈틈 없이 ㅎ과 ㅗ 사이에 반 칸)
+        // 균형 레이아웃: 자음은 왼쪽 절반, 모음은 오른쪽 절반으로 나누되 각 쪽 안의 자리는 일반 두벌식 그대로
         View row = (View) findText(cur(a), "자·모음 균형 레이아웃").getParent().getParent();
         row.performClick();
         idle();
@@ -1227,16 +1227,18 @@ public class EditorUiTest {
         assertTrue(prefs.raw().getBoolean(Prefs.BALANCED_LAYOUT + "_" + Prefs.KOREAN_LAYOUT_DUBEOLSIK, false));
         KeyboardView kv = find(p, KeyboardView.class);
         Key m = key(p, "ㅁ", Key.CHAR), b = key(p, "ㅂ", Key.CHAR), o = key(p, "ㅗ", Key.CHAR), yo = key(p, "ㅛ", Key.CHAR);
-        assertEquals(b.rect.left, m.rect.left, 1f);   // 자음 쪽은 격자 (ㅁ이 ㅂ 바로 아래)
-        assertEquals(yo.rect.left + yo.rect.width() / 2f, o.rect.left, 1.5f);   // 모음 쪽은 반 칸 엇갈림
+        assertEquals(b.rect.left + b.rect.width() / 2f, m.rect.left, 1.5f);   // ㅁ은 ㅂ보다 반 칸 들어간다
+        assertEquals(yo.rect.left + yo.rect.width() / 2f, o.rect.left, 1.5f);   // ㅗ도 ㅛ보다 반 칸
+        Key del = key(p, null, Key.DELETE), e = key(p, "ㅔ", Key.CHAR);
+        assertEquals(e.rect.width() * 1.5f, del.rect.width(), 2f);   // ⌫는 일반 자판처럼 1.5칸 (늘리지 않는다)
+        assertEquals(e.rect.right, del.rect.right, 1.5f);
+        assertTrue(key(p, "ㅎ", Key.CHAR).rect.right <= kv.getWidth() / 2f + 1f);
         assertTrue(o.rect.left >= kv.getWidth() / 2f - 1f);
         shot(a, "a1-dubeolsik-balanced");
-        // 격자 정렬: 맨 아래 줄 첫 키가 Shift와 같은 폭
+        // 격자 정렬과도 함께 쓴다
         prefs.raw().edit().putBoolean(Prefs.GRID_LAYOUT, true).commit();
         idle();
-        Key shift = key(p, null, Key.SHIFT), mode = key(p, null, Key.TO_SYMBOLS);
-        assertEquals(shift.rect.left, mode.rect.left, 1f);
-        assertEquals(shift.rect.right, mode.rect.right, 1f);
+        assertEquals(10, p.layout().columns);
         shot(a, "a2-dubeolsik-balanced-grid");
         // 다른 배열로 바꾸면 그 배열의 균형 레이아웃 값으로 (두벌식의 값은 기억)
         findText(cur(a), "단모음").performClick();

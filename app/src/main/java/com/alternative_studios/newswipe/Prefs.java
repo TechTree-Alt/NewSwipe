@@ -137,7 +137,7 @@ public final class Prefs {
     public static final int BALANCED_BOUNDARY_MIN = 30, BALANCED_BOUNDARY_MAX = 70, BALANCED_BOUNDARY_DEFAULT = 50;
     /** 가로 모드의 값은 위 이름 뒤에 이 말을 붙여 따로 저장한다 (예: balanced_vowel_width_land_danmoeum7). */
     private static final String LANDSCAPE_SUFFIX = "_land";
-    public static final int BALANCED_WIDTH_MIN = 60, BALANCED_WIDTH_DEFAULT = 100;
+    public static final int BALANCED_WIDTH_MIN = 60, BALANCED_WIDTH_DEFAULT = 80;
     /**
      * 분리 키보드(가로 모드·대화면)의 두 묶음 기본 모양: 왼쪽 묶음은 폭 80%에 가로 위치 20, 오른쪽 묶음은 폭 80%에 가로 위치 80
      * (두 묶음이 가운데에서 살짝 벌어지고 바깥쪽 가장자리 쪽에 모인다). 세로 모드의 균형 레이아웃은 폭 100%·위치 50이 기본이다.
@@ -930,7 +930,7 @@ public final class Prefs {
     /** 지금 보기에서 자음·모음 키 폭의 최솟값 (%): 가로 모드·대화면 값은 30, 세로 모드는 60. */
     public int balancedWidthMin() { return profileValues() ? BALANCED_WIDTH_MIN_LANDSCAPE : BALANCED_WIDTH_MIN; }
 
-    /** 키 폭 기본값 (%): 분리 키보드는 80, 그 밖(세로 모드)은 100. */
+    /** 키 폭 기본값 (%): 분리 키보드도 세로 모드의 균형 레이아웃도 80 (상수는 따로 둔다). */
     private int widthDefault() {
         return profileValues() ? SPLIT_WIDTH_DEFAULT : BALANCED_WIDTH_DEFAULT;
     }

@@ -137,23 +137,15 @@ public final class KeyboardLayout {
      * 고치지 않는다.
      */
     public static String[][] koreanLetterRows(Prefs prefs) {
-        if (dubeolsik(prefs)) return balanced(prefs) ? DUBEOLSIK_BALANCED_GRID : DUBEOLSIK_ROWS;
-        return newSwipe(prefs) ? D7_ROWS : KOREAN_GRID;
+        return dubeolsik(prefs) ? DUBEOLSIK_ROWS : newSwipe(prefs) ? D7_ROWS : KOREAN_GRID;
     }
 
     /**
-     * 두벌식 균형 레이아웃의 글자 줄을 칸 위치대로: 자음 쪽은 5열 격자라 셋째 줄 맨 왼쪽이 Shift 자리다 (ㅋ이 ㄴ 아래).
-     * 모음 쪽은 실제로 반 칸씩 엇갈리지만 격자로 어림한다.
-     */
-    private static final String[][] DUBEOLSIK_BALANCED_GRID = {DUBEOLSIK_ROWS[0], DUBEOLSIK_ROWS[1],
-            {"", "ㅋ", "ㅌ", "ㅊ", "ㅍ", "ㅠ", "ㅜ", "ㅡ"}};
-
-    /**
      * {@link #koreanLetterRows}의 줄마다 첫 칸이 놓인 가로 위치 (키 한 칸 단위). 칸이 반듯한 격자인 배열(단모음)은 null이고,
-     * 두벌식처럼 줄이 엇갈리면 그 위치를 준다. 고치지 않는다.
+     * 두벌식처럼 줄이 엇갈리면 그 위치를 준다 (균형 레이아웃도 양쪽 안에서 엇갈림이 그대로다). 고치지 않는다.
      */
     public static float[] koreanRowOffsets(Prefs prefs) {
-        return dubeolsik(prefs) && !balanced(prefs) ? DUBEOLSIK_OFFSETS : null;
+        return dubeolsik(prefs) ? DUBEOLSIK_OFFSETS : null;
     }
 
     /**
@@ -402,18 +394,21 @@ public final class KeyboardLayout {
 
     /**
      * 두벌식의 자·모음 균형 레이아웃 r번째 줄 (세로 모드만: 분리 키보드는 영어 자판처럼 나눈다).
-     * 자음 쪽은 5열 격자다: ㅂㅈㄷㄱㅅ / ㅁㄴㅇㄹㅎ / Shift ㅋㅌㅊㅍ (단모음 자판의 자음 쪽과 같은 자리).
-     * 모음 쪽은 5열 폭에 두벌식 자판의 오른쪽 절반을 그대로 옮긴다: ㅛㅕㅑㅐㅔ / 반 칸 들어간 ㅗㅓㅏㅣ /
-     * 반 칸 들어간 ㅠㅜㅡ와 1.5칸 ⌫. 그래서 모든 줄이 5칸이고 모음 키 폭이 줄마다 같다.
+     * 일반 두벌식 자판을 자음과 모음 사이에서 나누기만 하고, 각 쪽 안에서 키의 상대적인 자리와 폭은 그대로 둔다:
+     * 자음 쪽은 ㅂㅈㄷㄱㅅ / 반 칸 들어간 ㅁㄴㅇㄹㅎ / 1.5칸 Shift와 ㅋㅌㅊㅍ (5.5칸),
+     * 모음 쪽은 ㅛㅕㅑㅐㅔ / 반 칸 들어간 ㅗㅓㅏㅣ / 반 칸 들어간 ㅠㅜㅡ와 1.5칸 ⌫ (5칸).
+     * 줄마다 각 쪽의 폭이 같아 키 폭과 엇갈림이 줄 사이에서 맞는다.
      */
     private static Row dubeolsikBalancedRow(int r, Prefs prefs) {
         Key[] letters = letterKeys(DUBEOLSIK_ROWS[r], DUBEOLSIK_POPUPS[r], true, prefs);
         List<Key> consonants = new ArrayList<>(), vowels = new ArrayList<>();
-        if (r == 2) consonants.add(fn(koreanShiftSlot(prefs), "", 1f));
+        if (r == 1) consonants.add(fn(Key.GAP, "", 0.5f));
+        if (r == 2) consonants.add(fn(koreanShiftSlot(prefs), "", 1.5f));
         for (Key k : letters) {
             boolean vowel = com.alternative_studios.newswipe.hangul.HangulComposer.isVowel(k.label.charAt(0));
             (vowel ? vowels : consonants).add(k);
         }
+        if (r == 0) consonants.add(fn(Key.GAP, "", 0.5f));
         if (r > 0) vowels.add(0, fn(Key.GAP, "", 0.5f));
         if (r == 1) vowels.add(fn(Key.GAP, "", 0.5f));
         if (r == 2) vowels.add(fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1.5f));

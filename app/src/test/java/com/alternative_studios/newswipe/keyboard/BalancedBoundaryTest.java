@@ -113,9 +113,10 @@ public class BalancedBoundaryTest {
         Prefs p = view(sp, Prefs.PROFILE_PORTRAIT, false);
         sp.m.put(p.balancedLayoutKey(), true);
         assertEquals(50, p.balancedBoundary());
+        // 기본 키 폭은 꽉 채운 폭의 80%
         float[][] s = spans(KeyboardLayout.korean(p).rows[0]);
-        for (int i = 0; i < 5; i++) assertEquals("자음 1칸", 1f, s[i][1] - s[i][0], 0.001f);
-        for (int i = 5; i < 8; i++) assertEquals("모음 5/3칸", 5f / 3f, s[i][1] - s[i][0], 0.001f);
+        for (int i = 0; i < 5; i++) assertEquals("자음 0.8칸", 0.8f, s[i][1] - s[i][0], 0.001f);
+        for (int i = 5; i < 8; i++) assertEquals("모음 5/3칸의 80%", 5f / 3f * 0.8f, s[i][1] - s[i][0], 0.001f);
     }
 
     @Test

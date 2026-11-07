@@ -195,11 +195,11 @@ public class SplitBottomRowTest {
         assertEquals(20, p.balancedConsonantPos());
         assertEquals(80, p.balancedVowelWidth());
         assertEquals(80, p.balancedVowelPos());
-        // 세로 모드의 균형 레이아웃은 그대로 100%·가운데
+        // 세로 모드의 균형 레이아웃은 80%·가운데
         Prefs portrait = portraitView(new FakeSp());
-        assertEquals(100, portrait.balancedConsonantWidth());
+        assertEquals(80, portrait.balancedConsonantWidth());
         assertEquals(50, portrait.balancedConsonantPos());
-        assertEquals(100, portrait.balancedVowelWidth());
+        assertEquals(80, portrait.balancedVowelWidth());
         assertEquals(50, portrait.balancedVowelPos());
         KeyboardLayout korean = KeyboardLayout.korean(p);
         for (int r = 0; r < 3; r++) {
@@ -547,6 +547,7 @@ public class SplitBottomRowTest {
         FakeSp sp = new FakeSp();
         Prefs p = portraitView(sp);
         sp.m.put(p.balancedLayoutKey(), true);
+        sp.m.put(p.balancedVowelWidthKey(), 100);   // 100%면 오른쪽 절반을 꽉 채운다
         for (int r = 0; r < 3; r++) {
             float x = 0f, from = -1f, to = 0f;
             for (Key k : KeyboardLayout.korean(p).rows[r].keys) {

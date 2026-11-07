@@ -206,56 +206,76 @@ public class DubeolsikLayoutTest {
         }
     }
 
+    private static Key firstKey(KeyboardLayout.Row row) {
+        for (Key k : row.keys) if (k.type != Key.GAP && k.type != Key.SPACER) return k;
+        throw new AssertionError("no key");
+    }
+
     /**
-     * 자·모음 균형 레이아웃: 자음 쪽은 5열 격자 (ㅂㅈㄷㄱㅅ / ㅁㄴㅇㄹㅎ / Shift ㅋㅌㅊㅍ), 모음 쪽은 두벌식 자판의 오른쪽 절반
-     * (ㅛㅕㅑㅐㅔ / 반 칸 들어간 ㅗㅓㅏㅣ / 반 칸 들어간 ㅠㅜㅡ와 1.5칸 ⌫).
+     * 자·모음 균형 레이아웃: 일반 두벌식 자판을 자음과 모음 사이에서 나누기만 한다. 각 쪽 안에서 키의 상대적인 자리와 폭
+     * (ㅁ·ㅗ 줄의 반 칸 들여쓰기, 1.5칸 Shift·⌫)은 일반 자판과 같다.
      */
     @Test
-    public void balancedLayoutSplitsConsonantsAndVowels() throws Exception {
+    public void balancedLayoutOnlySplitsTheStandardRows() throws Exception {
         for (boolean numberRow : new boolean[]{false, true}) {
             for (boolean grid : new boolean[]{false, true}) {
-                FakeSp sp = dubeolsik(true);
-                sp.m.put(Prefs.NUMBER_ROW, numberRow);
-                sp.m.put(Prefs.GRID_LAYOUT, grid);
-                sp.m.put(Prefs.KOREAN_SHIFT_HIDDEN, true);   // 두벌식은 균형 레이아웃에서도 Shift가 늘 있다
-                Prefs p = portrait(sp);
-                assertTrue(p.balancedLayout());
-                KeyboardLayout l = KeyboardLayout.korean(p);
-                String what = "numberRow=" + numberRow + " grid=" + grid;
-                assertEquals(what, 10, l.columns);
-                int first = numberRow ? 1 : 0;
-                assertEquals(what, first + 4, l.rows.length);
-                for (int r = 0; r < 3; r++) {
-                    KeyboardLayout.Row row = l.rows[first + r];
-                    assertArrayEquals(what, STANDARD[r], labels(row));
-                    assertEquals(what, 10f, total(row), 1e-3f);
-                    for (Key k : letters(row)) {
-                        boolean vowel = HangulComposer.isVowel(k.label.charAt(0));
-                        float x = leftOf(row, k, 10);
-                        assertEquals(what + " " + k.label, vowel, x >= 5f - 1e-3f);
-                        assertEquals(what + " " + k.label, 1f, k.weight, 1e-3f);   // 기본: 모든 키가 한 칸
+                for (int width : new int[]{80, 100}) {
+                    FakeSp sp = dubeolsik(true);
+                    sp.m.put(Prefs.NUMBER_ROW, numberRow);
+                    sp.m.put(Prefs.GRID_LAYOUT, grid);
+                    sp.m.put(Prefs.KOREAN_SHIFT_HIDDEN, true);   // 두벌식은 균형 레이아웃에서도 Shift가 늘 있다
+                    Prefs p0 = portrait(sp);
+                    if (width != 80) {
+                        sp.m.put(p0.balancedConsonantWidthKey(), width);
+                        sp.m.put(p0.balancedVowelWidthKey(), width);
                     }
+                    Prefs p = portrait(sp);
+                    assertTrue(p.balancedLayout());
+                    KeyboardLayout l = KeyboardLayout.korean(p);
+                    String what = "numberRow=" + numberRow + " grid=" + grid + " width=" + width;
+                    assertEquals(what, 10, l.columns);
+                    int first = numberRow ? 1 : 0;
+                    assertEquals(what, first + 4, l.rows.length);
+                    // 자음 쪽은 5.5칸, 모음 쪽은 5칸을 각 절반의 width%에 맞춘 단위
+                    float cu = 5f / 5.5f * width / 100f, vu = 5f / 5f * width / 100f;
+                    for (int r = 0; r < 3; r++) {
+                        KeyboardLayout.Row row = l.rows[first + r];
+                        assertArrayEquals(what, STANDARD[r], labels(row));
+                        assertEquals(what, 10f, total(row), 1e-3f);
+                        for (Key k : letters(row)) {
+                            boolean vowel = HangulComposer.isVowel(k.label.charAt(0));
+                            float x = leftOf(row, k, 10);
+                            if (vowel) assertTrue(what + " " + k.label, x >= 5f - 1e-3f);
+                            else assertTrue(what + " " + k.label, x + k.weight <= 5f + 1e-3f);
+                            assertEquals(what + " " + k.label, vowel ? vu : cu, k.weight, 1e-3f);
+                        }
+                    }
+                    KeyboardLayout.Row r0 = l.rows[first], r1 = l.rows[first + 1], r2 = l.rows[first + 2];
+                    // 자음 쪽: ㅁ은 ㅂ보다 반 칸, ㅋ은 1.5칸 Shift 다음
+                    assertEquals(what, 0.5f * cu, leftOf(r1, key(l, "ㅁ"), 10) - leftOf(r0, key(l, "ㅂ"), 10), 1e-3f);
+                    Key shift = firstKey(r2);
+                    assertEquals(what, Key.SHIFT, shift.type);
+                    assertEquals(what, 1.5f * cu, shift.weight, 1e-3f);
+                    assertEquals(what, leftOf(r0, key(l, "ㅂ"), 10), leftOf(r2, shift, 10), 1e-3f);
+                    assertEquals(what, 1.5f * cu, leftOf(r2, key(l, "ㅋ"), 10) - leftOf(r2, shift, 10), 1e-3f);
+                    // 모음 쪽: ㅗ·ㅠ는 ㅛ보다 반 칸, ⌫는 1.5칸 (일반 자판과 같다)
+                    float yo = leftOf(r0, key(l, "ㅛ"), 10);
+                    assertEquals(what, 0.5f * vu, leftOf(r1, key(l, "ㅗ"), 10) - yo, 1e-3f);
+                    assertEquals(what, 0.5f * vu, leftOf(r2, key(l, "ㅠ"), 10) - yo, 1e-3f);
+                    Key delete = r2.keys[r2.keys.length - 1].type == Key.DELETE ? r2.keys[r2.keys.length - 1]
+                            : r2.keys[r2.keys.length - 2];
+                    assertEquals(what, Key.DELETE, delete.type);
+                    assertEquals(what, 1.5f * vu, delete.weight, 1e-3f);
+                    // ⌫의 오른쪽 끝은 ㅔ의 오른쪽 끝과 같다
+                    Key e = key(l, "ㅔ");
+                    assertEquals(what, leftOf(r0, e, 10) + e.weight, leftOf(r2, delete, 10) + delete.weight, 1e-3f);
+                    assertEquals(what, 1, count(l, Key.SHIFT));
                 }
-                KeyboardLayout.Row r1 = l.rows[first + 1], r2 = l.rows[first + 2];
-                // 자음 쪽은 격자: ㅁ은 ㅂ 바로 아래, ㅋ은 ㄴ 바로 아래 (Shift가 맨 왼쪽 칸)
-                assertEquals(what, 0f, leftOf(r1, key(l, "ㅁ"), 10), 1e-3f);
-                assertEquals(what, Key.SHIFT, r2.keys[0].type);
-                assertEquals(what, 0f, leftOf(r2, r2.keys[0], 10), 1e-3f);
-                assertEquals(what, 1f, leftOf(r2, key(l, "ㅋ"), 10), 1e-3f);
-                // 모음 쪽은 두벌식처럼 반 칸씩 엇갈린다
-                assertEquals(what, 5f, leftOf(l.rows[first], key(l, "ㅛ"), 10), 1e-3f);
-                assertEquals(what, 5.5f, leftOf(r1, key(l, "ㅗ"), 10), 1e-3f);
-                assertEquals(what, 5.5f, leftOf(r2, key(l, "ㅠ"), 10), 1e-3f);
-                Key delete = r2.keys[r2.keys.length - 1];
-                assertEquals(what, Key.DELETE, delete.type);
-                assertEquals(what, 1.5f, delete.weight, 1e-3f);
-                assertEquals(what, 1, count(l, Key.SHIFT));
-                assertEquals(what, 5, KeyboardLayout.koreanColumns(p) / 2);
             }
         }
     }
 
-    /** 균형 레이아웃의 키 폭·위치·경계 설정을 두벌식도 따르고, 모음 키 폭은 줄마다 같다. */
+    /** 균형 레이아웃의 키 폭·위치·경계 설정을 두벌식도 따르고, 키 폭은 줄마다 같다. */
     @Test
     public void balancedWidthsApplyToEveryRow() throws Exception {
         FakeSp sp = dubeolsik(true);
@@ -266,7 +286,7 @@ public class DubeolsikLayoutTest {
         sp.m.put(p0.balancedBoundaryKey(), 60);
         assertTrue(p0.balancedVowelWidthKey().endsWith("_" + Prefs.KOREAN_LAYOUT_DUBEOLSIK));
         KeyboardLayout l = KeyboardLayout.korean(portrait(sp));
-        float consonant = 6f / 5f * 0.9f, vowel = 4f / 5f * 0.8f;
+        float consonant = 6f / 5.5f * 0.9f, vowel = 4f / 5f * 0.8f;
         for (int r = 0; r < 3; r++) {
             KeyboardLayout.Row row = l.rows[r];
             assertEquals(10f, total(row), 1e-3f);
@@ -281,15 +301,29 @@ public class DubeolsikLayoutTest {
         assertEquals(6f, leftOf(l.rows[0], key(l, "ㅛ"), 10), 1e-3f);
     }
 
-    /** 격자 정렬: 균형 레이아웃에서 맨 아래 줄 기능키가 자음 키 한 칸 폭이라 왼쪽 키들이 세로로 줄을 맞춘다. */
+    /** 기본값 (모든 배열): 경계 50%, 자음·모음 키 폭 80%, 가로 위치 50. */
     @Test
-    public void gridAlignsTheBottomRowWithConsonants() throws Exception {
+    public void balancedDefaultsForEveryLayout() throws Exception {
+        for (String layout : new String[]{Prefs.KOREAN_LAYOUT_DUBEOLSIK, Prefs.KOREAN_LAYOUT_8, Prefs.KOREAN_LAYOUT_D7}) {
+            FakeSp sp = new FakeSp();
+            sp.m.put(Prefs.KOREAN_LAYOUT, layout);
+            Prefs p = portrait(sp);
+            assertEquals(layout, 50, p.balancedBoundary());
+            assertEquals(layout, 80, p.balancedConsonantWidth());
+            assertEquals(layout, 50, p.balancedConsonantPos());
+            assertEquals(layout, 80, p.balancedVowelWidth());
+            assertEquals(layout, 50, p.balancedVowelPos());
+        }
+    }
+
+    /** 격자 정렬: 균형 레이아웃에서도 맨 아래 줄 기능키가 반듯한 칸 폭이다. */
+    @Test
+    public void gridKeepsTheBottomRowOnTheGrid() throws Exception {
         FakeSp sp = dubeolsik(true);
         sp.m.put(Prefs.GRID_LAYOUT, true);
         KeyboardLayout l = KeyboardLayout.korean(portrait(sp));
-        KeyboardLayout.Row bottom = l.rows[l.rows.length - 1], shiftRow = l.rows[l.rows.length - 2];
+        KeyboardLayout.Row bottom = l.rows[l.rows.length - 1];
         assertEquals(10f, total(bottom), 1e-3f);
-        assertEquals(shiftRow.keys[0].weight, bottom.keys[0].weight, 1e-3f);
         assertEquals(1f, bottom.keys[0].weight, 1e-3f);
     }
 
@@ -372,7 +406,7 @@ public class DubeolsikLayoutTest {
             KeyboardLayout l = KeyboardLayout.bottomRowPreview(portrait(dubeolsik(balanced)));
             assertEquals(2, l.rows.length);
             assertArrayEquals(STANDARD[2], labels(l.rows[0]));
-            assertEquals(Key.SHIFT, l.rows[0].keys[0].type);
+            assertEquals(Key.SHIFT, firstKey(l.rows[0]).type);
         }
     }
 
@@ -427,13 +461,10 @@ public class DubeolsikLayoutTest {
         assertArrayEquals(new float[]{0f, 0.5f, 1.5f}, KeyboardLayout.koreanRowOffsets(p), 0f);
         assertTrue(KeyboardLayout.koreanIotizedKeys(p));
         assertFalse(KeyboardLayout.koreanAspirateSwipe(p));   // ㅋ·ㅌ·ㅊ·ㅍ 키가 따로 있다
-        // 균형 레이아웃: 자음 쪽은 격자라 셋째 줄 맨 왼쪽이 Shift 자리 (ㅋ이 ㄴ 아래)
+        // 균형 레이아웃도 양쪽 안에서 두벌식의 엇갈림이 그대로다
         Prefs b = portrait(dubeolsik(true));
-        String[][] rows = KeyboardLayout.koreanLetterRows(b);
-        assertNull(KeyboardLayout.koreanRowOffsets(b));
-        assertArrayEquals(STANDARD[0], rows[0]);
-        assertArrayEquals(STANDARD[1], rows[1]);
-        assertArrayEquals(new String[]{"", "ㅋ", "ㅌ", "ㅊ", "ㅍ", "ㅠ", "ㅜ", "ㅡ"}, rows[2]);
+        assertArrayEquals(STANDARD, KeyboardLayout.koreanLetterRows(b));
+        assertArrayEquals(new float[]{0f, 0.5f, 1.5f}, KeyboardLayout.koreanRowOffsets(b), 0f);
         assertTrue(KeyboardLayout.koreanIotizedKeys(b));
     }
 
