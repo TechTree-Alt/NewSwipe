@@ -33,6 +33,8 @@ public final class Prefs {
     public static final String NUMBER_ROW = "number_row";
     public static final String NUMBER_ROW_HEIGHT = "number_row_height";   // 숫자 줄 높이: 일반 키 높이의 %, 50~100
     public static final int NUMBER_ROW_HEIGHT_MIN = 50, NUMBER_ROW_HEIGHT_MAX = 100, NUMBER_ROW_HEIGHT_DEFAULT = 80;
+    public static final String FN_ROW_HEIGHT = "fn_row_height";   // 기능키 줄(맨 아래 줄) 높이: 일반 키 높이의 %, 70~130
+    public static final int FN_ROW_HEIGHT_MIN = 70, FN_ROW_HEIGHT_MAX = 130, FN_ROW_HEIGHT_DEFAULT = 100;
     // (예전 '길게 눌러 문자 입력'·'길게 눌러 연속 입력' 스위치는 없앴다: LegacySwipeSettings가 옮긴다)   // 키를 길게 눌러 문자 입력
     public static final String AUTO_CAP = "auto_cap";
     public static final String DOUBLE_SPACE_PERIOD = "double_space_period";
@@ -355,7 +357,7 @@ public final class Prefs {
     /** 메뉴별로 키 앞부분이 같은 값들 (배열·방향·칸마다 따로 저장하는 값). */
     private static final java.util.Map<String, String[]> MENU_PREFIXES = new java.util.HashMap<>();
     static {
-        MENU_KEYS.put("layout", keys(KOREAN_LAYOUT, GRID_LAYOUT, NUMBER_ROW, NUMBER_ROW_HEIGHT, LANDSCAPE_SPLIT, LANDSCAPE_SIZE,
+        MENU_KEYS.put("layout", keys(KOREAN_LAYOUT, GRID_LAYOUT, NUMBER_ROW, NUMBER_ROW_HEIGHT, FN_ROW_HEIGHT, LANDSCAPE_SPLIT, LANDSCAPE_SIZE,
                 KEYBOARD_HEIGHT_LAND, KEY_TEXT_SIZE_LAND, SPLIT_GAP_CURSOR, SPLIT_GAP_SPEED, SPLIT_SPACE_JOIN, SPLIT_FN_WIDTH,
                 SPLIT_REACH_COLUMN, PROFILE_LIFT + LANDSCAPE_SUFFIX, BOTTOM_KEY_ORDER, COMMA_CHAR, PERIOD_CHAR, MODE_KEY_HIDDEN, PERIOD_COMMA, LANGUAGE_KEY_HIDDEN, SPACE_KEY_HIDDEN,
                 PERIOD_KEY_HIDDEN, ENTER_KEY_HIDDEN, DELETE_KEY_HIDDEN, KOREAN_SHIFT_HIDDEN, KOREAN_SHIFT_FN, NUMBER_PAD_SYMBOLS,
@@ -506,6 +508,10 @@ public final class Prefs {
     /** 숫자 줄 높이: 일반 키 높이의 % (50~100, 기본 80). */
     public int numberRowHeight() {
         return clamp(sp.getInt(NUMBER_ROW_HEIGHT, NUMBER_ROW_HEIGHT_DEFAULT), NUMBER_ROW_HEIGHT_MIN, NUMBER_ROW_HEIGHT_MAX);
+    }
+    /** 기능키 줄(맨 아래 줄) 높이: 일반 키 높이의 % (70~130, 기본 100). */
+    public int fnRowHeight() {
+        return clamp(sp.getInt(FN_ROW_HEIGHT, FN_ROW_HEIGHT_DEFAULT), FN_ROW_HEIGHT_MIN, FN_ROW_HEIGHT_MAX);
     }
     public boolean autoCap() { return sp.getBoolean(AUTO_CAP, true); }
     public boolean doubleSpacePeriod() { return sp.getBoolean(DOUBLE_SPACE_PERIOD, true); }

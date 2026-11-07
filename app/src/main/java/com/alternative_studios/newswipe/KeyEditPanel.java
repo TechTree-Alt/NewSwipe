@@ -161,25 +161,10 @@ final class KeyEditPanel {
         else kind = "영어 글자";
         header(shown, "'" + shown + "' 키", kind);
 
-        // ---- 누르기
-        LinearLayout press = null;
+        // ---- 누르기 (자음·모음 연속 탭처럼 모든 글자 키에 걸리는 설정은 '글자 키' 영역에 있다)
         if (",".equals(slot()) || ".".equals(slot())) {
-            press = section("누르기");
+            LinearLayout press = section("누르기");
             press.addView(valueRow("입력할 글자", prefs.keyChar(slot()), v -> editSlotChar(slot())));
-        }
-        if (hangul() && !vowel() && HangulComposer.doubled(slot().charAt(0)) != 0) {
-            if (press == null) press = section("누르기");
-            press.addView(toggle("두 번 눌러 쌍자음",
-                    "같은 자음을 빠르게 두 번 누르면 쌍자음을 입력합니다 (" + slot() + slot() + "→"
-                            + HangulComposer.doubled(slot().charAt(0)) + "). 모든 자음에 적용됩니다.",
-                    prefs.doubleTapConsonant(), on -> put(Prefs.DOUBLE_TAP_CONSONANT, on)));
-        }
-        if (vowel() && VowelSwipes.iotizedFor(slot().charAt(0)) != null && !prefs.koreanDubeolsik()) {
-            if (press == null) press = section("누르기");
-            press.addView(toggle("두 번 눌러 이중모음",
-                    "같은 모음을 연달아 누르면 이중모음을 입력합니다 (" + slot() + slot() + "→"
-                            + VowelSwipes.iotizedFor(slot().charAt(0)) + "). 모든 모음에 적용됩니다.",
-                    prefs.doubleTapVowel(), on -> put(Prefs.DOUBLE_TAP_VOWEL, on)));
         }
 
         // ---- 길게 누르기 (문자 입력 · 연속 입력 · 없음)
@@ -196,17 +181,6 @@ final class KeyEditPanel {
 
         // ---- 밀기
         if (swipeEditable()) buildCharSwipe();
-
-        // ---- 숫자 줄
-        if (KeyboardLayout.GROUP_NUM.equals(g)) {
-            LinearLayout row = section("숫자 줄");
-            row.addView(slider("숫자 줄 높이", Prefs.NUMBER_ROW_HEIGHT, prefs.numberRowHeight(),
-                    Prefs.NUMBER_ROW_HEIGHT_MIN, Prefs.NUMBER_ROW_HEIGHT_MAX, 1, "%"));
-            row.addView(toggle("숫자 줄 표시", "끄면 자판 위의 1~0 숫자 줄이 사라집니다.", prefs.numberRow(), on -> {
-                put(Prefs.NUMBER_ROW, on);
-                if (!on) host.close();   // 고른 숫자 키가 사라졌다
-            }));
-        }
 
         resetRow("'" + shown + "' 키의 길게 누르기·밀기", this::resetCharKey);
     }
@@ -567,21 +541,20 @@ final class KeyEditPanel {
             return;
         }
 
-        // ---- 누르기
-        LinearLayout press = section("누르기");
+        // ---- 누르기 (기능키의 순서·유무와 격자 정렬은 '기능키' 영역에 있다)
         if (key.type == Key.TO_SYMBOLS || key.type == Key.TO_LETTERS) {
-            press.addView(toggle("기호 자판 대신 숫자 패드 사용",
+            section("누르기").addView(toggle("기호 자판 대신 숫자 패드 사용",
                     "기호 키(?123)를 누르면 기호 자판 대신 3×4 숫자 패드가 열립니다. 숫자 패드의 ?!@ 키로 기호 자판을, 가·ABC 키로 글자 자판을 엽니다.",
                     prefs.numberPadForSymbols(), on -> put(Prefs.NUMBER_PAD_SYMBOLS, on)));
-        }
-        if (key.type == Key.LANGUAGE) {
+        } else if (key.type == Key.LANGUAGE) {
+            LinearLayout press = section("누르기");
             press.addView(button("언어 순서 사용자화", v -> open(new Intent(a, LanguageOrderEditorActivity.class))));
+            press.addView(note("🌐︎로 바꿀 언어와 '언어 고르기' 말풍선의 차례를 정합니다."));
+        } else if (key.type == Key.SPACE) {
+            buildSpacePress();
+        } else if (key.type == Key.DELETE) {
+            buildDeletePress();
         }
-        if (bottomRowKey() || key.type == Key.SHIFT || key.type == Key.DELETE) {
-            press.addView(button(key.type == Key.SHIFT || key.type == Key.DELETE ? "Shift·⌫와 맨 아래 줄 키 순서·유무"
-                    : "맨 아래 줄 키 순서·유무 바꾸기", v -> open(new Intent(a, BottomKeysEditorActivity.class))));
-        }
-        if (press.getChildCount() == 0) press.addView(note(functionHint()));
 
         // ---- 길게 누르기
         LinearLayout lp = section("길게 누르기");
@@ -621,7 +594,45 @@ final class KeyEditPanel {
                     + "손을 떼지 않고 위아래로 옮겨 고릅니다."));
         } else if (key.type == Key.SPACE || key.type == Key.CURSOR_PAD) {
             card.addView(note("'커서 자유 이동'을 정한 방향으로 밀면 커서가 움직입니다 (좌우는 글자, 위아래는 줄 단위)."));
+            card.addView(slider("커서 이동 속도 좌우", Prefs.SPACE_CURSOR_SPEED_H, prefs.spaceCursorSpeedH(), 50, 300, 10, "%"));
+            card.addView(slider("커서 이동 속도 상하", Prefs.SPACE_CURSOR_SPEED_V, prefs.spaceCursorSpeedV(), 50, 300, 10, "%"));
+            card.addView(note("스페이스바와 커서 키가 같은 속도를 씁니다. 값이 클수록 조금만 밀어도 커서가 빠르게 움직입니다."));
         }
+    }
+
+    /** 스페이스바 누르기: 두 번으로 마침표, 인식 범위, 언어 이름. */
+    private void buildSpacePress() {
+        LinearLayout press = section("누르기");
+        press.addView(toggle("두 번 눌러 마침표", "스페이스바를 빠르게 두 번 누르면 '. '을 넣습니다.",
+                prefs.doubleSpacePeriod(), on -> put(Prefs.DOUBLE_SPACE_PERIOD, on)));
+        View shrink = subGroup(slider("줄이는 정도", Prefs.SPACE_HIT_SHRINK_PCT, prefs.spaceHitShrinkPct(), 5, 50, 5, "%"));
+        shrink.setVisibility(prefs.spaceHitShrink() ? View.VISIBLE : View.GONE);
+        press.addView(toggle("인식 범위 좁히기",
+                "스페이스바의 위쪽 가장자리를 누르면 윗줄 키를 누른 것으로 간주해 스페이스바가 잘못 눌리는 일을 줄입니다.",
+                prefs.spaceHitShrink(), on -> {
+                    put(Prefs.SPACE_HIT_SHRINK, on);
+                    Ui.setVisibleAnimated(shrink, on);
+                }));
+        press.addView(shrink);
+        press.addView(toggle("언어 이름 보이기", "스페이스바에 지금 쓰는 언어를 작게 보여 줍니다.",
+                prefs.spaceLangLabel(), on -> {
+                    put(Prefs.SPACE_LANG_LABEL, on);
+                    refreshKey();
+                }));
+    }
+
+    /** ⌫ 누르기: 인식 범위. */
+    private void buildDeletePress() {
+        LinearLayout press = section("누르기");
+        View shrink = subGroup(slider("줄이는 정도", Prefs.DELETE_HIT_SHRINK_PCT, prefs.deleteHitShrinkPct(), 5, 50, 5, "%"));
+        shrink.setVisibility(prefs.deleteHitShrink() ? View.VISIBLE : View.GONE);
+        press.addView(toggle("인식 범위 좁히기",
+                "⌫의 가장자리를 누르면 ⌫ 대신 이웃 키를 누른 것으로 간주해 잘못 지워지는 일을 줄입니다. 아래쪽은 아랫줄이 글자 키일 때만 적용됩니다.",
+                prefs.deleteHitShrink(), on -> {
+                    put(Prefs.DELETE_HIT_SHRINK, on);
+                    Ui.setVisibleAnimated(shrink, on);
+                }));
+        press.addView(shrink);
     }
 
     /** Fn 키: 누르기·길게 누르기·네 방향 밀기를 모두 직접 정한다. */
@@ -635,8 +646,6 @@ final class KeyEditPanel {
         }
         LinearLayout swipe = section("밀기");
         swipe.addView(actionPad(FnKeyActions.SPEC, FnKeyActions.SWIPE, "Fn"));
-        LinearLayout more = section("Fn 키 자리");
-        more.addView(button("Shift·⌫와 맨 아래 줄 키 순서·유무", v -> open(new Intent(a, BottomKeysEditorActivity.class))));
         resetRow("Fn 키의 기능", () -> {
             prefs.resetSwipeActions(FnKeyActions.SPEC.group);
             rebuild();
@@ -647,10 +656,10 @@ final class KeyEditPanel {
 
     private void buildToolButton(String id) {
         header(null, ToolbarButtons.label(id), ToolbarButtons.hint(id) != null ? ToolbarButtons.hint(id) : "도구 막대 버튼");
-        LinearLayout press = section("버튼");
-        press.addView(button("도구 막대 버튼 순서·유무 바꾸기", v -> open(new Intent(a, ToolbarButtonsEditorActivity.class))));
+        // 버튼의 순서·유무는 도구 막대(영역)에서 바꾼다.
         int slot = toolSlot(id);
         if (slot >= 0) buildToolbarSwipe(slot, ToolbarButtons.label(id));
+        else section("버튼").addView(note("이 버튼은 따로 정할 것이 없습니다. 순서·유무는 도구 막대에서 바꿉니다."));
         resetRow(ToolbarButtons.label(id) + "의 밀기 기능", () -> {
             if (slot >= 0) for (int dir : DIRS) ToolbarSwipes.SPEC.reset(prefs, slot, dir);
             rebuild();

@@ -361,6 +361,7 @@ public final class SettingsActivity extends Activity {
             {KEYBOARD, "그림자 세기", "그림자"},
             {KEYBOARD, "키 그림자", "입체감"},
             {KEYBOARD, "숫자 줄 높이", "숫자 행 크기"},
+            {KEYBOARD, "기능키 높이", "맨 아래 줄 스페이스바 줄 높이 크기"},
             {KEYBOARD, "키 누름 미리보기", "말풍선 팝업 확대"},
             {KEYBOARD, "길게 눌러 입력할 문자 힌트 없애기", "힌트 숨기기 오른쪽 위"},
             {KEYBOARD, "숫자 키 힌트 없애기", "힌트 숨기기"},
@@ -977,7 +978,7 @@ public final class SettingsActivity extends Activity {
         try {
             LinearLayout tip = card();
             tip.addView(note("• 아래 미리보기의 손잡이(작은 막대)를 끌면 크기가 바로 바뀝니다. 아무것도 고르지 않았을 때는 "
-                    + "키보드의 위·아래·양옆 여백 손잡이가, 영역을 고르면 그 영역의 높이 손잡이가, 키를 고르면 키 간격 손잡이가 보입니다.\n"
+                    + "키보드의 위·아래·양옆 여백 손잡이가, 영역을 고르면 그 영역의 높이 손잡이(도구 막대·숫자 줄·글자 키·기능키)가, 키를 고르면 키 간격 손잡이가 보입니다.\n"
                     + "• 미리보기에는 두 페이지가 있어 좌우로 밀어 넘깁니다. '영역' 페이지에서는 도구 막대·숫자 줄·글자 키·기능키를 "
                     + "눌러 그 영역 전체의 설정을, '키' 페이지에서는 키 하나를 눌러 그 키의 누르기·길게 누르기·밀기를 바꿉니다.\n"
                     + "• 머리글의 되돌리기 버튼으로 마지막으로 바꾼 설정을 원래대로 돌릴 수 있습니다."));
@@ -1332,7 +1333,7 @@ public final class SettingsActivity extends Activity {
             }
             case KeyboardPreview.AREA_LETTERS: {
                 buildKoreanLayoutSection();
-                addLetterInput(section("입력"));
+                addLetterInput(section("입력"), false);   // ⌫ 인식 범위는 ⌫ 키 설정에
                 LinearLayout lp = section("길게 누르기");
                 addLetterLongPress(lp);
                 LinearLayout swipe = section("밀기");
@@ -1345,18 +1346,17 @@ public final class SettingsActivity extends Activity {
                 break;
             }
             default: {
-                addFunctionKeyLayout(section("기능키"));
-                LinearLayout space = section("스페이스바");
-                addSpaceInput(space);
-                space.addView(spaceSelectToggle());
-                space.addView(spaceLangLabelToggle());
-                LinearLayout swipe = section("밀기·길게 누르기");
-                swipe.addView(fnSwipeDistanceSlider());
+                // 기능키 전체에 걸리는 것만 둔다. 스페이스바·⌫·기호 키·🌐︎처럼 키 하나에 매인 설정은 '키' 페이지의 그 키에 있다.
+                LinearLayout fn = section("기능키");
+                fn.addView(sizeSlider("기능키 높이", Prefs.FN_ROW_HEIGHT, prefs::fnRowHeight,
+                        Prefs.FN_ROW_HEIGHT_MIN, Prefs.FN_ROW_HEIGHT_MAX, 1, "%"));
+                addFunctionKeyLayout(fn, false);
+                LinearLayout swipe = section("길게 누르기·밀기");
                 swipe.addView(fnLongPressSlider());
-                addSpaceCursorSpeed(swipe);
-                addLanguageOrder(swipe);
+                swipe.addView(fnSwipeDistanceSlider());
                 LinearLayout more = card();
-                more.addView(note(KEY_PAGE_NOTE));
+                more.addView(note("스페이스바·⌫·기호 키·🌐︎ 같은 키 하나하나의 설정은 미리보기를 왼쪽으로 넘겨 '키' 페이지에서 "
+                        + "그 키를 눌러 바꿉니다."));
                 break;
             }
         }
@@ -1560,10 +1560,10 @@ public final class SettingsActivity extends Activity {
     }
 
     /** 맨 아래 줄 기능키의 순서·유무, 숫자 패드, 격자 정렬. */
-    private void addFunctionKeyLayout(LinearLayout c) {
+    private void addFunctionKeyLayout(LinearLayout c, boolean numberPad) {
         c.addView(button("기능키 순서·유무 사용자화", v -> startActivity(new Intent(this, BottomKeysEditorActivity.class))));
         c.addView(note("맨 아래 줄 기능키의 순서와 유무를 바꿉니다."));
-        c.addView(toggle("기호 자판 대신 숫자 패드 사용",
+        if (numberPad) c.addView(toggle("기호 자판 대신 숫자 패드 사용",
                 "기호 키(?123)를 누르면 기호 자판 대신 3×4 숫자 패드가 열립니다. "
                         + "숫자 패드의 ?!@ 키로 기호 자판을, 가·ABC 키로 글자 자판을 엽니다.",
                 Prefs.NUMBER_PAD_SYMBOLS, prefs.numberPadForSymbols()));
@@ -1575,7 +1575,7 @@ public final class SettingsActivity extends Activity {
     }
 
     /** 글자 키의 입력 동작: 자음·모음 연속 탭, 영어 자동 대문자, 이메일 입력란, ⌫ 인식 범위. */
-    private void addLetterInput(LinearLayout input) {
+    private void addLetterInput(LinearLayout input, boolean deleteKey) {
         View doubleTapTime = subGroup(
                 slider("쌍자음 인식 시간", Prefs.DOUBLE_TAP_CONSONANT_MS, prefs.doubleTapConsonantMs(),
                         80, 500, 10, "ms"),
@@ -1593,6 +1593,7 @@ public final class SettingsActivity extends Activity {
                 "이메일 주소 입력란이나 앱이 영어 입력을 요청한 칸(아이디 입력란 등)에서는 영어 자판으로 시작하고, "
                         + "그 칸을 떠나면 원래 언어로 돌아갑니다. 웹 브라우저 주소창은 검색에도 쓰이므로 바꾸지 않습니다.",
                 Prefs.ENGLISH_FIELDS, prefs.englishFields()));
+        if (!deleteKey) return;
         View deleteShrink = subGroup(slider("줄이는 정도", Prefs.DELETE_HIT_SHRINK_PCT, prefs.deleteHitShrinkPct(),
                 5, 50, 5, "%"));
         input.addView(toggle("⌫ 버튼 인식 범위 좁히기",
@@ -1666,7 +1667,7 @@ public final class SettingsActivity extends Activity {
 
     /**
      * 크기·여백: 미리보기의 손잡이로도 바꾸는 값들. 손잡이를 끌면 이 슬라이더도 같이 움직이고(sizeSlider),
-     * 슬라이더를 움직이면 미리보기가 바로 바뀐다. 위쪽 여백은 손잡이가 없어 여기서만 바꾼다.
+     * 슬라이더를 움직이면 미리보기가 바로 바뀐다.
      */
     private void buildSizes() {
         LinearLayout size = section("크기·여백");
@@ -1679,6 +1680,8 @@ public final class SettingsActivity extends Activity {
             Ui.setVisibleAnimated(numberRowHeight, on);
         }));
         size.addView(numberRowHeight);
+        size.addView(sizeSlider("기능키 높이", Prefs.FN_ROW_HEIGHT, prefs::fnRowHeight,
+                Prefs.FN_ROW_HEIGHT_MIN, Prefs.FN_ROW_HEIGHT_MAX, 1, "%"));
         size.addView(sizeSlider("왼쪽 여백", Prefs.PAD_LEFT, prefs::padLeftDp, 0, 24, 1, "dp"));
         size.addView(sizeSlider("오른쪽 여백", Prefs.PAD_RIGHT, prefs::padRightDp, 0, 24, 1, "dp"));
         size.addView(sizeSlider("위쪽 여백", Prefs.PAD_TOP, prefs::padTopDp, 0, 24, 1, "dp"));
@@ -1717,7 +1720,7 @@ public final class SettingsActivity extends Activity {
     /** 자판 배열: 한글 자판 배열, 자·모음 균형 레이아웃, 가로 모드, 기능키 순서·유무, 격자 정렬 (미리보기는 화면 아래). */
     private void buildKeyboardLayout() {
         buildKoreanLayoutSection();
-        addFunctionKeyLayout(section("기능키"));
+        addFunctionKeyLayout(section("기능키"), true);
         // 가로 모드일 때의 자판 모양(분리 키보드, 키보드 높이·글자 크기·세로 위치)을 세로 모드와 따로 정한다.
         LinearLayout landscape = section("가로 모드");
         landscape.addView(button("가로 모드 키보드 사용자화", v -> openSection(LANDSCAPE_AREA)));
@@ -2627,7 +2630,7 @@ public final class SettingsActivity extends Activity {
 
     private void buildInput() {
         LinearLayout input = section("입력 동작");
-        addLetterInput(input);
+        addLetterInput(input, true);
         addSpaceInput(input);
     }
 

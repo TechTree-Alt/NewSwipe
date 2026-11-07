@@ -807,6 +807,16 @@ public final class KeyboardLayout {
         return (prefs == null ? Prefs.NUMBER_ROW_HEIGHT_DEFAULT : prefs.numberRowHeight()) / 100f;
     }
 
+    /** 기능키 줄(맨 아래 줄)의 높이 (일반 줄 = 1). '기능키 높이' 설정을 따른다. */
+    public static float fnRowHeight(Prefs prefs) {
+        return (prefs == null ? Prefs.FN_ROW_HEIGHT_DEFAULT : prefs.fnRowHeight()) / 100f;
+    }
+
+    /** 키보드 전체 높이의 줄 수 (일반 줄 = 1): 글자 3줄 + 기능키 줄 + 숫자 줄. 모든 자판이 이 높이를 함께 쓴다. */
+    public static float rowUnits(Prefs prefs) {
+        return 3 + fnRowHeight(prefs) + (prefs != null && prefs.numberRow() ? numberRowHeight(prefs) : 0f);
+    }
+
     /** 숫자 줄의 키. 길게 누르기 문자는 사용자가 정한 것만 있다 (정하지 않았으면 없다). */
     private static Key numberKey(String n, Prefs prefs) {
         return ch(n, popupFor(prefs, true, n, null));
@@ -1075,7 +1085,7 @@ public final class KeyboardLayout {
         fillSpan(keys, span, spaceAt);
         if (from > 0.001f) keys.add(0, fn(Key.GAP, "", from));
         if (SPACE_ROW_UNITS - to > 0.001f) keys.add(fn(Key.GAP, "", SPACE_ROW_UNITS - to));
-        return new Row(1f, keys.toArray(new Key[0]));
+        return new Row(fnRowHeight(prefs), keys.toArray(new Key[0]));
     }
 
     /**
@@ -1237,7 +1247,7 @@ public final class KeyboardLayout {
         fillSpan(right, b[3], spaceAt >= 0 ? 0 : -1);
         dropEmptySpace(left);
         dropEmptySpace(right);
-        return blockLine(left, b[0], width(left), right, b[2], width(right), 1f);
+        return blockLine(left, b[0], width(left), right, b[2], width(right), fnRowHeight(prefs));
     }
 
     /**
@@ -1259,7 +1269,7 @@ public final class KeyboardLayout {
         }
         float space = Math.max(0f, span - lw - rw);
         left.add(spaceKey(space));
-        return blockLine(left, b[0], lw + space, right, b[0] + lw + space, rw, 1f);
+        return blockLine(left, b[0], lw + space, right, b[0] + lw + space, rw, fnRowHeight(prefs));
     }
 
     /** 폭이 거의 없는 스페이스바는 빼 둔다 (기능키만으로 묶음이 찬 경우). */

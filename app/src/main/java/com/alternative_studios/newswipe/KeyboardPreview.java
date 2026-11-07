@@ -107,13 +107,13 @@ final class KeyboardPreview extends FrameLayout {
     // ---------------------------------------------------------------- 손잡이
 
     private static final int H_TOOLBAR = 0, H_NUMBER_ROW = 1, H_HEIGHT = 2, H_PAD_LEFT = 3, H_PAD_RIGHT = 4,
-            H_PAD_BOTTOM = 5, H_GAP_X = 6, H_GAP_Y = 7, H_PAD_TOP = 8, HANDLES = 9;
+            H_PAD_BOTTOM = 5, H_GAP_X = 6, H_GAP_Y = 7, H_PAD_TOP = 8, H_FN_ROW = 9, HANDLES = 10;
     /** 손잡이마다 위아래로 끄는지 (아니면 좌우). */
-    private static final boolean[] VERTICAL = {true, true, true, false, false, true, false, true, true};
+    private static final boolean[] VERTICAL = {true, true, true, false, false, true, false, true, true, true};
     private static final String[] HANDLE_NAMES = {"도구 막대 높이", "숫자 줄 높이", "키보드 높이", "왼쪽 여백", "오른쪽 여백",
-            "아래쪽 여백", "키 좌우 여백", "키 상하 여백", "위쪽 여백"};
+            "아래쪽 여백", "키 좌우 여백", "키 상하 여백", "위쪽 여백", "기능키 높이"};
     private static final String[] HANDLE_KEYS = {Prefs.TOOLBAR_HEIGHT, Prefs.NUMBER_ROW_HEIGHT, Prefs.KEYBOARD_HEIGHT,
-            Prefs.PAD_LEFT, Prefs.PAD_RIGHT, Prefs.PAD_BOTTOM, Prefs.KEY_GAP_X, Prefs.KEY_GAP_Y, Prefs.PAD_TOP};
+            Prefs.PAD_LEFT, Prefs.PAD_RIGHT, Prefs.PAD_BOTTOM, Prefs.KEY_GAP_X, Prefs.KEY_GAP_Y, Prefs.PAD_TOP, Prefs.FN_ROW_HEIGHT};
 
     private final Prefs prefs;
     private final Listener listener;
@@ -250,7 +250,7 @@ final class KeyboardPreview extends FrameLayout {
         numberRowShown = tab != TAB_SYMBOLS && prefs.numberRow() && l.rows.length > 0 && l.rows[0].keys.length > 0
                 && KeyboardLayout.isDigit(l.rows[0].keys[0].label);
         // 키보드와 같은 높이: 글자 4줄 + 숫자 줄 (기호 자판도 같은 높이를 쓴다).
-        float rows = 4 + (prefs.numberRow() ? KeyboardLayout.numberRowHeight(prefs) : 0f);
+        float rows = KeyboardLayout.rowUnits(prefs);
         keys.setKeyboardHeight(Math.round(Ui.dp(c, 54) * rows * prefs.keyboardHeight() / 100f) + padT + padB - lift);
         keys.setLayout(l);
         rebuildToolbar(lift);
@@ -542,7 +542,7 @@ final class KeyboardPreview extends FrameLayout {
                     case AREA_TOOLBAR: return h == H_TOOLBAR && bar.getParent() != null;
                     case AREA_NUMBER: return h == H_NUMBER_ROW && numberRowShown;
                     case AREA_LETTERS: return h == H_HEIGHT;
-                    default: return false;   // 기능키 줄은 키보드 높이를 따라 함께 커진다
+                    default: return h == H_FN_ROW;
                 }
             case SEL_KEY: return (h == H_GAP_X || h == H_GAP_Y) && selectedKey != null && selectable(selectedKey);
             default: return false;
@@ -567,10 +567,11 @@ final class KeyboardPreview extends FrameLayout {
                 out[1] = bar.getTop() + (prefs.toolbarBottom() ? 0 : Ui.dp(c, 4));
                 return true;
             case H_NUMBER_ROW:
-            case H_HEIGHT: {
+            case H_HEIGHT:
+            case H_FN_ROW: {
                 // 영역 윤곽선의 위 가장자리: 숫자 줄, 또는 글자 줄 맨 위 (글자 줄을 키우면 숫자 줄도 같은 비율로 커진다).
                 RectF r = new RectF();
-                if (!areaBounds(h == H_NUMBER_ROW ? AREA_NUMBER : AREA_LETTERS, r)) return false;
+                if (!areaBounds(h == H_NUMBER_ROW ? AREA_NUMBER : h == H_FN_ROW ? AREA_FUNCTION : AREA_LETTERS, r)) return false;
                 out[0] = w / 2f;
                 out[1] = Math.max(r.top, Ui.dp(c, 4));
                 return true;
@@ -647,6 +648,7 @@ final class KeyboardPreview extends FrameLayout {
         switch (h) {
             case H_TOOLBAR: dragStart = bar.getHeight(); break;
             case H_NUMBER_ROW: dragStart = Ui.dp(c, 54) * prefs.keyboardHeight() / 100f * prefs.numberRowHeight() / 100f; break;
+            case H_FN_ROW: dragStart = Ui.dp(c, 54) * prefs.keyboardHeight() / 100f * prefs.fnRowHeight() / 100f; break;
             case H_HEIGHT: dragStart = Ui.dp(c, 54) * rowUnits() * prefs.keyboardHeight() / 100f; break;
             default: dragStart = valueOf(h); break;
         }
@@ -654,7 +656,7 @@ final class KeyboardPreview extends FrameLayout {
     }
 
     private float rowUnits() {
-        return 4 + (prefs.numberRow() ? KeyboardLayout.numberRowHeight(prefs) : 0f);
+        return KeyboardLayout.rowUnits(prefs);
     }
 
     private int valueOf(int h) {
@@ -662,6 +664,7 @@ final class KeyboardPreview extends FrameLayout {
             case H_TOOLBAR: return prefs.toolbarHeight();
             case H_NUMBER_ROW: return prefs.numberRowHeight();
             case H_HEIGHT: return prefs.keyboardHeight();
+            case H_FN_ROW: return prefs.fnRowHeight();
             case H_PAD_LEFT: return prefs.padLeftDp();
             case H_PAD_RIGHT: return prefs.padRightDp();
             case H_PAD_BOTTOM: return prefs.padBottomDp();
@@ -688,6 +691,10 @@ final class KeyboardPreview extends FrameLayout {
                 v = clamp(Math.round((dragStart - dy) / (Ui.dp(c, 54) * prefs.keyboardHeight() / 100f) * 100f),
                         Prefs.NUMBER_ROW_HEIGHT_MIN, Prefs.NUMBER_ROW_HEIGHT_MAX);
                 break;
+            case H_FN_ROW:
+                v = clamp(Math.round((dragStart - dy) / (Ui.dp(c, 54) * prefs.keyboardHeight() / 100f) * 100f),
+                        Prefs.FN_ROW_HEIGHT_MIN, Prefs.FN_ROW_HEIGHT_MAX);
+                break;
             case H_HEIGHT:
                 v = clamp(Math.round((dragStart - dy) / (Ui.dp(c, 54) * rowUnits()) * 100f), 70, 140);
                 break;
@@ -708,7 +715,7 @@ final class KeyboardPreview extends FrameLayout {
     }
 
     private static String valueText(int h, int v) {
-        return v + (h == H_TOOLBAR || h == H_NUMBER_ROW || h == H_HEIGHT ? "%" : "dp");
+        return v + (h == H_TOOLBAR || h == H_NUMBER_ROW || h == H_HEIGHT || h == H_FN_ROW ? "%" : "dp");
     }
 
     // ---------------------------------------------------------------- 덮개: 손잡이·고른 것 그리기와 터치
