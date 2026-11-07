@@ -45,6 +45,7 @@ public final class Prefs {
     public static final String CLIPBOARD_HISTORY = "clipboard_history";
     public static final String CLIPBOARD_IMAGES = "clipboard_images";
     public static final String CLIPBOARD_SENSITIVE = "clipboard_sensitive";   // 민감한 정보로 표시되었거나 비밀번호를 복사한 것도 기록에 저장
+    public static final String CLIPBOARD_CLOSE_ON_USE = "clipboard_close_on_use";   // 클립보드 항목을 입력하면 클립보드 창을 닫기
     public static final String CLIPBOARD_CHIP = "clipboard_chip";     // 방금 복사한 내용을 도구 막대에 칩으로
     public static final String ENGLISH_FIELDS = "english_fields";     // 이메일 입력란 등에서 영어 자판으로 시작
     public static final String LANGUAGE = "language";                 // "ko" | "en" | "ja" | "zh" (예전 앱은 en이 아니면 한글로 읽는다)
@@ -411,7 +412,7 @@ public final class Prefs {
         MENU_KEYS.put("feedback", keys(VIBRATE, VIBRATE_MS, VIBRATE_STYLE, VIBRATE_AMP, VIBRATE_PER_KEY,
                 VIBRATE_DELETE, VIBRATE_SPACE, VIBRATE_ENTER, VIBRATE_SHIFT, VIBRATE_SYMBOL, VIBRATE_LANGUAGE, VIBRATE_TOOLBAR,
                 VIBRATE_GESTURE_ON, VIBRATE_GESTURE_LEVEL, SOUND, SOUND_VOLUME));
-        MENU_KEYS.put("tools", keys(TOOLBAR, TOOLBAR_BOTTOM, TOOLBAR_HEIGHT, TOOL_BUTTON_SIZE, CLIPBOARD_HISTORY, CLIPBOARD_IMAGES, CLIPBOARD_SENSITIVE, CLIPBOARD_CHIP, SELECTION_CHIPS, TOOL_ORDER, TOOL_CLIPBOARD,
+        MENU_KEYS.put("tools", keys(TOOLBAR, TOOLBAR_BOTTOM, TOOLBAR_HEIGHT, TOOL_BUTTON_SIZE, CLIPBOARD_HISTORY, CLIPBOARD_IMAGES, CLIPBOARD_SENSITIVE, CLIPBOARD_CLOSE_ON_USE, CLIPBOARD_CHIP, SELECTION_CHIPS, TOOL_ORDER, TOOL_CLIPBOARD,
                 TOOL_EMOJI, VOICE_KEY, TOOL_UNDO, TOOL_SETTINGS, TOOL_ONE_HAND, TOOL_HIDE, EMOJI_SIZE, EMOJI_SUGGEST));
         MENU_KEYS.put("words", keys(SHORTCUTS_ENABLED, SUGGEST_WORDS, SUGGEST_FULL_BAR, SUGGEST_SPACE, PREDICT_NEXT, AUTO_CORRECT, LEARN_WORDS,
                 CONFIRM_LEARNED_DELETE, AUTOFILL_INLINE));
@@ -606,6 +607,7 @@ public final class Prefs {
     /** 방금 복사한 텍스트를 도구 막대에 칩으로 보여 누르면 붙여 넣는지 (기본 켬). 클립보드 기록 저장과 따로 정한다. */
     /** 민감한 정보로 표시된 복사와 비밀번호 입력란에서 한 복사도 클립보드 기록에 저장하는지 (기본 꺼짐). */
     public boolean clipboardSensitive() { return sp.getBoolean(CLIPBOARD_SENSITIVE, false); }
+    public boolean clipboardCloseOnUse() { return sp.getBoolean(CLIPBOARD_CLOSE_ON_USE, false); }
     public boolean clipboardChip() { return sp.getBoolean(CLIPBOARD_CHIP, true); }
     /** 이메일 입력란이나 앱이 영어 입력을 요청한 칸에서 영어 자판으로 시작하는지 (기본 켬). */
     public boolean englishFields() { return sp.getBoolean(ENGLISH_FIELDS, true); }

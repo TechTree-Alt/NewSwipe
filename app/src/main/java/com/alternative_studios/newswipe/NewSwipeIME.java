@@ -325,7 +325,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 사용할 때마다 설정에서 직접 읽는 값이나 키보드 화면과 상관없는 값은 다시 그릴 필요가 없다. */
     private static boolean affectsKeyboard(String key) {
         return !(Prefs.LANGUAGE.equals(key) || Prefs.RECENT_EMOJI.equals(key) || Prefs.PINNED_EMOJI.equals(key)
-                || Prefs.CLIPBOARD_HISTORY.equals(key) || Prefs.CLIPBOARD_IMAGES.equals(key) || Prefs.CLIPBOARD_SENSITIVE.equals(key) || Prefs.CLIPBOARD_CHIP.equals(key) || Prefs.AUTO_CAP.equals(key)
+                || Prefs.CLIPBOARD_HISTORY.equals(key) || Prefs.CLIPBOARD_IMAGES.equals(key) || Prefs.CLIPBOARD_SENSITIVE.equals(key) || Prefs.CLIPBOARD_CLOSE_ON_USE.equals(key) || Prefs.CLIPBOARD_CHIP.equals(key) || Prefs.AUTO_CAP.equals(key)
                 || Prefs.DOUBLE_SPACE_PERIOD.equals(key) || Prefs.CONFIRM_LEARNED_DELETE.equals(key)
                 || Prefs.ONE_HAND_LAST.equals(key) || Prefs.ENGLISH_FIELDS.equals(key)
                 || key.startsWith(Prefs.HW_PREFIX));   // 외장 키보드 설정은 키를 누를 때 읽는다
@@ -4062,6 +4062,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             case SwipeAction.SYMBOLS:
                 toggleSymbols();
                 break;
+            case SwipeAction.NUMBER_PAD:
+                if (panel != PANEL_KEYBOARD) showPanel(PANEL_KEYBOARD);
+                if (numberPadOpen()) { setLayoutKind(lettersKind()); updateAutoCap(); }
+                else openNumberPad();
+                break;
             case SwipeAction.ENTER:
                 handleEnter();
                 break;
@@ -4696,12 +4701,19 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     public void onClipPaste(String text) {
         feedback.onKey(null);
         pasteText(text);
+        closeClipboardAfterUse();
     }
 
     @Override
     public void onClipPasteImage(ClipboardHistory.Item item) {
         feedback.onKey(null);
         pasteImage(item);
+        closeClipboardAfterUse();
+    }
+
+    /** '항목 사용 시 클립보드 닫기'가 켜져 있으면 클립보드 창을 닫고 자판으로 돌아간다. */
+    private void closeClipboardAfterUse() {
+        if (prefs.clipboardCloseOnUse() && panel == PANEL_CLIPBOARD) showPanel(PANEL_KEYBOARD);
     }
 
     @Override
