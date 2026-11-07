@@ -33,8 +33,7 @@ public final class Prefs {
     public static final String NUMBER_ROW = "number_row";
     public static final String NUMBER_ROW_HEIGHT = "number_row_height";   // 숫자 줄 높이: 일반 키 높이의 %, 50~100
     public static final int NUMBER_ROW_HEIGHT_MIN = 50, NUMBER_ROW_HEIGHT_MAX = 100, NUMBER_ROW_HEIGHT_DEFAULT = 80;
-    public static final String LONG_PRESS_CHARS = "long_press_chars";   // 키를 길게 눌러 문자 입력
-    public static final String LONG_PRESS_REPEAT = "long_press_repeat";   // 고른 글자 키를 길게 눌러 연속 입력
+    // (예전 '길게 눌러 문자 입력'·'길게 눌러 연속 입력' 스위치는 없앴다: LegacySwipeSettings가 옮긴다)   // 키를 길게 눌러 문자 입력
     public static final String AUTO_CAP = "auto_cap";
     public static final String DOUBLE_SPACE_PERIOD = "double_space_period";
     public static final String VOICE_KEY = "voice_key";
@@ -368,7 +367,7 @@ public final class Prefs {
         MENU_KEYS.put("input", keys(AUTO_CAP, ENGLISH_FIELDS, DOUBLE_SPACE_PERIOD, DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT,
                 DOUBLE_TAP_CONSONANT_MS, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, SPACE_HIT_SHRINK,
                 SPACE_HIT_SHRINK_PCT));
-        MENU_KEYS.put("keys", keys(LONG_PRESS_CHARS, LONG_PRESS_REPEAT, LONG_PRESS_MS, DELETE_PRESS_MS));
+        MENU_KEYS.put("keys", keys(LONG_PRESS_MS, DELETE_PRESS_MS));
         MENU_PREFIXES.put("keys", keys("popup_", "popupkept_", "repeat_", "swipe_lp_"));
         MENU_KEYS.put("swipe", keys(SWIPE_THRESHOLD));
         MENU_PREFIXES.put("swipe", keys("swipe_custom_", "swipe_final_", "swipe_vowel_"));
@@ -508,8 +507,6 @@ public final class Prefs {
     public int numberRowHeight() {
         return clamp(sp.getInt(NUMBER_ROW_HEIGHT, NUMBER_ROW_HEIGHT_DEFAULT), NUMBER_ROW_HEIGHT_MIN, NUMBER_ROW_HEIGHT_MAX);
     }
-    public boolean longPressChars() { return sp.getBoolean(LONG_PRESS_CHARS, true); }
-    public boolean longPressRepeat() { return sp.getBoolean(LONG_PRESS_REPEAT, false); }
     public boolean autoCap() { return sp.getBoolean(AUTO_CAP, true); }
     public boolean doubleSpacePeriod() { return sp.getBoolean(DOUBLE_SPACE_PERIOD, true); }
     public boolean voiceKey() { return sp.getBoolean(VOICE_KEY, true); }
@@ -879,10 +876,9 @@ public final class Prefs {
         else sp.edit().remove(repeatKey(group, label)).apply();
     }
 
-    /** 연속 입력으로 정한 글자들("<자판>_<글자>"). '길게 눌러 연속 입력'을 꺼 두면 비어 있다. */
+    /** 연속 입력으로 정한 글자들("<자판>_<글자>"). */
     public java.util.Set<String> repeatChars() {
         java.util.Set<String> out = new java.util.HashSet<>();
-        if (!longPressRepeat()) return out;
         for (java.util.Map.Entry<String, ?> e : sp.getAll().entrySet()) {
             if (e.getKey().startsWith("repeat_") && Boolean.TRUE.equals(e.getValue())) out.add(e.getKey().substring(7));
         }

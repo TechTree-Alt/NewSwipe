@@ -1138,7 +1138,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         // 한 손 모드에서는 키 높이를 줄인 만큼 키 글자도 같은 비율로 줄인다 (도구 막대는 줄어든 자판 바로 위에 붙어 따라온다).
         float oneHandScale = !Prefs.ONE_HAND_OFF.equals(activeOneHand()) ? prefs.oneHandHeight() / 100f : 1f;
         keyboard.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), prefs.keyPreview(),
-                prefs.longPressChars(), Math.round(sizePrefs.keyTextSize() * oneHandScale));
+                true, Math.round(sizePrefs.keyTextSize() * oneHandScale));
         keyboard.setDirectionRatios(prefs.swipeDownRatio(), prefs.swipeUpRatio());
         keyboard.setFunctionSwipeThreshold(prefs.fnSwipeThresholdDp());
         keyboard.setGapCursor(sizePrefs.splitGapCursor(), sizePrefs.splitGapSpeed());
@@ -1150,7 +1150,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         keyboard.setLongPressActions(com.alternative_studios.newswipe.keyboard.LongPressActions.actions(prefs));
         keyboard.setFunctionSwipes(FunctionSwipes.load(prefs));
         keyboard.setFnKeyActions(com.alternative_studios.newswipe.keyboard.FnKeyActions.actions(prefs));
-        keyboard.setPopupHints(prefs.longPressChars() && !prefs.popupHintHidden());
+        keyboard.setPopupHints(!prefs.popupHintHidden());
         keyboard.setNumberHintHidden(prefs.numberHintHidden());
         keyboard.setRepeatChars(prefs.repeatChars());
         applySuggestLead();

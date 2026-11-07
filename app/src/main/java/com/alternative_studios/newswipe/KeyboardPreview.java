@@ -107,13 +107,13 @@ final class KeyboardPreview extends FrameLayout {
     // ---------------------------------------------------------------- 손잡이
 
     private static final int H_TOOLBAR = 0, H_NUMBER_ROW = 1, H_HEIGHT = 2, H_PAD_LEFT = 3, H_PAD_RIGHT = 4,
-            H_PAD_BOTTOM = 5, H_GAP_X = 6, H_GAP_Y = 7, HANDLES = 8;
+            H_PAD_BOTTOM = 5, H_GAP_X = 6, H_GAP_Y = 7, H_PAD_TOP = 8, HANDLES = 9;
     /** 손잡이마다 위아래로 끄는지 (아니면 좌우). */
-    private static final boolean[] VERTICAL = {true, true, true, false, false, true, false, true};
+    private static final boolean[] VERTICAL = {true, true, true, false, false, true, false, true, true};
     private static final String[] HANDLE_NAMES = {"도구 막대 높이", "숫자 줄 높이", "키보드 높이", "왼쪽 여백", "오른쪽 여백",
-            "아래쪽 여백", "키 좌우 여백", "키 상하 여백"};
+            "아래쪽 여백", "키 좌우 여백", "키 상하 여백", "위쪽 여백"};
     private static final String[] HANDLE_KEYS = {Prefs.TOOLBAR_HEIGHT, Prefs.NUMBER_ROW_HEIGHT, Prefs.KEYBOARD_HEIGHT,
-            Prefs.PAD_LEFT, Prefs.PAD_RIGHT, Prefs.PAD_BOTTOM, Prefs.KEY_GAP_X, Prefs.KEY_GAP_Y};
+            Prefs.PAD_LEFT, Prefs.PAD_RIGHT, Prefs.PAD_BOTTOM, Prefs.KEY_GAP_X, Prefs.KEY_GAP_Y, Prefs.PAD_TOP};
 
     private final Prefs prefs;
     private final Listener listener;
@@ -229,12 +229,12 @@ final class KeyboardPreview extends FrameLayout {
         theme = KeyboardTheme.of(c);
         setBackgroundColor(theme.background);
         keys.setTheme(theme);
-        keys.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), false, prefs.longPressChars(),
+        keys.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), false, true,
                 prefs.keyTextSize());
         keys.setKeyShadow(prefs.keyShadow(), prefs.keyShadowStrength());
         keys.setKeyRadius(Ui.dp(c, prefs.keyRadiusDp()));
         keys.setGridColors(prefs.gridColors());
-        keys.setPopupHints(prefs.longPressChars() && !prefs.popupHintHidden());
+        keys.setPopupHints(!prefs.popupHintHidden());
         keys.setNumberHintHidden(prefs.numberHintHidden());
         keys.setRepeatChars(prefs.repeatChars());
         keys.setKeyGaps(Ui.dp(c, prefs.keyGapXDp()), Ui.dp(c, prefs.keyGapYDp()));
@@ -531,28 +531,21 @@ final class KeyboardPreview extends FrameLayout {
 
     /** 손잡이 h가 지금 보이는지. */
     private boolean handleShown(int h) {
-        // 무언가를 고른 동안에는 그것의 손잡이만 보인다: 키는 키 좌우·상하 여백, 도구 막대는 도구 막대 높이.
-        // 키보드 크기·여백 손잡이는 고른 것을 풀면 다시 보인다.
-        if (selection != null) {
-            if (selection.kind == SEL_TOOLBAR) return h == H_TOOLBAR && bar.getParent() != null;
-            if (selection.kind == SEL_TOOL_BUTTON) return false;
-            if (selection.kind == SEL_AREA) {
-                // 영역을 고르면 그 영역의 높이 손잡이만: 도구 막대·숫자 줄·글자 키(키보드 높이). 기능키 영역은 없다.
+        if (keys.getLayout() == null) return false;
+        // 아무것도 고르지 않았을 때: 키보드 전체의 여백 (위·아래·왼쪽·오른쪽).
+        if (selection == null) return h == H_PAD_TOP || h == H_PAD_BOTTOM || h == H_PAD_LEFT || h == H_PAD_RIGHT;
+        // 무언가를 고르면 그것을 조절하는 손잡이만: 영역은 그 영역의 높이, 키는 키 좌우·상하 여백, 도구 막대는 도구 막대 높이.
+        switch (selection.kind) {
+            case SEL_TOOLBAR: return h == H_TOOLBAR && bar.getParent() != null;
+            case SEL_AREA:
                 switch (selection.area()) {
                     case AREA_TOOLBAR: return h == H_TOOLBAR && bar.getParent() != null;
                     case AREA_NUMBER: return h == H_NUMBER_ROW && numberRowShown;
-                    case AREA_LETTERS: return h == H_HEIGHT && keys.getLayout() != null;
-                    default: return false;
+                    case AREA_LETTERS: return h == H_HEIGHT;
+                    default: return false;   // 기능키 줄은 키보드 높이를 따라 함께 커진다
                 }
-            }
-            if (h != H_GAP_X && h != H_GAP_Y) return false;
-        }
-        switch (h) {
-            case H_TOOLBAR: return bar.getParent() != null;
-            case H_NUMBER_ROW: return numberRowShown;
-            case H_GAP_X:
-            case H_GAP_Y: return selectedKey != null && selectable(selectedKey);
-            default: return keys.getLayout() != null;
+            case SEL_KEY: return (h == H_GAP_X || h == H_GAP_Y) && selectedKey != null && selectable(selectedKey);
+            default: return false;
         }
     }
 
@@ -574,17 +567,19 @@ final class KeyboardPreview extends FrameLayout {
                 out[1] = bar.getTop() + (prefs.toolbarBottom() ? 0 : Ui.dp(c, 4));
                 return true;
             case H_NUMBER_ROW:
-                out[0] = w / 2f;
-                out[1] = kTop + padT + (bar.getParent() == null || prefs.toolbarBottom() ? Ui.dp(c, 4) : 0);
-                return true;
             case H_HEIGHT: {
-                // 글자 줄 맨 위 (숫자 줄이 있으면 숫자 줄 바로 아래). 숫자 줄도 같은 비율로 커진다.
-                float top = kTop + padT;
-                if (numberRowShown && l.rows.length > 1 && l.rows[1].keys.length > 0) top = kTop + l.rows[1].keys[0].rect.top;
+                // 영역 윤곽선의 위 가장자리: 숫자 줄, 또는 글자 줄 맨 위 (글자 줄을 키우면 숫자 줄도 같은 비율로 커진다).
+                RectF r = new RectF();
+                if (!areaBounds(h == H_NUMBER_ROW ? AREA_NUMBER : AREA_LETTERS, r)) return false;
                 out[0] = w / 2f;
-                out[1] = top + (!numberRowShown && (bar.getParent() == null || prefs.toolbarBottom()) ? Ui.dp(c, 4) : 0);
+                out[1] = Math.max(r.top, Ui.dp(c, 4));
                 return true;
             }
+            case H_PAD_TOP:
+                // 자판 뷰의 위 가장자리 (위쪽 여백의 바깥쪽). 끌어 올리면 여백이 늘어 키보드가 위로 자란다.
+                out[0] = w / 2f;
+                out[1] = Math.max(kTop, Ui.dp(c, 4));
+                return true;
             case H_PAD_LEFT:
                 out[0] = Math.max(padL, Ui.dp(c, 3));
                 out[1] = (kTop + padT + kBottom - padB) / 2f;
@@ -670,6 +665,7 @@ final class KeyboardPreview extends FrameLayout {
             case H_PAD_LEFT: return prefs.padLeftDp();
             case H_PAD_RIGHT: return prefs.padRightDp();
             case H_PAD_BOTTOM: return prefs.padBottomDp();
+            case H_PAD_TOP: return prefs.padTopDp();
             case H_GAP_X: return prefs.keyGapXDp();
             default: return prefs.keyGapYDp();
         }
@@ -698,6 +694,7 @@ final class KeyboardPreview extends FrameLayout {
             case H_PAD_LEFT: v = clamp(Math.round(dragStart + dx / density), 0, 24); break;
             case H_PAD_RIGHT: v = clamp(Math.round(dragStart - dx / density), 0, 24); break;
             case H_PAD_BOTTOM: v = clamp(Math.round(dragStart - dy / density), 0, 48); break;
+            case H_PAD_TOP: v = clamp(Math.round(dragStart - dy / density), 0, 24); break;
             // 키는 양쪽에서 여백의 절반씩 줄어들므로, 가장자리가 손가락을 따라가려면 움직인 거리의 두 배를 여백으로 바꾼다.
             case H_GAP_X: v = clamp(Math.round(dragStart - 2 * dx / density), 0, 12); break;
             default: v = clamp(Math.round(dragStart - 2 * dy / density), 0, 20); break;

@@ -381,9 +381,7 @@ public final class SettingsActivity extends Activity {
             {"theme", "화면 모드", "다크 라이트 어두운 밝은 야간"},
             {"theme", "강조 색", "색상 컬러 포인트 테마 색"},
             {"theme", "색 정렬", "키 색"},
-            {KEYBOARD, "문자 길게 누르기 시간", "롱프레스 길게 누르기 시간 지연"},
-            {KEYBOARD, "길게 눌러 문자 입력", "특수문자 롱프레스"},
-            {KEYBOARD, "길게 눌러 연속 입력", "반복 입력 연타"},
+            {KEYBOARD, "문자 길게 누르기 시간", "롱프레스 길게 누르기 시간 지연 특수문자 반복 입력 연타 연속 입력"},
             {KEYBOARD, "기능키 길게 누르기 시간", "롱프레스 시간 길게 눌러 지우기 이모지 입력기 선택"},
             {KEYBOARD, "쌍자음 인식 시간", "연속 탭 된소리 ㄲ ㅆ 시간"},
             {KEYBOARD, "자음 연속 탭으로 쌍자음", "된소리 ㄲ ㅆ ㅃ"},
@@ -978,8 +976,8 @@ public final class SettingsActivity extends Activity {
         list = box;
         try {
             LinearLayout tip = card();
-            tip.addView(note("• 아래 미리보기의 손잡이(작은 막대)를 끌면 크기가 바로 바뀝니다. 위쪽 가장자리의 손잡이는 "
-                    + "도구 막대·숫자 줄·키보드의 높이, 양옆과 아래의 손잡이는 여백입니다.\n"
+            tip.addView(note("• 아래 미리보기의 손잡이(작은 막대)를 끌면 크기가 바로 바뀝니다. 아무것도 고르지 않았을 때는 "
+                    + "키보드의 위·아래·양옆 여백 손잡이가, 영역을 고르면 그 영역의 높이 손잡이가, 키를 고르면 키 간격 손잡이가 보입니다.\n"
                     + "• 미리보기에는 두 페이지가 있어 좌우로 밀어 넘깁니다. '영역' 페이지에서는 도구 막대·숫자 줄·글자 키·기능키를 "
                     + "눌러 그 영역 전체의 설정을, '키' 페이지에서는 키 하나를 눌러 그 키의 누르기·길게 누르기·밀기를 바꿉니다.\n"
                     + "• 머리글의 되돌리기 버튼으로 마지막으로 바꾼 설정을 원래대로 돌릴 수 있습니다."));
@@ -1547,7 +1545,6 @@ public final class SettingsActivity extends Activity {
                 "키의 오른쪽 위에 표시되는 길게 눌러 입력할 문자 힌트를 없앱니다.",
                 Prefs.POPUP_HINT_HIDDEN, prefs.popupHintHidden()));
         look.addView(numberHintToggle());
-        look.addView(spaceLangLabelToggle());
     }
 
     // ---- 목록과 영역 편집 창이 함께 쓰는 항목 (같은 설정이 두 곳에 보여도 이름·설명이 어긋나지 않게 한곳에서 만든다)
@@ -1616,14 +1613,9 @@ public final class SettingsActivity extends Activity {
         input.addView(spaceShrink);
     }
 
-    /** 글자 키 길게 누르기: 시간, 길게 눌러 문자 입력, 길게 눌러 연속 입력. */
+    /** 글자 키 길게 누르기 시간 (길게 눌러 문자 입력과 연속 입력이 함께 쓴다. 무엇을 할지는 키마다 정한다). */
     private void addLetterLongPress(LinearLayout c) {
-        // 길게 눌러 문자 입력과 길게 눌러 연속 입력이 함께 쓰는 시간이라 두 토글 위에 둔다.
         c.addView(slider("문자 길게 누르기 시간", Prefs.LONG_PRESS_MS, prefs.longPressMs(), 100, 800, 20, "ms"));
-        c.addView(toggle("길게 눌러 문자 입력", "키를 길게 눌러 특수문자를 입력합니다.",
-                Prefs.LONG_PRESS_CHARS, prefs.longPressChars()));
-        c.addView(toggle("길게 눌러 연속 입력", "고른 글자를 길게 누르고 있으면 계속 입력합니다.",
-                Prefs.LONG_PRESS_REPEAT, prefs.longPressRepeat()));
     }
 
     /** 모든 기능키(⌫·기호 키·🌐︎·Shift 키·엔터 키·Fn 키 등)가 같은 시간을 쓴다. */
@@ -2296,7 +2288,7 @@ public final class SettingsActivity extends Activity {
         oneHandKeys.setKeyShadow(prefs.keyShadow(), prefs.keyShadowStrength());
         oneHandKeys.setKeyRadius(Ui.dp(this, prefs.keyRadiusDp()));
         oneHandKeys.setGridColors(prefs.gridColors());
-        oneHandKeys.setPopupHints(prefs.longPressChars() && !prefs.popupHintHidden());
+        oneHandKeys.setPopupHints(!prefs.popupHintHidden());
         oneHandKeys.setNumberHintHidden(prefs.numberHintHidden());
         oneHandKeys.setKeyGaps(Ui.dp(this, prefs.keyGapXDp()), Ui.dp(this, prefs.keyGapYDp()));
         oneHandKeys.setInsets(Ui.dp(this, prefs.padLeftDp()), Ui.dp(this, prefs.padTopDp()),
@@ -2322,7 +2314,7 @@ public final class SettingsActivity extends Activity {
 
     /** 한 손 모드 미리보기의 키 글자 크기: 키 높이를 줄인 만큼 같은 비율로 줄인다 (키보드와 같다). */
     private void applyOneHandPreviewText() {
-        oneHandKeys.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), false, prefs.longPressChars(), Math.round(prefs.keyTextSize() * prefs.oneHandHeight() / 100f));
+        oneHandKeys.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), false, true, Math.round(prefs.keyTextSize() * prefs.oneHandHeight() / 100f));
     }
 
     /** 키보드 도구 막대와 같은 자리·순서로 보이는 버튼들 (누를 수 없음). */
@@ -2419,7 +2411,7 @@ public final class SettingsActivity extends Activity {
     private void applyPreviewSize(com.alternative_studios.newswipe.keyboard.KeyboardView view, Prefs p,
                                   com.alternative_studios.newswipe.keyboard.KeyboardLayout l, boolean landscape) {
         float scale = landscape ? LANDSCAPE_PREVIEW_SCALE : 1f;
-        view.configure(p.longPressMs(), p.swipeThresholdDp(), false, p.longPressChars(),
+        view.configure(p.longPressMs(), p.swipeThresholdDp(), false, true,
                 Math.round(p.keyTextSize() * scale));
         int pad = Ui.dp(this, 4);
         view.setKeyboardHeight(Math.round(Ui.dp(this, 54) * l.totalHeight() * p.keyboardHeight() / 100f * scale) + 2 * pad);
@@ -2444,11 +2436,11 @@ public final class SettingsActivity extends Activity {
                 new com.alternative_studios.newswipe.keyboard.KeyboardView(this);
         preview.setTheme(kt);
         // 가로 모드 미리보기는 키가 낮아진 만큼 글자도 작게 그려 키 안에 들어가게 한다.
-        preview.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), false, prefs.longPressChars(), Math.round(prefs.keyTextSize() * (landscape ? LANDSCAPE_PREVIEW_SCALE : 1f)));
+        preview.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), false, true, Math.round(prefs.keyTextSize() * (landscape ? LANDSCAPE_PREVIEW_SCALE : 1f)));
         preview.setKeyShadow(prefs.keyShadow(), prefs.keyShadowStrength());
         preview.setKeyRadius(Ui.dp(this, prefs.keyRadiusDp()));
         preview.setGridColors(prefs.gridColors());
-        preview.setPopupHints(prefs.longPressChars() && !prefs.popupHintHidden());
+        preview.setPopupHints(!prefs.popupHintHidden());
         preview.setNumberHintHidden(prefs.numberHintHidden());
         int p = Ui.dp(this, 4);
         preview.setKeyGaps(Ui.dp(this, prefs.keyGapXDp()), Ui.dp(this, prefs.keyGapYDp()));

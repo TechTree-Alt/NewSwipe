@@ -230,10 +230,6 @@ final class KeyEditPanel {
         String g = group(), s = slot();
         if (mode == 1) {
             prefs.setRepeatChar(g, s, true);
-            if (!prefs.longPressRepeat()) {
-                put(Prefs.LONG_PRESS_REPEAT, true);
-                Toast.makeText(a, "'길게 눌러 연속 입력'을 켰습니다", Toast.LENGTH_SHORT).show();
-            }
             refreshKey();
             return;
         }
@@ -244,10 +240,6 @@ final class KeyEditPanel {
             String[] o = prefs.popupOverride(g, s);
             if (o != null && o.length == 0) prefs.turnOnPopup(g, s);   // '없음'에서 돌아오면 그전 문자로
             if (currentPopup().length == 0) editPopup();   // 기본 문자가 없는 키(숫자 등)는 바로 적게 한다
-            if (!prefs.longPressChars()) {
-                put(Prefs.LONG_PRESS_CHARS, true);
-                Toast.makeText(a, "'길게 눌러 문자 입력'을 켰습니다", Toast.LENGTH_SHORT).show();
-            }
         }
         refreshKey();
     }
@@ -264,26 +256,10 @@ final class KeyEditPanel {
         if (mode == 0) {
             String[] items = currentPopup();
             body.addView(valueRow("길게 눌러 고를 문자", items.length == 0 ? "없음" : joinItems(items), v -> editPopup()));
-            if (!prefs.longPressChars()) {
-                body.addView(note("'길게 눌러 문자 입력'이 꺼져 있어 모든 키에서 쓰지 않습니다."));
-                body.addView(toggle("길게 눌러 문자 입력", "모든 키에 적용됩니다.", false, on -> {
-                    put(Prefs.LONG_PRESS_CHARS, on);
-                    refreshKey();
-                    body.postDelayed(() -> fillLongPress(body), 300);   // 스위치가 움직인 뒤 안내를 맞춘다
-                }));
-            } else {
-                body.addView(note("첫 번째 문자는 키 오른쪽 위에 작게 보입니다."
-                        + (".".equals(slot()) ? " 이메일·인터넷 주소 입력란에서는 .com 같은 주소가 대신 나옵니다." : "")));
-            }
+            body.addView(note("첫 번째 문자는 키 오른쪽 위에 작게 보입니다."
+                    + (".".equals(slot()) ? " 이메일·인터넷 주소 입력란에서는 .com 같은 주소가 대신 나옵니다." : "")));
         } else if (mode == 1) {
             body.addView(note("누르고 있는 동안 이 글자를 계속 입력합니다. 길게 눌러 고를 문자는 나오지 않습니다."));
-            if (!prefs.longPressRepeat()) {
-                body.addView(toggle("길게 눌러 연속 입력", "꺼져 있어 지금은 쓰지 않습니다. 모든 키에 적용됩니다.", false, on -> {
-                    put(Prefs.LONG_PRESS_REPEAT, on);
-                    refreshKey();
-                    body.postDelayed(() -> fillLongPress(body), 300);
-                }));
-            }
         } else {
             body.addView(note("길게 눌러도 아무것도 하지 않습니다."));
         }

@@ -187,7 +187,7 @@ public class LegacySwipeSettingsTest {
         MapSp sp = new MapSp();
         Prefs p = prefs(sp);
         LegacySwipeSettings.migrateIfNeeded(p);
-        assertEquals(1, sp.getAll().size());   // 옮김 표시뿐
+        assertEquals(2, sp.getAll().size());   // 옮김 표시 두 개뿐
         assertEquals(SwipeAction.UNDO, KeyboardSwipes.SPEC.get(p, KeyboardSwipes.TWO, Key.SWIPE_LEFT));
     }
 
@@ -200,5 +200,41 @@ public class LegacySwipeSettingsTest {
         KeyboardSwipes.SPEC.set(p, KeyboardSwipes.TWO, Key.SWIPE_LEFT, SwipeAction.UNDO);   // 옮긴 뒤 사용자가 바꿨다
         LegacySwipeSettings.migrateIfNeeded(p);
         assertEquals(SwipeAction.UNDO, KeyboardSwipes.SPEC.get(p, KeyboardSwipes.TWO, Key.SWIPE_LEFT));
+    }
+
+    @Test
+    public void longPressSwitchOffKeepsKeysQuiet() throws Exception {
+        MapSp sp = new MapSp();
+        sp.m.put(LegacySwipeSettings.DONE, true);   // 밀기 설정은 이미 옮겼다
+        sp.m.put("long_press_chars", false);
+        sp.m.put("popup_ko_ㄱ", "x\ny");            // 꺼 둔 동안 쓰이지 않던 문자
+        sp.m.put("repeat_ko_ㄴ", true);              // '연속 입력'이 꺼져 있어 쓰이지 않던 값
+        Prefs p = prefs(sp);
+        LegacySwipeSettings.migrateIfNeeded(p);
+        // 모든 키의 길게 누르기가 '없음' (예전처럼 아무것도 나오지 않는다)
+        KeyboardLayout l = KeyboardLayout.korean(p);
+        for (KeyboardLayout.Row r : l.rows) for (Key k : r.keys) if (k.type == Key.CHAR) assertEquals(k.label, null, k.popup);
+        assertEquals(0, KeyboardLayout.english(p).rows[0].keys[0].popup == null ? 0 : 1);
+        assertFalse(p.repeatChar("ko", "ㄴ"));
+        // '문자 입력'으로 되살리면 정해 두었던 문자가 돌아온다
+        p.turnOnPopup("ko", "ㄱ");
+        org.junit.Assert.assertArrayEquals(new String[]{"x", "y"}, p.popupOverride("ko", "ㄱ"));
+        p.turnOnPopup("ko", "ㄴ");
+        assertEquals(null, p.popupOverride("ko", "ㄴ"));   // 기본 문자로
+        assertFalse(sp.contains("long_press_chars"));
+    }
+
+    @Test
+    public void longPressRepeatOnKeepsRepeatKeys() throws Exception {
+        MapSp sp = new MapSp();
+        sp.m.put(LegacySwipeSettings.DONE, true);
+        sp.m.put("long_press_repeat", true);
+        sp.m.put("repeat_ko_ㄴ", true);
+        Prefs p = prefs(sp);
+        LegacySwipeSettings.migrateIfNeeded(p);
+        assertTrue(p.repeatChar("ko", "ㄴ"));
+        assertTrue(p.repeatChars().contains("ko_ㄴ"));
+        assertEquals(null, p.popupOverride("ko", "ㄱ"));   // 문자 입력은 그대로
+        assertFalse(sp.contains("long_press_repeat"));
     }
 }

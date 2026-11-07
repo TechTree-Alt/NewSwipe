@@ -60,14 +60,57 @@ final class LegacySwipeSettings {
     /** 아직 옮기지 않았으면 옮긴다. 이미 옮겼으면 값 하나만 읽고 끝난다. */
     static void migrateIfNeeded(Prefs prefs) {
         SharedPreferences sp = prefs.raw();
-        if (sp.getBoolean(DONE, false)) return;
-        if (!sp.getAll().isEmpty()) migrate(prefs, sp);
-        SharedPreferences.Editor e = sp.edit();
-        for (String k : LEGACY_KEYS) e.remove(k);
-        for (String k : sp.getAll().keySet()) {
-            for (String p : LEGACY_PREFIXES) if (k.startsWith(p)) e.remove(k);
+        if (!sp.getBoolean(DONE, false)) {
+            if (!sp.getAll().isEmpty()) migrate(prefs, sp);
+            SharedPreferences.Editor e = sp.edit();
+            for (String k : LEGACY_KEYS) e.remove(k);
+            for (String k : sp.getAll().keySet()) {
+                for (String p : LEGACY_PREFIXES) if (k.startsWith(p)) e.remove(k);
+            }
+            e.putBoolean(DONE, true).apply();
         }
-        e.putBoolean(DONE, true).apply();
+        if (!sp.getBoolean(LONG_PRESS_DONE, false)) {
+            if (!sp.getAll().isEmpty()) migrateLongPressSwitches(prefs, sp);
+            sp.edit().remove(LONG_PRESS_CHARS).remove(LONG_PRESS_REPEAT).putBoolean(LONG_PRESS_DONE, true).apply();
+        }
+    }
+
+    // ---------------------------------------------------------------- 길게 누르기 스위치
+
+    /** 길게 누르기 스위치를 옮겼다는 표시. */
+    static final String LONG_PRESS_DONE = "long_press_v1";
+    /** 예전 '길게 눌러 문자 입력'(기본 켬)과 '길게 눌러 연속 입력'(기본 끔) 스위치. 이제는 키마다 정한 대로만 동작한다. */
+    static final String LONG_PRESS_CHARS = "long_press_chars", LONG_PRESS_REPEAT = "long_press_repeat";
+
+    /**
+     * '길게 눌러 문자 입력'을 꺼 두었으면 모든 키의 길게 누르기를 '없음'으로 (정해 둔 문자는 넣어 두어 '문자 입력'으로 되살릴 수
+     * 있게), '길게 눌러 연속 입력'을 꺼 두었으면 쓰이지 않던 키마다의 연속 입력을 지운다. 그래서 옮긴 뒤에도 똑같이 동작한다.
+     */
+    private static void migrateLongPressSwitches(Prefs prefs, SharedPreferences sp) {
+        if (!sp.getBoolean(LONG_PRESS_CHARS, true)) {
+            for (String[] key : popupKeys(prefs)) prefs.turnOffPopup(key[0], key[1]);
+        }
+        if (!sp.getBoolean(LONG_PRESS_REPEAT, false)) {
+            SharedPreferences.Editor e = sp.edit();
+            for (String k : sp.getAll().keySet()) if (k.startsWith("repeat_")) e.remove(k);
+            e.apply();
+        }
+    }
+
+    /** 길게 누르기를 정할 수 있는 모든 키: {묶음, 글자}. 한글 자모(모든 배열), 영어, 숫자 줄, 기호 자판과 쉼표·온점 키. */
+    static java.util.List<String[]> popupKeys(Prefs prefs) {
+        java.util.List<String[]> out = new java.util.ArrayList<>();
+        for (char c = 'ㄱ'; c <= 'ㅣ'; c++) out.add(new String[]{KeyboardLayout.GROUP_KO, String.valueOf(c)});
+        for (char c = 'a'; c <= 'z'; c++) out.add(new String[]{KeyboardLayout.GROUP_EN, String.valueOf(c)});
+        for (String n : KeyboardLayout.NUMBER_KEYS) out.add(new String[]{KeyboardLayout.GROUP_NUM, n});
+        java.util.Set<String> symbols = new java.util.LinkedHashSet<>(java.util.Arrays.asList(",", "."));
+        for (boolean page2 : new boolean[]{false, true}) {
+            for (java.util.List<Object[]> row : KeyboardLayout.editableSymbolRows(page2, prefs)) {
+                for (Object[] cell : row) if (cell[0] != null) symbols.add((String) cell[0]);
+            }
+        }
+        for (String sym : symbols) out.add(new String[]{KeyboardLayout.groupOf(true, sym), sym});
+        return out;
     }
 
     private static void migrate(Prefs prefs, SharedPreferences sp) {

@@ -86,11 +86,11 @@ public final class BottomKeysEditorActivity extends Activity {
         // 미리보기: 실제 키보드 뷰에 아래 두 줄(Shift·⌫ 줄과 맨 아래 줄)만 넣어 그린다. 눌러도 반응하지 않는다.
         preview = new KeyboardView(this);
         preview.setTheme(keyboardTheme);
-        preview.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), false, prefs.longPressChars(), prefs.keyTextSize());
+        preview.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), false, true, prefs.keyTextSize());
         preview.setKeyShadow(prefs.keyShadow(), prefs.keyShadowStrength());
         preview.setKeyRadius(Ui.dp(this, prefs.keyRadiusDp()));
         preview.setGridColors(prefs.gridColors());
-        preview.setPopupHints(prefs.longPressChars() && !prefs.popupHintHidden());
+        preview.setPopupHints(!prefs.popupHintHidden());
         preview.setNumberHintHidden(prefs.numberHintHidden());
         // 키보드와 같은 좌우 여백과 한 줄 높이(키보드 높이 설정 반영)를 쓴다.
         int p = Ui.dp(this, 4);
