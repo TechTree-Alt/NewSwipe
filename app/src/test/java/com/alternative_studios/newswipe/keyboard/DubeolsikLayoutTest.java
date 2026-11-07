@@ -219,13 +219,13 @@ public class DubeolsikLayoutTest {
     public void balancedLayoutOnlySplitsTheStandardRows() throws Exception {
         for (boolean numberRow : new boolean[]{false, true}) {
             for (boolean grid : new boolean[]{false, true}) {
-                for (int width : new int[]{80, 100}) {
+                for (int width : new int[]{90, 100}) {
                     FakeSp sp = dubeolsik(true);
                     sp.m.put(Prefs.NUMBER_ROW, numberRow);
                     sp.m.put(Prefs.GRID_LAYOUT, grid);
                     sp.m.put(Prefs.KOREAN_SHIFT_HIDDEN, true);   // 두벌식은 균형 레이아웃에서도 Shift가 늘 있다
                     Prefs p0 = portrait(sp);
-                    if (width != 80) {
+                    if (width != 90) {
                         sp.m.put(p0.balancedConsonantWidthKey(), width);
                         sp.m.put(p0.balancedVowelWidthKey(), width);
                     }
@@ -301,19 +301,39 @@ public class DubeolsikLayoutTest {
         assertEquals(6f, leftOf(l.rows[0], key(l, "ㅛ"), 10), 1e-3f);
     }
 
-    /** 기본값 (모든 배열): 경계 50%, 자음·모음 키 폭 80%, 가로 위치 50. */
+    /**
+     * 세로 모드 균형 레이아웃의 기본값: 두벌식은 경계 50%, 키 폭 90%, 자음은 왼쪽 끝·모음은 오른쪽 끝.
+     * 단모음 배열은 그대로 키 폭 100%·가운데.
+     */
     @Test
-    public void balancedDefaultsForEveryLayout() throws Exception {
-        for (String layout : new String[]{Prefs.KOREAN_LAYOUT_DUBEOLSIK, Prefs.KOREAN_LAYOUT_8, Prefs.KOREAN_LAYOUT_D7}) {
+    public void balancedDefaults() throws Exception {
+        Prefs d = portrait(dubeolsik(true));
+        assertEquals(50, d.balancedBoundary());
+        assertEquals(90, d.balancedConsonantWidth());
+        assertEquals(0, d.balancedConsonantPos());
+        assertEquals(90, d.balancedVowelWidth());
+        assertEquals(100, d.balancedVowelPos());
+        // 자음은 왼쪽 끝에서, 모음은 오른쪽 끝까지
+        KeyboardLayout l = KeyboardLayout.korean(d);
+        assertEquals(0f, leftOf(l.rows[0], key(l, "ㅂ"), 10), 1e-3f);
+        Key e = key(l, "ㅔ");
+        assertEquals(10f, leftOf(l.rows[0], e, 10) + e.weight, 1e-3f);
+        for (String layout : new String[]{Prefs.KOREAN_LAYOUT_8, Prefs.KOREAN_LAYOUT_D7}) {
             FakeSp sp = new FakeSp();
             sp.m.put(Prefs.KOREAN_LAYOUT, layout);
             Prefs p = portrait(sp);
             assertEquals(layout, 50, p.balancedBoundary());
-            assertEquals(layout, 80, p.balancedConsonantWidth());
+            assertEquals(layout, 100, p.balancedConsonantWidth());
             assertEquals(layout, 50, p.balancedConsonantPos());
-            assertEquals(layout, 80, p.balancedVowelWidth());
+            assertEquals(layout, 100, p.balancedVowelWidth());
             assertEquals(layout, 50, p.balancedVowelPos());
         }
+        // 분리 키보드(가로 모드)의 기본값은 배열과 상관없이 그대로
+        FakeSp land = dubeolsik(true);
+        Prefs lp = view(land, Prefs.PROFILE_LANDSCAPE).profileEditView(Prefs.PROFILE_LANDSCAPE);
+        assertEquals(Prefs.SPLIT_WIDTH_DEFAULT, lp.balancedConsonantWidth());
+        assertEquals(Prefs.SPLIT_LEFT_POS_DEFAULT, lp.balancedConsonantPos());
+        assertEquals(Prefs.SPLIT_RIGHT_POS_DEFAULT, lp.balancedVowelPos());
     }
 
     /** 격자 정렬: 균형 레이아웃에서도 맨 아래 줄 기능키가 반듯한 칸 폭이다. */
