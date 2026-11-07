@@ -447,7 +447,10 @@ public class EditorUiTest {
         java.util.Map<String, String> where = new java.util.HashMap<>();
         for (String[] e : parts) where.putIfAbsent(e[1], e[0]);
         log("parts harvested " + parts.size() + ": " + where);
-        assertTrue(where.get("자음 연속 탭으로 쌍자음").startsWith("keyboard:a:2:"));
+        // 글자 키 창은 자판마다: 한글 항목은 한글 글자 키, 영어 항목은 영어 글자 키 창에서 찾는다
+        assertEquals("keyboard:t:0:한글 글자 키", where.get("자음 연속 탭으로 쌍자음"));
+        assertEquals("keyboard:t:1:영어 글자 키", where.get("영어 자동 대문자"));
+        assertTrue(where.get("글자 키 높이").startsWith("keyboard:t:"));
         assertTrue(where.get("두 번 눌러 마침표").startsWith("keyboard:k:"));
         assertTrue(where.get("도구 막대 표시").startsWith("keyboard:a:0:"));
         assertTrue(where.containsKey("기호 자판 대신 숫자 패드 사용"));
@@ -462,6 +465,16 @@ public class EditorUiTest {
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(800));
         assertTrue(visibleTexts(cur(a)).contains("자음 연속 탭으로 쌍자음"));
         a.onBackPressed(); idle();
+        // 영어 글자 키의 항목: 영어 탭으로 바뀌어 영어 글자 키 창이 열린다 (탭 버튼도 영어)
+        ot.invoke(a, where.get("영어 자동 대문자"), "영어 자동 대문자");
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(800));
+        KeyboardPreview pv = find(a.getWindow().getDecorView(), KeyboardPreview.class);
+        assertEquals(KeyboardPreview.TAB_ENGLISH, pv.tab());
+        assertNotNull(findText(a.getWindow().getDecorView(), "영어 글자 키 설정"));
+        assertTrue(visibleTexts(cur(a)).contains("영어 자동 대문자"));
+        a.onBackPressed(); idle();
+        findText(a.getWindow().getDecorView(), "한글").performClick();
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(500));
         shot(a, "43-overview");
         cur(a).scrollTo(0, 3000);
         shot(a, "43b-overview-end");
@@ -836,11 +849,11 @@ public class EditorUiTest {
         shot(a, "80-area-layer");
         // 영역: 글자 키
         tapArea(p, KeyboardPreview.AREA_LETTERS);
-        assertNotNull(findText(decor, "글자 키 설정"));
+        assertNotNull(findText(decor, "한글 글자 키 설정"));
         String t = visibleTexts(cur(a));
         log("LETTERS:\n" + t);
-        assertTrue(t.contains("한글 자판 배열") && t.contains("자음 연속 탭으로 쌍자음") && t.contains("영어 자동 대문자")
-                && t.contains("키보드 밀기 편집"));
+        assertTrue(t.contains("한글 자판 배열") && t.contains("자음 연속 탭으로 쌍자음") && t.contains("키보드 밀기 편집"));
+        assertFalse(t.contains("영어 자동 대문자"));   // 영어 글자 키 창에만 있다
         assertFalse(t.contains("스페이스바 두 번으로 마침표"));
         String lt = visibleTexts(cur(a));
         assertTrue(lt.contains("글자 키 높이"));
@@ -1219,7 +1232,7 @@ public class EditorUiTest {
         assertTrue(visibleTexts(cur(a)).contains("두벌식은 컴퓨터 키보드와 같은 표준 한글 배열입니다."));
         assertTrue(visibleTexts(cur(a)).contains("자·모음 균형 레이아웃"));
         assertFalse(visibleTexts(cur(a)).contains("영어 자판도 균형 레이아웃"));   // 균형 레이아웃을 켠 뒤에만 보인다
-        assertTrue(visibleTexts(cur(a)).contains("영어 자판 아래로 밀어 대문자 입력"));
+        assertFalse(visibleTexts(cur(a)).contains("영어 자판 아래로 밀어 대문자 입력"));   // 영어 글자 키 창에만 있다
         shot(a, "a0-dubeolsik");
         // 균형 레이아웃: 자음은 왼쪽 절반, 모음은 오른쪽 절반으로 나누되 각 쪽 안의 자리는 일반 두벌식 그대로
         View row = (View) findText(cur(a), "자·모음 균형 레이아웃").getParent().getParent();
@@ -1244,7 +1257,9 @@ public class EditorUiTest {
         assertEquals(e.rect.right, del.rect.right, 1.5f);
         assertTrue(key(p, "ㅎ", Key.CHAR).rect.right <= kv.getWidth() / 2f + 1f);
         assertTrue(o.rect.left >= kv.getWidth() / 2f - 1f);
+        cur(a).scrollTo(0, 450);   // 균형 레이아웃의 하위 묶음(키 위치·폭 사용자화, 영어 자판도 균형 레이아웃)이 보이게
         shot(a, "a1-dubeolsik-balanced");
+        cur(a).scrollTo(0, 0);
         // 격자 정렬과도 함께 쓴다
         prefs.raw().edit().putBoolean(Prefs.GRID_LAYOUT, true).commit();
         idle();
@@ -1280,6 +1295,80 @@ public class EditorUiTest {
         pre.raw().edit().remove(Prefs.DUBEOLSIK_SHIFT_HIDDEN).commit();
         pre.raw().edit().remove(Prefs.KOREAN_LAYOUT).remove(Prefs.LANDSCAPE_SPLIT).remove(Prefs.NUMBER_ROW)
                 .remove(Prefs.BALANCED_LAYOUT + "_" + Prefs.KOREAN_LAYOUT_DUBEOLSIK).commit();
+    }
+
+    /**
+     * 영역·키보드 전체를 고른 채 한글·영어·기호 탭을 바꾸면 창이 그대로 열려 있고, 글자 키 창은 그 자판의 항목으로 바뀐다.
+     * 키를 고른 채 바꾸면 창이 닫힌다.
+     */
+    @Test
+    public void tabSwitchKeepsTheAreaSheet() throws Exception {
+        SettingsActivity a = launch("keyboard");
+        View decor = a.getWindow().getDecorView();
+        KeyboardPreview p = find(decor, KeyboardPreview.class);
+        tapArea(p, KeyboardPreview.AREA_LETTERS);
+        assertNotNull(findText(decor, "한글 글자 키 설정"));
+        View tabs = findText(decor, "영어");
+        // 영어 탭: 같은 영역이 고른 채로, 창은 영어 글자 키의 항목으로
+        tabs.performClick();
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(500));
+        assertEquals(KeyboardPreview.TAB_ENGLISH, p.tab());
+        assertNotNull(p.selection());
+        assertEquals(KeyboardPreview.SEL_AREA, p.selection().kind);
+        assertTrue(sheetOf(a).isOpen());
+        assertNotNull(findText(decor, "영어 글자 키 설정"));
+        String en = visibleTexts(cur(a));
+        assertTrue(en.contains("영어 자동 대문자") && en.contains("영어 자판 아래로 밀어 대문자 입력")
+                && en.contains("이메일 입력란은 영어로 시작") && en.contains("글자 키 높이"));
+        assertFalse(en.contains("한글 자판 배열") || en.contains("자음 연속 탭으로 쌍자음"));
+        assertTrue(en.contains("영어 글자 키 하나하나의 설정은"));
+        shot(a, "b0-english-letters");
+        // 기호 탭: 공통 항목만
+        findText(decor, "기호").performClick();
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(500));
+        assertTrue(sheetOf(a).isOpen());
+        assertNotNull(findText(decor, "기호 글자 키 설정"));
+        String sym = visibleTexts(cur(a));
+        assertTrue(sym.contains("글자 키 높이") && sym.contains("문자 길게 누르기 시간"));
+        assertFalse(sym.contains("영어 자동 대문자") || sym.contains("한글 자판 배열") || sym.contains("\n  입력\n"));   // 입력 섹션이 없다
+        // 기능키 영역도 그대로 유지된다
+        tapArea(p, KeyboardPreview.AREA_FUNCTION);
+        findText(decor, "한글").performClick();
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(500));
+        assertTrue(sheetOf(a).isOpen());
+        assertNotNull(findText(decor, "기능키 설정"));
+        // 키를 고른 채 바꾸면 닫힌다
+        p.setLayer(KeyboardPreview.LAYER_KEY);
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(400));
+        tapKey(p, key(p, "ㄱ", Key.CHAR));
+        assertTrue(sheetOf(a).isOpen());
+        findText(decor, "영어").performClick();
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(500));
+        assertFalse(sheetOf(a).isOpen());
+        assertNull(p.selection());
+    }
+
+    /** 글자 키 창의 '기본값으로 되돌리기'는 그 자판의 값과 함께 쓰는 값만 되돌린다. */
+    @Test
+    public void letterResetIsPerKeyboard() throws Exception {
+        Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
+        pre.raw().edit().putBoolean(Prefs.AUTO_CAP, false).putBoolean(Prefs.DOUBLE_TAP_VOWEL, false)
+                .putInt(Prefs.LONG_PRESS_MS, 500).commit();
+        SettingsActivity a = launch("keyboard");
+        View decor = a.getWindow().getDecorView();
+        KeyboardPreview p = find(decor, KeyboardPreview.class);
+        p.setTab(KeyboardPreview.TAB_ENGLISH);
+        idle();
+        tapArea(p, KeyboardPreview.AREA_LETTERS);
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(300));
+        assertNotNull(findText(decor, "영어 글자 키 설정"));
+        findText(sheetOf(a).scroll(), "기본값으로 되돌리기").performClick(); idle();
+        click((AlertDialog) ShadowDialog.getLatestDialog(), AlertDialog.BUTTON_POSITIVE);
+        idle();
+        assertFalse(pre.raw().contains(Prefs.AUTO_CAP));          // 영어 글자 키의 값
+        assertFalse(pre.raw().contains(Prefs.LONG_PRESS_MS));     // 함께 쓰는 값
+        assertTrue(pre.raw().contains(Prefs.DOUBLE_TAP_VOWEL));   // 한글 글자 키의 값은 그대로
+        pre.raw().edit().remove(Prefs.DOUBLE_TAP_VOWEL).commit();
     }
 
     /** 영어 자판 아래로 밀어 대문자 입력: 키 설정 창의 아래로 밀기는 대문자로 고정되어 바꿀 수 없다. */

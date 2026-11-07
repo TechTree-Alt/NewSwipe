@@ -609,6 +609,20 @@ public final class SettingsActivity extends Activity {
                     panel.show(KeyboardPreview.Selection.toolbar(), null);
                     scratch.addView(panel.view());
                 }
+                if (a == KeyboardPreview.AREA_LETTERS) {
+                    // 글자 키 창은 자판마다 항목이 달라 자판마다 모은다 ("t:자판:이름").
+                    for (int t = 0; t < KeyboardPreview.TAB_NAMES.length; t++) {
+                        LinearLayout tabScratch = new LinearLayout(this);
+                        tabScratch.setOrientation(LinearLayout.VERTICAL);
+                        list = tabScratch;
+                        letterTab = t;
+                        buildArea(a);
+                        collectLabels(EDITOR_PART + "t:" + t + ":" + KeyboardPreview.areaName(a, t), tabScratch, out,
+                                new View[1], new String[1][]);
+                    }
+                    letterTab = KeyboardPreview.TAB_KOREAN;
+                    continue;
+                }
                 buildArea(a);
                 collectLabels(EDITOR_PART + "a:" + a + ":" + KeyboardPreview.AREA_NAMES[a], scratch, out, new View[1],
                         new String[1][]);
@@ -664,6 +678,12 @@ public final class SettingsActivity extends Activity {
             if ("a".equals(parts[1])) {
                 editorPreview.setLayer(KeyboardPreview.LAYER_AREA);
                 sel = KeyboardPreview.Selection.area(n);
+            } else if ("t".equals(parts[1])) {   // 글자 키 창: 그 자판으로 바꿔 연다 (탭 버튼도 맞춘다)
+                if (n < 0 || n >= KeyboardPreview.TAB_NAMES.length) return;
+                if (editorTabs != null && editorPreview.tab() != n) editorTabs.getChildAt(n).performClick();
+                editorPreview.setTab(n);
+                editorPreview.setLayer(KeyboardPreview.LAYER_AREA);
+                sel = KeyboardPreview.Selection.area(KeyboardPreview.AREA_LETTERS);
             } else if ("b".equals(parts[1])) {
                 editorPreview.setLayer(KeyboardPreview.LAYER_BOARD);
                 sel = KeyboardPreview.Selection.board();
@@ -759,7 +779,7 @@ public final class SettingsActivity extends Activity {
     private String searchCacheStamp() {
         try {
             // 뒤의 꼬리표는 메뉴 구성이 바뀌면 올린다 (같은 앱 버전이라도 예전 메뉴로 모은 목록을 쓰지 않게).
-            return "v" + getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode() + "-k8";
+            return "v" + getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode() + "-k9";
         } catch (PackageManager.NameNotFoundException e) {
             return "v?";
         }
@@ -1038,10 +1058,16 @@ public final class SettingsActivity extends Activity {
             int pad = Ui.dp(this, 16);
             tabs.setPadding(pad, Ui.dp(this, 2), pad, Ui.dp(this, 6));
             tabs.setBackgroundColor(AppTheme.of(this).bg);
-            tabs.addView(Ui.choiceRow(this, new String[]{"한글", "영어", "기호"}, 0, accentColor, onAccentColor,
+            tabs.addView(editorTabs = Ui.choiceRow(this, KeyboardPreview.TAB_NAMES, 0, accentColor, onAccentColor,
                     textColor, hintColor, 0, i -> {
-                        closeKeyPanel();   // 다른 자판을 보려면 창을 닫는다
+                        // 영역·키보드 전체의 창은 다른 자판에서도 연 채로 둔다 (글자 키 창은 그 자판의 항목으로 바뀐다).
+                        // 키는 자판마다 달라 창을 닫는다.
+                        KeyboardPreview.Selection s = editorPreview.selection();
+                        boolean keep = panelOpen() && s != null
+                                && (s.kind == KeyboardPreview.SEL_AREA || s.kind == KeyboardPreview.SEL_BOARD);
+                        if (!keep) closeKeyPanel();
                         editorPreview.setTab(i);
+                        if (keep) showSelection(editorPreview.selection());
                     }));
             pinnedBottom.addView(tabs, matchWrap());
             pageDots = new PageDots(this, PAGE_NAMES, PAGE_DESCS, AppTheme.of(this), editorPreview::setLayer);
@@ -1223,7 +1249,7 @@ public final class SettingsActivity extends Activity {
         if (panel) keyPanel.show(area ? KeyboardPreview.Selection.toolbar() : s, editorPreview.selectedKey());
         keyPanel.view().setVisibility(panel ? View.VISIBLE : View.GONE);
         fillArea(areaId);
-        sheet.setTitle((area ? KeyboardPreview.AREA_NAMES[areaId] : keyPanel.title()) + " 설정");
+        sheet.setTitle((area ? KeyboardPreview.areaName(areaId, editorPreview.tab()) : keyPanel.title()) + " 설정");
     }
 
     /** 영역 편집 창의 크기 슬라이더 (손잡이를 끌면 같이 맞춘다). 창을 채울 때마다 새로 모은다. */
@@ -1240,6 +1266,7 @@ public final class SettingsActivity extends Activity {
             areaBox.setVisibility(View.GONE);
             return;
         }
+        letterTab = editorPreview.tab();
         fillAreaBox(() -> {
             buildArea(areaId);
             addAreaReset(areaId);
@@ -1248,9 +1275,16 @@ public final class SettingsActivity extends Activity {
 
     /** 영역·키보드 여백 창 맨 아래의 '기본값으로 되돌리기' (그 창이 담당하는 값만). area -1은 키보드 전체 여백. */
     private void addAreaReset(int area) {
-        String name = area < 0 ? "키보드 여백" : KeyboardPreview.AREA_NAMES[area] + " 설정";
+        String name = area < 0 ? "키보드 여백" : KeyboardPreview.areaName(area, letterTab) + " 설정";
+        int tab = letterTab;
         list.addView(ResetDialog.button(this, name, () -> {
             prefs.resetEditorScope(area < 0 ? Prefs.SCOPE_BOARD : Prefs.AREA_SCOPES[area]);
+            // 글자 키 창은 세 자판이 함께 쓰는 값과 그 자판에만 있는 값을 되돌린다.
+            if (area == KeyboardPreview.AREA_LETTERS && tab == KeyboardPreview.TAB_KOREAN) {
+                prefs.resetEditorScope(Prefs.SCOPE_LETTERS_KO);
+            } else if (area == KeyboardPreview.AREA_LETTERS && tab == KeyboardPreview.TAB_ENGLISH) {
+                prefs.resetEditorScope(Prefs.SCOPE_LETTERS_EN);
+            }
             editorPreview.refresh();
             showSelection(editorPreview.selection());   // 창의 슬라이더·스위치를 되돌린 값으로 다시 만든다
         }));
@@ -1348,10 +1382,14 @@ public final class SettingsActivity extends Activity {
                 break;
             }
             case KeyboardPreview.AREA_LETTERS: {
-                buildKoreanLayoutSection();
+                // 한글·영어·기호 자판의 글자 키는 따로 다룬다: 그 자판에만 있는 항목(한글 자판 배열·연속 탭, 영어 자동 대문자 등)은
+                // 그 자판의 창에만 둔다. 높이·길게 누르기·밀기·여백은 세 자판이 함께 쓴다.
+                boolean ko = letterTab == KeyboardPreview.TAB_KOREAN, en = letterTab == KeyboardPreview.TAB_ENGLISH;
+                if (ko) buildKoreanLayoutSection();
                 LinearLayout size = section("모양");
                 size.addView(sizeSlider("글자 키 높이", Prefs.KEYBOARD_HEIGHT, prefs::keyboardHeight, 70, 140, 5, "%"));
-                addLetterInput(section("입력"));   // ⌫ 인식 범위는 ⌫ 키 설정에
+                if (ko) addKoreanInput(section("입력"));
+                if (en) addEnglishInput(section("입력"));   // ⌫ 인식 범위는 ⌫ 키 설정에
                 LinearLayout lp = section("길게 누르기");
                 addLetterLongPress(lp);
                 lp.addView(popupHintToggle());
@@ -1359,7 +1397,7 @@ public final class SettingsActivity extends Activity {
                 swipe.addView(swipeDistanceSlider());
                 addKeyboardSwipe(swipe);
                 addTrackpadSpeed(swipe);
-                addKeyPageNote("글자 키", "키를");
+                addKeyPageNote(KeyboardPreview.areaName(areaId, letterTab), "키를");
                 buildPad(areaId);
                 break;
             }
@@ -1378,6 +1416,11 @@ public final class SettingsActivity extends Activity {
             }
         }
     }
+
+    /** 미리보기 위의 한글·영어·기호 탭 버튼 줄. */
+    private LinearLayout editorTabs;
+    /** 글자 키 창을 만들 자판 (KeyboardPreview.TAB_*): 창을 열 때 미리보기의 탭, 설정 검색 목록을 만들 때는 자판마다. */
+    private int letterTab = KeyboardPreview.TAB_KOREAN;
 
     /** 미리보기 위의 페이지 표시 (키보드 · 영역 · 키). */
     private PageDots pageDots;
@@ -1487,8 +1530,8 @@ public final class SettingsActivity extends Activity {
         }));
     }
 
-    /** 글자 키의 입력 동작: 자음·모음 연속 탭, 영어 자동 대문자, 이메일 입력란. */
-    private void addLetterInput(LinearLayout input) {
+    /** 한글 글자 키의 입력 동작: 자음·모음 연속 탭. */
+    private void addKoreanInput(LinearLayout input) {
         View doubleTapTime = subGroup(
                 slider("쌍자음 인식 시간", Prefs.DOUBLE_TAP_CONSONANT_MS, prefs.doubleTapConsonantMs(),
                         80, 500, 10, "ms"),
@@ -1500,6 +1543,10 @@ public final class SettingsActivity extends Activity {
         input.addView(doubleTapTime);
         input.addView(toggle("모음 연속 탭으로 이중모음", "같은 모음을 연달아 누르면 이중모음을 입력합니다 (예: ㅏㅏ→ㅑ, ㅗㅗ→ㅛ).",
                 Prefs.DOUBLE_TAP_VOWEL, prefs.doubleTapVowel()));
+    }
+
+    /** 영어 글자 키의 입력 동작: 자동 대문자, 아래로 밀어 대문자, 이메일 입력란. */
+    private void addEnglishInput(LinearLayout input) {
         input.addView(toggle("영어 자동 대문자", "문장 첫 글자를 대문자로 시작합니다.", Prefs.AUTO_CAP, prefs.autoCap()));
         input.addView(toggle("영어 자판 아래로 밀어 대문자 입력",
                 "영어 자판에서 글자 키를 아래로 밀면 그 키의 대문자를 입력합니다. 켜면 각 키 설정의 아래로 밀기는 대문자로 고정됩니다.",
@@ -1580,22 +1627,22 @@ public final class SettingsActivity extends Activity {
         // 토글의 하위 항목(강조선·들여쓰기)으로 보이는 버튼이다.
         // 버튼은 위아래 여백이 있어, 버튼 자체를 접으면 높이가 0이 된 뒤 남은 여백이 한꺼번에 사라져 끊겨 보인다.
         // 그래서 여백 없는 틀(fold)로 감싸 그 틀을 펼치고 접는다.
-        View keyArea = fold(subGroup(button("키 위치·폭 사용자화", v -> openSection(KEY_AREA))));
-        keyArea.setVisibility(prefs.balancedLayout() ? View.VISIBLE : View.GONE);
-        // 두벌식에서 균형 레이아웃을 켰을 때만: 영어 자판도 같은 모양으로 나눈다.
-        View englishBalanced = fold(subGroup(toggle("영어 자판도 균형 레이아웃",
+        // 두벌식에서만: 영어 자판도 같은 모양으로 나눈다. 균형 레이아웃의 하위 항목으로 키 위치·폭 사용자화와 한 묶음에 둔다.
+        View englishToggle = toggle("영어 자판도 균형 레이아웃",
                 "영어 자판도 두벌식처럼 가운데에서 나눠 왼쪽 5·5·4키, 오른쪽 5·4·3키로 놓습니다. 경계와 키 폭·위치 설정을 함께 씁니다.",
                 prefs.raw().getBoolean(Prefs.ENGLISH_BALANCED, false), on -> {
                     prefs.raw().edit().putBoolean(Prefs.ENGLISH_BALANCED, on).apply();
                     refreshLayoutPreview();
-                })));
+                });
+        View englishBalanced = fold(englishToggle);
         englishBalanced.setVisibility(englishBalancedShown() ? View.VISIBLE : View.GONE);
+        View keyArea = fold(subGroup(button("키 위치·폭 사용자화", v -> openSection(KEY_AREA)), englishBalanced));
+        keyArea.setVisibility(prefs.balancedLayout() ? View.VISIBLE : View.GONE);
         View balancedRow = toggle("자·모음 균형 레이아웃",
                 "자판을 둘로 나눠 왼쪽에는 자음을, 오른쪽에는 모음을 놓습니다.",
                 prefs.balancedLayout(), on -> {
                     prefs.raw().edit().putBoolean(prefs.balancedLayoutKey(), on).apply();
                     Ui.setVisibleAnimated(keyArea, on);
-                    Ui.setVisibleAnimated(englishBalanced, englishBalancedShown());
                     refreshLayoutPreview();
                 });
         LinearLayout choices = choiceRowNow(new String[]{"두벌식", "단모음", "NewSwipe 단모음"}, selected,
@@ -1612,12 +1659,11 @@ public final class SettingsActivity extends Activity {
         korean.addView(layoutNote);
         korean.addView(balancedRow);
         korean.addView(keyArea);
-        korean.addView(englishBalanced);
     }
 
-    /** '영어 자판도 균형 레이아웃'은 두벌식의 균형 레이아웃을 켰을 때만 보인다 (설정 검색 목록에는 늘 넣는다). */
+    /** '영어 자판도 균형 레이아웃'은 두벌식에서만 보인다 (균형 레이아웃을 켰을 때 그 하위 묶음과 함께. 설정 검색 목록에는 늘 넣는다). */
     private boolean englishBalancedShown() {
-        return harvesting || prefs.koreanDubeolsik() && prefs.balancedLayout();
+        return harvesting || prefs.koreanDubeolsik();
     }
 
     /** 고른 한글 배열의 설명. */

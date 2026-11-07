@@ -454,6 +454,8 @@ public final class Prefs {
     /** 영역(미리보기의 영역 번호 차례)마다의 범위 id. */
     public static final String[] AREA_SCOPES = {"area_toolbar", "area_number", "area_letters", "area_fn"};
     public static final String SCOPE_BOARD = "board";
+    /** 글자 키 창에서 한글·영어 자판에만 있는 값의 범위 id (나머지는 AREA_SCOPES[글자 키]가 함께 쓴다). */
+    public static final String SCOPE_LETTERS_KO = "letters_ko", SCOPE_LETTERS_EN = "letters_en";
 
     private static final EditorScope[] EDITOR_SCOPES = {
             new EditorScope(SCOPE_BOARD, "키보드 여백", keys(PAD_LEFT, PAD_RIGHT, PAD_TOP, PAD_BOTTOM), NONE),
@@ -463,11 +465,15 @@ public final class Prefs {
                     TOOL_BUTTON_SIZE), keys(AREA_PAD_PREFIX + PAD_AREAS[0] + "_", "swipe_toolbar_bar_")),
             new EditorScope(AREA_SCOPES[1], "숫자 줄", keys(NUMBER_ROW, NUMBER_ROW_HEIGHT, NUMBER_HINT_HIDDEN),
                     keys(AREA_PAD_PREFIX + PAD_AREAS[1] + "_")),
-            new EditorScope(AREA_SCOPES[2], "글자 키", keys(KOREAN_LAYOUT, KEYBOARD_HEIGHT, AUTO_CAP, ENGLISH_FIELDS,
-                    DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT, DOUBLE_TAP_CONSONANT_MS, LONG_PRESS_MS, POPUP_HINT_HIDDEN,
-                    ENGLISH_SWIPE_UPPER, ENGLISH_BALANCED,
-                    SWIPE_THRESHOLD, CHAR_CURSOR_SPEED_H, CHAR_CURSOR_SPEED_V, SWIPE_PICK_SUGGESTION),
-                    keys(AREA_PAD_PREFIX + PAD_AREAS[2] + "_", BALANCED_LAYOUT, "swipe_kb_")),
+            // 글자 키: 세 자판이 함께 쓰는 값(높이·길게 누르기·밀기·여백)과 한글·영어 글자 키에만 있는 값.
+            new EditorScope(AREA_SCOPES[2], "글자 키 공통 (높이·길게 누르기·밀기·여백)", keys(KEYBOARD_HEIGHT, LONG_PRESS_MS,
+                    POPUP_HINT_HIDDEN, SWIPE_THRESHOLD, CHAR_CURSOR_SPEED_H, CHAR_CURSOR_SPEED_V, SWIPE_PICK_SUGGESTION),
+                    keys(AREA_PAD_PREFIX + PAD_AREAS[2] + "_", "swipe_kb_")),
+            new EditorScope(SCOPE_LETTERS_KO, "한글 글자 키 (자판 배열·균형 레이아웃·연속 탭)", keys(KOREAN_LAYOUT,
+                    DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT, DOUBLE_TAP_CONSONANT_MS, ENGLISH_BALANCED),
+                    keys(BALANCED_LAYOUT)),
+            new EditorScope(SCOPE_LETTERS_EN, "영어 글자 키 (자동 대문자·대문자 밀기·이메일 입력란)", keys(AUTO_CAP,
+                    ENGLISH_FIELDS, ENGLISH_SWIPE_UPPER), NONE),
             new EditorScope(AREA_SCOPES[3], "기능키", concat(BOTTOM_KEY_VALUES, FN_ROW_HEIGHT, GRID_LAYOUT, DELETE_PRESS_MS,
                     FN_SWIPE_THRESHOLD), keys(AREA_PAD_PREFIX + PAD_AREAS[3] + "_")),
             new EditorScope("keys", "키마다 정한 설정 (길게 누르기·밀기·키 창의 누르기 항목)", keys(NUMBER_PAD_SYMBOLS,
@@ -506,9 +512,9 @@ public final class Prefs {
     /** 키보드 편집의 한 범위를 기본값으로 되돌린다. */
     public void resetEditorScope(String id) {
         EditorScope sc = scope(id);
+        // 자·모음 균형 레이아웃의 키 폭·위치는 배열마다 따로 저장되므로 지금 배열의 것을 지운다 (배열 값을 지우기 전에).
+        if (SCOPE_LETTERS_KO.equals(id)) resetBalancedKeys();
         removeKeys(sc.keys, sc.prefixes);
-        // 자·모음 균형 레이아웃의 키 폭·위치는 배열마다 따로 저장되므로 지금 배열의 것을 지운다.
-        if (AREA_SCOPES[2].equals(id)) resetBalancedKeys();
     }
 
     /** 이 메뉴가 저장한 모든 값을 지워 기본값으로 되돌린다 (학습한 단어·클립보드 기록 같은 사용 기록과 한 손 모드의 켜짐 상태는 그대로). */

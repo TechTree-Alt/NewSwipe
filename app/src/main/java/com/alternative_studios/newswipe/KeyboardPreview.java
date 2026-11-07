@@ -49,6 +49,13 @@ final class KeyboardPreview extends FrameLayout {
     /** 영역 층의 영역. */
     static final int AREA_TOOLBAR = 0, AREA_NUMBER = 1, AREA_LETTERS = 2, AREA_FUNCTION = 3, AREAS = 4;
     static final String[] AREA_NAMES = {"도구 막대", "숫자 줄", "글자 키", "기능키"};
+    /** 자판 탭 이름 (TAB_* 차례). */
+    static final String[] TAB_NAMES = {"한글", "영어", "기호"};
+
+    /** 영역 이름. 글자 키는 자판마다 따로라 탭 이름을 붙인다 (예: 영어 글자 키). */
+    static String areaName(int area, int tab) {
+        return area == AREA_LETTERS ? TAB_NAMES[tab] + " " + AREA_NAMES[area] : AREA_NAMES[area];
+    }
 
     /** 고른 것. 자판을 다시 만들어도 같은 키를 다시 찾을 수 있게 키 객체 대신 종류·자리 이름·몇 번째인지로 기억한다. */
     static final class Selection {
@@ -177,7 +184,7 @@ final class KeyboardPreview extends FrameLayout {
 
     /** 끄는 동안 보이는 이름. 영역 여백은 영역 이름을 붙인다. */
     private String handleName(Handle h) {
-        if (h.areaPad() && selection != null) return AREA_NAMES[selection.area()] + " " + h.label;
+        if (h.areaPad() && selection != null) return areaName(selection.area(), tab) + " " + h.label;
         return h.label;
     }
 
@@ -259,7 +266,8 @@ final class KeyboardPreview extends FrameLayout {
         if (tab == t) return;
         tab = t;
         symbolsPage2 = false;
-        selection = null;
+        // 영역·키보드 전체를 고른 채면 다른 자판에서도 그대로 둔다 (그 자판에 없는 영역이면 refresh가 푼다). 키는 자판마다 달라 푼다.
+        if (selection != null && selection.kind != SEL_AREA && selection.kind != SEL_BOARD) selection = null;
         refresh();
     }
 
@@ -950,7 +958,7 @@ final class KeyboardPreview extends FrameLayout {
                     c.drawRoundRect(area, rr, rr, fill);
                 }
                 // 이름표: 영역 한가운데의 작은 알약. 고른 영역은 이름표 없이 굵은 테두리만.
-                if (!chosen) drawPill(c, "눌러서 " + AREA_NAMES[a] + suffix + (areaOff(a) ? " (꺼짐)" : ""), area, alpha);
+                if (!chosen) drawPill(c, "눌러서 " + areaName(a, tab) + suffix + (areaOff(a) ? " (꺼짐)" : ""), area, alpha);
             }
             c.restore();
         }
