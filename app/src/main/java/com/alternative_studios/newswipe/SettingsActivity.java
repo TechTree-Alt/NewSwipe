@@ -1309,8 +1309,20 @@ public final class SettingsActivity extends Activity {
         switch (areaId) {
             case KeyboardPreview.AREA_TOOLBAR:
                 // 도구 막대 칸은 위의 KeyEditPanel이 맡는다. 클립보드·이모지는 메인 화면의 '클립보드 및 이모지' 메뉴에 있다.
-                addKeyPageNote("도구 막대 버튼", "버튼을");
-                buildPad(areaId);
+                // 도구 막대 표시를 끄면 안내와 여백도 감춘다 (설정 칸은 KeyEditPanel이 같이 감춘다).
+                LinearLayout tb = new LinearLayout(this);
+                tb.setOrientation(LinearLayout.VERTICAL);
+                tb.setVisibility(prefs.toolbar() ? View.VISIBLE : View.GONE);
+                keyPanel.setOnToolbarShown(on -> Ui.setVisibleAnimated(tb, on));
+                list.addView(tb, matchWrap());
+                LinearLayout savedList = list;
+                list = tb;
+                try {
+                    addKeyPageNote("도구 막대 버튼", "버튼을");
+                    buildPad(areaId);
+                } finally {
+                    list = savedList;
+                }
                 break;
             case KeyboardPreview.AREA_NUMBER: {
                 LinearLayout c = section("모양");
@@ -1325,11 +1337,11 @@ public final class SettingsActivity extends Activity {
                 padBox.setOrientation(LinearLayout.VERTICAL);
                 c.addView(toggle("숫자 줄 표시", "자판 위에 1~0 숫자 줄을 보여 줍니다.", Prefs.NUMBER_ROW, prefs.numberRow(), rest, padBox));
                 c.addView(rest, matchWrap());
-                addKeyPageNote("숫자 줄 키", "키를");
                 list.addView(padBox, matchWrap());
                 LinearLayout saved = list;
                 list = padBox;
                 try {
+                    addKeyPageNote("숫자 줄 키", "키를");
                     buildPad(areaId);
                 } finally {
                     list = saved;
@@ -1373,7 +1385,7 @@ public final class SettingsActivity extends Activity {
     /** 미리보기 페이지 이름 (KeyboardPreview.LAYER_* 차례). */
     private static final String[] PAGE_NAMES = {"키보드 여백 설정", "영역 설정", "키 설정"};
     /** 미리보기 페이지 설명 (PAGE_NAMES와 같은 차례). */
-    private static final String[] PAGE_DESCS = {"키보드 상하좌우 여백을 조절합니다", "각 부분의 모습과 기능을 설정합니다",
+    private static final String[] PAGE_DESCS = {"상하좌우 여백을 조절합니다", "각 영역의 모습과 기능을 설정합니다",
             "각 키의 기능과 동작을 설정합니다"};
 
     /** 편집 창을 내려 닫고 목록으로 돌아간다 (창에서 바꾼 값이 있으면 다 내려간 뒤 목록을 다시 만든다). */

@@ -689,25 +689,42 @@ final class KeyEditPanel {
         return -1;
     }
 
+    /** 도구 막대 표시 스위치로 보이고 감출 것들 (buildToolbar가 채운다). */
+    private final java.util.List<View> dependents = new java.util.ArrayList<>();
+    /** 도구 막대 표시 스위치가 바뀌면 부른다 (영역 창의 다른 칸을 같이 감춘다). */
+    private java.util.function.Consumer<Boolean> onToolbarShown;
+
+    void setOnToolbarShown(java.util.function.Consumer<Boolean> l) {
+        onToolbarShown = l;
+    }
+
     private void buildToolbar() {
+        dependents.clear();
         header(null, "도구 막대", null);   // 제목만 (설명 줄은 두지 않는다)
         LinearLayout look = section("모양");
         View toolButtons = subGroup(button("도구 막대 버튼 사용자화", v -> open(new Intent(a, ToolbarButtonsEditorActivity.class))),
                 note("도구 막대 버튼의 유무와 순서를 바꿉니다."));
+        // 도구 막대를 끄면 이 스위치만 남기고 나머지 설정과 설명을 모두 감춘다 (켜면 다시 보인다).
+        LinearLayout rest = new LinearLayout(a);
+        rest.setOrientation(LinearLayout.VERTICAL);
+        rest.addView(toolButtons);
+        rest.addView(toggle("자판 아래에 두기", "도구 막대를 자판 위가 아니라 아래에 놓습니다. ", prefs.toolbarBottom(),
+                on -> put(Prefs.TOOLBAR_BOTTOM, on)));
+        rest.addView(slider("도구 막대 높이", Prefs.TOOLBAR_HEIGHT, prefs.toolbarHeight(), 70, 150, 5, "%"));
+        rest.addView(slider("도구 버튼 크기", Prefs.TOOL_BUTTON_SIZE, prefs.toolButtonSize(), 70, 150, 1, "%"));
+        rest.addView(note("도구 버튼의 아이콘은 막대보다 커지지 않습니다."));
         boolean shown = prefs.toolbar();
-        toolButtons.setVisibility(shown ? View.VISIBLE : View.GONE);
         look.addView(toggle("도구 막대 표시", "다양한 도구를 빠르게 쓸 수 있는 막대를 보여 줍니다.", shown, on -> {
             put(Prefs.TOOLBAR, on);
-            Ui.setVisibleAnimated(toolButtons, on);
+            for (View d : dependents) Ui.setVisibleAnimated(d, on);
+            if (onToolbarShown != null) onToolbarShown.accept(on);
         }));
-        look.addView(toolButtons);
-        // 위치와 높이는 도구 막대를 꺼도 추천 단어 줄에 그대로 쓰이므로 스위치와 따로 둔다.
-        look.addView(toggle("자판 아래에 두기", "도구 막대를 자판 위가 아니라 아래에 놓습니다. ", prefs.toolbarBottom(),
-                on -> put(Prefs.TOOLBAR_BOTTOM, on)));
-        look.addView(slider("도구 막대 높이", Prefs.TOOLBAR_HEIGHT, prefs.toolbarHeight(), 70, 150, 5, "%"));
-        look.addView(slider("도구 버튼 크기", Prefs.TOOL_BUTTON_SIZE, prefs.toolButtonSize(), 70, 150, 1, "%"));
-        look.addView(note("도구 버튼의 아이콘은 막대보다 커지지 않습니다."));
-        buildToolbarSwipe(ToolbarSwipes.BAR, "도구 막대");
+        look.addView(rest, SettingsWidgets.matchWrap());
+        int swipeStart = root.getChildCount();
+        buildToolbarSwipe(ToolbarSwipes.BAR, "도구 막대");   // 소제목과 카드
+        dependents.add(rest);
+        for (int k = swipeStart; k < root.getChildCount(); k++) dependents.add(root.getChildAt(k));
+        for (View d : dependents) d.setVisibility(shown ? View.VISIBLE : View.GONE);
         // 되돌리기는 이 칸 아래(영역 창 맨 아래)에 도구 막대 영역 전체를 맡는 버튼 하나로 둔다.
     }
 

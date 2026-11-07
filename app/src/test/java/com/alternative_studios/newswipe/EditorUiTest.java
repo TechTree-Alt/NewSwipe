@@ -688,13 +688,20 @@ public class EditorUiTest {
         tap(p.getChildAt(1), p.getWidth() / 2f, ph.getHeight() / 2f);
         log("PANEL toolbar off:\n" + visibleTexts(cur(a)));
         assertTrue(visibleTexts(cur(a)).contains("도구 막대 표시"));
-        assertTrue(visibleTexts(cur(a)).contains("도구 버튼의 아이콘은 막대보다 커지지 않습니다."));
+        // 도구 막대를 끄면 스위치만 남고 다른 설정과 설명(안내·여백 포함)은 감춘다
+        assertFalse(visibleTexts(cur(a)).contains("도구 버튼의 아이콘은 막대보다 커지지 않습니다."));
+        assertFalse(visibleTexts(cur(a)).contains("도구 막대 높이"));
+        assertFalse(visibleTexts(cur(a)).contains("밀기"));
+        assertFalse(visibleTexts(cur(a)).contains("여백"));
+        assertFalse(visibleTexts(cur(a)).contains("도구 버튼 하나하나") || visibleTexts(cur(a)).contains("도구 막대 버튼 하나하나"));
         shot(a, "52-placeholder-panel");
         // 다시 켜기: 패널은 그대로, 버튼이 돌아온다
         View row = (View) findText(cur(a), "도구 막대 표시").getParent().getParent();
         row.performClick(); idle();
         assertTrue(prefs.toolbar());
         assertNotNull(p.selection());
+        assertTrue(visibleTexts(cur(a)).contains("도구 버튼의 아이콘은 막대보다 커지지 않습니다."));
+        assertTrue(visibleTexts(cur(a)).contains("도구 막대 버튼 하나하나의 설정은"));
         log("bar children after on: " + ((ViewGroup) column.getChildAt(0)).getChildCount());
         assertTrue(((ViewGroup) column.getChildAt(0)).getChildCount() > 0);
     }
