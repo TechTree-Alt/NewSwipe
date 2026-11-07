@@ -157,7 +157,7 @@ public final class Prefs {
     /** 글자 자판의 스페이스바에 지금 언어 이름(한국어·English·日本語·中文)을 띄운다 (기본 꺼짐). */
     public static final String SPACE_LANG_LABEL = "space_lang_label";
     public static final String NUMBER_HINT_HIDDEN = "number_hint_hidden";     // 숫자 키만 길게 눌러 입력할 문자 힌트 없애기
-    public static final String POPUP_HINT_HIDDEN = "popup_hint_hidden";       // 키 오른쪽 위의 길게 눌러 입력할 문자 힌트 없애기
+    public static final String POPUP_HINT_HIDDEN = "popup_hint_hidden";       // 글자 키(한글·영어) 오른쪽 위의 힌트 없애기
     // 커서 이동 속도 (%, 100 = 기본). 스페이스바·문자 키, 좌우·상하 따로.
     public static final String SPLIT_SPACE_JOIN = "split_space_join";   // 분리 키보드: 나뉜 스페이스바를 하나로 잇기
     public static final String SPLIT_FN_WIDTH = "split_fn_width";       // 분리 키보드(스페이스바를 이었을 때): 하단 기능키 폭(%)

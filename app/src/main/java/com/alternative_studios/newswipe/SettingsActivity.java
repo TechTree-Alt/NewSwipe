@@ -380,7 +380,7 @@ public final class SettingsActivity extends Activity {
             {KEYBOARD, "숫자 줄 높이", "숫자 행 크기"},
             {KEYBOARD, "기능키 높이", "맨 아래 줄 스페이스바 줄 높이 크기"},
             {KEYBOARD, "키 누름 미리보기", "말풍선 팝업 확대"},
-            {KEYBOARD, "길게 눌러 입력할 문자 힌트 없애기", "힌트 숨기기 오른쪽 위"},
+            {KEYBOARD, "글자 키 힌트 없애기", "힌트 숨기기 오른쪽 위 길게 눌러 입력할 문자"},
             {KEYBOARD, "숫자 키 힌트 없애기", "힌트 숨기기"},
             {KEYBOARD, "스페이스바에 언어 이름 보이기", "스페이스 띄어쓰기 언어 표시 한국어 영어 일본어 중국어"},
             {KEYBOARD, "왼쪽 여백", "패딩 간격"},
@@ -1722,7 +1722,7 @@ public final class SettingsActivity extends Activity {
     }
 
     private View popupHintToggle() {
-        return toggle("길게 눌러 입력할 문자 힌트 없애기", "키의 오른쪽 위에 표시되는 길게 눌러 입력할 문자 힌트를 없앱니다.",
+        return toggle("글자 키 힌트 없애기", "한글·영어 글자 키의 오른쪽 위에 표시되는 길게 눌러 입력할 문자 힌트를 없앱니다. 숫자·기호 키의 힌트는 그대로입니다.",
                 Prefs.POPUP_HINT_HIDDEN, prefs.popupHintHidden());
     }
 
