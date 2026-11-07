@@ -684,7 +684,7 @@ final class KeyEditPanel {
     }
 
     private void buildToolbar() {
-        header(null, "도구 막대", "자판 위(또는 아래)의 버튼 줄. 추천 단어도 여기에 뜹니다.");
+        header(null, "도구 막대", null);   // 제목만 (설명 줄은 두지 않는다)
         LinearLayout look = section("모양");
         View toolButtons = subGroup(button("도구 막대 버튼 사용자화", v -> open(new Intent(a, ToolbarButtonsEditorActivity.class))),
                 note("도구 막대 버튼의 유무와 순서를 바꿉니다."));

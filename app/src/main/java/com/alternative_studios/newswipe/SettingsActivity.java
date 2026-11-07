@@ -769,7 +769,7 @@ public final class SettingsActivity extends Activity {
     private String searchCacheStamp() {
         try {
             // 뒤의 꼬리표는 메뉴 구성이 바뀌면 올린다 (같은 앱 버전이라도 예전 메뉴로 모은 목록을 쓰지 않게).
-            return "v" + getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode() + "-k5";
+            return "v" + getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode() + "-k6";
         } catch (PackageManager.NameNotFoundException e) {
             return "v?";
         }
@@ -1496,7 +1496,7 @@ public final class SettingsActivity extends Activity {
                 buildPad(areaId);
                 break;
             case KeyboardPreview.AREA_NUMBER: {
-                LinearLayout c = section("숫자 줄");
+                LinearLayout c = section("모양");
                 // 숫자 줄을 끄면 나머지 항목은 쓸 일이 없어 감춘다.
                 LinearLayout rest = new LinearLayout(this);
                 rest.setOrientation(LinearLayout.VERTICAL);
@@ -1539,7 +1539,7 @@ public final class SettingsActivity extends Activity {
             }
             default: {
                 // 기능키 전체에 걸리는 것만 둔다. 스페이스바·⌫·기호 키·🌐︎처럼 키 하나에 매인 설정은 '키' 페이지의 그 키에 있다.
-                LinearLayout fn = section("기능키");
+                LinearLayout fn = section("모양");
                 fn.addView(sizeSlider("기능키 높이", Prefs.FN_ROW_HEIGHT, prefs::fnRowHeight,
                         Prefs.FN_ROW_HEIGHT_MIN, Prefs.FN_ROW_HEIGHT_MAX, 1, "%"));
                 addFunctionKeyLayout(fn);
