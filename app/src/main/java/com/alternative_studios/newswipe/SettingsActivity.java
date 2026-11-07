@@ -1090,10 +1090,6 @@ public final class SettingsActivity extends Activity {
         list = box;
         try {
             // 여기에는 키보드 전체에 걸리고 어느 영역·키 창에도 없는 것만 둔다. 나머지는 미리보기에서 영역이나 키를 눌러 바꾼다.
-            LinearLayout tip = card();
-            tip.addView(note("미리보기는 좌우로 넘기는 세 페이지입니다. '키보드'에서는 키보드 전체의 여백을, '영역'에서는 도구 막대·숫자 줄·"
-                    + "글자 키·기능키를, '키'에서는 키 하나를 눌러 설정합니다. 영역을 누르면 가장자리의 손잡이로 여백을, "
-                    + "가운데의 ↕ 버튼을 위·아래로 끌어 크기를 바꿉니다."));
             buildLook();
             // 숫자 줄은 꺼 두면 미리보기에 없어 누를 수 없으므로 여기서도 그 설정 창을 연다.
             LinearLayout numberRow = section("숫자 줄");
