@@ -1299,13 +1299,17 @@ public final class SettingsActivity extends Activity {
         return sizeSlider(label, Prefs.areaPadKey(area, side), () -> prefs.areaPadDp(area, side), 0, Prefs.AREA_PAD_MAX, 1, "dp");
     }
 
-    private static final String KEY_PAGE_NOTE = "키 하나하나의 누르기·길게 누르기·밀기는 미리보기를 왼쪽으로 넘겨 '키 설정' 페이지에서 "
-            + "그 키를 눌러 바꿉니다.";
+    /** 영역 설정 창의 분리된 안내 칸: 하나하나의 설정은 키 설정 페이지에 있다. pick은 조사가 붙은 말 ("키를", "버튼을"). */
+    private void addKeyPageNote(String what, String pick) {
+        card().addView(note(what + " 하나하나의 설정은 아래쪽 미리보기의 오른쪽 '키 설정' 페이지에서 원하는 " + pick
+                + " 선택해 바꿀 수 있습니다."));
+    }
 
     private void buildArea(int areaId) {
         switch (areaId) {
             case KeyboardPreview.AREA_TOOLBAR:
                 // 도구 막대 칸은 위의 KeyEditPanel이 맡는다. 클립보드·이모지는 메인 화면의 '클립보드 및 이모지' 메뉴에 있다.
+                addKeyPageNote("도구 막대 버튼", "버튼을");
                 buildPad(areaId);
                 break;
             case KeyboardPreview.AREA_NUMBER: {
@@ -1316,12 +1320,12 @@ public final class SettingsActivity extends Activity {
                 rest.addView(sizeSlider("숫자 줄 높이", Prefs.NUMBER_ROW_HEIGHT, prefs::numberRowHeight,
                         Prefs.NUMBER_ROW_HEIGHT_MIN, Prefs.NUMBER_ROW_HEIGHT_MAX, 5, "%"));
                 rest.addView(numberHintToggle());
-                rest.addView(note(KEY_PAGE_NOTE));
                 // 여백 섹션도 숫자 줄을 켰을 때만 보인다.
                 LinearLayout padBox = new LinearLayout(this);
                 padBox.setOrientation(LinearLayout.VERTICAL);
                 c.addView(toggle("숫자 줄 표시", "자판 위에 1~0 숫자 줄을 보여 줍니다.", Prefs.NUMBER_ROW, prefs.numberRow(), rest, padBox));
                 c.addView(rest, matchWrap());
+                addKeyPageNote("숫자 줄 키", "키를");
                 list.addView(padBox, matchWrap());
                 LinearLayout saved = list;
                 list = padBox;
@@ -1344,8 +1348,7 @@ public final class SettingsActivity extends Activity {
                 swipe.addView(swipeDistanceSlider());
                 addKeyboardSwipe(swipe);
                 addTrackpadSpeed(swipe);
-                LinearLayout more = card();
-                more.addView(note(KEY_PAGE_NOTE));
+                addKeyPageNote("글자 키", "키를");
                 buildPad(areaId);
                 break;
             }
@@ -1358,9 +1361,7 @@ public final class SettingsActivity extends Activity {
                 LinearLayout swipe = section("길게 누르기·밀기");
                 swipe.addView(fnLongPressSlider());
                 swipe.addView(fnSwipeDistanceSlider());
-                LinearLayout more = card();
-                more.addView(note("스페이스바·⌫·기호 키·🌐︎ 같은 키 하나하나의 설정은 미리보기를 왼쪽으로 넘겨 '키 설정' 페이지에서 "
-                        + "그 키를 눌러 바꿉니다."));
+                addKeyPageNote("기능키", "키를");
                 buildPad(areaId);
                 break;
             }
