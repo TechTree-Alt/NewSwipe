@@ -1557,8 +1557,12 @@ public class EditorUiTest {
         pre.raw().edit().putInt(Prefs.KEYBOARD_HEIGHT, kh0).commit();
         idle();
         assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.HEIGHT, height));
+        java.lang.reflect.Method ha = KeyboardPreview.class.getDeclaredMethod("handleAt", float.class, float.class);
+        ha.setAccessible(true);
+        Object grabbed = ha.invoke(p, height[0], height[1]);
         drag(overlay, height[0], height[1], 0, 60);
-        assertTrue(pre.keyboardHeight() < kh0);
+        assertTrue("kh0=" + kh0 + " now=" + pre.keyboardHeight() + " at=" + java.util.Arrays.toString(height) + " grabbed=" + grabbed
+                + " l=" + l + " r=" + r, pre.keyboardHeight() < kh0);
         pre.raw().edit().putInt(Prefs.KEYBOARD_HEIGHT, kh0).commit();
         idle();
         assertTrue(p.blockBounds(true, l) && p.blockBounds(false, r));
