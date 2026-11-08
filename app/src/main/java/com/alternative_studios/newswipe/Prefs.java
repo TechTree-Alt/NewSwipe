@@ -473,9 +473,10 @@ public final class Prefs {
     public static final String SCOPE_LETTERS_KO = "letters_ko", SCOPE_LETTERS_EN = "letters_en";
 
     private static final EditorScope[] EDITOR_SCOPES = {
-            new EditorScope(SCOPE_BOARD, "키보드 여백", keys(PAD_LEFT, PAD_RIGHT, PAD_TOP, PAD_BOTTOM), NONE),
-            new EditorScope("look", "키 모양 (글자 크기·곡률·키 사이 간격·그림자·누름 미리보기)", keys(KEY_TEXT_SIZE, KEY_RADIUS,
-                    KEY_GAP_X, KEY_GAP_Y, KEY_SHADOW, KEY_SHADOW_STRENGTH, KEY_PREVIEW), NONE),
+            // 키보드 전체 설정 창의 값: 여백, 키 모양, 분리 키보드 사용.
+            new EditorScope(SCOPE_BOARD, "키보드 전체 설정 (여백·키 모양·분리 키보드 사용)", keys(PAD_LEFT, PAD_RIGHT, PAD_TOP,
+                    PAD_BOTTOM, KEY_TEXT_SIZE, KEY_RADIUS, KEY_GAP_X, KEY_GAP_Y, KEY_SHADOW,
+                    KEY_SHADOW_STRENGTH, KEY_PREVIEW, PORTRAIT_SPLIT), NONE),
             new EditorScope(AREA_SCOPES[0], "도구 막대", concat(TOOL_BUTTON_VALUES, TOOLBAR, TOOLBAR_BOTTOM, TOOLBAR_HEIGHT,
                     TOOL_BUTTON_SIZE, PORTRAIT_PREFIX + TOOLBAR_FOLLOW_BLOCKS), keys(AREA_PAD_PREFIX + PAD_AREAS[0] + "_", "swipe_toolbar_bar_")),
             new EditorScope(AREA_SCOPES[1], "숫자 줄", keys(NUMBER_ROW, NUMBER_ROW_HEIGHT, NUMBER_HINT_HIDDEN),
@@ -495,7 +496,6 @@ public final class Prefs {
                     keys(AREA_PAD_PREFIX + PAD_AREAS[3] + "_")),
             new EditorScope(SCOPE_MIDDLE, "가운데 공간 (분리 키보드)", keys(PORTRAIT_PREFIX + SPLIT_GAP_CURSOR,
                     PORTRAIT_PREFIX + SPLIT_GAP_SPEED), keys("swipe_gap_portrait_")),
-            new EditorScope("split", "분리 키보드 사용", keys(PORTRAIT_SPLIT), NONE),
             new EditorScope("keys", "키마다 정한 설정 (길게 누르기·밀기·키 창의 누르기 항목)", keys(NUMBER_PAD_SYMBOLS,
                     DOUBLE_SPACE_PERIOD, SPACE_HIT_SHRINK, SPACE_HIT_SHRINK_PCT, SPACE_LANG_LABEL, SPACE_CURSOR_SPEED_H,
                     SPACE_CURSOR_SPEED_V, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, DELETE_REPEAT_RATE, DELETE_WORD_REPEAT_RATE,
