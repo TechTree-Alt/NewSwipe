@@ -2335,8 +2335,7 @@ public final class SettingsActivity extends Activity {
             });
         }
         return toggle("자·모음 분리 배열",
-                "켜면 자음은 왼쪽 묶음, 모음은 오른쪽 묶음으로 깔끔하게 나눕니다. 끄면 양쪽 묶음을 4열씩으로 맞춰, "
-                        + "자음의 맨 오른쪽 줄이 오른쪽 묶음의 모음 앞에도 놓입니다.",
+                "자음은 왼쪽, 모음은 오른쪽에 분리해 놓습니다.",
                 p.splitSeparateJamo(), on -> {
                     prefs.raw().edit().putBoolean(reachKey, !on).apply();
                     after.run();
