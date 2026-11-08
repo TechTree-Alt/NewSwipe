@@ -95,8 +95,9 @@ public class ToolbarSwipesTest {
         m.put("bar_down", SwipeAction.FREE_CURSOR);   // 문자 키 전용
         ToolbarSwipes t = with(m);
         assertEquals(SwipeAction.LINE_END, t.action(ToolbarSwipes.BAR, Key.SWIPE_RIGHT));
-        assertEquals(SwipeAction.CURSOR_UP, t.action(ToolbarSwipes.BAR, Key.SWIPE_UP));
-        assertFalse(Arrays.asList(SwipeAction.idsForToolbar()).contains(SwipeAction.CURSOR_MOVE));
+        assertEquals(SwipeAction.CURSOR_MOVE, t.action(ToolbarSwipes.BAR, Key.SWIPE_UP));
+        assertEquals(SwipeAction.CURSOR_DOWN, t.action(ToolbarSwipes.BAR, Key.SWIPE_DOWN));
+        assertTrue(Arrays.asList(SwipeAction.idsForToolbar()).contains(SwipeAction.CURSOR_MOVE));
     }
 
     @Test
