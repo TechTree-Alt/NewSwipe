@@ -49,7 +49,7 @@ public class FnKeyActionsTest {
     @Test
     public void editorLabels() {
         SwipeSpec s = FnKeyActions.SPEC;
-        assertEquals("탭", s.dirLabel(FnKeyActions.PRESS, FnKeyActions.TAP));
+        assertEquals("누르기", s.dirLabel(FnKeyActions.PRESS, FnKeyActions.TAP));
         assertEquals("길게 누르기", s.dirLabel(FnKeyActions.PRESS, FnKeyActions.LONG));
         assertEquals(SwipeCustom.label(Key.SWIPE_UP), s.dirLabel(FnKeyActions.SWIPE, Key.SWIPE_UP));
     }
