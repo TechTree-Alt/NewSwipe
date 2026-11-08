@@ -1087,7 +1087,8 @@ public class EditorUiTest {
         assertTrue((Boolean) shown.invoke(p, KeyboardPreview.Handle.values()[3]) && (Boolean) shown.invoke(p, KeyboardPreview.Handle.values()[6]));   // 눌러서 고르면 키보드 전체 여백 손잡이
         pt = visibleTexts(cur(a));
         assertTrue(pt.contains("키보드 여백") && pt.contains("위쪽 여백"));
-        assertTrue(pt.contains("키 모양") && pt.contains("키 사이 좌우 간격") && pt.contains("분리 키보드"));
+        assertTrue(pt.contains("키 모양") && pt.contains("키 사이 좌우 간격"));
+        assertFalse(pt.contains("분리 키보드"));   // 분리 키보드는 한글 글자 키 창의 '상세 배열'에서 정한다
         shot(a, "85f-board-sheet");
         a.onBackPressed(); idle();
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(400));
