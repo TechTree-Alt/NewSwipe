@@ -2230,13 +2230,16 @@ public final class SettingsActivity extends Activity {
                 addProfileLetterHeight(edit);
                 break;
             case KeyboardPreview.AREA_TOOLBAR: {
-                LinearLayout c = section("도구 막대 여백");
-                c.addView(profileSlider("왼쪽 여백", edit.toolbarSidePadKey(Prefs.SIDE_LEFT),
-                        () -> edit.areaPadDp(KeyboardPreview.AREA_TOOLBAR, Prefs.SIDE_LEFT), 0, Prefs.AREA_PAD_MAX, 1, "dp"));
-                c.addView(profileSlider("오른쪽 여백", edit.toolbarSidePadKey(Prefs.SIDE_RIGHT),
-                        () -> edit.areaPadDp(KeyboardPreview.AREA_TOOLBAR, Prefs.SIDE_RIGHT), 0, Prefs.AREA_PAD_MAX, 1, "dp"));
-                c.addView(note("도구 막대의 좌우 여백으로, 키보드 전체 여백 안쪽에 더해집니다. 정하기 전에는 세로 모드('키보드 사용자화')의 "
-                        + "값을 따릅니다. 미리보기에서 양옆의 손잡이를 끌어도 바뀝니다."));
+                LinearLayout c = section("도구 막대");
+                String followKey = edit.toolbarFollowKey();
+                boolean on = edit.getRawFollow();
+                c.addView(toggle("묶음 좌우 따라가기",
+                        "분리 키보드에서 도구 막대의 양 끝이 왼쪽 묶음의 왼쪽 끝과 오른쪽 묶음의 오른쪽 끝을 따라갑니다. "
+                                + "끄면 도구 막대는 키보드 전체 폭을 씁니다.",
+                        on, v -> {
+                            prefs.raw().edit().putBoolean(followKey, v).apply();
+                            refreshLayoutPreview();
+                        }));
                 break;
             }
             case KeyboardPreview.AREA_MIDDLE: {

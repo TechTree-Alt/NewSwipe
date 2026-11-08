@@ -621,6 +621,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         candidateGridOpen = false;
         cjkEnterConfirm = false;   // 새 자판의 엔터 키는 원래 모양이다
         keyboard = new KeyboardView(this);
+        // 키가 배치되면(크기·한 손 모드가 바뀔 때) 도구 막대가 묶음 좌우를 따라가는 여백을 다시 맞춘다.
+        keyboard.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+            if (r - l != or - ol) applyToolbarEdges();
+        });
         keyboard.setListener(this);
         keyboard.setTheme(theme);
         content.addView(keyboard, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
@@ -1244,10 +1248,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 Ui.dp(this, prefs.padRightDp()), Ui.dp(this, prefs.padBottomDp()));
         keyboard.setAreaInsets(areaPadsPx());
         // 도구 막대의 양 끝 버튼이 자판의 양 끝 키와 같은 선에 오도록 키보드 좌우 여백을 따른다 (도구 막대 영역 여백을 더한다).
-        int barL = Ui.dp(this, prefs.padLeftDp() + prefs.areaPadDp(0, Prefs.SIDE_LEFT));
-        int barR = Ui.dp(this, prefs.padRightDp() + prefs.areaPadDp(0, Prefs.SIDE_RIGHT));
-        if (toolbar != null) toolbar.setPadding(barL, 0, barR, 0);
-        if (searchBar != null) searchBar.setPadding(barL, 0, barR, 0);
+        applyToolbarEdges();
+        if (keyboard != null) keyboard.post(this::applyToolbarEdges);   // 키가 새 설정으로 다시 배치된 뒤에 한 번 더 맞춘다
         applyPanelInsets();
         arrangeToolbar();
         if (topSlot != null) {
@@ -1262,6 +1264,30 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         keyboard.setKeyboardHeight(keyboardHeight);
         applyOneHand();
         updatePanelSizes();
+    }
+
+    /**
+     * 도구 막대(와 검색줄)의 좌우 여백. 보통은 키보드 좌우 여백 + 도구 막대 영역 여백이다.
+     * 분리 키보드에서 '도구 막대가 묶음 좌우를 따라가기'를 켜 두었으면(기본) 도구 막대의 양 끝 버튼이
+     * 왼쪽 묶음의 왼쪽 끝·오른쪽 묶음의 오른쪽 끝(기능키 줄이 따라가는 선)에 오도록 여백을 정한다.
+     */
+    private void applyToolbarEdges() {
+        int barL = Ui.dp(this, prefs.padLeftDp() + prefs.areaPadDp(0, Prefs.SIDE_LEFT));
+        int barR = Ui.dp(this, prefs.padRightDp() + prefs.areaPadDp(0, Prefs.SIDE_RIGHT));
+        if (keyboard != null && splitActive() && prefs.profileView(profile()).toolbarFollowBlocks()) {
+            float[] e = keyboard.keyExtent();
+            int w = keyboard.getWidth();
+            if (e != null && w > 0) {
+                barL = Math.round(e[0]) + Ui.dp(this, prefs.areaPadDp(0, Prefs.SIDE_LEFT));
+                barR = Math.round(w - e[1]) + Ui.dp(this, prefs.areaPadDp(0, Prefs.SIDE_RIGHT));
+            }
+        }
+        if (toolbar != null && (toolbar.getPaddingLeft() != barL || toolbar.getPaddingRight() != barR)) {
+            toolbar.setPadding(barL, 0, barR, 0);
+        }
+        if (searchBar != null && (searchBar.getPaddingLeft() != barL || searchBar.getPaddingRight() != barR)) {
+            searchBar.setPadding(barL, 0, barR, 0);
+        }
     }
 
     /** 영역별 여백 (px, [영역][왼·위·오른·아래]). */
@@ -1670,6 +1696,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
         if (domainField && kind != KeyboardLayout.NUMBER) KeyboardLayout.useDomainPeriodPopup(l);
         keyboard.setLayout(l);
+        applyToolbarEdges();   // 자판이 바뀌면 묶음의 바깥 끝도 달라질 수 있다
         updateLanguagePopup();
         boolean shiftable = kind == KeyboardLayout.ENGLISH || kind == KeyboardLayout.CHINESE
                 || (kind == KeyboardLayout.JAPANESE && this.prefs.jaQwerty());

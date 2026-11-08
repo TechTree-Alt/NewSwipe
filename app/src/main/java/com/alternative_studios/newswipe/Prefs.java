@@ -183,6 +183,7 @@ public final class Prefs {
     public static final String SPLIT_GAP_SPEED = "split_gap_speed";     // 분리 키보드 가운데 빈 공간 커서 이동 속도(%)
     public static final String SPLIT_GAP_CURSOR = "split_gap_cursor";   // 분리 키보드 가운데 빈 공간을 밀어 커서 이동
     public static final String AUTOFILL_INLINE = "autofill_inline";               // 자동 완성 제안을 도구 막대에 칩으로 (Android 11+)
+    public static final String TOOLBAR_FOLLOW_BLOCKS = "toolbar_follow_blocks";   // 분리 키보드: 도구 막대 양 끝이 묶음의 바깥 끝을 따라감
     public static final String SPLIT_REACH_COLUMN = "split_reach_column";   // 분리 키보드: 좌·우 균형 레이아웃
     /** 가로 모드·대화면에서 따로 정하는 키보드 높이·키 글자 크기(%)의 최솟값 (세로 모드는 70). */
     public static final int PROFILE_HEIGHT_MIN = 30;
@@ -492,8 +493,7 @@ public final class Prefs {
             // 키보드 사용자화를 연 채 바꾸면 되돌리기 기록에는 남는다.
             new EditorScope("landscape", null, keys(LANDSCAPE_SPLIT, LANDSCAPE_SIZE, KEYBOARD_HEIGHT_LAND, KEY_TEXT_SIZE_LAND,
                     SPLIT_GAP_CURSOR, SPLIT_GAP_SPEED, SPLIT_SPACE_JOIN, SPLIT_FN_WIDTH, SPLIT_REACH_COLUMN,
-                    PROFILE_LIFT + LANDSCAPE_SUFFIX, FN_ROW_HEIGHT + LANDSCAPE_SUFFIX, "toolbar_pad_l" + LANDSCAPE_SUFFIX,
-                    "toolbar_pad_r" + LANDSCAPE_SUFFIX), keys(LANDSCAPE_SPLIT + "_", "balanced_")),
+                    PROFILE_LIFT + LANDSCAPE_SUFFIX, FN_ROW_HEIGHT + LANDSCAPE_SUFFIX, TOOLBAR_FOLLOW_BLOCKS + LANDSCAPE_SUFFIX), keys(LANDSCAPE_SPLIT + "_", "balanced_")),
     };
 
     private static EditorScope scope(String id) {
@@ -570,7 +570,7 @@ public final class Prefs {
     public void resetProfileArea() {
         resetBalancedKeys();
         removeKeys(new String[]{splitKey(), sizeKey(), heightKey(), fnRowHeightKey(), textSizeKey(),
-                toolbarSidePadKey(SIDE_LEFT), toolbarSidePadKey(SIDE_RIGHT), oneHandWidthKey(), splitGapCursorKey(),
+                toolbarFollowKey(), oneHandWidthKey(), splitGapCursorKey(),
                 splitGapSpeedKey(), splitSpaceJoinKey(), splitFnWidthKey(), splitReachColumnKey(), liftKey()},
                 new String[]{splitKey() + "_"});   // 예전에 배열마다 저장하던 분리 키보드 값도 함께
     }
@@ -727,10 +727,22 @@ public final class Prefs {
     public int padTopDp() { return sp.getInt(PAD_TOP, 0); }
 
     /** 영역 area(0 도구 막대·1 숫자 줄·2 글자 키·3 기능키)의 side(SIDE_*) 여백 설정 키. */
-    /** 이 프로필(가로 모드·대화면 세로·가로)의 도구 막대 좌우 여백 설정 키. side는 SIDE_LEFT·SIDE_RIGHT. */
-    public String toolbarSidePadKey(int side) {
-        char c = "ltrb".charAt(side);
-        return large() ? LARGE_PREFIX + "toolbar_pad_" + c + "_" + largeSide() : "toolbar_pad_" + c + LANDSCAPE_SUFFIX;
+    /**
+     * 분리 키보드에서 도구 막대의 양 끝이 왼쪽·오른쪽 묶음의 바깥 끝을 따라가는지의 설정 키 (기본 켬).
+     * 대화면 세로·가로가 함께 쓴다 (분리 키보드 켜기와 같다).
+     */
+    public String toolbarFollowKey() {
+        return large() ? LARGE_PREFIX + TOOLBAR_FOLLOW_BLOCKS + "_" + LARGE_LAYOUT_SIDE : TOOLBAR_FOLLOW_BLOCKS + LANDSCAPE_SUFFIX;
+    }
+
+    /** '묶음 좌우 따라가기' 설정값 (기본 켬). 분리 키보드를 켰는지와는 상관없이 저장된 값이다. */
+    public boolean getRawFollow() {
+        return sp.getBoolean(toolbarFollowKey(), true);
+    }
+
+    /** 분리 키보드를 켰고 도구 막대가 묶음의 바깥 끝을 따라가게 정했는지. */
+    public boolean toolbarFollowBlocks() {
+        return profileValues() && sp.getBoolean(toolbarFollowKey(), true);
     }
 
     public static String areaPadKey(int area, int side) {
@@ -739,12 +751,7 @@ public final class Prefs {
 
     /** 영역별 여백 (dp, 0~32). */
     public int areaPadDp(int area, int side) {
-        int v = clamp(sp.getInt(areaPadKey(area, side), 0), 0, AREA_PAD_MAX);
-        // 가로 모드·대화면 보기: 도구 막대의 좌우 여백은 그 프로필이 따로 정한 값 (정하기 전에는 세로 모드 값).
-        if (area == 0 && profileSize() && (side == SIDE_LEFT || side == SIDE_RIGHT)) {
-            return clamp(sp.getInt(toolbarSidePadKey(side), v), 0, AREA_PAD_MAX);
-        }
-        return v;
+        return clamp(sp.getInt(areaPadKey(area, side), 0), 0, AREA_PAD_MAX);
     }
 
     /** 영역별 위·아래 여백의 합 (dp): 키보드 높이에 더한다. 숫자 줄은 켰을 때만. */

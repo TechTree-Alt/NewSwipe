@@ -332,6 +332,23 @@ public final class KeyboardView extends View {
         return layout;
     }
 
+    /**
+     * 보이는 키들이 차지한 가로 범위 {왼쪽 끝, 오른쪽 끝} (이 뷰 안의 px). 분리 키보드에서는 왼쪽 묶음의 왼쪽 끝과
+     * 오른쪽 묶음의 오른쪽 끝이다 (도구 막대가 따라간다). 아직 배치되지 않았으면 null.
+     */
+    public float[] keyExtent() {
+        if (layout == null || getWidth() == 0) return null;
+        float left = Float.MAX_VALUE, right = -Float.MAX_VALUE;
+        for (KeyboardLayout.Row row : layout.rows) {
+            for (Key k : row.keys) {
+                if (k.type == Key.SPACER || k.type == Key.GAP || k.isHidden() || k.rect.width() <= 0) continue;
+                left = Math.min(left, k.rect.left);
+                right = Math.max(right, k.rect.right);
+            }
+        }
+        return left < right ? new float[]{left, right} : null;
+    }
+
     public void setTheme(KeyboardTheme t) {
         theme = t;
         invalidate();

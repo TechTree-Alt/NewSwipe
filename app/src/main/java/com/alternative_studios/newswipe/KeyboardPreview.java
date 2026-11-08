@@ -213,11 +213,6 @@ final class KeyboardPreview extends FrameLayout {
             case B_BOUNDARY: return prefs.balancedBoundaryKey();
             case HEIGHT: return profileEdit != null ? prefs.heightKey() : h.key(0);
             case FN_ROW: return profileEdit != null ? prefs.fnRowHeightKey() : h.key(0);
-            case AREA_L:
-            case AREA_R:
-                // 가로 모드·대화면: 도구 막대 좌우 여백은 그 프로필이 따로 정한다.
-                if (profileEdit != null && selection != null && selection.area() == AREA_TOOLBAR) return prefs.toolbarSidePadKey(h.side);
-                return h.key(selection == null ? 0 : selection.area());
             case LIFT: return prefs.liftKey();
             default: return h.key(selection == null ? 0 : selection.area());
         }
@@ -450,6 +445,9 @@ final class KeyboardPreview extends FrameLayout {
         keys.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
         bar.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
         addView(column, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        keys.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+            if (r - l != or - ol) updateBarEdges();
+        });
         overlay = new Overlay(context);
         addView(overlay, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         refresh();
@@ -612,13 +610,31 @@ final class KeyboardPreview extends FrameLayout {
         return placeholder;
     }
 
-    /** 도구 막대의 왼쪽·오른쪽 여백 (dp): 키보드 여백 + 도구 막대 영역 여백. */
+    /**
+     * 도구 막대의 왼쪽·오른쪽 여백 (px): 키보드 여백 + 도구 막대 영역 여백. 분리 키보드에서 '도구 막대가 묶음 좌우를 따라가기'를
+     * 켰으면(기본) 왼쪽 묶음의 왼쪽 끝·오른쪽 묶음의 오른쪽 끝에 맞춘다 (실제 키보드와 같다).
+     */
     private int barPadLeft() {
-        return prefs.padLeftDp() + prefs.areaPadDp(AREA_TOOLBAR, Prefs.SIDE_LEFT);
+        Context c = getContext();
+        float[] e = prefs.toolbarFollowBlocks() ? keys.keyExtent() : null;
+        if (e != null) return Math.round(e[0]) + Ui.dp(c, prefs.areaPadDp(AREA_TOOLBAR, Prefs.SIDE_LEFT));
+        return Ui.dp(c, prefs.padLeftDp() + prefs.areaPadDp(AREA_TOOLBAR, Prefs.SIDE_LEFT));
     }
 
     private int barPadRight() {
-        return prefs.padRightDp() + prefs.areaPadDp(AREA_TOOLBAR, Prefs.SIDE_RIGHT);
+        Context c = getContext();
+        float[] e = prefs.toolbarFollowBlocks() ? keys.keyExtent() : null;
+        if (e != null) return Math.round(keys.getWidth() - e[1]) + Ui.dp(c, prefs.areaPadDp(AREA_TOOLBAR, Prefs.SIDE_RIGHT));
+        return Ui.dp(c, prefs.padRightDp() + prefs.areaPadDp(AREA_TOOLBAR, Prefs.SIDE_RIGHT));
+    }
+
+    /** 키가 배치된 뒤 (크기가 정해진 뒤) 도구 막대의 좌우 여백을 다시 맞춘다. */
+    private void updateBarEdges() {
+        int l = barPadLeft(), r = barPadRight();
+        if (bar.getPaddingLeft() == l && bar.getPaddingRight() == r) return;
+        bar.setPadding(l, 0, r, 0);
+        barSignature = null;   // 다음 refresh에서 버튼을 새 여백으로 다시 만든다
+        overlay.invalidate();
     }
 
     /** 도구 막대: 실제와 같은 자리·순서·크기의 버튼들 (누를 수 없고, 누르면 그 버튼을 고른다). */
@@ -640,7 +656,7 @@ final class KeyboardPreview extends FrameLayout {
         if (!sig.toString().equals(barSignature)) {
             barSignature = sig.toString();
             bar.removeAllViews();
-            bar.setPadding(Ui.dp(c, barPadLeft()), 0, Ui.dp(c, barPadRight()), 0);
+            bar.setPadding(barPadLeft(), 0, barPadRight(), 0);
             for (int side = 0; side < 2 && buttons; side++) {
                 if (side == 1) bar.addView(new View(c), new LinearLayout.LayoutParams(0, 1, 1f));
                 for (String id : order[side]) {
@@ -950,8 +966,6 @@ final class KeyboardPreview extends FrameLayout {
             switch (h) {
                 case HEIGHT: return a == AREA_LETTERS || a == AREA_LEFT || a == AREA_RIGHT;
                 case FN_ROW: return a == AREA_FUNCTION;
-                case AREA_L:
-                case AREA_R: return a == AREA_TOOLBAR;   // 도구 막대의 좌우 여백
                 case B_CONSONANT: return a == AREA_LEFT && blockBounds(true, new RectF());
                 case B_VOWEL: return a == AREA_RIGHT && blockBounds(false, new RectF());
                 default: return false;
