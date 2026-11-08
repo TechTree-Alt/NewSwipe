@@ -1329,7 +1329,15 @@ public class EditorUiTest {
         shadowOf(detail).clickOnItem(2);   // 분리 키보드
         idle();
         assertTrue(prefs.portraitSplit());
+        assertTrue(prefs.raw().getBoolean(Prefs.PORTRAIT_SPLIT + "_" + Prefs.KOREAN_LAYOUT_DUBEOLSIK, false));
         assertTrue(visibleTexts(cur(a)).contains("상세 배열\n  분리 키보드"));
+        findText(cur(a), "단모음").performClick();   // 분리 키보드는 배열마다 따로 기억한다
+        idle();
+        assertFalse(prefs.portraitSplit());
+        assertTrue(visibleTexts(cur(a)).contains("상세 배열\n  사용 안 함"));
+        findText(cur(a), "두벌식").performClick();
+        idle();
+        assertTrue(prefs.portraitSplit());
         ((View) findText(cur(a), "상세 배열").getParent()).performClick();
         idle();
         shadowOf((AlertDialog) ShadowDialog.getLatestDialog()).clickOnItem(1);   // 자·모음 균형 배열

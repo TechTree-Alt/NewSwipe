@@ -112,7 +112,7 @@ public final class Prefs {
     /** 가로 모드 분리 키보드: 가로 모드에서 자·모음 균형 배열로 자판을 나눈다. 한글 배열마다 따로 저장한다: 이 이름 + "_" + 배열 값. */
     public static final String LANDSCAPE_SPLIT = "landscape_split";
     /**
-     * 세로 모드 분리 키보드 ('키보드 사용자화'의 '분리 키보드 사용'). 세로 모드의 분리 키보드 세부 값
+     * 세로 모드 분리 키보드 ('한글 글자 키 설정'의 '상세 배열'. 켜짐 값은 이 이름 + "_" + 한글 배열 값으로 배열마다 따로 저장). 세로 모드의 분리 키보드 세부 값
      * (묶음 폭·위치, 스페이스바 잇기 등)은 모두 이 이름으로 시작하는 키에 따로 저장한다 (PORTRAIT_PREFIX).
      */
     public static final String PORTRAIT_SPLIT = "portrait_split";
@@ -473,10 +473,10 @@ public final class Prefs {
     public static final String SCOPE_LETTERS_KO = "letters_ko", SCOPE_LETTERS_EN = "letters_en";
 
     private static final EditorScope[] EDITOR_SCOPES = {
-            // 키보드 전체 설정 창의 값: 여백, 키 모양, 분리 키보드 사용.
-            new EditorScope(SCOPE_BOARD, "키보드 전체 설정 (여백·키 모양·분리 키보드 사용)", keys(PAD_LEFT, PAD_RIGHT, PAD_TOP,
+            // 키보드 전체 설정 창의 값: 여백, 키 모양.
+            new EditorScope(SCOPE_BOARD, "키보드 전체 설정 (여백·키 모양)", keys(PAD_LEFT, PAD_RIGHT, PAD_TOP,
                     PAD_BOTTOM, KEY_TEXT_SIZE, KEY_RADIUS, KEY_GAP_X, KEY_GAP_Y, KEY_SHADOW,
-                    KEY_SHADOW_STRENGTH, KEY_PREVIEW, PORTRAIT_SPLIT), NONE),
+                    KEY_SHADOW_STRENGTH, KEY_PREVIEW), NONE),
             new EditorScope(AREA_SCOPES[0], "도구 막대", concat(TOOL_BUTTON_VALUES, TOOLBAR, TOOLBAR_BOTTOM, TOOLBAR_HEIGHT,
                     TOOL_BUTTON_SIZE, PORTRAIT_PREFIX + TOOLBAR_FOLLOW_BLOCKS), keys(AREA_PAD_PREFIX + PAD_AREAS[0] + "_", "swipe_toolbar_bar_")),
             new EditorScope(AREA_SCOPES[1], "숫자 줄", keys(NUMBER_ROW, NUMBER_ROW_HEIGHT, NUMBER_HINT_HIDDEN),
@@ -963,8 +963,17 @@ public final class Prefs {
     /** 세로 모드(폴더블 내부 화면이 아닌) 보기인지. */
     private boolean portrait() { return profile.isEmpty(); }
 
-    /** 세로 모드에서 분리 키보드를 쓰는지 ('키보드 사용자화'의 '분리 키보드 사용', 기본 꺼짐). */
-    public boolean portraitSplit() { return sp.getBoolean(PORTRAIT_SPLIT, false); }
+    /** 지금 한글 배열의 세로 모드 분리 키보드 설정 키. 배열마다 따로 저장한다: PORTRAIT_SPLIT + "_" + 배열 값. */
+    public String portraitSplitKey() { return PORTRAIT_SPLIT + "_" + koreanLayoutId(); }
+
+    /**
+     * 세로 모드에서 분리 키보드를 쓰는지 ('한글 글자 키 설정'의 '상세 배열', 기본 꺼짐). 배열마다 따로 기억한다.
+     * 배열별로 나누기 전의 값(이름 뒤에 배열이 없는 값)은 정해 둔 적 없는 배열이 이어 쓴다.
+     */
+    public boolean portraitSplit() {
+        String key = portraitSplitKey();
+        return sp.contains(key) ? sp.getBoolean(key, false) : sp.getBoolean(PORTRAIT_SPLIT, false);
+    }
 
 
 
@@ -982,7 +991,7 @@ public final class Prefs {
      * (예전에는 배열마다 따로 저장했다: 이 키 + "_" + 배열. 새 값이 없으면 그 값을 이어 쓴다.)
      */
     public String splitKey() {
-        if (portrait()) return PORTRAIT_SPLIT;
+        if (portrait()) return portraitSplitKey();
         return large() ? LARGE_PREFIX + "split_" + LARGE_LAYOUT_SIDE : LANDSCAPE_SPLIT;
     }
 

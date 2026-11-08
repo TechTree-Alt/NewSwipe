@@ -394,7 +394,6 @@ public final class SettingsActivity extends Activity {
             {"clipemoji", "이모지 크기", "이모티콘 크기 글자 키우기 크게 이모지 창"},
             {KEYBOARD, "균형 배열 사용자화", "자음 모음 열 폭 위치 배치 키 위치 경계 균형 레이아웃"},
             {KEYBOARD, "상세 배열", "자·모음 균형 배열 분리 키보드 스플릿 split 자음 모음 반반 균형 한글 자판 배열 두벌식 단모음 쿼티 qwerty 레이아웃"},
-            {KEYBOARD, "분리 키보드 사용", "세로 모드 분리 키보드 스플릿 split 나누기 엄지"},
             {KEYBOARD, "가로 모드 키보드 사용자화", "가로 화면 landscape"},
             {KEYBOARD, "숫자 줄 표시", "숫자 줄 1234567890 숫자열"},
             {KEYBOARD, "기능키 순서·유무 사용자화", "맨 아래 줄 하단 키 쉼표 지구본 온점 엔터"},
@@ -1325,17 +1324,9 @@ public final class SettingsActivity extends Activity {
         }
     }
 
-    /** 키보드 전체 설정 창: 키 모양, 분리 키보드 (세로 모드), 맨 아래에 키보드 여백. */
+    /** 키보드 전체 설정 창: 키 모양, 맨 아래에 키보드 여백. */
     private void buildBoard() {
         buildLook();
-        // 분리 키보드 (세로 모드): 켜면 자판을 왼쪽·오른쪽 묶음으로 나누고, 그 모양은 '분리 키보드 사용자화'에서 정한다.
-        LinearLayout split = section("분리 키보드");
-        split.addView(toggle("분리 키보드 사용",
-                "자판을 왼쪽·오른쪽 묶음으로 나눠 엄지손가락만으로 타이핑을 편하게 합니다. 켜면 자·모음 균형 배열 대신 분리 키보드를 씁니다.",
-                prefs.portraitSplit(), on -> {
-                    prefs.raw().edit().putBoolean(Prefs.PORTRAIT_SPLIT, on).apply();
-                    refreshLayoutPreview();
-                }));
         buildPad(-1);
     }
 
@@ -1715,12 +1706,12 @@ public final class SettingsActivity extends Activity {
         englishBalanced.setVisibility(englishBalancedShown() ? View.VISIBLE : View.GONE);
         View keyArea = fold(subGroup(button("균형 배열 사용자화", v -> openSection(KEY_AREA)), englishBalanced));
         // 상세 배열: 사용 안 함·자·모음 균형 배열·분리 키보드 중 하나 (스페이스바 길게 누르기처럼 줄을 눌러 고른다).
-        // 균형 배열은 배열마다 따로, 분리 키보드(세로 모드)는 모든 배열이 함께 기억한다.
+        // 균형 배열과 분리 키보드(세로 모드) 모두 배열마다 따로 기억한다.
         SettingsWidgets.ValueRow[] detail = new SettingsWidgets.ValueRow[1];
         detail[0] = widgets.valueRow("상세 배열", DETAIL_LAYOUTS[detailLayout()], v ->
                 pickDetailLayout(mode -> {
                     android.content.SharedPreferences.Editor e = prefs.raw().edit();
-                    e.putBoolean(Prefs.PORTRAIT_SPLIT, mode == DETAIL_SPLIT);
+                    e.putBoolean(prefs.portraitSplitKey(), mode == DETAIL_SPLIT);
                     if (mode != DETAIL_SPLIT) e.putBoolean(prefs.balancedLayoutKey(), mode == DETAIL_BALANCED);
                     e.apply();
                     detail[0].set(DETAIL_LAYOUTS[mode]);
