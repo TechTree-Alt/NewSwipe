@@ -1508,7 +1508,7 @@ public final class SettingsActivity extends Activity {
     }
 
     private View popupHintToggle() {
-        return toggle("글자 키 힌트 없애기", "한글·영어 글자 키의 오른쪽 위에 표시되는 길게 눌러 입력할 문자 힌트를 없앱니다. 숫자·기호 키의 힌트는 그대로입니다.",
+        return toggle("글자 키 힌트 없애기", "글자 키의 오른쪽 위에 표시되는 길게 눌러 입력할 문자 힌트를 없앱니다.",
                 Prefs.POPUP_HINT_HIDDEN, prefs.popupHintHidden());
     }
 

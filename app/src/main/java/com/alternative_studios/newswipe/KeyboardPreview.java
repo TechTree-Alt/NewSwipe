@@ -857,7 +857,7 @@ final class KeyboardPreview extends FrameLayout {
                 if (!padBounds(selection.area(), r)) return false;
                 out[0] = h == Handle.AREA_L ? Math.max(r.left, Ui.dp(c, 3)) : h == Handle.AREA_R ? Math.min(r.right, w - Ui.dp(c, 3))
                         : r.centerX();
-                out[1] = h == Handle.AREA_T ? Math.max(r.top, Ui.dp(c, 4)) : h == Handle.AREA_B ? Math.min(r.bottom, getHeight() - Ui.dp(c, 3))
+                out[1] = h == Handle.AREA_T ? Math.max(r.top, 0) : h == Handle.AREA_B ? Math.min(r.bottom, getHeight() - Ui.dp(c, 3))
                         : r.centerY();
                 return true;
             }
@@ -1240,7 +1240,9 @@ final class KeyboardPreview extends FrameLayout {
                 float x = boundaryX();
                 stroke.setStrokeWidth(Ui.dp(ctx, on ? 2f : 1.25f));
                 stroke.setColor(withAlpha(theme.accent, on ? 1f : 0.45f));
-                c.drawLine(x, area.top, x, area.bottom, stroke);
+                // 두 윤곽선이 맞닿아 있어도 둥근 모서리 밖으로 튀어나오지 않게, 윤곽선의 모서리 반지름만큼 양 끝을 줄인다.
+                float cut = Math.min(r, area.height() / 2f - Ui.dp(ctx, 1));
+                c.drawLine(x, area.top + cut, x, area.bottom - cut, stroke);
             }
         }
 

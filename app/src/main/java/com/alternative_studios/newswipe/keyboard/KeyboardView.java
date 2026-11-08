@@ -411,13 +411,14 @@ public final class KeyboardView extends View {
         }
     }
 
-    /** 한글·영어 글자 키인지 (숫자 줄·기호·쉼표·온점 키는 아니다). '글자 키 힌트 없애기'는 이 키들에만 적용된다. */
+    /** 글자 키인지: 한글·영어 글자 키와 기호 자판의 키 (숫자 줄·쉼표·온점 키는 아니다). '글자 키 힌트 없애기'가 적용된다. */
     private boolean isLetterKey(Key k) {
-        return k.type == Key.CHAR && layout.isLetters() && !KeyboardLayout.isDigit(k.label)
-                && !KeyboardLayout.isSymbol(k.label);
+        if (k.type != Key.CHAR || KeyboardLayout.isDigit(k.label)) return false;
+        if (layout.kind == KeyboardLayout.SYMBOLS || layout.kind == KeyboardLayout.SYMBOLS_2) return true;
+        return layout.isLetters() && !KeyboardLayout.isSymbol(k.label);
     }
 
-    /** 글자 키 오른쪽 위의 작은 글자(길게 눌러 입력할 문자 힌트)를 그릴지. 숫자·기호 키는 따로 정한다. 길게 눌러 입력하는 기능과는 상관없다. */
+    /** 글자 키 오른쪽 위의 작은 글자(길게 눌러 입력할 문자 힌트)를 그릴지. 기호 자판의 키도 포함하고, 숫자 키는 따로 정한다. 길게 눌러 입력하는 기능과는 상관없다. */
     public void setPopupHints(boolean on) {
         if (showHints != on) {
             showHints = on;
