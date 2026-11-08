@@ -1516,7 +1516,10 @@ public class EditorUiTest {
     @Test
     public void balancedBlocksInTheEditor() throws Exception {
         Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
-        pre.raw().edit().putBoolean(pre.balancedLayoutKey(), true).commit();
+        // 두 쪽이 가운데에서 맞닿는 모양(폭 100%, 위치 0)에서 시작한다 (기본값은 폭 90%라 가운데가 벌어져 있다)
+        pre.raw().edit().putBoolean(pre.balancedLayoutKey(), true)
+                .putInt(pre.balancedConsonantWidthKey(), 100).putInt(pre.balancedConsonantPosKey(), 0)
+                .putInt(pre.balancedVowelWidthKey(), 100).putInt(pre.balancedVowelPosKey(), 0).commit();
         SettingsActivity a = launch("keyboard");
         View decor = a.getWindow().getDecorView();
         KeyboardPreview p = find(decor, KeyboardPreview.class);

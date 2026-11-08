@@ -321,17 +321,17 @@ public class DubeolsikLayoutTest {
             FakeSp sp = new FakeSp();
             sp.m.put(Prefs.KOREAN_LAYOUT, layout);
             Prefs p = portrait(sp);
-            assertEquals(layout, 100, p.balancedConsonantWidth());
-            assertEquals(layout, 0, p.balancedConsonantPos());
-            assertEquals(layout, 100, p.balancedVowelWidth());
-            assertEquals(layout, 0, p.balancedVowelPos());
+            assertEquals(layout, 90, p.balancedConsonantWidth());
+            assertEquals(layout, -10, p.balancedConsonantPos());
+            assertEquals(layout, 90, p.balancedVowelWidth());
+            assertEquals(layout, 10, p.balancedVowelPos());
         }
         // 분리 키보드(가로 모드)의 기본값은 배열과 상관없이 그대로
         FakeSp land = dubeolsik(true);
         Prefs lp = view(land, Prefs.PROFILE_LANDSCAPE).profileEditView(Prefs.PROFILE_LANDSCAPE);
-        assertEquals(Prefs.SPLIT_WIDTH_DEFAULT, lp.balancedConsonantWidth());
-        assertEquals(-16, lp.balancedConsonantPos());
-        assertEquals(16, lp.balancedVowelPos());
+        assertEquals(90, lp.balancedConsonantWidth());
+        assertEquals(-10, lp.balancedConsonantPos());
+        assertEquals(10, lp.balancedVowelPos());
     }
 
     /** 격자 정렬: 균형 배열에서도 맨 아래 줄 기능키가 반듯한 칸 폭이다. */

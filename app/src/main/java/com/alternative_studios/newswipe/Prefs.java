@@ -163,14 +163,16 @@ public final class Prefs {
     public static final String BALANCED_BOUNDARY = "balanced_boundary";
     /** 가로 모드의 값은 위 이름 뒤에 이 말을 붙여 따로 저장한다 (예: balanced_vowel_width_land_danmoeum7). */
     private static final String LANDSCAPE_SUFFIX = "_land";
-    public static final int BALANCED_WIDTH_MIN = 60, BALANCED_WIDTH_DEFAULT = 100;
-    /** 두벌식의 세로 모드 균형 배열 기본 모양: 자음·모음 키 폭 90%, 자음은 왼쪽 끝(0), 모음은 오른쪽 끝(100). */
-    public static final int DUBEOLSIK_WIDTH_DEFAULT = 90, DUBEOLSIK_CONSONANT_POS_DEFAULT = 0, DUBEOLSIK_VOWEL_POS_DEFAULT = 100;
+    public static final int BALANCED_WIDTH_MIN = 60;
     /**
-     * 분리 키보드(가로 모드·폴더블 내부 화면)의 두 묶음 기본 모양: 왼쪽 묶음은 폭 80%에 가로 위치 20, 오른쪽 묶음은 폭 80%에 가로 위치 80
-     * (두 묶음이 가운데에서 살짝 벌어지고 바깥쪽 가장자리 쪽에 모인다). 세로 모드의 균형 배열은 폭 100%·위치 50이 기본이다.
+     * 두 묶음의 기본 모양: 모든 한글 배열의 자·모음 균형 배열과 분리 키보드(세로 모드·가로 모드·폴더블 내부 화면)가 같다.
+     * 왼쪽(자음) 묶음은 폭 90%에 가로 위치 -10, 오른쪽(모음) 묶음은 폭 90%에 가로 위치 10
+     * (두 묶음이 바깥쪽 끝에 붙고 가운데에 한 칸 남짓 틈이 난다).
      */
-    public static final int SPLIT_WIDTH_DEFAULT = 80, SPLIT_LEFT_POS_DEFAULT = 20, SPLIT_RIGHT_POS_DEFAULT = 80;
+    public static final int BLOCK_WIDTH_DEFAULT = 90, LEFT_BLOCK_POS_DEFAULT = -10, RIGHT_BLOCK_POS_DEFAULT = 10;
+    /** 예전 기본 가로 위치 (예전 방식, 절반 안의 남는 폭에서 0~100). 예전 방식의 값을 옮겨 읽을 때 배열별로 나누기 전의 값이 없을 때만 쓴다. */
+    private static final int DUBEOLSIK_CONSONANT_POS_DEFAULT = 0, DUBEOLSIK_VOWEL_POS_DEFAULT = 100,
+            SPLIT_LEFT_POS_DEFAULT = 20, SPLIT_RIGHT_POS_DEFAULT = 80;
     /** 묶음 가로 위치의 범위 (줄 왼쪽 끝 -100 ~ 가운데 0 ~ 오른쪽 끝 100). */
     public static final int BALANCED_POS_MIN = -100, BALANCED_POS_MAX = 100;
     /** 가로 모드는 키를 더 좁게 (30%까지) 줄일 수 있다. */
@@ -1081,10 +1083,14 @@ public final class Prefs {
     /** 지금 보기에서 자음·모음 키 폭의 최솟값 (%): 가로 모드·폴더블 내부 화면 값은 30, 세로 모드는 60. */
     public int balancedWidthMin() { return profileValues() ? BALANCED_WIDTH_MIN_LANDSCAPE : BALANCED_WIDTH_MIN; }
 
-    /** 키 폭 기본값 (%): 분리 키보드는 80, 세로 모드의 균형 배열은 100 (두벌식은 90). */
+    /** 묶음 폭 기본값 (%): 모든 한글 배열·균형 배열·분리 키보드가 90. */
     private int widthDefault() {
-        if (profileValues()) return SPLIT_WIDTH_DEFAULT;
-        return koreanDubeolsik() ? DUBEOLSIK_WIDTH_DEFAULT : BALANCED_WIDTH_DEFAULT;
+        return BLOCK_WIDTH_DEFAULT;
+    }
+
+    /** 예전 방식의 가로 위치가 저장되어 있는지 (배열별 값, 또는 배열별로 나누기 전의 세로 모드 8열 단모음 값). */
+    private boolean hasLegacyPos(String key, String base) {
+        return sp.contains(key) || (!profileValues() && KOREAN_LAYOUT_8.equals(koreanLayoutId()) && sp.contains(base));
     }
 
     /**
@@ -1132,24 +1138,26 @@ public final class Prefs {
                 balancedWidthMin(), balancedWidthMax());
     }
     /**
-     * 왼쪽 묶음 가로 위치(오른쪽 경계, -100~100). 새 값이 없으면 예전 방식의 값(없으면 예전 기본값)을 지금 폭으로 옮겨 읽는다
-     * (예전과 같은 자리에 놓인다).
+     * 왼쪽 묶음 가로 위치(오른쪽 경계, -100~100). 새 값이 없으면 예전 방식의 값을 지금 폭으로 옮겨 읽고(예전과 같은 자리에 놓인다),
+     * 그것도 없으면 기본값(-10).
      */
     private int rawConsonantPos() {
         if (sp.contains(balancedConsonantPosKey())) {
             return clamp(sp.getInt(balancedConsonantPosKey(), 0), BALANCED_POS_MIN, BALANCED_POS_MAX);
         }
+        if (!hasLegacyPos(legacyConsonantPosKey(), BALANCED_CONSONANT_POS)) return LEFT_BLOCK_POS_DEFAULT;
         int old = perLayoutInt(legacyConsonantPosKey(), BALANCED_CONSONANT_POS,
                 profileValues() ? SPLIT_LEFT_POS_DEFAULT : koreanDubeolsik() ? DUBEOLSIK_CONSONANT_POS_DEFAULT : 50);
         float lw = Math.min(ROW_UNITS, HALF_UNITS * rawConsonantWidth() / 100f);
         float end = Math.min(ROW_UNITS, legacyLeftStart(lw, clamp(old, 0, 200)) + lw);
         return clamp(Math.round((end - HALF_UNITS) / HALF_UNITS * 100f), BALANCED_POS_MIN, BALANCED_POS_MAX);
     }
-    /** 오른쪽 묶음 가로 위치(왼쪽 경계, -100~100). 새 값이 없으면 예전 방식의 값을 옮겨 읽는다. */
+    /** 오른쪽 묶음 가로 위치(왼쪽 경계, -100~100). 새 값이 없으면 예전 방식의 값을 옮겨 읽고, 그것도 없으면 기본값(10). */
     private int rawVowelPos() {
         if (sp.contains(balancedVowelPosKey())) {
             return clamp(sp.getInt(balancedVowelPosKey(), 0), BALANCED_POS_MIN, BALANCED_POS_MAX);
         }
+        if (!hasLegacyPos(legacyVowelPosKey(), BALANCED_VOWEL_POS)) return RIGHT_BLOCK_POS_DEFAULT;
         int old = perLayoutInt(legacyVowelPosKey(), BALANCED_VOWEL_POS,
                 profileValues() ? SPLIT_RIGHT_POS_DEFAULT : koreanDubeolsik() ? DUBEOLSIK_VOWEL_POS_DEFAULT : 50);
         float rw = Math.min(ROW_UNITS, HALF_UNITS * rawVowelWidth() / 100f);

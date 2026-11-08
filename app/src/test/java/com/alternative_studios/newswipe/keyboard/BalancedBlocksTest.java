@@ -128,15 +128,33 @@ public class BalancedBlocksTest {
         }
     }
 
+    /** 기본값: 모든 한글 배열이 폭 90%, 자음 쪽은 왼쪽 끝부터(위치 -10), 모음 쪽은 오른쪽 끝까지(위치 10). */
     @Test
-    public void defaultKeepsTheOldHalves() throws Exception {
+    public void defaultIsNinetyPercentAtTheOuterEdges() throws Exception {
+        for (String layout : new String[]{Prefs.KOREAN_LAYOUT_8, Prefs.KOREAN_LAYOUT_D7, Prefs.KOREAN_LAYOUT_DUBEOLSIK}) {
+            FakeSp sp = new FakeSp();
+            sp.m.put(Prefs.KOREAN_LAYOUT, layout);
+            Prefs p = view(sp, Prefs.PROFILE_PORTRAIT, false);
+            sp.m.put(p.balancedLayoutKey(), true);
+            sp.m.put(Prefs.BALANCED_BOUNDARY + "_" + layout, 70);   // 없앤 경계 값은 쓰지 않는다
+            assertEquals(layout, 90, p.balancedConsonantWidth());
+            assertEquals(layout, -10, p.balancedConsonantPos());
+            assertEquals(layout, 90, p.balancedVowelWidth());
+            assertEquals(layout, 10, p.balancedVowelPos());
+            float[] e = p.balancedExtents();
+            assertEquals(layout, 0f, e[0], 0.001f);
+            assertEquals(layout, 4.5f, e[1], 0.001f);
+            assertEquals(layout, 5.5f, e[2], 0.001f);
+            assertEquals(layout, 4.5f, e[3], 0.001f);
+        }
+        // 8열 단모음: 자음 5개가 4.5칸에, 모음 3개가 4.5칸에
         FakeSp sp = new FakeSp();
         Prefs p = view(sp, Prefs.PROFILE_PORTRAIT, false);
         sp.m.put(p.balancedLayoutKey(), true);
-        sp.m.put(Prefs.BALANCED_BOUNDARY + "_" + Prefs.KOREAN_LAYOUT_8, 70);   // 없앤 경계 값은 쓰지 않는다
         float[][] s = spans(KeyboardLayout.korean(p).rows[0]);
-        for (int i = 0; i < 5; i++) assertEquals("자음 1칸", 1f, s[i][1] - s[i][0], 0.001f);
-        for (int i = 5; i < 8; i++) assertEquals("모음 5/3칸", 5f / 3f, s[i][1] - s[i][0], 0.001f);
+        for (int i = 0; i < 5; i++) assertEquals("자음 0.9칸", 0.9f, s[i][1] - s[i][0], 0.001f);
+        for (int i = 5; i < 8; i++) assertEquals("모음 1.5칸", 1.5f, s[i][1] - s[i][0], 0.001f);
+        assertEquals(5.5f, s[5][0], 0.001f);
     }
 
     /** 가로 위치는 안쪽 경계의 자리다: 자음 쪽은 오른쪽 경계, 모음 쪽은 왼쪽 경계. 폭을 바꾸면 그 경계는 그대로 두고 바깥쪽으로 줄고 는다. */
@@ -158,11 +176,11 @@ public class BalancedBlocksTest {
         assertEquals(4f, w[4][1], 0.001f);
         assertEquals(6.5f, w[5][0], 0.001f);
         assertEquals(10f, w[7][1], 0.001f);
-        // 기본값: 두 쪽이 가운데(0)에서 맞닿는다
+        // 기본값: 자음 쪽 -10, 모음 쪽 10
         FakeSp sp = new FakeSp();
         Prefs d = view(sp, Prefs.PROFILE_PORTRAIT, false);
-        assertEquals(0, d.balancedConsonantPos());
-        assertEquals(0, d.balancedVowelPos());
+        assertEquals(-10, d.balancedConsonantPos());
+        assertEquals(10, d.balancedVowelPos());
     }
 
     /** 다른 쪽 묶음이 비켜 준 자리가 있으면 폭을 100% 넘게 넓힐 수 있다. */
