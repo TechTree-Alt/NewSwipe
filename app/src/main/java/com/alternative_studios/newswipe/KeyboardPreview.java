@@ -709,23 +709,24 @@ final class KeyboardPreview extends FrameLayout {
         return numberPlaceholder;
     }
 
-    /** 꺼 둔 영역 자리의 점선 띠. */
+    /**
+     * 꺼 둔 영역의 빈 자리 (뷰는 자리만 차지한다). 점선 테두리와 안내 글씨는 덮개가 그 영역의 윤곽선 자리에 그린다
+     * (drawOffStrips): 다른 영역 윤곽선과 꼭 맞게.
+     */
     private android.widget.TextView dashedStrip() {
-        Context c = getContext();
-        AppTheme app = AppTheme.of(c);
-        android.widget.TextView v = new android.widget.TextView(c);
-        // 안내 글자는 윤곽선 층 위에 그린다 (영역 층에서는 이름표가 대신 알린다: drawOffHints).
-        android.graphics.drawable.GradientDrawable d = new android.graphics.drawable.GradientDrawable();
-        d.setColor(app.bg);
-        d.setStroke(Ui.dp(c, 1), app.hint, Ui.dp(c, 4), Ui.dp(c, 3));
-        d.setCornerRadius(Ui.dp(c, 8));
-        v.setBackground(new android.graphics.drawable.InsetDrawable(d, Ui.dp(c, 8), Ui.dp(c, 3), Ui.dp(c, 8), Ui.dp(c, 3)));
-        return v;
+        return new android.widget.TextView(getContext());
     }
 
     /** 숫자 줄 빈 칸이 미리보기에 놓여 있는지. */
     private boolean numberOff() {
         return numberPlaceholder != null && numberPlaceholder.getParent() != null;
+    }
+
+    /** 꺼 두어 빈 칸만 남은 영역인지 (도구 막대·숫자 줄). */
+    private boolean areaOff(int a) {
+        if (a == AREA_TOOLBAR) return placeholder != null && placeholder.getParent() != null;
+        if (a == AREA_NUMBER) return numberOff();
+        return false;
     }
 
     /**
@@ -1083,7 +1084,7 @@ final class KeyboardPreview extends FrameLayout {
     /** 영역 층의 영역 윤곽선: 영역에 그 영역의 위·아래 여백을 더한 자리 (여백의 바깥 가장자리). */
     boolean padBounds(int area, RectF out) {
         if (!areaBounds(area, out)) return false;
-        if (area == AREA_NUMBER && !numberRowShown) return true;   // 꺼 둔 숫자 줄 빈 칸: 여백이 없다
+        if (areaOff(area)) return true;   // 꺼 둔 영역의 빈 칸: 여백 없이 빈 칸 자리 그대로
         Context c = getContext();
         out.top -= Ui.dp(c, prefs.areaPadDp(area, Prefs.SIDE_TOP));
         out.bottom += Ui.dp(c, prefs.areaPadDp(area, Prefs.SIDE_BOTTOM));
@@ -1094,18 +1095,16 @@ final class KeyboardPreview extends FrameLayout {
         Context c = getContext();
         float pad = Ui.dp(c, 3);
         if (area == AREA_TOOLBAR) {
-            View v = bar.getParent() != null ? bar : placeholder != null && placeholder.getParent() != null ? placeholder : null;
-            if (v == null) return false;
+            if (bar.getParent() == null) return areaOff(AREA_TOOLBAR) && offStripBounds(placeholder, out);
             // 도구 막대의 좌우는 버튼 자리(막대의 좌우 여백 안쪽)를 따라간다: 자판의 키 윤곽선과 같은 선.
             // 키 윤곽선은 키 모양 가장자리(자리에서 키 좌우 간격의 절반 안쪽)에서 pad만큼 나온다: 도구 막대도 같은 규칙.
             float gx = Ui.dp(c, prefs.keyGapXDp()) / 2f;
-            float inL = v == bar ? Math.max(pad, bar.getPaddingLeft() + gx - pad) : pad;
-            float inR = v == bar ? Math.max(pad, bar.getPaddingRight() + gx - pad) : pad;
-            // 위·아래는 키 영역과 같은 규칙: 줄 가장자리에서 키 상하 간격의 절반만큼 들어갔다가 윤곽선 여유(pad)만큼 나온다.
+            float inL = Math.max(pad, bar.getPaddingLeft() + gx - pad);
+            float inR = Math.max(pad, bar.getPaddingRight() + gx - pad);
+            // 위·아래는 키 영역과 같은 규칙: 줄 가장자리에서 키 상하 간격의 절반만큼 들어갔다가 윤곽선 여유만큼 나온다.
             // 위아래 여유는 outlinePadY: 간격이 좁아도 도구 막대와 숫자 줄 윤곽선 사이가 다른 영역들처럼 일정하게 띈다.
-            float gy = v == bar ? Ui.dp(c, prefs.keyGapYDp()) / 2f : 0f;
-            float vPad = v == bar ? -outlinePadY(c) : pad;
-            out.set(v.getLeft() + inL, v.getTop() + gy + vPad, v.getRight() - inR, v.getBottom() - gy - vPad);
+            float gy = Ui.dp(c, prefs.keyGapYDp()) / 2f, vPad = outlinePadY(c);
+            out.set(bar.getLeft() + inL, bar.getTop() + gy - vPad, bar.getRight() - inR, bar.getBottom() - gy + vPad);
             return true;
         }
         KeyboardLayout l = keys.getLayout();
@@ -1115,9 +1114,7 @@ final class KeyboardPreview extends FrameLayout {
         switch (area) {
             case AREA_NUMBER:
                 if (!numberRowShown) {
-                    if (!numberOff()) return false;
-                    out.set(numberPlaceholder.getLeft() + pad, numberPlaceholder.getTop() + pad, numberPlaceholder.getRight() - pad, numberPlaceholder.getBottom() - pad);
-                    return true;
+                    return numberOff() && offStripBounds(numberPlaceholder, out);
                 }
                 first = last = 0;
                 break;
@@ -1145,6 +1142,31 @@ final class KeyboardPreview extends FrameLayout {
         if (!any) return false;
         out.inset(-pad, -outlinePadY(c));
         return true;
+    }
+
+    /**
+     * 꺼 둔 영역 빈 칸 v의 테두리: 좌우는 글자 키·기능키 윤곽선의 좌우 끝에 맞추고 (다른 영역 윤곽선과 한 줄로),
+     * 위아래는 빈 칸에서 윤곽선 여유만큼 들어간다.
+     */
+    private boolean offStripBounds(View v, RectF out) {
+        Context c = getContext();
+        float pad = Ui.dp(c, 3);
+        float left = v.getLeft() + pad, right = v.getRight() - pad;
+        RectF r = new RectF();
+        boolean any = false;
+        for (int a : new int[]{AREA_LETTERS, AREA_FUNCTION}) {
+            if (!areaBounds(a, r)) continue;
+            if (!any) {
+                left = r.left;
+                right = r.right;
+            } else {
+                left = Math.min(left, r.left);
+                right = Math.max(right, r.right);
+            }
+            any = true;
+        }
+        out.set(left, v.getTop() + pad, right, v.getBottom() - pad);
+        return out.width() > 0 && out.height() > 0;
     }
 
     /** 손잡이 h가 지금 보이는지. */
@@ -1595,17 +1617,21 @@ final class KeyboardPreview extends FrameLayout {
                 area.top = Math.max(area.top, edge);
                 area.bottom = Math.min(area.bottom, getHeight() - edge);
                 boolean chosen = layer == which && selection != null && selection.kind == SEL_AREA && selection.area() == a;
-                stroke.setColor(withAlpha(accent, (chosen ? 1f : 0.55f) * alpha));
+                boolean off = areaOff(a);   // 꺼 둔 영역: 점선 테두리, 이름표 대신 배경 글씨 (drawOffStrips)
                 // 고른 영역은 고른 키와 같은 굵기로 굵게.
-                stroke.setStrokeWidth(Ui.dp(ctx, chosen ? 2.5f : 1.25f));
+                int color = withAlpha(accent, (chosen ? 1f : 0.55f) * alpha);
+                float width = Ui.dp(ctx, chosen ? 2.5f : 1.25f);
+                Paint outline = off ? dashed(color, width) : stroke;
+                outline.setColor(color);
+                outline.setStrokeWidth(width);
                 float rr = Math.min(r, Math.min(area.width(), area.height()) / 2f);
-                c.drawRoundRect(area, rr, rr, stroke);
+                c.drawRoundRect(area, rr, rr, outline);
                 if (chosen) {
                     fill.setColor(withAlpha(accent, 0.12f * alpha));
                     c.drawRoundRect(area, rr, rr, fill);
                 }
                 // 이름표: 영역 한가운데의 작은 알약. 고른 영역은 이름표 없이 굵은 테두리만.
-                if (!chosen) drawPill(c, "눌러서 " + areaName(a, tab) + suffix + (areaOff(a) ? " (꺼짐)" : ""), area, alpha);
+                if (!chosen && !off) drawPill(c, "눌러서 " + areaName(a, tab) + suffix, area, alpha);
             }
             c.restore();
         }
@@ -1649,29 +1675,52 @@ final class KeyboardPreview extends FrameLayout {
 
 
 
-        /** 꺼 두어 빈 칸만 남은 영역인지 (도구 막대·숫자 줄). */
-        private boolean areaOff(int a) {
-            if (a == AREA_TOOLBAR) return placeholder != null && placeholder.getParent() != null;
-            if (a == AREA_NUMBER) return numberOff();
-            return false;
-        }
-
-        /** 꺼진 도구 막대·숫자 줄 빈 칸의 안내 글자. 영역 층에서는 이름표와 겹치지 않게 흐려져 사라진다. */
-        private void drawOffHints(Canvas c, float alpha) {
-            if (alpha < 0.01f) return;
+        /**
+         * 꺼 둔 도구 막대·숫자 줄 빈 칸: 그 영역의 윤곽선 자리에 점선 테두리(dashAlpha, 영역 층에서는 강조색 점선이
+         * 대신 그려지므로 흐려진다)와 배경 글씨 'OOO 꺼짐 · 눌러서 설정'(늘 보인다).
+         */
+        private void drawOffStrips(Canvas c, float dashAlpha) {
             Context ctx = getContext();
             hintPaint.setTextSize(Ui.dp(ctx, 12));
             hintPaint.setTextAlign(Paint.Align.CENTER);
-            hintPaint.setColor(withAlpha(AppTheme.of(ctx).hint, alpha));
+            hintPaint.setColor(withAlpha(theme.text, 0.6f));
             Paint.FontMetrics fm = hintPaint.getFontMetrics();
-            View[] strips = {placeholder, numberPlaceholder};
-            String[] texts = {"도구 막대 꺼짐 · 눌러서 설정", "숫자 줄 꺼짐 · 눌러서 설정"};
-            for (int i = 0; i < strips.length; i++) {
-                View v = strips[i];
-                if (v == null || v.getParent() == null) continue;
-                float cy = column.getTop() + (v.getTop() + v.getBottom()) / 2f;
-                c.drawText(texts[i], getWidth() / 2f, cy - (fm.ascent + fm.descent) / 2, hintPaint);
+            float r = Ui.dp(ctx, prefs.keyRadiusDp()) + Ui.dp(ctx, 4);
+            for (int a : new int[]{AREA_TOOLBAR, AREA_NUMBER}) {
+                if (!areaOff(a) || !offBounds(a, area)) continue;
+                if (dashAlpha > 0.01f) {
+                    Paint d = dashed(withAlpha(theme.text, 0.45f * dashAlpha), Ui.dp(ctx, 1.25f));
+                    float rr = Math.min(r, Math.min(area.width(), area.height()) / 2f);
+                    c.drawRoundRect(area, rr, rr, d);
+                }
+                String text = (a == AREA_TOOLBAR ? "도구 막대" : "숫자 줄") + " 꺼짐 · 눌러서 설정";
+                c.drawText(text, area.centerX(), area.centerY() - (fm.ascent + fm.descent) / 2, hintPaint);
             }
+        }
+
+        /** 꺼 둔 영역의 테두리 자리: 다른 영역 윤곽선과 같은 규칙 (미리보기 가장자리에서 잘리지 않게). */
+        private boolean offBounds(int a, RectF out) {
+            if (!padBounds(a, out)) return false;
+            float edge = Ui.dp(getContext(), 1.5f);
+            out.top = Math.max(out.top, edge);
+            out.bottom = Math.min(out.bottom, getHeight() - edge);
+            return true;
+        }
+
+        private final Paint dash = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private android.graphics.DashPathEffect dashEffect;
+
+        /** 점선 붓 (꺼 둔 영역의 테두리). */
+        private Paint dashed(int color, float width) {
+            if (dashEffect == null) {
+                Context ctx = getContext();
+                dashEffect = new android.graphics.DashPathEffect(new float[]{Ui.dp(ctx, 4), Ui.dp(ctx, 3)}, 0);
+                dash.setStyle(Paint.Style.STROKE);
+                dash.setPathEffect(dashEffect);
+            }
+            dash.setColor(color);
+            dash.setStrokeWidth(width);
+            return dash;
         }
 
         private final Paint hintPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -1690,7 +1739,7 @@ final class KeyboardPreview extends FrameLayout {
             // 키보드 층과 영역 층은 같은 영역 윤곽선을 쓰고 이름표만 다르다 (여백 조절 · 설정).
             if (boardAlpha > 0.01f) drawBoard(c, boardAlpha, (LAYER_BOARD - layerPos) * shift);
             if (areaAlpha > 0.01f) drawAreas(c, LAYER_AREA, areaAlpha, (LAYER_AREA - layerPos) * shift, " 설정");
-            drawOffHints(c, keyAlpha);
+            drawOffStrips(c, 1f - areaAlpha);
             if (keyAlpha > 0.01f) {
                 c.save();
                 c.translate((LAYER_KEY - layerPos) * shift, 0);
@@ -1747,15 +1796,20 @@ final class KeyboardPreview extends FrameLayout {
                 boolean chosen = a == chosenArea || (block && chosenArea == AREA_LETTERS);   // 두 묶음은 함께 글자 키
                 boolean dragged = dragging && active != null && active.balanced()
                         && a == (active.leftBlock() ? AREA_LEFT : AREA_RIGHT);
-                stroke.setColor(withAlpha(theme.accent, (chosen || dragged ? 1f : 0.55f) * alpha));
-                stroke.setStrokeWidth(Ui.dp(ctx, chosen || dragged ? 2.5f : 1.25f));
+                boolean off = areaOff(a);   // 꺼 둔 도구 막대: 점선 테두리, 이름표 대신 배경 글씨 (drawOffStrips)
+                int color = withAlpha(theme.accent, (chosen || dragged ? 1f : 0.55f) * alpha);
+                float width = Ui.dp(ctx, chosen || dragged ? 2.5f : 1.25f);
+                Paint outline = off ? dashed(color, width) : stroke;
+                outline.setColor(color);
+                outline.setStrokeWidth(width);
                 float rr = Math.min(r, Math.min(area.width(), area.height()) / 2f);
-                c.drawRoundRect(area, rr, rr, stroke);
+                c.drawRoundRect(area, rr, rr, outline);
                 if (chosen) {
                     fill.setColor(withAlpha(theme.accent, 0.12f * alpha));
                     c.drawRoundRect(area, rr, rr, fill);
                     continue;
                 }
+                if (off) continue;
                 // 이름표: 좁은 영역(가운데 공간 등)에서는 짧게, 그래도 넘치면 그리지 않는다.
                 String name = block ? AREA_NAMES[AREA_LETTERS] : profileAreaName(a);   // 두 묶음 모두 "글자 키"
                 String text = "눌러서 " + name + " 설정";
@@ -1771,6 +1825,7 @@ final class KeyboardPreview extends FrameLayout {
         private void drawProfileLayers(Canvas c) {
             if (!profileBoardLayer()) {
                 drawProfileAreas(c, 1f, 0f);
+                drawOffStrips(c, 0f);
                 return;
             }
             float shift = Ui.dp(getContext(), 28);
@@ -1778,6 +1833,7 @@ final class KeyboardPreview extends FrameLayout {
             float areaAlpha = Math.max(0f, 1f - Math.abs(layerPos - LAYER_AREA));
             if (boardAlpha > 0.01f) drawBoard(c, boardAlpha, (LAYER_BOARD - layerPos) * shift);
             if (areaAlpha > 0.01f) drawProfileAreas(c, areaAlpha, (LAYER_AREA - layerPos) * shift);
+            drawOffStrips(c, 1f - areaAlpha);
         }
 
         @Override
@@ -1786,6 +1842,7 @@ final class KeyboardPreview extends FrameLayout {
             int accent = theme.accent;
             if (profileEdit != null) drawProfileLayers(c);
             else if (!balancedMode) drawLayers(c);
+            else drawOffStrips(c, 1f);
             // 고른 것: 강조색 테두리.
             RectF sel = selectionBounds();   // 고른 키·도구 막대 버튼 (영역·키보드는 drawLayers에서)
             if (sel != null) {
