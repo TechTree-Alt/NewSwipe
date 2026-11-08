@@ -172,26 +172,15 @@ public final class SwipeActionEditorActivity extends Activity {
     }
 
     private void edit(int slot, int dir) {
-        String[] ids = spec.choices(slot, dir);
-        String[] items = new String[ids.length];
-        for (int i = 0; i < ids.length; i++) items[i] = SwipeAction.label(ids[i]);
-        int checked = java.util.Arrays.asList(ids).indexOf(spec.get(prefs, slot, dir));
-        AppTheme.dialogBuilder(this)
-                .setTitle(spec.dialogTitle(slot, dir))
-                .setSingleChoiceItems(items, checked, (d, which) -> {
-                    spec.set(prefs, slot, dir, ids[which]);
-                    d.dismiss();
+        ActionPicker.show(this, spec.dialogTitle(slot, dir), spec.choices(slot, dir), spec.get(prefs, slot, dir),
+                id -> {
+                    spec.set(prefs, slot, dir, id);
                     render();
-                    if (android.os.Build.VERSION.SDK_INT >= 30) {
-                        list.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM);
-                    }
-                })
-                .setNeutralButton("기본값", (d, w) -> {
+                },
+                () -> {
                     spec.reset(prefs, slot, dir);
                     render();
-                })
-                .setNegativeButton("취소", null)
-                .show();
+                });
     }
 
     /** 뒤로 가기: 검색창이나 키보드 시험 입력창이 열려 있으면 그것부터 닫고, 그다음에 이전 화면으로 간다 (Android 12 이하). */

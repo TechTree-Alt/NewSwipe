@@ -976,24 +976,15 @@ final class KeyEditPanel {
     }
 
     private void pickAction(SwipeSpec spec, int slot, int dir, String title, Runnable done) {
-        String[] ids = spec.choices(slot, dir);
-        String[] items = new String[ids.length];
-        for (int i = 0; i < ids.length; i++) items[i] = SwipeAction.label(ids[i]);
-        int checked = java.util.Arrays.asList(ids).indexOf(spec.get(prefs, slot, dir));
-        AppTheme.dialogBuilder(a)
-                .setTitle(title)
-                .setSingleChoiceItems(items, checked, (d, which) -> {
-                    spec.set(prefs, slot, dir, ids[which]);
-                    d.dismiss();
-                    confirmed();
+        ActionPicker.show(a, title, spec.choices(slot, dir), spec.get(prefs, slot, dir),
+                id -> {
+                    spec.set(prefs, slot, dir, id);   // 확인 진동은 고르는 창이 낸다
                     done.run();
-                })
-                .setNeutralButton("기본값", (d, w) -> {
+                },
+                () -> {
                     spec.reset(prefs, slot, dir);
                     done.run();
-                })
-                .setNegativeButton("취소", null)
-                .show();
+                });
     }
 
 }

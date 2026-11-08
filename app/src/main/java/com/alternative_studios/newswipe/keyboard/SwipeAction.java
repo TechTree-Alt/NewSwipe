@@ -114,6 +114,46 @@ public final class SwipeAction {
             {CAPS_LOCK, "Caps Lock 켜기 (영어 대문자 고정)", "Caps Lock"},
     };
 
+    /**
+     * 기능을 고르는 창에서 묶어 보여 주는 갈래: {갈래 이름, 그 갈래의 ID들...}. 갈래도, 갈래 안의 기능도
+     * 적은 순서대로 보인다 (자주 쓰는 것·짝이 되는 것끼리 가까이). '없음'은 어느 갈래에도 넣지 않고 맨 위에 따로 둔다.
+     */
+    private static final String[][] CATEGORIES = {
+            {"커서 이동", FREE_CURSOR, CURSOR_MOVE, LINE_START, LINE_END, TEXT_START, TEXT_END,
+                    CURSOR_LEFT, CURSOR_RIGHT, CURSOR_UP, CURSOR_DOWN, WORD_LEFT, WORD_RIGHT},
+            {"선택·복사·붙여넣기", SPACE_SELECT, SELECT_ALL, SELECT_ALL_COPY, COPY, CUT, PASTE,
+                    CLIPBOARD_OPEN, CLIPBOARD_PINNED},
+            {"지우기·실행 취소", BACKSPACE, DELETE_WORD, DELETE_LINE_START, DELETE_LINE,
+                    DELETE_REPEAT, DELETE_WORD_REPEAT, UNDO, REDO},
+            {"입력", SPACE, ENTER, CAPS_LOCK, EMOJI_LATEST, EMOJI_PINNED, VOICE},
+            {"자판·창 전환", SYMBOLS, NUMBER_PAD, EMOJI_OPEN, LANGUAGE, LANGUAGE_PICK, IME_PICKER},
+            {"키보드·설정", HIDE_KEYBOARD, ONE_HAND_LEFT, ONE_HAND_RIGHT, SETTINGS},
+    };
+
+    /** 갈래의 수. */
+    public static int categoryCount() {
+        return CATEGORIES.length;
+    }
+
+    /** 갈래 이름 (커서 이동, 지우기·실행 취소 등). */
+    public static String categoryName(int category) {
+        return CATEGORIES[category][0];
+    }
+
+    /** 이 갈래에 든 기능 ID들 (보이는 순서). */
+    public static String[] categoryIds(int category) {
+        return java.util.Arrays.copyOfRange(CATEGORIES[category], 1, CATEGORIES[category].length);
+    }
+
+    /** 이 기능이 든 갈래의 번호. '없음'이나 모르는 ID면 -1. */
+    public static int category(String id) {
+        if (id == null) return -1;
+        for (int c = 0; c < CATEGORIES.length; c++) {
+            for (int i = 1; i < CATEGORIES[c].length; i++) if (CATEGORIES[c][i].equals(id)) return c;
+        }
+        return -1;
+    }
+
     /** 길게 누르기에서만 쓰는 기능 (밀기 목록에는 보이지 않는다). */
     private static boolean longPressOnly(String id) {
         return holdRepeat(id) || CAPS_LOCK.equals(id) || SPACE_SELECT.equals(id);
