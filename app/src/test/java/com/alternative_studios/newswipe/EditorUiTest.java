@@ -257,7 +257,13 @@ public class EditorUiTest {
         float dn = a.getResources().getDisplayMetrics().density;
         log("raised bar top=" + topBar.getTop() + " keys top=" + kv.getTop() + " bar bottom=" + topBar.getBottom());
         assertEquals(Math.round(prefs.padTopDp() * dn), topBar.getTop());
-        assertEquals(topBar.getBottom(), kv.getTop());
+        // 바로 밑은 자판, 숫자 줄을 꺼 두었으면 그 자리의 점선 빈 칸 (그 바로 밑이 자판)
+        View underBar = ((ViewGroup) p.getChildAt(0)).getChildAt(1);
+        assertEquals(topBar.getBottom(), underBar.getTop());
+        if (underBar != kv) {
+            assertFalse(prefs.numberRow());
+            assertEquals(underBar.getBottom(), kv.getTop());
+        }
         shot(a, "05c-top-padding-above-toolbar");
         prefs.raw().edit().putInt(Prefs.PAD_TOP, 0).commit();
         idle();
@@ -309,7 +315,8 @@ public class EditorUiTest {
         a.onBackPressed();
         idle();
         assertNull(p.selection());
-        assertTrue(visibleTexts(cur(a)).contains("숫자 줄") && visibleTexts(cur(a)).contains("가로 모드"));
+        assertTrue(visibleTexts(cur(a)).contains("가로 모드"));
+        assertFalse(visibleTexts(cur(a)).contains("숫자 줄"));   // 숫자 줄은 꺼도 미리보기의 빈 칸을 눌러 연다: 목록에 섹션이 없다
         assertFalse(visibleTexts(cur(a)).contains("키 사이 좌우 간격"));   // 키 모양·분리 키보드는 '키보드 전체 설정' 창으로 옮겼다
         assertFalse(visibleTexts(cur(a)).contains("글자 키 높이"));
 
@@ -1084,13 +1091,15 @@ public class EditorUiTest {
         shot(a, "85c-number-off");
         a.onBackPressed(); idle();
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(400));
-        // 목록의 '숫자 줄 설정' 버튼으로 다시 연다
-        View nrButton = findText(cur(a), "숫자 줄 설정");
-        while (!nrButton.isClickable()) nrButton = (View) nrButton.getParent();
-        nrButton.performClick(); idle();
+        // 목록에는 숫자 줄 섹션이 없고, 미리보기에 남은 점선 빈 칸을 눌러 다시 연다
+        assertNull(findText(cur(a), "숫자 줄 설정"));
+        android.graphics.RectF nrGap = new android.graphics.RectF();
+        assertTrue(p.areaBounds(KeyboardPreview.AREA_NUMBER, nrGap));
+        tap(p.getChildAt(1), nrGap.centerX(), nrGap.centerY());
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(400));
         assertTrue(open(a));
-        shot(a, "85d-number-sheet-from-list");
+        assertEquals(KeyboardPreview.AREA_NUMBER, p.selection().area());
+        shot(a, "85d-number-sheet-from-gap");
         nrRow = findText(cur(a), "숫자 줄 표시");
         while (!nrRow.isClickable()) nrRow = (View) nrRow.getParent();
         nrRow.performClick(); idle();

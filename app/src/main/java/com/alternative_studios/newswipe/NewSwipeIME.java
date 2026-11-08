@@ -19,6 +19,7 @@ import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowInsets;
@@ -621,11 +622,18 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         candidateGridOpen = false;
         cjkEnterConfirm = false;   // 새 자판의 엔터 키는 원래 모양이다
         keyboard = new KeyboardView(this);
+        keyboardTouching = false;
         // 키가 배치되면(크기·한 손 모드가 바뀔 때) 도구 막대가 묶음 좌우를 따라가는 여백을 다시 맞춘다.
         keyboard.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
             if (r - l != or - ol) applyToolbarEdges();
         });
         keyboard.setListener(this);
+        // 손가락이 자판에 닿아 있는 동안은 선택 편집 칩 때문에 도구 막대 자리가 생기거나 없어지지 않게 한다 (editHoldsSlot).
+        // 이벤트는 그대로 자판이 받는다 (false).
+        keyboard.setOnTouchListener((v, e) -> {
+            onKeyboardTouch(e.getActionMasked());
+            return false;
+        });
         keyboard.setTheme(theme);
         content.addView(keyboard, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -1545,6 +1553,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         finishComposingOnLeave();
         super.onFinishInputView(finishingInput);
         if (keyboard != null) keyboard.cancelAll();
+        keyboardTouching = false;   // 손을 떼는 이벤트 없이 끝났을 수 있다
         if (emojiPanel != null) emojiPanel.dismissTones();
         if (clipPanel != null) clipPanel.dismissDialog();
         dismissForgetDialog();
@@ -1838,7 +1847,34 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private boolean toolbarGone() {
         // 일본어·중국어에서는 변환 후보가 뜰 자리를 늘 남겨 둔다 (후보가 뜰 때마다 자판이 움직이지 않게).
         return cjkLang == null && !prefs.toolbar() && !toolbarOnlyNow() && !((cfgSuggest && suggestAllowed) || (!shortcuts.isEmpty() && shortcutAllowed))
-                && panel == PANEL_KEYBOARD && !autofillShowing() && !editShowing();
+                && panel == PANEL_KEYBOARD && !autofillShowing() && !editHoldsSlot()
+                // '방금 복사한 내용 붙여넣기' 칩이 떠 있는 동안은 도구 막대를 꺼 두었어도 그 줄을 다시 보인다.
+                && !clipChipShowing();
+    }
+
+    /** 손가락이 자판에 닿아 있는지, 그리고 닿은 순간 선택 편집 칩이 도구 막대 자리를 차지하고 있었는지. */
+    private boolean keyboardTouching, editSlotAtTouch;
+
+    /**
+     * 선택 편집 칩이 도구 막대 자리를 차지하는지. 도구 막대를 아예 없앴으면 칩이 뜰 때 그 줄이 생겨 키보드가 높아지는데,
+     * 스페이스바를 길게 눌러 선택하는 동안 높이가 바뀌면 창이 다시 배치되며 손가락 좌표가 줄 높이만큼 튀어 커서가
+     * 엉뚱하게 움직이고, 그 때문에 선택이 풀렸다 생겼다 하며 줄이 생겼다 없어졌다를 되풀이한다.
+     * 그래서 자판을 누르고 있는 동안은 누른 순간의 상태를 지키고, 손을 뗀 뒤에 맞춘다 (onKeyboardTouch).
+     */
+    private boolean editHoldsSlot() {
+        return keyboardTouching ? editSlotAtTouch : editShowing();
+    }
+
+    private void onKeyboardTouch(int action) {
+        if (action == MotionEvent.ACTION_DOWN) {
+            editSlotAtTouch = editShowing();
+            keyboardTouching = true;
+        } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+            if (!keyboardTouching) return;
+            keyboardTouching = false;
+            // 누르는 동안 미뤄 둔 도구 막대 자리를 이제 맞춘다 (자판 처리가 끝난 뒤에).
+            if (editSlotAtTouch != editShowing() && main != null) main.post(this::applyTopSlotVisibility);
+        }
     }
 
     private void updatePanelSizes() {
@@ -2295,7 +2331,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             int pos = back ? Math.min(selStart, selEnd) : Math.max(selStart, selEnd);
             ic.setSelection(pos, pos);
             // 입력란이 바뀐 위치를 알려 주기 전에 이어서 밀어도 선택이 풀린 것으로 보도록 바로 기억해 둔다.
-            selStart = selEnd = pos;
+            placeCursorLocally(pos);
             cursorBudget.reset();
             cursorWindow.reset();
             mirror.forget();
@@ -3632,7 +3668,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         boolean suggesting = (suggestBar != null && suggestBar.getVisibility() == View.VISIBLE) || autofillShowing()
                 || editing || candidates;
         boolean on = prefs.toolbar() || toolbarOnlyNow();   // 도구 막대만 보일 때는 꺼 두었어도 보인다
-        toolbar.setVisibility(panel == PANEL_SEARCH || !(on || suggesting) ? View.GONE : View.VISIBLE);
+        // 방금 복사한 내용 칩은 추천·자동 완성 칩이 없을 때 빈 공간 자리에 뜬다 (도구 버튼은 그대로 보인다).
+        // 도구 막대를 꺼 두었어도 칩만 있는 줄로 뜬다.
+        boolean chip = !suggesting && clipChipShowing();
+        toolbar.setVisibility(panel == PANEL_SEARCH || !(on || suggesting || chip) ? View.GONE : View.VISIBLE);
         // 설정에서 '도구 막대 전체를 쓰기'를 켰으면 추천이 떠 있는 동안 왼쪽 버튼들도 사라진다.
         // 선택 편집 칩은 칩 네 개가 넉넉히 들어가도록 언제나 막대 전체를 쓴다.
         boolean left = on && !(suggesting && (editing || candidates || prefs.suggestFullBar()));
@@ -3641,8 +3680,6 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         String[][] order = toolOrder != null ? toolOrder : prefs.toolOrder();
         for (String id : order[0]) toolButtonOf(id).setVisibility(left && prefs.toolShown(id) ? View.VISIBLE : View.GONE);
         for (String id : order[1]) toolButtonOf(id).setVisibility(right && prefs.toolShown(id) ? View.VISIBLE : View.GONE);
-        // 방금 복사한 내용 칩은 추천·자동 완성 칩이 없을 때 빈 공간 자리에 뜬다 (도구 버튼은 그대로 보인다).
-        boolean chip = !suggesting && on && clipChipShowing();
         toolSpacer.setVisibility(suggesting || chip ? View.GONE : View.VISIBLE);
         if (clipChipSlot != null) {
             if (chip) {
@@ -3674,6 +3711,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         main.removeCallbacks(expireClipChip);
         main.postDelayed(expireClipChip, CLIP_CHIP_MS);
         refreshToolbarVisibility();
+        applyTopSlotVisibility();   // 도구 막대를 꺼 두었으면 칩이 뜰 줄을 다시 연다
     }
 
     /** 칩에 보일 한 줄: 앞부분만 잘라 줄바꿈·연속 공백을 한 칸으로 줄인다. 보일 글자가 없으면 null. */
@@ -3692,6 +3730,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         clipChipActive = false;
         clipChipPreview = null;
         refreshToolbarVisibility();
+        applyTopSlotVisibility();   // 도구 막대를 꺼 두었으면 칩과 함께 그 줄도 거둔다
     }
 
     /** 칩을 눌렀다: 지금 클립보드의 텍스트를 커서 자리에 붙여 넣는다 (칩에 보인 미리보기가 아니라 원래 내용 전체). */
@@ -4341,7 +4380,17 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         int pos = right ? end + n : Math.max(0, start - n);
         ic.setSelection(pos, pos);
         // 입력란이 바뀐 위치를 알려 주기 전에 다시 밀어도 이어서 움직이도록 바로 기억해 둔다.
+        placeCursorLocally(pos);
+    }
+
+    /**
+     * 입력란이 알려 주기 전에 커서 자리를 미리 기억한다. 그 전에 글자가 선택되어 있었으면 여기서 선택이 풀린 것이므로
+     * 선택 편집 칩도 지금 거둔다: 나중에 온 onUpdateSelection은 이미 선택이 없던 것으로 보아 칩을 맞추지 않는다.
+     */
+    private void placeCursorLocally(int pos) {
+        boolean hadSelection = selStart >= 0 && selEnd >= 0 && selStart != selEnd;
         selStart = selEnd = pos;
+        if (hadSelection) onAutofillChipsChanged();
     }
 
     /** 입력란의 메뉴 동작(모두 선택, 복사, 잘라내기, 붙여넣기)을 실행한다. */

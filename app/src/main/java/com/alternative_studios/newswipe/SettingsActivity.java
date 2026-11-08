@@ -1108,17 +1108,14 @@ public final class SettingsActivity extends Activity {
         fillOverview(box);
     }
 
-    /** 키보드 사용자화의 기본 목록을 box에 만든다 (숫자 줄, 가로 모드). */
+    /** 키보드 사용자화의 기본 목록을 box에 만든다 (가로 모드). */
     private void fillOverview(LinearLayout box) {
         LinearLayout saved = list;
         list = box;
         try {
             // 여기에는 키보드 전체에 걸리고 어느 영역·키 창에도 없는 것만 둔다. 나머지는 미리보기에서 영역이나 키를 눌러 바꾼다.
             // 키 모양·분리 키보드는 '키보드 전체 설정' 창(미리보기의 키보드 층)에 있다.
-            // 숫자 줄은 꺼 두면 미리보기에 없어 누를 수 없으므로 여기서도 그 설정 창을 연다.
-            LinearLayout numberRow = section("숫자 줄");
-            numberRow.addView(button("숫자 줄 설정", v -> openNumberRowSheet()));
-            numberRow.addView(note("자판 위에 숫자 줄을 보이도록 설정할 수 있습니다."));
+            // 숫자 줄은 꺼 두어도 미리보기에 점선 빈 칸이 남아, 그것을 눌러 다시 켠다.
             LinearLayout landscape = section("가로 모드");
             landscape.addView(button("가로 모드 키보드 사용자화", v -> openSection(LANDSCAPE_AREA)));
             landscape.addView(note("화면을 가로로 돌렸을 때의 자판 모양을 따로 정합니다."));
@@ -1245,13 +1242,6 @@ public final class SettingsActivity extends Activity {
     }
 
     /** 미리보기에서 키·버튼·도구 막대를 눌렀다: 그것을 편집하는 창을 연다. 빈 곳이면 닫는다. */
-    /** 숫자 줄 영역의 설정 창을 연다 (숫자 줄을 꺼서 미리보기에 없을 때도). */
-    private void openNumberRowSheet() {
-        if (editorPreview == null) return;
-        if (editorPreview.layer() != KeyboardPreview.LAYER_AREA) editorPreview.setLayer(KeyboardPreview.LAYER_AREA);
-        onPreviewTap(KeyboardPreview.Selection.area(KeyboardPreview.AREA_NUMBER));
-    }
-
     private void onPreviewTap(KeyboardPreview.Selection s) {
         if (s == null) {
             closeKeyPanel();
