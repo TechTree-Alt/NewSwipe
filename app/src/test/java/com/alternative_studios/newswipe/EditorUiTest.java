@@ -1546,10 +1546,11 @@ public class EditorUiTest {
         assertEquals((l.right + r.left) / 2f, height[0], 2f);
         assertEquals(Math.min(l.top, r.top) + in, height[1], 1f);
         shot(a, "c0-balanced-editor");
-        // 자음 쪽 오른쪽 경계를 왼쪽으로: 폭이 줄고 왼쪽 경계(시작)는 그대로, 슬라이더도 따라간다
+        float unit = (r.right - l.left) / 10f;   // 한 칸 (px)
+        // 자음 쪽 오른쪽 경계를 왼쪽으로 한 칸: 폭이 줄고 왼쪽 경계(시작)는 그대로, 슬라이더도 따라간다
         float[] e0 = pre.balancedExtents();
         int w0 = pre.balancedConsonantWidth();
-        drag(overlay, le[0], le[1], -60, 0);
+        drag(overlay, le[0], le[1], -unit, 0);
         float[] e1 = pre.balancedExtents();
         int w1 = pre.balancedConsonantWidth();
         log("consonant width " + w0 + " -> " + w1 + ", start " + e0[0] + " -> " + e1[0]);
@@ -1569,13 +1570,13 @@ public class EditorUiTest {
         assertTrue(r.left - l.right >= 2 * dp - 0.5f);
         // 자음 쪽 왼쪽 경계를 오른쪽으로: 시작이 옮겨 가고 끝은 그대로
         assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_LEFT_START, ls));
-        drag(overlay, ls[0], ls[1], 30, 0);
+        drag(overlay, ls[0], ls[1], unit * 0.6f, 0);   // 폭이 최솟값(60%)보다 넓게 남는 거리
         float[] e3 = pre.balancedExtents();
         assertTrue(e3[0] > e2[0] + 0.05f);
         assertEquals(e2[0] + e2[1], e3[0] + e3[1], 0.06f);
         // 모음 쪽 오른쪽 경계를 왼쪽으로: 끝이 옮겨 가고 시작은 그대로
         assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_RIGHT_END, re));
-        drag(overlay, re[0], re[1], -30, 0);
+        drag(overlay, re[0], re[1], -unit * 0.6f, 0);
         float[] e4 = pre.balancedExtents();
         assertTrue(e4[2] + e4[3] < 10f - 0.05f);
         assertEquals(e3[2], e4[2], 0.06f);
