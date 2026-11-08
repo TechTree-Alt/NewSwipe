@@ -961,8 +961,9 @@ final class KeyboardPreview extends FrameLayout {
         // 가로 모드·대화면 키보드 사용자화: 글자 키 높이·세로 위치, 분리 키보드면 두 묶음의 ↔ 버튼.
         if (profileEdit != null) {
             // 세로 위치는 키보드 전체 설정이라 늘 보이고, 나머지는 고른 영역의 손잡이만 (키보드 사용자화의 영역 설정과 같다).
-            if (h == Handle.LIFT) return true;
             int a = profileSelected();
+            // 기능키 영역을 골랐을 때는 아래 가장자리가 기능키 영역의 아래 윤곽선과 겹치므로 세로 위치 손잡이를 숨긴다.
+            if (h == Handle.LIFT) return a != AREA_FUNCTION;
             switch (h) {
                 case HEIGHT: return a == AREA_LETTERS || a == AREA_LEFT || a == AREA_RIGHT;
                 case FN_ROW: return a == AREA_FUNCTION;
@@ -1043,7 +1044,9 @@ final class KeyboardPreview extends FrameLayout {
                 int a = h == Handle.TOOLBAR ? AREA_TOOLBAR : h == Handle.NUMBER_ROW ? AREA_NUMBER : h == Handle.FN_ROW ? AREA_FUNCTION : AREA_LETTERS;
                 if (!areaBounds(a, r)) return false;
                 // 글자 키 영역은 높아서 가운데에 둬도 위·아래 여백 손잡이와 겹치지 않는다.
-                out[0] = h == Handle.HEIGHT ? r.centerX() : Math.max(r.left + Ui.dp(c, 30), r.centerX() - Ui.dp(c, 64));
+                // 글자 키 영역과, 가로 모드·대화면 키보드 사용자화의 기능키 영역은 정중앙에 둔다.
+                boolean centered = h == Handle.HEIGHT || (h == Handle.FN_ROW && profileEdit != null);
+                out[0] = centered ? r.centerX() : Math.max(r.left + Ui.dp(c, 30), r.centerX() - Ui.dp(c, 64));
                 out[1] = r.centerY();
                 return true;
             }
