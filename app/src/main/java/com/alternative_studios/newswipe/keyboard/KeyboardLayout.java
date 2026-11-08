@@ -42,6 +42,11 @@ public final class KeyboardLayout {
     /** 한 줄에 들어가는 1.0 너비 키의 수. */
     public final int columns;
     public final Row[] rows;
+    /**
+     * 분리 키보드의 쿼티 모양 자판(영어·두벌식)인지: 글자 줄이 엇갈려(a~l 줄 들여쓰기, 1.5칸 Shift) g·v가 왼쪽 묶음 끝 밖으로,
+     * y가 오른쪽 묶음의 h·b보다 안쪽으로 나와 있다. 미리보기는 묶음 윤곽선의 안쪽 가장자리를 t와 h·b에 맞춘다.
+     */
+    public boolean staggeredSplit;
 
     private KeyboardLayout(int kind, int columns, List<Row> rows) {
         this.kind = kind;
@@ -475,7 +480,9 @@ public final class KeyboardLayout {
         List<Row> rows = new ArrayList<>(qwertySplitRows(letterRows, popups, korean, prefs));
         if (prefs.numberRow()) rows.add(0, splitNumberRow(prefs));
         rows.add(splitBottom(prefs));
-        return new KeyboardLayout(kind, BALANCED_COLUMNS, rows);
+        KeyboardLayout layout = new KeyboardLayout(kind, BALANCED_COLUMNS, rows);
+        layout.staggeredSplit = true;
+        return layout;
     }
 
     /**

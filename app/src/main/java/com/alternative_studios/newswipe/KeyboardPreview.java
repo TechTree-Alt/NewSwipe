@@ -399,6 +399,24 @@ final class KeyboardPreview extends FrameLayout {
         return true;
     }
 
+    /**
+     * (x, y)가 쿼티 모양 분리 자판(영어·두벌식) 두 묶음의 글자 키 위인지. 엇갈린 g·v·y는 묶음 윤곽선 밖으로 조금 나와 있어
+     * 윤곽선만 보면 가운데 공간을 누른 것처럼 보이므로, 영역을 고를 때 키 자리를 먼저 본다.
+     */
+    private boolean onStaggeredBlockKey(float x, float y) {
+        KeyboardLayout l = keys.getLayout();
+        if (l == null || !l.staggeredSplit) return false;
+        int first = numberRowShown && profileEdit == null ? 1 : 0;
+        float ky = y - keys.getTop();
+        for (int r = first; r <= l.rows.length - 2; r++) {
+            for (Key k : l.rows[r].keys) {
+                if (k.type == Key.SPACER || k.type == Key.GAP || isHidden(k)) continue;
+                if (k.rect.contains(x, ky)) return true;
+            }
+        }
+        return false;
+    }
+
     /** blockBounds에서 두 쪽 사이의 간격을 맞추기 전의 윤곽선. */
     private boolean rawBlockBounds(boolean consonant, RectF out) {
         KeyboardLayout l = keys.getLayout();
@@ -410,6 +428,12 @@ final class KeyboardPreview extends FrameLayout {
         float gx = Ui.dp(c, prefs.keyGapXDp()) / 2f, gy = Ui.dp(c, prefs.keyGapYDp()) / 2f;
         // 분리 키보드의 두 묶음에는 숫자 줄(1~5, 6~0)도 들어간다. 세로 모드의 균형 배열은 숫자 줄을 뺀 글자 키만 감싼다.
         int first = numberRowShown && profileEdit == null ? 1 : 0, last = l.rows.length - 2;
+        // 쿼티 모양 분리 자판(영어·두벌식)은 줄이 엇갈려 g·v가 왼쪽 묶음 끝 밖으로, y가 h·b보다 안쪽으로 나와 있다.
+        // 두 묶음 윤곽선의 안쪽 가장자리는 왼쪽 묶음은 t(맨 윗 글자 줄까지), 오른쪽 묶음은 h·b(그 아래 줄)에 맞춘다:
+        // 한글 자판의 묶음 윤곽선과 같은 자리이고, 두 윤곽선이 가운데에서 맞붙지 않는다.
+        boolean stagger = split && l.staggeredSplit;
+        int topLetters = last - 2;
+        float inner = consonant ? Float.NEGATIVE_INFINITY : Float.POSITIVE_INFINITY;
         boolean any = false;
         for (int r = first; r <= last; r++) {
             // 분리 키보드: 줄 가운데의 빈틈(SPACER)이 두 묶음을 가른다. 묶음이 맞닿아 빈틈이 없으면(폭 100%) 가운데에 걸친 키
@@ -434,9 +458,13 @@ final class KeyboardPreview extends FrameLayout {
                 if (!any) out.set(left, top, right, bottom);
                 else out.union(left, top, right, bottom);
                 any = true;
+                if (stagger && consonant && r <= topLetters) inner = Math.max(inner, right);
+                if (stagger && !consonant && r > topLetters) inner = Math.min(inner, left);
             }
         }
         if (!any) return false;
+        if (consonant && inner > out.left) out.right = inner;
+        if (!consonant && inner < out.right) out.left = inner;
         out.inset(-pad, -outlinePadY(c));
         return true;
     }
@@ -831,6 +859,10 @@ final class KeyboardPreview extends FrameLayout {
     private void tapAt(float x, float y) {
         if (profileEdit != null) {
             // 가로 모드·폴더블 내부 화면: 누른 곳을 감싼 영역 (경계 근처면 가까운 영역). 빈 곳이면 고르지 않음.
+            if (prefs.profileSplit() && onStaggeredBlockKey(x, y)) {
+                listener.onTap(Selection.area(AREA_LETTERS));
+                return;
+            }
             RectF r = new RectF();
             int best = -1;
             float bestDist = Ui.dp(getContext(), 12);
@@ -860,6 +892,11 @@ final class KeyboardPreview extends FrameLayout {
             // 영역 층: 누른 곳을 감싼 영역 (경계 근처면 가까운 영역).
             RectF r = new RectF();
             // 분리 키보드: 두 묶음 사이의 가운데 공간은 따로 고른다 (글자 키 영역 안에 있다).
+            // 윤곽선 밖으로 나온 g·v·y를 눌렀으면 가운데 공간이 아니라 글자 키다.
+            if (editorSplit() && onStaggeredBlockKey(x, y)) {
+                listener.onTap(Selection.area(AREA_LETTERS));
+                return;
+            }
             if (editorSplit() && profileAreaBounds(AREA_MIDDLE, r) && r.contains(x, y)) {
                 listener.onTap(Selection.area(AREA_MIDDLE));
                 return;
