@@ -323,7 +323,7 @@ public final class KeyboardLayout {
 
     /** '모음 키 폭'의 최댓값: 100%면 모음 키들이 오른쪽 절반을 꽉 채운다. */
     public static int balancedWidthMax(Prefs prefs) {
-        return Prefs.BALANCED_CONSONANT_WIDTH_MAX;
+        return prefs.balancedWidthMax();
     }
 
     /**
@@ -429,28 +429,26 @@ public final class KeyboardLayout {
     }
 
     /**
-     * 자·모음 경계에서 나뉜 한 줄: 경계 왼쪽(자음 쪽)에 consonants, 오른쪽(모음 쪽)에 vowels를 놓는다.
-     * 경계는 '자·모음 경계 위치'(자판 폭에서 자음 쪽이 차지하는 %, 기본 50 = 가운데)에 있다.
-     * 자음 키는 자음 쪽을 꽉 채우는 폭의 '자음 폭'%이고 남는 폭 안에서 '자음 위치'에 따라 놓인다.
-     * 모음 키는 모음 쪽을 꽉 채우는 폭의 '모음 폭'%이고(100%면 모음이 모음 쪽을 꽉 채운다) '모음 위치'에 따라 놓인다.
+     * 가운데에서 나뉜 한 줄: 왼쪽(자음 쪽)에 consonants, 오른쪽(모음 쪽)에 vowels를 놓는다.
+     * 자음 키는 왼쪽 절반을 꽉 채우는 폭의 '자음 폭'%이고 '자음 위치'에 따라 놓인다. 모음도 오른쪽 절반에서 같다.
+     * 폭·위치가 다른 쪽 절반으로 넘어갈 수도 있다 ({@link Prefs#balancedExtents}).
      * 키끼리의 폭 비율(키의 weight, 예: 두벌식의 1.5칸 ⌫·반 칸 빈틈)은 지킨다.
      * 세로 모드의 균형 배열에서 쓴다 (분리 키보드는 {@link #blockRow}).
      */
     private static Row splitRow(List<Key> consonants, List<Key> vowels, float height, Prefs prefs) {
-        float left = BALANCED_COLUMNS
-                * (prefs == null ? Prefs.BALANCED_BOUNDARY_DEFAULT : prefs.balancedBoundary()) / 100f;
-        float right = BALANCED_COLUMNS - left;
+        // 두 쪽의 자리 {자음 시작, 자음 폭, 모음 시작, 모음 폭} (칸). 폭이 100%를 넘거나 다른 쪽 절반으로 옮겨도 겹치지 않는다.
+        float[] b = prefs == null ? new float[]{0f, BALANCED_HALF, BALANCED_HALF, BALANCED_HALF} : prefs.balancedExtents();
         float cunits = width(consonants), vunits = width(vowels);
-        float cw = left / cunits
-                * (prefs == null ? Prefs.BALANCED_WIDTH_DEFAULT : prefs.balancedConsonantWidth()) / 100f;
-        float cpos = (prefs == null ? 50 : prefs.balancedConsonantPos()) / 100f;
-        float cfree = Math.max(0f, left - cunits * cw);
-        float cgapLeft = cfree * cpos, cgapRight = cfree - cgapLeft;
-        int pct = prefs == null ? Prefs.BALANCED_WIDTH_DEFAULT : prefs.balancedVowelWidth();
-        float v = vowels.isEmpty() ? 0f : right / vunits * pct / 100f;
-        float pos = (prefs == null ? 50 : prefs.balancedVowelPos()) / 100f;
-        float free = Math.max(0f, right - vunits * v);
-        float gapLeft = free * pos, gapRight = free - gapLeft;
+        float cw = consonants.isEmpty() ? 0f : b[1] / cunits;
+        float v = vowels.isEmpty() ? 0f : b[3] / vunits;
+        // 키가 없는 쪽은 폭을 차지하지 않는다 (그 자리는 빈틈이 된다).
+        float cTotal = consonants.isEmpty() ? 0f : b[1], vTotal = vowels.isEmpty() ? 0f : b[3];
+        float cgapLeft = b[0];
+        // 두 쪽 사이의 빈틈은 가운데(절반)에서 나눠 둔다 (두 쪽이 자기 절반 안에 있을 때 예전과 같은 모양).
+        float middle = Math.max(0f, b[2] - (b[0] + cTotal));
+        float cgapRight = Math.max(0f, Math.min(middle, BALANCED_HALF - (b[0] + cTotal)));
+        float gapLeft = middle - cgapRight;
+        float gapRight = Math.max(0f, BALANCED_COLUMNS - (b[2] + vTotal));
         List<Key> keys = new ArrayList<>();
         if (cgapLeft > 0.001f) keys.add(fn(Key.GAP, "", cgapLeft));
         for (Key k : consonants) {
@@ -461,6 +459,7 @@ public final class KeyboardLayout {
         if (gapLeft > 0.001f) keys.add(fn(Key.GAP, "", gapLeft));
         for (Key k : vowels) {
             k.weight *= v;
+            k.rightBlock = true;
             keys.add(k);
         }
         if (gapRight > 0.001f) keys.add(fn(Key.GAP, "", gapRight));
@@ -1172,11 +1171,7 @@ public final class KeyboardLayout {
 
     /** 분리 키보드의 두 묶음 {왼쪽 시작, 왼쪽 폭, 오른쪽 시작, 오른쪽 폭} (칸 단위, 줄 전체는 10칸). */
     private static float[] blocks(Prefs prefs) {
-        float lw = BALANCED_HALF * prefs.balancedConsonantWidth() / 100f;
-        float rw = BALANCED_HALF * prefs.balancedVowelWidth() / 100f;
-        float ls = (BALANCED_HALF - lw) * prefs.balancedConsonantPos() / 100f;
-        float rs = BALANCED_HALF + (BALANCED_HALF - rw) * prefs.balancedVowelPos() / 100f;
-        return new float[]{ls, lw, rs, rw};
+        return prefs.balancedExtents();
     }
 
     /**
@@ -1272,6 +1267,7 @@ public final class KeyboardLayout {
             middle.dragCursor = true;
             keys.add(middle);
         }
+        for (Key k : right) k.rightBlock = true;   // 묶음이 가운데를 넘어 옮겨 가도 오른쪽 묶음 키임을 알 수 있게
         keys.addAll(right);
         if (SPACE_ROW_UNITS - rs - rw > 0.001f) keys.add(fn(Key.GAP, "", SPACE_ROW_UNITS - rs - rw));
         return new Row(height, keys.toArray(new Key[0]));

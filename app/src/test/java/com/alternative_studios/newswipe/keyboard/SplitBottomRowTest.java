@@ -73,8 +73,8 @@ public class SplitBottomRowTest {
         FakeSp sp = new FakeSp();
         Prefs p = landscapeEditView(sp);
         sp.m.put(Prefs.NUMBER_ROW, numberRow);
-        sp.m.put(p.balancedConsonantPosKey(), s[0]);
-        sp.m.put(p.balancedVowelPosKey(), s[1]);
+        sp.m.put(p.legacyConsonantPosKey(), s[0]);
+        sp.m.put(p.legacyVowelPosKey(), s[1]);
         sp.m.put(p.balancedConsonantWidthKey(), s[2]);
         sp.m.put(p.balancedVowelWidthKey(), s[3]);
         return p;
@@ -174,9 +174,9 @@ public class SplitBottomRowTest {
     private static Prefs fullWidthLandscape(FakeSp sp) throws Exception {
         Prefs p = landscapeEditView(sp);
         sp.m.put(p.balancedConsonantWidthKey(), 100);
-        sp.m.put(p.balancedConsonantPosKey(), 0);
+        sp.m.put(p.legacyConsonantPosKey(), 0);
         sp.m.put(p.balancedVowelWidthKey(), 100);
-        sp.m.put(p.balancedVowelPosKey(), 100);
+        sp.m.put(p.legacyVowelPosKey(), 100);
         return p;
     }
 
@@ -193,24 +193,23 @@ public class SplitBottomRowTest {
     }
 
     @Test
-    public void splitBlocksDefaultToEightyPercentAtTheOuterEdges() throws Exception {
+    public void blocksDefaultToNinetyPercentAtTheOuterEdges() throws Exception {
+        // 기본값: 분리 키보드와 세로 모드 균형 배열 모두 폭 90%, 가로 위치 -10·10
+        // (가로 위치는 안쪽 경계의 자리: 왼쪽 묶음 오른쪽 경계 4.5칸, 오른쪽 묶음 왼쪽 경계 5.5칸)
         Prefs p = landscapeEditView(new FakeSp());
-        assertEquals(80, p.balancedConsonantWidth());
-        assertEquals(20, p.balancedConsonantPos());
-        assertEquals(80, p.balancedVowelWidth());
-        assertEquals(80, p.balancedVowelPos());
-        // 세로 모드의 균형 배열은 그대로 100%·가운데
         Prefs portrait = portraitView(new FakeSp());
-        assertEquals(100, portrait.balancedConsonantWidth());
-        assertEquals(50, portrait.balancedConsonantPos());
-        assertEquals(100, portrait.balancedVowelWidth());
-        assertEquals(50, portrait.balancedVowelPos());
+        for (Prefs v : new Prefs[]{p, portrait}) {
+            assertEquals(90, v.balancedConsonantWidth());
+            assertEquals(-10, v.balancedConsonantPos());
+            assertEquals(90, v.balancedVowelWidth());
+            assertEquals(10, v.balancedVowelPos());
+        }
         KeyboardLayout korean = KeyboardLayout.korean(p);
         for (int r = 0; r < 3; r++) {
             float[] h = halves(korean.rows[r]);
-            assertEquals(0.2f, h[0], 0.001f);   // 왼쪽 묶음: 폭 4칸을 왼쪽 절반(5칸)의 20% 자리에
-            assertEquals(5.8f, h[2], 0.001f);   // 오른쪽 묶음: 폭 4칸을 오른쪽 절반의 80% 자리에
-            assertEquals(9.8f, h[3], 0.001f);
+            assertEquals(0f, h[0], 0.001f);     // 왼쪽 묶음: 4.5칸, 왼쪽 끝부터
+            assertEquals(5.5f, h[2], 0.001f);   // 오른쪽 묶음: 4.5칸, 오른쪽 끝까지
+            assertEquals(10f, h[3], 0.001f);
         }
     }
 
@@ -335,7 +334,7 @@ public class SplitBottomRowTest {
         FakeSp sp = new FakeSp();
         Prefs p = landscapeEditView(sp);
         sp.m.put(p.balancedConsonantWidthKey(), 60);
-        sp.m.put(p.balancedConsonantPosKey(), 100);
+        sp.m.put(p.legacyConsonantPosKey(), 100);
         KeyboardLayout l = KeyboardLayout.korean(p);
         float total = 0f;
         boolean hasSpace = false;
@@ -445,8 +444,8 @@ public class SplitBottomRowTest {
                 Prefs p = landscapeEditView(sp);
                 sp.m.put(Prefs.GRID_LAYOUT, true);
                 if (d7) sp.m.put(Prefs.KOREAN_LAYOUT, "danmoeum7");
-                sp.m.put(p.balancedConsonantPosKey(), s[0]);
-                sp.m.put(p.balancedVowelPosKey(), s[1]);
+                sp.m.put(p.legacyConsonantPosKey(), s[0]);
+                sp.m.put(p.legacyVowelPosKey(), s[1]);
                 sp.m.put(p.balancedConsonantWidthKey(), s[2]);
                 sp.m.put(p.balancedVowelWidthKey(), s[3]);
                 KeyboardLayout en = KeyboardLayout.english(p), ko = KeyboardLayout.korean(p);
@@ -498,12 +497,16 @@ public class SplitBottomRowTest {
     public void englishAndSymbolRowsAreTheNormalRowsCutInTheMiddle() throws Exception {
         for (boolean grid : new boolean[]{false, true}) {
             FakeSp splitSp = new FakeSp(), normalSp = new FakeSp();
-            // 묶음이 절반을 꽉 채워야 일반 줄을 가운데에서 자른 것과 같다 (기본값은 폭 80%라 줄어든다).
+            // 묶음이 절반을 꽉 채워야 일반 줄을 가운데에서 자른 것과 같다 (기본값은 폭 90%라 줄어든다).
             Prefs split = fullWidthLandscape(splitSp), normal = portraitView(normalSp);
             splitSp.m.put(Prefs.GRID_LAYOUT, grid);
             normalSp.m.put(Prefs.GRID_LAYOUT, grid);
             // 격자 키 한 칸(한글 자음 키 폭)이 같도록 세로 모드도 자·모음 균형 배열로 둔다.
             normalSp.m.put(normal.balancedLayoutKey(), true);
+            normalSp.m.put(normal.balancedConsonantWidthKey(), 100);   // 절반을 꽉 채우는 모양 (기본값은 90%)
+            normalSp.m.put(normal.balancedConsonantPosKey(), 0);
+            normalSp.m.put(normal.balancedVowelWidthKey(), 100);
+            normalSp.m.put(normal.balancedVowelPosKey(), 0);
             KeyboardLayout[][] pairs = {
                     {KeyboardLayout.english(split), KeyboardLayout.english(normal)},
                     {KeyboardLayout.symbols(true, split), KeyboardLayout.symbols(true, normal)},
@@ -526,8 +529,8 @@ public class SplitBottomRowTest {
                     FakeSp sp = new FakeSp();
                     Prefs p = landscapeEditView(sp);
                     sp.m.put(Prefs.GRID_LAYOUT, grid);
-                    sp.m.put(p.balancedConsonantPosKey(), s[0]);
-                    sp.m.put(p.balancedVowelPosKey(), s[1]);
+                    sp.m.put(p.legacyConsonantPosKey(), s[0]);
+                    sp.m.put(p.legacyVowelPosKey(), s[1]);
                     sp.m.put(p.balancedConsonantWidthKey(), vw[0]);
                     sp.m.put(p.balancedVowelWidthKey(), vw[1]);
                     for (KeyboardLayout l : new KeyboardLayout[]{KeyboardLayout.english(p), KeyboardLayout.symbols(true, p),
@@ -551,6 +554,8 @@ public class SplitBottomRowTest {
         FakeSp sp = new FakeSp();
         Prefs p = portraitView(sp);
         sp.m.put(p.balancedLayoutKey(), true);
+        sp.m.put(p.balancedVowelWidthKey(), 100);   // 오른쪽 절반을 꽉 채우는 모양 (기본값은 90%)
+        sp.m.put(p.balancedVowelPosKey(), 0);
         for (int r = 0; r < 3; r++) {
             float x = 0f, from = -1f, to = 0f;
             for (Key k : KeyboardLayout.korean(p).rows[r].keys) {
@@ -573,7 +578,8 @@ public class SplitBottomRowTest {
             x += k.weight;
         }
         assertEquals(3f, to - from, 0.001f);
-        assertEquals(100, KeyboardLayout.balancedWidthMax(p));
+        // 폭은 다른 쪽이 가장 좁을 때(60%) 남는 자리까지, 곧 140%까지 넓힐 수 있다 (실제로는 다른 쪽에 막힌다)
+        assertEquals(140, KeyboardLayout.balancedWidthMax(p));
     }
 
     @Test
@@ -581,8 +587,8 @@ public class SplitBottomRowTest {
         for (int[] s : SETTINGS) {
             FakeSp sp = new FakeSp();
             Prefs p = landscapeEditView(sp);
-            sp.m.put(p.balancedConsonantPosKey(), s[0]);
-            sp.m.put(p.balancedVowelPosKey(), s[1]);
+            sp.m.put(p.legacyConsonantPosKey(), s[0]);
+            sp.m.put(p.legacyVowelPosKey(), s[1]);
             sp.m.put(p.balancedConsonantWidthKey(), s[2]);
             sp.m.put(p.balancedVowelWidthKey(), s[3]);
             sp.m.put(p.splitFnWidthKey(), 50);
@@ -660,6 +666,18 @@ public class SplitBottomRowTest {
         sp.m.put(p.splitReachColumnKey(), false);
         assertTrue(p.splitSeparateJamo());
         assertTrue(!p.splitReachColumn());
+        // 단모음의 '자·모음 분리 배열'과 NewSwipe 단모음의 '좌·우 균형 배열'은 따로 저장한다
+        sp.m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_D7);
+        assertTrue("단모음의 값이 NewSwipe 단모음에 이어지지 않는다", !p.splitReachColumn());
+        sp.m.put(p.splitReachColumnKey(), true);
+        assertTrue(p.splitReachColumn());
+        sp.m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_8);
+        assertTrue("NewSwipe 단모음의 값이 단모음에 이어지지 않는다", p.splitSeparateJamo() && !p.splitReachColumn());
+        // 배열별로 나누기 전의 값은 값을 정하기 전까지 그 배열이 이어 쓴다
+        FakeSp old = new FakeSp();
+        Prefs q = c.newInstance(old, false, Prefs.PROFILE_LANDSCAPE, true);
+        old.m.put("split_reach_column", false);
+        assertTrue(q.splitSeparateJamo());
     }
 
     @Test

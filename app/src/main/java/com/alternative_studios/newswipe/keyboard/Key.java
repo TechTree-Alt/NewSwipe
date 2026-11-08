@@ -66,6 +66,8 @@ public final class Key {
     boolean hidden;
     /** 분리 키보드의 가운데 빈 자리(SPACER): 누르면 아무 키도 입력되지 않지만, 옆으로 밀면 커서를 옮길 수 있다. */
     boolean dragCursor;
+    /** 자·모음 균형 배열에서 오른쪽(모음) 쪽에 놓인 키. 두 쪽이 가운데를 넘어 옮겨 가도 어느 쪽 키인지 알 수 있게 한다. */
+    boolean rightBlock;
     /** 일본어 12키 플릭 키: 키 위에 네 방향 글자를 작게 그린다. */
     boolean flick;
     /** 길게 눌러 연속 입력으로 정해 둔 글자여도 연속 입력을 쓰지 않는다 (이메일·인터넷 주소 입력란의 온점 키). */
@@ -75,6 +77,11 @@ public final class Key {
     /** 분리 키보드의 가운데 빈 자리인지 (두 묶음을 가르는 곳). */
     public boolean isDragCursor() {
         return dragCursor;
+    }
+
+    /** 자·모음 균형 배열의 오른쪽(모음) 쪽 키인지. */
+    public boolean isRightBlock() {
+        return rightBlock;
     }
 
     public boolean isHidden() {

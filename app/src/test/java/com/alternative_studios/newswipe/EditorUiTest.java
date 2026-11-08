@@ -273,7 +273,7 @@ public class EditorUiTest {
         idle();
         android.graphics.RectF letters = new android.graphics.RectF();
         p.areaBounds(KeyboardPreview.AREA_LETTERS, letters);
-        float[] knob = handle(p, 2);   // ↕ 버튼
+        float[] knob = handle(p, 2);   // 글자 키 위 가장자리의 높이 손잡이
         drag(overlay, knob[0], knob[1], 0, -170);
         p.select(null);
         idle();
@@ -338,17 +338,19 @@ public class EditorUiTest {
         p.select(KeyboardPreview.Selection.area(KeyboardPreview.AREA_NUMBER));
         idle();
         android.graphics.RectF nr = new android.graphics.RectF();
-        p.areaBounds(KeyboardPreview.AREA_NUMBER, nr);
+        p.padBounds(KeyboardPreview.AREA_NUMBER, nr);
         java.lang.reflect.Method hc = KeyboardPreview.class.getDeclaredMethod("handleCenter", KeyboardPreview.Handle.class, float[].class);
         hc.setAccessible(true);
         float[] pt = new float[2];
         hc.invoke(p, KeyboardPreview.Handle.values()[1], pt);
         log("number row handle y=" + pt[1] + " outline top=" + nr.top);
         float inset = 9 * a.getResources().getDisplayMetrics().density;
-        assertEquals(nr.centerY(), pt[1], 1f);   // 숫자 줄 가운데의 ↕ 버튼
+        assertEquals(Math.max(nr.top, 0) + inset, pt[1], 1f);   // 숫자 줄 윤곽선 위 가장자리(조금 안쪽)의 높이 손잡이
+        assertEquals(nr.centerX(), pt[0], 1f);
         shot(a, "12b-number-handle");
         drag(overlay, pt[0], pt[1], 0, -60);
         log("numberRow " + nrBefore + " -> " + prefs.numberRowHeight());
+        assertTrue(prefs.numberRowHeight() > nrBefore);   // 위 가장자리를 위로 끌면 높아진다
         // 도구 막대 손잡이
         int tbBefore = prefs.toolbarHeight();
         p.select(KeyboardPreview.Selection.area(KeyboardPreview.AREA_TOOLBAR));
@@ -914,11 +916,11 @@ public class EditorUiTest {
         assertTrue((Boolean) shownM.invoke(p, KeyboardPreview.Handle.values()[7]));
         assertFalse((Boolean) shownM.invoke(p, KeyboardPreview.Handle.values()[2]));
         android.graphics.RectF fr = new android.graphics.RectF();
-        p.areaBounds(KeyboardPreview.AREA_FUNCTION, fr);
+        p.padBounds(KeyboardPreview.AREA_FUNCTION, fr);
         float[] fpt = new float[2];
         hc.invoke(p, KeyboardPreview.Handle.values()[7], fpt);
         log("fn handle y=" + fpt[1] + " outline top=" + fr.top);
-        assertEquals(fr.centerY(), fpt[1], 1f);   // 기능키 줄 가운데의 ↕ 버튼
+        assertEquals(fr.top + 9 * a.getResources().getDisplayMetrics().density, fpt[1], 1f);   // 기능키 윤곽선 위 가장자리의 손잡이
         int fn0 = prefs.fnRowHeight();
         java.lang.reflect.Method ha = KeyboardPreview.class.getDeclaredMethod("handleAt", float.class, float.class);
         ha.setAccessible(true);
@@ -987,7 +989,8 @@ public class EditorUiTest {
         swipe(p.getChildAt(1), p.getWidth() * 0.5f, p.getHeight() / 2f, -60, 0);
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(400));
         assertEquals(KeyboardPreview.LAYER_AREA, p.layer());
-        // 영역 페이지에서 영역을 누르면: 설정 창(맨 아래 '여백'), 가장자리의 여백 손잡이, 가운데의 ↕ 버튼
+        // 영역 페이지에서 영역을 누르면: 설정 창(맨 아래 '여백' 슬라이더)과 그 영역 위 가장자리의 높이 손잡이.
+        // 영역마다의 여백은 슬라이더로만 바꾼다 (여백 손잡이는 없다).
         java.lang.reflect.Method shown = KeyboardPreview.class.getDeclaredMethod("handleShown", KeyboardPreview.Handle.class);
         shown.setAccessible(true);
         tapArea(p, KeyboardPreview.AREA_LETTERS);
@@ -996,84 +999,53 @@ public class EditorUiTest {
         String pt = visibleTexts(cur(a));
         log("LETTERS SHEET END:\n" + pt);
         assertTrue(pt.contains("여백") && pt.contains("왼쪽 여백") && pt.contains("아래쪽 여백"));
-        assertTrue((Boolean) shown.invoke(p, KeyboardPreview.Handle.values()[8]) && (Boolean) shown.invoke(p, KeyboardPreview.Handle.values()[9]) && (Boolean) shown.invoke(p, KeyboardPreview.Handle.values()[10])
-                && (Boolean) shown.invoke(p, KeyboardPreview.Handle.values()[11]) && (Boolean) shown.invoke(p, KeyboardPreview.Handle.values()[2]));
-        assertFalse((Boolean) shown.invoke(p, KeyboardPreview.Handle.values()[3]));
-        // ↕ 버튼: 영역 가운데. 누르면 안내, 위로 끌면 키보드 높이가 커진다
+        for (KeyboardPreview.Handle h : KeyboardPreview.Handle.values()) {
+            assertEquals(h.name(), h == KeyboardPreview.Handle.HEIGHT, (Boolean) shown.invoke(p, h));
+        }
+        // 높이 손잡이: 글자 키 윤곽선 위 가장자리(조금 안쪽), 가로 가운데. 위로 끌면 키보드 높이가 커진다 (5% 단위)
         java.lang.reflect.Method hcm0 = KeyboardPreview.class.getDeclaredMethod("handleCenter", KeyboardPreview.Handle.class, float[].class);
         hcm0.setAccessible(true);
         float[] kp = new float[2];
-        hcm0.invoke(p, KeyboardPreview.Handle.values()[2], kp);
+        hcm0.invoke(p, KeyboardPreview.Handle.HEIGHT, kp);
         android.graphics.RectF lr0 = new android.graphics.RectF();
-        p.areaBounds(KeyboardPreview.AREA_LETTERS, lr0);
-        assertEquals(lr0.centerX(), kp[0], 1f);   // 글자 키 영역은 정중앙 (위·아래 여백 손잡이는 가장자리라 겹치지 않는다)
-        assertEquals(lr0.centerY(), kp[1], 1f);
-        float[] topH = handle(p, 9);
-        assertEquals(lr0.centerX(), topH[0], 1f);
-        java.lang.reflect.Field kh = KeyboardPreview.class.getDeclaredField("knobHint");
-        kh.setAccessible(true);
-        assertNull(kh.get(p));
-        // 누르고 있는 동안 안내가 보이고, 떼면 잠깐 뒤 사라진다
-        touch(p.getChildAt(1), MotionEvent.ACTION_DOWN, kp[0], kp[1]);
-        assertEquals(KeyboardPreview.Handle.HEIGHT, kh.get(p));
-        assertTrue(open(a));   // 버튼을 눌러도 창은 그대로
-        shot(a, "85h-knob-hint");
-        touch(p.getChildAt(1), MotionEvent.ACTION_UP, kp[0], kp[1]);
-        idle();
-        java.lang.reflect.Field kt = KeyboardPreview.class.getDeclaredField("knobHintUntil");
-        kt.setAccessible(true);
-        assertTrue((Long) kt.get(p) < Long.MAX_VALUE);
+        p.padBounds(KeyboardPreview.AREA_LETTERS, lr0);
+        float in9 = 9 * a.getResources().getDisplayMetrics().density;
+        assertEquals(lr0.centerX(), kp[0], 1f);
+        assertEquals(Math.max(lr0.top, 0) + in9, kp[1], 1f);
+        assertFalse(java.util.Arrays.stream(KeyboardPreview.class.getDeclaredFields()).anyMatch(f -> f.getName().startsWith("knob")));
+        shot(a, "85h-height-handle");
         int kbh0 = prefs.keyboardHeight();
         drag(p.getChildAt(1), kp[0], kp[1], 0, -150);
-        log("knob height " + kbh0 + " -> " + prefs.keyboardHeight());
-        assertEquals(0, prefs.keyboardHeight() % 5);   // 높이는 5% 단위로 움직인다
+        log("letters height " + kbh0 + " -> " + prefs.keyboardHeight());
+        assertEquals(0, prefs.keyboardHeight() % 5);
         assertTrue(prefs.keyboardHeight() > kbh0);
+        assertTrue(open(a));   // 끌어도 창은 그대로
         prefs.raw().edit().putInt(Prefs.KEYBOARD_HEIGHT, kbh0).commit();
         idle();
-        java.lang.reflect.Method hcm = KeyboardPreview.class.getDeclaredMethod("handleCenter", KeyboardPreview.Handle.class, float[].class);
-        hcm.setAccessible(true);
-        float[] lp = new float[2];
-        hcm.invoke(p, KeyboardPreview.Handle.values()[8], lp);
-        drag(p.getChildAt(1), lp[0], lp[1], 150, 0);
-        int lettersLeft = prefs.areaPadDp(KeyboardPreview.AREA_LETTERS, Prefs.SIDE_LEFT);
-        log("letters left pad 0 -> " + lettersLeft);
-        assertTrue(lettersLeft > 0);
-        assertTrue(visibleTexts(cur(a)).contains(lettersLeft + "dp"));   // 슬라이더도 같이 움직였다
-        float[] bp = new float[2];
-        hcm.invoke(p, KeyboardPreview.Handle.values()[11], bp);
-        drag(p.getChildAt(1), bp[0], bp[1], 0, -150);
-        int lettersBottom = prefs.areaPadDp(KeyboardPreview.AREA_LETTERS, Prefs.SIDE_BOTTOM);
-        log("letters bottom pad 0 -> " + lettersBottom);
-        assertTrue(lettersBottom > 0);
-        Key q = key(p, "ㅂ", Key.CHAR);
-        Key sym = key(p, null, Key.TO_SYMBOLS);
-        assertTrue(q.rect.left > sym.rect.left + 10);
-        shot(a, "85e-pad-letters");
-        // 도구 막대도 네 방향 모두
+        // 아래로 끌면 낮아진다
+        hcm0.invoke(p, KeyboardPreview.Handle.HEIGHT, kp);
+        drag(p.getChildAt(1), kp[0], kp[1], 0, 80);
+        assertTrue(prefs.keyboardHeight() < kbh0);
+        prefs.raw().edit().putInt(Prefs.KEYBOARD_HEIGHT, kbh0).commit();
+        idle();
+        // 도구 막대: 위 가장자리의 높이 손잡이만
         tapArea(p, KeyboardPreview.AREA_TOOLBAR);
-        assertTrue((Boolean) shown.invoke(p, KeyboardPreview.Handle.values()[8]) && (Boolean) shown.invoke(p, KeyboardPreview.Handle.values()[10])
-                && (Boolean) shown.invoke(p, KeyboardPreview.Handle.values()[9]) && (Boolean) shown.invoke(p, KeyboardPreview.Handle.values()[11]) && (Boolean) shown.invoke(p, KeyboardPreview.Handle.values()[0]));
+        for (KeyboardPreview.Handle h : KeyboardPreview.Handle.values()) {
+            assertEquals(h.name(), h == KeyboardPreview.Handle.TOOLBAR, (Boolean) shown.invoke(p, h));
+        }
         cur(a).scrollTo(0, 99999); idle();
-        assertTrue(visibleTexts(cur(a)).contains("위쪽 여백"));
-        View barV = ((ViewGroup) p.getChildAt(0)).getChildAt(0);
-        int barTop0 = barV.getTop(), keysTop0 = find(p, KeyboardView.class).getTop();
+        assertTrue(visibleTexts(cur(a)).contains("위쪽 여백"));   // 여백은 슬라이더로
         float[] tb = new float[2];
-        hcm.invoke(p, KeyboardPreview.Handle.values()[11], tb);
-        drag(p.getChildAt(1), tb[0], tb[1], 0, -150);
-        int barBottomPad = prefs.areaPadDp(KeyboardPreview.AREA_TOOLBAR, Prefs.SIDE_BOTTOM);
-        int keysTop1 = find(p, KeyboardView.class).getTop();
-        log("toolbar bottom pad 0 -> " + barBottomPad + " gap bar->keys " + (keysTop0 - barV.getBottom()) + " -> "
-                + (keysTop1 - barV.getBottom()));
-        assertTrue(barBottomPad > 0);
-        assertEquals(Math.round(barBottomPad * a.getResources().getDisplayMetrics().density), keysTop1 - barV.getBottom());
-        shot(a, "85g-pad-toolbar");
-        prefs.raw().edit().remove(Prefs.areaPadKey(KeyboardPreview.AREA_TOOLBAR, Prefs.SIDE_BOTTOM)).commit();
+        hcm0.invoke(p, KeyboardPreview.Handle.TOOLBAR, tb);
+        int tbh0 = prefs.toolbarHeight();
+        drag(p.getChildAt(1), tb[0], tb[1], 0, -60);
+        log("toolbar height " + tbh0 + " -> " + prefs.toolbarHeight());
+        assertTrue(prefs.toolbarHeight() > tbh0);
+        shot(a, "85g-toolbar-height");
+        prefs.raw().edit().remove(Prefs.TOOLBAR_HEIGHT).commit();
         idle();
         a.onBackPressed(); idle();
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(400));
-        prefs.raw().edit().remove(Prefs.areaPadKey(KeyboardPreview.AREA_LETTERS, Prefs.SIDE_LEFT))
-                .remove(Prefs.areaPadKey(KeyboardPreview.AREA_LETTERS, Prefs.SIDE_BOTTOM)).commit();
-        idle();
         // 오른쪽으로 밀면 키보드 페이지 (더 밀어도 그대로)
         swipe(p.getChildAt(1), p.getWidth() * 0.2f, p.getHeight() / 2f, p.getWidth() * 0.5f, 0);
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(400));
@@ -1087,7 +1059,8 @@ public class EditorUiTest {
         assertTrue((Boolean) shown.invoke(p, KeyboardPreview.Handle.values()[3]) && (Boolean) shown.invoke(p, KeyboardPreview.Handle.values()[6]));   // 눌러서 고르면 키보드 전체 여백 손잡이
         pt = visibleTexts(cur(a));
         assertTrue(pt.contains("키보드 여백") && pt.contains("위쪽 여백"));
-        assertTrue(pt.contains("키 모양") && pt.contains("키 사이 좌우 간격") && pt.contains("분리 키보드"));
+        assertTrue(pt.contains("키 모양") && pt.contains("키 사이 좌우 간격"));
+        assertFalse(pt.contains("분리 키보드"));   // 분리 키보드는 한글 글자 키 창의 '상세 배열'에서 정한다
         shot(a, "85f-board-sheet");
         a.onBackPressed(); idle();
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(400));
@@ -1195,7 +1168,7 @@ public class EditorUiTest {
             assertTrue(Math.abs(r.left - q.rect.left) < 12 * a.getResources().getDisplayMetrics().density);
             shot(a, "95-board-pad-" + pads[0]);
         }
-        // 여백 층: 글자 키 위·아래 여백만큼 윤곽선과 손잡이가 바깥으로
+        // 여백 층: 글자 키 위·아래 여백만큼 윤곽선과 높이 손잡이가 바깥으로
         prefs.raw().edit().putInt(Prefs.areaPadKey(KeyboardPreview.AREA_LETTERS, Prefs.SIDE_TOP), 12)
                 .putInt(Prefs.areaPadKey(KeyboardPreview.AREA_LETTERS, Prefs.SIDE_BOTTOM), 16).commit();
         idle();
@@ -1209,8 +1182,8 @@ public class EditorUiTest {
         float d = a.getResources().getDisplayMetrics().density;
         assertEquals(ar.top - 12 * d, pr.top, 1f);
         assertEquals(ar.bottom + 16 * d, pr.bottom, 1f);
-        hc.invoke(p, KeyboardPreview.Handle.values()[9], pt); assertEquals(pr.top + in, pt[1], 1f);
-        hc.invoke(p, KeyboardPreview.Handle.values()[11], pt); assertEquals(pr.bottom - in, pt[1], 1f);
+        // 높이 손잡이는 여백을 더한 윤곽선의 위 가장자리에 붙는다
+        hc.invoke(p, KeyboardPreview.Handle.HEIGHT, pt); assertEquals(pr.top + in, pt[1], 1f);
         shot(a, "96-pad-letters-outer");
         prefs.raw().edit().remove(Prefs.PAD_TOP).remove(Prefs.PAD_BOTTOM).remove(Prefs.PAD_LEFT).remove(Prefs.PAD_RIGHT)
                 .remove(Prefs.areaPadKey(KeyboardPreview.AREA_LETTERS, Prefs.SIDE_TOP))
@@ -1316,16 +1289,67 @@ public class EditorUiTest {
         key(p, "ㅛ", Key.CHAR);
         key(p, null, Key.SHIFT);
         assertTrue(visibleTexts(cur(a)).contains("두벌식은 컴퓨터 키보드와 같은 표준 한글 배열입니다."));
-        assertTrue(visibleTexts(cur(a)).contains("자·모음 균형 배열"));
+        assertTrue(visibleTexts(cur(a)).contains("상세 배열\n  사용 안 함"));
+        assertFalse(visibleTexts(cur(a)).contains("반으로 나"));   // '사용 안 함'이면 상세 배열 설명이 없다
+        assertFalse(visibleTexts(cur(a)).contains("왼쪽 묶음 폭"));
         assertFalse(visibleTexts(cur(a)).contains("영어 자판도 균형 배열"));   // 균형 배열을 켠 뒤에만 보인다
         assertFalse(visibleTexts(cur(a)).contains("영어 자판 아래로 밀어 대문자 입력"));   // 영어 글자 키 창에만 있다
         shot(a, "a0-dubeolsik");
         // 균형 배열: 자음은 왼쪽 절반, 모음은 오른쪽 절반으로 나누되 각 쪽 안의 자리는 일반 두벌식 그대로
-        View row = (View) findText(cur(a), "자·모음 균형 배열").getParent().getParent();
-        row.performClick();
+        // 상세 배열: 스페이스바 길게 누르기처럼 줄을 눌러 사용 안 함·자·모음 균형 배열·분리 키보드 중에서 고른다
+        ((View) findText(cur(a), "상세 배열").getParent()).performClick();
         idle();
+        AlertDialog detail = (AlertDialog) ShadowDialog.getLatestDialog();
+        assertEquals(3, detail.getListView().getCount());
+        shadowOf(detail).clickOnItem(2);   // 분리 키보드
+        idle();
+        assertTrue(prefs.portraitSplit());
+        assertTrue(prefs.raw().getBoolean(Prefs.PORTRAIT_SPLIT, false));
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
+        String st = visibleTexts(cur(a));
+        assertTrue(st, st.contains("상세 배열\n  분리 키보드"));
+        // 고르면 창을 다시 열지 않아도 분리 키보드 섹션이 바로 보이고, 설명은 분리 키보드의 것만
+        assertTrue(st, st.contains("왼쪽 묶음 폭") && st.contains("오른쪽 묶음 가로 위치"));
+        assertTrue(st, st.contains("분리 키보드는 키보드 전체를 반으로 나눕니다. 영어 자판과 기호 자판에도 적용됩니다."));
+        assertFalse(st, st.contains("자·모음 균형 배열은"));
+        assertFalse(st, st.contains("자음 키 폭"));   // 자·모음 균형 배열 섹션은 균형 배열을 골랐을 때만
+        assertFalse(st, st.contains("자·모음 분리 배열"));   // 두벌식에는 분리 키보드의 하위 토글이 없다
+        findText(cur(a), "단모음").performClick();   // 분리 키보드는 모든 배열이 함께 쓴다
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
+        assertTrue(prefs.portraitSplit());
+        String dt = visibleTexts(cur(a));
+        assertTrue(dt, dt.contains("상세 배열\n  분리 키보드"));
+        // 단모음: 분리 키보드의 하위 항목으로 '자·모음 분리 배열' 토글이 상세 배열 바로 아래(설명보다 위)에 보인다
+        assertTrue(dt, dt.contains("상세 배열\n  분리 키보드\n  자·모음 분리 배열"));
+        findText(cur(a), "NewSwipe 단모음").performClick();
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
+        String nt = visibleTexts(cur(a));
+        assertTrue(nt, nt.contains("좌·우 균형 배열") && !nt.contains("자·모음 분리 배열"));
+        findText(cur(a), "두벌식").performClick();
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
+        assertTrue(prefs.portraitSplit());
+        assertFalse(visibleTexts(cur(a)).contains("좌·우 균형 배열"));
+        ((View) findText(cur(a), "상세 배열").getParent()).performClick();
+        idle();
+        shadowOf((AlertDialog) ShadowDialog.getLatestDialog()).clickOnItem(1);   // 자·모음 균형 배열
+        idle();
+        assertFalse(prefs.portraitSplit());
         assertTrue(prefs.balancedLayout());
-        assertTrue(prefs.raw().getBoolean(Prefs.BALANCED_LAYOUT + "_" + Prefs.KOREAN_LAYOUT_DUBEOLSIK, false));
+        assertTrue(prefs.raw().getBoolean(Prefs.BALANCED_LAYOUT, false));
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
+        String bt = visibleTexts(cur(a));
+        assertFalse(bt, bt.contains("왼쪽 묶음 폭"));   // 분리 키보드 섹션은 접힌다
+        assertTrue(bt, bt.contains("자·모음 균형 배열은 한글 글자 키 영역을 반으로 나눠 각각에 자음과 모음을 놓습니다."));
+        assertFalse(bt, bt.contains("분리 키보드는"));
+        // 균형 배열 사용자화의 슬라이더가 한글 글자 키 창의 '자·모음 균형 배열' 섹션으로 나와 바로 보인다
+        assertTrue(bt, bt.contains("자음 키 폭") && bt.contains("모음 가로 위치"));
+        assertFalse(bt, bt.contains("자·모음 경계 위치"));   // 경계 위치 설정은 없앴다
+        assertFalse(bt, bt.contains("균형 배열 사용자화"));
+        // 미리보기: 글자 키를 고른 채이면 자음·모음 쪽의 왼쪽·오른쪽 경계 손잡이가 보인다
+        java.lang.reflect.Method bShown = KeyboardPreview.class.getDeclaredMethod("handleShown", KeyboardPreview.Handle.class);
+        bShown.setAccessible(true);
+        for (KeyboardPreview.Handle bh : new KeyboardPreview.Handle[]{KeyboardPreview.Handle.B_LEFT_START, KeyboardPreview.Handle.B_LEFT_END,
+                KeyboardPreview.Handle.B_RIGHT_START, KeyboardPreview.Handle.B_RIGHT_END}) assertTrue(bh.name(), (Boolean) bShown.invoke(p, bh));
         assertTrue(visibleTexts(cur(a)).contains("영어 자판도 균형 배열"));
         View enRow = (View) findText(cur(a), "영어 자판도 균형 배열").getParent().getParent();
         enRow.performClick();
@@ -1351,11 +1375,11 @@ public class EditorUiTest {
         idle();
         assertEquals(10, p.layout().columns);
         shot(a, "a2-dubeolsik-balanced-grid");
-        // 다른 배열로 바꾸면 그 배열의 균형 배열 값으로 (두벌식의 값은 기억)
+        // 균형 배열 값은 모든 한글 배열이 함께 쓴다
         findText(cur(a), "단모음").performClick();
         idle();
         assertFalse(prefs.koreanDubeolsik());
-        assertEquals(8, p.layout().columns);
+        assertTrue(prefs.balancedLayout());
         findText(cur(a), "두벌식").performClick();
         idle();
         assertTrue(prefs.balancedLayout());
@@ -1380,7 +1404,7 @@ public class EditorUiTest {
         assertFalse(prefs.raw().contains(Prefs.KOREAN_SHIFT_HIDDEN));
         pre.raw().edit().remove(Prefs.DUBEOLSIK_SHIFT_HIDDEN).commit();
         pre.raw().edit().remove(Prefs.KOREAN_LAYOUT).remove(Prefs.LANDSCAPE_SPLIT).remove(Prefs.NUMBER_ROW)
-                .remove(Prefs.BALANCED_LAYOUT + "_" + Prefs.KOREAN_LAYOUT_DUBEOLSIK).commit();
+                .remove(Prefs.BALANCED_LAYOUT).remove(Prefs.PORTRAIT_SPLIT).commit();
     }
 
     /**
@@ -1483,81 +1507,191 @@ public class EditorUiTest {
     }
 
     /**
-     * 균형 배열 사용자화: 화면 아래 미리보기의 자음·모음 쪽 ↔ 버튼을 좌우로 끌면 키 폭, 길게 누른 뒤 끌면 가로 위치,
-     * 경계선 손잡이를 끌면 자·모음 경계 위치가 5% 단위로 바뀌고 슬라이더도 따라간다.
+     * 자·모음 균형 배열: 키보드 사용자화 미리보기에서 글자 키를 고르면 자음·모음 쪽마다 왼쪽·오른쪽 가장자리에 경계 손잡이가 생긴다.
+     * 끄는 쪽 가장자리만 손가락을 따라 움직이고(반대쪽은 그대로) 폭(5% 단위)·가로 위치가 함께 바뀌며, 슬라이더도 따라간다.
+     * 묶음 가운데의 ↔ 버튼을 끌면 폭은 그대로 묶음이 옮겨 간다.
+     * 다른 쪽 묶음 가장자리를 넘지 못하고, 자리가 있으면 폭이 100%를 넘는다. 두 쪽 윤곽선 사이는 늘 2dp 이상이고,
+     * 글자 키 높이 손잡이는 윤곽선 위 가장자리 가운데에 있다.
      */
     @Test
-    public void balancedLayoutWysiwyg() throws Exception {
+    public void balancedBlocksInTheEditor() throws Exception {
         Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
-        pre.raw().edit().putBoolean(pre.balancedLayoutKey(), true).commit();
-        SettingsActivity a = launch("keyarea");
+        // 두 쪽이 가운데에서 맞닿는 모양(폭 100%, 위치 0)에서 시작한다 (기본값은 폭 90%라 가운데가 벌어져 있다)
+        pre.raw().edit().putBoolean(pre.balancedLayoutKey(), true)
+                .putInt(pre.balancedConsonantWidthKey(), 100).putInt(pre.balancedConsonantPosKey(), 0)
+                .putInt(pre.balancedVowelWidthKey(), 100).putInt(pre.balancedVowelPosKey(), 0).commit();
+        SettingsActivity a = launch("keyboard");
         View decor = a.getWindow().getDecorView();
-        assertNotNull(findText(decor, "균형 배열 사용자화"));
-        // 키보드 사용자화처럼 실제 키보드가 미리보기를 덮는다 (화면을 줄이지 않는다)
-        assertEquals(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING,
-                a.getWindow().getAttributes().softInputMode & android.view.WindowManager.LayoutParams.SOFT_INPUT_MASK_ADJUST);
         KeyboardPreview p = find(decor, KeyboardPreview.class);
-        assertNotNull(p);
+        tapArea(p, KeyboardPreview.AREA_LETTERS);
+        assertTrue(open(a));
+        assertTrue(visibleTexts(cur(a)).contains("자음 키 폭"));
         View overlay = p.getChildAt(1);
         java.lang.reflect.Method hc = KeyboardPreview.class.getDeclaredMethod("handleCenter", KeyboardPreview.Handle.class, float[].class);
         hc.setAccessible(true);
-        float[] cons = new float[2], vow = new float[2], bnd = new float[2];
-        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_CONSONANT, cons));
-        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_VOWEL, vow));
-        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_BOUNDARY, bnd));
-        assertFalse((Boolean) hc.invoke(p, KeyboardPreview.Handle.HEIGHT, new float[2]));   // 다른 손잡이는 없다
-        assertTrue(cons[0] < bnd[0] && bnd[0] < vow[0]);
-        shot(a, "c0-balanced-wysiwyg");
-        // 자음 ↔ 버튼을 왼쪽으로 끌면 자음 키 폭이 줄어든다 (5단위)
-        int w0 = pre.balancedConsonantWidth();
-        drag(overlay, cons[0], cons[1], -120, 0);
-        int w1 = pre.balancedConsonantWidth();
-        log("consonant width " + w0 + " -> " + w1);
-        assertTrue(w1 < w0);
-        assertEquals(0, w1 % 5);
-        assertTrue(visibleTexts(cur(a)).contains(w1 + "%"));   // 슬라이더도 따라간다
-        // 길게 누른 뒤 끌면 가로 위치가 바뀐다 (폭은 그대로)
-        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_CONSONANT, cons));
-        int pos0 = pre.balancedConsonantPos();
-        t0 = SystemClock.uptimeMillis();
-        touch(overlay, MotionEvent.ACTION_DOWN, cons[0], cons[1]);
-        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(
-                android.view.ViewConfiguration.getLongPressTimeout() + 100));
-        shot(a, "c1-balanced-long-press");
-        for (int s = 1; s <= 10; s++) {
-            touch(overlay, MotionEvent.ACTION_MOVE, cons[0] - 12 * s, cons[1]);
-            idle();
-        }
-        touch(overlay, MotionEvent.ACTION_UP, cons[0] - 120, cons[1]);
+        float dp = a.getResources().getDisplayMetrics().density, in = 9 * dp;
+        android.graphics.RectF l = new android.graphics.RectF(), r = new android.graphics.RectF();
+        assertTrue(p.blockBounds(true, l) && p.blockBounds(false, r));
+        // 두 쪽 모두 폭 100%로 맞닿아도 윤곽선 사이는 2dp 이상
+        assertTrue((r.left - l.right) + " < 2dp", r.left - l.right >= 2 * dp - 0.5f);
+        // 경계 손잡이: 각 쪽 윤곽선의 왼쪽·오른쪽 가장자리(조금 안쪽), 세로 가운데
+        float[] ls = new float[2], le = new float[2], rs = new float[2], re = new float[2], height = new float[2];
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_LEFT_START, ls));
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_LEFT_END, le));
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_RIGHT_START, rs));
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_RIGHT_END, re));
+        assertEquals(l.left + in, ls[0], 1f);
+        assertEquals(l.right - in, le[0], 1f);
+        assertEquals(r.left + in, rs[0], 1f);
+        assertEquals(r.right - in, re[0], 1f);
+        assertEquals(l.centerY(), ls[1], 1f);
+        // 글자 키 높이 손잡이: 두 쪽 각각의 위 가장자리 가운데에 하나씩, 둘 다 글자 키 전체 높이를 바꾼다
+        float[] height2 = new float[2];
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.HEIGHT, height));
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.HEIGHT_RIGHT, height2));
+        assertEquals(l.centerX(), height[0], 1f);
+        assertEquals(l.top + in, height[1], 1f);
+        assertEquals(r.centerX(), height2[0], 1f);
+        assertEquals(r.top + in, height2[1], 1f);
+        int kh0 = pre.keyboardHeight();
+        drag(overlay, height2[0], height2[1], 0, -120);
+        log("letters height (right handle) " + kh0 + " -> " + pre.keyboardHeight());
+        assertTrue(pre.keyboardHeight() > kh0);
+        pre.raw().edit().putInt(Prefs.KEYBOARD_HEIGHT, kh0).commit();
         idle();
-        log("consonant pos " + pos0 + " -> " + pre.balancedConsonantPos());
-        assertTrue(pre.balancedConsonantPos() < pos0);
-        assertEquals(0, pre.balancedConsonantPos() % 5);
-        assertEquals(w1, pre.balancedConsonantWidth());
-        // 경계선 손잡이를 오른쪽으로 끌면 자·모음 경계가 오른쪽으로 (5단위, 30~70)
-        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_BOUNDARY, bnd));
-        int b0 = pre.balancedBoundary();
-        drag(overlay, bnd[0], bnd[1], 200, 0);
-        int b1 = pre.balancedBoundary();
-        log("boundary " + b0 + " -> " + b1);
-        assertTrue(b1 > b0);
-        assertEquals(0, b1 % 5);
-        assertTrue(b1 <= Prefs.BALANCED_BOUNDARY_MAX);
-        // 모음 ↔ 버튼도 같다
-        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_VOWEL, vow));
-        int v0 = pre.balancedVowelWidth();
-        drag(overlay, vow[0], vow[1], 100, 0);   // 모음 쪽은 자음 쪽과 반대: 오른쪽으로 끌면 좁아진다
-        int v1 = pre.balancedVowelWidth();
-        assertTrue(v1 < v0);
-        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_VOWEL, vow));
-        drag(overlay, vow[0], vow[1], -100, 0);   // 왼쪽으로 끌면 넓어진다
-        assertTrue(pre.balancedVowelWidth() > v1);
-        // 고르기·넘기기는 하지 않는다
-        tap(overlay, vow[0] + 60, vow[1] - 40);
-        assertNull(p.selection());
-        shot(a, "c2-balanced-after");
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.HEIGHT, height));
+        drag(overlay, height[0], height[1], 0, 150);   // 움직임 문턱을 넘고도 5% 넘게 움직이는 거리
+        assertTrue("height " + kh0 + " -> " + pre.keyboardHeight(), pre.keyboardHeight() < kh0);
+        pre.raw().edit().putInt(Prefs.KEYBOARD_HEIGHT, kh0).commit();
+        idle();
+        assertTrue(p.blockBounds(true, l) && p.blockBounds(false, r));
+        shot(a, "c0-balanced-editor");
+        float unit = (r.right - l.left) / 10f;   // 한 칸 (px)
+        // 자음 쪽 오른쪽 경계를 왼쪽으로 한 칸: 폭이 줄고 왼쪽 경계(시작)는 그대로, 슬라이더도 따라간다
+        float[] e0 = pre.balancedExtents();
+        int w0 = pre.balancedConsonantWidth();
+        drag(overlay, le[0], le[1], -unit, 0);
+        float[] e1 = pre.balancedExtents();
+        int w1 = pre.balancedConsonantWidth();
+        log("consonant width " + w0 + " -> " + w1 + ", start " + e0[0] + " -> " + e1[0]);
+        assertTrue(w1 < w0);
+        assertEquals(0, w1 % 5);   // 폭은 5% 단위로 움직인다
+        assertEquals(e0[0], e1[0], 0.06f);
+        assertTrue(visibleTexts(cur(a)).contains(w1 + "%"));
+        // 모음 쪽 왼쪽 경계를 왼쪽으로 많이 끌면 자음 쪽 끝에서 멈추고(겹치지 않는다), 오른쪽 끝은 그대로라 폭이 100%를 넘는다
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_RIGHT_START, rs));
+        drag(overlay, rs[0], rs[1], -400, 0);
+        float[] e2 = pre.balancedExtents();
+        log("vowel width " + pre.balancedVowelWidth() + " extents " + java.util.Arrays.toString(e2));
+        assertTrue(e2[0] + e2[1] <= e2[2] + 1e-4f);
+        assertEquals(e1[0] + e1[1], e2[2], 0.06f);
+        assertEquals(10f, e2[2] + e2[3], 0.06f);
+        assertTrue(pre.balancedVowelWidth() > 100);
+        assertTrue(p.blockBounds(true, l) && p.blockBounds(false, r));
+        assertTrue(r.left - l.right >= 2 * dp - 0.5f);
+        // 자음 쪽 왼쪽 경계를 오른쪽으로: 시작이 옮겨 가고 끝은 그대로
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_LEFT_START, ls));
+        drag(overlay, ls[0], ls[1], unit * 0.6f, 0);   // 폭이 최솟값(60%)보다 넓게 남는 거리
+        float[] e3 = pre.balancedExtents();
+        assertTrue(e3[0] > e2[0] + 0.05f);
+        assertEquals(e2[0] + e2[1], e3[0] + e3[1], 0.06f);
+        assertEquals(0, pre.balancedConsonantWidth() % 5);
+        // 모음 쪽 오른쪽 경계를 왼쪽으로: 끝이 옮겨 가고 시작은 그대로
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_RIGHT_END, re));
+        drag(overlay, re[0], re[1], -unit * 0.6f, 0);
+        float[] e4 = pre.balancedExtents();
+        assertTrue(e4[2] + e4[3] < 10f - 0.05f);
+        assertEquals(e3[2], e4[2], 0.06f);
+        assertEquals(0, pre.balancedVowelWidth() % 5);
+        shot(a, "c1-balanced-editor-edges");
+        // 가운데의 ↔ 버튼: 폭은 그대로 두고 묶음을 옮긴다. 자음 쪽은 왼쪽 끝에서, 모음 쪽은 오른쪽 끝에서 멈춘다
+        float[] lm = new float[2], rm = new float[2];
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_LEFT_MOVE, lm));
+        assertTrue(p.blockBounds(true, l));
+        assertEquals(l.centerX(), lm[0], 1f);
+        assertEquals(l.centerY(), lm[1], 1f);
+        int cw4 = pre.balancedConsonantWidth();
+        drag(overlay, lm[0], lm[1], -unit * 2, 0);
+        float[] e5 = pre.balancedExtents();
+        log("consonant moved " + java.util.Arrays.toString(e4) + " -> " + java.util.Arrays.toString(e5));
+        assertEquals(0f, e5[0], 0.06f);
+        assertEquals(cw4, pre.balancedConsonantWidth());
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_RIGHT_MOVE, rm));
+        int vw5 = pre.balancedVowelWidth();
+        drag(overlay, rm[0], rm[1], unit * 2, 0);
+        float[] e6 = pre.balancedExtents();
+        assertEquals(10f, e6[2] + e6[3], 0.06f);
+        assertEquals(vw5, pre.balancedVowelWidth());
+        // 모음 쪽을 왼쪽으로 많이 옮기면 자음 쪽 끝에서 멈춘다 (겹치지 않는다)
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_RIGHT_MOVE, rm));
+        drag(overlay, rm[0], rm[1], -unit * 8, 0);
+        float[] e7 = pre.balancedExtents();
+        assertEquals(e6[0] + e6[1], e7[2], 0.06f);
+        assertEquals(vw5, pre.balancedVowelWidth());
+        shot(a, "c1b-balanced-editor-move");
+        // 자음 쪽이 가운데를 넘어 옮겨 가도(60%, 오른쪽 경계 40 → 4~7칸) 윤곽선은 자음 키만, 모음 윤곽선은 모음 키만 감싼다
+        pre.raw().edit().putInt(pre.balancedConsonantWidthKey(), 60).putInt(pre.balancedConsonantPosKey(), 40)
+                .putInt(pre.balancedVowelWidthKey(), 60).putInt(pre.balancedVowelPosKey(), 40).commit();
+        idle();
+        assertTrue(p.blockBounds(true, l) && p.blockBounds(false, r));
+        assertTrue(r.left - l.right >= 2 * dp - 0.5f);
+        KeyboardLayout crossed = p.layout();
+        int first = crossed.rows.length - 4;   // 글자 줄 세 개 (맨 아래 줄 위)
+        for (int row = first; row < crossed.rows.length - 1; row++) {
+            for (Key k : crossed.rows[row].keys) {
+                if (k.type == Key.GAP || k.type == Key.SPACER || k.isHidden()) continue;
+                android.graphics.RectF side = k.isRightBlock() ? r : l;
+                assertTrue(k.label + " " + k.rect + " " + side, k.rect.centerX() > side.left && k.rect.centerX() < side.right);
+            }
+        }
+        shot(a, "c2-balanced-editor-crossed");
         pre.resetBalancedKeys();
         pre.raw().edit().remove(pre.balancedLayoutKey()).commit();
+    }
+
+    /**
+     * 가로 모드 분리 키보드: 세로 모드 '키보드 사용자화'처럼 왼쪽·오른쪽 묶음을 합쳐 '글자 키'로 함께 고른다.
+     * 이름표·설정 창 제목도 '글자 키'이고, 창에는 두 묶음의 폭·가로 위치와 글자 키 높이가 함께 있다.
+     */
+    @Test
+    public void landscapeSplitBlocksAreOneLettersArea() throws Exception {
+        Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
+        pre.raw().edit().putBoolean(Prefs.LANDSCAPE_SPLIT, true).commit();
+        SettingsActivity a = launch("landscapearea");
+        View decor = a.getWindow().getDecorView();
+        KeyboardPreview p = find(decor, KeyboardPreview.class);
+        android.graphics.RectF lb = new android.graphics.RectF(), rb = new android.graphics.RectF();
+        assertTrue(p.profileAreaBounds(KeyboardPreview.AREA_LEFT, lb) && p.profileAreaBounds(KeyboardPreview.AREA_RIGHT, rb));
+        // 오른쪽 묶음을 눌러도 글자 키
+        tap(p.getChildAt(1), rb.centerX(), rb.top + rb.height() / 4f);
+        assertNotNull(p.selection());
+        assertEquals(KeyboardPreview.AREA_LETTERS, p.selection().area());
+        assertNotNull(findText(decor, "글자 키 설정"));
+        assertNull(findText(decor, "오른쪽 묶음 설정"));
+        String t = visibleTexts(decor);
+        log("LANDSCAPE LETTERS:\n" + t);
+        assertTrue(t, t.contains("왼쪽 묶음 폭") && t.contains("왼쪽 묶음 가로 위치") && t.contains("오른쪽 묶음 폭")
+                && t.contains("오른쪽 묶음 가로 위치") && t.contains("글자 키 높이"));
+        // 두 묶음의 경계 손잡이·↔ 버튼과 묶음마다의 높이 손잡이가 함께 보인다
+        java.lang.reflect.Method shown = KeyboardPreview.class.getDeclaredMethod("handleShown", KeyboardPreview.Handle.class);
+        shown.setAccessible(true);
+        for (KeyboardPreview.Handle h : new KeyboardPreview.Handle[]{KeyboardPreview.Handle.B_LEFT_START, KeyboardPreview.Handle.B_LEFT_END,
+                KeyboardPreview.Handle.B_RIGHT_START, KeyboardPreview.Handle.B_RIGHT_END, KeyboardPreview.Handle.B_LEFT_MOVE,
+                KeyboardPreview.Handle.B_RIGHT_MOVE, KeyboardPreview.Handle.HEIGHT, KeyboardPreview.Handle.HEIGHT_RIGHT}) {
+            assertTrue(h.name(), (Boolean) shown.invoke(p, h));
+        }
+        java.lang.reflect.Method hc = KeyboardPreview.class.getDeclaredMethod("handleCenter", KeyboardPreview.Handle.class, float[].class);
+        hc.setAccessible(true);
+        float[] hl = new float[2], hr = new float[2];
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.HEIGHT, hl));
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.HEIGHT_RIGHT, hr));
+        assertEquals(lb.centerX(), hl[0], 1f);
+        assertEquals(rb.centerX(), hr[0], 1f);
+        shot(a, "d0-landscape-split-letters");
+        // 같은 글자 키(왼쪽 묶음)를 다시 누르면 창이 닫힌다
+        tap(p.getChildAt(1), lb.centerX(), lb.top + lb.height() / 4f);
+        assertNull(p.selection());
+        pre.raw().edit().remove(Prefs.LANDSCAPE_SPLIT).commit();
     }
 
     static int count(View v, String text) {
@@ -1650,7 +1784,9 @@ public class EditorUiTest {
     }
 
     static View findText(View v, String text) {
-        if (v instanceof TextView && v.isShown() && text.contentEquals(((TextView) v).getText())) return v;
+        // 선택 버튼은 폭이 좁으면 이름을 두 줄로 나눠 보이므로 ("NewSwipe\n단모음") 줄바꿈은 빈칸으로 본다.
+        if (v instanceof TextView && v.isShown()
+                && text.equals(((TextView) v).getText().toString().replace('\n', ' '))) return v;
         if (v instanceof ViewGroup) {
             ViewGroup g = (ViewGroup) v;
             for (int i = 0; i < g.getChildCount(); i++) {
