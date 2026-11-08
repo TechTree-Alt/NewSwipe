@@ -2152,7 +2152,7 @@ public final class SettingsActivity extends Activity {
         String now = land ? "가로" : "세로", other = land ? "세로" : "가로";
         LinearLayout intro = card();
         intro.addView(note("대화면을 " + now + "로 들었을 때 키보드 모양을 정합니다. " + other + "일 때의 설정은 기기를 " + other + "로 돌리면 보입니다.\n"
-                + "분리 키보드 사용 유무, 자·모음 분리 배열 사용 유무는 세로와 가로가 공유하지만, 나머지 설정은 세로·가로가 각각 별도로 설정할 수 있습니다.\n"
+                + "분리 키보드 사용 유무, " + (prefs.koreanD7() ? "좌·우 균형 배열" : "자·모음 분리 배열") + " 사용 유무는 세로와 가로가 공유하지만, 나머지 설정은 세로·가로가 각각 별도로 설정할 수 있습니다.\n"
                 + "여기에서 설정이 불가능한 항목은 '키보드 사용자화'의 설정과 공유합니다."));
         addProfileSplit(profile, "대화면");
         addProfileWhole(profile, when);
@@ -2172,13 +2172,7 @@ public final class SettingsActivity extends Activity {
         String reachKey = edit.splitReachColumnKey();
         // 두벌식은 영어 자판처럼 일반 배열을 가운데에서 나눠, 4열로 맞추지 않는다 (검색 목록에는 늘 넣는다).
         if (!prefs.koreanDubeolsik() || harvesting) {
-            box.addView(toggle("자·모음 분리 배열",
-                    "켜면 자음은 왼쪽 묶음, 모음은 오른쪽 묶음으로 깔끔하게 나눕니다. 끄면 양쪽 묶음을 4열씩으로 맞춰, "
-                            + "자음의 맨 오른쪽 줄이 오른쪽 묶음의 모음 앞에도 놓입니다.",
-                    edit.splitSeparateJamo(), on -> {
-                        prefs.raw().edit().putBoolean(reachKey, !on).apply();
-                        refreshLayoutPreview();
-                    }));
+            box.addView(splitArrangeToggle(edit, reachKey, this::refreshLayoutPreview));
         }
         String splitKey = edit.splitKey();
         card.addView(toggle(name + " 분리 키보드",
@@ -2224,6 +2218,26 @@ public final class SettingsActivity extends Activity {
     }
 
     /**
+     * 분리 키보드 한글 자판의 배열 토글. 단모음(8열)은 기본으로 양쪽 묶음을 4열씩 맞추고, '자·모음 분리 배열'을 켜면 자음과 모음이
+     * 깔끔하게 나뉜다. NewSwipe 단모음은 원래대로 '좌·우 균형 배열'(꺼짐이 기본)이다.
+     */
+    private View splitArrangeToggle(Prefs p, String reachKey, Runnable after) {
+        if (p.koreanD7()) {
+            return toggle("좌·우 균형 배열", "한글 자판의 왼쪽·오른쪽 묶음을 4열로 맞춥니다.", p.splitReachColumn(), on -> {
+                prefs.raw().edit().putBoolean(reachKey, on).apply();
+                after.run();
+            });
+        }
+        return toggle("자·모음 분리 배열",
+                "켜면 자음은 왼쪽 묶음, 모음은 오른쪽 묶음으로 깔끔하게 나눕니다. 끄면 양쪽 묶음을 4열씩으로 맞춰, "
+                        + "자음의 맨 오른쪽 줄이 오른쪽 묶음의 모음 앞에도 놓입니다.",
+                p.splitSeparateJamo(), on -> {
+                    prefs.raw().edit().putBoolean(reachKey, !on).apply();
+                    after.run();
+                });
+    }
+
+    /**
      * 키보드 사용자화 글자 키 창의 분리 키보드 항목: 왼쪽·오른쪽 묶음의 폭·가로 위치(미리보기의 ↔ 버튼과 같이 움직인다)와,
      * 한글 자판이면 자·모음 분리 배열.
      */
@@ -2239,13 +2253,7 @@ public final class SettingsActivity extends Activity {
                 + "(0 = 왼쪽 끝, 50 = 가운데, 100 = 오른쪽 끝). 미리보기에서 묶음 가운데의 ↔ 버튼을 좌우로 끌어도, 길게 누른 뒤 끌어도 바뀝니다."));
         if (ko && !prefs.koreanDubeolsik()) {
             String reachKey = prefs.splitReachColumnKey();
-            c.addView(toggle("자·모음 분리 배열",
-                    "켜면 자음은 왼쪽 묶음, 모음은 오른쪽 묶음으로 깔끔하게 나눕니다. 끄면 양쪽 묶음을 4열씩으로 맞춰, "
-                            + "자음의 맨 오른쪽 줄이 오른쪽 묶음의 모음 앞에도 놓입니다.",
-                    prefs.splitSeparateJamo(), on -> {
-                prefs.raw().edit().putBoolean(reachKey, !on).apply();
-                editorPreview.refresh();
-            }));
+            c.addView(splitArrangeToggle(prefs, reachKey, () -> editorPreview.refresh()));
         }
     }
 
