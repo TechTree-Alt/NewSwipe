@@ -81,7 +81,7 @@ public class DubeolsikLayoutTest {
     private static FakeSp dubeolsik(boolean balanced) {
         FakeSp sp = new FakeSp();
         sp.m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_DUBEOLSIK);
-        sp.m.put(Prefs.BALANCED_LAYOUT + "_" + Prefs.KOREAN_LAYOUT_DUBEOLSIK, balanced);
+        sp.m.put(Prefs.BALANCED_LAYOUT, balanced);   // 균형 배열 값은 모든 한글 배열이 함께 쓴다
         return sp;
     }
 
