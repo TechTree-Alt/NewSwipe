@@ -142,7 +142,7 @@ public final class KeyboardLayout {
 
     /**
      * {@link #koreanLetterRows}의 줄마다 첫 칸이 놓인 가로 위치 (키 한 칸 단위). 칸이 반듯한 격자인 배열(단모음)은 null이고,
-     * 두벌식처럼 줄이 엇갈리면 그 위치를 준다 (균형 레이아웃도 양쪽 안에서 엇갈림이 그대로다). 고치지 않는다.
+     * 두벌식처럼 줄이 엇갈리면 그 위치를 준다 (균형 배열도 양쪽 안에서 엇갈림이 그대로다). 고치지 않는다.
      */
     public static float[] koreanRowOffsets(Prefs prefs) {
         return dubeolsik(prefs) ? DUBEOLSIK_OFFSETS : null;
@@ -309,14 +309,14 @@ public final class KeyboardLayout {
         return prefs != null && prefs.balancedLayout();
     }
 
-    /** 자·모음 균형 레이아웃의 전체 폭 (자음 쪽 반 + 모음 쪽 반). 맨 아래 줄의 폭(SPACE_ROW_UNITS)과 같다. */
+    /** 자·모음 균형 배열의 전체 폭 (자음 쪽 반 + 모음 쪽 반). 맨 아래 줄의 폭(SPACE_ROW_UNITS)과 같다. */
     private static final int BALANCED_COLUMNS = 10;
     /** 반쪽의 폭: 자음 키들이 꼭 채운다. */
     private static final float BALANCED_HALF = BALANCED_COLUMNS / 2f;
     /** 오른쪽 절반의 모음 열 수. */
     private static final int BALANCED_VOWEL_COLUMNS = 3;
 
-    /** 자·모음 균형 레이아웃에서 한 줄의 자음 수: 8열 단모음·두벌식은 5개 (셋째 줄은 Shift 자리 포함), NewSwipe 배열은 4개. */
+    /** 자·모음 균형 배열에서 한 줄의 자음 수: 8열 단모음·두벌식은 5개 (셋째 줄은 Shift 자리 포함), NewSwipe 배열은 4개. */
     private static int balancedConsonants(Prefs prefs) {
         return newSwipe(prefs) ? 4 : 5;
     }
@@ -327,7 +327,7 @@ public final class KeyboardLayout {
     }
 
     /**
-     * 자·모음 균형 레이아웃: 자판을 자·모음 경계(기본 가운데)에서 나눠 왼쪽에는 자음이 꽉 차게(8열 단모음은 5열,
+     * 자·모음 균형 배열: 자판을 자·모음 경계(기본 가운데)에서 나눠 왼쪽에는 자음이 꽉 차게(8열 단모음은 5열,
      * NewSwipe 배열은 4열), 오른쪽에는 모음 열(3열)을 놓는다. 모음 키 폭은 자음 키 폭의 '모음 폭'%이고
      * (기본 같은 폭), 오른쪽 절반의 남는 폭 안에서 '모음 위치'에 따라 놓인다 (기본 가운데).
      * 자음도 '자음 폭'·'자음 위치'로 왼쪽 절반 안에서 폭과 위치를 바꿀 수 있다.
@@ -344,7 +344,7 @@ public final class KeyboardLayout {
     }
 
     /**
-     * 자·모음 균형 레이아웃의 r번째 글자 줄. 고른 배열의 같은 줄을 자음(왼쪽 절반)과 모음(오른쪽 절반)으로 나눈다.
+     * 자·모음 균형 배열의 r번째 글자 줄. 고른 배열의 같은 줄을 자음(왼쪽 절반)과 모음(오른쪽 절반)으로 나눈다.
      * ⌫는 셋째 줄의 모음 쪽 끝에 온다. 8열 단모음의 셋째 줄은 왼쪽 끝에 Shift 자리가 온다 (NewSwipe 단모음에는 없다).
      * 자음과 모음 사이·모음 오른쪽의 빈틈은 누르면 가까운 키가 눌린다.
      */
@@ -392,13 +392,13 @@ public final class KeyboardLayout {
         return splitRow(consonants, vowels, 1f, prefs);
     }
 
-    /** 쿼티 모양 자판을 자·모음 균형 레이아웃으로 나눌 때 줄마다 자음(왼쪽) 쪽에 가는 글자 수: q~t, a~g, z~v / ㅂ~ㅅ, ㅁ~ㅎ, ㅋ~ㅍ. */
+    /** 쿼티 모양 자판을 자·모음 균형 배열로 나눌 때 줄마다 자음(왼쪽) 쪽에 가는 글자 수: q~t, a~g, z~v / ㅂ~ㅅ, ㅁ~ㅎ, ㅋ~ㅍ. */
     private static final int[] QWERTY_LEFT_COUNT = {5, 5, 4};
-    /** 쿼티 모양 균형 레이아웃 왼쪽(자음) 쪽의 칸 수: 5키와 반 칸 (둘째 줄 들여쓰기, 셋째 줄 1.5칸 Shift). */
+    /** 쿼티 모양 균형 배열 왼쪽(자음) 쪽의 칸 수: 5키와 반 칸 (둘째 줄 들여쓰기, 셋째 줄 1.5칸 Shift). */
     private static final float QWERTY_LEFT_UNITS = 5.5f;
 
     /**
-     * 쿼티 모양 자판(두벌식, 영어)의 자·모음 균형 레이아웃 r번째 줄 (세로 모드만: 분리 키보드는 {@link #splitNormal}로 나눈다).
+     * 쿼티 모양 자판(두벌식, 영어)의 자·모음 균형 배열 r번째 줄 (세로 모드만: 분리 키보드는 {@link #splitNormal}로 나눈다).
      * 일반 자판을 가운데에서 나누기만 하고, 각 쪽 안에서 키의 상대적인 자리와 폭은 그대로 둔다:
      * 왼쪽은 5키 / 반 칸 들어간 5키 / 1.5칸 Shift와 4키 (5.5칸), 오른쪽은 5키 / 반 칸 들어간 4키 / 반 칸 들어간 3키와 1.5칸 ⌫ (5칸).
      * 줄마다 각 쪽의 폭이 같아 키 폭과 엇갈림이 줄 사이에서 맞는다.
@@ -419,7 +419,7 @@ public final class KeyboardLayout {
         return splitRow(consonants, vowels, 1f, prefs);
     }
 
-    /** 쿼티 모양 자판의 자·모음 균형 레이아웃 (두벌식, 두벌식 균형 레이아웃을 따르는 영어 자판). */
+    /** 쿼티 모양 자판의 자·모음 균형 배열 (두벌식, 두벌식 균형 배열을 따르는 영어 자판). */
     private static KeyboardLayout balancedQwerty(int kind, String[][] rows, String[][][] popups, boolean korean, Prefs prefs) {
         List<Row> out = new ArrayList<>();
         if (prefs.numberRow()) out.add(numberRow(prefs));
@@ -434,7 +434,7 @@ public final class KeyboardLayout {
      * 자음 키는 자음 쪽을 꽉 채우는 폭의 '자음 폭'%이고 남는 폭 안에서 '자음 위치'에 따라 놓인다.
      * 모음 키는 모음 쪽을 꽉 채우는 폭의 '모음 폭'%이고(100%면 모음이 모음 쪽을 꽉 채운다) '모음 위치'에 따라 놓인다.
      * 키끼리의 폭 비율(키의 weight, 예: 두벌식의 1.5칸 ⌫·반 칸 빈틈)은 지킨다.
-     * 세로 모드의 균형 레이아웃에서 쓴다 (분리 키보드는 {@link #blockRow}).
+     * 세로 모드의 균형 배열에서 쓴다 (분리 키보드는 {@link #blockRow}).
      */
     private static Row splitRow(List<Key> consonants, List<Key> vowels, float height, Prefs prefs) {
         float left = BALANCED_COLUMNS
@@ -1017,11 +1017,11 @@ public final class KeyboardLayout {
     private static final float SPACE_ROW_UNITS = 10f;
     /**
      * 격자 정렬에서 아래 줄 기능키 하나의 너비: 한글 자판의 글자 키 한 칸 (10 ÷ 8열, NewSwipe 단모음은 10 ÷ 7열).
-     * 자·모음 균형 레이아웃이면 반으로 나눴을 때의 자음 키 한 칸. 자·모음 경계 위치나 자음 폭을 바꿔도
+     * 자·모음 균형 배열이면 반으로 나눴을 때의 자음 키 한 칸. 자·모음 경계 위치나 자음 폭을 바꿔도
      * 아래 줄 키의 폭은 바뀌지 않는다.
      */
     private static float gridKey(Prefs prefs) {
-        // 자·모음 균형 레이아웃: 왼쪽 절반을 나눠 가진 자음 키 한 칸 (5열이면 1칸, 4열이면 1.25칸).
+        // 자·모음 균형 배열: 왼쪽 절반을 나눠 가진 자음 키 한 칸 (5열이면 1칸, 4열이면 1.25칸).
         // 8열 단모음의 좌·우 균형 레이아웃은 자음이 4열이 되므로 그 폭을 따른다.
         // 두벌식은 자음 쪽이 들여쓰기·1.5칸 Shift를 포함해 5.5칸이라 키 한 칸이 그만큼 좁다.
         if (balanced(prefs) && dubeolsik(prefs)) return BALANCED_HALF / QWERTY_LEFT_UNITS;
@@ -1062,8 +1062,8 @@ public final class KeyboardLayout {
     }
 
     /**
-     * 자·모음 균형 레이아웃과 분리 키보드의 맨 아래 줄. 분리 키보드(가로 모드·대화면)는 스페이스바가 둘로 나뉘어
-     * 왼쪽·오른쪽 묶음에 하나씩 들어가고, 세로 모드의 균형 레이아웃은 늘 전체 폭을 쓴다.
+     * 자·모음 균형 배열과 분리 키보드의 맨 아래 줄. 분리 키보드(가로 모드·대화면)는 스페이스바가 둘로 나뉘어
+     * 왼쪽·오른쪽 묶음에 하나씩 들어가고, 세로 모드의 균형 배열은 늘 전체 폭을 쓴다.
      */
     private static Row splitBottom(Prefs prefs) {
         if (splitView(prefs)) return blockSpaceRow(prefs, Key.TO_SYMBOLS, "?123", false);

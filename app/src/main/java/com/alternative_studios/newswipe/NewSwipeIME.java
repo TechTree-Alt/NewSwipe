@@ -1276,7 +1276,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (keyboard == null) return;
         keyboard.cancelAll();
         applySettings();
-        setLayoutKind(layoutKind);   // 자·모음 균형 레이아웃은 한 손 모드에서 빈틈 없는 배열로 바뀐다
+        setLayoutKind(layoutKind);   // 자·모음 균형 배열은 한 손 모드에서 빈틈 없는 배열로 바뀐다
     }
 
     /**
@@ -1587,9 +1587,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private void setLayoutKind(int kind) {
         layoutKind = kind;
         if (keyboard == null) return;   // 외장 키보드만 쓰면 자판 화면을 만들지 않은 채 언어를 바꿀 수 있다
-        // 한 손 모드에서는 자·모음 균형 레이아웃의 가운데 빈틈을 없앤 배열을 쓴다.
+        // 한 손 모드에서는 자·모음 균형 배열의 가운데 빈틈을 없앤 배열을 쓴다.
         Prefs prefs = !Prefs.ONE_HAND_OFF.equals(activeOneHand()) ? this.prefs.oneHandView() : this.prefs;
-        // 자·모음 균형 레이아웃의 키 폭·위치는 가로 모드·대화면일 때 세로 모드와 따로 정한 값을 쓴다.
+        // 자·모음 균형 배열의 키 폭·위치는 가로 모드·대화면일 때 세로 모드와 따로 정한 값을 쓴다.
         // 화면을 돌리면 시스템이 입력 뷰를 다시 만들고(onCreateInputView → applySettings), 입력을 다시 시작하므로 여기서 방향을 읽으면 된다.
         prefs = prefs.profileView(profile());
         KeyboardLayout l;

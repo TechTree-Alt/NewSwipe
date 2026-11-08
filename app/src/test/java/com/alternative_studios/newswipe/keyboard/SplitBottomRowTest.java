@@ -195,7 +195,7 @@ public class SplitBottomRowTest {
         assertEquals(20, p.balancedConsonantPos());
         assertEquals(80, p.balancedVowelWidth());
         assertEquals(80, p.balancedVowelPos());
-        // 세로 모드의 균형 레이아웃은 그대로 100%·가운데
+        // 세로 모드의 균형 배열은 그대로 100%·가운데
         Prefs portrait = portraitView(new FakeSp());
         assertEquals(100, portrait.balancedConsonantWidth());
         assertEquals(50, portrait.balancedConsonantPos());
@@ -498,7 +498,7 @@ public class SplitBottomRowTest {
             Prefs split = fullWidthLandscape(splitSp), normal = portraitView(normalSp);
             splitSp.m.put(Prefs.GRID_LAYOUT, grid);
             normalSp.m.put(Prefs.GRID_LAYOUT, grid);
-            // 격자 키 한 칸(한글 자음 키 폭)이 같도록 세로 모드도 자·모음 균형 레이아웃으로 둔다.
+            // 격자 키 한 칸(한글 자음 키 폭)이 같도록 세로 모드도 자·모음 균형 배열로 둔다.
             normalSp.m.put(normal.balancedLayoutKey(), true);
             KeyboardLayout[][] pairs = {
                     {KeyboardLayout.english(split), KeyboardLayout.english(normal)},

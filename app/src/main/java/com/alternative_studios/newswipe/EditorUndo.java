@@ -15,7 +15,7 @@ import java.util.Set;
  * 키보드 사용자화의 되돌리기 기록. 키보드 사용자화 값(Prefs.isEditorKey)이 바뀔 때마다 바뀌기 전 값을 기억해 한 단계로 쌓는다.
  * 한 번에 함께 바뀐 값들(키 하나를 기본값으로, 길게 누르기 '없음' 등)은 한 단계이고, 슬라이더·손잡이를 끄는 동안 같은 값이
  * 잇달아 바뀌면 한 단계로 합친다. 화면을 다시 만들어도(기본값으로 되돌리기, 화면 모드) 남도록 기록은 정적으로 두고,
- * 키보드 사용자화을 떠나면 {@link #clearAll}로 버린다.
+ * 키보드 사용자화를 떠나면 {@link #clearAll}로 버린다.
  */
 final class EditorUndo {
     /** 기억해 둔 값이 '없었음'을 나타내는 표시. */
@@ -46,7 +46,7 @@ final class EditorUndo {
         if (snapshot == null) snapshot = editorValues();
     }
 
-    /** 키보드 사용자화을 떠난다: 기록을 버린다. */
+    /** 키보드 사용자화를 떠난다: 기록을 버린다. */
     static void clearAll() {
         steps.clear();
         snapshot = null;
@@ -91,7 +91,7 @@ final class EditorUndo {
     private void seal() {
         Map<String, Object> step = pending;
         pending = null;
-        // 그사이 키보드 사용자화을 떠나 기록을 버렸으면 (clearAll) 쌓지 않는다.
+        // 그사이 키보드 사용자화를 떠나 기록을 버렸으면 (clearAll) 쌓지 않는다.
         if (step == null || step.isEmpty() || snapshot == null) return;
         long t = SystemClock.uptimeMillis();
         String single = step.size() == 1 ? step.keySet().iterator().next() : null;
@@ -139,7 +139,7 @@ final class EditorUndo {
         // 바뀐 값 알림이 나중에 오더라도 기록하지 않게, 알림이 다 지난 뒤에 푼다.
         handler.post(() -> {
             undoing = false;
-            if (snapshot != null) snapshot = editorValues();   // 그사이 키보드 사용자화을 떠났으면 다시 시작하지 않는다
+            if (snapshot != null) snapshot = editorValues();   // 그사이 키보드 사용자화를 떠났으면 다시 시작하지 않는다
         });
         lastStepKey = null;
         onChange.run();

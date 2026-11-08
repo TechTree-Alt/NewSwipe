@@ -1241,7 +1241,7 @@ public class EditorUiTest {
         pre.raw().edit().remove(Prefs.KEY_GAP_Y).remove(Prefs.PAD_TOP).remove(Prefs.PAD_BOTTOM).commit();
     }
 
-    /** 한글 자판 배열에서 두벌식을 고르고, 균형 레이아웃·격자 정렬과 함께 미리보기와 설정 창이 맞게 바뀌는지. */
+    /** 한글 자판 배열에서 두벌식을 고르고, 균형 배열·격자 정렬과 함께 미리보기와 설정 창이 맞게 바뀌는지. */
     @Test
     public void dubeolsikLayout() throws Exception {
         Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
@@ -1263,18 +1263,18 @@ public class EditorUiTest {
         key(p, "ㅛ", Key.CHAR);
         key(p, null, Key.SHIFT);
         assertTrue(visibleTexts(cur(a)).contains("두벌식은 컴퓨터 키보드와 같은 표준 한글 배열입니다."));
-        assertTrue(visibleTexts(cur(a)).contains("자·모음 균형 레이아웃"));
-        assertFalse(visibleTexts(cur(a)).contains("영어 자판도 균형 레이아웃"));   // 균형 레이아웃을 켠 뒤에만 보인다
+        assertTrue(visibleTexts(cur(a)).contains("자·모음 균형 배열"));
+        assertFalse(visibleTexts(cur(a)).contains("영어 자판도 균형 배열"));   // 균형 배열을 켠 뒤에만 보인다
         assertFalse(visibleTexts(cur(a)).contains("영어 자판 아래로 밀어 대문자 입력"));   // 영어 글자 키 창에만 있다
         shot(a, "a0-dubeolsik");
-        // 균형 레이아웃: 자음은 왼쪽 절반, 모음은 오른쪽 절반으로 나누되 각 쪽 안의 자리는 일반 두벌식 그대로
-        View row = (View) findText(cur(a), "자·모음 균형 레이아웃").getParent().getParent();
+        // 균형 배열: 자음은 왼쪽 절반, 모음은 오른쪽 절반으로 나누되 각 쪽 안의 자리는 일반 두벌식 그대로
+        View row = (View) findText(cur(a), "자·모음 균형 배열").getParent().getParent();
         row.performClick();
         idle();
         assertTrue(prefs.balancedLayout());
         assertTrue(prefs.raw().getBoolean(Prefs.BALANCED_LAYOUT + "_" + Prefs.KOREAN_LAYOUT_DUBEOLSIK, false));
-        assertTrue(visibleTexts(cur(a)).contains("영어 자판도 균형 레이아웃"));
-        View enRow = (View) findText(cur(a), "영어 자판도 균형 레이아웃").getParent().getParent();
+        assertTrue(visibleTexts(cur(a)).contains("영어 자판도 균형 배열"));
+        View enRow = (View) findText(cur(a), "영어 자판도 균형 배열").getParent().getParent();
         enRow.performClick();
         idle();
         assertTrue(prefs.englishBalanced());
@@ -1290,7 +1290,7 @@ public class EditorUiTest {
         assertEquals(e.rect.right, del.rect.right, 1.5f);
         assertTrue(key(p, "ㅎ", Key.CHAR).rect.right <= kv.getWidth() / 2f + 1f);
         assertTrue(o.rect.left >= kv.getWidth() / 2f - 1f);
-        cur(a).scrollTo(0, 450);   // 균형 레이아웃의 하위 묶음(키 위치·폭 사용자화, 영어 자판도 균형 레이아웃)이 보이게
+        cur(a).scrollTo(0, 450);   // 균형 배열의 하위 묶음(균형 배열 사용자화, 영어 자판도 균형 배열)이 보이게
         shot(a, "a1-dubeolsik-balanced");
         cur(a).scrollTo(0, 0);
         // 격자 정렬과도 함께 쓴다
@@ -1298,7 +1298,7 @@ public class EditorUiTest {
         idle();
         assertEquals(10, p.layout().columns);
         shot(a, "a2-dubeolsik-balanced-grid");
-        // 다른 배열로 바꾸면 그 배열의 균형 레이아웃 값으로 (두벌식의 값은 기억)
+        // 다른 배열로 바꾸면 그 배열의 균형 배열 값으로 (두벌식의 값은 기억)
         findText(cur(a), "단모음").performClick();
         idle();
         assertFalse(prefs.koreanDubeolsik());
@@ -1427,6 +1427,77 @@ public class EditorUiTest {
         idle();
         assertNull(ShadowDialog.getLatestDialog());
         pre.raw().edit().remove(Prefs.ENGLISH_SWIPE_UPPER).commit();
+    }
+
+    /**
+     * 균형 배열 사용자화: 화면 아래 미리보기의 자음·모음 쪽 ↔ 버튼을 좌우로 끌면 키 폭, 길게 누른 뒤 끌면 가로 위치,
+     * 경계선 손잡이를 끌면 자·모음 경계 위치가 5% 단위로 바뀌고 슬라이더도 따라간다.
+     */
+    @Test
+    public void balancedLayoutWysiwyg() throws Exception {
+        Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
+        pre.raw().edit().putBoolean(pre.balancedLayoutKey(), true).commit();
+        SettingsActivity a = launch("keyarea");
+        View decor = a.getWindow().getDecorView();
+        assertNotNull(findText(decor, "균형 배열 사용자화"));
+        KeyboardPreview p = find(decor, KeyboardPreview.class);
+        assertNotNull(p);
+        View overlay = p.getChildAt(1);
+        java.lang.reflect.Method hc = KeyboardPreview.class.getDeclaredMethod("handleCenter", KeyboardPreview.Handle.class, float[].class);
+        hc.setAccessible(true);
+        float[] cons = new float[2], vow = new float[2], bnd = new float[2];
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_CONSONANT, cons));
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_VOWEL, vow));
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_BOUNDARY, bnd));
+        assertFalse((Boolean) hc.invoke(p, KeyboardPreview.Handle.HEIGHT, new float[2]));   // 다른 손잡이는 없다
+        assertTrue(cons[0] < bnd[0] && bnd[0] < vow[0]);
+        shot(a, "c0-balanced-wysiwyg");
+        // 자음 ↔ 버튼을 왼쪽으로 끌면 자음 키 폭이 줄어든다 (5단위)
+        int w0 = pre.balancedConsonantWidth();
+        drag(overlay, cons[0], cons[1], -120, 0);
+        int w1 = pre.balancedConsonantWidth();
+        log("consonant width " + w0 + " -> " + w1);
+        assertTrue(w1 < w0);
+        assertEquals(0, w1 % 5);
+        assertTrue(visibleTexts(cur(a)).contains(w1 + "%"));   // 슬라이더도 따라간다
+        // 길게 누른 뒤 끌면 가로 위치가 바뀐다 (폭은 그대로)
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_CONSONANT, cons));
+        int pos0 = pre.balancedConsonantPos();
+        t0 = SystemClock.uptimeMillis();
+        touch(overlay, MotionEvent.ACTION_DOWN, cons[0], cons[1]);
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(
+                android.view.ViewConfiguration.getLongPressTimeout() + 100));
+        shot(a, "c1-balanced-long-press");
+        for (int s = 1; s <= 10; s++) {
+            touch(overlay, MotionEvent.ACTION_MOVE, cons[0] - 12 * s, cons[1]);
+            idle();
+        }
+        touch(overlay, MotionEvent.ACTION_UP, cons[0] - 120, cons[1]);
+        idle();
+        log("consonant pos " + pos0 + " -> " + pre.balancedConsonantPos());
+        assertTrue(pre.balancedConsonantPos() < pos0);
+        assertEquals(0, pre.balancedConsonantPos() % 5);
+        assertEquals(w1, pre.balancedConsonantWidth());
+        // 경계선 손잡이를 오른쪽으로 끌면 자·모음 경계가 오른쪽으로 (5단위, 30~70)
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_BOUNDARY, bnd));
+        int b0 = pre.balancedBoundary();
+        drag(overlay, bnd[0], bnd[1], 200, 0);
+        int b1 = pre.balancedBoundary();
+        log("boundary " + b0 + " -> " + b1);
+        assertTrue(b1 > b0);
+        assertEquals(0, b1 % 5);
+        assertTrue(b1 <= Prefs.BALANCED_BOUNDARY_MAX);
+        // 모음 ↔ 버튼도 같다
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_VOWEL, vow));
+        int v0 = pre.balancedVowelWidth();
+        drag(overlay, vow[0], vow[1], -100, 0);
+        assertTrue(pre.balancedVowelWidth() < v0);
+        // 고르기·넘기기는 하지 않는다
+        tap(overlay, vow[0] + 60, vow[1] - 40);
+        assertNull(p.selection());
+        shot(a, "c2-balanced-after");
+        pre.resetBalancedKeys();
+        pre.raw().edit().remove(pre.balancedLayoutKey()).commit();
     }
 
     static int count(View v, String text) {

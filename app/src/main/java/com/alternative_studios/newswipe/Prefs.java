@@ -87,7 +87,7 @@ public final class Prefs {
     public static final String DUBEOLSIK_SHIFT_HIDDEN = "dubeolsik_shift_hidden";
     /** 영어 자판의 글자 키를 아래로 밀면 그 키의 대문자를 입력 (켜면 키마다 정한 아래로 밀기는 쓰지 않는다). */
     public static final String ENGLISH_SWIPE_UPPER = "english_swipe_upper";
-    /** 두벌식에서 자·모음 균형 레이아웃을 켰을 때 영어 자판도 같은 모양으로 나눈다. */
+    /** 두벌식에서 자·모음 균형 배열을 켰을 때 영어 자판도 같은 모양으로 나눈다. */
     public static final String ENGLISH_BALANCED = "english_balanced";
     public static final String KOREAN_SHIFT_FN = "korean_shift_fn";           // Shift 키를 껐을 때 그 자리에 Fn 키 놓기
     public static final String PERIOD_KEY_HIDDEN = "period_key_hidden";       // 글자·기호 자판 아래 줄의 온점 키 없애기
@@ -105,9 +105,9 @@ public final class Prefs {
     public static final String LAB_DUBEOLSIK = "lab_dubeolsik";
     public static final String GRID_COLORS = "grid_colors";   // 색 정렬 (테마): Shift·⌫는 글자 키 색, 스페이스바는 기능키 색
     public static final String GRID_LAYOUT = "grid_layout";                   // 아래 줄 기능키를 한글 키 폭에 맞춰 격자로 정렬
-    /** 자·모음 균형 레이아웃. 한글 배열마다 따로 저장한다: 이 이름 + "_" + 배열 값 (예: balanced_layout_danmoeum7). */
+    /** 자·모음 균형 배열. 한글 배열마다 따로 저장한다: 이 이름 + "_" + 배열 값 (예: balanced_layout_danmoeum7). */
     public static final String BALANCED_LAYOUT = "balanced_layout";
-    /** 가로 모드 분리 키보드: 가로 모드에서 자·모음 균형 레이아웃으로 자판을 나눈다. 한글 배열마다 따로 저장한다: 이 이름 + "_" + 배열 값. */
+    /** 가로 모드 분리 키보드: 가로 모드에서 자·모음 균형 배열로 자판을 나눈다. 한글 배열마다 따로 저장한다: 이 이름 + "_" + 배열 값. */
     public static final String LANDSCAPE_SPLIT = "landscape_split";
     public static final String LANDSCAPE_SIZE = "landscape_size";                  // 가로 모드 분리 키보드: 키보드 높이·글자 크기를 따로 정하기
     /** 실험실 '대화면 별도 레이아웃': 대화면(폴더블 내부 화면 등)에서는 가로·세로 키보드를 따로 정한 값으로 쓴다. */
@@ -150,11 +150,11 @@ public final class Prefs {
     /** 가로 모드의 값은 위 이름 뒤에 이 말을 붙여 따로 저장한다 (예: balanced_vowel_width_land_danmoeum7). */
     private static final String LANDSCAPE_SUFFIX = "_land";
     public static final int BALANCED_WIDTH_MIN = 60, BALANCED_WIDTH_DEFAULT = 100;
-    /** 두벌식의 세로 모드 균형 레이아웃 기본 모양: 자음·모음 키 폭 90%, 자음은 왼쪽 끝(0), 모음은 오른쪽 끝(100). */
+    /** 두벌식의 세로 모드 균형 배열 기본 모양: 자음·모음 키 폭 90%, 자음은 왼쪽 끝(0), 모음은 오른쪽 끝(100). */
     public static final int DUBEOLSIK_WIDTH_DEFAULT = 90, DUBEOLSIK_CONSONANT_POS_DEFAULT = 0, DUBEOLSIK_VOWEL_POS_DEFAULT = 100;
     /**
      * 분리 키보드(가로 모드·대화면)의 두 묶음 기본 모양: 왼쪽 묶음은 폭 80%에 가로 위치 20, 오른쪽 묶음은 폭 80%에 가로 위치 80
-     * (두 묶음이 가운데에서 살짝 벌어지고 바깥쪽 가장자리 쪽에 모인다). 세로 모드의 균형 레이아웃은 폭 100%·위치 50이 기본이다.
+     * (두 묶음이 가운데에서 살짝 벌어지고 바깥쪽 가장자리 쪽에 모인다). 세로 모드의 균형 배열은 폭 100%·위치 50이 기본이다.
      */
     public static final int SPLIT_WIDTH_DEFAULT = 80, SPLIT_LEFT_POS_DEFAULT = 20, SPLIT_RIGHT_POS_DEFAULT = 80;
     public static final int BALANCED_CONSONANT_WIDTH_MAX = 100;
@@ -251,7 +251,7 @@ public final class Prefs {
     public static final String PINNED_EMOJI = "pinned_emoji";   // 최근 이모지 맨 앞에 고정한 이모지
 
     private final SharedPreferences sp;
-    /** 한 손 모드용 보기: 자·모음 균형 레이아웃을 끈 것으로 본다 (가운데 빈틈 없이 한쪽으로 모은다). */
+    /** 한 손 모드용 보기: 자·모음 균형 배열을 끈 것으로 본다 (가운데 빈틈 없이 한쪽으로 모은다). */
     private final boolean oneHandView;
     /** 이 보기가 읽는 프로필 (PROFILE_*). 세로 모드가 아니면 그 프로필의 분리 키보드·키 폭·위치·크기 값을 읽는다. */
     private final String profile;
@@ -304,8 +304,8 @@ public final class Prefs {
     public String profile() { return profile; }
 
     /**
-     * 한 손 모드의 자판을 만들 때 쓰는 설정 보기. 값은 같고, 자·모음 균형 레이아웃만 꺼진 것으로 본다
-     * (설정 화면의 균형 레이아웃 스위치는 그대로다).
+     * 한 손 모드의 자판을 만들 때 쓰는 설정 보기. 값은 같고, 자·모음 균형 배열만 꺼진 것으로 본다
+     * (설정 화면의 균형 배열 스위치는 그대로다).
      */
     public Prefs oneHandView() {
         return oneHandView ? this : new Prefs(sp, true, profile, profileEdit);
@@ -422,7 +422,7 @@ public final class Prefs {
 
     // ---------------------------------------------------------------- 키보드 사용자화의 값 묶음
     //
-    // 키보드 사용자화이 다루는 값을 창(설정 범위)마다 한곳에 적어 둔다. 영역·여백 창의 '기본값으로 되돌리기', 목록의 '기본값으로
+    // 키보드 사용자화가 다루는 값을 창(설정 범위)마다 한곳에 적어 둔다. 영역·여백 창의 '기본값으로 되돌리기', 목록의 '기본값으로
     // 되돌리기'에서 고르는 묶음, 되돌리기 기록(isEditorKey)이 모두 이 표를 쓴다. 새 설정을 더할 때는 여기에만 더하면 된다.
 
     /** 빈 목록 (키 앞부분이 없는 범위 등). 아래 표보다 먼저 만들어져야 한다. */
@@ -473,7 +473,7 @@ public final class Prefs {
             new EditorScope(AREA_SCOPES[2], "글자 키 공통 (높이·길게 누르기·밀기·여백)", keys(KEYBOARD_HEIGHT, LONG_PRESS_MS,
                     POPUP_HINT_HIDDEN, SWIPE_THRESHOLD, SWIPE_PICK_SUGGESTION),
                     keys(AREA_PAD_PREFIX + PAD_AREAS[2] + "_", "swipe_kb_")),
-            new EditorScope(SCOPE_LETTERS_KO, "한글 글자 키 (자판 배열·균형 레이아웃·쌍자음·이중모음 입력)", keys(KOREAN_LAYOUT,
+            new EditorScope(SCOPE_LETTERS_KO, "한글 글자 키 (자판 배열·균형 배열·쌍자음·이중모음 입력)", keys(KOREAN_LAYOUT,
                     DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT, DOUBLE_TAP_CONSONANT_MS, SWIPE_DOWN_CONSONANT, SWIPE_DOWN_VOWEL,
                     ENGLISH_BALANCED),
                     keys(BALANCED_LAYOUT)),
@@ -486,8 +486,8 @@ public final class Prefs {
                     SPACE_CURSOR_SPEED_V, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, DELETE_REPEAT_RATE, DELETE_WORD_REPEAT_RATE,
                     LANGUAGE_ORDER), keys("popup_", "popupkept_", "repeat_", "swipe_custom_", "swipe_final_", "swipe_vowel_",
                     "swipe_lp_", "swipe_fn_", "swipe_fk_", "swipe_toolbar_")),
-            // 가로 모드 키보드 사용자화·키 위치·폭 사용자화 화면의 값: 그 화면에 따로 되돌리기가 있어 목록에는 보이지 않지만,
-            // 키보드 사용자화을 연 채 바꾸면 되돌리기 기록에는 남는다.
+            // 가로 모드 키보드 사용자화·균형 배열 사용자화 화면의 값: 그 화면에 따로 되돌리기가 있어 목록에는 보이지 않지만,
+            // 키보드 사용자화를 연 채 바꾸면 되돌리기 기록에는 남는다.
             new EditorScope("landscape", null, keys(LANDSCAPE_SPLIT, LANDSCAPE_SIZE, KEYBOARD_HEIGHT_LAND, KEY_TEXT_SIZE_LAND,
                     SPLIT_GAP_CURSOR, SPLIT_GAP_SPEED, SPLIT_SPACE_JOIN, SPLIT_FN_WIDTH, SPLIT_REACH_COLUMN,
                     PROFILE_LIFT + LANDSCAPE_SUFFIX), keys(LANDSCAPE_SPLIT + "_", "balanced_")),
@@ -505,7 +505,7 @@ public final class Prefs {
         return out.toArray(new String[0][]);
     }
 
-    /** 키보드 사용자화이 다루는 값인지: 키보드 사용자화의 '되돌리기'가 이 값들의 변경을 기억한다. */
+    /** 키보드 사용자화가 다루는 값인지: 키보드 사용자화의 '되돌리기'가 이 값들의 변경을 기억한다. */
     public static boolean isEditorKey(String key) {
         for (EditorScope sc : EDITOR_SCOPES) {
             for (String k : sc.keys) if (k.equals(key)) return true;
@@ -517,7 +517,7 @@ public final class Prefs {
     /** 키보드 사용자화의 한 범위를 기본값으로 되돌린다. */
     public void resetEditorScope(String id) {
         EditorScope sc = scope(id);
-        // 자·모음 균형 레이아웃의 키 폭·위치는 배열마다 따로 저장되므로 지금 배열의 것을 지운다 (배열 값을 지우기 전에).
+        // 자·모음 균형 배열의 키 폭·위치는 배열마다 따로 저장되므로 지금 배열의 것을 지운다 (배열 값을 지우기 전에).
         if (SCOPE_LETTERS_KO.equals(id)) resetBalancedKeys();
         removeKeys(sc.keys, sc.prefixes);
     }
@@ -866,7 +866,7 @@ public final class Prefs {
         sp.edit().putBoolean(key, value).apply();
     }
 
-    /** 격자 정렬. 자·모음 균형 레이아웃에서는 기능키 폭을 나뉜 자음 키 폭에 맞춘다. */
+    /** 격자 정렬. 자·모음 균형 배열에서는 기능키 폭을 나뉜 자음 키 폭에 맞춘다. */
     public boolean gridLayout() { return sp.getBoolean(GRID_LAYOUT, false); }
     /** 지금 한글 배열의 이름 ("dubeolsik", "danmoeum8", "danmoeum7"). 배열별 값의 키에 붙는다. */
     public String koreanLayoutId() {
@@ -874,16 +874,16 @@ public final class Prefs {
         return koreanD7() ? KOREAN_LAYOUT_D7 : KOREAN_LAYOUT_8;
     }
 
-    /** 지금 한글 배열의 자·모음 균형 레이아웃 설정 키. */
+    /** 지금 한글 배열의 자·모음 균형 배열 설정 키. */
     public String balancedLayoutKey() { return BALANCED_LAYOUT + "_" + koreanLayoutId(); }
 
     /**
-     * 지금 한글 배열에서 자·모음 균형 레이아웃을 쓰는지. 배열마다 따로 기억한다.
+     * 지금 한글 배열에서 자·모음 균형 배열을 쓰는지. 배열마다 따로 기억한다.
      * 배열별로 나누기 전의 설정(이름 뒤에 배열이 없는 값)은 8열 단모음의 값으로 이어 쓴다.
      */
     public boolean balancedLayout() {
         if (oneHandView) return false;
-        // 가로 모드·대화면 분리 키보드는 세로 모드의 균형 레이아웃과 상관없이 나눈다.
+        // 가로 모드·대화면 분리 키보드는 세로 모드의 균형 배열과 상관없이 나눈다.
         // 두벌식은 쿼티와 자리가 같아, 분리 키보드에서는 영어 자판처럼 일반 배열을 가운데에서 나눈다 (자음이 왼쪽, 모음이 오른쪽).
         if (profileValues()) return !koreanDubeolsik();
         String key = balancedLayoutKey();
@@ -969,7 +969,7 @@ public final class Prefs {
     /** 지금 보기에서 자음·모음 키 폭의 최솟값 (%): 가로 모드·대화면 값은 30, 세로 모드는 60. */
     public int balancedWidthMin() { return profileValues() ? BALANCED_WIDTH_MIN_LANDSCAPE : BALANCED_WIDTH_MIN; }
 
-    /** 키 폭 기본값 (%): 분리 키보드는 80, 세로 모드의 균형 레이아웃은 100 (두벌식은 90). */
+    /** 키 폭 기본값 (%): 분리 키보드는 80, 세로 모드의 균형 배열은 100 (두벌식은 90). */
     private int widthDefault() {
         if (profileValues()) return SPLIT_WIDTH_DEFAULT;
         return koreanDubeolsik() ? DUBEOLSIK_WIDTH_DEFAULT : BALANCED_WIDTH_DEFAULT;
@@ -980,24 +980,24 @@ public final class Prefs {
         int v = perLayoutInt(balancedVowelWidthKey(), BALANCED_VOWEL_WIDTH, widthDefault());
         return Math.max(balancedWidthMin(), Math.min(BALANCED_CONSONANT_WIDTH_MAX, v));
     }
-    /** 지금 한글 배열의 자·모음 균형 레이아웃 모음 열 위치 (0 = 오른쪽 절반의 왼쪽 끝, 50 = 가운데, 100 = 오른쪽 끝). */
+    /** 지금 한글 배열의 자·모음 균형 배열 모음 열 위치 (0 = 오른쪽 절반의 왼쪽 끝, 50 = 가운데, 100 = 오른쪽 끝). */
     public int balancedVowelPos() {
         return Math.max(0, Math.min(100, perLayoutInt(balancedVowelPosKey(), BALANCED_VOWEL_POS,
                 profileValues() ? SPLIT_RIGHT_POS_DEFAULT : koreanDubeolsik() ? DUBEOLSIK_VOWEL_POS_DEFAULT : 50)));
     }
-    /** 지금 한글 배열의 자·모음 균형 레이아웃 자음 키 폭 (왼쪽 절반을 꽉 채우는 폭의 %). */
+    /** 지금 한글 배열의 자·모음 균형 배열 자음 키 폭 (왼쪽 절반을 꽉 채우는 폭의 %). */
     public int balancedConsonantWidth() {
         int v = perLayoutInt(balancedConsonantWidthKey(), BALANCED_CONSONANT_WIDTH, widthDefault());
         return Math.max(balancedWidthMin(), Math.min(BALANCED_CONSONANT_WIDTH_MAX, v));
     }
-    /** 지금 한글 배열의 자·모음 균형 레이아웃 자음 열 위치 (0 = 왼쪽 끝, 50 = 가운데, 100 = 가운데 선 쪽 끝). */
+    /** 지금 한글 배열의 자·모음 균형 배열 자음 열 위치 (0 = 왼쪽 끝, 50 = 가운데, 100 = 가운데 선 쪽 끝). */
     public int balancedConsonantPos() {
         return Math.max(0, Math.min(100, perLayoutInt(balancedConsonantPosKey(), BALANCED_CONSONANT_POS,
                 profileValues() ? SPLIT_LEFT_POS_DEFAULT : koreanDubeolsik() ? DUBEOLSIK_CONSONANT_POS_DEFAULT : 50)));
     }
     /**
      * 지금 한글 배열의 자·모음 경계 위치: 자판 폭에서 자음 쪽(왼쪽)이 차지하는 % (30~70, 기본 50 = 가운데).
-     * 세로 모드의 균형 레이아웃에만 있고, 분리 키보드(가로 모드·대화면)는 늘 가운데에서 나눈다.
+     * 세로 모드의 균형 배열에만 있고, 분리 키보드(가로 모드·대화면)는 늘 가운데에서 나눈다.
      */
     public int balancedBoundary() {
         if (profileValues()) return BALANCED_BOUNDARY_DEFAULT;
@@ -1021,7 +1021,7 @@ public final class Prefs {
     }
     /** 영어 자판의 글자 키를 아래로 밀면 대문자를 입력하는지. */
     public boolean englishSwipeUpper() { return sp.getBoolean(ENGLISH_SWIPE_UPPER, false); }
-    /** 영어 자판도 두벌식의 자·모음 균형 레이아웃을 따르는지 (두벌식이고 균형 레이아웃이 켜져 있을 때만, 세로 모드). */
+    /** 영어 자판도 두벌식의 자·모음 균형 배열을 따르는지 (두벌식이고 균형 배열이 켜져 있을 때만, 세로 모드). */
     public boolean englishBalanced() { return sp.getBoolean(ENGLISH_BALANCED, false) && koreanDubeolsik() && balancedLayout(); }
     /** 한글 자판에서 Shift 키를 껐을 때 그 자리에 Fn 키를 놓는지. */
     public boolean koreanShiftFn() { return sp.getBoolean(KOREAN_SHIFT_FN, false); }

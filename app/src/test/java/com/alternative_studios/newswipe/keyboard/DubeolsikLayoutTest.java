@@ -22,7 +22,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 한글 배열 '두벌식': 표준 두벌식 자판, 자·모음 균형 레이아웃, 분리 키보드·한 손 모드·격자 정렬과 함께 쓸 때의 모양,
+ * 한글 배열 '두벌식': 표준 두벌식 자판, 자·모음 균형 배열, 분리 키보드·한 손 모드·격자 정렬과 함께 쓸 때의 모양,
  * 예전 실험실 '두벌식 자판' 스위치를 옮기는 것.
  */
 public class DubeolsikLayoutTest {
@@ -77,7 +77,7 @@ public class DubeolsikLayoutTest {
             {"ㅋ", "ㅌ", "ㅊ", "ㅍ", "ㅠ", "ㅜ", "ㅡ"},
     };
 
-    /** 한글 배열을 두벌식으로 고른 설정. balanced는 두벌식의 자·모음 균형 레이아웃. */
+    /** 한글 배열을 두벌식으로 고른 설정. balanced는 두벌식의 자·모음 균형 배열. */
     private static FakeSp dubeolsik(boolean balanced) {
         FakeSp sp = new FakeSp();
         sp.m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_DUBEOLSIK);
@@ -212,7 +212,7 @@ public class DubeolsikLayoutTest {
     }
 
     /**
-     * 자·모음 균형 레이아웃: 일반 두벌식 자판을 자음과 모음 사이에서 나누기만 한다. 각 쪽 안에서 키의 상대적인 자리와 폭
+     * 자·모음 균형 배열: 일반 두벌식 자판을 자음과 모음 사이에서 나누기만 한다. 각 쪽 안에서 키의 상대적인 자리와 폭
      * (ㅁ·ㅗ 줄의 반 칸 들여쓰기, 1.5칸 Shift·⌫)은 일반 자판과 같다.
      */
     @Test
@@ -275,7 +275,7 @@ public class DubeolsikLayoutTest {
         }
     }
 
-    /** 균형 레이아웃의 키 폭·위치·경계 설정을 두벌식도 따르고, 키 폭은 줄마다 같다. */
+    /** 균형 배열의 키 폭·위치·경계 설정을 두벌식도 따르고, 키 폭은 줄마다 같다. */
     @Test
     public void balancedWidthsApplyToEveryRow() throws Exception {
         FakeSp sp = dubeolsik(true);
@@ -302,7 +302,7 @@ public class DubeolsikLayoutTest {
     }
 
     /**
-     * 세로 모드 균형 레이아웃의 기본값: 두벌식은 경계 50%, 키 폭 90%, 자음은 왼쪽 끝·모음은 오른쪽 끝.
+     * 세로 모드 균형 배열의 기본값: 두벌식은 경계 50%, 키 폭 90%, 자음은 왼쪽 끝·모음은 오른쪽 끝.
      * 단모음 배열은 그대로 키 폭 100%·가운데.
      */
     @Test
@@ -336,7 +336,7 @@ public class DubeolsikLayoutTest {
         assertEquals(Prefs.SPLIT_RIGHT_POS_DEFAULT, lp.balancedVowelPos());
     }
 
-    /** 격자 정렬: 균형 레이아웃에서도 맨 아래 줄 기능키가 반듯한 칸 폭이다. */
+    /** 격자 정렬: 균형 배열에서도 맨 아래 줄 기능키가 반듯한 칸 폭이다. */
     @Test
     public void gridKeepsTheBottomRowOnTheGrid() throws Exception {
         FakeSp sp = dubeolsik(true);
@@ -361,7 +361,7 @@ public class DubeolsikLayoutTest {
         assertEquals(8, KeyboardLayout.korean(portrait(sp)).columns);
         p.setKoreanLayout(Prefs.KOREAN_LAYOUT_DUBEOLSIK);
         assertTrue(portrait(sp).balancedLayout());
-        // 배열별로 나누기 전의 균형 레이아웃 값(8열 단모음)은 두벌식에 이어지지 않는다
+        // 배열별로 나누기 전의 균형 배열 값(8열 단모음)은 두벌식에 이어지지 않는다
         FakeSp legacy = new FakeSp();
         legacy.m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_DUBEOLSIK);
         legacy.m.put(Prefs.BALANCED_LAYOUT, true);
@@ -411,7 +411,7 @@ public class DubeolsikLayoutTest {
         for (boolean balanced : new boolean[]{false, true}) {
             FakeSp sp = dubeolsik(balanced);
             Prefs p = portrait(sp).oneHandView();
-            assertFalse(p.balancedLayout());   // 한 손 모드는 균형 레이아웃 없이 한쪽으로 모은다
+            assertFalse(p.balancedLayout());   // 한 손 모드는 균형 배열 없이 한쪽으로 모은다
             KeyboardLayout l = KeyboardLayout.korean(p);
             assertEquals(10, l.columns);
             for (int r = 0; r < 3; r++) assertArrayEquals(STANDARD[r], labels(l.rows[r]));
@@ -514,7 +514,7 @@ public class DubeolsikLayoutTest {
         return labels(row);
     }
 
-    /** 두벌식 균형 레이아웃을 켜고 '영어 자판도 균형 레이아웃'을 켜면 영어 자판도 같은 모양으로 나뉜다. */
+    /** 두벌식 균형 배열을 켜고 '영어 자판도 균형 배열'을 켜면 영어 자판도 같은 모양으로 나뉜다. */
     @Test
     public void englishFollowsTheBalancedLayout() throws Exception {
         String[][] english = {{"q", "w", "e", "r", "t", "y", "u", "i", "o", "p"}, {"a", "s", "d", "f", "g", "h", "j", "k", "l"},
@@ -554,7 +554,7 @@ public class DubeolsikLayoutTest {
             KeyboardLayout moved = KeyboardLayout.english(portrait(sp));
             assertEquals(KeyboardLayout.korean(portrait(sp)).rows[first].keys.length, moved.rows[first].keys.length);
         }
-        // 켜지지 않는 경우: 균형 레이아웃이 꺼짐, 두벌식이 아님, 한 손 모드, 가로 모드 분리 키보드
+        // 켜지지 않는 경우: 균형 배열이 꺼짐, 두벌식이 아님, 한 손 모드, 가로 모드 분리 키보드
         FakeSp off = dubeolsik(false);
         off.m.put(Prefs.ENGLISH_BALANCED, true);
         assertFalse(portrait(off).englishBalanced());
@@ -669,7 +669,7 @@ public class DubeolsikLayoutTest {
         assertArrayEquals(new float[]{0f, 0.5f, 1.5f}, KeyboardLayout.koreanRowOffsets(p), 0f);
         assertTrue(KeyboardLayout.koreanIotizedKeys(p));
         assertFalse(KeyboardLayout.koreanAspirateSwipe(p));   // ㅋ·ㅌ·ㅊ·ㅍ 키가 따로 있다
-        // 균형 레이아웃도 양쪽 안에서 두벌식의 엇갈림이 그대로다
+        // 균형 배열도 양쪽 안에서 두벌식의 엇갈림이 그대로다
         Prefs b = portrait(dubeolsik(true));
         assertArrayEquals(STANDARD, KeyboardLayout.koreanLetterRows(b));
         assertArrayEquals(new float[]{0f, 0.5f, 1.5f}, KeyboardLayout.koreanRowOffsets(b), 0f);

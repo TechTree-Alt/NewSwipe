@@ -175,7 +175,7 @@ public final class SettingsActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        if (isFinishing() && editorPreview != null) {   // 키보드 사용자화을 떠난다: 되돌리기 기록도 버린다
+        if (isFinishing() && editorPreview != null) {   // 키보드 사용자화를 떠난다: 되돌리기 기록도 버린다
             EditorUndo.clearAll();
         }
         if (editorPrefListener != null) prefs.raw().unregisterOnSharedPreferenceChangeListener(editorPrefListener);
@@ -228,7 +228,7 @@ public final class SettingsActivity extends Activity {
             case BLOCKED: return "학습하지 않는 단어";
             case PRIVACY: return "개인정보 처리방침";
             case LICENSES: return "오픈소스 라이선스";
-            case KEY_AREA: return "키 위치·폭 사용자화";
+            case KEY_AREA: return "균형 배열 사용자화";
             case LANDSCAPE_AREA: return "가로 모드 키보드 사용자화";
             case LARGE_AREA: return "대화면 키보드 사용자화";
             default: return null;
@@ -242,7 +242,7 @@ public final class SettingsActivity extends Activity {
             return;
         }
         buildScreen(id);
-        if (hasReset(id) && !KEYBOARD.equals(id)) addResetButton(id);   // 키보드 사용자화은 목록 안에 따로 둔다
+        if (hasReset(id) && !KEYBOARD.equals(id)) addResetButton(id);   // 키보드 사용자화는 목록 안에 따로 둔다
     }
 
     /** 설정 화면 하나의 내용을 지금의 list에 만든다 (설정 검색이 화면 글자를 모을 때도 이것을 쓴다). */
@@ -383,8 +383,8 @@ public final class SettingsActivity extends Activity {
             {KEYBOARD, "키 사이 좌우 간격", "키 간격 갭"},
             {KEYBOARD, "키 사이 상하 간격", "키 간격 갭"},
             {"clipemoji", "이모지 크기", "이모티콘 크기 글자 키우기 크게 이모지 창"},
-            {KEYBOARD, "키 위치·폭 사용자화", "자음 모음 열 폭 위치 배치"},
-            {KEYBOARD, "자·모음 균형 레이아웃", "자음 모음 반반 균형 한글 자판 배열 두벌식 단모음 쿼티 qwerty 레이아웃"},
+            {KEYBOARD, "균형 배열 사용자화", "자음 모음 열 폭 위치 배치 키 위치 경계 균형 레이아웃"},
+            {KEYBOARD, "자·모음 균형 배열", "자음 모음 반반 균형 한글 자판 배열 두벌식 단모음 쿼티 qwerty 레이아웃"},
             {KEYBOARD, "가로 모드 키보드 사용자화", "가로 화면 landscape"},
             {KEYBOARD, "숫자 줄 표시", "숫자 줄 1234567890 숫자열"},
             {KEYBOARD, "기능키 순서·유무 사용자화", "맨 아래 줄 하단 키 쉼표 지구본 온점 엔터"},
@@ -1641,7 +1641,7 @@ public final class SettingsActivity extends Activity {
         return box;
     }
 
-    /** 한글 자판 배열: 배열 고르기와 설명, 자·모음 균형 레이아웃(키 위치·폭 사용자화). */
+    /** 한글 자판 배열: 배열 고르기와 설명, 자·모음 균형 배열(균형 배열 사용자화). */
     private void buildKoreanLayoutSection() {
         LinearLayout korean = section("한글 자판 배열");
         String[] koreanLayouts = {Prefs.KOREAN_LAYOUT_DUBEOLSIK, Prefs.KOREAN_LAYOUT_8, Prefs.KOREAN_LAYOUT_D7};
@@ -1652,8 +1652,8 @@ public final class SettingsActivity extends Activity {
         // 토글의 하위 항목(강조선·들여쓰기)으로 보이는 버튼이다.
         // 버튼은 위아래 여백이 있어, 버튼 자체를 접으면 높이가 0이 된 뒤 남은 여백이 한꺼번에 사라져 끊겨 보인다.
         // 그래서 여백 없는 틀(fold)로 감싸 그 틀을 펼치고 접는다.
-        // 두벌식에서만: 영어 자판도 같은 모양으로 나눈다. 균형 레이아웃의 하위 항목으로 키 위치·폭 사용자화와 한 묶음에 둔다.
-        View englishToggle = toggle("영어 자판도 균형 레이아웃",
+        // 두벌식에서만: 영어 자판도 같은 모양으로 나눈다. 균형 배열의 하위 항목으로 균형 배열 사용자화와 한 묶음에 둔다.
+        View englishToggle = toggle("영어 자판도 균형 배열",
                 "영어 자판도 두벌식처럼 가운데에서 나눠 왼쪽 5·5·4키, 오른쪽 5·4·3키로 놓습니다. 경계와 키 폭·위치 설정을 함께 씁니다.",
                 prefs.raw().getBoolean(Prefs.ENGLISH_BALANCED, false), on -> {
                     prefs.raw().edit().putBoolean(Prefs.ENGLISH_BALANCED, on).apply();
@@ -1661,9 +1661,9 @@ public final class SettingsActivity extends Activity {
                 });
         View englishBalanced = fold(englishToggle);
         englishBalanced.setVisibility(englishBalancedShown() ? View.VISIBLE : View.GONE);
-        View keyArea = fold(subGroup(button("키 위치·폭 사용자화", v -> openSection(KEY_AREA)), englishBalanced));
+        View keyArea = fold(subGroup(button("균형 배열 사용자화", v -> openSection(KEY_AREA)), englishBalanced));
         keyArea.setVisibility(prefs.balancedLayout() ? View.VISIBLE : View.GONE);
-        View balancedRow = toggle("자·모음 균형 레이아웃",
+        View balancedRow = toggle("자·모음 균형 배열",
                 "자판을 둘로 나눠 왼쪽에는 자음을, 오른쪽에는 모음을 놓습니다.",
                 prefs.balancedLayout(), on -> {
                     prefs.raw().edit().putBoolean(prefs.balancedLayoutKey(), on).apply();
@@ -1674,7 +1674,7 @@ public final class SettingsActivity extends Activity {
                 i -> {
                     prefs.setKoreanLayout(koreanLayouts[i]);
                     layoutNote.setText(layoutNoteText());
-                    // 균형 레이아웃은 배열마다 따로 기억하므로 고른 배열의 값으로 스위치를 맞춘다.
+                    // 균형 배열은 배열마다 따로 기억하므로 고른 배열의 값으로 스위치를 맞춘다.
                     ((ExpressiveSwitch) ((ViewGroup) balancedRow).getChildAt(1)).setCheckedSilently(prefs.balancedLayout());
                     Ui.setVisibleAnimated(keyArea, prefs.balancedLayout());
                     Ui.setVisibleAnimated(englishBalanced, englishBalancedShown());
@@ -1686,7 +1686,7 @@ public final class SettingsActivity extends Activity {
         korean.addView(keyArea);
     }
 
-    /** '영어 자판도 균형 레이아웃'은 두벌식에서만 보인다 (균형 레이아웃을 켰을 때 그 하위 묶음과 함께. 설정 검색 목록에는 늘 넣는다). */
+    /** '영어 자판도 균형 배열'은 두벌식에서만 보인다 (균형 배열을 켰을 때 그 하위 묶음과 함께. 설정 검색 목록에는 늘 넣는다). */
     private boolean englishBalancedShown() {
         return harvesting || prefs.koreanDubeolsik();
     }
@@ -1705,20 +1705,48 @@ public final class SettingsActivity extends Activity {
 
     private static final String GRID_DESC = "아래 줄의 기능키를 한글 키와 같은 폭으로 해 줄을 맞춥니다. "
             + "오쏘리니어 키보드에서 영감을 받았습니다.";
+    /** 균형 배열 사용자화 화면 아래의 미리보기 (그 화면에서만). */
+    private KeyboardPreview balancedPreview;
+
     /**
-     * 키 위치·폭 사용자화: 미리보기를 보면서 자·모음 균형 레이아웃의 자·모음 경계 위치와, 자음 열(경계 왼쪽)·
-     * 모음 열(경계 오른쪽)의 폭과 가로 위치를 정한다. 가로 모드의 값은 '가로 모드 키보드 사용자화'에서 따로 정한다.
+     * 균형 배열 사용자화: 키보드 사용자화처럼 화면 아래에 실제 키보드와 같은 미리보기를 붙이고, 자음·모음 쪽 윤곽선의
+     * ↔ 버튼(좌우로 끌면 키 폭, 길게 누른 뒤 끌면 가로 위치)과 경계선 손잡이(자·모음 경계 위치)로 바로 바꾼다.
+     * 같은 값을 아래 슬라이더로도 바꿀 수 있고, 손잡이를 끌면 슬라이더도 따라 움직인다. 가로 모드의 값은 따로 정한다.
      */
     private void buildKeyArea() {
-        LinearLayout card = section("자음·모음 열");
-        card.addView(layoutPreview(null));
+        if (!harvesting) {
+            balancedPreview = new KeyboardPreview(this, prefs, new KeyboardPreview.Listener() {
+                @Override public void onTap(KeyboardPreview.Selection s) { }
+                @Override public void onSizeChanged(String prefKey) { syncSizeSliders(prefKey); }
+                @Override public void onLayerChanged(int layer) { }
+            });
+            balancedPreview.setBalancedMode(true);
+            pinnedBottom.addView(balancedPreview, matchWrap());
+            pinnedBottom.setVisibility(View.VISIBLE);
+        }
+        LinearLayout card = section("자음·모음 쪽");
+        card.addView(note("아래 미리보기에서 자음·모음 쪽 가운데의 ↔ 버튼을 좌우로 끌면 키 폭이, 길게 누른 뒤 끌면 가로 위치가 "
+                + "바뀝니다. 가운데 경계선의 손잡이를 끌면 자·모음 경계 위치가 5%씩 바뀝니다."));
+        card.addView(balancedSlider("자·모음 경계 위치", prefs.balancedBoundaryKey(), prefs::balancedBoundary,
+                Prefs.BALANCED_BOUNDARY_MIN, Prefs.BALANCED_BOUNDARY_MAX, "%"));
+        card.addView(balancedSlider("자음 키 폭", prefs.balancedConsonantWidthKey(), prefs::balancedConsonantWidth,
+                prefs.balancedWidthMin(), Prefs.BALANCED_CONSONANT_WIDTH_MAX, "%"));
+        card.addView(balancedSlider("자음 가로 위치", prefs.balancedConsonantPosKey(), prefs::balancedConsonantPos, 0, 100, ""));
+        card.addView(balancedSlider("모음 키 폭", prefs.balancedVowelWidthKey(), prefs::balancedVowelWidth,
+                prefs.balancedWidthMin(), com.alternative_studios.newswipe.keyboard.KeyboardLayout.balancedWidthMax(prefs), "%"));
+        card.addView(balancedSlider("모음 가로 위치", prefs.balancedVowelPosKey(), prefs::balancedVowelPos, 0, 100, ""));
         card.addView(note("자·모음 경계 위치는 자판 폭에서 자음 쪽이 차지하는 비율입니다 (50%면 가운데). "
                 + "자음 키 폭은 경계 왼쪽을, 모음 키 폭은 경계 오른쪽을 꽉 채우는 폭에 대한 비율입니다 (100%면 꽉 참). "
                 + "가로 위치는 각 쪽 안에서 키들이 놓이는 곳입니다 (0 = 왼쪽 끝, 50 = 가운데, 100 = 오른쪽 끝). "
                 + "아래 줄의 키는 바뀌지 않습니다."));
-        card.addView(slider("자·모음 경계 위치", prefs.balancedBoundaryKey(), prefs.balancedBoundary(),
-                Prefs.BALANCED_BOUNDARY_MIN, Prefs.BALANCED_BOUNDARY_MAX, 5, "%", this::refreshLayoutPreview));
-        addKeyAreaControls(card, prefs);
+    }
+
+    /** 균형 배열 사용자화의 슬라이더 (5단위): 바꾸면 미리보기를 다시 그리고, 미리보기의 손잡이를 끌면 따라 움직인다. */
+    private View balancedSlider(String label, String key, java.util.function.IntSupplier current, int min, int max,
+                                String unit) {
+        SettingsWidgets.Slider sl = sliderRow(label, key, current.getAsInt(), min, max, 5, unit, this::refreshLayoutPreview);
+        if (!harvesting) sizeSliders.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(() -> sl.set(current.getAsInt()));
+        return sl.view;
     }
 
     /** v를 스크롤 목록 위의 고정된 곳에 놓는다. 설정 검색용으로 화면을 만들 때는 그 임시 목록에 넣는다. */
@@ -2125,11 +2153,6 @@ public final class SettingsActivity extends Activity {
         oneHand.addView(note(when + " 한 손 모드에서 쓰는 자판 폭(화면 폭의 %)입니다."));
     }
 
-    /** 자음·모음의 폭·가로 위치 슬라이더. p는 세로 또는 가로 모드용 설정 보기다. */
-    private void addKeyAreaControls(LinearLayout card, Prefs p) {
-        addKeyAreaControls(card, p, new String[]{"자음 키 폭", "자음 가로 위치", "모음 키 폭", "모음 가로 위치"});
-    }
-
     /** 분리 키보드의 두 묶음 폭·가로 위치 슬라이더 (이름만 묶음 기준이고 값은 자음·모음 열과 같다). */
     private void addBlockControls(LinearLayout card, Prefs p) {
         addKeyAreaControls(card, p, new String[]{"왼쪽 묶음 폭", "왼쪽 묶음 가로 위치", "오른쪽 묶음 폭", "오른쪽 묶음 가로 위치"});
@@ -2294,6 +2317,7 @@ public final class SettingsActivity extends Activity {
             new java.util.LinkedHashMap<>();
 
     private void refreshLayoutPreview() {
+        if (balancedPreview != null) balancedPreview.refresh();
         for (java.util.Map.Entry<com.alternative_studios.newswipe.keyboard.KeyboardView, String> e : layoutPreviews.entrySet()) {
             refreshLayoutPreview(e.getKey(), previewPrefs(e.getValue()), isLandscapeProfile(e.getValue()));
         }
