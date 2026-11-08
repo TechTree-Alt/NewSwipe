@@ -113,8 +113,8 @@ public final class ClipboardPanel extends LinearLayout {
         titleLp.leftMargin = Ui.dp(context, 10);   // 뒤로 가기 칩에 붙지 않게
         header.addView(title, titleLp);
         // 모두 지우기: 휴지통 아이콘 칩 (뒤로 가기 칩과 같은 크기)
-        clear = new IconButton(context, Icons.TRASH, theme.onAccent, theme.keyPressed, "모두 지우기");
-        clear.setToolbarStyle(theme, topBarHeight, theme.accent, theme.onAccent);   // 이전 글자와 같은 색 (강조색 위 글자색)
+        clear = new IconButton(context, Icons.TRASH, Ui.danger(theme.dark), theme.keyPressed, "모두 지우기");
+        clear.setToolbarStyle(theme, topBarHeight, theme.functionKey, Ui.danger(theme.dark));
         clear.setOnClickListener(v -> {
             listener.onClipChipPress();
             confirmClear();
