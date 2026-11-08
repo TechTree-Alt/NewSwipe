@@ -181,8 +181,6 @@ public final class Prefs {
     public static final String PROFILE_LIFT = "lift";   // 가로 모드·대화면: 키보드를 화면 아래에서 띄우는 높이(dp), 0~160
     public static final String SPACE_CURSOR_SPEED_H = "space_cursor_speed_h";
     public static final String SPACE_CURSOR_SPEED_V = "space_cursor_speed_v";
-    public static final String CHAR_CURSOR_SPEED_H = "char_cursor_speed_h";
-    public static final String CHAR_CURSOR_SPEED_V = "char_cursor_speed_v";
     public static final String DELETE_KEY_HIDDEN = "delete_key_hidden";       // 글자·기호 자판의 ⌫ 없애기 (빈칸으로 남김)
     public static final String SPACE_KEY_HIDDEN = "space_key_hidden";         // 스페이스바 없애기 (기능키 순서·유무 사용자화)
     public static final String BOTTOM_KEY_ORDER = "bottom_key_order";         // 맨 아래 줄 기능키 순서 (BottomKeys)
@@ -467,7 +465,7 @@ public final class Prefs {
                     keys(AREA_PAD_PREFIX + PAD_AREAS[1] + "_")),
             // 글자 키: 세 자판이 함께 쓰는 값(높이·길게 누르기·밀기·여백)과 한글·영어 글자 키에만 있는 값.
             new EditorScope(AREA_SCOPES[2], "글자 키 공통 (높이·길게 누르기·밀기·여백)", keys(KEYBOARD_HEIGHT, LONG_PRESS_MS,
-                    POPUP_HINT_HIDDEN, SWIPE_THRESHOLD, CHAR_CURSOR_SPEED_H, CHAR_CURSOR_SPEED_V, SWIPE_PICK_SUGGESTION),
+                    POPUP_HINT_HIDDEN, SWIPE_THRESHOLD, SWIPE_PICK_SUGGESTION),
                     keys(AREA_PAD_PREFIX + PAD_AREAS[2] + "_", "swipe_kb_")),
             new EditorScope(SCOPE_LETTERS_KO, "한글 글자 키 (자판 배열·균형 레이아웃·연속 탭)", keys(KOREAN_LAYOUT,
                     DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT, DOUBLE_TAP_CONSONANT_MS, ENGLISH_BALANCED),
@@ -788,8 +786,6 @@ public final class Prefs {
     }
     public int spaceCursorSpeedH() { return sp.getInt(SPACE_CURSOR_SPEED_H, 100); }
     public int spaceCursorSpeedV() { return sp.getInt(SPACE_CURSOR_SPEED_V, 100); }
-    public int charCursorSpeedH() { return sp.getInt(CHAR_CURSOR_SPEED_H, 100); }
-    public int charCursorSpeedV() { return sp.getInt(CHAR_CURSOR_SPEED_V, 100); }
     public boolean deleteKeyHidden() { return sp.getBoolean(DELETE_KEY_HIDDEN, false); }
     public boolean spaceKeyHidden() { return sp.getBoolean(SPACE_KEY_HIDDEN, false); }
 

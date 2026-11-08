@@ -1396,7 +1396,6 @@ public final class SettingsActivity extends Activity {
                 LinearLayout swipe = section("밀기");
                 swipe.addView(swipeDistanceSlider());
                 addKeyboardSwipe(swipe);
-                addTrackpadSpeed(swipe);
                 addKeyPageNote(KeyboardPreview.areaName(areaId, letterTab), "키를");
                 buildPad(areaId);
                 break;
@@ -1573,11 +1572,6 @@ public final class SettingsActivity extends Activity {
 
     private View fnSwipeDistanceSlider() {
         return slider("기능 미는 거리", Prefs.FN_SWIPE_THRESHOLD, prefs.fnSwipeThresholdDp(), 12, 48, 2, "dp");
-    }
-
-    private void addTrackpadSpeed(LinearLayout c) {
-        c.addView(slider("자판 트랙패드 좌우", Prefs.CHAR_CURSOR_SPEED_H, prefs.charCursorSpeedH(), 50, 300, 10, "%"));
-        c.addView(slider("자판 트랙패드 상하", Prefs.CHAR_CURSOR_SPEED_V, prefs.charCursorSpeedV(), 50, 300, 10, "%"));
     }
 
     /** 키보드 밀기 편집(한 손가락·두 손가락)과 위로 밀어서 추천 단어 입력. */

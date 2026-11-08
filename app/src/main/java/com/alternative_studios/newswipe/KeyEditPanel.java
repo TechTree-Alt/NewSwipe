@@ -621,7 +621,7 @@ final class KeyEditPanel {
             card.addView(note("'커서 자유 이동'을 정한 방향으로 밀면 커서가 움직입니다 (좌우는 글자, 위아래는 줄 단위)."));
             card.addView(slider("커서 이동 속도 좌우", Prefs.SPACE_CURSOR_SPEED_H, prefs.spaceCursorSpeedH(), 50, 300, 10, "%"));
             card.addView(slider("커서 이동 속도 상하", Prefs.SPACE_CURSOR_SPEED_V, prefs.spaceCursorSpeedV(), 50, 300, 10, "%"));
-            card.addView(note("스페이스바와 커서 키가 같은 속도를 씁니다. 값이 클수록 조금만 밀어도 커서가 빠르게 움직입니다."));
+            card.addView(note("스페이스바·커서 키·글자 키 트랙패드가 같은 속도를 씁니다. 값이 클수록 조금만 밀어도 커서가 빠르게 움직입니다."));
         }
     }
 

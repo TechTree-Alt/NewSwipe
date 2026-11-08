@@ -177,7 +177,7 @@ public final class KeyboardView extends View {
     private boolean gapCursor = true;
     /** 커서 이동이 시작된 뒤 손가락이 움직이는 거리당 커서가 움직이는 빠르기 (1 = 기본). 스페이스바·문자 키, 좌우·상하 따로. */
     private float gapSpeed = 1f;
-    private float spaceSpeedH = 1f, spaceSpeedV = 1f, charSpeedH = 1f, charSpeedV = 1f;
+    private float cursorSpeedH = 1f, cursorSpeedV = 1f;
     /** 키보드 밀기 (한 손가락·두 손가락). 쓰지 않으면 null. */
     private KeyboardSwipes kbSwipes;
     private boolean pickSwipe;
@@ -388,12 +388,10 @@ public final class KeyboardView extends View {
         wordRepeatMs = 1000L / Math.max(1, wordsPerSecond);
     }
 
-    /** 커서 이동 속도 (%). 100 = 기본. */
-    public void setCursorSpeed(int spaceH, int spaceV, int charH, int charV) {
-        spaceSpeedH = Math.max(10, spaceH) / 100f;
-        spaceSpeedV = Math.max(10, spaceV) / 100f;
-        charSpeedH = Math.max(10, charH) / 100f;
-        charSpeedV = Math.max(10, charV) / 100f;
+    /** 커서 이동 속도 (%). 100 = 기본. 스페이스바·커서 이동 키·자판 트랙패드(글자 키)가 함께 쓴다. */
+    public void setCursorSpeed(int h, int v) {
+        cursorSpeedH = Math.max(10, h) / 100f;
+        cursorSpeedV = Math.max(10, v) / 100f;
     }
 
     public void setKeyboardSwipes(KeyboardSwipes k) {
@@ -1172,8 +1170,8 @@ public final class KeyboardView extends View {
                 boolean curV = p.gap || (p.freeCursor ? p.freeV
                         : fnSwipes != null && fnSwipes.cursorV(p.cursorKey ? FunctionSwipes.CURSOR : FunctionSwipes.SPACE));
                 // 커서 이동 속도: 한 칸(한 줄) 움직이는 데 필요한 손가락 거리를 속도만큼 줄이거나 늘린다.
-                float stepX = cursorStep / (p.gap ? gapSpeed : p.freeCursor ? charSpeedH : spaceSpeedH);
-                float stepY = cursorStepY / (p.gap ? gapSpeed : p.freeCursor ? charSpeedV : spaceSpeedV);
+                float stepX = cursorStep / (p.gap ? gapSpeed : cursorSpeedH);
+                float stepY = cursorStepY / (p.gap ? gapSpeed : cursorSpeedV);
                 float d = x - p.cursorAnchorX;
                 float dv = y - p.cursorAnchorY;
                 if (!p.cursorStarted && listener != null
@@ -1197,8 +1195,8 @@ public final class KeyboardView extends View {
             }
             case SELECT: {
                 // 스페이스바 커서 이동과 같은 속도로, 좌우는 글자 단위·위아래는 줄 단위로 선택 영역의 끝을 옮긴다.
-                float stepX = cursorStep / spaceSpeedH;
-                float stepY = cursorStepY / spaceSpeedV;
+                float stepX = cursorStep / cursorSpeedH;
+                float stepY = cursorStepY / cursorSpeedV;
                 float d = x - p.cursorAnchorX;
                 while (Math.abs(d) >= stepX) {
                     int dir = d > 0 ? 1 : -1;
