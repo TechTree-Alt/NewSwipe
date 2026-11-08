@@ -2331,7 +2331,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             int pos = back ? Math.min(selStart, selEnd) : Math.max(selStart, selEnd);
             ic.setSelection(pos, pos);
             // 입력란이 바뀐 위치를 알려 주기 전에 이어서 밀어도 선택이 풀린 것으로 보도록 바로 기억해 둔다.
-            selStart = selEnd = pos;
+            placeCursorLocally(pos);
             cursorBudget.reset();
             cursorWindow.reset();
             mirror.forget();
@@ -4380,7 +4380,17 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         int pos = right ? end + n : Math.max(0, start - n);
         ic.setSelection(pos, pos);
         // 입력란이 바뀐 위치를 알려 주기 전에 다시 밀어도 이어서 움직이도록 바로 기억해 둔다.
+        placeCursorLocally(pos);
+    }
+
+    /**
+     * 입력란이 알려 주기 전에 커서 자리를 미리 기억한다. 그 전에 글자가 선택되어 있었으면 여기서 선택이 풀린 것이므로
+     * 선택 편집 칩도 지금 거둔다: 나중에 온 onUpdateSelection은 이미 선택이 없던 것으로 보아 칩을 맞추지 않는다.
+     */
+    private void placeCursorLocally(int pos) {
+        boolean hadSelection = selStart >= 0 && selEnd >= 0 && selStart != selEnd;
         selStart = selEnd = pos;
+        if (hadSelection) onAutofillChipsChanged();
     }
 
     /** 입력란의 메뉴 동작(모두 선택, 복사, 잘라내기, 붙여넣기)을 실행한다. */
