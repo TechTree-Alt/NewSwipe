@@ -695,7 +695,7 @@ public final class Prefs {
     public int splitFnWidthSetting() { return Math.max(50, Math.min(200, sp.getInt(splitFnWidthKey(), 100))); }
 
     /**
-     * 이 프로필의 '좌·우 균形 배열'(양쪽 묶음 4열 맞춤) 저장 키. 한글 배열마다 따로 저장한다.
+     * 이 프로필의 '좌·우 균형 배열'(양쪽 묶음 4열 맞춤) 저장 키. 한글 배열마다 따로 저장한다.
      * 단모음(8열)에서는 설정 화면의 '자·모음 분리 배열'이 이 값을 뒤집어 보여 준다.
      */
     public String splitReachColumnKey() { return splitReachColumnBaseKey() + "_" + koreanLayoutId(); }
