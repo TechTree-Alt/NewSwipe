@@ -1692,10 +1692,11 @@ public final class SettingsActivity extends Activity {
         View englishBalanced = fold(englishToggle);
         englishBalanced.setVisibility(englishBalancedShown() ? View.VISIBLE : View.GONE);
         View keyArea = fold(subGroup(button("균형 배열 사용자화", v -> openSection(KEY_AREA)), englishBalanced));
-        keyArea.setVisibility(prefs.balancedLayout() ? View.VISIBLE : View.GONE);
+        // 분리 키보드를 쓰는 동안에는 balancedLayout()이 늘 참이므로, 정해 둔 값(balancedLayoutSetting)을 보인다.
+        keyArea.setVisibility(prefs.balancedLayoutSetting() ? View.VISIBLE : View.GONE);
         View balancedRow = toggle("자·모음 균형 배열",
                 "자판을 둘로 나눠 왼쪽에는 자음을, 오른쪽에는 모음을 놓습니다.",
-                prefs.balancedLayout(), on -> {
+                prefs.balancedLayoutSetting(), on -> {
                     prefs.raw().edit().putBoolean(prefs.balancedLayoutKey(), on).apply();
                     Ui.setVisibleAnimated(keyArea, on);
                     refreshLayoutPreview();
@@ -1705,8 +1706,8 @@ public final class SettingsActivity extends Activity {
                     prefs.setKoreanLayout(koreanLayouts[i]);
                     layoutNote.setText(layoutNoteText());
                     // 균형 배열은 배열마다 따로 기억하므로 고른 배열의 값으로 스위치를 맞춘다.
-                    ((ExpressiveSwitch) ((ViewGroup) balancedRow).getChildAt(1)).setCheckedSilently(prefs.balancedLayout());
-                    Ui.setVisibleAnimated(keyArea, prefs.balancedLayout());
+                    ((ExpressiveSwitch) ((ViewGroup) balancedRow).getChildAt(1)).setCheckedSilently(prefs.balancedLayoutSetting());
+                    Ui.setVisibleAnimated(keyArea, prefs.balancedLayoutSetting());
                     Ui.setVisibleAnimated(englishBalanced, englishBalancedShown());
                     refreshLayoutPreview();
                 });

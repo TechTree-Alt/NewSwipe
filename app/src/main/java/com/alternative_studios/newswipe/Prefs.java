@@ -937,6 +937,14 @@ public final class Prefs {
         // 가로 모드·대화면 분리 키보드는 세로 모드의 균형 배열과 상관없이 나눈다.
         // 두벌식은 쿼티와 자리가 같아, 분리 키보드에서는 영어 자판처럼 일반 배열을 가운데에서 나눈다 (자음이 왼쪽, 모음이 오른쪽).
         if (profileValues()) return !koreanDubeolsik();
+        return balancedLayoutSetting();
+    }
+
+    /**
+     * 분리 키보드 사용 여부와 상관없이, 사용자가 지금 한글 배열에 정해 둔 '자·모음 균형 배열' 값.
+     * 분리 키보드를 쓰는 동안 설정 화면의 토글(비활성)이 원래 값을 보이게 할 때 쓴다.
+     */
+    public boolean balancedLayoutSetting() {
         String key = balancedLayoutKey();
         if (sp.contains(key)) return sp.getBoolean(key, false);
         // 배열별로 나누기 전의 값은 8열 단모음의 것이다.
