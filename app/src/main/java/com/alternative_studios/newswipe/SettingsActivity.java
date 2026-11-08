@@ -114,6 +114,10 @@ public final class SettingsActivity extends Activity {
         // 위쪽 머리글(고정) + 아래 스크롤 목록
         String sectionId = getIntent().getStringExtra(EXTRA_SECTION);
         String sectionName = sectionId == null ? null : sectionTitle(sectionId);
+        // 대화면 키보드 사용자화는 지금 화면 방향의 설정을 보여 주므로 제목에도 방향을 붙인다.
+        if (LARGE_AREA.equals(sectionId) && largeProfileNow() != null) {
+            sectionName = Prefs.PROFILE_LARGE_LANDSCAPE.equals(largeProfileNow()) ? "대화면 가로 키보드 사용자화" : "대화면 세로 키보드 사용자화";
+        }
         SettingsFrame frame = sectionName == null
                 ? new SettingsFrame(this, getString(R.string.app_name), "밀어서 입력하고 조작하는 한국어 입력 시스템")
                         .withSearch(this::onSearchQuery)
@@ -245,7 +249,8 @@ public final class SettingsActivity extends Activity {
             return;
         }
         buildScreen(id);
-        if (hasReset(id) && !KEYBOARD.equals(id)) addResetButton(id);   // 키보드 사용자화는 목록 안에 따로 둔다
+        // 키보드 사용자화는 목록 안에 따로 둔다. 대화면이 아니면 대화면 키보드 사용자화에는 안내 문구만 둔다.
+        if (hasReset(id) && !KEYBOARD.equals(id) && !(LARGE_AREA.equals(id) && largeProfileNow() == null)) addResetButton(id);
     }
 
     /** 설정 화면 하나의 내용을 지금의 list에 만든다 (설정 검색이 화면 글자를 모을 때도 이것을 쓴다). */
@@ -287,8 +292,9 @@ public final class SettingsActivity extends Activity {
         if (KEY_AREA.equals(id)) prefs.resetBalancedKeys();
         else if (LANDSCAPE_AREA.equals(id)) prefs.profileEditView(Prefs.PROFILE_LANDSCAPE).resetProfileArea();
         else if (LARGE_AREA.equals(id)) {
-            prefs.profileEditView(Prefs.PROFILE_LARGE_PORTRAIT).resetProfileArea();
-            prefs.profileEditView(Prefs.PROFILE_LARGE_LANDSCAPE).resetProfileArea();
+            // 지금 화면 방향(대화면 세로·가로)의 값만 되돌린다.
+            String now = largeProfileNow();
+            if (now != null) prefs.profileEditView(now).resetProfileArea();
         }
         else prefs.resetSection(id);
         importGeneration++;   // 뒤에 쌓인 설정 화면도 돌아오면 기본값으로 다시 그린다
@@ -1820,23 +1826,15 @@ public final class SettingsActivity extends Activity {
     }
 
     /**
-     * 미리보기 위의 안내. 가로 모드 화면(landscapePage)은 기기가 세로일 때만 '미리보기가 작게 보인다'고 알리고, 가로일 때는
-     * 아무 문구도 두지 않는다 (실제 크기라서). 대화면 화면은 사용법을 알린다.
+     * 가로 모드 키보드 사용자화의 안내: 기기가 세로일 때만 '미리보기가 작게 보인다'고 알리고, 가로일 때는 아무 문구도 두지 않는다
+     * (실제 크기라서).
      */
-    private void addProfileIntro(boolean landscapePage) {
-        if (landscapePage) {
-            boolean landNow = getResources().getConfiguration().orientation
-                    == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
-            if (landNow && !harvesting) return;
-            LinearLayout intro = card();
-            intro.addView(note("세로 상태에서는 키보드 미리보기가 작게 보일 수 있습니다. 실제 크기의 미리보기를 원하시면 기기를 가로로 돌리세요."));
-            return;
-        }
+    private void addLandscapeIntro() {
+        boolean landNow = getResources().getConfiguration().orientation
+                == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+        if (landNow && !harvesting) return;
         LinearLayout intro = card();
-        intro.addView(note("아래 미리보기에서 영역을 누르면 그 영역의 설정 창이 열립니다. 분리 키보드를 켜면 왼쪽·오른쪽 묶음과 "
-                + "가운데 공간, 기능키를, 끄면 글자 키와 기능키를 고를 수 있습니다. 고른 영역의 ↕·↔ 버튼을 끌어 크기와 위치를 바로 "
-                + "바꿀 수도 있습니다. 키보드 아래 가장자리의 손잡이를 끌면 세로 위치가 바뀝니다.\n"
-                + "여기의 목록에는 키보드 전체에 걸리는 설정만 있습니다. 키와 다른 영역의 설정은 '키보드 사용자화'에서 바꿉니다."));
+        intro.addView(note("세로 상태에서는 키보드 미리보기가 작게 보일 수 있습니다. 실제 크기의 미리보기를 원하시면 기기를 가로로 돌리세요."));
     }
 
     /** 가로 모드·대화면의 값 슬라이더: 바꾸면 미리보기를 다시 그리고, 미리보기의 손잡이를 끌면 따라 움직인다. */
@@ -1854,7 +1852,7 @@ public final class SettingsActivity extends Activity {
     private void buildLandscapeArea() {
         String p = Prefs.PROFILE_LANDSCAPE;
         addProfilePreview(p);   // 실제 키보드와 같은 미리보기를 화면 아래에 붙인다
-        addProfileIntro(true);
+        addLandscapeIntro();
         addProfileSplit(p, "가로 모드");
         addProfileWhole(p, "화면을 가로로 돌렸을 때");
         harvestProfileAreas(p);
@@ -2088,49 +2086,50 @@ public final class SettingsActivity extends Activity {
     }
 
     /**
-     * 대화면 키보드 사용자화: 위의 연결된 버튼 그룹으로 세로·가로를 고른다. 분리 키보드 켜기와 좌·우 균형 레이아웃은 세로·가로가
-     * 함께 쓰고, 나머지는 고른 쪽의 값을 따로 정한다. 영역 설정은 아래 미리보기에서 영역을 눌러 연다.
+     * 지금 화면이 대화면이면 그 방향의 프로필 (대화면 세로·가로), 아니면 null (폴더블 기기의 외부 화면 등).
+     * 화면의 짧은 쪽 폭이 '대화면 기준' 이상이면 대화면이다 (키보드가 고르는 규칙과 같다).
+     */
+    private String largeProfileNow() {
+        android.content.res.Configuration cfg = getResources().getConfiguration();
+        if (cfg.smallestScreenWidthDp < prefs.largeScreenDp()) return null;
+        return cfg.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+                ? Prefs.PROFILE_LARGE_LANDSCAPE : Prefs.PROFILE_LARGE_PORTRAIT;
+    }
+
+    /**
+     * 대화면 키보드 사용자화: 지금 화면 방향(대화면 세로·가로)의 설정을 보여 준다. 기기를 돌리면 다른 방향의 설정이 보인다.
+     * 분리 키보드 켜기와 좌·우 균형 레이아웃은 세로·가로가 함께 쓴다. 영역 설정은 아래 미리보기에서 영역을 눌러 연다.
+     * 대화면이 아니면 안내 문구만 둔다.
      */
     private void buildLargeArea() {
-        String port = Prefs.PROFILE_LARGE_PORTRAIT, land = Prefs.PROFILE_LARGE_LANDSCAPE;
-        addProfilePreview(port);
-        addProfileIntro(false);
-        LinearLayout pick = card();
-        // 레이아웃 값은 대화면 세로·가로가 함께 쓰므로 어느 쪽 보기로 고쳐도 같다.
-        addProfileSplit(port, "대화면");
-
-        int start = list.getChildCount();
-        addProfileWhole(port, "대화면을 세로로 들었을 때");
-        addOneHandWidth(port, "대화면을 세로로 들었을 때");
-        int mid = list.getChildCount();
-        addProfileWhole(land, "대화면을 가로로 들었을 때");
-        addOneHandWidth(land, "대화면을 가로로 들었을 때");
-        int end = list.getChildCount();
-        // 방향마다 만든 카드들을 한 묶음씩 모아, 고른 쪽만 보이게 한다.
-        LinearLayout portBox = new LinearLayout(this), landBox = new LinearLayout(this);
-        portBox.setOrientation(LinearLayout.VERTICAL);
-        landBox.setOrientation(LinearLayout.VERTICAL);
-        java.util.List<View> moved = new java.util.ArrayList<>();
-        for (int i = start; i < end; i++) moved.add(list.getChildAt(i));
-        list.removeViews(start, end - start);
-        for (int i = 0; i < moved.size(); i++) (i < mid - start ? portBox : landBox).addView(moved.get(i));
-        landBox.setVisibility(View.GONE);
-
-        pick.addView(Ui.choiceRow(this, new String[]{"세로", "가로"}, 0, accentColor, onAccentColor, textColor, hintColor, 0, i -> {
-            portBox.setVisibility(i == 0 ? View.VISIBLE : View.GONE);
-            landBox.setVisibility(i == 1 ? View.VISIBLE : View.GONE);
-            if (profilePreview != null) {
-                closeKeyPanel();   // 고른 영역 창은 그 방향의 값이라 닫는다
-                profileShown = i == 0 ? port : land;
-                profilePreview.setProfileMode(prefs.profileEditView(profileShown), profileScreenWidth(profileShown));
+        if (harvesting) {
+            // 설정 검색: 두 방향의 항목을 모두 모은다.
+            addProfileSplit(Prefs.PROFILE_LARGE_PORTRAIT, "대화면");
+            for (String p : new String[]{Prefs.PROFILE_LARGE_PORTRAIT, Prefs.PROFILE_LARGE_LANDSCAPE}) {
+                addProfileWhole(p, "대화면에서");
+                addOneHandWidth(p, "대화면에서");
+                harvestProfileAreas(p);
             }
-        }));
-        pick.addView(note("대화면이 세로일 때와 가로일 때의 키보드 모양을 따로 정합니다. "
-                + "분리 키보드 켜기와 좌·우 균형 레이아웃은 세로와 가로가 함께 씁니다."));
-        list.addView(portBox);
-        list.addView(landBox);
-        harvestProfileAreas(port);
-        harvestProfileAreas(land);
+            return;
+        }
+        String profile = largeProfileNow();
+        if (profile == null) {
+            LinearLayout c = card();
+            c.addView(note("이 설정은 대화면에서만 보입니다. 대화면으로 전환하거나 대화면 기준을 조절하세요."));
+            return;
+        }
+        boolean land = Prefs.PROFILE_LARGE_LANDSCAPE.equals(profile);
+        String when = land ? "대화면을 가로로 들었을 때" : "대화면을 세로로 들었을 때";
+        addProfilePreview(profile);
+        LinearLayout intro = card();
+        intro.addView(note(when.replace("때", "때의") + " 키보드 모양을 정합니다. " + (land ? "세로" : "가로")
+                + "일 때의 설정은 기기를 " + (land ? "세로" : "가로") + "로 돌리면 보입니다. "
+                + "분리 키보드 켜기와 좌·우 균형 레이아웃은 세로와 가로가 함께 씁니다.\n"
+                + "아래 미리보기에서 영역을 누르면 그 영역의 설정 창이 열리고, 고른 영역의 ↕·↔ 버튼을 끌어 크기와 위치를 바로 "
+                + "바꿀 수 있습니다. 키와 다른 영역의 설정은 '키보드 사용자화'에서 바꿉니다."));
+        addProfileSplit(profile, "대화면");
+        addProfileWhole(profile, when);
+        addOneHandWidth(profile, when);
     }
 
     /**
