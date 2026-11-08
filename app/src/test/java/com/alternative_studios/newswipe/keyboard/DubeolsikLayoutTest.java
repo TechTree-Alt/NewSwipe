@@ -377,7 +377,7 @@ public class DubeolsikLayoutTest {
                         FakeSp sp = dubeolsik(balanced);
                         Prefs p = view(sp, profile);
                         sp.m.put(p.splitKey(), true);
-                        sp.m.put(p.splitReachColumnKey(), reach);   // 좌·우 균형 레이아웃은 두벌식에 쓰이지 않는다
+                        sp.m.put(p.splitReachColumnKey(), reach);   // 좌·우 균형 배열은 두벌식에 쓰이지 않는다
                         sp.m.put(Prefs.GRID_LAYOUT, grid);
                         p = view(sp, profile);
                         String what = profile + " balanced=" + balanced + " reach=" + reach + " grid=" + grid;

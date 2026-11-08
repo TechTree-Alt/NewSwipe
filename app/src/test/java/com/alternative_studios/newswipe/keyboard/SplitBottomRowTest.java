@@ -14,7 +14,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-/** 분리 키보드(가로 모드·대화면)에서 맨 아래 줄의 양 끝이 글자 줄의 가장 바깥 키와 열이 맞는지. */
+/** 분리 키보드(가로 모드·폴더블 내부 화면)에서 맨 아래 줄의 양 끝이 글자 줄의 가장 바깥 키와 열이 맞는지. */
 public class SplitBottomRowTest {
     private static final class FakeSp implements SharedPreferences {
         final Map<String, Object> m = new HashMap<>();
@@ -35,7 +35,11 @@ public class SplitBottomRowTest {
         Constructor<Prefs> c = Prefs.class.getDeclaredConstructor(SharedPreferences.class, boolean.class, String.class,
                 boolean.class);
         c.setAccessible(true);
-        return c.newInstance(sp, false, Prefs.PROFILE_LANDSCAPE, true);
+        Prefs p = c.newInstance(sp, false, Prefs.PROFILE_LANDSCAPE, true);
+        // 단모음(8열) 분리 키보드는 기본으로 양쪽 묶음을 4열씩 맞춘다 (좌·우 균형 배열). 이 테스트들은 자음·모음을 깔끔하게
+        // 나눈 배열('자·모음 분리 배열' 켬)의 모양을 재므로 그렇게 정해 둔다. 기본값은 splitReachColumnDefaultsPerLayout에서 본다.
+        sp.m.putIfAbsent(p.splitReachColumnKey(), false);
+        return p;
     }
 
     /** 줄에서 빈틈이 아닌 키의 가장 왼쪽 시작과 가장 오른쪽 끝. */
@@ -633,6 +637,31 @@ public class SplitBottomRowTest {
         return n;
     }
 
+    /** 값을 정하지 않았을 때: 단모음(8열)은 좌·우 균형 배열(4열씩)이 기본이고, NewSwipe 단모음은 원래대로 꺼짐이다. */
+    @Test
+    public void splitReachColumnDefaultsPerLayout() throws Exception {
+        FakeSp sp = new FakeSp();
+        Constructor<Prefs> c = Prefs.class.getDeclaredConstructor(SharedPreferences.class, boolean.class, String.class,
+                boolean.class);
+        c.setAccessible(true);
+        Prefs p = c.newInstance(sp, false, Prefs.PROFILE_LANDSCAPE, true);
+        assertTrue("단모음은 4열 균형이 기본", p.splitReachColumn());
+        assertTrue("'자·모음 분리 배열'은 꺼짐", !p.splitSeparateJamo());
+        KeyboardLayout l = KeyboardLayout.korean(p);
+        for (int r = 0; r < 3; r++) {
+            int[] size = blockSizes(l.rows[r]);
+            assertEquals("왼쪽 4열", 4, size[0]);
+            assertEquals("오른쪽 4열", 4, size[1]);
+        }
+        sp.m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_D7);
+        assertTrue("NewSwipe 단모음은 꺼짐이 기본", !p.splitReachColumn());
+        // '자·모음 분리 배열'을 켜면(저장 값 false) 단모음도 깔끔하게 나뉜다.
+        sp.m.remove(Prefs.KOREAN_LAYOUT);
+        sp.m.put(p.splitReachColumnKey(), false);
+        assertTrue(p.splitSeparateJamo());
+        assertTrue(!p.splitReachColumn());
+    }
+
     @Test
     public void leftRightBalancedLayoutGivesFourColumnsOnEachSide() throws Exception {
         String[][] columns = {{"ㅅ", "ㅎ", "ㅍ"}, {"ㄱ", "ㄹ", "ㅅ"}};
@@ -740,7 +769,7 @@ public class SplitBottomRowTest {
         FakeSp sp = new FakeSp();
         Prefs land = editView(sp, Prefs.PROFILE_LANDSCAPE);
         Prefs port = editView(sp, Prefs.PROFILE_LARGE_PORTRAIT), largeLand = editView(sp, Prefs.PROFILE_LARGE_LANDSCAPE);
-        // 분리 키보드 레이아웃: 대화면 세로·가로는 같은 키, 가로 모드는 다른 키.
+        // 분리 키보드 레이아웃: 폴더블 내부 화면 세로·가로는 같은 키, 가로 모드는 다른 키.
         assertEquals(port.splitKey(), largeLand.splitKey());
         assertEquals(port.splitReachColumnKey(), largeLand.splitReachColumnKey());
         assertEquals(port.splitSpaceJoinKey(), largeLand.splitSpaceJoinKey());
@@ -763,7 +792,7 @@ public class SplitBottomRowTest {
         sp.m.put(land.heightKey(), 80);
         assertEquals(80, land.keyboardHeight());
         assertEquals(120, port.keyboardHeight());
-        // 가로 모드·대화면의 키보드 높이는 30%까지 줄일 수 있다 (세로 모드 값과 상관없이).
+        // 가로 모드·폴더블 내부 화면의 키보드 높이는 30%까지 줄일 수 있다 (세로 모드 값과 상관없이).
         sp.m.put(land.heightKey(), 30);
         assertEquals(30, land.keyboardHeight());
         sp.m.put(land.heightKey(), 10);
@@ -789,7 +818,7 @@ public class SplitBottomRowTest {
         sp.m.put(port.liftKey(), 40);
         assertEquals(40, port.profileLiftDp());
         assertEquals(0, largeLand.profileLiftDp());
-        // 대화면 세로에서 켠 분리 키보드는 대화면 가로에서도 켜져 있다.
+        // 폴더블 내부 화면 세로에서 켠 분리 키보드는 폴더블 내부 화면 가로에서도 켜져 있다.
         sp.m.put(port.splitKey(), true);
         assertTrue(largeLand.profileSplit());
         assertTrue(!land.profileSplit());

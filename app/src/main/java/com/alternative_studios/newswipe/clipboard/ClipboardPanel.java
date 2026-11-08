@@ -3,6 +3,7 @@ package com.alternative_studios.newswipe.clipboard;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.Typeface;
 import android.graphics.Outline;
 import android.graphics.drawable.Drawable;
 import android.text.TextUtils;
@@ -46,6 +47,9 @@ public final class ClipboardPanel extends LinearLayout {
 
         void onClipBack();
 
+        /** 헤더 칩을 눌렀다 (도구 막대 버튼처럼 진동·소리를 낸다). */
+        void onClipChipPress();
+
         void onClipPin(ClipboardHistory.Item item, boolean pinned);
 
         void onClipDelete(ClipboardHistory.Item item);
@@ -55,8 +59,18 @@ public final class ClipboardPanel extends LinearLayout {
 
     private final KeyboardTheme theme;
     private final Listener listener;
-    private final LinearLayout list;
-    private final TextView clear;
+    /** 일반 항목 목록(분리하지 않으면 고정 항목도 여기에)과, '고정 항목 분리'를 켰을 때의 고정 항목 목록. */
+    private final LinearLayout list, pinList;
+    /** 분리하지 않을 때 쓰는 세로 스크롤과, 분리했을 때 두 페이지(일반·고정)를 가로로 넘기는 스크롤. */
+    private final ScrollView scroll, pinScroll;
+    private final PageSwipe pager;
+    private final LinearLayout tabs;
+    private final IconButton tabNormal, tabPinned;
+    private final TextView title;
+    private final FrameLayout headerWrap;
+    private final int barHeight;
+    private boolean splitPinned, splitShown;
+    private final IconButton clear;
     /** 맨 위 줄(뒤로·제목·모두 지우기)과, 모두 지우기를 누르면 그 자리에 대신 보이는 확인 줄. */
     private final LinearLayout header, confirmRow;
     /** 고정·삭제를 누른 뒤 다음 show()에서 항목이 새 자리로 움직이는 애니메이션을 보여 준다. */
@@ -85,20 +99,32 @@ public final class ClipboardPanel extends LinearLayout {
         header.setPadding(Ui.dp(context, 4), 0, Ui.dp(context, 8), 0);
         IconButton back = new IconButton(context, Icons.BACK, theme.text, theme.keyPressed, "키보드로 돌아가기");
         back.setToolbarStyle(theme, topBarHeight);   // 도구 막대 버튼과 같은 칩
-        back.setOnClickListener(v -> listener.onClipBack());
+        back.setOnClickListener(v -> {
+            listener.onClipChipPress();
+            listener.onClipBack();
+        });
         header.addView(back, new LayoutParams(Ui.dp(context, 44), topBarHeight));
-        TextView title = new TextView(context);
+        this.barHeight = topBarHeight;
+        title = new TextView(context);
         title.setText("클립보드");
         title.setTextColor(theme.text);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
         LayoutParams titleLp = new LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         titleLp.leftMargin = Ui.dp(context, 10);   // 뒤로 가기 칩에 붙지 않게
         header.addView(title, titleLp);
-        clear = Ui.chipButton(context, "모두 지우기", theme.onAccent, theme.accent, topBarHeight);   // 강조 색 위 글자는 밝기에 따라 읽기 좋은 색
-        Neu.apply(clear, theme, theme.accent, Ui.chipRadius(context));
-        clear.setOnClickListener(v -> confirmClear());
-        header.addView(clear);
-        addView(header, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, topBarHeight));
+        // 모두 지우기: 휴지통 아이콘 칩 (뒤로 가기 칩과 같은 크기)
+        clear = new IconButton(context, Icons.TRASH, Ui.danger(theme.dark), theme.keyPressed, "모두 지우기");
+        clear.setToolbarStyle(theme, topBarHeight, theme.functionKey, Ui.danger(theme.dark));
+        clear.setOnClickListener(v -> {
+            listener.onClipChipPress();
+            confirmClear();
+        });
+        header.addView(clear, new LayoutParams(Ui.dp(context, 44), topBarHeight));
+        // 고정 항목 분리를 쓰면 두 페이지 칩이 헤더 정중앙에 놓인다 (위에 겹쳐 둔다).
+        headerWrap = new FrameLayout(context);
+        headerWrap.addView(header, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+        addView(headerWrap, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, topBarHeight));
 
         // 모두 지우기 확인: 따로 창(대화상자)을 띄우지 않고 맨 위 줄을 확인 줄로 바꾼다.
         // 키보드 창에 붙인 대화상자는 뜨는 순간 포커스가 옮겨 가면서 시스템이 키보드를 닫아 버리는 일이 있었다.
@@ -114,11 +140,15 @@ public final class ClipboardPanel extends LinearLayout {
         confirmRow.addView(ask, new LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         TextView cancel = Ui.chipButton(context, "취소", theme.text, theme.functionKey, topBarHeight);
         Neu.apply(cancel, theme, theme.functionKey, Ui.chipRadius(context));
-        cancel.setOnClickListener(v -> dismissDialog());
+        cancel.setOnClickListener(v -> {
+            listener.onClipChipPress();
+            dismissDialog();
+        });
         confirmRow.addView(cancel);
         TextView ok = Ui.chipButton(context, "지우기", theme.onAccent, theme.accent, topBarHeight);
         Neu.apply(ok, theme, theme.accent, Ui.chipRadius(context));
         ok.setOnClickListener(v -> {
+            listener.onClipChipPress();
             dismissDialog();
             listener.onClipClear();
         });
@@ -126,15 +156,277 @@ public final class ClipboardPanel extends LinearLayout {
         confirmRow.setVisibility(GONE);
         addView(confirmRow, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, topBarHeight));
 
-        ScrollView scroll = new ScrollView(context);
+        scroll = new ScrollView(context);
         scroll.setVerticalScrollBarEnabled(false);
-        list = new LinearLayout(context);
-        list.setOrientation(VERTICAL);
-        int p = Ui.dp(context, 8);
-        list.setPadding(p, 0, p, p);
+        list = newList(context);
         scroll.addView(list, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        // 고정 항목 분리: 왼쪽 페이지는 일반 항목(list), 오른쪽 페이지는 고정 항목(pinList). 위의 두 글자로 어느 쪽인지 보이고 눌러 넘길 수 있다.
+        tabs = new LinearLayout(context);
+        tabs.setGravity(Gravity.CENTER);
+        tabPinned = tab(context, Icons.PIN, "고정 항목", 0, topBarHeight);
+        tabNormal = tab(context, Icons.CLIPBOARD, "기록", 1, topBarHeight);
+        tabs.addView(tabPinned, new LayoutParams(Ui.dp(context, 44), topBarHeight));
+        tabs.addView(tabNormal, new LayoutParams(Ui.dp(context, 44), topBarHeight));
+        tabs.setVisibility(GONE);
+        headerWrap.addView(tabs, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER));
+
+        // 이모지 탭 전환과 같은 방식: 미는 동안 옆 페이지가 붙어서 따라오고, 놓으면 넘기거나 제자리로 돌아간다.
+        pager = new PageSwipe(context);
+        ScrollView normalScroll = new ScrollView(context);
+        normalScroll.setVerticalScrollBarEnabled(false);
+        pinScroll = new ScrollView(context);
+        pinScroll.setVerticalScrollBarEnabled(false);
+        pinList = newList(context);
+        pinListRef = pinList;
+        pinScroll.addView(pinList, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+        pager.setPages(pinScroll, normalScroll);
+        pager.setVisibility(GONE);
+        // 일반 항목 목록은 분리했을 때 왼쪽 페이지에 들어간다 (list를 두 곳에 두지 않고 부모를 옮긴다).
+        normalPage = normalScroll;
         addView(scroll, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        addView(pager, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+    }
+
+    private final ScrollView normalPage;
+    private View pinListRef;
+
+    private LinearLayout newList(Context context) {
+        LinearLayout l = new LinearLayout(context);
+        l.setOrientation(VERTICAL);
+        int p = Ui.dp(context, 8);
+        l.setPadding(p, 0, p, p);
+        return l;
+    }
+
+    /** 페이지 버튼: 도구 막대 버튼과 같은 모양의 아이콘 칩. 지금 페이지는 강조색 칩이다. */
+    private IconButton tab(Context context, int icon, String description, int page, int barHeight) {
+        IconButton t = new IconButton(context, icon, theme.text, theme.keyPressed, description);
+        t.setToolbarStyle(theme, barHeight);
+        t.setOnClickListener(v -> {
+            listener.onClipChipPress();
+            pager.goTo(page);
+        });
+        return t;
+    }
+
+    /** 지금 보이는 페이지의 버튼만 강조색 칩으로 보인다. */
+    private void updateTabs() {
+        boolean normal = pager.page() == 1;
+        styleTab(tabNormal, normal);
+        styleTab(tabPinned, !normal);
+    }
+
+    private void styleTab(IconButton t, boolean on) {
+        if (on) t.setToolbarStyle(theme, barHeight, theme.accent, theme.onAccent);
+        else t.setToolbarStyle(theme, barHeight);
+    }
+
+    /**
+     * 두 페이지(일반·고정)를 좌우로 넘기는 틀. 이모지 탭 전환(EmojiPanel.SwipeFrame)과 같은 방식이다:
+     * 가로로 미는 손짓을 가로채 지금 페이지를 손가락을 따라 옮기고 그 옆에 다른 페이지를 붙여 함께 움직이며,
+     * 놓을 때 폭의 1/4 넘게 밀었거나 빠르게 튕겼으면 넘기고 아니면 제자리로 돌린다.
+     * 세로로 미는 손짓(목록 스크롤)과 항목 누르기는 그대로 목록이 받는다.
+     */
+    private final class PageSwipe extends FrameLayout {
+        private final int slop;
+        private final float minFling;
+        private android.view.VelocityTracker velocity;
+        private View[] pages;
+        private int cur;
+        private float downX, downY;
+        private boolean dragging, animating;
+
+        PageSwipe(Context context) {
+            super(context);
+            android.view.ViewConfiguration vc = android.view.ViewConfiguration.get(context);
+            slop = vc.getScaledTouchSlop();
+            minFling = vc.getScaledMinimumFlingVelocity() * 4f;
+        }
+
+        void setPages(View first, View second) {
+            pages = new View[]{first, second};
+            for (View v : pages) {
+                addView(v, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT));
+            }
+            reset();
+        }
+
+        int page() {
+            return cur;
+        }
+
+        /** 첫 페이지로 돌아가 진행 중인 움직임을 멈춘다. */
+        void reset() {
+            reset(1);
+        }
+
+        void reset(int first) {
+            for (View v : pages) {
+                v.animate().cancel();
+                v.setTranslationX(0f);
+            }
+            animating = false;
+            dragging = false;
+            cur = first;
+            pages[first].setVisibility(VISIBLE);
+            pages[1 - first].setVisibility(GONE);
+        }
+
+        /** 버튼으로 그 페이지로 넘긴다. */
+        void goTo(int target) {
+            if (target == cur || animating || getWidth() == 0) return;
+            View to = pages[target];
+            int dir = target > cur ? 1 : -1;
+            to.setVisibility(VISIBLE);
+            to.setTranslationX(dir * getWidth());
+            animating = true;
+            slide(-dir * getWidth(), 200, target);
+        }
+
+        @Override
+        public boolean onInterceptTouchEvent(android.view.MotionEvent ev) {
+            track(ev);
+            switch (ev.getActionMasked()) {
+                case android.view.MotionEvent.ACTION_DOWN:
+                    downX = ev.getX();
+                    downY = ev.getY();
+                    dragging = false;
+                    break;
+                case android.view.MotionEvent.ACTION_MOVE:
+                    if (!dragging) startDragIfHorizontal(ev);
+                    break;
+                case android.view.MotionEvent.ACTION_UP:
+                case android.view.MotionEvent.ACTION_CANCEL:
+                    if (!dragging) recycleTracker();
+                    break;
+                default:
+                    break;
+            }
+            return dragging;
+        }
+
+        @Override
+        public boolean onTouchEvent(android.view.MotionEvent ev) {
+            track(ev);
+            switch (ev.getActionMasked()) {
+                case android.view.MotionEvent.ACTION_DOWN:
+                    downX = ev.getX();
+                    downY = ev.getY();
+                    dragging = false;
+                    return true;
+                case android.view.MotionEvent.ACTION_MOVE:
+                    if (!dragging) startDragIfHorizontal(ev);
+                    if (dragging) drag(ev.getX() - downX);
+                    return true;
+                case android.view.MotionEvent.ACTION_UP:
+                    if (dragging) finish(ev.getX() - downX);
+                    dragging = false;
+                    recycleTracker();
+                    return true;
+                case android.view.MotionEvent.ACTION_CANCEL:
+                    if (dragging) slide(0, 160, cur);
+                    dragging = false;
+                    recycleTracker();
+                    return true;
+                default:
+                    return true;
+            }
+        }
+
+        private void startDragIfHorizontal(android.view.MotionEvent ev) {
+            float dx = ev.getX() - downX, dy = ev.getY() - downY;
+            if (animating || Math.abs(dx) < slop || Math.abs(dx) < Math.abs(dy) * 1.5f) return;
+            dragging = true;
+            downX = ev.getX();   // 문턱만큼 튀지 않게 여기서부터 따라간다
+            ViewGroup parent = (ViewGroup) getParent();
+            if (parent != null) parent.requestDisallowInterceptTouchEvent(true);
+        }
+
+        /** 손가락을 따라 옮긴다. 넘어갈 곳이 없는 쪽(첫 페이지에서 오른쪽, 둘째에서 왼쪽)으로는 조금만 따라온다. */
+        private void drag(float dx) {
+            int other = 1 - cur;
+            boolean toOther = cur == 0 ? dx < 0 : dx > 0;
+            if (!toOther) {
+                pages[other].setVisibility(GONE);
+                pages[cur].setTranslationX(dx * 0.25f);
+                return;
+            }
+            int dir = cur == 0 ? 1 : -1;
+            pages[other].setVisibility(VISIBLE);
+            pages[cur].setTranslationX(dx);
+            pages[other].setTranslationX(dx + dir * getWidth());
+        }
+
+        private void finish(float dx) {
+            float vx = 0;
+            if (velocity != null) {
+                velocity.computeCurrentVelocity(1000);
+                vx = velocity.getXVelocity();
+            }
+            // +1이면 다음(왼쪽으로 밀었다), -1이면 이전, 0이면 제자리
+            int dir = dx < -getWidth() / 4f || (vx < -minFling && dx < 0) ? 1
+                    : dx > getWidth() / 4f || (vx > minFling && dx > 0) ? -1 : 0;
+            int next = cur + dir;
+            if (dir == 0 || next < 0 || next > 1) {
+                slide(0, 160, cur);
+                return;
+            }
+            animating = true;
+            slide(-dir * getWidth(), 200, next);
+        }
+
+        /** 지금 페이지를 x로 옮기고(옆 페이지는 그 옆에 붙여) 끝나면 target 페이지만 보이게 한다. */
+        private void slide(float to, long ms, int target) {
+            animating = true;
+            int other = 1 - cur;
+            int dir = cur == 0 ? 1 : -1;
+            View now = pages[cur], side = pages[other];
+            now.animate().cancel();
+            side.animate().cancel();
+            if (target != cur || side.getVisibility() == VISIBLE) {
+                side.animate().translationX(to + dir * getWidth()).setDuration(ms)
+                        .setInterpolator(new DecelerateInterpolator()).start();
+            }
+            now.animate().translationX(to).setDuration(ms).setInterpolator(new DecelerateInterpolator())
+                    .withEndAction(() -> {
+                        cur = target;
+                        for (int i = 0; i < 2; i++) {
+                            pages[i].setTranslationX(0f);
+                            pages[i].setVisibility(i == cur ? VISIBLE : GONE);
+                        }
+                        animating = false;
+                        updateTabs();
+                    }).start();
+        }
+
+        private void track(android.view.MotionEvent ev) {
+            if (velocity == null) velocity = android.view.VelocityTracker.obtain();
+            velocity.addMovement(ev);
+        }
+
+        private void recycleTracker() {
+            if (velocity != null) {
+                velocity.recycle();
+                velocity = null;
+            }
+        }
+
+        @Override
+        protected void onDetachedFromWindow() {
+            super.onDetachedFromWindow();
+            recycleTracker();
+            if (pages != null) reset();
+        }
+    }
+
+    /** 고정 항목을 따로 한 페이지에 모을지 ('고정 항목 분리'). 다음 show()부터 적용된다. */
+    public void setSplitPinned(boolean on) {
+        splitPinned = on;
     }
 
     /**
@@ -147,6 +439,7 @@ public final class ClipboardPanel extends LinearLayout {
         // 확인 줄의 글은 뒤로 가기 칩 자리만큼 들여 쓴다.
         confirmRow.setPadding(barLeft + Ui.dp(getContext(), 10), 0, barRight, 0);
         list.setPadding(keyLeft, top, keyRight, bottom);
+        pinList.setPadding(keyLeft, top, keyRight, bottom);
     }
 
     /**
@@ -159,7 +452,10 @@ public final class ClipboardPanel extends LinearLayout {
             for (View card : cards()) before.put((String) card.getTag(), position(card));
         }
         animateNext = false;
+        boolean split = splitPinned && enabled && !items.isEmpty();
+        setSplit(split);
         list.removeAllViews();
+        pinList.removeAllViews();
         Set<String> shown = new HashSet<>();
         for (ClipboardHistory.Item item : items) if (item.isImage()) shown.add(item.text);
         thumbs.keySet().retainAll(shown);
@@ -179,7 +475,46 @@ public final class ClipboardPanel extends LinearLayout {
             list.addView(note("복사하거나 잘라낸 텍스트와 이미지가 여기에 모입니다.\n누르면 바로 붙여넣습니다."));
             return;
         }
-        // 한 줄에 columns() 칸씩 놓는다. 한 줄의 항목은 높이를 맞춘다.
+        List<ClipboardHistory.Item> pinned = new java.util.ArrayList<>(), normal = new java.util.ArrayList<>();
+        for (ClipboardHistory.Item it : items) (it.pinned ? pinned : normal).add(it);
+        if (split) {
+            addGrid(list, normal);
+            if (normal.isEmpty()) list.addView(note("고정하지 않은 항목이 없습니다."));
+            addGrid(pinList, pinned);
+            if (pinned.isEmpty()) pinList.addView(note("고정한 항목이 여기에 모입니다.\n항목의 핀 버튼으로 고정할 수 있습니다."));
+        } else {
+            // 고정 항목을 위에 모으고, 분리선으로 일반 항목과 구분한다.
+            addGrid(list, pinned);
+            if (!pinned.isEmpty() && !normal.isEmpty()) list.addView(divider());
+            addGrid(list, normal);
+        }
+        if (!before.isEmpty()) animateMoves(before);
+        String footer = "클립보드 항목은 최대 " + ClipboardHistory.MAX_ITEMS + "개(이미지는 " + ClipboardHistory.MAX_IMAGES
+                + "개)이며, 24시간 후 삭제됩니다. 핀 버튼으로 최대 " + ClipboardHistory.MAX_PINNED + "개까지 고정할 수 있습니다.";
+        list.addView(note(footer));
+        if (split) pinList.addView(note(footer));
+    }
+
+    /** 분리 여부에 따라 보이는 스크롤을 바꾸고, 일반 항목 목록을 그 안으로 옮긴다. */
+    private void setSplit(boolean split) {
+        if (split == splitShown && (list.getParent() != null)) return;
+        splitShown = split;
+        if (list.getParent() instanceof ViewGroup) ((ViewGroup) list.getParent()).removeView(list);
+        ViewGroup host = split ? normalPage : scroll;
+        host.addView(list, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+        scroll.setVisibility(split ? GONE : VISIBLE);
+        pager.setVisibility(split ? VISIBLE : GONE);
+        tabs.setVisibility(split ? VISIBLE : GONE);
+        title.setVisibility(split ? INVISIBLE : VISIBLE);   // 두 칩이 헤더 가운데에 오므로 '클립보드' 글자는 감춘다
+        if (split) {
+            pager.reset();
+            updateTabs();
+        }
+    }
+
+    /** 항목들을 한 줄에 columns() 칸씩 놓는다. 한 줄의 항목은 높이를 맞춘다. */
+    private void addGrid(LinearLayout target, List<ClipboardHistory.Item> items) {
         Context c = getContext();
         int gap = Ui.dp(c, GAP_DP);
         int cols = columns();
@@ -194,13 +529,20 @@ public final class ClipboardPanel extends LinearLayout {
             }
             LayoutParams lp = new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             lp.topMargin = gap;
-            list.addView(row, lp);
+            target.addView(row, lp);
         }
-        if (!before.isEmpty()) animateMoves(before);
-        list.addView(note("고정하지 않은 항목은 24시간 뒤 지워지며, 최근 "
-                + ClipboardHistory.MAX_ITEMS + "개(이미지는 " + ClipboardHistory.MAX_IMAGES
-                + "개)까지 보관합니다. 아래 버튼으로 고정(최대 "
-                + ClipboardHistory.MAX_PINNED + "개)하거나 지울 수 있습니다."));
+    }
+
+    /** 고정 항목과 일반 항목 사이의 분리선. */
+    private View divider() {
+        Context c = getContext();
+        View v = new View(c);
+        v.setBackgroundColor((theme.hint & 0x00FFFFFF) | 0x80000000);
+        LayoutParams lp = new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Math.max(1, Ui.dp(c, 1)));
+        lp.topMargin = Ui.dp(c, GAP_DP + 4);
+        lp.bottomMargin = Ui.dp(c, 4);
+        v.setLayoutParams(lp);
+        return v;
     }
 
     /** 한 줄의 칸 수: 화면 폭에 맞춰 칸 폭이 CELL_DP쯤 되도록 한다 (보통 휴대폰 세로 화면은 2칸, 가로 모드·대화면은 더 많이). */
@@ -212,21 +554,24 @@ public final class ClipboardPanel extends LinearLayout {
     /** 기록 항목 카드들 (각 줄 안에 있다. 안내 문구와 빈자리는 빼고). */
     private List<View> cards() {
         List<View> out = new java.util.ArrayList<>();
-        for (int i = 0; i < list.getChildCount(); i++) {
-            View child = list.getChildAt(i);
-            if (!(child instanceof LinearLayout) || child.getTag() != null) continue;
-            ViewGroup row = (ViewGroup) child;
-            for (int k = 0; k < row.getChildCount(); k++) {
-                if (row.getChildAt(k).getTag() instanceof String) out.add(row.getChildAt(k));
+        for (LinearLayout l : new LinearLayout[]{list, pinList}) {
+            for (int i = 0; i < l.getChildCount(); i++) {
+                View child = l.getChildAt(i);
+                if (!(child instanceof LinearLayout) || child.getTag() != null) continue;
+                ViewGroup row = (ViewGroup) child;
+                for (int k = 0; k < row.getChildCount(); k++) {
+                    if (row.getChildAt(k).getTag() instanceof String) out.add(row.getChildAt(k));
+                }
             }
         }
         return out;
     }
 
     /** 목록 안에서 카드의 자리 (줄의 자리 + 줄 안의 자리). */
-    private static int[] position(View card) {
+    private int[] position(View card) {
         View row = (View) card.getParent();
-        return new int[]{row.getLeft() + card.getLeft(), row.getTop() + card.getTop()};
+        int page = row.getParent() == pinListRef ? 1 : 0;   // 페이지가 바뀐 항목은 미끄러지지 않고 서서히 나타난다
+        return new int[]{row.getLeft() + card.getLeft(), row.getTop() + card.getTop(), page};
     }
 
     /** 항목이 원래 자리에서 새 자리로 짧게 미끄러지게 한다 (옆 칸·윗줄로도). 원래 없던 항목은 서서히 나타난다. */
@@ -238,7 +583,7 @@ public final class ClipboardPanel extends LinearLayout {
                 for (View card : cards()) {
                     int[] old = before.get((String) card.getTag());
                     int[] now = position(card);
-                    if (old == null) {
+                    if (old == null || old[2] != now[2]) {
                         card.setAlpha(0f);
                         card.animate().alpha(1f).setDuration(MOVE_MS).start();
                     } else if (old[0] != now[0] || old[1] != now[1]) {
@@ -392,7 +737,7 @@ public final class ClipboardPanel extends LinearLayout {
     public void dismissDialog() {
         if (confirmRow.getVisibility() != VISIBLE) return;
         confirmRow.setVisibility(GONE);
-        header.setVisibility(VISIBLE);
+        headerWrap.setVisibility(VISIBLE);
     }
 
     @Override
@@ -403,7 +748,7 @@ public final class ClipboardPanel extends LinearLayout {
 
     /** 지우기 전에 맨 위 줄을 확인 줄로 바꾼다. */
     private void confirmClear() {
-        header.setVisibility(GONE);
+        headerWrap.setVisibility(GONE);
         confirmRow.setVisibility(VISIBLE);
     }
 }

@@ -51,6 +51,7 @@ public final class Prefs {
     public static final String CLIPBOARD_HISTORY = "clipboard_history";
     public static final String CLIPBOARD_IMAGES = "clipboard_images";
     public static final String CLIPBOARD_SENSITIVE = "clipboard_sensitive";   // 민감한 정보로 표시되었거나 비밀번호를 복사한 것도 기록에 저장
+    public static final String CLIPBOARD_SPLIT_PINNED = "clipboard_split_pinned";   // 고정 항목을 오른쪽 따로 된 페이지에 모으기
     public static final String CLIPBOARD_CLOSE_ON_USE = "clipboard_close_on_use";   // 클립보드 항목을 입력하면 클립보드 창을 닫기
     public static final String CLIPBOARD_CHIP = "clipboard_chip";     // 방금 복사한 내용을 도구 막대에 칩으로
     public static final String ENGLISH_FIELDS = "english_fields";     // 이메일 입력란 등에서 영어 자판으로 시작
@@ -110,13 +111,19 @@ public final class Prefs {
     public static final String BALANCED_LAYOUT = "balanced_layout";
     /** 가로 모드 분리 키보드: 가로 모드에서 자·모음 균형 배열로 자판을 나눈다. 한글 배열마다 따로 저장한다: 이 이름 + "_" + 배열 값. */
     public static final String LANDSCAPE_SPLIT = "landscape_split";
+    /**
+     * 세로 모드 분리 키보드 ('키보드 사용자화'의 '분리 키보드 사용'). 세로 모드의 분리 키보드 세부 값
+     * (묶음 폭·위치, 스페이스바 잇기 등)은 모두 이 이름으로 시작하는 키에 따로 저장한다 (PORTRAIT_PREFIX).
+     */
+    public static final String PORTRAIT_SPLIT = "portrait_split";
+    private static final String PORTRAIT_PREFIX = "portrait_";
     public static final String LANDSCAPE_SIZE = "landscape_size";                  // 가로 모드 분리 키보드: 키보드 높이·글자 크기를 따로 정하기
-    /** 실험실 '대화면 별도 레이아웃': 대화면(폴더블 내부 화면 등)에서는 가로·세로 키보드를 따로 정한 값으로 쓴다. */
+    /** 실험실 '폴더블 내부 화면 별도 키보드': 폴더블 내부 화면(폴더블 내부 화면 등)에서는 가로·세로 키보드를 따로 정한 값으로 쓴다. */
     public static final String LARGE_LAYOUT = "large_layout";
-    /** 대화면 기준: 화면의 짧은 쪽 폭(dp)이 이 값 이상이면 대화면. 400~1000. */
+    /** 폴더블 내부 화면 판정 기준: 화면의 짧은 쪽 폭(dp)이 이 값 이상이면 폴더블 내부 화면. 400~1000. */
     public static final String LARGE_SCREEN_DP = "large_screen_dp";
     public static final int LARGE_SCREEN_DP_DEFAULT = 600, LARGE_SCREEN_DP_MIN = 400, LARGE_SCREEN_DP_MAX = 1000;
-    /** 대화면 키보드의 값은 모두 이 말로 시작한다 (예: large_split_port_danmoeum7, large_balanced_vowel_width_land_danmoeum7). */
+    /** 폴더블 내부 화면 키보드의 값은 모두 이 말로 시작한다 (예: large_split_port_danmoeum7, large_balanced_vowel_width_land_danmoeum7). */
     private static final String LARGE_PREFIX = "large_";
     /** 실험실 '외장 키보드'(블루투스·USB 키보드)의 값은 모두 이 말로 시작한다. */
     public static final String HW_PREFIX = "hw_";
@@ -135,7 +142,7 @@ public final class Prefs {
     public static final String HW_TOOLBAR = "hw_toolbar";
     /**
      * 키보드 모습의 묶음(프로필). 세로 모드는 기본 값을, 가로 모드는 '가로 모드 키보드 사용자화'의 값을,
-     * 대화면 세로·가로는 '대화면 키보드 사용자화'의 값을 쓴다.
+     * 폴더블 내부 화면 세로·가로는 '폴더블 내부 화면 키보드 사용자화'의 값을 쓴다.
      */
     public static final String PROFILE_PORTRAIT = "", PROFILE_LANDSCAPE = "land",
             PROFILE_LARGE_PORTRAIT = "large_port", PROFILE_LARGE_LANDSCAPE = "large_land";
@@ -154,7 +161,7 @@ public final class Prefs {
     /** 두벌식의 세로 모드 균형 배열 기본 모양: 자음·모음 키 폭 90%, 자음은 왼쪽 끝(0), 모음은 오른쪽 끝(100). */
     public static final int DUBEOLSIK_WIDTH_DEFAULT = 90, DUBEOLSIK_CONSONANT_POS_DEFAULT = 0, DUBEOLSIK_VOWEL_POS_DEFAULT = 100;
     /**
-     * 분리 키보드(가로 모드·대화면)의 두 묶음 기본 모양: 왼쪽 묶음은 폭 80%에 가로 위치 20, 오른쪽 묶음은 폭 80%에 가로 위치 80
+     * 분리 키보드(가로 모드·폴더블 내부 화면)의 두 묶음 기본 모양: 왼쪽 묶음은 폭 80%에 가로 위치 20, 오른쪽 묶음은 폭 80%에 가로 위치 80
      * (두 묶음이 가운데에서 살짝 벌어지고 바깥쪽 가장자리 쪽에 모인다). 세로 모드의 균형 배열은 폭 100%·위치 50이 기본이다.
      */
     public static final int SPLIT_WIDTH_DEFAULT = 80, SPLIT_LEFT_POS_DEFAULT = 20, SPLIT_RIGHT_POS_DEFAULT = 80;
@@ -182,10 +189,11 @@ public final class Prefs {
     public static final String SPLIT_GAP_SPEED = "split_gap_speed";     // 분리 키보드 가운데 빈 공간 커서 이동 속도(%)
     public static final String SPLIT_GAP_CURSOR = "split_gap_cursor";   // 분리 키보드 가운데 빈 공간을 밀어 커서 이동
     public static final String AUTOFILL_INLINE = "autofill_inline";               // 자동 완성 제안을 도구 막대에 칩으로 (Android 11+)
-    public static final String SPLIT_REACH_COLUMN = "split_reach_column";   // 분리 키보드: 좌·우 균형 레이아웃
-    /** 가로 모드·대화면에서 따로 정하는 키보드 높이·키 글자 크기(%)의 최솟값 (세로 모드는 70). */
+    public static final String TOOLBAR_FOLLOW_BLOCKS = "toolbar_follow_blocks";   // 분리 키보드: 도구 막대 양 끝이 묶음의 바깥 끝을 따라감
+    public static final String SPLIT_REACH_COLUMN = "split_reach_column";   // 분리 키보드: 좌·우 균형 배열
+    /** 가로 모드·폴더블 내부 화면에서 따로 정하는 키보드 높이·키 글자 크기(%)의 최솟값 (세로 모드는 70). */
     public static final int PROFILE_HEIGHT_MIN = 30;
-    public static final String PROFILE_LIFT = "lift";   // 가로 모드·대화면: 키보드를 화면 아래에서 띄우는 높이(dp), 0~160
+    public static final String PROFILE_LIFT = "lift";   // 가로 모드·폴더블 내부 화면: 키보드를 화면 아래에서 띄우는 높이(dp), 0~160
     public static final String SPACE_CURSOR_SPEED_H = "space_cursor_speed_h";
     public static final String SPACE_CURSOR_SPEED_V = "space_cursor_speed_v";
     public static final String DELETE_KEY_HIDDEN = "delete_key_hidden";       // 글자·기호 자판의 ⌫ 없애기 (빈칸으로 남김)
@@ -333,14 +341,14 @@ public final class Prefs {
     }
 
     public int oneHandWidth() { return clamp(sp.getInt(ONE_HAND_WIDTH, ONE_HAND_WIDTH_DEFAULT), 60, 90); }
-    /** 이 프로필(대화면 세로·가로)의 한 손 모드 자판 폭을 저장하는 키. 대화면이 아닌 프로필에는 없다(null). */
+    /** 이 프로필(폴더블 내부 화면 세로·가로)의 한 손 모드 자판 폭을 저장하는 키. 폴더블 내부 화면이 아닌 프로필에는 없다(null). */
     public String oneHandWidthKey() {
         return large() ? LARGE_PREFIX + ONE_HAND_WIDTH + "_" + largeSide() : null;
     }
 
     /**
      * 이 보기의 프로필에서 쓸 한 손 모드 자판 폭 (화면 폭의 %, 30~90).
-     * 대화면 세로·가로는 따로 정한 값을, 정하기 전에는 대화면이 아닌 세로·가로 모드의 값을 쓴다.
+     * 폴더블 내부 화면 세로·가로는 따로 정한 값을, 정하기 전에는 폴더블 내부 화면이 아닌 세로·가로 모드의 값을 쓴다.
      */
     public int oneHandWidthForProfile() {
         int fallback = profile.equals(PROFILE_LARGE_LANDSCAPE) || profile.equals(PROFILE_LANDSCAPE)
@@ -365,7 +373,7 @@ public final class Prefs {
     public int swipeDownRatioPct() { return Math.round(swipeDownRatio() * 100); }
     public int swipeUpRatioPct() { return Math.round(swipeUpRatio() * 100); }
 
-    /** 실험실 '대화면 별도 레이아웃' (기본 꺼짐). */
+    /** 실험실 '폴더블 내부 화면 별도 키보드' (기본 꺼짐). */
     public boolean largeLayout() { return sp.getBoolean(LARGE_LAYOUT, false); }
     public boolean hwLangCustom() { return sp.getBoolean(HW_LANG_CUSTOM, false); }
     public boolean hwLangKey() { return sp.getBoolean(HW_LANG_KEY, true); }
@@ -381,8 +389,8 @@ public final class Prefs {
     }
 
     /**
-     * 지금 화면에서 쓸 프로필. '대화면 별도 레이아웃'이 켜져 있고 화면의 짧은 쪽 폭이 기준 이상이면 대화면 세로·가로,
-     * 아니면 세로·가로 모드. 짧은 쪽 폭으로 재므로 같은 화면을 돌려도 대화면인지는 바뀌지 않는다.
+     * 지금 화면에서 쓸 프로필. '폴더블 내부 화면 별도 키보드'이 켜져 있고 화면의 짧은 쪽 폭이 기준 이상이면 폴더블 내부 화면 세로·가로,
+     * 아니면 세로·가로 모드. 짧은 쪽 폭으로 재므로 같은 화면을 돌려도 폴더블 내부 화면인지는 바뀌지 않는다.
      */
     public String profileFor(Context c) {
         android.content.res.Configuration cfg = c.getResources().getConfiguration();
@@ -411,11 +419,11 @@ public final class Prefs {
                 VIBRATE_DELETE, VIBRATE_SPACE, VIBRATE_ENTER, VIBRATE_SHIFT, VIBRATE_SYMBOL, VIBRATE_LANGUAGE, VIBRATE_TOOLBAR,
                 VIBRATE_GESTURE_ON, VIBRATE_GESTURE_LEVEL, SOUND, SOUND_VOLUME));
         // 클립보드 및 이모지: 메인 화면의 따로 된 메뉴.
-        MENU_KEYS.put("clipemoji", keys(CLIPBOARD_HISTORY, CLIPBOARD_IMAGES, CLIPBOARD_SENSITIVE, CLIPBOARD_CLOSE_ON_USE, CLIPBOARD_CHIP,
+        MENU_KEYS.put("clipemoji", keys(CLIPBOARD_HISTORY, CLIPBOARD_IMAGES, CLIPBOARD_SENSITIVE, CLIPBOARD_CLOSE_ON_USE, CLIPBOARD_SPLIT_PINNED, CLIPBOARD_CHIP,
                 SELECTION_CHIPS, EMOJI_SIZE, EMOJI_SUGGEST));
         MENU_KEYS.put("words", keys(SHORTCUTS_ENABLED, SUGGEST_WORDS, SUGGEST_FULL_BAR, SUGGEST_SPACE, PREDICT_NEXT, AUTO_CORRECT, LEARN_WORDS,
                 CONFIRM_LEARNED_DELETE, AUTOFILL_INLINE));
-        // 실험실: 대화면 별도 레이아웃과 대화면 키보드 사용자화의 값은 모두 large_로 시작한다.
+        // 실험실: 폴더블 내부 화면 별도 키보드과 폴더블 내부 화면 키보드 사용자화의 값은 모두 large_로 시작한다.
         MENU_KEYS.put("lab", keys(SWIPE_DOWN_RATIO, SWIPE_UP_RATIO));
         MENU_PREFIXES.put("lab", keys(LARGE_PREFIX, HW_PREFIX, CJK_PREFIX));
         MENU_KEYS.put("onehand", keys(ONE_HAND_WIDTH, ONE_HAND_WIDTH_LAND, ONE_HAND_HEIGHT, ONE_HAND_LIFT));
@@ -459,6 +467,8 @@ public final class Prefs {
     /** 영역(미리보기의 영역 번호 차례)마다의 범위 id. */
     public static final String[] AREA_SCOPES = {"area_toolbar", "area_number", "area_letters", "area_fn"};
     public static final String SCOPE_BOARD = "board";
+    /** 세로 모드 분리 키보드의 가운데 공간 창 (밀어서 커서 이동·속도). */
+    public static final String SCOPE_MIDDLE = "area_middle";
     /** 글자 키 창에서 한글·영어 자판에만 있는 값의 범위 id (나머지는 AREA_SCOPES[글자 키]가 함께 쓴다). */
     public static final String SCOPE_LETTERS_KO = "letters_ko", SCOPE_LETTERS_EN = "letters_en";
 
@@ -467,13 +477,13 @@ public final class Prefs {
             new EditorScope("look", "키 모양 (글자 크기·곡률·키 사이 간격·그림자·누름 미리보기)", keys(KEY_TEXT_SIZE, KEY_RADIUS,
                     KEY_GAP_X, KEY_GAP_Y, KEY_SHADOW, KEY_SHADOW_STRENGTH, KEY_PREVIEW), NONE),
             new EditorScope(AREA_SCOPES[0], "도구 막대", concat(TOOL_BUTTON_VALUES, TOOLBAR, TOOLBAR_BOTTOM, TOOLBAR_HEIGHT,
-                    TOOL_BUTTON_SIZE), keys(AREA_PAD_PREFIX + PAD_AREAS[0] + "_", "swipe_toolbar_bar_")),
+                    TOOL_BUTTON_SIZE, PORTRAIT_PREFIX + TOOLBAR_FOLLOW_BLOCKS), keys(AREA_PAD_PREFIX + PAD_AREAS[0] + "_", "swipe_toolbar_bar_")),
             new EditorScope(AREA_SCOPES[1], "숫자 줄", keys(NUMBER_ROW, NUMBER_ROW_HEIGHT, NUMBER_HINT_HIDDEN),
                     keys(AREA_PAD_PREFIX + PAD_AREAS[1] + "_")),
             // 글자 키: 세 자판이 함께 쓰는 값(높이·길게 누르기·밀기·여백)과 한글·영어 글자 키에만 있는 값.
             new EditorScope(AREA_SCOPES[2], "글자 키 공통 (높이·길게 누르기·밀기·여백)", keys(KEYBOARD_HEIGHT, LONG_PRESS_MS,
-                    POPUP_HINT_HIDDEN, SWIPE_THRESHOLD, SWIPE_PICK_SUGGESTION),
-                    keys(AREA_PAD_PREFIX + PAD_AREAS[2] + "_", "swipe_kb_")),
+                    POPUP_HINT_HIDDEN, SWIPE_THRESHOLD, SWIPE_PICK_SUGGESTION, PORTRAIT_PREFIX + SPLIT_REACH_COLUMN),
+                    keys(AREA_PAD_PREFIX + PAD_AREAS[2] + "_", "swipe_kb_", PORTRAIT_PREFIX + "balanced_")),
             new EditorScope(SCOPE_LETTERS_KO, "한글 글자 키 (자판 배열·균형 배열·쌍자음·이중모음 입력)", keys(KOREAN_LAYOUT,
                     DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT, DOUBLE_TAP_CONSONANT_MS, SWIPE_DOWN_CONSONANT, SWIPE_DOWN_VOWEL,
                     ENGLISH_BALANCED),
@@ -481,7 +491,11 @@ public final class Prefs {
             new EditorScope(SCOPE_LETTERS_EN, "영어 글자 키 (자동 대문자·대문자 밀기·이메일 입력란)", keys(AUTO_CAP,
                     ENGLISH_FIELDS, ENGLISH_SWIPE_UPPER), NONE),
             new EditorScope(AREA_SCOPES[3], "기능키", concat(BOTTOM_KEY_VALUES, FN_ROW_HEIGHT, GRID_LAYOUT, DELETE_PRESS_MS,
-                    FN_SWIPE_THRESHOLD), keys(AREA_PAD_PREFIX + PAD_AREAS[3] + "_")),
+                    FN_SWIPE_THRESHOLD, PORTRAIT_PREFIX + SPLIT_SPACE_JOIN, PORTRAIT_PREFIX + SPLIT_FN_WIDTH),
+                    keys(AREA_PAD_PREFIX + PAD_AREAS[3] + "_")),
+            new EditorScope(SCOPE_MIDDLE, "가운데 공간 (분리 키보드)", keys(PORTRAIT_PREFIX + SPLIT_GAP_CURSOR,
+                    PORTRAIT_PREFIX + SPLIT_GAP_SPEED), NONE),
+            new EditorScope("split", "분리 키보드 사용", keys(PORTRAIT_SPLIT), NONE),
             new EditorScope("keys", "키마다 정한 설정 (길게 누르기·밀기·키 창의 누르기 항목)", keys(NUMBER_PAD_SYMBOLS,
                     DOUBLE_SPACE_PERIOD, SPACE_HIT_SHRINK, SPACE_HIT_SHRINK_PCT, SPACE_LANG_LABEL, SPACE_CURSOR_SPEED_H,
                     SPACE_CURSOR_SPEED_V, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, DELETE_REPEAT_RATE, DELETE_WORD_REPEAT_RATE,
@@ -491,7 +505,7 @@ public final class Prefs {
             // 키보드 사용자화를 연 채 바꾸면 되돌리기 기록에는 남는다.
             new EditorScope("landscape", null, keys(LANDSCAPE_SPLIT, LANDSCAPE_SIZE, KEYBOARD_HEIGHT_LAND, KEY_TEXT_SIZE_LAND,
                     SPLIT_GAP_CURSOR, SPLIT_GAP_SPEED, SPLIT_SPACE_JOIN, SPLIT_FN_WIDTH, SPLIT_REACH_COLUMN,
-                    PROFILE_LIFT + LANDSCAPE_SUFFIX), keys(LANDSCAPE_SPLIT + "_", "balanced_")),
+                    PROFILE_LIFT + LANDSCAPE_SUFFIX, FN_ROW_HEIGHT + LANDSCAPE_SUFFIX, TOOLBAR_FOLLOW_BLOCKS + LANDSCAPE_SUFFIX), keys(LANDSCAPE_SPLIT + "_", "balanced_")),
     };
 
     private static EditorScope scope(String id) {
@@ -564,10 +578,11 @@ public final class Prefs {
         removeKeys(keys.toArray(new String[0]), NONE);
     }
 
-    /** 프로필 사용자화 화면(가로 모드·대화면)의 이 프로필 값. 그 프로필의 편집 보기(profileEditView)에서 부른다. */
+    /** 프로필 사용자화 화면(가로 모드·폴더블 내부 화면)의 이 프로필 값. 그 프로필의 편집 보기(profileEditView)에서 부른다. */
     public void resetProfileArea() {
         resetBalancedKeys();
-        removeKeys(new String[]{splitKey(), sizeKey(), heightKey(), textSizeKey(), oneHandWidthKey(), splitGapCursorKey(),
+        removeKeys(new String[]{splitKey(), sizeKey(), heightKey(), fnRowHeightKey(), textSizeKey(),
+                toolbarFollowKey(), oneHandWidthKey(), splitGapCursorKey(),
                 splitGapSpeedKey(), splitSpaceJoinKey(), splitFnWidthKey(), splitReachColumnKey(), liftKey()},
                 new String[]{splitKey() + "_"});   // 예전에 배열마다 저장하던 분리 키보드 값도 함께
     }
@@ -591,12 +606,12 @@ public final class Prefs {
         return sp;
     }
 
-    /** 키보드 높이 (%). 가로 모드·대화면 보기에서 따로 정했으면 그 값 (30~140, 정하기 전에는 세로 모드 값). */
+    /** 키보드 높이 (%). 가로 모드·폴더블 내부 화면 보기에서 따로 정했으면 그 값 (30~140, 정하기 전에는 세로 모드 값). */
     public int keyboardHeight() {
         int v = sp.getInt(KEYBOARD_HEIGHT, 100);
         return profileSize() ? clamp(sp.getInt(heightKey(), v), PROFILE_HEIGHT_MIN, 140) : v;
     }
-    /** 키 글자 크기 (%). 가로 모드·대화면 보기에서 따로 정했으면 그 값 (30~140, 정하기 전에는 세로 모드 값). */
+    /** 키 글자 크기 (%). 가로 모드·폴더블 내부 화면 보기에서 따로 정했으면 그 값 (30~140, 정하기 전에는 세로 모드 값). */
     public int keyTextSize() {
         int v = sp.getInt(KEY_TEXT_SIZE, 100);
         return profileSize() ? clamp(sp.getInt(textSizeKey(), v), PROFILE_HEIGHT_MIN, 140) : v;
@@ -630,7 +645,9 @@ public final class Prefs {
     }
     /** 기능키 줄(맨 아래 줄) 높이: 일반 키 높이의 % (70~130, 기본 100). */
     public int fnRowHeight() {
-        return clamp(sp.getInt(FN_ROW_HEIGHT, FN_ROW_HEIGHT_DEFAULT), FN_ROW_HEIGHT_MIN, FN_ROW_HEIGHT_MAX);
+        int v = clamp(sp.getInt(FN_ROW_HEIGHT, FN_ROW_HEIGHT_DEFAULT), FN_ROW_HEIGHT_MIN, FN_ROW_HEIGHT_MAX);
+        // 가로 모드·폴더블 내부 화면 보기에서 따로 정했으면 그 값 (정하기 전에는 세로 모드 값).
+        return profileSize() ? clamp(sp.getInt(fnRowHeightKey(), v), FN_ROW_HEIGHT_MIN, FN_ROW_HEIGHT_MAX) : v;
     }
     public boolean autoCap() { return sp.getBoolean(AUTO_CAP, true); }
     public boolean doubleSpacePeriod() { return sp.getBoolean(DOUBLE_SPACE_PERIOD, true); }
@@ -660,8 +677,8 @@ public final class Prefs {
         sp.edit().putBoolean(SWIPE_DOWN_VOWEL, mode != INPUT_TAP).putBoolean(DOUBLE_TAP_VOWEL, mode != INPUT_SWIPE).apply();
     }
     /** 이 프로필의 '스페이스바 잇기'와 '하단 기능키 폭' 설정 키. */
-    public String splitSpaceJoinKey() { return large() ? LARGE_PREFIX + SPLIT_SPACE_JOIN + "_" + LARGE_LAYOUT_SIDE : SPLIT_SPACE_JOIN; }
-    public String splitFnWidthKey() { return large() ? LARGE_PREFIX + SPLIT_FN_WIDTH + "_" + LARGE_LAYOUT_SIDE : SPLIT_FN_WIDTH; }
+    public String splitSpaceJoinKey() { return portrait() ? PORTRAIT_PREFIX + SPLIT_SPACE_JOIN : large() ? LARGE_PREFIX + SPLIT_SPACE_JOIN + "_" + LARGE_LAYOUT_SIDE : SPLIT_SPACE_JOIN; }
+    public String splitFnWidthKey() { return portrait() ? PORTRAIT_PREFIX + SPLIT_FN_WIDTH : large() ? LARGE_PREFIX + SPLIT_FN_WIDTH + "_" + LARGE_LAYOUT_SIDE : SPLIT_FN_WIDTH; }
 
     /** 분리 키보드에서 나뉜 스페이스바를 가운데로 이어 하나로 쓰는지 (기본은 꺼짐: 양쪽 묶음에 하나씩). */
     public boolean splitSpaceJoin() { return profileValues() && sp.getBoolean(splitSpaceJoinKey(), false); }
@@ -675,30 +692,42 @@ public final class Prefs {
     /** 저장된 '하단 기능키 폭' 값 (스페이스바를 잇지 않아도 설정 화면이 보여 주도록). */
     public int splitFnWidthSetting() { return Math.max(50, Math.min(200, sp.getInt(splitFnWidthKey(), 100))); }
 
-    /** 이 프로필의 '좌·우 균형 레이아웃' 설정 키. */
+    /**
+     * 이 프로필의 '좌·우 균형 배열'(양쪽 묶음 4열 맞춤) 저장 키. 단모음(8열)에서는 설정 화면의 '자·모음 분리 배열'이
+     * 이 값을 뒤집어 보여 준다.
+     */
     public String splitReachColumnKey() {
+        if (portrait()) return PORTRAIT_PREFIX + SPLIT_REACH_COLUMN;
         return large() ? LARGE_PREFIX + SPLIT_REACH_COLUMN + "_" + LARGE_LAYOUT_SIDE : SPLIT_REACH_COLUMN;
     }
 
     /**
-     * 분리 키보드 한글 자판의 좌·우 균형 레이아웃을 쓰는지 (기본은 꺼짐): 양쪽 묶음을 4열씩으로 맞춘다.
+     * 분리 키보드 한글 자판의 좌·우 균형 배열을 쓰는지: 양쪽 묶음을 4열씩으로 맞춘다.
+     * 단모음(8열)은 기본이 켜짐이고 설정 화면에서 '자·모음 분리 배열'로 보인다 (켜면 이 값이 꺼지고, 자음은 왼쪽 묶음·
+     * 모음은 오른쪽 묶음으로 깔끔하게 나뉜다). NewSwipe 단모음은 기본이 꺼짐이고 '좌·우 균형 배열'로 보인다.
      * 8열 단모음은 자음의 맨 오른쪽 줄(ㅅ·ㅎ·ㅍ)을 오른쪽 묶음의 모음 앞으로 옮기고, NewSwipe 단모음은 맨 오른쪽 줄
      * (ㄱ·ㄹ·ㅅ)을 왼쪽에 그대로 둔 채 오른쪽 묶음의 모음 앞에도 하나씩 더 놓는다.
      * 8열 단모음에서는 왼쪽 묶음 바로 오른쪽의 키 하나 폭 빈 자리를 누르면 옮겨 간 키가 눌린다.
      */
-    public boolean splitReachColumn() { return profileValues() && sp.getBoolean(splitReachColumnKey(), false); }
+    public boolean splitReachColumn() { return profileValues() && sp.getBoolean(splitReachColumnKey(), reachDefault()); }
 
-    /** 이 프로필(가로 모드, 대화면 세로·가로)의 '가운데 빈 공간을 밀어서 커서 이동' 설정 키. */
-    public String splitGapCursorKey() { return large() ? LARGE_PREFIX + SPLIT_GAP_CURSOR + "_" + largeSide() : SPLIT_GAP_CURSOR; }
+    /** 값이 없을 때의 좌·우 균형 배열: 단모음(8열)은 켜짐, NewSwipe 단모음은 꺼짐 (두벌식은 쓰지 않는다). */
+    private boolean reachDefault() { return !koreanD7(); }
+
+    /** 단모음(8열)의 설정 화면 '자·모음 분리 배열' 켜짐 여부 (좌·우 균형 배열의 반대). */
+    public boolean splitSeparateJamo() { return !sp.getBoolean(splitReachColumnKey(), reachDefault()); }
+
+    /** 이 프로필(가로 모드, 폴더블 내부 화면 세로·가로)의 '가운데 빈 공간을 밀어서 커서 이동' 설정 키. */
+    public String splitGapCursorKey() { return portrait() ? PORTRAIT_PREFIX + SPLIT_GAP_CURSOR : large() ? LARGE_PREFIX + SPLIT_GAP_CURSOR + "_" + largeSide() : SPLIT_GAP_CURSOR; }
 
     /**
-     * 분리 키보드의 가운데 빈 공간을 밀어서 커서를 옮기는지. 가로 모드와 대화면 세로·가로가 각각 따로 정한다
+     * 분리 키보드의 가운데 빈 공간을 밀어서 커서를 옮기는지. 가로 모드와 폴더블 내부 화면 세로·가로가 각각 따로 정한다
      * (그 프로필의 설정 보기에서 부른다). 좌우·상하로 모두 움직이고, 속도는 {@link #splitGapSpeed}로 따로 정한다.
      */
     public boolean splitGapCursor() { return sp.getBoolean(splitGapCursorKey(), true); }
 
     /** 이 프로필의 '밀어서 커서 이동' 속도 설정 키. */
-    public String splitGapSpeedKey() { return large() ? LARGE_PREFIX + SPLIT_GAP_SPEED + "_" + largeSide() : SPLIT_GAP_SPEED; }
+    public String splitGapSpeedKey() { return portrait() ? PORTRAIT_PREFIX + SPLIT_GAP_SPEED : large() ? LARGE_PREFIX + SPLIT_GAP_SPEED + "_" + largeSide() : SPLIT_GAP_SPEED; }
 
     /** 분리 키보드 가운데 빈 공간 커서 이동 속도 (%, 50~300, 기본 100). 스페이스바 설정과 따로 정한다. */
     public int splitGapSpeed() { return clamp(sp.getInt(splitGapSpeedKey(), 100), 50, 300); }
@@ -710,6 +739,7 @@ public final class Prefs {
     /** 방금 복사한 텍스트를 도구 막대에 칩으로 보여 누르면 붙여 넣는지 (기본 켬). 클립보드 기록 저장과 따로 정한다. */
     /** 민감한 정보로 표시된 복사와 비밀번호 입력란에서 한 복사도 클립보드 기록에 저장하는지 (기본 꺼짐). */
     public boolean clipboardSensitive() { return sp.getBoolean(CLIPBOARD_SENSITIVE, false); }
+    public boolean clipboardSplitPinned() { return sp.getBoolean(CLIPBOARD_SPLIT_PINNED, false); }
     public boolean clipboardCloseOnUse() { return sp.getBoolean(CLIPBOARD_CLOSE_ON_USE, false); }
     public boolean clipboardChip() { return sp.getBoolean(CLIPBOARD_CHIP, true); }
     /** 이메일 입력란이나 앱이 영어 입력을 요청한 칸에서 영어 자판으로 시작하는지 (기본 켬). */
@@ -721,6 +751,25 @@ public final class Prefs {
     public int padTopDp() { return sp.getInt(PAD_TOP, 0); }
 
     /** 영역 area(0 도구 막대·1 숫자 줄·2 글자 키·3 기능키)의 side(SIDE_*) 여백 설정 키. */
+    /**
+     * 분리 키보드에서 도구 막대의 양 끝이 왼쪽·오른쪽 묶음의 바깥 끝을 따라가는지의 설정 키 (기본 켬).
+     * 폴더블 내부 화면 세로·가로가 함께 쓴다 (분리 키보드 켜기와 같다).
+     */
+    public String toolbarFollowKey() {
+        if (portrait()) return PORTRAIT_PREFIX + TOOLBAR_FOLLOW_BLOCKS;
+        return large() ? LARGE_PREFIX + TOOLBAR_FOLLOW_BLOCKS + "_" + LARGE_LAYOUT_SIDE : TOOLBAR_FOLLOW_BLOCKS + LANDSCAPE_SUFFIX;
+    }
+
+    /** '묶음 좌우 따라가기' 설정값 (기본 켬). 분리 키보드를 켰는지와는 상관없이 저장된 값이다. */
+    public boolean getRawFollow() {
+        return sp.getBoolean(toolbarFollowKey(), true);
+    }
+
+    /** 분리 키보드를 켰고 도구 막대가 묶음의 바깥 끝을 따라가게 정했는지. */
+    public boolean toolbarFollowBlocks() {
+        return profileValues() && sp.getBoolean(toolbarFollowKey(), true);
+    }
+
     public static String areaPadKey(int area, int side) {
         return AREA_PAD_PREFIX + PAD_AREAS[area] + "_" + "ltrb".charAt(side);
     }
@@ -885,9 +934,17 @@ public final class Prefs {
      */
     public boolean balancedLayout() {
         if (oneHandView) return false;
-        // 가로 모드·대화면 분리 키보드는 세로 모드의 균형 배열과 상관없이 나눈다.
+        // 가로 모드·폴더블 내부 화면 분리 키보드는 세로 모드의 균형 배열과 상관없이 나눈다.
         // 두벌식은 쿼티와 자리가 같아, 분리 키보드에서는 영어 자판처럼 일반 배열을 가운데에서 나눈다 (자음이 왼쪽, 모음이 오른쪽).
         if (profileValues()) return !koreanDubeolsik();
+        return balancedLayoutSetting();
+    }
+
+    /**
+     * 분리 키보드 사용 여부와 상관없이, 사용자가 지금 한글 배열에 정해 둔 '자·모음 균형 배열' 값.
+     * 분리 키보드를 쓰는 동안 설정 화면의 토글(비활성)이 원래 값을 보이게 할 때 쓴다.
+     */
+    public boolean balancedLayoutSetting() {
         String key = balancedLayoutKey();
         if (sp.contains(key)) return sp.getBoolean(key, false);
         // 배열별로 나누기 전의 값은 8열 단모음의 것이다.
@@ -895,20 +952,29 @@ public final class Prefs {
     }
     private boolean large() { return profile.startsWith(LARGE_PREFIX); }
 
-    /** 대화면 프로필의 방향 이름 ("port", "land"). */
+    /** 세로 모드(폴더블 내부 화면이 아닌) 보기인지. */
+    private boolean portrait() { return profile.isEmpty(); }
+
+    /** 세로 모드에서 분리 키보드를 쓰는지 ('키보드 사용자화'의 '분리 키보드 사용', 기본 꺼짐). */
+    public boolean portraitSplit() { return sp.getBoolean(PORTRAIT_SPLIT, false); }
+
+
+
+    /** 폴더블 내부 화면 프로필의 방향 이름 ("port", "land"). */
     private String largeSide() { return PROFILE_LARGE_PORTRAIT.equals(profile) ? "port" : "land"; }
 
     /**
-     * '분리 키보드 레이아웃'(분리 키보드 켜기, 좌·우 균형 레이아웃, 스페이스바 잇기, 하단 기능키 폭)의 대화면 키 이름에 붙는 말.
-     * 대화면 세로·가로가 이 값들을 함께 쓰므로 늘 "port"다 (따로 쓰던 때의 대화면 세로 값을 그대로 이어 쓴다).
+     * '분리 키보드 레이아웃'(분리 키보드 켜기, 좌·우 균형 배열, 스페이스바 잇기, 하단 기능키 폭)의 폴더블 내부 화면 키 이름에 붙는 말.
+     * 폴더블 내부 화면 세로·가로가 이 값들을 함께 쓰므로 늘 "port"다 (따로 쓰던 때의 폴더블 내부 화면 세로 값을 그대로 이어 쓴다).
      */
     private static final String LARGE_LAYOUT_SIDE = "port";
 
     /**
-     * 이 프로필의 '분리 키보드' 켜짐 설정 키. 어떤 한글 배열을 골랐든 같은 값이고, 대화면 세로·가로는 함께 쓴다.
+     * 이 프로필의 '분리 키보드' 켜짐 설정 키. 어떤 한글 배열을 골랐든 같은 값이고, 폴더블 내부 화면 세로·가로는 함께 쓴다.
      * (예전에는 배열마다 따로 저장했다: 이 키 + "_" + 배열. 새 값이 없으면 그 값을 이어 쓴다.)
      */
     public String splitKey() {
+        if (portrait()) return PORTRAIT_SPLIT;
         return large() ? LARGE_PREFIX + "split_" + LARGE_LAYOUT_SIDE : LANDSCAPE_SPLIT;
     }
 
@@ -921,15 +987,17 @@ public final class Prefs {
      */
     public String sizeKey() { return large() ? LARGE_PREFIX + "size_" + largeSide() : LANDSCAPE_SIZE; }
     public String heightKey() { return large() ? LARGE_PREFIX + KEYBOARD_HEIGHT + "_" + largeSide() : KEYBOARD_HEIGHT_LAND; }
+    /** 이 프로필(가로 모드·폴더블 내부 화면 세로·가로)의 기능키 높이 설정 키. */
+    public String fnRowHeightKey() { return large() ? LARGE_PREFIX + FN_ROW_HEIGHT + "_" + largeSide() : FN_ROW_HEIGHT + LANDSCAPE_SUFFIX; }
     public String textSizeKey() { return large() ? LARGE_PREFIX + KEY_TEXT_SIZE + "_" + largeSide() : KEY_TEXT_SIZE_LAND; }
 
     /** 이 프로필에서 자판을 자음(왼쪽)·모음(오른쪽)으로 나누는지. 한글 배열과 상관없이 켜고 끈 상태가 유지된다. 세로 모드는 늘 false. */
     public boolean profileSplit() {
-        if (profile.isEmpty()) return false;
+        if (portrait()) return portraitSplit();
         return sp.contains(splitKey()) ? sp.getBoolean(splitKey(), false) : sp.getBoolean(legacySplitKey(), false);
     }
 
-    /** 이 프로필의 키보드 높이·글자 크기를 따로 쓰는지: 가로 모드·대화면은 늘 따로 쓴다 (정하기 전에는 세로 모드 값). */
+    /** 이 프로필의 키보드 높이·글자 크기를 따로 쓰는지: 가로 모드·폴더블 내부 화면은 늘 따로 쓴다 (정하기 전에는 세로 모드 값). */
     public boolean profileSize() { return !profile.isEmpty(); }
 
     /** 이 프로필의 '세로 위치'(키보드를 화면 아래에서 띄우는 높이) 설정 키. 세로 모드에는 없다(null). */
@@ -948,11 +1016,12 @@ public final class Prefs {
     public boolean splitView() { return profileValues(); }
 
     /** 이 보기에서 분리 키보드가 켜져 있어 그 프로필의 키 폭·위치를 쓰는지 (한 손 모드에서는 쓰지 않아 한쪽으로 빈틈 없이 모인다). */
-    private boolean profileValues() { return !profile.isEmpty() && !oneHandView && (profileEdit || profileSplit()); }
+    private boolean profileValues() { return !oneHandView && (profileEdit || profileSplit()); }
 
     /** 지금 한글 배열(과 프로필)의 키 폭·위치 설정 키. 세로 모드는 예전 이름을, 가로 모드는 _land를 붙인 이름을 그대로 쓴다. */
     private String balancedKey(String base) {
         if (!profileValues()) return base + "_" + koreanLayoutId();
+        if (portrait()) return PORTRAIT_PREFIX + base + "_" + koreanLayoutId();
         return large() ? LARGE_PREFIX + base + "_" + largeSide() + "_" + koreanLayoutId()
                 : base + LANDSCAPE_SUFFIX + "_" + koreanLayoutId();
     }
@@ -968,7 +1037,7 @@ public final class Prefs {
         return !KOREAN_LAYOUT_8.equals(koreanLayoutId()) || profileValues() ? def : sp.getInt(legacyKey, def);
     }
 
-    /** 지금 보기에서 자음·모음 키 폭의 최솟값 (%): 가로 모드·대화면 값은 30, 세로 모드는 60. */
+    /** 지금 보기에서 자음·모음 키 폭의 최솟값 (%): 가로 모드·폴더블 내부 화면 값은 30, 세로 모드는 60. */
     public int balancedWidthMin() { return profileValues() ? BALANCED_WIDTH_MIN_LANDSCAPE : BALANCED_WIDTH_MIN; }
 
     /** 키 폭 기본값 (%): 분리 키보드는 80, 세로 모드의 균형 배열은 100 (두벌식은 90). */
@@ -999,7 +1068,7 @@ public final class Prefs {
     }
     /**
      * 지금 한글 배열의 자·모음 경계 위치: 자판 폭에서 자음 쪽(왼쪽)이 차지하는 % (30~70, 기본 50 = 가운데).
-     * 세로 모드의 균형 배열에만 있고, 분리 키보드(가로 모드·대화면)는 늘 가운데에서 나눈다.
+     * 세로 모드의 균형 배열에만 있고, 분리 키보드(가로 모드·폴더블 내부 화면)는 늘 가운데에서 나눈다.
      */
     public int balancedBoundary() {
         if (profileValues()) return BALANCED_BOUNDARY_DEFAULT;

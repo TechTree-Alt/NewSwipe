@@ -49,11 +49,27 @@ final class KeyboardPreview extends FrameLayout {
     /** 영역 층의 영역. */
     static final int AREA_TOOLBAR = 0, AREA_NUMBER = 1, AREA_LETTERS = 2, AREA_FUNCTION = 3, AREAS = 4;
     static final String[] AREA_NAMES = {"도구 막대", "숫자 줄", "글자 키", "기능키"};
+    /**
+     * 가로 모드·폴더블 내부 화면 키보드 사용자화의 영역 (AREA_LETTERS·AREA_FUNCTION과 함께 쓴다): 분리 키보드의 왼쪽·오른쪽 묶음과
+     * 그 사이의 가운데 공간. 분리 키보드를 끄면 글자 키 하나다.
+     */
+    static final int AREA_LEFT = 4, AREA_RIGHT = 5, AREA_MIDDLE = 6;
+
+    /** 가로 모드·폴더블 내부 화면 키보드 사용자화의 영역 이름. */
+    static String profileAreaName(int area) {
+        switch (area) {
+            case AREA_LEFT: return "왼쪽 묶음";
+            case AREA_RIGHT: return "오른쪽 묶음";
+            case AREA_MIDDLE: return "가운데 공간";
+            default: return AREA_NAMES[area];
+        }
+    }
     /** 자판 탭 이름 (TAB_* 차례). */
     static final String[] TAB_NAMES = {"한글", "영어", "기호"};
 
     /** 영역 이름. 글자 키는 자판마다 따로라 탭 이름을 붙인다 (예: 영어 글자 키). */
     static String areaName(int area, int tab) {
+        if (area >= AREAS) return profileAreaName(area);   // 분리 키보드의 가운데 공간 등
         return area == AREA_LETTERS ? TAB_NAMES[tab] + " " + AREA_NAMES[area] : AREA_NAMES[area];
     }
 
@@ -146,7 +162,9 @@ final class KeyboardPreview extends FrameLayout {
         // 자·모음 경계선의 손잡이. 저장 키는 한글 배열마다 다르다 (handleKey).
         B_CONSONANT(false, "자음 키 폭", null, -1),
         B_VOWEL(false, "모음 키 폭", null, -1),
-        B_BOUNDARY(false, "자·모음 경계 위치", null, -1);
+        B_BOUNDARY(false, "자·모음 경계 위치", null, -1),
+        // 가로 모드·폴더블 내부 화면 키보드 사용자화 (setProfileMode): 키보드를 화면 아래에서 띄우는 높이. 저장 키는 프로필마다 다르다.
+        LIFT(true, "세로 위치", null, -1);
 
         /** 위아래로 끄는지 (아니면 좌우). */
         final boolean vertical;
@@ -194,6 +212,9 @@ final class KeyboardPreview extends FrameLayout {
             case B_CONSONANT: return positionDrag ? prefs.balancedConsonantPosKey() : prefs.balancedConsonantWidthKey();
             case B_VOWEL: return positionDrag ? prefs.balancedVowelPosKey() : prefs.balancedVowelWidthKey();
             case B_BOUNDARY: return prefs.balancedBoundaryKey();
+            case HEIGHT: return profileEdit != null ? prefs.heightKey() : h.key(0);
+            case FN_ROW: return profileEdit != null ? prefs.fnRowHeightKey() : h.key(0);
+            case LIFT: return prefs.liftKey();
             default: return h.key(selection == null ? 0 : selection.area());
         }
     }
@@ -201,6 +222,10 @@ final class KeyboardPreview extends FrameLayout {
     /** 끄는 동안 보이는 이름. 영역 여백은 영역 이름을 붙인다. */
     private String handleName(Handle h) {
         if (h.areaPad() && selection != null) return areaName(selection.area(), tab) + " " + h.label;
+        if ((profileEdit != null || (!balancedMode && prefs.splitView())) && (h == Handle.B_CONSONANT || h == Handle.B_VOWEL)) {
+            // 분리 키보드: 자음·모음 쪽 대신 왼쪽·오른쪽 묶음
+            return (h == Handle.B_CONSONANT ? "왼쪽 묶음 " : "오른쪽 묶음 ") + (positionDrag ? "가로 위치" : "폭");
+        }
         if (positionDrag && h == Handle.B_CONSONANT) return "자음 가로 위치";
         if (positionDrag && h == Handle.B_VOWEL) return "모음 가로 위치";
         return h.label;
@@ -223,6 +248,101 @@ final class KeyboardPreview extends FrameLayout {
         refresh();
     }
 
+    // ---------------------------------------------------------------- 가로 모드·폴더블 내부 화면 키보드 사용자화
+
+    /**
+     * 가로 모드·폴더블 내부 화면 키보드 사용자화 화면: 그 프로필의 편집 보기(Prefs.profileEditView). 이 화면에서는 그 프로필이 따로 정하는
+     * 값만 바꾼다: 글자 키 높이(↕ 버튼), 세로 위치(아래 가장자리 손잡이), 분리 키보드를 켰으면 왼쪽·오른쪽 묶음의 폭·가로 위치(↔ 버튼).
+     * 키·영역은 고르지 않는다 ('키보드 사용자화'에서만 바꾼다). null이면 보통 미리보기.
+     */
+    private Prefs profileEdit;
+    /**
+     * 그 프로필이 실제로 쓰는 화면 폭 (px). 이 폭으로 키보드를 그대로 만든 뒤 화면 폭에 맞춰 통째로 줄이거나 늘려 보여 준다
+     * (키·여백·도구 막대의 비율이 실제와 똑같다). 0이면 화면 폭 그대로.
+     */
+    private int virtualWidth;
+    /** 미리보기를 화면에 맞춘 배율 (virtualWidth를 쓰지 않으면 1). 손가락 움직임은 이 값으로 나눠 키보드 좌표로 바꾼다. */
+    private float viewScale = 1f;
+
+    /** 가로 모드·폴더블 내부 화면 키보드 사용자화 화면으로 쓴다 (edit = 그 프로필의 편집 보기, width = 그 프로필이 쓰는 화면 폭 px). */
+    void setProfileMode(Prefs edit, int width) {
+        profileEdit = edit;
+        virtualWidth = width;
+        balancedMode = true;   // 균형 배열 사용자화처럼 층·고르기 없이 손잡이만 쓴다
+        selection = null;
+        selectedKey = null;
+        overlay.setContentDescription("키보드 미리보기. 글자 키 가운데의 버튼을 위·아래로 끌면 글자 키 높이가, "
+                + "키보드 아래 가장자리의 손잡이를 끌면 세로 위치가 바뀝니다. 분리 키보드를 켜면 왼쪽·오른쪽 묶음 가운데의 버튼을 "
+                + "좌우로 끌어 묶음 폭을, 길게 누른 뒤 끌어 가로 위치를 바꿉니다. 영역을 누르면 그 영역의 설정 창이 열립니다.");
+        refresh();
+    }
+
+    /** 키보드 좌표계의 폭·높이 (px). 화면에 맞춰 줄이거나 늘리기 전의 크기다. */
+    private int vw() {
+        return virtualWidth > 0 ? virtualWidth : getWidth();
+    }
+
+    private int vh() {
+        return virtualWidth > 0 ? column.getHeight() : getHeight();
+    }
+
+    /** 키보드를 화면 아래에서 띄우는 높이 (px). 가로 모드·폴더블 내부 화면 키보드 사용자화에서만 있다. */
+    private int liftPx() {
+        return profileEdit == null ? 0 : Ui.dp(getContext(), prefs.profileLiftDp());
+    }
+
+    /** 지금 보이는 영역들 (분리 키보드면 왼쪽·오른쪽 묶음, 가운데 공간, 기능키, 아니면 글자 키, 기능키). */
+    private int[] profileAreas() {
+        if (prefs.profileSplit()) return new int[]{AREA_TOOLBAR, AREA_LEFT, AREA_MIDDLE, AREA_RIGHT, AREA_FUNCTION};
+        return new int[]{AREA_TOOLBAR, AREA_LETTERS, AREA_FUNCTION};
+    }
+
+    /** 가로 모드·폴더블 내부 화면 키보드 사용자화 영역의 윤곽선 (미리보기 좌표). 없으면 false. */
+    boolean profileAreaBounds(int area, RectF out) {
+        switch (area) {
+            case AREA_LEFT: return blockBounds(true, out);
+            case AREA_RIGHT: return blockBounds(false, out);
+            case AREA_MIDDLE: {
+                // 두 묶음 사이의 빈 곳 (글자 줄 높이). 묶음이 맞닿아 빈 곳이 거의 없으면 없다.
+                RectF l = new RectF(), r = new RectF();
+                if (!blockBounds(true, l) || !blockBounds(false, r)) return false;
+                float gap = Ui.dp(getContext(), 2);
+                out.set(l.right + gap, Math.min(l.top, r.top), r.left - gap, Math.max(l.bottom, r.bottom));
+                return out.width() >= Ui.dp(getContext(), 12);
+            }
+            case AREA_LETTERS:
+                return !prefs.profileSplit() && areaBounds(AREA_LETTERS, out);
+            case AREA_FUNCTION:
+                return areaBounds(AREA_FUNCTION, out);
+            case AREA_TOOLBAR:
+                return areaBounds(AREA_TOOLBAR, out);
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * 키보드 사용자화(영역 층)에서 분리 키보드로 나뉜 글자 키를 왼쪽·오른쪽 묶음과 가운데 공간으로 그리는지
+     * ('분리 키보드 사용'을 켰고 한글·영어 자판일 때).
+     */
+    private boolean editorSplit() {
+        return profileEdit == null && !balancedMode && tab != TAB_SYMBOLS && prefs.splitView()
+                && blockBounds(true, new RectF()) && blockBounds(false, new RectF());
+    }
+
+    /** 키보드 사용자화에서 고른 영역이 분리 키보드의 글자 키(두 묶음)인지. */
+    private boolean editorBlocksSelected() {
+        return editorSplit() && selection != null && selection.kind == SEL_AREA && selection.area() == AREA_LETTERS;
+    }
+
+    /** 가로 모드·폴더블 내부 화면 키보드 사용자화에서 고른 영역 (없으면 -1). */
+    private int profileSelected() {
+        return profileEdit != null && selection != null && selection.kind == SEL_AREA ? selection.area() : -1;
+    }
+
+    /** 세로 위치만큼 키보드 밑에 비워 두는 칸 (실제 키보드처럼 그만큼 위로 뜬다). */
+    private View liftSpace;
+
     /** 글자 줄 하나의 왼쪽·오른쪽 끝 (미리보기 좌표, 줄 전체 10칸). 자판이 없으면 false. */
     private boolean letterRowSpan(float[] out) {
         KeyboardLayout l = keys.getLayout();
@@ -238,23 +358,36 @@ final class KeyboardPreview extends FrameLayout {
     /** 자·모음 경계선의 가로 위치 (미리보기 좌표). */
     private float boundaryX() {
         float[] span = new float[2];
-        if (!letterRowSpan(span)) return getWidth() / 2f;
+        if (!letterRowSpan(span)) return vw() / 2f;
         return span[0] + (span[1] - span[0]) * prefs.balancedBoundary() / 100f;
     }
 
     /** 균형 배열의 자음(consonant) 또는 모음 쪽 키들을 감싼 윤곽선 (Shift·⌫ 포함). 없으면 false. */
     boolean blockBounds(boolean consonant, RectF out) {
         KeyboardLayout l = keys.getLayout();
-        if (l == null || !prefs.balancedLayout()) return false;
+        // 분리 키보드(가로 모드·폴더블 내부 화면)는 두벌식도 가운데에서 나눠 묶음으로 놓는다.
+        if (l == null || !(profileEdit != null ? prefs.profileSplit() : prefs.splitView() || prefs.balancedLayout())) return false;
+        boolean split = profileEdit != null || prefs.splitView();
         Context c = getContext();
         float pad = Ui.dp(c, 3), bx = boundaryX();
         float gx = Ui.dp(c, prefs.keyGapXDp()) / 2f, gy = Ui.dp(c, prefs.keyGapYDp()) / 2f;
-        int first = numberRowShown ? 1 : 0, last = l.rows.length - 2;
+        // 분리 키보드의 두 묶음에는 숫자 줄(1~5, 6~0)도 들어간다. 세로 모드의 균형 배열은 숫자 줄을 뺀 글자 키만 감싼다.
+        int first = numberRowShown && profileEdit == null ? 1 : 0, last = l.rows.length - 2;
         boolean any = false;
         for (int r = first; r <= last; r++) {
-            for (Key k : l.rows[r].keys) {
+            // 분리 키보드: 줄 가운데의 빈틈(SPACER)이 두 묶음을 가른다. 묶음이 맞닿아 빈틈이 없으면(폭 100%) 가운데에 걸친 키
+            // (g·v 등)의 중심이 경계선과 정확히 같을 수 있어, 경계선 위의 키는 왼쪽 묶음으로 본다.
+            int cut = -1;
+            if (split) {
+                Key[] rowKeys = l.rows[r].keys;
+                for (int i = 0; i < rowKeys.length; i++) if (rowKeys[i].isDragCursor()) cut = i;
+            }
+            Key[] rowKeys = l.rows[r].keys;
+            for (int i = 0; i < rowKeys.length; i++) {
+                Key k = rowKeys[i];
                 if (k.type == Key.SPACER || k.type == Key.GAP || isHidden(k)) continue;
-                if ((k.rect.centerX() < bx) != consonant) continue;
+                boolean isLeft = cut >= 0 ? i < cut : split ? k.rect.centerX() <= bx + 1f : k.rect.centerX() < bx;
+                if (isLeft != consonant) continue;
                 float left = k.rect.left + gx, top = keys.getTop() + k.rect.top + gy;
                 float right = k.rect.right - gx, bottom = keys.getTop() + k.rect.bottom - gy;
                 if (!any) out.set(left, top, right, bottom);
@@ -267,7 +400,8 @@ final class KeyboardPreview extends FrameLayout {
         return true;
     }
 
-    private final Prefs prefs;
+    /** 읽는 설정. 가로 모드·폴더블 내부 화면 키보드 사용자화에서는 refresh()가 그 프로필의 보기로 바꾼다. */
+    private Prefs prefs;
     private final Listener listener;
     private final LinearLayout column;
     private final LinearLayout bar;
@@ -327,6 +461,9 @@ final class KeyboardPreview extends FrameLayout {
         keys.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
         bar.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
         addView(column, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        keys.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+            if (r - l != or - ol) updateBarEdges();
+        });
         overlay = new Overlay(context);
         addView(overlay, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         refresh();
@@ -335,6 +472,28 @@ final class KeyboardPreview extends FrameLayout {
     /** 크기는 도구 막대 + 자판이 정한다. 위에 덮은 손잡이 층은 그 크기를 그대로 따른다 (덮개가 높이를 키우지 않게). */
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        if (virtualWidth > 0) {
+            // 그 프로필의 실제 화면 폭으로 키보드를 만들고, 화면 폭에 맞춰 통째로 줄이거나 늘린다.
+            int avail = MeasureSpec.getSize(widthMeasureSpec);
+            viewScale = avail / (float) virtualWidth;
+            column.measure(MeasureSpec.makeMeasureSpec(virtualWidth, MeasureSpec.EXACTLY),
+                    MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
+            int h = column.getMeasuredHeight();
+            overlay.measure(MeasureSpec.makeMeasureSpec(virtualWidth, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(h, MeasureSpec.EXACTLY));
+            for (View v : new View[]{column, overlay}) {
+                v.setPivotX(0f);
+                v.setPivotY(0f);
+                v.setScaleX(viewScale);
+                v.setScaleY(viewScale);
+            }
+            setMeasuredDimension(avail, Math.round(h * viewScale));
+            return;
+        }
+        viewScale = 1f;
+        for (View v : new View[]{column, overlay}) {
+            v.setScaleX(1f);
+            v.setScaleY(1f);
+        }
         measureChild(column, widthMeasureSpec, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
         int w = column.getMeasuredWidth(), h = column.getMeasuredHeight();
         overlay.measure(MeasureSpec.makeMeasureSpec(w, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(h, MeasureSpec.EXACTLY));
@@ -379,6 +538,8 @@ final class KeyboardPreview extends FrameLayout {
     /** 설정을 다시 읽어 모양·크기·자판을 맞춘다. 같은 값이면 뷰는 그대로라 자주 불러도 된다. */
     void refresh() {
         Context c = getContext();
+        // 가로 모드·폴더블 내부 화면: 분리 키보드를 켰으면 편집 보기(묶음 폭·위치를 그 프로필 값으로), 껐으면 실제 키보드처럼 나누지 않은 보기.
+        if (profileEdit != null) prefs = profileEdit.profileSplit() ? profileEdit : profileEdit.profileView(profileEdit.profile());
         theme = KeyboardTheme.of(c);
         setBackgroundColor(theme.background);
         keys.setTheme(theme);
@@ -405,8 +566,16 @@ final class KeyboardPreview extends FrameLayout {
         if (tab == TAB_ENGLISH) l = KeyboardLayout.english(prefs);
         else if (tab == TAB_SYMBOLS) l = symbolsPage2 ? KeyboardLayout.symbols2(true, prefs) : KeyboardLayout.symbols(true, prefs);
         else l = KeyboardLayout.korean(prefs);
-        numberRowShown = tab != TAB_SYMBOLS && prefs.numberRow() && l.rows.length > 0 && l.rows[0].keys.length > 0
-                && KeyboardLayout.isDigit(l.rows[0].keys[0].label);
+        // 분리 키보드는 묶음 앞에 빈틈(GAP)이 있을 수 있어, 앞의 빈틈은 건너뛰고 첫 키가 숫자인지 본다.
+        Key firstKey = null;
+        if (l.rows.length > 0) {
+            for (Key k : l.rows[0].keys) {
+                if (k.type == Key.GAP || k.type == Key.SPACER) continue;
+                firstKey = k;
+                break;
+            }
+        }
+        numberRowShown = tab != TAB_SYMBOLS && prefs.numberRow() && firstKey != null && KeyboardLayout.isDigit(firstKey.label);
         // 키보드와 같은 높이: 글자 4줄 + 숫자 줄 (기호 자판도 같은 높이를 쓴다).
         float rows = KeyboardLayout.rowUnits(prefs);
         keys.setKeyboardHeight(Math.round(Ui.dp(c, 54) * rows * prefs.keyboardHeight() / 100f) + padT + padB - lift - raise
@@ -457,13 +626,31 @@ final class KeyboardPreview extends FrameLayout {
         return placeholder;
     }
 
-    /** 도구 막대의 왼쪽·오른쪽 여백 (dp): 키보드 여백 + 도구 막대 영역 여백. */
+    /**
+     * 도구 막대의 왼쪽·오른쪽 여백 (px): 키보드 여백 + 도구 막대 영역 여백. 분리 키보드에서 '도구 막대가 묶음 좌우를 따라가기'를
+     * 켰으면(기본) 왼쪽 묶음의 왼쪽 끝·오른쪽 묶음의 오른쪽 끝에 맞춘다 (실제 키보드와 같다).
+     */
     private int barPadLeft() {
-        return prefs.padLeftDp() + prefs.areaPadDp(AREA_TOOLBAR, Prefs.SIDE_LEFT);
+        Context c = getContext();
+        float[] e = prefs.toolbarFollowBlocks() ? keys.keyExtent() : null;
+        if (e != null) return Math.round(e[0]) + Ui.dp(c, prefs.areaPadDp(AREA_TOOLBAR, Prefs.SIDE_LEFT));
+        return Ui.dp(c, prefs.padLeftDp() + prefs.areaPadDp(AREA_TOOLBAR, Prefs.SIDE_LEFT));
     }
 
     private int barPadRight() {
-        return prefs.padRightDp() + prefs.areaPadDp(AREA_TOOLBAR, Prefs.SIDE_RIGHT);
+        Context c = getContext();
+        float[] e = prefs.toolbarFollowBlocks() ? keys.keyExtent() : null;
+        if (e != null) return Math.round(keys.getWidth() - e[1]) + Ui.dp(c, prefs.areaPadDp(AREA_TOOLBAR, Prefs.SIDE_RIGHT));
+        return Ui.dp(c, prefs.padRightDp() + prefs.areaPadDp(AREA_TOOLBAR, Prefs.SIDE_RIGHT));
+    }
+
+    /** 키가 배치된 뒤 (크기가 정해진 뒤) 도구 막대의 좌우 여백을 다시 맞춘다. */
+    private void updateBarEdges() {
+        int l = barPadLeft(), r = barPadRight();
+        if (bar.getPaddingLeft() == l && bar.getPaddingRight() == r) return;
+        bar.setPadding(l, 0, r, 0);
+        barSignature = null;   // 다음 refresh에서 버튼을 새 여백으로 다시 만든다
+        overlay.invalidate();
     }
 
     /** 도구 막대: 실제와 같은 자리·순서·크기의 버튼들 (누를 수 없고, 누르면 그 버튼을 고른다). */
@@ -485,7 +672,7 @@ final class KeyboardPreview extends FrameLayout {
         if (!sig.toString().equals(barSignature)) {
             barSignature = sig.toString();
             bar.removeAllViews();
-            bar.setPadding(Ui.dp(c, barPadLeft()), 0, Ui.dp(c, barPadRight()), 0);
+            bar.setPadding(barPadLeft(), 0, barPadRight(), 0);
             for (int side = 0; side < 2 && buttons; side++) {
                 if (side == 1) bar.addView(new View(c), new LinearLayout.LayoutParams(0, 1, 1f));
                 for (String id : order[side]) {
@@ -504,7 +691,8 @@ final class KeyboardPreview extends FrameLayout {
         boolean bottom = prefs.toolbarBottom();
         int barT = Ui.dp(c, prefs.areaPadDp(AREA_TOOLBAR, Prefs.SIDE_TOP));
         int barB = Ui.dp(c, prefs.areaPadDp(AREA_TOOLBAR, Prefs.SIDE_BOTTOM));
-        String colSig = shown + "," + bottom + "," + height + "," + lift + "," + raise + "," + barT + "," + barB;
+        int liftPx = liftPx();
+        String colSig = shown + "," + bottom + "," + height + "," + lift + "," + raise + "," + barT + "," + barB + "," + liftPx;
         if (colSig.equals(columnSignature)) return;
         columnSignature = colSig;
         column.removeAllViews();
@@ -521,6 +709,14 @@ final class KeyboardPreview extends FrameLayout {
         }
         column.addView(keys, klp);
         if (shown && bottom) column.addView(bar, blp);
+        if (liftPx > 0) {
+            // 세로 위치: 키보드 밑의 빈 곳 (실제로는 뒤의 앱 화면이 보이는 곳이라 설정 화면 바탕색으로 칠한다).
+            if (liftSpace == null) {
+                liftSpace = new View(c);
+                liftSpace.setBackgroundColor(AppTheme.of(c).bg);
+            }
+            column.addView(liftSpace, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, liftPx));
+        }
     }
 
     /** 고른 키를 지금 자판에서 다시 찾는다. 없으면 고르지 않은 것으로 돌린다. */
@@ -528,6 +724,15 @@ final class KeyboardPreview extends FrameLayout {
         selectedKey = null;
         if (selection == null) return;
         if (selection.kind == SEL_BOARD) return;
+        if (selection.kind == SEL_AREA && profileEdit != null) {
+            // 분리 키보드를 켜고 끄면 영역이 바뀐다 (글자 키 ↔ 두 묶음·가운데 공간).
+            if (!profileAreaBounds(selection.area(), new RectF())) selection = null;
+            return;
+        }
+        if (selection.kind == SEL_AREA && selection.area() == AREA_MIDDLE) {
+            if (!editorSplit() || !profileAreaBounds(AREA_MIDDLE, new RectF())) selection = null;   // 분리 키보드를 껐다 등
+            return;
+        }
         if (selection.kind == SEL_AREA) {
             // 숫자 줄을 껐다 등. 숫자 줄 영역은 꺼져 있어도 고른 채로 둔다 (그 창에서 다시 켤 수 있게).
             if (!areaBounds(selection.area(), new RectF()) && selection.area() != AREA_NUMBER) selection = null;
@@ -583,6 +788,24 @@ final class KeyboardPreview extends FrameLayout {
     // ---------------------------------------------------------------- 눌러 고르기
 
     private void tapAt(float x, float y) {
+        if (profileEdit != null) {
+            // 가로 모드·폴더블 내부 화면: 누른 곳을 감싼 영역 (경계 근처면 가까운 영역). 빈 곳이면 고르지 않음.
+            RectF r = new RectF();
+            int best = -1;
+            float bestDist = Ui.dp(getContext(), 12);
+            for (int a : profileAreas()) {
+                if (!profileAreaBounds(a, r)) continue;
+                float dx = x < r.left ? r.left - x : x > r.right ? x - r.right : 0;
+                float dy = y < r.top ? r.top - y : y > r.bottom ? y - r.bottom : 0;
+                float d = (float) Math.hypot(dx, dy);
+                if (d <= bestDist) {
+                    bestDist = d;
+                    best = a;
+                }
+            }
+            listener.onTap(best < 0 ? null : Selection.area(best));
+            return;
+        }
         if (balancedMode) return;   // 균형 배열 사용자화: 고를 것이 없다
         if (layer == LAYER_BOARD) {   // 키보드 층: 키보드 전체 하나
             RectF r = new RectF();
@@ -593,6 +816,11 @@ final class KeyboardPreview extends FrameLayout {
         if (layer == LAYER_AREA) {
             // 영역 층: 누른 곳을 감싼 영역 (경계 근처면 가까운 영역).
             RectF r = new RectF();
+            // 분리 키보드: 두 묶음 사이의 가운데 공간은 따로 고른다 (글자 키 영역 안에 있다).
+            if (editorSplit() && profileAreaBounds(AREA_MIDDLE, r) && r.contains(x, y)) {
+                listener.onTap(Selection.area(AREA_MIDDLE));
+                return;
+            }
             int best = -1;
             float bestDist = Ui.dp(getContext(), 12);
             for (int a = 0; a < AREAS; a++) {
@@ -684,9 +912,9 @@ final class KeyboardPreview extends FrameLayout {
         }
         if (left > right) {
             left = pad;
-            right = getWidth() - pad;
+            right = vw() - pad;
         }
-        out.set(Math.max(left, pad), column.getTop() + pad, Math.min(right, getWidth() - pad), column.getBottom() - pad);
+        out.set(Math.max(left, pad), column.getTop() + pad, Math.min(right, vw() - pad), column.getBottom() - pad);
         return out.height() > 0;
     }
 
@@ -755,6 +983,26 @@ final class KeyboardPreview extends FrameLayout {
     /** 손잡이 h가 지금 보이는지. */
     private boolean handleShown(Handle h) {
         if (keys.getLayout() == null) return false;
+        // 가로 모드·폴더블 내부 화면 키보드 사용자화: 글자 키 높이·세로 위치, 분리 키보드면 두 묶음의 ↔ 버튼.
+        if (profileEdit != null) {
+            // 세로 위치는 키보드 전체 설정이라 늘 보이고, 나머지는 고른 영역의 손잡이만 (키보드 사용자화의 영역 설정과 같다).
+            int a = profileSelected();
+            // 세로 모드 분리 키보드: 높이·세로 위치는 '키보드 사용자화'에서 정하므로 묶음 손잡이만 쓴다.
+            if (profileEdit.profile().isEmpty() && (h == Handle.LIFT || h == Handle.HEIGHT || h == Handle.FN_ROW)) return false;
+            // 기능키 영역을 골랐을 때는 아래 가장자리가 기능키 영역의 아래 윤곽선과 겹치므로 세로 위치 손잡이를 숨긴다.
+            if (h == Handle.LIFT) return a != AREA_FUNCTION;
+            switch (h) {
+                case HEIGHT: return a == AREA_LETTERS || a == AREA_LEFT || a == AREA_RIGHT;
+                case FN_ROW: return a == AREA_FUNCTION;
+                case B_CONSONANT: return a == AREA_LEFT && blockBounds(true, new RectF());
+                case B_VOWEL: return a == AREA_RIGHT && blockBounds(false, new RectF());
+                default: return false;
+            }
+        }
+        if (h == Handle.LIFT) return false;
+        // 키보드 사용자화의 분리 키보드: 글자 키(두 묶음)를 고르면 묶음마다 ↔ 버튼 (폭, 길게 누른 뒤 끌면 가로 위치).
+        if (!balancedMode && (h == Handle.B_CONSONANT || h == Handle.B_VOWEL)) return editorBlocksSelected();
+        if (!balancedMode && h == Handle.B_BOUNDARY) return false;
         // 균형 배열 사용자화 화면에서는 그 손잡이만 (균형 배열이 켜져 있을 때).
         if (h.balanced()) return balancedMode && prefs.balancedLayout() && (h == Handle.B_BOUNDARY
                 || blockBounds(h == Handle.B_CONSONANT, new RectF()));
@@ -766,6 +1014,7 @@ final class KeyboardPreview extends FrameLayout {
         // 영역을 고르면 그 영역의 상하좌우 여백 손잡이와 가운데의 높이 손잡이(↕ 버튼).
         if (selection.kind == SEL_AREA && h.areaPad()) {
             int a = selection.area();
+            if (a == AREA_MIDDLE) return false;   // 가운데 공간에는 여백이 없다
             if (a == AREA_TOOLBAR) return bar.getParent() != null;
             return a != AREA_NUMBER || numberRowShown;
         }
@@ -776,6 +1025,7 @@ final class KeyboardPreview extends FrameLayout {
                     case AREA_TOOLBAR: return h == Handle.TOOLBAR && bar.getParent() != null;
                     case AREA_NUMBER: return h == Handle.NUMBER_ROW && numberRowShown;
                     case AREA_LETTERS: return h == Handle.HEIGHT;
+                    case AREA_MIDDLE: return false;
                     default: return h == Handle.FN_ROW;
                 }
             default: return false;
@@ -794,6 +1044,7 @@ final class KeyboardPreview extends FrameLayout {
             case PAD_RIGHT:
             case AREA_R: out[0] -= in; break;
             case PAD_BOTTOM:
+            case LIFT:
             case AREA_B: out[1] -= in; break;
             default: out[1] += in; break;   // 위 가장자리의 손잡이 (높이·위쪽 여백)
         }
@@ -804,11 +1055,20 @@ final class KeyboardPreview extends FrameLayout {
     private boolean handleEdge(Handle h, float[] out) {
         if (!handleShown(h)) return false;
         Context c = getContext();
-        int w = getWidth();
+        int w = vw();
         switch (h) {
+            case HEIGHT:
+                if (profileSelected() == AREA_LEFT || profileSelected() == AREA_RIGHT) {
+                    // 묶음을 골랐으면 그 묶음 가운데의 ↔ 버튼 오른쪽에 ↕ 버튼을 둔다.
+                    RectF r = new RectF();
+                    if (!blockBounds(profileSelected() == AREA_LEFT, r)) return false;
+                    out[0] = r.centerX() + Ui.dp(c, 22);
+                    out[1] = r.centerY();
+                    return true;
+                }
+                // fall through
             case TOOLBAR:
             case NUMBER_ROW:
-            case HEIGHT:
             case FN_ROW: {
                 // 높이 버튼(↕): 영역 세로 가운데, 가운데보다 왼쪽 (가운데의 위·아래 여백 손잡이와 겹치지 않게).
                 // 위·아래로 끌어 그 영역의 높이를 바꾼다.
@@ -816,7 +1076,9 @@ final class KeyboardPreview extends FrameLayout {
                 int a = h == Handle.TOOLBAR ? AREA_TOOLBAR : h == Handle.NUMBER_ROW ? AREA_NUMBER : h == Handle.FN_ROW ? AREA_FUNCTION : AREA_LETTERS;
                 if (!areaBounds(a, r)) return false;
                 // 글자 키 영역은 높아서 가운데에 둬도 위·아래 여백 손잡이와 겹치지 않는다.
-                out[0] = h == Handle.HEIGHT ? r.centerX() : Math.max(r.left + Ui.dp(c, 30), r.centerX() - Ui.dp(c, 64));
+                // 글자 키 영역과, 가로 모드·폴더블 내부 화면 키보드 사용자화의 기능키 영역은 정중앙에 둔다.
+                boolean centered = h == Handle.HEIGHT || (h == Handle.FN_ROW && profileEdit != null);
+                out[0] = centered ? r.centerX() : Math.max(r.left + Ui.dp(c, 30), r.centerX() - Ui.dp(c, 64));
                 out[1] = r.centerY();
                 return true;
             }
@@ -831,12 +1093,22 @@ final class KeyboardPreview extends FrameLayout {
                 out[1] = h == Handle.PAD_TOP ? r.top : h == Handle.PAD_BOTTOM ? r.bottom : r.centerY();
                 return true;
             }
+            case LIFT: {
+                // 세로 위치: 키보드 아래 가장자리 (그 밑은 띄운 빈 곳) 가운데.
+                RectF r = new RectF();
+                if (!boardBounds(r)) return false;
+                out[0] = r.centerX();
+                out[1] = column.getTop() + column.getHeight() - liftPx();
+                return true;
+            }
             case B_CONSONANT:
             case B_VOWEL: {
-                // ↔ 버튼: 그 쪽 윤곽선의 한가운데.
+                // ↔ 버튼: 그 쪽 윤곽선의 한가운데 (가로 모드·폴더블 내부 화면은 ↕ 버튼과 나란히 왼쪽에).
                 RectF r = new RectF();
                 if (!blockBounds(h == Handle.B_CONSONANT, r)) return false;
-                out[0] = r.centerX();
+                // 높이 버튼(↕)이 함께 있는 가로 모드·폴더블 내부 화면에서만 왼쪽으로 비킨다. 세로 모드 분리 키보드는 높이 버튼이 없어 정중앙이다.
+                boolean beside = profileEdit != null && !profileEdit.profile().isEmpty();
+                out[0] = r.centerX() - (beside ? Ui.dp(c, 22) : 0);
                 out[1] = r.centerY();
                 return true;
             }
@@ -857,7 +1129,7 @@ final class KeyboardPreview extends FrameLayout {
                 if (!padBounds(selection.area(), r)) return false;
                 out[0] = h == Handle.AREA_L ? Math.max(r.left, Ui.dp(c, 3)) : h == Handle.AREA_R ? Math.min(r.right, w - Ui.dp(c, 3))
                         : r.centerX();
-                out[1] = h == Handle.AREA_T ? Math.max(r.top, Ui.dp(c, 4)) : h == Handle.AREA_B ? Math.min(r.bottom, getHeight() - Ui.dp(c, 3))
+                out[1] = h == Handle.AREA_T ? Math.max(r.top, 0) : h == Handle.AREA_B ? Math.min(r.bottom, vh() - Ui.dp(c, 3))
                         : r.centerY();
                 return true;
             }
@@ -888,7 +1160,8 @@ final class KeyboardPreview extends FrameLayout {
 
     private Handle handleAt(float x, float y) {
         float[] p = new float[2];
-        float reach = Ui.dp(getContext(), 22);
+        // 줄여 그린 미리보기에서도 손으로 집기 쉽게, 줄인 만큼 터치 범위를 넓힌다.
+        float reach = Ui.dp(getContext(), 22) / Math.min(1f, viewScale);
         Handle best = null;
         float bestDist = Float.MAX_VALUE;
         for (Handle h : Handle.values()) {
@@ -945,6 +1218,7 @@ final class KeyboardPreview extends FrameLayout {
             case NUMBER_ROW: return prefs.numberRowHeight();
             case HEIGHT: return prefs.keyboardHeight();
             case FN_ROW: return prefs.fnRowHeight();
+            case LIFT: return prefs.profileLiftDp();
             case PAD_LEFT: return prefs.padLeftDp();
             case PAD_RIGHT: return prefs.padRightDp();
             case PAD_BOTTOM: return prefs.padBottomDp();
@@ -980,7 +1254,11 @@ final class KeyboardPreview extends FrameLayout {
                         Prefs.FN_ROW_HEIGHT_MIN, Prefs.FN_ROW_HEIGHT_MAX);
                 break;
             case HEIGHT:
-                v = clamp(snap5((dragStart - dy) / (Ui.dp(c, 54) * rowUnits()) * 100f), 70, 140);
+                v = clamp(snap5((dragStart - dy) / (Ui.dp(c, 54) * rowUnits()) * 100f),
+                        profileEdit != null ? Prefs.PROFILE_HEIGHT_MIN : 70, 140);
+                break;
+            case LIFT:   // 4dp 단위, 끌어 올리면 키보드가 위로 뜬다
+                v = clamp(Math.round((dragStart - dy / density) / 4f) * 4, 0, 160);
                 break;
             case PAD_LEFT: v = clamp(Math.round(dragStart + dx / density), 0, 24); break;
             case PAD_RIGHT: v = clamp(Math.round(dragStart - dx / density), 0, 24); break;
@@ -1082,7 +1360,33 @@ final class KeyboardPreview extends FrameLayout {
             areaLabel.setTextAlign(Paint.Align.CENTER);
             areaLabel.setFakeBoldText(true);
             float r = Ui.dp(ctx, prefs.keyRadiusDp()) + Ui.dp(ctx, 4);
+            boolean split = editorSplit();
             for (int a = 0; a < AREAS; a++) {
+                if (split && a == AREA_LETTERS) {
+                    // 분리 키보드: 글자 키는 왼쪽·오른쪽 묶음(함께 고른다)과 그 사이의 가운데 공간으로 나눠 그린다.
+                    boolean chosen = layer == which && selection != null && selection.kind == SEL_AREA && selection.area() == AREA_LETTERS;
+                    boolean midChosen = layer == which && selection != null && selection.kind == SEL_AREA && selection.area() == AREA_MIDDLE;
+                    for (int side : new int[]{AREA_LEFT, AREA_RIGHT, AREA_MIDDLE}) {
+                        if (!profileAreaBounds(side, area)) continue;
+                        boolean on = side == AREA_MIDDLE ? midChosen : chosen;
+                        stroke.setColor(withAlpha(accent, (on ? 1f : 0.55f) * alpha));
+                        stroke.setStrokeWidth(Ui.dp(ctx, on ? 2.5f : 1.25f));
+                        float rr = Math.min(r, Math.min(area.width(), area.height()) / 2f);
+                        c.drawRoundRect(area, rr, rr, stroke);
+                        if (on) {
+                            fill.setColor(withAlpha(accent, 0.12f * alpha));
+                            c.drawRoundRect(area, rr, rr, fill);
+                            continue;
+                        }
+                        String name = side == AREA_MIDDLE ? profileAreaName(AREA_MIDDLE) : AREA_NAMES[AREA_LETTERS];   // 두 묶음 모두 "글자 키"
+                        String text = "눌러서 " + name + suffix;
+                        float room = area.width() - Ui.dp(ctx, 4);
+                        if (areaLabel.measureText(text) + Ui.dp(ctx, 16) > room) text = name;
+                        if (areaLabel.measureText(text) + Ui.dp(ctx, 16) > room) continue;
+                        drawPill(c, text, area, alpha);
+                    }
+                    continue;
+                }
                 if (!padBounds(a, area)) continue;   // 영역과 그 위·아래 여백까지
                 // 맨 위·맨 아래 윤곽선이 미리보기 가장자리에서 잘리지 않게 테두리 굵기의 절반만큼은 안쪽에 둔다.
                 float edge = Ui.dp(ctx, 1.5f);
@@ -1219,6 +1523,44 @@ final class KeyboardPreview extends FrameLayout {
             return (Math.round(base * Math.max(0f, Math.min(1f, a))) << 24) | (color & 0x00FFFFFF);
         }
 
+        /**
+         * 가로 모드·폴더블 내부 화면 키보드 사용자화: 키보드 사용자화의 영역 층처럼 영역마다 둥근 테두리와 가운데 이름표.
+         * 고른 영역은 굵게 칠하고 이름표를 숨긴다.
+         */
+        private void drawProfileAreas(Canvas c) {
+            Context ctx = getContext();
+            areaLabel.setTextSize(Ui.dp(ctx, 11));
+            areaLabel.setTextAlign(Paint.Align.CENTER);
+            areaLabel.setFakeBoldText(true);
+            float r = Ui.dp(ctx, prefs.keyRadiusDp()) + Ui.dp(ctx, 4);
+            int chosenArea = profileSelected();
+            for (int a : profileAreas()) {
+                if (!profileAreaBounds(a, area)) continue;
+                float edge = Ui.dp(ctx, 1.5f);
+                area.top = Math.max(area.top, edge);
+                area.bottom = Math.min(area.bottom, getHeight() - edge);
+                boolean chosen = a == chosenArea;
+                boolean dragged = dragging && ((a == AREA_LEFT && active == Handle.B_CONSONANT)
+                        || (a == AREA_RIGHT && active == Handle.B_VOWEL));
+                stroke.setColor(withAlpha(theme.accent, chosen || dragged ? 1f : 0.55f));
+                stroke.setStrokeWidth(Ui.dp(ctx, chosen || dragged ? 2.5f : 1.25f));
+                float rr = Math.min(r, Math.min(area.width(), area.height()) / 2f);
+                c.drawRoundRect(area, rr, rr, stroke);
+                if (chosen) {
+                    fill.setColor(withAlpha(theme.accent, 0.12f));
+                    c.drawRoundRect(area, rr, rr, fill);
+                    continue;
+                }
+                // 이름표: 좁은 영역(가운데 공간 등)에서는 짧게, 그래도 넘치면 그리지 않는다.
+                String name = profileAreaName(a);
+                String text = "눌러서 " + name + " 설정";
+                float room = area.width() - Ui.dp(ctx, 4);
+                if (areaLabel.measureText(text) + Ui.dp(ctx, 16) > room) text = name;
+                if (areaLabel.measureText(text) + Ui.dp(ctx, 16) > room) continue;
+                drawPill(c, text, area, 1f);
+            }
+        }
+
         /** 균형 배열 사용자화: 자음·모음 쪽 윤곽선과 자·모음 경계선. 끄는 중인 쪽은 굵게 칠한다. */
         private void drawBalanced(Canvas c) {
             Context ctx = getContext();
@@ -1235,12 +1577,14 @@ final class KeyboardPreview extends FrameLayout {
                     c.drawRoundRect(area, rr, rr, fill);
                 }
             }
-            if (prefs.balancedLayout() && areaBounds(AREA_LETTERS, area)) {
+            if (profileEdit == null && prefs.balancedLayout() && areaBounds(AREA_LETTERS, area)) {
                 boolean on = dragging && active == Handle.B_BOUNDARY;
                 float x = boundaryX();
                 stroke.setStrokeWidth(Ui.dp(ctx, on ? 2f : 1.25f));
                 stroke.setColor(withAlpha(theme.accent, on ? 1f : 0.45f));
-                c.drawLine(x, area.top, x, area.bottom, stroke);
+                // 두 윤곽선이 맞닿아 있어도 둥근 모서리 밖으로 튀어나오지 않게, 윤곽선의 모서리 반지름만큼 양 끝을 줄인다.
+                float cut = Math.min(r, area.height() / 2f - Ui.dp(ctx, 1));
+                c.drawLine(x, area.top + cut, x, area.bottom - cut, stroke);
             }
         }
 
@@ -1248,7 +1592,8 @@ final class KeyboardPreview extends FrameLayout {
         protected void onDraw(Canvas c) {
             Context ctx = getContext();
             int accent = theme.accent;
-            if (balancedMode) drawBalanced(c);
+            if (profileEdit != null) drawProfileAreas(c);
+            else if (balancedMode) drawBalanced(c);
             else drawLayers(c);
             // 고른 것: 강조색 테두리.
             RectF sel = selectionBounds();   // 고른 키·도구 막대 버튼 (영역·키보드는 drawLayers에서)
@@ -1275,6 +1620,8 @@ final class KeyboardPreview extends FrameLayout {
                 fill.setColor(accent);
                 c.drawRoundRect(tmp, thickHalf, thickHalf, fill);
             }
+            // 크기 조절 버튼 안내는 모든 손잡이 위에 그린다.
+            if (knobHint != null && handleCenter(knobHint, point)) drawKnobHint(c, knobHint, point[0], point[1]);
             // 끄는 동안: 무엇을 얼마로 바꾸는지 자판 가운데에 크게 보여 준다.
             if (dragging && active != null) {
                 String text = handleName(active) + "  " + valueText(active, dragValue);
@@ -1320,6 +1667,14 @@ final class KeyboardPreview extends FrameLayout {
                 c.drawLine(x + len - head, y + head, x + len, y, stroke);
             }
             stroke.setStrokeCap(Paint.Cap.BUTT);
+        }
+
+        /**
+         * 크기 조절 버튼을 눌렀을 때 옆(아래)에 뜨는 안내 알약. 여백 조절 손잡이에 가리지 않게 손잡이를 다 그린 뒤 맨 위에 그린다.
+         */
+        private void drawKnobHint(Canvas c, Handle h, float x, float y) {
+            Context ctx = getContext();
+            float rad = Ui.dp(ctx, 12);
             if (h == knobHint && !dragging && android.os.SystemClock.uptimeMillis() < knobHintUntil && h.balanced()) {
                 // 균형 배열의 ↔ 버튼: 버튼 바로 아래에 두 줄 안내 (길게 누르고 있으면 위치 조절 안내를 굵게 앞에).
                 drawHintLines(c, x, y + rad + Ui.dp(ctx, 8), positionDrag
@@ -1438,8 +1793,8 @@ final class KeyboardPreview extends FrameLayout {
                     paging = false;
                     return true;
                 case MotionEvent.ACTION_MOVE: {
-                    float dx = e.getRawX() - downRawX, dy = e.getRawY() - downRawY;
-                    if (!dragging && !moved && Math.hypot(dx, dy) > slop) {
+                    float dx = (e.getRawX() - downRawX) / viewScale, dy = (e.getRawY() - downRawY) / viewScale;
+                    if (!dragging && !moved && Math.hypot(dx, dy) * viewScale > slop) {
                         moved = true;
                         removeCallbacks(positionPress);   // 길게 누르기 전에 움직였다: 키 폭 조절
                         // 손잡이를 그 방향으로 끌기 시작했을 때만 크기를 바꾼다 (손잡이 위에서 옆으로 밀면 아무것도 하지 않는다).
@@ -1480,7 +1835,7 @@ final class KeyboardPreview extends FrameLayout {
                     if (paging) {
                         paging = false;
                         // 3분의 1 넘게 넘겼거나 빠르게 밀었으면 그 층으로, 아니면 제자리로.
-                        float moveX = e.getRawX() - downRawX;
+                        float moveX = (e.getRawX() - downRawX) / viewScale;
                         int target = Math.abs(layerPos - pageStart) > 0.33f || Math.abs(moveX) > Ui.dp(getContext(), 72)
                                 ? Math.max(0, Math.min(LAYERS - 1, layer + (moveX < 0 ? 1 : -1))) : layer;
                         setLayer(target);

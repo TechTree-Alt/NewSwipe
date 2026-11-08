@@ -1312,7 +1312,7 @@ public class EditorUiTest {
         prefs.raw().edit().putBoolean(Prefs.LANDSCAPE_SPLIT, true).remove(Prefs.GRID_LAYOUT).commit();
         SettingsActivity land = launch("landscapearea");
         String lt = visibleTexts(land.getWindow().getDecorView());
-        assertFalse(lt.contains("좌·우 균형 레이아웃"));   // 두벌식은 이미 5열씩이라 쓰지 않는다
+        assertFalse(lt.contains("자·모음 분리 배열"));   // 두벌식은 이미 5열씩이라 쓰지 않는다
         shot(land, "a3-dubeolsik-landscape");
         // 기능키 순서·유무: 두벌식은 Shift가 늘 있다
         Activity bk = Robolectric.buildActivity(BottomKeysEditorActivity.class).setup().get();

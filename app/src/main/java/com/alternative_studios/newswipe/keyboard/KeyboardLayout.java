@@ -368,7 +368,7 @@ public final class KeyboardLayout {
         if (splitView(prefs)) {
             int leftColumns = balancedConsonants(prefs), rightColumns = BALANCED_VOWEL_COLUMNS;
             if (prefs.splitReachColumn()) {
-                // 좌·우 균형 레이아웃: 양쪽 묶음을 4열씩으로 맞춘다.
+                // 좌·우 균형 배열: 양쪽 묶음을 4열씩으로 맞춘다.
                 if (ns) {
                     // NewSwipe 단모음: 자음의 맨 오른쪽 줄(ㄱ·ㄹ·ㅅ)은 그대로 두고, 같은 키를 하나 더 만들어 모음 앞에 놓는다.
                     String last = consonants.get(consonants.size() - 1).label;
@@ -585,7 +585,7 @@ public final class KeyboardLayout {
 
     /**
      * 쿼티 모양의 자판 (영어, 두벌식): 10 · 9(반 칸 들여쓰기) · Shift+7+⌫ 줄. Shift 키는 늘 있다 (두벌식의 쌍자음·ㅒ·ㅖ).
-     * 가로 모드·대화면의 분리 키보드에서는 가운데에서 나눈다.
+     * 가로 모드·폴더블 내부 화면의 분리 키보드에서는 가운데에서 나눈다.
      */
     private static KeyboardLayout qwertyLayout(int kind, String[][] letterRows, String[][][] popups, boolean korean,
                                                Prefs prefs) {
@@ -1025,7 +1025,7 @@ public final class KeyboardLayout {
      */
     private static float gridKey(Prefs prefs) {
         // 자·모음 균형 배열: 왼쪽 절반을 나눠 가진 자음 키 한 칸 (5열이면 1칸, 4열이면 1.25칸).
-        // 8열 단모음의 좌·우 균형 레이아웃은 자음이 4열이 되므로 그 폭을 따른다.
+        // 8열 단모음의 좌·우 균형 배열은 자음이 4열이 되므로 그 폭을 따른다.
         // 두벌식은 자음 쪽이 들여쓰기·1.5칸 Shift를 포함해 5.5칸이라 키 한 칸이 그만큼 좁다.
         if (balanced(prefs) && dubeolsik(prefs)) return BALANCED_HALF / QWERTY_LEFT_UNITS;
         if (balanced(prefs)) {
@@ -1052,7 +1052,7 @@ public final class KeyboardLayout {
     }
 
     /**
-     * 기호 자판의 맨 아래 줄 위쪽 줄들을 마무리한다. 분리 키보드(가로 모드·대화면)에서는 숫자 줄을 포함한 모든 줄을
+     * 기호 자판의 맨 아래 줄 위쪽 줄들을 마무리한다. 분리 키보드(가로 모드·폴더블 내부 화면)에서는 숫자 줄을 포함한 모든 줄을
      * 일반 자판과 같은 모양 그대로 가운데에서 나눠 왼쪽·오른쪽 묶음에 놓는다 ({@link #splitNormal}).
      */
     private static void finishSymbols(List<Row> rows, String back, Prefs prefs) {
@@ -1065,7 +1065,7 @@ public final class KeyboardLayout {
     }
 
     /**
-     * 자·모음 균형 배열과 분리 키보드의 맨 아래 줄. 분리 키보드(가로 모드·대화면)는 스페이스바가 둘로 나뉘어
+     * 자·모음 균형 배열과 분리 키보드의 맨 아래 줄. 분리 키보드(가로 모드·폴더블 내부 화면)는 스페이스바가 둘로 나뉘어
      * 왼쪽·오른쪽 묶음에 하나씩 들어가고, 세로 모드의 균형 배열은 늘 전체 폭을 쓴다.
      */
     private static Row splitBottom(Prefs prefs) {
@@ -1163,7 +1163,7 @@ public final class KeyboardLayout {
         }
     }
 
-    // ---------------------------------------------------------------- 분리 키보드 (가로 모드·대화면)
+    // ---------------------------------------------------------------- 분리 키보드 (가로 모드·폴더블 내부 화면)
     //
     // 자판을 왼쪽 묶음(자음, 숫자 1~5, 맨 아래 줄의 스페이스바 왼쪽 키와 왼쪽 스페이스바)과
     // 오른쪽 묶음(모음, 숫자 6~0, 오른쪽 스페이스바와 그 오른쪽 키)으로 나눈다. 묶음의 폭은 각각 자기 절반의

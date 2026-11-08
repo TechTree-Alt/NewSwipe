@@ -120,7 +120,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private IconButton voiceButton, undoButton, oneHandButton;
     /**
      * 한 손 모드 배치: body(가로) = [column(도구 막대·검색 결과·자판) | sideStrip(반대편 빈 곳)], 그 아래 liftSpace.
-     * 한 손 모드가 꺼져 있으면 column만 꽉 차게 들어가고 sideStrip은 숨긴다. liftSpace는 가로 모드·대화면의
+     * 한 손 모드가 꺼져 있으면 column만 꽉 차게 들어가고 sideStrip은 숨긴다. liftSpace는 가로 모드·폴더블 내부 화면의
      * '세로 위치'를 정했을 때만 보인다.
      */
     private LinearLayout body, column, sideStrip;
@@ -312,6 +312,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 if (Prefs.PINNED_EMOJI.equals(key) && emojiPanel != null) {
                     emojiPanel.setPinned(EmojiRepository.parseRecent(prefs.pinnedEmoji()));
                 }
+                // '고정 항목 분리'는 키보드를 다시 만들 필요는 없고, 떠 있는 클립보드 창만 바로 다시 그린다.
+                if (Prefs.CLIPBOARD_SPLIT_PINNED.equals(key) && clipPanel != null && panel == PANEL_CLIPBOARD) {
+                    refreshClipboard();
+                }
                 if (key == null || Prefs.HW_TOOLBAR.equals(key)) {
                     updateInputViewShown();
                     refreshHwToolbar();
@@ -325,7 +329,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 사용할 때마다 설정에서 직접 읽는 값이나 키보드 화면과 상관없는 값은 다시 그릴 필요가 없다. */
     private static boolean affectsKeyboard(String key) {
         return !(Prefs.LANGUAGE.equals(key) || Prefs.RECENT_EMOJI.equals(key) || Prefs.PINNED_EMOJI.equals(key)
-                || Prefs.CLIPBOARD_HISTORY.equals(key) || Prefs.CLIPBOARD_IMAGES.equals(key) || Prefs.CLIPBOARD_SENSITIVE.equals(key) || Prefs.CLIPBOARD_CLOSE_ON_USE.equals(key) || Prefs.CLIPBOARD_CHIP.equals(key) || Prefs.AUTO_CAP.equals(key)
+                || Prefs.CLIPBOARD_HISTORY.equals(key) || Prefs.CLIPBOARD_IMAGES.equals(key) || Prefs.CLIPBOARD_SENSITIVE.equals(key) || Prefs.CLIPBOARD_CLOSE_ON_USE.equals(key) || Prefs.CLIPBOARD_SPLIT_PINNED.equals(key) || Prefs.CLIPBOARD_CHIP.equals(key) || Prefs.AUTO_CAP.equals(key)
                 || Prefs.DOUBLE_SPACE_PERIOD.equals(key) || Prefs.CONFIRM_LEARNED_DELETE.equals(key)
                 || Prefs.ONE_HAND_LAST.equals(key) || Prefs.ENGLISH_FIELDS.equals(key)
                 || key.startsWith(Prefs.HW_PREFIX));   // 외장 키보드 설정은 키를 누를 때 읽는다
@@ -617,6 +621,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         candidateGridOpen = false;
         cjkEnterConfirm = false;   // 새 자판의 엔터 키는 원래 모양이다
         keyboard = new KeyboardView(this);
+        // 키가 배치되면(크기·한 손 모드가 바뀔 때) 도구 막대가 묶음 좌우를 따라가는 여백을 다시 맞춘다.
+        keyboard.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+            if (r - l != or - ol) applyToolbarEdges();
+        });
         keyboard.setListener(this);
         keyboard.setTheme(theme);
         content.addView(keyboard, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
@@ -1186,7 +1194,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         composer.setDoubleTapVowel(prefs.doubleTapVowel());
         WordSuggester.setDoubleTapVowel(prefs.doubleTapVowel());   // '안너'도 '안녀…'로 찾는다
         composer.setDoubleTapConsonant(prefs.doubleTapConsonant(), prefs.doubleTapConsonantMs());
-        // 가로 모드·대화면에서 따로 정한 키보드 높이·글자 크기는 그 화면에서만 쓴다.
+        // 가로 모드·폴더블 내부 화면에서 따로 정한 키보드 높이·글자 크기는 그 화면에서만 쓴다.
         Prefs sizePrefs = prefs.profileView(profile());
         // 한 손 모드에서는 키 높이를 줄인 만큼 키 글자도 같은 비율로 줄인다 (도구 막대는 줄어든 자판 바로 위에 붙어 따라온다).
         float oneHandScale = !Prefs.ONE_HAND_OFF.equals(activeOneHand()) ? prefs.oneHandHeight() / 100f : 1f;
@@ -1240,10 +1248,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 Ui.dp(this, prefs.padRightDp()), Ui.dp(this, prefs.padBottomDp()));
         keyboard.setAreaInsets(areaPadsPx());
         // 도구 막대의 양 끝 버튼이 자판의 양 끝 키와 같은 선에 오도록 키보드 좌우 여백을 따른다 (도구 막대 영역 여백을 더한다).
-        int barL = Ui.dp(this, prefs.padLeftDp() + prefs.areaPadDp(0, Prefs.SIDE_LEFT));
-        int barR = Ui.dp(this, prefs.padRightDp() + prefs.areaPadDp(0, Prefs.SIDE_RIGHT));
-        if (toolbar != null) toolbar.setPadding(barL, 0, barR, 0);
-        if (searchBar != null) searchBar.setPadding(barL, 0, barR, 0);
+        applyToolbarEdges();
+        if (keyboard != null) keyboard.post(this::applyToolbarEdges);   // 키가 새 설정으로 다시 배치된 뒤에 한 번 더 맞춘다
         applyPanelInsets();
         arrangeToolbar();
         if (topSlot != null) {
@@ -1258,6 +1264,30 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         keyboard.setKeyboardHeight(keyboardHeight);
         applyOneHand();
         updatePanelSizes();
+    }
+
+    /**
+     * 도구 막대(와 검색줄)의 좌우 여백. 보통은 키보드 좌우 여백 + 도구 막대 영역 여백이다.
+     * 분리 키보드에서 '도구 막대가 묶음 좌우를 따라가기'를 켜 두었으면(기본) 도구 막대의 양 끝 버튼이
+     * 왼쪽 묶음의 왼쪽 끝·오른쪽 묶음의 오른쪽 끝(기능키 줄이 따라가는 선)에 오도록 여백을 정한다.
+     */
+    private void applyToolbarEdges() {
+        int barL = Ui.dp(this, prefs.padLeftDp() + prefs.areaPadDp(0, Prefs.SIDE_LEFT));
+        int barR = Ui.dp(this, prefs.padRightDp() + prefs.areaPadDp(0, Prefs.SIDE_RIGHT));
+        if (keyboard != null && splitActive() && prefs.profileView(profile()).toolbarFollowBlocks()) {
+            float[] e = keyboard.keyExtent();
+            int w = keyboard.getWidth();
+            if (e != null && w > 0) {
+                barL = Math.round(e[0]) + Ui.dp(this, prefs.areaPadDp(0, Prefs.SIDE_LEFT));
+                barR = Math.round(w - e[1]) + Ui.dp(this, prefs.areaPadDp(0, Prefs.SIDE_RIGHT));
+            }
+        }
+        if (toolbar != null && (toolbar.getPaddingLeft() != barL || toolbar.getPaddingRight() != barR)) {
+            toolbar.setPadding(barL, 0, barR, 0);
+        }
+        if (searchBar != null && (searchBar.getPaddingLeft() != barL || searchBar.getPaddingRight() != barR)) {
+            searchBar.setPadding(barL, 0, barR, 0);
+        }
     }
 
     /** 영역별 여백 (px, [영역][왼·위·오른·아래]). */
@@ -1297,7 +1327,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return b;
     }
 
-    /** 지금 화면에서 쓸 키보드 모습의 묶음: 세로·가로 모드, 또는 (실험실 '대화면 별도 레이아웃'이 켜져 있으면) 대화면 세로·가로. */
+    /** 지금 화면에서 쓸 키보드 모습의 묶음: 세로·가로 모드, 또는 (실험실 '폴더블 내부 화면 별도 키보드'이 켜져 있으면) 폴더블 내부 화면 세로·가로. */
     private String profile() {
         return prefs.profileFor(this);
     }
@@ -1329,7 +1359,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /**
      * 한 손 모드 배치를 뷰에 반영한다: column을 '자판 폭'만큼만 쓰고 한쪽으로 붙이며, 반대편에 sideStrip을 둔다.
-     * 아래에는 '세로 위치'만큼 빈 칸을 두어 자판을 띄운다 (한 손 모드가 아니어도 가로 모드·대화면의 세로 위치를 쓴다).
+     * 아래에는 '세로 위치'만큼 빈 칸을 두어 자판을 띄운다 (한 손 모드가 아니어도 가로 모드·폴더블 내부 화면의 세로 위치를 쓴다).
      */
     private void applyOneHand() {
         if (body == null) return;
@@ -1337,7 +1367,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         boolean on = !Prefs.ONE_HAND_OFF.equals(side);
         Prefs profilePrefs = prefs.profileView(profile());
         int width = profilePrefs.oneHandWidthForProfile();
-        // 세로 위치: 한 손 모드는 한 손 모드의 값을, 아니면 가로 모드·대화면에서 정한 값을 쓴다 (세로 모드는 0).
+        // 세로 위치: 한 손 모드는 한 손 모드의 값을, 아니면 가로 모드·폴더블 내부 화면에서 정한 값을 쓴다 (세로 모드는 0).
         // 외장 키보드로 도구 막대만 보일 때는 띄우지 않는다 (막대 아래에 빈 칸만 남는다).
         int lift = appliedBarOnly ? 0 : Ui.dp(this, on ? prefs.oneHandLiftDp() : profilePrefs.profileLiftDp());
         String signature = side + "/" + width + "/" + lift;
@@ -1637,7 +1667,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (keyboard == null) return;   // 외장 키보드만 쓰면 자판 화면을 만들지 않은 채 언어를 바꿀 수 있다
         // 한 손 모드에서는 자·모음 균형 배열의 가운데 빈틈을 없앤 배열을 쓴다.
         Prefs prefs = !Prefs.ONE_HAND_OFF.equals(activeOneHand()) ? this.prefs.oneHandView() : this.prefs;
-        // 자·모음 균형 배열의 키 폭·위치는 가로 모드·대화면일 때 세로 모드와 따로 정한 값을 쓴다.
+        // 자·모음 균형 배열의 키 폭·위치는 가로 모드·폴더블 내부 화면일 때 세로 모드와 따로 정한 값을 쓴다.
         // 화면을 돌리면 시스템이 입력 뷰를 다시 만들고(onCreateInputView → applySettings), 입력을 다시 시작하므로 여기서 방향을 읽으면 된다.
         prefs = prefs.profileView(profile());
         KeyboardLayout l;
@@ -1666,6 +1696,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
         if (domainField && kind != KeyboardLayout.NUMBER) KeyboardLayout.useDomainPeriodPopup(l);
         keyboard.setLayout(l);
+        applyToolbarEdges();   // 자판이 바뀌면 묶음의 바깥 끝도 달라질 수 있다
         updateLanguagePopup();
         boolean shiftable = kind == KeyboardLayout.ENGLISH || kind == KeyboardLayout.CHINESE
                 || (kind == KeyboardLayout.JAPANESE && this.prefs.jaQwerty());
@@ -3388,7 +3419,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         for (int i = 1; i < suggestViews.length; i++) suggestViews[i].setVisibility(on ? View.GONE : View.VISIBLE);
     }
 
-    /** 분리 키보드를 쓰는 중인지 (가로 모드·대화면에서 분리를 켰고 한 손 모드가 아닐 때). */
+    /** 분리 키보드를 쓰는 중인지 (가로 모드·폴더블 내부 화면에서 분리를 켰고 한 손 모드가 아닐 때). */
     private boolean splitActive() {
         return Prefs.ONE_HAND_OFF.equals(activeOneHand()) && prefs.profileView(profile()).splitView();
     }
@@ -4491,6 +4522,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     @Override
+    public void onEmojiChipPress() {
+        feedback.onToolbar();
+    }
+
+    @Override
     public void onEmojiKeyPress() {
         feedback.onKey(null);
     }
@@ -4711,6 +4747,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (clipPanel == null) return;
         final boolean enabled = prefs.clipboardHistory();
         final String current = currentClipText();
+        clipPanel.setSplitPinned(prefs.clipboardSplitPinned());
         if (!enabled) {
             clipPanel.show(Collections.emptyList(), false, current);
             return;
@@ -4811,6 +4848,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             ic.commitText(text, 1);
             mirror.commit(text);
         }
+    }
+
+    @Override
+    public void onClipChipPress() {
+        feedback.onToolbar();
     }
 
     @Override
