@@ -1692,7 +1692,9 @@ public class EditorUiTest {
     }
 
     static View findText(View v, String text) {
-        if (v instanceof TextView && v.isShown() && text.contentEquals(((TextView) v).getText())) return v;
+        // 선택 버튼은 폭이 좁으면 이름을 두 줄로 나눠 보이므로 ("NewSwipe\n단모음") 줄바꿈은 빈칸으로 본다.
+        if (v instanceof TextView && v.isShown()
+                && text.equals(((TextView) v).getText().toString().replace('\n', ' '))) return v;
         if (v instanceof ViewGroup) {
             ViewGroup g = (ViewGroup) v;
             for (int i = 0; i < g.getChildCount(); i++) {
