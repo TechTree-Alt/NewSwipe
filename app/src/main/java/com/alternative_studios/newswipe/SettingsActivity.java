@@ -1478,7 +1478,7 @@ public final class SettingsActivity extends Activity {
     /** 미리보기 페이지 이름 (KeyboardPreview.LAYER_* 차례). */
     private static final String[] PAGE_NAMES = {"키보드 전체 설정", "영역 설정", "키 설정"};
     /** 미리보기 페이지 설명 (PAGE_NAMES와 같은 차례). */
-    private static final String[] PAGE_DESCS = {"여백·키 모양·분리 키보드를 설정합니다", "각 영역의 모습과 기능을 설정합니다",
+    private static final String[] PAGE_DESCS = {"키보드의 전체적인 모양을 설정합니다", "각 영역의 모습과 기능을 설정합니다",
             "각 키의 기능과 동작을 설정합니다"};
 
     /** 편집 창을 내려 닫고 목록으로 돌아간다 (창에서 바꾼 값이 있으면 다 내려간 뒤 목록을 다시 만든다). */
