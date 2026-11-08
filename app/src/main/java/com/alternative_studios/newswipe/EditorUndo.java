@@ -32,6 +32,15 @@ final class EditorUndo {
     /** 되돌리는 중 (그 변경은 기록하지 않는다). */
     private static boolean undoing;
 
+    /**
+     * 이 기록을 쓰는 화면 하나(범위)가 시작한 때 쌓여 있던 단계 수. 가로 모드·폴더블 내부 화면 키보드 사용자화는 키보드 사용자화에서
+     * 열려 같은 기록을 쓰지만, 그 위의 단계(키보드 사용자화에서 바꾼 값)는 되돌리지 않는다.
+     */
+    private static int floor;
+    private static String scope;
+    /** 키보드 사용자화 화면이 열려 있는지 (가로 모드·폴더블 화면을 떠날 때 그 아래 기록을 남길지 정한다). */
+    private static boolean rootActive;
+
     private final Prefs prefs;
     private final Handler handler;
     /** 되돌릴 수 있는지가 바뀔 수 있을 때 부른다 (되돌리기 버튼을 맞춘다). */
@@ -51,10 +60,41 @@ final class EditorUndo {
         steps.clear();
         snapshot = null;
         lastStepKey = null;
+        floor = 0;
+        scope = null;
+        rootActive = false;
+    }
+
+    /** 키보드 사용자화 화면이 열렸다: 가로 모드·폴더블 화면은 이 화면에서 열려 기록을 이어 쓴다. */
+    static void markRoot() {
+        rootActive = true;
+    }
+
+    /**
+     * 가로 모드·폴더블 내부 화면 키보드 사용자화(범위 id)가 열렸다: 이 화면에서 바꾼 값만 되돌린다. 같은 화면을 다시 만들 때
+     * (회전·되돌린 뒤 다시 그리기)는 처음 시작한 자리를 그대로 둔다.
+     */
+    void enterScope(String id) {
+        if (id.equals(scope)) return;
+        scope = id;
+        floor = steps.size();
+    }
+
+    /** 그 화면을 떠난다: 이 화면에서 쌓은 단계는 버린다 (키보드 사용자화에서 열었으면 그 아래 기록은 그대로, 아니면 모두). */
+    static void leaveScope() {
+        if (scope == null) return;
+        if (!rootActive) {
+            clearAll();
+            return;
+        }
+        while (steps.size() > floor) steps.removeLast();
+        lastStepKey = null;
+        floor = 0;
+        scope = null;
     }
 
     boolean canUndo() {
-        return !steps.isEmpty() || pending != null;
+        return steps.size() > floor || pending != null;
     }
 
     private Map<String, Object> editorValues() {
@@ -102,7 +142,10 @@ final class EditorUndo {
         // 합쳐서 결국 원래 값으로 돌아왔으면 (스위치를 켰다 끔) 되돌릴 것이 없다.
         Map<String, Object> top = steps.peekLast();
         if (top != null && isNoop(top)) steps.removeLast();
-        while (steps.size() > MAX_STEPS) steps.removeFirst();
+        while (steps.size() > MAX_STEPS) {
+            steps.removeFirst();
+            if (floor > 0) floor--;
+        }
         onChange.run();
     }
 
@@ -117,6 +160,7 @@ final class EditorUndo {
     /** 마지막 단계를 되돌린다: 그 단계에서 바뀐 값들을 바뀌기 전 값으로 (없던 값은 지운다). 되돌린 것이 없으면 false. */
     boolean undo() {
         if (pending != null) seal();
+        if (steps.size() <= floor) return false;
         Map<String, Object> step = steps.pollLast();
         if (step == null) return false;
         undoing = true;

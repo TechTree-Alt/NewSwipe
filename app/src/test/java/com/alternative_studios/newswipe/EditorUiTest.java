@@ -1694,6 +1694,28 @@ public class EditorUiTest {
         pre.raw().edit().remove(Prefs.LANDSCAPE_SPLIT).commit();
     }
 
+    /** 가로 모드 키보드 사용자화도 머리글에 되돌리기 버튼이 있고, 이 화면에서 바꾼 값만 되돌린다. */
+    @Test
+    public void landscapeAreaHasUndoInHeader() throws Exception {
+        Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
+        SettingsActivity a = launch("landscapearea");
+        View decor = a.getWindow().getDecorView();
+        View undo = byDesc(decor, "마지막 변경 되돌리기");
+        assertNotNull(undo);
+        assertFalse("바꾼 것이 없으면 꺼져 있다", undo.isEnabled());
+        // 도구 막대 높이를 바꾸면 켜지고, 누르면 원래 값(세로 모드 값을 따름)으로 돌아간다.
+        int before = pre.profileView(Prefs.PROFILE_LANDSCAPE).toolbarHeight();
+        String key = pre.profileEditView(Prefs.PROFILE_LANDSCAPE).toolbarHeightKey();
+        pre.raw().edit().putInt(key, 80).commit();
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(100));
+        idle();
+        assertTrue(undo.isEnabled());
+        undo.performClick();
+        idle();
+        assertEquals(before, pre.profileView(Prefs.PROFILE_LANDSCAPE).toolbarHeight());
+        assertFalse(pre.raw().contains(key));
+    }
+
     static int count(View v, String text) {
         int n = 0;
         if (v.getVisibility() == View.GONE) return 0;   // 가려진 칸은 세지 않는다

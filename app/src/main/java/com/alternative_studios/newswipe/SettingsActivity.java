@@ -126,6 +126,8 @@ public final class SettingsActivity extends Activity {
                 : new SettingsFrame(this, sectionName, getString(R.string.app_name));
         if (KEYBOARD.equals(sectionId)) frame.withAction(Icons.UNDO, "마지막 변경 되돌리기", v -> undoLast()).keyboardOverlays();
         else if (LANDSCAPE_AREA.equals(sectionId) || LARGE_AREA.equals(sectionId)) {
+            // 키보드 사용자화처럼 머리글에 되돌리기 버튼 (이 화면에서 바꾼 것만 되돌린다)
+            frame.withAction(Icons.UNDO, "마지막 변경 되돌리기", v -> undoLast());
             frame.keyboardOverlays();   // 아래 미리보기 위로 실제 키보드가 덮는다
         }
         ScrollView scroll = new ScrollView(this);
@@ -184,6 +186,8 @@ public final class SettingsActivity extends Activity {
     protected void onDestroy() {
         if (isFinishing() && editorPreview != null) {   // 키보드 사용자화를 떠난다: 되돌리기 기록도 버린다
             EditorUndo.clearAll();
+        } else if (isFinishing() && profilePreview != null) {   // 가로 모드·폴더블 내부 화면 키보드 사용자화를 떠난다
+            EditorUndo.leaveScope();
         }
         if (editorPrefListener != null) prefs.raw().unregisterOnSharedPreferenceChangeListener(editorPrefListener);
         super.onDestroy();
@@ -1087,6 +1091,7 @@ public final class SettingsActivity extends Activity {
 
             // 목록의 스위치·슬라이더나 다른 편집 화면에서 값을 바꾸면 미리보기를 다시 그린다 (한 프레임에 한 번).
             editorUndo = new EditorUndo(prefs, uiHandler, this::updateUndoButton);
+            EditorUndo.markRoot();
             updateUndoButton();
             editorPrefListener = (sp, key) -> {
                 editorUndo.record(key);
@@ -1175,6 +1180,11 @@ public final class SettingsActivity extends Activity {
         if (editorUndo == null || !editorUndo.undo()) return;
         if (Build.VERSION.SDK_INT >= 30) undoButton.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM);
         Toast.makeText(this, "마지막 변경을 되돌렸습니다", Toast.LENGTH_SHORT).show();
+        if (editorPreview == null) {
+            // 가로 모드·폴더블 내부 화면 키보드 사용자화: 목록·슬라이더·미리보기를 되돌린 값으로 다시 만든다.
+            recreate();
+            return;
+        }
         editorPreview.refresh();
         overviewStale = true;
         if (panelOpen()) showSelection(editorPreview.selection());
@@ -1930,6 +1940,16 @@ public final class SettingsActivity extends Activity {
             }
         });
         profilePreview.setProfileMode(prefs.profileEditView(profile), profileScreenWidth(profile));
+        // 되돌리기: 키보드 사용자화와 같은 기록을 쓰되, 이 화면에서 바꾼 것만 되돌린다.
+        editorUndo = new EditorUndo(prefs, uiHandler, this::updateUndoButton);
+        editorUndo.enterScope(getIntent().getStringExtra(EXTRA_SECTION));
+        updateUndoButton();
+        editorPrefListener = (sp, key) -> {
+            editorUndo.record(key);
+            // 키보드 사용자화도 같은 값을 기록하므로, 그쪽이 쌓은 단계도 반영되게 한 박자 뒤에 버튼을 맞춘다.
+            uiHandler.post(() -> uiHandler.post(this::updateUndoButton));
+        };
+        prefs.raw().registerOnSharedPreferenceChangeListener(editorPrefListener);
         // 키보드 사용자화처럼 미리보기 위에 페이지 표시: 키보드 전체 설정 · 영역 설정 (키 설정은 세로 모드와 함께 쓴다).
         profileDots = new PageDots(this, java.util.Arrays.copyOf(PAGE_NAMES, 2), java.util.Arrays.copyOf(PAGE_DESCS, 2),
                 AppTheme.of(this), profilePreview::setLayer);

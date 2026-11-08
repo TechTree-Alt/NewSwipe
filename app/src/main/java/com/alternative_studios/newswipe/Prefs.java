@@ -519,8 +519,16 @@ public final class Prefs {
             new EditorScope("landscape", null, keys(LANDSCAPE_SPLIT, LANDSCAPE_SIZE, KEYBOARD_HEIGHT_LAND, KEY_TEXT_SIZE_LAND,
                     SPLIT_GAP_CURSOR, SPLIT_GAP_SPEED, SPLIT_SPACE_JOIN, SPLIT_FN_WIDTH, SPLIT_REACH_COLUMN,
                     FN_ROW_HEIGHT + LANDSCAPE_SUFFIX, TOOLBAR_HEIGHT + LANDSCAPE_SUFFIX, TOOLBAR_FOLLOW_BLOCKS + LANDSCAPE_SUFFIX,
-                    FN_FOLLOW_BLOCKS + LANDSCAPE_SUFFIX), keys(LANDSCAPE_SPLIT + "_", "balanced_", "swipe_gap_landscape_", "swipe_gap_large_", LANDSCAPE_PAD_PREFIX, LARGE_PREFIX + "pad_",
-                            SPLIT_REACH_COLUMN + "_")),
+                    FN_FOLLOW_BLOCKS + LANDSCAPE_SUFFIX), keys(LANDSCAPE_SPLIT + "_", "balanced_", "swipe_gap_landscape_", "swipe_gap_large_", LANDSCAPE_PAD_PREFIX,
+                            SPLIT_REACH_COLUMN + "_",
+                            // 폴더블 내부 화면(세로·가로)이 따로 정하는 값 (실험실의 다른 large_ 값은 넣지 않는다).
+                            LARGE_PREFIX + "pad_", LARGE_PREFIX + "size_", LARGE_PREFIX + "split_",
+                            LARGE_PREFIX + KEYBOARD_HEIGHT + "_", LARGE_PREFIX + KEY_TEXT_SIZE + "_",
+                            LARGE_PREFIX + FN_ROW_HEIGHT + "_", LARGE_PREFIX + TOOLBAR_HEIGHT + "_",
+                            LARGE_PREFIX + TOOLBAR_FOLLOW_BLOCKS + "_", LARGE_PREFIX + FN_FOLLOW_BLOCKS + "_",
+                            LARGE_PREFIX + SPLIT_SPACE_JOIN + "_", LARGE_PREFIX + SPLIT_FN_WIDTH + "_",
+                            LARGE_PREFIX + SPLIT_REACH_COLUMN + "_", LARGE_PREFIX + SPLIT_GAP_CURSOR + "_",
+                            LARGE_PREFIX + SPLIT_GAP_SPEED + "_", LARGE_PREFIX + ONE_HAND_WIDTH + "_", LARGE_PREFIX + "balanced_")),
     };
 
     private static EditorScope scope(String id) {
