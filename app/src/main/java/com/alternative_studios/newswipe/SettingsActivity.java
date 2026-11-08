@@ -2322,7 +2322,7 @@ public final class SettingsActivity extends Activity {
     /** 설정 검색용으로 화면을 만들 때는 영역 설정 창의 항목도 목록에 넣어 찾을 수 있게 한다. */
     private void harvestProfileAreas(String profile) {
         if (!harvesting) return;
-        for (int a : new int[]{KeyboardPreview.AREA_TOOLBAR, KeyboardPreview.AREA_LETTERS, KeyboardPreview.AREA_LEFT, KeyboardPreview.AREA_RIGHT,
+        for (int a : new int[]{KeyboardPreview.AREA_TOOLBAR, KeyboardPreview.AREA_LETTERS,
                 KeyboardPreview.AREA_MIDDLE, KeyboardPreview.AREA_FUNCTION}) {
             buildProfileArea(profile, a, true);
         }
@@ -2428,26 +2428,21 @@ public final class SettingsActivity extends Activity {
         // 세로 모드 분리 키보드: 높이는 '키보드 사용자화'의 값을 쓴다 (여기서는 분리 키보드에만 있는 항목만).
         boolean portraitProfile = Prefs.PROFILE_PORTRAIT.equals(profile);
         switch (area) {
-            case KeyboardPreview.AREA_LEFT:
-            case KeyboardPreview.AREA_RIGHT: {
-                boolean left = area == KeyboardPreview.AREA_LEFT;
-                String side = left ? "왼쪽" : "오른쪽";
-                LinearLayout c = section("묶음 크기");
-                if (left) {
-                    c.addView(blockSlider(edit, side + " 묶음 폭", edit.balancedConsonantWidthKey(), edit::balancedConsonantWidth, edit.balancedWidthMin(), edit.balancedWidthMax(), "%", k -> refreshLayoutPreview()));
-                    c.addView(blockSlider(edit, side + " 묶음 가로 위치", edit.balancedConsonantPosKey(), edit::balancedConsonantPos, Prefs.BALANCED_POS_MIN, Prefs.BALANCED_POS_MAX, "", k -> refreshLayoutPreview()));
-                } else {
-                    c.addView(blockSlider(edit, side + " 묶음 폭", edit.balancedVowelWidthKey(), edit::balancedVowelWidth, edit.balancedWidthMin(), edit.balancedWidthMax(), "%", k -> refreshLayoutPreview()));
-                    c.addView(blockSlider(edit, side + " 묶음 가로 위치", edit.balancedVowelPosKey(), edit::balancedVowelPos, Prefs.BALANCED_POS_MIN, Prefs.BALANCED_POS_MAX, "", k -> refreshLayoutPreview()));
+            case KeyboardPreview.AREA_LETTERS: {
+                // 분리 키보드: 왼쪽·오른쪽 묶음을 합친 글자 키 (세로 모드 '키보드 사용자화'의 글자 키 창과 같다).
+                if (split) {
+                    LinearLayout c = section("분리 키보드");
+                    c.addView(blockSlider(edit, "왼쪽 묶음 폭", edit.balancedConsonantWidthKey(), edit::balancedConsonantWidth, edit.balancedWidthMin(), edit.balancedWidthMax(), "%", k -> refreshLayoutPreview()));
+                    c.addView(blockSlider(edit, "왼쪽 묶음 가로 위치", edit.balancedConsonantPosKey(), edit::balancedConsonantPos, Prefs.BALANCED_POS_MIN, Prefs.BALANCED_POS_MAX, "", k -> refreshLayoutPreview()));
+                    c.addView(blockSlider(edit, "오른쪽 묶음 폭", edit.balancedVowelWidthKey(), edit::balancedVowelWidth, edit.balancedWidthMin(), edit.balancedWidthMax(), "%", k -> refreshLayoutPreview()));
+                    c.addView(blockSlider(edit, "오른쪽 묶음 가로 위치", edit.balancedVowelPosKey(), edit::balancedVowelPos, Prefs.BALANCED_POS_MIN, Prefs.BALANCED_POS_MAX, "", k -> refreshLayoutPreview()));
+                    c.addView(note("왼쪽 묶음(자음, 숫자 1~5, 스페이스바와 그 왼쪽 키)과 오른쪽 묶음(모음, 숫자 6~0, 스페이스바와 그 오른쪽 키)은 "
+                            + "각각 함께 움직입니다. " + BLOCK_NOTE + " 미리보기에서 묶음 왼쪽·오른쪽 가장자리의 손잡이를 좌우로 끌면 그 경계가 "
+                            + "옮겨 가 폭이 바뀌고(5% 단위), 가운데의 ↔ 버튼을 끌면 폭은 그대로 묶음이 옮겨 갑니다."));
                 }
-                c.addView(note((left ? "왼쪽 묶음(자음, 숫자 1~5, 스페이스바와 그 왼쪽 키)" : "오른쪽 묶음(모음, 숫자 6~0, 스페이스바와 그 오른쪽 키)")
-                        + "이 함께 움직입니다. " + BLOCK_NOTE + " 미리보기에서 묶음 왼쪽·오른쪽 가장자리의 손잡이를 좌우로 끌면 그 경계가 옮겨 가 폭이 바뀌고(5% 단위), 가운데의 ↔ 버튼을 끌면 폭은 그대로 묶음이 옮겨 갑니다."));
                 if (!portraitProfile) addProfileLetterHeight(edit);
                 break;
             }
-            case KeyboardPreview.AREA_LETTERS:
-                if (!portraitProfile) addProfileLetterHeight(edit);
-                break;
             case KeyboardPreview.AREA_TOOLBAR: {
                 LinearLayout c = section(portraitProfile ? "분리 키보드" : "도구 막대");
                 String followKey = edit.toolbarFollowKey();

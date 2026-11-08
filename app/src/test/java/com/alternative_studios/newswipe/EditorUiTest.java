@@ -1649,6 +1649,51 @@ public class EditorUiTest {
         pre.raw().edit().remove(pre.balancedLayoutKey()).commit();
     }
 
+    /**
+     * 가로 모드 분리 키보드: 세로 모드 '키보드 사용자화'처럼 왼쪽·오른쪽 묶음을 합쳐 '글자 키'로 함께 고른다.
+     * 이름표·설정 창 제목도 '글자 키'이고, 창에는 두 묶음의 폭·가로 위치와 글자 키 높이가 함께 있다.
+     */
+    @Test
+    public void landscapeSplitBlocksAreOneLettersArea() throws Exception {
+        Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
+        pre.raw().edit().putBoolean(Prefs.LANDSCAPE_SPLIT, true).commit();
+        SettingsActivity a = launch("landscapearea");
+        View decor = a.getWindow().getDecorView();
+        KeyboardPreview p = find(decor, KeyboardPreview.class);
+        android.graphics.RectF lb = new android.graphics.RectF(), rb = new android.graphics.RectF();
+        assertTrue(p.profileAreaBounds(KeyboardPreview.AREA_LEFT, lb) && p.profileAreaBounds(KeyboardPreview.AREA_RIGHT, rb));
+        // 오른쪽 묶음을 눌러도 글자 키
+        tap(p.getChildAt(1), rb.centerX(), rb.top + rb.height() / 4f);
+        assertNotNull(p.selection());
+        assertEquals(KeyboardPreview.AREA_LETTERS, p.selection().area());
+        assertNotNull(findText(decor, "글자 키 설정"));
+        assertNull(findText(decor, "오른쪽 묶음 설정"));
+        String t = visibleTexts(decor);
+        log("LANDSCAPE LETTERS:\n" + t);
+        assertTrue(t, t.contains("왼쪽 묶음 폭") && t.contains("왼쪽 묶음 가로 위치") && t.contains("오른쪽 묶음 폭")
+                && t.contains("오른쪽 묶음 가로 위치") && t.contains("글자 키 높이"));
+        // 두 묶음의 경계 손잡이·↔ 버튼과 묶음마다의 높이 손잡이가 함께 보인다
+        java.lang.reflect.Method shown = KeyboardPreview.class.getDeclaredMethod("handleShown", KeyboardPreview.Handle.class);
+        shown.setAccessible(true);
+        for (KeyboardPreview.Handle h : new KeyboardPreview.Handle[]{KeyboardPreview.Handle.B_LEFT_START, KeyboardPreview.Handle.B_LEFT_END,
+                KeyboardPreview.Handle.B_RIGHT_START, KeyboardPreview.Handle.B_RIGHT_END, KeyboardPreview.Handle.B_LEFT_MOVE,
+                KeyboardPreview.Handle.B_RIGHT_MOVE, KeyboardPreview.Handle.HEIGHT, KeyboardPreview.Handle.HEIGHT_RIGHT}) {
+            assertTrue(h.name(), (Boolean) shown.invoke(p, h));
+        }
+        java.lang.reflect.Method hc = KeyboardPreview.class.getDeclaredMethod("handleCenter", KeyboardPreview.Handle.class, float[].class);
+        hc.setAccessible(true);
+        float[] hl = new float[2], hr = new float[2];
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.HEIGHT, hl));
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.HEIGHT_RIGHT, hr));
+        assertEquals(lb.centerX(), hl[0], 1f);
+        assertEquals(rb.centerX(), hr[0], 1f);
+        shot(a, "d0-landscape-split-letters");
+        // 같은 글자 키(왼쪽 묶음)를 다시 누르면 창이 닫힌다
+        tap(p.getChildAt(1), lb.centerX(), lb.top + lb.height() / 4f);
+        assertNull(p.selection());
+        pre.raw().edit().remove(Prefs.LANDSCAPE_SPLIT).commit();
+    }
+
     static int count(View v, String text) {
         int n = 0;
         if (v.getVisibility() == View.GONE) return 0;   // 가려진 칸은 세지 않는다

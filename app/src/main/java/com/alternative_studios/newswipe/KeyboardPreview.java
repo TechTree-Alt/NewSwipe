@@ -332,6 +332,12 @@ final class KeyboardPreview extends FrameLayout {
                 && blockBounds(true, new RectF()) && blockBounds(false, new RectF());
     }
 
+    /** 글자 키가 두 묶음으로 나뉘어 그려지는지 (키보드 사용자화의 분리 키보드·자·모음 균형 배열, 가로 모드·폴더블 내부 화면의 분리 키보드). */
+    private boolean splitLetters() {
+        if (profileEdit != null) return prefs.profileSplit() && blockBounds(true, new RectF()) && blockBounds(false, new RectF());
+        return editorSplit() || editorBalanced();
+    }
+
     /** 키보드 사용자화에서 고른 영역이 자·모음 균형 배열의 글자 키(자음·모음 쪽)인지. */
     private boolean editorBalancedSelected() {
         return editorBalanced() && selection != null && selection.kind == SEL_AREA && selection.area() == AREA_LETTERS;
@@ -832,6 +838,8 @@ final class KeyboardPreview extends FrameLayout {
                     best = a;
                 }
             }
+            // 분리 키보드의 두 묶음은 함께 '글자 키'로 고른다 (세로 모드 '키보드 사용자화'와 같다).
+            if (best == AREA_LEFT || best == AREA_RIGHT) best = AREA_LETTERS;
             listener.onTap(best < 0 ? null : Selection.area(best));
             return;
         }
@@ -1064,9 +1072,12 @@ final class KeyboardPreview extends FrameLayout {
             if (profileEdit.profile().isEmpty() && (h == Handle.LIFT || h == Handle.HEIGHT || h == Handle.FN_ROW)) return false;
             // 기능키 영역을 골랐을 때는 아래 가장자리가 기능키 영역의 아래 윤곽선과 겹치므로 세로 위치 손잡이를 숨긴다.
             if (h == Handle.LIFT) return a != AREA_FUNCTION;
-            if (h.balanced()) return a == (h.leftBlock() ? AREA_LEFT : AREA_RIGHT) && blockBounds(h.leftBlock(), new RectF());
+            // 분리 키보드의 글자 키(두 묶음)를 고르면 두 묶음의 경계·↔ 버튼과 묶음마다의 높이 손잡이.
+            boolean blocks = a == AREA_LETTERS && splitLetters();
+            if (h.balanced()) return blocks && blockBounds(h.leftBlock(), new RectF());
+            if (h == Handle.HEIGHT_RIGHT) return blocks;
             switch (h) {
-                case HEIGHT: return a == AREA_LETTERS || a == AREA_LEFT || a == AREA_RIGHT;
+                case HEIGHT: return a == AREA_LETTERS;
                 case FN_ROW: return a == AREA_FUNCTION;
                 default: return false;
             }
@@ -1085,7 +1096,7 @@ final class KeyboardPreview extends FrameLayout {
             case AREA_TOOLBAR: return h == Handle.TOOLBAR && bar.getParent() != null;
             case AREA_NUMBER: return h == Handle.NUMBER_ROW && numberRowShown;
             // 두 묶음으로 나뉘어 있으면 묶음마다 하나씩 (둘 다 글자 키 전체 높이를 바꾼다).
-            case AREA_LETTERS: return h == Handle.HEIGHT || (h == Handle.HEIGHT_RIGHT && (editorSplit() || editorBalanced()));
+            case AREA_LETTERS: return h == Handle.HEIGHT || (h == Handle.HEIGHT_RIGHT && splitLetters());
             case AREA_MIDDLE: return false;
             default: return h == Handle.FN_ROW;
         }
@@ -1097,11 +1108,7 @@ final class KeyboardPreview extends FrameLayout {
      */
     private boolean heightEdgeBounds(Handle h, RectF out) {
         int a = h == Handle.TOOLBAR ? AREA_TOOLBAR : h == Handle.NUMBER_ROW ? AREA_NUMBER : h == Handle.FN_ROW ? AREA_FUNCTION : AREA_LETTERS;
-        if (profileEdit != null) {
-            int chosen = profileSelected();
-            if (a == AREA_LETTERS && (chosen == AREA_LEFT || chosen == AREA_RIGHT)) return blockBounds(chosen == AREA_LEFT, out);
-            return profileAreaBounds(a, out);
-        }
+        if (profileEdit != null) return profileAreaBounds(a, out);
         if (a == AREA_LETTERS && (editorSplit() || editorBalanced())) {
             RectF r = new RectF();
             if (!blockBounds(true, out) || !blockBounds(false, r)) return false;
@@ -1144,7 +1151,7 @@ final class KeyboardPreview extends FrameLayout {
                 // 높이 손잡이: 고른 영역 윤곽선의 위 가장자리 가운데. 위·아래로 끌어 그 영역의 높이를 바꾼다.
                 RectF r = new RectF();
                 // 글자 키가 두 묶음으로 나뉘어 있으면 각 묶음 위 가장자리 가운데 (HEIGHT는 왼쪽, HEIGHT_RIGHT는 오른쪽 묶음).
-                if ((h == Handle.HEIGHT || h == Handle.HEIGHT_RIGHT) && profileEdit == null && (editorSplit() || editorBalanced())) {
+                if ((h == Handle.HEIGHT || h == Handle.HEIGHT_RIGHT) && splitLetters()) {
                     if (!blockBounds(h == Handle.HEIGHT, r)) return false;
                     out[0] = r.centerX();
                     out[1] = Math.max(r.top, 0);
@@ -1155,8 +1162,7 @@ final class KeyboardPreview extends FrameLayout {
                 out[1] = Math.max(r.top, 0);
                 // 글자 키는 자판 가로 가운데에: 두 묶음의 폭·위치가 달라 윤곽선이 한쪽으로 치우쳐도 줄 전체의 가운데에 둔다.
                 float[] span = new float[2];
-                int a = profileSelected();
-                if (h == Handle.HEIGHT && a != AREA_LEFT && a != AREA_RIGHT && letterRowSpan(span)) out[0] = (span[0] + span[1]) / 2f;
+                if (h == Handle.HEIGHT && letterRowSpan(span)) out[0] = (span[0] + span[1]) / 2f;
                 return true;
             }
             case PAD_TOP:
@@ -1654,7 +1660,8 @@ final class KeyboardPreview extends FrameLayout {
                 float edge = Ui.dp(ctx, 1.5f);
                 area.top = Math.max(area.top, edge);
                 area.bottom = Math.min(area.bottom, getHeight() - edge);
-                boolean chosen = a == chosenArea;
+                boolean block = a == AREA_LEFT || a == AREA_RIGHT;
+                boolean chosen = a == chosenArea || (block && chosenArea == AREA_LETTERS);   // 두 묶음은 함께 글자 키
                 boolean dragged = dragging && active != null && active.balanced()
                         && a == (active.leftBlock() ? AREA_LEFT : AREA_RIGHT);
                 stroke.setColor(withAlpha(theme.accent, chosen || dragged ? 1f : 0.55f));
@@ -1667,7 +1674,7 @@ final class KeyboardPreview extends FrameLayout {
                     continue;
                 }
                 // 이름표: 좁은 영역(가운데 공간 등)에서는 짧게, 그래도 넘치면 그리지 않는다.
-                String name = profileAreaName(a);
+                String name = block ? AREA_NAMES[AREA_LETTERS] : profileAreaName(a);   // 두 묶음 모두 "글자 키"
                 String text = "눌러서 " + name + " 설정";
                 float room = area.width() - Ui.dp(ctx, 4);
                 if (areaLabel.measureText(text) + Ui.dp(ctx, 16) > room) text = name;
