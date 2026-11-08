@@ -1143,6 +1143,34 @@ public final class Prefs {
         return new float[]{ls, lw, rs, rw};
     }
 
+    /** 폭·위치 값으로 두 묶음의 자리 {왼쪽 시작, 왼쪽 폭, 오른쪽 시작, 오른쪽 폭}: 줄 안으로만 맞추고 서로는 보지 않는다. */
+    private static float[] rowFitExtents(int cw, int cp, int vw, int vp) {
+        float lw = Math.min(ROW_UNITS, HALF_UNITS * cw / 100f), rw = Math.min(ROW_UNITS, HALF_UNITS * vw / 100f);
+        float ls = Math.max(0f, Math.min(ROW_UNITS - lw, leftStart(lw, cp)));
+        float rs = Math.max(0f, Math.min(ROW_UNITS - rw, rightStart(rw, vp)));
+        return new float[]{ls, lw, rs, rw};
+    }
+
+    /**
+     * 묶음 하나의 폭이나 가로 위치(key)를 from에서 to로 바꾸려 할 때 실제로 줄 값: 다른 묶음은 지금 자리 그대로 두고,
+     * 두 묶음 사이의 빈 자리 안에서 to에 가장 가까운 값 (from 쪽으로 물러서며 찾는다). 다른 묶음은 밀려나지 않는다.
+     * 묶음 값이 아니면 to를 그대로 돌려준다.
+     */
+    public int fitBlockValue(String key, int from, int to) {
+        int which = key.equals(balancedConsonantWidthKey()) ? 0 : key.equals(balancedConsonantPosKey()) ? 1
+                : key.equals(balancedVowelWidthKey()) ? 2 : key.equals(balancedVowelPosKey()) ? 3 : -1;
+        if (which < 0) return to;
+        // 지금 보이는 자리에서 출발한다 (예전에 겹치게 저장된 값이 남아 있어도 보이는 자리는 겹치지 않는다).
+        int[] v = {balancedConsonantWidth(), balancedConsonantPos(), balancedVowelWidth(), balancedVowelPos()};
+        int step = to >= from ? -1 : 1;
+        for (int t = to; ; t += step) {
+            v[which] = t;
+            float[] e = rowFitExtents(v[0], v[1], v[2], v[3]);
+            if (e[0] + e[1] <= e[2] + 1e-4f) return t;
+            if (t == from) return from;
+        }
+    }
+
     /** 오른쪽(모음) 묶음의 폭: 오른쪽 절반을 꽉 채우는 폭의 % (100이면 꽉 참, 넘으면 왼쪽 절반으로 넘어간다). 다른 묶음에 막히면 줄인 값. */
     public int balancedVowelWidth() {
         int raw = rawVowelWidth();

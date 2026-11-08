@@ -459,6 +459,7 @@ public final class KeyboardLayout {
         if (gapLeft > 0.001f) keys.add(fn(Key.GAP, "", gapLeft));
         for (Key k : vowels) {
             k.weight *= v;
+            k.rightBlock = true;
             keys.add(k);
         }
         if (gapRight > 0.001f) keys.add(fn(Key.GAP, "", gapRight));
@@ -1266,6 +1267,7 @@ public final class KeyboardLayout {
             middle.dragCursor = true;
             keys.add(middle);
         }
+        for (Key k : right) k.rightBlock = true;   // 묶음이 가운데를 넘어 옮겨 가도 오른쪽 묶음 키임을 알 수 있게
         keys.addAll(right);
         if (SPACE_ROW_UNITS - rs - rw > 0.001f) keys.add(fn(Key.GAP, "", SPACE_ROW_UNITS - rs - rw));
         return new Row(height, keys.toArray(new Key[0]));

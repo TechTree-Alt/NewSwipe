@@ -403,10 +403,14 @@ final class KeyboardPreview extends FrameLayout {
                 for (int i = 0; i < rowKeys.length; i++) if (rowKeys[i].isDragCursor()) cut = i;
             }
             Key[] rowKeys = l.rows[r].keys;
+            // 키가 어느 쪽 묶음 것인지 자판이 표시해 둔다 (한쪽이 가운데를 넘어 옮겨 가도 맞게 감싼다).
+            boolean marked = false;
+            for (Key k : rowKeys) marked |= k.isRightBlock();
             for (int i = 0; i < rowKeys.length; i++) {
                 Key k = rowKeys[i];
                 if (k.type == Key.SPACER || k.type == Key.GAP || isHidden(k)) continue;
-                boolean isLeft = cut >= 0 ? i < cut : split ? k.rect.centerX() <= bx + 1f : k.rect.centerX() < bx;
+                boolean isLeft = cut >= 0 ? i < cut : marked ? !k.isRightBlock()
+                        : split ? k.rect.centerX() <= bx + 1f : k.rect.centerX() < bx;
                 if (isLeft != consonant) continue;
                 float left = k.rect.left + gx, top = keys.getTop() + k.rect.top + gy;
                 float right = k.rect.right - gx, bottom = keys.getTop() + k.rect.bottom - gy;
@@ -1350,20 +1354,12 @@ final class KeyboardPreview extends FrameLayout {
             // 위·아래는 키보드 전체 위·아래 여백과 같이: 끌어 올리면 늘어난다 (키보드는 위로 자란다).
             default: v = clamp(Math.round(dragStart - dy / density), 0, Prefs.AREA_PAD_MAX); break;   // Handle.AREA_T·Handle.AREA_B
         }
-        if (v == dragValue) return;
-        int prev = dragValue;
-        dragValue = v;
         String key = handleKey(h);
+        // 두 묶음: 다른 묶음은 그 자리에 둔 채 사이의 빈 자리 안에서만 (닿으면 거기서 멈춘다).
+        if (h.balanced()) v = prefs.fitBlockValue(key, dragValue, v);
+        if (v == dragValue) return;
+        dragValue = v;
         prefs.raw().edit().putInt(key, v).apply();
-        if (h.balanced()) {
-            // 다른 묶음이 차지한 자리에 닿으면 그 자리까지만: 실제로 쓰이는 값으로 저장한다.
-            int eff = valueOf(h);
-            if (eff != v) {
-                prefs.raw().edit().putInt(key, eff).apply();
-                dragValue = eff;
-                if (eff == prev) return;
-            }
-        }
         refresh();
         overlay.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
         listener.onSizeChanged(key);

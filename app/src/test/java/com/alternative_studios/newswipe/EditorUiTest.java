@@ -1606,6 +1606,22 @@ public class EditorUiTest {
         assertTrue(r.left - l.right >= 2 * dp - 0.5f);
         assertTrue(visibleTexts(cur(a)).contains(pre.balancedConsonantWidth() + "%"));
         shot(a, "c1-balanced-editor-wide");
+        // 자음 쪽이 가운데를 넘어 옮겨 가도(60%, 위치 140 → 4~7칸) 윤곽선은 자음 키만, 모음 윤곽선은 모음 키만 감싼다
+        pre.raw().edit().putInt(pre.balancedConsonantWidthKey(), 60).putInt(pre.balancedConsonantPosKey(), 140)
+                .putInt(pre.balancedVowelWidthKey(), 60).putInt(pre.balancedVowelPosKey(), 100).commit();
+        idle();
+        assertTrue(p.blockBounds(true, l) && p.blockBounds(false, r));
+        assertTrue(r.left - l.right >= 2 * dp - 0.5f);
+        KeyboardLayout crossed = p.layout();
+        int first = crossed.rows.length - 4;   // 글자 줄 세 개 (맨 아래 줄 위)
+        for (int row = first; row < crossed.rows.length - 1; row++) {
+            for (Key k : crossed.rows[row].keys) {
+                if (k.type == Key.GAP || k.type == Key.SPACER || k.isHidden()) continue;
+                android.graphics.RectF side = k.isRightBlock() ? r : l;
+                assertTrue(k.label + " " + k.rect + " " + side, k.rect.centerX() > side.left && k.rect.centerX() < side.right);
+            }
+        }
+        shot(a, "c2-balanced-editor-crossed");
         pre.resetBalancedKeys();
         pre.raw().edit().remove(pre.balancedLayoutKey()).commit();
     }

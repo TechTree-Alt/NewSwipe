@@ -167,6 +167,37 @@ public class BalancedBlocksTest {
         assertEquals(5f, spans(KeyboardLayout.korean(vs).rows[0])[5][0], 0.001f);
     }
 
+    /**
+     * 한쪽이 100% 넘게 넓거나 다른 쪽 절반으로 넘어가 있을 때 다른 쪽을 조절하면, 그쪽은 둘 사이의 빈 자리 안에서만 움직이고
+     * 넘어가 있던 쪽은 밀려나지 않는다 (fitBlockValue).
+     */
+    @Test
+    public void adjustingOneBlockOnlyUsesTheFreeSpace() throws Exception {
+        // 자음 130%(0~6.5칸), 모음 60%를 오른쪽 끝에(7~10칸)
+        Prefs p = portrait(Prefs.KOREAN_LAYOUT_8, 130, 0, 60, 100, false);
+        FakeSp sp = (FakeSp) p.raw();
+        // 모음을 왼쪽으로 옮기면 6.5칸(위치 75)에서 멈추고, 자음 쪽은 그대로
+        int pos = p.fitBlockValue(p.balancedVowelPosKey(), 100, 0);
+        assertEquals(75, pos);
+        sp.m.put(p.balancedVowelPosKey(), pos);
+        float[] e = p.balancedExtents();
+        assertEquals(0f, e[0], 0.001f);
+        assertEquals(6.5f, e[1], 0.001f);
+        assertEquals(6.5f, e[2], 0.001f);
+        assertEquals(130, p.balancedConsonantWidth());
+        // 오른쪽 끝에 붙은 모음을 넓히면 빈 자리만큼만 (6.5칸부터 오른쪽 끝까지 3.5칸 → 70%)
+        sp.m.put(p.balancedVowelPosKey(), 100);
+        assertEquals(70, p.fitBlockValue(p.balancedVowelWidthKey(), 60, 140));
+        // 모음이 왼쪽 절반으로 넘어가 있을 때(3~6칸) 자음을 넓히거나 옮겨도 0~3칸 안에서만
+        Prefs q = portrait(Prefs.KOREAN_LAYOUT_8, 60, 0, 60, -40, false);
+        assertEquals(60, q.fitBlockValue(q.balancedConsonantWidthKey(), 60, 140));
+        assertEquals(0, q.fitBlockValue(q.balancedConsonantPosKey(), 0, 100));
+        // 모음은 자음 쪽(0~3칸)을 밀지 않고 오른쪽으로 140%까지 넓어진다
+        assertEquals(140, q.fitBlockValue(q.balancedVowelWidthKey(), 60, 140));
+        // 자리가 있으면 바라는 값을 그대로 쓴다
+        assertEquals(80, q.fitBlockValue(q.balancedVowelWidthKey(), 60, 80));
+    }
+
     /** 어떤 값이어도 두 묶음은 겹치지 않고 줄 안에 있으며, 보이는 값(막힌 값)을 다시 저장해도 모양이 같다. */
     @Test
     public void blocksNeverOverlapForAnyValue() throws Exception {
