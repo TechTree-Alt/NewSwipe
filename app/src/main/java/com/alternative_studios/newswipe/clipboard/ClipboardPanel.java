@@ -47,6 +47,9 @@ public final class ClipboardPanel extends LinearLayout {
 
         void onClipBack();
 
+        /** 헤더 칩을 눌렀다 (도구 막대 버튼처럼 진동·소리를 낸다). */
+        void onClipChipPress();
+
         void onClipPin(ClipboardHistory.Item item, boolean pinned);
 
         void onClipDelete(ClipboardHistory.Item item);
@@ -67,7 +70,7 @@ public final class ClipboardPanel extends LinearLayout {
     private final FrameLayout headerWrap;
     private final int barHeight;
     private boolean splitPinned, splitShown;
-    private final TextView clear;
+    private final IconButton clear;
     /** 맨 위 줄(뒤로·제목·모두 지우기)과, 모두 지우기를 누르면 그 자리에 대신 보이는 확인 줄. */
     private final LinearLayout header, confirmRow;
     /** 고정·삭제를 누른 뒤 다음 show()에서 항목이 새 자리로 움직이는 애니메이션을 보여 준다. */
@@ -96,7 +99,10 @@ public final class ClipboardPanel extends LinearLayout {
         header.setPadding(Ui.dp(context, 4), 0, Ui.dp(context, 8), 0);
         IconButton back = new IconButton(context, Icons.BACK, theme.text, theme.keyPressed, "키보드로 돌아가기");
         back.setToolbarStyle(theme, topBarHeight);   // 도구 막대 버튼과 같은 칩
-        back.setOnClickListener(v -> listener.onClipBack());
+        back.setOnClickListener(v -> {
+            listener.onClipChipPress();
+            listener.onClipBack();
+        });
         header.addView(back, new LayoutParams(Ui.dp(context, 44), topBarHeight));
         this.barHeight = topBarHeight;
         title = new TextView(context);
@@ -106,10 +112,14 @@ public final class ClipboardPanel extends LinearLayout {
         LayoutParams titleLp = new LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         titleLp.leftMargin = Ui.dp(context, 10);   // 뒤로 가기 칩에 붙지 않게
         header.addView(title, titleLp);
-        clear = Ui.chipButton(context, "모두 지우기", theme.onAccent, theme.accent, topBarHeight);   // 강조 색 위 글자는 밝기에 따라 읽기 좋은 색
-        Neu.apply(clear, theme, theme.accent, Ui.chipRadius(context));
-        clear.setOnClickListener(v -> confirmClear());
-        header.addView(clear);
+        // 모두 지우기: 휴지통 아이콘 칩 (뒤로 가기 칩과 같은 크기)
+        clear = new IconButton(context, Icons.TRASH, Ui.danger(theme.dark), theme.keyPressed, "모두 지우기");
+        clear.setToolbarStyle(theme, topBarHeight, theme.functionKey, Ui.danger(theme.dark));
+        clear.setOnClickListener(v -> {
+            listener.onClipChipPress();
+            confirmClear();
+        });
+        header.addView(clear, new LayoutParams(Ui.dp(context, 44), topBarHeight));
         // 고정 항목 분리를 쓰면 두 페이지 칩이 헤더 정중앙에 놓인다 (위에 겹쳐 둔다).
         headerWrap = new FrameLayout(context);
         headerWrap.addView(header, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
@@ -130,11 +140,15 @@ public final class ClipboardPanel extends LinearLayout {
         confirmRow.addView(ask, new LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         TextView cancel = Ui.chipButton(context, "취소", theme.text, theme.functionKey, topBarHeight);
         Neu.apply(cancel, theme, theme.functionKey, Ui.chipRadius(context));
-        cancel.setOnClickListener(v -> dismissDialog());
+        cancel.setOnClickListener(v -> {
+            listener.onClipChipPress();
+            dismissDialog();
+        });
         confirmRow.addView(cancel);
         TextView ok = Ui.chipButton(context, "지우기", theme.onAccent, theme.accent, topBarHeight);
         Neu.apply(ok, theme, theme.accent, Ui.chipRadius(context));
         ok.setOnClickListener(v -> {
+            listener.onClipChipPress();
             dismissDialog();
             listener.onClipClear();
         });
@@ -192,7 +206,10 @@ public final class ClipboardPanel extends LinearLayout {
     private IconButton tab(Context context, int icon, String description, int page, int barHeight) {
         IconButton t = new IconButton(context, icon, theme.text, theme.keyPressed, description);
         t.setToolbarStyle(theme, barHeight);
-        t.setOnClickListener(v -> pager.goTo(page));
+        t.setOnClickListener(v -> {
+            listener.onClipChipPress();
+            pager.goTo(page);
+        });
         return t;
     }
 

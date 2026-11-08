@@ -3112,7 +3112,7 @@ public final class SettingsActivity extends Activity {
                 "클립보드 항목을 눌러 입력하면 클립보드 창을 자동으로 닫고 자판으로 돌아갑니다.",
                 Prefs.CLIPBOARD_CLOSE_ON_USE, prefs.clipboardCloseOnUse());
         View clipSplitToggle = toggle("고정 항목 분리",
-                "클립보드에 페이지를 나눠, 왼쪽에는 일반 항목을 두고 오른쪽으로 넘기면 고정 항목을 모아 보여 줍니다.",
+                "클립보드를 두 페이지로 나눠 왼쪽에 고정 항목을 따로 모아 둡니다.",
                 Prefs.CLIPBOARD_SPLIT_PINNED, prefs.clipboardSplitPinned());
         View clipImages = subGroup(clipImagesToggle, clipSensitiveToggle, clipCloseToggle, clipSplitToggle);
         clip.addView(toggle("클립보드 기록 저장", "복사·잘라낸 내용을 최근 " + ClipboardHistory.MAX_ITEMS

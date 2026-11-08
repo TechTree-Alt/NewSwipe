@@ -312,6 +312,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 if (Prefs.PINNED_EMOJI.equals(key) && emojiPanel != null) {
                     emojiPanel.setPinned(EmojiRepository.parseRecent(prefs.pinnedEmoji()));
                 }
+                // '고정 항목 분리'는 키보드를 다시 만들 필요는 없고, 떠 있는 클립보드 창만 바로 다시 그린다.
+                if (Prefs.CLIPBOARD_SPLIT_PINNED.equals(key) && clipPanel != null && panel == PANEL_CLIPBOARD) {
+                    refreshClipboard();
+                }
                 if (key == null || Prefs.HW_TOOLBAR.equals(key)) {
                     updateInputViewShown();
                     refreshHwToolbar();
@@ -4491,6 +4495,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     @Override
+    public void onEmojiChipPress() {
+        feedback.onToolbar();
+    }
+
+    @Override
     public void onEmojiKeyPress() {
         feedback.onKey(null);
     }
@@ -4812,6 +4821,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             ic.commitText(text, 1);
             mirror.commit(text);
         }
+    }
+
+    @Override
+    public void onClipChipPress() {
+        feedback.onToolbar();
     }
 
     @Override

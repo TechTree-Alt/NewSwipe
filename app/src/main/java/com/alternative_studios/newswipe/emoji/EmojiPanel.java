@@ -51,6 +51,9 @@ public final class EmojiPanel extends LinearLayout {
 
         void onEmojiKeyPress();
 
+        /** 칩(뒤로 가기·검색·분류 탭)을 눌렀다: 도구 막대 버튼처럼 진동·소리를 낸다. */
+        void onEmojiChipPress();
+
         /** 최근 이모지 탭에서 길게 눌렀을 때: 고정돼 있으면 풀고, 아니면 고정한다. */
         void onEmojiPinToggle(String emoji);
     }
@@ -141,7 +144,7 @@ public final class EmojiPanel extends LinearLayout {
         IconButton topBack = new IconButton(context, Icons.BACK, theme.text, theme.keyPressed, "키보드로 돌아가기");
         topBack.setToolbarStyle(theme, topBarHeight);   // 도구 막대 버튼과 같은 칩
         topBack.setOnClickListener(v -> {
-            listener.onEmojiKeyPress();
+            listener.onEmojiChipPress();
             listener.onEmojiBack();
         });
         searchRow.addView(topBack, new LayoutParams(Ui.dp(context, 44), ViewGroup.LayoutParams.MATCH_PARENT));
@@ -160,7 +163,10 @@ public final class EmojiPanel extends LinearLayout {
         hint.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
         hint.setPadding(Ui.dp(context, 6), 0, 0, 0);
         search.addView(hint);
-        search.setOnClickListener(v -> listener.onEmojiSearch());
+        search.setOnClickListener(v -> {
+            listener.onEmojiChipPress();
+            listener.onEmojiSearch();
+        });
         // 검색창은 뒤로 가기 칩과 같은 높이로 줄 가운데에 놓는다 (칩 사이 2dp도 같게).
         LayoutParams searchLp = new LayoutParams(0, Ui.chipHeight(context, topBarHeight), 1f);
         searchLp.leftMargin = Ui.dp(context, 2);
@@ -188,7 +194,7 @@ public final class EmojiPanel extends LinearLayout {
                 Ui.dp(context, 7)));
         Neu.apply(back, theme, theme.functionKey, Ui.dp(context, 7));
         back.setOnClickListener(v -> {
-            listener.onEmojiKeyPress();
+            listener.onEmojiChipPress();
             listener.onEmojiBack();
         });
         LayoutParams side = new LayoutParams(Ui.dp(context, 52), Ui.dp(context, 36));
@@ -209,6 +215,7 @@ public final class EmojiPanel extends LinearLayout {
             }
             final int index = i;
             tab.setOnClickListener(v -> {
+                listener.onEmojiChipPress();
                 autoGroup = false;
                 showGroup(index);
             });
