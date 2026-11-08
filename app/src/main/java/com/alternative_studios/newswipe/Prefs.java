@@ -484,7 +484,8 @@ public final class Prefs {
             // 글자 키: 세 자판이 함께 쓰는 값(높이·길게 누르기·밀기·여백)과 한글·영어 글자 키에만 있는 값.
             new EditorScope(AREA_SCOPES[2], "글자 키 공통 (높이·길게 누르기·밀기·여백)", keys(KEYBOARD_HEIGHT, LONG_PRESS_MS,
                     POPUP_HINT_HIDDEN, SWIPE_THRESHOLD, SWIPE_PICK_SUGGESTION, PORTRAIT_PREFIX + SPLIT_REACH_COLUMN),
-                    keys(AREA_PAD_PREFIX + PAD_AREAS[2] + "_", "swipe_kb_", PORTRAIT_PREFIX + "balanced_")),
+                    keys(AREA_PAD_PREFIX + PAD_AREAS[2] + "_", "swipe_kb_", PORTRAIT_PREFIX + "balanced_",
+                            PORTRAIT_PREFIX + SPLIT_REACH_COLUMN + "_")),
             new EditorScope(SCOPE_LETTERS_KO, "한글 글자 키 (자판 배열·상세 배열·쌍자음·이중모음 입력)", keys(KOREAN_LAYOUT,
                     DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT, DOUBLE_TAP_CONSONANT_MS, SWIPE_DOWN_CONSONANT, SWIPE_DOWN_VOWEL,
                     ENGLISH_BALANCED, PORTRAIT_SPLIT),
@@ -505,7 +506,8 @@ public final class Prefs {
             // 키보드 사용자화를 연 채 바꾸면 되돌리기 기록에는 남는다.
             new EditorScope("landscape", null, keys(LANDSCAPE_SPLIT, LANDSCAPE_SIZE, KEYBOARD_HEIGHT_LAND, KEY_TEXT_SIZE_LAND,
                     SPLIT_GAP_CURSOR, SPLIT_GAP_SPEED, SPLIT_SPACE_JOIN, SPLIT_FN_WIDTH, SPLIT_REACH_COLUMN,
-                    PROFILE_LIFT + LANDSCAPE_SUFFIX, FN_ROW_HEIGHT + LANDSCAPE_SUFFIX, TOOLBAR_FOLLOW_BLOCKS + LANDSCAPE_SUFFIX), keys(LANDSCAPE_SPLIT + "_", "balanced_", "swipe_gap_landscape_", "swipe_gap_large_")),
+                    PROFILE_LIFT + LANDSCAPE_SUFFIX, FN_ROW_HEIGHT + LANDSCAPE_SUFFIX, TOOLBAR_FOLLOW_BLOCKS + LANDSCAPE_SUFFIX), keys(LANDSCAPE_SPLIT + "_", "balanced_", "swipe_gap_landscape_", "swipe_gap_large_",
+                            SPLIT_REACH_COLUMN + "_")),
     };
 
     private static EditorScope scope(String id) {
@@ -583,8 +585,8 @@ public final class Prefs {
         resetBalancedKeys();
         removeKeys(new String[]{splitKey(), sizeKey(), heightKey(), fnRowHeightKey(), textSizeKey(),
                 toolbarFollowKey(), oneHandWidthKey(), splitGapCursorKey(),
-                splitGapSpeedKey(), splitSpaceJoinKey(), splitFnWidthKey(), splitReachColumnKey(), liftKey()},
-                new String[]{splitKey() + "_", "swipe_gap_" + com.alternative_studios.newswipe.keyboard.GapSwipes.SLOTS[gapSlot()] + "_"});   // 예전에 배열마다 저장하던 분리 키보드 값도 함께
+                splitGapSpeedKey(), splitSpaceJoinKey(), splitFnWidthKey(), splitReachColumnBaseKey(), liftKey()},
+                new String[]{splitKey() + "_", splitReachColumnBaseKey() + "_", "swipe_gap_" + com.alternative_studios.newswipe.keyboard.GapSwipes.SLOTS[gapSlot()] + "_"});   // 예전에 배열마다 저장하던 분리 키보드 값도 함께
     }
 
     /** '기능키 순서·유무 사용자화' 화면의 값. */
@@ -693,12 +695,25 @@ public final class Prefs {
     public int splitFnWidthSetting() { return Math.max(50, Math.min(200, sp.getInt(splitFnWidthKey(), 100))); }
 
     /**
-     * 이 프로필의 '좌·우 균형 배열'(양쪽 묶음 4열 맞춤) 저장 키. 단모음(8열)에서는 설정 화면의 '자·모음 분리 배열'이
-     * 이 값을 뒤집어 보여 준다.
+     * 이 프로필의 '좌·우 균形 배열'(양쪽 묶음 4열 맞춤) 저장 키. 한글 배열마다 따로 저장한다.
+     * 단모음(8열)에서는 설정 화면의 '자·모음 분리 배열'이 이 값을 뒤집어 보여 준다.
      */
-    public String splitReachColumnKey() {
+    public String splitReachColumnKey() { return splitReachColumnBaseKey() + "_" + koreanLayoutId(); }
+
+    /**
+     * 한글 배열마다 따로 저장하기 전의 '좌·우 균형 배열' 키 (단모음의 '자·모음 분리 배열'과 NewSwipe 단모음의 '좌·우 균형 배열'이
+     * 이 값 하나를 함께 썼다). 배열별 값을 정하기 전까지 그 배열이 이어 쓴다.
+     */
+    private String splitReachColumnBaseKey() {
         if (portrait()) return PORTRAIT_PREFIX + SPLIT_REACH_COLUMN;
         return large() ? LARGE_PREFIX + SPLIT_REACH_COLUMN + "_" + LARGE_LAYOUT_SIDE : SPLIT_REACH_COLUMN;
+    }
+
+    /** 지금 한글 배열의 좌·우 균형 배열 저장 값: 배열별 값, 없으면 배열별로 나누기 전의 값, 그것도 없으면 기본값. */
+    private boolean reachValue() {
+        String key = splitReachColumnKey();
+        if (sp.contains(key)) return sp.getBoolean(key, reachDefault());
+        return sp.getBoolean(splitReachColumnBaseKey(), reachDefault());
     }
 
     /**
@@ -709,13 +724,13 @@ public final class Prefs {
      * (ㄱ·ㄹ·ㅅ)을 왼쪽에 그대로 둔 채 오른쪽 묶음의 모음 앞에도 하나씩 더 놓는다.
      * 8열 단모음에서는 왼쪽 묶음 바로 오른쪽의 키 하나 폭 빈 자리를 누르면 옮겨 간 키가 눌린다.
      */
-    public boolean splitReachColumn() { return profileValues() && sp.getBoolean(splitReachColumnKey(), reachDefault()); }
+    public boolean splitReachColumn() { return profileValues() && reachValue(); }
 
     /** 값이 없을 때의 좌·우 균형 배열: 단모음(8열)은 켜짐, NewSwipe 단모음은 꺼짐 (두벌식은 쓰지 않는다). */
     private boolean reachDefault() { return !koreanD7(); }
 
     /** 단모음(8열)의 설정 화면 '자·모음 분리 배열' 켜짐 여부 (좌·우 균형 배열의 반대). */
-    public boolean splitSeparateJamo() { return !sp.getBoolean(splitReachColumnKey(), reachDefault()); }
+    public boolean splitSeparateJamo() { return !reachValue(); }
 
     /** 이 프로필(가로 모드, 폴더블 내부 화면 세로·가로)의 '가운데 빈 공간을 밀어서 커서 이동' 설정 키. */
     public String splitGapCursorKey() { return portrait() ? PORTRAIT_PREFIX + SPLIT_GAP_CURSOR : large() ? LARGE_PREFIX + SPLIT_GAP_CURSOR + "_" + largeSide() : SPLIT_GAP_CURSOR; }

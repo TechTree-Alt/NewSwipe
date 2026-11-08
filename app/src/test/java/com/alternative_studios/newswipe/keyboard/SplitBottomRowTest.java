@@ -660,6 +660,18 @@ public class SplitBottomRowTest {
         sp.m.put(p.splitReachColumnKey(), false);
         assertTrue(p.splitSeparateJamo());
         assertTrue(!p.splitReachColumn());
+        // 단모음의 '자·모음 분리 배열'과 NewSwipe 단모음의 '좌·우 균형 배열'은 따로 저장한다
+        sp.m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_D7);
+        assertTrue("단모음의 값이 NewSwipe 단모음에 이어지지 않는다", !p.splitReachColumn());
+        sp.m.put(p.splitReachColumnKey(), true);
+        assertTrue(p.splitReachColumn());
+        sp.m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_8);
+        assertTrue("NewSwipe 단모음의 값이 단모음에 이어지지 않는다", p.splitSeparateJamo() && !p.splitReachColumn());
+        // 배열별로 나누기 전의 값은 값을 정하기 전까지 그 배열이 이어 쓴다
+        FakeSp old = new FakeSp();
+        Prefs q = c.newInstance(old, false, Prefs.PROFILE_LANDSCAPE, true);
+        old.m.put("split_reach_column", false);
+        assertTrue(q.splitSeparateJamo());
     }
 
     @Test
