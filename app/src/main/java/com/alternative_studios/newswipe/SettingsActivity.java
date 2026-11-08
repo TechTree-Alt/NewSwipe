@@ -1343,6 +1343,8 @@ public final class SettingsActivity extends Activity {
             c.addView(sizeSlider("오른쪽 여백", Prefs.PAD_RIGHT, prefs::padRightDp, 0, 24, 1, "dp"));
             c.addView(sizeSlider("위쪽 여백", Prefs.PAD_TOP, prefs::padTopDp, 0, 24, 1, "dp"));
             c.addView(sizeSlider("아래쪽 여백", Prefs.PAD_BOTTOM, prefs::padBottomDp, 0, 48, 1, "dp"));
+            c.addView(sizeSlider("키보드 위쪽 모서리 곡률", Prefs.KEYBOARD_CORNER_RADIUS, prefs::keyboardCornerRadiusDp,
+                    0, Prefs.KEYBOARD_CORNER_RADIUS_MAX, 1, "dp"));
             c.addView(note("키보드 전체 둘레의 여백입니다. 영역마다 따로 주는 여백은 '영역 설정' 페이지에서 그 영역을 눌러 "
                     + "창 맨 아래의 '여백'에서 정합니다."));
             return;
@@ -1541,8 +1543,6 @@ public final class SettingsActivity extends Activity {
         LinearLayout look = section("키 모양");
         look.addView(slider("키 글자 크기", Prefs.KEY_TEXT_SIZE, prefs.keyTextSize(), 70, 140, 5, "%"));
         look.addView(slider("키 곡률", Prefs.KEY_RADIUS, prefs.keyRadiusDp(), 0, 24, 1, "dp"));
-        look.addView(slider("키보드 위쪽 모서리 곡률", Prefs.KEYBOARD_CORNER_RADIUS, prefs.keyboardCornerRadiusDp(),
-                0, Prefs.KEYBOARD_CORNER_RADIUS_MAX, 1, "dp"));
         look.addView(slider("키 사이 좌우 간격", Prefs.KEY_GAP_X, prefs.keyGapXDp(), 0, 12, 1, "dp"));
         look.addView(slider("키 사이 상하 간격", Prefs.KEY_GAP_Y, prefs.keyGapYDp(), 0, 20, 1, "dp"));
         View shadowStrength = subGroup(slider("그림자 세기", Prefs.KEY_SHADOW_STRENGTH, prefs.keyShadowStrength(), 10, 100, 5, "%"));
