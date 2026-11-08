@@ -1288,7 +1288,7 @@ public class EditorUiTest {
         assertEquals(10, p.layout().columns);
         key(p, "ㅛ", Key.CHAR);
         key(p, null, Key.SHIFT);
-        assertTrue(visibleTexts(cur(a)).contains("두벌식은 컴퓨터 키보드와 같은 표준 한글 배열입니다."));
+        assertTrue(visibleTexts(cur(a)).contains("컴퓨터 키보드와 같은 표준 한글 배열입니다."));
         assertTrue(visibleTexts(cur(a)).contains("상세 배열\n  사용 안 함"));
         assertFalse(visibleTexts(cur(a)).contains("반으로 나"));   // '사용 안 함'이면 상세 배열 설명이 없다
         assertFalse(visibleTexts(cur(a)).contains("왼쪽 묶음 폭"));

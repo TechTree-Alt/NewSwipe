@@ -1598,7 +1598,7 @@ public final class SettingsActivity extends Activity {
     // ---- 목록과 영역 편집 창이 함께 쓰는 항목 (같은 설정이 두 곳에 보여도 이름·설명이 어긋나지 않게 한곳에서 만든다)
 
     private View numberHintToggle() {
-        return toggle("숫자 키 힌트 없애기", "숫자 키(1~0)에서만 길게 눌러 입력할 문자 힌트를 없앱니다.",
+        return toggle("숫자 키 힌트 없애기", "숫자 키에서 길게 눌러 입력할 문자 힌트를 없앱니다.",
                 Prefs.NUMBER_HINT_HIDDEN, prefs.numberHintHidden());
     }
 
@@ -1641,7 +1641,7 @@ public final class SettingsActivity extends Activity {
                 }));
         input.addView(vowel[0].view);
         input.addView(note("아래로 밀기는 자음·모음 키를 아래로 밀어(ㄱ→ㄲ, ㅏ→ㅑ), 두 번 연속으로 누르기는 같은 키를 두 번 눌러(ㄱㄱ→ㄲ, ㅏㅏ→ㅑ) "
-                + "입력합니다. 키마다 아래로 밀기 글자를 따로 정했으면 그 글자를 씁니다."));
+                + "입력합니다."));
     }
 
     /** 쌍자음·이중모음 입력 방식을 고르는 창 (아래로 밀기·두 번 연속으로 누르기·둘 다). */
@@ -1888,13 +1888,12 @@ public final class SettingsActivity extends Activity {
     /** 고른 한글 배열의 설명. */
     private String layoutNoteText() {
         if (prefs.koreanDubeolsik()) {
-            return "두벌식은 컴퓨터 키보드와 같은 표준 한글 배열입니다. Shift를 누르고 ㅂ·ㅈ·ㄷ·ㄱ·ㅅ·ㅐ·ㅔ를 치면 "
-                    + "ㅃ·ㅉ·ㄸ·ㄲ·ㅆ·ㅒ·ㅖ가 들어갑니다.";
+            return "컴퓨터 키보드와 같은 표준 한글 배열입니다.";
         }
         return prefs.koreanD7()
-                ? "NewSwipe 단모음은 거센소리 일부(ㅊ, ㅌ)를 빼 한 줄을 7칸으로 줄인 배열입니다. "
+                ? "거센소리 일부(ㅊ, ㅌ)를 빼 한 줄을 7칸으로 줄인 배열입니다. "
                         + "ㅊ·ㅌ은 ㅈ·ㄷ을 오른쪽으로 밀어 입력합니다."
-                : "단모음은 두벌식 키보드에서 ㅣ계 이중모음(ㅑ·ㅕ·ㅛ·ㅠ)을 빼 한 줄을 8칸으로 줄인 배열입니다.";
+                : "두벌식 키보드에서 ㅣ계 이중모음(ㅑ·ㅕ·ㅛ·ㅠ)을 빼 한 줄을 8칸으로 줄인 배열입니다.";
     }
 
     private static final String GRID_DESC = "아래 줄의 기능키를 한글 키와 같은 폭으로 해 줄을 맞춥니다. "
@@ -2401,14 +2400,7 @@ public final class SettingsActivity extends Activity {
         c.addView(blockSlider(prefs, "자음 가로 위치", prefs.balancedConsonantPosKey(), prefs::balancedConsonantPos, Prefs.BALANCED_POS_MIN, Prefs.BALANCED_POS_MAX, "", this::syncKeyPanel));
         c.addView(blockSlider(prefs, "모음 키 폭", prefs.balancedVowelWidthKey(), prefs::balancedVowelWidth, prefs.balancedWidthMin(), prefs.balancedWidthMax(), "%", this::syncKeyPanel));
         c.addView(blockSlider(prefs, "모음 가로 위치", prefs.balancedVowelPosKey(), prefs::balancedVowelPos, Prefs.BALANCED_POS_MIN, Prefs.BALANCED_POS_MAX, "", this::syncKeyPanel));
-        c.addView(note(BLOCK_NOTE + " 미리보기에서 글자 키를 고르면 자음·모음 쪽 왼쪽·오른쪽 가장자리의 손잡이를 좌우로 끌어 "
-                + "그 경계를 옮기고(폭은 5% 단위), 가운데의 ↔ 버튼을 끌어 폭은 그대로 옮길 수도 있습니다."));
     }
-
-    /** 두 묶음(자음·모음 쪽, 왼쪽·오른쪽 묶음)의 폭·가로 위치 설명. */
-    private static final String BLOCK_NOTE = "폭은 100%면 자기 절반을 꽉 채우고, 다른 묶음이 비켜 준 자리가 있으면 100% 넘게 넓힐 수 있습니다. "
-            + "가로 위치는 두 묶음이 마주 보는 안쪽 경계의 자리로, 왼쪽 묶음은 오른쪽 경계, 오른쪽 묶음은 왼쪽 경계입니다 "
-            + "(-100 = 왼쪽 끝, 0 = 가운데, 100 = 오른쪽 끝). 폭을 바꾸면 이 경계는 그대로 두고 바깥쪽으로 줄거나 늘어납니다.";
 
     private void addEditorSplitBlocks() {
         LinearLayout c = section("분리 키보드");
@@ -2416,7 +2408,6 @@ public final class SettingsActivity extends Activity {
         c.addView(blockSlider(prefs, "왼쪽 묶음 가로 위치", prefs.balancedConsonantPosKey(), prefs::balancedConsonantPos, Prefs.BALANCED_POS_MIN, Prefs.BALANCED_POS_MAX, "", this::syncKeyPanel));
         c.addView(blockSlider(prefs, "오른쪽 묶음 폭", prefs.balancedVowelWidthKey(), prefs::balancedVowelWidth, prefs.balancedWidthMin(), prefs.balancedWidthMax(), "%", this::syncKeyPanel));
         c.addView(blockSlider(prefs, "오른쪽 묶음 가로 위치", prefs.balancedVowelPosKey(), prefs::balancedVowelPos, Prefs.BALANCED_POS_MIN, Prefs.BALANCED_POS_MAX, "", this::syncKeyPanel));
-        c.addView(note(BLOCK_NOTE + " 미리보기에서 묶음 왼쪽·오른쪽 가장자리의 손잡이를 좌우로 끌면 그 경계가 옮겨 가 폭이 바뀌고(5% 단위), 가운데의 ↔ 버튼을 끌면 폭은 그대로 묶음이 옮겨 갑니다."));
     }
 
     /**
@@ -2436,9 +2427,6 @@ public final class SettingsActivity extends Activity {
                     c.addView(blockSlider(edit, "왼쪽 묶음 가로 위치", edit.balancedConsonantPosKey(), edit::balancedConsonantPos, Prefs.BALANCED_POS_MIN, Prefs.BALANCED_POS_MAX, "", k -> refreshLayoutPreview()));
                     c.addView(blockSlider(edit, "오른쪽 묶음 폭", edit.balancedVowelWidthKey(), edit::balancedVowelWidth, edit.balancedWidthMin(), edit.balancedWidthMax(), "%", k -> refreshLayoutPreview()));
                     c.addView(blockSlider(edit, "오른쪽 묶음 가로 위치", edit.balancedVowelPosKey(), edit::balancedVowelPos, Prefs.BALANCED_POS_MIN, Prefs.BALANCED_POS_MAX, "", k -> refreshLayoutPreview()));
-                    c.addView(note("왼쪽 묶음(자음, 숫자 1~5, 스페이스바와 그 왼쪽 키)과 오른쪽 묶음(모음, 숫자 6~0, 스페이스바와 그 오른쪽 키)은 "
-                            + "각각 함께 움직입니다. " + BLOCK_NOTE + " 미리보기에서 묶음 왼쪽·오른쪽 가장자리의 손잡이를 좌우로 끌면 그 경계가 "
-                            + "옮겨 가 폭이 바뀌고(5% 단위), 가운데의 ↔ 버튼을 끌면 폭은 그대로 묶음이 옮겨 갑니다."));
                 }
                 if (!portraitProfile) addProfileLetterHeight(edit);
                 break;
