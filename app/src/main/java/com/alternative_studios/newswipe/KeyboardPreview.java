@@ -962,6 +962,8 @@ final class KeyboardPreview extends FrameLayout {
         if (profileEdit != null) {
             // 세로 위치는 키보드 전체 설정이라 늘 보이고, 나머지는 고른 영역의 손잡이만 (키보드 사용자화의 영역 설정과 같다).
             int a = profileSelected();
+            // 세로 모드 분리 키보드: 높이·세로 위치는 '키보드 사용자화'에서 정하므로 묶음 손잡이만 쓴다.
+            if (profileEdit.profile().isEmpty() && (h == Handle.LIFT || h == Handle.HEIGHT || h == Handle.FN_ROW)) return false;
             // 기능키 영역을 골랐을 때는 아래 가장자리가 기능키 영역의 아래 윤곽선과 겹치므로 세로 위치 손잡이를 숨긴다.
             if (h == Handle.LIFT) return a != AREA_FUNCTION;
             switch (h) {

@@ -111,6 +111,12 @@ public final class Prefs {
     public static final String BALANCED_LAYOUT = "balanced_layout";
     /** 가로 모드 분리 키보드: 가로 모드에서 자·모음 균형 배열로 자판을 나눈다. 한글 배열마다 따로 저장한다: 이 이름 + "_" + 배열 값. */
     public static final String LANDSCAPE_SPLIT = "landscape_split";
+    /**
+     * 세로 모드 분리 키보드 ('키보드 사용자화' 한글 글자 키의 '세부 배열 사용'에서 고른다). 세로 모드의 분리 키보드 세부 값
+     * (묶음 폭·위치, 스페이스바 잇기 등)은 모두 이 이름으로 시작하는 키에 따로 저장한다 (PORTRAIT_PREFIX).
+     */
+    public static final String PORTRAIT_SPLIT = "portrait_split";
+    private static final String PORTRAIT_PREFIX = "portrait_";
     public static final String LANDSCAPE_SIZE = "landscape_size";                  // 가로 모드 분리 키보드: 키보드 높이·글자 크기를 따로 정하기
     /** 실험실 '대화면 별도 레이아웃': 대화면(폴더블 내부 화면 등)에서는 가로·세로 키보드를 따로 정한 값으로 쓴다. */
     public static final String LARGE_LAYOUT = "large_layout";
@@ -479,7 +485,7 @@ public final class Prefs {
             new EditorScope(SCOPE_LETTERS_KO, "한글 글자 키 (자판 배열·균형 배열·쌍자음·이중모음 입력)", keys(KOREAN_LAYOUT,
                     DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT, DOUBLE_TAP_CONSONANT_MS, SWIPE_DOWN_CONSONANT, SWIPE_DOWN_VOWEL,
                     ENGLISH_BALANCED),
-                    keys(BALANCED_LAYOUT)),
+                    keys(BALANCED_LAYOUT, PORTRAIT_PREFIX)),
             new EditorScope(SCOPE_LETTERS_EN, "영어 글자 키 (자동 대문자·대문자 밀기·이메일 입력란)", keys(AUTO_CAP,
                     ENGLISH_FIELDS, ENGLISH_SWIPE_UPPER), NONE),
             new EditorScope(AREA_SCOPES[3], "기능키", concat(BOTTOM_KEY_VALUES, FN_ROW_HEIGHT, GRID_LAYOUT, DELETE_PRESS_MS,
@@ -564,6 +570,13 @@ public final class Prefs {
                     BALANCED_CONSONANT_POS));
         }
         removeKeys(keys.toArray(new String[0]), NONE);
+    }
+
+    /** '분리 키보드 사용자화'(세로 모드) 화면의 값. 세로 모드의 편집 보기(profileEditView(PROFILE_PORTRAIT))에서 부른다. */
+    public void resetPortraitSplitArea() {
+        resetBalancedKeys();
+        removeKeys(new String[]{splitSpaceJoinKey(), splitFnWidthKey(), splitReachColumnKey(), splitGapCursorKey(),
+                splitGapSpeedKey(), toolbarFollowKey()}, NONE);
     }
 
     /** 프로필 사용자화 화면(가로 모드·대화면)의 이 프로필 값. 그 프로필의 편집 보기(profileEditView)에서 부른다. */
@@ -665,8 +678,8 @@ public final class Prefs {
         sp.edit().putBoolean(SWIPE_DOWN_VOWEL, mode != INPUT_TAP).putBoolean(DOUBLE_TAP_VOWEL, mode != INPUT_SWIPE).apply();
     }
     /** 이 프로필의 '스페이스바 잇기'와 '하단 기능키 폭' 설정 키. */
-    public String splitSpaceJoinKey() { return large() ? LARGE_PREFIX + SPLIT_SPACE_JOIN + "_" + LARGE_LAYOUT_SIDE : SPLIT_SPACE_JOIN; }
-    public String splitFnWidthKey() { return large() ? LARGE_PREFIX + SPLIT_FN_WIDTH + "_" + LARGE_LAYOUT_SIDE : SPLIT_FN_WIDTH; }
+    public String splitSpaceJoinKey() { return portrait() ? PORTRAIT_PREFIX + SPLIT_SPACE_JOIN : large() ? LARGE_PREFIX + SPLIT_SPACE_JOIN + "_" + LARGE_LAYOUT_SIDE : SPLIT_SPACE_JOIN; }
+    public String splitFnWidthKey() { return portrait() ? PORTRAIT_PREFIX + SPLIT_FN_WIDTH : large() ? LARGE_PREFIX + SPLIT_FN_WIDTH + "_" + LARGE_LAYOUT_SIDE : SPLIT_FN_WIDTH; }
 
     /** 분리 키보드에서 나뉜 스페이스바를 가운데로 이어 하나로 쓰는지 (기본은 꺼짐: 양쪽 묶음에 하나씩). */
     public boolean splitSpaceJoin() { return profileValues() && sp.getBoolean(splitSpaceJoinKey(), false); }
@@ -682,6 +695,7 @@ public final class Prefs {
 
     /** 이 프로필의 '좌·우 균형 배열' 설정 키. */
     public String splitReachColumnKey() {
+        if (portrait()) return PORTRAIT_PREFIX + SPLIT_REACH_COLUMN;
         return large() ? LARGE_PREFIX + SPLIT_REACH_COLUMN + "_" + LARGE_LAYOUT_SIDE : SPLIT_REACH_COLUMN;
     }
 
@@ -694,7 +708,7 @@ public final class Prefs {
     public boolean splitReachColumn() { return profileValues() && sp.getBoolean(splitReachColumnKey(), false); }
 
     /** 이 프로필(가로 모드, 대화면 세로·가로)의 '가운데 빈 공간을 밀어서 커서 이동' 설정 키. */
-    public String splitGapCursorKey() { return large() ? LARGE_PREFIX + SPLIT_GAP_CURSOR + "_" + largeSide() : SPLIT_GAP_CURSOR; }
+    public String splitGapCursorKey() { return portrait() ? PORTRAIT_PREFIX + SPLIT_GAP_CURSOR : large() ? LARGE_PREFIX + SPLIT_GAP_CURSOR + "_" + largeSide() : SPLIT_GAP_CURSOR; }
 
     /**
      * 분리 키보드의 가운데 빈 공간을 밀어서 커서를 옮기는지. 가로 모드와 대화면 세로·가로가 각각 따로 정한다
@@ -703,7 +717,7 @@ public final class Prefs {
     public boolean splitGapCursor() { return sp.getBoolean(splitGapCursorKey(), true); }
 
     /** 이 프로필의 '밀어서 커서 이동' 속도 설정 키. */
-    public String splitGapSpeedKey() { return large() ? LARGE_PREFIX + SPLIT_GAP_SPEED + "_" + largeSide() : SPLIT_GAP_SPEED; }
+    public String splitGapSpeedKey() { return portrait() ? PORTRAIT_PREFIX + SPLIT_GAP_SPEED : large() ? LARGE_PREFIX + SPLIT_GAP_SPEED + "_" + largeSide() : SPLIT_GAP_SPEED; }
 
     /** 분리 키보드 가운데 빈 공간 커서 이동 속도 (%, 50~300, 기본 100). 스페이스바 설정과 따로 정한다. */
     public int splitGapSpeed() { return clamp(sp.getInt(splitGapSpeedKey(), 100), 50, 300); }
@@ -732,6 +746,7 @@ public final class Prefs {
      * 대화면 세로·가로가 함께 쓴다 (분리 키보드 켜기와 같다).
      */
     public String toolbarFollowKey() {
+        if (portrait()) return PORTRAIT_PREFIX + TOOLBAR_FOLLOW_BLOCKS;
         return large() ? LARGE_PREFIX + TOOLBAR_FOLLOW_BLOCKS + "_" + LARGE_LAYOUT_SIDE : TOOLBAR_FOLLOW_BLOCKS + LANDSCAPE_SUFFIX;
     }
 
@@ -919,6 +934,26 @@ public final class Prefs {
     }
     private boolean large() { return profile.startsWith(LARGE_PREFIX); }
 
+    /** 세로 모드(대화면이 아닌) 보기인지. */
+    private boolean portrait() { return profile.isEmpty(); }
+
+    /** 세로 모드에서 분리 키보드를 쓰는지 ('세부 배열 사용'에서 고른다, 기본 꺼짐). */
+    public boolean portraitSplit() { return sp.getBoolean(PORTRAIT_SPLIT, false); }
+
+    /** 세로 모드의 세부 배열 (DETAIL_*): 사용 안 함·자·모음 균형 배열·분리 키보드. 분리 키보드가 균형 배열보다 앞선다. */
+    public int detailLayout() {
+        if (portraitSplit()) return DETAIL_SPLIT;
+        return new Prefs(sp, false, PROFILE_PORTRAIT, false).balancedLayout() ? DETAIL_BALANCED : DETAIL_NONE;
+    }
+
+    /** 세로 모드의 세부 배열을 정한다. 균형 배열은 지금 한글 배열에 저장한다 (배열마다 따로 기억한다). */
+    public void setDetailLayout(int detail) {
+        sp.edit().putBoolean(PORTRAIT_SPLIT, detail == DETAIL_SPLIT)
+                .putBoolean(BALANCED_LAYOUT + "_" + koreanLayoutId(), detail == DETAIL_BALANCED).apply();
+    }
+
+    public static final int DETAIL_NONE = 0, DETAIL_BALANCED = 1, DETAIL_SPLIT = 2;
+
     /** 대화면 프로필의 방향 이름 ("port", "land"). */
     private String largeSide() { return PROFILE_LARGE_PORTRAIT.equals(profile) ? "port" : "land"; }
 
@@ -933,6 +968,7 @@ public final class Prefs {
      * (예전에는 배열마다 따로 저장했다: 이 키 + "_" + 배열. 새 값이 없으면 그 값을 이어 쓴다.)
      */
     public String splitKey() {
+        if (portrait()) return PORTRAIT_SPLIT;
         return large() ? LARGE_PREFIX + "split_" + LARGE_LAYOUT_SIDE : LANDSCAPE_SPLIT;
     }
 
@@ -951,7 +987,7 @@ public final class Prefs {
 
     /** 이 프로필에서 자판을 자음(왼쪽)·모음(오른쪽)으로 나누는지. 한글 배열과 상관없이 켜고 끈 상태가 유지된다. 세로 모드는 늘 false. */
     public boolean profileSplit() {
-        if (profile.isEmpty()) return false;
+        if (portrait()) return portraitSplit();
         return sp.contains(splitKey()) ? sp.getBoolean(splitKey(), false) : sp.getBoolean(legacySplitKey(), false);
     }
 
@@ -974,11 +1010,12 @@ public final class Prefs {
     public boolean splitView() { return profileValues(); }
 
     /** 이 보기에서 분리 키보드가 켜져 있어 그 프로필의 키 폭·위치를 쓰는지 (한 손 모드에서는 쓰지 않아 한쪽으로 빈틈 없이 모인다). */
-    private boolean profileValues() { return !profile.isEmpty() && !oneHandView && (profileEdit || profileSplit()); }
+    private boolean profileValues() { return !oneHandView && (profileEdit || profileSplit()); }
 
     /** 지금 한글 배열(과 프로필)의 키 폭·위치 설정 키. 세로 모드는 예전 이름을, 가로 모드는 _land를 붙인 이름을 그대로 쓴다. */
     private String balancedKey(String base) {
         if (!profileValues()) return base + "_" + koreanLayoutId();
+        if (portrait()) return PORTRAIT_PREFIX + base + "_" + koreanLayoutId();
         return large() ? LARGE_PREFIX + base + "_" + largeSide() + "_" + koreanLayoutId()
                 : base + LANDSCAPE_SUFFIX + "_" + koreanLayoutId();
     }

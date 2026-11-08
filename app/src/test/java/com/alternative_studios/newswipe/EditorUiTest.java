@@ -1263,13 +1263,18 @@ public class EditorUiTest {
         key(p, "ㅛ", Key.CHAR);
         key(p, null, Key.SHIFT);
         assertTrue(visibleTexts(cur(a)).contains("두벌식은 컴퓨터 키보드와 같은 표준 한글 배열입니다."));
-        assertTrue(visibleTexts(cur(a)).contains("자·모음 균형 배열"));
+        assertTrue(visibleTexts(cur(a)).contains("세부 배열 사용"));
         assertFalse(visibleTexts(cur(a)).contains("영어 자판도 균형 배열"));   // 균형 배열을 켠 뒤에만 보인다
         assertFalse(visibleTexts(cur(a)).contains("영어 자판 아래로 밀어 대문자 입력"));   // 영어 글자 키 창에만 있다
         shot(a, "a0-dubeolsik");
         // 균형 배열: 자음은 왼쪽 절반, 모음은 오른쪽 절반으로 나누되 각 쪽 안의 자리는 일반 두벌식 그대로
-        View row = (View) findText(cur(a), "자·모음 균형 배열").getParent().getParent();
+        // 세부 배열 사용: 값 줄을 누르면 뜨는 창에서 '자·모음 균형 배열'을 고른다.
+        View row = findText(cur(a), "세부 배열 사용");
+        while (row != null && !row.isClickable()) row = (View) row.getParent();
         row.performClick();
+        idle();
+        org.robolectric.Shadows.shadowOf((android.app.AlertDialog) org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog())
+                .clickOnItem(Prefs.DETAIL_BALANCED);
         idle();
         assertTrue(prefs.balancedLayout());
         assertTrue(prefs.raw().getBoolean(Prefs.BALANCED_LAYOUT + "_" + Prefs.KOREAN_LAYOUT_DUBEOLSIK, false));
