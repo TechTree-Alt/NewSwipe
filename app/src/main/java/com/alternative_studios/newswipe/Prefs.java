@@ -492,7 +492,8 @@ public final class Prefs {
             // 키보드 사용자화를 연 채 바꾸면 되돌리기 기록에는 남는다.
             new EditorScope("landscape", null, keys(LANDSCAPE_SPLIT, LANDSCAPE_SIZE, KEYBOARD_HEIGHT_LAND, KEY_TEXT_SIZE_LAND,
                     SPLIT_GAP_CURSOR, SPLIT_GAP_SPEED, SPLIT_SPACE_JOIN, SPLIT_FN_WIDTH, SPLIT_REACH_COLUMN,
-                    PROFILE_LIFT + LANDSCAPE_SUFFIX, FN_ROW_HEIGHT + LANDSCAPE_SUFFIX), keys(LANDSCAPE_SPLIT + "_", "balanced_")),
+                    PROFILE_LIFT + LANDSCAPE_SUFFIX, FN_ROW_HEIGHT + LANDSCAPE_SUFFIX, "toolbar_pad_l" + LANDSCAPE_SUFFIX,
+                    "toolbar_pad_r" + LANDSCAPE_SUFFIX), keys(LANDSCAPE_SPLIT + "_", "balanced_")),
     };
 
     private static EditorScope scope(String id) {
@@ -568,7 +569,8 @@ public final class Prefs {
     /** 프로필 사용자화 화면(가로 모드·대화면)의 이 프로필 값. 그 프로필의 편집 보기(profileEditView)에서 부른다. */
     public void resetProfileArea() {
         resetBalancedKeys();
-        removeKeys(new String[]{splitKey(), sizeKey(), heightKey(), fnRowHeightKey(), textSizeKey(), oneHandWidthKey(), splitGapCursorKey(),
+        removeKeys(new String[]{splitKey(), sizeKey(), heightKey(), fnRowHeightKey(), textSizeKey(),
+                toolbarSidePadKey(SIDE_LEFT), toolbarSidePadKey(SIDE_RIGHT), oneHandWidthKey(), splitGapCursorKey(),
                 splitGapSpeedKey(), splitSpaceJoinKey(), splitFnWidthKey(), splitReachColumnKey(), liftKey()},
                 new String[]{splitKey() + "_"});   // 예전에 배열마다 저장하던 분리 키보드 값도 함께
     }
@@ -725,13 +727,24 @@ public final class Prefs {
     public int padTopDp() { return sp.getInt(PAD_TOP, 0); }
 
     /** 영역 area(0 도구 막대·1 숫자 줄·2 글자 키·3 기능키)의 side(SIDE_*) 여백 설정 키. */
+    /** 이 프로필(가로 모드·대화면 세로·가로)의 도구 막대 좌우 여백 설정 키. side는 SIDE_LEFT·SIDE_RIGHT. */
+    public String toolbarSidePadKey(int side) {
+        char c = "ltrb".charAt(side);
+        return large() ? LARGE_PREFIX + "toolbar_pad_" + c + "_" + largeSide() : "toolbar_pad_" + c + LANDSCAPE_SUFFIX;
+    }
+
     public static String areaPadKey(int area, int side) {
         return AREA_PAD_PREFIX + PAD_AREAS[area] + "_" + "ltrb".charAt(side);
     }
 
     /** 영역별 여백 (dp, 0~32). */
     public int areaPadDp(int area, int side) {
-        return clamp(sp.getInt(areaPadKey(area, side), 0), 0, AREA_PAD_MAX);
+        int v = clamp(sp.getInt(areaPadKey(area, side), 0), 0, AREA_PAD_MAX);
+        // 가로 모드·대화면 보기: 도구 막대의 좌우 여백은 그 프로필이 따로 정한 값 (정하기 전에는 세로 모드 값).
+        if (area == 0 && profileSize() && (side == SIDE_LEFT || side == SIDE_RIGHT)) {
+            return clamp(sp.getInt(toolbarSidePadKey(side), v), 0, AREA_PAD_MAX);
+        }
+        return v;
     }
 
     /** 영역별 위·아래 여백의 합 (dp): 키보드 높이에 더한다. 숫자 줄은 켰을 때만. */

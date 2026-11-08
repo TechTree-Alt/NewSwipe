@@ -213,6 +213,11 @@ final class KeyboardPreview extends FrameLayout {
             case B_BOUNDARY: return prefs.balancedBoundaryKey();
             case HEIGHT: return profileEdit != null ? prefs.heightKey() : h.key(0);
             case FN_ROW: return profileEdit != null ? prefs.fnRowHeightKey() : h.key(0);
+            case AREA_L:
+            case AREA_R:
+                // 가로 모드·대화면: 도구 막대 좌우 여백은 그 프로필이 따로 정한다.
+                if (profileEdit != null && selection != null && selection.area() == AREA_TOOLBAR) return prefs.toolbarSidePadKey(h.side);
+                return h.key(selection == null ? 0 : selection.area());
             case LIFT: return prefs.liftKey();
             default: return h.key(selection == null ? 0 : selection.area());
         }
@@ -292,8 +297,8 @@ final class KeyboardPreview extends FrameLayout {
 
     /** 지금 보이는 영역들 (분리 키보드면 왼쪽·오른쪽 묶음, 가운데 공간, 기능키, 아니면 글자 키, 기능키). */
     private int[] profileAreas() {
-        if (prefs.profileSplit()) return new int[]{AREA_LEFT, AREA_MIDDLE, AREA_RIGHT, AREA_FUNCTION};
-        return new int[]{AREA_LETTERS, AREA_FUNCTION};
+        if (prefs.profileSplit()) return new int[]{AREA_TOOLBAR, AREA_LEFT, AREA_MIDDLE, AREA_RIGHT, AREA_FUNCTION};
+        return new int[]{AREA_TOOLBAR, AREA_LETTERS, AREA_FUNCTION};
     }
 
     /** 가로 모드·대화면 키보드 사용자화 영역의 윤곽선 (미리보기 좌표). 없으면 false. */
@@ -313,6 +318,8 @@ final class KeyboardPreview extends FrameLayout {
                 return !prefs.profileSplit() && areaBounds(AREA_LETTERS, out);
             case AREA_FUNCTION:
                 return areaBounds(AREA_FUNCTION, out);
+            case AREA_TOOLBAR:
+                return areaBounds(AREA_TOOLBAR, out);
             default:
                 return false;
         }
@@ -353,7 +360,8 @@ final class KeyboardPreview extends FrameLayout {
         Context c = getContext();
         float pad = Ui.dp(c, 3), bx = boundaryX();
         float gx = Ui.dp(c, prefs.keyGapXDp()) / 2f, gy = Ui.dp(c, prefs.keyGapYDp()) / 2f;
-        int first = numberRowShown ? 1 : 0, last = l.rows.length - 2;
+        // 분리 키보드의 두 묶음에는 숫자 줄(1~5, 6~0)도 들어간다. 세로 모드의 균형 배열은 숫자 줄을 뺀 글자 키만 감싼다.
+        int first = numberRowShown && profileEdit == null ? 1 : 0, last = l.rows.length - 2;
         boolean any = false;
         for (int r = first; r <= last; r++) {
             // 분리 키보드: 줄 가운데의 빈틈(SPACER)이 두 묶음을 가른다. 묶음이 맞닿아 빈틈이 없으면(폭 100%) 가운데에 걸친 키
@@ -544,8 +552,16 @@ final class KeyboardPreview extends FrameLayout {
         if (tab == TAB_ENGLISH) l = KeyboardLayout.english(prefs);
         else if (tab == TAB_SYMBOLS) l = symbolsPage2 ? KeyboardLayout.symbols2(true, prefs) : KeyboardLayout.symbols(true, prefs);
         else l = KeyboardLayout.korean(prefs);
-        numberRowShown = tab != TAB_SYMBOLS && prefs.numberRow() && l.rows.length > 0 && l.rows[0].keys.length > 0
-                && KeyboardLayout.isDigit(l.rows[0].keys[0].label);
+        // 분리 키보드는 묶음 앞에 빈틈(GAP)이 있을 수 있어, 앞의 빈틈은 건너뛰고 첫 키가 숫자인지 본다.
+        Key firstKey = null;
+        if (l.rows.length > 0) {
+            for (Key k : l.rows[0].keys) {
+                if (k.type == Key.GAP || k.type == Key.SPACER) continue;
+                firstKey = k;
+                break;
+            }
+        }
+        numberRowShown = tab != TAB_SYMBOLS && prefs.numberRow() && firstKey != null && KeyboardLayout.isDigit(firstKey.label);
         // 키보드와 같은 높이: 글자 4줄 + 숫자 줄 (기호 자판도 같은 높이를 쓴다).
         float rows = KeyboardLayout.rowUnits(prefs);
         keys.setKeyboardHeight(Math.round(Ui.dp(c, 54) * rows * prefs.keyboardHeight() / 100f) + padT + padB - lift - raise
@@ -934,6 +950,8 @@ final class KeyboardPreview extends FrameLayout {
             switch (h) {
                 case HEIGHT: return a == AREA_LETTERS || a == AREA_LEFT || a == AREA_RIGHT;
                 case FN_ROW: return a == AREA_FUNCTION;
+                case AREA_L:
+                case AREA_R: return a == AREA_TOOLBAR;   // 도구 막대의 좌우 여백
                 case B_CONSONANT: return a == AREA_LEFT && blockBounds(true, new RectF());
                 case B_VOWEL: return a == AREA_RIGHT && blockBounds(false, new RectF());
                 default: return false;

@@ -1819,8 +1819,19 @@ public final class SettingsActivity extends Activity {
         return isLandscapeProfile(profile) ? longSide : shortSide;
     }
 
-    /** 미리보기 사용법 안내. */
-    private void addProfileIntro() {
+    /**
+     * 미리보기 위의 안내. 가로 모드 화면(landscapePage)은 기기가 세로일 때만 '미리보기가 작게 보인다'고 알리고, 가로일 때는
+     * 아무 문구도 두지 않는다 (실제 크기라서). 대화면 화면은 사용법을 알린다.
+     */
+    private void addProfileIntro(boolean landscapePage) {
+        if (landscapePage) {
+            boolean landNow = getResources().getConfiguration().orientation
+                    == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+            if (landNow && !harvesting) return;
+            LinearLayout intro = card();
+            intro.addView(note("세로 상태에서는 키보드 미리보기가 작게 보일 수 있습니다. 실제 크기의 미리보기를 원하시면 기기를 가로로 돌리세요."));
+            return;
+        }
         LinearLayout intro = card();
         intro.addView(note("아래 미리보기에서 영역을 누르면 그 영역의 설정 창이 열립니다. 분리 키보드를 켜면 왼쪽·오른쪽 묶음과 "
                 + "가운데 공간, 기능키를, 끄면 글자 키와 기능키를 고를 수 있습니다. 고른 영역의 ↕·↔ 버튼을 끌어 크기와 위치를 바로 "
@@ -1843,7 +1854,7 @@ public final class SettingsActivity extends Activity {
     private void buildLandscapeArea() {
         String p = Prefs.PROFILE_LANDSCAPE;
         addProfilePreview(p);   // 실제 키보드와 같은 미리보기를 화면 아래에 붙인다
-        addProfileIntro();
+        addProfileIntro(true);
         addProfileSplit(p, "가로 모드");
         addProfileWhole(p, "화면을 가로로 돌렸을 때");
         harvestProfileAreas(p);
@@ -2083,7 +2094,7 @@ public final class SettingsActivity extends Activity {
     private void buildLargeArea() {
         String port = Prefs.PROFILE_LARGE_PORTRAIT, land = Prefs.PROFILE_LARGE_LANDSCAPE;
         addProfilePreview(port);
-        addProfileIntro();
+        addProfileIntro(false);
         LinearLayout pick = card();
         // 레이아웃 값은 대화면 세로·가로가 함께 쓰므로 어느 쪽 보기로 고쳐도 같다.
         addProfileSplit(port, "대화면");
@@ -2179,7 +2190,7 @@ public final class SettingsActivity extends Activity {
     /** 설정 검색용으로 화면을 만들 때는 영역 설정 창의 항목도 목록에 넣어 찾을 수 있게 한다. */
     private void harvestProfileAreas(String profile) {
         if (!harvesting) return;
-        for (int a : new int[]{KeyboardPreview.AREA_LETTERS, KeyboardPreview.AREA_LEFT, KeyboardPreview.AREA_RIGHT,
+        for (int a : new int[]{KeyboardPreview.AREA_TOOLBAR, KeyboardPreview.AREA_LETTERS, KeyboardPreview.AREA_LEFT, KeyboardPreview.AREA_RIGHT,
                 KeyboardPreview.AREA_MIDDLE, KeyboardPreview.AREA_FUNCTION}) {
             buildProfileArea(profile, a, true);
         }
@@ -2219,6 +2230,16 @@ public final class SettingsActivity extends Activity {
             case KeyboardPreview.AREA_LETTERS:
                 addProfileLetterHeight(edit);
                 break;
+            case KeyboardPreview.AREA_TOOLBAR: {
+                LinearLayout c = section("도구 막대 여백");
+                c.addView(profileSlider("왼쪽 여백", edit.toolbarSidePadKey(Prefs.SIDE_LEFT),
+                        () -> edit.areaPadDp(KeyboardPreview.AREA_TOOLBAR, Prefs.SIDE_LEFT), 0, Prefs.AREA_PAD_MAX, 1, "dp"));
+                c.addView(profileSlider("오른쪽 여백", edit.toolbarSidePadKey(Prefs.SIDE_RIGHT),
+                        () -> edit.areaPadDp(KeyboardPreview.AREA_TOOLBAR, Prefs.SIDE_RIGHT), 0, Prefs.AREA_PAD_MAX, 1, "dp"));
+                c.addView(note("도구 막대의 좌우 여백으로, 키보드 전체 여백 안쪽에 더해집니다. 정하기 전에는 세로 모드('키보드 사용자화')의 "
+                        + "값을 따릅니다. 미리보기에서 양옆의 손잡이를 끌어도 바뀝니다."));
+                break;
+            }
             case KeyboardPreview.AREA_MIDDLE: {
                 LinearLayout c = section("분리 키보드 기능");
                 View speed = subGroup(slider("이동 속도", edit.splitGapSpeedKey(), edit.splitGapSpeed(), 50, 300, 10, "%"));
