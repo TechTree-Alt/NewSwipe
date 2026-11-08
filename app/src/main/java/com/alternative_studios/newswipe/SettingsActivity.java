@@ -2121,12 +2121,11 @@ public final class SettingsActivity extends Activity {
         boolean land = Prefs.PROFILE_LARGE_LANDSCAPE.equals(profile);
         String when = land ? "대화면을 가로로 들었을 때" : "대화면을 세로로 들었을 때";
         addProfilePreview(profile);
+        String now = land ? "가로" : "세로", other = land ? "세로" : "가로";
         LinearLayout intro = card();
-        intro.addView(note(when.replace("때", "때의") + " 키보드 모양을 정합니다. " + (land ? "세로" : "가로")
-                + "일 때의 설정은 기기를 " + (land ? "세로" : "가로") + "로 돌리면 보입니다. "
-                + "분리 키보드 켜기와 좌·우 균형 레이아웃은 세로와 가로가 함께 씁니다.\n"
-                + "아래 미리보기에서 영역을 누르면 그 영역의 설정 창이 열리고, 고른 영역의 ↕·↔ 버튼을 끌어 크기와 위치를 바로 "
-                + "바꿀 수 있습니다. 키와 다른 영역의 설정은 '키보드 사용자화'에서 바꿉니다."));
+        intro.addView(note("대화면을 " + now + "로 들었을 때 키보드 모양을 정합니다. " + other + "일 때의 설정은 기기를 " + other + "로 돌리면 보입니다.\n"
+                + "분리 키보드 사용 유무, 좌·우 균형 레이아웃 사용 유무는 세로와 가로가 공유하지만, 나머지 설정은 가로·세로 각각 별도로 설정할 수 있습니다.\n"
+                + "여기에서 설정이 불가능한 항목은 '키보드 사용자화'의 설정과 공유합니다."));
         addProfileSplit(profile, "대화면");
         addProfileWhole(profile, when);
         addOneHandWidth(profile, when);
