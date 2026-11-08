@@ -333,13 +333,16 @@ public final class KeyboardView extends View {
     }
 
     /**
-     * 보이는 키들이 차지한 가로 범위 {왼쪽 끝, 오른쪽 끝} (이 뷰 안의 px). 분리 키보드에서는 왼쪽 묶음의 왼쪽 끝과
-     * 오른쪽 묶음의 오른쪽 끝이다 (도구 막대가 따라간다). 아직 배치되지 않았으면 null.
+     * 맨 아래 줄(기능키)을 뺀 줄의 보이는 키들이 차지한 가로 범위 {왼쪽 끝, 오른쪽 끝} (이 뷰 안의 px). 분리 키보드에서는
+     * 왼쪽 묶음의 왼쪽 끝과 오른쪽 묶음의 오른쪽 끝이다 (도구 막대가 따라간다). 기능키 줄은 따로 '묶음 좌우 따라가기'와 영역 여백을
+     * 정하므로 넣지 않는다 (기능키 줄을 바꿔도 도구 막대가 따라 움직이지 않게). 아직 배치되지 않았으면 null.
      */
     public float[] keyExtent() {
         if (layout == null || getWidth() == 0) return null;
         float left = Float.MAX_VALUE, right = -Float.MAX_VALUE;
-        for (KeyboardLayout.Row row : layout.rows) {
+        int rows = layout.rows.length > 1 ? layout.rows.length - 1 : layout.rows.length;
+        for (int r = 0; r < rows; r++) {
+            KeyboardLayout.Row row = layout.rows[r];
             for (Key k : row.keys) {
                 if (k.type == Key.SPACER || k.type == Key.GAP || k.isHidden() || k.rect.width() <= 0) continue;
                 left = Math.min(left, k.rect.left);

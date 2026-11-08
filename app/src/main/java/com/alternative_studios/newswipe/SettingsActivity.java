@@ -2012,9 +2012,8 @@ public final class SettingsActivity extends Activity {
         addProfilePreview(p);   // 실제 키보드와 같은 미리보기를 화면 아래에 붙인다
         addLandscapeIntro();
         addProfileSplit(p, "가로 모드");
-        addProfileWhole(p, "화면을 가로로 돌렸을 때");
+        // 키보드 모양(키 글자 크기·세로 위치)과 여백은 미리보기의 키보드 전체 설정 창에 있다.
         harvestProfileAreas(p);
-        addProfilePads(p);   // 여백은 맨 아래 (기본값으로 되돌리기 바로 위)
     }
 
     /** 실험실: 아직 시험 중인 기능. */
@@ -2265,10 +2264,8 @@ public final class SettingsActivity extends Activity {
             // 설정 검색: 두 방향의 항목을 모두 모은다.
             addProfileSplit(Prefs.PROFILE_LARGE_PORTRAIT, "폴더블 내부 화면");
             for (String p : new String[]{Prefs.PROFILE_LARGE_PORTRAIT, Prefs.PROFILE_LARGE_LANDSCAPE}) {
-                addProfileWhole(p, "폴더블 내부 화면에서");
                 addOneHandWidth(p, "폴더블 내부 화면에서");
                 harvestProfileAreas(p);
-                addProfilePads(p);
             }
             return;
         }
@@ -2287,9 +2284,8 @@ public final class SettingsActivity extends Activity {
                 + "분리 키보드 사용 유무, " + (prefs.koreanD7() ? "좌·우 균형 배열" : "자·모음 분리 배열") + " 사용 유무는 세로와 가로가 공유하지만, 나머지 설정은 세로·가로가 각각 별도로 설정할 수 있습니다.\n"
                 + "여기에서 설정이 불가능한 항목은 '키보드 사용자화'의 설정과 공유합니다."));
         addProfileSplit(profile, "폴더블 내부 화면");
-        addProfileWhole(profile, when);
+        // 키보드 모양(키 글자 크기·세로 위치)과 여백은 미리보기의 키보드 전체 설정 창에 있다.
         addOneHandWidth(profile, when);
-        addProfilePads(profile);   // 여백은 맨 아래 (기본값으로 되돌리기 바로 위)
     }
 
     /**
@@ -2369,6 +2365,7 @@ public final class SettingsActivity extends Activity {
     /** 설정 검색용으로 화면을 만들 때는 영역 설정 창의 항목도 목록에 넣어 찾을 수 있게 한다. */
     private void harvestProfileAreas(String profile) {
         if (!harvesting) return;
+        buildProfileBoard(profile);   // 키보드 전체 설정 창 (키보드 모양·여백)
         for (int a : new int[]{KeyboardPreview.AREA_TOOLBAR, KeyboardPreview.AREA_LETTERS,
                 KeyboardPreview.AREA_MIDDLE, KeyboardPreview.AREA_FUNCTION}) {
             buildProfileArea(profile, a, true);
