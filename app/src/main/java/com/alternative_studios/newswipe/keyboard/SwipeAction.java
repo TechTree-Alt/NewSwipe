@@ -107,7 +107,7 @@ public final class SwipeAction {
             {SETTINGS, "NewSwipe 설정 열기", "설정 열기"},
             {DELETE_REPEAT, "계속 지우기 (누르고 있는 동안)", "계속 지우기"},
             {DELETE_WORD_REPEAT, "단어 지우기 (누르고 있는 동안)", "계속 단어 지우기"},
-            {SPACE_SELECT, "밀어서 선택 (길게 누른 뒤 밀어 글자 선택)", "밀어서 선택"},
+            {SPACE_SELECT, "길게 누른 뒤 밀어서 글자 선택", "밀어서 선택"},
             {CAPS_LOCK, "Caps Lock 켜기 (영어 대문자 고정)", "Caps Lock"},
     };
 

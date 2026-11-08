@@ -569,6 +569,38 @@ public class DubeolsikLayoutTest {
         assertEquals(1, count(KeyboardLayout.english(view(on, Prefs.PROFILE_LANDSCAPE)), Key.SHIFT));
     }
 
+    /** 쌍자음·이중모음 입력 방식: 아래로 밀기·연속 탭·둘 다. 연속 탭만이면 기본 배치의 아래로 밀기는 쓰지 않는다. */
+    @Test
+    public void doubleInputModes() throws Exception {
+        for (String layout : new String[]{Prefs.KOREAN_LAYOUT_DUBEOLSIK, Prefs.KOREAN_LAYOUT_8, Prefs.KOREAN_LAYOUT_D7}) {
+            FakeSp sp = new FakeSp();
+            sp.m.put(Prefs.KOREAN_LAYOUT, layout);
+            Prefs p = portrait(sp);
+            // 기본: 쌍자음은 아래로 밀기, 이중모음은 둘 다
+            assertEquals(Prefs.INPUT_SWIPE, p.consonantInputMode());
+            assertEquals(Prefs.INPUT_BOTH, p.vowelInputMode());
+            assertEquals("ㄲ", key(KeyboardLayout.korean(p), "ㄱ").swipeDown);
+            assertEquals("ㅑ", key(KeyboardLayout.korean(p), "ㅏ").swipeDown);
+            p.setConsonantInputMode(Prefs.INPUT_TAP);
+            p.setVowelInputMode(Prefs.INPUT_TAP);
+            assertTrue(p.doubleTapConsonant() && p.doubleTapVowel());
+            KeyboardLayout l = KeyboardLayout.korean(portrait(sp));
+            assertNull(layout, key(l, "ㄱ").swipeDown);
+            assertNull(layout, key(l, "ㅏ").swipeDown);
+            assertEquals(layout, FinalSwipes.get(null, 'ㄹ', FinalSwipes.UP), key(l, "ㄹ").swipeUp);   // 다른 방향은 그대로
+            // 키마다 정한 아래로 밀기 글자는 그대로 쓴다
+            sp.m.put("swipe_custom_ko_ㄱ_down", "ㅋ");
+            assertEquals("ㅋ", key(KeyboardLayout.korean(portrait(sp)), "ㄱ").swipeDown);
+            p.setConsonantInputMode(Prefs.INPUT_BOTH);
+            p.setVowelInputMode(Prefs.INPUT_SWIPE);
+            assertEquals(Prefs.INPUT_BOTH, p.consonantInputMode());
+            assertEquals(Prefs.INPUT_SWIPE, p.vowelInputMode());
+            assertTrue(p.doubleTapConsonant() && p.swipeDownConsonant());
+            assertFalse(p.doubleTapVowel());
+            assertEquals("ㅑ", key(KeyboardLayout.korean(portrait(sp)), "ㅏ").swipeDown);
+        }
+    }
+
     @Test
     public void otherLayoutsAreNotDubeolsik() throws Exception {
         FakeSp sp = new FakeSp();

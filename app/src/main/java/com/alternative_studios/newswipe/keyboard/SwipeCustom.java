@@ -65,7 +65,14 @@ public final class SwipeCustom {
         String v = prefs == null ? null
                 : prefs.swipeCustomOverride(KeyboardLayout.groupOf(korean, label), label, NAMES[dir]);
         if (v == null) {
-            return defaultFor(korean, prefs != null && prefs.koreanNewSwipe(), label, dir);
+            String def = defaultFor(korean, prefs != null && prefs.koreanNewSwipe(), label, dir);
+            // 쌍자음·이중모음 입력 방식에서 '연속 탭'만 골랐으면 기본 배치의 아래로 밀기(쌍자음·ㅣ계 이중모음)는 쓰지 않는다.
+            if (def != null && prefs != null && korean && dir == Key.SWIPE_DOWN && label.length() == 1
+                    && KeyboardLayout.GROUP_KO.equals(KeyboardLayout.groupOf(true, label))) {
+                boolean vowel = HangulComposer.isVowel(label.charAt(0));
+                if (vowel ? !prefs.swipeDownVowel() : !prefs.swipeDownConsonant()) return null;
+            }
+            return def;
         }
         return v.isEmpty() ? null : v;
     }

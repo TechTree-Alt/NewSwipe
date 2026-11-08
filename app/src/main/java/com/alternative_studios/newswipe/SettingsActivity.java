@@ -395,8 +395,8 @@ public final class SettingsActivity extends Activity {
             {KEYBOARD, "문자 길게 누르기 시간", "롱프레스 길게 누르기 시간 지연 특수문자 반복 입력 연타 연속 입력"},
             {KEYBOARD, "기능키 길게 누르기 시간", "롱프레스 시간 길게 눌러 지우기 이모지 입력기 선택"},
             {KEYBOARD, "쌍자음 인식 시간", "연속 탭 된소리 ㄲ ㅆ 시간"},
-            {KEYBOARD, "자음 연속 탭으로 쌍자음", "된소리 ㄲ ㅆ ㅃ"},
-            {KEYBOARD, "모음 연속 탭으로 이중모음", "ㅑ ㅛ ㅕ"},
+            {KEYBOARD, "쌍자음 입력", "된소리 ㄲ ㅆ ㅃ 자음 연속 탭 두 번 아래로 밀기"},
+            {KEYBOARD, "이중모음 입력", "ㅑ ㅛ ㅕ 모음 연속 탭 두 번 아래로 밀기"},
             {KEYBOARD, "영어 자동 대문자", "대소문자 자동 대문자 shift 첫 글자"},
             {KEYBOARD, "두 번 눌러 마침표", "점 온점 더블 스페이스바"},
             {KEYBOARD, "인식 범위 좁히기", "지우기 백스페이스 스페이스바 오타 오입력 터치 영역"},
@@ -655,6 +655,7 @@ public final class SettingsActivity extends Activity {
             values.add(com.alternative_studios.newswipe.keyboard.SwipeAction.label(id));
         }
         values.add("기본값으로 되돌리기");
+        values.addAll(java.util.Arrays.asList(INPUT_MODES));   // 쌍자음·이중모음 입력 줄 옆의 지금 값
         out.removeIf(e -> e[0].startsWith(EDITOR_PART) && values.contains(e[1]));
     }
 
@@ -1529,19 +1530,47 @@ public final class SettingsActivity extends Activity {
         }));
     }
 
-    /** 한글 글자 키의 입력 동작: 자음·모음 연속 탭. */
+    /** 쌍자음·이중모음 입력 방식의 이름 (Prefs.INPUT_* 차례). */
+    private static final String[] INPUT_MODES = {"아래로 밀기", "연속 탭", "둘 다"};
+
+    /** 한글 글자 키의 입력 동작: 쌍자음·이중모음 입력 방식 (아래로 밀기·연속 탭·둘 다). */
     private void addKoreanInput(LinearLayout input) {
         View doubleTapTime = subGroup(
                 slider("쌍자음 인식 시간", Prefs.DOUBLE_TAP_CONSONANT_MS, prefs.doubleTapConsonantMs(),
                         80, 500, 10, "ms"),
                 note("두 번째 탭이 이 시간 안에 들어와야 쌍자음이 됩니다. 값을 줄이면 '학교'가 '하꾜'로 바뀌는 일이 줄고, "
                         + "대신 쌍자음을 낼 때 더 빨리 눌러야 합니다."));
-        input.addView(toggle("자음 연속 탭으로 쌍자음",
-                "같은 자음을 빠르게 두 번 누르면 쌍자음을 입력합니다 (예: ㄱㄱ→ㄲ, ㅅㅅ→ㅆ). 기존 단모음 자판과 같은 방식이며, 아래로 밀어 쌍자음을 입력하는 것과 함께 쓸 수 있습니다.",
-                Prefs.DOUBLE_TAP_CONSONANT, prefs.doubleTapConsonant(), doubleTapTime));
+        doubleTapTime.setVisibility(prefs.consonantInputMode() != Prefs.INPUT_SWIPE || harvesting ? View.VISIBLE : View.GONE);
+        SettingsWidgets.ValueRow[] consonant = new SettingsWidgets.ValueRow[1];
+        consonant[0] = widgets.valueRow("쌍자음 입력", INPUT_MODES[prefs.consonantInputMode()], v ->
+                pickInputMode("쌍자음 입력", prefs.consonantInputMode(), mode -> {
+                    prefs.setConsonantInputMode(mode);
+                    consonant[0].set(INPUT_MODES[mode]);
+                    Ui.setVisibleAnimated(doubleTapTime, mode != Prefs.INPUT_SWIPE);
+                }));
+        input.addView(consonant[0].view);
         input.addView(doubleTapTime);
-        input.addView(toggle("모음 연속 탭으로 이중모음", "같은 모음을 연달아 누르면 이중모음을 입력합니다 (예: ㅏㅏ→ㅑ, ㅗㅗ→ㅛ).",
-                Prefs.DOUBLE_TAP_VOWEL, prefs.doubleTapVowel()));
+        SettingsWidgets.ValueRow[] vowel = new SettingsWidgets.ValueRow[1];
+        vowel[0] = widgets.valueRow("이중모음 입력", INPUT_MODES[prefs.vowelInputMode()], v ->
+                pickInputMode("이중모음 입력", prefs.vowelInputMode(), mode -> {
+                    prefs.setVowelInputMode(mode);
+                    vowel[0].set(INPUT_MODES[mode]);
+                }));
+        input.addView(vowel[0].view);
+        input.addView(note("아래로 밀기는 자음·모음 키를 아래로 밀어(ㄱ→ㄲ, ㅏ→ㅑ), 연속 탭은 같은 키를 두 번 눌러(ㄱㄱ→ㄲ, ㅏㅏ→ㅑ) "
+                + "입력합니다. 키마다 아래로 밀기 글자를 따로 정했으면 그 글자를 씁니다."));
+    }
+
+    /** 쌍자음·이중모음 입력 방식을 고르는 창 (아래로 밀기·연속 탭·둘 다). */
+    private void pickInputMode(String title, int current, java.util.function.IntConsumer onPick) {
+        new android.app.AlertDialog.Builder(this)
+                .setTitle(title)
+                .setSingleChoiceItems(INPUT_MODES, current, (d, which) -> {
+                    d.dismiss();
+                    if (which != current) onPick.accept(which);
+                })
+                .setNegativeButton("취소", null)
+                .show();
     }
 
     /** 영어 글자 키의 입력 동작: 자동 대문자, 아래로 밀어 대문자, 이메일 입력란. */

@@ -45,7 +45,7 @@ public final class KeyboardView extends View {
 
         /**
          * 길게 눌러 연속 입력으로 정한 글자 키를 누르고 있는 동안 반복해서 입력한다.
-         * 탭이 아니므로 '자음 연속 탭으로 쌍자음' 같은 연속 탭 판단에 들어가지 않는다.
+         * 탭이 아니므로 쌍자음·이중모음의 연속 탭 판단에 들어가지 않는다.
          */
         void onKeyRepeat(Key key);
 

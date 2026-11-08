@@ -844,25 +844,7 @@ final class KeyEditPanel {
 
     /** 이름과 지금 값을 보여 주는 누를 수 있는 줄 (누르면 값을 고치는 창이 뜬다). */
     private View valueRow(String label, String value, View.OnClickListener l) {
-        LinearLayout row = new LinearLayout(a);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(0, Ui.dp(a, 12), 0, Ui.dp(a, 12));
-        row.addView(text(label, 16, textColor), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT));
-        TextView v = text(value, 16, accentColor);
-        v.setGravity(Gravity.END);
-        v.setMaxLines(2);
-        v.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        LinearLayout.LayoutParams vlp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-        vlp.leftMargin = Ui.dp(a, 12);
-        vlp.rightMargin = Ui.dp(a, 6);
-        row.addView(v, vlp);
-        row.addView(new Chevron(a, accentColor));
-        row.setBackground(Ui.ripple(hintColor & 0x00FFFFFF | 0x33000000, null, Ui.dp(a, 8)));
-        row.setClickable(true);
-        row.setFocusable(true);
-        row.setOnClickListener(l);
-        return row;
+        return widgets.valueRow(label, value, l).view;
     }
 
     /** 맨 아래 '기본값으로 되돌리기' (이 키·버튼의 값만). */

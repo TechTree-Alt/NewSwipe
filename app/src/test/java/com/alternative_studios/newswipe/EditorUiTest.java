@@ -448,7 +448,7 @@ public class EditorUiTest {
         for (String[] e : parts) where.putIfAbsent(e[1], e[0]);
         log("parts harvested " + parts.size() + ": " + where);
         // 글자 키 창은 자판마다: 한글 항목은 한글 글자 키, 영어 항목은 영어 글자 키 창에서 찾는다
-        assertEquals("keyboard:t:0:한글 글자 키", where.get("자음 연속 탭으로 쌍자음"));
+        assertEquals("keyboard:t:0:한글 글자 키", where.get("쌍자음 입력"));
         assertEquals("keyboard:t:1:영어 글자 키", where.get("영어 자동 대문자"));
         assertTrue(where.get("글자 키 높이").startsWith("keyboard:t:"));
         assertTrue(where.get("두 번 눌러 마침표").startsWith("keyboard:k:"));
@@ -461,9 +461,9 @@ public class EditorUiTest {
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(800));
         assertTrue(visibleTexts(cur(a)).contains("두 번 눌러 마침표"));
         a.onBackPressed(); idle();
-        ot.invoke(a, where.get("자음 연속 탭으로 쌍자음"), "자음 연속 탭으로 쌍자음");
+        ot.invoke(a, where.get("쌍자음 입력"), "쌍자음 입력");
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(800));
-        assertTrue(visibleTexts(cur(a)).contains("자음 연속 탭으로 쌍자음"));
+        assertTrue(visibleTexts(cur(a)).contains("쌍자음 입력"));
         a.onBackPressed(); idle();
         // 영어 글자 키의 항목: 영어 탭으로 바뀌어 영어 글자 키 창이 열린다 (탭 버튼도 영어)
         ot.invoke(a, where.get("영어 자동 대문자"), "영어 자동 대문자");
@@ -763,7 +763,7 @@ public class EditorUiTest {
                 && t.contains("커서 이동 속도 좌우"));
         assertFalse(t.contains("순서·유무"));
         shot(a, "87-space-key");
-        assertTrue(t.contains("길게 누르면") && t.contains("밀어서 선택"));
+        assertTrue(t.contains("길게 누르면") && t.contains("길게 누른 뒤 밀어서 글자 선택"));
         View lpRow = findText(cur(a), "길게 누르면");
         while (lpRow != null && !lpRow.isClickable()) lpRow = (View) lpRow.getParent();
         lpRow.performClick(); idle();
@@ -852,8 +852,27 @@ public class EditorUiTest {
         assertNotNull(findText(decor, "한글 글자 키 설정"));
         String t = visibleTexts(cur(a));
         log("LETTERS:\n" + t);
-        assertTrue(t.contains("한글 자판 배열") && t.contains("자음 연속 탭으로 쌍자음") && t.contains("키보드 밀기 편집"));
+        assertTrue(t.contains("한글 자판 배열") && t.contains("쌍자음 입력") && t.contains("키보드 밀기 편집"));
         assertFalse(t.contains("영어 자동 대문자"));   // 영어 글자 키 창에만 있다
+        // 쌍자음·이중모음 입력 방식: 줄을 누르면 고르는 창 (아래로 밀기·연속 탭·둘 다)
+        assertTrue(t.contains("쌍자음 입력\n  아래로 밀기") && t.contains("이중모음 입력\n  둘 다"));
+        assertFalse(t.contains("쌍자음 인식 시간"));   // 연속 탭을 쓸 때만
+        ((View) findText(cur(a), "쌍자음 입력").getParent()).performClick(); idle();
+        AlertDialog modes = (AlertDialog) ShadowDialog.getLatestDialog();
+        assertEquals(3, modes.getListView().getCount());
+        shadowOf(modes).clickOnItem(1);   // 연속 탭
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(400));
+        Prefs ip = new Prefs(a);
+        assertTrue(ip.doubleTapConsonant() && !ip.swipeDownConsonant());
+        assertEquals(Prefs.INPUT_TAP, ip.consonantInputMode());
+        assertNull(key(p, "ㄱ", Key.CHAR).swipeText(Key.SWIPE_DOWN));   // 아래로 밀어 쌍자음은 쓰지 않는다
+        String t2 = visibleTexts(cur(a));
+        assertTrue(t2.contains("쌍자음 입력\n  연속 탭") && t2.contains("쌍자음 인식 시간"));
+        // 되돌리기로 원래 방식으로 (뒤의 되돌리기 시험이 빈 기록에서 시작하게)
+        byDesc(decor, "마지막 변경 되돌리기").performClick(); idle();
+        assertEquals(Prefs.INPUT_SWIPE, ip.consonantInputMode());
+        assertFalse(byDesc(decor, "마지막 변경 되돌리기").isEnabled());
+        assertEquals("ㄲ", key(p, "ㄱ", Key.CHAR).swipeText(Key.SWIPE_DOWN));
         assertFalse(t.contains("스페이스바 두 번으로 마침표"));
         String lt = visibleTexts(cur(a));
         assertTrue(lt.contains("글자 키 높이"));
@@ -1320,7 +1339,7 @@ public class EditorUiTest {
         String en = visibleTexts(cur(a));
         assertTrue(en.contains("영어 자동 대문자") && en.contains("영어 자판 아래로 밀어 대문자 입력")
                 && en.contains("이메일 입력란은 영어로 시작") && en.contains("글자 키 높이"));
-        assertFalse(en.contains("한글 자판 배열") || en.contains("자음 연속 탭으로 쌍자음"));
+        assertFalse(en.contains("한글 자판 배열") || en.contains("쌍자음 입력"));
         assertTrue(en.contains("영어 글자 키 하나하나의 설정은"));
         shot(a, "b0-english-letters");
         // 기호 탭: 공통 항목만

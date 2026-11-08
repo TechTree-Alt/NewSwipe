@@ -41,6 +41,12 @@ public final class Prefs {
     public static final String VOICE_KEY = "voice_key";
     public static final String DOUBLE_TAP_VOWEL = "double_tap_vowel";
     public static final String DOUBLE_TAP_CONSONANT = "double_tap_consonant";       // 자음 두 번 탭 → 쌍자음
+    /** 자음 키를 아래로 밀어 쌍자음 (기본 켬). 끄면 키마다 따로 정하지 않은 자음의 아래로 밀기는 아무것도 입력하지 않는다. */
+    public static final String SWIPE_DOWN_CONSONANT = "swipe_down_consonant";
+    /** 모음 키를 아래로 밀어 ㅣ계 이중모음 (기본 켬). 끄면 키마다 따로 정하지 않은 모음의 아래로 밀기는 아무것도 입력하지 않는다. */
+    public static final String SWIPE_DOWN_VOWEL = "swipe_down_vowel";
+    /** 쌍자음·이중모음 입력 방식 (consonantInputMode·vowelInputMode). */
+    public static final int INPUT_SWIPE = 0, INPUT_TAP = 1, INPUT_BOTH = 2;
     public static final String DOUBLE_TAP_CONSONANT_MS = "double_tap_consonant_ms"; // 80~500
     public static final String CLIPBOARD_HISTORY = "clipboard_history";
     public static final String CLIPBOARD_IMAGES = "clipboard_images";
@@ -468,7 +474,8 @@ public final class Prefs {
                     POPUP_HINT_HIDDEN, SWIPE_THRESHOLD, SWIPE_PICK_SUGGESTION),
                     keys(AREA_PAD_PREFIX + PAD_AREAS[2] + "_", "swipe_kb_")),
             new EditorScope(SCOPE_LETTERS_KO, "한글 글자 키 (자판 배열·균형 레이아웃·연속 탭)", keys(KOREAN_LAYOUT,
-                    DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT, DOUBLE_TAP_CONSONANT_MS, ENGLISH_BALANCED),
+                    DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT, DOUBLE_TAP_CONSONANT_MS, SWIPE_DOWN_CONSONANT, SWIPE_DOWN_VOWEL,
+                    ENGLISH_BALANCED),
                     keys(BALANCED_LAYOUT)),
             new EditorScope(SCOPE_LETTERS_EN, "영어 글자 키 (자동 대문자·대문자 밀기·이메일 입력란)", keys(AUTO_CAP,
                     ENGLISH_FIELDS, ENGLISH_SWIPE_UPPER), NONE),
@@ -630,6 +637,27 @@ public final class Prefs {
     /** 기본은 꺼짐: 쌍자음은 밀어서 입력하므로 '학교→하꾜' 문제가 없다. 켜면 예전 단모음처럼 두 번 탭으로도 입력. */
     public boolean doubleTapConsonant() { return sp.getBoolean(DOUBLE_TAP_CONSONANT, false); }
     public int doubleTapConsonantMs() { return sp.getInt(DOUBLE_TAP_CONSONANT_MS, 200); }
+    public boolean swipeDownConsonant() { return sp.getBoolean(SWIPE_DOWN_CONSONANT, true); }
+    public boolean swipeDownVowel() { return sp.getBoolean(SWIPE_DOWN_VOWEL, true); }
+
+    /** 쌍자음 입력 방식 (INPUT_*): 아래로 밀기·연속 탭·둘 다. 둘 다 꺼진 값이 남아 있으면 아래로 밀기로 본다. */
+    public int consonantInputMode() { return inputMode(swipeDownConsonant(), doubleTapConsonant()); }
+    /** ㅣ계 이중모음(ㅑ·ㅕ·ㅛ·ㅠ·ㅒ·ㅖ) 입력 방식 (INPUT_*). */
+    public int vowelInputMode() { return inputMode(swipeDownVowel(), doubleTapVowel()); }
+
+    private static int inputMode(boolean swipe, boolean tap) {
+        return swipe && tap ? INPUT_BOTH : tap ? INPUT_TAP : INPUT_SWIPE;
+    }
+
+    /** 쌍자음 입력 방식을 정한다 (INPUT_*). */
+    public void setConsonantInputMode(int mode) {
+        sp.edit().putBoolean(SWIPE_DOWN_CONSONANT, mode != INPUT_TAP).putBoolean(DOUBLE_TAP_CONSONANT, mode != INPUT_SWIPE).apply();
+    }
+
+    /** ㅣ계 이중모음 입력 방식을 정한다 (INPUT_*). */
+    public void setVowelInputMode(int mode) {
+        sp.edit().putBoolean(SWIPE_DOWN_VOWEL, mode != INPUT_TAP).putBoolean(DOUBLE_TAP_VOWEL, mode != INPUT_SWIPE).apply();
+    }
     /** 이 프로필의 '스페이스바 잇기'와 '하단 기능키 폭' 설정 키. */
     public String splitSpaceJoinKey() { return large() ? LARGE_PREFIX + SPLIT_SPACE_JOIN + "_" + LARGE_LAYOUT_SIDE : SPLIT_SPACE_JOIN; }
     public String splitFnWidthKey() { return large() ? LARGE_PREFIX + SPLIT_FN_WIDTH + "_" + LARGE_LAYOUT_SIDE : SPLIT_FN_WIDTH; }
