@@ -1847,7 +1847,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private boolean toolbarGone() {
         // 일본어·중국어에서는 변환 후보가 뜰 자리를 늘 남겨 둔다 (후보가 뜰 때마다 자판이 움직이지 않게).
         return cjkLang == null && !prefs.toolbar() && !toolbarOnlyNow() && !((cfgSuggest && suggestAllowed) || (!shortcuts.isEmpty() && shortcutAllowed))
-                && panel == PANEL_KEYBOARD && !autofillShowing() && !editHoldsSlot();
+                && panel == PANEL_KEYBOARD && !autofillShowing() && !editHoldsSlot()
+                // '방금 복사한 내용 붙여넣기' 칩이 떠 있는 동안은 도구 막대를 꺼 두었어도 그 줄을 다시 보인다.
+                && !clipChipShowing();
     }
 
     /** 손가락이 자판에 닿아 있는지, 그리고 닿은 순간 선택 편집 칩이 도구 막대 자리를 차지하고 있었는지. */
@@ -3666,7 +3668,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         boolean suggesting = (suggestBar != null && suggestBar.getVisibility() == View.VISIBLE) || autofillShowing()
                 || editing || candidates;
         boolean on = prefs.toolbar() || toolbarOnlyNow();   // 도구 막대만 보일 때는 꺼 두었어도 보인다
-        toolbar.setVisibility(panel == PANEL_SEARCH || !(on || suggesting) ? View.GONE : View.VISIBLE);
+        // 방금 복사한 내용 칩은 추천·자동 완성 칩이 없을 때 빈 공간 자리에 뜬다 (도구 버튼은 그대로 보인다).
+        // 도구 막대를 꺼 두었어도 칩만 있는 줄로 뜬다.
+        boolean chip = !suggesting && clipChipShowing();
+        toolbar.setVisibility(panel == PANEL_SEARCH || !(on || suggesting || chip) ? View.GONE : View.VISIBLE);
         // 설정에서 '도구 막대 전체를 쓰기'를 켰으면 추천이 떠 있는 동안 왼쪽 버튼들도 사라진다.
         // 선택 편집 칩은 칩 네 개가 넉넉히 들어가도록 언제나 막대 전체를 쓴다.
         boolean left = on && !(suggesting && (editing || candidates || prefs.suggestFullBar()));
@@ -3675,8 +3680,6 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         String[][] order = toolOrder != null ? toolOrder : prefs.toolOrder();
         for (String id : order[0]) toolButtonOf(id).setVisibility(left && prefs.toolShown(id) ? View.VISIBLE : View.GONE);
         for (String id : order[1]) toolButtonOf(id).setVisibility(right && prefs.toolShown(id) ? View.VISIBLE : View.GONE);
-        // 방금 복사한 내용 칩은 추천·자동 완성 칩이 없을 때 빈 공간 자리에 뜬다 (도구 버튼은 그대로 보인다).
-        boolean chip = !suggesting && on && clipChipShowing();
         toolSpacer.setVisibility(suggesting || chip ? View.GONE : View.VISIBLE);
         if (clipChipSlot != null) {
             if (chip) {
@@ -3708,6 +3711,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         main.removeCallbacks(expireClipChip);
         main.postDelayed(expireClipChip, CLIP_CHIP_MS);
         refreshToolbarVisibility();
+        applyTopSlotVisibility();   // 도구 막대를 꺼 두었으면 칩이 뜰 줄을 다시 연다
     }
 
     /** 칩에 보일 한 줄: 앞부분만 잘라 줄바꿈·연속 공백을 한 칸으로 줄인다. 보일 글자가 없으면 null. */
@@ -3726,6 +3730,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         clipChipActive = false;
         clipChipPreview = null;
         refreshToolbarVisibility();
+        applyTopSlotVisibility();   // 도구 막대를 꺼 두었으면 칩과 함께 그 줄도 거둔다
     }
 
     /** 칩을 눌렀다: 지금 클립보드의 텍스트를 커서 자리에 붙여 넣는다 (칩에 보인 미리보기가 아니라 원래 내용 전체). */
