@@ -64,3 +64,11 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
 }
+
+// 단위 테스트가 실패하면 CI 로그에 실패한 확인 문의 메시지와 위치를 모두 보인다.
+tasks.withType<Test>().configureEach {
+    testLogging {
+        events("failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+}
