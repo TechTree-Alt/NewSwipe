@@ -988,7 +988,8 @@ final class KeyboardPreview extends FrameLayout {
             case PAD_TOP: v = clamp(Math.round(dragStart - dy / density), 0, 24); break;
             case B_CONSONANT:
             case B_VOWEL: {
-                // 오른쪽으로 끌면 키 폭이 넓어진다 (가운데 놓인 쪽은 양옆으로 함께 늘어 손가락 거리의 두 배).
+                // 자음 쪽은 오른쪽으로, 모음 쪽은 왼쪽으로 끌면 키 폭이 넓어진다 (경계에서 멀어지는 쪽;
+                // 가운데 놓인 쪽은 양옆으로 함께 늘어 손가락 거리의 두 배).
                 // 길게 누른 뒤면 가로 위치: 그 쪽 안의 남는 폭에서 손가락을 따라 옮긴다. 모두 5단위.
                 float[] span = new float[2];
                 if (!letterRowSpan(span)) return;
@@ -1002,7 +1003,8 @@ final class KeyboardPreview extends FrameLayout {
                     v = clamp(snap5(dragStart + dx / free * 100f), 0, 100);
                 } else {
                     int max = cons ? Prefs.BALANCED_CONSONANT_WIDTH_MAX : KeyboardLayout.balancedWidthMax(prefs);
-                    v = clamp(snap5(dragStart + 2f * dx / half * 100f), prefs.balancedWidthMin(), max);
+                    // 모음 쪽은 자음 쪽과 반대로: 왼쪽으로 끌면 넓어지고 오른쪽으로 끌면 좁아진다.
+                    v = clamp(snap5(dragStart + (cons ? 2f : -2f) * dx / half * 100f), prefs.balancedWidthMin(), max);
                 }
                 break;
             }

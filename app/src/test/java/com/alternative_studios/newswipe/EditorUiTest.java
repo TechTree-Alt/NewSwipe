@@ -1440,6 +1440,9 @@ public class EditorUiTest {
         SettingsActivity a = launch("keyarea");
         View decor = a.getWindow().getDecorView();
         assertNotNull(findText(decor, "균형 배열 사용자화"));
+        // 키보드 사용자화처럼 실제 키보드가 미리보기를 덮는다 (화면을 줄이지 않는다)
+        assertEquals(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING,
+                a.getWindow().getAttributes().softInputMode & android.view.WindowManager.LayoutParams.SOFT_INPUT_MASK_ADJUST);
         KeyboardPreview p = find(decor, KeyboardPreview.class);
         assertNotNull(p);
         View overlay = p.getChildAt(1);
@@ -1490,8 +1493,12 @@ public class EditorUiTest {
         // 모음 ↔ 버튼도 같다
         assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_VOWEL, vow));
         int v0 = pre.balancedVowelWidth();
-        drag(overlay, vow[0], vow[1], -100, 0);
-        assertTrue(pre.balancedVowelWidth() < v0);
+        drag(overlay, vow[0], vow[1], 100, 0);   // 모음 쪽은 자음 쪽과 반대: 오른쪽으로 끌면 좁아진다
+        int v1 = pre.balancedVowelWidth();
+        assertTrue(v1 < v0);
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_VOWEL, vow));
+        drag(overlay, vow[0], vow[1], -100, 0);   // 왼쪽으로 끌면 넓어진다
+        assertTrue(pre.balancedVowelWidth() > v1);
         // 고르기·넘기기는 하지 않는다
         tap(overlay, vow[0] + 60, vow[1] - 40);
         assertNull(p.selection());

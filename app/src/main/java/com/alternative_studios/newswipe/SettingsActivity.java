@@ -121,6 +121,7 @@ public final class SettingsActivity extends Activity {
                 ? new SettingsFrame(this, sectionName, getString(R.string.app_name)).withSearch(this::onWordSearch, "단어 검색")
                 : new SettingsFrame(this, sectionName, getString(R.string.app_name));
         if (KEYBOARD.equals(sectionId)) frame.withAction(Icons.UNDO, "마지막 변경 되돌리기", v -> undoLast()).keyboardOverlays();
+        else if (KEY_AREA.equals(sectionId)) frame.keyboardOverlays();   // 아래 미리보기 위로 실제 키보드가 덮는다
         ScrollView scroll = new ScrollView(this);
         scrollView = scroll;
         scroll.setFillViewport(true);
