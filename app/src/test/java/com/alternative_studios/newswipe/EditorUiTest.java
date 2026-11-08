@@ -1316,14 +1316,25 @@ public class EditorUiTest {
         key(p, "ㅛ", Key.CHAR);
         key(p, null, Key.SHIFT);
         assertTrue(visibleTexts(cur(a)).contains("두벌식은 컴퓨터 키보드와 같은 표준 한글 배열입니다."));
-        assertTrue(visibleTexts(cur(a)).contains("자·모음 균형 배열"));
+        assertTrue(visibleTexts(cur(a)).contains("상세 배열\n  사용 안 함"));
         assertFalse(visibleTexts(cur(a)).contains("영어 자판도 균형 배열"));   // 균형 배열을 켠 뒤에만 보인다
         assertFalse(visibleTexts(cur(a)).contains("영어 자판 아래로 밀어 대문자 입력"));   // 영어 글자 키 창에만 있다
         shot(a, "a0-dubeolsik");
         // 균형 배열: 자음은 왼쪽 절반, 모음은 오른쪽 절반으로 나누되 각 쪽 안의 자리는 일반 두벌식 그대로
-        View row = (View) findText(cur(a), "자·모음 균형 배열").getParent().getParent();
-        row.performClick();
+        // 상세 배열: 스페이스바 길게 누르기처럼 줄을 눌러 사용 안 함·자·모음 균형 배열·분리 키보드 중에서 고른다
+        ((View) findText(cur(a), "상세 배열").getParent()).performClick();
         idle();
+        AlertDialog detail = (AlertDialog) ShadowDialog.getLatestDialog();
+        assertEquals(3, detail.getListView().getCount());
+        shadowOf(detail).clickOnItem(2);   // 분리 키보드
+        idle();
+        assertTrue(prefs.portraitSplit());
+        assertTrue(visibleTexts(cur(a)).contains("상세 배열\n  분리 키보드"));
+        ((View) findText(cur(a), "상세 배열").getParent()).performClick();
+        idle();
+        shadowOf((AlertDialog) ShadowDialog.getLatestDialog()).clickOnItem(1);   // 자·모음 균형 배열
+        idle();
+        assertFalse(prefs.portraitSplit());
         assertTrue(prefs.balancedLayout());
         assertTrue(prefs.raw().getBoolean(Prefs.BALANCED_LAYOUT + "_" + Prefs.KOREAN_LAYOUT_DUBEOLSIK, false));
         assertTrue(visibleTexts(cur(a)).contains("영어 자판도 균형 배열"));

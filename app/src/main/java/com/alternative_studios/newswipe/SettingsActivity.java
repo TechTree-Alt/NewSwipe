@@ -393,7 +393,7 @@ public final class SettingsActivity extends Activity {
             {KEYBOARD, "키 사이 상하 간격", "키 간격 갭"},
             {"clipemoji", "이모지 크기", "이모티콘 크기 글자 키우기 크게 이모지 창"},
             {KEYBOARD, "균형 배열 사용자화", "자음 모음 열 폭 위치 배치 키 위치 경계 균형 레이아웃"},
-            {KEYBOARD, "자·모음 균형 배열", "자음 모음 반반 균형 한글 자판 배열 두벌식 단모음 쿼티 qwerty 레이아웃"},
+            {KEYBOARD, "상세 배열", "자·모음 균형 배열 분리 키보드 스플릿 split 자음 모음 반반 균형 한글 자판 배열 두벌식 단모음 쿼티 qwerty 레이아웃"},
             {KEYBOARD, "분리 키보드 사용", "세로 모드 분리 키보드 스플릿 split 나누기 엄지"},
             {KEYBOARD, "가로 모드 키보드 사용자화", "가로 화면 landscape"},
             {KEYBOARD, "숫자 줄 표시", "숫자 줄 1234567890 숫자열"},
@@ -666,6 +666,7 @@ public final class SettingsActivity extends Activity {
         }
         values.add("기본값으로 되돌리기");
         values.addAll(java.util.Arrays.asList(INPUT_MODES));   // 쌍자음·이중모음 입력 줄 옆의 지금 값
+        values.add(DETAIL_LAYOUTS[DETAIL_NONE]);   // 상세 배열 줄 옆의 지금 값 (나머지 둘은 설정 이름으로도 찾게 둔다)
         out.removeIf(e -> e[0].startsWith(EDITOR_PART) && values.contains(e[1]));
     }
 
@@ -1713,38 +1714,62 @@ public final class SettingsActivity extends Activity {
         View englishBalanced = fold(englishToggle);
         englishBalanced.setVisibility(englishBalancedShown() ? View.VISIBLE : View.GONE);
         View keyArea = fold(subGroup(button("균형 배열 사용자화", v -> openSection(KEY_AREA)), englishBalanced));
-        // 분리 키보드를 쓰는 동안에는 balancedLayout()이 늘 참이므로, 정해 둔 값(balancedLayoutSetting)을 보인다.
-        keyArea.setVisibility(prefs.balancedLayoutSetting() ? View.VISIBLE : View.GONE);
-        View balancedRow = toggle("자·모음 균형 배열",
-                "자판을 둘로 나눠 왼쪽에는 자음을, 오른쪽에는 모음을 놓습니다.",
-                prefs.balancedLayoutSetting(), on -> {
-                    prefs.raw().edit().putBoolean(prefs.balancedLayoutKey(), on).apply();
-                    Ui.setVisibleAnimated(keyArea, on);
+        // 상세 배열: 사용 안 함·자·모음 균형 배열·분리 키보드 중 하나 (스페이스바 길게 누르기처럼 줄을 눌러 고른다).
+        // 균형 배열은 배열마다 따로, 분리 키보드(세로 모드)는 모든 배열이 함께 기억한다.
+        SettingsWidgets.ValueRow[] detail = new SettingsWidgets.ValueRow[1];
+        detail[0] = widgets.valueRow("상세 배열", DETAIL_LAYOUTS[detailLayout()], v ->
+                pickDetailLayout(mode -> {
+                    android.content.SharedPreferences.Editor e = prefs.raw().edit();
+                    e.putBoolean(Prefs.PORTRAIT_SPLIT, mode == DETAIL_SPLIT);
+                    if (mode != DETAIL_SPLIT) e.putBoolean(prefs.balancedLayoutKey(), mode == DETAIL_BALANCED);
+                    e.apply();
+                    detail[0].set(DETAIL_LAYOUTS[mode]);
+                    Ui.setVisibleAnimated(keyArea, mode == DETAIL_BALANCED);
                     refreshLayoutPreview();
-                });
+                }));
+        keyArea.setVisibility(detailLayout() == DETAIL_BALANCED ? View.VISIBLE : View.GONE);
         LinearLayout choices = choiceRowNow(new String[]{"두벌식", "단모음", "NewSwipe 단모음"}, selected,
                 i -> {
                     prefs.setKoreanLayout(koreanLayouts[i]);
                     layoutNote.setText(layoutNoteText());
-                    // 균형 배열은 배열마다 따로 기억하므로 고른 배열의 값으로 스위치를 맞춘다.
-                    ((ExpressiveSwitch) ((ViewGroup) balancedRow).getChildAt(1)).setCheckedSilently(prefs.balancedLayoutSetting());
-                    Ui.setVisibleAnimated(keyArea, prefs.balancedLayoutSetting());
+                    // 균형 배열은 배열마다 따로 기억하므로 고른 배열의 값으로 상세 배열을 맞춘다.
+                    detail[0].set(DETAIL_LAYOUTS[detailLayout()]);
+                    Ui.setVisibleAnimated(keyArea, detailLayout() == DETAIL_BALANCED);
                     Ui.setVisibleAnimated(englishBalanced, englishBalancedShown());
                     refreshLayoutPreview();
                 });
-        // 분리 키보드를 쓰는 동안에는 균형 배열을 쓸 수 없다: 토글과 사용자화 버튼을 흐리게 하고 설명을 바꾼다.
-        if (prefs.portraitSplit() && !harvesting) {
-            TextView desc = (TextView) ((ViewGroup) ((ViewGroup) balancedRow).getChildAt(0)).getChildAt(1);
-            desc.setText("분리 키보드 사용 중에는 균형 배열을 사용할 수 없습니다.");
-            for (View v : new View[]{balancedRow, keyArea}) {
-                v.setAlpha(0.38f);
-                setEnabledDeep(v, false);
-            }
-        }
         korean.addView(choices);
         korean.addView(layoutNote);
-        korean.addView(balancedRow);
+        korean.addView(detail[0].view);
         korean.addView(keyArea);
+        korean.addView(note("자·모음 균형 배열은 자판을 둘로 나눠 왼쪽에는 자음을, 오른쪽에는 모음을 놓습니다. "
+                + "분리 키보드는 자판을 왼쪽·오른쪽 묶음으로 나눠 엄지손가락만으로 타이핑을 편하게 합니다."));
+    }
+
+    /** 상세 배열의 이름 (DETAIL_* 차례). */
+    private static final String[] DETAIL_LAYOUTS = {"사용 안 함", "자·모음 균형 배열", "분리 키보드"};
+    private static final int DETAIL_NONE = 0, DETAIL_BALANCED = 1, DETAIL_SPLIT = 2;
+
+    /** 지금 한글 배열의 상세 배열: 세로 모드 분리 키보드가 켜져 있으면 분리 키보드, 아니면 균형 배열 설정. */
+    private int detailLayout() {
+        if (prefs.portraitSplit()) return DETAIL_SPLIT;
+        return prefs.balancedLayoutSetting() ? DETAIL_BALANCED : DETAIL_NONE;
+    }
+
+    /** 상세 배열을 고르는 창 (사용 안 함·자·모음 균형 배열·분리 키보드). 다른 고르기 창과 같은 모양: 목록, 기본값, 취소. */
+    private void pickDetailLayout(java.util.function.IntConsumer onPick) {
+        int current = detailLayout();
+        AppTheme.dialogBuilder(this)
+                .setTitle("상세 배열")
+                .setSingleChoiceItems(DETAIL_LAYOUTS, current, (d, which) -> {
+                    d.dismiss();
+                    if (which != current) onPick.accept(which);
+                })
+                .setNeutralButton("기본값", (d, w) -> {
+                    if (current != DETAIL_NONE) onPick.accept(DETAIL_NONE);
+                })
+                .setNegativeButton("취소", null)
+                .show();
     }
 
     /** '영어 자판도 균형 배열'은 두벌식에서만 보인다 (균형 배열을 켰을 때 그 하위 묶음과 함께. 설정 검색 목록에는 늘 넣는다). */
