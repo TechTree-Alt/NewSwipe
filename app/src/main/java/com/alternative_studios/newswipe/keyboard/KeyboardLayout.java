@@ -43,8 +43,8 @@ public final class KeyboardLayout {
     public final int columns;
     public final Row[] rows;
     /**
-     * 분리 키보드의 쿼티 모양 자판(영어·두벌식)인지: 글자 줄이 엇갈려(a~l 줄 들여쓰기, 1.5칸 Shift) g·v가 왼쪽 묶음 끝 밖으로,
-     * y가 오른쪽 묶음의 h·b보다 안쪽으로 나와 있다. 미리보기는 묶음 윤곽선의 안쪽 가장자리를 t와 h·b에 맞춘다.
+     * 분리 키보드의 쿼티 모양 자판(영어·두벌식)인지: 글자 줄이 엇갈려(a~l 줄 들여쓰기, 1.5칸 Shift) g·v가 왼쪽 묶음 끝 밖으로
+     * 나와 있다. 미리보기는 왼쪽 묶음 윤곽선의 오른쪽 가장자리를 t에 맞춘다.
      */
     public boolean staggeredSplit;
 
