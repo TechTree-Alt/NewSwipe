@@ -696,19 +696,36 @@ final class KeyboardPreview extends FrameLayout {
 
     /** 도구 막대 줄이 아예 없을 때 그 자리를 알리는 띠 (실제 키보드에는 없다): 눌러서 도구 막대 설정을 연다. */
     private android.widget.TextView placeholder;
+    /** 숫자 줄을 꺼 두었을 때 그 자리를 알리는 띠 (키보드 사용자화에만, 실제 키보드에는 없다): 눌러서 숫자 줄 설정을 연다. */
+    private android.widget.TextView numberPlaceholder;
 
     private android.widget.TextView placeholder() {
-        if (placeholder != null) return placeholder;
+        if (placeholder == null) placeholder = dashedStrip();
+        return placeholder;
+    }
+
+    private android.widget.TextView numberPlaceholder() {
+        if (numberPlaceholder == null) numberPlaceholder = dashedStrip();
+        return numberPlaceholder;
+    }
+
+    /** 꺼 둔 영역 자리의 점선 띠. */
+    private android.widget.TextView dashedStrip() {
         Context c = getContext();
         AppTheme app = AppTheme.of(c);
-        placeholder = new android.widget.TextView(c);
+        android.widget.TextView v = new android.widget.TextView(c);
         // 안내 글자는 윤곽선 층 위에 그린다 (영역 층에서는 이름표가 대신 알린다: drawOffHints).
         android.graphics.drawable.GradientDrawable d = new android.graphics.drawable.GradientDrawable();
         d.setColor(app.bg);
         d.setStroke(Ui.dp(c, 1), app.hint, Ui.dp(c, 4), Ui.dp(c, 3));
         d.setCornerRadius(Ui.dp(c, 8));
-        placeholder.setBackground(new android.graphics.drawable.InsetDrawable(d, Ui.dp(c, 8), Ui.dp(c, 3), Ui.dp(c, 8), Ui.dp(c, 3)));
-        return placeholder;
+        v.setBackground(new android.graphics.drawable.InsetDrawable(d, Ui.dp(c, 8), Ui.dp(c, 3), Ui.dp(c, 8), Ui.dp(c, 3)));
+        return v;
+    }
+
+    /** 숫자 줄 빈 칸이 미리보기에 놓여 있는지. */
+    private boolean numberOff() {
+        return numberPlaceholder != null && numberPlaceholder.getParent() != null;
     }
 
     /**
@@ -776,7 +793,9 @@ final class KeyboardPreview extends FrameLayout {
         boolean bottom = prefs.toolbarBottom();
         int barT = Ui.dp(c, prefs.areaPadDp(AREA_TOOLBAR, Prefs.SIDE_TOP));
         int barB = Ui.dp(c, prefs.areaPadDp(AREA_TOOLBAR, Prefs.SIDE_BOTTOM));
-        String colSig = shown + "," + bottom + "," + height + "," + lift + "," + raise + "," + barT + "," + barB;
+        // 키보드 사용자화에서 숫자 줄을 꺼 두면 그 자리에 빈 칸을 남겨 다시 눌러 켤 수 있게 한다 (기호 자판에는 숫자 줄 영역이 없다).
+        boolean numberGap = profileEdit == null && !balancedMode && tab != TAB_SYMBOLS && !prefs.numberRow();
+        String colSig = shown + "," + bottom + "," + height + "," + lift + "," + raise + "," + barT + "," + barB + "," + numberGap;
         if (colSig.equals(columnSignature)) return;
         columnSignature = colSig;
         column.removeAllViews();
@@ -791,6 +810,7 @@ final class KeyboardPreview extends FrameLayout {
         } else if (!bottom) {
             column.addView(bar, blp);
         }
+        if (numberGap) column.addView(numberPlaceholder(), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(c, 30)));
         column.addView(keys, klp);
         if (shown && bottom) column.addView(bar, blp);
     }
@@ -935,6 +955,10 @@ final class KeyboardPreview extends FrameLayout {
             listener.onTap(null);
             return;
         }
+        if (numberOff() && y >= numberPlaceholder.getTop() && y < numberPlaceholder.getBottom()) {
+            listener.onTap(null);
+            return;
+        }
         if (bar.getParent() != null && y >= bar.getTop() && y < bar.getBottom()) {
             for (int i = 0; i < bar.getChildCount(); i++) {
                 View b = bar.getChildAt(i);
@@ -1059,6 +1083,7 @@ final class KeyboardPreview extends FrameLayout {
     /** 영역 층의 영역 윤곽선: 영역에 그 영역의 위·아래 여백을 더한 자리 (여백의 바깥 가장자리). */
     boolean padBounds(int area, RectF out) {
         if (!areaBounds(area, out)) return false;
+        if (area == AREA_NUMBER && !numberRowShown) return true;   // 꺼 둔 숫자 줄 빈 칸: 여백이 없다
         Context c = getContext();
         out.top -= Ui.dp(c, prefs.areaPadDp(area, Prefs.SIDE_TOP));
         out.bottom += Ui.dp(c, prefs.areaPadDp(area, Prefs.SIDE_BOTTOM));
@@ -1089,7 +1114,11 @@ final class KeyboardPreview extends FrameLayout {
         int letterStart = numberRowShown ? 1 : 0;
         switch (area) {
             case AREA_NUMBER:
-                if (!numberRowShown) return false;
+                if (!numberRowShown) {
+                    if (!numberOff()) return false;
+                    out.set(numberPlaceholder.getLeft() + pad, numberPlaceholder.getTop() + pad, numberPlaceholder.getRight() - pad, numberPlaceholder.getBottom() - pad);
+                    return true;
+                }
                 first = last = 0;
                 break;
             case AREA_LETTERS:
@@ -1623,6 +1652,7 @@ final class KeyboardPreview extends FrameLayout {
         /** 꺼 두어 빈 칸만 남은 영역인지 (도구 막대·숫자 줄). */
         private boolean areaOff(int a) {
             if (a == AREA_TOOLBAR) return placeholder != null && placeholder.getParent() != null;
+            if (a == AREA_NUMBER) return numberOff();
             return false;
         }
 
@@ -1634,10 +1664,14 @@ final class KeyboardPreview extends FrameLayout {
             hintPaint.setTextAlign(Paint.Align.CENTER);
             hintPaint.setColor(withAlpha(AppTheme.of(ctx).hint, alpha));
             Paint.FontMetrics fm = hintPaint.getFontMetrics();
-            View v = placeholder;
-            if (v == null || v.getParent() == null) return;
-            float cy = column.getTop() + (v.getTop() + v.getBottom()) / 2f;
-            c.drawText("도구 막대 꺼짐 · 눌러서 설정", getWidth() / 2f, cy - (fm.ascent + fm.descent) / 2, hintPaint);
+            View[] strips = {placeholder, numberPlaceholder};
+            String[] texts = {"도구 막대 꺼짐 · 눌러서 설정", "숫자 줄 꺼짐 · 눌러서 설정"};
+            for (int i = 0; i < strips.length; i++) {
+                View v = strips[i];
+                if (v == null || v.getParent() == null) continue;
+                float cy = column.getTop() + (v.getTop() + v.getBottom()) / 2f;
+                c.drawText(texts[i], getWidth() / 2f, cy - (fm.ascent + fm.descent) / 2, hintPaint);
+            }
         }
 
         private final Paint hintPaint = new Paint(Paint.ANTI_ALIAS_FLAG);

@@ -1084,13 +1084,15 @@ public class EditorUiTest {
         shot(a, "85c-number-off");
         a.onBackPressed(); idle();
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(400));
-        // 목록의 '숫자 줄 설정' 버튼으로 다시 연다
-        View nrButton = findText(cur(a), "숫자 줄 설정");
-        while (!nrButton.isClickable()) nrButton = (View) nrButton.getParent();
-        nrButton.performClick(); idle();
+        // 목록에는 숫자 줄 섹션이 없고, 미리보기에 남은 점선 빈 칸을 눌러 다시 연다
+        assertNull(findText(cur(a), "숫자 줄 설정"));
+        android.graphics.RectF nrGap = new android.graphics.RectF();
+        assertTrue(p.areaBounds(KeyboardPreview.AREA_NUMBER, nrGap));
+        tap(p.getChildAt(1), nrGap.centerX(), nrGap.centerY());
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(400));
         assertTrue(open(a));
-        shot(a, "85d-number-sheet-from-list");
+        assertEquals(KeyboardPreview.AREA_NUMBER, p.selection().area());
+        shot(a, "85d-number-sheet-from-gap");
         nrRow = findText(cur(a), "숫자 줄 표시");
         while (!nrRow.isClickable()) nrRow = (View) nrRow.getParent();
         nrRow.performClick(); idle();
