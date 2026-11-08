@@ -857,8 +857,8 @@ public final class Prefs {
     }
 
     /**
-     * 영역별 여백 (dp, 0~32). 가로 모드·폴더블 내부 화면 보기에서 도구 막대·기능키는 '묶음 좌우 따라가기'를 끄면
-     * 따로 정한 값을 쓴다 (정하기 전에는 세로 모드 값). 켜 두면 세로 모드 값을 그대로 쓴다.
+     * 영역별 여백 (dp, 0~32). 가로 모드·폴더블 내부 화면 보기에서 도구 막대·기능키는 따로 정한 값을 쓴다
+     * (정하기 전에는 세로 모드 값).
      */
     public int areaPadDp(int area, int side) {
         return areaPadSeparate(area) ? profileAreaPadDp(area, side) : portraitAreaPadDp(area, side);
@@ -868,13 +868,12 @@ public final class Prefs {
         return clamp(sp.getInt(areaPadKey(area, side), 0), 0, AREA_PAD_MAX);
     }
 
-    /** 이 보기에서 영역 여백을 세로 모드와 따로 쓰는지: 가로 모드·폴더블 내부 화면의 도구 막대·기능키가 묶음을 따라가지 않을 때. */
+    /** 이 보기에서 영역 여백을 세로 모드와 따로 쓰는지: 가로 모드·폴더블 내부 화면의 도구 막대·기능키. */
     public boolean areaPadSeparate(int area) {
-        if (!profileSize()) return false;
-        return area == 0 ? !getRawFollow() : area == 3 && !getRawFnFollow();
+        return profileSize() && (area == 0 || area == 3);
     }
 
-    /** 가로 모드·폴더블 내부 화면 보기에서 따로 정한 영역 여백 (정하기 전에는 세로 모드 값). 따라가기 설정과 상관없이 저장된 값이다. */
+    /** 가로 모드·폴더블 내부 화면 보기에서 따로 정한 영역 여백 (정하기 전에는 세로 모드 값). */
     public int profileAreaPadDp(int area, int side) {
         return clamp(sp.getInt(profileAreaPadKey(area, side), portraitAreaPadDp(area, side)), 0, AREA_PAD_MAX);
     }

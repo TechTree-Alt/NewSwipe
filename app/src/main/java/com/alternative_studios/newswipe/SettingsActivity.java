@@ -1921,9 +1921,20 @@ public final class SettingsActivity extends Activity {
         profilePreview = new KeyboardPreview(this, prefs, new KeyboardPreview.Listener() {
             @Override public void onTap(KeyboardPreview.Selection s) { onProfileTap(s); }
             @Override public void onSizeChanged(String prefKey) { syncSizeSliders(prefKey); }
-            @Override public void onLayerChanged(int layer) { }
+            @Override public void onLayerChanged(int layer) {
+                closeKeyPanel();   // 다른 페이지로 넘기면 고른 것이 풀린다
+                if (profileDots != null) {
+                    profileDots.setPage(layer);
+                    profileDots.announce(layer);
+                }
+            }
         });
         profilePreview.setProfileMode(prefs.profileEditView(profile), profileScreenWidth(profile));
+        // 키보드 사용자화처럼 미리보기 위에 페이지 표시: 키보드 전체 설정 · 영역 설정 (키 설정은 세로 모드와 함께 쓴다).
+        profileDots = new PageDots(this, java.util.Arrays.copyOf(PAGE_NAMES, 2), java.util.Arrays.copyOf(PAGE_DESCS, 2),
+                AppTheme.of(this), profilePreview::setLayer);
+        profileDots.setPage(profilePreview.layer());
+        pinnedBottom.addView(profileDots, matchWrap());
         pinnedBottom.addView(profilePreview, matchWrap());
         pinnedBottom.setVisibility(View.VISIBLE);
         // 영역 설정 창: 목록 위로 아래에서 올라온다 (키보드 사용자화와 같다).
@@ -1935,6 +1946,8 @@ public final class SettingsActivity extends Activity {
 
     /** 미리보기가 그리는 프로필 (폴더블 내부 화면은 세로·가로 버튼으로 바뀐다). */
     private String profileShown;
+    /** 가로 모드·폴더블 내부 화면 미리보기 위의 페이지 표시 (키보드 전체 설정 · 영역 설정). */
+    private PageDots profileDots;
 
     /** 미리보기에서 영역을 눌렀다: 그 영역의 설정 창을 연다. 빈 곳이나 이미 고른 영역이면 닫는다. */
     private void onProfileTap(KeyboardPreview.Selection s) {
@@ -1944,8 +1957,15 @@ public final class SettingsActivity extends Activity {
             return;
         }
         profilePreview.select(s);
-        int area = s.area();
         String profile = profileShown;
+        if (s.kind == KeyboardPreview.SEL_BOARD) {
+            fillAreaBox(() -> buildProfileBoard(profile));
+            sheet.setTitle("키보드 전체 설정");
+            sheet.scroll().scrollTo(0, 0);
+            if (!panelOpen()) openSheet();
+            return;
+        }
+        int area = s.area();
         boolean split = prefs.profileEditView(profile).profileSplit();
         fillAreaBox(() -> buildProfileArea(profile, area, split));
         sheet.setTitle(KeyboardPreview.profileAreaName(area) + " 설정");
@@ -1994,6 +2014,7 @@ public final class SettingsActivity extends Activity {
         addProfileSplit(p, "가로 모드");
         addProfileWhole(p, "화면을 가로로 돌렸을 때");
         harvestProfileAreas(p);
+        addProfilePads(p);   // 여백은 맨 아래 (기본값으로 되돌리기 바로 위)
     }
 
     /** 실험실: 아직 시험 중인 기능. */
@@ -2247,6 +2268,7 @@ public final class SettingsActivity extends Activity {
                 addProfileWhole(p, "폴더블 내부 화면에서");
                 addOneHandWidth(p, "폴더블 내부 화면에서");
                 harvestProfileAreas(p);
+                addProfilePads(p);
             }
             return;
         }
@@ -2267,6 +2289,7 @@ public final class SettingsActivity extends Activity {
         addProfileSplit(profile, "폴더블 내부 화면");
         addProfileWhole(profile, when);
         addOneHandWidth(profile, when);
+        addProfilePads(profile);   // 여백은 맨 아래 (기본값으로 되돌리기 바로 위)
     }
 
     /**
@@ -2297,16 +2320,40 @@ public final class SettingsActivity extends Activity {
         LinearLayout card = section("키보드 모양");
         card.addView(profileSlider("키 글자 크기", edit.textSizeKey(), edit::keyTextSize, Prefs.PROFILE_HEIGHT_MIN, 140, 5, "%"));
         card.addView(profileSlider("세로 위치", edit.liftKey(), edit::profileLiftDp, 0, 160, 4, "dp"));
+        card.addView(note(when + " 쓰는 값입니다. 키 글자 크기는 정하기 전에는 세로 모드('키보드 사용자화')의 값을 따릅니다. "
+                + "세로 위치는 키보드를 화면 아래에서 띄우는 높이로, 값이 클수록 키보드가 위로 올라갑니다 "
+                + "(한 손 모드에서는 한 손 모드의 세로 위치를 씁니다).\n"
+                + "그 밖의 값(도구 막대·숫자 줄 높이, 글자 키의 영역 여백, 키 사이 간격과 키 모양, 키마다 정한 설정)은 "
+                + "세로 모드와 같은 값을 씁니다. 바꾸려면 '키보드 사용자화'에서 바꿉니다. "
+                + "도구 막대와 기능키의 영역 여백은 미리보기에서 그 영역을 눌러 따로 정합니다."));
+    }
+
+    /**
+     * '여백' 섹션: 키보드 전체의 상하좌우 여백. 가로 모드, 폴더블 내부 화면 세로·가로가 각각 따로 정한다 (정하기 전에는 세로 모드 값).
+     * 미리보기의 키보드 전체 설정 페이지에서 키보드를 고르면 가장자리의 손잡이로도 바꿀 수 있다.
+     */
+    private void addProfilePads(String profile) {
+        Prefs edit = prefs.profileEditView(profile);
+        LinearLayout card = section("여백");
         card.addView(profileSlider("왼쪽 여백", edit.padKey(Prefs.SIDE_LEFT), edit::padLeftDp, 0, 24, 1, "dp"));
         card.addView(profileSlider("오른쪽 여백", edit.padKey(Prefs.SIDE_RIGHT), edit::padRightDp, 0, 24, 1, "dp"));
         card.addView(profileSlider("위쪽 여백", edit.padKey(Prefs.SIDE_TOP), edit::padTopDp, 0, 24, 1, "dp"));
         card.addView(profileSlider("아래쪽 여백", edit.padKey(Prefs.SIDE_BOTTOM), edit::padBottomDp, 0, 48, 1, "dp"));
-        card.addView(note(when + " 쓰는 값입니다. 키 글자 크기와 키보드 여백은 정하기 전에는 세로 모드('키보드 사용자화')의 값을 따릅니다. "
-                + "세로 위치는 키보드를 화면 아래에서 띄우는 높이로, 값이 클수록 키보드가 위로 올라갑니다 "
-                + "(한 손 모드에서는 한 손 모드의 세로 위치를 씁니다).\n"
-                + "그 밖의 값(도구 막대·숫자 줄 높이, 영역 여백, 키 사이 간격과 키 모양, 키마다 정한 설정)은 "
-                + "세로 모드와 같은 값을 씁니다. 바꾸려면 '키보드 사용자화'에서 바꿉니다. "
-                + "도구 막대와 기능키의 영역 여백은 각 영역 설정에서 '묶음 좌우 따라가기'를 끄면 따로 정할 수 있습니다."));
+        card.addView(note("키보드 전체 둘레의 여백입니다. 정하기 전에는 세로 모드('키보드 사용자화')의 값을 따릅니다. "
+                + "미리보기의 키보드 전체 설정 페이지에서 키보드를 고르면 가장자리의 손잡이를 끌어서도 바꿀 수 있습니다."));
+    }
+
+    /** 미리보기의 키보드 전체 설정 창: 그 프로필이 따로 정하는 키보드 모양(키 글자 크기·세로 위치)과 여백. */
+    private void buildProfileBoard(String profile) {
+        addProfileWhole(profile, profileWhen(profile));
+        addProfilePads(profile);
+    }
+
+    /** 프로필 설명에 쓰는 '언제' (예: 화면을 가로로 돌렸을 때). */
+    private static String profileWhen(String profile) {
+        if (Prefs.PROFILE_LARGE_LANDSCAPE.equals(profile)) return "폴더블 내부 화면을 가로로 들었을 때";
+        if (Prefs.PROFILE_LARGE_PORTRAIT.equals(profile)) return "폴더블 내부 화면을 세로로 들었을 때";
+        return "화면을 가로로 돌렸을 때";
     }
 
     /** 폴더블 내부 화면 세로·가로의 한 손 모드 자판 폭 (정하기 전에는 세로·가로 모드의 값). */
@@ -2434,19 +2481,18 @@ public final class SettingsActivity extends Activity {
             }
             case KeyboardPreview.AREA_TOOLBAR: {
                 LinearLayout c = section(portraitProfile ? "분리 키보드" : "도구 막대");
-                String followKey = edit.toolbarFollowKey();
-                boolean on = edit.getRawFollow();
-                View toolPads = portraitProfile ? null : profileAreaPads(edit, KeyboardPreview.AREA_TOOLBAR);
-                if (toolPads != null) toolPads.setVisibility(on ? View.GONE : View.VISIBLE);
-                c.addView(toggle("묶음 좌우 따라가기",
-                        "분리 키보드에서 도구 막대의 양 끝이 왼쪽 묶음의 왼쪽 끝과 오른쪽 묶음의 오른쪽 끝을 따라갑니다. "
-                                + "끄면 도구 막대는 키보드 전체 폭을 쓰고, 상하좌우 여백을 세로 모드와 따로 정할 수 있습니다.",
-                        on, v -> {
-                            prefs.raw().edit().putBoolean(followKey, v).apply();
-                            if (toolPads != null) Ui.setVisibleAnimated(toolPads, !v);
-                            refreshLayoutPreview();
-                        }));
-                if (toolPads != null) c.addView(toolPads);
+                // '묶음 좌우 따라가기'는 분리 키보드를 켰을 때만 (세로 모드 분리 키보드 창은 늘 분리 키보드다).
+                if (split) {
+                    String followKey = edit.toolbarFollowKey();
+                    c.addView(toggle("묶음 좌우 따라가기",
+                            "분리 키보드에서 도구 막대의 양 끝이 왼쪽 묶음의 왼쪽 끝과 오른쪽 묶음의 오른쪽 끝을 따라갑니다. "
+                                    + "끄면 도구 막대는 키보드 전체 폭을 씁니다.",
+                            edit.getRawFollow(), v -> {
+                                prefs.raw().edit().putBoolean(followKey, v).apply();
+                                refreshLayoutPreview();
+                            }));
+                }
+                if (!portraitProfile) addProfileAreaPads(c, edit, KeyboardPreview.AREA_TOOLBAR);
                 break;
             }
             case KeyboardPreview.AREA_MIDDLE: {
@@ -2470,19 +2516,16 @@ public final class SettingsActivity extends Activity {
                     c.addView(note("맨 아래 줄(스페이스바·기능키)의 높이로, 일반 키 높이에 대한 비율입니다. 정하기 전에는 세로 모드의 값을 "
                             + "따릅니다. 미리보기에서 고른 영역 위 가장자리의 손잡이를 위·아래로 끌어도 바뀝니다."));
                 }
+                if (!portraitProfile) addProfileAreaPads(c, edit, KeyboardPreview.AREA_FUNCTION);
                 if (!split) break;
                 String fnFollowKey = edit.fnFollowKey();
-                View fnPads = portraitProfile ? null : profileAreaPads(edit, KeyboardPreview.AREA_FUNCTION);
-                if (fnPads != null) fnPads.setVisibility(edit.getRawFnFollow() ? View.GONE : View.VISIBLE);
                 c.addView(toggle("묶음 좌우 따라가기",
                         "분리 키보드에서 기능키 줄의 양 끝이 왼쪽 묶음의 왼쪽 끝과 오른쪽 묶음의 오른쪽 끝을 따라갑니다. "
-                                + "끄면 기능키 줄은 키보드 전체 폭을 쓰고, 상하좌우 여백을 세로 모드와 따로 정할 수 있습니다.",
+                                + "끄면 기능키 줄은 키보드 전체 폭을 씁니다.",
                         edit.getRawFnFollow(), v -> {
                             prefs.raw().edit().putBoolean(fnFollowKey, v).apply();
-                            if (fnPads != null) Ui.setVisibleAnimated(fnPads, !v);
                             refreshLayoutPreview();
                         }));
-                if (fnPads != null) c.addView(fnPads);
                 // 스페이스바 잇기 (분리 키보드): 이었을 때만 하단 기능키 폭을 정한다.
                 View fnWidth = subGroup(
                         profileSlider("하단 기능키 폭", edit.splitFnWidthKey(), edit::splitFnWidthSetting, 50, 200, 5, "%"),
@@ -2506,16 +2549,18 @@ public final class SettingsActivity extends Activity {
     }
 
     /**
-     * 가로 모드·폴더블 내부 화면의 영역(도구 막대·기능키) 상하좌우 여백 슬라이더: '묶음 좌우 따라가기'를 껐을 때만 보인다.
+     * 가로 모드·폴더블 내부 화면의 영역(도구 막대·기능키) 상하좌우 여백 슬라이더. 세로 모드와 따로 정하고,
      * 정하기 전에는 세로 모드('키보드 사용자화')의 영역 여백을 따른다.
      */
-    private View profileAreaPads(Prefs edit, int area) {
-        return subGroup(
+    private void addProfileAreaPads(LinearLayout c, Prefs edit, int area) {
+        for (View v : new View[]{
                 profileSlider("왼쪽 여백", edit.profileAreaPadKey(area, Prefs.SIDE_LEFT), () -> edit.profileAreaPadDp(area, Prefs.SIDE_LEFT), 0, Prefs.AREA_PAD_MAX, 1, "dp"),
                 profileSlider("오른쪽 여백", edit.profileAreaPadKey(area, Prefs.SIDE_RIGHT), () -> edit.profileAreaPadDp(area, Prefs.SIDE_RIGHT), 0, Prefs.AREA_PAD_MAX, 1, "dp"),
                 profileSlider("위쪽 여백", edit.profileAreaPadKey(area, Prefs.SIDE_TOP), () -> edit.profileAreaPadDp(area, Prefs.SIDE_TOP), 0, Prefs.AREA_PAD_MAX, 1, "dp"),
                 profileSlider("아래쪽 여백", edit.profileAreaPadKey(area, Prefs.SIDE_BOTTOM), () -> edit.profileAreaPadDp(area, Prefs.SIDE_BOTTOM), 0, Prefs.AREA_PAD_MAX, 1, "dp"),
-                note("키보드 전체 여백에 더해지는 영역 여백입니다. 정하기 전에는 세로 모드('키보드 사용자화')의 영역 여백을 따릅니다."));
+                note("키보드 전체 여백에 더해지는 영역 여백입니다. 정하기 전에는 세로 모드('키보드 사용자화')의 영역 여백을 따릅니다.")}) {
+            c.addView(v);
+        }
     }
 
     /** 글자 키 높이 (글자 키·두 묶음 창이 함께 쓴다). */

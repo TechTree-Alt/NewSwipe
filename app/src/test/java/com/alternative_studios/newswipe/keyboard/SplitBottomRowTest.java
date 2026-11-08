@@ -852,24 +852,26 @@ public class SplitBottomRowTest {
     }
 
     @Test
-    public void toolbarAndFnAreaPaddingIsSeparateOnlyWhenNotFollowingBlocks() throws Exception {
+    public void toolbarAndFnAreaPaddingIsSeparateFromPortrait() throws Exception {
         FakeSp sp = new FakeSp();
         Prefs land = editView(sp, Prefs.PROFILE_LANDSCAPE), port = editView(sp, Prefs.PROFILE_PORTRAIT);
         sp.m.put(Prefs.areaPadKey(0, Prefs.SIDE_LEFT), 6);
         sp.m.put(Prefs.areaPadKey(3, Prefs.SIDE_TOP), 7);
-        sp.m.put(land.profileAreaPadKey(0, Prefs.SIDE_LEFT), 2);
-        sp.m.put(land.profileAreaPadKey(3, Prefs.SIDE_TOP), 3);
-        // 따라가기를 켜 두면(기본) 세로 모드 값을 그대로 쓴다.
+        sp.m.put(Prefs.areaPadKey(2, Prefs.SIDE_LEFT), 9);
+        // 정하기 전에는 세로 모드 값을 따른다.
         assertEquals(6, land.areaPadDp(0, Prefs.SIDE_LEFT));
         assertEquals(7, land.areaPadDp(3, Prefs.SIDE_TOP));
-        // 도구 막대만 끄면 도구 막대만 따로 쓴다.
-        sp.m.put(land.toolbarFollowKey(), false);
-        assertEquals(2, land.areaPadDp(0, Prefs.SIDE_LEFT));
-        assertEquals(7, land.areaPadDp(3, Prefs.SIDE_TOP));
-        sp.m.put(land.fnFollowKey(), false);
-        assertEquals(3, land.areaPadDp(3, Prefs.SIDE_TOP));
-        // 정하지 않은 쪽은 세로 모드 값, 세로 모드는 늘 자기 값.
-        assertEquals(0, land.areaPadDp(0, Prefs.SIDE_TOP));
+        // 따라가기 설정과 상관없이 가로 모드 값을 따로 쓴다.
+        sp.m.put(land.profileAreaPadKey(0, Prefs.SIDE_LEFT), 2);
+        sp.m.put(land.profileAreaPadKey(3, Prefs.SIDE_TOP), 3);
+        for (boolean follow : new boolean[]{true, false}) {
+            sp.m.put(land.toolbarFollowKey(), follow);
+            sp.m.put(land.fnFollowKey(), follow);
+            assertEquals(2, land.areaPadDp(0, Prefs.SIDE_LEFT));
+            assertEquals(3, land.areaPadDp(3, Prefs.SIDE_TOP));
+        }
+        // 다른 영역과 세로 모드는 세로 모드 값.
+        assertEquals(9, land.areaPadDp(2, Prefs.SIDE_LEFT));
         assertEquals(6, port.areaPadDp(0, Prefs.SIDE_LEFT));
         assertEquals(7, port.areaPadDp(3, Prefs.SIDE_TOP));
     }
