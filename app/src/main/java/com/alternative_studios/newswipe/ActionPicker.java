@@ -175,12 +175,11 @@ final class ActionPicker {
         return dialog[0];
     }
 
-    /** 갈래 머리글: 강조색의 작은 굵은 글씨 (설정 화면의 묶음 제목처럼). */
+    /** 갈래 머리글: 강조색의 작은 글씨 (설정 화면의 묶음 제목처럼). */
     private static TextView header(Context c, AppTheme colors, String name, boolean first) {
         TextView t = new TextView(c);
         t.setText(name);
-        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        t.setTypeface(Typeface.DEFAULT_BOLD);
+        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         t.setTextColor(colors.accent);
         t.setPadding(Ui.dp(c, 12), Ui.dp(c, first ? 4 : 12), Ui.dp(c, 12), Ui.dp(c, 4));
         t.setAccessibilityHeading(true);
