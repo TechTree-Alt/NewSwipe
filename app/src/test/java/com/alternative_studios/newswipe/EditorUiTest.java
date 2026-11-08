@@ -257,7 +257,13 @@ public class EditorUiTest {
         float dn = a.getResources().getDisplayMetrics().density;
         log("raised bar top=" + topBar.getTop() + " keys top=" + kv.getTop() + " bar bottom=" + topBar.getBottom());
         assertEquals(Math.round(prefs.padTopDp() * dn), topBar.getTop());
-        assertEquals(topBar.getBottom(), kv.getTop());
+        // 바로 밑은 자판, 숫자 줄을 꺼 두었으면 그 자리의 점선 빈 칸 (그 바로 밑이 자판)
+        View underBar = ((ViewGroup) p.getChildAt(0)).getChildAt(1);
+        assertEquals(topBar.getBottom(), underBar.getTop());
+        if (underBar != kv) {
+            assertFalse(prefs.numberRow());
+            assertEquals(underBar.getBottom(), kv.getTop());
+        }
         shot(a, "05c-top-padding-above-toolbar");
         prefs.raw().edit().putInt(Prefs.PAD_TOP, 0).commit();
         idle();
