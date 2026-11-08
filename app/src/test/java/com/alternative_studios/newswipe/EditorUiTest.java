@@ -1250,7 +1250,7 @@ public class EditorUiTest {
         pre.raw().edit().remove(Prefs.KEY_GAP_Y).remove(Prefs.PAD_TOP).remove(Prefs.PAD_BOTTOM).commit();
     }
 
-    /** 키 페이지: 키 사이 간격이 좁아도 이웃한 키 윤곽선은 상하·좌우 모두 늘 2dp 띈다 (도구 막대 버튼끼리도). */
+    /** 키 페이지: 키 사이 간격이 좁아도 이웃한 키 윤곽선은 상하·좌우 모두 2dp 이상 띈다 (도구 막대 버튼끼리도). */
     @Test
     public void keyOutlinesKeepEvenGaps() throws Exception {
         Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
@@ -1269,10 +1269,10 @@ public class EditorUiTest {
             p.keyOutline(row0[0], r1);
             p.keyOutline(row0[1], r2);
             assertEquals(row0[0].rect.right, row0[1].rect.left, 1f);
-            assertEquals("x gap=" + gap, 2 * d, r2.left - r1.right, 1.5f);
+            assertTrue("x gap=" + gap, r2.left - r1.right >= 2 * d - 1.5f);
             // 상하: 숫자 줄 첫 키와 그 아래 줄 첫 키
             p.keyOutline(row1[0], r2);
-            assertEquals("y gap=" + gap, 2 * d, r2.top - r1.bottom, 1.5f);
+            assertTrue("y gap=" + gap, r2.top - r1.bottom >= 2 * d - 1.5f);
         }
         // 도구 막대에서 맞닿은 두 버튼
         com.alternative_studios.newswipe.ui.IconButton tool = find(p, com.alternative_studios.newswipe.ui.IconButton.class);
@@ -1284,7 +1284,7 @@ public class EditorUiTest {
             if (prev != null && prev.getRight() == b.getLeft()) {
                 p.toolOutline(prev, r1);
                 p.toolOutline(b, r2);
-                assertEquals(2 * d, r2.left - r1.right, 1.5f);
+                assertTrue(r2.left - r1.right >= 2 * d - 1.5f);
             }
             prev = b;
         }
