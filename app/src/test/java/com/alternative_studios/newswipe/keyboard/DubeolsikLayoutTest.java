@@ -352,19 +352,20 @@ public class DubeolsikLayoutTest {
     }
 
     @Test
-    public void balancedIsRememberedPerLayout() throws Exception {
+    public void balancedIsSharedByAllLayouts() throws Exception {
         FakeSp sp = dubeolsik(true);
         Prefs p = portrait(sp);
         assertTrue(p.balancedLayout());
         p.setKoreanLayout(Prefs.KOREAN_LAYOUT_8);
-        assertFalse(portrait(sp).balancedLayout());   // 8열 단모음의 값은 따로 (정하지 않았으면 꺼짐)
-        assertEquals(8, KeyboardLayout.korean(portrait(sp)).columns);
+        assertTrue(portrait(sp).balancedLayout());   // 모든 한글 배열이 같은 값을 쓴다
         p.setKoreanLayout(Prefs.KOREAN_LAYOUT_DUBEOLSIK);
         assertTrue(portrait(sp).balancedLayout());
-        // 배열별로 나누기 전의 균형 배열 값(8열 단모음)은 두벌식에 이어지지 않는다
+        // 함께 쓰기 전에 배열마다 저장하던 값은 새 값을 정하기 전까지 그 배열이 이어 쓴다
         FakeSp legacy = new FakeSp();
-        legacy.m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_DUBEOLSIK);
-        legacy.m.put(Prefs.BALANCED_LAYOUT, true);
+        legacy.m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_8);
+        legacy.m.put(Prefs.BALANCED_LAYOUT + "_" + Prefs.KOREAN_LAYOUT_8, true);
+        assertTrue(portrait(legacy).balancedLayout());
+        legacy.m.put(Prefs.BALANCED_LAYOUT, false);
         assertFalse(portrait(legacy).balancedLayout());
     }
 

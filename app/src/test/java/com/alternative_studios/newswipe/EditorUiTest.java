@@ -1329,12 +1329,12 @@ public class EditorUiTest {
         shadowOf(detail).clickOnItem(2);   // 분리 키보드
         idle();
         assertTrue(prefs.portraitSplit());
-        assertTrue(prefs.raw().getBoolean(Prefs.PORTRAIT_SPLIT + "_" + Prefs.KOREAN_LAYOUT_DUBEOLSIK, false));
+        assertTrue(prefs.raw().getBoolean(Prefs.PORTRAIT_SPLIT, false));
         assertTrue(visibleTexts(cur(a)).contains("상세 배열\n  분리 키보드"));
-        findText(cur(a), "단모음").performClick();   // 분리 키보드는 배열마다 따로 기억한다
+        findText(cur(a), "단모음").performClick();   // 분리 키보드는 모든 배열이 함께 쓴다
         idle();
-        assertFalse(prefs.portraitSplit());
-        assertTrue(visibleTexts(cur(a)).contains("상세 배열\n  사용 안 함"));
+        assertTrue(prefs.portraitSplit());
+        assertTrue(visibleTexts(cur(a)).contains("상세 배열\n  분리 키보드"));
         findText(cur(a), "두벌식").performClick();
         idle();
         assertTrue(prefs.portraitSplit());
@@ -1344,7 +1344,7 @@ public class EditorUiTest {
         idle();
         assertFalse(prefs.portraitSplit());
         assertTrue(prefs.balancedLayout());
-        assertTrue(prefs.raw().getBoolean(Prefs.BALANCED_LAYOUT + "_" + Prefs.KOREAN_LAYOUT_DUBEOLSIK, false));
+        assertTrue(prefs.raw().getBoolean(Prefs.BALANCED_LAYOUT, false));
         assertTrue(visibleTexts(cur(a)).contains("영어 자판도 균형 배열"));
         View enRow = (View) findText(cur(a), "영어 자판도 균형 배열").getParent().getParent();
         enRow.performClick();
@@ -1370,11 +1370,11 @@ public class EditorUiTest {
         idle();
         assertEquals(10, p.layout().columns);
         shot(a, "a2-dubeolsik-balanced-grid");
-        // 다른 배열로 바꾸면 그 배열의 균형 배열 값으로 (두벌식의 값은 기억)
+        // 균형 배열 값은 모든 한글 배열이 함께 쓴다
         findText(cur(a), "단모음").performClick();
         idle();
         assertFalse(prefs.koreanDubeolsik());
-        assertEquals(8, p.layout().columns);
+        assertTrue(prefs.balancedLayout());
         findText(cur(a), "두벌식").performClick();
         idle();
         assertTrue(prefs.balancedLayout());
@@ -1399,7 +1399,7 @@ public class EditorUiTest {
         assertFalse(prefs.raw().contains(Prefs.KOREAN_SHIFT_HIDDEN));
         pre.raw().edit().remove(Prefs.DUBEOLSIK_SHIFT_HIDDEN).commit();
         pre.raw().edit().remove(Prefs.KOREAN_LAYOUT).remove(Prefs.LANDSCAPE_SPLIT).remove(Prefs.NUMBER_ROW)
-                .remove(Prefs.BALANCED_LAYOUT + "_" + Prefs.KOREAN_LAYOUT_DUBEOLSIK).commit();
+                .remove(Prefs.BALANCED_LAYOUT).remove(Prefs.PORTRAIT_SPLIT).commit();
     }
 
     /**

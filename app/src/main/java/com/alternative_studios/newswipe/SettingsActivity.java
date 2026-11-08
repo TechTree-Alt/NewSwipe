@@ -1706,12 +1706,12 @@ public final class SettingsActivity extends Activity {
         englishBalanced.setVisibility(englishBalancedShown() ? View.VISIBLE : View.GONE);
         View keyArea = fold(subGroup(button("균형 배열 사용자화", v -> openSection(KEY_AREA)), englishBalanced));
         // 상세 배열: 사용 안 함·자·모음 균형 배열·분리 키보드 중 하나 (스페이스바 길게 누르기처럼 줄을 눌러 고른다).
-        // 균형 배열과 분리 키보드(세로 모드) 모두 배열마다 따로 기억한다.
+        // 균형 배열과 분리 키보드(세로 모드) 모두 모든 한글 배열이 함께 쓴다.
         SettingsWidgets.ValueRow[] detail = new SettingsWidgets.ValueRow[1];
         detail[0] = widgets.valueRow("상세 배열", DETAIL_LAYOUTS[detailLayout()], v ->
                 pickDetailLayout(mode -> {
                     android.content.SharedPreferences.Editor e = prefs.raw().edit();
-                    e.putBoolean(prefs.portraitSplitKey(), mode == DETAIL_SPLIT);
+                    e.putBoolean(Prefs.PORTRAIT_SPLIT, mode == DETAIL_SPLIT);
                     if (mode != DETAIL_SPLIT) e.putBoolean(prefs.balancedLayoutKey(), mode == DETAIL_BALANCED);
                     e.apply();
                     detail[0].set(DETAIL_LAYOUTS[mode]);

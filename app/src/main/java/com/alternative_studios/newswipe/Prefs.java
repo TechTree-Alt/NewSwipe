@@ -112,7 +112,7 @@ public final class Prefs {
     /** 가로 모드 분리 키보드: 가로 모드에서 자·모음 균형 배열로 자판을 나눈다. 한글 배열마다 따로 저장한다: 이 이름 + "_" + 배열 값. */
     public static final String LANDSCAPE_SPLIT = "landscape_split";
     /**
-     * 세로 모드 분리 키보드 ('한글 글자 키 설정'의 '상세 배열'. 켜짐 값은 이 이름 + "_" + 한글 배열 값으로 배열마다 따로 저장). 세로 모드의 분리 키보드 세부 값
+     * 세로 모드 분리 키보드 ('한글 글자 키 설정'의 '상세 배열'). 세로 모드의 분리 키보드 세부 값
      * (묶음 폭·위치, 스페이스바 잇기 등)은 모두 이 이름으로 시작하는 키에 따로 저장한다 (PORTRAIT_PREFIX).
      */
     public static final String PORTRAIT_SPLIT = "portrait_split";
@@ -485,9 +485,9 @@ public final class Prefs {
             new EditorScope(AREA_SCOPES[2], "글자 키 공통 (높이·길게 누르기·밀기·여백)", keys(KEYBOARD_HEIGHT, LONG_PRESS_MS,
                     POPUP_HINT_HIDDEN, SWIPE_THRESHOLD, SWIPE_PICK_SUGGESTION, PORTRAIT_PREFIX + SPLIT_REACH_COLUMN),
                     keys(AREA_PAD_PREFIX + PAD_AREAS[2] + "_", "swipe_kb_", PORTRAIT_PREFIX + "balanced_")),
-            new EditorScope(SCOPE_LETTERS_KO, "한글 글자 키 (자판 배열·균형 배열·쌍자음·이중모음 입력)", keys(KOREAN_LAYOUT,
+            new EditorScope(SCOPE_LETTERS_KO, "한글 글자 키 (자판 배열·상세 배열·쌍자음·이중모음 입력)", keys(KOREAN_LAYOUT,
                     DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT, DOUBLE_TAP_CONSONANT_MS, SWIPE_DOWN_CONSONANT, SWIPE_DOWN_VOWEL,
-                    ENGLISH_BALANCED),
+                    ENGLISH_BALANCED, PORTRAIT_SPLIT),
                     keys(BALANCED_LAYOUT)),
             new EditorScope(SCOPE_LETTERS_EN, "영어 글자 키 (자동 대문자·대문자 밀기·이메일 입력란)", keys(AUTO_CAP,
                     ENGLISH_FIELDS, ENGLISH_SWIPE_UPPER), NONE),
@@ -933,8 +933,8 @@ public final class Prefs {
         return koreanD7() ? KOREAN_LAYOUT_D7 : KOREAN_LAYOUT_8;
     }
 
-    /** 지금 한글 배열의 자·모음 균형 배열 설정 키. */
-    public String balancedLayoutKey() { return BALANCED_LAYOUT + "_" + koreanLayoutId(); }
+    /** 자·모음 균형 배열 설정 키. 모든 한글 배열이 함께 쓴다. */
+    public String balancedLayoutKey() { return BALANCED_LAYOUT; }
 
     /**
      * 지금 한글 배열에서 자·모음 균형 배열을 쓰는지. 배열마다 따로 기억한다.
@@ -955,25 +955,16 @@ public final class Prefs {
     public boolean balancedLayoutSetting() {
         String key = balancedLayoutKey();
         if (sp.contains(key)) return sp.getBoolean(key, false);
-        // 배열별로 나누기 전의 값은 8열 단모음의 것이다.
-        return KOREAN_LAYOUT_8.equals(koreanLayoutId()) && sp.getBoolean(BALANCED_LAYOUT, false);
+        // 모든 배열이 함께 쓰기 전에 배열마다 따로 저장하던 값(이 이름 + "_" + 배열)은 정하기 전까지 그 배열이 이어 쓴다.
+        return sp.getBoolean(BALANCED_LAYOUT + "_" + koreanLayoutId(), false);
     }
     private boolean large() { return profile.startsWith(LARGE_PREFIX); }
 
     /** 세로 모드(폴더블 내부 화면이 아닌) 보기인지. */
     private boolean portrait() { return profile.isEmpty(); }
 
-    /** 지금 한글 배열의 세로 모드 분리 키보드 설정 키. 배열마다 따로 저장한다: PORTRAIT_SPLIT + "_" + 배열 값. */
-    public String portraitSplitKey() { return PORTRAIT_SPLIT + "_" + koreanLayoutId(); }
-
-    /**
-     * 세로 모드에서 분리 키보드를 쓰는지 ('한글 글자 키 설정'의 '상세 배열', 기본 꺼짐). 배열마다 따로 기억한다.
-     * 배열별로 나누기 전의 값(이름 뒤에 배열이 없는 값)은 정해 둔 적 없는 배열이 이어 쓴다.
-     */
-    public boolean portraitSplit() {
-        String key = portraitSplitKey();
-        return sp.contains(key) ? sp.getBoolean(key, false) : sp.getBoolean(PORTRAIT_SPLIT, false);
-    }
+    /** 세로 모드에서 분리 키보드를 쓰는지 ('한글 글자 키 설정'의 '상세 배열', 기본 꺼짐). 모든 한글 배열이 함께 쓴다. */
+    public boolean portraitSplit() { return sp.getBoolean(PORTRAIT_SPLIT, false); }
 
 
 
@@ -991,7 +982,7 @@ public final class Prefs {
      * (예전에는 배열마다 따로 저장했다: 이 키 + "_" + 배열. 새 값이 없으면 그 값을 이어 쓴다.)
      */
     public String splitKey() {
-        if (portrait()) return portraitSplitKey();
+        if (portrait()) return PORTRAIT_SPLIT;
         return large() ? LARGE_PREFIX + "split_" + LARGE_LAYOUT_SIDE : LANDSCAPE_SPLIT;
     }
 
