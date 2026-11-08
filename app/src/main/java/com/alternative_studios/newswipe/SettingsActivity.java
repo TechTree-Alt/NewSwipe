@@ -89,7 +89,7 @@ public final class SettingsActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         prefs = new Prefs(this);
-        // 설정 화면은 세로로 고정이지만(매니페스트), 가로 모드·내부 화면 키보드 사용자화는 화면을 돌려 가며 미리보기를 볼 수 있다.
+        // 설정 화면은 세로로 고정이지만(매니페스트), 가로 모드·폴더블 내부 화면 키보드 사용자화는 화면을 돌려 가며 미리보기를 볼 수 있다.
         String openId = getIntent().getStringExtra(EXTRA_SECTION);
         if (LANDSCAPE_AREA.equals(openId) || LARGE_AREA.equals(openId)) {
             setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
@@ -114,9 +114,9 @@ public final class SettingsActivity extends Activity {
         // 위쪽 머리글(고정) + 아래 스크롤 목록
         String sectionId = getIntent().getStringExtra(EXTRA_SECTION);
         String sectionName = sectionId == null ? null : sectionTitle(sectionId);
-        // 내부 화면 키보드 사용자화는 지금 화면 방향의 설정을 보여 주므로 제목에도 방향을 붙인다.
+        // 폴더블 내부 화면 키보드 사용자화는 지금 화면 방향의 설정을 보여 주므로 제목에도 방향을 붙인다.
         if (LARGE_AREA.equals(sectionId) && largeProfileNow() != null) {
-            sectionName = Prefs.PROFILE_LARGE_LANDSCAPE.equals(largeProfileNow()) ? "내부 화면 가로 키보드 사용자화" : "내부 화면 세로 키보드 사용자화";
+            sectionName = Prefs.PROFILE_LARGE_LANDSCAPE.equals(largeProfileNow()) ? "폴더블 내부 화면 가로 키보드 사용자화" : "폴더블 내부 화면 세로 키보드 사용자화";
         }
         SettingsFrame frame = sectionName == null
                 ? new SettingsFrame(this, getString(R.string.app_name), "밀어서 입력하고 조작하는 한국어 입력 시스템")
@@ -212,7 +212,7 @@ public final class SettingsActivity extends Activity {
             {"clipemoji", "클립보드 및 이모지", "클립보드 기록, 편집 버튼, 이모지 크기·추천"},
             {"onehand", "한 손 모드", "자판 폭·키 높이, 세로 위치"},
             {"backup", "설정 가져오기 및 내보내기", "모든 설정을 파일로 저장하거나 불러오기"},
-            {"lab", "실험실", "내부 화면 별도 키보드, 외국어 자판, 외장 키보드"},
+            {"lab", "실험실", "폴더블 내부 화면 별도 키보드, 외국어 자판, 외장 키보드"},
     };
 
     /** 첫 화면 맨 위에 설정 메뉴와 따로 두는 항목. */
@@ -237,7 +237,7 @@ public final class SettingsActivity extends Activity {
             case LICENSES: return "오픈소스 라이선스";
             case KEY_AREA: return "균형 배열 사용자화";
             case LANDSCAPE_AREA: return "가로 모드 키보드 사용자화";
-            case LARGE_AREA: return "내부 화면 키보드 사용자화";
+            case LARGE_AREA: return "폴더블 내부 화면 키보드 사용자화";
             default: return null;
         }
     }
@@ -249,7 +249,7 @@ public final class SettingsActivity extends Activity {
             return;
         }
         buildScreen(id);
-        // 키보드 사용자화는 목록 안에 따로 둔다. 내부 화면이 아니면 내부 화면 키보드 사용자화에는 안내 문구만 둔다.
+        // 키보드 사용자화는 목록 안에 따로 둔다. 폴더블 내부 화면이 아니면 폴더블 내부 화면 키보드 사용자화에는 안내 문구만 둔다.
         if (hasReset(id) && !KEYBOARD.equals(id) && !(LARGE_AREA.equals(id) && largeProfileNow() == null)) addResetButton(id);
     }
 
@@ -275,7 +275,7 @@ public final class SettingsActivity extends Activity {
         }
     }
 
-    /** 기본값으로 되돌릴 설정이 있는 메뉴인지 (설정 메뉴와 키 위치·폭, 가로 모드·내부 화면 키보드 사용자화 화면. 정보·가져오기 및 내보내기·학습한 단어 등은 제외). */
+    /** 기본값으로 되돌릴 설정이 있는 메뉴인지 (설정 메뉴와 키 위치·폭, 가로 모드·폴더블 내부 화면 키보드 사용자화 화면. 정보·가져오기 및 내보내기·학습한 단어 등은 제외). */
     private static boolean hasReset(String id) {
         if (KEY_AREA.equals(id) || LANDSCAPE_AREA.equals(id) || LARGE_AREA.equals(id)) return true;
         for (String[] sec : SECTIONS) if (sec[0].equals(id) && !"backup".equals(id)) return true;
@@ -292,7 +292,7 @@ public final class SettingsActivity extends Activity {
         if (KEY_AREA.equals(id)) prefs.resetBalancedKeys();
         else if (LANDSCAPE_AREA.equals(id)) prefs.profileEditView(Prefs.PROFILE_LANDSCAPE).resetProfileArea();
         else if (LARGE_AREA.equals(id)) {
-            // 지금 화면 방향(내부 화면 세로·가로)의 값만 되돌린다.
+            // 지금 화면 방향(폴더블 내부 화면 세로·가로)의 값만 되돌린다.
             String now = largeProfileNow();
             if (now != null) prefs.profileEditView(now).resetProfileArea();
         }
@@ -457,9 +457,9 @@ public final class SettingsActivity extends Activity {
             {KEYBOARD, "기호 자판 대신 숫자 패드 사용", "숫자 패드 넘버 패드 3×4 숫자 자판 기호 키 ?123 계산기 전화"},
             {"lab", "아래로 밀기 엄격도", "스와이프 방향 판정 민감도"},
             {"lab", "위로 밀기 엄격도", "스와이프 방향 판정 민감도"},
-            {"lab", "내부 화면 판정 기준", "대화면 태블릿 폴더블 큰 화면 dp"},
-            {"lab", "내부 화면 키보드 사용자화", "대화면 태블릿 폴더블 큰 화면"},
-            {"lab", "폴더블 내부 화면 별도 키보드", "대화면 레이아웃 태블릿 폴더블 큰 화면"},
+            {"lab", "폴더블 내부 화면 판정 기준", "대화면 폴더블 큰 화면 dp"},
+            {"lab", "폴더블 내부 화면 키보드 사용자화", "대화면 폴더블 큰 화면"},
+            {"lab", "폴더블 내부 화면 별도 키보드", "대화면 레이아웃 폴더블 큰 화면"},
             {"lab", "한·영 전환 키 바꾸기", "한영 한/영 전환 언어 전환 키 외장 키보드 블루투스 USB 물리 하드웨어"},
             {"lab", "한·영 키", "한영 한/영 전환 언어 전환 키 외장 키보드"},
             {"lab", "한·영 키 직접 지정", "한영 한/영 전환 키 바꾸기 외장 키보드"},
@@ -1814,7 +1814,7 @@ public final class SettingsActivity extends Activity {
         pinned.setVisibility(View.VISIBLE);
     }
 
-    /** 가로 모드·내부 화면 키보드 사용자화 화면 아래의 미리보기 (그 프로필의 값만 손잡이로 바꾼다). 다른 화면에서는 null. */
+    /** 가로 모드·폴더블 내부 화면 키보드 사용자화 화면 아래의 미리보기 (그 프로필의 값만 손잡이로 바꾼다). 다른 화면에서는 null. */
     private KeyboardPreview profilePreview;
 
     /**
@@ -1839,7 +1839,7 @@ public final class SettingsActivity extends Activity {
         sheet.body().addView(areaBox, matchWrap());
     }
 
-    /** 미리보기가 그리는 프로필 (내부 화면은 세로·가로 버튼으로 바뀐다). */
+    /** 미리보기가 그리는 프로필 (폴더블 내부 화면은 세로·가로 버튼으로 바뀐다). */
     private String profileShown;
 
     /** 미리보기에서 영역을 눌렀다: 그 영역의 설정 창을 연다. 빈 곳이나 이미 고른 영역이면 닫는다. */
@@ -1881,7 +1881,7 @@ public final class SettingsActivity extends Activity {
         intro.addView(note("세로 상태에서는 키보드 미리보기가 작게 보일 수 있습니다. 실제 크기의 미리보기를 원하시면 기기를 가로로 돌리세요."));
     }
 
-    /** 가로 모드·내부 화면의 값 슬라이더: 바꾸면 미리보기를 다시 그리고, 미리보기의 손잡이를 끌면 따라 움직인다. */
+    /** 가로 모드·폴더블 내부 화면의 값 슬라이더: 바꾸면 미리보기를 다시 그리고, 미리보기의 손잡이를 끌면 따라 움직인다. */
     private View profileSlider(String label, String key, java.util.function.IntSupplier current, int min, int max, int step,
                                String unit) {
         SettingsWidgets.Slider sl = sliderRow(label, key, current.getAsInt(), min, max, step, unit, this::refreshLayoutPreview);
@@ -1918,11 +1918,11 @@ public final class SettingsActivity extends Activity {
 
         LinearLayout large = section("폴더블 내부 화면 별도 키보드");
         View largeGroup = subGroup(
-                slider("내부 화면 판정 기준", Prefs.LARGE_SCREEN_DP, prefs.largeScreenDp(),
+                slider("폴더블 내부 화면 판정 기준", Prefs.LARGE_SCREEN_DP, prefs.largeScreenDp(),
                         Prefs.LARGE_SCREEN_DP_MIN, Prefs.LARGE_SCREEN_DP_MAX, 20, "dp"),
-                note("화면의 짧은 쪽 폭이 이 값(dp) 이상이면 내부 화면으로 봅니다. 보통 휴대폰은 360~480dp, "
-                        + "폴더블 기기의 내부 화면과 태블릿은 600dp 이상입니다."),
-                button("내부 화면 키보드 사용자화", v -> openSection(LARGE_AREA)));
+                note("화면의 짧은 쪽 폭이 이 값(dp) 이상이면 폴더블 내부 화면으로 봅니다. 보통 휴대폰은 360~480dp, "
+                        + "폴더블 기기의 내부 화면은 600dp 이상입니다."),
+                button("폴더블 내부 화면 키보드 사용자화", v -> openSection(LARGE_AREA)));
         large.addView(toggle("폴더블 내부 화면 별도 키보드",
                 "폴더블 기기의 내부 화면에서 키보드의 모양을 따로 정합니다.",
                 Prefs.LARGE_LAYOUT, prefs.largeLayout(), largeGroup));
@@ -2130,8 +2130,8 @@ public final class SettingsActivity extends Activity {
     }
 
     /**
-     * 지금 화면이 내부 화면이면 그 방향의 프로필 (내부 화면 세로·가로), 아니면 null (폴더블 기기의 외부 화면 등).
-     * 화면의 짧은 쪽 폭이 '내부 화면 판정 기준' 이상이면 내부 화면이다 (키보드가 고르는 규칙과 같다).
+     * 지금 화면이 폴더블 내부 화면이면 그 방향의 프로필 (폴더블 내부 화면 세로·가로), 아니면 null (폴더블 기기의 외부 화면 등).
+     * 화면의 짧은 쪽 폭이 '폴더블 내부 화면 판정 기준' 이상이면 폴더블 내부 화면이다 (키보드가 고르는 규칙과 같다).
      */
     private String largeProfileNow() {
         android.content.res.Configuration cfg = getResources().getConfiguration();
@@ -2141,17 +2141,17 @@ public final class SettingsActivity extends Activity {
     }
 
     /**
-     * 내부 화면 키보드 사용자화: 지금 화면 방향(내부 화면 세로·가로)의 설정을 보여 준다. 기기를 돌리면 다른 방향의 설정이 보인다.
+     * 폴더블 내부 화면 키보드 사용자화: 지금 화면 방향(폴더블 내부 화면 세로·가로)의 설정을 보여 준다. 기기를 돌리면 다른 방향의 설정이 보인다.
      * 분리 키보드 켜기와 자·모음 분리 배열은 세로·가로가 함께 쓴다. 영역 설정은 아래 미리보기에서 영역을 눌러 연다.
-     * 내부 화면이 아니면 안내 문구만 둔다.
+     * 폴더블 내부 화면이 아니면 안내 문구만 둔다.
      */
     private void buildLargeArea() {
         if (harvesting) {
             // 설정 검색: 두 방향의 항목을 모두 모은다.
-            addProfileSplit(Prefs.PROFILE_LARGE_PORTRAIT, "내부 화면");
+            addProfileSplit(Prefs.PROFILE_LARGE_PORTRAIT, "폴더블 내부 화면");
             for (String p : new String[]{Prefs.PROFILE_LARGE_PORTRAIT, Prefs.PROFILE_LARGE_LANDSCAPE}) {
-                addProfileWhole(p, "내부 화면에서");
-                addOneHandWidth(p, "내부 화면에서");
+                addProfileWhole(p, "폴더블 내부 화면에서");
+                addOneHandWidth(p, "폴더블 내부 화면에서");
                 harvestProfileAreas(p);
             }
             return;
@@ -2159,18 +2159,18 @@ public final class SettingsActivity extends Activity {
         String profile = largeProfileNow();
         if (profile == null) {
             LinearLayout c = card();
-            c.addView(note("이 설정은 내부 화면에서만 보입니다. 내부 화면으로 전환하거나 내부 화면 판정 기준을 조절하세요."));
+            c.addView(note("이 설정은 폴더블 내부 화면에서만 보입니다. 폴더블 내부 화면으로 전환하거나 폴더블 내부 화면 판정 기준을 조절하세요."));
             return;
         }
         boolean land = Prefs.PROFILE_LARGE_LANDSCAPE.equals(profile);
-        String when = land ? "내부 화면을 가로로 들었을 때" : "내부 화면을 세로로 들었을 때";
+        String when = land ? "폴더블 내부 화면을 가로로 들었을 때" : "폴더블 내부 화면을 세로로 들었을 때";
         addProfilePreview(profile);
         String now = land ? "가로" : "세로", other = land ? "세로" : "가로";
         LinearLayout intro = card();
-        intro.addView(note("내부 화면을 " + now + "로 들었을 때 키보드 모양을 정합니다. " + other + "일 때의 설정은 기기를 " + other + "로 돌리면 보입니다.\n"
+        intro.addView(note("폴더블 내부 화면을 " + now + "로 들었을 때 키보드 모양을 정합니다. " + other + "일 때의 설정은 기기를 " + other + "로 돌리면 보입니다.\n"
                 + "분리 키보드 사용 유무, " + (prefs.koreanD7() ? "좌·우 균형 배열" : "자·모음 분리 배열") + " 사용 유무는 세로와 가로가 공유하지만, 나머지 설정은 세로·가로가 각각 별도로 설정할 수 있습니다.\n"
                 + "여기에서 설정이 불가능한 항목은 '키보드 사용자화'의 설정과 공유합니다."));
-        addProfileSplit(profile, "내부 화면");
+        addProfileSplit(profile, "폴더블 내부 화면");
         addProfileWhole(profile, when);
         addOneHandWidth(profile, when);
     }
@@ -2201,7 +2201,7 @@ public final class SettingsActivity extends Activity {
         card.addView(box);
     }
 
-    /** '키보드 모양' 섹션 (키보드 전체): 키 글자 크기, 세로 위치. 가로 모드, 내부 화면 세로·가로가 각각 따로 정한다. */
+    /** '키보드 모양' 섹션 (키보드 전체): 키 글자 크기, 세로 위치. 가로 모드, 폴더블 내부 화면 세로·가로가 각각 따로 정한다. */
     private void addProfileWhole(String profile, String when) {
         Prefs edit = prefs.profileEditView(profile);
         LinearLayout card = section("키보드 모양");
@@ -2214,7 +2214,7 @@ public final class SettingsActivity extends Activity {
                 + "세로 모드와 같은 값을 씁니다. 바꾸려면 '키보드 사용자화'에서 바꿉니다."));
     }
 
-    /** 내부 화면 세로·가로의 한 손 모드 자판 폭 (정하기 전에는 세로·가로 모드의 값). */
+    /** 폴더블 내부 화면 세로·가로의 한 손 모드 자판 폭 (정하기 전에는 세로·가로 모드의 값). */
     private void addOneHandWidth(String profile, String when) {
         Prefs edit = prefs.profileEditView(profile);
         String widthKey = edit.oneHandWidthKey();
@@ -2563,7 +2563,7 @@ public final class SettingsActivity extends Activity {
         view.setKeyboardHeight(Math.round(Ui.dp(this, 54) * l.totalHeight() * p.keyboardHeight() / 100f * scale) + 2 * pad);
     }
 
-    /** 가로 방향 미리보기(가로 모드, 내부 화면 가로)의 키 높이·글자 크기 비율. */
+    /** 가로 방향 미리보기(가로 모드, 폴더블 내부 화면 가로)의 키 높이·글자 크기 비율. */
     private static final float LANDSCAPE_PREVIEW_SCALE = 0.65f;
 
     private View layoutPreview() { return layoutPreview(null); }

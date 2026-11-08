@@ -120,7 +120,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private IconButton voiceButton, undoButton, oneHandButton;
     /**
      * 한 손 모드 배치: body(가로) = [column(도구 막대·검색 결과·자판) | sideStrip(반대편 빈 곳)], 그 아래 liftSpace.
-     * 한 손 모드가 꺼져 있으면 column만 꽉 차게 들어가고 sideStrip은 숨긴다. liftSpace는 가로 모드·내부 화면의
+     * 한 손 모드가 꺼져 있으면 column만 꽉 차게 들어가고 sideStrip은 숨긴다. liftSpace는 가로 모드·폴더블 내부 화면의
      * '세로 위치'를 정했을 때만 보인다.
      */
     private LinearLayout body, column, sideStrip;
@@ -1194,7 +1194,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         composer.setDoubleTapVowel(prefs.doubleTapVowel());
         WordSuggester.setDoubleTapVowel(prefs.doubleTapVowel());   // '안너'도 '안녀…'로 찾는다
         composer.setDoubleTapConsonant(prefs.doubleTapConsonant(), prefs.doubleTapConsonantMs());
-        // 가로 모드·내부 화면에서 따로 정한 키보드 높이·글자 크기는 그 화면에서만 쓴다.
+        // 가로 모드·폴더블 내부 화면에서 따로 정한 키보드 높이·글자 크기는 그 화면에서만 쓴다.
         Prefs sizePrefs = prefs.profileView(profile());
         // 한 손 모드에서는 키 높이를 줄인 만큼 키 글자도 같은 비율로 줄인다 (도구 막대는 줄어든 자판 바로 위에 붙어 따라온다).
         float oneHandScale = !Prefs.ONE_HAND_OFF.equals(activeOneHand()) ? prefs.oneHandHeight() / 100f : 1f;
@@ -1327,7 +1327,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return b;
     }
 
-    /** 지금 화면에서 쓸 키보드 모습의 묶음: 세로·가로 모드, 또는 (실험실 '폴더블 내부 화면 별도 키보드'이 켜져 있으면) 내부 화면 세로·가로. */
+    /** 지금 화면에서 쓸 키보드 모습의 묶음: 세로·가로 모드, 또는 (실험실 '폴더블 내부 화면 별도 키보드'이 켜져 있으면) 폴더블 내부 화면 세로·가로. */
     private String profile() {
         return prefs.profileFor(this);
     }
@@ -1359,7 +1359,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /**
      * 한 손 모드 배치를 뷰에 반영한다: column을 '자판 폭'만큼만 쓰고 한쪽으로 붙이며, 반대편에 sideStrip을 둔다.
-     * 아래에는 '세로 위치'만큼 빈 칸을 두어 자판을 띄운다 (한 손 모드가 아니어도 가로 모드·내부 화면의 세로 위치를 쓴다).
+     * 아래에는 '세로 위치'만큼 빈 칸을 두어 자판을 띄운다 (한 손 모드가 아니어도 가로 모드·폴더블 내부 화면의 세로 위치를 쓴다).
      */
     private void applyOneHand() {
         if (body == null) return;
@@ -1367,7 +1367,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         boolean on = !Prefs.ONE_HAND_OFF.equals(side);
         Prefs profilePrefs = prefs.profileView(profile());
         int width = profilePrefs.oneHandWidthForProfile();
-        // 세로 위치: 한 손 모드는 한 손 모드의 값을, 아니면 가로 모드·내부 화면에서 정한 값을 쓴다 (세로 모드는 0).
+        // 세로 위치: 한 손 모드는 한 손 모드의 값을, 아니면 가로 모드·폴더블 내부 화면에서 정한 값을 쓴다 (세로 모드는 0).
         // 외장 키보드로 도구 막대만 보일 때는 띄우지 않는다 (막대 아래에 빈 칸만 남는다).
         int lift = appliedBarOnly ? 0 : Ui.dp(this, on ? prefs.oneHandLiftDp() : profilePrefs.profileLiftDp());
         String signature = side + "/" + width + "/" + lift;
@@ -1667,7 +1667,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (keyboard == null) return;   // 외장 키보드만 쓰면 자판 화면을 만들지 않은 채 언어를 바꿀 수 있다
         // 한 손 모드에서는 자·모음 균형 배열의 가운데 빈틈을 없앤 배열을 쓴다.
         Prefs prefs = !Prefs.ONE_HAND_OFF.equals(activeOneHand()) ? this.prefs.oneHandView() : this.prefs;
-        // 자·모음 균형 배열의 키 폭·위치는 가로 모드·내부 화면일 때 세로 모드와 따로 정한 값을 쓴다.
+        // 자·모음 균형 배열의 키 폭·위치는 가로 모드·폴더블 내부 화면일 때 세로 모드와 따로 정한 값을 쓴다.
         // 화면을 돌리면 시스템이 입력 뷰를 다시 만들고(onCreateInputView → applySettings), 입력을 다시 시작하므로 여기서 방향을 읽으면 된다.
         prefs = prefs.profileView(profile());
         KeyboardLayout l;
@@ -3419,7 +3419,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         for (int i = 1; i < suggestViews.length; i++) suggestViews[i].setVisibility(on ? View.GONE : View.VISIBLE);
     }
 
-    /** 분리 키보드를 쓰는 중인지 (가로 모드·내부 화면에서 분리를 켰고 한 손 모드가 아닐 때). */
+    /** 분리 키보드를 쓰는 중인지 (가로 모드·폴더블 내부 화면에서 분리를 켰고 한 손 모드가 아닐 때). */
     private boolean splitActive() {
         return Prefs.ONE_HAND_OFF.equals(activeOneHand()) && prefs.profileView(profile()).splitView();
     }

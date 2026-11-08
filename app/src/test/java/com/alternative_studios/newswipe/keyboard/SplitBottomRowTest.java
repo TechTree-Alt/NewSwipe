@@ -14,7 +14,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-/** 분리 키보드(가로 모드·내부 화면)에서 맨 아래 줄의 양 끝이 글자 줄의 가장 바깥 키와 열이 맞는지. */
+/** 분리 키보드(가로 모드·폴더블 내부 화면)에서 맨 아래 줄의 양 끝이 글자 줄의 가장 바깥 키와 열이 맞는지. */
 public class SplitBottomRowTest {
     private static final class FakeSp implements SharedPreferences {
         final Map<String, Object> m = new HashMap<>();
@@ -769,7 +769,7 @@ public class SplitBottomRowTest {
         FakeSp sp = new FakeSp();
         Prefs land = editView(sp, Prefs.PROFILE_LANDSCAPE);
         Prefs port = editView(sp, Prefs.PROFILE_LARGE_PORTRAIT), largeLand = editView(sp, Prefs.PROFILE_LARGE_LANDSCAPE);
-        // 분리 키보드 레이아웃: 내부 화면 세로·가로는 같은 키, 가로 모드는 다른 키.
+        // 분리 키보드 레이아웃: 폴더블 내부 화면 세로·가로는 같은 키, 가로 모드는 다른 키.
         assertEquals(port.splitKey(), largeLand.splitKey());
         assertEquals(port.splitReachColumnKey(), largeLand.splitReachColumnKey());
         assertEquals(port.splitSpaceJoinKey(), largeLand.splitSpaceJoinKey());
@@ -792,7 +792,7 @@ public class SplitBottomRowTest {
         sp.m.put(land.heightKey(), 80);
         assertEquals(80, land.keyboardHeight());
         assertEquals(120, port.keyboardHeight());
-        // 가로 모드·내부 화면의 키보드 높이는 30%까지 줄일 수 있다 (세로 모드 값과 상관없이).
+        // 가로 모드·폴더블 내부 화면의 키보드 높이는 30%까지 줄일 수 있다 (세로 모드 값과 상관없이).
         sp.m.put(land.heightKey(), 30);
         assertEquals(30, land.keyboardHeight());
         sp.m.put(land.heightKey(), 10);
@@ -818,7 +818,7 @@ public class SplitBottomRowTest {
         sp.m.put(port.liftKey(), 40);
         assertEquals(40, port.profileLiftDp());
         assertEquals(0, largeLand.profileLiftDp());
-        // 내부 화면 세로에서 켠 분리 키보드는 내부 화면 가로에서도 켜져 있다.
+        // 폴더블 내부 화면 세로에서 켠 분리 키보드는 폴더블 내부 화면 가로에서도 켜져 있다.
         sp.m.put(port.splitKey(), true);
         assertTrue(largeLand.profileSplit());
         assertTrue(!land.profileSplit());

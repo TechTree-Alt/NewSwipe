@@ -50,12 +50,12 @@ final class KeyboardPreview extends FrameLayout {
     static final int AREA_TOOLBAR = 0, AREA_NUMBER = 1, AREA_LETTERS = 2, AREA_FUNCTION = 3, AREAS = 4;
     static final String[] AREA_NAMES = {"도구 막대", "숫자 줄", "글자 키", "기능키"};
     /**
-     * 가로 모드·내부 화면 키보드 사용자화의 영역 (AREA_LETTERS·AREA_FUNCTION과 함께 쓴다): 분리 키보드의 왼쪽·오른쪽 묶음과
+     * 가로 모드·폴더블 내부 화면 키보드 사용자화의 영역 (AREA_LETTERS·AREA_FUNCTION과 함께 쓴다): 분리 키보드의 왼쪽·오른쪽 묶음과
      * 그 사이의 가운데 공간. 분리 키보드를 끄면 글자 키 하나다.
      */
     static final int AREA_LEFT = 4, AREA_RIGHT = 5, AREA_MIDDLE = 6;
 
-    /** 가로 모드·내부 화면 키보드 사용자화의 영역 이름. */
+    /** 가로 모드·폴더블 내부 화면 키보드 사용자화의 영역 이름. */
     static String profileAreaName(int area) {
         switch (area) {
             case AREA_LEFT: return "왼쪽 묶음";
@@ -163,7 +163,7 @@ final class KeyboardPreview extends FrameLayout {
         B_CONSONANT(false, "자음 키 폭", null, -1),
         B_VOWEL(false, "모음 키 폭", null, -1),
         B_BOUNDARY(false, "자·모음 경계 위치", null, -1),
-        // 가로 모드·내부 화면 키보드 사용자화 (setProfileMode): 키보드를 화면 아래에서 띄우는 높이. 저장 키는 프로필마다 다르다.
+        // 가로 모드·폴더블 내부 화면 키보드 사용자화 (setProfileMode): 키보드를 화면 아래에서 띄우는 높이. 저장 키는 프로필마다 다르다.
         LIFT(true, "세로 위치", null, -1);
 
         /** 위아래로 끄는지 (아니면 좌우). */
@@ -248,10 +248,10 @@ final class KeyboardPreview extends FrameLayout {
         refresh();
     }
 
-    // ---------------------------------------------------------------- 가로 모드·내부 화면 키보드 사용자화
+    // ---------------------------------------------------------------- 가로 모드·폴더블 내부 화면 키보드 사용자화
 
     /**
-     * 가로 모드·내부 화면 키보드 사용자화 화면: 그 프로필의 편집 보기(Prefs.profileEditView). 이 화면에서는 그 프로필이 따로 정하는
+     * 가로 모드·폴더블 내부 화면 키보드 사용자화 화면: 그 프로필의 편집 보기(Prefs.profileEditView). 이 화면에서는 그 프로필이 따로 정하는
      * 값만 바꾼다: 글자 키 높이(↕ 버튼), 세로 위치(아래 가장자리 손잡이), 분리 키보드를 켰으면 왼쪽·오른쪽 묶음의 폭·가로 위치(↔ 버튼).
      * 키·영역은 고르지 않는다 ('키보드 사용자화'에서만 바꾼다). null이면 보통 미리보기.
      */
@@ -264,7 +264,7 @@ final class KeyboardPreview extends FrameLayout {
     /** 미리보기를 화면에 맞춘 배율 (virtualWidth를 쓰지 않으면 1). 손가락 움직임은 이 값으로 나눠 키보드 좌표로 바꾼다. */
     private float viewScale = 1f;
 
-    /** 가로 모드·내부 화면 키보드 사용자화 화면으로 쓴다 (edit = 그 프로필의 편집 보기, width = 그 프로필이 쓰는 화면 폭 px). */
+    /** 가로 모드·폴더블 내부 화면 키보드 사용자화 화면으로 쓴다 (edit = 그 프로필의 편집 보기, width = 그 프로필이 쓰는 화면 폭 px). */
     void setProfileMode(Prefs edit, int width) {
         profileEdit = edit;
         virtualWidth = width;
@@ -286,7 +286,7 @@ final class KeyboardPreview extends FrameLayout {
         return virtualWidth > 0 ? column.getHeight() : getHeight();
     }
 
-    /** 키보드를 화면 아래에서 띄우는 높이 (px). 가로 모드·내부 화면 키보드 사용자화에서만 있다. */
+    /** 키보드를 화면 아래에서 띄우는 높이 (px). 가로 모드·폴더블 내부 화면 키보드 사용자화에서만 있다. */
     private int liftPx() {
         return profileEdit == null ? 0 : Ui.dp(getContext(), prefs.profileLiftDp());
     }
@@ -297,7 +297,7 @@ final class KeyboardPreview extends FrameLayout {
         return new int[]{AREA_TOOLBAR, AREA_LETTERS, AREA_FUNCTION};
     }
 
-    /** 가로 모드·내부 화면 키보드 사용자화 영역의 윤곽선 (미리보기 좌표). 없으면 false. */
+    /** 가로 모드·폴더블 내부 화면 키보드 사용자화 영역의 윤곽선 (미리보기 좌표). 없으면 false. */
     boolean profileAreaBounds(int area, RectF out) {
         switch (area) {
             case AREA_LEFT: return blockBounds(true, out);
@@ -335,7 +335,7 @@ final class KeyboardPreview extends FrameLayout {
         return editorSplit() && selection != null && selection.kind == SEL_AREA && selection.area() == AREA_LETTERS;
     }
 
-    /** 가로 모드·내부 화면 키보드 사용자화에서 고른 영역 (없으면 -1). */
+    /** 가로 모드·폴더블 내부 화면 키보드 사용자화에서 고른 영역 (없으면 -1). */
     private int profileSelected() {
         return profileEdit != null && selection != null && selection.kind == SEL_AREA ? selection.area() : -1;
     }
@@ -365,7 +365,7 @@ final class KeyboardPreview extends FrameLayout {
     /** 균형 배열의 자음(consonant) 또는 모음 쪽 키들을 감싼 윤곽선 (Shift·⌫ 포함). 없으면 false. */
     boolean blockBounds(boolean consonant, RectF out) {
         KeyboardLayout l = keys.getLayout();
-        // 분리 키보드(가로 모드·내부 화면)는 두벌식도 가운데에서 나눠 묶음으로 놓는다.
+        // 분리 키보드(가로 모드·폴더블 내부 화면)는 두벌식도 가운데에서 나눠 묶음으로 놓는다.
         if (l == null || !(profileEdit != null ? prefs.profileSplit() : prefs.splitView() || prefs.balancedLayout())) return false;
         boolean split = profileEdit != null || prefs.splitView();
         Context c = getContext();
@@ -400,7 +400,7 @@ final class KeyboardPreview extends FrameLayout {
         return true;
     }
 
-    /** 읽는 설정. 가로 모드·내부 화면 키보드 사용자화에서는 refresh()가 그 프로필의 보기로 바꾼다. */
+    /** 읽는 설정. 가로 모드·폴더블 내부 화면 키보드 사용자화에서는 refresh()가 그 프로필의 보기로 바꾼다. */
     private Prefs prefs;
     private final Listener listener;
     private final LinearLayout column;
@@ -538,7 +538,7 @@ final class KeyboardPreview extends FrameLayout {
     /** 설정을 다시 읽어 모양·크기·자판을 맞춘다. 같은 값이면 뷰는 그대로라 자주 불러도 된다. */
     void refresh() {
         Context c = getContext();
-        // 가로 모드·내부 화면: 분리 키보드를 켰으면 편집 보기(묶음 폭·위치를 그 프로필 값으로), 껐으면 실제 키보드처럼 나누지 않은 보기.
+        // 가로 모드·폴더블 내부 화면: 분리 키보드를 켰으면 편집 보기(묶음 폭·위치를 그 프로필 값으로), 껐으면 실제 키보드처럼 나누지 않은 보기.
         if (profileEdit != null) prefs = profileEdit.profileSplit() ? profileEdit : profileEdit.profileView(profileEdit.profile());
         theme = KeyboardTheme.of(c);
         setBackgroundColor(theme.background);
@@ -789,7 +789,7 @@ final class KeyboardPreview extends FrameLayout {
 
     private void tapAt(float x, float y) {
         if (profileEdit != null) {
-            // 가로 모드·내부 화면: 누른 곳을 감싼 영역 (경계 근처면 가까운 영역). 빈 곳이면 고르지 않음.
+            // 가로 모드·폴더블 내부 화면: 누른 곳을 감싼 영역 (경계 근처면 가까운 영역). 빈 곳이면 고르지 않음.
             RectF r = new RectF();
             int best = -1;
             float bestDist = Ui.dp(getContext(), 12);
@@ -983,7 +983,7 @@ final class KeyboardPreview extends FrameLayout {
     /** 손잡이 h가 지금 보이는지. */
     private boolean handleShown(Handle h) {
         if (keys.getLayout() == null) return false;
-        // 가로 모드·내부 화면 키보드 사용자화: 글자 키 높이·세로 위치, 분리 키보드면 두 묶음의 ↔ 버튼.
+        // 가로 모드·폴더블 내부 화면 키보드 사용자화: 글자 키 높이·세로 위치, 분리 키보드면 두 묶음의 ↔ 버튼.
         if (profileEdit != null) {
             // 세로 위치는 키보드 전체 설정이라 늘 보이고, 나머지는 고른 영역의 손잡이만 (키보드 사용자화의 영역 설정과 같다).
             int a = profileSelected();
@@ -1076,7 +1076,7 @@ final class KeyboardPreview extends FrameLayout {
                 int a = h == Handle.TOOLBAR ? AREA_TOOLBAR : h == Handle.NUMBER_ROW ? AREA_NUMBER : h == Handle.FN_ROW ? AREA_FUNCTION : AREA_LETTERS;
                 if (!areaBounds(a, r)) return false;
                 // 글자 키 영역은 높아서 가운데에 둬도 위·아래 여백 손잡이와 겹치지 않는다.
-                // 글자 키 영역과, 가로 모드·내부 화면 키보드 사용자화의 기능키 영역은 정중앙에 둔다.
+                // 글자 키 영역과, 가로 모드·폴더블 내부 화면 키보드 사용자화의 기능키 영역은 정중앙에 둔다.
                 boolean centered = h == Handle.HEIGHT || (h == Handle.FN_ROW && profileEdit != null);
                 out[0] = centered ? r.centerX() : Math.max(r.left + Ui.dp(c, 30), r.centerX() - Ui.dp(c, 64));
                 out[1] = r.centerY();
@@ -1103,10 +1103,10 @@ final class KeyboardPreview extends FrameLayout {
             }
             case B_CONSONANT:
             case B_VOWEL: {
-                // ↔ 버튼: 그 쪽 윤곽선의 한가운데 (가로 모드·내부 화면은 ↕ 버튼과 나란히 왼쪽에).
+                // ↔ 버튼: 그 쪽 윤곽선의 한가운데 (가로 모드·폴더블 내부 화면은 ↕ 버튼과 나란히 왼쪽에).
                 RectF r = new RectF();
                 if (!blockBounds(h == Handle.B_CONSONANT, r)) return false;
-                // 높이 버튼(↕)이 함께 있는 가로 모드·내부 화면에서만 왼쪽으로 비킨다. 세로 모드 분리 키보드는 높이 버튼이 없어 정중앙이다.
+                // 높이 버튼(↕)이 함께 있는 가로 모드·폴더블 내부 화면에서만 왼쪽으로 비킨다. 세로 모드 분리 키보드는 높이 버튼이 없어 정중앙이다.
                 boolean beside = profileEdit != null && !profileEdit.profile().isEmpty();
                 out[0] = r.centerX() - (beside ? Ui.dp(c, 22) : 0);
                 out[1] = r.centerY();
@@ -1524,7 +1524,7 @@ final class KeyboardPreview extends FrameLayout {
         }
 
         /**
-         * 가로 모드·내부 화면 키보드 사용자화: 키보드 사용자화의 영역 층처럼 영역마다 둥근 테두리와 가운데 이름표.
+         * 가로 모드·폴더블 내부 화면 키보드 사용자화: 키보드 사용자화의 영역 층처럼 영역마다 둥근 테두리와 가운데 이름표.
          * 고른 영역은 굵게 칠하고 이름표를 숨긴다.
          */
         private void drawProfileAreas(Canvas c) {
