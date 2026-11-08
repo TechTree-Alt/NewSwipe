@@ -1508,7 +1508,8 @@ public class EditorUiTest {
 
     /**
      * 자·모음 균형 배열: 키보드 사용자화 미리보기에서 글자 키를 고르면 자음·모음 쪽마다 왼쪽·오른쪽 가장자리에 경계 손잡이가 생긴다.
-     * 끄는 쪽 가장자리만 손가락을 따라 움직이고(반대쪽은 그대로) 폭·가로 위치가 함께 바뀌며, 슬라이더도 따라간다.
+     * 끄는 쪽 가장자리만 손가락을 따라 움직이고(반대쪽은 그대로) 폭(5% 단위)·가로 위치가 함께 바뀌며, 슬라이더도 따라간다.
+     * 묶음 가운데의 ↔ 버튼을 끌면 폭은 그대로 묶음이 옮겨 간다.
      * 다른 쪽 묶음 가장자리를 넘지 못하고, 자리가 있으면 폭이 100%를 넘는다. 두 쪽 윤곽선 사이는 늘 2dp 이상이고,
      * 글자 키 높이 손잡이는 윤곽선 위 가장자리 가운데에 있다.
      */
@@ -1555,6 +1556,7 @@ public class EditorUiTest {
         int w1 = pre.balancedConsonantWidth();
         log("consonant width " + w0 + " -> " + w1 + ", start " + e0[0] + " -> " + e1[0]);
         assertTrue(w1 < w0);
+        assertEquals(0, w1 % 5);   // 폭은 5% 단위로 움직인다
         assertEquals(e0[0], e1[0], 0.06f);
         assertTrue(visibleTexts(cur(a)).contains(w1 + "%"));
         // 모음 쪽 왼쪽 경계를 왼쪽으로 많이 끌면 자음 쪽 끝에서 멈추고(겹치지 않는다), 오른쪽 끝은 그대로라 폭이 100%를 넘는다
@@ -1574,13 +1576,40 @@ public class EditorUiTest {
         float[] e3 = pre.balancedExtents();
         assertTrue(e3[0] > e2[0] + 0.05f);
         assertEquals(e2[0] + e2[1], e3[0] + e3[1], 0.06f);
+        assertEquals(0, pre.balancedConsonantWidth() % 5);
         // 모음 쪽 오른쪽 경계를 왼쪽으로: 끝이 옮겨 가고 시작은 그대로
         assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_RIGHT_END, re));
         drag(overlay, re[0], re[1], -unit * 0.6f, 0);
         float[] e4 = pre.balancedExtents();
         assertTrue(e4[2] + e4[3] < 10f - 0.05f);
         assertEquals(e3[2], e4[2], 0.06f);
+        assertEquals(0, pre.balancedVowelWidth() % 5);
         shot(a, "c1-balanced-editor-edges");
+        // 가운데의 ↔ 버튼: 폭은 그대로 두고 묶음을 옮긴다. 자음 쪽은 왼쪽 끝에서, 모음 쪽은 오른쪽 끝에서 멈춘다
+        float[] lm = new float[2], rm = new float[2];
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_LEFT_MOVE, lm));
+        assertTrue(p.blockBounds(true, l));
+        assertEquals(l.centerX(), lm[0], 1f);
+        assertEquals(l.centerY(), lm[1], 1f);
+        int cw4 = pre.balancedConsonantWidth();
+        drag(overlay, lm[0], lm[1], -unit * 2, 0);
+        float[] e5 = pre.balancedExtents();
+        log("consonant moved " + java.util.Arrays.toString(e4) + " -> " + java.util.Arrays.toString(e5));
+        assertEquals(0f, e5[0], 0.06f);
+        assertEquals(cw4, pre.balancedConsonantWidth());
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_RIGHT_MOVE, rm));
+        int vw5 = pre.balancedVowelWidth();
+        drag(overlay, rm[0], rm[1], unit * 2, 0);
+        float[] e6 = pre.balancedExtents();
+        assertEquals(10f, e6[2] + e6[3], 0.06f);
+        assertEquals(vw5, pre.balancedVowelWidth());
+        // 모음 쪽을 왼쪽으로 많이 옮기면 자음 쪽 끝에서 멈춘다 (겹치지 않는다)
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_RIGHT_MOVE, rm));
+        drag(overlay, rm[0], rm[1], -unit * 8, 0);
+        float[] e7 = pre.balancedExtents();
+        assertEquals(e6[0] + e6[1], e7[2], 0.06f);
+        assertEquals(vw5, pre.balancedVowelWidth());
+        shot(a, "c1b-balanced-editor-move");
         // 자음 쪽이 가운데를 넘어 옮겨 가도(60%, 위치 140 → 4~7칸) 윤곽선은 자음 키만, 모음 윤곽선은 모음 키만 감싼다
         pre.raw().edit().putInt(pre.balancedConsonantWidthKey(), 60).putInt(pre.balancedConsonantPosKey(), 140)
                 .putInt(pre.balancedVowelWidthKey(), 60).putInt(pre.balancedVowelPosKey(), 100).commit();
