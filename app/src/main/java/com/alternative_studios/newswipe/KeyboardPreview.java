@@ -307,9 +307,19 @@ final class KeyboardPreview extends FrameLayout {
         int first = numberRowShown ? 1 : 0, last = l.rows.length - 2;
         boolean any = false;
         for (int r = first; r <= last; r++) {
-            for (Key k : l.rows[r].keys) {
+            // 분리 키보드: 줄 가운데의 빈틈(SPACER)이 두 묶음을 가른다. 묶음이 맞닿아 빈틈이 없으면(폭 100%) 가운데에 걸친 키
+            // (g·v 등)의 중심이 경계선과 정확히 같을 수 있어, 경계선 위의 키는 왼쪽 묶음으로 본다.
+            int cut = -1;
+            if (profileEdit != null) {
+                Key[] rowKeys = l.rows[r].keys;
+                for (int i = 0; i < rowKeys.length; i++) if (rowKeys[i].dragCursor) cut = i;
+            }
+            Key[] rowKeys = l.rows[r].keys;
+            for (int i = 0; i < rowKeys.length; i++) {
+                Key k = rowKeys[i];
                 if (k.type == Key.SPACER || k.type == Key.GAP || isHidden(k)) continue;
-                if ((k.rect.centerX() < bx) != consonant) continue;
+                boolean isLeft = cut >= 0 ? i < cut : profileEdit != null ? k.rect.centerX() <= bx + 1f : k.rect.centerX() < bx;
+                if (isLeft != consonant) continue;
                 float left = k.rect.left + gx, top = keys.getTop() + k.rect.top + gy;
                 float right = k.rect.right - gx, bottom = keys.getTop() + k.rect.bottom - gy;
                 if (!any) out.set(left, top, right, bottom);
