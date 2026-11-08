@@ -435,6 +435,7 @@ public final class SettingsActivity extends Activity {
             {KEYBOARD, "도구 버튼 크기", "툴바 아이콘 크기"},
             {"clipemoji", "이미지 저장", "클립보드 사진"},
             {"clipemoji", "클립보드 기록 저장", "복사 기록 히스토리"},
+            {"clipemoji", "고정 항목 분리", "클립보드 고정 핀 페이지 따로"},
             {"clipemoji", "선택하면 편집 버튼 보이기", "잘라내기 복사 붙여넣기 전체 선택 편집 칩"},
             {"clipemoji", "클립보드 기록 모두 지우기", "복사 기록 삭제"},
             {"onehand", "자판 폭", "한 손 모드 너비"},
@@ -3110,7 +3111,10 @@ public final class SettingsActivity extends Activity {
         View clipCloseToggle = toggle("항목 사용 시 클립보드 닫기",
                 "클립보드 항목을 눌러 입력하면 클립보드 창을 자동으로 닫고 자판으로 돌아갑니다.",
                 Prefs.CLIPBOARD_CLOSE_ON_USE, prefs.clipboardCloseOnUse());
-        View clipImages = subGroup(clipImagesToggle, clipSensitiveToggle, clipCloseToggle);
+        View clipSplitToggle = toggle("고정 항목 분리",
+                "클립보드에 페이지를 나눠, 왼쪽에는 일반 항목을 두고 오른쪽으로 넘기면 고정 항목을 모아 보여 줍니다.",
+                Prefs.CLIPBOARD_SPLIT_PINNED, prefs.clipboardSplitPinned());
+        View clipImages = subGroup(clipImagesToggle, clipSensitiveToggle, clipCloseToggle, clipSplitToggle);
         clip.addView(toggle("클립보드 기록 저장", "복사·잘라낸 내용을 최근 " + ClipboardHistory.MAX_ITEMS
                         + "개까지 모아 둡니다. 고정하지 않은 항목은 24시간 뒤 지워집니다. ",
                 Prefs.CLIPBOARD_HISTORY, prefs.clipboardHistory(), clipImages));

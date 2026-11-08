@@ -325,7 +325,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 사용할 때마다 설정에서 직접 읽는 값이나 키보드 화면과 상관없는 값은 다시 그릴 필요가 없다. */
     private static boolean affectsKeyboard(String key) {
         return !(Prefs.LANGUAGE.equals(key) || Prefs.RECENT_EMOJI.equals(key) || Prefs.PINNED_EMOJI.equals(key)
-                || Prefs.CLIPBOARD_HISTORY.equals(key) || Prefs.CLIPBOARD_IMAGES.equals(key) || Prefs.CLIPBOARD_SENSITIVE.equals(key) || Prefs.CLIPBOARD_CLOSE_ON_USE.equals(key) || Prefs.CLIPBOARD_CHIP.equals(key) || Prefs.AUTO_CAP.equals(key)
+                || Prefs.CLIPBOARD_HISTORY.equals(key) || Prefs.CLIPBOARD_IMAGES.equals(key) || Prefs.CLIPBOARD_SENSITIVE.equals(key) || Prefs.CLIPBOARD_CLOSE_ON_USE.equals(key) || Prefs.CLIPBOARD_SPLIT_PINNED.equals(key) || Prefs.CLIPBOARD_CHIP.equals(key) || Prefs.AUTO_CAP.equals(key)
                 || Prefs.DOUBLE_SPACE_PERIOD.equals(key) || Prefs.CONFIRM_LEARNED_DELETE.equals(key)
                 || Prefs.ONE_HAND_LAST.equals(key) || Prefs.ENGLISH_FIELDS.equals(key)
                 || key.startsWith(Prefs.HW_PREFIX));   // 외장 키보드 설정은 키를 누를 때 읽는다
@@ -4711,6 +4711,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (clipPanel == null) return;
         final boolean enabled = prefs.clipboardHistory();
         final String current = currentClipText();
+        clipPanel.setSplitPinned(prefs.clipboardSplitPinned());
         if (!enabled) {
             clipPanel.show(Collections.emptyList(), false, current);
             return;
