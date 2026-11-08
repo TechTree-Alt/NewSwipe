@@ -1340,13 +1340,22 @@ public class EditorUiTest {
         assertTrue(st, st.contains("왼쪽 묶음 폭") && st.contains("오른쪽 묶음 가로 위치"));
         assertTrue(st, st.contains("분리 키보드는 키보드 전체를 반으로 나눕니다. 영어 자판과 기호 자판에도 적용됩니다."));
         assertFalse(st, st.contains("자·모음 균형 배열은"));
+        assertFalse(st, st.contains("자·모음 분리 배열"));   // 두벌식에는 분리 키보드의 하위 토글이 없다
         findText(cur(a), "단모음").performClick();   // 분리 키보드는 모든 배열이 함께 쓴다
-        idle();
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
         assertTrue(prefs.portraitSplit());
-        assertTrue(visibleTexts(cur(a)).contains("상세 배열\n  분리 키보드"));
+        String dt = visibleTexts(cur(a));
+        assertTrue(dt, dt.contains("상세 배열\n  분리 키보드"));
+        // 단모음: 분리 키보드의 하위 항목으로 '자·모음 분리 배열' 토글이 상세 배열 바로 아래 묶음에 보인다
+        assertTrue(dt, dt.contains("영어 자판과 기호 자판에도 적용됩니다.\n  자·모음 분리 배열"));
+        findText(cur(a), "NewSwipe 단모음").performClick();
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
+        String nt = visibleTexts(cur(a));
+        assertTrue(nt, nt.contains("좌·우 균형 배열") && !nt.contains("자·모음 분리 배열"));
         findText(cur(a), "두벌식").performClick();
-        idle();
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
         assertTrue(prefs.portraitSplit());
+        assertFalse(visibleTexts(cur(a)).contains("좌·우 균형 배열"));
         ((View) findText(cur(a), "상세 배열").getParent()).performClick();
         idle();
         shadowOf((AlertDialog) ShadowDialog.getLatestDialog()).clickOnItem(1);   // 자·모음 균형 배열
