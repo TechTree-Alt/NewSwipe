@@ -10,6 +10,8 @@ public final class SwipeAction {
     public static final String CURSOR_MOVE = "cursor_move";
     /** 문자 키를 밀어 트랙패드처럼 커서를 옮긴다 ('문자 키를 밀어서 커서 이동'과 같다). 키보드 한 손가락 밀기에서만 고를 수 있다. */
     public static final String FREE_CURSOR = "free_cursor";
+    /** 3×4 숫자 패드를 연다. 이미 숫자 패드면 글자 자판으로 돌아간다. */
+    public static final String NUMBER_PAD = "number_pad";
     public static final String CLIPBOARD_OPEN = "clipboard_open";
     public static final String CLIPBOARD_PINNED = "clipboard_pinned";
     public static final String EMOJI_OPEN = "emoji_open";
@@ -75,6 +77,7 @@ public final class SwipeAction {
             {PASTE, "붙여넣기 (지금 클립보드)", "붙여넣기"},
             {CLIPBOARD_OPEN, "클립보드 열기", "클립보드"},
             {CLIPBOARD_PINNED, "첫 번째 고정 클립보드 항목 붙여넣기", "고정 클립보드 붙여넣기"},
+            {NUMBER_PAD, "숫자 패드 열기", "숫자 패드"},
             {EMOJI_OPEN, "이모지 열기", "이모지"},
             {EMOJI_LATEST, "가장 최근 사용한 이모지 붙여넣기", "최근 이모지"},
             {EMOJI_PINNED, "첫 번째 고정 이모지 붙여넣기", "고정 이모지"},

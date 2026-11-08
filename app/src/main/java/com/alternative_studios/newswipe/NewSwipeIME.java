@@ -325,7 +325,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 사용할 때마다 설정에서 직접 읽는 값이나 키보드 화면과 상관없는 값은 다시 그릴 필요가 없다. */
     private static boolean affectsKeyboard(String key) {
         return !(Prefs.LANGUAGE.equals(key) || Prefs.RECENT_EMOJI.equals(key) || Prefs.PINNED_EMOJI.equals(key)
-                || Prefs.CLIPBOARD_HISTORY.equals(key) || Prefs.CLIPBOARD_IMAGES.equals(key) || Prefs.CLIPBOARD_SENSITIVE.equals(key) || Prefs.CLIPBOARD_CHIP.equals(key) || Prefs.AUTO_CAP.equals(key)
+                || Prefs.CLIPBOARD_HISTORY.equals(key) || Prefs.CLIPBOARD_IMAGES.equals(key) || Prefs.CLIPBOARD_SENSITIVE.equals(key) || Prefs.CLIPBOARD_CLOSE_ON_USE.equals(key) || Prefs.CLIPBOARD_CHIP.equals(key) || Prefs.AUTO_CAP.equals(key)
                 || Prefs.DOUBLE_SPACE_PERIOD.equals(key) || Prefs.CONFIRM_LEARNED_DELETE.equals(key)
                 || Prefs.ONE_HAND_LAST.equals(key) || Prefs.ENGLISH_FIELDS.equals(key)
                 || key.startsWith(Prefs.HW_PREFIX));   // 외장 키보드 설정은 키를 누를 때 읽는다
@@ -561,8 +561,13 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             return insets;
         });
         root.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
-            @Override public void onViewAttachedToWindow(View v) { v.requestApplyInsets(); }
-            @Override public void onViewDetachedFromWindow(View v) { }
+            @Override public void onViewAttachedToWindow(View v) {
+                v.getViewTreeObserver().addOnGlobalLayoutListener(imeNavBarWatcher);
+                v.requestApplyInsets();
+            }
+            @Override public void onViewDetachedFromWindow(View v) {
+                v.getViewTreeObserver().removeOnGlobalLayoutListener(imeNavBarWatcher);
+            }
         });
 
         // 한 손 모드에서는 column(도구 막대와 자판)이 한쪽으로 좁아지고, 반대편에 sideStrip이 붙는다.
@@ -670,7 +675,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
      *    콜백이 올 때 '콜백 값이 창 관리자 값보다 얼마나 큰지'만 따로 기억해 둔다. 콜백 값을 통째로 기억하면 탐색 방법을
      *    버튼에서 제스처로 바꾼 직후 옛(큰) 값이 남아 자판 아래에 빈 띠가 생긴다. 탐색 방법을 바꾼 직후에는 콜백이
      *    바꾸기 전의 값을 다시 보내기도 해서, 콜백과 창 관리자 값의 탐색 방법(제스처인지)이 다르면 그 콜백은 버린다.
-     * 호출하는 때: 키보드가 올라올 때, 화면 설정이 바뀔 때, 인셋 콜백이 올 때.
+     * 3) 제스처 탐색에서 시스템이 키보드 창 위에 직접 그리는 키보드 내비게이션 바(˅·입력기 전환 버튼)는 captionBar 인셋으로
+     *    오고(legacyBottomInset), 그 뷰의 실제 높이(imeNavBarFrameHeight)보다는 항상 높이 띄운다.
+     * 호출하는 때: 키보드가 올라올 때, 화면 설정이 바뀔 때, 인셋 콜백이 올 때, 키보드 내비게이션 바 높이가 바뀔 때.
      *
      * @param callbackInsets 인셋 콜백이 방금 준 값. 콜백에서 부른 것이 아니면 null.
      */
@@ -691,6 +698,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             }
         }
         int bottom = fresh >= 0 ? fresh + windowOnlyBottom : callbackBottom;
+        // 시스템이 자판 위에 실제로 그린 키보드 내비게이션 바보다는 항상 높이 띄운다 (인셋 값이 늦거나 틀려도).
+        int frame = imeNavBarFrameHeight();
+        lastImeNavBarFrame = frame;
+        bottom = Math.max(bottom, frame);
         if (bottom < 0) return;   // 어느 값도 모른다: 지금 그대로 둔다
         if (root.getPaddingBottom() != bottom) root.setPadding(0, 0, 0, bottom);
     }
@@ -723,13 +734,50 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return g.left > 0 || g.right > 0;
     }
 
+    /**
+     * 키보드 아래를 가리는 하단 바 높이. 내비게이션 바·누를 수 있는 시스템 영역과 함께 captionBar도 본다:
+     * 제스처 탐색에서 시스템이 키보드 창 위에 직접 그리는 키보드 내비게이션 바(˅ 키보드 숨기기·입력기 전환 버튼)는
+     * navigationBars가 아니라 키보드 창 전용 captionBar 인셋(navigation_bar_frame_height, 보통 48dp)으로 알려 온다.
+     * navigationBars만 보면 제스처 핸들 높이(약 16~24dp)만큼만 띄워 그 버튼들이 도구 막대·맨 아래 줄과 겹친다.
+     */
     private static int legacyBottomInset(WindowInsets insets) {
         if (Build.VERSION.SDK_INT >= 30) {
-            return Math.max(insets.getInsets(WindowInsets.Type.navigationBars()).bottom,
-                    insets.getInsets(WindowInsets.Type.tappableElement()).bottom);
+            return Math.max(Math.max(insets.getInsets(WindowInsets.Type.navigationBars()).bottom,
+                    insets.getInsets(WindowInsets.Type.tappableElement()).bottom),
+                    insets.getInsets(WindowInsets.Type.captionBar()).bottom);
         }
         return insets.getSystemWindowInsetBottom();
     }
+
+    /**
+     * 시스템이 키보드 창 맨 아래에 직접 붙여 그리는 키보드 내비게이션 바(NavigationBarFrame)의 높이. 없거나 숨겨졌으면 0.
+     * 인셋 값이 기기마다 달라도 실제로 자판 위에 겹쳐 그려지는 뷰의 높이를 재므로, 이 높이만큼은 반드시 띄울 수 있다.
+     * 이 뷰는 키보드 창 decor의 바로 아래 자식으로 붙고 id가 없어 클래스 이름으로 찾는다.
+     */
+    private int imeNavBarFrameHeight() {
+        if (getWindow() == null || getWindow().getWindow() == null) return 0;
+        View decor = getWindow().getWindow().getDecorView();
+        if (!(decor instanceof ViewGroup)) return 0;
+        ViewGroup g = (ViewGroup) decor;
+        for (int i = 0; i < g.getChildCount(); i++) {
+            View c = g.getChildAt(i);
+            if (c != root && "NavigationBarFrame".equals(c.getClass().getSimpleName())) {
+                return c.getVisibility() == View.VISIBLE ? c.getHeight() : 0;
+            }
+        }
+        return 0;
+    }
+
+    /** 마지막으로 잰 키보드 내비게이션 바 높이 (레이아웃이 끝날 때마다 바뀌었는지 본다). */
+    private int lastImeNavBarFrame = -1;
+
+    /**
+     * 키보드 내비게이션 바는 인셋 콜백과 따로 나타나거나 높이가 바뀔 수 있어, 레이아웃이 끝날 때마다 그 높이만 가볍게 확인한다.
+     * 바뀌었을 때만 창 관리자에 묻는 refreshBottomInset을 부른다 (타자 칠 때마다 묻지 않게).
+     */
+    private final android.view.ViewTreeObserver.OnGlobalLayoutListener imeNavBarWatcher = () -> {
+        if (root != null && imeNavBarFrameHeight() != lastImeNavBarFrame) refreshBottomInset(null);
+    };
 
     @Override
     public void onConfigurationChanged(android.content.res.Configuration newConfig) {
@@ -4053,6 +4101,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             case SwipeAction.SYMBOLS:
                 toggleSymbols();
                 break;
+            case SwipeAction.NUMBER_PAD:
+                if (panel != PANEL_KEYBOARD) showPanel(PANEL_KEYBOARD);
+                if (numberPadOpen()) { setLayoutKind(lettersKind()); updateAutoCap(); }
+                else openNumberPad();
+                break;
             case SwipeAction.ENTER:
                 handleEnter();
                 break;
@@ -4688,12 +4741,19 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     public void onClipPaste(String text) {
         feedback.onKey(null);
         pasteText(text);
+        closeClipboardAfterUse();
     }
 
     @Override
     public void onClipPasteImage(ClipboardHistory.Item item) {
         feedback.onKey(null);
         pasteImage(item);
+        closeClipboardAfterUse();
+    }
+
+    /** '항목 사용 시 클립보드 닫기'가 켜져 있으면 클립보드 창을 닫고 자판으로 돌아간다. */
+    private void closeClipboardAfterUse() {
+        if (prefs.clipboardCloseOnUse() && panel == PANEL_CLIPBOARD) showPanel(PANEL_KEYBOARD);
     }
 
     @Override

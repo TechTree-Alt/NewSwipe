@@ -3107,7 +3107,10 @@ public final class SettingsActivity extends Activity {
         View clipSensitiveToggle = toggle("민감한 정보도 저장",
                 "비밀번호와 같이 민감한 정보도 클립보드에 저장합니다. 보안에 주의하시기 바랍니다.",
                 Prefs.CLIPBOARD_SENSITIVE, prefs.clipboardSensitive());
-        View clipImages = subGroup(clipImagesToggle, clipSensitiveToggle);
+        View clipCloseToggle = toggle("항목 사용 시 클립보드 닫기",
+                "클립보드 항목을 눌러 입력하면 클립보드 창을 자동으로 닫고 자판으로 돌아갑니다.",
+                Prefs.CLIPBOARD_CLOSE_ON_USE, prefs.clipboardCloseOnUse());
+        View clipImages = subGroup(clipImagesToggle, clipSensitiveToggle, clipCloseToggle);
         clip.addView(toggle("클립보드 기록 저장", "복사·잘라낸 내용을 최근 " + ClipboardHistory.MAX_ITEMS
                         + "개까지 모아 둡니다. 고정하지 않은 항목은 24시간 뒤 지워집니다. ",
                 Prefs.CLIPBOARD_HISTORY, prefs.clipboardHistory(), clipImages));
