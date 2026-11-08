@@ -91,7 +91,36 @@ final class SettingsFrame {
         }
     }
 
+    /** 머리글 오른쪽 '키보드 열기' 버튼 앞에 놓는 버튼 (없으면 null): 아이콘, 설명, 눌렀을 때. */
+    private int actionIcon;
+    private String actionDescription;
+    private View.OnClickListener actionListener;
+    private ExpressiveIconButton actionButton;
+
+    /** 머리글의 '키보드 열기' 버튼 왼쪽에 버튼 하나를 더 둔다 (옅은 바탕에 강조색 아이콘). */
+    SettingsFrame withAction(int icon, String description, View.OnClickListener l) {
+        actionIcon = icon;
+        actionDescription = description;
+        actionListener = l;
+        return this;
+    }
+
+    /** withAction으로 더한 버튼 (wrap 뒤에만 있다). */
+    ExpressiveIconButton actionButton() {
+        return actionButton;
+    }
+
     /** 키보드 열기 대신 검색 버튼과 검색창을 둔다. 검색창을 닫으면 빈 검색어로 알린다. */
+    /** 키보드가 화면 아래를 그대로 덮게 한다 (화면을 줄이지 않는다). 키보드 사용자화처럼 아래에 미리보기를 둔 화면에서 쓴다. */
+    private boolean keyboardOverlays;
+
+    SettingsFrame keyboardOverlays() {
+        keyboardOverlays = true;
+        activity.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING
+                | android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN);
+        return this;
+    }
+
     SettingsFrame withSearch(java.util.function.Consumer<String> onQuery) {
         this.onSearch = onQuery;
         return this;
@@ -117,7 +146,7 @@ final class SettingsFrame {
             root.addView(testBar, matchWrap());
         }
         root.addView(content, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
-        Ui.padForSystemBars(root);
+        Ui.padForSystemBars(root, !keyboardOverlays);
         return root;
     }
 
@@ -153,6 +182,13 @@ final class SettingsFrame {
             searchButton = circleButton(c, Icons.SEARCH, searchName, v -> toggleSearch());
             header.addView(searchButton, new LinearLayout.LayoutParams(size, size));
             return header;
+        }
+        if (actionListener != null) {
+            actionButton = circleButton(c, actionIcon, actionDescription, actionListener);
+            actionButton.setActive(true);   // 옅은 바탕: 키보드 열기와 구분되는 보조 버튼
+            LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(size, size);
+            alp.rightMargin = Ui.dp(c, 8);
+            header.addView(actionButton, alp);
         }
         // 강조색 동그라미 안에 키보드 아이콘. 입력 시험 창이 열려 있으면 색을 뒤집어 알린다.
         testButton = circleButton(c, Icons.MENU_KEYBOARD, "키보드 열기", v -> toggleTestKeyboard());

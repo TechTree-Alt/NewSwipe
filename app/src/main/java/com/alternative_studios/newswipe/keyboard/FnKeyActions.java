@@ -7,13 +7,13 @@ import java.util.List;
 
 /**
  * Fn 키: 한글 자판에서 Shift 키를 끄고 'Shift 키 대신 Fn 키 사용'을 켜면 Shift 자리에 놓이는 키.
- * 탭·길게 누르기·위·아래·왼쪽·오른쪽으로 밀기마다 실행할 기능을 직접 정한다 (기능 목록은 {@link SwipeAction}).
- * 밀어서 기능 편집과 같은 틀({@link SwipeSpec})을 쓰고, '누르기' 칸에는 방향 자리 두 개를 탭·길게 누르기로 쓴다.
+ * 누르기·길게 누르기·위·아래·왼쪽·오른쪽으로 밀기마다 실행할 기능을 직접 정한다 (기능 목록은 {@link SwipeAction}).
+ * 밀어서 기능 편집과 같은 틀({@link SwipeSpec})을 쓰고, '누르기' 칸에는 방향 자리 두 개를 누르기·길게 누르기로 쓴다.
  */
 public final class FnKeyActions {
-    /** 칸: 누르기(탭·길게 누르기), 밀기(네 방향). */
+    /** 칸: 누르기(누르기·길게 누르기), 밀기(네 방향). */
     public static final int PRESS = 0, SWIPE = 1;
-    /** '누르기' 칸에서 방향 자리를 빌려 쓰는 탭·길게 누르기. */
+    /** '누르기' 칸에서 방향 자리를 빌려 쓰는 누르기·길게 누르기. */
     public static final int TAP = Key.SWIPE_DOWN, LONG = Key.SWIPE_UP;
 
     public static final SwipeSpec SPEC = new SwipeSpec("fk", new String[]{"press", "swipe"}) {
@@ -43,7 +43,7 @@ public final class FnKeyActions {
 
         @Override
         public String note() {
-            return "한글 자판의 Shift 자리에 놓인 Fn 키를 탭하거나 길게 누르거나 밀 때 실행할 기능을 고릅니다.";
+            return "한글 자판의 Shift 자리에 놓인 Fn 키를 누르거나 길게 누르거나 밀 때 실행할 기능을 고릅니다.";
         }
 
         @Override
@@ -53,7 +53,7 @@ public final class FnKeyActions {
 
         @Override
         public String cardHint(int slot) {
-            return slot == PRESS ? "탭하거나 길게 누를 때" : "위·아래·왼쪽·오른쪽으로 밀 때";
+            return slot == PRESS ? "누르거나 길게 누를 때" : "위·아래·왼쪽·오른쪽으로 밀 때";
         }
 
         @Override
@@ -63,7 +63,7 @@ public final class FnKeyActions {
 
         @Override
         public String dirLabel(int slot, int dir) {
-            if (slot == PRESS) return dir == LONG ? "길게 누르기" : "탭";
+            if (slot == PRESS) return dir == LONG ? "길게 누르기" : "누르기";
             return dirLabel(dir);
         }
 
@@ -83,18 +83,18 @@ public final class FnKeyActions {
 
         @Override
         public String dialogTitle(int slot, int dir) {
-            if (slot == PRESS) return "Fn 키 " + (dir == LONG ? "길게 누르기" : "탭");
+            if (slot == PRESS) return "Fn 키 " + (dir == LONG ? "길게 누르기" : "누르기");
             return "Fn 키 " + SwipeCustom.label(dir) + "으로 밀기";
         }
     };
 
-    /** {@link #actions}의 배열에서 탭·길게 누르기 자리. 밀기는 2 + 방향(Key.SWIPE_*). */
+    /** {@link #actions}의 배열에서 누르기·길게 누르기 자리. 밀기는 2 + 방향(Key.SWIPE_*). */
     public static final int I_TAP = 0, I_LONG = 1, I_SWIPE = 2;
 
     private FnKeyActions() {
     }
 
-    /** 설정의 배치로 만든 {탭, 길게 누르기, 아래, 위, 왼쪽, 오른쪽 밀기} 기능 ID 배열. */
+    /** 설정의 배치로 만든 {누르기, 길게 누르기, 아래, 위, 왼쪽, 오른쪽 밀기} 기능 ID 배열. */
     public static String[] actions(Prefs prefs) {
         String[][] t = SPEC.table(prefs);
         String[] out = new String[I_SWIPE + 4];

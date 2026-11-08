@@ -166,15 +166,47 @@ public class SplitBottomRowTest {
         }
     }
 
+    /** 두 묶음이 각자 절반을 꽉 채우도록 폭 100%·가운데 위치(왼쪽 0, 오른쪽 100)로 둔 가로 모드 보기. */
+    private static Prefs fullWidthLandscape(FakeSp sp) throws Exception {
+        Prefs p = landscapeEditView(sp);
+        sp.m.put(p.balancedConsonantWidthKey(), 100);
+        sp.m.put(p.balancedConsonantPosKey(), 0);
+        sp.m.put(p.balancedVowelWidthKey(), 100);
+        sp.m.put(p.balancedVowelPosKey(), 100);
+        return p;
+    }
+
     @Test
-    public void vowelsFillTheRightHalfByDefault() throws Exception {
-        Prefs p = landscapeEditView(new FakeSp());
+    public void vowelsFillTheRightHalfAtFullWidth() throws Exception {
+        Prefs p = fullWidthLandscape(new FakeSp());
         KeyboardLayout korean = KeyboardLayout.korean(p);
         for (int r = 0; r < 3; r++) {
             float[] h = halves(korean.rows[r]);
             assertEquals(0f, h[0], 0.001f);
             assertEquals(5f, h[2], 0.001f);
             assertEquals(10f, h[3], 0.001f);
+        }
+    }
+
+    @Test
+    public void splitBlocksDefaultToEightyPercentAtTheOuterEdges() throws Exception {
+        Prefs p = landscapeEditView(new FakeSp());
+        assertEquals(80, p.balancedConsonantWidth());
+        assertEquals(20, p.balancedConsonantPos());
+        assertEquals(80, p.balancedVowelWidth());
+        assertEquals(80, p.balancedVowelPos());
+        // 세로 모드의 균형 배열은 그대로 100%·가운데
+        Prefs portrait = portraitView(new FakeSp());
+        assertEquals(100, portrait.balancedConsonantWidth());
+        assertEquals(50, portrait.balancedConsonantPos());
+        assertEquals(100, portrait.balancedVowelWidth());
+        assertEquals(50, portrait.balancedVowelPos());
+        KeyboardLayout korean = KeyboardLayout.korean(p);
+        for (int r = 0; r < 3; r++) {
+            float[] h = halves(korean.rows[r]);
+            assertEquals(0.2f, h[0], 0.001f);   // 왼쪽 묶음: 폭 4칸을 왼쪽 절반(5칸)의 20% 자리에
+            assertEquals(5.8f, h[2], 0.001f);   // 오른쪽 묶음: 폭 4칸을 오른쪽 절반의 80% 자리에
+            assertEquals(9.8f, h[3], 0.001f);
         }
     }
 
@@ -462,10 +494,11 @@ public class SplitBottomRowTest {
     public void englishAndSymbolRowsAreTheNormalRowsCutInTheMiddle() throws Exception {
         for (boolean grid : new boolean[]{false, true}) {
             FakeSp splitSp = new FakeSp(), normalSp = new FakeSp();
-            Prefs split = landscapeEditView(splitSp), normal = portraitView(normalSp);
+            // 묶음이 절반을 꽉 채워야 일반 줄을 가운데에서 자른 것과 같다 (기본값은 폭 80%라 줄어든다).
+            Prefs split = fullWidthLandscape(splitSp), normal = portraitView(normalSp);
             splitSp.m.put(Prefs.GRID_LAYOUT, grid);
             normalSp.m.put(Prefs.GRID_LAYOUT, grid);
-            // 격자 키 한 칸(한글 자음 키 폭)이 같도록 세로 모드도 자·모음 균형 레이아웃으로 둔다.
+            // 격자 키 한 칸(한글 자음 키 폭)이 같도록 세로 모드도 자·모음 균형 배열로 둔다.
             normalSp.m.put(normal.balancedLayoutKey(), true);
             KeyboardLayout[][] pairs = {
                     {KeyboardLayout.english(split), KeyboardLayout.english(normal)},

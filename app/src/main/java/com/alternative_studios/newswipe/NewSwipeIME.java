@@ -128,8 +128,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private IconButton sideSwap, sideExpand;
     /** 마지막으로 적용한 한 손 모드 배치 (상태·폭·띄우는 높이). 바뀌었을 때만 뷰를 다시 놓는다. */
     private String appliedOneHand;
-    /** 도구 막대 밀기 배치. 완전 사용자화를 켜면 편집한 배치, 끄면 기본 밀기 설정으로 만든 배치 (설정이 바뀔 때 만든다). */
-    private ToolbarSwipes toolbarSwipes = ToolbarSwipes.standard(true, true, true, true);
+    /** 도구 막대 밀기 배치: 도구 막대와 버튼마다 정한 기능 (설정이 바뀔 때 만든다). */
+    private ToolbarSwipes toolbarSwipes = ToolbarSwipes.load(null);
     /** 입력란이 알려 준 마지막 선택 영역 (모르면 -1). 단어 단위 커서 이동이 입력란에 다시 묻지 않도록 기억한다. */
     private int selStart = -1, selEnd = -1;
     private LinearLayout searchBar;
@@ -711,12 +711,6 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 창 관리자에게 물을 수 없는 기기에서 인셋 콜백이 마지막으로 준 하단 높이 (-1 = 아직 모른다). */
     private int callbackBottom = -1;
 
-    /** 창 관리자가 지금 알려 주는 하단 바 높이. 알 수 없으면 -1. */
-    private int freshBottomInset() {
-        WindowInsets insets = freshInsets();
-        return insets == null ? -1 : legacyBottomInset(insets);
-    }
-
     /** 창 관리자가 지금 새로 계산해 주는 이 창의 인셋. 물을 수 없으면 null. */
     private WindowInsets freshInsets() {
         if (Build.VERSION.SDK_INT < 30) return null;
@@ -968,7 +962,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
      */
     private void sizeToolbar() {
         toolbarHeight = toolbarHeightPx();
-        setHeight(topSlot, toolbarHeight);
+        // 도구 막대 영역의 위·아래 여백: 막대 자리를 그만큼 높이고 안쪽 여백으로 둔다 (막대 자체의 높이는 그대로).
+        barPadTop = Ui.dp(this, prefs.areaPadDp(0, Prefs.SIDE_TOP));
+        barPadBottom = Ui.dp(this, prefs.areaPadDp(0, Prefs.SIDE_BOTTOM));
+        topSlot.setPadding(topSlot.getPaddingLeft(), barPadTop, topSlot.getPaddingRight(), barPadBottom);
+        setHeight(topSlot, barSlotHeight());
         dropStalePanels();
         float scale = prefs.toolButtonSize() / 100f;
         int width = Math.round(Ui.dp(this, 40) * scale);
@@ -1019,6 +1017,14 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         column.removeView(topSlot);
         if (bottom) column.addView(topSlot, lp);
         else column.addView(topSlot, 0, lp);
+    }
+
+    /** 도구 막대 영역의 위·아래 여백 (px). */
+    private int barPadTop, barPadBottom;
+
+    /** 도구 막대 자리의 전체 높이: 막대 + 도구 막대 영역의 위·아래 여백. 이모지·클립보드 창은 이 자리까지 덮는다. */
+    private int barSlotHeight() {
+        return toolbarHeight + barPadTop + barPadBottom;
     }
 
     /** 추천 단어 앞의 빈 칸. 분리 키보드에서는 남는 폭을 모두 가져 추천 단어 세 개가 오른쪽 끝에 붙는다. */
@@ -1177,49 +1183,35 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         feedback.configure(prefs);
         if (emojiPanel != null) emojiPanel.setSizeLevel(prefs.emojiSize());
         applyResultSize();
-        // 두벌식 자판(실험실)은 ㅑ·ㅕ·ㅛ·ㅠ 키가 따로 있어 모음 연속 탭을 쓰지 않는다 (ㅗㅗ는 'ㅗㅗ' 그대로).
-        composer.setDoubleTapVowel(prefs.doubleTapVowelActive());
-        WordSuggester.setDoubleTapVowel(prefs.doubleTapVowelActive());   // '안너'도 '안녀…'로 찾는다
+        composer.setDoubleTapVowel(prefs.doubleTapVowel());
+        WordSuggester.setDoubleTapVowel(prefs.doubleTapVowel());   // '안너'도 '안녀…'로 찾는다
         composer.setDoubleTapConsonant(prefs.doubleTapConsonant(), prefs.doubleTapConsonantMs());
         // 가로 모드·대화면에서 따로 정한 키보드 높이·글자 크기는 그 화면에서만 쓴다.
         Prefs sizePrefs = prefs.profileView(profile());
         // 한 손 모드에서는 키 높이를 줄인 만큼 키 글자도 같은 비율로 줄인다 (도구 막대는 줄어든 자판 바로 위에 붙어 따라온다).
         float oneHandScale = !Prefs.ONE_HAND_OFF.equals(activeOneHand()) ? prefs.oneHandHeight() / 100f : 1f;
         keyboard.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), prefs.keyPreview(),
-                prefs.longPressChars(), prefs.spaceCursor(), Math.round(sizePrefs.keyTextSize() * oneHandScale));
+                Math.round(sizePrefs.keyTextSize() * oneHandScale));
         keyboard.setDirectionRatios(prefs.swipeDownRatio(), prefs.swipeUpRatio());
         keyboard.setFunctionSwipeThreshold(prefs.fnSwipeThresholdDp());
-        keyboard.setCursorAxes(prefs.spaceCursorH(), prefs.spaceCursorV());
         keyboard.setGapCursor(sizePrefs.splitGapCursor(), sizePrefs.splitGapSpeed());
-        keyboard.setCursorSpeed(prefs.spaceCursorSpeedH(), prefs.spaceCursorSpeedV(),
-                prefs.charCursorSpeedH(), prefs.charCursorSpeedV());
-        keyboard.setSpaceLangSwipe(prefs.spaceLangSwipe());
-        keyboard.setSpaceSelect(prefs.spaceSelect());
-        keyboard.setDeleteLongPress(prefs.longPressDelete(), prefs.deletePressMs());
-        keyboard.setModeKeyLongPress(prefs.modeKeyLongPress());
-        keyboard.setLongPressActions(prefs.longPressCustom()
-                ? com.alternative_studios.newswipe.keyboard.LongPressActions.actions(prefs) : null);
-        keyboard.setModeKeyEmoji(prefs.modeKeyEmoji());
-        keyboard.setFunctionSwipes(prefs.swipeFnCustom() ? FunctionSwipes.load(prefs) : null);
+        keyboard.setCursorSpeed(prefs.spaceCursorSpeedH(), prefs.spaceCursorSpeedV());   // 글자 키 트랙패드도 같은 속도
+        keyboard.setDeleteRepeatRates(prefs.deleteRepeatRate(), prefs.deleteWordRepeatRate());
+        // 길게 누르기·밀기는 모두 키마다 정한 기능을 쓴다 (키보드 사용자화에서 키를 눌러 정한다).
+        keyboard.setFunctionLongPressMs(prefs.deletePressMs());
+        keyboard.setLongPressActions(com.alternative_studios.newswipe.keyboard.LongPressActions.actions(prefs));
+        keyboard.setFunctionSwipes(FunctionSwipes.load(prefs));
         keyboard.setFnKeyActions(com.alternative_studios.newswipe.keyboard.FnKeyActions.actions(prefs));
-        keyboard.setDeleteWordSwipe(prefs.deleteWordSwipe());
-        // 키보드 밀기 완전 사용자화를 켜면 문자 키 커서 이동은 편집 화면의 '커서 자유 이동'을 따른다.
-        keyboard.setPopupHints(prefs.longPressChars() && !prefs.popupHintHidden());
+        keyboard.setPopupHints(!prefs.popupHintHidden());
         keyboard.setNumberHintHidden(prefs.numberHintHidden());
         keyboard.setRepeatChars(prefs.repeatChars());
         applySuggestLead();
         keyboard.setHitShrink(prefs.deleteHitShrink() ? prefs.deleteHitShrinkPct() / 100f : 0f,
                 prefs.spaceHitShrink() ? prefs.spaceHitShrinkPct() / 100f : 0f);
-        keyboard.setCharCursor(!prefs.swipeKeyboardCustom() && prefs.charCursor(),
-                prefs.charCursorH(), prefs.charCursorV());
-        // 키보드 밀기: 완전 사용자화를 켜면 편집한 배치를, 끄면 '두 손가락으로 밀어서 실행 취소'만 쓴다.
         keyboard.setPickSwipe(prefs.swipePickSuggestion());
-        keyboard.setKeyboardSwipes(prefs.swipeKeyboardCustom() ? KeyboardSwipes.load(prefs)
-                : prefs.twoFingerUndo() ? KeyboardSwipes.twoFingerUndo() : null);
-        toolbarSwipes = prefs.swipeToolbarCustom() ? ToolbarSwipes.load(prefs)
-                : ToolbarSwipes.standard(prefs.toolbarSwipe(), prefs.toolClipboardSwipe(), prefs.toolEmojiSwipe(),
-                        prefs.toolUndoSwipe());
-        // 지우기 키를 밀어 단어를 지울 때와 같은 거리('밀어서 기능'의 미는 거리의 1.5배)를 쓴다.
+        keyboard.setKeyboardSwipes(KeyboardSwipes.load(prefs));
+        toolbarSwipes = ToolbarSwipes.load(prefs);
+        // 지우기 키를 밀어 단어를 지울 때와 같은 거리('기능키 미는 거리'의 1.5배)를 쓴다.
         if (toolbar != null) {
             toolbar.configure(!SwipeAction.NONE.equals(toolbarAction(Key.SWIPE_UP)),
                     !SwipeAction.NONE.equals(toolbarAction(Key.SWIPE_DOWN)),
@@ -1242,13 +1234,16 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             if (panel == PANEL_KEYBOARD) scheduleSuggest();   // 단축어는 단어 추천을 꺼도 쓴다
         }
         if (wasLearn && !cfgLearn) runIo(this::releaseLearned);   // 학습을 끄면 학습한 단어도 메모리에서 내린다
-        float rows = 4 + (prefs.numberRow() ? KeyboardLayout.numberRowHeight(prefs) : 0f);
+        float rows = KeyboardLayout.rowUnits(prefs);
         keyboard.setKeyGaps(Ui.dp(this, prefs.keyGapXDp()), Ui.dp(this, prefs.keyGapYDp()));
         keyboard.setInsets(Ui.dp(this, prefs.padLeftDp()), Ui.dp(this, prefs.padTopDp()),
                 Ui.dp(this, prefs.padRightDp()), Ui.dp(this, prefs.padBottomDp()));
-        // 도구 막대의 양 끝 버튼이 자판의 양 끝 키와 같은 선에 오도록 '자판 모양'의 좌우 여백을 따른다.
-        if (toolbar != null) toolbar.setPadding(Ui.dp(this, prefs.padLeftDp()), 0, Ui.dp(this, prefs.padRightDp()), 0);
-        if (searchBar != null) searchBar.setPadding(Ui.dp(this, prefs.padLeftDp()), 0, Ui.dp(this, prefs.padRightDp()), 0);
+        keyboard.setAreaInsets(areaPadsPx());
+        // 도구 막대의 양 끝 버튼이 자판의 양 끝 키와 같은 선에 오도록 키보드 좌우 여백을 따른다 (도구 막대 영역 여백을 더한다).
+        int barL = Ui.dp(this, prefs.padLeftDp() + prefs.areaPadDp(0, Prefs.SIDE_LEFT));
+        int barR = Ui.dp(this, prefs.padRightDp() + prefs.areaPadDp(0, Prefs.SIDE_RIGHT));
+        if (toolbar != null) toolbar.setPadding(barL, 0, barR, 0);
+        if (searchBar != null) searchBar.setPadding(barL, 0, barR, 0);
         applyPanelInsets();
         arrangeToolbar();
         if (topSlot != null) {
@@ -1259,10 +1254,17 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         updateHideButton();
         // 한 손 모드에서는 키 높이를 '키 높이' 비율만큼 줄인다.
         keyboardHeight = Math.round(Ui.dp(this, 54) * rows * sizePrefs.keyboardHeight() / 100f * oneHandScale)
-                + Ui.dp(this, prefs.padTopDp()) + Ui.dp(this, prefs.padBottomDp());
+                + Ui.dp(this, prefs.padTopDp()) + Ui.dp(this, prefs.padBottomDp()) + Ui.dp(this, prefs.areaPadVerticalDp());
         keyboard.setKeyboardHeight(keyboardHeight);
         applyOneHand();
         updatePanelSizes();
+    }
+
+    /** 영역별 여백 (px, [영역][왼·위·오른·아래]). */
+    private float[][] areaPadsPx() {
+        float[][] pads = new float[4][4];
+        for (int a = 0; a < 4; a++) for (int side = 0; side < 4; side++) pads[a][side] = Ui.dp(this, prefs.areaPadDp(a, side));
+        return pads;
     }
 
     // ---------------------------------------------------------------- 한 손 모드
@@ -1322,7 +1324,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (keyboard == null) return;
         keyboard.cancelAll();
         applySettings();
-        setLayoutKind(layoutKind);   // 자·모음 균형 레이아웃은 한 손 모드에서 빈틈 없는 배열로 바뀐다
+        setLayoutKind(layoutKind);   // 자·모음 균형 배열은 한 손 모드에서 빈틈 없는 배열로 바뀐다
     }
 
     /**
@@ -1633,9 +1635,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private void setLayoutKind(int kind) {
         layoutKind = kind;
         if (keyboard == null) return;   // 외장 키보드만 쓰면 자판 화면을 만들지 않은 채 언어를 바꿀 수 있다
-        // 한 손 모드에서는 자·모음 균형 레이아웃의 가운데 빈틈을 없앤 배열을 쓴다.
+        // 한 손 모드에서는 자·모음 균형 배열의 가운데 빈틈을 없앤 배열을 쓴다.
         Prefs prefs = !Prefs.ONE_HAND_OFF.equals(activeOneHand()) ? this.prefs.oneHandView() : this.prefs;
-        // 자·모음 균형 레이아웃의 키 폭·위치는 가로 모드·대화면일 때 세로 모드와 따로 정한 값을 쓴다.
+        // 자·모음 균형 배열의 키 폭·위치는 가로 모드·대화면일 때 세로 모드와 따로 정한 값을 쓴다.
         // 화면을 돌리면 시스템이 입력 뷰를 다시 만들고(onCreateInputView → applySettings), 입력을 다시 시작하므로 여기서 방향을 읽으면 된다.
         prefs = prefs.profileView(profile());
         KeyboardLayout l;
@@ -1740,27 +1742,33 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         boolean liftBar = prefs.toolbarBottom() && panel == PANEL_KEYBOARD && !barOnly
                 && topSlot != null && topSlot.getVisibility() == View.VISIBLE;
         int gap = liftBar ? padB : 0;
-        keyboard.setInsets(Ui.dp(this, prefs.padLeftDp()), Ui.dp(this, prefs.padTopDp()),
+        // 위쪽 여백도 키보드 전체의 바깥 여백이다: 도구 막대가 자판 위에 있으면 여백을 도구 막대 위로 옮긴다 (전체 높이는 그대로).
+        int padT = Ui.dp(this, prefs.padTopDp());
+        boolean raiseBar = !prefs.toolbarBottom() && panel == PANEL_KEYBOARD && !barOnly
+                && topSlot != null && topSlot.getVisibility() == View.VISIBLE;
+        int gapTop = raiseBar ? padT : 0;
+        keyboard.setInsets(Ui.dp(this, prefs.padLeftDp()), padT - gapTop,
                 Ui.dp(this, prefs.padRightDp()), padB - gap);
-        keyboard.setKeyboardHeight(keyboardHeight - gap);
+        keyboard.setKeyboardHeight(keyboardHeight - gap - gapTop);
         if (topSlot != null && topSlot.getLayoutParams() instanceof LinearLayout.LayoutParams) {
             LinearLayout.LayoutParams slp = (LinearLayout.LayoutParams) topSlot.getLayoutParams();
-            if (slp.bottomMargin != gap) {
+            if (slp.bottomMargin != gap || slp.topMargin != gapTop) {
                 slp.bottomMargin = gap;
+                slp.topMargin = gapTop;
                 topSlot.setLayoutParams(slp);
             }
         }
-        int h = barOnly ? 0 : keyboardHeight - gap + (full ? toolbarHeight : 0);
+        int h = barOnly ? 0 : keyboardHeight - gap - gapTop + (full ? barSlotHeight() : 0);
         ViewGroup.LayoutParams lp = content.getLayoutParams();
         if (lp != null && lp.height != h) {
             lp.height = h;
             content.setLayoutParams(lp);
         }
-        if (emojiPanel != null) setHeight(emojiPanel, keyboardHeight + toolbarHeight);
-        if (clipPanel != null) setHeight(clipPanel, keyboardHeight + toolbarHeight);
+        if (emojiPanel != null) setHeight(emojiPanel, keyboardHeight + barSlotHeight());
+        if (clipPanel != null) setHeight(clipPanel, keyboardHeight + barSlotHeight());
         // 자판 위에 도구 막대가 있으면 키 미리보기가 그 위까지 올라갈 수 있다 (아래에 두었거나 껐으면 자판 안에서 멈춘다).
         keyboard.setOverflowTop(panel == PANEL_SEARCH ? toolbarHeight + resultStripHeight()
-                : toolbarGone() || prefs.toolbarBottom() ? 0 : toolbarHeight);
+                : toolbarGone() || prefs.toolbarBottom() ? 0 : barSlotHeight());
     }
 
     private static void setHeight(View v, int h) {
@@ -1811,7 +1819,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         emojiPanel.setRecent(EmojiRepository.parseRecent(prefs.recentEmoji()));
         emojiPanel.setPinned(EmojiRepository.parseRecent(prefs.pinnedEmoji()));
         content.addView(emojiPanel, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                keyboardHeight + toolbarHeight));
+                keyboardHeight + barSlotHeight()));
         final EmojiPanel target = emojiPanel;
         emojiRepo.load(d -> {
             if (target == emojiPanel) target.setData(d, EmojiRepository.parseRecent(prefs.recentEmoji()),
@@ -1871,7 +1879,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         clipPanel = new ClipboardPanel(this, theme, toolbarHeight, this);
         applyPanelInsets();
         content.addView(clipPanel, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                keyboardHeight + toolbarHeight));
+                keyboardHeight + barSlotHeight()));
     }
 
     // ---------------------------------------------------------------- KeyboardView.Listener
@@ -1969,21 +1977,6 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         typeText(text, false);
     }
 
-    @Override
-    public void onKeyLongPress(Key key) {
-        if (key.type == Key.LANGUAGE) {
-            showImePicker();
-        } else if (key.type == Key.TO_SYMBOLS || key.type == Key.TO_LETTERS) {
-            // 숫자 자판의 ?123도 같은 기호 키로 본다 (완전 사용자화에서도 같은 칸을 쓴다).
-            showPanel(PANEL_EMOJI);
-        }
-    }
-
-    @Override
-    public void onModeKeySwipeUp(Key key) {
-        showPanel(PANEL_EMOJI);
-    }
-
     /** 3×4 숫자 패드를 보이는 중인지 (숫자 입력란에서 떴거나 '기호 자판 대신 숫자 패드 사용'으로 열었다). */
     private boolean numberPadOpen() {
         return layoutKind == KeyboardLayout.NUMBER;
@@ -1996,9 +1989,13 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     @Override
-    public void onDeleteRepeat() {
+    public void onDeleteRepeat(boolean word) {
         // 더 지울 것이 없어 커서가 멈췄으면 진동하지 않는다 (지우기 자체는 예전처럼 보낸다).
         if (!nothingToDelete()) feedback.onRepeat();
+        if (word) {
+            onDeleteWord();
+            return;
+        }
         // 선택 영역 확인(앱에 묻고 기다리는 호출)은 연속 삭제의 첫 번째에서만 한다.
         // 첫 삭제 뒤에는 선택 영역이 사라지므로 이후에는 묻지 않아도 된다.
         handleDelete(deleteRepeatChecked);
@@ -2018,8 +2015,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 이번 지우기 키 누름에서 선택 영역을 이미 확인했는지. 키를 누를 때마다 초기화된다. */
     private boolean deleteRepeatChecked;
 
-    @Override
-    public void onDeleteWord() {
+    private void onDeleteWord() {
         if (panel == PANEL_SEARCH) {
             composer.reset();
             search.setLength(0);
@@ -2060,8 +2056,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
      * 지우기 키를 위로 밀었을 때: 커서가 있는 줄에서 커서 왼쪽을 모두 지운다 (줄바꿈은 지우지 않는다).
      * 커서가 이미 줄의 맨 앞이면 지우기 키를 한 번 누른 것처럼 윗줄과 합친다.
      */
-    @Override
-    public void onDeleteToLineStart() {
+    private void onDeleteToLineStart() {
         if (panel == PANEL_SEARCH) {
             composer.reset();
             search.setLength(0);
@@ -2620,7 +2615,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private static final String[] SPACE_NAMES = {"한국어", "English", "日本語", "中文"};
 
     /**
-     * 스페이스바의 언어 이름과, 설정에서 켰으면 🌐︎를 위로 밀 때의 언어 말풍선을 놓는다. 말풍선은 '언어 순서 사용자화'에서 정한
+     * 스페이스바의 언어 이름과, 🌐︎를 위로 밀어 '언어 고르기'를 할 때의 언어 말풍선을 놓는다. 말풍선은 '언어 순서 사용자화'에서 정한
      * 차례대로 위에서 아래로 늘 같은 자리에 놓인다 (켜 둔 언어만). 처음에는 지금 언어가 골라져 있다.
      */
     private void updateLanguagePopup() {
@@ -2628,10 +2623,6 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         String now = currentLanguage();
         int nowAt = java.util.Arrays.asList(LANGUAGE_IDS).indexOf(now);
         keyboard.setSpaceLabel(prefs.spaceLangLabel() ? SPACE_NAMES[nowAt] : null);
-        if (!prefs.globeSwipeLang()) {
-            keyboard.setLanguagePopup(null, 0);
-            return;
-        }
         java.util.List<String> names = new java.util.ArrayList<>();
         int selected = 0;
         for (String id : prefs.languageOrder()) {
@@ -3720,7 +3711,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             userWords.forget(word, lang);
             if (lang) usageHistory.remove(word);
             main.post(() -> {
-                Toast.makeText(this, "'" + word + "'" + WordSuggester.objectParticle(word) + " 삭제했습니다. 다시 학습하지 않습니다",
+                Toast.makeText(this, "'" + word + "'" + WordSuggester.objectParticle(word) + " 지웠습니다. 다시 학습하지 않습니다",
                         Toast.LENGTH_SHORT).show();
                 updateSuggestions();
             });
@@ -3740,7 +3731,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private Runnable forgetAction;
 
     private void confirmForget(String word, Runnable delete) {
-        confirmOnBar("'" + word + "'" + WordSuggester.objectParticle(word) + " 삭제할까요?", "삭제",
+        confirmOnBar("'" + word + "'" + WordSuggester.objectParticle(word) + " 지울까요?", "지우기",
                 TextUtils.TruncateAt.MIDDLE, delete);
     }
 
@@ -4080,7 +4071,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         applySuggestion(index);
     }
 
-    /** 밀어서 기능 완전 사용자화로 정해 둔 기능(SwipeAction ID)을 실행한다. */
+    /** 키를 밀거나 길게 눌러 정해 둔 기능(SwipeAction ID)을 실행한다. */
     @Override
     public void onKeyFunction(Key key, String actionId) {
         if (actionId == null) return;
@@ -4167,6 +4158,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 if (layoutKind == KeyboardLayout.ENGLISH) setShift(2);
                 break;
             case SwipeAction.DELETE_WORD:
+            case SwipeAction.DELETE_WORD_REPEAT:   // 길게 누르기 전용 (한 번 실행하는 곳에서는 단어 하나)
                 onDeleteWord();
                 break;
             case SwipeAction.DELETE_LINE_START:

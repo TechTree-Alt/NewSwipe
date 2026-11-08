@@ -25,7 +25,7 @@ public final class Key {
     /** Fn 키: 한글 자판의 Shift 자리. 탭·길게 누르기·밀기마다 사용자가 정한 기능을 실행한다 (FnKeyActions). */
     public static final int FUNCTION = 11;
     /**
-     * 키 사이의 빈틈 (자·모음 균형 레이아웃에서 자음과 모음 사이). 그리지 않고, 누르면 가장 가까운 키를 누른 것으로 본다.
+     * 키 사이의 빈틈 (자·모음 균형 배열에서 자음과 모음 사이). 그리지 않고, 누르면 가장 가까운 키를 누른 것으로 본다.
      * (SPACER는 그 자리를 눌러도 반응하지 않는 빈 자리다.)
      */
     public static final int GAP = 12;
@@ -70,6 +70,11 @@ public final class Key {
     boolean flick;
     /** 길게 눌러 연속 입력으로 정해 둔 글자여도 연속 입력을 쓰지 않는다 (이메일·인터넷 주소 입력란의 온점 키). */
     boolean noRepeat;
+
+    /** 그리지 않는 키인지 (분리 키보드의 빈 자리에 둔 g, v). */
+    public boolean isHidden() {
+        return hidden;
+    }
 
     /** 설정에 저장된 이 키의 이름 (label과 다를 수 있다). */
     public String slot() {

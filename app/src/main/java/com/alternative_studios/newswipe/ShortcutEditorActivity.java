@@ -57,7 +57,7 @@ public final class ShortcutEditorActivity extends Activity {
         int pad = Ui.dp(this, 16);
         list.setPadding(pad, 0, pad, Ui.dp(this, 32));
         scroll.addView(list);
-        setContentView(new SettingsFrame(this, "단축어 편집", getString(R.string.app_name)).wrap(scroll));
+        setContentView(new SettingsFrame(this, "단축어 사용자화", getString(R.string.app_name)).wrap(scroll));
         render();
     }
 
@@ -177,9 +177,9 @@ public final class ShortcutEditorActivity extends Activity {
         IconButton trash = new IconButton(this, Icons.TRASH, hintColor, hintColor & 0x00FFFFFF | 0x33000000,
                 "'" + key + "' 단축어 지우기");
         trash.setOnClickListener(v -> AppTheme.accentBuilder(AppTheme.dialogContext(this))
-                .setTitle("단축어 삭제")
-                .setMessage("'" + key + "' 단축어를 삭제하시겠습니까?")
-                .setPositiveButton("삭제", (d, w) -> {
+                .setTitle("단축어 지우기")
+                .setMessage("'" + key + "' 단축어를 지우시겠습니까?")
+                .setPositiveButton("지우기", (d, w) -> {
                     prefs.removeShortcut(key);
                     render();
                 })

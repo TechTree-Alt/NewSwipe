@@ -38,7 +38,8 @@ jobs:
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: 17
+          # UI 시험(Robolectric)이 Android 15(SDK 35) 이상을 흉내 내려면 Java 21이 필요하다.
+          java-version: 21
 
       - uses: gradle/actions/setup-gradle@v6
 

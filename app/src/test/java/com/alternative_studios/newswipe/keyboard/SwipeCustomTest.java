@@ -17,9 +17,11 @@ public class SwipeCustomTest {
     }
 
     @Test
-    public void englishAndPunctuationHaveNoDefaults() {
+    public void englishAndPunctuationDefaults() {
         assertNull(SwipeCustom.get(null, false, "q", Key.SWIPE_DOWN));
-        assertNull(SwipeCustom.get(null, true, ".", Key.SWIPE_UP));
+        assertEquals(",", SwipeCustom.get(null, true, ".", Key.SWIPE_UP));   // 온점 키를 위로 밀면 쉼표 (예전 기본 설정과 같다)
+        assertNull(SwipeCustom.get(null, true, ".", Key.SWIPE_DOWN));
+        assertNull(SwipeCustom.get(null, true, ",", Key.SWIPE_UP));
     }
 
     @Test

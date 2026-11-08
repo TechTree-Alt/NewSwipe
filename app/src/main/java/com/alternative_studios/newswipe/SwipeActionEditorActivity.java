@@ -1,13 +1,10 @@
 package com.alternative_studios.newswipe;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
-import android.text.TextUtils;
 import android.util.TypedValue;
-import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
@@ -18,14 +15,13 @@ import com.alternative_studios.newswipe.keyboard.FunctionSwipes;
 import com.alternative_studios.newswipe.keyboard.KeyboardSwipes;
 import com.alternative_studios.newswipe.keyboard.KeyboardTheme;
 import com.alternative_studios.newswipe.keyboard.SwipeAction;
-import com.alternative_studios.newswipe.keyboard.SwipeCustom;
 import com.alternative_studios.newswipe.keyboard.SwipeSpec;
 import com.alternative_studios.newswipe.keyboard.ToolbarSwipes;
 import com.alternative_studios.newswipe.ui.ExpressiveChoiceButton;
 import com.alternative_studios.newswipe.ui.Ui;
 
 /**
- * 밀어서 기능 완전 사용자화의 편집 화면. 기능키·도구 막대·키보드 밀기가 같은 화면을 쓰고, 무엇을 편집할지는
+ * 밀어서 기능 편집 화면 (키보드 밀기, Fn 키). 같은 화면을 쓰고, 무엇을 편집할지는
  * {@link #EXTRA_GROUP}으로 받은 배치({@link SwipeSpec})가 정한다. 칸(키·버튼·손가락 수)마다 카드 하나에 방향별 칸을 놓고,
  * 칸을 누르면 고를 수 있는 기능 목록이 나온다.
  */

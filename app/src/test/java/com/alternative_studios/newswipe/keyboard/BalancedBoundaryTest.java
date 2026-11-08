@@ -14,7 +14,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-/** 세로 모드 자·모음 균형 레이아웃의 '자·모음 경계 위치': 자음·모음 폭·위치 슬라이더가 바뀐 경계 안에서 맞게 움직이는지. */
+/** 세로 모드 자·모음 균형 배열의 '자·모음 경계 위치': 자음·모음 폭·위치 슬라이더가 바뀐 경계 안에서 맞게 움직이는지. */
 public class BalancedBoundaryTest {
     private static final class FakeSp implements SharedPreferences {
         final Map<String, Object> m = new HashMap<>();
@@ -40,7 +40,7 @@ public class BalancedBoundaryTest {
 
     private static final String[] LAYOUTS = {Prefs.KOREAN_LAYOUT_8, Prefs.KOREAN_LAYOUT_D7};
 
-    /** 세로 모드 보기: layout 배열에서 균형 레이아웃을 켜고 경계·자음 폭·자음 위치·모음 폭·모음 위치를 정한다. */
+    /** 세로 모드 보기: layout 배열에서 균형 배열을 켜고 경계·자음 폭·자음 위치·모음 폭·모음 위치를 정한다. */
     private static Prefs portrait(String layout, int boundary, int cw, int cp, int vw, int vp, boolean grid)
             throws Exception {
         FakeSp sp = new FakeSp();

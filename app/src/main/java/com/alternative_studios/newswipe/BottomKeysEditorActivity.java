@@ -20,7 +20,7 @@ import com.alternative_studios.newswipe.ui.Chevron;
 import com.alternative_studios.newswipe.ui.ExpressiveSwitch;
 import com.alternative_studios.newswipe.ui.Ui;
 
-/** 맨 아래 줄 키(기호 키, 쉼표, 지구본 키, 스페이스바, 온점, 엔터)를 켜고 끄고 순서를 바꾸고, Shift 키·⌫를 켜고 끄는 화면 (하단 키 완전 사용자화). */
+/** 맨 아래 줄 키(기호 키, 쉼표, 지구본 키, 스페이스바, 온점, 엔터)를 켜고 끄고 순서를 바꾸고, Shift 키·⌫를 켜고 끄는 화면 (기능키 순서·유무 사용자화). */
 public final class BottomKeysEditorActivity extends Activity {
 
     private Prefs prefs;
@@ -86,12 +86,11 @@ public final class BottomKeysEditorActivity extends Activity {
         // 미리보기: 실제 키보드 뷰에 아래 두 줄(Shift·⌫ 줄과 맨 아래 줄)만 넣어 그린다. 눌러도 반응하지 않는다.
         preview = new KeyboardView(this);
         preview.setTheme(keyboardTheme);
-        preview.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), false, prefs.longPressChars(),
-                false, prefs.keyTextSize());
+        preview.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), false, prefs.keyTextSize());
         preview.setKeyShadow(prefs.keyShadow(), prefs.keyShadowStrength());
         preview.setKeyRadius(Ui.dp(this, prefs.keyRadiusDp()));
         preview.setGridColors(prefs.gridColors());
-        preview.setPopupHints(prefs.longPressChars() && !prefs.popupHintHidden());
+        preview.setPopupHints(!prefs.popupHintHidden());
         preview.setNumberHintHidden(prefs.numberHintHidden());
         // 키보드와 같은 좌우 여백과 한 줄 높이(키보드 높이 설정 반영)를 쓴다.
         int p = Ui.dp(this, 4);
@@ -158,20 +157,21 @@ public final class BottomKeysEditorActivity extends Activity {
         fnToggle.setPadding(0, fnToggle.getPaddingTop(), fnToggle.getPaddingRight(), fnToggle.getPaddingBottom());
         View fnGroup = subGroup(16, fnToggle, fnEdit);   // 카드 안 줄의 왼쪽 여백(10dp) + 설정 화면의 들여쓰기(6dp)
         // NewSwipe 단모음에는 Shift 자리가 없어, 꺼진 채 흐리게 두고 바꿀 수 없게 한다 (저장된 값은 건드리지 않는다).
-        // 실험실 두벌식 자판은 쌍자음·ㅒ·ㅖ에 Shift를 써서 Shift 키가 늘 있다: 켜진 채 흐리게 둔다.
+        // 두벌식은 쌍자음·ㅒ·ㅖ에 Shift를 쓰므로 기본으로 보이고, 다른 배열과 따로 켜고 끈다.
         boolean noShiftSlot = prefs.koreanNewSwipe();
-        boolean alwaysShift = prefs.koreanDubeolsik();
+        String shiftKey = prefs.koreanDubeolsik() ? Prefs.DUBEOLSIK_SHIFT_HIDDEN : Prefs.KOREAN_SHIFT_HIDDEN;
         View shiftRow = fixedRow("Shift 키 (⇧)",
                 noShiftSlot ? "이 레이아웃에서는 사용할 수 없습니다."
-                        : alwaysShift ? "두벌식 자판(실험실)에서는 늘 보입니다." : "꺼도 한글 자판에서만 사라집니다.",
-                alwaysShift || (!noShiftSlot && !prefs.koreanShiftHidden()),
+                        : prefs.koreanDubeolsik() ? "끄면 두벌식에서 Shift로 치던 쌍자음·ㅒ·ㅖ는 두 번 연속으로 누르거나 밀어서 입력합니다."
+                        : "꺼도 한글 자판에서만 사라집니다.",
+                !noShiftSlot && !prefs.koreanShiftHidden(),
                 on -> {
-                    prefs.raw().edit().putBoolean(Prefs.KOREAN_SHIFT_HIDDEN, !on).apply();
+                    prefs.raw().edit().putBoolean(shiftKey, !on).apply();
                     Ui.setVisibleAnimated(fnGroup, !on);
                 });
-        if (noShiftSlot || alwaysShift) setRowDisabled(shiftRow);
+        if (noShiftSlot) setRowDisabled(shiftRow);
         fixed.addView(shiftRow);
-        fnGroup.setVisibility(!noShiftSlot && !alwaysShift && prefs.koreanShiftHidden() ? View.VISIBLE : View.GONE);
+        fnGroup.setVisibility(!noShiftSlot && prefs.koreanShiftHidden() ? View.VISIBLE : View.GONE);
         fnEdit.setVisibility(prefs.koreanShiftFn() ? View.VISIBLE : View.GONE);
         fixed.addView(fnGroup);
         fixed.addView(fixedRow("지우기 키 (⌫)", null,

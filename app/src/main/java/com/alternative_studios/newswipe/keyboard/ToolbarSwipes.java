@@ -5,7 +5,7 @@ import com.alternative_studios.newswipe.Prefs;
 import java.util.function.BiFunction;
 
 /**
- * 도구 막대 밀어서 기능 완전 사용자화. 켜면 도구 막대 자체와 도구 막대의 버튼을
+ * 도구 막대 밀기: 도구 막대 자체와 도구 막대의 버튼을
  * 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 직접 정한다 (기능 목록은 {@link SwipeAction}).
  * 정하지 않은 방향은 기본 동작을 따른다: 도구 막대 왼쪽 = 줄 맨 앞, 오른쪽 = 줄 맨 뒤, 위·아래 = 한 줄 위·아래,
  * 클립보드 버튼 위 = 복사, 아래 = 붙여넣기, 이모지 버튼 아래 = 최근 이모지, 실행 취소 버튼 아래 = 다시 실행,
@@ -59,7 +59,7 @@ public final class ToolbarSwipes {
 
         @Override
         public String title() {
-            return "도구 막대 밀어서 기능 편집";
+            return "도구 막대 밀어서 기능 사용자화";
         }
 
         @Override
@@ -110,7 +110,7 @@ public final class ToolbarSwipes {
     }
 
     /**
-     * 완전 사용자화를 껐을 때의 배치: '도구 막대를 밀어서 커서 이동'(barSwipe), '클립보드 버튼을 밀어서 복사·붙여넣기'
+     * 예전 기본 설정 스위치로 만들던 배치 (예전 설정을 옮길 때 쓴다, LegacySwipeSettings): '도구 막대를 밀어서 커서 이동'(barSwipe), '클립보드 버튼을 밀어서 복사·붙여넣기'
      * (clipboard), '이모지 버튼을 아래로 밀어서 입력'(emojiDown), '실행 취소 버튼을 아래로 밀어서 다시 실행'(undoDown)을
      * 켠 것만 기본 동작을 쓰고 나머지는 없음.
      */
@@ -123,7 +123,7 @@ public final class ToolbarSwipes {
                     : slot == UNDO && undoDown;
             if (!on) java.util.Arrays.fill(t[slot], SwipeAction.NONE);
         }
-        // 한 손 모드 버튼은 완전 사용자화를 꺼 둬도 좌우로 밀면 그쪽 한 손 모드가 된다.
+        // 한 손 모드 버튼은 스위치와 상관없이 좌우로 밀면 그쪽 한 손 모드가 되었다.
         t[ONE_HAND][Key.SWIPE_LEFT] = SwipeAction.ONE_HAND_LEFT;
         t[ONE_HAND][Key.SWIPE_RIGHT] = SwipeAction.ONE_HAND_RIGHT;
         return new ToolbarSwipes(t);

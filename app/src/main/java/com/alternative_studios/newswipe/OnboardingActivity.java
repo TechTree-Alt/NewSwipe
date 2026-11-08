@@ -345,9 +345,9 @@ public final class OnboardingActivity extends Activity {
 
     private View buildVowel() {
         vowelPractice = new Practice("ㅣ계 이중모음 입력",
-                "모음 키를 아래로 밀거나 두 번 연속 탭해서 ㅣ계 이중모음을 입력하세요",
+                "모음 키를 아래로 밀거나 두 번 연속으로 눌러서 ㅣ계 이중모음을 입력하세요",
                 "여유 있는 요즘",
-                "ㅓ를 아래로 밀거나 두 번 탭하면 ㅕ, ㅜ는 ㅠ, ㅗ는 ㅛ",
+                "ㅓ를 아래로 밀거나 두 번 누르면 ㅕ, ㅜ는 ㅠ, ㅗ는 ㅛ",
                 PAGE_FINISH,
                 new OnboardingArt.Step(new String[]{"ㅎ", "ㅓ", "ㅏ", "ㅣ"}, 1, "ㅕ", false),
                 new OnboardingArt.Step(new String[]{"ㅊ", "ㅍ", "ㅜ", "ㅡ"}, 2, "ㅠ", true),

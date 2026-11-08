@@ -45,25 +45,15 @@ public final class KeyboardView extends View {
 
         /**
          * 길게 눌러 연속 입력으로 정한 글자 키를 누르고 있는 동안 반복해서 입력한다.
-         * 탭이 아니므로 '자음 연속 탭으로 쌍자음' 같은 연속 탭 판단에 들어가지 않는다.
+         * 탭이 아니므로 쌍자음·이중모음의 연속 탭 판단에 들어가지 않는다.
          */
         void onKeyRepeat(Key key);
 
-        /** 기능키를 길게 눌렀다 (지구본 → 입력기 선택, 기호 키 → 이모지 열기). */
-        void onKeyLongPress(Key key);
-
-        /** 왼쪽 아래 기호 키(?123, 가, ABC)를 위로 밀었다 (이모지 창 열기). */
-        void onModeKeySwipeUp(Key key);
-
-        /** 밀어서 기능 완전 사용자화: 키를 밀어서 정해 둔 기능(SwipeAction ID)을 실행하라는 요청. */
+        /** 키를 밀거나 길게 눌러 정해 둔 기능(SwipeAction ID)을 실행하라는 요청. */
         void onKeyFunction(Key key, String actionId);
 
-        void onDeleteRepeat();
-
-        void onDeleteWord();
-
-        /** 지우기 키를 위로 밀었다: 커서가 있는 줄에서 커서 왼쪽을 모두 지운다. */
-        void onDeleteToLineStart();
+        /** 길게 눌러 계속 지우기의 한 번 (word: 단어 단위). */
+        void onDeleteRepeat(boolean word);
 
         /** 이번 터치에서 처음으로 밀어서 커서를 옮기려 한다 (바로 뒤에 onCursorMove·onCursorMoveVertical이 온다). */
         default void onCursorStart() {
@@ -110,14 +100,9 @@ public final class KeyboardView extends View {
     private static final int SWIPED = 1;
     private static final int POPUP = 2;
     private static final int CURSOR = 3;
-    private static final int DELETE_WORD = 4;
-    /** 지우기 키를 위로 밀고 있는 중 (손을 떼면 커서 왼쪽 줄 내용을 모두 지운다). */
-    private static final int DELETE_LINE_START = 9;
     private static final int REPEAT = 5;
     private static final int CONSUMED = 6;
-    /** 왼쪽 아래 기호 키를 위로 밀고 있는 중 (손을 떼면 이모지 창을 연다). */
-    private static final int EMOJI_SWIPE = 7;
-    /** 밀어서 기능 완전 사용자화로 정한 기능을 실행하려고 키를 밀고 있는 중 (손을 떼면 실행한다). */
+    /** 키마다 정한 밀기 기능을 실행하려고 키를 밀고 있는 중 (손을 떼면 실행한다). */
     private static final int FN_SWIPE = 8;
     /** 길게 눌러 연속 입력하는 글자 키를 누르고 있는 중 (손을 뗄 때까지 계속 입력한다). */
     private static final int CHAR_REPEAT = 10;
@@ -171,44 +156,28 @@ public final class KeyboardView extends View {
 
     // 설정
     private int longPressMs = 350;
-    /** 지우기 키를 길게 눌러 연속 삭제하는 기능의 사용 여부와 시간. */
-    /** 지구본 키(키보드 선택)와 기호 키(이모지 열기)를 길게 누르는 시간. 설정으로 바꾸지 않는다. */
-    private boolean longPressDelete = true;
-    /** 왼쪽 아래 기호 키(?123, 가, ABC)를 길게 눌러 설정을 여는 기능의 사용 여부. */
-    private boolean modeKeyLongPress = true;
-    /** 같은 키를 위로 밀어 이모지 창을 여는 기능의 사용 여부. */
-    private boolean modeKeyEmoji = true;
-    /** 밀어서 기능 완전 사용자화 (꺼져 있으면 null). 켜져 있으면 다섯 기능 키의 기본 밀기 설정은 쓰지 않는다. */
+    /** 기능키를 밀 때 실행할 기능 (키·방향마다). 없으면(미리보기 등) 기능키를 밀어도 아무 일도 없다. */
     private FunctionSwipes fnSwipes;
-    /** 지우기 키를 왼쪽으로 밀어 단어 단위로 지우는 기능의 사용 여부. */
-    private boolean deleteWordSwipe = true;
     /** 기능키 길게 누르기 시간 (모든 기능키 공통). */
     private int fnPressMs = 350;
-    /** 글자를 밀어 입력하는 거리 ('밀어서 글자 입력'의 미는 거리). */
+    /** 글자를 밀어 입력하는 거리 (글자 키 영역의 '미는 거리'). */
     private float swipeThreshold;
     /** 글자 키 스와이프 방향 판정 비율 (SwipeDirection): 세로가 가로의 몇 배를 넘어야 아래·위로 치는지. */
     private float downRatio = SwipeDirection.DOWN_OVER_HORIZONTAL, upRatio = SwipeDirection.UP_OVER_HORIZONTAL;
-    /** 기능키·키보드를 밀어 기능을 실행하는 거리 ('밀어서 기능'의 미는 거리). */
+    /** 기능키·키보드를 밀어 기능을 실행하는 거리 ('기능키 미는 거리'). */
     private float fnSwipeThreshold;
     private boolean showPreview = true;
     private boolean showHints = true;
     /** 숫자 키(1~0)의 힌트만 숨긴다. */
     private boolean numberHintHidden;
     /** 키를 길게 눌러 문자를 입력하는 기능. 끄면 팝업도, 키 위의 작은 글자도 없다. */
-    private boolean longPressChars = true;
     private boolean keyShadow;
     private int keyShadowStrength = 50;
     private Paint shadowPaint;
-    private boolean spaceCursor = true;
-    private boolean spaceSelect = true;
     private boolean gapCursor = true;
-    /** 문자·숫자 키를 트랙패드처럼 밀어 커서를 옮기는 기능. 그 방향에 밀어서 입력할 글자가 있으면 글자가 먼저다. */
-    private boolean charCursor;
     /** 커서 이동이 시작된 뒤 손가락이 움직이는 거리당 커서가 움직이는 빠르기 (1 = 기본). 스페이스바·문자 키, 좌우·상하 따로. */
     private float gapSpeed = 1f;
-    private float spaceSpeedH = 1f, spaceSpeedV = 1f, charSpeedH = 1f, charSpeedV = 1f;
-    /** 스페이스바를 좌우로 밀어 언어 전환 (손을 떼면 바꾼다). 스페이스바 좌우 커서 이동과 함께 쓰지 않는다. */
-    private boolean spaceLangSwipe;
+    private float cursorSpeedH = 1f, cursorSpeedV = 1f;
     /** 키보드 밀기 (한 손가락·두 손가락). 쓰지 않으면 null. */
     private KeyboardSwipes kbSwipes;
     private boolean pickSwipe;
@@ -218,14 +187,12 @@ public final class KeyboardView extends View {
      */
     private Pointer deferred, second;
     private float deferredStartX, deferredStartY;
-    /** 문자 키 커서 이동의 방향별 사용 여부. */
-    private boolean charCursorH = true, charCursorV = true;
-    /** 스페이스바 커서 이동의 방향별 사용 여부. */
-    private boolean cursorH = true, cursorV = true;
     private float textScale = 1f;
 
     // 크기
     private float gapX, gapY;   // 키 사이 간격 (좌우·상하)
+    /** 일반 줄(높이 1.0) 하나의 높이 (px). 기능키 줄·숫자 줄의 높이를 바꿔도 아이콘 크기는 이것을 기준으로 정한다. */
+    private float rowUnitPx;
     private float radius;   // 키 모서리 곡률 (설정의 '키 곡률')
     private final float cursorStep, cursorStepY;
     private float padL, padT, padR, padB;
@@ -236,8 +203,8 @@ public final class KeyboardView extends View {
     private final Runnable repeatRunnable = new Runnable() {
         @Override
         public void run() {
-            if (listener != null) listener.onDeleteRepeat();
-            handler.postDelayed(this, 50);
+            if (listener != null) listener.onDeleteRepeat(repeatWord);
+            handler.postDelayed(this, repeatWord ? wordRepeatMs : charRepeatMs);
         }
     };
 
@@ -303,6 +270,37 @@ public final class KeyboardView extends View {
         gapX = x;
         gapY = y;
         invalidate();
+    }
+
+    /** 영역별 여백(px): [영역][왼·위·오른·아래]. 영역 번호: 1 숫자 줄, 2 글자 키, 3 기능키 (0 도구 막대는 쓰지 않는다). */
+    private final float[][] areaPad = new float[4][4];
+    public static final int AREA_NUMBER = 1, AREA_LETTERS = 2, AREA_FN = 3;
+
+    public void setAreaInsets(float[][] pads) {
+        boolean same = true;
+        for (int a = 0; a < 4; a++) for (int s = 0; s < 4; s++) if (areaPad[a][s] != pads[a][s]) same = false;
+        if (same) return;
+        for (int a = 0; a < 4; a++) System.arraycopy(pads[a], 0, areaPad[a], 0, 4);
+        layoutKeys(getWidth(), getHeight());
+        invalidate();
+    }
+
+    /**
+     * 줄 i가 속한 영역: 글자 자판 맨 위의 숫자 줄, 맨 아래 기능키 줄, 그 사이의 글자 키. 숫자 패드처럼 영역이 없는 자판은 -1.
+     */
+    public int rowArea(int i) {
+        if (layout == null || layout.kind == KeyboardLayout.NUMBER || layout.rows.length < 2) return -1;
+        if (i == layout.rows.length - 1) return AREA_FN;
+        if (i == 0 && layout.isLetters() && digitRow(layout.rows[0])) return AREA_NUMBER;
+        return AREA_LETTERS;
+    }
+
+    private static boolean digitRow(KeyboardLayout.Row row) {
+        for (Key k : row.keys) {
+            if (k.type == Key.GAP || k.type == Key.SPACER) continue;
+            return KeyboardLayout.isDigit(k.label);
+        }
+        return false;
     }
 
     /** 자판 둘레의 여백(px). */
@@ -380,21 +378,20 @@ public final class KeyboardView extends View {
         }
     }
 
-    public void setSpaceLangSwipe(boolean on) {
-        spaceLangSwipe = on;
+    /** 길게 눌러 계속 지우기의 간격: 지금 누르고 있는 것이 단어 지우기인지와 글자·단어 사이 시간 (ms). */
+    private boolean repeatWord;
+    private long charRepeatMs = 50, wordRepeatMs = 200;
+
+    /** 길게 눌러 계속 지우기의 속도 (초당 글자 수, 초당 단어 수). */
+    public void setDeleteRepeatRates(int charsPerSecond, int wordsPerSecond) {
+        charRepeatMs = 1000L / Math.max(1, charsPerSecond);
+        wordRepeatMs = 1000L / Math.max(1, wordsPerSecond);
     }
 
-    /** 스페이스바를 길게 누른 뒤 밀어서 글자 선택. */
-    public void setSpaceSelect(boolean on) {
-        spaceSelect = on;
-    }
-
-    /** 커서 이동 속도 (%). 100 = 기본. */
-    public void setCursorSpeed(int spaceH, int spaceV, int charH, int charV) {
-        spaceSpeedH = Math.max(10, spaceH) / 100f;
-        spaceSpeedV = Math.max(10, spaceV) / 100f;
-        charSpeedH = Math.max(10, charH) / 100f;
-        charSpeedV = Math.max(10, charV) / 100f;
+    /** 커서 이동 속도 (%). 100 = 기본. 스페이스바·커서 이동 키·자판 트랙패드(글자 키)가 함께 쓴다. */
+    public void setCursorSpeed(int h, int v) {
+        cursorSpeedH = Math.max(10, h) / 100f;
+        cursorSpeedV = Math.max(10, v) / 100f;
     }
 
     public void setKeyboardSwipes(KeyboardSwipes k) {
@@ -414,7 +411,13 @@ public final class KeyboardView extends View {
         }
     }
 
-    /** 키 오른쪽 위의 작은 글자(길게 눌러 입력할 문자 힌트)를 그릴지. 길게 눌러 입력하는 기능과는 상관없다. */
+    /** 한글·영어 글자 키인지 (숫자 줄·기호·쉼표·온점 키는 아니다). '글자 키 힌트 없애기'는 이 키들에만 적용된다. */
+    private boolean isLetterKey(Key k) {
+        return k.type == Key.CHAR && layout.isLetters() && !KeyboardLayout.isDigit(k.label)
+                && !KeyboardLayout.isSymbol(k.label);
+    }
+
+    /** 글자 키 오른쪽 위의 작은 글자(길게 눌러 입력할 문자 힌트)를 그릴지. 숫자·기호 키는 따로 정한다. 길게 눌러 입력하는 기능과는 상관없다. */
     public void setPopupHints(boolean on) {
         if (showHints != on) {
             showHints = on;
@@ -422,17 +425,7 @@ public final class KeyboardView extends View {
         }
     }
 
-    public void setCharCursor(boolean on, boolean horizontal, boolean vertical) {
-        charCursor = on;
-        charCursorH = horizontal;
-        charCursorV = vertical;
-    }
-
-    public void setDeleteWordSwipe(boolean on) {
-        deleteWordSwipe = on;
-    }
-
-    /** 기능키 길게 누르기 완전 사용자화: 칸(LongPressActions.SHIFT~DELETE)마다 기능 ID. null이면 기본 동작. */
+    /** 기능키 길게 누르기: 칸(LongPressActions.SHIFT~VOICE)마다 기능 ID. null이면(미리보기 등) 길게 누르기가 없다. */
     private String[] longPressActions;
 
     public void setLongPressActions(String[] actions) {
@@ -453,10 +446,7 @@ public final class KeyboardView extends View {
         return SwipeAction.NONE.equals(a) ? null : a;
     }
 
-    /**
-     * 사용자화를 켰을 때 이 키를 길게 누르면 실행할 기능. 사용자화가 꺼져 있거나 대상이 아닌 키면 null.
-     * Fn 키는 언제나 자기 설정(Fn 키 사용자화)을 따른다.
-     */
+    /** 이 키를 길게 누르면 실행할 기능. 없음이거나 대상이 아닌 키면 null. Fn 키는 자기 설정(Fn 키 사용자화)을 따른다. */
     private String customLongPress(Key k) {
         if (k.type == Key.FUNCTION) return fnKeyAction(FnKeyActions.I_LONG);
         if (longPressActions == null) return null;
@@ -466,20 +456,12 @@ public final class KeyboardView extends View {
         return SwipeAction.NONE.equals(a) ? null : a;
     }
 
-    public void setModeKeyLongPress(boolean on) {
-        modeKeyLongPress = on;
-    }
-
-    public void setModeKeyEmoji(boolean on) {
-        modeKeyEmoji = on;
-    }
-
     public void setFunctionSwipes(FunctionSwipes f) {
         fnSwipes = f;
     }
 
-    public void setDeleteLongPress(boolean on, int ms) {
-        longPressDelete = on;
+    /** 기능키 길게 누르기 시간 (ms, 모든 기능키 공통). */
+    public void setFunctionLongPressMs(int ms) {
         fnPressMs = ms;
     }
 
@@ -489,12 +471,7 @@ public final class KeyboardView extends View {
         gapSpeed = Math.max(10, speedPercent) / 100f;
     }
 
-    public void setCursorAxes(boolean horizontal, boolean vertical) {
-        cursorH = horizontal;
-        cursorV = vertical;
-    }
-
-    /** '밀어서 기능'의 미는 거리. */
+    /** '기능키 미는 거리'. */
     public void setFunctionSwipeThreshold(int dpValue) {
         fnSwipeThreshold = dp(dpValue);
     }
@@ -505,14 +482,11 @@ public final class KeyboardView extends View {
         upRatio = up;
     }
 
-    public void configure(int longPressMs, int swipeThresholdDp, boolean preview, boolean hints,
-                          boolean spaceCursor, int textScalePercent) {
+    /** 길게 누르기 시간, 미는 거리, 누름 미리보기, 글자 크기(%). 힌트는 setPopupHints로 따로 정한다. */
+    public void configure(int longPressMs, int swipeThresholdDp, boolean preview, int textScalePercent) {
         this.longPressMs = longPressMs;
         this.swipeThreshold = dp(swipeThresholdDp);
         this.showPreview = preview;
-        this.showHints = hints;
-        this.longPressChars = hints;
-        this.spaceCursor = spaceCursor;
         this.textScale = textScalePercent / 100f;
         updateTextSizes();
         invalidate();
@@ -532,15 +506,33 @@ public final class KeyboardView extends View {
 
     private void layoutKeys(int w, int h) {
         if (layout == null || w == 0 || h == 0) return;
-        float unit = (w - padL - padR) / layout.columns;
-        float rowUnit = (h - padT - padB) / layout.totalHeight();
+        // 영역별 위·아래 여백은 그 영역의 첫 줄 위와 마지막 줄 아래에 두고, 그만큼 줄 높이에서 뺀다.
+        boolean[] present = new boolean[4];
+        for (int i = 0; i < layout.rows.length; i++) {
+            int a = rowArea(i);
+            if (a >= 0) present[a] = true;
+        }
+        float extraV = 0;
+        for (int a = 0; a < 4; a++) if (present[a]) extraV += areaPad[a][1] + areaPad[a][3];
+        float rowUnit = (h - padT - padB - extraV) / layout.totalHeight();
+        rowUnitPx = rowUnit;
         float y = padT;
-        for (KeyboardLayout.Row row : layout.rows) {
+        int prevArea = -2;
+        for (int i = 0; i < layout.rows.length; i++) {
+            KeyboardLayout.Row row = layout.rows[i];
+            int a = rowArea(i);
+            if (a != prevArea) {
+                if (prevArea >= 0) y += areaPad[prevArea][3];
+                if (a >= 0) y += areaPad[a][1];
+                prevArea = a;
+            }
+            float left = padL + (a >= 0 ? areaPad[a][0] : 0), right = padR + (a >= 0 ? areaPad[a][2] : 0);
+            float unit = (w - left - right) / layout.columns;
             float rh = row.height * rowUnit;
             float sum = 0;
             for (Key k : row.keys) sum += k.weight;
             float scale = sum > layout.columns ? layout.columns / sum : 1f;
-            float x = padL + (layout.columns - sum * scale) * unit / 2f;
+            float x = left + (layout.columns - sum * scale) * unit / 2f;
             for (Key k : row.keys) {
                 float kw = k.weight * scale * unit;
                 k.rect.set(x, y, x + kw, y + rh);
@@ -708,6 +700,11 @@ public final class KeyboardView extends View {
         c.restore();
     }
 
+    /** 아이콘 크기: 기준 크기(최대 capDp)에 글자 크기 배율을 곱하고, 키 안에 들어가게 maxPx로 막는다. */
+    private float iconSize(float base, int capDp, float maxPx) {
+        return Math.min(Math.min(base, dp(capDp)) * textScale, maxPx);
+    }
+
     /** 키 면의 색 (눌리지 않았을 때). 강조색이면 글자는 onAccent, 아니면 글자 색이다. */
     private int faceColor(Key k) {
         if (k.type == Key.ENTER) {
@@ -756,34 +753,38 @@ public final class KeyboardView extends View {
             c.drawRoundRect(r, radius, radius, fill);
         }
 
-        float iconSize = Math.min(r.height(), r.width()) * 0.52f;
+        // 아이콘 크기: 이 줄의 높이가 아니라 일반 줄 높이를 기준으로 해서 기능키 줄의 높이를 바꿔도 그대로이고,
+        // 글자처럼 '키 글자 크기'를 따라 커지고 작아진다. 키 밖으로 넘치지 않게만 막는다.
+        float baseH = rowUnitPx > 0 ? rowUnitPx - gapY : r.height();
+        float iconSize = Math.min(baseH, r.width()) * 0.52f;
+        float iconMax = Math.min(r.height(), r.width()) * 0.8f;
         icon.setColor(fg);
         switch (k.type) {
             case Key.SHIFT:
                 Icons.draw(c, shiftState == 0 ? Icons.SHIFT : shiftState == 1 ? Icons.SHIFT_ON : Icons.SHIFT_LOCK,
-                        cx, cy, Math.min(iconSize, dp(24)), icon);
+                        cx, cy, iconSize(iconSize, 24, iconMax), icon);
                 return;
             case Key.DELETE:
-                Icons.draw(c, Icons.DELETE, cx, cy, Math.min(iconSize, dp(24)), icon);
+                Icons.draw(c, Icons.DELETE, cx, cy, iconSize(iconSize, 24, iconMax), icon);
                 return;
             case Key.ENTER:
-                Icons.draw(c, enterIcon, cx, cy, Math.min(iconSize, dp(24)), icon);
+                Icons.draw(c, enterIcon, cx, cy, iconSize(iconSize, 24, iconMax), icon);
                 return;
             case Key.LANGUAGE:
-                Icons.draw(c, Icons.GLOBE, cx, cy, Math.min(iconSize, dp(22)), icon);
+                Icons.draw(c, Icons.GLOBE, cx, cy, iconSize(iconSize, 22, iconMax), icon);
                 return;
             case Key.EMOJI:
             case Key.EMOJI_KEY:
-                Icons.draw(c, Icons.EMOJI, cx, cy, Math.min(iconSize, dp(22)), icon);
+                Icons.draw(c, Icons.EMOJI, cx, cy, iconSize(iconSize, 22, iconMax), icon);
                 return;
             case Key.CLIPBOARD:
-                Icons.draw(c, Icons.CLIPBOARD, cx, cy, Math.min(iconSize, dp(22)), icon);
+                Icons.draw(c, Icons.CLIPBOARD, cx, cy, iconSize(iconSize, 22, iconMax), icon);
                 return;
             case Key.VOICE:
-                Icons.draw(c, Icons.MIC, cx, cy, Math.min(iconSize, dp(22)), icon);
+                Icons.draw(c, Icons.MIC, cx, cy, iconSize(iconSize, 22, iconMax), icon);
                 return;
             case Key.CURSOR_PAD:
-                Icons.draw(c, Icons.MENU_MOVE, cx, cy, Math.min(iconSize, dp(22)), icon);
+                Icons.draw(c, Icons.MENU_MOVE, cx, cy, iconSize(iconSize, 22, iconMax), icon);
                 return;
             case Key.SPACE:
                 // 글자·기호 자판의 스페이스바는 비워 두고(설정하면 글자 자판에 언어 이름), 숫자 자판에서만 ␣로 띄어쓰기 키임을 알린다.
@@ -817,7 +818,8 @@ public final class KeyboardView extends View {
             return;
         }
         String hint = shiftState != 0 && upperCaseLayout() ? k.hintUpper() : k.hint();
-        if (showHints && hint != null && layout.kind != KeyboardLayout.NUMBER && !isRepeatChar(k)
+        if (hint != null && layout.kind != KeyboardLayout.NUMBER && !isRepeatChar(k)
+                && !(!showHints && isLetterKey(k))
                 && !(numberHintHidden && KeyboardLayout.isDigit(k.label))) {
             text.setColor(theme.hint);
             text.setTypeface(Typeface.DEFAULT);
@@ -1032,19 +1034,12 @@ public final class KeyboardView extends View {
         }
         handler.removeCallbacks(longPressRunnable);
         // 길게 누를 수 있는 기능키인지 정한다 (시간은 모든 기능키가 같다).
-        boolean del, lang;
-        if (longPressActions != null || k.type == Key.FUNCTION) {
-            // 기능키 길게 누르기 사용자화: 정한 기능이 있는 키만 길게 누를 수 있다.
-            String action = customLongPress(k);
-            del = SwipeAction.DELETE_REPEAT.equals(action);
-            lang = action != null && !del;
-        } else {
-            del = k.type == Key.DELETE && longPressDelete;
-            lang = k.type == Key.LANGUAGE
-                    || (modeKeyLongPress && (k.type == Key.TO_SYMBOLS || k.type == Key.TO_LETTERS));
-        }
-        boolean chars = k.type == Key.CHAR && (k.popup != null && longPressChars || isRepeatChar(k));
-        boolean select = k.type == Key.SPACE && spaceSelect;
+        // 기능키는 정한 기능이 있는 키만 길게 누를 수 있다.
+        String action = customLongPress(k);
+        boolean del = SwipeAction.holdRepeat(action);
+        boolean select = SwipeAction.SPACE_SELECT.equals(action);
+        boolean lang = action != null && !del && !select;
+        boolean chars = k.type == Key.CHAR && (k.popup != null || isRepeatChar(k));
         if (del || lang || chars || select) {
             longPressTarget = p;
             // 기능키는 모두 '기능키 길게 누르기 시간'을, 문자 키는 '문자 길게 누르기 시간'을 따른다.
@@ -1056,7 +1051,7 @@ public final class KeyboardView extends View {
     /** 두 번째 손가락이 닿을 때 앞 키를 바로 입력해도 되는 상태 (아직 입력하지 않은 키). */
     private static boolean releasable(Pointer p) {
         return p.key.type != Key.SHIFT
-                && (p.mode == NORMAL || p.mode == SWIPED || p.mode == EMOJI_SWIPE || p.mode == FN_SWIPE
+                && (p.mode == NORMAL || p.mode == SWIPED || p.mode == FN_SWIPE
                 || p.mode == PICK_SWIPE);
     }
 
@@ -1110,18 +1105,6 @@ public final class KeyboardView extends View {
                     }
                     break;
                 }
-                if (p.key.type == Key.CURSOR_PAD && fnSwipes == null) {
-                    // 커서 이동 키: 스페이스바처럼 밀면 커서가 움직인다 (좌우는 글자, 위아래는 줄 단위). 누르기만 하면 아무것도 없다.
-                    // 기능키 밀어서 기능 완전 사용자화를 켰으면 아래 moveFunctionKey가 정한 대로 한다.
-                    if (deferred == null && (Math.abs(dx) > fnSwipeThreshold || Math.abs(dy) > fnSwipeThreshold)) {
-                        p.mode = CURSOR;
-                        p.cursorKey = true;
-                        p.cursorAnchorX = x;
-                        p.cursorAnchorY = y;
-                        cancelLongPress(p);
-                    }
-                    break;
-                }
                 if (p.key.type == Key.FUNCTION) {
                     moveFnKey(p, dx, dy);
                     break;
@@ -1131,48 +1114,13 @@ public final class KeyboardView extends View {
                     moveFunctionKey(p, fnSlot, dx, dy, x, y);
                     break;
                 }
-                if (p.key.type == Key.LANGUAGE && languagePopup != null && -dy > fnSwipeThreshold
-                        && -dy > Math.abs(dx)) {
-                    // 🌐︎를 위로 밀었다: 켜 둔 언어를 세로로 늘어놓은 말풍선을 띄운다. 손가락을 위아래로 옮겨 고르고 떼면 바꾼다.
-                    cancelLongPress(p);
-                    p.mode = POPUP;
-                    openPopup(p, languagePopup.clone(), languagePopupSelected, true);
-                    popupMoved = true;   // 이미 밀고 있으므로 손가락 위치대로 바로 고른다
-                    if (listener != null) listener.onGesture();
-                    break;
-                }
-                if (p.key.type == Key.SPACE && spaceLangSwipe && Math.abs(dx) > fnSwipeThreshold
-                        && Math.abs(dx) > Math.abs(dy)) {
-                    // 스페이스바를 좌우로 밀어 언어 전환: 손을 떼면 바꾼다 (되돌리면 취소).
-                    p.mode = FN_SWIPE;
-                    p.fnAction = SwipeAction.LANGUAGE;
-                    p.swipeDir = dx > 0 ? Key.SWIPE_RIGHT : Key.SWIPE_LEFT;
-                } else if (p.key.type == Key.SPACE && spaceCursor && deferred == null
-                        && ((!spaceLangSwipe && cursorH && Math.abs(dx) > fnSwipeThreshold)
-                        || (cursorV && Math.abs(dy) > fnSwipeThreshold * 1.5f))) {
-                    // 좌우로 밀면 글자 단위, 위아래로 밀면 줄 단위로 커서를 옮긴다.
-                    p.mode = CURSOR;
-                    p.cursorAnchorX = x;
-                    p.cursorAnchorY = y;
-                    cancelLongPress(p);
-                } else if (p.key.type == Key.DELETE && deleteWordSwipe && -dy > fnSwipeThreshold * 1.5f
-                        && -dy > Math.abs(dx)) {
-                    p.mode = DELETE_LINE_START;
-                    cancelLongPress(p);
-                } else if (p.key.type == Key.DELETE && deleteWordSwipe && dx < -fnSwipeThreshold * 1.5f) {
-                    p.mode = DELETE_WORD;
-                    cancelLongPress(p);
-                } else if (modeKeyEmoji && isModeKey(p.key)) {
-                    // 손가락이 많이 움직였으면 길게 누르기(이모지 열기)는 취소하고, 위로 충분히 밀었으면 이모지 열기.
-                    if (Math.hypot(dx, dy) > fnSwipeThreshold) cancelLongPress(p);
-                    if (-dy > fnSwipeThreshold && -dy > Math.abs(dx)) p.mode = EMOJI_SWIPE;
-                } else if (p.key.type == Key.CHAR) {
+                if (p.key.type == Key.CHAR) {
                     if (Math.hypot(dx, dy) > swipeThreshold) cancelLongPress(p);
                     // 움직인 방향이 문턱을 넘고 그 방향에 배치된 글자가 있으면 스와이프. 좌우로 밀 때 손가락이 아래로 처지는 것을
                     // 감안해 좌우는 후하게, 아래는 엄격하게 판정한다 (SwipeDirection).
                     int dir = SwipeDirection.of(dx, dy, downRatio, upRatio);
                     // 그 방향에 밀어서 입력할 글자가 있으면 커서 이동·키보드 밀기보다 글자 입력이 먼저다
-                    // ('밀어서 기능'의 미는 거리가 더 짧아도 글자를 밀다가 커서가 움직이지 않게).
+                    // ('기능키 미는 거리'가 더 짧아도 글자를 밀다가 커서가 움직이지 않게).
                     boolean letterThere = p.key.swipeText(dir) != null;
                     if (swipeDistance(dir, dx, dy) > swipeThreshold && letterThere) {
                         p.mode = SWIPED;
@@ -1187,18 +1135,6 @@ public final class KeyboardView extends View {
                         p.mode = PICK_SWIPE;
                         p.swipeDir = dir;
                         p.pickSlot = Math.max(0, Math.min(2, (int) (p.downX * 3 / Math.max(1, getWidth()))));
-                        cancelLongPress(p);
-                    } else if (charCursor && p.mode == NORMAL && deferred == null && !letterThere
-                            && ((dir == Key.SWIPE_LEFT || dir == Key.SWIPE_RIGHT) ? charCursorH : charCursorV)
-                            && swipeDistance(dir, dx, dy)
-                            > fnSwipeThreshold * (dir == Key.SWIPE_UP || dir == Key.SWIPE_DOWN ? 1.5f : 1f)) {
-                        // 그 방향에 밀어서 입력할 글자가 없으면 트랙패드처럼 커서를 옮긴다 (세로는 스페이스바처럼 1.5배).
-                        p.mode = CURSOR;
-                        p.freeCursor = true;
-                        p.freeH = charCursorH;
-                        p.freeV = charCursorV;
-                        p.cursorAnchorX = x;
-                        p.cursorAnchorY = y;
                         cancelLongPress(p);
                     } else if (kbSwipes != null && p.mode == NORMAL && deferred == null && !letterThere
                             && SwipeAction.FREE_CURSOR.equals(kbSwipes.action(KeyboardSwipes.ONE, dir))
@@ -1227,16 +1163,15 @@ public final class KeyboardView extends View {
                 }
                 break;
             case CURSOR: {
-                // 완전 사용자화를 켰으면 '커서 이동'을 정한 방향의 축만 움직인다.
+                // 스페이스바·커서 이동 키는 그 키에 '커서 자유 이동'을 정한 축만 움직인다.
                 // 분리 키보드 가운데 빈 공간은 늘 좌우·상하로 모두 움직이고 속도도 따로 정한다.
-                // 커서 이동 키는 늘 네 방향 (완전 사용자화를 켰으면 그 키에 '커서 이동'을 정한 축만).
-                boolean curH = p.gap || (p.cursorKey ? fnSwipes == null || fnSwipes.cursorH(FunctionSwipes.CURSOR)
-                        : p.freeCursor ? p.freeH : fnSwipes != null ? fnSwipes.cursorH() : cursorH && !spaceLangSwipe);
-                boolean curV = p.gap || (p.cursorKey ? fnSwipes == null || fnSwipes.cursorV(FunctionSwipes.CURSOR)
-                        : p.freeCursor ? p.freeV : fnSwipes != null ? fnSwipes.cursorV() : cursorV);
+                boolean curH = p.gap || (p.freeCursor ? p.freeH
+                        : fnSwipes != null && fnSwipes.cursorH(p.cursorKey ? FunctionSwipes.CURSOR : FunctionSwipes.SPACE));
+                boolean curV = p.gap || (p.freeCursor ? p.freeV
+                        : fnSwipes != null && fnSwipes.cursorV(p.cursorKey ? FunctionSwipes.CURSOR : FunctionSwipes.SPACE));
                 // 커서 이동 속도: 한 칸(한 줄) 움직이는 데 필요한 손가락 거리를 속도만큼 줄이거나 늘린다.
-                float stepX = cursorStep / (p.gap ? gapSpeed : p.freeCursor ? charSpeedH : spaceSpeedH);
-                float stepY = cursorStepY / (p.gap ? gapSpeed : p.freeCursor ? charSpeedV : spaceSpeedV);
+                float stepX = cursorStep / (p.gap ? gapSpeed : cursorSpeedH);
+                float stepY = cursorStepY / (p.gap ? gapSpeed : cursorSpeedV);
                 float d = x - p.cursorAnchorX;
                 float dv = y - p.cursorAnchorY;
                 if (!p.cursorStarted && listener != null
@@ -1260,8 +1195,8 @@ public final class KeyboardView extends View {
             }
             case SELECT: {
                 // 스페이스바 커서 이동과 같은 속도로, 좌우는 글자 단위·위아래는 줄 단위로 선택 영역의 끝을 옮긴다.
-                float stepX = cursorStep / spaceSpeedH;
-                float stepY = cursorStepY / spaceSpeedV;
+                float stepX = cursorStep / cursorSpeedH;
+                float stepY = cursorStepY / cursorSpeedV;
                 float d = x - p.cursorAnchorX;
                 while (Math.abs(d) >= stepX) {
                     int dir = d > 0 ? 1 : -1;
@@ -1280,22 +1215,12 @@ public final class KeyboardView extends View {
                 }
                 break;
             }
-            case DELETE_WORD:
-                if (dx > -fnSwipeThreshold) p.mode = NORMAL;
-                break;
-            case DELETE_LINE_START:
-                if (-dy < fnSwipeThreshold) p.mode = NORMAL;
-                break;
             case FN_SWIPE:
                 // 한번 밀기로 들어가면 문턱의 절반까지 되돌려도 유지하고, 그보다 더 되돌리면 그냥 탭으로 돌아간다.
                 if (swipeDistance(p.swipeDir, dx, dy) < fnSwipeThreshold * 0.5f) {
                     p.mode = NORMAL;
                     p.fnAction = null;
                 }
-                break;
-            case EMOJI_SWIPE:
-                // 한번 밀기로 들어가면 문턱의 절반까지 되돌려도 유지하고, 그보다 더 되돌리면 그냥 탭으로 돌아간다.
-                if (-dy < fnSwipeThreshold * 0.5f) p.mode = NORMAL;
                 break;
             case PICK_SWIPE:
                 if (-dy < fnSwipeThreshold * 0.5f) p.mode = NORMAL;
@@ -1347,19 +1272,6 @@ public final class KeyboardView extends View {
                 }
                 closePopup();
                 break;
-            case DELETE_WORD:
-                listener.onGesture();
-                listener.onDeleteWord();
-                break;
-            case DELETE_LINE_START:
-                listener.onGesture();
-                listener.onDeleteToLineStart();
-                break;
-            case EMOJI_SWIPE:
-                listener.onGesture();
-                listener.onModeKeySwipeUp(p.key);
-                markChord();
-                break;
             case FN_SWIPE:
                 if (p.fnAction != null) {
                     listener.onGesture();
@@ -1394,7 +1306,7 @@ public final class KeyboardView extends View {
     }
 
     /**
-     * 밀어서 기능 완전 사용자화를 켰을 때 기능 키의 밀기를 처리한다. 가장 많이 움직인 방향이 문턱을 넘으면 그 방향에
+     * 기능 키의 밀기를 처리한다. 가장 많이 움직인 방향이 문턱을 넘으면 그 방향에
      * 정해 둔 기능을 실행할 준비를 하고(손을 떼면 실행), '커서 이동'이면 스페이스바 커서 이동을 시작한다.
      * 스페이스바를 세로로 밀 때는 가로 때보다 1.5배 더 밀어야 한다 (손가락이 떨리는 것과 구분하려고).
      */
@@ -1405,6 +1317,16 @@ public final class KeyboardView extends View {
         int dir = horizontal ? (dx > 0 ? Key.SWIPE_RIGHT : Key.SWIPE_LEFT) : (dy > 0 ? Key.SWIPE_DOWN : Key.SWIPE_UP);
         float need = fnSwipeThreshold * (slot == FunctionSwipes.SPACE && !horizontal ? 1.5f : 1f);
         String action = swipeDistance(dir, dx, dy) > need ? fnSwipes.action(slot, dir) : null;
+        if (SwipeAction.LANGUAGE_PICK.equals(action)) {
+            // 🌐︎를 위로 밀었다: 켜 둔 언어를 세로로 늘어놓은 말풍선을 띄운다. 손가락을 위아래로 옮겨 고르고 떼면 바꾼다.
+            if (p.key.type != Key.LANGUAGE || languagePopup == null || deferred != null) return;
+            cancelLongPress(p);
+            p.mode = POPUP;
+            openPopup(p, languagePopup.clone(), languagePopupSelected, true);
+            popupMoved = true;   // 이미 밀고 있으므로 손가락 위치대로 바로 고른다
+            if (listener != null) listener.onGesture();
+            return;
+        }
         if (SwipeAction.CURSOR_MOVE.equals(action)) {
             if (deferred != null) return;   // 두 손가락 밀기를 지켜보는 동안에는 커서를 움직이지 않는다
             p.mode = CURSOR;
@@ -1431,11 +1353,6 @@ public final class KeyboardView extends View {
             p.fnAction = action;
             p.swipeDir = dir;
         }
-    }
-
-    /** 왼쪽 아래의 자판 전환 키 (?123, 가, ABC). */
-    private static boolean isModeKey(Key k) {
-        return k.type == Key.TO_SYMBOLS || k.type == Key.TO_LETTERS;
     }
 
     private void markChord() {
@@ -1466,9 +1383,20 @@ public final class KeyboardView extends View {
         if (p.mode != NORMAL && !shiftHeld) return;
         String custom = customLongPress(k);
         if (custom != null) {
-            if (SwipeAction.DELETE_REPEAT.equals(custom)) {
+            if (SwipeAction.holdRepeat(custom)) {
                 p.mode = REPEAT;
+                repeatWord = SwipeAction.DELETE_WORD_REPEAT.equals(custom);
                 repeatRunnable.run();
+            } else if (SwipeAction.SPACE_SELECT.equals(custom)) {
+                // 선택 모드: 이제부터 밀면 커서 대신 선택 영역의 끝이 움직인다. 손가락이 지금 있는 자리에서 잰다.
+                p.mode = SELECT;
+                p.selectMoved = false;
+                p.cursorAnchorX = p.lastX;
+                p.cursorAnchorY = p.lastY;
+                if (listener != null) {
+                    listener.onGesture();
+                    listener.onSelectStart();
+                }
             } else {
                 p.mode = CONSUMED;
                 if (listener != null) {
@@ -1480,31 +1408,12 @@ public final class KeyboardView extends View {
             return;
         }
         if (shiftHeld) return;
-        if (k.type == Key.SPACE && spaceSelect) {
-            // 선택 모드: 이제부터 밀면 커서 대신 선택 영역의 끝이 움직인다. 손가락이 지금 있는 자리에서 잰다.
-            p.mode = SELECT;
-            p.selectMoved = false;
-            p.cursorAnchorX = p.lastX;
-            p.cursorAnchorY = p.lastY;
-            if (listener != null) {
-                listener.onGesture();
-                listener.onSelectStart();
-            }
-        } else if (k.type == Key.DELETE) {
-            p.mode = REPEAT;
-            repeatRunnable.run();
-        } else if (k.type == Key.LANGUAGE || k.type == Key.TO_SYMBOLS || k.type == Key.TO_LETTERS) {
-            p.mode = CONSUMED;
-            if (listener != null) {
-                listener.onGesture();
-                listener.onKeyLongPress(k);
-            }
-        } else if (isRepeatChar(k)) {
+        if (isRepeatChar(k)) {
             p.mode = CHAR_REPEAT;
             charRepeatPointer = p;
             charRepeatRunnable.run();
             markChord();
-        } else if (k.popup != null && longPressChars) {
+        } else if (k.popup != null) {
             p.mode = POPUP;
             openPopup(p);
             if (listener != null) listener.onGesture();

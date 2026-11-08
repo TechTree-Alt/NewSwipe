@@ -173,10 +173,15 @@ public final class Ui {
 
     /** Android 15부터 화면이 시스템 바 뒤까지 그려지므로 시스템 바·키보드·노치만큼 안쪽 여백을 준다. */
     public static void padForSystemBars(android.view.View v) {
+        padForSystemBars(v, true);
+    }
+
+    /** ime가 false면 키보드는 피하지 않는다: 키보드가 화면 아래를 그대로 덮는다. */
+    public static void padForSystemBars(android.view.View v, boolean ime) {
         if (android.os.Build.VERSION.SDK_INT < 35) return;
         v.setOnApplyWindowInsetsListener((view, insets) -> {
             android.graphics.Insets i = insets.getInsets(android.view.WindowInsets.Type.systemBars()
-                    | android.view.WindowInsets.Type.ime() | android.view.WindowInsets.Type.displayCutout());
+                    | (ime ? android.view.WindowInsets.Type.ime() : 0) | android.view.WindowInsets.Type.displayCutout());
             view.setPadding(i.left, i.top, i.right, i.bottom);
             return android.view.WindowInsets.CONSUMED;
         });

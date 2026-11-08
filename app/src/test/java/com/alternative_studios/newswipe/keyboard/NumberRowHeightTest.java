@@ -37,7 +37,7 @@ public class NumberRowHeightTest {
         return c.newInstance(sp, false, profile, profileEdit);
     }
 
-    /** 숫자 줄을 켠 자판들: 한글(두 배열, 균형 레이아웃 켬·끔)·영어·기호 1·2쪽. */
+    /** 숫자 줄을 켠 자판들: 한글(두 배열, 균형 배열 켬·끔)·영어·기호 1·2쪽. */
     private static KeyboardLayout[] layouts(FakeSp sp, Prefs p) {
         java.util.List<KeyboardLayout> out = new java.util.ArrayList<>();
         for (String layout : new String[]{Prefs.KOREAN_LAYOUT_8, Prefs.KOREAN_LAYOUT_D7}) {

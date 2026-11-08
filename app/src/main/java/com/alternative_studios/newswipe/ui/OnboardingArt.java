@@ -372,7 +372,7 @@ public final class OnboardingArt {
 
             // 아래 설명: 지금 단계의 동작
             String caption = s.doubleTap
-                    ? s.row[s.index] + " 두 번 탭 → " + s.result
+                    ? s.row[s.index] + " 두 번 누르기 → " + s.result
                     : s.row[s.index] + " 아래로 밀기 → " + s.result;
             captionPaint.setAlpha(Math.round(255 * rowAlpha));
             canvas.drawText(caption, w / 2f, keyTop + keyH + pad + 44 * dp, captionPaint);
@@ -427,7 +427,6 @@ public final class OnboardingArt {
         private final RectF rect = new RectF();
         private final int plate, key, fn, text, accent, onAccent;
         private final float dp;
-        private long shownAt = -1;
         private ValueAnimator intro;
         private float introT = 1f;
         /** 등장이 끝나고 잠깐 쉰 뒤에 true가 된다. 그전에는 키를 누르지 않는다. */

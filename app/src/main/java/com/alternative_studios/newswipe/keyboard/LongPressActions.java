@@ -1,21 +1,23 @@
 package com.alternative_studios.newswipe.keyboard;
 
 /**
- * 기능키 길게 누르기 기능 완전 사용자화. 켜면 Shift 키·기호 키·언어 전환 키·엔터 키·지우기 키와 더한 키(이모지·클립보드·
+ * 기능키 길게 누르기: Shift 키·기호 키·언어 전환 키·엔터 키·지우기 키와 더한 키(이모지·클립보드·
  * 커서 이동·음성 입력)를 길게 눌렀을 때 실행할 기능을 키마다 직접 정한다 (기능 목록은 {@link SwipeAction}).
  * 정하지 않은 키는 기본 동작을 따른다: 기호 키 = 이모지 열기, 언어 전환 키 = 입력 방법 전환 창, 지우기 키 = 계속 지우기,
- * Shift 키·엔터 키 = 없음.
+ * 스페이스바 = 밀어서 선택, Shift 키·엔터 키 = 없음.
  * 밀어서 기능 편집과 같은 틀({@link SwipeSpec})을 쓰고, 방향 대신 '길게 누르기' 칸 하나({@link #DIR})만 둔다.
  */
 public final class LongPressActions {
     public static final int SHIFT = 0, MODE = 1, GLOBE = 2, ENTER = 3, DELETE = 4;
     /** 기능키 순서·유무 사용자화에서 더할 수 있는 키 (켰을 때만 편집 화면에 보인다, 처음에는 없음). */
     public static final int EMOJI_KEY = 5, CLIPBOARD = 6, CURSOR = 7, VOICE = 8;
+    /** 스페이스바. 처음에는 '밀어서 선택'이다. */
+    public static final int SPACE = 9;
     /** 길게 누르기를 저장하는 칸 (SwipeSpec의 방향 자리를 하나만 쓴다). */
     public static final int DIR = Key.SWIPE_DOWN;
     private static final String[] LABELS = {
             "Shift 키 (⇧)", "기호 키 (?123·가·ABC)", "언어 전환 키 (🌐︎)", "엔터 키 (↵)", "지우기 키 (⌫)",
-            "이모지 키", "클립보드 키", "커서 이동 키", "음성 입력 키"};
+            "이모지 키", "클립보드 키", "커서 이동 키", "음성 입력 키", "스페이스바"};
     private static final String[] HINTS = {
             "영어 자판의 대문자 키",
             "글자 자판과 기호 자판을 오가는 왼쪽 아래 키",
@@ -26,18 +28,20 @@ public final class LongPressActions {
             "클립보드 창 열기",
             "상하좌우로 밀면 커서가 움직입니다.",
             "음성 입력",
+            "띄어쓰기",
     };
     /** 더할 수 있는 키 칸의 맨 아래 줄 키 ID (BottomKeys). 편집 화면에 보일지 정할 때 쓴다. */
     private static final String[] EXTRA_IDS = {BottomKeys.EMOJI, BottomKeys.CLIPBOARD, BottomKeys.CURSOR, BottomKeys.VOICE};
 
     public static final SwipeSpec SPEC = new SwipeSpec("lp", new String[]{"shift", "mode", "globe", "enter", "delete",
-            "emoji", "clipboard", "cursor", "voice"}) {
+            "emoji", "clipboard", "cursor", "voice", "space"}) {
         @Override
         public String defaultAction(int slot, int dir) {
             switch (slot) {
                 case MODE: return SwipeAction.EMOJI_OPEN;
                 case GLOBE: return SwipeAction.IME_PICKER;
                 case DELETE: return SwipeAction.DELETE_REPEAT;
+                case SPACE: return SwipeAction.SPACE_SELECT;
                 default: return SwipeAction.NONE;
             }
         }
@@ -51,7 +55,7 @@ public final class LongPressActions {
         public boolean shown(com.alternative_studios.newswipe.Prefs prefs, int slot) {
             if (prefs == null) return true;
             if (slot == GLOBE) return prefs.bottomKeyShown(BottomKeys.GLOBE);
-            if (slot >= EMOJI_KEY) return prefs.bottomKeyShown(EXTRA_IDS[slot - EMOJI_KEY]);
+            if (slot >= EMOJI_KEY && slot <= VOICE) return prefs.bottomKeyShown(EXTRA_IDS[slot - EMOJI_KEY]);
             return true;
         }
 
@@ -60,12 +64,13 @@ public final class LongPressActions {
         public String resolve(String stored, int slot, int dir) {
             if (stored == null || !SwipeAction.isKnown(stored)) return defaultAction(slot, dir);
             if (SwipeAction.CURSOR_MOVE.equals(stored) || SwipeAction.FREE_CURSOR.equals(stored)) return SwipeAction.NONE;
+            if (SwipeAction.SPACE_SELECT.equals(stored) && slot != SPACE) return SwipeAction.NONE;   // 스페이스바 전용
             return stored;
         }
 
         @Override
         public String title() {
-            return "기능키 길게 누르기 기능 편집";
+            return "기능키 길게 누르기 기능 사용자화";
         }
 
         @Override
@@ -95,7 +100,7 @@ public final class LongPressActions {
 
         @Override
         public String[] choices(int slot) {
-            return SwipeAction.idsForLongPress();
+            return slot == SPACE ? SwipeAction.idsForSpaceLongPress() : SwipeAction.idsForLongPress();
         }
 
         @Override
@@ -121,11 +126,12 @@ public final class LongPressActions {
             case Key.CLIPBOARD: return CLIPBOARD;
             case Key.CURSOR_PAD: return CURSOR;
             case Key.VOICE: return VOICE;
+            case Key.SPACE: return SPACE;
             default: return -1;
         }
     }
 
-    /** 설정의 배치로 칸마다 기능 ID를 담은 배열 (SHIFT~VOICE 순서). */
+    /** 설정의 배치로 칸마다 기능 ID를 담은 배열 (SHIFT~SPACE 순서). */
     public static String[] actions(com.alternative_studios.newswipe.Prefs prefs) {
         String[][] t = SPEC.table(prefs);
         String[] out = new String[t.length];

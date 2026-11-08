@@ -41,6 +41,8 @@ public final class SwipeAction {
     public static final String CUT = "cut";
     public static final String PASTE = "paste";
     public static final String LANGUAGE = "language";
+    /** 🌐︎ 전용(위로 밀기): 켜 둔 언어를 세로로 늘어놓은 말풍선을 띄우고, 손가락을 옮겨 고른 언어로 바꾼다. */
+    public static final String LANGUAGE_PICK = "language_pick";
     /** 기호 자판을 연다. 이미 기호 자판이면 글자 자판으로 돌아간다 (기호 키와 같다). */
     public static final String SYMBOLS = "symbols";
     /** 엔터 키와 같다 (입력란에 따라 줄바꿈·보내기·검색 등). */
@@ -56,6 +58,10 @@ public final class SwipeAction {
     public static final String ONE_HAND_RIGHT = "one_hand_right";
     /** 길게 누르기 전용: 누르고 있는 동안 계속 지우기. */
     public static final String DELETE_REPEAT = "delete_repeat";
+    /** 길게 누르기 전용: 누르고 있는 동안 단어 단위로 계속 지우기. */
+    public static final String DELETE_WORD_REPEAT = "delete_word_repeat";
+    /** 스페이스바 길게 누르기 전용: 길게 누른 뒤 손을 떼지 않고 밀어 글자를 선택한다. */
+    public static final String SPACE_SELECT = "space_select";
     /** 길게 누르기 전용: 영어 자판에서 Caps Lock(대문자 고정) 켜기. */
     public static final String CAPS_LOCK = "caps_lock";
 
@@ -77,6 +83,7 @@ public final class SwipeAction {
             {EMOJI_PINNED, "첫 번째 고정 이모지 붙여넣기", "고정 이모지"},
             {IME_PICKER, "입력 방법 전환 창 열기", "입력기 선택"},
             {LANGUAGE, "언어 전환", "언어 전환"},
+            {LANGUAGE_PICK, "언어 고르기 (말풍선에서 골라 바꾸기)", "언어 고르기"},
             {SYMBOLS, "기호 입력", "기호 입력"},
             {ENTER, "엔터", "엔터"},
             {SPACE, "띄어쓰기", "띄어쓰기"},
@@ -102,20 +109,41 @@ public final class SwipeAction {
             {ONE_HAND_RIGHT, "한 손 모드 (오른쪽)", "한 손 오른쪽"},
             {SETTINGS, "NewSwipe 설정 열기", "설정 열기"},
             {DELETE_REPEAT, "계속 지우기 (누르고 있는 동안)", "계속 지우기"},
+            {DELETE_WORD_REPEAT, "단어 지우기 (누르고 있는 동안)", "계속 단어 지우기"},
+            {SPACE_SELECT, "길게 누른 뒤 밀어서 글자 선택", "밀어서 선택"},
             {CAPS_LOCK, "Caps Lock 켜기 (영어 대문자 고정)", "Caps Lock"},
     };
 
     /** 길게 누르기에서만 쓰는 기능 (밀기 목록에는 보이지 않는다). */
     private static boolean longPressOnly(String id) {
-        return DELETE_REPEAT.equals(id) || CAPS_LOCK.equals(id);
+        return holdRepeat(id) || CAPS_LOCK.equals(id) || SPACE_SELECT.equals(id);
+    }
+
+    /** 누르고 있는 동안 되풀이하는 길게 누르기 기능 (계속 지우기·단어 지우기). 지우는 속도를 따로 정한다. */
+    public static boolean holdRepeat(String id) {
+        return DELETE_REPEAT.equals(id) || DELETE_WORD_REPEAT.equals(id);
+    }
+
+    /** 🌐︎를 위로 밀 때만 쓰는 기능 (말풍선이 키 위로 펼쳐진다). */
+    static boolean globeUpOnly(String id) {
+        return LANGUAGE_PICK.equals(id);
     }
 
     /** 기능키 길게 누르기에서 고를 수 있는 ID들 (밀어야 하는 '커서 자유 이동'은 뺀다). */
     public static String[] idsForLongPress() {
         java.util.List<String> ids = new java.util.ArrayList<>();
         for (String[] a : ALL) {
-            if (!CURSOR_MOVE.equals(a[0]) && !FREE_CURSOR.equals(a[0])) ids.add(a[0]);
+            if (!CURSOR_MOVE.equals(a[0]) && !FREE_CURSOR.equals(a[0]) && !globeUpOnly(a[0]) && !SPACE_SELECT.equals(a[0])) {
+                ids.add(a[0]);
+            }
         }
+        return ids.toArray(new String[0]);
+    }
+
+    /** 스페이스바 길게 누르기에서 고를 수 있는 ID들: 기능키와 같은 목록에 '밀어서 선택'을 '없음' 바로 다음에 더한다. */
+    public static String[] idsForSpaceLongPress() {
+        java.util.List<String> ids = new java.util.ArrayList<>(java.util.Arrays.asList(idsForLongPress()));
+        ids.add(1, SPACE_SELECT);
         return ids.toArray(new String[0]);
     }
 
@@ -128,6 +156,7 @@ public final class SwipeAction {
         java.util.List<String> ids = new java.util.ArrayList<>();
         for (String[] a : ALL) {
             if (FREE_CURSOR.equals(a[0]) || longPressOnly(a[0])) continue;
+            if (globeUpOnly(a[0]) && slot != FunctionSwipes.GLOBE) continue;
             if (space || !CURSOR_MOVE.equals(a[0])) ids.add(a[0]);
         }
         return ids.toArray(new String[0]);
@@ -137,7 +166,8 @@ public final class SwipeAction {
     public static String[] idsForKeyboard(boolean oneFinger) {
         java.util.List<String> ids = new java.util.ArrayList<>();
         for (String[] a : ALL) {
-            if (CURSOR_MOVE.equals(a[0]) || (!oneFinger && FREE_CURSOR.equals(a[0])) || longPressOnly(a[0])) continue;
+            if (CURSOR_MOVE.equals(a[0]) || (!oneFinger && FREE_CURSOR.equals(a[0])) || longPressOnly(a[0])
+                    || globeUpOnly(a[0])) continue;
             ids.add(a[0]);
         }
         return ids.toArray(new String[0]);
