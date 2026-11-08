@@ -413,7 +413,9 @@ public class EditorUiTest {
         shot(a, "41-delete");
         tapDir(cur(a), "왼쪽");
         d = (AlertDialog) ShadowDialog.getLatestDialog();
-        shadowOf(d).clickOnItem(1);   // 실행 취소
+        // 갈래로 묶인 기능 창: '지우기·실행 취소' 머리글과 칩이 있고, 줄을 누르면 고른다
+        assertNotNull(findText(d.getWindow().getDecorView(), "지우기·실행 취소"));
+        ((View) findText(d.getWindow().getDecorView(), "실행 취소").getParent()).performClick();
         idle();
         assertEquals(com.alternative_studios.newswipe.keyboard.SwipeAction.UNDO,
                 com.alternative_studios.newswipe.keyboard.FunctionSwipes.SPEC.get(prefs, com.alternative_studios.newswipe.keyboard.FunctionSwipes.DELETE, Key.SWIPE_LEFT));
@@ -426,13 +428,11 @@ public class EditorUiTest {
         tapKey(p, key(p, null, Key.LANGUAGE));
         tapDir(cur(a), "위쪽");
         d = (AlertDialog) ShadowDialog.getLatestDialog();
-        boolean pickUp = false;
-        for (CharSequence it : shadowOf(d).getItems()) pickUp |= it.toString().startsWith("언어 고르기");
+        boolean pickUp = findText(d.getWindow().getDecorView(), "언어 고르기 (말풍선에서 골라 바꾸기)") != null;
         d.dismiss(); idle();
         tapDir(cur(a), "왼쪽");
         d = (AlertDialog) ShadowDialog.getLatestDialog();
-        boolean pickLeft = false;
-        for (CharSequence it : shadowOf(d).getItems()) pickLeft |= it.toString().startsWith("언어 고르기");
+        boolean pickLeft = findText(d.getWindow().getDecorView(), "언어 고르기 (말풍선에서 골라 바꾸기)") != null;
         d.dismiss(); idle();
         log("language pick up=" + pickUp + " left=" + pickLeft);
         assertTrue(pickUp && !pickLeft);

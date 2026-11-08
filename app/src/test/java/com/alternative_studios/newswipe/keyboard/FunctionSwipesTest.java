@@ -91,4 +91,25 @@ public class FunctionSwipesTest {
         }
         assertEquals("없음", SwipeAction.label(null));
     }
+
+    /** 기능을 고르는 창의 갈래: '없음'을 포함한 모든 기능이 꼭 한 갈래에만 들어 있다. */
+    @Test
+    public void everyActionBelongsToExactlyOneCategory() {
+        java.util.Set<String> all = new java.util.LinkedHashSet<>();
+        all.addAll(java.util.Arrays.asList(SwipeAction.idsForKeyboard(true)));
+        all.addAll(java.util.Arrays.asList(SwipeAction.idsFor(FunctionSwipes.GLOBE)));
+        all.addAll(java.util.Arrays.asList(SwipeAction.idsForSpaceLongPress()));
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (int c = 0; c < SwipeAction.categoryCount(); c++) {
+            assertFalse(SwipeAction.categoryName(c).isEmpty());
+            for (String id : SwipeAction.categoryIds(c)) {
+                assertTrue(id, SwipeAction.isKnown(id));
+                assertTrue(id, seen.add(id));
+                assertEquals(id, c, SwipeAction.category(id));
+            }
+        }
+        for (String id : all) {
+            assertTrue(id, SwipeAction.category(id) >= 0);
+        }
+    }
 }
