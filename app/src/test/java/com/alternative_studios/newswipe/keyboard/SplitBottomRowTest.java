@@ -714,11 +714,16 @@ public class SplitBottomRowTest {
         assertTrue(p.splitReachColumn());
         sp.m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_8);
         assertTrue("NewSwipe 단모음의 값이 단모음에 이어지지 않는다", p.splitSeparateJamo() && !p.splitReachColumn());
-        // 배열별로 나누기 전의 값은 값을 정하기 전까지 그 배열이 이어 쓴다
+        // 배열별로 나누기 전의 (세로 모드) 값은 값을 정하기 전까지 그 배열이 이어 쓰고, 가로 모드도 그 값을 따른다
         FakeSp old = new FakeSp();
         Prefs q = c.newInstance(old, false, Prefs.PROFILE_LANDSCAPE, true);
-        old.m.put("split_reach_column", false);
+        old.m.put("portrait_split_reach_column", false);
         assertTrue(q.splitSeparateJamo());
+        // 가로 모드가 예전에 따로 저장하던 값은 더 이상 읽지 않는다 (세로 모드 '한글 글자 키 설정'을 따른다)
+        FakeSp landOld = new FakeSp();
+        Prefs r = c.newInstance(landOld, false, Prefs.PROFILE_LANDSCAPE, true);
+        landOld.m.put("split_reach_column", false);
+        assertTrue("단모음 기본값(좌·우 균형 배열)", !r.splitSeparateJamo());
     }
 
     @Test
