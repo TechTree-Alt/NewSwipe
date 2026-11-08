@@ -494,7 +494,7 @@ public final class Prefs {
                     FN_SWIPE_THRESHOLD, PORTRAIT_PREFIX + SPLIT_SPACE_JOIN, PORTRAIT_PREFIX + SPLIT_FN_WIDTH),
                     keys(AREA_PAD_PREFIX + PAD_AREAS[3] + "_")),
             new EditorScope(SCOPE_MIDDLE, "가운데 공간 (분리 키보드)", keys(PORTRAIT_PREFIX + SPLIT_GAP_CURSOR,
-                    PORTRAIT_PREFIX + SPLIT_GAP_SPEED), NONE),
+                    PORTRAIT_PREFIX + SPLIT_GAP_SPEED), keys("swipe_gap_portrait_")),
             new EditorScope("split", "분리 키보드 사용", keys(PORTRAIT_SPLIT), NONE),
             new EditorScope("keys", "키마다 정한 설정 (길게 누르기·밀기·키 창의 누르기 항목)", keys(NUMBER_PAD_SYMBOLS,
                     DOUBLE_SPACE_PERIOD, SPACE_HIT_SHRINK, SPACE_HIT_SHRINK_PCT, SPACE_LANG_LABEL, SPACE_CURSOR_SPEED_H,
@@ -505,7 +505,7 @@ public final class Prefs {
             // 키보드 사용자화를 연 채 바꾸면 되돌리기 기록에는 남는다.
             new EditorScope("landscape", null, keys(LANDSCAPE_SPLIT, LANDSCAPE_SIZE, KEYBOARD_HEIGHT_LAND, KEY_TEXT_SIZE_LAND,
                     SPLIT_GAP_CURSOR, SPLIT_GAP_SPEED, SPLIT_SPACE_JOIN, SPLIT_FN_WIDTH, SPLIT_REACH_COLUMN,
-                    PROFILE_LIFT + LANDSCAPE_SUFFIX, FN_ROW_HEIGHT + LANDSCAPE_SUFFIX, TOOLBAR_FOLLOW_BLOCKS + LANDSCAPE_SUFFIX), keys(LANDSCAPE_SPLIT + "_", "balanced_")),
+                    PROFILE_LIFT + LANDSCAPE_SUFFIX, FN_ROW_HEIGHT + LANDSCAPE_SUFFIX, TOOLBAR_FOLLOW_BLOCKS + LANDSCAPE_SUFFIX), keys(LANDSCAPE_SPLIT + "_", "balanced_", "swipe_gap_landscape_", "swipe_gap_large_")),
     };
 
     private static EditorScope scope(String id) {
@@ -584,7 +584,7 @@ public final class Prefs {
         removeKeys(new String[]{splitKey(), sizeKey(), heightKey(), fnRowHeightKey(), textSizeKey(),
                 toolbarFollowKey(), oneHandWidthKey(), splitGapCursorKey(),
                 splitGapSpeedKey(), splitSpaceJoinKey(), splitFnWidthKey(), splitReachColumnKey(), liftKey()},
-                new String[]{splitKey() + "_"});   // 예전에 배열마다 저장하던 분리 키보드 값도 함께
+                new String[]{splitKey() + "_", "swipe_gap_" + com.alternative_studios.newswipe.keyboard.GapSwipes.SLOTS[gapSlot()] + "_"});   // 예전에 배열마다 저장하던 분리 키보드 값도 함께
     }
 
     /** '기능키 순서·유무 사용자화' 화면의 값. */
@@ -725,6 +725,14 @@ public final class Prefs {
      * (그 프로필의 설정 보기에서 부른다). 좌우·상하로 모두 움직이고, 속도는 {@link #splitGapSpeed}로 따로 정한다.
      */
     public boolean splitGapCursor() { return sp.getBoolean(splitGapCursorKey(), true); }
+
+    /** 이 프로필의 가운데 공간 밀기 칸 번호 (GapSwipes.SLOTS 차례). */
+    public int gapSlot() { return portrait() ? 0 : large() ? ("port".equals(largeSide()) ? 2 : 3) : 1; }
+
+    /** 이 프로필의 가운데 공간 밀기 배치. 예전 '밀어서 커서 이동' 스위치가 꺼져 있었으면 정하지 않은 방향은 없음. */
+    public com.alternative_studios.newswipe.keyboard.GapSwipes gapSwipes() {
+        return com.alternative_studios.newswipe.keyboard.GapSwipes.load(this, gapSlot(), !splitGapCursor());
+    }
 
     /** 이 프로필의 '밀어서 커서 이동' 속도 설정 키. */
     public String splitGapSpeedKey() { return portrait() ? PORTRAIT_PREFIX + SPLIT_GAP_SPEED : large() ? LARGE_PREFIX + SPLIT_GAP_SPEED + "_" + largeSide() : SPLIT_GAP_SPEED; }

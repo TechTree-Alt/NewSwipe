@@ -88,7 +88,7 @@ public final class SwipeAction {
             {ENTER, "엔터", "엔터"},
             {SPACE, "띄어쓰기", "띄어쓰기"},
             {FREE_CURSOR, "커서 자유 이동 (문자 키를 트랙패드처럼)", "커서 자유 이동"},
-            {CURSOR_MOVE, "커서 자유 이동 (스페이스바)", "커서 자유 이동"},
+            {CURSOR_MOVE, "커서 자유 이동", "커서 자유 이동"},
             {LINE_START, "커서를 줄의 맨 앞으로 이동", "줄 맨 앞"},
             {LINE_END, "커서를 줄의 맨 뒤로 이동", "줄 맨 뒤"},
             {TEXT_START, "커서를 글 전체의 맨 앞으로 이동", "글 맨 앞"},
@@ -150,14 +150,13 @@ public final class SwipeAction {
     private SwipeAction() {
     }
 
-    /** 키 slot(FunctionSwipes.SPACE 등)에서 고를 수 있는 ID들. 화면에 보이는 순서. */
+    /** 키 slot(FunctionSwipes.SPACE 등)·도구 막대·분리 키보드 가운데 공간에서 고를 수 있는 ID들. 화면에 보이는 순서. */
     public static String[] idsFor(int slot) {
-        boolean space = FunctionSwipes.cursorSlot(slot);   // 스페이스바·커서 이동 키
         java.util.List<String> ids = new java.util.ArrayList<>();
         for (String[] a : ALL) {
             if (FREE_CURSOR.equals(a[0]) || longPressOnly(a[0])) continue;
             if (globeUpOnly(a[0]) && slot != FunctionSwipes.GLOBE) continue;
-            if (space || !CURSOR_MOVE.equals(a[0])) ids.add(a[0]);
+            ids.add(a[0]);
         }
         return ids.toArray(new String[0]);
     }
@@ -173,7 +172,7 @@ public final class SwipeAction {
         return ids.toArray(new String[0]);
     }
 
-    /** 도구 막대에서 고를 수 있는 ID들 ('커서 이동'은 스페이스바 전용이라 뺀다). */
+    /** 도구 막대에서 고를 수 있는 ID들. */
     public static String[] idsForToolbar() {
         return idsFor(-1);
     }

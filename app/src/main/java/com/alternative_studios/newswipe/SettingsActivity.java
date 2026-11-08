@@ -2324,12 +2324,12 @@ public final class SettingsActivity extends Activity {
             }
             case KeyboardPreview.AREA_MIDDLE: {
                 LinearLayout c = section(portraitProfile ? "가운데 공간" : "분리 키보드 기능");
-                View speed = subGroup(slider("이동 속도", edit.splitGapSpeedKey(), edit.splitGapSpeed(), 50, 300, 10, "%"));
-                speed.setVisibility(edit.splitGapCursor() ? View.VISIBLE : View.GONE);
-                c.addView(toggle("밀어서 커서 이동",
-                        "분리 키보드 가운데의 빈 공간을 밀어 커서를 옮깁니다.",
-                        edit.splitGapCursorKey(), edit.splitGapCursor(), speed));
-                c.addView(speed);
+                // 도구 막대처럼 네 방향마다 밀 때 실행할 기능을 정한다 (기본은 모두 '커서 자유 이동').
+                c.addView(new KeyEditPanel(this, edit, null).standalonePad(
+                        com.alternative_studios.newswipe.keyboard.GapSwipes.SPEC, edit.gapSlot(), "가운데 공간"));
+                c.addView(note("'없음'으로 둔 방향으로는 밀어도 아무 일도 하지 않습니다. "
+                        + "'커서 자유 이동'을 정한 방향으로 밀면 커서가 움직입니다 (좌우는 글자, 위아래는 줄 단위)."));
+                c.addView(slider("커서 이동 속도", edit.splitGapSpeedKey(), edit.splitGapSpeed(), 50, 300, 10, "%"));
                 break;
             }
             case KeyboardPreview.AREA_FUNCTION: {

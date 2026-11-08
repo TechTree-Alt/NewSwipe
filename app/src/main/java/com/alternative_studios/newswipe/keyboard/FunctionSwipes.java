@@ -33,7 +33,7 @@ public final class FunctionSwipes {
     private static final String[] BOTTOM_IDS = {BottomKeys.MODE, BottomKeys.GLOBE, BottomKeys.SPACE, BottomKeys.ENTER, null,
             BottomKeys.EMOJI, BottomKeys.CLIPBOARD, BottomKeys.CURSOR, BottomKeys.VOICE};
 
-    /** '커서 자유 이동 (스페이스바)'를 고를 수 있는 칸: 스페이스바와 커서 이동 키. */
+    /** 처음부터 '커서 자유 이동'이 기본인 칸: 스페이스바와 커서 이동 키. */
     static boolean cursorSlot(int slot) {
         return slot == SPACE || slot == CURSOR;
     }
@@ -50,15 +50,13 @@ public final class FunctionSwipes {
         }
 
         /**
-         * 모르는 값과 '커서 자유 이동 (문자 키)'는 기본값으로, 스페이스바·커서 이동 키가 아닌 키의 '커서 자유 이동 (스페이스바)'는
-         * 없음으로 본다.
+         * 모르는 값과 '커서 자유 이동 (문자 키)'는 기본값으로 본다.
          */
         @Override
         public String resolve(String stored, int slot, int dir) {
             if (stored == null || !SwipeAction.isKnown(stored) || SwipeAction.FREE_CURSOR.equals(stored)) {
                 return defaultAction(slot, dir);
             }
-            if (SwipeAction.CURSOR_MOVE.equals(stored) && !cursorSlot(slot)) return SwipeAction.NONE;
             if (SwipeAction.globeUpOnly(stored) && (slot != GLOBE || dir != Key.SWIPE_UP)) return SwipeAction.NONE;
             return stored;
         }
@@ -166,13 +164,13 @@ public final class FunctionSwipes {
         return cursorV(SPACE);
     }
 
-    /** slot의 키(스페이스바·커서 이동 키)를 가로로 밀어 커서를 옮기는지. */
+    /** slot의 키를 가로로 밀어 커서를 옮기는지. */
     public boolean cursorH(int slot) {
         return SwipeAction.CURSOR_MOVE.equals(table[slot][Key.SWIPE_LEFT])
                 || SwipeAction.CURSOR_MOVE.equals(table[slot][Key.SWIPE_RIGHT]);
     }
 
-    /** slot의 키(스페이스바·커서 이동 키)를 세로로 밀어 줄 단위로 커서를 옮기는지. */
+    /** slot의 키를 세로로 밀어 줄 단위로 커서를 옮기는지. */
     public boolean cursorV(int slot) {
         return SwipeAction.CURSOR_MOVE.equals(table[slot][Key.SWIPE_UP])
                 || SwipeAction.CURSOR_MOVE.equals(table[slot][Key.SWIPE_DOWN]);
