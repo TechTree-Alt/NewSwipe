@@ -15,7 +15,6 @@ import android.view.ViewOutlineProvider;
 import android.view.ViewTreeObserver;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
-import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -61,8 +60,8 @@ public final class ClipboardPanel extends LinearLayout {
     private final LinearLayout list, pinList;
     /** 분리하지 않을 때 쓰는 세로 스크롤과, 분리했을 때 두 페이지(일반·고정)를 가로로 넘기는 스크롤. */
     private final ScrollView scroll, pinScroll;
-    private final HorizontalScrollView pager;
-    private final LinearLayout pagerRow, tabs;
+    private final PageSwipe pager;
+    private final LinearLayout tabs;
     private final TextView tabNormal, tabPinned;
     private boolean splitPinned, splitShown;
     private final TextView clear;
@@ -152,11 +151,8 @@ public final class ClipboardPanel extends LinearLayout {
         tabs.setVisibility(GONE);
         addView(tabs, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        pager = new SnapPager(context);
-        pager.setHorizontalScrollBarEnabled(false);
-        pager.setOverScrollMode(OVER_SCROLL_NEVER);
-        pagerRow = new LinearLayout(context);
-        pagerRow.setOrientation(HORIZONTAL);
+        // 이모지 탭 전환과 같은 방식: 미는 동안 옆 페이지가 붙어서 따라오고, 놓으면 넘기거나 제자리로 돌아간다.
+        pager = new PageSwipe(context);
         ScrollView normalScroll = new ScrollView(context);
         normalScroll.setVerticalScrollBarEnabled(false);
         pinScroll = new ScrollView(context);
@@ -165,22 +161,7 @@ public final class ClipboardPanel extends LinearLayout {
         pinListRef = pinList;
         pinScroll.addView(pinList, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
-        pagerRow.addView(normalScroll, new LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT));
-        pagerRow.addView(pinScroll, new LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT));
-        pager.addView(pagerRow, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.MATCH_PARENT));
-        // 두 페이지는 각각 가로 폭 전체를 쓴다.
-        pager.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
-            int w = r - l;
-            for (int i = 0; i < pagerRow.getChildCount(); i++) {
-                View page = pagerRow.getChildAt(i);
-                if (page.getLayoutParams().width != w) {
-                    page.getLayoutParams().width = w;
-                    page.requestLayout();
-                }
-            }
-        });
-        pager.setOnScrollChangeListener((v, x, y, ox, oy) -> updateTabs());
+        pager.setPages(normalScroll, pinScroll);
         pager.setVisibility(GONE);
         // 일반 항목 목록은 분리했을 때 왼쪽 페이지에 들어간다 (list를 두 곳에 두지 않고 부모를 옮긴다).
         normalPage = normalScroll;
@@ -202,13 +183,13 @@ public final class ClipboardPanel extends LinearLayout {
     /** 페이지 버튼: 도구 막대 칩과 같은 모양. 지금 페이지는 강조색 칩이다. */
     private TextView tab(Context context, String label, int page, int barHeight) {
         TextView t = Ui.chipButton(context, label, theme.text, theme.functionKey, barHeight);
-        t.setOnClickListener(v -> pager.smoothScrollTo(page == 0 ? 0 : pager.getWidth(), 0));
+        t.setOnClickListener(v -> pager.goTo(page));
         return t;
     }
 
     /** 지금 보이는 페이지의 버튼만 강조색 칩으로 보인다. */
     private void updateTabs() {
-        boolean second = pager.getScrollX() * 2 > Math.max(1, pager.getWidth());
+        boolean second = pager.page() == 1;
         styleTab(tabNormal, !second);
         styleTab(tabPinned, second);
     }
@@ -219,56 +200,197 @@ public final class ClipboardPanel extends LinearLayout {
     }
 
     /**
-     * 두 페이지를 가로로 넘기는 스크롤. 세로 스크롤 안에서도 가로로 조금만 밀면 바로 넘어가게 가로 움직임을 일찍 가로채고,
-     * 손가락을 떼면 빠르게 튕겼는지(속도)나 절반을 넘었는지에 따라 한 페이지씩 맞춘다.
+     * 두 페이지(일반·고정)를 좌우로 넘기는 틀. 이모지 탭 전환(EmojiPanel.SwipeFrame)과 같은 방식이다:
+     * 가로로 미는 손짓을 가로채 지금 페이지를 손가락을 따라 옮기고 그 옆에 다른 페이지를 붙여 함께 움직이며,
+     * 놓을 때 폭의 1/4 넘게 밀었거나 빠르게 튕겼으면 넘기고 아니면 제자리로 돌린다.
+     * 세로로 미는 손짓(목록 스크롤)과 항목 누르기는 그대로 목록이 받는다.
      */
-    private static final class SnapPager extends HorizontalScrollView {
+    private final class PageSwipe extends FrameLayout {
         private final int slop;
-        private float downX, downY;
-        private boolean dragging;
+        private final float minFling;
         private android.view.VelocityTracker velocity;
+        private View[] pages;
+        private int cur;
+        private float downX, downY;
+        private boolean dragging, animating;
 
-        SnapPager(Context context) {
+        PageSwipe(Context context) {
             super(context);
-            slop = android.view.ViewConfiguration.get(context).getScaledTouchSlop() / 2;
+            android.view.ViewConfiguration vc = android.view.ViewConfiguration.get(context);
+            slop = vc.getScaledTouchSlop();
+            minFling = vc.getScaledMinimumFlingVelocity() * 4f;
+        }
+
+        void setPages(View first, View second) {
+            pages = new View[]{first, second};
+            for (View v : pages) {
+                addView(v, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT));
+            }
+            reset();
+        }
+
+        int page() {
+            return cur;
+        }
+
+        /** 첫 페이지로 돌아가 진행 중인 움직임을 멈춘다. */
+        void reset() {
+            for (View v : pages) {
+                v.animate().cancel();
+                v.setTranslationX(0f);
+            }
+            animating = false;
+            dragging = false;
+            cur = 0;
+            pages[0].setVisibility(VISIBLE);
+            pages[1].setVisibility(GONE);
+        }
+
+        /** 버튼으로 그 페이지로 넘긴다. */
+        void goTo(int target) {
+            if (target == cur || animating || getWidth() == 0) return;
+            View to = pages[target];
+            int dir = target > cur ? 1 : -1;
+            to.setVisibility(VISIBLE);
+            to.setTranslationX(dir * getWidth());
+            animating = true;
+            slide(-dir * getWidth(), 200, target);
         }
 
         @Override
-        public boolean onInterceptTouchEvent(android.view.MotionEvent e) {
-            switch (e.getActionMasked()) {
+        public boolean onInterceptTouchEvent(android.view.MotionEvent ev) {
+            track(ev);
+            switch (ev.getActionMasked()) {
                 case android.view.MotionEvent.ACTION_DOWN:
-                    downX = e.getX();
-                    downY = e.getY();
+                    downX = ev.getX();
+                    downY = ev.getY();
                     dragging = false;
                     break;
                 case android.view.MotionEvent.ACTION_MOVE:
-                    float dx = Math.abs(e.getX() - downX), dy = Math.abs(e.getY() - downY);
-                    if (dx > slop && dx > dy * 0.7f) dragging = true;   // 세로보다 조금만 가로여도 페이지 넘기기
+                    if (!dragging) startDragIfHorizontal(ev);
+                    break;
+                case android.view.MotionEvent.ACTION_UP:
+                case android.view.MotionEvent.ACTION_CANCEL:
+                    if (!dragging) recycleTracker();
                     break;
                 default:
                     break;
             }
-            return dragging || super.onInterceptTouchEvent(e);
+            return dragging;
         }
 
         @Override
-        public boolean onTouchEvent(android.view.MotionEvent e) {
-            if (velocity == null) velocity = android.view.VelocityTracker.obtain();
-            velocity.addMovement(e);
-            int action = e.getActionMasked();
-            if (action == android.view.MotionEvent.ACTION_UP || action == android.view.MotionEvent.ACTION_CANCEL) {
+        public boolean onTouchEvent(android.view.MotionEvent ev) {
+            track(ev);
+            switch (ev.getActionMasked()) {
+                case android.view.MotionEvent.ACTION_DOWN:
+                    downX = ev.getX();
+                    downY = ev.getY();
+                    dragging = false;
+                    return true;
+                case android.view.MotionEvent.ACTION_MOVE:
+                    if (!dragging) startDragIfHorizontal(ev);
+                    if (dragging) drag(ev.getX() - downX);
+                    return true;
+                case android.view.MotionEvent.ACTION_UP:
+                    if (dragging) finish(ev.getX() - downX);
+                    dragging = false;
+                    recycleTracker();
+                    return true;
+                case android.view.MotionEvent.ACTION_CANCEL:
+                    if (dragging) slide(0, 160, cur);
+                    dragging = false;
+                    recycleTracker();
+                    return true;
+                default:
+                    return true;
+            }
+        }
+
+        private void startDragIfHorizontal(android.view.MotionEvent ev) {
+            float dx = ev.getX() - downX, dy = ev.getY() - downY;
+            if (animating || Math.abs(dx) < slop || Math.abs(dx) < Math.abs(dy) * 1.5f) return;
+            dragging = true;
+            downX = ev.getX();   // 문턱만큼 튀지 않게 여기서부터 따라간다
+            ViewGroup parent = (ViewGroup) getParent();
+            if (parent != null) parent.requestDisallowInterceptTouchEvent(true);
+        }
+
+        /** 손가락을 따라 옮긴다. 넘어갈 곳이 없는 쪽(첫 페이지에서 오른쪽, 둘째에서 왼쪽)으로는 조금만 따라온다. */
+        private void drag(float dx) {
+            int other = 1 - cur;
+            boolean toOther = cur == 0 ? dx < 0 : dx > 0;
+            if (!toOther) {
+                pages[other].setVisibility(GONE);
+                pages[cur].setTranslationX(dx * 0.25f);
+                return;
+            }
+            int dir = cur == 0 ? 1 : -1;
+            pages[other].setVisibility(VISIBLE);
+            pages[cur].setTranslationX(dx);
+            pages[other].setTranslationX(dx + dir * getWidth());
+        }
+
+        private void finish(float dx) {
+            float vx = 0;
+            if (velocity != null) {
                 velocity.computeCurrentVelocity(1000);
-                float vx = velocity.getXVelocity();
+                vx = velocity.getXVelocity();
+            }
+            // +1이면 다음(왼쪽으로 밀었다), -1이면 이전, 0이면 제자리
+            int dir = dx < -getWidth() / 4f || (vx < -minFling && dx < 0) ? 1
+                    : dx > getWidth() / 4f || (vx > minFling && dx > 0) ? -1 : 0;
+            int next = cur + dir;
+            if (dir == 0 || next < 0 || next > 1) {
+                slide(0, 160, cur);
+                return;
+            }
+            animating = true;
+            slide(-dir * getWidth(), 200, next);
+        }
+
+        /** 지금 페이지를 x로 옮기고(옆 페이지는 그 옆에 붙여) 끝나면 target 페이지만 보이게 한다. */
+        private void slide(float to, long ms, int target) {
+            animating = true;
+            int other = 1 - cur;
+            int dir = cur == 0 ? 1 : -1;
+            View now = pages[cur], side = pages[other];
+            now.animate().cancel();
+            side.animate().cancel();
+            if (target != cur || side.getVisibility() == VISIBLE) {
+                side.animate().translationX(to + dir * getWidth()).setDuration(ms)
+                        .setInterpolator(new DecelerateInterpolator()).start();
+            }
+            now.animate().translationX(to).setDuration(ms).setInterpolator(new DecelerateInterpolator())
+                    .withEndAction(() -> {
+                        cur = target;
+                        for (int i = 0; i < 2; i++) {
+                            pages[i].setTranslationX(0f);
+                            pages[i].setVisibility(i == cur ? VISIBLE : GONE);
+                        }
+                        animating = false;
+                        updateTabs();
+                    }).start();
+        }
+
+        private void track(android.view.MotionEvent ev) {
+            if (velocity == null) velocity = android.view.VelocityTracker.obtain();
+            velocity.addMovement(ev);
+        }
+
+        private void recycleTracker() {
+            if (velocity != null) {
                 velocity.recycle();
                 velocity = null;
-                dragging = false;
-                int w = Math.max(1, getWidth());
-                boolean second = getScrollX() * 2 > w;
-                if (Math.abs(vx) > 350) second = vx < 0;   // 빠르게 밀면 거리와 상관없이 그 방향으로
-                smoothScrollTo(second ? w : 0, 0);
-                return true;
             }
-            return super.onTouchEvent(e);
+        }
+
+        @Override
+        protected void onDetachedFromWindow() {
+            super.onDetachedFromWindow();
+            recycleTracker();
+            if (pages != null) reset();
         }
     }
 
@@ -355,7 +477,7 @@ public final class ClipboardPanel extends LinearLayout {
         pager.setVisibility(split ? VISIBLE : GONE);
         tabs.setVisibility(split ? VISIBLE : GONE);
         if (split) {
-            pager.scrollTo(0, 0);
+            pager.reset();
             updateTabs();
         }
     }
