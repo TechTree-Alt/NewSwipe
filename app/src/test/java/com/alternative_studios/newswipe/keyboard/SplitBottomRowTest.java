@@ -573,7 +573,8 @@ public class SplitBottomRowTest {
             x += k.weight;
         }
         assertEquals(3f, to - from, 0.001f);
-        assertEquals(100, KeyboardLayout.balancedWidthMax(p));
+        // 폭은 다른 쪽이 가장 좁을 때(60%) 남는 자리까지, 곧 140%까지 넓힐 수 있다 (실제로는 다른 쪽에 막힌다)
+        assertEquals(140, KeyboardLayout.balancedWidthMax(p));
     }
 
     @Test
