@@ -206,8 +206,6 @@ public final class Prefs {
     public static final String MODE_KEY_HIDDEN = "mode_key_hidden";           // 글자 자판·기호 자판의 기호 키(?123·가·ABC) 없애기
     public static final String LANGUAGE_KEY_HIDDEN = "language_key_hidden";   // 글자 자판의 지구본(언어 전환) 키 없애기
     public static final String KEY_RADIUS = "key_radius";   // 키 모서리 곡률 dp, 0~24 (기본 7)
-    public static final String KEYBOARD_CORNER_RADIUS = "keyboard_corner_radius";   // 키보드 위쪽 두 모서리 곡률 dp, 0~32 (기본 0)
-    public static final int KEYBOARD_CORNER_RADIUS_MAX = 32;
     public static final String KEY_SHADOW = "key_shadow";
     public static final String KEY_SHADOW_STRENGTH = "key_shadow_strength";   // %, 10~100
     public static final String NEUMORPHISM = "neumorphism";   // 키·버튼을 바탕에서 솟아오른 모양으로 그리고, 누르면 안으로 들어가게
@@ -475,9 +473,9 @@ public final class Prefs {
     public static final String SCOPE_LETTERS_KO = "letters_ko", SCOPE_LETTERS_EN = "letters_en";
 
     private static final EditorScope[] EDITOR_SCOPES = {
-            // 키보드 전체 설정 창의 값: 여백·위쪽 모서리 곡률, 키 모양, 분리 키보드 사용.
-            new EditorScope(SCOPE_BOARD, "키보드 전체 설정 (여백·모서리 곡률·키 모양·분리 키보드 사용)", keys(PAD_LEFT, PAD_RIGHT, PAD_TOP,
-                    PAD_BOTTOM, KEYBOARD_CORNER_RADIUS, KEY_TEXT_SIZE, KEY_RADIUS, KEY_GAP_X, KEY_GAP_Y, KEY_SHADOW,
+            // 키보드 전체 설정 창의 값: 여백, 키 모양, 분리 키보드 사용.
+            new EditorScope(SCOPE_BOARD, "키보드 전체 설정 (여백·키 모양·분리 키보드 사용)", keys(PAD_LEFT, PAD_RIGHT, PAD_TOP,
+                    PAD_BOTTOM, KEY_TEXT_SIZE, KEY_RADIUS, KEY_GAP_X, KEY_GAP_Y, KEY_SHADOW,
                     KEY_SHADOW_STRENGTH, KEY_PREVIEW, PORTRAIT_SPLIT), NONE),
             new EditorScope(AREA_SCOPES[0], "도구 막대", concat(TOOL_BUTTON_VALUES, TOOLBAR, TOOLBAR_BOTTOM, TOOLBAR_HEIGHT,
                     TOOL_BUTTON_SIZE, PORTRAIT_PREFIX + TOOLBAR_FOLLOW_BLOCKS), keys(AREA_PAD_PREFIX + PAD_AREAS[0] + "_", "swipe_toolbar_bar_")),
@@ -1175,7 +1173,6 @@ public final class Prefs {
 
     public boolean keyShadow() { return sp.getBoolean(KEY_SHADOW, false); }
     public int keyRadiusDp() { return clamp(sp.getInt(KEY_RADIUS, 7), 0, 24); }
-    public int keyboardCornerRadiusDp() { return clamp(sp.getInt(KEYBOARD_CORNER_RADIUS, 0), 0, KEYBOARD_CORNER_RADIUS_MAX); }
     public int keyShadowStrength() { return sp.getInt(KEY_SHADOW_STRENGTH, 50); }
     public boolean neumorphism() { return sp.getBoolean(NEUMORPHISM, false); }
     public boolean suggestWords() { return sp.getBoolean(SUGGEST_WORDS, false); }

@@ -100,7 +100,13 @@ public final class BottomKeysEditorActivity extends Activity {
         preview.setOnTouchListener((v, ev) -> true);
         preview.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
         // 둥근 모서리로 자른다.
-        Ui.clipCorners(preview, Ui.dp(this, prefs.keyboardCornerRadiusDp()), Ui.dp(this, 16));
+        preview.setOutlineProvider(new android.view.ViewOutlineProvider() {
+            @Override
+            public void getOutline(View view, android.graphics.Outline outline) {
+                outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), Ui.dp(view.getContext(), 16));
+            }
+        });
+        preview.setClipToOutline(true);
         LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         plp.topMargin = Ui.dp(this, 12);

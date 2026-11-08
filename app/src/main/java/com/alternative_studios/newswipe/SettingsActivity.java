@@ -1324,9 +1324,8 @@ public final class SettingsActivity extends Activity {
         }
     }
 
-    /** 키보드 전체 설정 창: 여백·모서리 곡률, 키 모양, 분리 키보드 (세로 모드). */
+    /** 키보드 전체 설정 창: 키 모양, 분리 키보드 (세로 모드), 맨 아래에 키보드 여백. */
     private void buildBoard() {
-        buildPad(-1);
         buildLook();
         // 분리 키보드 (세로 모드): 켜면 자판을 왼쪽·오른쪽 묶음으로 나누고, 그 모양은 '분리 키보드 사용자화'에서 정한다.
         LinearLayout split = section("분리 키보드");
@@ -1336,6 +1335,7 @@ public final class SettingsActivity extends Activity {
                     prefs.raw().edit().putBoolean(Prefs.PORTRAIT_SPLIT, on).apply();
                     refreshLayoutPreview();
                 }));
+        buildPad(-1);
     }
 
     /**
@@ -1349,8 +1349,6 @@ public final class SettingsActivity extends Activity {
             c.addView(sizeSlider("오른쪽 여백", Prefs.PAD_RIGHT, prefs::padRightDp, 0, 24, 1, "dp"));
             c.addView(sizeSlider("위쪽 여백", Prefs.PAD_TOP, prefs::padTopDp, 0, 24, 1, "dp"));
             c.addView(sizeSlider("아래쪽 여백", Prefs.PAD_BOTTOM, prefs::padBottomDp, 0, 48, 1, "dp"));
-            c.addView(sizeSlider("키보드 위쪽 모서리 곡률", Prefs.KEYBOARD_CORNER_RADIUS, prefs::keyboardCornerRadiusDp,
-                    0, Prefs.KEYBOARD_CORNER_RADIUS_MAX, 1, "dp"));
             c.addView(note("키보드 전체 둘레의 여백입니다. 영역마다 따로 주는 여백은 '영역 설정' 페이지에서 그 영역을 눌러 "
                     + "창 맨 아래의 '여백'에서 정합니다."));
             return;
@@ -1478,7 +1476,7 @@ public final class SettingsActivity extends Activity {
     /** 미리보기 페이지 이름 (KeyboardPreview.LAYER_* 차례). */
     private static final String[] PAGE_NAMES = {"키보드 전체 설정", "영역 설정", "키 설정"};
     /** 미리보기 페이지 설명 (PAGE_NAMES와 같은 차례). */
-    private static final String[] PAGE_DESCS = {"키보드의 전체적인 모양을 설정합니다", "각 영역의 모습과 기능을 설정합니다",
+    private static final String[] PAGE_DESCS = {"전체적인 모양을 설정합니다.", "각 영역의 모습과 기능을 설정합니다",
             "각 키의 기능과 동작을 설정합니다"};
 
     /** 편집 창을 내려 닫고 목록으로 돌아간다 (창에서 바꾼 값이 있으면 다 내려간 뒤 목록을 다시 만든다). */
@@ -2416,7 +2414,13 @@ public final class SettingsActivity extends Activity {
         frame.setOrientation(LinearLayout.VERTICAL);
         frame.setBackgroundColor(kt.background);
         frame.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
-        applyPreviewCorners(frame, prefs);
+        frame.setOutlineProvider(new android.view.ViewOutlineProvider() {
+            @Override
+            public void getOutline(View view, android.graphics.Outline outline) {
+                outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), Ui.dp(view.getContext(), 16));
+            }
+        });
+        frame.setClipToOutline(true);
 
         oneHandBody = new LinearLayout(this);
         oneHandBody.setOrientation(LinearLayout.HORIZONTAL);
@@ -2499,7 +2503,6 @@ public final class SettingsActivity extends Activity {
     /** 키보드의 applyOneHand와 같은 규칙으로 미리보기를 다시 놓는다. */
     private void refreshOneHandPreview() {
         if (oneHandBody == null) return;
-        if (oneHandBody.getParent() instanceof View) applyPreviewCorners((View) oneHandBody.getParent(), prefs);
         // 왼쪽 한 손 모드로 보여 준다: 자판은 왼쪽, 빈 곳은 오른쪽. 자판 폭 비율만 바꾼다.
         int width = prefs.oneHandWidth();
         ((LinearLayout.LayoutParams) oneHandColumn.getLayoutParams()).weight = width;
@@ -2514,11 +2517,6 @@ public final class SettingsActivity extends Activity {
         ViewGroup.LayoutParams llp = oneHandLift.getLayoutParams();
         llp.height = Ui.dp(this, prefs.oneHandLiftDp());
         oneHandLift.setLayoutParams(llp);
-    }
-
-    /** 카드 모양 미리보기의 모서리: 위쪽은 '키보드 위쪽 모서리 곡률'(실제 키보드와 같다), 아래쪽은 카드의 16dp. */
-    private void applyPreviewCorners(View v, Prefs p) {
-        Ui.clipCorners(v, Ui.dp(this, p.keyboardCornerRadiusDp()), Ui.dp(this, 16));
     }
 
     /** 이 화면의 자판 미리보기와 각각이 그리는 프로필 (null = 세로 모드의 기본 값). */
@@ -2550,7 +2548,6 @@ public final class SettingsActivity extends Activity {
     /** 미리보기 하나를 지금 설정으로 다시 그린다: 자판 배열과 키 높이·글자 크기 (배열은 한 번만 만든다). */
     private void refreshLayoutPreview(com.alternative_studios.newswipe.keyboard.KeyboardView view, Prefs p, boolean landscape) {
         if (view == null) return;
-        applyPreviewCorners(view, p);
         com.alternative_studios.newswipe.keyboard.KeyboardLayout l =
                 com.alternative_studios.newswipe.keyboard.KeyboardLayout.korean(p);
         view.setGridColors(p.gridColors());
@@ -2610,7 +2607,13 @@ public final class SettingsActivity extends Activity {
         preview.setLayout(l);
         preview.setOnTouchListener((v, ev) -> true);
         preview.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
-        applyPreviewCorners(preview, prefs);
+        preview.setOutlineProvider(new android.view.ViewOutlineProvider() {
+            @Override
+            public void getOutline(View view, android.graphics.Outline outline) {
+                outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), Ui.dp(view.getContext(), 16));
+            }
+        });
+        preview.setClipToOutline(true);
         layoutPreviews.put(preview, profile);
         LinearLayout.LayoutParams lp = matchWrap();
         lp.topMargin = Ui.dp(this, 12);

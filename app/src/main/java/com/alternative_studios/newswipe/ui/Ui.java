@@ -17,29 +17,6 @@ public final class Ui {
                 c.getResources().getDisplayMetrics()));
     }
 
-    /**
-     * 뷰를 위쪽 두 모서리 topPx, 아래쪽 두 모서리 bottomPx 곡률로 잘라 그린다 (미리보기가 키보드의 둥근 모서리를 따라가게).
-     * 곡률이 모두 0이면 자르지 않는다. 뷰가 커지거나 작아져도 그 크기로 다시 잡는다.
-     */
-    public static void clipCorners(android.view.View v, float topPx, float bottomPx) {
-        if (topPx <= 0 && bottomPx <= 0) {
-            v.setClipToOutline(false);
-            return;
-        }
-        v.setOutlineProvider(new android.view.ViewOutlineProvider() {
-            @Override
-            public void getOutline(android.view.View view, android.graphics.Outline outline) {
-                android.graphics.Path path = new android.graphics.Path();
-                path.addRoundRect(0, 0, view.getWidth(), view.getHeight(),
-                        new float[]{topPx, topPx, topPx, topPx, bottomPx, bottomPx, bottomPx, bottomPx},
-                        android.graphics.Path.Direction.CW);
-                outline.setConvexPath(path);
-            }
-        });
-        v.setClipToOutline(true);
-        v.invalidateOutline();
-    }
-
     public static GradientDrawable round(int color, float radiusPx) {
         GradientDrawable g = new GradientDrawable();
         g.setColor(color);

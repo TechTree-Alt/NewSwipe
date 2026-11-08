@@ -542,7 +542,6 @@ final class KeyboardPreview extends FrameLayout {
         if (profileEdit != null) prefs = profileEdit.profileSplit() ? profileEdit : profileEdit.profileView(profileEdit.profile());
         theme = KeyboardTheme.of(c);
         setBackgroundColor(theme.background);
-        Ui.clipCorners(this, Ui.dp(c, prefs.keyboardCornerRadiusDp()), 0);   // 실제 키보드처럼 위쪽 두 모서리만 둥글게
         keys.setTheme(theme);
         keys.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), false,
                 prefs.keyTextSize());
