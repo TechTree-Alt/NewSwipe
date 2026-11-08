@@ -36,7 +36,7 @@ public final class Icons {
     public static final int UNDO = 22;
 
     // 설정 메뉴의 항목 아이콘
-    public static final int MENU_KEYBOARD = 23;   // 키보드 편집 (자판)
+    public static final int MENU_KEYBOARD = 23;   // 키보드 사용자화 (자판)
     public static final int MENU_THEME = 24;      // 테마 (팔레트)
     public static final int MENU_MOVE = 28;       // 사방 화살표 (커서 이동 키)
     public static final int MENU_WORDS = 29;      // 단어 추천 (전구)

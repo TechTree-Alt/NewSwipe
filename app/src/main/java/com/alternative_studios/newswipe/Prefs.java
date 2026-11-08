@@ -400,7 +400,7 @@ public final class Prefs {
 
     private static String[] keys(String... k) { return k; }
 
-    /** 메뉴(SettingsActivity의 하위 메뉴 id)별로 그 메뉴가 저장하는 값의 키. 키보드 편집의 값은 EDITOR_SCOPES에 따로 있다. */
+    /** 메뉴(SettingsActivity의 하위 메뉴 id)별로 그 메뉴가 저장하는 값의 키. 키보드 사용자화의 값은 EDITOR_SCOPES에 따로 있다. */
     private static final java.util.Map<String, String[]> MENU_KEYS = new java.util.HashMap<>();
     /** 메뉴별로 키 앞부분이 같은 값들 (배열·방향·칸마다 따로 저장하는 값). */
     private static final java.util.Map<String, String[]> MENU_PREFIXES = new java.util.HashMap<>();
@@ -420,9 +420,9 @@ public final class Prefs {
         MENU_KEYS.put("onehand", keys(ONE_HAND_WIDTH, ONE_HAND_WIDTH_LAND, ONE_HAND_HEIGHT, ONE_HAND_LIFT));
     }
 
-    // ---------------------------------------------------------------- 키보드 편집의 값 묶음
+    // ---------------------------------------------------------------- 키보드 사용자화의 값 묶음
     //
-    // 키보드 편집이 다루는 값을 창(설정 범위)마다 한곳에 적어 둔다. 영역·여백 창의 '기본값으로 되돌리기', 목록의 '기본값으로
+    // 키보드 사용자화이 다루는 값을 창(설정 범위)마다 한곳에 적어 둔다. 영역·여백 창의 '기본값으로 되돌리기', 목록의 '기본값으로
     // 되돌리기'에서 고르는 묶음, 되돌리기 기록(isEditorKey)이 모두 이 표를 쓴다. 새 설정을 더할 때는 여기에만 더하면 된다.
 
     /** 빈 목록 (키 앞부분이 없는 범위 등). 아래 표보다 먼저 만들어져야 한다. */
@@ -436,7 +436,7 @@ public final class Prefs {
     private static final String[] TOOL_BUTTON_VALUES = {TOOL_ORDER, TOOL_CLIPBOARD, TOOL_EMOJI, VOICE_KEY, TOOL_UNDO,
             TOOL_SETTINGS, TOOL_ONE_HAND, TOOL_HIDE};
 
-    /** 키보드 편집의 한 설정 범위: 목록의 되돌리기에 보이는 이름(null이면 보이지 않음)과 그 범위의 값 키·키 앞부분. */
+    /** 키보드 사용자화의 한 설정 범위: 목록의 되돌리기에 보이는 이름(null이면 보이지 않음)과 그 범위의 값 키·키 앞부분. */
     private static final class EditorScope {
         final String id, label;
         final String[] keys, prefixes;
@@ -487,7 +487,7 @@ public final class Prefs {
                     LANGUAGE_ORDER), keys("popup_", "popupkept_", "repeat_", "swipe_custom_", "swipe_final_", "swipe_vowel_",
                     "swipe_lp_", "swipe_fn_", "swipe_fk_", "swipe_toolbar_")),
             // 가로 모드 키보드 사용자화·키 위치·폭 사용자화 화면의 값: 그 화면에 따로 되돌리기가 있어 목록에는 보이지 않지만,
-            // 키보드 편집을 연 채 바꾸면 되돌리기 기록에는 남는다.
+            // 키보드 사용자화을 연 채 바꾸면 되돌리기 기록에는 남는다.
             new EditorScope("landscape", null, keys(LANDSCAPE_SPLIT, LANDSCAPE_SIZE, KEYBOARD_HEIGHT_LAND, KEY_TEXT_SIZE_LAND,
                     SPLIT_GAP_CURSOR, SPLIT_GAP_SPEED, SPLIT_SPACE_JOIN, SPLIT_FN_WIDTH, SPLIT_REACH_COLUMN,
                     PROFILE_LIFT + LANDSCAPE_SUFFIX), keys(LANDSCAPE_SPLIT + "_", "balanced_")),
@@ -505,7 +505,7 @@ public final class Prefs {
         return out.toArray(new String[0][]);
     }
 
-    /** 키보드 편집이 다루는 값인지: 키보드 편집의 '되돌리기'가 이 값들의 변경을 기억한다. */
+    /** 키보드 사용자화이 다루는 값인지: 키보드 사용자화의 '되돌리기'가 이 값들의 변경을 기억한다. */
     public static boolean isEditorKey(String key) {
         for (EditorScope sc : EDITOR_SCOPES) {
             for (String k : sc.keys) if (k.equals(key)) return true;
@@ -514,7 +514,7 @@ public final class Prefs {
         return false;
     }
 
-    /** 키보드 편집의 한 범위를 기본값으로 되돌린다. */
+    /** 키보드 사용자화의 한 범위를 기본값으로 되돌린다. */
     public void resetEditorScope(String id) {
         EditorScope sc = scope(id);
         // 자·모음 균형 레이아웃의 키 폭·위치는 배열마다 따로 저장되므로 지금 배열의 것을 지운다 (배열 값을 지우기 전에).

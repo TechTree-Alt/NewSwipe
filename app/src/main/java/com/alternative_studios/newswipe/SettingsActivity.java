@@ -44,10 +44,10 @@ public final class SettingsActivity extends Activity {
     static final String EXTRA_SECTION = "section";
     /** 검색 결과로 열 때 스크롤해서 깜빡일 항목의 이름 (화면에 보이는 글자). */
     static final String EXTRA_HIGHLIGHT = "highlight";
-    /** 키보드 편집에서 열 영역·키 (검색 결과에서 들어올 때): EDITOR_PART로 시작하는 검색 화면 id. */
+    /** 키보드 사용자화에서 열 영역·키 (검색 결과에서 들어올 때): EDITOR_PART로 시작하는 검색 화면 id. */
     static final String EXTRA_TARGET = "target";
     /**
-     * 검색 목록에서 키보드 편집의 영역 창·키 창을 가리키는 화면 id: "keyboard:a:<영역>:<이름>" 또는 "keyboard:k:<키 종류>:<이름>".
+     * 검색 목록에서 키보드 사용자화의 영역 창·키 창을 가리키는 화면 id: "keyboard:a:<영역>:<이름>" 또는 "keyboard:k:<키 종류>:<이름>".
      * 영역·키 창의 설정은 목록에 없으므로 검색 목록을 모을 때 그 창들도 따로 만들어 모은다 (harvestEditorParts).
      */
     private static final String EDITOR_PART = "keyboard:";
@@ -58,7 +58,7 @@ public final class SettingsActivity extends Activity {
     private LinearLayout list;
     /** 스크롤 목록 위에 고정되어 스크롤해도 늘 보이는 곳 (키보드 미리보기). 담은 것이 없으면 숨긴다. */
     private LinearLayout pinned;
-    /** 스크롤 목록 아래(화면 맨 아래)에 고정되는 곳: 키보드 편집의 미리보기가 실제 키보드 자리에 놓인다. */
+    /** 스크롤 목록 아래(화면 맨 아래)에 고정되는 곳: 키보드 사용자화의 미리보기가 실제 키보드 자리에 놓인다. */
     private LinearLayout pinnedBottom;
     private ScrollView scrollView;
     /** 스크롤 목록을 감싼 틀. 키 편집 창(시트)이 그 위에 겹친다. */
@@ -137,7 +137,7 @@ public final class SettingsActivity extends Activity {
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
         content.addView(pinned, matchWrap());
-        // 스크롤 목록 위에 겹쳐 띄우는 층 (키보드 편집의 키 편집 창)을 놓을 수 있게 틀로 감싼다.
+        // 스크롤 목록 위에 겹쳐 띄우는 층 (키보드 사용자화의 키 편집 창)을 놓을 수 있게 틀로 감싼다.
         middle = new android.widget.FrameLayout(this);
         middle.addView(scroll, new android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
@@ -175,7 +175,7 @@ public final class SettingsActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        if (isFinishing() && editorPreview != null) {   // 키보드 편집을 떠난다: 되돌리기 기록도 버린다
+        if (isFinishing() && editorPreview != null) {   // 키보드 사용자화을 떠난다: 되돌리기 기록도 버린다
             EditorUndo.clearAll();
         }
         if (editorPrefListener != null) prefs.raw().unregisterOnSharedPreferenceChangeListener(editorPrefListener);
@@ -191,14 +191,14 @@ public final class SettingsActivity extends Activity {
     // ---------------------------------------------------------------- 화면 구성
 
     /**
-     * 키보드 편집: 미리보기에서 키보드·영역·키를 눌러 설정하는 화면 (예전의 자판 레이아웃·자판 모양·입력 동작·길게 누르기·
+     * 키보드 사용자화: 미리보기에서 키보드·영역·키를 눌러 설정하는 화면 (예전의 자판 레이아웃·자판 모양·입력 동작·길게 누르기·
      * 밀어서 글자 입력·밀어서 기능·도구 막대 메뉴를 합쳤다). 목록의 기본값으로 되돌리기는 설정 범위(Prefs.editorResetChoices)로 고른다.
      */
     private static final String KEYBOARD = "keyboard";
 
     /** 하위 메뉴 정의: {id, 제목, 설명}. */
     private static final String[][] SECTIONS = {
-            {KEYBOARD, "키보드 편집", "레이아웃, 모양, 동작"},
+            {KEYBOARD, "키보드 사용자화", "자판 배열, 모양, 입력, 길게 누르기, 밀기"},
             {"theme", "테마", "화면 모드, 강조 색"},
             {"feedback", "소리 및 진동", "키를 누를 때의 진동과 소리"},
             {"words", "추천, 학습 및 완성", "단어 추천, 학습, 단축어, 자동 완성"},
@@ -220,7 +220,7 @@ public final class SettingsActivity extends Activity {
     private static final String ISSUES_URL = SOURCE_URL + "/issues";
 
     private static String sectionTitle(String id) {
-        if (id.startsWith(EDITOR_PART)) return "키보드 편집 · " + id.substring(id.lastIndexOf(':') + 1);
+        if (id.startsWith(EDITOR_PART)) return "키보드 사용자화 · " + id.substring(id.lastIndexOf(':') + 1);
         for (String[] s : SECTIONS) if (s[0].equals(id)) return s[1];
         if (APP[0].equals(id)) return APP[1];
         switch (id) {
@@ -242,7 +242,7 @@ public final class SettingsActivity extends Activity {
             return;
         }
         buildScreen(id);
-        if (hasReset(id) && !KEYBOARD.equals(id)) addResetButton(id);   // 키보드 편집은 목록 안에 따로 둔다
+        if (hasReset(id) && !KEYBOARD.equals(id)) addResetButton(id);   // 키보드 사용자화은 목록 안에 따로 둔다
     }
 
     /** 설정 화면 하나의 내용을 지금의 list에 만든다 (설정 검색이 화면 글자를 모을 때도 이것을 쓴다). */
@@ -589,7 +589,7 @@ public final class SettingsActivity extends Activity {
             com.alternative_studios.newswipe.keyboard.Key.DELETE, com.alternative_studios.newswipe.keyboard.Key.TO_SYMBOLS,
             com.alternative_studios.newswipe.keyboard.Key.LANGUAGE, com.alternative_studios.newswipe.keyboard.Key.ENTER};
 
-    /** 키보드 편집의 영역 창과 주요 키 창을 보이지 않는 곳에 만들어 항목 이름을 모은다 (목록에는 없는 설정들). */
+    /** 키보드 사용자화의 영역 창과 주요 키 창을 보이지 않는 곳에 만들어 항목 이름을 모은다 (목록에는 없는 설정들). */
     private void harvestEditorParts(java.util.List<String[]> out) {
         LinearLayout savedList = list;
         ExpressiveSwitch savedClipSwitch = clipImagesSwitch;
@@ -668,7 +668,7 @@ public final class SettingsActivity extends Activity {
         return null;
     }
 
-    /** 검색 결과로 키보드 편집에 들어왔다: 그 영역·키의 창을 열고 항목을 찾아 깜빡인다. */
+    /** 검색 결과로 키보드 사용자화에 들어왔다: 그 영역·키의 창을 열고 항목을 찾아 깜빡인다. */
     private void openEditorTarget(String target, String label) {
         if (isFinishing() || isDestroyed() || editorPreview == null) return;
         String[] parts = target.split(":", 4);
@@ -780,7 +780,7 @@ public final class SettingsActivity extends Activity {
     private String searchCacheStamp() {
         try {
             // 뒤의 꼬리표는 메뉴 구성이 바뀌면 올린다 (같은 앱 버전이라도 예전 메뉴로 모은 목록을 쓰지 않게).
-            return "v" + getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode() + "-k9";
+            return "v" + getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode() + "-k10";
         } catch (PackageManager.NameNotFoundException e) {
             return "v?";
         }
@@ -990,11 +990,11 @@ public final class SettingsActivity extends Activity {
         startActivity(i);
     }
 
-    // ---------------------------------------------------------------- 키보드 편집
+    // ---------------------------------------------------------------- 키보드 사용자화
 
     /** 설정 설명에서 '미리보기에서 키를 눌러 바꾼다'를 알리는 말머리. */
 
-    /** 키보드 편집 화면 아래에 붙는 미리보기와, 고른 키를 편집하는 칸. 다른 화면에서는 null이다. */
+    /** 키보드 사용자화 화면 아래에 붙는 미리보기와, 고른 키를 편집하는 칸. 다른 화면에서는 null이다. */
     private KeyboardPreview editorPreview;
     private KeyEditPanel keyPanel;
     /** 모든 설정 목록. */
@@ -1012,7 +1012,7 @@ public final class SettingsActivity extends Activity {
 
 
     /**
-     * 키보드 편집: 화면 아래에 실제 키보드와 같은 미리보기를 붙이고(키보드·영역·키 세 페이지), 위쪽 목록에는 어느 영역·키
+     * 키보드 사용자화: 화면 아래에 실제 키보드와 같은 미리보기를 붙이고(키보드·영역·키 세 페이지), 위쪽 목록에는 어느 영역·키
      * 창에도 없는 키보드 전체 설정을 둔다. 미리보기에서 영역이나 키를 누르면 목록 위로 그 설정 창(시트)이 올라온다.
      */
     private void buildKeyboardEditor() {
@@ -1097,7 +1097,7 @@ public final class SettingsActivity extends Activity {
         fillOverview(box);
     }
 
-    /** 키보드 편집의 기본 목록을 box에 만든다 (키 모양, 숫자 줄, 가로 모드). */
+    /** 키보드 사용자화의 기본 목록을 box에 만든다 (키 모양, 숫자 줄, 가로 모드). */
     private void fillOverview(LinearLayout box) {
         LinearLayout saved = list;
         list = box;
@@ -1129,7 +1129,7 @@ public final class SettingsActivity extends Activity {
         return sl.view;
     }
 
-    // ---- 되돌리기: 키보드 편집에서 마지막으로 바꾼 설정을 원래대로 (기록은 EditorUndo)
+    // ---- 되돌리기: 키보드 사용자화에서 마지막으로 바꾼 설정을 원래대로 (기록은 EditorUndo)
 
     private EditorUndo editorUndo;
     private View undoButton;
@@ -1462,9 +1462,9 @@ public final class SettingsActivity extends Activity {
         }
     }
 
-    /** 키보드 편집의 '기본값으로 되돌리기': 되돌릴 묶음을 고른다 (모두 한꺼번에 지우지 않게). */
+    /** 키보드 사용자화의 '기본값으로 되돌리기': 되돌릴 묶음을 고른다 (모두 한꺼번에 지우지 않게). */
     private View editorResetButton() {
-        TextView b = ResetDialog.button(this, "키보드 편집", () -> { });
+        TextView b = ResetDialog.button(this, "키보드 사용자화", () -> { });
         b.setOnClickListener(v -> {
             String[][] groups = Prefs.editorResetChoices();
             String[] names = new String[groups.length];
@@ -2091,11 +2091,11 @@ public final class SettingsActivity extends Activity {
         card.addView(slider("키 글자 크기", edit.textSizeKey(), edit.keyTextSize(), Prefs.PROFILE_HEIGHT_MIN, 140, 5, "%",
                 this::refreshLayoutPreview));
         card.addView(slider("세로 위치", edit.liftKey(), edit.profileLiftDp(), 0, 160, 4, "dp"));
-        card.addView(note(when + " 쓰는 값입니다. 글자 키 높이·키 글자 크기는 정하기 전에는 세로 모드('키보드 편집')의 값을 따릅니다. "
+        card.addView(note(when + " 쓰는 값입니다. 글자 키 높이·키 글자 크기는 정하기 전에는 세로 모드('키보드 사용자화')의 값을 따릅니다. "
                 + "세로 위치는 키보드를 화면 아래에서 띄우는 높이로, 값이 클수록 키보드가 위로 올라갑니다 "
                 + "(한 손 모드에서는 한 손 모드의 세로 위치를 씁니다).\n"
                 + "그 밖의 값(도구 막대·숫자 줄·기능키 높이, 키보드·영역 여백, 키 사이 간격과 키 모양, 키마다 정한 설정)은 "
-                + "세로 모드와 같은 값을 씁니다. 바꾸려면 '키보드 편집'에서 바꿉니다."));
+                + "세로 모드와 같은 값을 씁니다. 바꾸려면 '키보드 사용자화'에서 바꿉니다."));
     }
 
     /** '분리 키보드 기능' 섹션: 두 묶음 사이 빈 공간을 밀어서 커서 이동. 프로필마다 따로 정하고, 분리 키보드를 켰을 때만 보인다. */

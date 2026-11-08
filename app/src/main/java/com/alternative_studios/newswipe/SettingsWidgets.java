@@ -18,7 +18,7 @@ import java.util.function.IntConsumer;
 
 /**
  * 설정 화면의 공통 조각: 소제목과 카드, 스위치 줄, 슬라이더, 하위 묶음, 설명, 버튼.
- * 설정 화면(SettingsActivity)과 키보드 편집의 키 창(KeyEditPanel)이 같은 모양을 쓰도록 한곳에서 만든다.
+ * 설정 화면(SettingsActivity)과 키보드 사용자화의 키 창(KeyEditPanel)이 같은 모양을 쓰도록 한곳에서 만든다.
  * 글자 크기(항목 16sp, 소제목 14sp 강조색, 설명 13sp)는 설정 검색이 화면 글자를 모을 때 기대하는 값이라 바꾸지 않는다.
  */
 final class SettingsWidgets {

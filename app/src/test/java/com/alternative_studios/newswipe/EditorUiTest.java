@@ -35,7 +35,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.robolectric.Shadows.shadowOf;
 
 /**
- * 키보드 편집 화면의 UI 시험 (Robolectric): 미리보기 페이지·영역·키 고르기, 설정 창, 손잡이와 슬라이더, 되돌리기,
+ * 키보드 사용자화 화면의 UI 시험 (Robolectric): 미리보기 페이지·영역·키 고르기, 설정 창, 손잡이와 슬라이더, 되돌리기,
  * 기본값으로 되돌리기, 바로 적용 등을 실제 화면을 만들어 눌러 보며 확인한다. -Dshots=폴더를 주면 화면을 찍어 남긴다.
  */
 @RunWith(RobolectricTestRunner.class)

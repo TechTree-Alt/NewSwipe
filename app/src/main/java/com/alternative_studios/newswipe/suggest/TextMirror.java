@@ -20,7 +20,7 @@ public final class TextMirror {
     private boolean fromStart;   // text가 입력란의 처음부터인지 (더 앞에 글자가 없음)
     private String composing = "";
     private int committedEnd = -1;   // 모르면 -1
-    /** 아직 앱이 알려 오지 않은, 키보드 편집 뒤의 예상 커서 위치들 (오래된 것부터). */
+    /** 아직 앱이 알려 오지 않은, 키보드 사용자화 뒤의 예상 커서 위치들 (오래된 것부터). */
     private final int[] pending = new int[RING];
     private int pendingCount;
 

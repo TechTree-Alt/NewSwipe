@@ -6,7 +6,7 @@ NewSwipe를 직접 빌드하고 서명하는 방법입니다. 사용법은 [READ
 
 | 항목 | 값 |
 |---|---|
-| JDK | 21 (CI도 Temurin 21을 씁니다. 앱은 Java 17 문법으로 빌드되고, 키보드 편집 UI 시험(Robolectric)이 Java 21을 요구합니다) |
+| JDK | 21 (CI도 Temurin 21을 씁니다. 앱은 Java 17 문법으로 빌드되고, 키보드 사용자화 UI 시험(Robolectric)이 Java 21을 요구합니다) |
 | Android SDK | 플랫폼 36 (`compileSdk = 36`). `ANDROID_HOME`을 지정하거나 저장소 루트에 `local.properties`를 만들어 `sdk.dir=/경로/Android/sdk`를 적습니다 |
 | Gradle | 래퍼가 받습니다 (`gradle/wrapper/gradle-wrapper.properties`, 9.6.1) |
 | Android Gradle 플러그인 | 9.4.0 (`gradle/libs.versions.toml`) |
@@ -22,7 +22,7 @@ NewSwipe를 직접 빌드하고 서명하는 방법입니다. 사용법은 [READ
 저장소 루트에서 실행합니다 (Windows는 `gradlew.bat`).
 
 ```bash
-./gradlew testDebugUnitTest     # 단위 테스트 (키보드 편집 UI 시험 EditorUiTest 포함)
+./gradlew testDebugUnitTest     # 단위 테스트 (키보드 사용자화 UI 시험 EditorUiTest 포함)
 ./gradlew assembleDebug         # 디버그 APK → app/build/outputs/apk/debug/app-debug.apk
 ./gradlew assembleRelease       # 릴리스 APK → app/build/outputs/apk/release/app-release.apk
 ./gradlew bundleRelease         # 릴리스 AAB(Play용) → app/build/outputs/bundle/release/app-release.aab
