@@ -501,9 +501,10 @@ public final class KeyboardLayout {
                     : prefs.gridLayout() ? gridBottomLetterRow(letters, shift, deleteKey(prefs), prefs)
                     : bottomLetterRow(letters, 1.5f, shift, deleteKey(prefs));
             Row row = splitNormal(normal, prefs);
-            // h 왼쪽의 빈 자리를 누르면 g가, b 왼쪽의 빈 자리를 누르면 v가 입력된다 (왼손·오른손 모두 치기 쉽게).
-            // 키를 더 그리는 것이 아니라서 줄의 폭과 열은 그대로다.
+            // h 왼쪽의 빈 자리를 누르면 g가, b 왼쪽의 빈 자리를 누르면 v가, t 오른쪽의 빈 자리(키 하나 폭)를 누르면 y가
+            // 입력된다 (왼손·오른손 모두 치기 쉽게). 키를 더 그리는 것이 아니라서 줄의 폭과 열은 그대로다.
             if (r > 0) row = withHiddenKey(row, letters[leftCount[r]], hiddenCopyOf(letters[leftCount[r] - 1]));
+            else row = withHiddenKey(row, letters[leftCount[r] - 1], hiddenCopyOf(letters[leftCount[r]]), true);
             letterRows.add(row);
         }
         return letterRows;

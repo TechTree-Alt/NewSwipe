@@ -323,6 +323,26 @@ public class SplitBottomRowTest {
     }
 
     @Test
+    public void emptySpaceRightOfTTypesYWithoutMovingAnyKey() throws Exception {
+        boolean seen = false;
+        for (int[] s : SETTINGS) {
+            KeyboardLayout.Row row = KeyboardLayout.english(prefsFor(s, false)).rows[0];
+            float[] hidden = find(row, 'y', true), host = find(row, 't', false);
+            assertTrue(host != null);
+            float total = 0f;
+            for (Key k : row.keys) total += k.weight;
+            assertEquals(10f, total, 0.001f);
+            if (hidden == null) continue;   // 빈 자리가 없으면 추가하지 않는다
+            seen = true;
+            assertTrue("빈 자리 폭은 키 하나를 넘지 않습니다", hidden[1] <= host[1] + 0.001f);
+            assertEquals("host 키 바로 오른쪽", host[2] + 1f, hidden[2], 0.001f);
+            assertEquals("host 키에 붙어 있다", host[0] + host[1], hidden[0], 0.001f);
+            assertEquals("y", row.keys[(int) hidden[2]].output);
+        }
+        assertTrue("설정 중에는 빈 자리가 생기는 경우가 있어야 합니다", seen);
+    }
+
+    @Test
     public void noHiddenKeysInTheNormalKeyboard() {
         for (KeyboardLayout.Row row : KeyboardLayout.english(null).rows) {
             for (Key k : row.keys) assertTrue(!k.hidden);
