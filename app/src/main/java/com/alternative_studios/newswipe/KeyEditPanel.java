@@ -10,6 +10,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -628,12 +629,18 @@ final class KeyEditPanel {
         if (key.type == Key.LANGUAGE) {
             card.addView(note("위쪽에 '언어 고르기'를 정하면 위로 밀었을 때 켜 둔 언어가 말풍선으로 올라옵니다. "
                     + "손을 떼지 않고 위아래로 옮겨 고릅니다."));
-        } else if (key.type == Key.SPACE || key.type == Key.CURSOR_PAD) {
+        } else if (key.type == Key.SPACE || key.type == Key.CURSOR_PAD || usesFreeCursor(slot)) {
             card.addView(note("'커서 자유 이동'을 정한 방향으로 밀면 커서가 움직입니다 (좌우는 글자, 위아래는 줄 단위)."));
             card.addView(slider("커서 이동 속도 좌우", Prefs.SPACE_CURSOR_SPEED_H, prefs.spaceCursorSpeedH(), 50, 300, 10, "%"));
             card.addView(slider("커서 이동 속도 상하", Prefs.SPACE_CURSOR_SPEED_V, prefs.spaceCursorSpeedV(), 50, 300, 10, "%"));
             card.addView(note("스페이스바·커서 키·글자 키 트랙패드가 같은 속도를 씁니다. 값이 클수록 조금만 밀어도 커서가 빠르게 움직입니다."));
         }
+    }
+
+    /** 이 기능키에 '커서 자유 이동'을 정한 방향이 있는지. */
+    private boolean usesFreeCursor(int slot) {
+        for (int dir : DIRS) if (SwipeAction.CURSOR_MOVE.equals(FunctionSwipes.SPEC.get(prefs, slot, dir))) return true;
+        return false;
     }
 
     /** 스페이스바 누르기: 두 번으로 마침표, 인식 범위, 언어 이름. */
@@ -890,7 +897,7 @@ final class KeyEditPanel {
                     ExpressiveChoiceButton c = new ExpressiveChoiceButton(a, center, false, false, false,
                             kt.accent, kt.onAccent, kt.text, kt.text);
                     c.setIdleColors(kt.functionKey, kt.functionKey);
-                    c.setLabelSize(center.length() > 3 ? 14 : 22);
+                    c.setLabelSize(14);
                     c.setClickable(false);
                     c.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
                     row.addView(c, lp);
@@ -899,7 +906,7 @@ final class KeyEditPanel {
                 ExpressiveChoiceButton c = new ExpressiveChoiceButton(a, labels[dir], on[dir], false, false,
                         kt.accent, kt.onAccent, kt.text, kt.hint);
                 c.setIdleColors(kt.key, kt.keyPressed);
-                c.setLabelSize(on[dir] && labels[dir].codePointCount(0, labels[dir].length()) <= 3 ? 20 : 13);
+                c.setLabelSize(14);
                 c.setSubLabel(SwipeCustom.label(dir), 3, 12);
                 c.setContentDescription(SwipeCustom.label(dir) + "으로 밀기: " + labels[dir]);
                 c.setOnClickListener(v -> onTap.accept(dir));
@@ -925,6 +932,47 @@ final class KeyEditPanel {
         String hint = spec.cardHint(slot);
         if (hint != null && !hint.isEmpty() && spec != FunctionSwipes.SPEC) box.addView(note(hint));
         return box;
+    }
+
+    /**
+     * 키 편집 칸 밖(설정 화면)에서 쓰는 기능 배치 한 칸의 네 방향 판. 칸을 눌러 기능을 고르면 판을 새로 그린다.
+     * 호스트 없이 만든 패널에서 부른다.
+     */
+    View standalonePad(SwipeSpec spec, int slot, String center) {
+        FrameLayout holder = new FrameLayout(a);
+        Runnable[] redraw = new Runnable[1];
+        redraw[0] = () -> {
+            holder.removeAllViews();
+            String[] labels = new String[4];
+            boolean[] on = new boolean[4];
+            for (int dir : DIRS) {
+                String action = spec.get(prefs, slot, dir);
+                on[dir] = !SwipeAction.NONE.equals(action);
+                labels[dir] = SwipeAction.shortLabel(action);
+            }
+            holder.addView(dpad(center, labels, on,
+                    dir -> pickAction(spec, slot, dir, spec.dialogTitle(slot, dir), redraw[0])));
+        };
+        redraw[0].run();
+        return holder;
+    }
+
+    /** 키 편집 칸 밖(설정 화면)에서 쓰는 누르기·길게 누르기 줄들. 고르면 다시 그린다. */
+    View standalonePress(SwipeSpec spec, int slot) {
+        LinearLayout holder = new LinearLayout(a);
+        holder.setOrientation(LinearLayout.VERTICAL);
+        Runnable[] redraw = new Runnable[1];
+        redraw[0] = () -> {
+            holder.removeAllViews();
+            for (int dir : spec.dirs(slot)) {
+                String action = spec.get(prefs, slot, dir);
+                holder.addView(valueRow(spec.dirLabel(slot, dir), SwipeAction.label(action),
+                        v -> pickAction(spec, slot, dir, spec.dialogTitle(slot, dir), redraw[0])));
+            }
+            addLongPressDetail(holder, spec.get(prefs, slot, spec.dirs(slot)[1]));
+        };
+        redraw[0].run();
+        return holder;
     }
 
     private void pickAction(SwipeSpec spec, int slot, int dir, String title, Runnable done) {

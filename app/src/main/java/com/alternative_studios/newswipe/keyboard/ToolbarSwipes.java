@@ -47,11 +47,11 @@ public final class ToolbarSwipes {
             return prefs.toolShown(slotName(slot)) && (prefs.toolbar() || prefs.hwToolbar());
         }
 
-        /** 모르는 값과 커서 자유 이동(스페이스바·문자 키 전용)은 기본값으로 본다. */
+        /** 모르는 값과 '문자 키를 트랙패드처럼' 쓰는 커서 자유 이동(문자 키 전용)은 기본값으로 본다. */
         @Override
         public String resolve(String stored, int slot, int dir) {
-            if (stored == null || !SwipeAction.isKnown(stored) || SwipeAction.CURSOR_MOVE.equals(stored)
-                    || SwipeAction.FREE_CURSOR.equals(stored)) {
+            if (stored == null || !SwipeAction.isKnown(stored) || SwipeAction.FREE_CURSOR.equals(stored)
+                    || SwipeAction.globeUpOnly(stored)) {
                 return defaultAction(slot, dir);
             }
             return stored;
@@ -131,5 +131,17 @@ public final class ToolbarSwipes {
 
     public String action(int slot, int dir) {
         return table[slot][dir];
+    }
+
+    /** slot의 칸을 가로로 밀어 커서 자유 이동을 하는지. */
+    public boolean cursorH(int slot) {
+        return SwipeAction.CURSOR_MOVE.equals(table[slot][Key.SWIPE_LEFT])
+                || SwipeAction.CURSOR_MOVE.equals(table[slot][Key.SWIPE_RIGHT]);
+    }
+
+    /** slot의 칸을 세로로 밀어 줄 단위로 커서 자유 이동을 하는지. */
+    public boolean cursorV(int slot) {
+        return SwipeAction.CURSOR_MOVE.equals(table[slot][Key.SWIPE_UP])
+                || SwipeAction.CURSOR_MOVE.equals(table[slot][Key.SWIPE_DOWN]);
     }
 }

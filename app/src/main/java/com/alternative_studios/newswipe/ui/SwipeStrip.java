@@ -21,6 +21,19 @@ public final class SwipeStrip extends LinearLayout {
     public interface Listener {
         /** @param dir Key.SWIPE_UP·SWIPE_DOWN·SWIPE_LEFT·SWIPE_RIGHT */
         void onSwipe(int dir);
+
+        /** 이 방향 밀기가 한 번 실행하는 게 아니라 손을 뗄 때까지 끌어 쓰는 기능(커서 자유 이동)인지. */
+        default boolean isDrag(int dir) {
+            return false;
+        }
+
+        /** 끌기를 시작했다 (밀기 문턱을 넘은 자리). */
+        default void onDragStart(int dir, float x, float y) {
+        }
+
+        /** 끄는 동안 손가락 위치가 바뀔 때마다. */
+        default void onDragMove(float x, float y) {
+        }
     }
 
     private final int captureAt;
@@ -30,7 +43,7 @@ public final class SwipeStrip extends LinearLayout {
     private float distance;
     private BiPredicate<View, Integer> swipeOwner = (v, dir) -> false;
     private float downX, downY;
-    private boolean tracking, captured, fired;
+    private boolean tracking, captured, fired, dragging;
     /** 이번 터치를 시작한 버튼이 Key.SWIPE_* 방향 밀기를 직접 처리하는지. */
     private final boolean[] owned = new boolean[4];
 
@@ -110,12 +123,21 @@ public final class SwipeStrip extends LinearLayout {
                 return true;
             case MotionEvent.ACTION_MOVE:
                 if (!tracking) return false;
+                if (dragging) {
+                    if (listener != null) listener.onDragMove(ev.getX(), ev.getY());
+                    return true;
+                }
                 float dx = ev.getX() - downX, dy = ev.getY() - downY;
                 int dir = direction(dx, dy);
                 if (!fired && accepts(dir) && Math.max(Math.abs(dx), Math.abs(dy)) >= distance) {
                     fired = true;
                     captured = true;
-                    if (listener != null) listener.onSwipe(dir);
+                    if (listener != null && listener.isDrag(dir)) {
+                        dragging = true;
+                        listener.onDragStart(dir, ev.getX(), ev.getY());
+                    } else if (listener != null) {
+                        listener.onSwipe(dir);
+                    }
                 }
                 return true;
             case MotionEvent.ACTION_UP:
@@ -152,6 +174,7 @@ public final class SwipeStrip extends LinearLayout {
         tracking = false;
         captured = false;
         fired = false;
+        dragging = false;
         java.util.Arrays.fill(owned, false);
     }
 }

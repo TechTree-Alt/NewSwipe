@@ -127,10 +127,10 @@ public final class KeyboardView extends View {
         float lastX, lastY;
         /** 문자 키를 밀어 시작한 커서 이동: 스페이스바 설정 대신 이 축 설정(freeH·freeV)을 따른다. */
         boolean freeCursor, freeH, freeV;
-        /** 분리 키보드 가운데 빈 공간에서 시작한 커서 이동: 스페이스바의 좌우·상하 설정을 따른다. */
+        /** 분리 키보드 가운데 빈 공간에서 시작한 커서 이동: 가운데 공간의 방향 설정을 따른다. */
         boolean gap;
-        /** 커서 이동 키에서 시작한 커서 이동: 늘 좌우·상하로 움직이고, 속도는 스페이스바 커서 이동과 같다. */
-        boolean cursorKey;
+        /** 기능키에서 시작한 커서 이동: 그 키(FunctionSwipes 칸)의 방향 설정을 따르고, 속도는 스페이스바 커서 이동과 같다. */
+        int cursorSlot = FunctionSwipes.SPACE;
         boolean chord;
         /** 선택 모드에서 선택 영역을 한 번이라도 움직였는지 (움직이지 않고 떼면 그냥 스페이스로 입력한다). */
         boolean selectMoved;
@@ -174,7 +174,7 @@ public final class KeyboardView extends View {
     private boolean keyShadow;
     private int keyShadowStrength = 50;
     private Paint shadowPaint;
-    private boolean gapCursor = true;
+    private GapSwipes gapSwipes;
     /** 커서 이동이 시작된 뒤 손가락이 움직이는 거리당 커서가 움직이는 빠르기 (1 = 기본). 스페이스바·문자 키, 좌우·상하 따로. */
     private float gapSpeed = 1f;
     private float cursorSpeedH = 1f, cursorSpeedV = 1f;
@@ -411,6 +411,15 @@ public final class KeyboardView extends View {
         cursorSpeedV = Math.max(10, v) / 100f;
     }
 
+    /** 커서 이동 한 칸·한 줄에 필요한 손가락 거리 (px, 속도 반영). 도구 막대의 커서 자유 이동도 같은 거리를 쓴다. */
+    public float cursorStepX() {
+        return cursorStep / cursorSpeedH;
+    }
+
+    public float cursorStepY() {
+        return cursorStepY / cursorSpeedV;
+    }
+
     public void setKeyboardSwipes(KeyboardSwipes k) {
         kbSwipes = k;
     }
@@ -467,6 +476,7 @@ public final class KeyboardView extends View {
     /** 이 키를 길게 누르면 실행할 기능. 없음이거나 대상이 아닌 키면 null. Fn 키는 자기 설정(Fn 키 사용자화)을 따른다. */
     private String customLongPress(Key k) {
         if (k.type == Key.FUNCTION) return fnKeyAction(FnKeyActions.I_LONG);
+        if (k.type == Key.SPACER) return gapSwipes == null ? null : gapSwipes.longPress();
         if (longPressActions == null) return null;
         int slot = LongPressActions.slotOf(k.type);
         if (slot < 0) return null;
@@ -483,9 +493,9 @@ public final class KeyboardView extends View {
         fnPressMs = ms;
     }
 
-    /** 분리 키보드 가운데 빈 공간을 밀어 커서를 옮기는지와 그 이동 속도 (%, 100 = 기본). 좌우·상하로 모두 움직인다. */
-    public void setGapCursor(boolean on, int speedPercent) {
-        gapCursor = on;
+    /** 분리 키보드 가운데 빈 공간을 밀 때 실행할 기능과 '커서 자유 이동'의 속도 (%, 100 = 기본). */
+    public void setGapSwipes(GapSwipes swipes, int speedPercent) {
+        gapSwipes = swipes;
         gapSpeed = Math.max(10, speedPercent) / 100f;
     }
 
@@ -1029,7 +1039,7 @@ public final class KeyboardView extends View {
 
     private void down(int id, float x, float y) {
         Key k = keyAt(x, y);
-        boolean gap = k != null && k.type == Key.SPACER && k.dragCursor && gapCursor;
+        boolean gap = k != null && k.type == Key.SPACER && k.dragCursor && gapSwipes != null && gapSwipes.any();
         if (k == null || (!gap && (k.type == Key.SPACER || k.type == Key.GAP))) return;
         Pointer p = new Pointer();
         p.id = id;
@@ -1042,8 +1052,8 @@ public final class KeyboardView extends View {
         p.lastY = y;
         p.mode = NORMAL;
         pointers.add(p);
-        if (gap) return;   // 눌러도 아무 키도 입력되지 않고 소리·진동도 없다. 밀면 커서만 움직인다.
-        if (listener != null) {
+        // 가운데 공간은 눌러도 아무 키도 입력되지 않고 소리·진동도 없다. 정해 둔 기능만 실행한다.
+        if (!gap && listener != null) {
             listener.onKeyPress(k);
             if (k.type == Key.SHIFT) {
                 listener.onKeyTap(k);
@@ -1113,13 +1123,27 @@ public final class KeyboardView extends View {
             case NORMAL:
             case SWIPED:
                 if (p.key.type == Key.SPACER) {
-                    // 분리 키보드 가운데 빈 공간: 충분히 밀면 커서 이동 (스페이스바와 같은 거리, 축은 늘 좌우·상하 모두).
-                    if (deferred == null && (Math.abs(dx) > fnSwipeThreshold
-                            || Math.abs(dy) > fnSwipeThreshold * 1.5f)) {
-                        p.mode = CURSOR;
-                        p.gap = true;
-                        p.cursorAnchorX = x;
-                        p.cursorAnchorY = y;
+                    // 분리 키보드 가운데 빈 공간: 충분히 밀면 그 방향에 정한 기능 (스페이스바와 같은 거리).
+                    // '커서 자유 이동'이면 커서를 옮기고, 다른 기능이면 손을 뗄 때 실행한다.
+                    if (Math.hypot(dx, dy) > fnSwipeThreshold) cancelLongPress(p);
+                    if (deferred == null && gapSwipes != null) {
+                        boolean horizontal = Math.abs(dx) > Math.abs(dy);
+                        int dir = horizontal ? (dx > 0 ? Key.SWIPE_RIGHT : Key.SWIPE_LEFT)
+                                : (dy > 0 ? Key.SWIPE_DOWN : Key.SWIPE_UP);
+                        String action = gapSwipes.action(dir);
+                        if (swipeDistance(dir, dx, dy) > fnSwipeThreshold * (horizontal ? 1f : 1.5f)
+                                && !SwipeAction.NONE.equals(action)) {
+                            if (SwipeAction.CURSOR_MOVE.equals(action)) {
+                                p.mode = CURSOR;
+                                p.gap = true;
+                                p.cursorAnchorX = x;
+                                p.cursorAnchorY = y;
+                            } else {
+                                p.mode = FN_SWIPE;
+                                p.fnAction = action;
+                                p.swipeDir = dir;
+                            }
+                        }
                     }
                     break;
                 }
@@ -1181,12 +1205,12 @@ public final class KeyboardView extends View {
                 }
                 break;
             case CURSOR: {
-                // 스페이스바·커서 이동 키는 그 키에 '커서 자유 이동'을 정한 축만 움직인다.
-                // 분리 키보드 가운데 빈 공간은 늘 좌우·상하로 모두 움직이고 속도도 따로 정한다.
-                boolean curH = p.gap || (p.freeCursor ? p.freeH
-                        : fnSwipes != null && fnSwipes.cursorH(p.cursorKey ? FunctionSwipes.CURSOR : FunctionSwipes.SPACE));
-                boolean curV = p.gap || (p.freeCursor ? p.freeV
-                        : fnSwipes != null && fnSwipes.cursorV(p.cursorKey ? FunctionSwipes.CURSOR : FunctionSwipes.SPACE));
+                // 기능키는 그 키에 '커서 자유 이동'을 정한 축만 움직인다.
+                // 분리 키보드 가운데 빈 공간도 '커서 자유 이동'을 정한 축만 움직이고 속도는 따로 정한다.
+                boolean curH = p.gap ? gapSwipes != null && gapSwipes.cursorH() : p.freeCursor ? p.freeH
+                        : fnSwipes != null && fnSwipes.cursorH(p.cursorSlot);
+                boolean curV = p.gap ? gapSwipes != null && gapSwipes.cursorV() : p.freeCursor ? p.freeV
+                        : fnSwipes != null && fnSwipes.cursorV(p.cursorSlot);
                 // 커서 이동 속도: 한 칸(한 줄) 움직이는 데 필요한 손가락 거리를 속도만큼 줄이거나 늘린다.
                 float stepX = cursorStep / (p.gap ? gapSpeed : cursorSpeedH);
                 float stepY = cursorStepY / (p.gap ? gapSpeed : cursorSpeedV);
@@ -1270,7 +1294,13 @@ public final class KeyboardView extends View {
                     String tap = fnKeyAction(FnKeyActions.I_TAP);
                     if (tap != null) listener.onKeyFunction(p.key, tap);
                     markChord();
-                } else if (p.key.type != Key.SHIFT && p.key.type != Key.SPACER) {
+                } else if (p.key.type == Key.SPACER) {
+                    String tap = gapSwipes == null ? null : gapSwipes.tap();
+                    if (tap != null) {
+                        listener.onGesture();
+                        listener.onKeyFunction(p.key, tap);
+                    }
+                } else if (p.key.type != Key.SHIFT) {
                     listener.onKeyTap(p.key);
                     markChord();
                 }
@@ -1311,8 +1341,17 @@ public final class KeyboardView extends View {
             case SELECT:
                 // 길게 누르기만 하고 밀지 않았으면 예전처럼 스페이스를 입력한다.
                 if (!p.selectMoved) {
-                    listener.onKeyTap(p.key);
-                    markChord();
+                    if (p.key.type == Key.SPACER) {
+                        // 가운데 공간은 띄어쓰기 대신 정해 둔 누르기 기능을 실행한다.
+                        String tap = gapSwipes == null ? null : gapSwipes.tap();
+                        if (tap != null) {
+                            listener.onGesture();
+                            listener.onKeyFunction(p.key, tap);
+                        }
+                    } else {
+                        listener.onKeyTap(p.key);
+                        markChord();
+                    }
                 }
                 break;
             case CONSUMED:
@@ -1348,7 +1387,7 @@ public final class KeyboardView extends View {
         if (SwipeAction.CURSOR_MOVE.equals(action)) {
             if (deferred != null) return;   // 두 손가락 밀기를 지켜보는 동안에는 커서를 움직이지 않는다
             p.mode = CURSOR;
-            p.cursorKey = slot == FunctionSwipes.CURSOR;   // 커서 이동 키는 자기 칸의 방향 설정을 따른다
+            p.cursorSlot = slot;   // 그 키는 자기 칸의 방향 설정을 따른다
             p.cursorAnchorX = x;
             p.cursorAnchorY = y;
             cancelLongPress(p);

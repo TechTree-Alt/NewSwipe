@@ -62,15 +62,15 @@ public class FunctionSwipesTest {
     }
 
     @Test
-    public void cursorMoveOnlyForSpaceBar() {
+    public void cursorMoveOnEveryKey() {
         Map<String, String> m = new HashMap<>();
         m.put("enter_up", SwipeAction.CURSOR_MOVE);
-        assertEquals(SwipeAction.NONE, with(m).action(FunctionSwipes.ENTER, Key.SWIPE_UP));
+        assertEquals(SwipeAction.CURSOR_MOVE, with(m).action(FunctionSwipes.ENTER, Key.SWIPE_UP));
         String[] enter = SwipeAction.idsFor(FunctionSwipes.ENTER);
         String[] space = SwipeAction.idsFor(FunctionSwipes.SPACE);
-        assertEquals(space.length - 1, enter.length);
+        assertEquals(space.length, enter.length);
         assertTrue(java.util.Arrays.asList(space).contains(SwipeAction.CURSOR_MOVE));
-        assertFalse(java.util.Arrays.asList(enter).contains(SwipeAction.CURSOR_MOVE));
+        assertTrue(java.util.Arrays.asList(enter).contains(SwipeAction.CURSOR_MOVE));
     }
 
     @Test

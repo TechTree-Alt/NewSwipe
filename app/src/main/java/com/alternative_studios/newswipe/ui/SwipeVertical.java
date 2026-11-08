@@ -25,18 +25,40 @@ public final class SwipeVertical {
      * @param thresholdPx 이만큼 밀면 실행한다 (enabled·thresholdPx는 터치할 때마다 읽으므로 설정이 바뀌면 바로 따른다)
      * @param action      민 방향(Key.SWIPE_*)을 받아 실행한다
      */
-    @SuppressLint("ClickableViewAccessibility")
     public static void attachFourWay(View v, IntPredicate enabled, IntSupplier thresholdPx, IntConsumer action) {
+        attachFourWay(v, enabled, thresholdPx, action, null);
+    }
+
+    /** 손을 뗄 때까지 끌어 쓰는 기능(커서 자유 이동)을 위한 연결. */
+    public interface Drag {
+        /** 이 방향 밀기가 끌어 쓰는 기능인지. */
+        boolean isDrag(int dir);
+
+        void start(int dir, float x, float y);
+
+        void move(float x, float y);
+    }
+
+    /** @param drag 끌어 쓰는 방향이면 action 대신 이것을 부른다 (null이면 쓰지 않는다) */
+    @SuppressLint("ClickableViewAccessibility")
+    public static void attachFourWay(View v, IntPredicate enabled, IntSupplier thresholdPx, IntConsumer action,
+                                     Drag drag) {
         final float[] down = new float[2];
         final boolean[] fired = new boolean[1];
+        final boolean[] dragging = new boolean[1];
         v.setOnTouchListener((view, ev) -> {
             switch (ev.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
                     down[0] = ev.getX();
                     down[1] = ev.getY();
                     fired[0] = false;
+                    dragging[0] = false;
                     return false;
                 case MotionEvent.ACTION_MOVE: {
+                    if (dragging[0]) {
+                        drag.move(ev.getX(), ev.getY());
+                        return true;
+                    }
                     if (fired[0]) return true;
                     float dx = ev.getX() - down[0], dy = ev.getY() - down[1];
                     int dir;
@@ -49,13 +71,19 @@ public final class SwipeVertical {
                     cancel.setAction(MotionEvent.ACTION_CANCEL);
                     view.onTouchEvent(cancel);
                     cancel.recycle();
-                    action.accept(dir);
+                    if (drag != null && drag.isDrag(dir)) {
+                        dragging[0] = true;
+                        drag.start(dir, ev.getX(), ev.getY());
+                    } else {
+                        action.accept(dir);
+                    }
                     return true;
                 }
                 case MotionEvent.ACTION_UP:
                 case MotionEvent.ACTION_CANCEL: {
                     boolean consumed = fired[0];
                     fired[0] = false;
+                    dragging[0] = false;
                     return consumed;
                 }
                 default:

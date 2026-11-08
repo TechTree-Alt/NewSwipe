@@ -88,14 +88,16 @@ public class ToolbarSwipesTest {
     }
 
     @Test
-    public void unknownOrCursorMoveFallsBackToDefault() {
+    public void unknownFallsBackToDefaultAndCursorMoveIsKept() {
         Map<String, String> m = new HashMap<>();
         m.put("bar_right", "no_such_action");
-        m.put("bar_up", SwipeAction.CURSOR_MOVE);   // 스페이스바 전용
+        m.put("bar_up", SwipeAction.CURSOR_MOVE);   // 도구 막대에서도 끌어 쓸 수 있다
+        m.put("bar_down", SwipeAction.FREE_CURSOR);   // 문자 키 전용
         ToolbarSwipes t = with(m);
         assertEquals(SwipeAction.LINE_END, t.action(ToolbarSwipes.BAR, Key.SWIPE_RIGHT));
-        assertEquals(SwipeAction.CURSOR_UP, t.action(ToolbarSwipes.BAR, Key.SWIPE_UP));
-        assertFalse(Arrays.asList(SwipeAction.idsForToolbar()).contains(SwipeAction.CURSOR_MOVE));
+        assertEquals(SwipeAction.CURSOR_MOVE, t.action(ToolbarSwipes.BAR, Key.SWIPE_UP));
+        assertEquals(SwipeAction.CURSOR_DOWN, t.action(ToolbarSwipes.BAR, Key.SWIPE_DOWN));
+        assertTrue(Arrays.asList(SwipeAction.idsForToolbar()).contains(SwipeAction.CURSOR_MOVE));
     }
 
     @Test

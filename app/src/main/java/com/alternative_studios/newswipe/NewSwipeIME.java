@@ -810,7 +810,27 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     private SwipeStrip buildToolbar() {
         SwipeStrip bar = new SwipeStrip(this);
-        bar.setListener(this::onToolbarSwipe);
+        bar.setListener(new SwipeStrip.Listener() {
+            @Override
+            public void onSwipe(int dir) {
+                onToolbarSwipe(dir);
+            }
+
+            @Override
+            public boolean isDrag(int dir) {
+                return panel == PANEL_KEYBOARD && SwipeAction.CURSOR_MOVE.equals(toolbarAction(dir));
+            }
+
+            @Override
+            public void onDragStart(int dir, float x, float y) {
+                startToolbarDrag(ToolbarSwipes.BAR, x, y);
+            }
+
+            @Override
+            public void onDragMove(float x, float y) {
+                moveToolbarDrag(x, y);
+            }
+        });
         bar.setGravity(Gravity.CENTER_VERTICAL);
         // 좌우 여백은 applySettings에서 자판의 좌우 여백과 같게 맞춘다.
         clipboardButton = toolButton(Icons.CLIPBOARD, "클립보드", v -> showPanel(PANEL_CLIPBOARD));
@@ -908,6 +928,22 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     private void attachToolSwipe(View button, int slot) {
+        SwipeVertical.Drag drag = new SwipeVertical.Drag() {
+            @Override
+            public boolean isDrag(int dir) {
+                return panel == PANEL_KEYBOARD && SwipeAction.CURSOR_MOVE.equals(toolButtonAction(slot, dir));
+            }
+
+            @Override
+            public void start(int dir, float x, float y) {
+                startToolbarDrag(slot, x, y);
+            }
+
+            @Override
+            public void move(float x, float y) {
+                moveToolbarDrag(x, y);
+            }
+        };
         SwipeVertical.attachFourWay(button, dir -> !SwipeAction.NONE.equals(toolButtonAction(slot, dir)),
                 () -> Ui.dp(this, prefs.fnSwipeThresholdDp()),
                 dir -> {
@@ -922,7 +958,43 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                     } else {
                         onKeyFunction(null, action);
                     }
-                });
+                }, drag);
+    }
+
+    /** 도구 막대(칸 BAR)나 버튼에서 끌어 쓰는 '커서 자유 이동': 어느 칸의 방향 설정을 따르는지와 기준점. */
+    private int toolDragSlot;
+    private float toolDragX, toolDragY;
+    private boolean toolDragStarted;
+
+    private void startToolbarDrag(int slot, float x, float y) {
+        toolDragSlot = slot;
+        toolDragX = x;
+        toolDragY = y;
+        toolDragStarted = false;
+        feedback.onToolbar();
+    }
+
+    /** 스페이스바와 같은 거리·속도로, 정한 축(좌우는 글자, 위아래는 줄)만 커서를 움직인다. */
+    private void moveToolbarDrag(float x, float y) {
+        boolean curH = toolbarSwipes.cursorH(toolDragSlot), curV = toolbarSwipes.cursorV(toolDragSlot);
+        float stepX = keyboard.cursorStepX(), stepY = keyboard.cursorStepY();
+        float d = x - toolDragX, dv = y - toolDragY;
+        if (!toolDragStarted && ((curH && Math.abs(d) >= stepX) || (curV && Math.abs(dv) >= stepY))) {
+            toolDragStarted = true;
+            onCursorStart();
+        }
+        while (curH && Math.abs(d) >= stepX) {
+            int dir = d > 0 ? 1 : -1;
+            onCursorMove(dir);
+            toolDragX += dir * stepX;
+            d = x - toolDragX;
+        }
+        while (curV && Math.abs(dv) >= stepY) {
+            int dir = dv > 0 ? 1 : -1;
+            onCursorMoveVertical(dir);
+            toolDragY += dir * stepY;
+            dv = y - toolDragY;
+        }
     }
 
     /** 도구 막대 버튼에 해당하는 칸 (ToolbarSwipes). 버튼이 아니면 -1. */
@@ -1202,7 +1274,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 Math.round(sizePrefs.keyTextSize() * oneHandScale));
         keyboard.setDirectionRatios(prefs.swipeDownRatio(), prefs.swipeUpRatio());
         keyboard.setFunctionSwipeThreshold(prefs.fnSwipeThresholdDp());
-        keyboard.setGapCursor(sizePrefs.splitGapCursor(), sizePrefs.splitGapSpeed());
+        keyboard.setGapSwipes(sizePrefs.gapSwipes(), sizePrefs.splitGapSpeed());
         keyboard.setCursorSpeed(prefs.spaceCursorSpeedH(), prefs.spaceCursorSpeedV());   // 글자 키 트랙패드도 같은 속도
         keyboard.setDeleteRepeatRates(prefs.deleteRepeatRate(), prefs.deleteWordRepeatRate());
         // 길게 누르기·밀기는 모두 키마다 정한 기능을 쓴다 (키보드 사용자화에서 키를 눌러 정한다).
