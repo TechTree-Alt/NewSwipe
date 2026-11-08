@@ -927,6 +927,41 @@ final class KeyboardPreview extends FrameLayout {
         return Math.min(Ui.dp(c, 3), gy - Ui.dp(c, 1));
     }
 
+    /** 키 층 윤곽선 사이에 늘 남기는 틈. */
+    private static final float KEY_OUTLINE_GAP_DP = 2f;
+    /** 키 층 윤곽선이 키 모양 가장자리에서 나오는 여유 (틈이 넉넉할 때). */
+    private static final float KEY_OUTLINE_OUT_DP = 1.5f;
+
+    /**
+     * 키 층 윤곽선이 모양 가장자리에서 나오는 여유: 보통 1.5dp지만, 이웃한 모양 사이(gapPx)가 좁으면 두 윤곽선 사이가
+     * 늘 2dp로 남도록 줄인다 (아주 좁으면 모양 안쪽으로 든다).
+     */
+    private float keyOutlineOut(float gapPx) {
+        Context c = getContext();
+        return Math.min(Ui.dp(c, KEY_OUTLINE_OUT_DP), (gapPx - Ui.dp(c, KEY_OUTLINE_GAP_DP)) / 2f);
+    }
+
+    /** 키 k의 키 층 윤곽선 (미리보기 좌표). 상하·좌우 모두 이웃 키 윤곽선과 2dp 띈다. */
+    void keyOutline(Key k, RectF out) {
+        Context c = getContext();
+        float gapX = Ui.dp(c, prefs.keyGapXDp()), gapY = Ui.dp(c, prefs.keyGapYDp());
+        float gx = gapX / 2f, gy = gapY / 2f, ox = keyOutlineOut(gapX), oy = keyOutlineOut(gapY);
+        out.set(k.rect.left + gx - ox, keys.getTop() + k.rect.top + gy - oy,
+                k.rect.right - gx + ox, keys.getTop() + k.rect.bottom - gy + oy);
+    }
+
+    /**
+     * 도구 막대 버튼 b의 키 층 윤곽선 (미리보기 좌표). 칩은 버튼 자리에서 좌우 2dp씩 들어가 있어 이웃 칩과 4dp 띄므로,
+     * 좌우는 이웃 버튼 윤곽선과 2dp 띄도록 칩 가장자리에서 1dp 나온다. 위아래는 칩 가장자리에서 1.5dp.
+     */
+    void toolOutline(View b, RectF out) {
+        Context c = getContext();
+        float chipGap = Ui.dp(c, 4), ox = keyOutlineOut(chipGap), oy = Ui.dp(c, KEY_OUTLINE_OUT_DP);
+        float inset = Math.max(0, (b.getHeight() - Ui.chipHeight(c, b.getHeight())) / 2f) - oy;
+        out.set(b.getLeft() + chipGap / 2f - ox, bar.getTop() + b.getTop() + inset,
+                b.getRight() - chipGap / 2f + ox, bar.getTop() + b.getBottom() - inset);
+    }
+
     /** 영역 층의 영역 윤곽선: 영역에 그 영역의 위·아래 여백을 더한 자리 (여백의 바깥 가장자리). */
     boolean padBounds(int area, RectF out) {
         if (!areaBounds(area, out)) return false;
@@ -1498,16 +1533,13 @@ final class KeyboardPreview extends FrameLayout {
                 c.translate((LAYER_KEY - layerPos) * shift, 0);
                 stroke.setStrokeWidth(Ui.dp(ctx, 1.25f));
                 stroke.setColor(withAlpha(accent, 0.55f * keyAlpha));
-                float gx = Ui.dp(ctx, prefs.keyGapXDp()) / 2f, gy = Ui.dp(ctx, prefs.keyGapYDp()) / 2f;
-                float out = Ui.dp(ctx, 1.5f);
-                float kr = Ui.dp(ctx, prefs.keyRadiusDp()) + out;
+                float kr = Ui.dp(ctx, prefs.keyRadiusDp()) + Ui.dp(ctx, 1.5f);
                 KeyboardLayout l = keys.getLayout();
                 if (l != null) {
                     for (KeyboardLayout.Row row : l.rows) {
                         for (Key k : row.keys) {
                             if (!selectable(k)) continue;
-                            area.set(k.rect.left + gx - out, keys.getTop() + k.rect.top + gy - out,
-                                    k.rect.right - gx + out, keys.getTop() + k.rect.bottom - gy + out);
+                            keyOutline(k, area);
                             float rr = Math.min(kr, Math.min(area.width(), area.height()) / 2f);
                             c.drawRoundRect(area, rr, rr, stroke);
                         }
@@ -1517,9 +1549,7 @@ final class KeyboardPreview extends FrameLayout {
                     for (int i = 0; i < bar.getChildCount(); i++) {
                         View b = bar.getChildAt(i);
                         if (!(b.getTag() instanceof String)) continue;
-                        float inset = Math.max(0, (b.getHeight() - Ui.chipHeight(ctx, b.getHeight())) / 2f) - out;
-                        area.set(b.getLeft() + Ui.dp(ctx, 2), bar.getTop() + b.getTop() + inset,
-                                b.getRight() - Ui.dp(ctx, 2), bar.getTop() + b.getBottom() - inset);
+                        toolOutline(b, area);
                         c.drawRoundRect(area, area.height() / 2, area.height() / 2, stroke);
                     }
                 }
@@ -1740,12 +1770,8 @@ final class KeyboardPreview extends FrameLayout {
         /** 고른 것의 테두리 (미리보기 좌표). 없으면 null. */
         private RectF selectionBounds() {
             if (selection == null) return null;
-            Context ctx = getContext();
-            float out = Ui.dp(ctx, 2);
             if (selection.kind == SEL_KEY && selectedKey != null) {
-                RectF r = selectedKey.rect;
-                float gx = Ui.dp(ctx, prefs.keyGapXDp()) / 2f, gy = Ui.dp(ctx, prefs.keyGapYDp()) / 2f;
-                tmp.set(r.left + gx - out, keys.getTop() + r.top + gy - out, r.right - gx + out, keys.getTop() + r.bottom - gy + out);
+                keyOutline(selectedKey, tmp);
                 return tmp;
             }
             // 남은 것은 도구 막대 버튼 하나 (영역·키보드는 윤곽선 층에서 그린다).
@@ -1753,9 +1779,7 @@ final class KeyboardPreview extends FrameLayout {
             for (int i = 0; i < bar.getChildCount(); i++) {
                 View b = bar.getChildAt(i);
                 if (selection.toolId.equals(b.getTag())) {
-                    float inset = Math.max(0, (b.getHeight() - Ui.chipHeight(ctx, b.getHeight())) / 2f) - out;
-                    tmp.set(b.getLeft() + Ui.dp(ctx, 2), bar.getTop() + b.getTop() + inset,
-                            b.getRight() - Ui.dp(ctx, 2), bar.getTop() + b.getBottom() - inset);
+                    toolOutline(b, tmp);
                     return tmp;
                 }
             }
