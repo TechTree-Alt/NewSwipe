@@ -1777,19 +1777,19 @@ public final class SettingsActivity extends Activity {
             @Override public void onSizeChanged(String prefKey) { syncSizeSliders(prefKey); }
             @Override public void onLayerChanged(int layer) { }
         });
-        profilePreview.setProfileMode(prefs.profileEditView(profile), profilePreviewScale(profile));
+        profilePreview.setProfileMode(prefs.profileEditView(profile), profileScreenWidth(profile));
         pinnedBottom.addView(profilePreview, matchWrap());
         pinnedBottom.setVisibility(View.VISIBLE);
     }
 
     /**
-     * 미리보기의 키 높이·글자 크기 비율: 가로 방향 프로필을 세로 화면에서 볼 때는 가로로 넓은 자판처럼 낮춰 그린다.
-     * 화면을 가로로 돌리면 실제와 같은 크기로 보인다.
+     * 그 프로필이 실제로 쓰는 화면 폭 (px): 가로 방향 프로필은 이 기기의 긴 쪽, 세로 방향은 짧은 쪽.
+     * 미리보기는 이 폭으로 키보드를 그대로 만든 뒤 화면 폭에 맞춰 줄이거나 늘려, 어느 방향으로 들고 봐도 실제와 같다.
      */
-    private float profilePreviewScale(String profile) {
-        boolean landNow = getResources().getConfiguration().orientation
-                == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
-        return isLandscapeProfile(profile) && !landNow ? LANDSCAPE_PREVIEW_SCALE : 1f;
+    private int profileScreenWidth(String profile) {
+        android.util.DisplayMetrics m = getResources().getDisplayMetrics();
+        int longSide = Math.max(m.widthPixels, m.heightPixels), shortSide = Math.min(m.widthPixels, m.heightPixels);
+        return isLandscapeProfile(profile) ? longSide : shortSide;
     }
 
     /** 미리보기 사용법 안내. */
@@ -1797,7 +1797,7 @@ public final class SettingsActivity extends Activity {
         LinearLayout intro = card();
         intro.addView(note("아래 미리보기에서 글자 키 가운데의 ↕ 버튼을 위·아래로 끌면 글자 키 높이가, 키보드 아래 가장자리의 손잡이를 "
                 + "끌면 세로 위치가 바뀝니다. 분리 키보드를 켜면 왼쪽·오른쪽 묶음 가운데의 ↔ 버튼을 좌우로 끌어 묶음 폭을, "
-                + "길게 누른 뒤 끌어 가로 위치를 바꿀 수 있습니다. 화면을 돌리면 그 방향의 실제 크기로 볼 수 있습니다.\n"
+                + "길게 누른 뒤 끌어 가로 위치를 바꿀 수 있습니다.\n"
                 + "키와 영역의 설정은 '키보드 사용자화'에서 바꿉니다."));
     }
 
@@ -2088,7 +2088,7 @@ public final class SettingsActivity extends Activity {
             landBox.setVisibility(i == 1 ? View.VISIBLE : View.GONE);
             if (profilePreview != null) {
                 String profile = i == 0 ? port : land;
-                profilePreview.setProfileMode(prefs.profileEditView(profile), profilePreviewScale(profile));
+                profilePreview.setProfileMode(prefs.profileEditView(profile), profileScreenWidth(profile));
             }
         }));
         pick.addView(note("대화면이 세로일 때와 가로일 때의 키보드 모양을 따로 정합니다. "

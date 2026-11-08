@@ -239,13 +239,18 @@ final class KeyboardPreview extends FrameLayout {
      * 키·영역은 고르지 않는다 ('키보드 사용자화'에서만 바꾼다). null이면 보통 미리보기.
      */
     private Prefs profileEdit;
-    /** 가로 방향 프로필을 세로 화면에서 미리볼 때 키 높이·글자 크기에 곱하는 비율 (가로로 넓은 자판처럼 보이게). */
-    private float profileScale = 1f;
+    /**
+     * 그 프로필이 실제로 쓰는 화면 폭 (px). 이 폭으로 키보드를 그대로 만든 뒤 화면 폭에 맞춰 통째로 줄이거나 늘려 보여 준다
+     * (키·여백·도구 막대의 비율이 실제와 똑같다). 0이면 화면 폭 그대로.
+     */
+    private int virtualWidth;
+    /** 미리보기를 화면에 맞춘 배율 (virtualWidth를 쓰지 않으면 1). 손가락 움직임은 이 값으로 나눠 키보드 좌표로 바꾼다. */
+    private float viewScale = 1f;
 
-    /** 가로 모드·대화면 키보드 사용자화 화면으로 쓴다 (edit = 그 프로필의 편집 보기, scale = 키 높이·글자 크기 비율). */
-    void setProfileMode(Prefs edit, float scale) {
+    /** 가로 모드·대화면 키보드 사용자화 화면으로 쓴다 (edit = 그 프로필의 편집 보기, width = 그 프로필이 쓰는 화면 폭 px). */
+    void setProfileMode(Prefs edit, int width) {
         profileEdit = edit;
-        profileScale = scale;
+        virtualWidth = width;
         balancedMode = true;   // 균형 배열 사용자화처럼 층·고르기 없이 손잡이만 쓴다
         selection = null;
         selectedKey = null;
@@ -253,6 +258,15 @@ final class KeyboardPreview extends FrameLayout {
                 + "키보드 아래 가장자리의 손잡이를 끌면 세로 위치가 바뀝니다. 분리 키보드를 켜면 왼쪽·오른쪽 묶음 가운데의 버튼을 "
                 + "좌우로 끌어 묶음 폭을, 길게 누른 뒤 끌어 가로 위치를 바꿉니다.");
         refresh();
+    }
+
+    /** 키보드 좌표계의 폭·높이 (px). 화면에 맞춰 줄이거나 늘리기 전의 크기다. */
+    private int vw() {
+        return virtualWidth > 0 ? virtualWidth : getWidth();
+    }
+
+    private int vh() {
+        return virtualWidth > 0 ? column.getHeight() : getHeight();
     }
 
     /** 키보드를 화면 아래에서 띄우는 높이 (px). 가로 모드·대화면 키보드 사용자화에서만 있다. */
@@ -278,7 +292,7 @@ final class KeyboardPreview extends FrameLayout {
     /** 자·모음 경계선의 가로 위치 (미리보기 좌표). */
     private float boundaryX() {
         float[] span = new float[2];
-        if (!letterRowSpan(span)) return getWidth() / 2f;
+        if (!letterRowSpan(span)) return vw() / 2f;
         return span[0] + (span[1] - span[0]) * prefs.balancedBoundary() / 100f;
     }
 
@@ -377,6 +391,28 @@ final class KeyboardPreview extends FrameLayout {
     /** 크기는 도구 막대 + 자판이 정한다. 위에 덮은 손잡이 층은 그 크기를 그대로 따른다 (덮개가 높이를 키우지 않게). */
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        if (virtualWidth > 0) {
+            // 그 프로필의 실제 화면 폭으로 키보드를 만들고, 화면 폭에 맞춰 통째로 줄이거나 늘린다.
+            int avail = MeasureSpec.getSize(widthMeasureSpec);
+            viewScale = avail / (float) virtualWidth;
+            column.measure(MeasureSpec.makeMeasureSpec(virtualWidth, MeasureSpec.EXACTLY),
+                    MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
+            int h = column.getMeasuredHeight();
+            overlay.measure(MeasureSpec.makeMeasureSpec(virtualWidth, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(h, MeasureSpec.EXACTLY));
+            for (View v : new View[]{column, overlay}) {
+                v.setPivotX(0f);
+                v.setPivotY(0f);
+                v.setScaleX(viewScale);
+                v.setScaleY(viewScale);
+            }
+            setMeasuredDimension(avail, Math.round(h * viewScale));
+            return;
+        }
+        viewScale = 1f;
+        for (View v : new View[]{column, overlay}) {
+            v.setScaleX(1f);
+            v.setScaleY(1f);
+        }
         measureChild(column, widthMeasureSpec, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
         int w = column.getMeasuredWidth(), h = column.getMeasuredHeight();
         overlay.measure(MeasureSpec.makeMeasureSpec(w, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(h, MeasureSpec.EXACTLY));
@@ -427,7 +463,7 @@ final class KeyboardPreview extends FrameLayout {
         setBackgroundColor(theme.background);
         keys.setTheme(theme);
         keys.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), false,
-                Math.round(prefs.keyTextSize() * profileScale));
+                prefs.keyTextSize());
         keys.setKeyShadow(prefs.keyShadow(), prefs.keyShadowStrength());
         keys.setKeyRadius(Ui.dp(c, prefs.keyRadiusDp()));
         keys.setGridColors(prefs.gridColors());
@@ -453,7 +489,7 @@ final class KeyboardPreview extends FrameLayout {
                 && KeyboardLayout.isDigit(l.rows[0].keys[0].label);
         // 키보드와 같은 높이: 글자 4줄 + 숫자 줄 (기호 자판도 같은 높이를 쓴다).
         float rows = KeyboardLayout.rowUnits(prefs);
-        keys.setKeyboardHeight(Math.round(Ui.dp(c, 54) * rows * prefs.keyboardHeight() / 100f * profileScale) + padT + padB - lift - raise
+        keys.setKeyboardHeight(Math.round(Ui.dp(c, 54) * rows * prefs.keyboardHeight() / 100f) + padT + padB - lift - raise
                 + Ui.dp(c, prefs.areaPadVerticalDp()));
         keys.setLayout(l);
         rebuildToolbar(lift, raise);
@@ -737,9 +773,9 @@ final class KeyboardPreview extends FrameLayout {
         }
         if (left > right) {
             left = pad;
-            right = getWidth() - pad;
+            right = vw() - pad;
         }
-        out.set(Math.max(left, pad), column.getTop() + pad, Math.min(right, getWidth() - pad), column.getBottom() - pad);
+        out.set(Math.max(left, pad), column.getTop() + pad, Math.min(right, vw() - pad), column.getBottom() - pad);
         return out.height() > 0;
     }
 
@@ -865,7 +901,7 @@ final class KeyboardPreview extends FrameLayout {
     private boolean handleEdge(Handle h, float[] out) {
         if (!handleShown(h)) return false;
         Context c = getContext();
-        int w = getWidth();
+        int w = vw();
         switch (h) {
             case TOOLBAR:
             case NUMBER_ROW:
@@ -926,7 +962,7 @@ final class KeyboardPreview extends FrameLayout {
                 if (!padBounds(selection.area(), r)) return false;
                 out[0] = h == Handle.AREA_L ? Math.max(r.left, Ui.dp(c, 3)) : h == Handle.AREA_R ? Math.min(r.right, w - Ui.dp(c, 3))
                         : r.centerX();
-                out[1] = h == Handle.AREA_T ? Math.max(r.top, 0) : h == Handle.AREA_B ? Math.min(r.bottom, getHeight() - Ui.dp(c, 3))
+                out[1] = h == Handle.AREA_T ? Math.max(r.top, 0) : h == Handle.AREA_B ? Math.min(r.bottom, vh() - Ui.dp(c, 3))
                         : r.centerY();
                 return true;
             }
@@ -957,7 +993,8 @@ final class KeyboardPreview extends FrameLayout {
 
     private Handle handleAt(float x, float y) {
         float[] p = new float[2];
-        float reach = Ui.dp(getContext(), 22);
+        // 줄여 그린 미리보기에서도 손으로 집기 쉽게, 줄인 만큼 터치 범위를 넓힌다.
+        float reach = Ui.dp(getContext(), 22) / Math.min(1f, viewScale);
         Handle best = null;
         float bestDist = Float.MAX_VALUE;
         for (Handle h : Handle.values()) {
@@ -995,7 +1032,7 @@ final class KeyboardPreview extends FrameLayout {
             case TOOLBAR: dragStart = bar.getHeight(); break;
             case NUMBER_ROW: dragStart = Ui.dp(c, 54) * prefs.keyboardHeight() / 100f * prefs.numberRowHeight() / 100f; break;
             case FN_ROW: dragStart = Ui.dp(c, 54) * prefs.keyboardHeight() / 100f * prefs.fnRowHeight() / 100f; break;
-            case HEIGHT: dragStart = Ui.dp(c, 54) * rowUnits() * prefs.keyboardHeight() / 100f * profileScale; break;
+            case HEIGHT: dragStart = Ui.dp(c, 54) * rowUnits() * prefs.keyboardHeight() / 100f; break;
             default: dragStart = valueOf(h); break;
         }
         dragValue = valueOf(h);
@@ -1050,7 +1087,7 @@ final class KeyboardPreview extends FrameLayout {
                         Prefs.FN_ROW_HEIGHT_MIN, Prefs.FN_ROW_HEIGHT_MAX);
                 break;
             case HEIGHT:
-                v = clamp(snap5((dragStart - dy) / (Ui.dp(c, 54) * rowUnits() * profileScale) * 100f),
+                v = clamp(snap5((dragStart - dy) / (Ui.dp(c, 54) * rowUnits()) * 100f),
                         profileEdit != null ? Prefs.PROFILE_HEIGHT_MIN : 70, 140);
                 break;
             case LIFT:   // 4dp 단위, 끌어 올리면 키보드가 위로 뜬다
@@ -1514,8 +1551,8 @@ final class KeyboardPreview extends FrameLayout {
                     paging = false;
                     return true;
                 case MotionEvent.ACTION_MOVE: {
-                    float dx = e.getRawX() - downRawX, dy = e.getRawY() - downRawY;
-                    if (!dragging && !moved && Math.hypot(dx, dy) > slop) {
+                    float dx = (e.getRawX() - downRawX) / viewScale, dy = (e.getRawY() - downRawY) / viewScale;
+                    if (!dragging && !moved && Math.hypot(dx, dy) * viewScale > slop) {
                         moved = true;
                         removeCallbacks(positionPress);   // 길게 누르기 전에 움직였다: 키 폭 조절
                         // 손잡이를 그 방향으로 끌기 시작했을 때만 크기를 바꾼다 (손잡이 위에서 옆으로 밀면 아무것도 하지 않는다).
@@ -1556,7 +1593,7 @@ final class KeyboardPreview extends FrameLayout {
                     if (paging) {
                         paging = false;
                         // 3분의 1 넘게 넘겼거나 빠르게 밀었으면 그 층으로, 아니면 제자리로.
-                        float moveX = e.getRawX() - downRawX;
+                        float moveX = (e.getRawX() - downRawX) / viewScale;
                         int target = Math.abs(layerPos - pageStart) > 0.33f || Math.abs(moveX) > Ui.dp(getContext(), 72)
                                 ? Math.max(0, Math.min(LAYERS - 1, layer + (moveX < 0 ? 1 : -1))) : layer;
                         setLayer(target);
