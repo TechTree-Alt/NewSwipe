@@ -19,6 +19,7 @@ import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowInsets;
@@ -621,11 +622,18 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         candidateGridOpen = false;
         cjkEnterConfirm = false;   // 새 자판의 엔터 키는 원래 모양이다
         keyboard = new KeyboardView(this);
+        keyboardTouching = false;
         // 키가 배치되면(크기·한 손 모드가 바뀔 때) 도구 막대가 묶음 좌우를 따라가는 여백을 다시 맞춘다.
         keyboard.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
             if (r - l != or - ol) applyToolbarEdges();
         });
         keyboard.setListener(this);
+        // 손가락이 자판에 닿아 있는 동안은 선택 편집 칩 때문에 도구 막대 자리가 생기거나 없어지지 않게 한다 (editHoldsSlot).
+        // 이벤트는 그대로 자판이 받는다 (false).
+        keyboard.setOnTouchListener((v, e) -> {
+            onKeyboardTouch(e.getActionMasked());
+            return false;
+        });
         keyboard.setTheme(theme);
         content.addView(keyboard, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -1545,6 +1553,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         finishComposingOnLeave();
         super.onFinishInputView(finishingInput);
         if (keyboard != null) keyboard.cancelAll();
+        keyboardTouching = false;   // 손을 떼는 이벤트 없이 끝났을 수 있다
         if (emojiPanel != null) emojiPanel.dismissTones();
         if (clipPanel != null) clipPanel.dismissDialog();
         dismissForgetDialog();
@@ -1838,7 +1847,32 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private boolean toolbarGone() {
         // 일본어·중국어에서는 변환 후보가 뜰 자리를 늘 남겨 둔다 (후보가 뜰 때마다 자판이 움직이지 않게).
         return cjkLang == null && !prefs.toolbar() && !toolbarOnlyNow() && !((cfgSuggest && suggestAllowed) || (!shortcuts.isEmpty() && shortcutAllowed))
-                && panel == PANEL_KEYBOARD && !autofillShowing() && !editShowing();
+                && panel == PANEL_KEYBOARD && !autofillShowing() && !editHoldsSlot();
+    }
+
+    /** 손가락이 자판에 닿아 있는지, 그리고 닿은 순간 선택 편집 칩이 도구 막대 자리를 차지하고 있었는지. */
+    private boolean keyboardTouching, editSlotAtTouch;
+
+    /**
+     * 선택 편집 칩이 도구 막대 자리를 차지하는지. 도구 막대를 아예 없앴으면 칩이 뜰 때 그 줄이 생겨 키보드가 높아지는데,
+     * 스페이스바를 길게 눌러 선택하는 동안 높이가 바뀌면 창이 다시 배치되며 손가락 좌표가 줄 높이만큼 튀어 커서가
+     * 엉뚱하게 움직이고, 그 때문에 선택이 풀렸다 생겼다 하며 줄이 생겼다 없어졌다를 되풀이한다.
+     * 그래서 자판을 누르고 있는 동안은 누른 순간의 상태를 지키고, 손을 뗀 뒤에 맞춘다 (onKeyboardTouch).
+     */
+    private boolean editHoldsSlot() {
+        return keyboardTouching ? editSlotAtTouch : editShowing();
+    }
+
+    private void onKeyboardTouch(int action) {
+        if (action == MotionEvent.ACTION_DOWN) {
+            editSlotAtTouch = editShowing();
+            keyboardTouching = true;
+        } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+            if (!keyboardTouching) return;
+            keyboardTouching = false;
+            // 누르는 동안 미뤄 둔 도구 막대 자리를 이제 맞춘다 (자판 처리가 끝난 뒤에).
+            if (editSlotAtTouch != editShowing() && main != null) main.post(this::applyTopSlotVisibility);
+        }
     }
 
     private void updatePanelSizes() {
