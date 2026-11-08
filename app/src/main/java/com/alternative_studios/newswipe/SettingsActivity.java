@@ -121,7 +121,9 @@ public final class SettingsActivity extends Activity {
                 ? new SettingsFrame(this, sectionName, getString(R.string.app_name)).withSearch(this::onWordSearch, "단어 검색")
                 : new SettingsFrame(this, sectionName, getString(R.string.app_name));
         if (KEYBOARD.equals(sectionId)) frame.withAction(Icons.UNDO, "마지막 변경 되돌리기", v -> undoLast()).keyboardOverlays();
-        else if (KEY_AREA.equals(sectionId)) frame.keyboardOverlays();   // 아래 미리보기 위로 실제 키보드가 덮는다
+        else if (KEY_AREA.equals(sectionId) || LANDSCAPE_AREA.equals(sectionId) || LARGE_AREA.equals(sectionId)) {
+            frame.keyboardOverlays();   // 아래 미리보기 위로 실제 키보드가 덮는다
+        }
         ScrollView scroll = new ScrollView(this);
         scrollView = scroll;
         scroll.setFillViewport(true);
@@ -1761,6 +1763,52 @@ public final class SettingsActivity extends Activity {
         pinned.setVisibility(View.VISIBLE);
     }
 
+    /** 가로 모드·대화면 키보드 사용자화 화면 아래의 미리보기 (그 프로필의 값만 손잡이로 바꾼다). 다른 화면에서는 null. */
+    private KeyboardPreview profilePreview;
+
+    /**
+     * 실제 키보드와 같은 크기·모양의 미리보기를 화면 아래에 붙인다 ('키보드 사용자화'와 같은 자리).
+     * 글자 키 높이·세로 위치와, 분리 키보드면 두 묶음의 폭·가로 위치를 손잡이로 바꾼다. 키·영역은 고를 수 없다.
+     */
+    private void addProfilePreview(String profile) {
+        if (harvesting) return;
+        profilePreview = new KeyboardPreview(this, prefs, new KeyboardPreview.Listener() {
+            @Override public void onTap(KeyboardPreview.Selection s) { }
+            @Override public void onSizeChanged(String prefKey) { syncSizeSliders(prefKey); }
+            @Override public void onLayerChanged(int layer) { }
+        });
+        profilePreview.setProfileMode(prefs.profileEditView(profile), profilePreviewScale(profile));
+        pinnedBottom.addView(profilePreview, matchWrap());
+        pinnedBottom.setVisibility(View.VISIBLE);
+    }
+
+    /**
+     * 미리보기의 키 높이·글자 크기 비율: 가로 방향 프로필을 세로 화면에서 볼 때는 가로로 넓은 자판처럼 낮춰 그린다.
+     * 화면을 가로로 돌리면 실제와 같은 크기로 보인다.
+     */
+    private float profilePreviewScale(String profile) {
+        boolean landNow = getResources().getConfiguration().orientation
+                == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+        return isLandscapeProfile(profile) && !landNow ? LANDSCAPE_PREVIEW_SCALE : 1f;
+    }
+
+    /** 미리보기 사용법 안내. */
+    private void addProfileIntro() {
+        LinearLayout intro = card();
+        intro.addView(note("아래 미리보기에서 글자 키 가운데의 ↕ 버튼을 위·아래로 끌면 글자 키 높이가, 키보드 아래 가장자리의 손잡이를 "
+                + "끌면 세로 위치가 바뀝니다. 분리 키보드를 켜면 왼쪽·오른쪽 묶음 가운데의 ↔ 버튼을 좌우로 끌어 묶음 폭을, "
+                + "길게 누른 뒤 끌어 가로 위치를 바꿀 수 있습니다. 화면을 돌리면 그 방향의 실제 크기로 볼 수 있습니다.\n"
+                + "키와 영역의 설정은 '키보드 사용자화'에서 바꿉니다."));
+    }
+
+    /** 가로 모드·대화면의 값 슬라이더: 바꾸면 미리보기를 다시 그리고, 미리보기의 손잡이를 끌면 따라 움직인다. */
+    private View profileSlider(String label, String key, java.util.function.IntSupplier current, int min, int max, int step,
+                               String unit) {
+        SettingsWidgets.Slider sl = sliderRow(label, key, current.getAsInt(), min, max, step, unit, this::refreshLayoutPreview);
+        if (!harvesting) sizeSliders.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(() -> sl.set(current.getAsInt()));
+        return sl.view;
+    }
+
     /**
      * 가로 모드 키보드 사용자화: '분리 키보드 레이아웃'(분리 키보드 켜기, 좌·우 균형 레이아웃, 스페이스바 잇기),
      * '키보드 모양'(묶음의 폭·위치, 키보드 높이·글자 크기, 세로 위치), '분리 키보드 기능'(가운데 빈 공간 밀기).
@@ -1768,7 +1816,8 @@ public final class SettingsActivity extends Activity {
     private void buildLandscapeArea() {
         String p = Prefs.PROFILE_LANDSCAPE, when = "화면을 가로로 돌렸을 때";
         java.util.List<View> splitOnly = new java.util.ArrayList<>();
-        pinTop(layoutPreview(p));   // 미리보기는 화면 맨 위에 고정: 스크롤해도, 분리 키보드를 꺼도 보인다
+        addProfilePreview(p);   // 실제 키보드와 같은 미리보기를 화면 아래에 붙인다 (손잡이로 바로 바꾼다)
+        addProfileIntro();
         addSplitLayout(p, "가로 모드", when, splitOnly);
         addSplitShape(p, when, splitOnly);
         addSplitFunctions(p, when, splitOnly);
@@ -2007,11 +2056,9 @@ public final class SettingsActivity extends Activity {
      */
     private void buildLargeArea() {
         String port = Prefs.PROFILE_LARGE_PORTRAIT, land = Prefs.PROFILE_LARGE_LANDSCAPE;
-        // 미리보기는 화면 맨 위에 고정하고(스크롤해도, 분리 키보드를 꺼도 보인다), 고른 쪽(세로·가로)을 그린다.
-        View portPreview = layoutPreview(port), landPreview = layoutPreview(land);
-        landPreview.setVisibility(View.GONE);
-        pinTop(portPreview);
-        pinTop(landPreview);
+        // 실제 키보드와 같은 미리보기를 화면 아래에 붙이고, 고른 쪽(세로·가로)을 그린다.
+        addProfilePreview(port);
+        addProfileIntro();
         LinearLayout pick = card();
         java.util.List<View> splitOnly = new java.util.ArrayList<>();
         // 레이아웃 값은 대화면 세로·가로가 함께 쓰므로 어느 쪽 보기로 고쳐도 같다.
@@ -2039,8 +2086,10 @@ public final class SettingsActivity extends Activity {
         pick.addView(Ui.choiceRow(this, new String[]{"세로", "가로"}, 0, accentColor, onAccentColor, textColor, hintColor, 0, i -> {
             portBox.setVisibility(i == 0 ? View.VISIBLE : View.GONE);
             landBox.setVisibility(i == 1 ? View.VISIBLE : View.GONE);
-            portPreview.setVisibility(i == 0 ? View.VISIBLE : View.GONE);
-            landPreview.setVisibility(i == 1 ? View.VISIBLE : View.GONE);
+            if (profilePreview != null) {
+                String profile = i == 0 ? port : land;
+                profilePreview.setProfileMode(prefs.profileEditView(profile), profilePreviewScale(profile));
+            }
         }));
         pick.addView(note("대화면이 세로일 때와 가로일 때의 키보드 모양을 따로 정합니다. "
                 + "분리 키보드 레이아웃은 세로와 가로가 함께 씁니다."));
@@ -2115,11 +2164,9 @@ public final class SettingsActivity extends Activity {
                 + "묶음 폭은 각 묶음의 폭으로, 100%면 자기 절반을 꽉 채웁니다. 가로 위치는 각 절반 안에서 묶음이 놓이는 곳입니다 "
                 + "(0 = 왼쪽 끝, 50 = 가운데, 100 = 오른쪽 끝)."));
         card.addView(columns);
-        card.addView(slider("글자 키 높이", edit.heightKey(), edit.keyboardHeight(), Prefs.PROFILE_HEIGHT_MIN, 140, 5, "%",
-                this::refreshLayoutPreview));
-        card.addView(slider("키 글자 크기", edit.textSizeKey(), edit.keyTextSize(), Prefs.PROFILE_HEIGHT_MIN, 140, 5, "%",
-                this::refreshLayoutPreview));
-        card.addView(slider("세로 위치", edit.liftKey(), edit.profileLiftDp(), 0, 160, 4, "dp"));
+        card.addView(profileSlider("글자 키 높이", edit.heightKey(), edit::keyboardHeight, Prefs.PROFILE_HEIGHT_MIN, 140, 5, "%"));
+        card.addView(profileSlider("키 글자 크기", edit.textSizeKey(), edit::keyTextSize, Prefs.PROFILE_HEIGHT_MIN, 140, 5, "%"));
+        card.addView(profileSlider("세로 위치", edit.liftKey(), edit::profileLiftDp, 0, 160, 4, "dp"));
         card.addView(note(when + " 쓰는 값입니다. 글자 키 높이·키 글자 크기는 정하기 전에는 세로 모드('키보드 사용자화')의 값을 따릅니다. "
                 + "세로 위치는 키보드를 화면 아래에서 띄우는 높이로, 값이 클수록 키보드가 위로 올라갑니다 "
                 + "(한 손 모드에서는 한 손 모드의 세로 위치를 씁니다).\n"
@@ -2162,16 +2209,12 @@ public final class SettingsActivity extends Activity {
 
     /** labels: {왼쪽 폭, 왼쪽 가로 위치, 오른쪽 폭, 오른쪽 가로 위치} 슬라이더 이름. */
     private void addKeyAreaControls(LinearLayout card, Prefs p, String[] labels) {
-        card.addView(slider(labels[0], p.balancedConsonantWidthKey(), p.balancedConsonantWidth(),
-                p.balancedWidthMin(), Prefs.BALANCED_CONSONANT_WIDTH_MAX, 5, "%", this::refreshLayoutPreview));
-        card.addView(slider(labels[1], p.balancedConsonantPosKey(), p.balancedConsonantPos(), 0, 100, 5, "",
-                this::refreshLayoutPreview));
-        card.addView(slider(labels[2], p.balancedVowelWidthKey(), p.balancedVowelWidth(),
-                p.balancedWidthMin(),
-                com.alternative_studios.newswipe.keyboard.KeyboardLayout.balancedWidthMax(p), 5, "%",
-                this::refreshLayoutPreview));
-        card.addView(slider(labels[3], p.balancedVowelPosKey(), p.balancedVowelPos(), 0, 100, 5, "",
-                this::refreshLayoutPreview));
+        card.addView(profileSlider(labels[0], p.balancedConsonantWidthKey(), p::balancedConsonantWidth,
+                p.balancedWidthMin(), Prefs.BALANCED_CONSONANT_WIDTH_MAX, 5, "%"));
+        card.addView(profileSlider(labels[1], p.balancedConsonantPosKey(), p::balancedConsonantPos, 0, 100, 5, ""));
+        card.addView(profileSlider(labels[2], p.balancedVowelWidthKey(), p::balancedVowelWidth,
+                p.balancedWidthMin(), com.alternative_studios.newswipe.keyboard.KeyboardLayout.balancedWidthMax(p), 5, "%"));
+        card.addView(profileSlider(labels[3], p.balancedVowelPosKey(), p::balancedVowelPos, 0, 100, 5, ""));
     }
 
     // ---------------------------------------------------------------- 한 손 모드
@@ -2320,6 +2363,7 @@ public final class SettingsActivity extends Activity {
 
     private void refreshLayoutPreview() {
         if (balancedPreview != null) balancedPreview.refresh();
+        if (profilePreview != null) profilePreview.refresh();
         for (java.util.Map.Entry<com.alternative_studios.newswipe.keyboard.KeyboardView, String> e : layoutPreviews.entrySet()) {
             refreshLayoutPreview(e.getKey(), previewPrefs(e.getValue()), isLandscapeProfile(e.getValue()));
         }

@@ -146,7 +146,9 @@ final class KeyboardPreview extends FrameLayout {
         // 자·모음 경계선의 손잡이. 저장 키는 한글 배열마다 다르다 (handleKey).
         B_CONSONANT(false, "자음 키 폭", null, -1),
         B_VOWEL(false, "모음 키 폭", null, -1),
-        B_BOUNDARY(false, "자·모음 경계 위치", null, -1);
+        B_BOUNDARY(false, "자·모음 경계 위치", null, -1),
+        // 가로 모드·대화면 키보드 사용자화 (setProfileMode): 키보드를 화면 아래에서 띄우는 높이. 저장 키는 프로필마다 다르다.
+        LIFT(true, "세로 위치", null, -1);
 
         /** 위아래로 끄는지 (아니면 좌우). */
         final boolean vertical;
@@ -194,6 +196,8 @@ final class KeyboardPreview extends FrameLayout {
             case B_CONSONANT: return positionDrag ? prefs.balancedConsonantPosKey() : prefs.balancedConsonantWidthKey();
             case B_VOWEL: return positionDrag ? prefs.balancedVowelPosKey() : prefs.balancedVowelWidthKey();
             case B_BOUNDARY: return prefs.balancedBoundaryKey();
+            case HEIGHT: return profileEdit != null ? prefs.heightKey() : h.key(0);
+            case LIFT: return prefs.liftKey();
             default: return h.key(selection == null ? 0 : selection.area());
         }
     }
@@ -201,6 +205,10 @@ final class KeyboardPreview extends FrameLayout {
     /** 끄는 동안 보이는 이름. 영역 여백은 영역 이름을 붙인다. */
     private String handleName(Handle h) {
         if (h.areaPad() && selection != null) return areaName(selection.area(), tab) + " " + h.label;
+        if (profileEdit != null && (h == Handle.B_CONSONANT || h == Handle.B_VOWEL)) {
+            // 분리 키보드: 자음·모음 쪽 대신 왼쪽·오른쪽 묶음
+            return (h == Handle.B_CONSONANT ? "왼쪽 묶음 " : "오른쪽 묶음 ") + (positionDrag ? "가로 위치" : "폭");
+        }
         if (positionDrag && h == Handle.B_CONSONANT) return "자음 가로 위치";
         if (positionDrag && h == Handle.B_VOWEL) return "모음 가로 위치";
         return h.label;
@@ -222,6 +230,38 @@ final class KeyboardPreview extends FrameLayout {
                 + "길게 누른 뒤 끌면 가로 위치가 바뀝니다. 가운데 경계선의 손잡이를 끌면 자·모음 경계 위치가 바뀝니다." : null);
         refresh();
     }
+
+    // ---------------------------------------------------------------- 가로 모드·대화면 키보드 사용자화
+
+    /**
+     * 가로 모드·대화면 키보드 사용자화 화면: 그 프로필의 편집 보기(Prefs.profileEditView). 이 화면에서는 그 프로필이 따로 정하는
+     * 값만 바꾼다: 글자 키 높이(↕ 버튼), 세로 위치(아래 가장자리 손잡이), 분리 키보드를 켰으면 왼쪽·오른쪽 묶음의 폭·가로 위치(↔ 버튼).
+     * 키·영역은 고르지 않는다 ('키보드 사용자화'에서만 바꾼다). null이면 보통 미리보기.
+     */
+    private Prefs profileEdit;
+    /** 가로 방향 프로필을 세로 화면에서 미리볼 때 키 높이·글자 크기에 곱하는 비율 (가로로 넓은 자판처럼 보이게). */
+    private float profileScale = 1f;
+
+    /** 가로 모드·대화면 키보드 사용자화 화면으로 쓴다 (edit = 그 프로필의 편집 보기, scale = 키 높이·글자 크기 비율). */
+    void setProfileMode(Prefs edit, float scale) {
+        profileEdit = edit;
+        profileScale = scale;
+        balancedMode = true;   // 균형 배열 사용자화처럼 층·고르기 없이 손잡이만 쓴다
+        selection = null;
+        selectedKey = null;
+        overlay.setContentDescription("키보드 미리보기. 글자 키 가운데의 버튼을 위·아래로 끌면 글자 키 높이가, "
+                + "키보드 아래 가장자리의 손잡이를 끌면 세로 위치가 바뀝니다. 분리 키보드를 켜면 왼쪽·오른쪽 묶음 가운데의 버튼을 "
+                + "좌우로 끌어 묶음 폭을, 길게 누른 뒤 끌어 가로 위치를 바꿉니다.");
+        refresh();
+    }
+
+    /** 키보드를 화면 아래에서 띄우는 높이 (px). 가로 모드·대화면 키보드 사용자화에서만 있다. */
+    private int liftPx() {
+        return profileEdit == null ? 0 : Ui.dp(getContext(), prefs.profileLiftDp());
+    }
+
+    /** 세로 위치만큼 키보드 밑에 비워 두는 칸 (실제 키보드처럼 그만큼 위로 뜬다). */
+    private View liftSpace;
 
     /** 글자 줄 하나의 왼쪽·오른쪽 끝 (미리보기 좌표, 줄 전체 10칸). 자판이 없으면 false. */
     private boolean letterRowSpan(float[] out) {
@@ -245,7 +285,8 @@ final class KeyboardPreview extends FrameLayout {
     /** 균형 배열의 자음(consonant) 또는 모음 쪽 키들을 감싼 윤곽선 (Shift·⌫ 포함). 없으면 false. */
     boolean blockBounds(boolean consonant, RectF out) {
         KeyboardLayout l = keys.getLayout();
-        if (l == null || !prefs.balancedLayout()) return false;
+        // 분리 키보드(가로 모드·대화면)는 두벌식도 가운데에서 나눠 묶음으로 놓는다.
+        if (l == null || !(profileEdit != null ? prefs.profileSplit() : prefs.balancedLayout())) return false;
         Context c = getContext();
         float pad = Ui.dp(c, 3), bx = boundaryX();
         float gx = Ui.dp(c, prefs.keyGapXDp()) / 2f, gy = Ui.dp(c, prefs.keyGapYDp()) / 2f;
@@ -267,7 +308,8 @@ final class KeyboardPreview extends FrameLayout {
         return true;
     }
 
-    private final Prefs prefs;
+    /** 읽는 설정. 가로 모드·대화면 키보드 사용자화에서는 refresh()가 그 프로필의 보기로 바꾼다. */
+    private Prefs prefs;
     private final Listener listener;
     private final LinearLayout column;
     private final LinearLayout bar;
@@ -379,11 +421,13 @@ final class KeyboardPreview extends FrameLayout {
     /** 설정을 다시 읽어 모양·크기·자판을 맞춘다. 같은 값이면 뷰는 그대로라 자주 불러도 된다. */
     void refresh() {
         Context c = getContext();
+        // 가로 모드·대화면: 분리 키보드를 켰으면 편집 보기(묶음 폭·위치를 그 프로필 값으로), 껐으면 실제 키보드처럼 나누지 않은 보기.
+        if (profileEdit != null) prefs = profileEdit.profileSplit() ? profileEdit : profileEdit.profileView(profileEdit.profile());
         theme = KeyboardTheme.of(c);
         setBackgroundColor(theme.background);
         keys.setTheme(theme);
         keys.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), false,
-                prefs.keyTextSize());
+                Math.round(prefs.keyTextSize() * profileScale));
         keys.setKeyShadow(prefs.keyShadow(), prefs.keyShadowStrength());
         keys.setKeyRadius(Ui.dp(c, prefs.keyRadiusDp()));
         keys.setGridColors(prefs.gridColors());
@@ -409,7 +453,7 @@ final class KeyboardPreview extends FrameLayout {
                 && KeyboardLayout.isDigit(l.rows[0].keys[0].label);
         // 키보드와 같은 높이: 글자 4줄 + 숫자 줄 (기호 자판도 같은 높이를 쓴다).
         float rows = KeyboardLayout.rowUnits(prefs);
-        keys.setKeyboardHeight(Math.round(Ui.dp(c, 54) * rows * prefs.keyboardHeight() / 100f) + padT + padB - lift - raise
+        keys.setKeyboardHeight(Math.round(Ui.dp(c, 54) * rows * prefs.keyboardHeight() / 100f * profileScale) + padT + padB - lift - raise
                 + Ui.dp(c, prefs.areaPadVerticalDp()));
         keys.setLayout(l);
         rebuildToolbar(lift, raise);
@@ -504,7 +548,8 @@ final class KeyboardPreview extends FrameLayout {
         boolean bottom = prefs.toolbarBottom();
         int barT = Ui.dp(c, prefs.areaPadDp(AREA_TOOLBAR, Prefs.SIDE_TOP));
         int barB = Ui.dp(c, prefs.areaPadDp(AREA_TOOLBAR, Prefs.SIDE_BOTTOM));
-        String colSig = shown + "," + bottom + "," + height + "," + lift + "," + raise + "," + barT + "," + barB;
+        int liftPx = liftPx();
+        String colSig = shown + "," + bottom + "," + height + "," + lift + "," + raise + "," + barT + "," + barB + "," + liftPx;
         if (colSig.equals(columnSignature)) return;
         columnSignature = colSig;
         column.removeAllViews();
@@ -521,6 +566,14 @@ final class KeyboardPreview extends FrameLayout {
         }
         column.addView(keys, klp);
         if (shown && bottom) column.addView(bar, blp);
+        if (liftPx > 0) {
+            // 세로 위치: 키보드 밑의 빈 곳 (실제로는 뒤의 앱 화면이 보이는 곳이라 설정 화면 바탕색으로 칠한다).
+            if (liftSpace == null) {
+                liftSpace = new View(c);
+                liftSpace.setBackgroundColor(AppTheme.of(c).bg);
+            }
+            column.addView(liftSpace, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, liftPx));
+        }
     }
 
     /** 고른 키를 지금 자판에서 다시 찾는다. 없으면 고르지 않은 것으로 돌린다. */
@@ -755,6 +808,13 @@ final class KeyboardPreview extends FrameLayout {
     /** 손잡이 h가 지금 보이는지. */
     private boolean handleShown(Handle h) {
         if (keys.getLayout() == null) return false;
+        // 가로 모드·대화면 키보드 사용자화: 글자 키 높이·세로 위치, 분리 키보드면 두 묶음의 ↔ 버튼.
+        if (profileEdit != null) {
+            if (h == Handle.HEIGHT || h == Handle.LIFT) return true;
+            if (h == Handle.B_CONSONANT || h == Handle.B_VOWEL) return blockBounds(h == Handle.B_CONSONANT, new RectF());
+            return false;
+        }
+        if (h == Handle.LIFT) return false;
         // 균형 배열 사용자화 화면에서는 그 손잡이만 (균형 배열이 켜져 있을 때).
         if (h.balanced()) return balancedMode && prefs.balancedLayout() && (h == Handle.B_BOUNDARY
                 || blockBounds(h == Handle.B_CONSONANT, new RectF()));
@@ -794,6 +854,7 @@ final class KeyboardPreview extends FrameLayout {
             case PAD_RIGHT:
             case AREA_R: out[0] -= in; break;
             case PAD_BOTTOM:
+            case LIFT:
             case AREA_B: out[1] -= in; break;
             default: out[1] += in; break;   // 위 가장자리의 손잡이 (높이·위쪽 여백)
         }
@@ -829,6 +890,14 @@ final class KeyboardPreview extends FrameLayout {
                 if (!boardBounds(r)) return false;
                 out[0] = h == Handle.PAD_LEFT ? r.left : h == Handle.PAD_RIGHT ? r.right : r.centerX();
                 out[1] = h == Handle.PAD_TOP ? r.top : h == Handle.PAD_BOTTOM ? r.bottom : r.centerY();
+                return true;
+            }
+            case LIFT: {
+                // 세로 위치: 키보드 아래 가장자리 (그 밑은 띄운 빈 곳) 가운데.
+                RectF r = new RectF();
+                if (!boardBounds(r)) return false;
+                out[0] = r.centerX();
+                out[1] = column.getTop() + column.getHeight() - liftPx();
                 return true;
             }
             case B_CONSONANT:
@@ -926,7 +995,7 @@ final class KeyboardPreview extends FrameLayout {
             case TOOLBAR: dragStart = bar.getHeight(); break;
             case NUMBER_ROW: dragStart = Ui.dp(c, 54) * prefs.keyboardHeight() / 100f * prefs.numberRowHeight() / 100f; break;
             case FN_ROW: dragStart = Ui.dp(c, 54) * prefs.keyboardHeight() / 100f * prefs.fnRowHeight() / 100f; break;
-            case HEIGHT: dragStart = Ui.dp(c, 54) * rowUnits() * prefs.keyboardHeight() / 100f; break;
+            case HEIGHT: dragStart = Ui.dp(c, 54) * rowUnits() * prefs.keyboardHeight() / 100f * profileScale; break;
             default: dragStart = valueOf(h); break;
         }
         dragValue = valueOf(h);
@@ -945,6 +1014,7 @@ final class KeyboardPreview extends FrameLayout {
             case NUMBER_ROW: return prefs.numberRowHeight();
             case HEIGHT: return prefs.keyboardHeight();
             case FN_ROW: return prefs.fnRowHeight();
+            case LIFT: return prefs.profileLiftDp();
             case PAD_LEFT: return prefs.padLeftDp();
             case PAD_RIGHT: return prefs.padRightDp();
             case PAD_BOTTOM: return prefs.padBottomDp();
@@ -980,7 +1050,11 @@ final class KeyboardPreview extends FrameLayout {
                         Prefs.FN_ROW_HEIGHT_MIN, Prefs.FN_ROW_HEIGHT_MAX);
                 break;
             case HEIGHT:
-                v = clamp(snap5((dragStart - dy) / (Ui.dp(c, 54) * rowUnits()) * 100f), 70, 140);
+                v = clamp(snap5((dragStart - dy) / (Ui.dp(c, 54) * rowUnits() * profileScale) * 100f),
+                        profileEdit != null ? Prefs.PROFILE_HEIGHT_MIN : 70, 140);
+                break;
+            case LIFT:   // 4dp 단위, 끌어 올리면 키보드가 위로 뜬다
+                v = clamp(Math.round((dragStart - dy / density) / 4f) * 4, 0, 160);
                 break;
             case PAD_LEFT: v = clamp(Math.round(dragStart + dx / density), 0, 24); break;
             case PAD_RIGHT: v = clamp(Math.round(dragStart - dx / density), 0, 24); break;
@@ -1235,7 +1309,7 @@ final class KeyboardPreview extends FrameLayout {
                     c.drawRoundRect(area, rr, rr, fill);
                 }
             }
-            if (prefs.balancedLayout() && areaBounds(AREA_LETTERS, area)) {
+            if (profileEdit == null && prefs.balancedLayout() && areaBounds(AREA_LETTERS, area)) {
                 boolean on = dragging && active == Handle.B_BOUNDARY;
                 float x = boundaryX();
                 stroke.setStrokeWidth(Ui.dp(ctx, on ? 2f : 1.25f));
