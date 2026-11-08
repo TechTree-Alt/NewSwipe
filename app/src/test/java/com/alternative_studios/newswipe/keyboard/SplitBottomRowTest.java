@@ -323,6 +323,27 @@ public class SplitBottomRowTest {
     }
 
     @Test
+    public void bottomRowUsesTheWholeWidthWhenNotFollowingBlocks() throws Exception {
+        for (int[] s : SETTINGS) {
+            for (boolean join : new boolean[]{false, true}) {
+                FakeSp sp = new FakeSp();
+                Prefs p = landscapeEditView(sp);
+                sp.m.put(p.legacyConsonantPosKey(), s[0]);
+                sp.m.put(p.legacyVowelPosKey(), s[1]);
+                sp.m.put(p.balancedConsonantWidthKey(), s[2]);
+                sp.m.put(p.balancedVowelWidthKey(), s[3]);
+                sp.m.put(p.fnFollowKey(), false);
+                sp.m.put(p.splitSpaceJoinKey(), join);
+                assertTrue(!p.fnFollowBlocks());
+                KeyboardLayout l = KeyboardLayout.english(p);
+                float[] e = extent(l.rows[l.rows.length - 1]);
+                assertEquals("기능키 줄 왼쪽 끝", 0f, e[0], 0.001f);
+                assertEquals("기능키 줄 오른쪽 끝", 10f, e[1], 0.001f);
+            }
+        }
+    }
+
+    @Test
     public void emptySpaceRightOfTTypesYWithoutMovingAnyKey() throws Exception {
         boolean seen = false;
         for (int[] s : SETTINGS) {

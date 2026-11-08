@@ -199,6 +199,7 @@ public final class Prefs {
     public static final String SPLIT_GAP_CURSOR = "split_gap_cursor";   // 분리 키보드 가운데 빈 공간을 밀어 커서 이동
     public static final String AUTOFILL_INLINE = "autofill_inline";               // 자동 완성 제안을 도구 막대에 칩으로 (Android 11+)
     public static final String TOOLBAR_FOLLOW_BLOCKS = "toolbar_follow_blocks";   // 분리 키보드: 도구 막대 양 끝이 묶음의 바깥 끝을 따라감
+    public static final String FN_FOLLOW_BLOCKS = "fn_follow_blocks";   // 분리 키보드: 기능키 줄이 두 묶음의 자리·폭을 따라감
     public static final String SPLIT_REACH_COLUMN = "split_reach_column";   // 분리 키보드: 좌·우 균형 배열
     /** 가로 모드·폴더블 내부 화면에서 따로 정하는 키보드 높이·키 글자 크기(%)의 최솟값 (세로 모드는 70). */
     public static final int PROFILE_HEIGHT_MIN = 30;
@@ -502,7 +503,8 @@ public final class Prefs {
             new EditorScope(SCOPE_LETTERS_EN, "영어 글자 키 (자동 대문자·대문자 밀기·이메일 입력란)", keys(AUTO_CAP,
                     ENGLISH_FIELDS, ENGLISH_SWIPE_UPPER), NONE),
             new EditorScope(AREA_SCOPES[3], "기능키", concat(BOTTOM_KEY_VALUES, FN_ROW_HEIGHT, GRID_LAYOUT, DELETE_PRESS_MS,
-                    FN_SWIPE_THRESHOLD, PORTRAIT_PREFIX + SPLIT_SPACE_JOIN, PORTRAIT_PREFIX + SPLIT_FN_WIDTH),
+                    FN_SWIPE_THRESHOLD, PORTRAIT_PREFIX + SPLIT_SPACE_JOIN, PORTRAIT_PREFIX + SPLIT_FN_WIDTH,
+                    PORTRAIT_PREFIX + FN_FOLLOW_BLOCKS),
                     keys(AREA_PAD_PREFIX + PAD_AREAS[3] + "_")),
             new EditorScope(SCOPE_MIDDLE, "가운데 공간 (분리 키보드)", keys(PORTRAIT_PREFIX + SPLIT_GAP_CURSOR,
                     PORTRAIT_PREFIX + SPLIT_GAP_SPEED), keys("swipe_gap_portrait_")),
@@ -515,7 +517,8 @@ public final class Prefs {
             // 키보드 사용자화를 연 채 바꾸면 되돌리기 기록에는 남는다.
             new EditorScope("landscape", null, keys(LANDSCAPE_SPLIT, LANDSCAPE_SIZE, KEYBOARD_HEIGHT_LAND, KEY_TEXT_SIZE_LAND,
                     SPLIT_GAP_CURSOR, SPLIT_GAP_SPEED, SPLIT_SPACE_JOIN, SPLIT_FN_WIDTH, SPLIT_REACH_COLUMN,
-                    PROFILE_LIFT + LANDSCAPE_SUFFIX, FN_ROW_HEIGHT + LANDSCAPE_SUFFIX, TOOLBAR_FOLLOW_BLOCKS + LANDSCAPE_SUFFIX), keys(LANDSCAPE_SPLIT + "_", "balanced_", "swipe_gap_landscape_", "swipe_gap_large_",
+                    PROFILE_LIFT + LANDSCAPE_SUFFIX, FN_ROW_HEIGHT + LANDSCAPE_SUFFIX, TOOLBAR_FOLLOW_BLOCKS + LANDSCAPE_SUFFIX,
+                    FN_FOLLOW_BLOCKS + LANDSCAPE_SUFFIX), keys(LANDSCAPE_SPLIT + "_", "balanced_", "swipe_gap_landscape_", "swipe_gap_large_",
                             SPLIT_REACH_COLUMN + "_")),
     };
 
@@ -594,7 +597,7 @@ public final class Prefs {
     public void resetProfileArea() {
         resetBalancedKeys();
         removeKeys(new String[]{splitKey(), sizeKey(), heightKey(), fnRowHeightKey(), textSizeKey(),
-                toolbarFollowKey(), oneHandWidthKey(), splitGapCursorKey(),
+                toolbarFollowKey(), fnFollowKey(), oneHandWidthKey(), splitGapCursorKey(),
                 splitGapSpeedKey(), splitSpaceJoinKey(), splitFnWidthKey(), splitReachColumnBaseKey(), liftKey()},
                 new String[]{splitKey() + "_", splitReachColumnBaseKey() + "_", "swipe_gap_" + com.alternative_studios.newswipe.keyboard.GapSwipes.SLOTS[gapSlot()] + "_"});   // 예전에 배열마다 저장하던 분리 키보드 값도 함께
     }
@@ -796,6 +799,24 @@ public final class Prefs {
     /** '묶음 좌우 따라가기' 설정값 (기본 켬). 분리 키보드를 켰는지와는 상관없이 저장된 값이다. */
     public boolean getRawFollow() {
         return sp.getBoolean(toolbarFollowKey(), true);
+    }
+
+    /**
+     * 분리 키보드에서 기능키 줄(맨 아래 줄)이 두 묶음의 자리·폭을 따라가는지의 설정 키 (기본 켬). 도구 막대의 것과 같은 범위로 저장한다.
+     */
+    public String fnFollowKey() {
+        if (portrait()) return PORTRAIT_PREFIX + FN_FOLLOW_BLOCKS;
+        return large() ? LARGE_PREFIX + FN_FOLLOW_BLOCKS + "_" + LARGE_LAYOUT_SIDE : FN_FOLLOW_BLOCKS + LANDSCAPE_SUFFIX;
+    }
+
+    /** 기능키의 '묶음 좌우 따라가기' 설정값 (기본 켬). 분리 키보드를 켰는지와는 상관없이 저장된 값이다. */
+    public boolean getRawFnFollow() {
+        return sp.getBoolean(fnFollowKey(), true);
+    }
+
+    /** 기능키 줄이 두 묶음을 따라가는지: 분리 키보드가 아니거나 끄면 false (그때 분리 키보드의 기능키 줄은 키보드 전체 폭을 쓴다). */
+    public boolean fnFollowBlocks() {
+        return profileValues() && getRawFnFollow();
     }
 
     /** 분리 키보드를 켰고 도구 막대가 묶음의 바깥 끝을 따라가게 정했는지. */

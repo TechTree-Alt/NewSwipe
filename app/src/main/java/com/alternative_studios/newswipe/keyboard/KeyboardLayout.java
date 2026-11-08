@@ -1293,9 +1293,10 @@ public final class KeyboardLayout {
      * 왼쪽 묶음을, 오른쪽 스페이스바와 그 오른쪽 키들은 오른쪽 묶음을 채운다. 기능키 폭은 묶음 폭에 비례하고
      * (묶음이 절반을 꽉 채울 때 보통 폭), 스페이스바가 남는 폭을 모두 쓴다.
      * 스페이스바를 없앴으면 키들을 앞쪽 절반(홀수 개면 한 개 더)과 나머지로 나눠 각 묶음을 같은 비율로 채운다.
+     * 기능키의 '묶음 좌우 따라가기'를 끄면 묶음의 자리·폭과 상관없이 두 절반을 꽉 채운다 (키보드 전체 폭, 기능키는 보통 폭).
      */
     private static Row blockSpaceRow(Prefs prefs, int modeType, String modeLabel, boolean emojiKey) {
-        float[] b = blocks(prefs);
+        float[] b = prefs.fnFollowBlocks() ? blocks(prefs) : new float[]{0f, BALANCED_HALF, BALANCED_HALF, BALANCED_HALF};
         List<Key> keys = new ArrayList<>();
         int spaceAt = bottomKeys(modeType, modeLabel, prefs, emojiKey, keys);
         int cut = spaceAt >= 0 ? spaceAt : (keys.size() + 1) / 2;

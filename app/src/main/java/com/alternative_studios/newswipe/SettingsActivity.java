@@ -2466,6 +2466,14 @@ public final class SettingsActivity extends Activity {
                             + "따릅니다. 미리보기에서 고른 영역 위 가장자리의 손잡이를 위·아래로 끌어도 바뀝니다."));
                 }
                 if (!split) break;
+                String fnFollowKey = edit.fnFollowKey();
+                c.addView(toggle("묶음 좌우 따라가기",
+                        "분리 키보드에서 기능키 줄의 양 끝이 왼쪽 묶음의 왼쪽 끝과 오른쪽 묶음의 오른쪽 끝을 따라갑니다. "
+                                + "끄면 기능키 줄은 키보드 전체 폭을 씁니다.",
+                        edit.getRawFnFollow(), v -> {
+                            prefs.raw().edit().putBoolean(fnFollowKey, v).apply();
+                            refreshLayoutPreview();
+                        }));
                 // 스페이스바 잇기 (분리 키보드): 이었을 때만 하단 기능키 폭을 정한다.
                 View fnWidth = subGroup(
                         profileSlider("하단 기능키 폭", edit.splitFnWidthKey(), edit::splitFnWidthSetting, 50, 200, 5, "%"),
