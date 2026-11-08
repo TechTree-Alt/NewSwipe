@@ -1126,7 +1126,7 @@ public final class SettingsActivity extends Activity {
     /**
      * 두 묶음(자음·모음 쪽, 왼쪽·오른쪽 묶음)의 폭·가로 위치 슬라이더 (5단위). 다른 묶음은 지금 자리에 둔 채 두 묶음 사이의
      * 빈 자리 안에서만 움직인다: 다른 묶음에 닿으면 슬라이더가 더 나아가지 않는다 (owner.fitBlockValue).
-     * 미리보기의 ↔ 버튼을 끌면 슬라이더도 따라 움직인다. after는 값을 바꾼 뒤 그 키로 할 일.
+     * 미리보기에서 묶음 가장자리의 손잡이를 끌면 슬라이더도 따라 움직인다. after는 값을 바꾼 뒤 그 키로 할 일.
      */
     private View blockSlider(Prefs owner, String label, String key, java.util.function.IntSupplier current, int min, int max,
                              String unit, java.util.function.Consumer<String> after) {
@@ -1352,7 +1352,7 @@ public final class SettingsActivity extends Activity {
 
     /**
      * 여백 창: area가 -1이면 키보드 전체 둘레의 여백, 아니면 그 영역의 여백 (키보드 전체 여백 안쪽에 더한다).
-     * 미리보기의 손잡이를 끌면 이 슬라이더도 같이 움직인다.
+     * 키보드 전체 여백은 미리보기의 손잡이를 끌면 이 슬라이더도 같이 움직이고, 영역마다의 여백은 이 슬라이더로만 바꾼다.
      */
     private void buildPad(int area) {
         if (area < 0) {
@@ -2342,7 +2342,7 @@ public final class SettingsActivity extends Activity {
     }
 
     /**
-     * 키보드 사용자화 글자 키 창의 분리 키보드 항목: 왼쪽·오른쪽 묶음의 폭·가로 위치(미리보기의 ↔ 버튼과 같이 움직인다)와,
+     * 키보드 사용자화 글자 키 창의 분리 키보드 항목: 왼쪽·오른쪽 묶음의 폭·가로 위치(미리보기의 묶음 경계 손잡이와 같이 움직인다)와,
      * 한글 자판이면 자·모음 분리 배열.
      */
     /** 글자 키 창의 분리 키보드 섹션을 담는 틀 (기호 자판 창이나 다른 창에서는 null). */
@@ -2387,7 +2387,7 @@ public final class SettingsActivity extends Activity {
 
     /**
      * 자·모음 균형 배열 섹션: 자음·모음 쪽의 키 폭·가로 위치. 아래 미리보기에서 글자 키 영역을 고르면
-     * 자음·모음 쪽 ↔ 버튼으로도 바꿀 수 있고, 손잡이를 끌면 슬라이더도 따라 움직인다.
+     * 자음·모음 쪽 왼쪽·오른쪽 가장자리의 손잡이로도 바꿀 수 있고, 손잡이를 끌면 슬라이더도 따라 움직인다.
      */
     private void addEditorBalancedBlocks() {
         LinearLayout c = section("자·모음 균형 배열");
@@ -2395,7 +2395,8 @@ public final class SettingsActivity extends Activity {
         c.addView(blockSlider(prefs, "자음 가로 위치", prefs.balancedConsonantPosKey(), prefs::balancedConsonantPos, 0, Prefs.BALANCED_LEFT_POS_MAX, "", this::syncKeyPanel));
         c.addView(blockSlider(prefs, "모음 키 폭", prefs.balancedVowelWidthKey(), prefs::balancedVowelWidth, prefs.balancedWidthMin(), prefs.balancedWidthMax(), "%", this::syncKeyPanel));
         c.addView(blockSlider(prefs, "모음 가로 위치", prefs.balancedVowelPosKey(), prefs::balancedVowelPos, Prefs.BALANCED_RIGHT_POS_MIN, 100, "", this::syncKeyPanel));
-        c.addView(note(BLOCK_NOTE + " 미리보기에서 자음·모음 쪽 가운데의 ↔ 버튼을 좌우로 끌어도, 길게 누른 뒤 끌어도 바뀝니다."));
+        c.addView(note(BLOCK_NOTE + " 미리보기에서 글자 키를 고르면 자음·모음 쪽 왼쪽·오른쪽 가장자리의 손잡이를 좌우로 끌어 "
+                + "그 경계를 옮길 수도 있습니다."));
     }
 
     /** 두 묶음(자음·모음 쪽, 왼쪽·오른쪽 묶음)의 폭·가로 위치 설명. */
@@ -2409,7 +2410,7 @@ public final class SettingsActivity extends Activity {
         c.addView(blockSlider(prefs, "왼쪽 묶음 가로 위치", prefs.balancedConsonantPosKey(), prefs::balancedConsonantPos, 0, Prefs.BALANCED_LEFT_POS_MAX, "", this::syncKeyPanel));
         c.addView(blockSlider(prefs, "오른쪽 묶음 폭", prefs.balancedVowelWidthKey(), prefs::balancedVowelWidth, prefs.balancedWidthMin(), prefs.balancedWidthMax(), "%", this::syncKeyPanel));
         c.addView(blockSlider(prefs, "오른쪽 묶음 가로 위치", prefs.balancedVowelPosKey(), prefs::balancedVowelPos, Prefs.BALANCED_RIGHT_POS_MIN, 100, "", this::syncKeyPanel));
-        c.addView(note(BLOCK_NOTE + " 미리보기에서 묶음 가운데의 ↔ 버튼을 좌우로 끌어도, 길게 누른 뒤 끌어도 바뀝니다."));
+        c.addView(note(BLOCK_NOTE + " 미리보기에서 묶음 왼쪽·오른쪽 가장자리의 손잡이를 좌우로 끌어 묶음의 경계를 옮길 수도 있습니다."));
     }
 
     /**
@@ -2434,8 +2435,7 @@ public final class SettingsActivity extends Activity {
                     c.addView(blockSlider(edit, side + " 묶음 가로 위치", edit.balancedVowelPosKey(), edit::balancedVowelPos, Prefs.BALANCED_RIGHT_POS_MIN, 100, "", k -> refreshLayoutPreview()));
                 }
                 c.addView(note((left ? "왼쪽 묶음(자음, 숫자 1~5, 스페이스바와 그 왼쪽 키)" : "오른쪽 묶음(모음, 숫자 6~0, 스페이스바와 그 오른쪽 키)")
-                        + "이 함께 움직입니다. " + BLOCK_NOTE + " 미리보기에서 묶음 가운데의 ↔ 버튼을 좌우로 끌어도, "
-                        + "길게 누른 뒤 끌어도 바뀝니다."));
+                        + "이 함께 움직입니다. " + BLOCK_NOTE + " 미리보기에서 묶음 왼쪽·오른쪽 가장자리의 손잡이를 좌우로 끌어 묶음의 경계를 옮길 수도 있습니다."));
                 if (!portraitProfile) addProfileLetterHeight(edit);
                 break;
             }
@@ -2474,7 +2474,7 @@ public final class SettingsActivity extends Activity {
                     c.addView(profileSlider("기능키 높이", edit.fnRowHeightKey(), edit::fnRowHeight,
                             Prefs.FN_ROW_HEIGHT_MIN, Prefs.FN_ROW_HEIGHT_MAX, 5, "%"));
                     c.addView(note("맨 아래 줄(스페이스바·기능키)의 높이로, 일반 키 높이에 대한 비율입니다. 정하기 전에는 세로 모드의 값을 "
-                            + "따릅니다. 미리보기에서 ↕ 버튼을 위·아래로 끌어도 바뀝니다."));
+                            + "따릅니다. 미리보기에서 고른 영역 위 가장자리의 손잡이를 위·아래로 끌어도 바뀝니다."));
                 }
                 if (!split) break;
                 // 스페이스바 잇기 (분리 키보드): 이었을 때만 하단 기능키 폭을 정한다.
@@ -2503,7 +2503,7 @@ public final class SettingsActivity extends Activity {
     private void addProfileLetterHeight(Prefs edit) {
         LinearLayout c = section("글자 키");
         c.addView(profileSlider("글자 키 높이", edit.heightKey(), edit::keyboardHeight, Prefs.PROFILE_HEIGHT_MIN, 140, 5, "%"));
-        c.addView(note("정하기 전에는 세로 모드('키보드 사용자화')의 값을 따릅니다. 미리보기에서 ↕ 버튼을 위·아래로 끌어도 바뀝니다."));
+        c.addView(note("정하기 전에는 세로 모드('키보드 사용자화')의 값을 따릅니다. 미리보기에서 고른 영역 위 가장자리의 손잡이를 위·아래로 끌어도 바뀝니다."));
     }
 
     // ---------------------------------------------------------------- 한 손 모드
