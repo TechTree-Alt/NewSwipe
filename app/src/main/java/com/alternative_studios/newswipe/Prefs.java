@@ -112,7 +112,7 @@ public final class Prefs {
     /** 가로 모드 분리 키보드: 가로 모드에서 자·모음 균형 배열로 자판을 나눈다. 한글 배열마다 따로 저장한다: 이 이름 + "_" + 배열 값. */
     public static final String LANDSCAPE_SPLIT = "landscape_split";
     /**
-     * 세로 모드 분리 키보드 ('키보드 사용자화' 한글 글자 키의 '세부 배열 사용'에서 고른다). 세로 모드의 분리 키보드 세부 값
+     * 세로 모드 분리 키보드 ('키보드 사용자화'의 '분리 키보드 사용'). 세로 모드의 분리 키보드 세부 값
      * (묶음 폭·위치, 스페이스바 잇기 등)은 모두 이 이름으로 시작하는 키에 따로 저장한다 (PORTRAIT_PREFIX).
      */
     public static final String PORTRAIT_SPLIT = "portrait_split";
@@ -937,22 +937,10 @@ public final class Prefs {
     /** 세로 모드(대화면이 아닌) 보기인지. */
     private boolean portrait() { return profile.isEmpty(); }
 
-    /** 세로 모드에서 분리 키보드를 쓰는지 ('세부 배열 사용'에서 고른다, 기본 꺼짐). */
+    /** 세로 모드에서 분리 키보드를 쓰는지 ('키보드 사용자화'의 '분리 키보드 사용', 기본 꺼짐). */
     public boolean portraitSplit() { return sp.getBoolean(PORTRAIT_SPLIT, false); }
 
-    /** 세로 모드의 세부 배열 (DETAIL_*): 사용 안 함·자·모음 균형 배열·분리 키보드. 분리 키보드가 균형 배열보다 앞선다. */
-    public int detailLayout() {
-        if (portraitSplit()) return DETAIL_SPLIT;
-        return new Prefs(sp, false, PROFILE_PORTRAIT, false).balancedLayout() ? DETAIL_BALANCED : DETAIL_NONE;
-    }
 
-    /** 세로 모드의 세부 배열을 정한다. 균형 배열은 지금 한글 배열에 저장한다 (배열마다 따로 기억한다). */
-    public void setDetailLayout(int detail) {
-        sp.edit().putBoolean(PORTRAIT_SPLIT, detail == DETAIL_SPLIT)
-                .putBoolean(BALANCED_LAYOUT + "_" + koreanLayoutId(), detail == DETAIL_BALANCED).apply();
-    }
-
-    public static final int DETAIL_NONE = 0, DETAIL_BALANCED = 1, DETAIL_SPLIT = 2;
 
     /** 대화면 프로필의 방향 이름 ("port", "land"). */
     private String largeSide() { return PROFILE_LARGE_PORTRAIT.equals(profile) ? "port" : "land"; }
