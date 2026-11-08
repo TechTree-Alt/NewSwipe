@@ -184,7 +184,7 @@ public final class Prefs {
     public static final String SPLIT_GAP_CURSOR = "split_gap_cursor";   // 분리 키보드 가운데 빈 공간을 밀어 커서 이동
     public static final String AUTOFILL_INLINE = "autofill_inline";               // 자동 완성 제안을 도구 막대에 칩으로 (Android 11+)
     public static final String TOOLBAR_FOLLOW_BLOCKS = "toolbar_follow_blocks";   // 분리 키보드: 도구 막대 양 끝이 묶음의 바깥 끝을 따라감
-    public static final String SPLIT_REACH_COLUMN = "split_reach_column";   // 분리 키보드: 좌·우 균형 레이아웃
+    public static final String SPLIT_REACH_COLUMN = "split_reach_column";   // 분리 키보드: 좌·우 균형 배열
     /** 가로 모드·대화면에서 따로 정하는 키보드 높이·키 글자 크기(%)의 최솟값 (세로 모드는 70). */
     public static final int PROFILE_HEIGHT_MIN = 30;
     public static final String PROFILE_LIFT = "lift";   // 가로 모드·대화면: 키보드를 화면 아래에서 띄우는 높이(dp), 0~160
@@ -680,13 +680,13 @@ public final class Prefs {
     /** 저장된 '하단 기능키 폭' 값 (스페이스바를 잇지 않아도 설정 화면이 보여 주도록). */
     public int splitFnWidthSetting() { return Math.max(50, Math.min(200, sp.getInt(splitFnWidthKey(), 100))); }
 
-    /** 이 프로필의 '좌·우 균형 레이아웃' 설정 키. */
+    /** 이 프로필의 '좌·우 균형 배열' 설정 키. */
     public String splitReachColumnKey() {
         return large() ? LARGE_PREFIX + SPLIT_REACH_COLUMN + "_" + LARGE_LAYOUT_SIDE : SPLIT_REACH_COLUMN;
     }
 
     /**
-     * 분리 키보드 한글 자판의 좌·우 균형 레이아웃을 쓰는지 (기본은 꺼짐): 양쪽 묶음을 4열씩으로 맞춘다.
+     * 분리 키보드 한글 자판의 좌·우 균형 배열을 쓰는지 (기본은 꺼짐): 양쪽 묶음을 4열씩으로 맞춘다.
      * 8열 단모음은 자음의 맨 오른쪽 줄(ㅅ·ㅎ·ㅍ)을 오른쪽 묶음의 모음 앞으로 옮기고, NewSwipe 단모음은 맨 오른쪽 줄
      * (ㄱ·ㄹ·ㅅ)을 왼쪽에 그대로 둔 채 오른쪽 묶음의 모음 앞에도 하나씩 더 놓는다.
      * 8열 단모음에서는 왼쪽 묶음 바로 오른쪽의 키 하나 폭 빈 자리를 누르면 옮겨 간 키가 눌린다.
@@ -923,7 +923,7 @@ public final class Prefs {
     private String largeSide() { return PROFILE_LARGE_PORTRAIT.equals(profile) ? "port" : "land"; }
 
     /**
-     * '분리 키보드 레이아웃'(분리 키보드 켜기, 좌·우 균형 레이아웃, 스페이스바 잇기, 하단 기능키 폭)의 대화면 키 이름에 붙는 말.
+     * '분리 키보드 레이아웃'(분리 키보드 켜기, 좌·우 균형 배열, 스페이스바 잇기, 하단 기능키 폭)의 대화면 키 이름에 붙는 말.
      * 대화면 세로·가로가 이 값들을 함께 쓰므로 늘 "port"다 (따로 쓰던 때의 대화면 세로 값을 그대로 이어 쓴다).
      */
     private static final String LARGE_LAYOUT_SIDE = "port";

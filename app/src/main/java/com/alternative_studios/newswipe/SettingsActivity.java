@@ -2098,7 +2098,7 @@ public final class SettingsActivity extends Activity {
 
     /**
      * 대화면 키보드 사용자화: 지금 화면 방향(대화면 세로·가로)의 설정을 보여 준다. 기기를 돌리면 다른 방향의 설정이 보인다.
-     * 분리 키보드 켜기와 좌·우 균형 레이아웃은 세로·가로가 함께 쓴다. 영역 설정은 아래 미리보기에서 영역을 눌러 연다.
+     * 분리 키보드 켜기와 좌·우 균형 배열은 세로·가로가 함께 쓴다. 영역 설정은 아래 미리보기에서 영역을 눌러 연다.
      * 대화면이 아니면 안내 문구만 둔다.
      */
     private void buildLargeArea() {
@@ -2124,7 +2124,7 @@ public final class SettingsActivity extends Activity {
         String now = land ? "가로" : "세로", other = land ? "세로" : "가로";
         LinearLayout intro = card();
         intro.addView(note("대화면을 " + now + "로 들었을 때 키보드 모양을 정합니다. " + other + "일 때의 설정은 기기를 " + other + "로 돌리면 보입니다.\n"
-                + "분리 키보드 사용 유무, 좌·우 균형 레이아웃 사용 유무는 세로와 가로가 공유하지만, 나머지 설정은 세로·가로가 각각 별도로 설정할 수 있습니다.\n"
+                + "분리 키보드 사용 유무, 좌·우 균형 배열 사용 유무는 세로와 가로가 공유하지만, 나머지 설정은 세로·가로가 각각 별도로 설정할 수 있습니다.\n"
                 + "여기에서 설정이 불가능한 항목은 '키보드 사용자화'의 설정과 공유합니다."));
         addProfileSplit(profile, "대화면");
         addProfileWhole(profile, when);
@@ -2132,7 +2132,7 @@ public final class SettingsActivity extends Activity {
     }
 
     /**
-     * '분리 키보드' 섹션 (키보드 전체): 분리 키보드 켜기와, 켰을 때 좌·우 균형 레이아웃.
+     * '분리 키보드' 섹션 (키보드 전체): 분리 키보드 켜기와, 켰을 때 좌·우 균형 배열.
      * 켜고 끄면 미리보기의 영역도 바뀐다 (글자 키 ↔ 왼쪽·오른쪽 묶음과 가운데 공간).
      */
     private void addProfileSplit(String profile, String name) {
@@ -2144,7 +2144,7 @@ public final class SettingsActivity extends Activity {
         String reachKey = edit.splitReachColumnKey();
         // 두벌식은 영어 자판처럼 일반 배열을 가운데에서 나눠, 4열로 맞추지 않는다 (검색 목록에는 늘 넣는다).
         if (!prefs.koreanDubeolsik() || harvesting) {
-            box.addView(toggle("좌·우 균형 레이아웃",
+            box.addView(toggle("좌·우 균형 배열",
                     "한글 자판의 왼쪽·오른쪽 묶음을 4열로 맞춥니다.",
                     edit.splitReachColumn(), on -> {
                         prefs.raw().edit().putBoolean(reachKey, on).apply();

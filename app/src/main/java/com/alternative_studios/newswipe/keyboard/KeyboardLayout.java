@@ -368,7 +368,7 @@ public final class KeyboardLayout {
         if (splitView(prefs)) {
             int leftColumns = balancedConsonants(prefs), rightColumns = BALANCED_VOWEL_COLUMNS;
             if (prefs.splitReachColumn()) {
-                // 좌·우 균형 레이아웃: 양쪽 묶음을 4열씩으로 맞춘다.
+                // 좌·우 균형 배열: 양쪽 묶음을 4열씩으로 맞춘다.
                 if (ns) {
                     // NewSwipe 단모음: 자음의 맨 오른쪽 줄(ㄱ·ㄹ·ㅅ)은 그대로 두고, 같은 키를 하나 더 만들어 모음 앞에 놓는다.
                     String last = consonants.get(consonants.size() - 1).label;
@@ -1025,7 +1025,7 @@ public final class KeyboardLayout {
      */
     private static float gridKey(Prefs prefs) {
         // 자·모음 균형 배열: 왼쪽 절반을 나눠 가진 자음 키 한 칸 (5열이면 1칸, 4열이면 1.25칸).
-        // 8열 단모음의 좌·우 균형 레이아웃은 자음이 4열이 되므로 그 폭을 따른다.
+        // 8열 단모음의 좌·우 균형 배열은 자음이 4열이 되므로 그 폭을 따른다.
         // 두벌식은 자음 쪽이 들여쓰기·1.5칸 Shift를 포함해 5.5칸이라 키 한 칸이 그만큼 좁다.
         if (balanced(prefs) && dubeolsik(prefs)) return BALANCED_HALF / QWERTY_LEFT_UNITS;
         if (balanced(prefs)) {
