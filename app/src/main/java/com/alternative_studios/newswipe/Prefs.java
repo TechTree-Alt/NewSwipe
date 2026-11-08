@@ -467,6 +467,8 @@ public final class Prefs {
     /** 영역(미리보기의 영역 번호 차례)마다의 범위 id. */
     public static final String[] AREA_SCOPES = {"area_toolbar", "area_number", "area_letters", "area_fn"};
     public static final String SCOPE_BOARD = "board";
+    /** 세로 모드 분리 키보드의 가운데 공간 창 (밀어서 커서 이동·속도). */
+    public static final String SCOPE_MIDDLE = "area_middle";
     /** 글자 키 창에서 한글·영어 자판에만 있는 값의 범위 id (나머지는 AREA_SCOPES[글자 키]가 함께 쓴다). */
     public static final String SCOPE_LETTERS_KO = "letters_ko", SCOPE_LETTERS_EN = "letters_en";
 
@@ -475,21 +477,25 @@ public final class Prefs {
             new EditorScope("look", "키 모양 (글자 크기·곡률·키 사이 간격·그림자·누름 미리보기)", keys(KEY_TEXT_SIZE, KEY_RADIUS,
                     KEY_GAP_X, KEY_GAP_Y, KEY_SHADOW, KEY_SHADOW_STRENGTH, KEY_PREVIEW), NONE),
             new EditorScope(AREA_SCOPES[0], "도구 막대", concat(TOOL_BUTTON_VALUES, TOOLBAR, TOOLBAR_BOTTOM, TOOLBAR_HEIGHT,
-                    TOOL_BUTTON_SIZE), keys(AREA_PAD_PREFIX + PAD_AREAS[0] + "_", "swipe_toolbar_bar_")),
+                    TOOL_BUTTON_SIZE, PORTRAIT_PREFIX + TOOLBAR_FOLLOW_BLOCKS), keys(AREA_PAD_PREFIX + PAD_AREAS[0] + "_", "swipe_toolbar_bar_")),
             new EditorScope(AREA_SCOPES[1], "숫자 줄", keys(NUMBER_ROW, NUMBER_ROW_HEIGHT, NUMBER_HINT_HIDDEN),
                     keys(AREA_PAD_PREFIX + PAD_AREAS[1] + "_")),
             // 글자 키: 세 자판이 함께 쓰는 값(높이·길게 누르기·밀기·여백)과 한글·영어 글자 키에만 있는 값.
             new EditorScope(AREA_SCOPES[2], "글자 키 공통 (높이·길게 누르기·밀기·여백)", keys(KEYBOARD_HEIGHT, LONG_PRESS_MS,
-                    POPUP_HINT_HIDDEN, SWIPE_THRESHOLD, SWIPE_PICK_SUGGESTION),
-                    keys(AREA_PAD_PREFIX + PAD_AREAS[2] + "_", "swipe_kb_")),
+                    POPUP_HINT_HIDDEN, SWIPE_THRESHOLD, SWIPE_PICK_SUGGESTION, PORTRAIT_PREFIX + SPLIT_REACH_COLUMN),
+                    keys(AREA_PAD_PREFIX + PAD_AREAS[2] + "_", "swipe_kb_", PORTRAIT_PREFIX + "balanced_")),
             new EditorScope(SCOPE_LETTERS_KO, "한글 글자 키 (자판 배열·균형 배열·쌍자음·이중모음 입력)", keys(KOREAN_LAYOUT,
                     DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT, DOUBLE_TAP_CONSONANT_MS, SWIPE_DOWN_CONSONANT, SWIPE_DOWN_VOWEL,
                     ENGLISH_BALANCED),
-                    keys(BALANCED_LAYOUT, PORTRAIT_PREFIX)),
+                    keys(BALANCED_LAYOUT)),
             new EditorScope(SCOPE_LETTERS_EN, "영어 글자 키 (자동 대문자·대문자 밀기·이메일 입력란)", keys(AUTO_CAP,
                     ENGLISH_FIELDS, ENGLISH_SWIPE_UPPER), NONE),
             new EditorScope(AREA_SCOPES[3], "기능키", concat(BOTTOM_KEY_VALUES, FN_ROW_HEIGHT, GRID_LAYOUT, DELETE_PRESS_MS,
-                    FN_SWIPE_THRESHOLD), keys(AREA_PAD_PREFIX + PAD_AREAS[3] + "_")),
+                    FN_SWIPE_THRESHOLD, PORTRAIT_PREFIX + SPLIT_SPACE_JOIN, PORTRAIT_PREFIX + SPLIT_FN_WIDTH),
+                    keys(AREA_PAD_PREFIX + PAD_AREAS[3] + "_")),
+            new EditorScope(SCOPE_MIDDLE, "가운데 공간 (분리 키보드)", keys(PORTRAIT_PREFIX + SPLIT_GAP_CURSOR,
+                    PORTRAIT_PREFIX + SPLIT_GAP_SPEED), NONE),
+            new EditorScope("split", "분리 키보드 사용", keys(PORTRAIT_SPLIT), NONE),
             new EditorScope("keys", "키마다 정한 설정 (길게 누르기·밀기·키 창의 누르기 항목)", keys(NUMBER_PAD_SYMBOLS,
                     DOUBLE_SPACE_PERIOD, SPACE_HIT_SHRINK, SPACE_HIT_SHRINK_PCT, SPACE_LANG_LABEL, SPACE_CURSOR_SPEED_H,
                     SPACE_CURSOR_SPEED_V, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, DELETE_REPEAT_RATE, DELETE_WORD_REPEAT_RATE,
@@ -570,13 +576,6 @@ public final class Prefs {
                     BALANCED_CONSONANT_POS));
         }
         removeKeys(keys.toArray(new String[0]), NONE);
-    }
-
-    /** '분리 키보드 사용자화'(세로 모드) 화면의 값. 세로 모드의 편집 보기(profileEditView(PROFILE_PORTRAIT))에서 부른다. */
-    public void resetPortraitSplitArea() {
-        resetBalancedKeys();
-        removeKeys(new String[]{splitSpaceJoinKey(), splitFnWidthKey(), splitReachColumnKey(), splitGapCursorKey(),
-                splitGapSpeedKey(), toolbarFollowKey()}, NONE);
     }
 
     /** 프로필 사용자화 화면(가로 모드·대화면)의 이 프로필 값. 그 프로필의 편집 보기(profileEditView)에서 부른다. */
