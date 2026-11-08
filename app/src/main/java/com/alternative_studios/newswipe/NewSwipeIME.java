@@ -554,6 +554,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         toolbarHeight = toolbarHeightPx();
 
         root = new LinearLayout(this);
+        appliedCornerRadius = -1;   // 새 root에는 아직 모서리 외곽선이 없다 (applySettings에서 잡는다)
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(theme.background);
         root.setClipChildren(false);
@@ -636,6 +637,35 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         setLayoutKind(layoutKind);
         applyNavigationBarStyle();
         return root;
+    }
+
+    /** 지금 키보드 위쪽 두 모서리에 준 곡률(px). 바뀔 때만 외곽선을 다시 잡는다. */
+    private int appliedCornerRadius = -1;
+
+    /**
+     * 키보드 위쪽 두 모서리를 둥글게 깎는다 (설정의 '키보드 위쪽 모서리 곡률', 0이면 네모).
+     * 입력 뷰 전체(root)를 외곽선으로 잘라, 자판·도구 막대·이모지/클립보드 창이 저마다 칠하는 배경도 함께 깎인다.
+     * 깎인 자리는 키보드 창이 투명해 뒤의 앱 화면이 보인다. 아래쪽 모서리는 외곽선을 곡률만큼 아래로 늘려 네모로 남긴다
+     * (Android 12 이하의 외곽선 자르기는 네 모서리가 같은 둥근 사각형만 된다). 입력 뷰 밖으로는 원래 부모가 잘라 그리지
+     * 않으므로, 이 외곽선 때문에 누름 미리보기가 새로 잘리는 일은 없다 (모서리 안쪽만 깎인다).
+     */
+    private void applyKeyboardCorners() {
+        if (root == null) return;
+        int r = Ui.dp(this, prefs.keyboardCornerRadiusDp());
+        if (r == appliedCornerRadius) return;
+        appliedCornerRadius = r;
+        if (r <= 0) {
+            root.setClipToOutline(false);
+            root.setOutlineProvider(android.view.ViewOutlineProvider.BACKGROUND);
+            return;
+        }
+        root.setOutlineProvider(new android.view.ViewOutlineProvider() {
+            @Override public void getOutline(View v, android.graphics.Outline o) {
+                o.setRoundRect(0, 0, v.getWidth(), v.getHeight() + r, r);
+            }
+        });
+        root.setClipToOutline(true);
+        root.invalidateOutline();
     }
 
     /**
@@ -1301,6 +1331,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
         keyboard.setKeyShadow(prefs.keyShadow(), prefs.keyShadowStrength());
         keyboard.setKeyRadius(Ui.dp(this, prefs.keyRadiusDp()));
+        applyKeyboardCorners();
         keyboard.setGridColors(prefs.gridColors());
         if (panel == PANEL_KEYBOARD) topSlot.setVisibility(toolbarGone() ? View.GONE : View.VISIBLE);
         refreshToolbarVisibility();
