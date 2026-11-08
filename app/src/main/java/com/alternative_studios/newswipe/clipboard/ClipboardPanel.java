@@ -144,14 +144,15 @@ public final class ClipboardPanel extends LinearLayout {
         // 고정 항목 분리: 왼쪽 페이지는 일반 항목(list), 오른쪽 페이지는 고정 항목(pinList). 위의 두 글자로 어느 쪽인지 보이고 눌러 넘길 수 있다.
         tabs = new LinearLayout(context);
         tabs.setGravity(Gravity.CENTER);
-        tabNormal = tab(context, "기록", 0);
-        tabPinned = tab(context, "고정", 1);
+        tabs.setPadding(0, Ui.dp(context, 4), 0, 0);
+        tabNormal = tab(context, "기록", 0, topBarHeight);
+        tabPinned = tab(context, "고정", 1, topBarHeight);
         tabs.addView(tabNormal);
         tabs.addView(tabPinned);
         tabs.setVisibility(GONE);
         addView(tabs, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        pager = new HorizontalScrollView(context);
+        pager = new SnapPager(context);
         pager.setHorizontalScrollBarEnabled(false);
         pager.setOverScrollMode(OVER_SCROLL_NEVER);
         pagerRow = new LinearLayout(context);
@@ -180,15 +181,6 @@ public final class ClipboardPanel extends LinearLayout {
             }
         });
         pager.setOnScrollChangeListener((v, x, y, ox, oy) -> updateTabs());
-        // 손가락을 떼면 가까운 페이지로 맞춘다.
-        pager.setOnTouchListener((v, e) -> {
-            if (e.getActionMasked() == android.view.MotionEvent.ACTION_UP
-                    || e.getActionMasked() == android.view.MotionEvent.ACTION_CANCEL) {
-                int w = Math.max(1, pager.getWidth());
-                pager.post(() -> pager.smoothScrollTo(pager.getScrollX() * 2 > w ? w : 0, 0));
-            }
-            return false;
-        });
         pager.setVisibility(GONE);
         // 일반 항목 목록은 분리했을 때 왼쪽 페이지에 들어간다 (list를 두 곳에 두지 않고 부모를 옮긴다).
         normalPage = normalScroll;
@@ -207,23 +199,77 @@ public final class ClipboardPanel extends LinearLayout {
         return l;
     }
 
-    private TextView tab(Context context, String label, int page) {
-        TextView t = new TextView(context);
-        t.setText(label);
-        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        t.setGravity(Gravity.CENTER);
-        t.setPadding(Ui.dp(context, 18), Ui.dp(context, 6), Ui.dp(context, 18), Ui.dp(context, 6));
+    /** 페이지 버튼: 도구 막대 칩과 같은 모양. 지금 페이지는 강조색 칩이다. */
+    private TextView tab(Context context, String label, int page, int barHeight) {
+        TextView t = Ui.chipButton(context, label, theme.text, theme.functionKey, barHeight);
         t.setOnClickListener(v -> pager.smoothScrollTo(page == 0 ? 0 : pager.getWidth(), 0));
         return t;
     }
 
-    /** 지금 보이는 페이지의 이름만 강조색 굵은 글씨로 보인다. */
+    /** 지금 보이는 페이지의 버튼만 강조색 칩으로 보인다. */
     private void updateTabs() {
         boolean second = pager.getScrollX() * 2 > Math.max(1, pager.getWidth());
-        tabNormal.setTextColor(second ? theme.hint : theme.accent);
-        tabNormal.setTypeface(second ? Typeface.DEFAULT : Typeface.DEFAULT_BOLD);
-        tabPinned.setTextColor(second ? theme.accent : theme.hint);
-        tabPinned.setTypeface(second ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
+        styleTab(tabNormal, !second);
+        styleTab(tabPinned, second);
+    }
+
+    private void styleTab(TextView t, boolean on) {
+        t.setTextColor(on ? theme.onAccent : theme.text);
+        Neu.apply(t, theme, on ? theme.accent : theme.functionKey, Ui.chipRadius(getContext()));
+    }
+
+    /**
+     * 두 페이지를 가로로 넘기는 스크롤. 세로 스크롤 안에서도 가로로 조금만 밀면 바로 넘어가게 가로 움직임을 일찍 가로채고,
+     * 손가락을 떼면 빠르게 튕겼는지(속도)나 절반을 넘었는지에 따라 한 페이지씩 맞춘다.
+     */
+    private static final class SnapPager extends HorizontalScrollView {
+        private final int slop;
+        private float downX, downY;
+        private boolean dragging;
+        private android.view.VelocityTracker velocity;
+
+        SnapPager(Context context) {
+            super(context);
+            slop = android.view.ViewConfiguration.get(context).getScaledTouchSlop() / 2;
+        }
+
+        @Override
+        public boolean onInterceptTouchEvent(android.view.MotionEvent e) {
+            switch (e.getActionMasked()) {
+                case android.view.MotionEvent.ACTION_DOWN:
+                    downX = e.getX();
+                    downY = e.getY();
+                    dragging = false;
+                    break;
+                case android.view.MotionEvent.ACTION_MOVE:
+                    float dx = Math.abs(e.getX() - downX), dy = Math.abs(e.getY() - downY);
+                    if (dx > slop && dx > dy * 0.7f) dragging = true;   // 세로보다 조금만 가로여도 페이지 넘기기
+                    break;
+                default:
+                    break;
+            }
+            return dragging || super.onInterceptTouchEvent(e);
+        }
+
+        @Override
+        public boolean onTouchEvent(android.view.MotionEvent e) {
+            if (velocity == null) velocity = android.view.VelocityTracker.obtain();
+            velocity.addMovement(e);
+            int action = e.getActionMasked();
+            if (action == android.view.MotionEvent.ACTION_UP || action == android.view.MotionEvent.ACTION_CANCEL) {
+                velocity.computeCurrentVelocity(1000);
+                float vx = velocity.getXVelocity();
+                velocity.recycle();
+                velocity = null;
+                dragging = false;
+                int w = Math.max(1, getWidth());
+                boolean second = getScrollX() * 2 > w;
+                if (Math.abs(vx) > 350) second = vx < 0;   // 빠르게 밀면 거리와 상관없이 그 방향으로
+                smoothScrollTo(second ? w : 0, 0);
+                return true;
+            }
+            return super.onTouchEvent(e);
+        }
     }
 
     /** 고정 항목을 따로 한 페이지에 모을지 ('고정 항목 분리'). 다음 show()부터 적용된다. */
