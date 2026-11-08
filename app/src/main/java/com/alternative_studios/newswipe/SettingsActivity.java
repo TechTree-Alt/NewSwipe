@@ -1378,13 +1378,18 @@ public final class SettingsActivity extends Activity {
                 LinearLayout tb = new LinearLayout(this);
                 tb.setOrientation(LinearLayout.VERTICAL);
                 tb.setVisibility(prefs.toolbar() ? View.VISIBLE : View.GONE);
-                keyPanel.setOnToolbarShown(on -> Ui.setVisibleAnimated(tb, on));
+                // 도구 막대 버튼 안내(설정 창 맨 위)도 도구 막대를 껐을 때는 감춘다.
+                keyPanel.setOnToolbarShown(on -> {
+                    Ui.setVisibleAnimated(tb, on);
+                    Ui.setVisibleAnimated(areaNoteBox, on);
+                });
                 list.addView(tb, matchWrap());
                 LinearLayout savedList = list;
                 list = tb;
                 try {
                     if (prefs.portraitSplit()) buildProfileArea(Prefs.PROFILE_PORTRAIT, KeyboardPreview.AREA_TOOLBAR, true);
                     addKeyPageNote("도구 막대 버튼", "버튼을");
+                    if (!prefs.toolbar()) areaNoteBox.setVisibility(View.GONE);
                     buildPad(areaId);
                 } finally {
                     list = savedList;
