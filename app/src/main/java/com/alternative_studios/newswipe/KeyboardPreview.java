@@ -1378,7 +1378,7 @@ final class KeyboardPreview extends FrameLayout {
                             c.drawRoundRect(area, rr, rr, fill);
                             continue;
                         }
-                        String name = side == AREA_MIDDLE ? profileAreaName(AREA_MIDDLE) : areaName(AREA_LETTERS, tab);
+                        String name = side == AREA_MIDDLE ? profileAreaName(AREA_MIDDLE) : AREA_NAMES[AREA_LETTERS];   // 두 묶음 모두 "글자 키"
                         String text = "눌러서 " + name + suffix;
                         float room = area.width() - Ui.dp(ctx, 4);
                         if (areaLabel.measureText(text) + Ui.dp(ctx, 16) > room) text = name;
