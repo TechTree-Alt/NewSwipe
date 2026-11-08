@@ -275,7 +275,7 @@ public class DubeolsikLayoutTest {
         }
     }
 
-    /** 균형 배열의 키 폭·위치·경계 설정을 두벌식도 따르고, 키 폭은 줄마다 같다. */
+    /** 균형 배열의 키 폭·위치 설정을 두벌식도 따르고, 키 폭은 줄마다 같다 (늘 가운데에서 나눈다). */
     @Test
     public void balancedWidthsApplyToEveryRow() throws Exception {
         FakeSp sp = dubeolsik(true);
@@ -283,32 +283,31 @@ public class DubeolsikLayoutTest {
         sp.m.put(p0.balancedVowelWidthKey(), 80);
         sp.m.put(p0.balancedVowelPosKey(), 0);
         sp.m.put(p0.balancedConsonantWidthKey(), 90);
-        sp.m.put(p0.balancedBoundaryKey(), 60);
+        sp.m.put(p0.balancedBoundaryKey(), 60);   // 예전 '자·모음 경계 위치' 값은 쓰지 않는다
         assertTrue(p0.balancedVowelWidthKey().endsWith("_" + Prefs.KOREAN_LAYOUT_DUBEOLSIK));
         KeyboardLayout l = KeyboardLayout.korean(portrait(sp));
-        float consonant = 6f / 5.5f * 0.9f, vowel = 4f / 5f * 0.8f;
+        float consonant = 5f / 5.5f * 0.9f, vowel = 5f / 5f * 0.8f;
         for (int r = 0; r < 3; r++) {
             KeyboardLayout.Row row = l.rows[r];
             assertEquals(10f, total(row), 1e-3f);
             for (Key k : letters(row)) {
                 boolean v = HangulComposer.isVowel(k.label.charAt(0));
                 assertEquals(k.label, v ? vowel : consonant, k.weight, 1e-3f);
-                if (v) assertTrue(k.label, leftOf(row, k, 10) >= 6f - 1e-3f);   // 경계(60%) 오른쪽
-                else assertTrue(k.label, leftOf(row, k, 10) + k.weight <= 6f + 1e-3f);
+                if (v) assertTrue(k.label, leftOf(row, k, 10) >= 5f - 1e-3f);   // 가운데 오른쪽
+                else assertTrue(k.label, leftOf(row, k, 10) + k.weight <= 5f + 1e-3f);
             }
         }
-        // 모음 위치 0: 모음 묶음이 경계에 붙는다 (ㅛ가 경계에서 시작)
-        assertEquals(6f, leftOf(l.rows[0], key(l, "ㅛ"), 10), 1e-3f);
+        // 모음 위치 0: 모음 묶음이 가운데에 붙는다 (ㅛ가 가운데에서 시작)
+        assertEquals(5f, leftOf(l.rows[0], key(l, "ㅛ"), 10), 1e-3f);
     }
 
     /**
-     * 세로 모드 균형 배열의 기본값: 두벌식은 경계 50%, 키 폭 90%, 자음은 왼쪽 끝·모음은 오른쪽 끝.
+     * 세로 모드 균형 배열의 기본값: 두벌식은 키 폭 90%, 자음은 왼쪽 끝·모음은 오른쪽 끝.
      * 단모음 배열은 그대로 키 폭 100%·가운데.
      */
     @Test
     public void balancedDefaults() throws Exception {
         Prefs d = portrait(dubeolsik(true));
-        assertEquals(50, d.balancedBoundary());
         assertEquals(90, d.balancedConsonantWidth());
         assertEquals(0, d.balancedConsonantPos());
         assertEquals(90, d.balancedVowelWidth());
@@ -322,7 +321,6 @@ public class DubeolsikLayoutTest {
             FakeSp sp = new FakeSp();
             sp.m.put(Prefs.KOREAN_LAYOUT, layout);
             Prefs p = portrait(sp);
-            assertEquals(layout, 50, p.balancedBoundary());
             assertEquals(layout, 100, p.balancedConsonantWidth());
             assertEquals(layout, 50, p.balancedConsonantPos());
             assertEquals(layout, 100, p.balancedVowelWidth());
@@ -550,8 +548,8 @@ public class DubeolsikLayoutTest {
             sp.m.put(Prefs.DUBEOLSIK_SHIFT_HIDDEN, true);
             assertEquals(1, count(KeyboardLayout.english(portrait(sp)), Key.SHIFT));
             sp.m.remove(Prefs.DUBEOLSIK_SHIFT_HIDDEN);
-            // 경계·키 폭 설정도 함께 따른다
-            sp.m.put(p.balancedBoundaryKey(), 60);
+            // 키 폭 설정도 함께 따른다
+            sp.m.put(p.balancedConsonantWidthKey(), 80);
             KeyboardLayout moved = KeyboardLayout.english(portrait(sp));
             assertEquals(KeyboardLayout.korean(portrait(sp)).rows[first].keys.length, moved.rows[first].keys.length);
         }

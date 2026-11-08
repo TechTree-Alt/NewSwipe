@@ -152,9 +152,8 @@ public final class Prefs {
     public static final String BALANCED_VOWEL_POS = "balanced_vowel_pos";       // 모음 열 위치: 오른쪽 절반의 남는 폭에서 왼쪽 0 ~ 오른쪽 100
     public static final String BALANCED_CONSONANT_WIDTH = "balanced_consonant_width";   // 자음 키 폭: 기본 폭의 %
     public static final String BALANCED_CONSONANT_POS = "balanced_consonant_pos";       // 자음 열 위치: 왼쪽 절반의 남는 폭에서 왼쪽 0 ~ 오른쪽 100
-    public static final String BALANCED_BOUNDARY = "balanced_boundary";   // 자·모음 경계 위치: 자판 폭에서 자음 쪽이 차지하는 %
-    /** 자·모음 경계 위치의 범위 (%). 50이면 가운데에서 반으로 나눈다. */
-    public static final int BALANCED_BOUNDARY_MIN = 30, BALANCED_BOUNDARY_MAX = 70, BALANCED_BOUNDARY_DEFAULT = 50;
+    /** 예전 '자·모음 경계 위치' 설정의 키 (이제는 없앴고 늘 가운데에서 나눈다). 기본값으로 되돌릴 때 함께 지운다. */
+    public static final String BALANCED_BOUNDARY = "balanced_boundary";
     /** 가로 모드의 값은 위 이름 뒤에 이 말을 붙여 따로 저장한다 (예: balanced_vowel_width_land_danmoeum7). */
     private static final String LANDSCAPE_SUFFIX = "_land";
     public static final int BALANCED_WIDTH_MIN = 60, BALANCED_WIDTH_DEFAULT = 100;
@@ -165,7 +164,8 @@ public final class Prefs {
      * (두 묶음이 가운데에서 살짝 벌어지고 바깥쪽 가장자리 쪽에 모인다). 세로 모드의 균형 배열은 폭 100%·위치 50이 기본이다.
      */
     public static final int SPLIT_WIDTH_DEFAULT = 80, SPLIT_LEFT_POS_DEFAULT = 20, SPLIT_RIGHT_POS_DEFAULT = 80;
-    public static final int BALANCED_CONSONANT_WIDTH_MAX = 100;
+    /** 묶음 가로 위치의 범위: 왼쪽(자음) 묶음은 0~200, 오른쪽(모음) 묶음은 -100~100 (100 넘게·0 아래로는 다른 쪽 절반으로 넘어간다). */
+    public static final int BALANCED_LEFT_POS_MAX = 200, BALANCED_RIGHT_POS_MIN = -100;
     /** 가로 모드는 키를 더 좁게 (30%까지) 줄일 수 있다. */
     public static final int BALANCED_WIDTH_MIN_LANDSCAPE = 30;
     // (예전 '스페이스바를 길게 누른 뒤 밀어서 선택' 스위치 "space_select"는 스페이스바 길게 누르기 기능으로 옮겼다: LegacySwipeSettings)
@@ -502,7 +502,7 @@ public final class Prefs {
                     SPACE_CURSOR_SPEED_V, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, DELETE_REPEAT_RATE, DELETE_WORD_REPEAT_RATE,
                     LANGUAGE_ORDER), keys("popup_", "popupkept_", "repeat_", "swipe_custom_", "swipe_final_", "swipe_vowel_",
                     "swipe_lp_", "swipe_fn_", "swipe_fk_", "swipe_toolbar_")),
-            // 가로 모드 키보드 사용자화·균형 배열 사용자화 화면의 값: 그 화면에 따로 되돌리기가 있어 목록에는 보이지 않지만,
+            // 가로 모드 키보드 사용자화 화면의 값과 자·모음 균형 배열의 키 폭·위치: 그 화면에 따로 되돌리기가 있어 목록에는 보이지 않지만,
             // 키보드 사용자화를 연 채 바꾸면 되돌리기 기록에는 남는다.
             new EditorScope("landscape", null, keys(LANDSCAPE_SPLIT, LANDSCAPE_SIZE, KEYBOARD_HEIGHT_LAND, KEY_TEXT_SIZE_LAND,
                     SPLIT_GAP_CURSOR, SPLIT_GAP_SPEED, SPLIT_SPACE_JOIN, SPLIT_FN_WIDTH, SPLIT_REACH_COLUMN,
@@ -1069,34 +1069,103 @@ public final class Prefs {
         return koreanDubeolsik() ? DUBEOLSIK_WIDTH_DEFAULT : BALANCED_WIDTH_DEFAULT;
     }
 
-    /** 모음 키 폭: 모음 키들이 오른쪽 절반을 꽉 채우는 폭의 % (100이면 꽉 참). 분리 키보드는 오른쪽 묶음의 폭이다. */
-    public int balancedVowelWidth() {
-        int v = perLayoutInt(balancedVowelWidthKey(), BALANCED_VOWEL_WIDTH, widthDefault());
-        return Math.max(balancedWidthMin(), Math.min(BALANCED_CONSONANT_WIDTH_MAX, v));
-    }
-    /** 지금 한글 배열의 자·모음 균형 배열 모음 열 위치 (0 = 오른쪽 절반의 왼쪽 끝, 50 = 가운데, 100 = 오른쪽 끝). */
-    public int balancedVowelPos() {
-        return Math.max(0, Math.min(100, perLayoutInt(balancedVowelPosKey(), BALANCED_VOWEL_POS,
-                profileValues() ? SPLIT_RIGHT_POS_DEFAULT : koreanDubeolsik() ? DUBEOLSIK_VOWEL_POS_DEFAULT : 50)));
-    }
-    /** 지금 한글 배열의 자·모음 균형 배열 자음 키 폭 (왼쪽 절반을 꽉 채우는 폭의 %). */
-    public int balancedConsonantWidth() {
-        int v = perLayoutInt(balancedConsonantWidthKey(), BALANCED_CONSONANT_WIDTH, widthDefault());
-        return Math.max(balancedWidthMin(), Math.min(BALANCED_CONSONANT_WIDTH_MAX, v));
-    }
-    /** 지금 한글 배열의 자·모음 균형 배열 자음 열 위치 (0 = 왼쪽 끝, 50 = 가운데, 100 = 가운데 선 쪽 끝). */
-    public int balancedConsonantPos() {
-        return Math.max(0, Math.min(100, perLayoutInt(balancedConsonantPosKey(), BALANCED_CONSONANT_POS,
-                profileValues() ? SPLIT_LEFT_POS_DEFAULT : koreanDubeolsik() ? DUBEOLSIK_CONSONANT_POS_DEFAULT : 50)));
-    }
     /**
-     * 지금 한글 배열의 자·모음 경계 위치: 자판 폭에서 자음 쪽(왼쪽)이 차지하는 % (30~70, 기본 50 = 가운데).
-     * 세로 모드의 균형 배열에만 있고, 분리 키보드(가로 모드·폴더블 내부 화면)는 늘 가운데에서 나눈다.
+     * 묶음 폭의 최댓값 (%): 다른 묶음을 가장 좁게(balancedWidthMin) 줄였을 때 남는 자리까지 넓힐 수 있다 (100 넘으면 다른 쪽 절반으로 넘어간다).
+     * 실제로는 다른 묶음이 지금 차지한 자리를 넘지 않게 {@link #balancedExtents}가 줄인다.
      */
-    public int balancedBoundary() {
-        if (profileValues()) return BALANCED_BOUNDARY_DEFAULT;
-        return clamp(sp.getInt(balancedBoundaryKey(), BALANCED_BOUNDARY_DEFAULT), BALANCED_BOUNDARY_MIN,
-                BALANCED_BOUNDARY_MAX);
+    public int balancedWidthMax() { return 200 - balancedWidthMin(); }
+
+    /** 한 줄 전체 칸 수와 그 절반 (자·모음 균형 배열·분리 키보드의 두 묶음은 각자 절반을 기준으로 폭·위치를 정한다). */
+    private static final float ROW_UNITS = 10f, HALF_UNITS = ROW_UNITS / 2f;
+
+    /** 왼쪽 묶음의 시작 (칸): 0~100은 절반 안의 남는 폭에서의 위치, 100을 넘으면 그만큼(절반 폭의 %) 오른쪽으로 더 옮긴다. */
+    static float leftStart(float width, int pos) {
+        float free = Math.max(0f, HALF_UNITS - width);
+        return free * Math.min(pos, 100) / 100f + Math.max(0, pos - 100) / 100f * HALF_UNITS;
+    }
+
+    /** leftStart의 반대: 시작(칸)이 start일 때의 가로 위치 (내림해 그 자리를 넘지 않게). */
+    static int leftPos(float width, float start) {
+        float free = Math.max(0f, HALF_UNITS - width);
+        if (free > 0f && start <= free) return (int) Math.floor(start / free * 100f + 1e-3f);
+        return 100 + (int) Math.floor((start - free) / HALF_UNITS * 100f + 1e-3f);
+    }
+
+    /** 오른쪽 묶음의 시작 (칸): 0~100은 오른쪽 절반 안의 남는 폭에서의 위치, 0 아래면 그만큼(절반 폭의 %) 왼쪽으로 더 옮긴다. */
+    static float rightStart(float width, int pos) {
+        float free = Math.max(0f, HALF_UNITS - width);
+        return HALF_UNITS + free * Math.max(pos, 0) / 100f + Math.min(0, pos) / 100f * HALF_UNITS;
+    }
+
+    /** rightStart의 반대 (올림해 그 자리보다 왼쪽으로 가지 않게). */
+    static int rightPos(float width, float start) {
+        float free = Math.max(0f, HALF_UNITS - width), d = start - HALF_UNITS;
+        if (d >= 0f) return free > 0f ? (int) Math.ceil(d / free * 100f - 1e-3f) : 0;
+        return (int) Math.ceil(d / HALF_UNITS * 100f - 1e-3f);
+    }
+
+    private int rawConsonantWidth() {
+        return clamp(perLayoutInt(balancedConsonantWidthKey(), BALANCED_CONSONANT_WIDTH, widthDefault()),
+                balancedWidthMin(), balancedWidthMax());
+    }
+    private int rawVowelWidth() {
+        return clamp(perLayoutInt(balancedVowelWidthKey(), BALANCED_VOWEL_WIDTH, widthDefault()),
+                balancedWidthMin(), balancedWidthMax());
+    }
+    private int rawConsonantPos() {
+        return clamp(perLayoutInt(balancedConsonantPosKey(), BALANCED_CONSONANT_POS,
+                profileValues() ? SPLIT_LEFT_POS_DEFAULT : koreanDubeolsik() ? DUBEOLSIK_CONSONANT_POS_DEFAULT : 50),
+                0, BALANCED_LEFT_POS_MAX);
+    }
+    private int rawVowelPos() {
+        return clamp(perLayoutInt(balancedVowelPosKey(), BALANCED_VOWEL_POS,
+                profileValues() ? SPLIT_RIGHT_POS_DEFAULT : koreanDubeolsik() ? DUBEOLSIK_VOWEL_POS_DEFAULT : 50),
+                BALANCED_RIGHT_POS_MIN, 100);
+    }
+
+    /**
+     * 자·모음 균형 배열·분리 키보드의 두 묶음 {왼쪽 시작, 왼쪽 폭, 오른쪽 시작, 오른쪽 폭} (칸 단위, 줄 전체 10칸).
+     * 폭은 자기 절반의 %라 100을 넘으면 다른 쪽 절반으로 넘어가고, 가로 위치도 왼쪽 묶음은 100 넘게·오른쪽 묶음은 0 아래로
+     * 다른 쪽 절반으로 옮길 수 있다. 다만 두 묶음이 겹치지 않게, 각 묶음은 다른 묶음이 자기 절반 안에서 차지한 자리까지만 쓴다
+     * (넘으면 먼저 그 자리까지로 옮기고, 그래도 안 되면 폭을 줄인다). 줄 밖으로도 나가지 않는다.
+     */
+    public float[] balancedExtents() {
+        float lw = Math.min(ROW_UNITS, HALF_UNITS * rawConsonantWidth() / 100f);
+        float rw = Math.min(ROW_UNITS, HALF_UNITS * rawVowelWidth() / 100f);
+        float ls = Math.max(0f, Math.min(ROW_UNITS - lw, leftStart(lw, rawConsonantPos())));
+        float rs = Math.max(0f, Math.min(ROW_UNITS - rw, rightStart(rw, rawVowelPos())));
+        // 다른 묶음이 자기 절반 안에서 차지한 자리: 왼쪽 묶음은 그 앞까지, 오른쪽 묶음은 그 뒤부터만 쓸 수 있다.
+        float leftHalfEnd = Math.min(HALF_UNITS, ls + lw), rightHalfStart = Math.max(HALF_UNITS, rs);
+        lw = Math.min(lw, rightHalfStart);
+        ls = Math.max(0f, Math.min(ls, rightHalfStart - lw));
+        rw = Math.min(rw, ROW_UNITS - leftHalfEnd);
+        rs = Math.min(Math.max(rs, leftHalfEnd), ROW_UNITS - rw);
+        return new float[]{ls, lw, rs, rw};
+    }
+
+    /** 오른쪽(모음) 묶음의 폭: 오른쪽 절반을 꽉 채우는 폭의 % (100이면 꽉 참, 넘으면 왼쪽 절반으로 넘어간다). 다른 묶음에 막히면 줄인 값. */
+    public int balancedVowelWidth() {
+        int raw = rawVowelWidth();
+        float w = balancedExtents()[3];
+        return Math.abs(w - HALF_UNITS * raw / 100f) < 1e-4f ? raw : (int) Math.floor(w / HALF_UNITS * 100f + 1e-3f);
+    }
+    /** 오른쪽(모음) 묶음의 가로 위치 (0 = 오른쪽 절반의 왼쪽 끝, 50 = 가운데, 100 = 오른쪽 끝, 0 아래면 왼쪽 절반으로). 막히면 옮긴 값. */
+    public int balancedVowelPos() {
+        int raw = rawVowelPos();
+        float[] e = balancedExtents();
+        return Math.abs(e[2] - rightStart(e[3], raw)) < 1e-4f ? raw : rightPos(e[3], e[2]);
+    }
+    /** 왼쪽(자음) 묶음의 폭: 왼쪽 절반을 꽉 채우는 폭의 % (넘으면 오른쪽 절반으로 넘어간다). 다른 묶음에 막히면 줄인 값. */
+    public int balancedConsonantWidth() {
+        int raw = rawConsonantWidth();
+        float w = balancedExtents()[1];
+        return Math.abs(w - HALF_UNITS * raw / 100f) < 1e-4f ? raw : (int) Math.floor(w / HALF_UNITS * 100f + 1e-3f);
+    }
+    /** 왼쪽(자음) 묶음의 가로 위치 (0 = 왼쪽 끝, 50 = 가운데, 100 = 가운데 선 쪽 끝, 100 넘으면 오른쪽 절반으로). 막히면 옮긴 값. */
+    public int balancedConsonantPos() {
+        int raw = rawConsonantPos();
+        float[] e = balancedExtents();
+        return Math.abs(e[0] - leftStart(e[1], raw)) < 1e-4f ? raw : leftPos(e[1], e[0]);
     }
     /** 색 정렬: Shift·⌫·기호 쪽 넘김 키는 글자 키 색, 스페이스바는 기능키 색 (격자 정렬과 상관없이). */
     public boolean gridColors() { return sp.getBoolean(GRID_COLORS, false); }

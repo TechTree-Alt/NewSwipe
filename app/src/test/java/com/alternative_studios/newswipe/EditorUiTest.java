@@ -1370,14 +1370,14 @@ public class EditorUiTest {
         assertTrue(bt, bt.contains("자·모음 균형 배열은 한글 글자 키 영역을 반으로 나눠 각각에 자음과 모음을 놓습니다."));
         assertFalse(bt, bt.contains("분리 키보드는"));
         // 균형 배열 사용자화의 슬라이더가 한글 글자 키 창의 '자·모음 균형 배열' 섹션으로 나와 바로 보인다
-        assertTrue(bt, bt.contains("자·모음 경계 위치") && bt.contains("자음 키 폭") && bt.contains("모음 가로 위치"));
+        assertTrue(bt, bt.contains("자음 키 폭") && bt.contains("모음 가로 위치"));
+        assertFalse(bt, bt.contains("자·모음 경계 위치"));   // 경계 위치 설정은 없앴다
         assertFalse(bt, bt.contains("균형 배열 사용자화"));
-        // 미리보기: 글자 키를 고른 채이면 자음·모음 쪽 ↔ 버튼과 경계선 손잡이가 보인다 (균형 배열 사용자화 화면처럼)
+        // 미리보기: 글자 키를 고른 채이면 자음·모음 쪽 ↔ 버튼이 보인다
         java.lang.reflect.Method bShown = KeyboardPreview.class.getDeclaredMethod("handleShown", KeyboardPreview.Handle.class);
         bShown.setAccessible(true);
         assertTrue((Boolean) bShown.invoke(p, KeyboardPreview.Handle.B_CONSONANT));
         assertTrue((Boolean) bShown.invoke(p, KeyboardPreview.Handle.B_VOWEL));
-        assertTrue((Boolean) bShown.invoke(p, KeyboardPreview.Handle.B_BOUNDARY));
         assertTrue(visibleTexts(cur(a)).contains("영어 자판도 균형 배열"));
         View enRow = (View) findText(cur(a), "영어 자판도 균형 배열").getParent().getParent();
         enRow.performClick();
@@ -1535,79 +1535,77 @@ public class EditorUiTest {
     }
 
     /**
-     * 균형 배열 사용자화: 화면 아래 미리보기의 자음·모음 쪽 ↔ 버튼을 좌우로 끌면 키 폭, 길게 누른 뒤 끌면 가로 위치,
-     * 경계선 손잡이를 끌면 자·모음 경계 위치가 5% 단위로 바뀌고 슬라이더도 따라간다.
+     * 자·모음 균형 배열: 키보드 사용자화 미리보기에서 글자 키를 고르면 자음·모음 쪽 ↔ 버튼이 생기고, 좌우로 끌면 키 폭,
+     * 길게 누른 뒤 끌면 가로 위치가 5% 단위로 바뀌며 '자·모음 균형 배열' 섹션의 슬라이더도 따라간다.
+     * 두 쪽 윤곽선 사이는 늘 2dp 이상 띄우고, 다른 쪽이 비켜 주면 폭을 100% 넘게 넓힐 수 있다. 글자 키 높이 버튼은 가운데에 있다.
      */
     @Test
-    public void balancedLayoutWysiwyg() throws Exception {
+    public void balancedBlocksInTheEditor() throws Exception {
         Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
         pre.raw().edit().putBoolean(pre.balancedLayoutKey(), true).commit();
-        SettingsActivity a = launch("keyarea");
+        SettingsActivity a = launch("keyboard");
         View decor = a.getWindow().getDecorView();
-        assertNotNull(findText(decor, "균형 배열 사용자화"));
-        // 키보드 사용자화처럼 실제 키보드가 미리보기를 덮는다 (화면을 줄이지 않는다)
-        assertEquals(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING,
-                a.getWindow().getAttributes().softInputMode & android.view.WindowManager.LayoutParams.SOFT_INPUT_MASK_ADJUST);
         KeyboardPreview p = find(decor, KeyboardPreview.class);
-        assertNotNull(p);
+        tapArea(p, KeyboardPreview.AREA_LETTERS);
+        assertTrue(open(a));
+        assertTrue(visibleTexts(cur(a)).contains("자음 키 폭"));
         View overlay = p.getChildAt(1);
         java.lang.reflect.Method hc = KeyboardPreview.class.getDeclaredMethod("handleCenter", KeyboardPreview.Handle.class, float[].class);
         hc.setAccessible(true);
-        float[] cons = new float[2], vow = new float[2], bnd = new float[2];
+        float[] cons = new float[2], vow = new float[2], height = new float[2];
         assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_CONSONANT, cons));
         assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_VOWEL, vow));
-        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_BOUNDARY, bnd));
-        assertFalse((Boolean) hc.invoke(p, KeyboardPreview.Handle.HEIGHT, new float[2]));   // 다른 손잡이는 없다
-        assertTrue(cons[0] < bnd[0] && bnd[0] < vow[0]);
-        shot(a, "c0-balanced-wysiwyg");
-        // 자음 ↔ 버튼을 왼쪽으로 끌면 자음 키 폭이 줄어든다 (5단위)
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.HEIGHT, height));
+        float dp = a.getResources().getDisplayMetrics().density;
+        android.graphics.RectF l = new android.graphics.RectF(), r = new android.graphics.RectF();
+        // 두 쪽 모두 폭 100%로 맞닿아도 윤곽선 사이는 2dp
+        assertTrue(p.blockBounds(true, l) && p.blockBounds(false, r));
+        assertTrue((r.left - l.right) + " < 2dp", r.left - l.right >= 2 * dp - 0.5f);
+        // 글자 키 높이 버튼(↕)은 자판 가운데, ↔ 버튼은 각 쪽 가운데
+        assertEquals((l.right + r.left) / 2f, height[0], 2f);
+        assertTrue(cons[0] < height[0] && height[0] < vow[0]);
+        shot(a, "c0-balanced-editor");
+        // 자음 ↔ 버튼을 왼쪽으로 끌면 자음 키 폭이 줄어든다 (5단위), 슬라이더도 따라간다
         int w0 = pre.balancedConsonantWidth();
         drag(overlay, cons[0], cons[1], -120, 0);
         int w1 = pre.balancedConsonantWidth();
         log("consonant width " + w0 + " -> " + w1);
         assertTrue(w1 < w0);
         assertEquals(0, w1 % 5);
-        assertTrue(visibleTexts(cur(a)).contains(w1 + "%"));   // 슬라이더도 따라간다
-        // 길게 누른 뒤 끌면 가로 위치가 바뀐다 (폭은 그대로)
+        assertTrue(visibleTexts(cur(a)).contains(w1 + "%"));
+        // 길게 누른 뒤 오른쪽으로 끌면 가로 위치: 모음 쪽이 절반을 꽉 채우고 있어 가운데(100)에서 멈춘다 (폭은 그대로)
         assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_CONSONANT, cons));
-        int pos0 = pre.balancedConsonantPos();
         t0 = SystemClock.uptimeMillis();
         touch(overlay, MotionEvent.ACTION_DOWN, cons[0], cons[1]);
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(
                 android.view.ViewConfiguration.getLongPressTimeout() + 100));
-        shot(a, "c1-balanced-long-press");
         for (int s = 1; s <= 10; s++) {
-            touch(overlay, MotionEvent.ACTION_MOVE, cons[0] - 12 * s, cons[1]);
+            touch(overlay, MotionEvent.ACTION_MOVE, cons[0] + 30 * s, cons[1]);
             idle();
         }
-        touch(overlay, MotionEvent.ACTION_UP, cons[0] - 120, cons[1]);
+        touch(overlay, MotionEvent.ACTION_UP, cons[0] + 300, cons[1]);
         idle();
-        log("consonant pos " + pos0 + " -> " + pre.balancedConsonantPos());
-        assertTrue(pre.balancedConsonantPos() < pos0);
-        assertEquals(0, pre.balancedConsonantPos() % 5);
+        log("consonant pos -> " + pre.balancedConsonantPos());
+        assertEquals(100, pre.balancedConsonantPos());
         assertEquals(w1, pre.balancedConsonantWidth());
-        // 경계선 손잡이를 오른쪽으로 끌면 자·모음 경계가 오른쪽으로 (5단위, 30~70)
-        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_BOUNDARY, bnd));
-        int b0 = pre.balancedBoundary();
-        drag(overlay, bnd[0], bnd[1], 200, 0);
-        int b1 = pre.balancedBoundary();
-        log("boundary " + b0 + " -> " + b1);
-        assertTrue(b1 > b0);
-        assertEquals(0, b1 % 5);
-        assertTrue(b1 <= Prefs.BALANCED_BOUNDARY_MAX);
-        // 모음 ↔ 버튼도 같다
+        assertTrue(p.blockBounds(true, l) && p.blockBounds(false, r));
+        assertTrue(r.left - l.right >= 2 * dp - 0.5f);
+        // 모음 ↔ 버튼을 오른쪽으로 끌면 모음 키 폭이 줄고, 그러면 자음 쪽을 100% 넘게 넓힐 수 있다
         assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_VOWEL, vow));
         int v0 = pre.balancedVowelWidth();
-        drag(overlay, vow[0], vow[1], 100, 0);   // 모음 쪽은 자음 쪽과 반대: 오른쪽으로 끌면 좁아진다
+        drag(overlay, vow[0], vow[1], 100, 0);
         int v1 = pre.balancedVowelWidth();
         assertTrue(v1 < v0);
-        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_VOWEL, vow));
-        drag(overlay, vow[0], vow[1], -100, 0);   // 왼쪽으로 끌면 넓어진다
-        assertTrue(pre.balancedVowelWidth() > v1);
-        // 고르기·넘기기는 하지 않는다
-        tap(overlay, vow[0] + 60, vow[1] - 40);
-        assertNull(p.selection());
-        shot(a, "c2-balanced-after");
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_CONSONANT, cons));
+        drag(overlay, cons[0], cons[1], 400, 0);
+        log("consonant width (wide) " + pre.balancedConsonantWidth() + ", vowel " + v1);
+        assertTrue(pre.balancedConsonantWidth() > 100);
+        float[] e = pre.balancedExtents();
+        assertTrue(e[0] + e[1] <= e[2] + 1e-4f);   // 모음 쪽과 겹치지 않는다
+        assertTrue(p.blockBounds(true, l) && p.blockBounds(false, r));
+        assertTrue(r.left - l.right >= 2 * dp - 0.5f);
+        assertTrue(visibleTexts(cur(a)).contains(pre.balancedConsonantWidth() + "%"));
+        shot(a, "c1-balanced-editor-wide");
         pre.resetBalancedKeys();
         pre.raw().edit().remove(pre.balancedLayoutKey()).commit();
     }

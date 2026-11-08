@@ -125,7 +125,7 @@ public final class SettingsActivity extends Activity {
                 ? new SettingsFrame(this, sectionName, getString(R.string.app_name)).withSearch(this::onWordSearch, "단어 검색")
                 : new SettingsFrame(this, sectionName, getString(R.string.app_name));
         if (KEYBOARD.equals(sectionId)) frame.withAction(Icons.UNDO, "마지막 변경 되돌리기", v -> undoLast()).keyboardOverlays();
-        else if (KEY_AREA.equals(sectionId) || LANDSCAPE_AREA.equals(sectionId) || LARGE_AREA.equals(sectionId)) {
+        else if (LANDSCAPE_AREA.equals(sectionId) || LARGE_AREA.equals(sectionId)) {
             frame.keyboardOverlays();   // 아래 미리보기 위로 실제 키보드가 덮는다
         }
         ScrollView scroll = new ScrollView(this);
@@ -220,7 +220,7 @@ public final class SettingsActivity extends Activity {
 
     /** 메뉴에는 없고 다른 화면에서 여는 하위 화면. */
     private static final String LEARNED = "learned", BLOCKED = "blocked", PRIVACY = "privacy", LICENSES = "licenses",
-            KEY_AREA = "keyarea", LANDSCAPE_AREA = "landscapearea",
+            LANDSCAPE_AREA = "landscapearea",
             LARGE_AREA = "largearea";
 
     private static final String SOURCE_URL = "https://github.com/TechTree-Alt/NewSwipe";
@@ -235,7 +235,6 @@ public final class SettingsActivity extends Activity {
             case BLOCKED: return "학습하지 않는 단어";
             case PRIVACY: return "개인정보 처리방침";
             case LICENSES: return "오픈소스 라이선스";
-            case KEY_AREA: return "균형 배열 사용자화";
             case LANDSCAPE_AREA: return "가로 모드 키보드 사용자화";
             case LARGE_AREA: return "폴더블 내부 화면 키보드 사용자화";
             default: return null;
@@ -267,7 +266,6 @@ public final class SettingsActivity extends Activity {
             case "backup": buildBackup(); break;
             case PRIVACY: buildPrivacy(); break;
             case LICENSES: buildLicenses(); break;
-            case KEY_AREA: buildKeyArea(); break;
             case LANDSCAPE_AREA: buildLandscapeArea(); break;
             case "lab": buildLab(); break;
             case LARGE_AREA: buildLargeArea(); break;
@@ -277,7 +275,7 @@ public final class SettingsActivity extends Activity {
 
     /** 기본값으로 되돌릴 설정이 있는 메뉴인지 (설정 메뉴와 키 위치·폭, 가로 모드·폴더블 내부 화면 키보드 사용자화 화면. 정보·가져오기 및 내보내기·학습한 단어 등은 제외). */
     private static boolean hasReset(String id) {
-        if (KEY_AREA.equals(id) || LANDSCAPE_AREA.equals(id) || LARGE_AREA.equals(id)) return true;
+        if (LANDSCAPE_AREA.equals(id) || LARGE_AREA.equals(id)) return true;
         for (String[] sec : SECTIONS) if (sec[0].equals(id) && !"backup".equals(id)) return true;
         return false;
     }
@@ -289,8 +287,7 @@ public final class SettingsActivity extends Activity {
 
     /** 이 화면이 담당하는 값만 기본값으로 바꾼다 (확인은 ResetDialog가 이미 받았다). */
     private void reset(String id) {
-        if (KEY_AREA.equals(id)) prefs.resetBalancedKeys();
-        else if (LANDSCAPE_AREA.equals(id)) prefs.profileEditView(Prefs.PROFILE_LANDSCAPE).resetProfileArea();
+        if (LANDSCAPE_AREA.equals(id)) prefs.profileEditView(Prefs.PROFILE_LANDSCAPE).resetProfileArea();
         else if (LARGE_AREA.equals(id)) {
             // 지금 화면 방향(폴더블 내부 화면 세로·가로)의 값만 되돌린다.
             String now = largeProfileNow();
@@ -1126,12 +1123,28 @@ public final class SettingsActivity extends Activity {
         }
     }
 
+    /**
+     * 슬라이더로 정한 값이 실제로 쓰이는 값과 다르면(예: 묶음 폭·위치가 다른 묶음에 막혔다) 쓰이는 값으로 저장하고 슬라이더를 거기로 돌린다.
+     * 그래서 다른 묶음이 차지한 자리에 닿으면 슬라이더가 더 나아가지 않는다.
+     */
+    private void snapToEffective(SettingsWidgets.Slider sl, String key, java.util.function.IntSupplier current) {
+        // 묶음 폭·위치(이름에 balanced_가 든 값)만: 다른 값은 읽는 값과 저장 값의 단위가 다를 수 있다.
+        if (sl == null || !key.contains("balanced_")) return;
+        int eff = current.getAsInt();
+        if (eff == prefs.raw().getInt(key, eff)) return;
+        prefs.raw().edit().putInt(key, eff).apply();
+        sl.set(eff);
+    }
+
     /** 손잡이로도 바뀌는 크기 슬라이더. 손잡이를 끌면 syncSizeSliders가 값을 다시 읽어 맞춘다. */
     private View sizeSlider(String label, String key, java.util.function.IntSupplier current, int min, int max, int step,
                             String unit) {
+        SettingsWidgets.Slider[] ref = new SettingsWidgets.Slider[1];
         SettingsWidgets.Slider sl = sliderRow(label, key, current.getAsInt(), min, max, step, unit, () -> {
+            snapToEffective(ref[0], key, current);
             if (keyPanel != null) keyPanel.syncSize(key);
         });
+        ref[0] = sl;
         if (!harvesting) {
             sliderSink.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(() -> sl.set(current.getAsInt()));
         }
@@ -1872,50 +1885,6 @@ public final class SettingsActivity extends Activity {
 
     private static final String GRID_DESC = "아래 줄의 기능키를 한글 키와 같은 폭으로 해 줄을 맞춥니다. "
             + "오쏘리니어 키보드에서 영감을 받았습니다.";
-    /** 균형 배열 사용자화 화면 아래의 미리보기 (그 화면에서만). */
-    private KeyboardPreview balancedPreview;
-
-    /**
-     * 균형 배열 사용자화: 키보드 사용자화처럼 화면 아래에 실제 키보드와 같은 미리보기를 붙이고, 자음·모음 쪽 윤곽선의
-     * ↔ 버튼(좌우로 끌면 키 폭, 길게 누른 뒤 끌면 가로 위치)과 경계선 손잡이(자·모음 경계 위치)로 바로 바꾼다.
-     * 같은 값을 아래 슬라이더로도 바꿀 수 있고, 손잡이를 끌면 슬라이더도 따라 움직인다. 가로 모드의 값은 따로 정한다.
-     */
-    private void buildKeyArea() {
-        if (!harvesting) {
-            balancedPreview = new KeyboardPreview(this, prefs, new KeyboardPreview.Listener() {
-                @Override public void onTap(KeyboardPreview.Selection s) { }
-                @Override public void onSizeChanged(String prefKey) { syncSizeSliders(prefKey); }
-                @Override public void onLayerChanged(int layer) { }
-            });
-            balancedPreview.setBalancedMode(true);
-            pinnedBottom.addView(balancedPreview, matchWrap());
-            pinnedBottom.setVisibility(View.VISIBLE);
-        }
-        LinearLayout card = section("자음·모음 쪽");
-        card.addView(note("아래 미리보기에서 자음·모음 쪽 가운데의 ↔ 버튼을 좌우로 끌면 키 폭이, 길게 누른 뒤 끌면 가로 위치가 "
-                + "바뀝니다. 가운데 경계선의 손잡이를 끌면 자·모음 경계 위치가 5%씩 바뀝니다."));
-        card.addView(balancedSlider("자·모음 경계 위치", prefs.balancedBoundaryKey(), prefs::balancedBoundary,
-                Prefs.BALANCED_BOUNDARY_MIN, Prefs.BALANCED_BOUNDARY_MAX, "%"));
-        card.addView(balancedSlider("자음 키 폭", prefs.balancedConsonantWidthKey(), prefs::balancedConsonantWidth,
-                prefs.balancedWidthMin(), Prefs.BALANCED_CONSONANT_WIDTH_MAX, "%"));
-        card.addView(balancedSlider("자음 가로 위치", prefs.balancedConsonantPosKey(), prefs::balancedConsonantPos, 0, 100, ""));
-        card.addView(balancedSlider("모음 키 폭", prefs.balancedVowelWidthKey(), prefs::balancedVowelWidth,
-                prefs.balancedWidthMin(), com.alternative_studios.newswipe.keyboard.KeyboardLayout.balancedWidthMax(prefs), "%"));
-        card.addView(balancedSlider("모음 가로 위치", prefs.balancedVowelPosKey(), prefs::balancedVowelPos, 0, 100, ""));
-        card.addView(note("자·모음 경계 위치는 자판 폭에서 자음 쪽이 차지하는 비율입니다 (50%면 가운데). "
-                + "자음 키 폭은 경계 왼쪽을, 모음 키 폭은 경계 오른쪽을 꽉 채우는 폭에 대한 비율입니다 (100%면 꽉 참). "
-                + "가로 위치는 각 쪽 안에서 키들이 놓이는 곳입니다 (0 = 왼쪽 끝, 50 = 가운데, 100 = 오른쪽 끝). "
-                + "아래 줄의 키는 바뀌지 않습니다."));
-    }
-
-    /** 균형 배열 사용자화의 슬라이더 (5단위): 바꾸면 미리보기를 다시 그리고, 미리보기의 손잡이를 끌면 따라 움직인다. */
-    private View balancedSlider(String label, String key, java.util.function.IntSupplier current, int min, int max,
-                                String unit) {
-        SettingsWidgets.Slider sl = sliderRow(label, key, current.getAsInt(), min, max, 5, unit, this::refreshLayoutPreview);
-        if (!harvesting) sizeSliders.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(() -> sl.set(current.getAsInt()));
-        return sl.view;
-    }
-
     /** v를 스크롤 목록 위의 고정된 곳에 놓는다. 설정 검색용으로 화면을 만들 때는 그 임시 목록에 넣는다. */
     private void pinTop(View v) {
         if (harvesting) {
@@ -1996,7 +1965,12 @@ public final class SettingsActivity extends Activity {
     /** 가로 모드·폴더블 내부 화면의 값 슬라이더: 바꾸면 미리보기를 다시 그리고, 미리보기의 손잡이를 끌면 따라 움직인다. */
     private View profileSlider(String label, String key, java.util.function.IntSupplier current, int min, int max, int step,
                                String unit) {
-        SettingsWidgets.Slider sl = sliderRow(label, key, current.getAsInt(), min, max, step, unit, this::refreshLayoutPreview);
+        SettingsWidgets.Slider[] ref = new SettingsWidgets.Slider[1];
+        SettingsWidgets.Slider sl = sliderRow(label, key, current.getAsInt(), min, max, step, unit, () -> {
+            snapToEffective(ref[0], key, current);
+            refreshLayoutPreview();
+        });
+        ref[0] = sl;
         if (!harvesting) sliderSink.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(() -> sl.set(current.getAsInt()));
         return sl.view;
     }
@@ -2409,35 +2383,34 @@ public final class SettingsActivity extends Activity {
     }
 
     /**
-     * 자·모음 균형 배열 섹션: 경계 위치와 자음·모음 쪽의 키 폭·가로 위치. 아래 미리보기에서 글자 키 영역을 고르면
-     * 자음·모음 쪽 ↔ 버튼과 경계선 손잡이로도 바꿀 수 있고, 손잡이를 끌면 슬라이더도 따라 움직인다.
+     * 자·모음 균형 배열 섹션: 자음·모음 쪽의 키 폭·가로 위치. 아래 미리보기에서 글자 키 영역을 고르면
+     * 자음·모음 쪽 ↔ 버튼으로도 바꿀 수 있고, 손잡이를 끌면 슬라이더도 따라 움직인다.
      */
     private void addEditorBalancedBlocks() {
         LinearLayout c = section("자·모음 균형 배열");
-        c.addView(sizeSlider("자·모음 경계 위치", prefs.balancedBoundaryKey(), prefs::balancedBoundary,
-                Prefs.BALANCED_BOUNDARY_MIN, Prefs.BALANCED_BOUNDARY_MAX, 5, "%"));
         c.addView(sizeSlider("자음 키 폭", prefs.balancedConsonantWidthKey(), prefs::balancedConsonantWidth,
-                prefs.balancedWidthMin(), Prefs.BALANCED_CONSONANT_WIDTH_MAX, 5, "%"));
-        c.addView(sizeSlider("자음 가로 위치", prefs.balancedConsonantPosKey(), prefs::balancedConsonantPos, 0, 100, 5, ""));
+                prefs.balancedWidthMin(), prefs.balancedWidthMax(), 5, "%"));
+        c.addView(sizeSlider("자음 가로 위치", prefs.balancedConsonantPosKey(), prefs::balancedConsonantPos, 0, Prefs.BALANCED_LEFT_POS_MAX, 5, ""));
         c.addView(sizeSlider("모음 키 폭", prefs.balancedVowelWidthKey(), prefs::balancedVowelWidth,
-                prefs.balancedWidthMin(), com.alternative_studios.newswipe.keyboard.KeyboardLayout.balancedWidthMax(prefs), 5, "%"));
-        c.addView(sizeSlider("모음 가로 위치", prefs.balancedVowelPosKey(), prefs::balancedVowelPos, 0, 100, 5, ""));
-        c.addView(note("자·모음 경계 위치는 자판 폭에서 자음 쪽이 차지하는 비율입니다 (50%면 가운데). "
-                + "키 폭은 그 쪽을 꽉 채우는 폭에 대한 비율이고 (100%면 꽉 참), 가로 위치는 그 쪽 안에서 키들이 놓이는 곳입니다 "
-                + "(0 = 왼쪽 끝, 50 = 가운데, 100 = 오른쪽 끝). 미리보기에서 자음·모음 쪽 가운데의 ↔ 버튼을 좌우로 끌어도, "
-                + "길게 누른 뒤 끌어도 바뀌고, 경계선의 손잡이를 끌면 경계 위치가 바뀝니다."));
+                prefs.balancedWidthMin(), prefs.balancedWidthMax(), 5, "%"));
+        c.addView(sizeSlider("모음 가로 위치", prefs.balancedVowelPosKey(), prefs::balancedVowelPos, Prefs.BALANCED_RIGHT_POS_MIN, 100, 5, ""));
+        c.addView(note(BLOCK_NOTE + " 미리보기에서 자음·모음 쪽 가운데의 ↔ 버튼을 좌우로 끌어도, 길게 누른 뒤 끌어도 바뀝니다."));
     }
+
+    /** 두 묶음(자음·모음 쪽, 왼쪽·오른쪽 묶음)의 폭·가로 위치 설명. */
+    private static final String BLOCK_NOTE = "폭은 100%면 자기 절반을 꽉 채우고, 다른 묶음이 비켜 준 자리가 있으면 100% 넘게 넓힐 수 있습니다. "
+            + "가로 위치는 절반 안에서 놓이는 곳이고 (0 = 왼쪽 끝, 50 = 가운데, 100 = 오른쪽 끝), 자리가 있으면 왼쪽 묶음은 100 넘게, "
+            + "오른쪽 묶음은 0 아래로 옮겨 다른 쪽 절반으로 넘어갈 수 있습니다.";
 
     private void addEditorSplitBlocks() {
         LinearLayout c = section("분리 키보드");
         c.addView(sizeSlider("왼쪽 묶음 폭", prefs.balancedConsonantWidthKey(), prefs::balancedConsonantWidth,
-                prefs.balancedWidthMin(), Prefs.BALANCED_CONSONANT_WIDTH_MAX, 5, "%"));
-        c.addView(sizeSlider("왼쪽 묶음 가로 위치", prefs.balancedConsonantPosKey(), prefs::balancedConsonantPos, 0, 100, 5, ""));
+                prefs.balancedWidthMin(), prefs.balancedWidthMax(), 5, "%"));
+        c.addView(sizeSlider("왼쪽 묶음 가로 위치", prefs.balancedConsonantPosKey(), prefs::balancedConsonantPos, 0, Prefs.BALANCED_LEFT_POS_MAX, 5, ""));
         c.addView(sizeSlider("오른쪽 묶음 폭", prefs.balancedVowelWidthKey(), prefs::balancedVowelWidth,
-                prefs.balancedWidthMin(), com.alternative_studios.newswipe.keyboard.KeyboardLayout.balancedWidthMax(prefs), 5, "%"));
-        c.addView(sizeSlider("오른쪽 묶음 가로 위치", prefs.balancedVowelPosKey(), prefs::balancedVowelPos, 0, 100, 5, ""));
-        c.addView(note("묶음 폭은 100%면 자기 절반을 꽉 채웁니다. 가로 위치는 절반 안에서 묶음이 놓이는 곳입니다 "
-                + "(0 = 왼쪽 끝, 50 = 가운데, 100 = 오른쪽 끝). 미리보기에서 묶음 가운데의 ↔ 버튼을 좌우로 끌어도, 길게 누른 뒤 끌어도 바뀝니다."));
+                prefs.balancedWidthMin(), prefs.balancedWidthMax(), 5, "%"));
+        c.addView(sizeSlider("오른쪽 묶음 가로 위치", prefs.balancedVowelPosKey(), prefs::balancedVowelPos, Prefs.BALANCED_RIGHT_POS_MIN, 100, 5, ""));
+        c.addView(note(BLOCK_NOTE + " 미리보기에서 묶음 가운데의 ↔ 버튼을 좌우로 끌어도, 길게 누른 뒤 끌어도 바뀝니다."));
     }
 
     /**
@@ -2456,19 +2429,17 @@ public final class SettingsActivity extends Activity {
                 LinearLayout c = section("묶음 크기");
                 if (left) {
                     c.addView(profileSlider(side + " 묶음 폭", edit.balancedConsonantWidthKey(), edit::balancedConsonantWidth,
-                            edit.balancedWidthMin(), Prefs.BALANCED_CONSONANT_WIDTH_MAX, 5, "%"));
+                            edit.balancedWidthMin(), edit.balancedWidthMax(), 5, "%"));
                     c.addView(profileSlider(side + " 묶음 가로 위치", edit.balancedConsonantPosKey(), edit::balancedConsonantPos,
-                            0, 100, 5, ""));
+                            0, Prefs.BALANCED_LEFT_POS_MAX, 5, ""));
                 } else {
                     c.addView(profileSlider(side + " 묶음 폭", edit.balancedVowelWidthKey(), edit::balancedVowelWidth,
-                            edit.balancedWidthMin(),
-                            com.alternative_studios.newswipe.keyboard.KeyboardLayout.balancedWidthMax(edit), 5, "%"));
+                            edit.balancedWidthMin(), edit.balancedWidthMax(), 5, "%"));
                     c.addView(profileSlider(side + " 묶음 가로 위치", edit.balancedVowelPosKey(), edit::balancedVowelPos,
-                            0, 100, 5, ""));
+                            Prefs.BALANCED_RIGHT_POS_MIN, 100, 5, ""));
                 }
                 c.addView(note((left ? "왼쪽 묶음(자음, 숫자 1~5, 스페이스바와 그 왼쪽 키)" : "오른쪽 묶음(모음, 숫자 6~0, 스페이스바와 그 오른쪽 키)")
-                        + "이 함께 움직입니다. 묶음 폭은 100%면 자기 절반을 꽉 채웁니다. 가로 위치는 절반 안에서 묶음이 놓이는 곳입니다 "
-                        + "(0 = 왼쪽 끝, 50 = 가운데, 100 = 오른쪽 끝). 미리보기에서 묶음 가운데의 ↔ 버튼을 좌우로 끌어도, "
+                        + "이 함께 움직입니다. " + BLOCK_NOTE + " 미리보기에서 묶음 가운데의 ↔ 버튼을 좌우로 끌어도, "
                         + "길게 누른 뒤 끌어도 바뀝니다."));
                 if (!portraitProfile) addProfileLetterHeight(edit);
                 break;
@@ -2685,7 +2656,6 @@ public final class SettingsActivity extends Activity {
             new java.util.LinkedHashMap<>();
 
     private void refreshLayoutPreview() {
-        if (balancedPreview != null) balancedPreview.refresh();
         if (profilePreview != null) {
             profilePreview.refresh();
             // 분리 키보드를 켜고 끄면 고른 영역이 없어질 수 있다 (글자 키 ↔ 두 묶음): 그 창을 닫는다.
