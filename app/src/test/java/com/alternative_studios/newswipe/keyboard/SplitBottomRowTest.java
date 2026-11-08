@@ -931,6 +931,16 @@ public class SplitBottomRowTest {
         assertEquals(100, largeLand.splitGapSpeed());
         sp.m.put(port.splitGapSpeedKey(), 1000);
         assertEquals(300, port.splitGapSpeed());
+        // 도구 막대 높이: 정하기 전에는 세로 모드 값, 프로필마다 따로 (세로 모드는 예전 키).
+        Prefs portrait = editView(sp, Prefs.PROFILE_PORTRAIT);
+        assertEquals(Prefs.TOOLBAR_HEIGHT, portrait.toolbarHeightKey());
+        sp.m.put(Prefs.TOOLBAR_HEIGHT, 120);
+        assertEquals(120, land.toolbarHeight());
+        sp.m.put(land.toolbarHeightKey(), 80);
+        assertEquals(80, land.toolbarHeight());
+        assertEquals(120, portrait.toolbarHeight());
+        assertEquals(120, largeLand.toolbarHeight());
+        assertTrue(!port.toolbarHeightKey().equals(largeLand.toolbarHeightKey()));
         // 폴더블 내부 화면 세로에서 켠 분리 키보드는 폴더블 내부 화면 가로에서도 켜져 있다.
         sp.m.put(port.splitKey(), true);
         assertTrue(largeLand.profileSplit());

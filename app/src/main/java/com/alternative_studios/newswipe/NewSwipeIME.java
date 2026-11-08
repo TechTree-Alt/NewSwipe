@@ -1033,7 +1033,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /** 설정의 '도구 막대 높이'(%)를 px로. 100%가 40dp. */
     private int toolbarHeightPx() {
-        return Math.round(Ui.dp(this, 40) * prefs.toolbarHeight() / 100f);
+        return Math.round(Ui.dp(this, 40) * padPrefs().toolbarHeight() / 100f);
     }
 
     /**

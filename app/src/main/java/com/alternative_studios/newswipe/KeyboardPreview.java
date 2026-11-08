@@ -217,6 +217,7 @@ final class KeyboardPreview extends FrameLayout {
             case HEIGHT:
             case HEIGHT_RIGHT: return profileEdit != null ? prefs.heightKey() : h.key;
             case FN_ROW: return profileEdit != null ? prefs.fnRowHeightKey() : h.key;
+            case TOOLBAR: return profileEdit != null ? prefs.toolbarHeightKey() : h.key;
             // 키보드 여백: 가로 모드·폴더블 내부 화면은 그 프로필의 키 (세로 모드는 예전 키 그대로).
             case PAD_LEFT: return prefs.padKey(Prefs.SIDE_LEFT);
             case PAD_RIGHT: return prefs.padKey(Prefs.SIDE_RIGHT);
@@ -1129,13 +1130,14 @@ final class KeyboardPreview extends FrameLayout {
             }
             // 영역 페이지: 고른 영역의 손잡이만 (키보드 사용자화의 영역 설정과 같다).
             int a = profileSelected();
-            // 세로 모드 분리 키보드: 높이는 '키보드 사용자화'에서 정하므로 묶음 손잡이만 쓴다.
-            if (profileEdit.profile().isEmpty() && (h == Handle.HEIGHT || h == Handle.FN_ROW)) return false;
+            // 세로 모드 분리 키보드: 높이(도구 막대·글자 키·기능키)는 '키보드 사용자화'에서 정하므로 묶음 손잡이만 쓴다.
+            if (profileEdit.profile().isEmpty() && (h == Handle.HEIGHT || h == Handle.FN_ROW || h == Handle.TOOLBAR)) return false;
             // 분리 키보드의 글자 키(두 묶음)를 고르면 두 묶음의 경계·↔ 버튼과 묶음마다의 높이 손잡이.
             boolean blocks = a == AREA_LETTERS && splitLetters();
             if (h.balanced()) return blocks && blockBounds(h.leftBlock(), new RectF());
             if (h == Handle.HEIGHT_RIGHT) return blocks;
             switch (h) {
+                case TOOLBAR: return a == AREA_TOOLBAR && bar.getParent() != null;
                 case HEIGHT: return a == AREA_LETTERS;
                 case FN_ROW: return a == AREA_FUNCTION;
                 default: return false;

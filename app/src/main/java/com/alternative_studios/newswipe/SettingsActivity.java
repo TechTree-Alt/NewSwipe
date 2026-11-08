@@ -2471,6 +2471,11 @@ public final class SettingsActivity extends Activity {
             }
             case KeyboardPreview.AREA_TOOLBAR: {
                 LinearLayout c = section(portraitProfile ? "분리 키보드" : "도구 막대");
+                if (!portraitProfile) {
+                    c.addView(profileSlider("도구 막대 높이", edit.toolbarHeightKey(), edit::toolbarHeight, 70, 150, 5, "%"));
+                    c.addView(note("도구 막대(버튼 줄)의 높이로, 기본 높이에 대한 비율입니다. 정하기 전에는 세로 모드의 값을 "
+                            + "따릅니다. 미리보기에서 고른 영역 위 가장자리의 손잡이를 위·아래로 끌어도 바뀝니다."));
+                }
                 // '묶음 좌우 따라가기'는 분리 키보드를 켰을 때만 (세로 모드 분리 키보드 창은 늘 분리 키보드다).
                 if (split) {
                     String followKey = edit.toolbarFollowKey();
