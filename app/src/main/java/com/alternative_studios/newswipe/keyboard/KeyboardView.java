@@ -1341,8 +1341,17 @@ public final class KeyboardView extends View {
             case SELECT:
                 // 길게 누르기만 하고 밀지 않았으면 예전처럼 스페이스를 입력한다.
                 if (!p.selectMoved) {
-                    listener.onKeyTap(p.key);
-                    markChord();
+                    if (p.key.type == Key.SPACER) {
+                        // 가운데 공간은 띄어쓰기 대신 정해 둔 누르기 기능을 실행한다.
+                        String tap = gapSwipes == null ? null : gapSwipes.tap();
+                        if (tap != null) {
+                            listener.onGesture();
+                            listener.onKeyFunction(p.key, tap);
+                        }
+                    } else {
+                        listener.onKeyTap(p.key);
+                        markChord();
+                    }
                 }
                 break;
             case CONSUMED:

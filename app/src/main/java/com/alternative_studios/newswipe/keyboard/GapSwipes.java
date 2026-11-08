@@ -105,13 +105,13 @@ public final class GapSwipes {
             return SwipeAction.idsFor(-1);
         }
 
-        /** 누르기에는 끌어 쓰는 '커서 자유 이동'을 뺀다. 길게 누르기에는 '계속 지우기'도 고를 수 있다 (Caps Lock은 뺀다). */
+        /** 누르기에는 끌어 쓰는 '커서 자유 이동'을 뺀다. 길게 누르기에는 '계속 지우기'와 '길게 누른 뒤 밀어서 글자 선택'도 고를 수 있다 (Caps Lock은 뺀다). */
         @Override
         public String[] choices(int slot, int dir) {
             if (!isPress(slot)) return choices(slot);
             java.util.List<String> ids = new java.util.ArrayList<>();
             if (dir == LONG) {
-                for (String id : SwipeAction.idsForLongPress()) if (!SwipeAction.CAPS_LOCK.equals(id)) ids.add(id);
+                for (String id : SwipeAction.idsForSpaceLongPress()) if (!SwipeAction.CAPS_LOCK.equals(id)) ids.add(id);
             } else {
                 for (String id : choices(slot)) if (!SwipeAction.CURSOR_MOVE.equals(id)) ids.add(id);
             }
