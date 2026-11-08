@@ -401,7 +401,7 @@ public final class SettingsActivity extends Activity {
             {KEYBOARD, "두 번 눌러 마침표", "점 온점 더블 스페이스바"},
             {KEYBOARD, "인식 범위 좁히기", "지우기 백스페이스 스페이스바 오타 오입력 터치 영역"},
             {KEYBOARD, "미는 거리", "스와이프 거리 민감도 밀어서 쌍자음 겹받침 이중모음 ㄲ ㅆ ㅘ 쉼표 글자 입력"},
-            {KEYBOARD, "기능 미는 거리", "스와이프 기능 스페이스바 커서 이동 언어 전환 단어 삭제 이모지 도구 막대 밀기 복사 붙여넣기"},
+            {KEYBOARD, "기능키 미는 거리", "스와이프 기능 스페이스바 커서 이동 언어 전환 단어 삭제 이모지 도구 막대 밀기 복사 붙여넣기"},
             {KEYBOARD, "키보드 밀기 편집", "두 손가락 실행 취소 다시 실행 undo redo 트랙패드 커서 자유 이동 문자 키"},
             {KEYBOARD, "커서 이동 속도 좌우", "스페이스바 커서 키 트랙패드"},
             {KEYBOARD, "자판 트랙패드 좌우", "커서 이동 속도 문자 키"},
@@ -1603,7 +1603,7 @@ public final class SettingsActivity extends Activity {
     }
 
     private View fnSwipeDistanceSlider() {
-        return slider("기능 미는 거리", Prefs.FN_SWIPE_THRESHOLD, prefs.fnSwipeThresholdDp(), 12, 48, 2, "dp");
+        return slider("기능키 미는 거리", Prefs.FN_SWIPE_THRESHOLD, prefs.fnSwipeThresholdDp(), 12, 48, 2, "dp");
     }
 
     /** 키보드 밀기 편집(한 손가락·두 손가락)과 위로 밀어서 추천 단어 입력. */

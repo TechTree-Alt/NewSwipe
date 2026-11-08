@@ -602,7 +602,7 @@ public final class Prefs {
     }
     public int longPressMs() { return sp.getInt(LONG_PRESS_MS, 340); }   // 설정 단위(20ms)에 맞춘 기본값
     public int swipeThresholdDp() { return sp.getInt(SWIPE_THRESHOLD, 22); }
-    /** '기능 미는 거리'. 따로 정한 적이 없으면 (나누기 전처럼) 글자 입력의 미는 거리를 따른다. */
+    /** '기능키 미는 거리'. 따로 정한 적이 없으면 (나누기 전처럼) 글자 입력의 미는 거리를 따른다. */
     public int fnSwipeThresholdDp() { return sp.getInt(FN_SWIPE_THRESHOLD, swipeThresholdDp()); }
     public int emojiSize() { return Math.max(0, Math.min(2, sp.getInt(EMOJI_SIZE, 0))); }
     public boolean vibrate() { return sp.getBoolean(VIBRATE, true); }

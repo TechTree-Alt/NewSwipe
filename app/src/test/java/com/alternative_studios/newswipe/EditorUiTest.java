@@ -901,7 +901,7 @@ public class EditorUiTest {
         t = visibleTexts(cur(a));
         log("FN:\n" + t);
         assertTrue(t.contains("기능키 순서·유무 사용자화") && t.contains("기능키 높이") && t.contains("격자 정렬")
-                && t.contains("기능 미는 거리"));
+                && t.contains("기능키 미는 거리"));
         assertFalse(t.contains("마침표") || t.contains("언어 이름") || t.contains("숫자 패드") || t.contains("언어 순서")
                 || t.contains("커서"));
         shot(a, "82-area-fn");

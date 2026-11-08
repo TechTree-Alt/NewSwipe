@@ -1163,7 +1163,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         keyboard.setPickSwipe(prefs.swipePickSuggestion());
         keyboard.setKeyboardSwipes(KeyboardSwipes.load(prefs));
         toolbarSwipes = ToolbarSwipes.load(prefs);
-        // 지우기 키를 밀어 단어를 지울 때와 같은 거리('기능 미는 거리'의 1.5배)를 쓴다.
+        // 지우기 키를 밀어 단어를 지울 때와 같은 거리('기능키 미는 거리'의 1.5배)를 쓴다.
         if (toolbar != null) {
             toolbar.configure(!SwipeAction.NONE.equals(toolbarAction(Key.SWIPE_UP)),
                     !SwipeAction.NONE.equals(toolbarAction(Key.SWIPE_DOWN)),
