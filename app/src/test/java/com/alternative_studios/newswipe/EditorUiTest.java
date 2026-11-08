@@ -871,6 +871,9 @@ public class EditorUiTest {
         ((View) findText(cur(a), "쌍자음 입력").getParent()).performClick(); idle();
         AlertDialog modes = (AlertDialog) ShadowDialog.getLatestDialog();
         assertEquals(3, modes.getListView().getCount());
+        // 다른 고르기 창과 같은 단추: 기본값(가운데), 취소
+        assertTrue(modes.getButton(AlertDialog.BUTTON_NEUTRAL).isShown() && "기본값".contentEquals(modes.getButton(AlertDialog.BUTTON_NEUTRAL).getText()));
+        assertTrue(modes.getButton(AlertDialog.BUTTON_NEGATIVE).isShown());
         shadowOf(modes).clickOnItem(1);   // 연속 탭
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(400));
         Prefs ip = new Prefs(a);

@@ -1543,7 +1543,7 @@ public final class SettingsActivity extends Activity {
         doubleTapTime.setVisibility(prefs.consonantInputMode() != Prefs.INPUT_SWIPE || harvesting ? View.VISIBLE : View.GONE);
         SettingsWidgets.ValueRow[] consonant = new SettingsWidgets.ValueRow[1];
         consonant[0] = widgets.valueRow("쌍자음 입력", INPUT_MODES[prefs.consonantInputMode()], v ->
-                pickInputMode("쌍자음 입력", prefs.consonantInputMode(), mode -> {
+                pickInputMode("쌍자음 입력", prefs.consonantInputMode(), Prefs.INPUT_SWIPE, mode -> {
                     prefs.setConsonantInputMode(mode);
                     consonant[0].set(INPUT_MODES[mode]);
                     Ui.setVisibleAnimated(doubleTapTime, mode != Prefs.INPUT_SWIPE);
@@ -1552,7 +1552,7 @@ public final class SettingsActivity extends Activity {
         input.addView(doubleTapTime);
         SettingsWidgets.ValueRow[] vowel = new SettingsWidgets.ValueRow[1];
         vowel[0] = widgets.valueRow("이중모음 입력", INPUT_MODES[prefs.vowelInputMode()], v ->
-                pickInputMode("이중모음 입력", prefs.vowelInputMode(), mode -> {
+                pickInputMode("이중모음 입력", prefs.vowelInputMode(), Prefs.INPUT_BOTH, mode -> {
                     prefs.setVowelInputMode(mode);
                     vowel[0].set(INPUT_MODES[mode]);
                 }));
@@ -1562,12 +1562,15 @@ public final class SettingsActivity extends Activity {
     }
 
     /** 쌍자음·이중모음 입력 방식을 고르는 창 (아래로 밀기·연속 탭·둘 다). */
-    private void pickInputMode(String title, int current, java.util.function.IntConsumer onPick) {
-        new android.app.AlertDialog.Builder(this)
+    private void pickInputMode(String title, int current, int defaultMode, java.util.function.IntConsumer onPick) {
+        AppTheme.dialogBuilder(this)   // 다른 고르기 창(길게 누르기·밀기 기능)과 같은 모양: 목록, 기본값, 취소
                 .setTitle(title)
                 .setSingleChoiceItems(INPUT_MODES, current, (d, which) -> {
                     d.dismiss();
                     if (which != current) onPick.accept(which);
+                })
+                .setNeutralButton("기본값", (d, w) -> {
+                    if (current != defaultMode) onPick.accept(defaultMode);
                 })
                 .setNegativeButton("취소", null)
                 .show();
