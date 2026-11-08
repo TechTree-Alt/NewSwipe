@@ -392,7 +392,6 @@ public final class SettingsActivity extends Activity {
             {KEYBOARD, "키 사이 좌우 간격", "키 간격 갭"},
             {KEYBOARD, "키 사이 상하 간격", "키 간격 갭"},
             {"clipemoji", "이모지 크기", "이모티콘 크기 글자 키우기 크게 이모지 창"},
-            {KEYBOARD, "균형 배열 사용자화", "자음 모음 열 폭 위치 배치 키 위치 경계 균형 레이아웃"},
             {KEYBOARD, "상세 배열", "자·모음 균형 배열 분리 키보드 스플릿 split 자음 모음 반반 균형 한글 자판 배열 두벌식 단모음 쿼티 qwerty 레이아웃"},
             {KEYBOARD, "가로 모드 키보드 사용자화", "가로 화면 landscape"},
             {KEYBOARD, "숫자 줄 표시", "숫자 줄 1234567890 숫자열"},
@@ -560,7 +559,7 @@ public final class SettingsActivity extends Activity {
 
     /** 검색 목록에 넣을 화면 (개인정보 처리방침 같은 안내문과 학습한 단어는 뺀다). */
     private static final String[] HARVEST_IDS = {KEYBOARD, EDITOR_PARTS, "theme", "feedback", "words", "clipemoji", "onehand", "backup", "lab", "app",
-            KEY_AREA, LANDSCAPE_AREA, LARGE_AREA};
+            LANDSCAPE_AREA, LARGE_AREA};
 
     private void ensureSearchIndex() {
         if (searchEntries != null || harvestRunning) return;
@@ -1422,6 +1421,7 @@ public final class SettingsActivity extends Activity {
                 // 그 자판의 창에만 둔다. 높이·길게 누르기·밀기·여백은 세 자판이 함께 쓴다.
                 boolean ko = letterTab == KeyboardPreview.TAB_KOREAN, en = letterTab == KeyboardPreview.TAB_ENGLISH;
                 splitHolder = null;
+                balancedHolder = null;
                 if (ko) buildKoreanLayoutSection();
                 LinearLayout size = section("모양");
                 size.addView(sizeSlider("글자 키 높이", Prefs.KEYBOARD_HEIGHT, prefs::keyboardHeight, 70, 140, 5, "%"));
@@ -1431,6 +1431,13 @@ public final class SettingsActivity extends Activity {
                     splitHolder.setOrientation(LinearLayout.VERTICAL);
                     list.addView(splitHolder, matchWrap());
                     fillSplitHolder();
+                }
+                // 자·모음 균형 배열 섹션도 같은 방식: 상세 배열에서 자·모음 균형 배열을 고르면 그 자리에 채워 펼친다 (한글 자판만).
+                if (ko) {
+                    balancedHolder = new LinearLayout(this);
+                    balancedHolder.setOrientation(LinearLayout.VERTICAL);
+                    list.addView(balancedHolder, matchWrap());
+                    fillBalancedHolder();
                 }
                 if (ko) addKoreanInput(section("입력"));
                 if (en) addEnglishInput(section("입력"));   // ⌫ 인식 범위는 ⌫ 키 설정에
@@ -1691,7 +1698,7 @@ public final class SettingsActivity extends Activity {
         return box;
     }
 
-    /** 한글 자판 배열: 배열 고르기와 설명, 자·모음 균형 배열(균형 배열 사용자화). */
+    /** 한글 자판 배열: 배열 고르기와 설명, 상세 배열 (사용 안 함·자·모음 균형 배열·분리 키보드)과 그 하위 항목. */
     private void buildKoreanLayoutSection() {
         LinearLayout korean = section("한글 자판 배열");
         String[] koreanLayouts = {Prefs.KOREAN_LAYOUT_DUBEOLSIK, Prefs.KOREAN_LAYOUT_8, Prefs.KOREAN_LAYOUT_D7};
@@ -1702,16 +1709,15 @@ public final class SettingsActivity extends Activity {
         // 토글의 하위 항목(강조선·들여쓰기)으로 보이는 버튼이다.
         // 버튼은 위아래 여백이 있어, 버튼 자체를 접으면 높이가 0이 된 뒤 남은 여백이 한꺼번에 사라져 끊겨 보인다.
         // 그래서 여백 없는 틀(fold)로 감싸 그 틀을 펼치고 접는다.
-        // 두벌식에서만: 영어 자판도 같은 모양으로 나눈다. 균형 배열의 하위 항목으로 균형 배열 사용자화와 한 묶음에 둔다.
+        // 두벌식에서만: 영어 자판도 같은 모양으로 나눈다. 균형 배열의 하위 항목으로 둔다.
         View englishToggle = toggle("영어 자판도 균형 배열",
                 "영어 자판도 두벌식처럼 가운데에서 나눠 왼쪽 5·5·4키, 오른쪽 5·4·3키로 놓습니다. 경계와 키 폭·위치 설정을 함께 씁니다.",
                 prefs.raw().getBoolean(Prefs.ENGLISH_BALANCED, false), on -> {
                     prefs.raw().edit().putBoolean(Prefs.ENGLISH_BALANCED, on).apply();
                     refreshLayoutPreview();
                 });
-        View englishBalanced = fold(englishToggle);
-        englishBalanced.setVisibility(englishBalancedShown() ? View.VISIBLE : View.GONE);
-        View keyArea = fold(subGroup(button("균형 배열 사용자화", v -> openSection(KEY_AREA)), englishBalanced));
+        // 자·모음 균형 배열의 하위 항목: 영어 자판도 균형 배열 (두벌식에서만). 키 폭·위치는 아래 '자·모음 균형 배열' 섹션에 있다.
+        View keyArea = fold(subGroup(englishToggle));
         // 상세 배열: 사용 안 함·자·모음 균형 배열·분리 키보드 중 하나 (스페이스바 길게 누르기처럼 줄을 눌러 고른다).
         // 균형 배열과 분리 키보드(세로 모드) 모두 모든 한글 배열이 함께 쓴다.
         // 분리 키보드의 하위 항목: 좌·우 균형 배열 (NewSwipe 단모음) 또는 자·모음 분리 배열 (단모음). 두벌식에는 없다.
@@ -1730,7 +1736,7 @@ public final class SettingsActivity extends Activity {
         fillSplitSub.run();
         splitSub.setVisibility(splitSubShown() ? View.VISIBLE : View.GONE);
         // 상세 배열 아래의 설명: 고른 배열의 것만 보인다 ('사용 안 함'이면 감춘다).
-        // 글에 위아래 여백이 있어 여백 없는 틀(fold)로 감싸 그 틀을 펼치고 접는다 (균형 배열 사용자화 버튼과 같은 까닭).
+        // 글에 위아래 여백이 있어 여백 없는 틀(fold)로 감싸 그 틀을 펼치고 접는다 (하위 항목과 같은 까닭).
         TextView detailNote = note(detailNoteText(detailLayout()));
         View detailNoteBox = fold(detailNote);
         detailNoteBox.setVisibility(detailLayout() == DETAIL_NONE ? View.GONE : View.VISIBLE);
@@ -1742,8 +1748,17 @@ public final class SettingsActivity extends Activity {
                     if (mode != DETAIL_SPLIT) e.putBoolean(prefs.balancedLayoutKey(), mode == DETAIL_BALANCED);
                     e.apply();
                     detail[0].set(DETAIL_LAYOUTS[mode]);
-                    Ui.setVisibleAnimated(keyArea, mode == DETAIL_BALANCED);
+                    Ui.setVisibleAnimated(keyArea, balancedSubShown());
                     showDetailNote(detailNoteBox, detailNote, mode);
+                    if (balancedHolder != null) {
+                        if (mode == DETAIL_BALANCED) {
+                            fillBalancedHolder();
+                            balancedHolder.setVisibility(View.GONE);
+                            Ui.setVisibleAnimated(balancedHolder, true);
+                        } else {
+                            Ui.setVisibleAnimated(balancedHolder, false);
+                        }
+                    }
                     if (splitSubShown()) {
                         fillSplitSub.run();
                         splitSub.setVisibility(View.GONE);
@@ -1762,19 +1777,20 @@ public final class SettingsActivity extends Activity {
                     }
                     refreshLayoutPreview();
                 }));
-        keyArea.setVisibility(detailLayout() == DETAIL_BALANCED ? View.VISIBLE : View.GONE);
+        keyArea.setVisibility(balancedSubShown() ? View.VISIBLE : View.GONE);
         LinearLayout choices = choiceRowNow(new String[]{"두벌식", "단모음", "NewSwipe 단모음"}, selected,
                 i -> {
                     prefs.setKoreanLayout(koreanLayouts[i]);
                     layoutNote.setText(layoutNoteText());
                     // 예전에 배열마다 저장한 균형 배열 값이 남아 있으면 배열에 따라 달라질 수 있으므로 상세 배열을 다시 맞춘다.
                     detail[0].set(DETAIL_LAYOUTS[detailLayout()]);
-                    Ui.setVisibleAnimated(keyArea, detailLayout() == DETAIL_BALANCED);
+                    Ui.setVisibleAnimated(keyArea, balancedSubShown());
                     showDetailNote(detailNoteBox, detailNote, detailLayout());
                     // 하위 토글은 배열마다 이름이 달라 (두벌식은 없음) 고른 배열의 것으로 다시 만든다.
                     if (splitSubShown()) fillSplitSub.run();
                     Ui.setVisibleAnimated(splitSub, splitSubShown());
-                    Ui.setVisibleAnimated(englishBalanced, englishBalancedShown());
+                    // 균형 배열의 키 폭·위치도 배열마다 따로 저장하므로 고른 배열의 것으로 다시 채운다.
+                    if (detailLayout() == DETAIL_BALANCED) fillBalancedHolder();
                     // 분리 키보드 묶음 폭·위치는 배열마다 따로 저장하므로 고른 배열의 것으로 다시 채운다.
                     if (prefs.portraitSplit()) fillSplitHolder();
                     refreshLayoutPreview();
@@ -1782,10 +1798,15 @@ public final class SettingsActivity extends Activity {
         korean.addView(choices);
         korean.addView(layoutNote);
         korean.addView(detail[0].view);
-        // 하위 항목(균형 배열 사용자화, 좌·우 균형 배열·자·모음 분리 배열)이 상세 배열 바로 아래, 설명은 그 아래.
+        // 하위 항목(영어 자판도 균형 배열, 좌·우 균형 배열·자·모음 분리 배열)이 상세 배열 바로 아래, 설명은 그 아래.
         korean.addView(keyArea);
         korean.addView(splitSub);
         korean.addView(detailNoteBox);
+    }
+
+    /** 자·모음 균형 배열의 하위 항목(영어 자판도 균형 배열)이 보이는지: 자·모음 균형 배열을 골랐고 두벌식일 때. */
+    private boolean balancedSubShown() {
+        return detailLayout() == DETAIL_BALANCED && englishBalancedShown();
     }
 
     /** 분리 키보드의 하위 항목(좌·우 균형 배열·자·모음 분리 배열)이 보이는지: 분리 키보드를 골랐고 두벌식이 아닐 때. */
@@ -2365,6 +2386,46 @@ public final class SettingsActivity extends Activity {
         } finally {
             list = saved;
         }
+    }
+
+    /** 한글 글자 키 창의 자·모음 균형 배열 섹션을 담는 틀 (다른 창에서는 null). */
+    private LinearLayout balancedHolder;
+
+    /**
+     * 자·모음 균형 배열 섹션을 지금 설정으로 다시 채운다. 슬라이더의 설정 키가 한글 배열마다 달라 펼칠 때·배열을 바꿀 때 새로 만든다.
+     * 자·모음 균형 배열을 쓰지 않으면 비워 둔다 (설정 검색 목록을 만들 때는 늘 넣는다).
+     */
+    private void fillBalancedHolder() {
+        if (balancedHolder == null) return;
+        balancedHolder.removeAllViews();
+        if (detailLayout() != DETAIL_BALANCED && !harvesting) return;
+        LinearLayout saved = list;
+        list = balancedHolder;
+        try {
+            addEditorBalancedBlocks();
+        } finally {
+            list = saved;
+        }
+    }
+
+    /**
+     * 자·모음 균형 배열 섹션: 경계 위치와 자음·모음 쪽의 키 폭·가로 위치. 아래 미리보기에서 글자 키 영역을 고르면
+     * 자음·모음 쪽 ↔ 버튼과 경계선 손잡이로도 바꿀 수 있고, 손잡이를 끌면 슬라이더도 따라 움직인다.
+     */
+    private void addEditorBalancedBlocks() {
+        LinearLayout c = section("자·모음 균형 배열");
+        c.addView(sizeSlider("자·모음 경계 위치", prefs.balancedBoundaryKey(), prefs::balancedBoundary,
+                Prefs.BALANCED_BOUNDARY_MIN, Prefs.BALANCED_BOUNDARY_MAX, 5, "%"));
+        c.addView(sizeSlider("자음 키 폭", prefs.balancedConsonantWidthKey(), prefs::balancedConsonantWidth,
+                prefs.balancedWidthMin(), Prefs.BALANCED_CONSONANT_WIDTH_MAX, 5, "%"));
+        c.addView(sizeSlider("자음 가로 위치", prefs.balancedConsonantPosKey(), prefs::balancedConsonantPos, 0, 100, 5, ""));
+        c.addView(sizeSlider("모음 키 폭", prefs.balancedVowelWidthKey(), prefs::balancedVowelWidth,
+                prefs.balancedWidthMin(), com.alternative_studios.newswipe.keyboard.KeyboardLayout.balancedWidthMax(prefs), 5, "%"));
+        c.addView(sizeSlider("모음 가로 위치", prefs.balancedVowelPosKey(), prefs::balancedVowelPos, 0, 100, 5, ""));
+        c.addView(note("자·모음 경계 위치는 자판 폭에서 자음 쪽이 차지하는 비율입니다 (50%면 가운데). "
+                + "키 폭은 그 쪽을 꽉 채우는 폭에 대한 비율이고 (100%면 꽉 참), 가로 위치는 그 쪽 안에서 키들이 놓이는 곳입니다 "
+                + "(0 = 왼쪽 끝, 50 = 가운데, 100 = 오른쪽 끝). 미리보기에서 자음·모음 쪽 가운데의 ↔ 버튼을 좌우로 끌어도, "
+                + "길게 누른 뒤 끌어도 바뀌고, 경계선의 손잡이를 끌면 경계 위치가 바뀝니다."));
     }
 
     private void addEditorSplitBlocks() {

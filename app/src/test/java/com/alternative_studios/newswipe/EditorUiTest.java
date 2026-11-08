@@ -1340,6 +1340,7 @@ public class EditorUiTest {
         assertTrue(st, st.contains("왼쪽 묶음 폭") && st.contains("오른쪽 묶음 가로 위치"));
         assertTrue(st, st.contains("분리 키보드는 키보드 전체를 반으로 나눕니다. 영어 자판과 기호 자판에도 적용됩니다."));
         assertFalse(st, st.contains("자·모음 균형 배열은"));
+        assertFalse(st, st.contains("자음 키 폭"));   // 자·모음 균형 배열 섹션은 균형 배열을 골랐을 때만
         assertFalse(st, st.contains("자·모음 분리 배열"));   // 두벌식에는 분리 키보드의 하위 토글이 없다
         findText(cur(a), "단모음").performClick();   // 분리 키보드는 모든 배열이 함께 쓴다
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
@@ -1368,6 +1369,15 @@ public class EditorUiTest {
         assertFalse(bt, bt.contains("왼쪽 묶음 폭"));   // 분리 키보드 섹션은 접힌다
         assertTrue(bt, bt.contains("자·모음 균형 배열은 한글 글자 키 영역을 반으로 나눠 각각에 자음과 모음을 놓습니다."));
         assertFalse(bt, bt.contains("분리 키보드는"));
+        // 균형 배열 사용자화의 슬라이더가 한글 글자 키 창의 '자·모음 균형 배열' 섹션으로 나와 바로 보인다
+        assertTrue(bt, bt.contains("자·모음 경계 위치") && bt.contains("자음 키 폭") && bt.contains("모음 가로 위치"));
+        assertFalse(bt, bt.contains("균형 배열 사용자화"));
+        // 미리보기: 글자 키를 고른 채이면 자음·모음 쪽 ↔ 버튼과 경계선 손잡이가 보인다 (균형 배열 사용자화 화면처럼)
+        java.lang.reflect.Method bShown = KeyboardPreview.class.getDeclaredMethod("handleShown", KeyboardPreview.Handle.class);
+        bShown.setAccessible(true);
+        assertTrue((Boolean) bShown.invoke(p, KeyboardPreview.Handle.B_CONSONANT));
+        assertTrue((Boolean) bShown.invoke(p, KeyboardPreview.Handle.B_VOWEL));
+        assertTrue((Boolean) bShown.invoke(p, KeyboardPreview.Handle.B_BOUNDARY));
         assertTrue(visibleTexts(cur(a)).contains("영어 자판도 균형 배열"));
         View enRow = (View) findText(cur(a), "영어 자판도 균형 배열").getParent().getParent();
         enRow.performClick();

@@ -330,6 +330,20 @@ final class KeyboardPreview extends FrameLayout {
                 && blockBounds(true, new RectF()) && blockBounds(false, new RectF());
     }
 
+    /**
+     * 키보드 사용자화(영역 층)에서 한글 글자 키를 자·모음 균형 배열의 자음·모음 쪽 윤곽선으로 그리는지
+     * (분리 키보드 없이 자·모음 균형 배열을 쓰고 한글 자판일 때). 균형 배열 사용자화 화면처럼 경계선도 함께 그린다.
+     */
+    private boolean editorBalanced() {
+        return profileEdit == null && !balancedMode && tab == TAB_KOREAN && !prefs.splitView() && prefs.balancedLayout()
+                && blockBounds(true, new RectF()) && blockBounds(false, new RectF());
+    }
+
+    /** 키보드 사용자화에서 고른 영역이 자·모음 균형 배열의 글자 키(자음·모음 쪽)인지. */
+    private boolean editorBalancedSelected() {
+        return editorBalanced() && selection != null && selection.kind == SEL_AREA && selection.area() == AREA_LETTERS;
+    }
+
     /** 키보드 사용자화에서 고른 영역이 분리 키보드의 글자 키(두 묶음)인지. */
     private boolean editorBlocksSelected() {
         return editorSplit() && selection != null && selection.kind == SEL_AREA && selection.area() == AREA_LETTERS;
@@ -1045,8 +1059,11 @@ final class KeyboardPreview extends FrameLayout {
         }
         if (h == Handle.LIFT) return false;
         // 키보드 사용자화의 분리 키보드: 글자 키(두 묶음)를 고르면 묶음마다 ↔ 버튼 (폭, 길게 누른 뒤 끌면 가로 위치).
-        if (!balancedMode && (h == Handle.B_CONSONANT || h == Handle.B_VOWEL)) return editorBlocksSelected();
-        if (!balancedMode && h == Handle.B_BOUNDARY) return false;
+        // 자·모음 균형 배열이면 글자 키를 고를 때 자음·모음 쪽 ↔ 버튼과 경계선 손잡이 (균형 배열 사용자화 화면과 같다).
+        if (!balancedMode && (h == Handle.B_CONSONANT || h == Handle.B_VOWEL)) {
+            return editorBlocksSelected() || editorBalancedSelected();
+        }
+        if (!balancedMode && h == Handle.B_BOUNDARY) return editorBalancedSelected();
         // 균형 배열 사용자화 화면에서는 그 손잡이만 (균형 배열이 켜져 있을 때).
         if (h.balanced()) return balancedMode && prefs.balancedLayout() && (h == Handle.B_BOUNDARY
                 || blockBounds(h == Handle.B_CONSONANT, new RectF()));
@@ -1157,11 +1174,12 @@ final class KeyboardPreview extends FrameLayout {
                 return true;
             }
             case B_BOUNDARY: {
-                // 경계선 손잡이: 경계선 위, 글자 키 영역의 세로 가운데.
+                // 경계선 손잡이: 경계선 위, 글자 키 영역의 세로 가운데. 키보드 사용자화에서는 가운데에 글자 키 높이 버튼(↕)이
+                // 있어 겹치지 않게 위쪽 4분의 1 높이에 둔다.
                 RectF r = new RectF();
                 if (!areaBounds(AREA_LETTERS, r)) return false;
                 out[0] = boundaryX();
-                out[1] = r.centerY();
+                out[1] = balancedMode ? r.centerY() : r.top + r.height() / 4f;
                 return true;
             }
             case AREA_L:
@@ -1404,8 +1422,40 @@ final class KeyboardPreview extends FrameLayout {
             areaLabel.setTextAlign(Paint.Align.CENTER);
             areaLabel.setFakeBoldText(true);
             float r = Ui.dp(ctx, prefs.keyRadiusDp()) + Ui.dp(ctx, 4);
-            boolean split = editorSplit();
+            boolean split = editorSplit(), balanced = !split && editorBalanced();
             for (int a = 0; a < AREAS; a++) {
+                if (balanced && a == AREA_LETTERS) {
+                    // 자·모음 균형 배열: 글자 키를 자음·모음 쪽 윤곽선(함께 고른다)으로 나눠 그리고, 고르면 경계선도 그린다.
+                    boolean chosen = layer == which && selection != null && selection.kind == SEL_AREA && selection.area() == AREA_LETTERS;
+                    for (boolean cons : new boolean[]{true, false}) {
+                        if (!blockBounds(cons, area)) continue;
+                        boolean on = chosen || (layer == which && dragging && active == (cons ? Handle.B_CONSONANT : Handle.B_VOWEL));
+                        stroke.setColor(withAlpha(accent, (on ? 1f : 0.55f) * alpha));
+                        stroke.setStrokeWidth(Ui.dp(ctx, on ? 2.5f : 1.25f));
+                        float rr = Math.min(r, Math.min(area.width(), area.height()) / 2f);
+                        c.drawRoundRect(area, rr, rr, stroke);
+                        if (on) {
+                            fill.setColor(withAlpha(accent, 0.12f * alpha));
+                            c.drawRoundRect(area, rr, rr, fill);
+                            continue;
+                        }
+                        String name = AREA_NAMES[AREA_LETTERS];   // 두 쪽 모두 "글자 키"
+                        String text = "눌러서 " + name + suffix;
+                        float room = area.width() - Ui.dp(ctx, 4);
+                        if (areaLabel.measureText(text) + Ui.dp(ctx, 16) > room) text = name;
+                        if (areaLabel.measureText(text) + Ui.dp(ctx, 16) > room) continue;
+                        drawPill(c, text, area, alpha);
+                    }
+                    if (chosen && areaBounds(AREA_LETTERS, area)) {
+                        boolean on = dragging && active == Handle.B_BOUNDARY;
+                        float x = boundaryX();
+                        stroke.setStrokeWidth(Ui.dp(ctx, on ? 2f : 1.25f));
+                        stroke.setColor(withAlpha(accent, (on ? 1f : 0.45f) * alpha));
+                        float cut = Math.min(r, area.height() / 2f - Ui.dp(ctx, 1));
+                        c.drawLine(x, area.top + cut, x, area.bottom - cut, stroke);
+                    }
+                    continue;
+                }
                 if (split && a == AREA_LETTERS) {
                     // 분리 키보드: 글자 키는 왼쪽·오른쪽 묶음(함께 고른다)과 그 사이의 가운데 공간으로 나눠 그린다.
                     boolean chosen = layer == which && selection != null && selection.kind == SEL_AREA && selection.area() == AREA_LETTERS;
