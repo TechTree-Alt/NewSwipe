@@ -396,7 +396,7 @@ final class KeyboardPreview extends FrameLayout {
             }
         }
         if (!any) return false;
-        out.inset(-pad, -pad);
+        out.inset(-pad, -outlinePadY(c));
         return true;
     }
 
@@ -918,6 +918,15 @@ final class KeyboardPreview extends FrameLayout {
         return out.height() > 0;
     }
 
+    /**
+     * 영역 윤곽선이 키 모양 위·아래 가장자리에서 나오는 여유. 보통은 3dp지만, 키 상하 간격이 좁으면
+     * 위아래로 맞닿은 두 영역의 윤곽선 사이가 늘 2dp(간격 8dp일 때와 같은 틈)로 남도록 줄인다 (간격이 아주 좁으면 키 안쪽으로 든다).
+     */
+    private float outlinePadY(Context c) {
+        float gy = Ui.dp(c, prefs.keyGapYDp()) / 2f;
+        return Math.min(Ui.dp(c, 3), gy - Ui.dp(c, 1));
+    }
+
     /** 영역 층의 영역 윤곽선: 영역에 그 영역의 위·아래 여백을 더한 자리 (여백의 바깥 가장자리). */
     boolean padBounds(int area, RectF out) {
         if (!areaBounds(area, out)) return false;
@@ -939,9 +948,9 @@ final class KeyboardPreview extends FrameLayout {
             float inL = v == bar ? Math.max(pad, bar.getPaddingLeft() + gx - pad) : pad;
             float inR = v == bar ? Math.max(pad, bar.getPaddingRight() + gx - pad) : pad;
             // 위·아래는 키 영역과 같은 규칙: 줄 가장자리에서 키 상하 간격의 절반만큼 들어갔다가 윤곽선 여유(pad)만큼 나온다.
-            // 그래서 간격이 0이면 도구 막대와 숫자 줄 윤곽선이 다른 영역들처럼 빈틈없이 겹친다.
+            // 위아래 여유는 outlinePadY: 간격이 좁아도 도구 막대와 숫자 줄 윤곽선 사이가 다른 영역들처럼 일정하게 띈다.
             float gy = v == bar ? Ui.dp(c, prefs.keyGapYDp()) / 2f : 0f;
-            float vPad = v == bar ? -pad : pad;
+            float vPad = v == bar ? -outlinePadY(c) : pad;
             out.set(v.getLeft() + inL, v.getTop() + gy + vPad, v.getRight() - inR, v.getBottom() - gy - vPad);
             return true;
         }
@@ -976,7 +985,7 @@ final class KeyboardPreview extends FrameLayout {
             }
         }
         if (!any) return false;
-        out.inset(-pad, -pad);
+        out.inset(-pad, -outlinePadY(c));
         return true;
     }
 
