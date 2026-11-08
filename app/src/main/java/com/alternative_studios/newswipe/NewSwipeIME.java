@@ -1447,9 +1447,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         boolean on = !Prefs.ONE_HAND_OFF.equals(side);
         Prefs profilePrefs = prefs.profileView(profile());
         int width = profilePrefs.oneHandWidthForProfile();
-        // 세로 위치: 한 손 모드는 한 손 모드의 값을, 아니면 가로 모드·폴더블 내부 화면에서 정한 값을 쓴다 (세로 모드는 0).
+        // 세로 위치: 한 손 모드에서만 한 손 모드의 값을 쓴다 (그 밖에는 0).
         // 외장 키보드로 도구 막대만 보일 때는 띄우지 않는다 (막대 아래에 빈 칸만 남는다).
-        int lift = appliedBarOnly ? 0 : Ui.dp(this, on ? prefs.oneHandLiftDp() : profilePrefs.profileLiftDp());
+        int lift = appliedBarOnly ? 0 : Ui.dp(this, on ? prefs.oneHandLiftDp() : 0);
         String signature = side + "/" + width + "/" + lift;
         if (signature.equals(appliedOneHand)) return;
         appliedOneHand = signature;

@@ -1913,7 +1913,7 @@ public final class SettingsActivity extends Activity {
 
     /**
      * 실제 키보드와 같은 크기·모양의 미리보기를 화면 아래에 붙인다 ('키보드 사용자화'와 같은 자리).
-     * 글자 키 높이·세로 위치와, 분리 키보드면 두 묶음의 폭·가로 위치를 손잡이로 바꾼다. 키·영역은 고를 수 없다.
+     * 글자 키 높이와, 분리 키보드면 두 묶음의 폭·가로 위치를 손잡이로 바꾼다. 키·영역은 고를 수 없다.
      */
     private void addProfilePreview(String profile) {
         if (harvesting) return;
@@ -2012,7 +2012,7 @@ public final class SettingsActivity extends Activity {
         addProfilePreview(p);   // 실제 키보드와 같은 미리보기를 화면 아래에 붙인다
         addLandscapeIntro();
         addProfileSplit(p, "가로 모드");
-        // 키보드 모양(키 글자 크기·세로 위치)과 여백은 미리보기의 키보드 전체 설정 창에 있다.
+        // 키 글자 크기와 여백은 미리보기의 키보드 전체 설정 창에 있다.
         harvestProfileAreas(p);
     }
 
@@ -2284,7 +2284,7 @@ public final class SettingsActivity extends Activity {
                 + "분리 키보드 사용 유무, " + (prefs.koreanD7() ? "좌·우 균형 배열" : "자·모음 분리 배열") + " 사용 유무는 세로와 가로가 공유하지만, 나머지 설정은 세로·가로가 각각 별도로 설정할 수 있습니다.\n"
                 + "여기에서 설정이 불가능한 항목은 '키보드 사용자화'의 설정과 공유합니다."));
         addProfileSplit(profile, "폴더블 내부 화면");
-        // 키보드 모양(키 글자 크기·세로 위치)과 여백은 미리보기의 키보드 전체 설정 창에 있다.
+        // 키 글자 크기와 여백은 미리보기의 키보드 전체 설정 창에 있다.
         addOneHandWidth(profile, when);
     }
 

@@ -901,8 +901,7 @@ public class SplitBottomRowTest {
                 {land.balancedConsonantWidthKey(), port.balancedConsonantWidthKey(), largeLand.balancedConsonantWidthKey()},
                 {land.balancedVowelPosKey(), port.balancedVowelPosKey(), largeLand.balancedVowelPosKey()},
                 {land.heightKey(), port.heightKey(), largeLand.heightKey()},
-                {land.textSizeKey(), port.textSizeKey(), largeLand.textSizeKey()},
-                {land.liftKey(), port.liftKey(), largeLand.liftKey()}}) {
+                {land.textSizeKey(), port.textSizeKey(), largeLand.textSizeKey()}}) {
             assertTrue(!keys[0].equals(keys[1]) && !keys[0].equals(keys[2]) && !keys[1].equals(keys[2]));
         }
         // 키보드 높이·글자 크기는 정하기 전에는 세로 모드 값을, 정하면 그 값을 쓴다.
@@ -932,11 +931,6 @@ public class SplitBottomRowTest {
         assertEquals(100, largeLand.splitGapSpeed());
         sp.m.put(port.splitGapSpeedKey(), 1000);
         assertEquals(300, port.splitGapSpeed());
-        // 세로 위치: 기본 0, 프로필마다 따로.
-        assertEquals(0, land.profileLiftDp());
-        sp.m.put(port.liftKey(), 40);
-        assertEquals(40, port.profileLiftDp());
-        assertEquals(0, largeLand.profileLiftDp());
         // 폴더블 내부 화면 세로에서 켠 분리 키보드는 폴더블 내부 화면 가로에서도 켜져 있다.
         sp.m.put(port.splitKey(), true);
         assertTrue(largeLand.profileSplit());
