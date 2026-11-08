@@ -957,6 +957,24 @@ final class KeyEditPanel {
         return holder;
     }
 
+    /** 키 편집 칸 밖(설정 화면)에서 쓰는 누르기·길게 누르기 줄들. 고르면 다시 그린다. */
+    View standalonePress(SwipeSpec spec, int slot) {
+        LinearLayout holder = new LinearLayout(a);
+        holder.setOrientation(LinearLayout.VERTICAL);
+        Runnable[] redraw = new Runnable[1];
+        redraw[0] = () -> {
+            holder.removeAllViews();
+            for (int dir : spec.dirs(slot)) {
+                String action = spec.get(prefs, slot, dir);
+                holder.addView(valueRow(spec.dirLabel(slot, dir), SwipeAction.label(action),
+                        v -> pickAction(spec, slot, dir, spec.dialogTitle(slot, dir), redraw[0])));
+            }
+            addLongPressDetail(holder, spec.get(prefs, slot, spec.dirs(slot)[1]));
+        };
+        redraw[0].run();
+        return holder;
+    }
+
     private void pickAction(SwipeSpec spec, int slot, int dir, String title, Runnable done) {
         String[] ids = spec.choices(slot, dir);
         String[] items = new String[ids.length];

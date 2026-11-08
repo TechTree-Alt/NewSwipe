@@ -476,6 +476,7 @@ public final class KeyboardView extends View {
     /** 이 키를 길게 누르면 실행할 기능. 없음이거나 대상이 아닌 키면 null. Fn 키는 자기 설정(Fn 키 사용자화)을 따른다. */
     private String customLongPress(Key k) {
         if (k.type == Key.FUNCTION) return fnKeyAction(FnKeyActions.I_LONG);
+        if (k.type == Key.SPACER) return gapSwipes == null ? null : gapSwipes.longPress();
         if (longPressActions == null) return null;
         int slot = LongPressActions.slotOf(k.type);
         if (slot < 0) return null;
@@ -1051,8 +1052,8 @@ public final class KeyboardView extends View {
         p.lastY = y;
         p.mode = NORMAL;
         pointers.add(p);
-        if (gap) return;   // 눌러도 아무 키도 입력되지 않고 소리·진동도 없다. 밀면 커서만 움직인다.
-        if (listener != null) {
+        // 가운데 공간은 눌러도 아무 키도 입력되지 않고 소리·진동도 없다. 정해 둔 기능만 실행한다.
+        if (!gap && listener != null) {
             listener.onKeyPress(k);
             if (k.type == Key.SHIFT) {
                 listener.onKeyTap(k);
@@ -1124,6 +1125,7 @@ public final class KeyboardView extends View {
                 if (p.key.type == Key.SPACER) {
                     // 분리 키보드 가운데 빈 공간: 충분히 밀면 그 방향에 정한 기능 (스페이스바와 같은 거리).
                     // '커서 자유 이동'이면 커서를 옮기고, 다른 기능이면 손을 뗄 때 실행한다.
+                    if (Math.hypot(dx, dy) > fnSwipeThreshold) cancelLongPress(p);
                     if (deferred == null && gapSwipes != null) {
                         boolean horizontal = Math.abs(dx) > Math.abs(dy);
                         int dir = horizontal ? (dx > 0 ? Key.SWIPE_RIGHT : Key.SWIPE_LEFT)
@@ -1292,7 +1294,13 @@ public final class KeyboardView extends View {
                     String tap = fnKeyAction(FnKeyActions.I_TAP);
                     if (tap != null) listener.onKeyFunction(p.key, tap);
                     markChord();
-                } else if (p.key.type != Key.SHIFT && p.key.type != Key.SPACER) {
+                } else if (p.key.type == Key.SPACER) {
+                    String tap = gapSwipes == null ? null : gapSwipes.tap();
+                    if (tap != null) {
+                        listener.onGesture();
+                        listener.onKeyFunction(p.key, tap);
+                    }
+                } else if (p.key.type != Key.SHIFT) {
                     listener.onKeyTap(p.key);
                     markChord();
                 }
