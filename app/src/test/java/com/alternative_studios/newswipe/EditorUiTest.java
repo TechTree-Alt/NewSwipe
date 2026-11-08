@@ -315,7 +315,8 @@ public class EditorUiTest {
         a.onBackPressed();
         idle();
         assertNull(p.selection());
-        assertTrue(visibleTexts(cur(a)).contains("숫자 줄") && visibleTexts(cur(a)).contains("가로 모드"));
+        assertTrue(visibleTexts(cur(a)).contains("가로 모드"));
+        assertFalse(visibleTexts(cur(a)).contains("숫자 줄"));   // 숫자 줄은 꺼도 미리보기의 빈 칸을 눌러 연다: 목록에 섹션이 없다
         assertFalse(visibleTexts(cur(a)).contains("키 사이 좌우 간격"));   // 키 모양·분리 키보드는 '키보드 전체 설정' 창으로 옮겼다
         assertFalse(visibleTexts(cur(a)).contains("글자 키 높이"));
 
