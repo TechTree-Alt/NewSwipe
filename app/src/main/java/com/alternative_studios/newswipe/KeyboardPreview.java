@@ -361,7 +361,7 @@ final class KeyboardPreview extends FrameLayout {
             int cut = -1;
             if (profileEdit != null) {
                 Key[] rowKeys = l.rows[r].keys;
-                for (int i = 0; i < rowKeys.length; i++) if (rowKeys[i].dragCursor) cut = i;
+                for (int i = 0; i < rowKeys.length; i++) if (rowKeys[i].isDragCursor()) cut = i;
             }
             Key[] rowKeys = l.rows[r].keys;
             for (int i = 0; i < rowKeys.length; i++) {

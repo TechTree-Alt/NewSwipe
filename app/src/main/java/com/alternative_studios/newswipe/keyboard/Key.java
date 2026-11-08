@@ -72,6 +72,11 @@ public final class Key {
     boolean noRepeat;
 
     /** 그리지 않는 키인지 (분리 키보드의 빈 자리에 둔 g, v). */
+    /** 분리 키보드의 가운데 빈 자리인지 (두 묶음을 가르는 곳). */
+    public boolean isDragCursor() {
+        return dragCursor;
+    }
+
     public boolean isHidden() {
         return hidden;
     }
