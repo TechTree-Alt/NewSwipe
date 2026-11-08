@@ -62,7 +62,10 @@ public final class ClipboardPanel extends LinearLayout {
     private final ScrollView scroll, pinScroll;
     private final PageSwipe pager;
     private final LinearLayout tabs;
-    private final TextView tabNormal, tabPinned;
+    private final IconButton tabNormal, tabPinned;
+    private final TextView title;
+    private final FrameLayout headerWrap;
+    private final int barHeight;
     private boolean splitPinned, splitShown;
     private final TextView clear;
     /** 맨 위 줄(뒤로·제목·모두 지우기)과, 모두 지우기를 누르면 그 자리에 대신 보이는 확인 줄. */
@@ -95,7 +98,8 @@ public final class ClipboardPanel extends LinearLayout {
         back.setToolbarStyle(theme, topBarHeight);   // 도구 막대 버튼과 같은 칩
         back.setOnClickListener(v -> listener.onClipBack());
         header.addView(back, new LayoutParams(Ui.dp(context, 44), topBarHeight));
-        TextView title = new TextView(context);
+        this.barHeight = topBarHeight;
+        title = new TextView(context);
         title.setText("클립보드");
         title.setTextColor(theme.text);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
@@ -106,7 +110,11 @@ public final class ClipboardPanel extends LinearLayout {
         Neu.apply(clear, theme, theme.accent, Ui.chipRadius(context));
         clear.setOnClickListener(v -> confirmClear());
         header.addView(clear);
-        addView(header, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, topBarHeight));
+        // 고정 항목 분리를 쓰면 두 페이지 칩이 헤더 정중앙에 놓인다 (위에 겹쳐 둔다).
+        headerWrap = new FrameLayout(context);
+        headerWrap.addView(header, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+        addView(headerWrap, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, topBarHeight));
 
         // 모두 지우기 확인: 따로 창(대화상자)을 띄우지 않고 맨 위 줄을 확인 줄로 바꾼다.
         // 키보드 창에 붙인 대화상자는 뜨는 순간 포커스가 옮겨 가면서 시스템이 키보드를 닫아 버리는 일이 있었다.
@@ -143,13 +151,13 @@ public final class ClipboardPanel extends LinearLayout {
         // 고정 항목 분리: 왼쪽 페이지는 일반 항목(list), 오른쪽 페이지는 고정 항목(pinList). 위의 두 글자로 어느 쪽인지 보이고 눌러 넘길 수 있다.
         tabs = new LinearLayout(context);
         tabs.setGravity(Gravity.CENTER);
-        tabs.setPadding(0, Ui.dp(context, 4), 0, 0);
-        tabNormal = tab(context, "기록", 0, topBarHeight);
-        tabPinned = tab(context, "고정", 1, topBarHeight);
-        tabs.addView(tabNormal);
-        tabs.addView(tabPinned);
+        tabPinned = tab(context, Icons.PIN, "고정 항목", 0, topBarHeight);
+        tabNormal = tab(context, Icons.CLIPBOARD, "기록", 1, topBarHeight);
+        tabs.addView(tabPinned, new LayoutParams(Ui.dp(context, 44), topBarHeight));
+        tabs.addView(tabNormal, new LayoutParams(Ui.dp(context, 44), topBarHeight));
         tabs.setVisibility(GONE);
-        addView(tabs, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        headerWrap.addView(tabs, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER));
 
         // 이모지 탭 전환과 같은 방식: 미는 동안 옆 페이지가 붙어서 따라오고, 놓으면 넘기거나 제자리로 돌아간다.
         pager = new PageSwipe(context);
@@ -161,7 +169,7 @@ public final class ClipboardPanel extends LinearLayout {
         pinListRef = pinList;
         pinScroll.addView(pinList, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
-        pager.setPages(normalScroll, pinScroll);
+        pager.setPages(pinScroll, normalScroll);
         pager.setVisibility(GONE);
         // 일반 항목 목록은 분리했을 때 왼쪽 페이지에 들어간다 (list를 두 곳에 두지 않고 부모를 옮긴다).
         normalPage = normalScroll;
@@ -180,23 +188,24 @@ public final class ClipboardPanel extends LinearLayout {
         return l;
     }
 
-    /** 페이지 버튼: 도구 막대 칩과 같은 모양. 지금 페이지는 강조색 칩이다. */
-    private TextView tab(Context context, String label, int page, int barHeight) {
-        TextView t = Ui.chipButton(context, label, theme.text, theme.functionKey, barHeight);
+    /** 페이지 버튼: 도구 막대 버튼과 같은 모양의 아이콘 칩. 지금 페이지는 강조색 칩이다. */
+    private IconButton tab(Context context, int icon, String description, int page, int barHeight) {
+        IconButton t = new IconButton(context, icon, theme.text, theme.keyPressed, description);
+        t.setToolbarStyle(theme, barHeight);
         t.setOnClickListener(v -> pager.goTo(page));
         return t;
     }
 
     /** 지금 보이는 페이지의 버튼만 강조색 칩으로 보인다. */
     private void updateTabs() {
-        boolean second = pager.page() == 1;
-        styleTab(tabNormal, !second);
-        styleTab(tabPinned, second);
+        boolean normal = pager.page() == 1;
+        styleTab(tabNormal, normal);
+        styleTab(tabPinned, !normal);
     }
 
-    private void styleTab(TextView t, boolean on) {
-        t.setTextColor(on ? theme.onAccent : theme.text);
-        Neu.apply(t, theme, on ? theme.accent : theme.functionKey, Ui.chipRadius(getContext()));
+    private void styleTab(IconButton t, boolean on) {
+        if (on) t.setToolbarStyle(theme, barHeight, theme.accent, theme.onAccent);
+        else t.setToolbarStyle(theme, barHeight);
     }
 
     /**
@@ -236,15 +245,19 @@ public final class ClipboardPanel extends LinearLayout {
 
         /** 첫 페이지로 돌아가 진행 중인 움직임을 멈춘다. */
         void reset() {
+            reset(1);
+        }
+
+        void reset(int first) {
             for (View v : pages) {
                 v.animate().cancel();
                 v.setTranslationX(0f);
             }
             animating = false;
             dragging = false;
-            cur = 0;
-            pages[0].setVisibility(VISIBLE);
-            pages[1].setVisibility(GONE);
+            cur = first;
+            pages[first].setVisibility(VISIBLE);
+            pages[1 - first].setVisibility(GONE);
         }
 
         /** 버튼으로 그 페이지로 넘긴다. */
@@ -476,6 +489,7 @@ public final class ClipboardPanel extends LinearLayout {
         scroll.setVisibility(split ? GONE : VISIBLE);
         pager.setVisibility(split ? VISIBLE : GONE);
         tabs.setVisibility(split ? VISIBLE : GONE);
+        title.setVisibility(split ? INVISIBLE : VISIBLE);   // 두 칩이 헤더 가운데에 오므로 '클립보드' 글자는 감춘다
         if (split) {
             pager.reset();
             updateTabs();
@@ -706,7 +720,7 @@ public final class ClipboardPanel extends LinearLayout {
     public void dismissDialog() {
         if (confirmRow.getVisibility() != VISIBLE) return;
         confirmRow.setVisibility(GONE);
-        header.setVisibility(VISIBLE);
+        headerWrap.setVisibility(VISIBLE);
     }
 
     @Override
@@ -717,7 +731,7 @@ public final class ClipboardPanel extends LinearLayout {
 
     /** 지우기 전에 맨 위 줄을 확인 줄로 바꾼다. */
     private void confirmClear() {
-        header.setVisibility(GONE);
+        headerWrap.setVisibility(GONE);
         confirmRow.setVisibility(VISIBLE);
     }
 }
