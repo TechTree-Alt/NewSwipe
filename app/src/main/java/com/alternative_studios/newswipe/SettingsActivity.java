@@ -126,6 +126,8 @@ public final class SettingsActivity extends Activity {
                 : new SettingsFrame(this, sectionName, getString(R.string.app_name));
         if (KEYBOARD.equals(sectionId)) frame.withAction(Icons.UNDO, "마지막 변경 되돌리기", v -> undoLast()).keyboardOverlays();
         else if (LANDSCAPE_AREA.equals(sectionId) || LARGE_AREA.equals(sectionId)) {
+            // 키보드 사용자화처럼 머리글에 되돌리기 버튼 (이 화면에서 바꾼 것만 되돌린다)
+            frame.withAction(Icons.UNDO, "마지막 변경 되돌리기", v -> undoLast());
             frame.keyboardOverlays();   // 아래 미리보기 위로 실제 키보드가 덮는다
         }
         ScrollView scroll = new ScrollView(this);
@@ -184,6 +186,8 @@ public final class SettingsActivity extends Activity {
     protected void onDestroy() {
         if (isFinishing() && editorPreview != null) {   // 키보드 사용자화를 떠난다: 되돌리기 기록도 버린다
             EditorUndo.clearAll();
+        } else if (isFinishing() && profilePreview != null) {   // 가로 모드·폴더블 내부 화면 키보드 사용자화를 떠난다
+            EditorUndo.leaveScope();
         }
         if (editorPrefListener != null) prefs.raw().unregisterOnSharedPreferenceChangeListener(editorPrefListener);
         super.onDestroy();
@@ -1087,6 +1091,7 @@ public final class SettingsActivity extends Activity {
 
             // 목록의 스위치·슬라이더나 다른 편집 화면에서 값을 바꾸면 미리보기를 다시 그린다 (한 프레임에 한 번).
             editorUndo = new EditorUndo(prefs, uiHandler, this::updateUndoButton);
+            EditorUndo.markRoot();
             updateUndoButton();
             editorPrefListener = (sp, key) -> {
                 editorUndo.record(key);
@@ -1175,6 +1180,11 @@ public final class SettingsActivity extends Activity {
         if (editorUndo == null || !editorUndo.undo()) return;
         if (Build.VERSION.SDK_INT >= 30) undoButton.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM);
         Toast.makeText(this, "마지막 변경을 되돌렸습니다", Toast.LENGTH_SHORT).show();
+        if (editorPreview == null) {
+            // 가로 모드·폴더블 내부 화면 키보드 사용자화: 목록·슬라이더·미리보기를 되돌린 값으로 다시 만든다.
+            recreate();
+            return;
+        }
         editorPreview.refresh();
         overviewStale = true;
         if (panelOpen()) showSelection(editorPreview.selection());
@@ -1598,7 +1608,7 @@ public final class SettingsActivity extends Activity {
     // ---- 목록과 영역 편집 창이 함께 쓰는 항목 (같은 설정이 두 곳에 보여도 이름·설명이 어긋나지 않게 한곳에서 만든다)
 
     private View numberHintToggle() {
-        return toggle("숫자 키 힌트 없애기", "숫자 키(1~0)에서만 길게 눌러 입력할 문자 힌트를 없앱니다.",
+        return toggle("숫자 키 힌트 없애기", "숫자 키에서 길게 눌러 입력할 문자 힌트를 없앱니다.",
                 Prefs.NUMBER_HINT_HIDDEN, prefs.numberHintHidden());
     }
 
@@ -1641,7 +1651,7 @@ public final class SettingsActivity extends Activity {
                 }));
         input.addView(vowel[0].view);
         input.addView(note("아래로 밀기는 자음·모음 키를 아래로 밀어(ㄱ→ㄲ, ㅏ→ㅑ), 두 번 연속으로 누르기는 같은 키를 두 번 눌러(ㄱㄱ→ㄲ, ㅏㅏ→ㅑ) "
-                + "입력합니다. 키마다 아래로 밀기 글자를 따로 정했으면 그 글자를 씁니다."));
+                + "입력합니다."));
     }
 
     /** 쌍자음·이중모음 입력 방식을 고르는 창 (아래로 밀기·두 번 연속으로 누르기·둘 다). */
@@ -1888,13 +1898,12 @@ public final class SettingsActivity extends Activity {
     /** 고른 한글 배열의 설명. */
     private String layoutNoteText() {
         if (prefs.koreanDubeolsik()) {
-            return "두벌식은 컴퓨터 키보드와 같은 표준 한글 배열입니다. Shift를 누르고 ㅂ·ㅈ·ㄷ·ㄱ·ㅅ·ㅐ·ㅔ를 치면 "
-                    + "ㅃ·ㅉ·ㄸ·ㄲ·ㅆ·ㅒ·ㅖ가 들어갑니다.";
+            return "컴퓨터 키보드와 같은 표준 한글 배열입니다.";
         }
         return prefs.koreanD7()
-                ? "NewSwipe 단모음은 거센소리 일부(ㅊ, ㅌ)를 빼 한 줄을 7칸으로 줄인 배열입니다. "
+                ? "거센소리 일부(ㅊ, ㅌ)를 빼 한 줄을 7칸으로 줄인 배열입니다. "
                         + "ㅊ·ㅌ은 ㅈ·ㄷ을 오른쪽으로 밀어 입력합니다."
-                : "단모음은 두벌식 키보드에서 ㅣ계 이중모음(ㅑ·ㅕ·ㅛ·ㅠ)을 빼 한 줄을 8칸으로 줄인 배열입니다.";
+                : "두벌식 키보드에서 ㅣ계 이중모음(ㅑ·ㅕ·ㅛ·ㅠ)을 빼 한 줄을 8칸으로 줄인 배열입니다.";
     }
 
     private static final String GRID_DESC = "아래 줄의 기능키를 한글 키와 같은 폭으로 해 줄을 맞춥니다. "
@@ -1914,7 +1923,7 @@ public final class SettingsActivity extends Activity {
 
     /**
      * 실제 키보드와 같은 크기·모양의 미리보기를 화면 아래에 붙인다 ('키보드 사용자화'와 같은 자리).
-     * 글자 키 높이·세로 위치와, 분리 키보드면 두 묶음의 폭·가로 위치를 손잡이로 바꾼다. 키·영역은 고를 수 없다.
+     * 글자 키 높이와, 분리 키보드면 두 묶음의 폭·가로 위치를 손잡이로 바꾼다. 키·영역은 고를 수 없다.
      */
     private void addProfilePreview(String profile) {
         if (harvesting) return;
@@ -1922,9 +1931,30 @@ public final class SettingsActivity extends Activity {
         profilePreview = new KeyboardPreview(this, prefs, new KeyboardPreview.Listener() {
             @Override public void onTap(KeyboardPreview.Selection s) { onProfileTap(s); }
             @Override public void onSizeChanged(String prefKey) { syncSizeSliders(prefKey); }
-            @Override public void onLayerChanged(int layer) { }
+            @Override public void onLayerChanged(int layer) {
+                closeKeyPanel();   // 다른 페이지로 넘기면 고른 것이 풀린다
+                if (profileDots != null) {
+                    profileDots.setPage(layer);
+                    profileDots.announce(layer);
+                }
+            }
         });
         profilePreview.setProfileMode(prefs.profileEditView(profile), profileScreenWidth(profile));
+        // 되돌리기: 키보드 사용자화와 같은 기록을 쓰되, 이 화면에서 바꾼 것만 되돌린다.
+        editorUndo = new EditorUndo(prefs, uiHandler, this::updateUndoButton);
+        editorUndo.enterScope(getIntent().getStringExtra(EXTRA_SECTION));
+        updateUndoButton();
+        editorPrefListener = (sp, key) -> {
+            editorUndo.record(key);
+            // 키보드 사용자화도 같은 값을 기록하므로, 그쪽이 쌓은 단계도 반영되게 한 박자 뒤에 버튼을 맞춘다.
+            uiHandler.post(() -> uiHandler.post(this::updateUndoButton));
+        };
+        prefs.raw().registerOnSharedPreferenceChangeListener(editorPrefListener);
+        // 키보드 사용자화처럼 미리보기 위에 페이지 표시: 키보드 전체 설정 · 영역 설정 (키 설정은 세로 모드와 함께 쓴다).
+        profileDots = new PageDots(this, java.util.Arrays.copyOf(PAGE_NAMES, 2), java.util.Arrays.copyOf(PAGE_DESCS, 2),
+                AppTheme.of(this), profilePreview::setLayer);
+        profileDots.setPage(profilePreview.layer());
+        pinnedBottom.addView(profileDots, matchWrap());
         pinnedBottom.addView(profilePreview, matchWrap());
         pinnedBottom.setVisibility(View.VISIBLE);
         // 영역 설정 창: 목록 위로 아래에서 올라온다 (키보드 사용자화와 같다).
@@ -1936,6 +1966,8 @@ public final class SettingsActivity extends Activity {
 
     /** 미리보기가 그리는 프로필 (폴더블 내부 화면은 세로·가로 버튼으로 바뀐다). */
     private String profileShown;
+    /** 가로 모드·폴더블 내부 화면 미리보기 위의 페이지 표시 (키보드 전체 설정 · 영역 설정). */
+    private PageDots profileDots;
 
     /** 미리보기에서 영역을 눌렀다: 그 영역의 설정 창을 연다. 빈 곳이나 이미 고른 영역이면 닫는다. */
     private void onProfileTap(KeyboardPreview.Selection s) {
@@ -1945,8 +1977,15 @@ public final class SettingsActivity extends Activity {
             return;
         }
         profilePreview.select(s);
-        int area = s.area();
         String profile = profileShown;
+        if (s.kind == KeyboardPreview.SEL_BOARD) {
+            fillAreaBox(() -> buildProfileBoard(profile));
+            sheet.setTitle("키보드 전체 설정");
+            sheet.scroll().scrollTo(0, 0);
+            if (!panelOpen()) openSheet();
+            return;
+        }
+        int area = s.area();
         boolean split = prefs.profileEditView(profile).profileSplit();
         fillAreaBox(() -> buildProfileArea(profile, area, split));
         sheet.setTitle(KeyboardPreview.profileAreaName(area) + " 설정");
@@ -1993,7 +2032,7 @@ public final class SettingsActivity extends Activity {
         addProfilePreview(p);   // 실제 키보드와 같은 미리보기를 화면 아래에 붙인다
         addLandscapeIntro();
         addProfileSplit(p, "가로 모드");
-        addProfileWhole(p, "화면을 가로로 돌렸을 때");
+        // 키 글자 크기와 여백은 미리보기의 키보드 전체 설정 창에 있다.
         harvestProfileAreas(p);
     }
 
@@ -2245,7 +2284,6 @@ public final class SettingsActivity extends Activity {
             // 설정 검색: 두 방향의 항목을 모두 모은다.
             addProfileSplit(Prefs.PROFILE_LARGE_PORTRAIT, "폴더블 내부 화면");
             for (String p : new String[]{Prefs.PROFILE_LARGE_PORTRAIT, Prefs.PROFILE_LARGE_LANDSCAPE}) {
-                addProfileWhole(p, "폴더블 내부 화면에서");
                 addOneHandWidth(p, "폴더블 내부 화면에서");
                 harvestProfileAreas(p);
             }
@@ -2266,12 +2304,12 @@ public final class SettingsActivity extends Activity {
                 + "분리 키보드 사용 유무, " + (prefs.koreanD7() ? "좌·우 균형 배열" : "자·모음 분리 배열") + " 사용 유무는 세로와 가로가 공유하지만, 나머지 설정은 세로·가로가 각각 별도로 설정할 수 있습니다.\n"
                 + "여기에서 설정이 불가능한 항목은 '키보드 사용자화'의 설정과 공유합니다."));
         addProfileSplit(profile, "폴더블 내부 화면");
-        addProfileWhole(profile, when);
+        // 키 글자 크기와 여백은 미리보기의 키보드 전체 설정 창에 있다.
         addOneHandWidth(profile, when);
     }
 
     /**
-     * '분리 키보드' 섹션 (키보드 전체): 분리 키보드 켜기와, 켰을 때 좌·우 균형 배열.
+     * '분리 키보드' 섹션 (키보드 전체): 분리 키보드 켜기.
      * 켜고 끄면 미리보기의 영역도 바뀐다 (글자 키 ↔ 왼쪽·오른쪽 묶음과 가운데 공간).
      */
     private void addProfileSplit(String profile, String name) {
@@ -2280,11 +2318,7 @@ public final class SettingsActivity extends Activity {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setVisibility(edit.profileSplit() || harvesting ? View.VISIBLE : View.GONE);
-        String reachKey = edit.splitReachColumnKey();
-        // 두벌식은 영어 자판처럼 일반 배열을 가운데에서 나눠, 4열로 맞추지 않는다 (검색 목록에는 늘 넣는다).
-        if (!prefs.koreanDubeolsik() || harvesting) {
-            box.addView(splitArrangeToggle(edit, reachKey, this::refreshLayoutPreview));
-        }
+        // 좌·우 균형 배열·자·모음 분리 배열은 따로 정하지 않고 세로 모드 '한글 글자 키 설정'의 상세 배열 값을 따른다.
         String splitKey = edit.splitKey();
         card.addView(toggle(name + " 분리 키보드",
                 "자판을 반으로 나눠 엄지손가락만으로 타이핑을 편하게 합니다.",
@@ -2296,17 +2330,39 @@ public final class SettingsActivity extends Activity {
         card.addView(box);
     }
 
-    /** '키보드 모양' 섹션 (키보드 전체): 키 글자 크기, 세로 위치. 가로 모드, 폴더블 내부 화면 세로·가로가 각각 따로 정한다. */
+    /** '키보드 모양' 섹션 (키보드 전체): 키 글자 크기. 가로 모드, 폴더블 내부 화면 세로·가로가 각각 따로 정한다 (정하기 전에는 세로 모드 값). */
     private void addProfileWhole(String profile, String when) {
         Prefs edit = prefs.profileEditView(profile);
         LinearLayout card = section("키보드 모양");
         card.addView(profileSlider("키 글자 크기", edit.textSizeKey(), edit::keyTextSize, Prefs.PROFILE_HEIGHT_MIN, 140, 5, "%"));
-        card.addView(profileSlider("세로 위치", edit.liftKey(), edit::profileLiftDp, 0, 160, 4, "dp"));
-        card.addView(note(when + " 쓰는 값입니다. 키 글자 크기는 정하기 전에는 세로 모드('키보드 사용자화')의 값을 따릅니다. "
-                + "세로 위치는 키보드를 화면 아래에서 띄우는 높이로, 값이 클수록 키보드가 위로 올라갑니다 "
-                + "(한 손 모드에서는 한 손 모드의 세로 위치를 씁니다).\n"
-                + "그 밖의 값(도구 막대·숫자 줄 높이, 키보드·영역 여백, 키 사이 간격과 키 모양, 키마다 정한 설정)은 "
-                + "세로 모드와 같은 값을 씁니다. 바꾸려면 '키보드 사용자화'에서 바꿉니다."));
+    }
+
+    /**
+     * '여백' 섹션: 키보드 전체의 상하좌우 여백. 가로 모드, 폴더블 내부 화면 세로·가로가 각각 따로 정한다 (정하기 전에는 세로 모드 값).
+     * 미리보기의 키보드 전체 설정 페이지에서 키보드를 고르면 가장자리의 손잡이로도 바꿀 수 있다.
+     */
+    private void addProfilePads(String profile) {
+        Prefs edit = prefs.profileEditView(profile);
+        LinearLayout card = section("여백");
+        card.addView(profileSlider("왼쪽 여백", edit.padKey(Prefs.SIDE_LEFT), edit::padLeftDp, 0, 24, 1, "dp"));
+        card.addView(profileSlider("오른쪽 여백", edit.padKey(Prefs.SIDE_RIGHT), edit::padRightDp, 0, 24, 1, "dp"));
+        card.addView(profileSlider("위쪽 여백", edit.padKey(Prefs.SIDE_TOP), edit::padTopDp, 0, 24, 1, "dp"));
+        card.addView(profileSlider("아래쪽 여백", edit.padKey(Prefs.SIDE_BOTTOM), edit::padBottomDp, 0, 48, 1, "dp"));
+        card.addView(note("키보드 전체 둘레의 여백입니다. 정하기 전에는 세로 모드('키보드 사용자화')의 값을 따릅니다. "
+                + "미리보기의 키보드 전체 설정 페이지에서 키보드를 고르면 가장자리의 손잡이를 끌어서도 바꿀 수 있습니다."));
+    }
+
+    /** 미리보기의 키보드 전체 설정 창: 그 프로필이 따로 정하는 키보드 모양(키 글자 크기)과 여백. */
+    private void buildProfileBoard(String profile) {
+        addProfileWhole(profile, profileWhen(profile));
+        addProfilePads(profile);
+    }
+
+    /** 프로필 설명에 쓰는 '언제' (예: 화면을 가로로 돌렸을 때). */
+    private static String profileWhen(String profile) {
+        if (Prefs.PROFILE_LARGE_LANDSCAPE.equals(profile)) return "폴더블 내부 화면을 가로로 들었을 때";
+        if (Prefs.PROFILE_LARGE_PORTRAIT.equals(profile)) return "폴더블 내부 화면을 세로로 들었을 때";
+        return "화면을 가로로 돌렸을 때";
     }
 
     /** 폴더블 내부 화면 세로·가로의 한 손 모드 자판 폭 (정하기 전에는 세로·가로 모드의 값). */
@@ -2322,6 +2378,7 @@ public final class SettingsActivity extends Activity {
     /** 설정 검색용으로 화면을 만들 때는 영역 설정 창의 항목도 목록에 넣어 찾을 수 있게 한다. */
     private void harvestProfileAreas(String profile) {
         if (!harvesting) return;
+        buildProfileBoard(profile);   // 키보드 전체 설정 창 (키보드 모양·여백)
         for (int a : new int[]{KeyboardPreview.AREA_TOOLBAR, KeyboardPreview.AREA_LETTERS,
                 KeyboardPreview.AREA_MIDDLE, KeyboardPreview.AREA_FUNCTION}) {
             buildProfileArea(profile, a, true);
@@ -2401,14 +2458,7 @@ public final class SettingsActivity extends Activity {
         c.addView(blockSlider(prefs, "자음 가로 위치", prefs.balancedConsonantPosKey(), prefs::balancedConsonantPos, Prefs.BALANCED_POS_MIN, Prefs.BALANCED_POS_MAX, "", this::syncKeyPanel));
         c.addView(blockSlider(prefs, "모음 키 폭", prefs.balancedVowelWidthKey(), prefs::balancedVowelWidth, prefs.balancedWidthMin(), prefs.balancedWidthMax(), "%", this::syncKeyPanel));
         c.addView(blockSlider(prefs, "모음 가로 위치", prefs.balancedVowelPosKey(), prefs::balancedVowelPos, Prefs.BALANCED_POS_MIN, Prefs.BALANCED_POS_MAX, "", this::syncKeyPanel));
-        c.addView(note(BLOCK_NOTE + " 미리보기에서 글자 키를 고르면 자음·모음 쪽 왼쪽·오른쪽 가장자리의 손잡이를 좌우로 끌어 "
-                + "그 경계를 옮기고(폭은 5% 단위), 가운데의 ↔ 버튼을 끌어 폭은 그대로 옮길 수도 있습니다."));
     }
-
-    /** 두 묶음(자음·모음 쪽, 왼쪽·오른쪽 묶음)의 폭·가로 위치 설명. */
-    private static final String BLOCK_NOTE = "폭은 100%면 자기 절반을 꽉 채우고, 다른 묶음이 비켜 준 자리가 있으면 100% 넘게 넓힐 수 있습니다. "
-            + "가로 위치는 두 묶음이 마주 보는 안쪽 경계의 자리로, 왼쪽 묶음은 오른쪽 경계, 오른쪽 묶음은 왼쪽 경계입니다 "
-            + "(-100 = 왼쪽 끝, 0 = 가운데, 100 = 오른쪽 끝). 폭을 바꾸면 이 경계는 그대로 두고 바깥쪽으로 줄거나 늘어납니다.";
 
     private void addEditorSplitBlocks() {
         LinearLayout c = section("분리 키보드");
@@ -2416,7 +2466,6 @@ public final class SettingsActivity extends Activity {
         c.addView(blockSlider(prefs, "왼쪽 묶음 가로 위치", prefs.balancedConsonantPosKey(), prefs::balancedConsonantPos, Prefs.BALANCED_POS_MIN, Prefs.BALANCED_POS_MAX, "", this::syncKeyPanel));
         c.addView(blockSlider(prefs, "오른쪽 묶음 폭", prefs.balancedVowelWidthKey(), prefs::balancedVowelWidth, prefs.balancedWidthMin(), prefs.balancedWidthMax(), "%", this::syncKeyPanel));
         c.addView(blockSlider(prefs, "오른쪽 묶음 가로 위치", prefs.balancedVowelPosKey(), prefs::balancedVowelPos, Prefs.BALANCED_POS_MIN, Prefs.BALANCED_POS_MAX, "", this::syncKeyPanel));
-        c.addView(note(BLOCK_NOTE + " 미리보기에서 묶음 왼쪽·오른쪽 가장자리의 손잡이를 좌우로 끌면 그 경계가 옮겨 가 폭이 바뀌고(5% 단위), 가운데의 ↔ 버튼을 끌면 폭은 그대로 묶음이 옮겨 갑니다."));
     }
 
     /**
@@ -2436,24 +2485,29 @@ public final class SettingsActivity extends Activity {
                     c.addView(blockSlider(edit, "왼쪽 묶음 가로 위치", edit.balancedConsonantPosKey(), edit::balancedConsonantPos, Prefs.BALANCED_POS_MIN, Prefs.BALANCED_POS_MAX, "", k -> refreshLayoutPreview()));
                     c.addView(blockSlider(edit, "오른쪽 묶음 폭", edit.balancedVowelWidthKey(), edit::balancedVowelWidth, edit.balancedWidthMin(), edit.balancedWidthMax(), "%", k -> refreshLayoutPreview()));
                     c.addView(blockSlider(edit, "오른쪽 묶음 가로 위치", edit.balancedVowelPosKey(), edit::balancedVowelPos, Prefs.BALANCED_POS_MIN, Prefs.BALANCED_POS_MAX, "", k -> refreshLayoutPreview()));
-                    c.addView(note("왼쪽 묶음(자음, 숫자 1~5, 스페이스바와 그 왼쪽 키)과 오른쪽 묶음(모음, 숫자 6~0, 스페이스바와 그 오른쪽 키)은 "
-                            + "각각 함께 움직입니다. " + BLOCK_NOTE + " 미리보기에서 묶음 왼쪽·오른쪽 가장자리의 손잡이를 좌우로 끌면 그 경계가 "
-                            + "옮겨 가 폭이 바뀌고(5% 단위), 가운데의 ↔ 버튼을 끌면 폭은 그대로 묶음이 옮겨 갑니다."));
                 }
                 if (!portraitProfile) addProfileLetterHeight(edit);
                 break;
             }
             case KeyboardPreview.AREA_TOOLBAR: {
                 LinearLayout c = section(portraitProfile ? "분리 키보드" : "도구 막대");
-                String followKey = edit.toolbarFollowKey();
-                boolean on = edit.getRawFollow();
-                c.addView(toggle("묶음 좌우 따라가기",
-                        "분리 키보드에서 도구 막대의 양 끝이 왼쪽 묶음의 왼쪽 끝과 오른쪽 묶음의 오른쪽 끝을 따라갑니다. "
-                                + "끄면 도구 막대는 키보드 전체 폭을 씁니다.",
-                        on, v -> {
-                            prefs.raw().edit().putBoolean(followKey, v).apply();
-                            refreshLayoutPreview();
-                        }));
+                if (!portraitProfile) {
+                    c.addView(profileSlider("도구 막대 높이", edit.toolbarHeightKey(), edit::toolbarHeight, 70, 150, 5, "%"));
+                    c.addView(note("도구 막대(버튼 줄)의 높이로, 기본 높이에 대한 비율입니다. 정하기 전에는 세로 모드의 값을 "
+                            + "따릅니다. 미리보기에서 고른 영역 위 가장자리의 손잡이를 위·아래로 끌어도 바뀝니다."));
+                }
+                // '묶음 좌우 따라가기'는 분리 키보드를 켰을 때만 (세로 모드 분리 키보드 창은 늘 분리 키보드다).
+                if (split) {
+                    String followKey = edit.toolbarFollowKey();
+                    c.addView(toggle("묶음 좌우 따라가기",
+                            "분리 키보드에서 도구 막대의 양 끝이 왼쪽 묶음의 왼쪽 끝과 오른쪽 묶음의 오른쪽 끝을 따라갑니다. "
+                                    + "끄면 도구 막대는 키보드 전체 폭을 씁니다.",
+                            edit.getRawFollow(), v -> {
+                                prefs.raw().edit().putBoolean(followKey, v).apply();
+                                refreshLayoutPreview();
+                            }));
+                }
+                if (!portraitProfile) addProfileAreaPads(edit, KeyboardPreview.AREA_TOOLBAR);   // 맨 아래
                 break;
             }
             case KeyboardPreview.AREA_MIDDLE: {
@@ -2477,7 +2531,18 @@ public final class SettingsActivity extends Activity {
                     c.addView(note("맨 아래 줄(스페이스바·기능키)의 높이로, 일반 키 높이에 대한 비율입니다. 정하기 전에는 세로 모드의 값을 "
                             + "따릅니다. 미리보기에서 고른 영역 위 가장자리의 손잡이를 위·아래로 끌어도 바뀝니다."));
                 }
-                if (!split) break;
+                if (!split) {
+                    if (!portraitProfile) addProfileAreaPads(edit, KeyboardPreview.AREA_FUNCTION);
+                    break;
+                }
+                String fnFollowKey = edit.fnFollowKey();
+                c.addView(toggle("묶음 좌우 따라가기",
+                        "분리 키보드에서 기능키 줄의 양 끝이 왼쪽 묶음의 왼쪽 끝과 오른쪽 묶음의 오른쪽 끝을 따라갑니다. "
+                                + "끄면 기능키 줄은 키보드 전체 폭을 씁니다.",
+                        edit.getRawFnFollow(), v -> {
+                            prefs.raw().edit().putBoolean(fnFollowKey, v).apply();
+                            refreshLayoutPreview();
+                        }));
                 // 스페이스바 잇기 (분리 키보드): 이었을 때만 하단 기능키 폭을 정한다.
                 View fnWidth = subGroup(
                         profileSlider("하단 기능키 폭", edit.splitFnWidthKey(), edit::splitFnWidthSetting, 50, 200, 5, "%"),
@@ -2493,10 +2558,27 @@ public final class SettingsActivity extends Activity {
                             refreshLayoutPreview();
                         }));
                 c.addView(fnWidth);
+                if (!portraitProfile) addProfileAreaPads(edit, KeyboardPreview.AREA_FUNCTION);   // 맨 아래
                 break;
             }
             default:
                 break;
+        }
+    }
+
+    /**
+     * 가로 모드·폴더블 내부 화면의 영역(도구 막대·기능키) '여백' 섹션: 상하좌우 슬라이더. 세로 모드와 따로 정하고,
+     * 정하기 전에는 세로 모드('키보드 사용자화')의 영역 여백을 따른다. 영역 창의 맨 아래에 둔다.
+     */
+    private void addProfileAreaPads(Prefs edit, int area) {
+        LinearLayout c = section("여백");
+        for (View v : new View[]{
+                profileSlider("왼쪽 여백", edit.profileAreaPadKey(area, Prefs.SIDE_LEFT), () -> edit.profileAreaPadDp(area, Prefs.SIDE_LEFT), 0, Prefs.AREA_PAD_MAX, 1, "dp"),
+                profileSlider("오른쪽 여백", edit.profileAreaPadKey(area, Prefs.SIDE_RIGHT), () -> edit.profileAreaPadDp(area, Prefs.SIDE_RIGHT), 0, Prefs.AREA_PAD_MAX, 1, "dp"),
+                profileSlider("위쪽 여백", edit.profileAreaPadKey(area, Prefs.SIDE_TOP), () -> edit.profileAreaPadDp(area, Prefs.SIDE_TOP), 0, Prefs.AREA_PAD_MAX, 1, "dp"),
+                profileSlider("아래쪽 여백", edit.profileAreaPadKey(area, Prefs.SIDE_BOTTOM), () -> edit.profileAreaPadDp(area, Prefs.SIDE_BOTTOM), 0, Prefs.AREA_PAD_MAX, 1, "dp"),
+                note("키보드 전체 여백에 더해지는 영역 여백입니다. 정하기 전에는 세로 모드('키보드 사용자화')의 영역 여백을 따릅니다.")}) {
+            c.addView(v);
         }
     }
 

@@ -1033,7 +1033,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /** 설정의 '도구 막대 높이'(%)를 px로. 100%가 40dp. */
     private int toolbarHeightPx() {
-        return Math.round(Ui.dp(this, 40) * prefs.toolbarHeight() / 100f);
+        return Math.round(Ui.dp(this, 40) * padPrefs().toolbarHeight() / 100f);
     }
 
     /**
@@ -1043,8 +1043,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private void sizeToolbar() {
         toolbarHeight = toolbarHeightPx();
         // 도구 막대 영역의 위·아래 여백: 막대 자리를 그만큼 높이고 안쪽 여백으로 둔다 (막대 자체의 높이는 그대로).
-        barPadTop = Ui.dp(this, prefs.areaPadDp(0, Prefs.SIDE_TOP));
-        barPadBottom = Ui.dp(this, prefs.areaPadDp(0, Prefs.SIDE_BOTTOM));
+        barPadTop = Ui.dp(this, padPrefs().areaPadDp(0, Prefs.SIDE_TOP));
+        barPadBottom = Ui.dp(this, padPrefs().areaPadDp(0, Prefs.SIDE_BOTTOM));
         topSlot.setPadding(topSlot.getPaddingLeft(), barPadTop, topSlot.getPaddingRight(), barPadBottom);
         setHeight(topSlot, barSlotHeight());
         dropStalePanels();
@@ -1316,8 +1316,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (wasLearn && !cfgLearn) runIo(this::releaseLearned);   // 학습을 끄면 학습한 단어도 메모리에서 내린다
         float rows = KeyboardLayout.rowUnits(prefs);
         keyboard.setKeyGaps(Ui.dp(this, prefs.keyGapXDp()), Ui.dp(this, prefs.keyGapYDp()));
-        keyboard.setInsets(Ui.dp(this, prefs.padLeftDp()), Ui.dp(this, prefs.padTopDp()),
-                Ui.dp(this, prefs.padRightDp()), Ui.dp(this, prefs.padBottomDp()));
+        keyboard.setInsets(Ui.dp(this, padPrefs().padLeftDp()), Ui.dp(this, padPrefs().padTopDp()),
+                Ui.dp(this, padPrefs().padRightDp()), Ui.dp(this, padPrefs().padBottomDp()));
         keyboard.setAreaInsets(areaPadsPx());
         // 도구 막대의 양 끝 버튼이 자판의 양 끝 키와 같은 선에 오도록 키보드 좌우 여백을 따른다 (도구 막대 영역 여백을 더한다).
         applyToolbarEdges();
@@ -1332,7 +1332,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         updateHideButton();
         // 한 손 모드에서는 키 높이를 '키 높이' 비율만큼 줄인다.
         keyboardHeight = Math.round(Ui.dp(this, 54) * rows * sizePrefs.keyboardHeight() / 100f * oneHandScale)
-                + Ui.dp(this, prefs.padTopDp()) + Ui.dp(this, prefs.padBottomDp()) + Ui.dp(this, prefs.areaPadVerticalDp());
+                + Ui.dp(this, padPrefs().padTopDp()) + Ui.dp(this, padPrefs().padBottomDp()) + Ui.dp(this, padPrefs().areaPadVerticalDp());
         keyboard.setKeyboardHeight(keyboardHeight);
         applyOneHand();
         updatePanelSizes();
@@ -1344,14 +1344,14 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
      * 왼쪽 묶음의 왼쪽 끝·오른쪽 묶음의 오른쪽 끝(기능키 줄이 따라가는 선)에 오도록 여백을 정한다.
      */
     private void applyToolbarEdges() {
-        int barL = Ui.dp(this, prefs.padLeftDp() + prefs.areaPadDp(0, Prefs.SIDE_LEFT));
-        int barR = Ui.dp(this, prefs.padRightDp() + prefs.areaPadDp(0, Prefs.SIDE_RIGHT));
+        int barL = Ui.dp(this, padPrefs().padLeftDp() + padPrefs().areaPadDp(0, Prefs.SIDE_LEFT));
+        int barR = Ui.dp(this, padPrefs().padRightDp() + padPrefs().areaPadDp(0, Prefs.SIDE_RIGHT));
         if (keyboard != null && splitActive() && prefs.profileView(profile()).toolbarFollowBlocks()) {
             float[] e = keyboard.keyExtent();
             int w = keyboard.getWidth();
             if (e != null && w > 0) {
-                barL = Math.round(e[0]) + Ui.dp(this, prefs.areaPadDp(0, Prefs.SIDE_LEFT));
-                barR = Math.round(w - e[1]) + Ui.dp(this, prefs.areaPadDp(0, Prefs.SIDE_RIGHT));
+                barL = Math.round(e[0]) + Ui.dp(this, padPrefs().areaPadDp(0, Prefs.SIDE_LEFT));
+                barR = Math.round(w - e[1]) + Ui.dp(this, padPrefs().areaPadDp(0, Prefs.SIDE_RIGHT));
             }
         }
         if (toolbar != null && (toolbar.getPaddingLeft() != barL || toolbar.getPaddingRight() != barR)) {
@@ -1365,7 +1365,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 영역별 여백 (px, [영역][왼·위·오른·아래]). */
     private float[][] areaPadsPx() {
         float[][] pads = new float[4][4];
-        for (int a = 0; a < 4; a++) for (int side = 0; side < 4; side++) pads[a][side] = Ui.dp(this, prefs.areaPadDp(a, side));
+        for (int a = 0; a < 4; a++) for (int side = 0; side < 4; side++) pads[a][side] = Ui.dp(this, padPrefs().areaPadDp(a, side));
         return pads;
     }
 
@@ -1397,6 +1397,14 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         lp.setMargins(Ui.dp(this, 6), Ui.dp(this, 6), Ui.dp(this, 6), Ui.dp(this, 6));
         b.setLayoutParams(lp);
         return b;
+    }
+
+    /**
+     * 키보드 여백(좌우·위·아래, 도구 막대·기능키 영역 여백)을 읽는 설정 보기. 가로 모드·폴더블 내부 화면에서 세로 모드와 따로 정한 값은
+     * 그 화면에서만 쓴다 (세로 모드는 그대로).
+     */
+    private Prefs padPrefs() {
+        return prefs.profileView(profile());
     }
 
     /** 지금 화면에서 쓸 키보드 모습의 묶음: 세로·가로 모드, 또는 (실험실 '폴더블 내부 화면 별도 키보드'이 켜져 있으면) 폴더블 내부 화면 세로·가로. */
@@ -1439,9 +1447,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         boolean on = !Prefs.ONE_HAND_OFF.equals(side);
         Prefs profilePrefs = prefs.profileView(profile());
         int width = profilePrefs.oneHandWidthForProfile();
-        // 세로 위치: 한 손 모드는 한 손 모드의 값을, 아니면 가로 모드·폴더블 내부 화면에서 정한 값을 쓴다 (세로 모드는 0).
+        // 세로 위치: 한 손 모드에서만 한 손 모드의 값을 쓴다 (그 밖에는 0).
         // 외장 키보드로 도구 막대만 보일 때는 띄우지 않는다 (막대 아래에 빈 칸만 남는다).
-        int lift = appliedBarOnly ? 0 : Ui.dp(this, on ? prefs.oneHandLiftDp() : profilePrefs.profileLiftDp());
+        int lift = appliedBarOnly ? 0 : Ui.dp(this, on ? prefs.oneHandLiftDp() : 0);
         String signature = side + "/" + width + "/" + lift;
         if (signature.equals(appliedOneHand)) return;
         appliedOneHand = signature;
@@ -1841,17 +1849,17 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         keyboard.setVisibility(full || barOnly ? View.GONE : View.VISIBLE);
         // '자판 아래에 두기'에서는 도구 막대를 맨 아래 키 줄 바로 밑에 붙이고, 자판의 아래쪽 여백은 도구 막대 밑으로 옮긴다
         // (전체 높이는 그대로다). 도구 막대가 안 보이거나 자판이 없으면 여백은 자판에 그대로 둔다.
-        int padB = Ui.dp(this, prefs.padBottomDp());
+        int padB = Ui.dp(this, padPrefs().padBottomDp());
         boolean liftBar = prefs.toolbarBottom() && panel == PANEL_KEYBOARD && !barOnly
                 && topSlot != null && topSlot.getVisibility() == View.VISIBLE;
         int gap = liftBar ? padB : 0;
         // 위쪽 여백도 키보드 전체의 바깥 여백이다: 도구 막대가 자판 위에 있으면 여백을 도구 막대 위로 옮긴다 (전체 높이는 그대로).
-        int padT = Ui.dp(this, prefs.padTopDp());
+        int padT = Ui.dp(this, padPrefs().padTopDp());
         boolean raiseBar = !prefs.toolbarBottom() && panel == PANEL_KEYBOARD && !barOnly
                 && topSlot != null && topSlot.getVisibility() == View.VISIBLE;
         int gapTop = raiseBar ? padT : 0;
-        keyboard.setInsets(Ui.dp(this, prefs.padLeftDp()), padT - gapTop,
-                Ui.dp(this, prefs.padRightDp()), padB - gap);
+        keyboard.setInsets(Ui.dp(this, padPrefs().padLeftDp()), padT - gapTop,
+                Ui.dp(this, padPrefs().padRightDp()), padB - gap);
         keyboard.setKeyboardHeight(keyboardHeight - gap - gapTop);
         if (topSlot != null && topSlot.getLayoutParams() instanceof LinearLayout.LayoutParams) {
             LinearLayout.LayoutParams slp = (LinearLayout.LayoutParams) topSlot.getLayoutParams();
@@ -1904,9 +1912,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
      * 이모지 격자·아래 줄과 클립보드 카드는 자판 키의 가장자리에 맞춘다.
      */
     private void applyPanelInsets() {
-        int l = Ui.dp(this, prefs.padLeftDp()), r = Ui.dp(this, prefs.padRightDp());
+        int l = Ui.dp(this, padPrefs().padLeftDp()), r = Ui.dp(this, padPrefs().padRightDp());
         int halfGap = Ui.dp(this, prefs.keyGapXDp()) / 2;
-        int t = Ui.dp(this, prefs.padTopDp()), b = Ui.dp(this, prefs.padBottomDp());
+        int t = Ui.dp(this, padPrefs().padTopDp()), b = Ui.dp(this, padPrefs().padBottomDp());
         if (emojiPanel != null) emojiPanel.setInsets(l, r, l + halfGap, t, r + halfGap, b);
         if (clipPanel != null) clipPanel.setInsets(l, r, l + halfGap, t, r + halfGap, b);
     }

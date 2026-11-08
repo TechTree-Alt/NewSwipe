@@ -42,6 +42,11 @@ public final class KeyboardLayout {
     /** 한 줄에 들어가는 1.0 너비 키의 수. */
     public final int columns;
     public final Row[] rows;
+    /**
+     * 분리 키보드의 쿼티 모양 자판(영어·두벌식)인지: 글자 줄이 엇갈려(a~l 줄 들여쓰기, 1.5칸 Shift) g·v가 왼쪽 묶음 끝 밖으로
+     * 나와 있다. 미리보기는 왼쪽 묶음 윤곽선의 오른쪽 가장자리를 t에 맞춘다.
+     */
+    public boolean staggeredSplit;
 
     private KeyboardLayout(int kind, int columns, List<Row> rows) {
         this.kind = kind;
@@ -475,7 +480,9 @@ public final class KeyboardLayout {
         List<Row> rows = new ArrayList<>(qwertySplitRows(letterRows, popups, korean, prefs));
         if (prefs.numberRow()) rows.add(0, splitNumberRow(prefs));
         rows.add(splitBottom(prefs));
-        return new KeyboardLayout(kind, BALANCED_COLUMNS, rows);
+        KeyboardLayout layout = new KeyboardLayout(kind, BALANCED_COLUMNS, rows);
+        layout.staggeredSplit = true;
+        return layout;
     }
 
     /**
@@ -494,9 +501,10 @@ public final class KeyboardLayout {
                     : prefs.gridLayout() ? gridBottomLetterRow(letters, shift, deleteKey(prefs), prefs)
                     : bottomLetterRow(letters, 1.5f, shift, deleteKey(prefs));
             Row row = splitNormal(normal, prefs);
-            // h 왼쪽의 빈 자리를 누르면 g가, b 왼쪽의 빈 자리를 누르면 v가 입력된다 (왼손·오른손 모두 치기 쉽게).
-            // 키를 더 그리는 것이 아니라서 줄의 폭과 열은 그대로다.
+            // h 왼쪽의 빈 자리를 누르면 g가, b 왼쪽의 빈 자리를 누르면 v가, t 오른쪽의 빈 자리(키 하나 폭)를 누르면 y가
+            // 입력된다 (왼손·오른손 모두 치기 쉽게). 키를 더 그리는 것이 아니라서 줄의 폭과 열은 그대로다.
             if (r > 0) row = withHiddenKey(row, letters[leftCount[r]], hiddenCopyOf(letters[leftCount[r] - 1]));
+            else row = withHiddenKey(row, letters[leftCount[r] - 1], hiddenCopyOf(letters[leftCount[r]]), true);
             letterRows.add(row);
         }
         return letterRows;
@@ -1285,9 +1293,10 @@ public final class KeyboardLayout {
      * 왼쪽 묶음을, 오른쪽 스페이스바와 그 오른쪽 키들은 오른쪽 묶음을 채운다. 기능키 폭은 묶음 폭에 비례하고
      * (묶음이 절반을 꽉 채울 때 보통 폭), 스페이스바가 남는 폭을 모두 쓴다.
      * 스페이스바를 없앴으면 키들을 앞쪽 절반(홀수 개면 한 개 더)과 나머지로 나눠 각 묶음을 같은 비율로 채운다.
+     * 기능키의 '묶음 좌우 따라가기'를 끄면 묶음의 자리·폭과 상관없이 두 절반을 꽉 채운다 (키보드 전체 폭, 기능키는 보통 폭).
      */
     private static Row blockSpaceRow(Prefs prefs, int modeType, String modeLabel, boolean emojiKey) {
-        float[] b = blocks(prefs);
+        float[] b = prefs.fnFollowBlocks() ? blocks(prefs) : new float[]{0f, BALANCED_HALF, BALANCED_HALF, BALANCED_HALF};
         List<Key> keys = new ArrayList<>();
         int spaceAt = bottomKeys(modeType, modeLabel, prefs, emojiKey, keys);
         int cut = spaceAt >= 0 ? spaceAt : (keys.size() + 1) / 2;
