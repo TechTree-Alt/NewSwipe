@@ -261,6 +261,8 @@ final class KeyEditPanel {
         card.addView(note("방향 칸을 눌러 그 방향으로 밀 때 입력할 글자를 정합니다. 비워 두면 그 방향은 아무것도 입력하지 않습니다."));
         if (SwipeCustom.englishUpperSwipe(prefs, korean, slot(), Key.SWIPE_DOWN)) {
             card.addView(note("영어 자판의 '아래로 밀어 대문자 입력'이 켜져 있어 아래쪽은 대문자로 고정됩니다. 글자 키 설정에서 끌 수 있습니다."));
+        } else if (SwipeCustom.hangulDownLocked(prefs, korean, slot(), Key.SWIPE_DOWN)) {
+            card.addView(note(downLockNote()));
         }
     }
 
@@ -279,6 +281,12 @@ final class KeyEditPanel {
             labels[dir] = on[dir] ? s : "없음";
         }
         swipePad.addView(dpad(key.label, labels, on, this::editSwipeText));
+    }
+
+    /** 쌍자음·이중모음을 아래로 밀기로 입력해 이 키의 아래쪽이 고정된 이유. */
+    private String downLockNote() {
+        return vowel() ? "'이중모음 입력'이 '아래로 밀기'를 쓰고 있어 아래쪽은 이중모음으로 고정됩니다. 글자 키 설정에서 '연속 탭'으로 바꾸면 정할 수 있습니다."
+                : "'쌍자음 입력'이 '아래로 밀기'를 쓰고 있어 아래쪽은 쌍자음으로 고정됩니다. 글자 키 설정에서 '연속 탭'으로 바꾸면 정할 수 있습니다.";
     }
 
     private String dialogTitle(int dir) {
@@ -312,6 +320,10 @@ final class KeyEditPanel {
         if (SwipeCustom.englishUpperSwipe(prefs, korean, s, dir)) {
             android.widget.Toast.makeText(a, "'아래로 밀어 대문자 입력'이 켜져 있어 아래쪽은 대문자로 고정됩니다.",
                     android.widget.Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (SwipeCustom.hangulDownLocked(prefs, korean, s, dir)) {
+            android.widget.Toast.makeText(a, downLockNote(), android.widget.Toast.LENGTH_SHORT).show();
             return;
         }
         String dirName = SwipeCustom.dirName(dir);

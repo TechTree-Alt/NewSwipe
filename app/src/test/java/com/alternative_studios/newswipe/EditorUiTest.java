@@ -200,13 +200,20 @@ public class EditorUiTest {
         ViewGroup panel = (ViewGroup) cur(a).getChildAt(0);
         View down = findText(panel, "ㄲ");
         assertNotNull("down cell", down);
+        // 쌍자음 입력이 '아래로 밀기'(기본)인 동안 ㄱ의 아래쪽은 쌍자음으로 고정이라 창이 열리지 않는다
         down.performClick();
+        idle();
+        assertNull(ShadowDialog.getLatestDialog());
+        prefs.setConsonantInputMode(Prefs.INPUT_TAP);   // 연속 탭만 쓰면 아래쪽을 정할 수 있다
+        idle();
+        findSub(cur(a), "아래쪽").performClick();
         idle();
         AlertDialog d = (AlertDialog) ShadowDialog.getLatestDialog();
         assertNotNull(d);
         log("DIALOG: " + shadowOf(d).getTitle());
         shot(a, "03-dialog");
         d.dismiss();
+        prefs.setConsonantInputMode(Prefs.INPUT_SWIPE);
         idle();
 
         // ---- 키를 고른 동안에는 키 손잡이만: 키보드 높이·여백 손잡이는 숨는다
@@ -755,7 +762,11 @@ public class EditorUiTest {
         idle();
         tapKey(p, key(p, "ㄱ", Key.CHAR));
         assertNotNull(findText(decor, "'ㄱ' 키 설정"));
-        assertFalse(visibleTexts(cur(a)).contains("쌍자음"));
+        // 쌍자음 입력이 '아래로 밀기'라 ㄱ의 아래쪽은 고정이다 (안내가 나오고 눌러도 입력 창이 열리지 않는다)
+        assertTrue(visibleTexts(cur(a)).contains("아래쪽은 쌍자음으로 고정됩니다"));
+        findSub(cur(a), "아래쪽").performClick();
+        idle();
+        assertNull(ShadowDialog.getLatestDialog());
         tapKey(p, key(p, null, Key.SPACE));
         String t = visibleTexts(cur(a));
         log("SPACE:\n" + t);

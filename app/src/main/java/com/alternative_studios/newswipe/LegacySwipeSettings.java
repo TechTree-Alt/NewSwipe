@@ -153,6 +153,11 @@ final class LegacySwipeSettings {
                 store(prefs, KeyboardLayout.GROUP_SYM, slot, dir, old, SwipeCustom.defaultFor(true, newSwipe, slot, dir));
             }
         }
+        // 예전 '쌍자음·ㅣ계 이중모음 밀기' 스위치를 꺼 두었으면 아래로 밀기를 쓰지 않는 입력 방식으로 (연속 탭만)
+        SharedPreferences.Editor e = sp.edit();
+        if (!sp.getBoolean(SWIPE_DOUBLE, true)) e.putBoolean(Prefs.SWIPE_DOWN_CONSONANT, false);
+        if (!sp.getBoolean(SWIPE_IOTIZED, true)) e.putBoolean(Prefs.SWIPE_DOWN_VOWEL, false);
+        e.apply();
     }
 
     /** 예전 규칙 스위치로 한글 자모 키 c를 dir로 밀 때 입력되던 글자 (예전 KeyboardLayout.letterKeys와 같다). */

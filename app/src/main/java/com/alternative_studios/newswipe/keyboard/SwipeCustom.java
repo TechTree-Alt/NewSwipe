@@ -59,14 +59,30 @@ public final class SwipeCustom {
                 && KeyboardLayout.GROUP_EN.equals(KeyboardLayout.groupOf(false, label));
     }
 
+    /**
+     * 한글 자음·모음 키의 아래로 밀기가 기본 배치(쌍자음·ㅣ계 이중모음)로 고정되어 있는지: '쌍자음 입력'·'이중모음 입력'이
+     * '아래로 밀기'나 '둘 다'이고 그 키에 기본 글자(ㄱ→ㄲ, ㅏ→ㅑ …)가 있을 때. 기본 글자가 없는 키(ㅁ·ㅇ·ㅑ …)는 바꿀 수 있다.
+     */
+    public static boolean hangulDownLocked(Prefs prefs, boolean korean, String label, int dir) {
+        if (prefs == null || !korean || dir != Key.SWIPE_DOWN || label == null || label.length() != 1
+                || !KeyboardLayout.GROUP_KO.equals(KeyboardLayout.groupOf(true, label))) return false;
+        boolean vowel = HangulComposer.isVowel(label.charAt(0));
+        if (!(vowel ? prefs.swipeDownVowel() : prefs.swipeDownConsonant())) return false;
+        return defaultFor(true, prefs.koreanNewSwipe(), label, dir) != null;
+    }
+
     /** 사용자가 정한 값이 있으면 그것을, 없으면 기본값을 돌려준다. "없음"이면 null. */
     public static String get(Prefs prefs, boolean korean, String label, int dir) {
         if (englishUpperSwipe(prefs, korean, label, dir)) return label.toUpperCase(java.util.Locale.ROOT);
+        if (hangulDownLocked(prefs, korean, label, dir)) {   // 쌍자음·이중모음을 아래로 밀기로 입력하면 기본 배치로 고정
+            return defaultFor(true, prefs.koreanNewSwipe(), label, dir);
+        }
         String v = prefs == null ? null
                 : prefs.swipeCustomOverride(KeyboardLayout.groupOf(korean, label), label, NAMES[dir]);
         if (v == null) {
             String def = defaultFor(korean, prefs != null && prefs.koreanNewSwipe(), label, dir);
             // 쌍자음·이중모음 입력 방식에서 '연속 탭'만 골랐으면 기본 배치의 아래로 밀기(쌍자음·ㅣ계 이중모음)는 쓰지 않는다.
+            // (밀기를 쓰는 방식이면 위에서 이미 기본 배치로 고정했다.)
             if (def != null && prefs != null && korean && dir == Key.SWIPE_DOWN && label.length() == 1
                     && KeyboardLayout.GROUP_KO.equals(KeyboardLayout.groupOf(true, label))) {
                 boolean vowel = HangulComposer.isVowel(label.charAt(0));

@@ -581,8 +581,21 @@ public class DubeolsikLayoutTest {
             assertEquals(Prefs.INPUT_BOTH, p.vowelInputMode());
             assertEquals("ㄲ", key(KeyboardLayout.korean(p), "ㄱ").swipeDown);
             assertEquals("ㅑ", key(KeyboardLayout.korean(p), "ㅏ").swipeDown);
+            // 아래로 밀기를 쓰는 방식이면 기본 글자가 있는 키의 아래로 밀기는 고정이고, 키마다 정한 값이 있어도 쓰지 않는다
+            assertTrue(SwipeCustom.hangulDownLocked(p, true, "ㄱ", Key.SWIPE_DOWN));
+            assertTrue(SwipeCustom.hangulDownLocked(p, true, "ㅏ", Key.SWIPE_DOWN));
+            assertFalse(SwipeCustom.hangulDownLocked(p, true, "ㅁ", Key.SWIPE_DOWN));   // 기본 글자가 없는 키는 바꿀 수 있다
+            assertFalse(SwipeCustom.hangulDownLocked(p, true, "ㄱ", Key.SWIPE_UP));
+            assertFalse(SwipeCustom.hangulDownLocked(p, false, "q", Key.SWIPE_DOWN));
+            sp.m.put("swipe_custom_ko_ㄱ_down", "ㅋ");
+            sp.m.put("swipe_custom_ko_ㅁ_down", "ㅂ");
+            assertEquals("ㄲ", key(KeyboardLayout.korean(portrait(sp)), "ㄱ").swipeDown);
+            assertEquals("ㅂ", key(KeyboardLayout.korean(portrait(sp)), "ㅁ").swipeDown);
+            sp.m.remove("swipe_custom_ko_ㄱ_down");
+            sp.m.remove("swipe_custom_ko_ㅁ_down");
             p.setConsonantInputMode(Prefs.INPUT_TAP);
             p.setVowelInputMode(Prefs.INPUT_TAP);
+            assertFalse(SwipeCustom.hangulDownLocked(p, true, "ㄱ", Key.SWIPE_DOWN));   // 연속 탭만이면 풀린다
             assertTrue(p.doubleTapConsonant() && p.doubleTapVowel());
             KeyboardLayout l = KeyboardLayout.korean(portrait(sp));
             assertNull(layout, key(l, "ㄱ").swipeDown);
