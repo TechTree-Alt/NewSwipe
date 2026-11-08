@@ -692,19 +692,23 @@ public final class Prefs {
     /** 저장된 '하단 기능키 폭' 값 (스페이스바를 잇지 않아도 설정 화면이 보여 주도록). */
     public int splitFnWidthSetting() { return Math.max(50, Math.min(200, sp.getInt(splitFnWidthKey(), 100))); }
 
-    /** 이 프로필의 '좌·우 균형 배열' 설정 키. */
+    /** 이 프로필의 '좌·우 균형 배열'(양쪽 묶음 4열 맞춤) 저장 키. 설정 화면의 '자·모음 분리 배열'은 이 값을 뒤집어 보여 준다. */
     public String splitReachColumnKey() {
         if (portrait()) return PORTRAIT_PREFIX + SPLIT_REACH_COLUMN;
         return large() ? LARGE_PREFIX + SPLIT_REACH_COLUMN + "_" + LARGE_LAYOUT_SIDE : SPLIT_REACH_COLUMN;
     }
 
     /**
-     * 분리 키보드 한글 자판의 좌·우 균형 배열을 쓰는지 (기본은 꺼짐): 양쪽 묶음을 4열씩으로 맞춘다.
+     * 분리 키보드 한글 자판의 좌·우 균형 배열을 쓰는지 (기본은 켜짐): 양쪽 묶음을 4열씩으로 맞춘다.
+     * 설정 화면에서는 '자·모음 분리 배열'로 보인다: 켜면(= 이 값이 꺼지면) 자음은 왼쪽 묶음, 모음은 오른쪽 묶음으로 깔끔하게 나뉜다.
      * 8열 단모음은 자음의 맨 오른쪽 줄(ㅅ·ㅎ·ㅍ)을 오른쪽 묶음의 모음 앞으로 옮기고, NewSwipe 단모음은 맨 오른쪽 줄
      * (ㄱ·ㄹ·ㅅ)을 왼쪽에 그대로 둔 채 오른쪽 묶음의 모음 앞에도 하나씩 더 놓는다.
      * 8열 단모음에서는 왼쪽 묶음 바로 오른쪽의 키 하나 폭 빈 자리를 누르면 옮겨 간 키가 눌린다.
      */
-    public boolean splitReachColumn() { return profileValues() && sp.getBoolean(splitReachColumnKey(), false); }
+    public boolean splitReachColumn() { return profileValues() && sp.getBoolean(splitReachColumnKey(), true); }
+
+    /** 설정 화면의 '자·모음 분리 배열' 켜짐 여부 (좌·우 균형 배열의 반대). */
+    public boolean splitSeparateJamo() { return !sp.getBoolean(splitReachColumnKey(), true); }
 
     /** 이 프로필(가로 모드, 대화면 세로·가로)의 '가운데 빈 공간을 밀어서 커서 이동' 설정 키. */
     public String splitGapCursorKey() { return portrait() ? PORTRAIT_PREFIX + SPLIT_GAP_CURSOR : large() ? LARGE_PREFIX + SPLIT_GAP_CURSOR + "_" + largeSide() : SPLIT_GAP_CURSOR; }
