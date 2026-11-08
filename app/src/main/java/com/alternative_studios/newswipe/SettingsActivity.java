@@ -2310,18 +2310,11 @@ public final class SettingsActivity extends Activity {
         card.addView(box);
     }
 
-    /** '키보드 모양' 섹션 (키보드 전체): 키 글자 크기, 세로 위치. 가로 모드, 폴더블 내부 화면 세로·가로가 각각 따로 정한다. */
+    /** '키보드 모양' 섹션 (키보드 전체): 키 글자 크기. 가로 모드, 폴더블 내부 화면 세로·가로가 각각 따로 정한다 (정하기 전에는 세로 모드 값). */
     private void addProfileWhole(String profile, String when) {
         Prefs edit = prefs.profileEditView(profile);
         LinearLayout card = section("키보드 모양");
         card.addView(profileSlider("키 글자 크기", edit.textSizeKey(), edit::keyTextSize, Prefs.PROFILE_HEIGHT_MIN, 140, 5, "%"));
-        card.addView(profileSlider("세로 위치", edit.liftKey(), edit::profileLiftDp, 0, 160, 4, "dp"));
-        card.addView(note(when + " 쓰는 값입니다. 키 글자 크기는 정하기 전에는 세로 모드('키보드 사용자화')의 값을 따릅니다. "
-                + "세로 위치는 키보드를 화면 아래에서 띄우는 높이로, 값이 클수록 키보드가 위로 올라갑니다 "
-                + "(한 손 모드에서는 한 손 모드의 세로 위치를 씁니다).\n"
-                + "그 밖의 값(도구 막대·숫자 줄 높이, 글자 키의 영역 여백, 키 사이 간격과 키 모양, 키마다 정한 설정)은 "
-                + "세로 모드와 같은 값을 씁니다. 바꾸려면 '키보드 사용자화'에서 바꿉니다. "
-                + "도구 막대와 기능키의 영역 여백은 미리보기에서 그 영역을 눌러 따로 정합니다."));
     }
 
     /**
@@ -2339,7 +2332,7 @@ public final class SettingsActivity extends Activity {
                 + "미리보기의 키보드 전체 설정 페이지에서 키보드를 고르면 가장자리의 손잡이를 끌어서도 바꿀 수 있습니다."));
     }
 
-    /** 미리보기의 키보드 전체 설정 창: 그 프로필이 따로 정하는 키보드 모양(키 글자 크기·세로 위치)과 여백. */
+    /** 미리보기의 키보드 전체 설정 창: 그 프로필이 따로 정하는 키보드 모양(키 글자 크기)과 여백. */
     private void buildProfileBoard(String profile) {
         addProfileWhole(profile, profileWhen(profile));
         addProfilePads(profile);
@@ -2489,7 +2482,7 @@ public final class SettingsActivity extends Activity {
                                 refreshLayoutPreview();
                             }));
                 }
-                if (!portraitProfile) addProfileAreaPads(c, edit, KeyboardPreview.AREA_TOOLBAR);
+                if (!portraitProfile) addProfileAreaPads(edit, KeyboardPreview.AREA_TOOLBAR);   // 맨 아래
                 break;
             }
             case KeyboardPreview.AREA_MIDDLE: {
@@ -2513,8 +2506,10 @@ public final class SettingsActivity extends Activity {
                     c.addView(note("맨 아래 줄(스페이스바·기능키)의 높이로, 일반 키 높이에 대한 비율입니다. 정하기 전에는 세로 모드의 값을 "
                             + "따릅니다. 미리보기에서 고른 영역 위 가장자리의 손잡이를 위·아래로 끌어도 바뀝니다."));
                 }
-                if (!portraitProfile) addProfileAreaPads(c, edit, KeyboardPreview.AREA_FUNCTION);
-                if (!split) break;
+                if (!split) {
+                    if (!portraitProfile) addProfileAreaPads(edit, KeyboardPreview.AREA_FUNCTION);
+                    break;
+                }
                 String fnFollowKey = edit.fnFollowKey();
                 c.addView(toggle("묶음 좌우 따라가기",
                         "분리 키보드에서 기능키 줄의 양 끝이 왼쪽 묶음의 왼쪽 끝과 오른쪽 묶음의 오른쪽 끝을 따라갑니다. "
@@ -2538,6 +2533,7 @@ public final class SettingsActivity extends Activity {
                             refreshLayoutPreview();
                         }));
                 c.addView(fnWidth);
+                if (!portraitProfile) addProfileAreaPads(edit, KeyboardPreview.AREA_FUNCTION);   // 맨 아래
                 break;
             }
             default:
@@ -2546,10 +2542,11 @@ public final class SettingsActivity extends Activity {
     }
 
     /**
-     * 가로 모드·폴더블 내부 화면의 영역(도구 막대·기능키) 상하좌우 여백 슬라이더. 세로 모드와 따로 정하고,
-     * 정하기 전에는 세로 모드('키보드 사용자화')의 영역 여백을 따른다.
+     * 가로 모드·폴더블 내부 화면의 영역(도구 막대·기능키) '여백' 섹션: 상하좌우 슬라이더. 세로 모드와 따로 정하고,
+     * 정하기 전에는 세로 모드('키보드 사용자화')의 영역 여백을 따른다. 영역 창의 맨 아래에 둔다.
      */
-    private void addProfileAreaPads(LinearLayout c, Prefs edit, int area) {
+    private void addProfileAreaPads(Prefs edit, int area) {
+        LinearLayout c = section("여백");
         for (View v : new View[]{
                 profileSlider("왼쪽 여백", edit.profileAreaPadKey(area, Prefs.SIDE_LEFT), () -> edit.profileAreaPadDp(area, Prefs.SIDE_LEFT), 0, Prefs.AREA_PAD_MAX, 1, "dp"),
                 profileSlider("오른쪽 여백", edit.profileAreaPadKey(area, Prefs.SIDE_RIGHT), () -> edit.profileAreaPadDp(area, Prefs.SIDE_RIGHT), 0, Prefs.AREA_PAD_MAX, 1, "dp"),
