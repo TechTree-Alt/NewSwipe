@@ -73,8 +73,8 @@ public class SplitBottomRowTest {
         FakeSp sp = new FakeSp();
         Prefs p = landscapeEditView(sp);
         sp.m.put(Prefs.NUMBER_ROW, numberRow);
-        sp.m.put(p.balancedConsonantPosKey(), s[0]);
-        sp.m.put(p.balancedVowelPosKey(), s[1]);
+        sp.m.put(p.legacyConsonantPosKey(), s[0]);
+        sp.m.put(p.legacyVowelPosKey(), s[1]);
         sp.m.put(p.balancedConsonantWidthKey(), s[2]);
         sp.m.put(p.balancedVowelWidthKey(), s[3]);
         return p;
@@ -174,9 +174,9 @@ public class SplitBottomRowTest {
     private static Prefs fullWidthLandscape(FakeSp sp) throws Exception {
         Prefs p = landscapeEditView(sp);
         sp.m.put(p.balancedConsonantWidthKey(), 100);
-        sp.m.put(p.balancedConsonantPosKey(), 0);
+        sp.m.put(p.legacyConsonantPosKey(), 0);
         sp.m.put(p.balancedVowelWidthKey(), 100);
-        sp.m.put(p.balancedVowelPosKey(), 100);
+        sp.m.put(p.legacyVowelPosKey(), 100);
         return p;
     }
 
@@ -195,16 +195,17 @@ public class SplitBottomRowTest {
     @Test
     public void splitBlocksDefaultToEightyPercentAtTheOuterEdges() throws Exception {
         Prefs p = landscapeEditView(new FakeSp());
+        // 가로 위치는 안쪽 경계의 자리 (가운데 0, 왼쪽 끝 -100, 오른쪽 끝 100): 왼쪽 묶음 오른쪽 경계 4.2칸, 오른쪽 묶음 왼쪽 경계 5.8칸
         assertEquals(80, p.balancedConsonantWidth());
-        assertEquals(20, p.balancedConsonantPos());
+        assertEquals(-16, p.balancedConsonantPos());
         assertEquals(80, p.balancedVowelWidth());
-        assertEquals(80, p.balancedVowelPos());
-        // 세로 모드의 균형 배열은 그대로 100%·가운데
+        assertEquals(16, p.balancedVowelPos());
+        // 세로 모드의 균형 배열은 그대로 100%·가운데에서 맞닿는다
         Prefs portrait = portraitView(new FakeSp());
         assertEquals(100, portrait.balancedConsonantWidth());
-        assertEquals(50, portrait.balancedConsonantPos());
+        assertEquals(0, portrait.balancedConsonantPos());
         assertEquals(100, portrait.balancedVowelWidth());
-        assertEquals(50, portrait.balancedVowelPos());
+        assertEquals(0, portrait.balancedVowelPos());
         KeyboardLayout korean = KeyboardLayout.korean(p);
         for (int r = 0; r < 3; r++) {
             float[] h = halves(korean.rows[r]);
@@ -335,7 +336,7 @@ public class SplitBottomRowTest {
         FakeSp sp = new FakeSp();
         Prefs p = landscapeEditView(sp);
         sp.m.put(p.balancedConsonantWidthKey(), 60);
-        sp.m.put(p.balancedConsonantPosKey(), 100);
+        sp.m.put(p.legacyConsonantPosKey(), 100);
         KeyboardLayout l = KeyboardLayout.korean(p);
         float total = 0f;
         boolean hasSpace = false;
@@ -445,8 +446,8 @@ public class SplitBottomRowTest {
                 Prefs p = landscapeEditView(sp);
                 sp.m.put(Prefs.GRID_LAYOUT, true);
                 if (d7) sp.m.put(Prefs.KOREAN_LAYOUT, "danmoeum7");
-                sp.m.put(p.balancedConsonantPosKey(), s[0]);
-                sp.m.put(p.balancedVowelPosKey(), s[1]);
+                sp.m.put(p.legacyConsonantPosKey(), s[0]);
+                sp.m.put(p.legacyVowelPosKey(), s[1]);
                 sp.m.put(p.balancedConsonantWidthKey(), s[2]);
                 sp.m.put(p.balancedVowelWidthKey(), s[3]);
                 KeyboardLayout en = KeyboardLayout.english(p), ko = KeyboardLayout.korean(p);
@@ -526,8 +527,8 @@ public class SplitBottomRowTest {
                     FakeSp sp = new FakeSp();
                     Prefs p = landscapeEditView(sp);
                     sp.m.put(Prefs.GRID_LAYOUT, grid);
-                    sp.m.put(p.balancedConsonantPosKey(), s[0]);
-                    sp.m.put(p.balancedVowelPosKey(), s[1]);
+                    sp.m.put(p.legacyConsonantPosKey(), s[0]);
+                    sp.m.put(p.legacyVowelPosKey(), s[1]);
                     sp.m.put(p.balancedConsonantWidthKey(), vw[0]);
                     sp.m.put(p.balancedVowelWidthKey(), vw[1]);
                     for (KeyboardLayout l : new KeyboardLayout[]{KeyboardLayout.english(p), KeyboardLayout.symbols(true, p),
@@ -582,8 +583,8 @@ public class SplitBottomRowTest {
         for (int[] s : SETTINGS) {
             FakeSp sp = new FakeSp();
             Prefs p = landscapeEditView(sp);
-            sp.m.put(p.balancedConsonantPosKey(), s[0]);
-            sp.m.put(p.balancedVowelPosKey(), s[1]);
+            sp.m.put(p.legacyConsonantPosKey(), s[0]);
+            sp.m.put(p.legacyVowelPosKey(), s[1]);
             sp.m.put(p.balancedConsonantWidthKey(), s[2]);
             sp.m.put(p.balancedVowelWidthKey(), s[3]);
             sp.m.put(p.splitFnWidthKey(), 50);

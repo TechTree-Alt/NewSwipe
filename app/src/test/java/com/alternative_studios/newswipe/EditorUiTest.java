@@ -1542,10 +1542,26 @@ public class EditorUiTest {
         assertEquals(r.left + in, rs[0], 1f);
         assertEquals(r.right - in, re[0], 1f);
         assertEquals(l.centerY(), ls[1], 1f);
-        // 글자 키 높이 손잡이: 두 쪽을 합친 윤곽선의 위 가장자리, 자판 가운데
+        // 글자 키 높이 손잡이: 두 쪽 각각의 위 가장자리 가운데에 하나씩, 둘 다 글자 키 전체 높이를 바꾼다
+        float[] height2 = new float[2];
         assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.HEIGHT, height));
-        assertEquals((l.right + r.left) / 2f, height[0], 2f);
-        assertEquals(Math.min(l.top, r.top) + in, height[1], 1f);
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.HEIGHT_RIGHT, height2));
+        assertEquals(l.centerX(), height[0], 1f);
+        assertEquals(l.top + in, height[1], 1f);
+        assertEquals(r.centerX(), height2[0], 1f);
+        assertEquals(r.top + in, height2[1], 1f);
+        int kh0 = pre.keyboardHeight();
+        drag(overlay, height2[0], height2[1], 0, -120);
+        log("letters height (right handle) " + kh0 + " -> " + pre.keyboardHeight());
+        assertTrue(pre.keyboardHeight() > kh0);
+        pre.raw().edit().putInt(Prefs.KEYBOARD_HEIGHT, kh0).commit();
+        idle();
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.HEIGHT, height));
+        drag(overlay, height[0], height[1], 0, 60);
+        assertTrue(pre.keyboardHeight() < kh0);
+        pre.raw().edit().putInt(Prefs.KEYBOARD_HEIGHT, kh0).commit();
+        idle();
+        assertTrue(p.blockBounds(true, l) && p.blockBounds(false, r));
         shot(a, "c0-balanced-editor");
         float unit = (r.right - l.left) / 10f;   // 한 칸 (px)
         // 자음 쪽 오른쪽 경계를 왼쪽으로 한 칸: 폭이 줄고 왼쪽 경계(시작)는 그대로, 슬라이더도 따라간다
@@ -1610,9 +1626,9 @@ public class EditorUiTest {
         assertEquals(e6[0] + e6[1], e7[2], 0.06f);
         assertEquals(vw5, pre.balancedVowelWidth());
         shot(a, "c1b-balanced-editor-move");
-        // 자음 쪽이 가운데를 넘어 옮겨 가도(60%, 위치 140 → 4~7칸) 윤곽선은 자음 키만, 모음 윤곽선은 모음 키만 감싼다
-        pre.raw().edit().putInt(pre.balancedConsonantWidthKey(), 60).putInt(pre.balancedConsonantPosKey(), 140)
-                .putInt(pre.balancedVowelWidthKey(), 60).putInt(pre.balancedVowelPosKey(), 100).commit();
+        // 자음 쪽이 가운데를 넘어 옮겨 가도(60%, 오른쪽 경계 40 → 4~7칸) 윤곽선은 자음 키만, 모음 윤곽선은 모음 키만 감싼다
+        pre.raw().edit().putInt(pre.balancedConsonantWidthKey(), 60).putInt(pre.balancedConsonantPosKey(), 40)
+                .putInt(pre.balancedVowelWidthKey(), 60).putInt(pre.balancedVowelPosKey(), 40).commit();
         idle();
         assertTrue(p.blockBounds(true, l) && p.blockBounds(false, r));
         assertTrue(r.left - l.right >= 2 * dp - 0.5f);

@@ -1132,6 +1132,12 @@ public final class SettingsActivity extends Activity {
                              String unit, java.util.function.Consumer<String> after) {
         SettingsWidgets.Slider[] ref = new SettingsWidgets.Slider[1];
         SettingsWidgets.Slider sl = widgets.slider(label, current.getAsInt(), min, max, 5, unit, val -> {
+            // 폭을 바꾸기 전에, 예전 방식에서 옮겨 읽고 있던 가로 위치를 새 방식으로 저장해 둔다 (안쪽 경계가 그 자리에 남게).
+            String posKey = owner.pairedPosKey(key);
+            if (posKey != null && !prefs.raw().contains(posKey)) {
+                prefs.raw().edit().putInt(posKey, posKey.equals(owner.balancedConsonantPosKey())
+                        ? owner.balancedConsonantPos() : owner.balancedVowelPos()).apply();
+            }
             int fit = owner.fitBlockValue(key, current.getAsInt(), val);   // 저장하기 전의 값에서 출발
             prefs.raw().edit().putInt(key, fit).apply();
             if (fit != val && ref[0] != null) ref[0].set(fit);
@@ -2392,24 +2398,24 @@ public final class SettingsActivity extends Activity {
     private void addEditorBalancedBlocks() {
         LinearLayout c = section("자·모음 균형 배열");
         c.addView(blockSlider(prefs, "자음 키 폭", prefs.balancedConsonantWidthKey(), prefs::balancedConsonantWidth, prefs.balancedWidthMin(), prefs.balancedWidthMax(), "%", this::syncKeyPanel));
-        c.addView(blockSlider(prefs, "자음 가로 위치", prefs.balancedConsonantPosKey(), prefs::balancedConsonantPos, 0, Prefs.BALANCED_LEFT_POS_MAX, "", this::syncKeyPanel));
+        c.addView(blockSlider(prefs, "자음 가로 위치", prefs.balancedConsonantPosKey(), prefs::balancedConsonantPos, Prefs.BALANCED_POS_MIN, Prefs.BALANCED_POS_MAX, "", this::syncKeyPanel));
         c.addView(blockSlider(prefs, "모음 키 폭", prefs.balancedVowelWidthKey(), prefs::balancedVowelWidth, prefs.balancedWidthMin(), prefs.balancedWidthMax(), "%", this::syncKeyPanel));
-        c.addView(blockSlider(prefs, "모음 가로 위치", prefs.balancedVowelPosKey(), prefs::balancedVowelPos, Prefs.BALANCED_RIGHT_POS_MIN, 100, "", this::syncKeyPanel));
+        c.addView(blockSlider(prefs, "모음 가로 위치", prefs.balancedVowelPosKey(), prefs::balancedVowelPos, Prefs.BALANCED_POS_MIN, Prefs.BALANCED_POS_MAX, "", this::syncKeyPanel));
         c.addView(note(BLOCK_NOTE + " 미리보기에서 글자 키를 고르면 자음·모음 쪽 왼쪽·오른쪽 가장자리의 손잡이를 좌우로 끌어 "
                 + "그 경계를 옮기고(폭은 5% 단위), 가운데의 ↔ 버튼을 끌어 폭은 그대로 옮길 수도 있습니다."));
     }
 
     /** 두 묶음(자음·모음 쪽, 왼쪽·오른쪽 묶음)의 폭·가로 위치 설명. */
     private static final String BLOCK_NOTE = "폭은 100%면 자기 절반을 꽉 채우고, 다른 묶음이 비켜 준 자리가 있으면 100% 넘게 넓힐 수 있습니다. "
-            + "가로 위치는 절반 안에서 놓이는 곳이고 (0 = 왼쪽 끝, 50 = 가운데, 100 = 오른쪽 끝), 자리가 있으면 왼쪽 묶음은 100 넘게, "
-            + "오른쪽 묶음은 0 아래로 옮겨 다른 쪽 절반으로 넘어갈 수 있습니다.";
+            + "가로 위치는 두 묶음이 마주 보는 안쪽 경계의 자리로, 왼쪽 묶음은 오른쪽 경계, 오른쪽 묶음은 왼쪽 경계입니다 "
+            + "(-100 = 왼쪽 끝, 0 = 가운데, 100 = 오른쪽 끝). 폭을 바꾸면 이 경계는 그대로 두고 바깥쪽으로 줄거나 늘어납니다.";
 
     private void addEditorSplitBlocks() {
         LinearLayout c = section("분리 키보드");
         c.addView(blockSlider(prefs, "왼쪽 묶음 폭", prefs.balancedConsonantWidthKey(), prefs::balancedConsonantWidth, prefs.balancedWidthMin(), prefs.balancedWidthMax(), "%", this::syncKeyPanel));
-        c.addView(blockSlider(prefs, "왼쪽 묶음 가로 위치", prefs.balancedConsonantPosKey(), prefs::balancedConsonantPos, 0, Prefs.BALANCED_LEFT_POS_MAX, "", this::syncKeyPanel));
+        c.addView(blockSlider(prefs, "왼쪽 묶음 가로 위치", prefs.balancedConsonantPosKey(), prefs::balancedConsonantPos, Prefs.BALANCED_POS_MIN, Prefs.BALANCED_POS_MAX, "", this::syncKeyPanel));
         c.addView(blockSlider(prefs, "오른쪽 묶음 폭", prefs.balancedVowelWidthKey(), prefs::balancedVowelWidth, prefs.balancedWidthMin(), prefs.balancedWidthMax(), "%", this::syncKeyPanel));
-        c.addView(blockSlider(prefs, "오른쪽 묶음 가로 위치", prefs.balancedVowelPosKey(), prefs::balancedVowelPos, Prefs.BALANCED_RIGHT_POS_MIN, 100, "", this::syncKeyPanel));
+        c.addView(blockSlider(prefs, "오른쪽 묶음 가로 위치", prefs.balancedVowelPosKey(), prefs::balancedVowelPos, Prefs.BALANCED_POS_MIN, Prefs.BALANCED_POS_MAX, "", this::syncKeyPanel));
         c.addView(note(BLOCK_NOTE + " 미리보기에서 묶음 왼쪽·오른쪽 가장자리의 손잡이를 좌우로 끌면 그 경계가 옮겨 가 폭이 바뀌고(5% 단위), 가운데의 ↔ 버튼을 끌면 폭은 그대로 묶음이 옮겨 갑니다."));
     }
 
@@ -2429,10 +2435,10 @@ public final class SettingsActivity extends Activity {
                 LinearLayout c = section("묶음 크기");
                 if (left) {
                     c.addView(blockSlider(edit, side + " 묶음 폭", edit.balancedConsonantWidthKey(), edit::balancedConsonantWidth, edit.balancedWidthMin(), edit.balancedWidthMax(), "%", k -> refreshLayoutPreview()));
-                    c.addView(blockSlider(edit, side + " 묶음 가로 위치", edit.balancedConsonantPosKey(), edit::balancedConsonantPos, 0, Prefs.BALANCED_LEFT_POS_MAX, "", k -> refreshLayoutPreview()));
+                    c.addView(blockSlider(edit, side + " 묶음 가로 위치", edit.balancedConsonantPosKey(), edit::balancedConsonantPos, Prefs.BALANCED_POS_MIN, Prefs.BALANCED_POS_MAX, "", k -> refreshLayoutPreview()));
                 } else {
                     c.addView(blockSlider(edit, side + " 묶음 폭", edit.balancedVowelWidthKey(), edit::balancedVowelWidth, edit.balancedWidthMin(), edit.balancedWidthMax(), "%", k -> refreshLayoutPreview()));
-                    c.addView(blockSlider(edit, side + " 묶음 가로 위치", edit.balancedVowelPosKey(), edit::balancedVowelPos, Prefs.BALANCED_RIGHT_POS_MIN, 100, "", k -> refreshLayoutPreview()));
+                    c.addView(blockSlider(edit, side + " 묶음 가로 위치", edit.balancedVowelPosKey(), edit::balancedVowelPos, Prefs.BALANCED_POS_MIN, Prefs.BALANCED_POS_MAX, "", k -> refreshLayoutPreview()));
                 }
                 c.addView(note((left ? "왼쪽 묶음(자음, 숫자 1~5, 스페이스바와 그 왼쪽 키)" : "오른쪽 묶음(모음, 숫자 6~0, 스페이스바와 그 오른쪽 키)")
                         + "이 함께 움직입니다. " + BLOCK_NOTE + " 미리보기에서 묶음 왼쪽·오른쪽 가장자리의 손잡이를 좌우로 끌면 그 경계가 옮겨 가 폭이 바뀌고(5% 단위), 가운데의 ↔ 버튼을 끌면 폭은 그대로 묶음이 옮겨 갑니다."));

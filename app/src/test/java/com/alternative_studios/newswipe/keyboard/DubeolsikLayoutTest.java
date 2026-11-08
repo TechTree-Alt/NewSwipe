@@ -281,7 +281,7 @@ public class DubeolsikLayoutTest {
         FakeSp sp = dubeolsik(true);
         Prefs p0 = portrait(sp);
         sp.m.put(p0.balancedVowelWidthKey(), 80);
-        sp.m.put(p0.balancedVowelPosKey(), 0);
+        sp.m.put(p0.legacyVowelPosKey(), 0);   // 예전 방식의 값(오른쪽 절반의 왼쪽 끝)도 그대로 옮겨 읽는다
         sp.m.put(p0.balancedConsonantWidthKey(), 90);
         sp.m.put(p0.balancedBoundaryKey(), 60);   // 예전 '자·모음 경계 위치' 값은 쓰지 않는다
         assertTrue(p0.balancedVowelWidthKey().endsWith("_" + Prefs.KOREAN_LAYOUT_DUBEOLSIK));
@@ -309,9 +309,9 @@ public class DubeolsikLayoutTest {
     public void balancedDefaults() throws Exception {
         Prefs d = portrait(dubeolsik(true));
         assertEquals(90, d.balancedConsonantWidth());
-        assertEquals(0, d.balancedConsonantPos());
+        assertEquals(-10, d.balancedConsonantPos());   // 자음 쪽 오른쪽 경계 4.5칸
         assertEquals(90, d.balancedVowelWidth());
-        assertEquals(100, d.balancedVowelPos());
+        assertEquals(10, d.balancedVowelPos());   // 모음 쪽 왼쪽 경계 5.5칸
         // 자음은 왼쪽 끝에서, 모음은 오른쪽 끝까지
         KeyboardLayout l = KeyboardLayout.korean(d);
         assertEquals(0f, leftOf(l.rows[0], key(l, "ㅂ"), 10), 1e-3f);
@@ -322,16 +322,16 @@ public class DubeolsikLayoutTest {
             sp.m.put(Prefs.KOREAN_LAYOUT, layout);
             Prefs p = portrait(sp);
             assertEquals(layout, 100, p.balancedConsonantWidth());
-            assertEquals(layout, 50, p.balancedConsonantPos());
+            assertEquals(layout, 0, p.balancedConsonantPos());
             assertEquals(layout, 100, p.balancedVowelWidth());
-            assertEquals(layout, 50, p.balancedVowelPos());
+            assertEquals(layout, 0, p.balancedVowelPos());
         }
         // 분리 키보드(가로 모드)의 기본값은 배열과 상관없이 그대로
         FakeSp land = dubeolsik(true);
         Prefs lp = view(land, Prefs.PROFILE_LANDSCAPE).profileEditView(Prefs.PROFILE_LANDSCAPE);
         assertEquals(Prefs.SPLIT_WIDTH_DEFAULT, lp.balancedConsonantWidth());
-        assertEquals(Prefs.SPLIT_LEFT_POS_DEFAULT, lp.balancedConsonantPos());
-        assertEquals(Prefs.SPLIT_RIGHT_POS_DEFAULT, lp.balancedVowelPos());
+        assertEquals(-16, lp.balancedConsonantPos());
+        assertEquals(16, lp.balancedVowelPos());
     }
 
     /** 격자 정렬: 균형 배열에서도 맨 아래 줄 기능키가 반듯한 칸 폭이다. */

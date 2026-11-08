@@ -164,6 +164,8 @@ final class KeyboardPreview extends FrameLayout {
         // 두 묶음 가운데의 ↔ 버튼: 좌우로 끌면 폭은 그대로 두고 묶음을 옮긴다 (가로 위치).
         B_LEFT_MOVE(false, "가로 위치", null),
         B_RIGHT_MOVE(false, "가로 위치", null),
+        // 글자 키가 두 묶음으로 나뉘어 있을 때 오른쪽 묶음 위의 높이 손잡이 (HEIGHT는 왼쪽 묶음 위). 둘 다 글자 키 전체 높이를 바꾼다.
+        HEIGHT_RIGHT(true, "글자 키 높이", Prefs.KEYBOARD_HEIGHT),
         // 가로 모드·폴더블 내부 화면 키보드 사용자화 (setProfileMode): 키보드를 화면 아래에서 띄우는 높이. 저장 키는 프로필마다 다르다.
         LIFT(true, "세로 위치", null);
 
@@ -195,7 +197,7 @@ final class KeyboardPreview extends FrameLayout {
 
         /** 높이 손잡이인지 (도구 막대·숫자 줄·글자 키·기능키). */
         boolean height() {
-            return this == TOOLBAR || this == NUMBER_ROW || this == HEIGHT || this == FN_ROW;
+            return this == TOOLBAR || this == NUMBER_ROW || this == HEIGHT || this == HEIGHT_RIGHT || this == FN_ROW;
         }
 
         /** 값 뒤에 붙는 단위: 높이와 묶음 폭은 %, 여백과 세로 위치는 dp, 묶음 가로 위치는 없음. */
@@ -214,7 +216,8 @@ final class KeyboardPreview extends FrameLayout {
             case B_RIGHT_END: return prefs.balancedVowelWidthKey();
             case B_LEFT_MOVE: return prefs.balancedConsonantPosKey();
             case B_RIGHT_MOVE: return prefs.balancedVowelPosKey();
-            case HEIGHT: return profileEdit != null ? prefs.heightKey() : h.key;
+            case HEIGHT:
+            case HEIGHT_RIGHT: return profileEdit != null ? prefs.heightKey() : h.key;
             case FN_ROW: return profileEdit != null ? prefs.fnRowHeightKey() : h.key;
             case LIFT: return prefs.liftKey();
             default: return h.key;
@@ -1081,7 +1084,8 @@ final class KeyboardPreview extends FrameLayout {
         switch (selection.area()) {
             case AREA_TOOLBAR: return h == Handle.TOOLBAR && bar.getParent() != null;
             case AREA_NUMBER: return h == Handle.NUMBER_ROW && numberRowShown;
-            case AREA_LETTERS: return h == Handle.HEIGHT;
+            // 두 묶음으로 나뉘어 있으면 묶음마다 하나씩 (둘 다 글자 키 전체 높이를 바꾼다).
+            case AREA_LETTERS: return h == Handle.HEIGHT || (h == Handle.HEIGHT_RIGHT && (editorSplit() || editorBalanced()));
             case AREA_MIDDLE: return false;
             default: return h == Handle.FN_ROW;
         }
@@ -1133,11 +1137,19 @@ final class KeyboardPreview extends FrameLayout {
         if (!handleShown(h)) return false;
         switch (h) {
             case HEIGHT:
+            case HEIGHT_RIGHT:
             case TOOLBAR:
             case NUMBER_ROW:
             case FN_ROW: {
                 // 높이 손잡이: 고른 영역 윤곽선의 위 가장자리 가운데. 위·아래로 끌어 그 영역의 높이를 바꾼다.
                 RectF r = new RectF();
+                // 글자 키가 두 묶음으로 나뉘어 있으면 각 묶음 위 가장자리 가운데 (HEIGHT는 왼쪽, HEIGHT_RIGHT는 오른쪽 묶음).
+                if ((h == Handle.HEIGHT || h == Handle.HEIGHT_RIGHT) && profileEdit == null && (editorSplit() || editorBalanced())) {
+                    if (!blockBounds(h == Handle.HEIGHT, r)) return false;
+                    out[0] = r.centerX();
+                    out[1] = Math.max(r.top, 0);
+                    return true;
+                }
                 if (!heightEdgeBounds(h, r)) return false;
                 out[0] = r.centerX();
                 out[1] = Math.max(r.top, 0);
@@ -1236,7 +1248,8 @@ final class KeyboardPreview extends FrameLayout {
             case TOOLBAR: dragStart = bar.getHeight(); break;
             case NUMBER_ROW: dragStart = Ui.dp(c, 54) * prefs.keyboardHeight() / 100f * prefs.numberRowHeight() / 100f; break;
             case FN_ROW: dragStart = Ui.dp(c, 54) * prefs.keyboardHeight() / 100f * prefs.fnRowHeight() / 100f; break;
-            case HEIGHT: dragStart = Ui.dp(c, 54) * rowUnits() * prefs.keyboardHeight() / 100f; break;
+            case HEIGHT:
+            case HEIGHT_RIGHT: dragStart = Ui.dp(c, 54) * rowUnits() * prefs.keyboardHeight() / 100f; break;
             default: dragStart = valueOf(h); break;
         }
         dragValue = valueOf(h);
@@ -1256,7 +1269,8 @@ final class KeyboardPreview extends FrameLayout {
             case B_RIGHT_MOVE: return prefs.balancedVowelPos();
             case TOOLBAR: return prefs.toolbarHeight();
             case NUMBER_ROW: return prefs.numberRowHeight();
-            case HEIGHT: return prefs.keyboardHeight();
+            case HEIGHT:
+            case HEIGHT_RIGHT: return prefs.keyboardHeight();
             case FN_ROW: return prefs.fnRowHeight();
             case LIFT: return prefs.profileLiftDp();
             case PAD_LEFT: return prefs.padLeftDp();
@@ -1292,6 +1306,7 @@ final class KeyboardPreview extends FrameLayout {
                 v = clamp(snap5((dragStart - dy) / (Ui.dp(c, 54) * prefs.keyboardHeight() / 100f) * 100f),
                         Prefs.FN_ROW_HEIGHT_MIN, Prefs.FN_ROW_HEIGHT_MAX);
                 break;
+            case HEIGHT_RIGHT:
             case HEIGHT:
                 v = clamp(snap5((dragStart - dy) / (Ui.dp(c, 54) * rowUnits()) * 100f),
                         profileEdit != null ? Prefs.PROFILE_HEIGHT_MIN : 70, 140);
@@ -1353,8 +1368,8 @@ final class KeyboardPreview extends FrameLayout {
         float w = 5f * width / 100f;
         boolean movesStart = h == Handle.B_LEFT_START || h == Handle.B_RIGHT_START;
         float s = movesStart ? end - w : start;
-        int pos = left ? Prefs.leftPos(w, s) : Prefs.rightPos(w, s);
-        pos = left ? clamp(pos, 0, Prefs.BALANCED_LEFT_POS_MAX) : clamp(pos, Prefs.BALANCED_RIGHT_POS_MIN, 100);
+        // 가로 위치는 안쪽 경계의 자리: 왼쪽 묶음은 오른쪽 경계, 오른쪽 묶음은 왼쪽 경계.
+        int pos = clamp(left ? Prefs.leftPosOf(s + w) : Prefs.rightPosOf(s), Prefs.BALANCED_POS_MIN, Prefs.BALANCED_POS_MAX);
         String wKey = left ? prefs.balancedConsonantWidthKey() : prefs.balancedVowelWidthKey();
         String pKey = left ? prefs.balancedConsonantPosKey() : prefs.balancedVowelPosKey();
         int oldPos = left ? prefs.balancedConsonantPos() : prefs.balancedVowelPos();
@@ -1380,11 +1395,12 @@ final class KeyboardPreview extends FrameLayout {
         float w = left ? lw : rw;
         float lo = left ? 0f : ls + lw, hi = left ? rs - lw : 10f - rw;   // 시작이 갈 수 있는 범위
         float start = clampF((left ? ls : rs) + du, lo, Math.max(lo, hi));
-        int pos = left ? Prefs.leftPos(w, start) : Prefs.rightPos(w, start);
+        // 가로 위치는 안쪽 경계의 자리: 왼쪽 묶음은 오른쪽 경계(시작 + 폭), 오른쪽 묶음은 왼쪽 경계(시작).
+        int pos = left ? Prefs.leftPosOf(start + w) : Prefs.rightPosOf(start);
         int snapped = snap5(pos);
-        float snappedStart = left ? Prefs.leftStart(w, snapped) : Prefs.rightStart(w, snapped);
+        float snappedStart = Prefs.posToUnits(snapped) - (left ? w : 0f);
         if (snappedStart >= lo - 1e-4f && snappedStart <= hi + 1e-4f) pos = snapped;   // 닿은 곳이 아니면 5 단위
-        pos = left ? clamp(pos, 0, Prefs.BALANCED_LEFT_POS_MAX) : clamp(pos, Prefs.BALANCED_RIGHT_POS_MIN, 100);
+        pos = clamp(pos, Prefs.BALANCED_POS_MIN, Prefs.BALANCED_POS_MAX);
         if (pos == dragValue) return;
         dragValue = pos;
         String key = left ? prefs.balancedConsonantPosKey() : prefs.balancedVowelPosKey();
