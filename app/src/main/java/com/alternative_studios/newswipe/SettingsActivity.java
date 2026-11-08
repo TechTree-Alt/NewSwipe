@@ -1421,10 +1421,18 @@ public final class SettingsActivity extends Activity {
                 // 한글·영어·기호 자판의 글자 키는 따로 다룬다: 그 자판에만 있는 항목(한글 자판 배열·연속 탭, 영어 자동 대문자 등)은
                 // 그 자판의 창에만 둔다. 높이·길게 누르기·밀기·여백은 세 자판이 함께 쓴다.
                 boolean ko = letterTab == KeyboardPreview.TAB_KOREAN, en = letterTab == KeyboardPreview.TAB_ENGLISH;
+                splitHolder = null;
                 if (ko) buildKoreanLayoutSection();
                 LinearLayout size = section("모양");
                 size.addView(sizeSlider("글자 키 높이", Prefs.KEYBOARD_HEIGHT, prefs::keyboardHeight, 70, 140, 5, "%"));
-                if (prefs.portraitSplit() && letterTab != KeyboardPreview.TAB_SYMBOLS) addEditorSplitBlocks(ko);
+                // 분리 키보드 섹션은 틀에 담아, 상세 배열에서 분리 키보드를 고르면 창을 다시 만들지 않고 그 자리에 채워 펼친다.
+                if (letterTab != KeyboardPreview.TAB_SYMBOLS) {
+                    splitHolder = new LinearLayout(this);
+                    splitHolder.setOrientation(LinearLayout.VERTICAL);
+                    splitHolderKo = ko;
+                    list.addView(splitHolder, matchWrap());
+                    fillSplitHolder();
+                }
                 if (ko) addKoreanInput(section("입력"));
                 if (en) addEnglishInput(section("입력"));   // ⌫ 인식 범위는 ⌫ 키 설정에
                 LinearLayout lp = section("길게 누르기");
@@ -1691,7 +1699,7 @@ public final class SettingsActivity extends Activity {
         int selected = prefs.koreanDubeolsik() ? 0 : prefs.koreanD7() ? 2 : 1;
         // 배열을 고르면 화면을 다시 만들지 않고 안내문·토글·미리보기를 그 자리에서 바꾼다 (선택 버튼의 스프링이 끊기지 않게).
         TextView layoutNote = note(layoutNoteText());
-        // 모든 한글 배열에서 쓸 수 있고, 배열마다 따로 켜고 끈다. 격자 정렬과 함께 쓰면 기능키가 나뉜 자음 키 폭에 맞춰진다.
+        // 모든 한글 배열에서 쓸 수 있고, 모든 배열이 같은 값을 쓴다. 격자 정렬과 함께 쓰면 기능키가 나뉜 자음 키 폭에 맞춰진다.
         // 토글의 하위 항목(강조선·들여쓰기)으로 보이는 버튼이다.
         // 버튼은 위아래 여백이 있어, 버튼 자체를 접으면 높이가 0이 된 뒤 남은 여백이 한꺼번에 사라져 끊겨 보인다.
         // 그래서 여백 없는 틀(fold)로 감싸 그 틀을 펼치고 접는다.
@@ -1707,6 +1715,11 @@ public final class SettingsActivity extends Activity {
         View keyArea = fold(subGroup(button("균형 배열 사용자화", v -> openSection(KEY_AREA)), englishBalanced));
         // 상세 배열: 사용 안 함·자·모음 균형 배열·분리 키보드 중 하나 (스페이스바 길게 누르기처럼 줄을 눌러 고른다).
         // 균형 배열과 분리 키보드(세로 모드) 모두 모든 한글 배열이 함께 쓴다.
+        // 상세 배열 아래의 설명: 고른 배열의 것만 보인다 ('사용 안 함'이면 감춘다).
+        // 글에 위아래 여백이 있어 여백 없는 틀(fold)로 감싸 그 틀을 펼치고 접는다 (균형 배열 사용자화 버튼과 같은 까닭).
+        TextView detailNote = note(detailNoteText(detailLayout()));
+        View detailNoteBox = fold(detailNote);
+        detailNoteBox.setVisibility(detailLayout() == DETAIL_NONE ? View.GONE : View.VISIBLE);
         SettingsWidgets.ValueRow[] detail = new SettingsWidgets.ValueRow[1];
         detail[0] = widgets.valueRow("상세 배열", DETAIL_LAYOUTS[detailLayout()], v ->
                 pickDetailLayout(mode -> {
@@ -1716,6 +1729,16 @@ public final class SettingsActivity extends Activity {
                     e.apply();
                     detail[0].set(DETAIL_LAYOUTS[mode]);
                     Ui.setVisibleAnimated(keyArea, mode == DETAIL_BALANCED);
+                    showDetailNote(detailNoteBox, detailNote, mode);
+                    if (splitHolder != null) {
+                        if (mode == DETAIL_SPLIT) {
+                            fillSplitHolder();
+                            splitHolder.setVisibility(View.GONE);
+                            Ui.setVisibleAnimated(splitHolder, true);
+                        } else {
+                            Ui.setVisibleAnimated(splitHolder, false);
+                        }
+                    }
                     refreshLayoutPreview();
                 }));
         keyArea.setVisibility(detailLayout() == DETAIL_BALANCED ? View.VISIBLE : View.GONE);
@@ -1723,18 +1746,33 @@ public final class SettingsActivity extends Activity {
                 i -> {
                     prefs.setKoreanLayout(koreanLayouts[i]);
                     layoutNote.setText(layoutNoteText());
-                    // 균형 배열은 배열마다 따로 기억하므로 고른 배열의 값으로 상세 배열을 맞춘다.
+                    // 예전에 배열마다 저장한 균형 배열 값이 남아 있으면 배열에 따라 달라질 수 있으므로 상세 배열을 다시 맞춘다.
                     detail[0].set(DETAIL_LAYOUTS[detailLayout()]);
                     Ui.setVisibleAnimated(keyArea, detailLayout() == DETAIL_BALANCED);
+                    showDetailNote(detailNoteBox, detailNote, detailLayout());
                     Ui.setVisibleAnimated(englishBalanced, englishBalancedShown());
+                    // 분리 키보드 묶음 폭·위치는 배열마다 따로 저장하고 두벌식에는 좌·우 균형 배열이 없으므로, 고른 배열의 것으로 다시 채운다.
+                    if (prefs.portraitSplit()) fillSplitHolder();
                     refreshLayoutPreview();
                 });
         korean.addView(choices);
         korean.addView(layoutNote);
         korean.addView(detail[0].view);
+        korean.addView(detailNoteBox);
         korean.addView(keyArea);
-        korean.addView(note("자·모음 균형 배열은 자판을 둘로 나눠 왼쪽에는 자음을, 오른쪽에는 모음을 놓습니다. "
-                + "분리 키보드는 자판을 왼쪽·오른쪽 묶음으로 나눠 엄지손가락만으로 타이핑을 편하게 합니다."));
+    }
+
+    /** 상세 배열 아래의 설명 (고른 배열의 것). '사용 안 함'이면 빈 글. */
+    private static String detailNoteText(int mode) {
+        if (mode == DETAIL_BALANCED) return "자·모음 균형 배열은 한글 글자 키 영역을 반으로 나눠 각각에 자음과 모음을 놓습니다.";
+        if (mode == DETAIL_SPLIT) return "분리 키보드는 키보드 전체를 반으로 나눕니다. 영어 자판과 기호 자판에도 적용됩니다.";
+        return "";
+    }
+
+    /** 상세 배열을 바꾸면 설명을 고른 배열의 것으로 바꾼다 ('사용 안 함'이면 접는다. 접는 동안은 앞의 글을 그대로 둔다). */
+    private void showDetailNote(View box, TextView note, int mode) {
+        if (mode != DETAIL_NONE) note.setText(detailNoteText(mode));
+        Ui.setVisibleAnimated(box, mode != DETAIL_NONE);
     }
 
     /** 상세 배열의 이름 (DETAIL_* 차례). */
@@ -2279,6 +2317,27 @@ public final class SettingsActivity extends Activity {
      * 키보드 사용자화 글자 키 창의 분리 키보드 항목: 왼쪽·오른쪽 묶음의 폭·가로 위치(미리보기의 ↔ 버튼과 같이 움직인다)와,
      * 한글 자판이면 자·모음 분리 배열.
      */
+    /** 글자 키 창의 분리 키보드 섹션을 담는 틀 (기호 자판 창이나 다른 창에서는 null)과 그 창이 한글 자판의 것인지. */
+    private LinearLayout splitHolder;
+    private boolean splitHolderKo;
+
+    /**
+     * 분리 키보드 섹션을 지금 설정으로 다시 채운다. 슬라이더의 설정 키가 분리 키보드 사용 여부에 따라 달라지므로
+     * 켤 때마다 새로 만든다. 분리 키보드를 쓰지 않으면 비워 둔다.
+     */
+    private void fillSplitHolder() {
+        if (splitHolder == null) return;
+        splitHolder.removeAllViews();
+        if (!prefs.portraitSplit()) return;
+        LinearLayout saved = list;
+        list = splitHolder;
+        try {
+            addEditorSplitBlocks(splitHolderKo);
+        } finally {
+            list = saved;
+        }
+    }
+
     private void addEditorSplitBlocks(boolean ko) {
         LinearLayout c = section("분리 키보드");
         c.addView(sizeSlider("왼쪽 묶음 폭", prefs.balancedConsonantWidthKey(), prefs::balancedConsonantWidth,

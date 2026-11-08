@@ -1318,6 +1318,8 @@ public class EditorUiTest {
         key(p, null, Key.SHIFT);
         assertTrue(visibleTexts(cur(a)).contains("두벌식은 컴퓨터 키보드와 같은 표준 한글 배열입니다."));
         assertTrue(visibleTexts(cur(a)).contains("상세 배열\n  사용 안 함"));
+        assertFalse(visibleTexts(cur(a)).contains("반으로 나"));   // '사용 안 함'이면 상세 배열 설명이 없다
+        assertFalse(visibleTexts(cur(a)).contains("왼쪽 묶음 폭"));
         assertFalse(visibleTexts(cur(a)).contains("영어 자판도 균형 배열"));   // 균형 배열을 켠 뒤에만 보인다
         assertFalse(visibleTexts(cur(a)).contains("영어 자판 아래로 밀어 대문자 입력"));   // 영어 글자 키 창에만 있다
         shot(a, "a0-dubeolsik");
@@ -1331,7 +1333,13 @@ public class EditorUiTest {
         idle();
         assertTrue(prefs.portraitSplit());
         assertTrue(prefs.raw().getBoolean(Prefs.PORTRAIT_SPLIT, false));
-        assertTrue(visibleTexts(cur(a)).contains("상세 배열\n  분리 키보드"));
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
+        String st = visibleTexts(cur(a));
+        assertTrue(st, st.contains("상세 배열\n  분리 키보드"));
+        // 고르면 창을 다시 열지 않아도 분리 키보드 섹션이 바로 보이고, 설명은 분리 키보드의 것만
+        assertTrue(st, st.contains("왼쪽 묶음 폭") && st.contains("오른쪽 묶음 가로 위치"));
+        assertTrue(st, st.contains("분리 키보드는 키보드 전체를 반으로 나눕니다. 영어 자판과 기호 자판에도 적용됩니다."));
+        assertFalse(st, st.contains("자·모음 균형 배열은"));
         findText(cur(a), "단모음").performClick();   // 분리 키보드는 모든 배열이 함께 쓴다
         idle();
         assertTrue(prefs.portraitSplit());
@@ -1346,6 +1354,11 @@ public class EditorUiTest {
         assertFalse(prefs.portraitSplit());
         assertTrue(prefs.balancedLayout());
         assertTrue(prefs.raw().getBoolean(Prefs.BALANCED_LAYOUT, false));
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
+        String bt = visibleTexts(cur(a));
+        assertFalse(bt, bt.contains("왼쪽 묶음 폭"));   // 분리 키보드 섹션은 접힌다
+        assertTrue(bt, bt.contains("자·모음 균형 배열은 한글 글자 키 영역을 반으로 나눠 각각에 자음과 모음을 놓습니다."));
+        assertFalse(bt, bt.contains("분리 키보드는"));
         assertTrue(visibleTexts(cur(a)).contains("영어 자판도 균형 배열"));
         View enRow = (View) findText(cur(a), "영어 자판도 균형 배열").getParent().getParent();
         enRow.performClick();
