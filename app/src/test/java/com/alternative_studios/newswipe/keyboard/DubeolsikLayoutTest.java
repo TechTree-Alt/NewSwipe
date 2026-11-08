@@ -344,7 +344,11 @@ public class DubeolsikLayoutTest {
         KeyboardLayout l = KeyboardLayout.korean(portrait(sp));
         KeyboardLayout.Row bottom = l.rows[l.rows.length - 1];
         assertEquals(10f, total(bottom), 1e-3f);
-        assertEquals(1f, bottom.keys[0].weight, 1e-3f);
+        // 기능키 한 칸 = 자음 쪽을 꽉 채웠을 때의 자음 키 한 칸 (자음 쪽은 5.5칸)
+        assertEquals(5f / 5.5f, bottom.keys[0].weight, 1e-3f);
+        sp.m.put(portrait(sp).balancedConsonantWidthKey(), 100);
+        KeyboardLayout full = KeyboardLayout.korean(portrait(sp));
+        assertEquals(key(full, "ㅂ").weight, full.rows[full.rows.length - 1].keys[0].weight, 1e-3f);
     }
 
     @Test

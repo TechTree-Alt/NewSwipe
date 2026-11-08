@@ -51,7 +51,7 @@ final class EditorSheet {
         scrim.setAlpha(0f);
         scrim.setVisibility(View.GONE);
         scrim.setOnClickListener(v -> onCloseRequest.run());
-        scrim.setContentDescription("편집 닫기");
+        scrim.setContentDescription("설정 창 닫기");
         parent.addView(scrim, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
 
@@ -76,7 +76,7 @@ final class EditorSheet {
         int hp = Ui.dp(c, 12);
         header.setPadding(hp, Ui.dp(c, 12), hp, Ui.dp(c, 4));
         int press = (colors.text & 0x00FFFFFF) | 0x33000000;
-        IconButton cancel = new IconButton(c, Icons.CLOSE, colors.text, press, "편집 닫기");
+        IconButton cancel = new IconButton(c, Icons.CLOSE, colors.text, press, "설정 창 닫기");
         cancel.setOnClickListener(v -> onCloseRequest.run());
         int size = Ui.dp(c, 44);
         header.addView(cancel, new FrameLayout.LayoutParams(size, size, Gravity.START | Gravity.CENTER_VERTICAL));

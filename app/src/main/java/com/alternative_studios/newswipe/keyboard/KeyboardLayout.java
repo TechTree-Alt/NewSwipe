@@ -394,6 +394,8 @@ public final class KeyboardLayout {
 
     /** 쿼티 모양 자판을 자·모음 균형 레이아웃으로 나눌 때 줄마다 자음(왼쪽) 쪽에 가는 글자 수: q~t, a~g, z~v / ㅂ~ㅅ, ㅁ~ㅎ, ㅋ~ㅍ. */
     private static final int[] QWERTY_LEFT_COUNT = {5, 5, 4};
+    /** 쿼티 모양 균형 레이아웃 왼쪽(자음) 쪽의 칸 수: 5키와 반 칸 (둘째 줄 들여쓰기, 셋째 줄 1.5칸 Shift). */
+    private static final float QWERTY_LEFT_UNITS = 5.5f;
 
     /**
      * 쿼티 모양 자판(두벌식, 영어)의 자·모음 균형 레이아웃 r번째 줄 (세로 모드만: 분리 키보드는 {@link #splitNormal}로 나눈다).
@@ -1021,6 +1023,8 @@ public final class KeyboardLayout {
     private static float gridKey(Prefs prefs) {
         // 자·모음 균형 레이아웃: 왼쪽 절반을 나눠 가진 자음 키 한 칸 (5열이면 1칸, 4열이면 1.25칸).
         // 8열 단모음의 좌·우 균형 레이아웃은 자음이 4열이 되므로 그 폭을 따른다.
+        // 두벌식은 자음 쪽이 들여쓰기·1.5칸 Shift를 포함해 5.5칸이라 키 한 칸이 그만큼 좁다.
+        if (balanced(prefs) && dubeolsik(prefs)) return BALANCED_HALF / QWERTY_LEFT_UNITS;
         if (balanced(prefs)) {
             int columns = balancedConsonants(prefs);
             if (!newSwipe(prefs) && splitView(prefs) && prefs.splitReachColumn()) columns--;

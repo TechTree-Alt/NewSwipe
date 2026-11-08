@@ -822,7 +822,7 @@ public class EditorUiTest {
         tapKey(p, key(p, "ㄴ", Key.CHAR));   // 묻지 않고 바로 바뀐다
         assertNotNull(findText(decor, "'ㄴ' 키 설정"));
         findText(cur(a), "없음").performClick(); idle();
-        byDesc(decor, "편집 닫기").performClick(); idle();
+        byDesc(decor, "설정 창 닫기").performClick(); idle();
         assertFalse(open(a));
         assertEquals(0, prefs.popupOverride("ko", "ㄴ").length);   // X로 닫아도 남는다
         // 기능키와 도구 막대

@@ -141,7 +141,7 @@ public final class Prefs {
     public static final String KEYBOARD_HEIGHT_LAND = "keyboard_height_land";      // 가로 모드의 키보드 높이 %, 70~140
     public static final String KEY_TEXT_SIZE_LAND = "key_text_size_land";          // 가로 모드의 키 글자 크기 %, 70~140
     public static final String BALANCED_VOWEL_WIDTH = "balanced_vowel_width";   // 모음 키 폭: 오른쪽 절반을 꽉 채우는 폭의 %
-    public static final String BALANCED_VOWEL_POS = "balanced_vowel_pos";       // 모음 3열 위치: 오른쪽 절반의 남는 폭에서 왼쪽 0 ~ 오른쪽 100
+    public static final String BALANCED_VOWEL_POS = "balanced_vowel_pos";       // 모음 열 위치: 오른쪽 절반의 남는 폭에서 왼쪽 0 ~ 오른쪽 100
     public static final String BALANCED_CONSONANT_WIDTH = "balanced_consonant_width";   // 자음 키 폭: 기본 폭의 %
     public static final String BALANCED_CONSONANT_POS = "balanced_consonant_pos";       // 자음 열 위치: 왼쪽 절반의 남는 폭에서 왼쪽 0 ~ 오른쪽 100
     public static final String BALANCED_BOUNDARY = "balanced_boundary";   // 자·모음 경계 위치: 자판 폭에서 자음 쪽이 차지하는 %
@@ -980,7 +980,7 @@ public final class Prefs {
         int v = perLayoutInt(balancedVowelWidthKey(), BALANCED_VOWEL_WIDTH, widthDefault());
         return Math.max(balancedWidthMin(), Math.min(BALANCED_CONSONANT_WIDTH_MAX, v));
     }
-    /** 지금 한글 배열의 자·모음 균형 레이아웃 모음 3열 위치 (0 = 오른쪽 절반의 왼쪽 끝, 50 = 가운데, 100 = 오른쪽 끝). */
+    /** 지금 한글 배열의 자·모음 균형 레이아웃 모음 열 위치 (0 = 오른쪽 절반의 왼쪽 끝, 50 = 가운데, 100 = 오른쪽 끝). */
     public int balancedVowelPos() {
         return Math.max(0, Math.min(100, perLayoutInt(balancedVowelPosKey(), BALANCED_VOWEL_POS,
                 profileValues() ? SPLIT_RIGHT_POS_DEFAULT : koreanDubeolsik() ? DUBEOLSIK_VOWEL_POS_DEFAULT : 50)));

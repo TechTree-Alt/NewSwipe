@@ -30,7 +30,6 @@ import com.alternative_studios.newswipe.keyboard.SwipeSpec;
 import com.alternative_studios.newswipe.keyboard.ToolbarButtons;
 import com.alternative_studios.newswipe.keyboard.ToolbarSwipes;
 import com.alternative_studios.newswipe.keyboard.VowelSwipes;
-import com.alternative_studios.newswipe.ui.Chevron;
 import com.alternative_studios.newswipe.ui.ExpressiveChoiceButton;
 import com.alternative_studios.newswipe.ui.IconButton;
 import com.alternative_studios.newswipe.ui.Ui;
