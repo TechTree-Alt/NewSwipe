@@ -598,8 +598,8 @@ public final class Prefs {
         resetBalancedKeys();
         removeKeys(new String[]{splitKey(), sizeKey(), heightKey(), fnRowHeightKey(), textSizeKey(),
                 toolbarFollowKey(), fnFollowKey(), oneHandWidthKey(), splitGapCursorKey(),
-                splitGapSpeedKey(), splitSpaceJoinKey(), splitFnWidthKey(), splitReachColumnBaseKey(), liftKey()},
-                new String[]{splitKey() + "_", splitReachColumnBaseKey() + "_", "swipe_gap_" + com.alternative_studios.newswipe.keyboard.GapSwipes.SLOTS[gapSlot()] + "_"});   // 예전에 배열마다 저장하던 분리 키보드 값도 함께
+                splitGapSpeedKey(), splitSpaceJoinKey(), splitFnWidthKey(), ownReachBaseKey(), liftKey()},
+                new String[]{splitKey() + "_", ownReachBaseKey() + "_", "swipe_gap_" + com.alternative_studios.newswipe.keyboard.GapSwipes.SLOTS[gapSlot()] + "_"});   // 예전에 배열마다 저장하던 분리 키보드 값도 함께
     }
 
     /** '기능키 순서·유무 사용자화' 화면의 값. */
@@ -708,8 +708,9 @@ public final class Prefs {
     public int splitFnWidthSetting() { return Math.max(50, Math.min(200, sp.getInt(splitFnWidthKey(), 100))); }
 
     /**
-     * 이 프로필의 '좌·우 균형 배열'(양쪽 묶음 4열 맞춤) 저장 키. 한글 배열마다 따로 저장한다.
+     * '좌·우 균형 배열'(양쪽 묶음 4열 맞춤) 저장 키. 한글 배열마다 따로 저장한다.
      * 단모음(8열)에서는 설정 화면의 '자·모음 분리 배열'이 이 값을 뒤집어 보여 준다.
+     * 가로 모드·폴더블 내부 화면은 따로 정하지 않고 세로 모드('한글 글자 키 설정'의 상세 배열) 값을 따라간다.
      */
     public String splitReachColumnKey() { return splitReachColumnBaseKey() + "_" + koreanLayoutId(); }
 
@@ -718,7 +719,11 @@ public final class Prefs {
      * 이 값 하나를 함께 썼다). 배열별 값을 정하기 전까지 그 배열이 이어 쓴다.
      */
     private String splitReachColumnBaseKey() {
-        if (portrait()) return PORTRAIT_PREFIX + SPLIT_REACH_COLUMN;
+        return PORTRAIT_PREFIX + SPLIT_REACH_COLUMN;
+    }
+
+    /** 가로 모드·폴더블 내부 화면이 예전에 따로 저장하던 '좌·우 균형 배열' 키 (이제는 세로 모드 값을 따른다). 되돌릴 때 지우기만 한다. */
+    private String ownReachBaseKey() {
         return large() ? LARGE_PREFIX + SPLIT_REACH_COLUMN + "_" + LARGE_LAYOUT_SIDE : SPLIT_REACH_COLUMN;
     }
 

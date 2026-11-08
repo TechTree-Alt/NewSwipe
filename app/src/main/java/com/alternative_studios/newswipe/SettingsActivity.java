@@ -2270,7 +2270,7 @@ public final class SettingsActivity extends Activity {
     }
 
     /**
-     * '분리 키보드' 섹션 (키보드 전체): 분리 키보드 켜기와, 켰을 때 좌·우 균형 배열.
+     * '분리 키보드' 섹션 (키보드 전체): 분리 키보드 켜기.
      * 켜고 끄면 미리보기의 영역도 바뀐다 (글자 키 ↔ 왼쪽·오른쪽 묶음과 가운데 공간).
      */
     private void addProfileSplit(String profile, String name) {
@@ -2279,11 +2279,7 @@ public final class SettingsActivity extends Activity {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setVisibility(edit.profileSplit() || harvesting ? View.VISIBLE : View.GONE);
-        String reachKey = edit.splitReachColumnKey();
-        // 두벌식은 영어 자판처럼 일반 배열을 가운데에서 나눠, 4열로 맞추지 않는다 (검색 목록에는 늘 넣는다).
-        if (!prefs.koreanDubeolsik() || harvesting) {
-            box.addView(splitArrangeToggle(edit, reachKey, this::refreshLayoutPreview));
-        }
+        // 좌·우 균형 배열·자·모음 분리 배열은 따로 정하지 않고 세로 모드 '한글 글자 키 설정'의 상세 배열 값을 따른다.
         String splitKey = edit.splitKey();
         card.addView(toggle(name + " 분리 키보드",
                 "자판을 반으로 나눠 엄지손가락만으로 타이핑을 편하게 합니다.",

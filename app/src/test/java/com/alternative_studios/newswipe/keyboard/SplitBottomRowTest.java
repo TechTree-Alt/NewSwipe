@@ -834,7 +834,9 @@ public class SplitBottomRowTest {
         assertEquals(port.splitSpaceJoinKey(), largeLand.splitSpaceJoinKey());
         assertEquals(port.splitFnWidthKey(), largeLand.splitFnWidthKey());
         assertTrue(!land.splitKey().equals(port.splitKey()));
-        assertTrue(!land.splitReachColumnKey().equals(port.splitReachColumnKey()));
+        // 좌·우 균형 배열은 따로 정하지 않고 세로 모드 값을 따른다.
+        assertEquals(editView(sp, Prefs.PROFILE_PORTRAIT).splitReachColumnKey(), land.splitReachColumnKey());
+        assertEquals(editView(sp, Prefs.PROFILE_PORTRAIT).splitReachColumnKey(), port.splitReachColumnKey());
         assertTrue(!land.splitSpaceJoinKey().equals(port.splitSpaceJoinKey()));
         // 분리 키보드 모양: 셋 모두 다른 키.
         for (String[] keys : new String[][]{
