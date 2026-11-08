@@ -69,7 +69,10 @@ public final class FnKeyActions {
 
         @Override
         public String[] choices(int slot) {
-            return SwipeAction.idsForToolbar();
+            // Fn 키 밀기는 한 번 실행하는 기능만 쓴다 (끌어 쓰는 '커서 자유 이동'은 뺀다).
+            List<String> ids = new ArrayList<>();
+            for (String id : SwipeAction.idsForToolbar()) if (!SwipeAction.CURSOR_MOVE.equals(id)) ids.add(id);
+            return ids.toArray(new String[0]);
         }
 
         /** 길게 누르기에는 '계속 지우기'도 고를 수 있다. 한글 자판에만 있는 키라 Caps Lock은 뺀다. */

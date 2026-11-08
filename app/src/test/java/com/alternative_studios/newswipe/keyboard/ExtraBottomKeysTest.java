@@ -132,19 +132,19 @@ public class ExtraBottomKeysTest {
     }
 
     @Test
-    public void cursorMoveIsOnlyForSpaceAndCursorKey() {
+    public void cursorMoveIsOfferedOnEveryKey() {
         Map<String, String> m = new HashMap<>();
         m.put("cursor/left", SwipeAction.NONE);
         m.put("cursor/up", SwipeAction.CLIPBOARD_OPEN);
-        m.put("voice/up", SwipeAction.CURSOR_MOVE);   // 커서 이동 키가 아닌 키에서는 없음
+        m.put("voice/up", SwipeAction.CURSOR_MOVE);   // 다른 키에서도 쓸 수 있다
         FunctionSwipes f = FunctionSwipes.from((slot, dir) -> m.get(slot + "/" + dir));
         assertEquals(SwipeAction.NONE, f.action(FunctionSwipes.CURSOR, Key.SWIPE_LEFT));
         assertEquals(SwipeAction.CLIPBOARD_OPEN, f.action(FunctionSwipes.CURSOR, Key.SWIPE_UP));
-        assertEquals(SwipeAction.NONE, f.action(FunctionSwipes.VOICE, Key.SWIPE_UP));
+        assertEquals(SwipeAction.CURSOR_MOVE, f.action(FunctionSwipes.VOICE, Key.SWIPE_UP));
         assertTrue(f.cursorH(FunctionSwipes.CURSOR));    // 오른쪽은 아직 커서 이동
         assertTrue(f.cursorV(FunctionSwipes.CURSOR));    // 아래도
         assertTrue(java.util.Arrays.asList(SwipeAction.idsFor(FunctionSwipes.CURSOR)).contains(SwipeAction.CURSOR_MOVE));
-        assertFalse(java.util.Arrays.asList(SwipeAction.idsFor(FunctionSwipes.VOICE)).contains(SwipeAction.CURSOR_MOVE));
+        assertTrue(java.util.Arrays.asList(SwipeAction.idsFor(FunctionSwipes.VOICE)).contains(SwipeAction.CURSOR_MOVE));
     }
 
     @Test
