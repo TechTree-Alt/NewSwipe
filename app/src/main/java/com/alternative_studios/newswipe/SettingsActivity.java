@@ -1708,6 +1708,15 @@ public final class SettingsActivity extends Activity {
                     Ui.setVisibleAnimated(englishBalanced, englishBalancedShown());
                     refreshLayoutPreview();
                 });
+        // 분리 키보드를 쓰는 동안에는 균형 배열을 쓸 수 없다: 토글과 사용자화 버튼을 흐리게 하고 설명을 바꾼다.
+        if (prefs.portraitSplit() && !harvesting) {
+            TextView desc = (TextView) ((ViewGroup) ((ViewGroup) balancedRow).getChildAt(0)).getChildAt(1);
+            desc.setText("분리 키보드 사용 중에는 균형 배열을 사용할 수 없습니다.");
+            for (View v : new View[]{balancedRow, keyArea}) {
+                v.setAlpha(0.38f);
+                setEnabledDeep(v, false);
+            }
+        }
         korean.addView(choices);
         korean.addView(layoutNote);
         korean.addView(balancedRow);
