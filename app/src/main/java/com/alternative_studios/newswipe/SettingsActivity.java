@@ -640,8 +640,8 @@ public final class SettingsActivity extends Activity {
             LinearLayout boardScratch = new LinearLayout(this);
             boardScratch.setOrientation(LinearLayout.VERTICAL);
             list = boardScratch;
-            buildPad(-1);
-            collectLabels(EDITOR_PART + "b:0:키보드 여백", boardScratch, out, new View[1], new String[1][]);
+            buildBoard();
+            collectLabels(EDITOR_PART + "b:0:키보드 전체 설정", boardScratch, out, new View[1], new String[1][]);
             com.alternative_studios.newswipe.keyboard.KeyboardLayout l =
                     com.alternative_studios.newswipe.keyboard.KeyboardLayout.korean(prefs);
             for (int type : HARVEST_KEYS) {
@@ -1009,7 +1009,7 @@ public final class SettingsActivity extends Activity {
     private KeyEditPanel keyPanel;
     /** 모든 설정 목록. */
     private LinearLayout overviewBox;
-    /** 설정 창: 목록 위에 겹쳐 아래에서 올라오는 시트 (영역·키·키보드 여백). */
+    /** 설정 창: 목록 위에 겹쳐 아래에서 올라오는 시트 (영역·키·키보드 전체 설정). */
     private EditorSheet sheet;
     /** 편집 칸을 연 동안 설정이 바뀌어, 닫을 때 모든 설정 목록을 다시 만들어야 하는지. */
     private boolean overviewStale;
@@ -1107,25 +1107,17 @@ public final class SettingsActivity extends Activity {
         fillOverview(box);
     }
 
-    /** 키보드 사용자화의 기본 목록을 box에 만든다 (키 모양, 숫자 줄, 가로 모드). */
+    /** 키보드 사용자화의 기본 목록을 box에 만든다 (숫자 줄, 가로 모드). */
     private void fillOverview(LinearLayout box) {
         LinearLayout saved = list;
         list = box;
         try {
             // 여기에는 키보드 전체에 걸리고 어느 영역·키 창에도 없는 것만 둔다. 나머지는 미리보기에서 영역이나 키를 눌러 바꾼다.
-            buildLook();
+            // 키 모양·분리 키보드는 '키보드 전체 설정' 창(미리보기의 키보드 층)에 있다.
             // 숫자 줄은 꺼 두면 미리보기에 없어 누를 수 없으므로 여기서도 그 설정 창을 연다.
             LinearLayout numberRow = section("숫자 줄");
             numberRow.addView(button("숫자 줄 설정", v -> openNumberRowSheet()));
             numberRow.addView(note("자판 위에 숫자 줄을 보이도록 설정할 수 있습니다."));
-            // 분리 키보드 (세로 모드): 켜면 자판을 왼쪽·오른쪽 묶음으로 나누고, 그 모양은 '분리 키보드 사용자화'에서 정한다.
-            LinearLayout split = section("분리 키보드");
-            split.addView(toggle("분리 키보드 사용",
-                    "자판을 왼쪽·오른쪽 묶음으로 나눠 엄지손가락만으로 타이핑을 편하게 합니다. 켜면 자·모음 균형 배열 대신 분리 키보드를 씁니다.",
-                    prefs.portraitSplit(), on -> {
-                        prefs.raw().edit().putBoolean(Prefs.PORTRAIT_SPLIT, on).apply();
-                        refreshLayoutPreview();
-                    }));
             LinearLayout landscape = section("가로 모드");
             landscape.addView(button("가로 모드 키보드 사용자화", v -> openSection(LANDSCAPE_AREA)));
             landscape.addView(note("화면을 가로로 돌렸을 때의 자판 모양을 따로 정합니다."));
@@ -1264,10 +1256,10 @@ public final class SettingsActivity extends Activity {
         if (board) {
             keyPanel.view().setVisibility(View.GONE);
             fillAreaBox(() -> {
-                buildPad(-1);
+                buildBoard();
                 addAreaReset(-1);
             });
-            sheet.setTitle("키보드 여백 설정");
+            sheet.setTitle("키보드 전체 설정");
             return;
         }
         boolean panel = !area || areaId == KeyboardPreview.AREA_TOOLBAR;
@@ -1298,9 +1290,9 @@ public final class SettingsActivity extends Activity {
         });
     }
 
-    /** 영역·키보드 여백 창 맨 아래의 '기본값으로 되돌리기' (그 창이 담당하는 값만). area -1은 키보드 전체 여백. */
+    /** 영역·키보드 전체 설정 창 맨 아래의 '기본값으로 되돌리기' (그 창이 담당하는 값만). area -1은 키보드 전체 여백. */
     private void addAreaReset(int area) {
-        String name = area < 0 ? "키보드 여백" : KeyboardPreview.areaName(area, letterTab) + " 설정";
+        String name = area < 0 ? "키보드 전체 설정" : KeyboardPreview.areaName(area, letterTab) + " 설정";
         int tab = letterTab;
         list.addView(ResetDialog.button(this, name, () -> {
             prefs.resetEditorScope(area < 0 ? Prefs.SCOPE_BOARD
@@ -1330,6 +1322,20 @@ public final class SettingsActivity extends Activity {
             list = saved;
             sliderSink = sizeSliders;
         }
+    }
+
+    /** 키보드 전체 설정 창: 여백·모서리 곡률, 키 모양, 분리 키보드 (세로 모드). */
+    private void buildBoard() {
+        buildPad(-1);
+        buildLook();
+        // 분리 키보드 (세로 모드): 켜면 자판을 왼쪽·오른쪽 묶음으로 나누고, 그 모양은 '분리 키보드 사용자화'에서 정한다.
+        LinearLayout split = section("분리 키보드");
+        split.addView(toggle("분리 키보드 사용",
+                "자판을 왼쪽·오른쪽 묶음으로 나눠 엄지손가락만으로 타이핑을 편하게 합니다. 켜면 자·모음 균형 배열 대신 분리 키보드를 씁니다.",
+                prefs.portraitSplit(), on -> {
+                    prefs.raw().edit().putBoolean(Prefs.PORTRAIT_SPLIT, on).apply();
+                    refreshLayoutPreview();
+                }));
     }
 
     /**
@@ -1470,9 +1476,9 @@ public final class SettingsActivity extends Activity {
     /** 미리보기 위의 페이지 표시 (키보드 · 영역 · 키). */
     private PageDots pageDots;
     /** 미리보기 페이지 이름 (KeyboardPreview.LAYER_* 차례). */
-    private static final String[] PAGE_NAMES = {"키보드 여백 설정", "영역 설정", "키 설정"};
+    private static final String[] PAGE_NAMES = {"키보드 전체 설정", "영역 설정", "키 설정"};
     /** 미리보기 페이지 설명 (PAGE_NAMES와 같은 차례). */
-    private static final String[] PAGE_DESCS = {"상하좌우 여백을 조절합니다", "각 영역의 모습과 기능을 설정합니다",
+    private static final String[] PAGE_DESCS = {"여백·키 모양·분리 키보드를 설정합니다", "각 영역의 모습과 기능을 설정합니다",
             "각 키의 기능과 동작을 설정합니다"};
 
     /** 편집 창을 내려 닫고 목록으로 돌아간다 (창에서 바꾼 값이 있으면 다 내려간 뒤 목록을 다시 만든다). */
