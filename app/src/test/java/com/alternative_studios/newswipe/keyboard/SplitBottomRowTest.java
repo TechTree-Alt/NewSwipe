@@ -35,7 +35,11 @@ public class SplitBottomRowTest {
         Constructor<Prefs> c = Prefs.class.getDeclaredConstructor(SharedPreferences.class, boolean.class, String.class,
                 boolean.class);
         c.setAccessible(true);
-        return c.newInstance(sp, false, Prefs.PROFILE_LANDSCAPE, true);
+        Prefs p = c.newInstance(sp, false, Prefs.PROFILE_LANDSCAPE, true);
+        // 단모음(8열) 분리 키보드는 기본으로 양쪽 묶음을 4열씩 맞춘다 (좌·우 균형 배열). 이 테스트들은 자음·모음을 깔끔하게
+        // 나눈 배열('자·모음 분리 배열' 켬)의 모양을 재므로 그렇게 정해 둔다. 기본값은 splitReachColumnDefaultsPerLayout에서 본다.
+        sp.m.putIfAbsent(p.splitReachColumnKey(), false);
+        return p;
     }
 
     /** 줄에서 빈틈이 아닌 키의 가장 왼쪽 시작과 가장 오른쪽 끝. */
@@ -631,6 +635,31 @@ public class SplitBottomRowTest {
             x += k.weight;
         }
         return n;
+    }
+
+    /** 값을 정하지 않았을 때: 단모음(8열)은 좌·우 균형 배열(4열씩)이 기본이고, NewSwipe 단모음은 원래대로 꺼짐이다. */
+    @Test
+    public void splitReachColumnDefaultsPerLayout() throws Exception {
+        FakeSp sp = new FakeSp();
+        Constructor<Prefs> c = Prefs.class.getDeclaredConstructor(SharedPreferences.class, boolean.class, String.class,
+                boolean.class);
+        c.setAccessible(true);
+        Prefs p = c.newInstance(sp, false, Prefs.PROFILE_LANDSCAPE, true);
+        assertTrue("단모음은 4열 균형이 기본", p.splitReachColumn());
+        assertTrue("'자·모음 분리 배열'은 꺼짐", !p.splitSeparateJamo());
+        KeyboardLayout l = KeyboardLayout.korean(p);
+        for (int r = 0; r < 3; r++) {
+            int[] size = blockSizes(l.rows[r]);
+            assertEquals("왼쪽 4열", 4, size[0]);
+            assertEquals("오른쪽 4열", 4, size[1]);
+        }
+        sp.m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_D7);
+        assertTrue("NewSwipe 단모음은 꺼짐이 기본", !p.splitReachColumn());
+        // '자·모음 분리 배열'을 켜면(저장 값 false) 단모음도 깔끔하게 나뉜다.
+        sp.m.remove(Prefs.KOREAN_LAYOUT);
+        sp.m.put(p.splitReachColumnKey(), false);
+        assertTrue(p.splitSeparateJamo());
+        assertTrue(!p.splitReachColumn());
     }
 
     @Test
