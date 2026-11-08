@@ -116,9 +116,10 @@ public final class SwipeAction {
 
     /**
      * 기능을 고르는 창에서 묶어 보여 주는 갈래: {갈래 이름, 그 갈래의 ID들...}. 갈래도, 갈래 안의 기능도
-     * 적은 순서대로 보인다 (자주 쓰는 것·짝이 되는 것끼리 가까이). '없음'은 어느 갈래에도 넣지 않고 맨 위에 따로 둔다.
+     * 적은 순서대로 보인다 (자주 쓰는 것·짝이 되는 것끼리 가까이).
      */
     private static final String[][] CATEGORIES = {
+            {"기능 없음", NONE},
             {"커서 이동", FREE_CURSOR, CURSOR_MOVE, LINE_START, LINE_END, TEXT_START, TEXT_END,
                     CURSOR_LEFT, CURSOR_RIGHT, CURSOR_UP, CURSOR_DOWN, WORD_LEFT, WORD_RIGHT},
             {"선택·복사·붙여넣기", SPACE_SELECT, SELECT_ALL, SELECT_ALL_COPY, COPY, CUT, PASTE,
@@ -145,7 +146,7 @@ public final class SwipeAction {
         return java.util.Arrays.copyOfRange(CATEGORIES[category], 1, CATEGORIES[category].length);
     }
 
-    /** 이 기능이 든 갈래의 번호. '없음'이나 모르는 ID면 -1. */
+    /** 이 기능이 든 갈래의 번호. 모르는 ID면 -1. */
     public static int category(String id) {
         if (id == null) return -1;
         for (int c = 0; c < CATEGORIES.length; c++) {

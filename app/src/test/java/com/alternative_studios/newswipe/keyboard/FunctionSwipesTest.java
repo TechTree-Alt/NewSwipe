@@ -92,7 +92,7 @@ public class FunctionSwipesTest {
         assertEquals("없음", SwipeAction.label(null));
     }
 
-    /** 기능을 고르는 창의 갈래: '없음'을 뺀 모든 기능이 꼭 한 갈래에만 들어 있다. */
+    /** 기능을 고르는 창의 갈래: '없음'을 포함한 모든 기능이 꼭 한 갈래에만 들어 있다. */
     @Test
     public void everyActionBelongsToExactlyOneCategory() {
         java.util.Set<String> all = new java.util.LinkedHashSet<>();
@@ -109,8 +109,7 @@ public class FunctionSwipesTest {
             }
         }
         for (String id : all) {
-            if (SwipeAction.NONE.equals(id)) assertEquals(-1, SwipeAction.category(id));
-            else assertTrue(id, SwipeAction.category(id) >= 0);
+            assertTrue(id, SwipeAction.category(id) >= 0);
         }
     }
 }

@@ -65,13 +65,6 @@ final class ActionPicker {
             onPick.accept(id);
         };
 
-        // '없음'은 갈래 없이 맨 위에.
-        if (allowed.contains(SwipeAction.NONE)) {
-            View row = row(c, colors, SwipeAction.NONE, SwipeAction.NONE.equals(current), choose);
-            if (SwipeAction.NONE.equals(current)) picked[0] = row;
-            list.addView(row);
-        }
-
         // 갈래마다 머리글과 기능 줄. 고를 것이 하나도 없는 갈래는 칩도 머리글도 만들지 않는다.
         List<TextView> headers = new ArrayList<>();
         List<String> names = new ArrayList<>();
@@ -80,7 +73,8 @@ final class ActionPicker {
             List<String> inCat = new ArrayList<>();
             for (String id : SwipeAction.categoryIds(cat)) if (allowed.contains(id)) inCat.add(id);
             if (inCat.isEmpty()) continue;
-            TextView header = header(c, colors, SwipeAction.categoryName(cat), headers.isEmpty() && list.getChildCount() == 0);
+            if (!headers.isEmpty()) list.addView(divider(c, colors));
+            TextView header = header(c, colors, SwipeAction.categoryName(cat), headers.isEmpty());
             list.addView(header);
             headers.add(header);
             names.add(SwipeAction.categoryName(cat));
@@ -93,9 +87,10 @@ final class ActionPicker {
         }
         // 갈래에 아직 넣지 않은 기능이 있어도 잃어버리지 않게 '기타'로 보인다.
         List<String> rest = new ArrayList<>();
-        for (String id : ids) if (!SwipeAction.NONE.equals(id) && !placed.contains(id)) rest.add(id);
+        for (String id : ids) if (!placed.contains(id)) rest.add(id);
         if (!rest.isEmpty()) {
-            TextView header = header(c, colors, "기타", false);
+            if (!headers.isEmpty()) list.addView(divider(c, colors));
+            TextView header = header(c, colors, "기타", headers.isEmpty());
             list.addView(header);
             headers.add(header);
             names.add("기타");
@@ -112,7 +107,7 @@ final class ActionPicker {
         chipScroll.setHorizontalScrollBarEnabled(false);
         chipScroll.setClipToPadding(false);
         LinearLayout chipRow = new LinearLayout(c);
-        chipRow.setPadding(Ui.dp(c, 16), Ui.dp(c, 4), Ui.dp(c, 16), Ui.dp(c, 8));
+        chipRow.setPadding(Ui.dp(c, 16), Ui.dp(c, 12), Ui.dp(c, 16), Ui.dp(c, 10));
         chipScroll.addView(chipRow);
         int[] active = {-1};
         // 칩을 눌러 넘어가는 동안에는 그 칩을 그대로 둔다 (짧은 마지막 갈래 때문에 다른 칩으로 바뀌지 않게). 목록을 만지면 풀린다.
@@ -184,19 +179,36 @@ final class ActionPicker {
     private static TextView header(Context c, AppTheme colors, String name, boolean first) {
         TextView t = new TextView(c);
         t.setText(name);
-        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         t.setTypeface(Typeface.DEFAULT_BOLD);
         t.setTextColor(colors.accent);
-        t.setPadding(Ui.dp(c, 12), Ui.dp(c, first ? 4 : 16), Ui.dp(c, 12), Ui.dp(c, 4));
+        t.setPadding(Ui.dp(c, 12), Ui.dp(c, first ? 4 : 12), Ui.dp(c, 12), Ui.dp(c, 4));
         t.setAccessibilityHeading(true);
         return t;
+    }
+
+    /** 갈래 사이의 가는 구분선 (글자색을 옅게 깐 선). */
+    private static View divider(Context c, AppTheme colors) {
+        View v = new View(c);
+        v.setBackgroundColor((colors.text & 0x00FFFFFF) | 0x26000000);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Math.max(1, Ui.dp(c, 1)));
+        lp.topMargin = Ui.dp(c, 8);
+        lp.leftMargin = lp.rightMargin = Ui.dp(c, 12);
+        v.setLayoutParams(lp);
+        v.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        return v;
+    }
+
+    /** 이 창에서 보이는 기능 이름: '없음'만 뜻이 더 잘 드러나게 풀어 쓴다 (칩이나 메뉴에는 그대로 '없음'). */
+    static String pickerLabel(String id) {
+        return SwipeAction.NONE.equals(id) ? "아무 기능 안 함" : SwipeAction.label(id);
     }
 
     /** 기능 한 줄. 지금 고른 줄은 강조색을 옅게 깐 둥근 바탕에 강조색 글씨와 ✓. */
     private static View row(Context c, AppTheme colors, String id, boolean selected, View.OnClickListener onClick) {
         LinearLayout row = new LinearLayout(c);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setMinimumHeight(Ui.dp(c, 48));
+        row.setMinimumHeight(Ui.dp(c, 52));
         row.setPadding(Ui.dp(c, 12), Ui.dp(c, 6), Ui.dp(c, 12), Ui.dp(c, 6));
         float r = Ui.dp(c, 14);
         int press = Ui.tint(colors.text);
@@ -206,21 +218,21 @@ final class ActionPicker {
         row.setSelected(selected);
 
         TextView label = new TextView(c);
-        label.setText(SwipeAction.label(id));
-        label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        label.setText(pickerLabel(id));
+        label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
         label.setTextColor(selected ? colors.accent : colors.text);
         if (selected) label.setTypeface(Typeface.DEFAULT_BOLD);
         row.addView(label, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         if (selected) {
             TextView check = new TextView(c);
             check.setText("✓");
-            check.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+            check.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
             check.setTypeface(Typeface.DEFAULT_BOLD);
             check.setTextColor(colors.accent);
             check.setPadding(Ui.dp(c, 8), 0, 0, 0);
             check.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
             row.addView(check);
-            row.setContentDescription(SwipeAction.label(id) + ", 선택됨");
+            row.setContentDescription(pickerLabel(id) + ", 선택됨");
         }
         return row;
     }
