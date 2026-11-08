@@ -1076,7 +1076,9 @@ final class KeyboardPreview extends FrameLayout {
                 // ↔ 버튼: 그 쪽 윤곽선의 한가운데 (가로 모드·대화면은 ↕ 버튼과 나란히 왼쪽에).
                 RectF r = new RectF();
                 if (!blockBounds(h == Handle.B_CONSONANT, r)) return false;
-                out[0] = r.centerX() - (profileEdit != null ? Ui.dp(c, 22) : 0);
+                // 높이 버튼(↕)이 함께 있는 가로 모드·대화면에서만 왼쪽으로 비킨다. 세로 모드 분리 키보드는 높이 버튼이 없어 정중앙이다.
+                boolean beside = profileEdit != null && !profileEdit.profile().isEmpty();
+                out[0] = r.centerX() - (beside ? Ui.dp(c, 22) : 0);
                 out[1] = r.centerY();
                 return true;
             }
