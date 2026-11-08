@@ -1126,8 +1126,6 @@ public final class SettingsActivity extends Activity {
                         prefs.raw().edit().putBoolean(Prefs.PORTRAIT_SPLIT, on).apply();
                         refreshLayoutPreview();
                     }));
-            split.addView(note("묶음 폭·위치, 가운데 공간, 스페이스바 잇기 등은 아래 미리보기의 '영역 설정' 페이지에서 글자 키·가운데 공간·"
-                    + "기능키·도구 막대를 눌러 정합니다."));
             LinearLayout landscape = section("가로 모드");
             landscape.addView(button("가로 모드 키보드 사용자화", v -> openSection(LANDSCAPE_AREA)));
             landscape.addView(note("화면을 가로로 돌렸을 때의 자판 모양을 따로 정합니다."));
@@ -1202,6 +1200,10 @@ public final class SettingsActivity extends Activity {
     /** 설정 창을 만든다: 키 창(KeyEditPanel)과 그 아래 영역·여백 창(areaBox)을 담는다. */
     private void buildSheet() {
         sheet = new EditorSheet(this, middle, this::closeKeyPanel);
+        areaNoteBox = widgets.card(sheet.body());
+        sheet.body().removeView(areaNoteBox);
+        sheet.body().addView(areaNoteBox, 0, areaNoteBox.getLayoutParams());
+        areaNoteBox.setVisibility(View.GONE);
         sheet.body().addView(keyPanel.view(), matchWrap());
         areaBox = new LinearLayout(this);
         areaBox.setOrientation(LinearLayout.VERTICAL);
@@ -1253,6 +1255,8 @@ public final class SettingsActivity extends Activity {
             closeKeyPanel();
             return;
         }
+        areaNoteBox.removeAllViews();   // 영역 창이 다시 채울 때만 안내가 있다
+        areaNoteBox.setVisibility(View.GONE);
         boolean area = s.kind == KeyboardPreview.SEL_AREA;
         int areaId = area ? s.area() : -1;
         // 키보드 층(키보드 전체)은 여백 슬라이더 창.
@@ -1356,9 +1360,15 @@ public final class SettingsActivity extends Activity {
 
     /** 영역 설정 창의 분리된 안내 칸: 하나하나의 설정은 키 설정 페이지에 있다. pick은 조사가 붙은 말 ("키를", "버튼을"). */
     private void addKeyPageNote(String what, String pick) {
-        card().addView(note(what + " 하나하나의 설정은 아래쪽 미리보기의 오른쪽 '키 설정' 페이지에서 원하는 " + pick
+        // 설정 창 맨 위(areaNoteBox)에 둔다.
+        areaNoteBox.removeAllViews();
+        areaNoteBox.addView(note(what + " 하나하나의 설정은 아래쪽 미리보기의 오른쪽 '키 설정' 페이지에서 원하는 " + pick
                 + " 선택해 바꿀 수 있습니다."));
+        areaNoteBox.setVisibility(View.VISIBLE);
     }
+
+    /** 설정 창 맨 위의 안내 카드 ('키 하나하나의 설정은 … 바꿀 수 있습니다.'). 영역 창에서만 보인다. */
+    private LinearLayout areaNoteBox;
 
     private void buildArea(int areaId) {
         switch (areaId) {

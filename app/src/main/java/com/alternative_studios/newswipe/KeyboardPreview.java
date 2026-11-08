@@ -1620,6 +1620,8 @@ final class KeyboardPreview extends FrameLayout {
                 fill.setColor(accent);
                 c.drawRoundRect(tmp, thickHalf, thickHalf, fill);
             }
+            // 크기 조절 버튼 안내는 모든 손잡이 위에 그린다.
+            if (knobHint != null && handleCenter(knobHint, point)) drawKnobHint(c, knobHint, point[0], point[1]);
             // 끄는 동안: 무엇을 얼마로 바꾸는지 자판 가운데에 크게 보여 준다.
             if (dragging && active != null) {
                 String text = handleName(active) + "  " + valueText(active, dragValue);
@@ -1665,6 +1667,14 @@ final class KeyboardPreview extends FrameLayout {
                 c.drawLine(x + len - head, y + head, x + len, y, stroke);
             }
             stroke.setStrokeCap(Paint.Cap.BUTT);
+        }
+
+        /**
+         * 크기 조절 버튼을 눌렀을 때 옆(아래)에 뜨는 안내 알약. 여백 조절 손잡이에 가리지 않게 손잡이를 다 그린 뒤 맨 위에 그린다.
+         */
+        private void drawKnobHint(Canvas c, Handle h, float x, float y) {
+            Context ctx = getContext();
+            float rad = Ui.dp(ctx, 12);
             if (h == knobHint && !dragging && android.os.SystemClock.uptimeMillis() < knobHintUntil && h.balanced()) {
                 // 균형 배열의 ↔ 버튼: 버튼 바로 아래에 두 줄 안내 (길게 누르고 있으면 위치 조절 안내를 굵게 앞에).
                 drawHintLines(c, x, y + rad + Ui.dp(ctx, 8), positionDrag
