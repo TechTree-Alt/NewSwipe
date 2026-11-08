@@ -1215,30 +1215,81 @@ public class EditorUiTest {
                 .remove(Prefs.areaPadKey(KeyboardPreview.AREA_LETTERS, Prefs.SIDE_BOTTOM)).commit();
     }
 
+    /** 키 상하 간격이 좁아도(8dp 이하) 위아래로 맞닿은 영역 윤곽선은 겹치지 않고 늘 같은 틈(2dp)을 둔다. */
     @Test
-    public void outlinesTouchWithoutGaps() throws Exception {
+    public void outlinesKeepEvenGaps() throws Exception {
         Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
         pre.raw().edit().putBoolean(Prefs.NUMBER_ROW, true).putInt(Prefs.KEY_GAP_Y, 0).putInt(Prefs.PAD_TOP, 0)
                 .putInt(Prefs.PAD_BOTTOM, 0).commit();
         SettingsActivity a = launch("keyboard");
         KeyboardPreview p = find(a.getWindow().getDecorView(), KeyboardPreview.class);
+        float d = a.getResources().getDisplayMetrics().density;
         android.graphics.RectF bar = new android.graphics.RectF(), num = new android.graphics.RectF(),
                 let = new android.graphics.RectF(), fn = new android.graphics.RectF();
-        p.areaBounds(KeyboardPreview.AREA_TOOLBAR, bar);
-        p.areaBounds(KeyboardPreview.AREA_NUMBER, num);
-        p.areaBounds(KeyboardPreview.AREA_LETTERS, let);
-        p.areaBounds(KeyboardPreview.AREA_FUNCTION, fn);
-        log("outlines bar.bottom=" + bar.bottom + " num.top=" + num.top + " num.bottom=" + num.bottom + " let.top=" + let.top
-                + " let.bottom=" + let.bottom + " fn.top=" + fn.top);
-        // 좌우 가장자리도 다른 영역들과 같은 선 (도구 막대만 튀어나오지 않는다)
-        assertEquals(num.left, bar.left, 1.5f);
-        assertEquals(num.right, bar.right, 1.5f);
-        assertEquals(let.left, bar.left, 1.5f);
-        assertTrue(bar.bottom >= num.top);   // 도구 막대와 숫자 줄도 겹친다
-        assertTrue(num.bottom >= let.top);
-        assertTrue(let.bottom >= fn.top);
-        shot(a, "97-outlines-touch");
+        for (int gap : new int[]{0, 4, 6, 8}) {
+            pre.raw().edit().putInt(Prefs.KEY_GAP_Y, gap).commit();
+            idle();
+            p.areaBounds(KeyboardPreview.AREA_TOOLBAR, bar);
+            p.areaBounds(KeyboardPreview.AREA_NUMBER, num);
+            p.areaBounds(KeyboardPreview.AREA_LETTERS, let);
+            p.areaBounds(KeyboardPreview.AREA_FUNCTION, fn);
+            log("outlines gap=" + gap + " bar.bottom=" + bar.bottom + " num.top=" + num.top + " num.bottom=" + num.bottom
+                    + " let.top=" + let.top + " let.bottom=" + let.bottom + " fn.top=" + fn.top);
+            // 좌우 가장자리도 다른 영역들과 같은 선 (도구 막대만 튀어나오지 않는다)
+            assertEquals(num.left, bar.left, 1.5f);
+            assertEquals(num.right, bar.right, 1.5f);
+            assertEquals(let.left, bar.left, 1.5f);
+            // 위아래로 맞닿은 영역 윤곽선 사이는 간격과 상관없이 2dp
+            assertEquals("gap=" + gap, 2 * d, num.top - bar.bottom, 1.5f);
+            assertEquals("gap=" + gap, 2 * d, let.top - num.bottom, 1.5f);
+            assertEquals("gap=" + gap, 2 * d, fn.top - let.bottom, 1.5f);
+        }
+        pre.raw().edit().putInt(Prefs.KEY_GAP_Y, 0).commit();
+        idle();
+        shot(a, "97-outlines-even-gaps");
         pre.raw().edit().remove(Prefs.KEY_GAP_Y).remove(Prefs.PAD_TOP).remove(Prefs.PAD_BOTTOM).commit();
+    }
+
+    /** 키 페이지: 키 사이 간격이 좁아도 이웃한 키 윤곽선은 상하·좌우 모두 2dp 이상 띈다 (도구 막대 버튼끼리도). */
+    @Test
+    public void keyOutlinesKeepEvenGaps() throws Exception {
+        Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
+        pre.raw().edit().putBoolean(Prefs.NUMBER_ROW, true).commit();
+        SettingsActivity a = launch("keyboard");
+        KeyboardPreview p = find(a.getWindow().getDecorView(), KeyboardPreview.class);
+        KeyboardView kv = find(p, KeyboardView.class);
+        float d = a.getResources().getDisplayMetrics().density;
+        android.graphics.RectF r1 = new android.graphics.RectF(), r2 = new android.graphics.RectF();
+        for (int gap : new int[]{0, 2, 4, 6, 8}) {
+            pre.raw().edit().putInt(Prefs.KEY_GAP_X, gap).putInt(Prefs.KEY_GAP_Y, gap).commit();
+            idle();
+            KeyboardLayout l = kv.getLayout();
+            // 좌우: 숫자 줄의 맞닿은 두 키
+            Key[] row0 = l.rows[0].keys, row1 = l.rows[1].keys;
+            p.keyOutline(row0[0], r1);
+            p.keyOutline(row0[1], r2);
+            assertEquals(row0[0].rect.right, row0[1].rect.left, 1f);
+            assertTrue("x gap=" + gap, r2.left - r1.right >= 2 * d - 1.5f);
+            // 상하: 숫자 줄 첫 키와 그 아래 줄 첫 키
+            p.keyOutline(row1[0], r2);
+            assertTrue("y gap=" + gap, r2.top - r1.bottom >= 2 * d - 1.5f);
+        }
+        // 도구 막대에서 맞닿은 두 버튼
+        com.alternative_studios.newswipe.ui.IconButton tool = find(p, com.alternative_studios.newswipe.ui.IconButton.class);
+        ViewGroup bar = tool != null && tool.getTag() instanceof String ? (ViewGroup) tool.getParent() : null;
+        View prev = null;
+        for (int i = 0; bar != null && i < bar.getChildCount(); i++) {
+            View b = bar.getChildAt(i);
+            if (!(b.getTag() instanceof String)) { prev = null; continue; }
+            if (prev != null && prev.getRight() == b.getLeft()) {
+                p.toolOutline(prev, r1);
+                p.toolOutline(b, r2);
+                assertTrue(r2.left - r1.right >= 2 * d - 1.5f);
+            }
+            prev = b;
+        }
+        shot(a, "97-key-outlines-even-gaps");
+        pre.raw().edit().remove(Prefs.KEY_GAP_X).remove(Prefs.KEY_GAP_Y).commit();
     }
 
     /** 한글 자판 배열에서 두벌식을 고르고, 균형 배열·격자 정렬과 함께 미리보기와 설정 창이 맞게 바뀌는지. */
