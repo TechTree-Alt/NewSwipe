@@ -303,8 +303,14 @@ final class KeyboardPreview extends FrameLayout {
                 out.set(l.right + gap, Math.min(l.top, r.top), r.left - gap, Math.max(l.bottom, r.bottom));
                 return out.width() >= Ui.dp(getContext(), 12);
             }
-            case AREA_LETTERS:
-                return !prefs.profileSplit() && areaBounds(AREA_LETTERS, out);
+            case AREA_LETTERS: {
+                if (!prefs.profileSplit()) return areaBounds(AREA_LETTERS, out);
+                // 분리 키보드: 두 묶음을 합친 글자 키 (두 묶음을 함께 고른다)
+                RectF r = new RectF();
+                if (!blockBounds(true, out) || !blockBounds(false, r)) return false;
+                out.union(r);
+                return true;
+            }
             case AREA_FUNCTION:
                 return areaBounds(AREA_FUNCTION, out);
             case AREA_TOOLBAR:
