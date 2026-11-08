@@ -1782,9 +1782,10 @@ public final class SettingsActivity extends Activity {
         korean.addView(choices);
         korean.addView(layoutNote);
         korean.addView(detail[0].view);
-        korean.addView(detailNoteBox);
+        // 하위 항목(균형 배열 사용자화, 좌·우 균형 배열·자·모음 분리 배열)이 상세 배열 바로 아래, 설명은 그 아래.
         korean.addView(keyArea);
         korean.addView(splitSub);
+        korean.addView(detailNoteBox);
     }
 
     /** 분리 키보드의 하위 항목(좌·우 균형 배열·자·모음 분리 배열)이 보이는지: 분리 키보드를 골랐고 두벌식이 아닐 때. */

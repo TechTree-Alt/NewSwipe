@@ -1346,8 +1346,8 @@ public class EditorUiTest {
         assertTrue(prefs.portraitSplit());
         String dt = visibleTexts(cur(a));
         assertTrue(dt, dt.contains("상세 배열\n  분리 키보드"));
-        // 단모음: 분리 키보드의 하위 항목으로 '자·모음 분리 배열' 토글이 상세 배열 바로 아래 묶음에 보인다
-        assertTrue(dt, dt.contains("영어 자판과 기호 자판에도 적용됩니다.\n  자·모음 분리 배열"));
+        // 단모음: 분리 키보드의 하위 항목으로 '자·모음 분리 배열' 토글이 상세 배열 바로 아래(설명보다 위)에 보인다
+        assertTrue(dt, dt.contains("상세 배열\n  분리 키보드\n  자·모음 분리 배열"));
         findText(cur(a), "NewSwipe 단모음").performClick();
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
         String nt = visibleTexts(cur(a));
