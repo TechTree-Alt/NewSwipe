@@ -824,6 +824,57 @@ public class SplitBottomRowTest {
     }
 
     @Test
+    public void boardPaddingIsSeparatePerProfileAndFollowsPortraitUntilSet() throws Exception {
+        FakeSp sp = new FakeSp();
+        Prefs port = editView(sp, Prefs.PROFILE_PORTRAIT), land = editView(sp, Prefs.PROFILE_LANDSCAPE);
+        Prefs lp = editView(sp, Prefs.PROFILE_LARGE_PORTRAIT), ll = editView(sp, Prefs.PROFILE_LARGE_LANDSCAPE);
+        sp.m.put(Prefs.PAD_LEFT, 8);
+        sp.m.put(Prefs.PAD_BOTTOM, 20);
+        // 정하기 전에는 세로 모드 값을 따른다.
+        for (Prefs v : new Prefs[]{port, land, lp, ll}) {
+            assertEquals(8, v.padLeftDp());
+            assertEquals(20, v.padBottomDp());
+        }
+        // 가로 모드에서 정하면 그 보기만 바뀐다.
+        sp.m.put(land.padKey(Prefs.SIDE_LEFT), 1);
+        sp.m.put(land.padKey(Prefs.SIDE_BOTTOM), 40);
+        assertEquals(1, land.padLeftDp());
+        assertEquals(40, land.padBottomDp());
+        assertEquals(8, port.padLeftDp());
+        assertEquals(8, lp.padLeftDp());
+        // 폴더블 내부 화면 세로·가로는 각각 따로 정한다.
+        assertTrue(!lp.padKey(Prefs.SIDE_TOP).equals(ll.padKey(Prefs.SIDE_TOP)));
+        sp.m.put(ll.padKey(Prefs.SIDE_TOP), 5);
+        assertEquals(5, ll.padTopDp());
+        assertEquals(0, lp.padTopDp());
+        // 세로 모드는 예전 키를 그대로 쓴다.
+        assertEquals(Prefs.PAD_LEFT, port.padKey(Prefs.SIDE_LEFT));
+    }
+
+    @Test
+    public void toolbarAndFnAreaPaddingIsSeparateOnlyWhenNotFollowingBlocks() throws Exception {
+        FakeSp sp = new FakeSp();
+        Prefs land = editView(sp, Prefs.PROFILE_LANDSCAPE), port = editView(sp, Prefs.PROFILE_PORTRAIT);
+        sp.m.put(Prefs.areaPadKey(0, Prefs.SIDE_LEFT), 6);
+        sp.m.put(Prefs.areaPadKey(3, Prefs.SIDE_TOP), 7);
+        sp.m.put(land.profileAreaPadKey(0, Prefs.SIDE_LEFT), 2);
+        sp.m.put(land.profileAreaPadKey(3, Prefs.SIDE_TOP), 3);
+        // 따라가기를 켜 두면(기본) 세로 모드 값을 그대로 쓴다.
+        assertEquals(6, land.areaPadDp(0, Prefs.SIDE_LEFT));
+        assertEquals(7, land.areaPadDp(3, Prefs.SIDE_TOP));
+        // 도구 막대만 끄면 도구 막대만 따로 쓴다.
+        sp.m.put(land.toolbarFollowKey(), false);
+        assertEquals(2, land.areaPadDp(0, Prefs.SIDE_LEFT));
+        assertEquals(7, land.areaPadDp(3, Prefs.SIDE_TOP));
+        sp.m.put(land.fnFollowKey(), false);
+        assertEquals(3, land.areaPadDp(3, Prefs.SIDE_TOP));
+        // 정하지 않은 쪽은 세로 모드 값, 세로 모드는 늘 자기 값.
+        assertEquals(0, land.areaPadDp(0, Prefs.SIDE_TOP));
+        assertEquals(6, port.areaPadDp(0, Prefs.SIDE_LEFT));
+        assertEquals(7, port.areaPadDp(3, Prefs.SIDE_TOP));
+    }
+
+    @Test
     public void largePortraitAndLandscapeShareTheLayoutButNotTheShape() throws Exception {
         FakeSp sp = new FakeSp();
         Prefs land = editView(sp, Prefs.PROFILE_LANDSCAPE);

@@ -163,6 +163,8 @@ public final class Prefs {
     public static final String BALANCED_BOUNDARY = "balanced_boundary";
     /** 가로 모드의 값은 위 이름 뒤에 이 말을 붙여 따로 저장한다 (예: balanced_vowel_width_land_danmoeum7). */
     private static final String LANDSCAPE_SUFFIX = "_land";
+    /** 가로 모드 보기에서 따로 정하는 여백 키의 앞부분 (폴더블 내부 화면은 large_pad_로 시작한다). */
+    private static final String LANDSCAPE_PAD_PREFIX = "land_pad_";
     public static final int BALANCED_WIDTH_MIN = 60;
     /**
      * 두 묶음의 기본 모양: 모든 한글 배열의 자·모음 균형 배열과 분리 키보드(세로 모드·가로 모드·폴더블 내부 화면)가 같다.
@@ -518,7 +520,7 @@ public final class Prefs {
             new EditorScope("landscape", null, keys(LANDSCAPE_SPLIT, LANDSCAPE_SIZE, KEYBOARD_HEIGHT_LAND, KEY_TEXT_SIZE_LAND,
                     SPLIT_GAP_CURSOR, SPLIT_GAP_SPEED, SPLIT_SPACE_JOIN, SPLIT_FN_WIDTH, SPLIT_REACH_COLUMN,
                     PROFILE_LIFT + LANDSCAPE_SUFFIX, FN_ROW_HEIGHT + LANDSCAPE_SUFFIX, TOOLBAR_FOLLOW_BLOCKS + LANDSCAPE_SUFFIX,
-                    FN_FOLLOW_BLOCKS + LANDSCAPE_SUFFIX), keys(LANDSCAPE_SPLIT + "_", "balanced_", "swipe_gap_landscape_", "swipe_gap_large_",
+                    FN_FOLLOW_BLOCKS + LANDSCAPE_SUFFIX), keys(LANDSCAPE_SPLIT + "_", "balanced_", "swipe_gap_landscape_", "swipe_gap_large_", LANDSCAPE_PAD_PREFIX, LARGE_PREFIX + "pad_",
                             SPLIT_REACH_COLUMN + "_")),
     };
 
@@ -599,7 +601,7 @@ public final class Prefs {
         removeKeys(new String[]{splitKey(), sizeKey(), heightKey(), fnRowHeightKey(), textSizeKey(),
                 toolbarFollowKey(), fnFollowKey(), oneHandWidthKey(), splitGapCursorKey(),
                 splitGapSpeedKey(), splitSpaceJoinKey(), splitFnWidthKey(), ownReachBaseKey(), liftKey()},
-                new String[]{splitKey() + "_", ownReachBaseKey() + "_", "swipe_gap_" + com.alternative_studios.newswipe.keyboard.GapSwipes.SLOTS[gapSlot()] + "_"});   // 예전에 배열마다 저장하던 분리 키보드 값도 함께
+                new String[]{splitKey() + "_", ownReachBaseKey() + "_", profilePadKey(""), "swipe_gap_" + com.alternative_studios.newswipe.keyboard.GapSwipes.SLOTS[gapSlot()] + "_"});   // 예전에 배열마다 저장하던 분리 키보드 값도 함께
     }
 
     /** '기능키 순서·유무 사용자화' 화면의 값. */
@@ -787,9 +789,30 @@ public final class Prefs {
     public boolean englishFields() { return sp.getBoolean(ENGLISH_FIELDS, true); }
     public int keyGapXDp() { return clamp(sp.getInt(KEY_GAP_X, 5), 0, 12); }
     public int keyGapYDp() { return clamp(sp.getInt(KEY_GAP_Y, 9), 0, 20); }
-    public int padLeftDp() { return sp.getInt(PAD_LEFT, 3); }
-    public int padRightDp() { return sp.getInt(PAD_RIGHT, 3); }
-    public int padTopDp() { return sp.getInt(PAD_TOP, 0); }
+    /**
+     * 키보드 전체의 상하좌우 여백 (dp). 가로 모드·폴더블 내부 화면 보기에서 따로 정했으면 그 값 (정하기 전에는 세로 모드 값).
+     */
+    public int padLeftDp() { return padValue(SIDE_LEFT, sp.getInt(PAD_LEFT, 3), 24); }
+    public int padRightDp() { return padValue(SIDE_RIGHT, sp.getInt(PAD_RIGHT, 3), 24); }
+    public int padTopDp() { return padValue(SIDE_TOP, sp.getInt(PAD_TOP, 0), 24); }
+
+    private int padValue(int side, int portraitValue, int max) {
+        return profileSize() ? clamp(sp.getInt(padKey(side), portraitValue), 0, max) : portraitValue;
+    }
+
+    /**
+     * 키보드 전체 여백(side: SIDE_*)의 설정 키. 세로 모드는 예전 이름을, 가로 모드·폴더블 내부 화면(세로·가로 각각)은
+     * 따로 정하는 키를 쓴다 (정하기 전에는 세로 모드 값).
+     */
+    public String padKey(int side) {
+        String base = side == SIDE_LEFT ? PAD_LEFT : side == SIDE_RIGHT ? PAD_RIGHT : side == SIDE_TOP ? PAD_TOP : PAD_BOTTOM;
+        return profileSize() ? profilePadKey("" + "ltrb".charAt(side)) : base;
+    }
+
+    /** 가로 모드·폴더블 내부 화면 보기의 여백 키 (name: 키보드는 l·t·r·b, 영역은 영역 번호 + l·t·r·b). 세로·가로가 각각 따로 쓴다. */
+    private String profilePadKey(String name) {
+        return large() ? LARGE_PREFIX + "pad_" + largeSide() + "_" + name : LANDSCAPE_PAD_PREFIX + name;
+    }
 
     /** 영역 area(0 도구 막대·1 숫자 줄·2 글자 키·3 기능키)의 side(SIDE_*) 여백 설정 키. */
     /**
@@ -833,9 +856,32 @@ public final class Prefs {
         return AREA_PAD_PREFIX + PAD_AREAS[area] + "_" + "ltrb".charAt(side);
     }
 
-    /** 영역별 여백 (dp, 0~32). */
+    /**
+     * 영역별 여백 (dp, 0~32). 가로 모드·폴더블 내부 화면 보기에서 도구 막대·기능키는 '묶음 좌우 따라가기'를 끄면
+     * 따로 정한 값을 쓴다 (정하기 전에는 세로 모드 값). 켜 두면 세로 모드 값을 그대로 쓴다.
+     */
     public int areaPadDp(int area, int side) {
+        return areaPadSeparate(area) ? profileAreaPadDp(area, side) : portraitAreaPadDp(area, side);
+    }
+
+    private int portraitAreaPadDp(int area, int side) {
         return clamp(sp.getInt(areaPadKey(area, side), 0), 0, AREA_PAD_MAX);
+    }
+
+    /** 이 보기에서 영역 여백을 세로 모드와 따로 쓰는지: 가로 모드·폴더블 내부 화면의 도구 막대·기능키가 묶음을 따라가지 않을 때. */
+    public boolean areaPadSeparate(int area) {
+        if (!profileSize()) return false;
+        return area == 0 ? !getRawFollow() : area == 3 && !getRawFnFollow();
+    }
+
+    /** 가로 모드·폴더블 내부 화면 보기에서 따로 정한 영역 여백 (정하기 전에는 세로 모드 값). 따라가기 설정과 상관없이 저장된 값이다. */
+    public int profileAreaPadDp(int area, int side) {
+        return clamp(sp.getInt(profileAreaPadKey(area, side), portraitAreaPadDp(area, side)), 0, AREA_PAD_MAX);
+    }
+
+    /** 가로 모드·폴더블 내부 화면 보기의 영역 여백 설정 키. */
+    public String profileAreaPadKey(int area, int side) {
+        return profilePadKey("a" + area + "ltrb".charAt(side));
     }
 
     /** 영역별 위·아래 여백의 합 (dp): 키보드 높이에 더한다. 숫자 줄은 켰을 때만. */
@@ -847,7 +893,7 @@ public final class Prefs {
         }
         return sum;
     }
-    public int padBottomDp() { return sp.getInt(PAD_BOTTOM, 4); }
+    public int padBottomDp() { return padValue(SIDE_BOTTOM, sp.getInt(PAD_BOTTOM, 4), 48); }
     public boolean periodComma() { return sp.getBoolean(PERIOD_COMMA, true); }
 
     public boolean shortcutsEnabled() { return sp.getBoolean(SHORTCUTS_ENABLED, true); }
