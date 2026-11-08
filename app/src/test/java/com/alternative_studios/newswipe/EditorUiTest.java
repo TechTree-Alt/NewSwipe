@@ -863,7 +863,7 @@ public class EditorUiTest {
         assertNotNull(findText(decor, "한글 글자 키 설정"));
         String t = visibleTexts(cur(a));
         log("LETTERS:\n" + t);
-        assertTrue(t.contains("한글 자판 배열") && t.contains("쌍자음 입력") && t.contains("키보드 밀기 편집"));
+        assertTrue(t.contains("한글 자판 배열") && t.contains("쌍자음 입력") && t.contains("키보드 밀기 사용자화"));
         assertFalse(t.contains("영어 자동 대문자"));   // 영어 글자 키 창에만 있다
         // 쌍자음·이중모음 입력 방식: 줄을 누르면 고르는 창 (아래로 밀기·연속 탭·둘 다)
         assertTrue(t.contains("쌍자음 입력\n  아래로 밀기") && t.contains("이중모음 입력\n  둘 다"));
@@ -881,7 +881,7 @@ public class EditorUiTest {
         assertEquals(Prefs.INPUT_TAP, ip.consonantInputMode());
         assertNull(key(p, "ㄱ", Key.CHAR).swipeText(Key.SWIPE_DOWN));   // 아래로 밀어 쌍자음은 쓰지 않는다
         String t2 = visibleTexts(cur(a));
-        assertTrue(t2.contains("쌍자음 입력\n  연속 탭") && t2.contains("쌍자음 인식 시간"));
+        assertTrue(t2.contains("쌍자음 입력\n  두 번 연속으로 누르기") && t2.contains("쌍자음 인식 시간"));
         // 되돌리기로 원래 방식으로 (뒤의 되돌리기 시험이 빈 기록에서 시작하게)
         byDesc(decor, "마지막 변경 되돌리기").performClick(); idle();
         assertEquals(Prefs.INPUT_SWIPE, ip.consonantInputMode());

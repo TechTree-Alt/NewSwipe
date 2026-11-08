@@ -162,7 +162,7 @@ public final class BottomKeysEditorActivity extends Activity {
         String shiftKey = prefs.koreanDubeolsik() ? Prefs.DUBEOLSIK_SHIFT_HIDDEN : Prefs.KOREAN_SHIFT_HIDDEN;
         View shiftRow = fixedRow("Shift 키 (⇧)",
                 noShiftSlot ? "이 레이아웃에서는 사용할 수 없습니다."
-                        : prefs.koreanDubeolsik() ? "끄면 두벌식에서 Shift로 치던 쌍자음·ㅒ·ㅖ는 연속 탭이나 밀기로 입력합니다."
+                        : prefs.koreanDubeolsik() ? "끄면 두벌식에서 Shift로 치던 쌍자음·ㅒ·ㅖ는 두 번 연속으로 누르거나 밀어서 입력합니다."
                         : "꺼도 한글 자판에서만 사라집니다.",
                 !noShiftSlot && !prefs.koreanShiftHidden(),
                 on -> {

@@ -394,25 +394,25 @@ public final class SettingsActivity extends Activity {
             {"theme", "색 정렬", "키 색"},
             {KEYBOARD, "문자 길게 누르기 시간", "롱프레스 길게 누르기 시간 지연 특수문자 반복 입력 연타 연속 입력"},
             {KEYBOARD, "기능키 길게 누르기 시간", "롱프레스 시간 길게 눌러 지우기 이모지 입력기 선택"},
-            {KEYBOARD, "쌍자음 인식 시간", "연속 탭 된소리 ㄲ ㅆ 시간"},
-            {KEYBOARD, "쌍자음 입력", "된소리 ㄲ ㅆ ㅃ 자음 연속 탭 두 번 아래로 밀기"},
-            {KEYBOARD, "이중모음 입력", "ㅑ ㅛ ㅕ 모음 연속 탭 두 번 아래로 밀기"},
+            {KEYBOARD, "쌍자음 인식 시간", "연속 탭 연속 누르기 된소리 ㄲ ㅆ 시간"},
+            {KEYBOARD, "쌍자음 입력", "된소리 ㄲ ㅆ ㅃ 자음 연속 탭 연속 누르기 두 번 아래로 밀기"},
+            {KEYBOARD, "이중모음 입력", "ㅑ ㅛ ㅕ 모음 연속 탭 연속 누르기 두 번 아래로 밀기"},
             {KEYBOARD, "영어 자동 대문자", "대소문자 자동 대문자 shift 첫 글자"},
             {KEYBOARD, "두 번 눌러 마침표", "점 온점 더블 스페이스바"},
             {KEYBOARD, "인식 범위 좁히기", "지우기 백스페이스 스페이스바 오타 오입력 터치 영역"},
             {KEYBOARD, "미는 거리", "스와이프 거리 민감도 밀어서 쌍자음 겹받침 이중모음 ㄲ ㅆ ㅘ 쉼표 글자 입력"},
             {KEYBOARD, "기능키 미는 거리", "스와이프 기능 스페이스바 커서 이동 언어 전환 단어 삭제 이모지 도구 막대 밀기 복사 붙여넣기"},
-            {KEYBOARD, "키보드 밀기 편집", "두 손가락 실행 취소 다시 실행 undo redo 트랙패드 커서 자유 이동 문자 키"},
+            {KEYBOARD, "키보드 밀기 사용자화", "두 손가락 실행 취소 다시 실행 undo redo 트랙패드 커서 자유 이동 문자 키"},
             {KEYBOARD, "커서 이동 속도 좌우", "스페이스바 커서 키 트랙패드"},
             {KEYBOARD, "자판 트랙패드 좌우", "커서 이동 속도 문자 키"},
             {KEYBOARD, "언어 순서 사용자화", "지구본 언어 차례 순서 바꾸기 한국어 영어 일본어 중국어"},
-            {KEYBOARD, "키보드 밀기 편집", "자판 스와이프 기능"},
+            {KEYBOARD, "키보드 밀기 사용자화", "자판 스와이프 기능"},
             {KEYBOARD, "위로 밀어서 추천 단어 입력", "추천 단어 스와이프 고르기 자판 위로"},
             {"words", "도구 막대 전체를 쓰기", "추천 툴바 전체"},
             {"words", "추천 단어 뒤에 공백 포함", "띄어쓰기 스페이스"},
             {"words", "단어 추천", "자동 완성 예측 추천"},
             {"clipemoji", "이모지 추천", "이모티콘 추천"},
-            {"words", "단축어 편집", "줄임말 약어 텍스트 확장"},
+            {"words", "단축어 사용자화", "줄임말 약어 텍스트 확장"},
             {"words", "단축어 사용", "줄임말 약어 텍스트 확장"},
             {"words", "자동 수정", "오타 교정 자동 고침"},
             {"words", "입력한 단어 학습", "사용자 사전 개인화"},
@@ -1531,14 +1531,14 @@ public final class SettingsActivity extends Activity {
     }
 
     /** 쌍자음·이중모음 입력 방식의 이름 (Prefs.INPUT_* 차례). */
-    private static final String[] INPUT_MODES = {"아래로 밀기", "연속 탭", "둘 다"};
+    private static final String[] INPUT_MODES = {"아래로 밀기", "두 번 연속으로 누르기", "둘 다"};
 
-    /** 한글 글자 키의 입력 동작: 쌍자음·이중모음 입력 방식 (아래로 밀기·연속 탭·둘 다). */
+    /** 한글 글자 키의 입력 동작: 쌍자음·이중모음 입력 방식 (아래로 밀기·두 번 연속으로 누르기·둘 다). */
     private void addKoreanInput(LinearLayout input) {
         View doubleTapTime = subGroup(
                 slider("쌍자음 인식 시간", Prefs.DOUBLE_TAP_CONSONANT_MS, prefs.doubleTapConsonantMs(),
                         80, 500, 10, "ms"),
-                note("두 번째 탭이 이 시간 안에 들어와야 쌍자음이 됩니다. 값을 줄이면 '학교'가 '하꾜'로 바뀌는 일이 줄고, "
+                note("두 번째 누르기가 이 시간 안에 들어와야 쌍자음이 됩니다. 값을 줄이면 '학교'가 '하꾜'로 바뀌는 일이 줄고, "
                         + "대신 쌍자음을 낼 때 더 빨리 눌러야 합니다."));
         doubleTapTime.setVisibility(prefs.consonantInputMode() != Prefs.INPUT_SWIPE || harvesting ? View.VISIBLE : View.GONE);
         SettingsWidgets.ValueRow[] consonant = new SettingsWidgets.ValueRow[1];
@@ -1557,11 +1557,11 @@ public final class SettingsActivity extends Activity {
                     vowel[0].set(INPUT_MODES[mode]);
                 }));
         input.addView(vowel[0].view);
-        input.addView(note("아래로 밀기는 자음·모음 키를 아래로 밀어(ㄱ→ㄲ, ㅏ→ㅑ), 연속 탭은 같은 키를 두 번 눌러(ㄱㄱ→ㄲ, ㅏㅏ→ㅑ) "
+        input.addView(note("아래로 밀기는 자음·모음 키를 아래로 밀어(ㄱ→ㄲ, ㅏ→ㅑ), 두 번 연속으로 누르기는 같은 키를 두 번 눌러(ㄱㄱ→ㄲ, ㅏㅏ→ㅑ) "
                 + "입력합니다. 키마다 아래로 밀기 글자를 따로 정했으면 그 글자를 씁니다."));
     }
 
-    /** 쌍자음·이중모음 입력 방식을 고르는 창 (아래로 밀기·연속 탭·둘 다). */
+    /** 쌍자음·이중모음 입력 방식을 고르는 창 (아래로 밀기·두 번 연속으로 누르기·둘 다). */
     private void pickInputMode(String title, int current, int defaultMode, java.util.function.IntConsumer onPick) {
         AppTheme.dialogBuilder(this)   // 다른 고르기 창(길게 누르기·밀기 기능)과 같은 모양: 목록, 기본값, 취소
                 .setTitle(title)
@@ -1608,7 +1608,7 @@ public final class SettingsActivity extends Activity {
 
     /** 키보드 밀기 편집(한 손가락·두 손가락)과 위로 밀어서 추천 단어 입력. */
     private void addKeyboardSwipe(LinearLayout board) {
-        board.addView(button("키보드 밀기 편집", v ->
+        board.addView(button("키보드 밀기 사용자화", v ->
                 startActivity(SwipeActionEditorActivity.intent(this, KeyboardSwipes.SPEC))));
         board.addView(note("자판을 한 손가락·두 손가락으로 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 정합니다. "
                 + "한 손가락은 그 방향에 밀어서 입력할 글자가 없을 때 쓰입니다."));
@@ -1750,7 +1750,7 @@ public final class SettingsActivity extends Activity {
         LinearLayout intro = card();
         intro.addView(note("아직 시험 중인 기능입니다. 동작이 바뀌거나 없어질 수 있습니다."));
 
-        LinearLayout direction = section("스와이프 방향 판정");
+        LinearLayout direction = section("밀기 방향 판정");
         direction.addView(slider("아래로 밀기 엄격도", Prefs.SWIPE_DOWN_RATIO, prefs.swipeDownRatioPct(),
                 Prefs.SWIPE_RATIO_MIN, Prefs.SWIPE_RATIO_MAX, 10, "%"));
         direction.addView(slider("위로 밀기 엄격도", Prefs.SWIPE_UP_RATIO, prefs.swipeUpRatioPct(),
@@ -2553,7 +2553,7 @@ public final class SettingsActivity extends Activity {
         suggest.addView(fullBar);
 
         LinearLayout shortcut = section("단축어");
-        View shortcutGroup = subGroup(button("단축어 편집", v -> startActivity(new Intent(this, ShortcutEditorActivity.class))));
+        View shortcutGroup = subGroup(button("단축어 사용자화", v -> startActivity(new Intent(this, ShortcutEditorActivity.class))));
         shortcut.addView(toggle("단축어 사용", "사용자가 정한 줄임말을 입력하면 정해 둔 문장을 추천란에 보여 줍니다 (예: ㅈㄱㅈ → 지금 가는 중)",
                 Prefs.SHORTCUTS_ENABLED, prefs.shortcutsEnabled(), shortcutGroup));
         shortcut.addView(shortcutGroup);
@@ -2871,7 +2871,7 @@ public final class SettingsActivity extends Activity {
             remaining[slot]--;
             updateSummary.run();
             Toast.makeText(this, "'" + word + "'" + com.alternative_studios.newswipe.suggest.WordSuggester.objectParticle(word)
-                    + " 삭제했습니다. 다시 학습하지 않습니다", Toast.LENGTH_SHORT).show();
+                    + " 지웠습니다. 다시 학습하지 않습니다", Toast.LENGTH_SHORT).show();
         };
         trash.setOnClickListener(v -> {
             if (prefs.confirmLearnedDelete()) confirmLearnedDelete(word, delete);
@@ -2987,11 +2987,11 @@ public final class SettingsActivity extends Activity {
         box.setPadding(pad, Ui.dp(this, 4), pad, 0);
         box.addView(dontAsk);
         AppTheme.accentBuilder(dc)
-                .setTitle("학습한 단어 삭제")
-                .setMessage("'" + word + "'" + com.alternative_studios.newswipe.suggest.WordSuggester.objectParticle(word) + " 삭제하시겠습니까? "
+                .setTitle("학습한 단어 지우기")
+                .setMessage("'" + word + "'" + com.alternative_studios.newswipe.suggest.WordSuggester.objectParticle(word) + " 지우시겠습니까? "
                         + "지운 단어는 다시 학습하지 않습니다 ('학습하지 않는 단어 보기'에서 되돌릴 수 있습니다).")
                 .setView(box)
-                .setPositiveButton("삭제", (d, w) -> {
+                .setPositiveButton("지우기", (d, w) -> {
                     // 취소했을 때는 체크해도 저장하지 않는다 (실수로 체크한 채 닫는 경우).
                     if (dontAsk.isChecked()) prefs.raw().edit().putBoolean(Prefs.CONFIRM_LEARNED_DELETE, false).apply();
                     delete.run();

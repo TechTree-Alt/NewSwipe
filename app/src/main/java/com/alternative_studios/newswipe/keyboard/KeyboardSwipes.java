@@ -42,7 +42,7 @@ public final class KeyboardSwipes {
 
         @Override
         public String title() {
-            return "키보드 밀기 편집";
+            return "키보드 밀기 사용자화";
         }
 
         @Override

@@ -59,7 +59,7 @@ public final class ToolbarSwipes {
 
         @Override
         public String title() {
-            return "도구 막대 밀어서 기능 편집";
+            return "도구 막대 밀어서 기능 사용자화";
         }
 
         @Override

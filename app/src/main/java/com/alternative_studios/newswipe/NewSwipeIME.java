@@ -3663,7 +3663,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             userWords.forget(word, lang);
             if (lang) usageHistory.remove(word);
             main.post(() -> {
-                Toast.makeText(this, "'" + word + "'" + WordSuggester.objectParticle(word) + " 삭제했습니다. 다시 학습하지 않습니다",
+                Toast.makeText(this, "'" + word + "'" + WordSuggester.objectParticle(word) + " 지웠습니다. 다시 학습하지 않습니다",
                         Toast.LENGTH_SHORT).show();
                 updateSuggestions();
             });
@@ -3683,7 +3683,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private Runnable forgetAction;
 
     private void confirmForget(String word, Runnable delete) {
-        confirmOnBar("'" + word + "'" + WordSuggester.objectParticle(word) + " 삭제할까요?", "삭제",
+        confirmOnBar("'" + word + "'" + WordSuggester.objectParticle(word) + " 지울까요?", "지우기",
                 TextUtils.TruncateAt.MIDDLE, delete);
     }
 

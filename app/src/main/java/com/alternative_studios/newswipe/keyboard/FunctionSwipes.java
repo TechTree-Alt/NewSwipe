@@ -75,7 +75,7 @@ public final class FunctionSwipes {
 
         @Override
         public String title() {
-            return "기능키 밀어서 기능 편집";
+            return "기능키 밀어서 기능 사용자화";
         }
 
         @Override

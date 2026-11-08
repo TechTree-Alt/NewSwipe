@@ -473,7 +473,7 @@ public final class Prefs {
             new EditorScope(AREA_SCOPES[2], "글자 키 공통 (높이·길게 누르기·밀기·여백)", keys(KEYBOARD_HEIGHT, LONG_PRESS_MS,
                     POPUP_HINT_HIDDEN, SWIPE_THRESHOLD, SWIPE_PICK_SUGGESTION),
                     keys(AREA_PAD_PREFIX + PAD_AREAS[2] + "_", "swipe_kb_")),
-            new EditorScope(SCOPE_LETTERS_KO, "한글 글자 키 (자판 배열·균형 레이아웃·연속 탭)", keys(KOREAN_LAYOUT,
+            new EditorScope(SCOPE_LETTERS_KO, "한글 글자 키 (자판 배열·균형 레이아웃·쌍자음·이중모음 입력)", keys(KOREAN_LAYOUT,
                     DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT, DOUBLE_TAP_CONSONANT_MS, SWIPE_DOWN_CONSONANT, SWIPE_DOWN_VOWEL,
                     ENGLISH_BALANCED),
                     keys(BALANCED_LAYOUT)),

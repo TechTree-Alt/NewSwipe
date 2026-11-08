@@ -70,7 +70,7 @@ public final class LongPressActions {
 
         @Override
         public String title() {
-            return "기능키 길게 누르기 기능 편집";
+            return "기능키 길게 누르기 기능 사용자화";
         }
 
         @Override

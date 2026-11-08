@@ -372,7 +372,7 @@ public final class OnboardingArt {
 
             // 아래 설명: 지금 단계의 동작
             String caption = s.doubleTap
-                    ? s.row[s.index] + " 두 번 탭 → " + s.result
+                    ? s.row[s.index] + " 두 번 누르기 → " + s.result
                     : s.row[s.index] + " 아래로 밀기 → " + s.result;
             captionPaint.setAlpha(Math.round(255 * rowAlpha));
             canvas.drawText(caption, w / 2f, keyTop + keyH + pad + 44 * dp, captionPaint);

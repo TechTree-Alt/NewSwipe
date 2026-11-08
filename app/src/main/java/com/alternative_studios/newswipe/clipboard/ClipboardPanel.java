@@ -200,7 +200,7 @@ public final class ClipboardPanel extends LinearLayout {
         list.addView(note("고정하지 않은 항목은 24시간 뒤 지워지며, 최근 "
                 + ClipboardHistory.MAX_ITEMS + "개(이미지는 " + ClipboardHistory.MAX_IMAGES
                 + "개)까지 보관합니다. 아래 버튼으로 고정(최대 "
-                + ClipboardHistory.MAX_PINNED + "개)하거나 삭제할 수 있습니다."));
+                + ClipboardHistory.MAX_PINNED + "개)하거나 지울 수 있습니다."));
     }
 
     /** 한 줄의 칸 수: 화면 폭에 맞춰 칸 폭이 CELL_DP쯤 되도록 한다 (보통 휴대폰 세로 화면은 2칸, 가로 모드·대화면은 더 많이). */
@@ -290,7 +290,7 @@ public final class ClipboardPanel extends LinearLayout {
             });
             bar.addView(pin, new LayoutParams(Ui.dp(c, 36), Ui.dp(c, 36)));
             // 아이콘만 있는 버튼: 핀은 강조 색(고정 여부는 채워졌는지로 구분), 삭제는 붉은색
-            IconButton trash = new IconButton(c, Icons.TRASH, Ui.danger(theme.dark), theme.keyPressed, "삭제");
+            IconButton trash = new IconButton(c, Icons.TRASH, Ui.danger(theme.dark), theme.keyPressed, "지우기");
             trash.setOnClickListener(v -> {
                 animateNext = true;
                 listener.onClipDelete(item);
