@@ -1936,6 +1936,51 @@ public class EditorUiTest {
         a.onBackPressed(); idle();
     }
 
+    /**
+     * 가로 모드·폴더블 내부 화면 키보드 사용자화: 미리보기의 설정 창(키보드 전체·영역)에 있는 항목은 그 창의 id로 모으고,
+     * 검색 결과로 들어오면 그 창을 열어 항목을 보여 준다.
+     */
+    @Test
+    public void searchOpensProfileSheets() throws Exception {
+        new Prefs(RuntimeEnvironment.getApplication()).raw().edit().putBoolean(Prefs.ONBOARDING_DONE, true).commit();
+        SettingsActivity main = launch(null);
+        java.lang.reflect.Method hs = SettingsActivity.class.getDeclaredMethod("harvestScreen", String.class, java.util.List.class);
+        hs.setAccessible(true);
+        java.util.List<String[]> land = new java.util.ArrayList<>();
+        hs.invoke(main, "landscapearea", land);
+        java.util.Map<String, String> where = new java.util.HashMap<>();
+        for (String[] e : land) where.putIfAbsent(e[1], e[0]);
+        log("landscape harvested " + land.size() + ": " + where);
+        assertEquals("landscapearea", where.get("가로 모드 분리 키보드"));   // 목록의 항목은 그대로 화면 id
+        assertEquals("profilepart:landscapearea:0:도구 막대", where.get("도구 막대 높이"));
+        assertEquals("profilepart:landscapearea:3:기능키", where.get("스페이스바 잇기"));
+        assertEquals("profilepart:landscapearea:-1:키보드 전체 설정", where.get("키 글자 크기"));
+        assertEquals("profilepart:landscapearea:0:도구 막대", where.get("도구 막대 설정"));
+        java.util.List<String[]> large = new java.util.ArrayList<>();
+        hs.invoke(main, "largearea", large);
+        String largeTool = null;
+        for (String[] e : large) if (largeTool == null && "도구 막대 높이".equals(e[1])) largeTool = e[0];
+        assertEquals("profilepart:largearea:0:도구 막대", largeTool);
+
+        // 검색 결과에서 고른 것처럼 연다: 화면이 열리고 미리보기의 그 창이 올라와 항목이 보인다.
+        Intent i = new Intent(RuntimeEnvironment.getApplication(), SettingsActivity.class)
+                .putExtra("section", "landscapearea")
+                .putExtra("target", where.get("스페이스바 잇기"))
+                .putExtra("highlight", "스페이스바 잇기");
+        EditorUndo.clearAll();
+        SettingsActivity a = Robolectric.buildActivity(SettingsActivity.class, i).setup().get();
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(1200));
+        assertTrue(sheetOf(a).isOpen());
+        assertTrue(visibleTexts(sheetOf(a).body()).contains("기능키 높이"));
+        a.onBackPressed(); idle();
+        java.lang.reflect.Method ot = SettingsActivity.class.getDeclaredMethod("openProfileTarget", String.class, String.class);
+        ot.setAccessible(true);
+        ot.invoke(a, where.get("키 글자 크기"), "키 글자 크기");
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(800));
+        assertTrue(sheetOf(a).isOpen());
+        assertTrue(visibleTexts(sheetOf(a).body()).contains("키 글자 크기"));
+    }
+
     /** 방향 이름(작은 글자)을 가진 칸. */
     static View findSub(View v, String sub) {
         if (v instanceof com.alternative_studios.newswipe.ui.ExpressiveChoiceButton && v.isShown()

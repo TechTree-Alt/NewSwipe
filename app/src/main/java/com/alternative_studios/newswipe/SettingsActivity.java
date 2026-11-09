@@ -53,6 +53,11 @@ public final class SettingsActivity extends Activity {
     private static final String EDITOR_PART = "keyboard:";
     /** 검색 목록을 모을 때 영역·키 창들을 모으라는 표시 (HARVEST_IDS). */
     private static final String EDITOR_PARTS = "keyboard:parts";
+    /**
+     * 검색 목록에서 가로 모드·폴더블 내부 화면 키보드 사용자화의 설정 창(키보드 전체·영역)을 가리키는 화면 id:
+     * "profilepart:<화면 id>:<영역 (-1 = 키보드 전체)>:<이름>". 그 화면의 미리보기에서 그 창을 열어 항목을 찾는다.
+     */
+    private static final String PROFILE_PART = "profilepart:";
 
     private Prefs prefs;
     private LinearLayout list;
@@ -163,6 +168,8 @@ public final class SettingsActivity extends Activity {
         String target = getIntent().getStringExtra(EXTRA_TARGET);
         if (highlight != null && target != null && editorPreview != null) {
             scroll.postDelayed(() -> openEditorTarget(target, highlight), 250);
+        } else if (highlight != null && target != null && target.startsWith(PROFILE_PART) && profilePreview != null) {
+            scroll.postDelayed(() -> openProfileTarget(target, highlight), 250);
         } else if (highlight != null) {
             scroll.postDelayed(() -> highlightItem(scroll, highlight), 250);
         }
@@ -232,6 +239,11 @@ public final class SettingsActivity extends Activity {
 
     private static String sectionTitle(String id) {
         if (id.startsWith(EDITOR_PART)) return "키보드 사용자화 · " + id.substring(id.lastIndexOf(':') + 1);
+        if (id.startsWith(PROFILE_PART)) {
+            String[] parts = id.split(":", 4);
+            String screen = parts.length < 4 ? null : sectionTitle(parts[1]);
+            return screen == null ? null : screen + " · " + parts[3];
+        }
         for (String[] s : SECTIONS) if (s[0].equals(id)) return s[1];
         if (APP[0].equals(id)) return APP[1];
         switch (id) {
@@ -495,7 +507,7 @@ public final class SettingsActivity extends Activity {
         for (String[] sec : SECTIONS) entries.add(new String[]{sec[0], sec[1], sec[2], "m"});
         entries.add(new String[]{APP[0], APP[1], APP[2], "m"});
         for (String[] e : searchEntries) {
-            String extra = synonyms().get((e[0].startsWith(EDITOR_PART) ? KEYBOARD : e[0]) + "\0" + e[1]);
+            String extra = synonyms().get(synonymScreen(e[0]) + "\0" + e[1]);
             entries.add(new String[]{e[0], e[1], extra == null ? e[2] : e[2] + " " + extra, ""});
         }
         java.util.List<String[]> hits = new java.util.ArrayList<>();   // 이름에서 찾은 것을 먼저
@@ -522,6 +534,16 @@ public final class SettingsActivity extends Activity {
             shown++;
         }
         if (shown == 0) searchResults.addView(searchNote("일치하는 설정이 없습니다"));
+    }
+
+    /** 같이 찾을 낱말(SEARCH_SYNONYMS)을 찾을 때 쓰는 화면 id: 창을 가리키는 id는 그 창이 있는 화면. */
+    private static String synonymScreen(String id) {
+        if (id.startsWith(EDITOR_PART)) return KEYBOARD;
+        if (id.startsWith(PROFILE_PART)) {
+            String[] parts = id.split(":", 3);
+            return parts.length < 3 ? id : parts[1];
+        }
+        return id;
     }
 
     private TextView searchNote(String text) {
@@ -857,6 +879,19 @@ public final class SettingsActivity extends Activity {
      * 슬라이더 값(예: "12ms")이나 화면 아래 안내문은 모으지 않는다.
      */
     private void collectLabels(String id, View v, java.util.List<String[]> out, View[] lastParent, String[][] last) {
+        if (v.getTag() instanceof ProfilePartTag && v instanceof ViewGroup && !id.startsWith(PROFILE_PART)) {
+            // 가로 모드·폴더블 내부 화면의 설정 창: 창 자체와 그 안의 항목을 그 창의 id로 모은다.
+            ProfilePartTag t = (ProfilePartTag) v.getTag();
+            String partId = PROFILE_PART + id + ":" + t.area + ":" + t.name;
+            out.add(new String[]{partId, t.name.endsWith(" 설정") ? t.name : t.name + " 설정", ""});
+            last[0] = null;
+            lastParent[0] = null;
+            ViewGroup g = (ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) collectLabels(partId, g.getChildAt(i), out, lastParent, last);
+            last[0] = null;
+            lastParent[0] = null;
+            return;
+        }
         if (v instanceof TextView) {
             TextView t = (TextView) v;
             String text = t.getText().toString().trim();
@@ -901,7 +936,7 @@ public final class SettingsActivity extends Activity {
     private String searchCacheStamp() {
         try {
             // 뒤의 꼬리표는 메뉴 구성이 바뀌면 올린다 (같은 앱 버전이라도 예전 메뉴로 모은 목록을 쓰지 않게).
-            return "v" + getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode() + "-k11";
+            return "v" + getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode() + "-k12";
         } catch (PackageManager.NameNotFoundException e) {
             return "v?";
         }
@@ -1115,6 +1150,7 @@ public final class SettingsActivity extends Activity {
     private void openSection(String id, String highlight) {
         Intent i = new Intent(this, SettingsActivity.class);
         if (id.startsWith(EDITOR_PART)) i.putExtra(EXTRA_SECTION, KEYBOARD).putExtra(EXTRA_TARGET, id);
+        else if (id.startsWith(PROFILE_PART)) i.putExtra(EXTRA_SECTION, synonymScreen(id)).putExtra(EXTRA_TARGET, id);
         else i.putExtra(EXTRA_SECTION, id);
         if (highlight != null) i.putExtra(EXTRA_HIGHLIGHT, highlight);
         startActivity(i);
@@ -2536,11 +2572,65 @@ public final class SettingsActivity extends Activity {
     /** 설정 검색용으로 화면을 만들 때는 영역 설정 창의 항목도 목록에 넣어 찾을 수 있게 한다. */
     private void harvestProfileAreas(String profile) {
         if (!harvesting) return;
-        buildProfileBoard(profile);   // 키보드 전체 설정 창 (키보드 모양·여백)
+        harvestProfilePart(-1, () -> buildProfileBoard(profile));   // 키보드 전체 설정 창 (키보드 모양·여백)
         for (int a : new int[]{KeyboardPreview.AREA_TOOLBAR, KeyboardPreview.AREA_LETTERS,
                 KeyboardPreview.AREA_MIDDLE, KeyboardPreview.AREA_FUNCTION}) {
-            buildProfileArea(profile, a, true);
+            harvestProfilePart(a, () -> buildProfileArea(profile, a, true));
         }
+    }
+
+    /** 검색 목록을 모을 때 설정 창 하나를 담는 칸의 표시: 그 안의 항목은 그 창(PROFILE_PART)의 것으로 모은다. */
+    private static final class ProfilePartTag {
+        final int area;
+        final String name;
+
+        ProfilePartTag(int area, String name) {
+            this.area = area;
+            this.name = name;
+        }
+    }
+
+    /** 설정 창 하나(area -1 = 키보드 전체)를 표시한 칸에 만든다. collectLabels가 그 칸의 항목을 창의 id로 모은다. */
+    private void harvestProfilePart(int area, Runnable build) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setTag(new ProfilePartTag(area, area < 0 ? "키보드 전체 설정" : KeyboardPreview.profileAreaName(area)));
+        list.addView(box, matchWrap());
+        LinearLayout saved = list;
+        list = box;
+        try {
+            build.run();
+        } catch (RuntimeException ignored) {
+            // 한 창을 못 만들어도 나머지 창은 모은다.
+        } finally {
+            list = saved;
+        }
+    }
+
+    /**
+     * 검색 결과로 가로 모드·폴더블 내부 화면 키보드 사용자화에 들어왔다: 미리보기에서 그 창(키보드 전체·영역)을 열고 항목을 찾아 깜빡인다.
+     * 폴더블 내부 화면은 지금 들고 있는 방향의 창을 연다 (세로·가로의 항목 이름은 같다). label이 창 이름이면 창만 연다.
+     */
+    private void openProfileTarget(String target, String label) {
+        if (isFinishing() || isDestroyed() || profilePreview == null) return;
+        String[] parts = target.split(":", 4);
+        if (parts.length < 4) return;
+        int area;
+        try {
+            area = Integer.parseInt(parts[2]);
+        } catch (NumberFormatException e) {
+            return;
+        }
+        if (area < 0) {
+            profilePreview.setLayer(KeyboardPreview.LAYER_BOARD);
+            onProfileTap(KeyboardPreview.Selection.board());
+        } else {
+            profilePreview.setLayer(KeyboardPreview.LAYER_AREA);
+            onProfileTap(KeyboardPreview.Selection.area(area));
+        }
+        if (!panelOpen() || label.equals(parts[3]) || label.equals(parts[3] + " 설정")) return;
+        // 창이 올라온 뒤에 찾는다 (배치가 끝나야 위치를 안다).
+        sheet.scroll().postDelayed(() -> highlightItem(sheet.scroll(), sheet.body(), label), 450);
     }
 
     /**
@@ -4034,7 +4124,7 @@ public final class SettingsActivity extends Activity {
 
     /** 설정 메뉴 항목의 왼쪽 아이콘. */
     private static int menuIcon(String id) {
-        if (id.startsWith(EDITOR_PART)) return Icons.MENU_KEYBOARD;
+        if (id.startsWith(EDITOR_PART) || id.startsWith(PROFILE_PART)) return Icons.MENU_KEYBOARD;
         switch (id) {
             case KEYBOARD: return Icons.MENU_KEYBOARD;
             case "onehand": return Icons.ONE_HAND;
