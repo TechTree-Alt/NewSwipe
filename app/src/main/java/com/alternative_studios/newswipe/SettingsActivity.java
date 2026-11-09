@@ -593,15 +593,28 @@ public final class SettingsActivity extends Activity {
         uiHandler.post(() -> stepHarvest(out, index + 1));
     }
 
-    /** 검색 목록에 넣는 키 창 (영역 창은 모두 넣는다). */
+    /** 검색 목록에 넣는 기능키 창 (영역 창은 모두 넣는다). 지금 자판에 없는 키는 건너뛴다. */
     private static final int[] HARVEST_KEYS = {com.alternative_studios.newswipe.keyboard.Key.SPACE,
-            com.alternative_studios.newswipe.keyboard.Key.DELETE, com.alternative_studios.newswipe.keyboard.Key.TO_SYMBOLS,
-            com.alternative_studios.newswipe.keyboard.Key.LANGUAGE, com.alternative_studios.newswipe.keyboard.Key.ENTER};
+            com.alternative_studios.newswipe.keyboard.Key.DELETE, com.alternative_studios.newswipe.keyboard.Key.ENTER,
+            com.alternative_studios.newswipe.keyboard.Key.SHIFT, com.alternative_studios.newswipe.keyboard.Key.TO_SYMBOLS,
+            com.alternative_studios.newswipe.keyboard.Key.LANGUAGE, com.alternative_studios.newswipe.keyboard.Key.EMOJI,
+            com.alternative_studios.newswipe.keyboard.Key.EMOJI_KEY, com.alternative_studios.newswipe.keyboard.Key.FUNCTION,
+            com.alternative_studios.newswipe.keyboard.Key.CLIPBOARD, com.alternative_studios.newswipe.keyboard.Key.CURSOR_PAD,
+            com.alternative_studios.newswipe.keyboard.Key.VOICE};
+    /** 검색 목록에 넣는 글자 키 창: 따로 정할 것(입력할 글자)이 있는 쉼표·온점 자리. */
+    private static final String[] HARVEST_CHAR_SLOTS = {",", "."};
 
-    /** 키보드 사용자화의 영역 창과 주요 키 창을 보이지 않는 곳에 만들어 항목 이름을 모은다 (목록에는 없는 설정들). */
+    /**
+     * 키보드 사용자화의 영역 창·키보드 전체 설정 창·키 창·도구 막대 버튼 창을 보이지 않는 곳에 만들어 항목 이름을 모은다
+     * (목록에는 없는 설정들). 창마다 그 창 자체("… 설정")도 넣어, 창 이름으로 찾아 그 창을 바로 열 수 있게 한다.
+     * 메인 화면처럼 키보드 사용자화가 아닌 화면에서도 모으므로, 창이 쓰는 칸(키 편집 칸·안내 칸)은 여기서 임시로 만든다.
+     */
     private void harvestEditorParts(java.util.List<String[]> out) {
-        LinearLayout savedList = list;
+        LinearLayout savedList = list, savedNote = areaNoteBox, savedSplit = splitHolder, savedBalanced = balancedHolder;
+        KeyEditPanel savedPanel = keyPanel;
+        TextView savedSpaceNote = toolbarSpaceNote;
         ExpressiveSwitch savedClipSwitch = clipImagesSwitch;
+        int savedTab = letterTab;
         KeyEditPanel.Host idle = new KeyEditPanel.Host() {
             @Override public com.alternative_studios.newswipe.keyboard.Key refreshNow() { return null; }
             @Override public void close() { }
@@ -609,54 +622,59 @@ public final class SettingsActivity extends Activity {
         };
         harvesting = true;
         try {
+            areaNoteBox = new LinearLayout(this);
+            areaNoteBox.setOrientation(LinearLayout.VERTICAL);
+            keyPanel = new KeyEditPanel(this, prefs, idle);
             for (int a = 0; a < KeyboardPreview.AREAS; a++) {
-                LinearLayout scratch = new LinearLayout(this);
-                scratch.setOrientation(LinearLayout.VERTICAL);
-                list = scratch;
-                if (a == KeyboardPreview.AREA_TOOLBAR) {
-                    KeyEditPanel panel = new KeyEditPanel(this, prefs, idle);
-                    panel.show(KeyboardPreview.Selection.toolbar(), null);
-                    scratch.addView(panel.view());
-                }
+                final int area = a;
                 if (a == KeyboardPreview.AREA_LETTERS) {
                     // 글자 키 창은 자판마다 항목이 달라 자판마다 모은다 ("t:자판:이름").
                     for (int t = 0; t < KeyboardPreview.TAB_NAMES.length; t++) {
-                        LinearLayout tabScratch = new LinearLayout(this);
-                        tabScratch.setOrientation(LinearLayout.VERTICAL);
-                        list = tabScratch;
                         letterTab = t;
-                        buildArea(a);
-                        collectLabels(EDITOR_PART + "t:" + t + ":" + KeyboardPreview.areaName(a, t), tabScratch, out,
-                                new View[1], new String[1][]);
+                        String name = KeyboardPreview.areaName(a, t);
+                        harvestPart(EDITOR_PART + "t:" + t + ":" + name, name + " 설정", out, scratch -> buildArea(area));
                     }
                     letterTab = KeyboardPreview.TAB_KOREAN;
                     continue;
                 }
-                buildArea(a);
-                collectLabels(EDITOR_PART + "a:" + a + ":" + KeyboardPreview.AREA_NAMES[a], scratch, out, new View[1],
-                        new String[1][]);
+                String name = KeyboardPreview.AREA_NAMES[a];
+                harvestPart(EDITOR_PART + "a:" + a + ":" + name, name + " 설정", out, scratch -> {
+                    if (area == KeyboardPreview.AREA_TOOLBAR) {   // 도구 막대 창은 위에 도구 막대 칸(KeyEditPanel)이 있다
+                        keyPanel = new KeyEditPanel(this, prefs, idle);
+                        keyPanel.show(KeyboardPreview.Selection.toolbar(), null);
+                        scratch.addView(keyPanel.view());
+                    }
+                    buildArea(area);
+                });
             }
-            LinearLayout boardScratch = new LinearLayout(this);
-            boardScratch.setOrientation(LinearLayout.VERTICAL);
-            list = boardScratch;
-            buildBoard();
-            collectLabels(EDITOR_PART + "b:0:키보드 전체 설정", boardScratch, out, new View[1], new String[1][]);
+            harvestPart(EDITOR_PART + "b:0:키보드 전체 설정", "키보드 전체 설정", out, scratch -> buildBoard());
             com.alternative_studios.newswipe.keyboard.KeyboardLayout l =
                     com.alternative_studios.newswipe.keyboard.KeyboardLayout.korean(prefs);
             for (int type : HARVEST_KEYS) {
                 com.alternative_studios.newswipe.keyboard.Key k = firstKey(l, type);
                 if (k == null) continue;
-                KeyEditPanel panel = new KeyEditPanel(this, prefs, idle);
-                panel.show(KeyboardPreview.Selection.key(k, KeyboardPreview.TAB_KOREAN), k);
-                collectLabels(EDITOR_PART + "k:" + type + ":" + panel.title(), panel.view(), out, new View[1],
-                        new String[1][]);
+                harvestPanel(out, idle, KeyboardPreview.Selection.key(k, KeyboardPreview.TAB_KOREAN), k, "k:" + type);
+            }
+            for (String slot : HARVEST_CHAR_SLOTS) {
+                com.alternative_studios.newswipe.keyboard.Key k = charKey(l, slot);
+                if (k == null) continue;
+                harvestPanel(out, idle, KeyboardPreview.Selection.key(k, KeyboardPreview.TAB_KOREAN), k, "c:" + slot);
+            }
+            for (String id : com.alternative_studios.newswipe.keyboard.ToolbarButtons.ALL) {
+                harvestPanel(out, idle, KeyboardPreview.Selection.tool(id), null, "o:" + id);
             }
         } catch (RuntimeException ignored) {
-            // 못 만든 창이 있어도 나머지 검색 목록은 쓴다.
+            // 자판을 못 읽었어도 이미 모은 창은 쓴다.
         } finally {
             harvesting = false;
             list = savedList;
+            areaNoteBox = savedNote;
+            splitHolder = savedSplit;
+            balancedHolder = savedBalanced;
+            keyPanel = savedPanel;
+            toolbarSpaceNote = savedSpaceNote;
             clipImagesSwitch = savedClipSwitch;
+            letterTab = savedTab;
         }
         // 키 창의 '길게 누르면' 옆에 보이는 지금 기능 이름(없음·이모지 열기 등)과 되돌리기 버튼은 설정 이름이 아니다.
         java.util.Set<String> values = new java.util.HashSet<>();
@@ -666,7 +684,69 @@ public final class SettingsActivity extends Activity {
         values.add("기본값으로 되돌리기");
         values.addAll(java.util.Arrays.asList(INPUT_MODES));   // 쌍자음·이중모음 입력 줄 옆의 지금 값
         values.add(DETAIL_LAYOUTS[DETAIL_NONE]);   // 상세 배열 줄 옆의 지금 값 (나머지 둘은 설정 이름으로도 찾게 둔다)
-        out.removeIf(e -> e[0].startsWith(EDITOR_PART) && values.contains(e[1]));
+        out.removeIf(e -> e[0].startsWith(EDITOR_PART) && values.contains(e[1]) && !e[1].endsWith(" 설정"));
+    }
+
+    /** 키·도구 막대 버튼 창 하나를 만들어 모은다. where는 화면 id의 종류와 값 ("k:키 종류", "c:글자 자리", "o:버튼 ID"). */
+    private void harvestPanel(java.util.List<String[]> out, KeyEditPanel.Host host, KeyboardPreview.Selection sel,
+                              com.alternative_studios.newswipe.keyboard.Key k, String where) {
+        KeyEditPanel panel = new KeyEditPanel(this, prefs, host);
+        try {
+            panel.show(sel, k);
+        } catch (RuntimeException e) {
+            return;
+        }
+        String title = panel.title();
+        if (title == null || title.isEmpty()) return;
+        String sheetTitle = title + " 설정";
+        for (String[] e : out) if (e[0].startsWith(EDITOR_PART) && e[1].equals(sheetTitle)) return;   // 같은 창 (예: 이모지 키 두 종류)
+        harvestPart(EDITOR_PART + where + ":" + title, sheetTitle, out, scratch -> scratch.addView(panel.view()));
+    }
+
+    /**
+     * 창 하나를 build로 빈 칸에 만들어 항목 이름을 모은다. 맨 앞에는 창 자체(창 머리글에 보이는 이름)를 넣는다.
+     * 한 창을 못 만들어도 다른 창은 계속 모은다.
+     */
+    private void harvestPart(String id, String sheetTitle, java.util.List<String[]> out,
+                             java.util.function.Consumer<LinearLayout> build) {
+        LinearLayout scratch = new LinearLayout(this);
+        scratch.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout saved = list;
+        list = scratch;
+        java.util.List<String[]> found = new java.util.ArrayList<>();
+        try {
+            build.accept(scratch);
+            collectLabels(id, scratch, found, new View[1], new String[1][]);
+        } catch (RuntimeException ignored) {
+            // 만들다 만 창이라도 그때까지 모은 항목과 창 이름은 넣는다.
+        } finally {
+            list = saved;
+            areaNoteBox.removeAllViews();
+        }
+        out.add(new String[]{id, sheetTitle, String.join(" ", names(found))});
+        out.addAll(found);
+    }
+
+    /** 모은 항목들의 이름 (창 자체를 찾을 때 같이 견줄 낱말). 너무 길지 않게 앞쪽만. */
+    private static java.util.List<String> names(java.util.List<String[]> found) {
+        java.util.List<String> n = new java.util.ArrayList<>();
+        for (String[] e : found) {
+            if (n.size() >= 12) break;
+            n.add(e[1]);
+        }
+        return n;
+    }
+
+    /** 자판에서 글자 자리가 slot인 첫 글자 키. */
+    private static com.alternative_studios.newswipe.keyboard.Key charKey(
+            com.alternative_studios.newswipe.keyboard.KeyboardLayout l, String slot) {
+        if (l == null) return null;
+        for (com.alternative_studios.newswipe.keyboard.KeyboardLayout.Row row : l.rows) {
+            for (com.alternative_studios.newswipe.keyboard.Key k : row.keys) {
+                if (k.type == com.alternative_studios.newswipe.keyboard.Key.CHAR && slot.equals(k.slot())) return k;
+            }
+        }
+        return null;
     }
 
     private static com.alternative_studios.newswipe.keyboard.Key firstKey(
@@ -678,38 +758,69 @@ public final class SettingsActivity extends Activity {
         return null;
     }
 
-    /** 검색 결과로 키보드 사용자화에 들어왔다: 그 영역·키의 창을 열고 항목을 찾아 깜빡인다. */
+    /**
+     * 검색 결과로 키보드 사용자화에 들어왔다: 그 영역·키·버튼의 창을 열고 항목을 찾아 깜빡인다.
+     * label이 창 이름("… 설정")이면 창만 연다.
+     */
     private void openEditorTarget(String target, String label) {
         if (isFinishing() || isDestroyed() || editorPreview == null) return;
         String[] parts = target.split(":", 4);
         if (parts.length < 4) return;
         KeyboardPreview.Selection sel;
-        try {
-            int n = Integer.parseInt(parts[2]);
-            if ("a".equals(parts[1])) {
+        String kind = parts[1], arg = parts[2];
+        if ("c".equals(kind) || "o".equals(kind)) {
+            // 글자 키(쉼표·온점 자리)와 도구 막대 버튼은 한글 자판의 키 설정 페이지에서 고른다.
+            showEditorTab(KeyboardPreview.TAB_KOREAN);
+            editorPreview.setLayer(KeyboardPreview.LAYER_KEY);
+            if ("c".equals(kind)) {
+                com.alternative_studios.newswipe.keyboard.Key k = charKey(editorPreview.layout(), arg);
+                if (k == null) return;
+                sel = KeyboardPreview.Selection.key(k, KeyboardPreview.TAB_KOREAN);
+            } else {
+                if (!prefs.toolbar() || !prefs.toolShown(arg)) {   // 도구 막대나 그 버튼을 감춰 두면 도구 막대 창을 연다
+                    editorPreview.setLayer(KeyboardPreview.LAYER_AREA);
+                    sel = KeyboardPreview.Selection.area(KeyboardPreview.AREA_TOOLBAR);
+                } else {
+                    sel = KeyboardPreview.Selection.tool(arg);
+                }
+            }
+        } else {
+            int n;
+            try {
+                n = Integer.parseInt(arg);
+            } catch (NumberFormatException e) {
+                return;
+            }
+            if ("a".equals(kind)) {
                 editorPreview.setLayer(KeyboardPreview.LAYER_AREA);
                 sel = KeyboardPreview.Selection.area(n);
-            } else if ("t".equals(parts[1])) {   // 글자 키 창: 그 자판으로 바꿔 연다 (탭 버튼도 맞춘다)
+            } else if ("t".equals(kind)) {   // 글자 키 창: 그 자판으로 바꿔 연다 (탭 버튼도 맞춘다)
                 if (n < 0 || n >= KeyboardPreview.TAB_NAMES.length) return;
-                if (editorTabs != null && editorPreview.tab() != n) editorTabs.getChildAt(n).performClick();
-                editorPreview.setTab(n);
+                showEditorTab(n);
                 editorPreview.setLayer(KeyboardPreview.LAYER_AREA);
                 sel = KeyboardPreview.Selection.area(KeyboardPreview.AREA_LETTERS);
-            } else if ("b".equals(parts[1])) {
+            } else if ("b".equals(kind)) {
                 editorPreview.setLayer(KeyboardPreview.LAYER_BOARD);
                 sel = KeyboardPreview.Selection.board();
             } else {
+                showEditorTab(KeyboardPreview.TAB_KOREAN);
                 com.alternative_studios.newswipe.keyboard.Key k = firstKey(editorPreview.layout(), n);
                 if (k == null) return;
                 editorPreview.setLayer(KeyboardPreview.LAYER_KEY);
                 sel = KeyboardPreview.Selection.key(k, KeyboardPreview.TAB_KOREAN);
             }
-        } catch (NumberFormatException e) {
-            return;
         }
         onPreviewTap(sel);
+        if (!panelOpen() || label.equals(parts[3]) || label.equals(parts[3] + " 설정")) return;   // 창 자체를 찾았으면 창만 연다
         // 창이 올라온 뒤에 찾는다 (배치가 끝나야 위치를 안다).
         sheet.scroll().postDelayed(() -> highlightItem(sheet.scroll(), sheet.body(), label), 450);
+    }
+
+    /** 미리보기의 자판을 tab으로 바꾼다 (위의 탭 버튼도 맞춘다). */
+    private void showEditorTab(int tab) {
+        if (editorPreview.tab() == tab) return;
+        if (editorTabs != null && tab < editorTabs.getChildCount()) editorTabs.getChildAt(tab).performClick();
+        if (editorPreview.tab() != tab) editorPreview.setTab(tab);
     }
 
     /** 화면 하나를 보이지 않는 곳에 만들어 항목 이름을 모으고 버린다. 진짜 화면이 쓰는 값은 건드리지 않게 되돌려 놓는다. */
@@ -790,7 +901,7 @@ public final class SettingsActivity extends Activity {
     private String searchCacheStamp() {
         try {
             // 뒤의 꼬리표는 메뉴 구성이 바뀌면 올린다 (같은 앱 버전이라도 예전 메뉴로 모은 목록을 쓰지 않게).
-            return "v" + getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode() + "-k10";
+            return "v" + getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode() + "-k11";
         } catch (PackageManager.NameNotFoundException e) {
             return "v?";
         }

@@ -1873,6 +1873,66 @@ public class EditorUiTest {
         idle();
     }
 
+    /**
+     * 설정 검색은 메인 화면에서 모은다: 메인 화면에는 키 편집 칸·안내 칸이 없어도 키보드 사용자화의 영역·키·버튼 창 항목과
+     * 그 창 자체("… 설정")가 검색 목록에 들어가고, 고르면 키보드 사용자화에서 그 창이 열린다.
+     */
+    @Test
+    public void searchHarvestsEditorPartsFromMainScreen() throws Exception {
+        SettingsActivity main = launch(null);
+        java.lang.reflect.Method hp = SettingsActivity.class.getDeclaredMethod("harvestEditorParts", java.util.List.class);
+        hp.setAccessible(true);
+        java.util.List<String[]> parts = new java.util.ArrayList<>();
+        hp.invoke(main, parts);
+        java.util.Map<String, String> where = new java.util.HashMap<>();
+        for (String[] e : parts) where.putIfAbsent(e[1], e[0]);
+        log("main harvested " + parts.size() + ": " + where);
+        // 영역 창의 항목 (도구 막대 창이 맨 처음이라, 예전에는 여기서 멈춰 아무것도 모으지 못했다)
+        assertTrue(where.get("도구 막대 표시").startsWith("keyboard:a:0:"));
+        assertTrue(where.get("숫자 줄 표시").startsWith("keyboard:a:1:"));
+        assertEquals("keyboard:t:0:한글 글자 키", where.get("쌍자음 입력"));
+        assertEquals("keyboard:t:1:영어 글자 키", where.get("영어 자동 대문자"));
+        assertTrue(where.get("기능키 높이").startsWith("keyboard:a:3:"));
+        assertTrue(where.get("왼쪽 여백") != null);
+        assertTrue(where.get("두 번 눌러 마침표").startsWith("keyboard:k:"));
+        // 창 자체도 찾는다
+        assertEquals("keyboard:a:0:도구 막대", where.get("도구 막대 설정"));
+        assertEquals("keyboard:t:0:한글 글자 키", where.get("한글 글자 키 설정"));
+        assertEquals("keyboard:b:0:키보드 전체 설정", where.get("키보드 전체 설정"));
+        String space = null, comma = null, tool = null;
+        for (String[] e : parts) {
+            if (space == null && e[0].startsWith("keyboard:k:" + Key.SPACE + ":") && e[1].endsWith(" 설정")) space = e[0];
+            if (comma == null && e[0].startsWith("keyboard:c:,:")) comma = e[0];
+            if (tool == null && e[0].startsWith("keyboard:o:")) tool = e[0];
+        }
+        assertNotNull(space);
+        assertNotNull(comma);
+        assertNotNull(tool);
+        // 메인 화면의 값은 그대로 (임시로 만든 칸을 되돌렸다)
+        java.lang.reflect.Field kp = SettingsActivity.class.getDeclaredField("keyPanel");
+        kp.setAccessible(true);
+        assertNull(kp.get(main));
+
+        // 검색 결과를 고른 것처럼 키보드 사용자화를 열면 그 창이 열린다.
+        SettingsActivity a = launch("keyboard");
+        java.lang.reflect.Method ot = SettingsActivity.class.getDeclaredMethod("openEditorTarget", String.class, String.class);
+        ot.setAccessible(true);
+        ot.invoke(a, comma, comma.substring(comma.lastIndexOf(':') + 1) + " 설정");
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(800));
+        assertTrue(sheetOf(a).isOpen());
+        assertTrue(visibleTexts(cur(a)).contains("입력할 글자"));
+        a.onBackPressed(); idle();
+        ot.invoke(a, where.get("숫자 줄 표시"), "숫자 줄 표시");
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(800));
+        assertTrue(sheetOf(a).isOpen());
+        assertTrue(visibleTexts(cur(a)).contains("숫자 줄 표시"));
+        a.onBackPressed(); idle();
+        ot.invoke(a, tool, tool.substring(tool.lastIndexOf(':') + 1) + " 설정");
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(800));
+        assertTrue(sheetOf(a).isOpen());
+        a.onBackPressed(); idle();
+    }
+
     /** 방향 이름(작은 글자)을 가진 칸. */
     static View findSub(View v, String sub) {
         if (v instanceof com.alternative_studios.newswipe.ui.ExpressiveChoiceButton && v.isShown()
