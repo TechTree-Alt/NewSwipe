@@ -1633,9 +1633,16 @@ public final class SettingsActivity extends Activity {
         look.addView(slider("키 사이 좌우 간격", Prefs.KEY_GAP_X, prefs.keyGapXDp(), 0, 12, 1, "dp"));
         look.addView(slider("키 사이 상하 간격", Prefs.KEY_GAP_Y, prefs.keyGapYDp(), 0, 20, 1, "dp"));
         View shadowStrength = subGroup(slider("그림자 세기", Prefs.KEY_SHADOW_STRENGTH, prefs.keyShadowStrength(), 10, 100, 5, "%"));
-        look.addView(toggle("키 그림자", "키 아래에 그림자를 그려 입체감을 줍니다.",
-                Prefs.KEY_SHADOW, prefs.keyShadow(), shadowStrength));
-        look.addView(shadowStrength);
+        if (prefs.neumorphism()) {
+            // Neumorphism 디자인이 키 그림자 대신 쓰이므로, 저장된 값은 그대로 두고 꺼진 모양으로 흐리게 막아 둔다.
+            View row = toggle("키 그림자", "Neumorphism 디자인 사용 중에는 사용할 수 없습니다.", false, on -> { });
+            disableToggle(row);
+            look.addView(row);
+        } else {
+            look.addView(toggle("키 그림자", "키 아래에 그림자를 그려 입체감을 줍니다.",
+                    Prefs.KEY_SHADOW, prefs.keyShadow(), shadowStrength));
+            look.addView(shadowStrength);
+        }
         look.addView(toggle("키 누름 미리보기", "누른 키를 말풍선으로 크게 보여 줍니다.",
                 Prefs.KEY_PREVIEW, prefs.keyPreview()));
     }
@@ -4032,6 +4039,14 @@ public final class SettingsActivity extends Activity {
 
     private View toggle(String label, String desc, boolean value, java.util.function.Consumer<Boolean> onChange) {
         return widgets.toggle(label, desc, value, onChange);
+    }
+
+    /** toggle()로 만든 줄을 회색으로 흐리게 하고 눌러도 바뀌지 않게 한다 (스위치는 지금 보이는 상태 그대로). */
+    private static void disableToggle(View toggleRow) {
+        toggleRow.setEnabled(false);
+        toggleRow.setClickable(false);
+        switchOf(toggleRow).setEnabled(false);   // 스위치는 스스로 흐려진다
+        ((ViewGroup) toggleRow).getChildAt(0).setAlpha(0.38f);   // 이름·설명
     }
 
     private static ExpressiveSwitch switchOf(View toggleRow) {

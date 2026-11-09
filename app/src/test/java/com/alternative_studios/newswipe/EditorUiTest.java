@@ -14,6 +14,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import com.alternative_studios.newswipe.keyboard.Key;
+import com.alternative_studios.newswipe.ui.ExpressiveSwitch;
 import com.alternative_studios.newswipe.keyboard.KeyboardLayout;
 import com.alternative_studios.newswipe.keyboard.KeyboardView;
 
@@ -1794,6 +1795,33 @@ public class EditorUiTest {
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
         assertTrue(pre.toolbar());
         assertNull(findText(sc, note));
+    }
+
+    /** Neumorphism 디자인을 켜면 키보드 전체 설정의 키 그림자 스위치는 꺼진 모양으로 흐리게 막히고 설명이 바뀐다. */
+    @Test
+    public void keyShadowDisabledWithNeumorphism() throws Exception {
+        Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
+        pre.raw().edit().putBoolean(Prefs.NEUMORPHISM, true).putBoolean(Prefs.KEY_SHADOW, true).commit();
+        SettingsActivity a = launch("keyboard");
+        KeyboardPreview p = find(a.getWindow().getDecorView(), KeyboardPreview.class);
+        p.setLayer(KeyboardPreview.LAYER_BOARD);
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(400));
+        android.graphics.RectF br = new android.graphics.RectF();
+        p.boardBounds(br);
+        tap(p.getChildAt(1), br.centerX(), br.centerY());
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(300));
+        ScrollView sc = sheetOf(a).scroll();
+        assertNotNull(findText(sc, "Neumorphism 디자인 사용 중에는 사용할 수 없습니다."));
+        assertNull(findText(sc, "그림자 세기"));
+        ViewGroup row = (ViewGroup) findText(sc, "키 그림자").getParent().getParent();
+        ExpressiveSwitch sw = (ExpressiveSwitch) row.getChildAt(row.getChildCount() - 1);
+        assertFalse(sw.isChecked());
+        assertFalse(sw.isEnabled());
+        row.performClick();
+        sw.performClick();
+        idle();
+        assertFalse(sw.isChecked());
+        assertTrue("저장된 값은 그대로", pre.keyShadow());
     }
 
     @Test
