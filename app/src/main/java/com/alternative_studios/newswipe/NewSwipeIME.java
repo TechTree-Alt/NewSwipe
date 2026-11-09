@@ -1846,10 +1846,16 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 도구 막대를 끈 상태로 자판을 보여 주는 중인지. 검색 패널은 도구 막대 자리에 검색창이 있어 해당하지 않는다. */
     private boolean toolbarGone() {
         // 일본어·중국어에서는 변환 후보가 뜰 자리를 늘 남겨 둔다 (후보가 뜰 때마다 자판이 움직이지 않게).
-        return cjkLang == null && !prefs.toolbar() && !toolbarOnlyNow() && !((cfgSuggest && suggestAllowed) || (!shortcuts.isEmpty() && shortcutAllowed))
-                && panel == PANEL_KEYBOARD && !autofillShowing() && !editHoldsSlot()
+        // 단축어만 켰으면 자리를 늘 남겨 두지 않고, 자동 완성 칩처럼 단축어의 문장이 떠 있는 동안만 그 줄을 보인다.
+        return cjkLang == null && !prefs.toolbar() && !toolbarOnlyNow() && !(cfgSuggest && suggestAllowed)
+                && panel == PANEL_KEYBOARD && !autofillShowing() && !editHoldsSlot() && !shortcutHoldsSlot()
                 // '방금 복사한 내용 붙여넣기' 칩이 떠 있는 동안은 도구 막대를 꺼 두었어도 그 줄을 다시 보인다.
                 && !clipChipShowing();
+    }
+
+    /** 단축어의 문장이 추천란에 떠 있는지. 도구 막대·단어 추천을 꺼 두었으면 이 동안만 도구 막대 줄이 나타난다. */
+    private boolean shortcutHoldsSlot() {
+        return shortcutShown && suggestions.length > 0;
     }
 
     /** 손가락이 자판에 닿아 있는지, 그리고 닿은 순간 선택 편집 칩이 도구 막대 자리를 차지하고 있었는지. */
@@ -3585,6 +3591,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (shortcut == shortcutShown && correction == correctionShown
                 && java.util.Arrays.equals(found, suggestions)) return;   // 그대로면 다시 그리지 않는다
         boolean wasShowing = suggestions.length > 0;
+        boolean heldSlot = shortcutHoldsSlot();
         suggestions = found;
         correctionShown = correction;
         if (shortcut != shortcutShown) {
@@ -3592,6 +3599,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             setShortcutLook(shortcut);
         }
         if (suggestBar == null) return;
+        boolean slotChanged = heldSlot != shortcutHoldsSlot();
         for (int i = 0; i < suggestViews.length; i++) {
             TextView t = suggestViews[i];
             CharSequence text = i < found.length ? found[i] : "";
@@ -3605,6 +3613,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             applySuggestBarVisibility();
             refreshToolbarVisibility();
         }
+        if (slotChanged) applyTopSlotVisibility();   // 도구 막대를 꺼 두었으면 단축어가 뜰 줄을 열거나 거둔다
     }
 
     private void clearSuggestions() {
@@ -3614,6 +3623,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (suggestions.length == 0) return;
         suggestions = new String[0];
         correctionShown = -1;
+        boolean heldSlot = shortcutShown;
         if (shortcutShown) {
             shortcutShown = false;
             setShortcutLook(false);
@@ -3623,6 +3633,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             suggestBar.setVisibility(View.GONE);
         }
         refreshToolbarVisibility();
+        if (heldSlot) applyTopSlotVisibility();   // 단축어와 함께 그 줄도 거둔다
     }
 
     /** 자동 완성 칩이 떠 있는지 (자판 화면에서만). */
