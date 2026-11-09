@@ -1879,6 +1879,8 @@ public class EditorUiTest {
      */
     @Test
     public void searchHarvestsEditorPartsFromMainScreen() throws Exception {
+        // 첫 시작 가이드를 마쳐야 메인 화면이 열린다 (아니면 가이드로 넘어가고 이 화면은 닫힌다).
+        new Prefs(RuntimeEnvironment.getApplication()).raw().edit().putBoolean(Prefs.ONBOARDING_DONE, true).commit();
         SettingsActivity main = launch(null);
         java.lang.reflect.Method hp = SettingsActivity.class.getDeclaredMethod("harvestEditorParts", java.util.List.class);
         hp.setAccessible(true);
