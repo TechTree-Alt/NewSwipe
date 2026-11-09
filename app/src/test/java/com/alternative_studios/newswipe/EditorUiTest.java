@@ -1904,7 +1904,8 @@ public class EditorUiTest {
         String space = null, comma = null, tool = null;
         for (String[] e : parts) {
             if (space == null && e[0].startsWith("keyboard:k:" + Key.SPACE + ":") && e[1].endsWith(" 설정")) space = e[0];
-            if (comma == null && e[0].startsWith("keyboard:c:,:")) comma = e[0];
+            // 쉼표 키는 기본으로 꺼져 있어 자판에 없으므로 모으지 않는다. 온점 키는 기본으로 있다.
+            if (comma == null && e[0].startsWith("keyboard:c:.:")) comma = e[0];
             if (tool == null && e[0].startsWith("keyboard:o:")) tool = e[0];
         }
         assertNotNull(space);
