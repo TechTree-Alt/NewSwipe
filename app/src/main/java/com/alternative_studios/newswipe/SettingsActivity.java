@@ -882,7 +882,10 @@ public final class SettingsActivity extends Activity {
     /** root(스크롤 안의 내용) 안에서 이름이 label인 항목을 찾아 스크롤하고 깜빡인다. */
     private void highlightItem(ScrollView scroll, ViewGroup root, String label) {
         if (isFinishing() || isDestroyed()) return;
-        TextView target = findLabel(root, label, true);
+        // 섹션 제목과 항목의 이름이 같을 수 있다 (예: '단어 추천' 섹션의 '단어 추천' 스위치). 그때는 항목을 먼저 찾는다.
+        TextView target = findLabel(root, label, true, itemRow::containsKey);
+        if (target == null) target = findLabel(root, label, false, itemRow::containsKey);
+        if (target == null) target = findLabel(root, label, true);
         if (target == null) target = findLabel(root, label, false);
         if (target == null) return;
         View hidden = outermostHidden(target, root);
@@ -979,13 +982,19 @@ public final class SettingsActivity extends Activity {
     }
 
     private static TextView findLabel(View v, String label, boolean shownOnly) {
-        if (v instanceof TextView && (!shownOnly || v.isShown()) && label.contentEquals(((TextView) v).getText())) {
+        return findLabel(v, label, shownOnly, t -> true);
+    }
+
+    /** 이름이 label이고 accept를 통과하는 첫 글자 뷰. */
+    private static TextView findLabel(View v, String label, boolean shownOnly, java.util.function.Predicate<TextView> accept) {
+        if (v instanceof TextView && (!shownOnly || v.isShown()) && label.contentEquals(((TextView) v).getText())
+                && accept.test((TextView) v)) {
             return (TextView) v;
         }
         if (v instanceof ViewGroup) {
             ViewGroup g = (ViewGroup) v;
             for (int i = 0; i < g.getChildCount(); i++) {
-                TextView found = findLabel(g.getChildAt(i), label, shownOnly);
+                TextView found = findLabel(g.getChildAt(i), label, shownOnly, accept);
                 if (found != null) return found;
             }
         }
@@ -1310,10 +1319,50 @@ public final class SettingsActivity extends Activity {
             return;
         }
         letterTab = editorPreview.tab();
+        toolbarSpaceNote = null;
         fillAreaBox(() -> {
             buildArea(areaId);
             addAreaReset(areaId);
+            if (areaId == KeyboardPreview.AREA_TOOLBAR) addToolbarSpaceNote();
         });
+    }
+
+    /** 도구 막대 창 맨 아래(되돌리기 아래)의 '도구 막대 공간을 완전히 없애려면…' 안내. 도구 막대 창이 아니면 null. */
+    private TextView toolbarSpaceNote;
+
+    /** 도구 막대를 꺼 두었는데 단어 추천이 켜져 있어 키보드에 도구 막대 자리(빈 공간)가 남아 있는지. */
+    private boolean toolbarSpaceLeft() {
+        return !prefs.toolbar() && prefs.suggestWords();
+    }
+
+    /**
+     * 도구 막대를 꺼도 단어 추천이 켜져 있으면 추천이 뜰 자리가 빈 채로 남는다. 그 자리를 없애는 법을 알리고,
+     * 강조색 '단어 추천'을 누르면 검색으로 찾은 것처럼 '추천, 학습 및 완성' 메뉴를 열어 그 스위치를 깜빡인다.
+     */
+    private void addToolbarSpaceNote() {
+        String link = "단어 추천";
+        String text = "도구 막대 공간을 완전히 없애려면 '" + sectionTitle("words") + "'에서 " + link + "을 끄세요.";
+        android.text.SpannableString span = new android.text.SpannableString(text);
+        int start = text.lastIndexOf(link);
+        span.setSpan(new android.text.style.ClickableSpan() {
+            @Override
+            public void onClick(View widget) {
+                openSection("words", link);
+            }
+
+            @Override
+            public void updateDrawState(android.text.TextPaint ds) {
+                ds.setColor(accentColor);
+                ds.setUnderlineText(false);
+            }
+        }, start, start + link.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        TextView t = note("");
+        t.setText(span);
+        t.setMovementMethod(android.text.method.LinkMovementMethod.getInstance());
+        t.setHighlightColor(android.graphics.Color.TRANSPARENT);
+        t.setVisibility(toolbarSpaceLeft() ? View.VISIBLE : View.GONE);
+        list.addView(t, matchWrap());
+        toolbarSpaceNote = t;
     }
 
     /** 영역·키보드 전체 설정 창 맨 아래의 '기본값으로 되돌리기' (그 창이 담당하는 값만). area -1은 키보드 전체 여백. */
@@ -1406,6 +1455,7 @@ public final class SettingsActivity extends Activity {
                 keyPanel.setOnToolbarShown(on -> {
                     Ui.setVisibleAnimated(tb, on);
                     Ui.setVisibleAnimated(areaNoteBox, on);
+                    if (toolbarSpaceNote != null) Ui.setVisibleAnimated(toolbarSpaceNote, toolbarSpaceLeft());
                 });
                 list.addView(tb, matchWrap());
                 LinearLayout savedList = list;
@@ -1583,9 +1633,16 @@ public final class SettingsActivity extends Activity {
         look.addView(slider("키 사이 좌우 간격", Prefs.KEY_GAP_X, prefs.keyGapXDp(), 0, 12, 1, "dp"));
         look.addView(slider("키 사이 상하 간격", Prefs.KEY_GAP_Y, prefs.keyGapYDp(), 0, 20, 1, "dp"));
         View shadowStrength = subGroup(slider("그림자 세기", Prefs.KEY_SHADOW_STRENGTH, prefs.keyShadowStrength(), 10, 100, 5, "%"));
-        look.addView(toggle("키 그림자", "키 아래에 그림자를 그려 입체감을 줍니다.",
-                Prefs.KEY_SHADOW, prefs.keyShadow(), shadowStrength));
-        look.addView(shadowStrength);
+        if (prefs.neumorphism()) {
+            // Neumorphism 디자인이 키 그림자 대신 쓰이므로, 저장된 값은 그대로 두고 꺼진 모양으로 흐리게 막아 둔다.
+            View row = toggle("키 그림자", "Neumorphism 디자인 사용 중에는 사용할 수 없습니다.", false, on -> { });
+            disableToggle(row);
+            look.addView(row);
+        } else {
+            look.addView(toggle("키 그림자", "키 아래에 그림자를 그려 입체감을 줍니다.",
+                    Prefs.KEY_SHADOW, prefs.keyShadow(), shadowStrength));
+            look.addView(shadowStrength);
+        }
         look.addView(toggle("키 누름 미리보기", "누른 키를 말풍선으로 크게 보여 줍니다.",
                 Prefs.KEY_PREVIEW, prefs.keyPreview()));
     }
@@ -3982,6 +4039,14 @@ public final class SettingsActivity extends Activity {
 
     private View toggle(String label, String desc, boolean value, java.util.function.Consumer<Boolean> onChange) {
         return widgets.toggle(label, desc, value, onChange);
+    }
+
+    /** toggle()로 만든 줄을 회색으로 흐리게 하고 눌러도 바뀌지 않게 한다 (스위치는 지금 보이는 상태 그대로). */
+    private static void disableToggle(View toggleRow) {
+        toggleRow.setEnabled(false);
+        toggleRow.setClickable(false);
+        switchOf(toggleRow).setEnabled(false);   // 스위치는 스스로 흐려진다
+        ((ViewGroup) toggleRow).getChildAt(0).setAlpha(0.38f);   // 이름·설명
     }
 
     private static ExpressiveSwitch switchOf(View toggleRow) {

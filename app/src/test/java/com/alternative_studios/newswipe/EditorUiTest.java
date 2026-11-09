@@ -14,6 +14,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import com.alternative_studios.newswipe.keyboard.Key;
+import com.alternative_studios.newswipe.ui.ExpressiveSwitch;
 import com.alternative_studios.newswipe.keyboard.KeyboardLayout;
 import com.alternative_studios.newswipe.keyboard.KeyboardView;
 
@@ -1743,12 +1744,84 @@ public class EditorUiTest {
             View c = body.getChildAt(i);
             if (c.getVisibility() == View.VISIBLE && c instanceof ViewGroup && ((ViewGroup) c).getChildCount() > 0) last = c;
         }
-        ViewGroup lg = (ViewGroup) last;
-        View tail = lg.getChildAt(lg.getChildCount() - 1);
-        while (tail instanceof ViewGroup && ((ViewGroup) tail).getChildCount() > 0 && !(tail instanceof TextView)) {
-            tail = ((ViewGroup) tail).getChildAt(((ViewGroup) tail).getChildCount() - 1);
+        // 감춰 둔 칸(예: 도구 막대 창의 '도구 막대 공간을 완전히 없애려면…' 안내)은 보이지 않으니 따지지 않는다.
+        View tail = lastShownChild((ViewGroup) last);
+        while (tail instanceof ViewGroup && !(tail instanceof TextView) && lastShownChild((ViewGroup) tail) != null) {
+            tail = lastShownChild((ViewGroup) tail);
         }
         assertTrue(what + " last=" + tail, tail instanceof TextView && "기본값으로 되돌리기".contentEquals(((TextView) tail).getText()));
+    }
+
+    private static View lastShownChild(ViewGroup g) {
+        for (int i = g.getChildCount() - 1; i >= 0; i--) if (g.getChildAt(i).getVisibility() != View.GONE) return g.getChildAt(i);
+        return null;
+    }
+
+    /**
+     * 도구 막대를 꺼도 단어 추천이 켜져 있으면 도구 막대 창의 되돌리기 아래에 그 자리를 없애는 법을 알리고,
+     * '단어 추천'을 누르면 '추천, 학습 및 완성' 메뉴를 그 스위치를 깜빡이도록 연다.
+     */
+    @Test
+    public void toolbarSpaceNoteWhenSuggestKeepsBar() throws Exception {
+        String note = "도구 막대 공간을 완전히 없애려면 '추천, 학습 및 완성'에서 단어 추천을 끄세요.";
+        Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
+        pre.raw().edit().putBoolean(Prefs.TOOLBAR, true).putBoolean(Prefs.SUGGEST_WORDS, true).commit();
+        SettingsActivity a = launch("keyboard");
+        KeyboardPreview p = find(a.getWindow().getDecorView(), KeyboardPreview.class);
+        tapArea(p, KeyboardPreview.AREA_TOOLBAR);
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(300));
+        ScrollView sc = sheetOf(a).scroll();
+        assertNull("도구 막대가 켜져 있으면 안내가 없다", findText(sc, note));
+        // 도구 막대 표시를 끄면 안내가 되돌리기 아래에 나타난다.
+        ((View) findText(sc, "도구 막대 표시").getParent().getParent()).performClick();
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
+        assertFalse(pre.toolbar());
+        TextView t = (TextView) findText(sc, note);
+        assertNotNull(t);
+        ViewGroup parent = (ViewGroup) t.getParent();
+        View before = parent.getChildAt(parent.indexOfChild(t) - 1);
+        assertTrue(before instanceof TextView && "기본값으로 되돌리기".contentEquals(((TextView) before).getText()));
+        // 강조색 '단어 추천'을 누르면 검색으로 찾은 것처럼 그 메뉴를 연다.
+        android.text.Spanned sp = (android.text.Spanned) t.getText();
+        android.text.style.ClickableSpan[] links = sp.getSpans(0, sp.length(), android.text.style.ClickableSpan.class);
+        assertEquals(1, links.length);
+        assertEquals("단어 추천", sp.subSequence(sp.getSpanStart(links[0]), sp.getSpanEnd(links[0])).toString());
+        links[0].onClick(t);
+        Intent next = shadowOf(a).getNextStartedActivity();
+        assertEquals("words", next.getStringExtra(SettingsActivity.EXTRA_SECTION));
+        assertEquals("단어 추천", next.getStringExtra(SettingsActivity.EXTRA_HIGHLIGHT));
+        // 도구 막대 표시를 다시 켜면 안내도 사라진다.
+        ((View) findText(sc, "도구 막대 표시").getParent().getParent()).performClick();
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
+        assertTrue(pre.toolbar());
+        assertNull(findText(sc, note));
+    }
+
+    /** Neumorphism 디자인을 켜면 키보드 전체 설정의 키 그림자 스위치는 꺼진 모양으로 흐리게 막히고 설명이 바뀐다. */
+    @Test
+    public void keyShadowDisabledWithNeumorphism() throws Exception {
+        Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
+        pre.raw().edit().putBoolean(Prefs.NEUMORPHISM, true).putBoolean(Prefs.KEY_SHADOW, true).commit();
+        SettingsActivity a = launch("keyboard");
+        KeyboardPreview p = find(a.getWindow().getDecorView(), KeyboardPreview.class);
+        p.setLayer(KeyboardPreview.LAYER_BOARD);
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(400));
+        android.graphics.RectF br = new android.graphics.RectF();
+        p.boardBounds(br);
+        tap(p.getChildAt(1), br.centerX(), br.centerY());
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(300));
+        ScrollView sc = sheetOf(a).scroll();
+        assertNotNull(findText(sc, "Neumorphism 디자인 사용 중에는 사용할 수 없습니다."));
+        assertNull(findText(sc, "그림자 세기"));
+        ViewGroup row = (ViewGroup) findText(sc, "키 그림자").getParent().getParent();
+        ExpressiveSwitch sw = (ExpressiveSwitch) row.getChildAt(row.getChildCount() - 1);
+        assertFalse(sw.isChecked());
+        assertFalse(sw.isEnabled());
+        row.performClick();
+        sw.performClick();
+        idle();
+        assertFalse(sw.isChecked());
+        assertTrue("저장된 값은 그대로", pre.keyShadow());
     }
 
     @Test

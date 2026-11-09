@@ -676,12 +676,12 @@ final class KeyboardPreview extends FrameLayout {
     private String barSignature, columnSignature;
 
     /**
-     * 도구 막대 줄이 보이는지. '도구 막대 표시'를 꺼도 단어 추천·단축어를 쓰면 키보드는 그 줄(버튼 없이)을 남겨 둔다.
+     * 도구 막대 줄이 보이는지. '도구 막대 표시'를 꺼도 단어 추천을 쓰면 키보드는 그 줄(버튼 없이)을 남겨 둔다.
+     * 단축어는 입력할 때만 그 줄이 잠깐 나타나므로(자동 완성 칩처럼) 평소 모습인 미리보기에서는 따지지 않는다.
      * 일본어·중국어 자판(실험실)을 켜도 변환 후보 자리로 남지만, 미리보기는 한글·영어·기호 자판이라 따지지 않는다.
      */
     boolean barShown() {
-        return prefs.toolbar() || prefs.suggestWords()
-                || (prefs.shortcutsEnabled() && !com.alternative_studios.newswipe.suggest.Shortcuts.of(prefs.shortcuts()).isEmpty());
+        return prefs.toolbar() || prefs.suggestWords();
     }
 
     /** 도구 막대를 자판 아래에 두어 아래쪽 여백이 도구 막대 밑으로 옮겨졌는지. */
