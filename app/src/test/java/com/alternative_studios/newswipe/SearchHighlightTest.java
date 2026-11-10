@@ -1,0 +1,148 @@
+package com.alternative_studios.newswipe;
+
+import android.content.Intent;
+import android.os.Looper;
+import android.util.TypedValue;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.TextView;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.robolectric.Robolectric;
+import org.robolectric.RobolectricTestRunner;
+import org.robolectric.annotation.Config;
+import org.robolectric.annotation.GraphicsMode;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.robolectric.Shadows.shadowOf;
+
+/**
+ * 설정 검색의 모든 항목을 실제로 눌러 들어가 보고, 깜빡인 칸이 그 항목 전체(이름만이 아니라 값·스위치·슬라이더·버튼 바탕까지)이고
+ * 다른 항목까지 덮지 않는지 확인한다. -Dshots=폴더를 주면 깜빡이는 순간을 찍어 남긴다.
+ */
+@RunWith(RobolectricTestRunner.class)
+@Config(sdk = 36, qualifiers = "w411dp-h914dp-port-xxhdpi")
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+public class SearchHighlightTest {
+
+    private static Object field(Object o, String name) throws Exception {
+        java.lang.reflect.Field f = SettingsActivity.class.getDeclaredField(name);
+        f.setAccessible(true);
+        return f.get(o);
+    }
+
+    private static Object call(Object o, String name, Class<?>[] types, Object... args) throws Exception {
+        java.lang.reflect.Method m = SettingsActivity.class.getDeclaredMethod(name, types);
+        m.setAccessible(true);
+        return m.invoke(o, args);
+    }
+
+    private static float sp(View v, float sp) {
+        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp, v.getResources().getDisplayMetrics());
+    }
+
+    /** 검색 목록이 모으는 기준과 같은 '항목 이름' 글자. */
+    private static boolean isLabel(TextView t) {
+        float px = t.getTextSize();
+        return !t.getText().toString().trim().isEmpty() && px >= sp(t, 15) - 0.5f && px <= sp(t, 18) + 0.5f;
+    }
+
+    private static void labels(View v, List<TextView> out) {
+        if (v.getVisibility() != View.VISIBLE) return;
+        if (v instanceof TextView && isLabel((TextView) v)) out.add((TextView) v);
+        if (v instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) labels(g.getChildAt(i), out);
+        }
+    }
+
+    private static boolean contains(View outer, View inner) {
+        for (View v = inner; v != null; v = v.getParent() instanceof View ? (View) v.getParent() : null) {
+            if (v == outer) return true;
+        }
+        return false;
+    }
+
+    private static TextView findText(View v, String text) {
+        if (v instanceof TextView && v.isShown() && text.contentEquals(((TextView) v).getText())) return (TextView) v;
+        if (v instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) {
+                TextView t = findText(g.getChildAt(i), text);
+                if (t != null) return t;
+            }
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void everySearchResultFlashesWholeItem() throws Exception {
+        SettingsActivity main = EditorUiTest.launch(null);
+        call(main, "ensureSearchIndex", new Class<?>[0]);
+        for (int i = 0; i < 200 && field(main, "searchEntries") == null; i++) EditorUiTest.idle();
+        List<String[]> entries = (List<String[]>) field(main, "searchEntries");
+        assertTrue("검색 목록을 모으지 못했다", entries != null && entries.size() > 50);
+
+        List<String> problems = new ArrayList<>();
+        int checked = 0;
+        for (String[] e : entries) {
+            String id = e[0], label = e[1];
+            call(main, "openSection", new Class<?>[]{String.class, String.class}, id, label);
+            Intent i = shadowOf(main).getNextStartedActivity();
+            if (i == null) continue;
+            SettingsActivity a;
+            try {
+                a = Robolectric.buildActivity(SettingsActivity.class, i).setup().get();
+            } catch (RuntimeException ex) {
+                problems.add(id + " | " + label + " | 화면을 못 열었다: " + ex);
+                continue;
+            }
+            for (int s = 0; s < 40 && a.lastFlashed == null; s++) {
+                shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(50));
+            }
+            View box = a.lastFlashed;
+            boolean panelOnly = id.startsWith("keyboard:") || id.startsWith("profilepart:");
+            String[] parts = id.split(":", 4);
+            boolean sheetItself = panelOnly && parts.length == 4 && (label.equals(parts[3]) || label.equals(parts[3] + " 설정"));
+            if (box == null) {
+                if (!sheetItself) problems.add(id + " | " + label + " | 깜빡이지 않았다");
+                a.finish();
+                continue;
+            }
+            checked++;
+            View root = a.getWindow().getDecorView();
+            TextView target = findText(root, label);
+            List<TextView> inBox = new ArrayList<>();
+            labels(box, inBox);
+            String kind = box.getClass().getSimpleName() + " " + box.getWidth() + "x" + box.getHeight();
+            if (box instanceof TextView && box.getParent() instanceof ViewGroup
+                    && ((ViewGroup) box.getParent()).getChildCount() > 1) {
+                problems.add(id + " | " + label + " | 이름 글자만 깜빡였다 (" + kind + ")");
+            } else if (target != null && contains(box, target) && inBox.size() > 2) {
+                StringBuilder names = new StringBuilder();
+                for (TextView t : inBox) names.append('[').append(t.getText()).append(']');
+                problems.add(id + " | " + label + " | 다른 항목까지 덮었다 " + names + " (" + kind + ")");
+            }
+            if (EditorUiTest.OUT != null) {
+                shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(450));
+                android.graphics.Bitmap b = android.graphics.Bitmap.createBitmap(root.getWidth(), root.getHeight(),
+                        android.graphics.Bitmap.Config.ARGB_8888);
+                root.draw(new android.graphics.Canvas(b));
+                EditorUiTest.save(b, String.format("%03d", checked) + "-" + label.replaceAll("[^0-9A-Za-z가-힣]+", "_"));
+                System.out.println(String.format("%03d", checked) + " " + id + " | " + label + " -> " + kind
+                        + (target != null && contains(box, target) ? "" : " (접힌 항목 → 위 설정)"));
+            }
+            a.finish();
+            EditorUiTest.idle();
+        }
+        System.out.println("검사한 항목 " + checked + " / " + entries.size());
+        for (String p : problems) System.out.println("PROBLEM " + p);
+        if (!problems.isEmpty()) fail(problems.size() + "개 항목의 강조가 이상하다:\n" + String.join("\n", problems));
+    }
+}

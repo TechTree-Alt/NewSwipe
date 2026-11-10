@@ -1104,9 +1104,13 @@ public final class SettingsActivity extends Activity {
      * 글자가 칸 가장자리에 붙어 보이지 않도록 항목보다 좌우·위아래로 조금 더 넓게 칠한다. 항목 안에서는 그릴 수 없는 바깥 여백이라
      * 항목이 아니라 항목을 담은 부모의 위에 그린다.
      */
+    /** 마지막으로 깜빡인 칸 (시험에서 강조가 항목 전체에 걸렸는지 확인한다). */
+    View lastFlashed;
+
     private void flash(View box, View root) {
         int w = box.getWidth(), h = box.getHeight();
         if (w == 0 || h == 0) return;
+        lastFlashed = box;
         int dx = Ui.dp(this, 10), dy = Ui.dp(this, 2);
         final View host = box.getParent() instanceof ViewGroup ? (View) box.getParent() : box;
         android.graphics.Rect bounds = host == box
