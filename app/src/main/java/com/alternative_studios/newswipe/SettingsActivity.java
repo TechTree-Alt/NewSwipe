@@ -411,8 +411,8 @@ public final class SettingsActivity extends Activity {
             {KEYBOARD, "숫자 줄 표시", "숫자 줄 1234567890 숫자열"},
             {KEYBOARD, "기능키 순서·유무 사용자화", "맨 아래 줄 하단 키 쉼표 지구본 온점 엔터"},
             {KEYBOARD, "격자 정렬", "그리드 정렬 칸"},
-            {"theme", "화면 모드", "다크 라이트 어두운 밝은 야간"},
-            {"theme", "강조 색", "색상 컬러 포인트 테마 색"},
+            // 화면 모드·강조 색은 소제목뿐이라 검색 목록에 없다: 테마 화면 자체로 찾게 한다.
+            {"theme", "테마", "다크 라이트 어두운 밝은 야간 화면 모드 색상 컬러 포인트 강조 색"},
             {"theme", "색 정렬", "키 색"},
             {KEYBOARD, "문자 길게 누르기 시간", "롱프레스 길게 누르기 시간 지연 특수문자 반복 입력 연타 연속 입력"},
             {KEYBOARD, "기능키 길게 누르기 시간", "롱프레스 시간 길게 눌러 지우기 이모지 입력기 선택"},
@@ -470,7 +470,6 @@ public final class SettingsActivity extends Activity {
             {"lab", "아래로 밀기 엄격도", "스와이프 방향 판정 민감도"},
             {"lab", "위로 밀기 엄격도", "스와이프 방향 판정 민감도"},
             {LARGE_AREA, "폴더블 내부 화면 판정 기준", "대화면 폴더블 큰 화면 태블릿 dp 짧은 쪽 폭"},
-            {KEYBOARD, "폴더블 설정", "폴더블 내부 화면 대화면 큰 화면 태블릿"},
             {KEYBOARD, "폴더블 내부 화면 키보드 사용자화", "대화면 폴더블 큰 화면 태블릿"},
             {KEYBOARD, "폴더블 내부 화면 별도 키보드", "대화면 레이아웃 폴더블 큰 화면 태블릿"},
             {"lab", "한·영 전환 키 바꾸기", "한영 한/영 전환 언어 전환 키 외장 키보드 블루투스 USB 물리 하드웨어"},
@@ -504,10 +503,13 @@ public final class SettingsActivity extends Activity {
             searchResults.addView(searchNote("검색 목록을 준비하는 중입니다…"));
             return;
         }
-        // 항목: {화면 id, 이름, 설명·같이 찾을 낱말, "m" = 설정 메뉴}. 메뉴는 상수에서, 나머지는 모아 둔 글자에서 온다.
+        // 항목: {화면 id, 이름, 설명·같이 찾을 낱말, "m" = 설정 메뉴, (메뉴만) 보일 설명}. 메뉴는 상수에서, 나머지는 모아 둔 글자에서 온다.
         java.util.List<String[]> entries = new java.util.ArrayList<>();
-        for (String[] sec : SECTIONS) entries.add(new String[]{sec[0], sec[1], sec[2], "m"});
-        entries.add(new String[]{APP[0], APP[1], APP[2], "m"});
+        for (String[] sec : SECTIONS) {
+            String extra = synonyms().get(sec[0] + "\0" + sec[1]);   // 화면 자체에 붙인 같이 찾을 낱말
+            entries.add(new String[]{sec[0], sec[1], extra == null ? sec[2] : sec[2] + " " + extra, "m", sec[2]});
+        }
+        entries.add(new String[]{APP[0], APP[1], APP[2], "m", APP[2]});
         for (String[] e : searchEntries) {
             String extra = synonyms().get(synonymScreen(e[0]) + "\0" + e[1]);
             entries.add(new String[]{e[0], e[1], extra == null ? e[2] : e[2] + " " + extra, ""});
@@ -526,7 +528,7 @@ public final class SettingsActivity extends Activity {
             String section = e[0], title = e[1];
             boolean isMenu = "m".equals(e[3]);
             if (shown > 0) searchResults.addView(divider());
-            View row = menuRow(menuIcon(section), title, isMenu ? e[2] : sectionTitle(section),
+            View row = menuRow(menuIcon(section), title, isMenu ? e[4] : sectionTitle(section),
                     v -> openSection(section, isMenu ? null : title));
             if (!unlocked) {   // 시작하기를 마치기 전에는 설정 메뉴처럼 누를 수 없다
                 row.setAlpha(0.38f);
@@ -877,7 +879,7 @@ public final class SettingsActivity extends Activity {
 
     /**
      * 만들어 둔 화면의 글자를 위에서 아래로 훑는다. 크기와 색으로 구분한다:
-     * 15~18sp = 항목 이름(스위치·슬라이더·버튼), 14sp 강조색 = 소제목, 그 항목 이름 바로 아래(같은 칸)의 작은 글자 = 설명.
+     * 15~18sp = 항목 이름(스위치·슬라이더·버튼), 14sp 강조색 = 소제목(검색에 넣지 않는다), 그 항목 이름 바로 아래(같은 칸)의 작은 글자 = 설명.
      * 슬라이더 값(예: "12ms")이나 화면 아래 안내문은 모으지 않는다.
      */
     private void collectLabels(String id, View v, java.util.List<String[]> out, View[] lastParent, String[][] last) {
@@ -901,7 +903,11 @@ public final class SettingsActivity extends Activity {
                 float px = t.getTextSize();
                 boolean label = px >= spPx(15) - 0.5f && px <= spPx(18) + 0.5f;
                 boolean heading = !label && Math.abs(px - spPx(14)) < 0.5f && t.getCurrentTextColor() == accentColor;
-                if (label || heading) {
+                if (heading) {
+                    // 섹션 이름(소제목)은 검색에 넣지 않는다. 그 아래 항목들이 각자 검색된다.
+                    last[0] = null;
+                    lastParent[0] = null;
+                } else if (label || heading) {
                     last[0] = new String[]{id, singleLine(text), ""};
                     lastParent[0] = (View) t.getParent();
                     out.add(last[0]);
@@ -929,7 +935,7 @@ public final class SettingsActivity extends Activity {
         return s.replace('\t', ' ').replace('\n', ' ').replace('\r', ' ');
     }
 
-    // ---- 검색 목록 파일 (앱 버전이 바뀌면 다시 모은다)
+    // ---- 검색 목록 파일 (앱을 업데이트하거나 다시 설치하면 다시 모은다)
 
     private File searchCacheFile() {
         return new File(getFilesDir(), "settings_search.tsv");
@@ -937,8 +943,11 @@ public final class SettingsActivity extends Activity {
 
     private String searchCacheStamp() {
         try {
-            // 뒤의 꼬리표는 메뉴 구성이 바뀌면 올린다 (같은 앱 버전이라도 예전 메뉴로 모은 목록을 쓰지 않게).
-            return "v" + getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode() + "-k12";
+            // lastUpdateTime은 설치·업데이트·재설치 때마다 바뀌므로, 버전 번호를 올리지 않은
+            // 빌드를 덮어 설치해도 예전 메뉴로 모은 목록을 쓰지 않는다.
+            android.content.pm.PackageInfo info =
+                    getPackageManager().getPackageInfo(getPackageName(), 0);
+            return "v" + info.getLongVersionCode() + "-t" + info.lastUpdateTime;
         } catch (PackageManager.NameNotFoundException e) {
             return "v?";
         }
@@ -1014,7 +1023,7 @@ public final class SettingsActivity extends Activity {
      */
     private final java.util.Map<TextView, java.lang.ref.WeakReference<View>> itemRow = new java.util.WeakHashMap<>();
 
-    private void markItem(TextView label, View row) {
+    void markItem(TextView label, View row) {
         if (harvesting) return;   // 검색 목록을 모으려고 잠깐 만든 화면은 기억하지 않는다
         itemRow.put(label, new java.lang.ref.WeakReference<>(row));
     }
@@ -1027,31 +1036,110 @@ public final class SettingsActivity extends Activity {
         highlightItem(scroll, list, label);
     }
 
-    /** root(스크롤 안의 내용) 안에서 이름이 label인 항목을 찾아 스크롤하고 깜빡인다. */
-    private void highlightItem(ScrollView scroll, ViewGroup root, String label) {
-        if (isFinishing() || isDestroyed()) return;
+    /**
+     * root(스크롤 안의 내용) 안에서 이름이 label인 항목을 찾아 스크롤하고 깜빡인다.
+     * 설정이 꺼져 있어 화면에 만들지 않은 항목이면 그것을 켜는 설정(또는 왜 없는지 알리는 안내)을 깜빡인다.
+     *
+     * @return 무언가를 깜빡였는지 (root 안에 항목도, 그것을 켜는 설정도 없으면 false)
+     */
+    private boolean highlightItem(ScrollView scroll, ViewGroup root, String label) {
+        if (isFinishing() || isDestroyed()) return false;
         // 섹션 제목과 항목의 이름이 같을 수 있다 (예: '단어 추천' 섹션의 '단어 추천' 스위치). 그때는 항목을 먼저 찾는다.
         TextView target = findLabel(root, label, true, itemRow::containsKey);
         if (target == null) target = findLabel(root, label, false, itemRow::containsKey);
         if (target == null) target = findLabel(root, label, true);
         if (target == null) target = findLabel(root, label, false);
-        if (target == null) return;
-        View hidden = outermostHidden(target, root);
+        View hidden = target == null ? null : outermostHidden(target, root);
         View box;
-        if (hidden != null) {
+        if (target == null) {
+            box = absentReason(label, root);
+        } else if (hidden != null) {
             box = controllerOf(hidden);
         } else {
             java.lang.ref.WeakReference<View> ref = itemRow.get(target);
             box = ref == null ? null : ref.get();
-            if (box == null) box = target;
+            if (box == null) box = itemBoxOf(target, root);
         }
-        if (box == null) return;
+        if (box == null) return false;
         int y = 0;
         for (View v = box; v != null && v != root; v = v.getParent() instanceof View ? (View) v.getParent() : null) {
             y += v.getTop();
         }
         scroll.smoothScrollTo(0, Math.max(0, y - Ui.dp(this, 96)));
         flash(box, root);
+        return true;
+    }
+
+    /**
+     * 설정이 꺼져 있어 만들지 않은 항목 이름 → 그 항목을 보이게 하는 설정 줄 (예: 분리 키보드를 켜야 생기는 항목 → 분리 키보드 스위치).
+     * 검색 목록은 설정을 모두 켠 것처럼 모으므로, 이런 항목으로 들어오면 대신 이 줄을 깜빡인다.
+     */
+    private final java.util.Map<String, java.lang.ref.WeakReference<View>> absentItems = new java.util.HashMap<>();
+    /** 이 화면의 항목을 하나도 만들지 않았을 때 그 까닭을 알리는 칸 (예: 폴더블 내부 화면이 아닐 때의 안내). 없으면 null. */
+    private java.lang.ref.WeakReference<View> absentAll;
+
+    /** labels의 항목은 지금 만들지 않았고 reason을 바꾸면 생긴다고 기억한다. */
+    private void markAbsent(View reason, String... labels) {
+        if (harvesting) return;
+        for (String l : labels) absentItems.put(l, new java.lang.ref.WeakReference<>(reason));
+    }
+
+    /** 만들지 않은 항목 label 대신 깜빡일 root 안의 칸. 없으면 null. */
+    private View absentReason(String label, View root) {
+        java.lang.ref.WeakReference<View> ref = absentItems.get(label);
+        View v = ref == null ? null : ref.get();
+        if (v != null && v.isShown() && isInside(v, root)) return v;
+        v = absentAll == null ? null : absentAll.get();
+        return v != null && v.isShown() && isInside(v, root) ? v : null;
+    }
+
+    private static boolean isInside(View v, View root) {
+        for (View p = v; p != null; p = p.getParent() instanceof View ? (View) p.getParent() : null) {
+            if (p == root) return true;
+        }
+        return false;
+    }
+
+    /**
+     * 항목 줄이 알려지지 않은 이름 글자(직접 만든 줄 등)의 항목 칸: 이름 글자에서 위로 올라가며, 다른 항목 이름이나 소제목을
+     * 품지 않은 가장 바깥 칸. 이름 글자만 칠하면 강조가 항목의 일부(이름)에만 걸려 보이므로 이름·값·슬라이더를 함께 감싼다.
+     */
+    private View itemBoxOf(TextView label, View root) {
+        // 항목 줄 안의 다른 글자(예: 값 줄의 지금 값)라면 그 줄을 쓴다.
+        java.util.Set<View> rows = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+        for (java.lang.ref.WeakReference<View> ref : itemRow.values()) {
+            View row = ref.get();
+            if (row != null) rows.add(row);
+        }
+        for (View v = label; v != null && v != root; v = v.getParent() instanceof View ? (View) v.getParent() : null) {
+            if (rows.contains(v)) return v;
+        }
+        View box = label;
+        while (box.getParent() instanceof ViewGroup && box.getParent() != root) {
+            ViewGroup parent = (ViewGroup) box.getParent();
+            if (countLabels(parent, 2) > 1) break;
+            box = parent;
+        }
+        return box;
+    }
+
+    /** v 안의 보이는 항목 이름·소제목 글자 수 (limit에 이르면 더 세지 않는다). collectLabels와 같은 기준이다. */
+    private int countLabels(View v, int limit) {
+        if (v.getVisibility() != View.VISIBLE) return 0;
+        if (v instanceof TextView) {
+            TextView t = (TextView) v;
+            if (t.getText().toString().trim().isEmpty()) return 0;
+            float px = t.getTextSize();
+            boolean label = px >= spPx(15) - 0.5f && px <= spPx(18) + 0.5f;
+            boolean heading = !label && Math.abs(px - spPx(14)) < 0.5f && t.getCurrentTextColor() == accentColor;
+            return label || heading ? 1 : 0;
+        }
+        int n = 0;
+        if (v instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) v;
+            for (int i = 0; i < g.getChildCount() && n < limit; i++) n += countLabels(g.getChildAt(i), limit - n);
+        }
+        return n;
     }
 
     /**
@@ -1059,15 +1147,23 @@ public final class SettingsActivity extends Activity {
      * 글자가 칸 가장자리에 붙어 보이지 않도록 항목보다 좌우·위아래로 조금 더 넓게 칠한다. 항목 안에서는 그릴 수 없는 바깥 여백이라
      * 항목이 아니라 항목을 담은 부모의 위에 그린다.
      */
+    /** 마지막으로 깜빡인 칸 (시험에서 강조가 항목 전체에 걸렸는지 확인한다). */
+    View lastFlashed;
+
     private void flash(View box, View root) {
         int w = box.getWidth(), h = box.getHeight();
         if (w == 0 || h == 0) return;
-        int dx = Ui.dp(this, 10), dy = Ui.dp(this, 2);
+        lastFlashed = box;
+        // 줄(바탕 없음)은 글자가 가장자리에 붙지 않게 좌우로 넓게 칠한다. 버튼처럼 둥근 바탕이 있는 항목은
+        // 그 모양을 사방으로 똑같이 조금 키운 모양으로 칠한다 (모서리도 바탕의 둥글기에 넓힌 만큼 더해 나란하게).
+        float shapeRadius = shapeRadius(box.getBackground());
+        boolean shaped = shapeRadius >= 0;
+        int dx = Ui.dp(this, shaped ? 4 : 10), dy = Ui.dp(this, shaped ? 4 : 2);
         final View host = box.getParent() instanceof ViewGroup ? (View) box.getParent() : box;
         android.graphics.Rect bounds = host == box
                 ? new android.graphics.Rect(-dx, -dy, w + dx, h + dy)
                 : new android.graphics.Rect(box.getLeft() - dx, box.getTop() - dy, box.getRight() + dx, box.getBottom() + dy);
-        android.graphics.drawable.GradientDrawable d = Ui.round(accentColor, Ui.dp(this, 12));
+        android.graphics.drawable.GradientDrawable d = Ui.round(accentColor, shaped ? shapeRadius + dx : Ui.dp(this, 12));
         d.setBounds(bounds);
         d.setAlpha(0);
         host.getOverlay().add(d);
@@ -1099,6 +1195,26 @@ public final class SettingsActivity extends Activity {
             }
         });
         pulse.start();
+    }
+
+    /**
+     * 칸의 바탕이 눈에 보이는 둥근 모양이면 그 모서리 반지름(px), 아니면 -1.
+     * 누를 때만 보이는 물결(ripple)의 가림판은 모양으로 치지 않는다.
+     */
+    private static float shapeRadius(android.graphics.drawable.Drawable bg) {
+        if (bg instanceof android.graphics.drawable.RippleDrawable) {
+            android.graphics.drawable.RippleDrawable r = (android.graphics.drawable.RippleDrawable) bg;
+            for (int i = 0; i < r.getNumberOfLayers(); i++) {
+                if (r.getId(i) == android.R.id.mask) continue;
+                float radius = shapeRadius(r.getDrawable(i));
+                if (radius >= 0) return radius;
+            }
+            return -1;
+        }
+        if (bg instanceof android.graphics.drawable.GradientDrawable) {
+            return Math.max(0, ((android.graphics.drawable.GradientDrawable) bg).getCornerRadius());
+        }
+        return -1;
     }
 
     /** label에서 위로 올라가며 만나는 접힌(GONE) 칸 중 가장 바깥의 것. 접힌 칸이 없으면 null. */
@@ -2042,6 +2158,7 @@ public final class SettingsActivity extends Activity {
         korean.addView(choices);
         korean.addView(layoutNote);
         korean.addView(detail[0].view);
+        detailRow = detail[0].view;
         // 하위 항목(영어 자판도 균형 배열, 좌·우 균형 배열·자·모음 분리 배열)이 상세 배열 바로 아래, 설명은 그 아래.
         korean.addView(keyArea);
         korean.addView(splitSub);
@@ -2489,6 +2606,7 @@ public final class SettingsActivity extends Activity {
         if (profile == null) {
             LinearLayout c = card();
             c.addView(note("이 설정은 폴더블 내부 화면에서만 보입니다. 폴더블 내부 화면으로 전환하거나 폴더블 내부 화면 판정 기준을 조절하세요."));
+            absentAll = new java.lang.ref.WeakReference<>(c);   // 검색으로 이 화면의 항목을 찾아 들어오면 이 안내를 깜빡인다
             addLargeScreenThreshold();
             return;
         }
@@ -2530,6 +2648,10 @@ public final class SettingsActivity extends Activity {
      * '분리 키보드' 섹션 (키보드 전체): 분리 키보드 켜기.
      * 켜고 끄면 미리보기의 영역도 바뀐다 (글자 키 ↔ 왼쪽·오른쪽 묶음과 가운데 공간).
      */
+    /** 미리보기 영역 창에서 분리 키보드를 켰을 때만 만드는 항목 (buildProfileArea). */
+    private static final String[] PROFILE_SPLIT_ITEMS = {"분리 키보드", "왼쪽 묶음 폭", "왼쪽 묶음 가로 위치", "오른쪽 묶음 폭",
+            "오른쪽 묶음 가로 위치", "묶음 좌우 따라가기", "스페이스바 잇기", "하단 기능키 폭"};
+
     private void addProfileSplit(String profile, String name) {
         Prefs edit = prefs.profileEditView(profile);
         LinearLayout card = section("분리 키보드");
@@ -2538,14 +2660,16 @@ public final class SettingsActivity extends Activity {
         box.setVisibility(edit.profileSplit() || harvesting ? View.VISIBLE : View.GONE);
         // 좌·우 균형 배열·자·모음 분리 배열은 따로 정하지 않고 세로 모드 '한글 글자 키 설정'의 상세 배열 값을 따른다.
         String splitKey = edit.splitKey();
-        card.addView(toggle(name + " 분리 키보드",
+        View splitSwitch = toggle(name + " 분리 키보드",
                 "자판을 반으로 나눠 엄지손가락만으로 타이핑을 편하게 합니다.",
                 edit.profileSplit(), on -> {
                     prefs.raw().edit().putBoolean(splitKey, on).apply();
                     Ui.setVisibleAnimated(box, on);
                     refreshLayoutPreview();
-                }));
+                });
+        card.addView(splitSwitch);
         card.addView(box);
+        if (!edit.profileSplit()) markAbsent(splitSwitch, PROFILE_SPLIT_ITEMS);
     }
 
     /** '키보드 모양' 섹션 (키보드 전체): 키 글자 크기. 가로 모드, 폴더블 내부 화면 세로·가로가 각각 따로 정한다 (정하기 전에는 세로 모드 값). */
@@ -2654,7 +2778,12 @@ public final class SettingsActivity extends Activity {
         }
         if (!panelOpen() || label.equals(parts[3]) || label.equals(parts[3] + " 설정")) return;
         // 창이 올라온 뒤에 찾는다 (배치가 끝나야 위치를 안다).
-        sheet.scroll().postDelayed(() -> highlightItem(sheet.scroll(), sheet.body(), label), 450);
+        sheet.scroll().postDelayed(() -> {
+            // 분리 키보드를 꺼 두어 창에 없는 항목이면 창을 닫고 목록의 분리 키보드 스위치를 깜빡인다.
+            if (!highlightItem(sheet.scroll(), sheet.body(), label) && absentReason(label, list) != null) {
+                sheet.close(() -> highlightItem(scrollView, list, label));
+            }
+        }, 450);
     }
 
     /**
@@ -2700,6 +2829,9 @@ public final class SettingsActivity extends Activity {
         }
     }
 
+    /** 한글 글자 키 창의 '상세 배열' 줄 (자·모음 균형 배열·분리 키보드를 고른다). */
+    private View detailRow;
+
     /** 한글 글자 키 창의 자·모음 균형 배열 섹션을 담는 틀 (다른 창에서는 null). */
     private LinearLayout balancedHolder;
 
@@ -2710,7 +2842,10 @@ public final class SettingsActivity extends Activity {
     private void fillBalancedHolder() {
         if (balancedHolder == null) return;
         balancedHolder.removeAllViews();
-        if (detailLayout() != DETAIL_BALANCED && !harvesting) return;
+        if (detailLayout() != DETAIL_BALANCED && !harvesting) {
+            if (detailRow != null) markAbsent(detailRow, BALANCED_ITEMS);
+            return;
+        }
         LinearLayout saved = list;
         list = balancedHolder;
         try {
@@ -2724,8 +2859,11 @@ public final class SettingsActivity extends Activity {
      * 자·모음 균형 배열 섹션: 자음·모음 쪽의 키 폭·가로 위치. 아래 미리보기에서 글자 키 영역을 고르면
      * 자음·모음 쪽 왼쪽·오른쪽 가장자리의 손잡이로도 바꿀 수 있고, 손잡이를 끌면 슬라이더도 따라 움직인다.
      */
+    /** 자·모음 균형 배열 섹션의 이름과 항목 (상세 배열에서 고르기 전에는 만들지 않는다). */
+    private static final String[] BALANCED_ITEMS = {"자·모음 균형 배열", "자음 키 폭", "자음 가로 위치", "모음 키 폭", "모음 가로 위치"};
+
     private void addEditorBalancedBlocks() {
-        LinearLayout c = section("자·모음 균형 배열");
+        LinearLayout c = section(BALANCED_ITEMS[0]);
         c.addView(blockSlider(prefs, "자음 키 폭", prefs.balancedConsonantWidthKey(), prefs::balancedConsonantWidth, prefs.balancedWidthMin(), prefs.balancedWidthMax(), "%", this::syncKeyPanel));
         c.addView(blockSlider(prefs, "자음 가로 위치", prefs.balancedConsonantPosKey(), prefs::balancedConsonantPos, Prefs.BALANCED_POS_MIN, Prefs.BALANCED_POS_MAX, "", this::syncKeyPanel));
         c.addView(blockSlider(prefs, "모음 키 폭", prefs.balancedVowelWidthKey(), prefs::balancedVowelWidth, prefs.balancedWidthMin(), prefs.balancedWidthMax(), "%", this::syncKeyPanel));
