@@ -929,7 +929,7 @@ public final class SettingsActivity extends Activity {
         return s.replace('\t', ' ').replace('\n', ' ').replace('\r', ' ');
     }
 
-    // ---- 검색 목록 파일 (앱 버전이 바뀌면 다시 모은다)
+    // ---- 검색 목록 파일 (앱을 업데이트하거나 다시 설치하면 다시 모은다)
 
     private File searchCacheFile() {
         return new File(getFilesDir(), "settings_search.tsv");
@@ -937,8 +937,11 @@ public final class SettingsActivity extends Activity {
 
     private String searchCacheStamp() {
         try {
-            // 뒤의 꼬리표는 메뉴 구성이 바뀌면 올린다 (같은 앱 버전이라도 예전 메뉴로 모은 목록을 쓰지 않게).
-            return "v" + getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode() + "-k12";
+            // lastUpdateTime은 설치·업데이트·재설치 때마다 바뀌므로, 버전 번호를 올리지 않은
+            // 빌드를 덮어 설치해도 예전 메뉴로 모은 목록을 쓰지 않는다.
+            android.content.pm.PackageInfo info =
+                    getPackageManager().getPackageInfo(getPackageName(), 0);
+            return "v" + info.getLongVersionCode() + "-t" + info.lastUpdateTime;
         } catch (PackageManager.NameNotFoundException e) {
             return "v?";
         }
