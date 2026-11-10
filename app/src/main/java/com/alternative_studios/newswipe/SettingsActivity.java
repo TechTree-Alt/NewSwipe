@@ -411,8 +411,8 @@ public final class SettingsActivity extends Activity {
             {KEYBOARD, "숫자 줄 표시", "숫자 줄 1234567890 숫자열"},
             {KEYBOARD, "기능키 순서·유무 사용자화", "맨 아래 줄 하단 키 쉼표 지구본 온점 엔터"},
             {KEYBOARD, "격자 정렬", "그리드 정렬 칸"},
-            {"theme", "화면 모드", "다크 라이트 어두운 밝은 야간"},
-            {"theme", "강조 색", "색상 컬러 포인트 테마 색"},
+            // 화면 모드·강조 색은 소제목뿐이라 검색 목록에 없다: 테마 화면 자체로 찾게 한다.
+            {"theme", "테마", "다크 라이트 어두운 밝은 야간 화면 모드 색상 컬러 포인트 강조 색"},
             {"theme", "색 정렬", "키 색"},
             {KEYBOARD, "문자 길게 누르기 시간", "롱프레스 길게 누르기 시간 지연 특수문자 반복 입력 연타 연속 입력"},
             {KEYBOARD, "기능키 길게 누르기 시간", "롱프레스 시간 길게 눌러 지우기 이모지 입력기 선택"},
@@ -470,7 +470,6 @@ public final class SettingsActivity extends Activity {
             {"lab", "아래로 밀기 엄격도", "스와이프 방향 판정 민감도"},
             {"lab", "위로 밀기 엄격도", "스와이프 방향 판정 민감도"},
             {LARGE_AREA, "폴더블 내부 화면 판정 기준", "대화면 폴더블 큰 화면 태블릿 dp 짧은 쪽 폭"},
-            {KEYBOARD, "폴더블 설정", "폴더블 내부 화면 대화면 큰 화면 태블릿"},
             {KEYBOARD, "폴더블 내부 화면 키보드 사용자화", "대화면 폴더블 큰 화면 태블릿"},
             {KEYBOARD, "폴더블 내부 화면 별도 키보드", "대화면 레이아웃 폴더블 큰 화면 태블릿"},
             {"lab", "한·영 전환 키 바꾸기", "한영 한/영 전환 언어 전환 키 외장 키보드 블루투스 USB 물리 하드웨어"},
@@ -504,10 +503,13 @@ public final class SettingsActivity extends Activity {
             searchResults.addView(searchNote("검색 목록을 준비하는 중입니다…"));
             return;
         }
-        // 항목: {화면 id, 이름, 설명·같이 찾을 낱말, "m" = 설정 메뉴}. 메뉴는 상수에서, 나머지는 모아 둔 글자에서 온다.
+        // 항목: {화면 id, 이름, 설명·같이 찾을 낱말, "m" = 설정 메뉴, (메뉴만) 보일 설명}. 메뉴는 상수에서, 나머지는 모아 둔 글자에서 온다.
         java.util.List<String[]> entries = new java.util.ArrayList<>();
-        for (String[] sec : SECTIONS) entries.add(new String[]{sec[0], sec[1], sec[2], "m"});
-        entries.add(new String[]{APP[0], APP[1], APP[2], "m"});
+        for (String[] sec : SECTIONS) {
+            String extra = synonyms().get(sec[0] + "\0" + sec[1]);   // 화면 자체에 붙인 같이 찾을 낱말
+            entries.add(new String[]{sec[0], sec[1], extra == null ? sec[2] : sec[2] + " " + extra, "m", sec[2]});
+        }
+        entries.add(new String[]{APP[0], APP[1], APP[2], "m", APP[2]});
         for (String[] e : searchEntries) {
             String extra = synonyms().get(synonymScreen(e[0]) + "\0" + e[1]);
             entries.add(new String[]{e[0], e[1], extra == null ? e[2] : e[2] + " " + extra, ""});
@@ -526,7 +528,7 @@ public final class SettingsActivity extends Activity {
             String section = e[0], title = e[1];
             boolean isMenu = "m".equals(e[3]);
             if (shown > 0) searchResults.addView(divider());
-            View row = menuRow(menuIcon(section), title, isMenu ? e[2] : sectionTitle(section),
+            View row = menuRow(menuIcon(section), title, isMenu ? e[4] : sectionTitle(section),
                     v -> openSection(section, isMenu ? null : title));
             if (!unlocked) {   // 시작하기를 마치기 전에는 설정 메뉴처럼 누를 수 없다
                 row.setAlpha(0.38f);
@@ -877,7 +879,7 @@ public final class SettingsActivity extends Activity {
 
     /**
      * 만들어 둔 화면의 글자를 위에서 아래로 훑는다. 크기와 색으로 구분한다:
-     * 15~18sp = 항목 이름(스위치·슬라이더·버튼), 14sp 강조색 = 소제목, 그 항목 이름 바로 아래(같은 칸)의 작은 글자 = 설명.
+     * 15~18sp = 항목 이름(스위치·슬라이더·버튼), 14sp 강조색 = 소제목(검색에 넣지 않는다), 그 항목 이름 바로 아래(같은 칸)의 작은 글자 = 설명.
      * 슬라이더 값(예: "12ms")이나 화면 아래 안내문은 모으지 않는다.
      */
     private void collectLabels(String id, View v, java.util.List<String[]> out, View[] lastParent, String[][] last) {
@@ -901,7 +903,11 @@ public final class SettingsActivity extends Activity {
                 float px = t.getTextSize();
                 boolean label = px >= spPx(15) - 0.5f && px <= spPx(18) + 0.5f;
                 boolean heading = !label && Math.abs(px - spPx(14)) < 0.5f && t.getCurrentTextColor() == accentColor;
-                if (label || heading) {
+                if (heading) {
+                    // 섹션 이름(소제목)은 검색에 넣지 않는다. 그 아래 항목들이 각자 검색된다.
+                    last[0] = null;
+                    lastParent[0] = null;
+                } else if (label || heading) {
                     last[0] = new String[]{id, singleLine(text), ""};
                     lastParent[0] = (View) t.getParent();
                     out.add(last[0]);
