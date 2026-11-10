@@ -1017,7 +1017,7 @@ public final class SettingsActivity extends Activity {
      */
     private final java.util.Map<TextView, java.lang.ref.WeakReference<View>> itemRow = new java.util.WeakHashMap<>();
 
-    private void markItem(TextView label, View row) {
+    void markItem(TextView label, View row) {
         if (harvesting) return;   // 검색 목록을 모으려고 잠깐 만든 화면은 기억하지 않는다
         itemRow.put(label, new java.lang.ref.WeakReference<>(row));
     }
@@ -1046,7 +1046,7 @@ public final class SettingsActivity extends Activity {
         } else {
             java.lang.ref.WeakReference<View> ref = itemRow.get(target);
             box = ref == null ? null : ref.get();
-            if (box == null) box = target;
+            if (box == null) box = itemBoxOf(target, root);
         }
         if (box == null) return;
         int y = 0;
@@ -1055,6 +1055,48 @@ public final class SettingsActivity extends Activity {
         }
         scroll.smoothScrollTo(0, Math.max(0, y - Ui.dp(this, 96)));
         flash(box, root);
+    }
+
+    /**
+     * 항목 줄이 알려지지 않은 이름 글자(직접 만든 줄 등)의 항목 칸: 이름 글자에서 위로 올라가며, 다른 항목 이름이나 소제목을
+     * 품지 않은 가장 바깥 칸. 이름 글자만 칠하면 강조가 항목의 일부(이름)에만 걸려 보이므로 이름·값·슬라이더를 함께 감싼다.
+     */
+    private View itemBoxOf(TextView label, View root) {
+        // 항목 줄 안의 다른 글자(예: 값 줄의 지금 값)라면 그 줄을 쓴다.
+        java.util.Set<View> rows = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+        for (java.lang.ref.WeakReference<View> ref : itemRow.values()) {
+            View row = ref.get();
+            if (row != null) rows.add(row);
+        }
+        for (View v = label; v != null && v != root; v = v.getParent() instanceof View ? (View) v.getParent() : null) {
+            if (rows.contains(v)) return v;
+        }
+        View box = label;
+        while (box.getParent() instanceof ViewGroup && box.getParent() != root) {
+            ViewGroup parent = (ViewGroup) box.getParent();
+            if (countLabels(parent, 2) > 1) break;
+            box = parent;
+        }
+        return box;
+    }
+
+    /** v 안의 보이는 항목 이름·소제목 글자 수 (limit에 이르면 더 세지 않는다). collectLabels와 같은 기준이다. */
+    private int countLabels(View v, int limit) {
+        if (v.getVisibility() != View.VISIBLE) return 0;
+        if (v instanceof TextView) {
+            TextView t = (TextView) v;
+            if (t.getText().toString().trim().isEmpty()) return 0;
+            float px = t.getTextSize();
+            boolean label = px >= spPx(15) - 0.5f && px <= spPx(18) + 0.5f;
+            boolean heading = !label && Math.abs(px - spPx(14)) < 0.5f && t.getCurrentTextColor() == accentColor;
+            return label || heading ? 1 : 0;
+        }
+        int n = 0;
+        if (v instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) v;
+            for (int i = 0; i < g.getChildCount() && n < limit; i++) n += countLabels(g.getChildAt(i), limit - n);
+        }
+        return n;
     }
 
     /**

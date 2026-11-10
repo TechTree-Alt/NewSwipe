@@ -93,7 +93,8 @@ final class KeyEditPanel {
         accentColor = colors.accent;
         onAccentColor = colors.onAccent;
         cardColor = colors.card;
-        widgets = new SettingsWidgets(a, colors, null);
+        // 설정 화면 안에 놓이면 항목 줄을 알려 준다 (설정 검색 결과로 들어왔을 때 이름 글자만이 아니라 줄 전체를 깜빡이게).
+        widgets = new SettingsWidgets(a, colors, a instanceof SettingsActivity ? ((SettingsActivity) a)::markItem : null);
         root = new LinearLayout(a);
         root.setOrientation(LinearLayout.VERTICAL);
     }
