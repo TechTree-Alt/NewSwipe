@@ -216,7 +216,7 @@ public final class SettingsActivity extends Activity {
             {"clipemoji", "클립보드 및 이모지", "클립보드 기록, 편집 버튼, 이모지 크기·추천"},
             {"onehand", "한 손 모드", "자판 폭·키 높이, 세로 위치"},
             {"backup", "설정 가져오기 및 내보내기", "모든 설정을 파일로 저장하거나 불러오기"},
-            {"lab", "실험실", "폴더블 내부 화면 별도 키보드, 외국어 자판, 외장 키보드"},
+            {"lab", "실험실", "밀기 방향 판정, 외국어 자판, 외장 키보드"},
     };
 
     /** 첫 화면 맨 위에 설정 메뉴와 따로 두는 항목. */
@@ -252,8 +252,8 @@ public final class SettingsActivity extends Activity {
             return;
         }
         buildScreen(id);
-        // 키보드 사용자화는 목록 안에 따로 둔다. 폴더블 내부 화면이 아니면 폴더블 내부 화면 키보드 사용자화에는 안내 문구만 둔다.
-        if (hasReset(id) && !KEYBOARD.equals(id) && !(LARGE_AREA.equals(id) && largeProfileNow() == null)) addResetButton(id);
+        // 키보드 사용자화는 목록 안에 따로 둔다.
+        if (hasReset(id) && !KEYBOARD.equals(id)) addResetButton(id);
     }
 
     /** 설정 화면 하나의 내용을 지금의 list에 만든다 (설정 검색이 화면 글자를 모을 때도 이것을 쓴다). */
@@ -293,9 +293,10 @@ public final class SettingsActivity extends Activity {
     private void reset(String id) {
         if (LANDSCAPE_AREA.equals(id)) prefs.profileEditView(Prefs.PROFILE_LANDSCAPE).resetProfileArea();
         else if (LARGE_AREA.equals(id)) {
-            // 지금 화면 방향(폴더블 내부 화면 세로·가로)의 값만 되돌린다.
+            // 지금 화면 방향(폴더블 내부 화면 세로·가로)의 값과 폴더블 내부 화면 판정 기준을 되돌린다.
             String now = largeProfileNow();
             if (now != null) prefs.profileEditView(now).resetProfileArea();
+            prefs.raw().edit().remove(Prefs.LARGE_SCREEN_DP).apply();
         }
         else prefs.resetSection(id);
         importGeneration++;   // 뒤에 쌓인 설정 화면도 돌아오면 기본값으로 다시 그린다
@@ -456,9 +457,9 @@ public final class SettingsActivity extends Activity {
             {KEYBOARD, "기호 자판 대신 숫자 패드 사용", "숫자 패드 넘버 패드 3×4 숫자 자판 기호 키 ?123 계산기 전화"},
             {"lab", "아래로 밀기 엄격도", "스와이프 방향 판정 민감도"},
             {"lab", "위로 밀기 엄격도", "스와이프 방향 판정 민감도"},
-            {"lab", "폴더블 내부 화면 판정 기준", "대화면 폴더블 큰 화면 dp"},
-            {"lab", "폴더블 내부 화면 키보드 사용자화", "대화면 폴더블 큰 화면"},
-            {"lab", "폴더블 내부 화면 별도 키보드", "대화면 레이아웃 폴더블 큰 화면"},
+            {LARGE_AREA, "폴더블 내부 화면 판정 기준", "대화면 폴더블 큰 화면 태블릿 dp 짧은 쪽 폭"},
+            {KEYBOARD, "폴더블 내부 화면 키보드 사용자화", "대화면 폴더블 큰 화면 태블릿"},
+            {KEYBOARD, "폴더블 내부 화면 별도 키보드", "대화면 레이아웃 폴더블 큰 화면 태블릿"},
             {"lab", "한·영 전환 키 바꾸기", "한영 한/영 전환 언어 전환 키 외장 키보드 블루투스 USB 물리 하드웨어"},
             {"lab", "한·영 키", "한영 한/영 전환 언어 전환 키 외장 키보드"},
             {"lab", "한·영 키 직접 지정", "한영 한/영 전환 키 바꾸기 외장 키보드"},
@@ -790,7 +791,7 @@ public final class SettingsActivity extends Activity {
     private String searchCacheStamp() {
         try {
             // 뒤의 꼬리표는 메뉴 구성이 바뀌면 올린다 (같은 앱 버전이라도 예전 메뉴로 모은 목록을 쓰지 않게).
-            return "v" + getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode() + "-k10";
+            return "v" + getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode() + "-k11";
         } catch (PackageManager.NameNotFoundException e) {
             return "v?";
         }
@@ -1117,7 +1118,7 @@ public final class SettingsActivity extends Activity {
         fillOverview(box);
     }
 
-    /** 키보드 사용자화의 기본 목록을 box에 만든다 (가로 모드). */
+    /** 키보드 사용자화의 기본 목록을 box에 만든다 (가로 모드, 폴더블 내부 화면 별도 키보드). */
     private void fillOverview(LinearLayout box) {
         LinearLayout saved = list;
         list = box;
@@ -1128,10 +1129,21 @@ public final class SettingsActivity extends Activity {
             LinearLayout landscape = section("가로 모드");
             landscape.addView(button("가로 모드 키보드 사용자화", v -> openSection(LANDSCAPE_AREA)));
             landscape.addView(note("화면을 가로로 돌렸을 때의 자판 모양을 따로 정합니다."));
+            addLargeLayoutSection();
             if (!harvesting) list.addView(editorResetButton());
         } finally {
             list = saved;
         }
+    }
+
+    /** 키보드 사용자화 목록의 '폴더블 내부 화면 별도 키보드' 섹션: 켜면 폴더블 내부 화면 키보드 사용자화로 가는 버튼이 보인다. */
+    private void addLargeLayoutSection() {
+        LinearLayout large = section("폴더블 내부 화면 별도 키보드");
+        View largeGroup = subGroup(button("폴더블 내부 화면 키보드 사용자화", v -> openSection(LARGE_AREA)));
+        large.addView(toggle("폴더블 내부 화면 별도 키보드",
+                "폴더블 기기의 내부 화면에서 키보드의 모양을 따로 정합니다.",
+                Prefs.LARGE_LAYOUT, prefs.largeLayout(), largeGroup));
+        large.addView(largeGroup);
     }
 
     /**
@@ -2097,18 +2109,6 @@ public final class SettingsActivity extends Activity {
                 + "값이 클수록 위·아래 판정이 엄격해져 좌우로 밀 때 손가락이 처져도 좌우로 인식됩니다. "
                 + "기본값은 아래 150%, 위 120%입니다."));
 
-        LinearLayout large = section("폴더블 내부 화면 별도 키보드");
-        View largeGroup = subGroup(
-                slider("폴더블 내부 화면 판정 기준", Prefs.LARGE_SCREEN_DP, prefs.largeScreenDp(),
-                        Prefs.LARGE_SCREEN_DP_MIN, Prefs.LARGE_SCREEN_DP_MAX, 20, "dp"),
-                note("화면의 짧은 쪽 폭이 이 값(dp) 이상이면 폴더블 내부 화면으로 봅니다. 보통 휴대폰은 360~480dp, "
-                        + "폴더블 기기의 내부 화면은 600dp 이상입니다."),
-                button("폴더블 내부 화면 키보드 사용자화", v -> openSection(LARGE_AREA)));
-        large.addView(toggle("폴더블 내부 화면 별도 키보드",
-                "폴더블 기기의 내부 화면에서 키보드의 모양을 따로 정합니다.",
-                Prefs.LARGE_LAYOUT, prefs.largeLayout(), largeGroup));
-        large.addView(largeGroup);
-
         addCjkKeyboard(com.alternative_studios.newswipe.cjk.CjkComposer.JA);
         addCjkKeyboard(com.alternative_studios.newswipe.cjk.CjkComposer.ZH);
         addHardwareKeyboard();
@@ -2324,7 +2324,7 @@ public final class SettingsActivity extends Activity {
     /**
      * 폴더블 내부 화면 키보드 사용자화: 지금 화면 방향(폴더블 내부 화면 세로·가로)의 설정을 보여 준다. 기기를 돌리면 다른 방향의 설정이 보인다.
      * 분리 키보드 켜기와 자·모음 분리 배열은 세로·가로가 함께 쓴다. 영역 설정은 아래 미리보기에서 영역을 눌러 연다.
-     * 폴더블 내부 화면이 아니면 안내 문구만 둔다.
+     * 폴더블 내부 화면이 아니면 안내 문구와 폴더블 내부 화면 판정 기준만 둔다.
      */
     private void buildLargeArea() {
         if (harvesting) {
@@ -2334,12 +2334,14 @@ public final class SettingsActivity extends Activity {
                 addOneHandWidth(p, "폴더블 내부 화면에서");
                 harvestProfileAreas(p);
             }
+            addLargeScreenThreshold();
             return;
         }
         String profile = largeProfileNow();
         if (profile == null) {
             LinearLayout c = card();
             c.addView(note("이 설정은 폴더블 내부 화면에서만 보입니다. 폴더블 내부 화면으로 전환하거나 폴더블 내부 화면 판정 기준을 조절하세요."));
+            addLargeScreenThreshold();
             return;
         }
         boolean land = Prefs.PROFILE_LARGE_LANDSCAPE.equals(profile);
@@ -2353,6 +2355,27 @@ public final class SettingsActivity extends Activity {
         addProfileSplit(profile, "폴더블 내부 화면");
         // 키 글자 크기와 여백은 미리보기의 키보드 전체 설정 창에 있다.
         addOneHandWidth(profile, when);
+        addLargeScreenThreshold();
+    }
+
+    /**
+     * '폴더블 내부 화면 판정 기준' 섹션. 슬라이더에서 손을 뗐을 때 이 화면이 폴더블 내부 화면인지(또는 그 방향이) 바뀌었으면
+     * 화면을 다시 만들어 안내 문구 ↔ 설정을 바꿔 보여 준다.
+     */
+    private void addLargeScreenThreshold() {
+        LinearLayout box = section("폴더블 내부 화면 판정 기준");
+        SettingsWidgets.Slider sl = sliderRow("폴더블 내부 화면 판정 기준", Prefs.LARGE_SCREEN_DP, prefs.largeScreenDp(),
+                Prefs.LARGE_SCREEN_DP_MIN, Prefs.LARGE_SCREEN_DP_MAX, 20, "dp", null);
+        if (!harvesting) {
+            String builtFor = largeProfileNow();
+            sl.onRelease(() -> {
+                if (!java.util.Objects.equals(builtFor, largeProfileNow())) recreate();
+            });
+        }
+        box.addView(sl.view);
+        box.addView(note("화면의 짧은 쪽 폭이 이 값(dp) 이상이면 폴더블 내부 화면으로 봅니다. 보통 휴대폰은 360~480dp, "
+                + "폴더블 기기의 내부 화면은 600dp 이상입니다. 지금 화면의 짧은 쪽 폭은 "
+                + getResources().getConfiguration().smallestScreenWidthDp + "dp입니다."));
     }
 
     /**
