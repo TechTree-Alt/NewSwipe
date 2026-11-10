@@ -1154,12 +1154,16 @@ public final class SettingsActivity extends Activity {
         int w = box.getWidth(), h = box.getHeight();
         if (w == 0 || h == 0) return;
         lastFlashed = box;
-        int dx = Ui.dp(this, 10), dy = Ui.dp(this, 2);
+        // 줄(바탕 없음)은 글자가 가장자리에 붙지 않게 좌우로 넓게 칠한다. 버튼처럼 둥근 바탕이 있는 항목은
+        // 그 모양을 사방으로 똑같이 조금 키운 모양으로 칠한다 (모서리도 바탕의 둥글기에 넓힌 만큼 더해 나란하게).
+        float shapeRadius = shapeRadius(box.getBackground());
+        boolean shaped = shapeRadius >= 0;
+        int dx = Ui.dp(this, shaped ? 4 : 10), dy = Ui.dp(this, shaped ? 4 : 2);
         final View host = box.getParent() instanceof ViewGroup ? (View) box.getParent() : box;
         android.graphics.Rect bounds = host == box
                 ? new android.graphics.Rect(-dx, -dy, w + dx, h + dy)
                 : new android.graphics.Rect(box.getLeft() - dx, box.getTop() - dy, box.getRight() + dx, box.getBottom() + dy);
-        android.graphics.drawable.GradientDrawable d = Ui.round(accentColor, Ui.dp(this, 12));
+        android.graphics.drawable.GradientDrawable d = Ui.round(accentColor, shaped ? shapeRadius + dx : Ui.dp(this, 12));
         d.setBounds(bounds);
         d.setAlpha(0);
         host.getOverlay().add(d);
@@ -1191,6 +1195,26 @@ public final class SettingsActivity extends Activity {
             }
         });
         pulse.start();
+    }
+
+    /**
+     * 칸의 바탕이 눈에 보이는 둥근 모양이면 그 모서리 반지름(px), 아니면 -1.
+     * 누를 때만 보이는 물결(ripple)의 가림판은 모양으로 치지 않는다.
+     */
+    private static float shapeRadius(android.graphics.drawable.Drawable bg) {
+        if (bg instanceof android.graphics.drawable.RippleDrawable) {
+            android.graphics.drawable.RippleDrawable r = (android.graphics.drawable.RippleDrawable) bg;
+            for (int i = 0; i < r.getNumberOfLayers(); i++) {
+                if (r.getId(i) == android.R.id.mask) continue;
+                float radius = shapeRadius(r.getDrawable(i));
+                if (radius >= 0) return radius;
+            }
+            return -1;
+        }
+        if (bg instanceof android.graphics.drawable.GradientDrawable) {
+            return Math.max(0, ((android.graphics.drawable.GradientDrawable) bg).getCornerRadius());
+        }
+        return -1;
     }
 
     /** label에서 위로 올라가며 만나는 접힌(GONE) 칸 중 가장 바깥의 것. 접힌 칸이 없으면 null. */
