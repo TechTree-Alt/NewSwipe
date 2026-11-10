@@ -45,6 +45,11 @@ final class SettingsWidgets {
             this.unit = unit;
         }
 
+        /** 사용자가 슬라이더에서 손을 뗄 때마다 부를 작업 (끄는 동안에는 부르지 않는다). */
+        void onRelease(Runnable r) {
+            bar.setOnClickListener(v -> r.run());
+        }
+
         /** 사용자 입력 없이 값을 보여 준다 (콜백은 부르지 않는다). */
         void set(int v) {
             int c = Math.max(min, Math.min(max, v));

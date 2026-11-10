@@ -118,9 +118,9 @@ public final class Prefs {
     public static final String PORTRAIT_SPLIT = "portrait_split";
     private static final String PORTRAIT_PREFIX = "portrait_";
     public static final String LANDSCAPE_SIZE = "landscape_size";                  // 가로 모드 분리 키보드: 키보드 높이·글자 크기를 따로 정하기
-    /** 실험실 '폴더블 내부 화면 별도 키보드': 폴더블 내부 화면(폴더블 내부 화면 등)에서는 가로·세로 키보드를 따로 정한 값으로 쓴다. */
+    /** 키보드 사용자화 '폴더블 내부 화면 별도 키보드': 폴더블 내부 화면에서는 가로·세로 키보드를 따로 정한 값으로 쓴다. */
     public static final String LARGE_LAYOUT = "large_layout";
-    /** 폴더블 내부 화면 판정 기준: 화면의 짧은 쪽 폭(dp)이 이 값 이상이면 폴더블 내부 화면. 400~1000. */
+    /** 폴더블 내부 화면 판정 기준 (폴더블 내부 화면 키보드 사용자화): 화면의 짧은 쪽 폭(dp)이 이 값 이상이면 폴더블 내부 화면. 400~1000. */
     public static final String LARGE_SCREEN_DP = "large_screen_dp";
     public static final int LARGE_SCREEN_DP_DEFAULT = 600, LARGE_SCREEN_DP_MIN = 400, LARGE_SCREEN_DP_MAX = 1000;
     /** 폴더블 내부 화면 키보드의 값은 모두 이 말로 시작한다 (예: large_split_port_danmoeum7, large_balanced_vowel_width_land_danmoeum7). */
@@ -434,9 +434,9 @@ public final class Prefs {
                 SELECTION_CHIPS, EMOJI_SIZE, EMOJI_SUGGEST));
         MENU_KEYS.put("words", keys(SHORTCUTS_ENABLED, SUGGEST_WORDS, SUGGEST_FULL_BAR, SUGGEST_SPACE, PREDICT_NEXT, AUTO_CORRECT, LEARN_WORDS,
                 CONFIRM_LEARNED_DELETE, AUTOFILL_INLINE));
-        // 실험실: 폴더블 내부 화면 별도 키보드과 폴더블 내부 화면 키보드 사용자화의 값은 모두 large_로 시작한다.
+        // 실험실: 폴더블 내부 화면 별도 키보드(large_)는 키보드 사용자화로, 판정 기준은 폴더블 내부 화면 키보드 사용자화로 옮겼다.
         MENU_KEYS.put("lab", keys(SWIPE_DOWN_RATIO, SWIPE_UP_RATIO));
-        MENU_PREFIXES.put("lab", keys(LARGE_PREFIX, HW_PREFIX, CJK_PREFIX));
+        MENU_PREFIXES.put("lab", keys(HW_PREFIX, CJK_PREFIX));
         MENU_KEYS.put("onehand", keys(ONE_HAND_WIDTH, ONE_HAND_WIDTH_LAND, ONE_HAND_HEIGHT, ONE_HAND_LIFT));
     }
 
@@ -509,6 +509,8 @@ public final class Prefs {
                     keys(AREA_PAD_PREFIX + PAD_AREAS[3] + "_")),
             new EditorScope(SCOPE_MIDDLE, "가운데 공간 (분리 키보드)", keys(PORTRAIT_PREFIX + SPLIT_GAP_CURSOR,
                     PORTRAIT_PREFIX + SPLIT_GAP_SPEED), keys("swipe_gap_portrait_")),
+            // 목록의 '폴더블 내부 화면 별도 키보드' 스위치 (폴더블 내부 화면의 값은 아래 landscape 범위에 있다).
+            new EditorScope("large", "폴더블 내부 화면 별도 키보드", keys(LARGE_LAYOUT), NONE),
             new EditorScope("keys", "키마다 정한 설정 (길게 누르기·밀기·키 창의 누르기 항목)", keys(NUMBER_PAD_SYMBOLS,
                     DOUBLE_SPACE_PERIOD, SPACE_HIT_SHRINK, SPACE_HIT_SHRINK_PCT, SPACE_LANG_LABEL, SPACE_CURSOR_SPEED_H,
                     SPACE_CURSOR_SPEED_V, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, DELETE_REPEAT_RATE, DELETE_WORD_REPEAT_RATE,
