@@ -1906,14 +1906,15 @@ public class EditorUiTest {
         ScrollView sc = cur(a);
         java.util.List<String> ls = lines(sc);
         int land = ls.indexOf("가로 모드"), landBtn = ls.indexOf("가로 모드 키보드 사용자화"),
-                large = ls.indexOf("폴더블 내부 화면 별도 키보드"), reset = ls.lastIndexOf("기본값으로 되돌리기");
+                large = ls.indexOf("폴더블 설정"), reset = ls.lastIndexOf("기본값으로 되돌리기");
         assertTrue(ls.toString(), land >= 0 && land < landBtn && landBtn < large && large < reset);
-        assertEquals("섹션 제목과 스위치", 2, allTexts(sc, "폴더블 내부 화면 별도 키보드").size());
+        assertEquals("섹션 제목", 1, allTexts(sc, "폴더블 설정").size());
+        assertEquals("스위치", 1, allTexts(sc, "폴더블 내부 화면 별도 키보드").size());
         assertFalse(ls.contains("폴더블 내부 화면 판정 기준"));
         assertNull("꺼져 있으면 사용자화 버튼은 접혀 있다", findText(sc, "폴더블 내부 화면 키보드 사용자화"));
 
         // 스위치를 켜면 버튼이 보이고, 누르면 폴더블 내부 화면 키보드 사용자화를 연다.
-        clickableOf(allTexts(sc, "폴더블 내부 화면 별도 키보드").get(1)).performClick();
+        clickableOf(allTexts(sc, "폴더블 내부 화면 별도 키보드").get(0)).performClick();
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
         assertTrue(pre.largeLayout());
         View open = findText(cur(a), "폴더블 내부 화면 키보드 사용자화");
@@ -1947,6 +1948,7 @@ public class EditorUiTest {
                 reset = ls.lastIndexOf("기본값으로 되돌리기");
         assertTrue(ls.toString(), oneHand >= 0 && oneHand < threshold && threshold < reset);
         assertFalse(ls.contains("이 설정은 폴더블 내부 화면에서만 보입니다. 폴더블 내부 화면으로 전환하거나 폴더블 내부 화면 판정 기준을 조절하세요."));
+        assertTrue(ls.toString(), ls.stream().anyMatch(l -> l.startsWith("폴더블 내부 화면을 ") && !l.contains("좌·우 균형 배열") && !l.contains("자·모음 분리 배열")));
         assertTrue(ls.contains("640dp"));
         // 이 화면의 기본값으로 되돌리기는 판정 기준도 기본값으로 되돌린다.
         clickableOf(findText(cur(a), "기본값으로 되돌리기")).performClick();

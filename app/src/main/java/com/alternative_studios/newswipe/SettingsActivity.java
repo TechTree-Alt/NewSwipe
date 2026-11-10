@@ -458,6 +458,7 @@ public final class SettingsActivity extends Activity {
             {"lab", "아래로 밀기 엄격도", "스와이프 방향 판정 민감도"},
             {"lab", "위로 밀기 엄격도", "스와이프 방향 판정 민감도"},
             {LARGE_AREA, "폴더블 내부 화면 판정 기준", "대화면 폴더블 큰 화면 태블릿 dp 짧은 쪽 폭"},
+            {KEYBOARD, "폴더블 설정", "폴더블 내부 화면 대화면 큰 화면 태블릿"},
             {KEYBOARD, "폴더블 내부 화면 키보드 사용자화", "대화면 폴더블 큰 화면 태블릿"},
             {KEYBOARD, "폴더블 내부 화면 별도 키보드", "대화면 레이아웃 폴더블 큰 화면 태블릿"},
             {"lab", "한·영 전환 키 바꾸기", "한영 한/영 전환 언어 전환 키 외장 키보드 블루투스 USB 물리 하드웨어"},
@@ -791,7 +792,7 @@ public final class SettingsActivity extends Activity {
     private String searchCacheStamp() {
         try {
             // 뒤의 꼬리표는 메뉴 구성이 바뀌면 올린다 (같은 앱 버전이라도 예전 메뉴로 모은 목록을 쓰지 않게).
-            return "v" + getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode() + "-k11";
+            return "v" + getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode() + "-k12";
         } catch (PackageManager.NameNotFoundException e) {
             return "v?";
         }
@@ -1138,7 +1139,7 @@ public final class SettingsActivity extends Activity {
 
     /** 키보드 사용자화 목록의 '폴더블 내부 화면 별도 키보드' 섹션: 켜면 폴더블 내부 화면 키보드 사용자화로 가는 버튼이 보인다. */
     private void addLargeLayoutSection() {
-        LinearLayout large = section("폴더블 내부 화면 별도 키보드");
+        LinearLayout large = section("폴더블 설정");
         View largeGroup = subGroup(button("폴더블 내부 화면 키보드 사용자화", v -> openSection(LARGE_AREA)));
         large.addView(toggle("폴더블 내부 화면 별도 키보드",
                 "폴더블 기기의 내부 화면에서 키보드의 모양을 따로 정합니다.",
@@ -2350,7 +2351,7 @@ public final class SettingsActivity extends Activity {
         String now = land ? "가로" : "세로", other = land ? "세로" : "가로";
         LinearLayout intro = card();
         intro.addView(note("폴더블 내부 화면을 " + now + "로 들었을 때 키보드 모양을 정합니다. " + other + "일 때의 설정은 기기를 " + other + "로 돌리면 보입니다.\n"
-                + "분리 키보드 사용 유무, " + (prefs.koreanD7() ? "좌·우 균형 배열" : "자·모음 분리 배열") + " 사용 유무는 세로와 가로가 공유하지만, 나머지 설정은 세로·가로가 각각 별도로 설정할 수 있습니다.\n"
+                + "분리 키보드 사용 유무는 세로와 가로가 공유하지만, 나머지 설정은 세로·가로가 각각 별도로 설정할 수 있습니다.\n"
                 + "여기에서 설정이 불가능한 항목은 '키보드 사용자화'의 설정과 공유합니다."));
         addProfileSplit(profile, "폴더블 내부 화면");
         // 키 글자 크기와 여백은 미리보기의 키보드 전체 설정 창에 있다.
