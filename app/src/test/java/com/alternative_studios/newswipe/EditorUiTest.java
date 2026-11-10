@@ -2131,11 +2131,24 @@ public class EditorUiTest {
                 .putExtra("section", "landscapearea")
                 .putExtra("target", where.get("스페이스바 잇기"))
                 .putExtra("highlight", "스페이스바 잇기");
+        // 분리 키보드를 꺼 두면 '스페이스바 잇기'는 창에 없다: 창을 닫고 그것을 켜는 분리 키보드 스위치를 깜빡인다.
+        EditorUndo.clearAll();
+        SettingsActivity off = Robolectric.buildActivity(SettingsActivity.class, i).setup().get();
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(2000));
+        assertFalse(sheetOf(off).isOpen());
+        assertNotNull(off.lastFlashed);
+        assertTrue(visibleTexts(off.lastFlashed).contains("가로 모드 분리 키보드"));
+        off.finish(); idle();
+        // 분리 키보드를 켜면 창이 열린 채 그 항목을 깜빡인다.
+        Prefs p = new Prefs(RuntimeEnvironment.getApplication());
+        p.raw().edit().putBoolean(p.profileEditView(Prefs.PROFILE_LANDSCAPE).splitKey(), true).commit();
         EditorUndo.clearAll();
         SettingsActivity a = Robolectric.buildActivity(SettingsActivity.class, i).setup().get();
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(1200));
         assertTrue(sheetOf(a).isOpen());
         assertTrue(visibleTexts(sheetOf(a).body()).contains("기능키 높이"));
+        assertNotNull(a.lastFlashed);
+        assertTrue(visibleTexts(a.lastFlashed).contains("스페이스바 잇기"));
         a.onBackPressed(); idle();
         java.lang.reflect.Method ot = SettingsActivity.class.getDeclaredMethod("openProfileTarget", String.class, String.class);
         ot.setAccessible(true);

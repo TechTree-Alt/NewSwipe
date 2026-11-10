@@ -83,7 +83,7 @@ public class SearchHighlightTest {
     @SuppressWarnings("unchecked")
     @Test
     public void everySearchResultFlashesWholeItem() throws Exception {
-        SettingsActivity main = EditorUiTest.launch(null);
+        SettingsActivity main = EditorUiTest.launch("app");   // 검색 목록을 모으고 결과를 여는 데만 쓴다
         call(main, "ensureSearchIndex", new Class<?>[0]);
         for (int i = 0; i < 200 && field(main, "searchEntries") == null; i++) EditorUiTest.idle();
         List<String[]> entries = (List<String[]>) field(main, "searchEntries");
@@ -121,7 +121,9 @@ public class SearchHighlightTest {
             List<TextView> inBox = new ArrayList<>();
             labels(box, inBox);
             String kind = box.getClass().getSimpleName() + " " + box.getWidth() + "x" + box.getHeight();
-            if (box instanceof TextView && box.getParent() instanceof ViewGroup
+            // 소제목은 글자 한 줄이 곧 항목이다 (화면 폭 전체에 걸친 글자).
+            boolean heading = box instanceof TextView && !isLabel((TextView) box);
+            if (!heading && box instanceof TextView && box.getParent() instanceof ViewGroup
                     && ((ViewGroup) box.getParent()).getChildCount() > 1) {
                 problems.add(id + " | " + label + " | 이름 글자만 깜빡였다 (" + kind + ")");
             } else if (target != null && contains(box, target) && inBox.size() > 2) {
@@ -133,7 +135,14 @@ public class SearchHighlightTest {
                 shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(450));
                 android.graphics.Bitmap b = android.graphics.Bitmap.createBitmap(root.getWidth(), root.getHeight(),
                         android.graphics.Bitmap.Config.ARGB_8888);
-                root.draw(new android.graphics.Canvas(b));
+                android.graphics.Canvas cv = new android.graphics.Canvas(b);
+                root.draw(cv);
+                // 시험 환경에서는 애니메이션이 곧바로 끝나므로 깜빡인 칸의 자리를 직접 칠해 보인다.
+                int[] at = new int[2];
+                box.getLocationInWindow(at);
+                android.graphics.Paint paint = new android.graphics.Paint();
+                paint.setColor(0x66FF8800);
+                cv.drawRect(at[0], at[1], at[0] + box.getWidth(), at[1] + box.getHeight(), paint);
                 EditorUiTest.save(b, String.format("%03d", checked) + "-" + label.replaceAll("[^0-9A-Za-z가-힣]+", "_"));
                 System.out.println(String.format("%03d", checked) + " " + id + " | " + label + " -> " + kind
                         + (target != null && contains(box, target) ? "" : " (접힌 항목 → 위 설정)"));
