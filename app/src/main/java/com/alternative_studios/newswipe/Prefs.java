@@ -1601,11 +1601,31 @@ public final class Prefs {
         return cjkEnabled(id);
     }
 
-    /** 켠 언어가 하나뿐인지. 그러면 지구본 키 자리에는 (기호 자판처럼) 이모지 키가 놓인다. */
+    /** 켠 언어가 하나뿐인지. */
     public boolean singleLanguage() {
         int n = 0;
         for (String id : LANGUAGES) if (languageOn(id)) n++;
         return n <= 1;
+    }
+
+    /**
+     * 첫 시작 가이드에서 입력 언어를 고른 뒤 맨 아래 줄 기능키의 기본값을 맞춘다. 언어가 하나뿐이면 지구본 키 대신
+     * 그 자리에 이모지 키를 놓고, 둘 이상이면 처음 기본값(지구본 키)으로 둔다. 가이드에서만 부른다 (사용자가 바꾼 값을 덮으므로).
+     */
+    public void applyLanguageKeyDefault() {
+        SharedPreferences.Editor e = sp.edit();
+        if (singleLanguage()) {
+            String[] order = com.alternative_studios.newswipe.keyboard.BottomKeys.DEFAULT_ORDER.clone();
+            int globe = java.util.Arrays.asList(order).indexOf(com.alternative_studios.newswipe.keyboard.BottomKeys.GLOBE);
+            int emoji = java.util.Arrays.asList(order).indexOf(com.alternative_studios.newswipe.keyboard.BottomKeys.EMOJI);
+            order[globe] = com.alternative_studios.newswipe.keyboard.BottomKeys.EMOJI;
+            order[emoji] = com.alternative_studios.newswipe.keyboard.BottomKeys.GLOBE;
+            e.putString(BOTTOM_KEY_ORDER, com.alternative_studios.newswipe.keyboard.BottomKeys.join(order))
+                    .putBoolean(LANGUAGE_KEY_HIDDEN, true).putBoolean(BOTTOM_EMOJI_KEY, true);
+        } else {
+            e.remove(BOTTOM_KEY_ORDER).remove(LANGUAGE_KEY_HIDDEN).remove(BOTTOM_EMOJI_KEY);
+        }
+        e.apply();
     }
 
     public String language() {

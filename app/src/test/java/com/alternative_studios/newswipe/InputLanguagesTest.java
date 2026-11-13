@@ -71,6 +71,30 @@ public class InputLanguagesTest {
     }
 
     @Test
+    public void singleLanguageSetupPutsTheEmojiKeyWhereTheGlobeWas() throws Exception {
+        LegacySwipeSettingsTest.MapSp sp = new LegacySwipeSettingsTest.MapSp();
+        Constructor<Prefs> c = Prefs.class.getDeclaredConstructor(SharedPreferences.class, boolean.class, String.class,
+                boolean.class);
+        c.setAccessible(true);
+        Prefs p = c.newInstance(sp, false, Prefs.PROFILE_PORTRAIT, false);
+        p.setInputLanguages(false, true);
+        p.applyLanguageKeyDefault();
+        String[] order = p.bottomKeyOrder();
+        java.util.List<String> o = java.util.Arrays.asList(order);
+        assertEquals(o.indexOf(com.alternative_studios.newswipe.keyboard.BottomKeys.EMOJI),
+                java.util.Arrays.asList(com.alternative_studios.newswipe.keyboard.BottomKeys.DEFAULT_ORDER)
+                        .indexOf(com.alternative_studios.newswipe.keyboard.BottomKeys.GLOBE));
+        assertFalse(p.bottomKeyShown(com.alternative_studios.newswipe.keyboard.BottomKeys.GLOBE));
+        assertTrue(p.bottomKeyShown(com.alternative_studios.newswipe.keyboard.BottomKeys.EMOJI));
+        // 다시 두 언어를 고르면 처음 기본값으로
+        p.setInputLanguages(true, true);
+        p.applyLanguageKeyDefault();
+        assertTrue(p.bottomKeyShown(com.alternative_studios.newswipe.keyboard.BottomKeys.GLOBE));
+        assertFalse(p.bottomKeyShown(com.alternative_studios.newswipe.keyboard.BottomKeys.EMOJI));
+        assertEquals(java.util.Arrays.asList(com.alternative_studios.newswipe.keyboard.BottomKeys.DEFAULT_ORDER), java.util.Arrays.asList(p.bottomKeyOrder()));
+    }
+
+    @Test
     public void everyGuideHasAnEnglishVersion() {
         // 영어 화면은 assets/guide/en/의 같은 이름 파일을 연다 (SettingsActivity.buildGuide).
         java.io.File dir = new java.io.File("src/main/assets/guide");

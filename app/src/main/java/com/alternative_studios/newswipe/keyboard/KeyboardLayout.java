@@ -1122,11 +1122,7 @@ public final class KeyboardLayout {
                     k = slotChar(",", prefs, popupFor(prefs, true, ",", COMMA_POPUP), narrowW);
                     break;
                 case BottomKeys.GLOBE:
-                    // 켠 언어가 하나뿐이면 바꿀 언어가 없으니, 글자 자판에서도 기호 자판처럼 이 자리에 이모지 키를 둔다
-                    // (맨 아래 줄에 이모지 키를 따로 더해 두었으면 같은 키가 둘이 되지 않게 이 자리는 비운다).
-                    boolean single = prefs != null && prefs.singleLanguage();
-                    if (single && !emojiKey && prefs.bottomKeyShown(BottomKeys.EMOJI)) continue;
-                    k = fn(emojiKey || single ? Key.EMOJI : Key.LANGUAGE, "", narrowW);
+                    k = fn(emojiKey ? Key.EMOJI : Key.LANGUAGE, "", narrowW);
                     break;
                 case BottomKeys.PERIOD:
                     k = slotChar(".", prefs, popupFor(prefs, true, ".", periodPopup(periodComma)), narrowW);

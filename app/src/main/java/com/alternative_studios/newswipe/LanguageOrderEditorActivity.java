@@ -120,10 +120,6 @@ public final class LanguageOrderEditorActivity extends Activity {
         list.addView(langs, llp);
         for (String id : prefs.languageOrder()) if (available(id)) langs.addView(langRow(id));
 
-        TextView single = text(L.t("언어를 하나만 켜면 🌐︎ 자리에 이모지 키가 놓입니다.",
-                "With only one language on, the 🌐︎ key becomes an emoji key."), 13, hintColor);
-        single.setPadding(Ui.dp(this, 4), Ui.dp(this, 10), 0, 0);
-        list.addView(single);
         if (!available("ja") || !available("zh")) {
             TextView more = text(L.t("일본어·중국어는 설정 › 실험실에서 사전 팩을 가져와 켜면 여기에 나타납니다.", "Japanese and Chinese appear here after you import a dictionary pack and turn them on in Settings › Labs."), 13, hintColor);
             more.setPadding(Ui.dp(this, 4), Ui.dp(this, 10), 0, 0);

@@ -395,7 +395,11 @@ public final class OnboardingActivity extends Activity {
         root.addView(new View(this), new LinearLayout.LayoutParams(1, 0, 1f));
 
         ExpressiveButton next = new ExpressiveButton(this, L.t("다음으로", "Next"), colors.accent, colors.onAccent);
-        next.setOnClickListener(v -> goTo(nextPage(PAGE_LANGUAGE)));
+        next.setOnClickListener(v -> {
+            // 언어가 하나뿐이면 바꿀 언어가 없으니 기능키의 지구본 자리에 이모지 키를 놓는다 (기능키 사용자화에서 되돌릴 수 있다).
+            prefs.applyLanguageKeyDefault();
+            goTo(nextPage(PAGE_LANGUAGE));
+        });
         root.addView(next, bottomButton());
         return wrapScroll(root);
     }
