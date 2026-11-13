@@ -121,7 +121,29 @@ public final class LanguageOrderEditorActivity extends Activity {
         for (String id : prefs.languageOrder()) if (available(id)) langs.addView(langRow(id));
 
         if (!available("ja") || !available("zh")) {
-            TextView more = text(L.t("일본어·중국어는 설정 › 실험실에서 사전 팩을 가져와 켜면 여기에 나타납니다.", "Japanese and Chinese appear here after you import a dictionary pack and turn them on in Settings › Labs."), 13, hintColor);
+            // '실험실'은 강조색 링크: 누르면 설정의 실험실 화면이 열린다.
+            String link = L.t("실험실", "Labs");
+            String msg = L.t("일본어·중국어는 설정 › " + link + "에서 사전 팩을 가져와 켜면 여기에 나타납니다.",
+                    "Japanese and Chinese appear here after you import a dictionary pack and turn them on in Settings › " + link + ".");
+            android.text.SpannableString span = new android.text.SpannableString(msg);
+            int at = msg.lastIndexOf(link);
+            span.setSpan(new android.text.style.ClickableSpan() {
+                @Override
+                public void onClick(View widget) {
+                    startActivity(new android.content.Intent(LanguageOrderEditorActivity.this, SettingsActivity.class)
+                            .putExtra(SettingsActivity.EXTRA_SECTION, "lab"));
+                }
+
+                @Override
+                public void updateDrawState(android.text.TextPaint ds) {
+                    ds.setColor(accentColor);
+                    ds.setUnderlineText(false);
+                }
+            }, at, at + link.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            TextView more = text("", 13, hintColor);
+            more.setText(span);
+            more.setMovementMethod(android.text.method.LinkMovementMethod.getInstance());
+            more.setHighlightColor(android.graphics.Color.TRANSPARENT);
             more.setPadding(Ui.dp(this, 4), Ui.dp(this, 10), 0, 0);
             list.addView(more);
         }
@@ -237,8 +259,13 @@ public final class LanguageOrderEditorActivity extends Activity {
             case android.view.MotionEvent.ACTION_MOVE: {
                 if (dragging != row) return false;
                 float dy = ev.getRawY() - dragDownY;
-                float minDy = dragRows.get(0).getTop() - row.getTop();
-                float maxDy = dragRows.get(dragRows.size() - 1).getBottom() - row.getBottom();
+                // 끌고 있는 줄의 가운데가 맨 위 줄의 가운데 조금 위부터 맨 아래 줄의 가운데 조금 아래까지 움직이게 한다.
+                // 줄의 위아래 끝으로 막으면 줄의 가운데가 맨 아래 줄의 가운데를 넘지 못해(같거나 낮은 높이일 때)
+                // 맨 아래 항목 아래로 옮길 수 없었다.
+                View first = dragRows.get(0), last = dragRows.get(dragRows.size() - 1);
+                float rowCenter = row.getTop() + row.getHeight() / 2f;
+                float minDy = first.getTop() + first.getHeight() / 2f - 1 - rowCenter;
+                float maxDy = last.getTop() + last.getHeight() / 2f + 1 - rowCenter;
                 dy = Math.max(minDy, Math.min(maxDy, dy));
                 row.setTranslationY(dy);
                 float center = row.getTop() + dy + row.getHeight() / 2f;
