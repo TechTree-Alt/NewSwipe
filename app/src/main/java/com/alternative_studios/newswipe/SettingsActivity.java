@@ -4135,6 +4135,7 @@ public final class SettingsActivity extends Activity {
     private static final Object[][] HALL_OF_FAME_PEOPLE = {
             {"마로코기", R.drawable.hof_marokogi},
             {"ssonbin", R.drawable.hof_ssonbin},
+            {"청보라", R.drawable.hof_cheongbora},
     };
 
     private void buildHallOfFame() {
