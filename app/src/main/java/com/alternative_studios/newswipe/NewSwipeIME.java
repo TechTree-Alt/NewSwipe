@@ -304,6 +304,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             applyNavigationBarStyle();
             return;
         }
+        // 키보드가 내려가 있으면(설정 화면에서 슬라이더·손잡이를 끄는 중 등) 자판을 다시 만들지 않는다.
+        // 다시 올라올 때 onStartInputView가 applySettings()와 setLayoutKind()로 새 설정을 모두 반영한다.
+        // 외장 키보드를 쓰면 화면 자판 없이(onStartInputView 없이) 입력하므로 언어 전환 등에 쓰는 값을 예전처럼 바로 맞춘다.
+        if (windowHidden && !this.hwKeyboardConnected) return;
         applySettings();
         setLayoutKind(layoutKind);   // 숫자 줄·Shift 키·쉼표 키·길게 누르기 문자는 자판을 다시 만들어야 한다.
     };
@@ -1601,7 +1605,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     public InlineSuggestionsRequest onCreateInlineSuggestionsRequest(android.os.Bundle uiExtras) {
         if (autofill == null || !prefs.autofillInline()) return null;
         KeyboardTheme t = theme != null ? theme : KeyboardTheme.of(this);
-        int height = toolbarHeight > 0 ? toolbarHeight : toolbarHeightPx();
+        // 키보드가 내려가 있는 동안 바꾼 설정은 다시 올라올 때(onStartInputView) 반영되므로, 그보다 먼저 올 수 있는 이 요청은
+        // 도구 막대 높이를 설정에서 바로 구한다 (sizeToolbar와 같은 값).
+        int height = toolbarHeightPx();
         // 칩은 쪽으로 넘기며 보므로, 한 칩이 칩 줄(왼쪽 도구 버튼을 뺀 폭에서 쪽 넘김 버튼·고정 칩 자리를 뺀 폭)에
         // 들어갈 만큼만 키운다. 긴 글은 서비스가 줄여 보인다.
         int maxWidth = Math.max(Ui.dp(this, 96), Math.min(Ui.dp(this, 260), chipSlotWidth() - autofill.reservedWidth()));
