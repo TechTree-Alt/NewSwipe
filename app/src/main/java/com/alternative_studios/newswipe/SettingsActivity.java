@@ -4123,6 +4123,7 @@ public final class SettingsActivity extends Activity {
         about.addView(button(L.t("소스 코드", "Source code"), v -> openUrl(SOURCE_URL)));
         about.addView(button(L.t("문의", "Contact"), v -> openUrl(ISSUES_URL)));
         about.addView(hallOfFameButton());
+        about.addView(hallOfFameApplyNote(), matchWrap());
 
         LinearLayout app = section(L.t("앱 아이콘", "App icon"));
         app.addView(launcherToggle());
@@ -4154,6 +4155,37 @@ public final class SettingsActivity extends Activity {
         t.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
         return row;
     }
+
+    /** 명예의 전당 신청 안내. 강조색 '신청서'를 누르면 신청서(Google 설문지)를 연다. */
+    private TextView hallOfFameApplyNote() {
+        String link = L.t("신청서", "application form");
+        String text = L.t("Google Play에서 유료로 NewSwipe를 구매해 사전 테스트에 참여하신 분들은 명예의 전당에 이름을 올릴 수 있습니다. "
+                        + "원하시는 분은 " + link + "를 작성해 주세요.",
+                "If you bought NewSwipe on Google Play and joined the pre-release test, you can have your name in the hall of fame. "
+                        + "If you'd like that, please fill out the " + link + ".");
+        android.text.SpannableString span = new android.text.SpannableString(text);
+        int start = text.lastIndexOf(link);
+        span.setSpan(new android.text.style.ClickableSpan() {
+            @Override
+            public void onClick(View widget) {
+                openUrl(HALL_OF_FAME_FORM_URL);
+            }
+
+            @Override
+            public void updateDrawState(android.text.TextPaint ds) {
+                ds.setColor(accentColor);
+                ds.setUnderlineText(false);
+            }
+        }, start, start + link.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        TextView t = note("");
+        t.setText(span);
+        t.setMovementMethod(android.text.method.LinkMovementMethod.getInstance());
+        t.setHighlightColor(android.graphics.Color.TRANSPARENT);
+        return t;
+    }
+
+    private static final String HALL_OF_FAME_FORM_URL =
+            "https://docs.google.com/forms/d/e/1FAIpQLSdFzCqaJ6oLivN73Gq8uxO9o-aiGtW04OgdLpjfNYDBHVjg1g/viewform?usp=header";
 
     /** 사진과 닉네임을 싣지 않은 나머지 참여자 수. */
     private static final int HALL_OF_FAME_OTHERS = 37;
