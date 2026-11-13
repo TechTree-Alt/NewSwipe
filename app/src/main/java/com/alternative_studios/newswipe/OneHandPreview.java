@@ -387,11 +387,8 @@ final class OneHandPreview extends FrameLayout {
                             dragging = true;
                             dragStart = valueOf(active);
                             dragValue = dragStart;
-                            // 여기부터 잰다: 움직임 문턱을 넘는 동안의 거리만큼 값이 튀지 않게.
-                            downRawX = e.getRawX();
-                            downRawY = e.getRawY();
-                            dx = 0;
-                            dy = 0;
+                            // 처음 누른 곳부터 잰다: 손잡이가 손가락을 그대로 따라온다 (값은 5%·4dp 단위로 끊으므로
+                            // 움직임 문턱을 넘는 순간에 튀지 않는다).
                             performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
                             invalidate();
                         }
