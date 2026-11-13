@@ -2200,7 +2200,11 @@ public class EditorUiTest {
         assertEquals(Prefs.ONE_HAND_WIDTH_DEFAULT, prefs.oneHandWidth());
         assertFalse(lines(cur(a)).contains("85%"));
         float[] w = oneHandHandle(p, OneHandPreview.Handle.WIDTH);
-        assertEquals(p.getWidth() * 0.8f, w[0], 2f);
+        // 손잡이는 윤곽선(자판 가장자리에서 2dp 안) 안쪽으로 9dp 들어와 있다.
+        assertEquals(p.getWidth() * 0.8f - 11 * density, w[0], 2f);
+        float[] top = oneHandHandle(p, OneHandPreview.Handle.HEIGHT), bottom = oneHandHandle(p, OneHandPreview.Handle.LIFT);
+        assertEquals(top[0], bottom[0], 0.5f);
+        assertEquals((top[1] + bottom[1]) / 2f, w[1], 1f);
         drag(overlay, w[0], w[1], p.getWidth() * 0.05f, 0);
         assertEquals(85, prefs.oneHandWidth());
         assertTrue(lines(cur(a)).contains("85%"));

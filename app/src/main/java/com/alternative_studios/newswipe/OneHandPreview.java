@@ -185,25 +185,34 @@ final class OneHandPreview extends FrameLayout {
 
     // ---------------------------------------------------------------- 손잡이
 
-    /** 자판(도구 막대 + 키)의 테두리 (미리보기 좌표). */
-    private void columnBounds(RectF out) {
-        out.set(column.getLeft(), body.getTop() + column.getTop(), column.getRight(), body.getTop() + column.getBottom());
+    /**
+     * 손잡이가 붙는 윤곽선: 자판(키 부분)의 테두리를 조금 안으로 줄인 것 (미리보기 좌표). 세 손잡이가 모두 이 윤곽선의
+     * 변을 바꾼다 (오른쪽 = 자판 폭, 위 = 키 높이, 아래 = 세로 위치).
+     */
+    private void outlineBounds(RectF out) {
+        float top = body.getTop() + column.getTop() + keys.getTop();
+        out.set(column.getLeft(), top, column.getRight(), top + keys.getHeight());
+        float in = Ui.dp(getContext(), 2);
+        out.inset(in, in);
     }
 
-    /** 손잡이의 가운데 (미리보기 좌표). 아직 배치되지 않았으면 false. */
+    /**
+     * 손잡이의 가운데 (미리보기 좌표). 아직 배치되지 않았으면 false.
+     * 키보드 사용자화처럼 경계선 위가 아니라 윤곽선 안쪽으로 같은 간격을 두고 각 변의 가운데에 둔다.
+     */
     private boolean handleCenter(Handle h, float[] out) {
         if (column.getWidth() == 0) return false;
         RectF r = new RectF();
-        columnBounds(r);
-        float in = Ui.dp(getContext(), 6);   // 가장자리에서 조금 안쪽 (화면 끝에 붙은 아래 가장자리도 집을 수 있게)
+        outlineBounds(r);
+        float in = Ui.dp(getContext(), 9);
         switch (h) {
             case WIDTH:
-                out[0] = r.right;
-                out[1] = body.getTop() + column.getTop() + keys.getTop() + keys.getHeight() / 2f;
+                out[0] = r.right - in;
+                out[1] = r.centerY();
                 return true;
             case HEIGHT:
                 out[0] = r.centerX();
-                out[1] = body.getTop() + column.getTop() + keys.getTop() + in;
+                out[1] = r.top + in;
                 return true;
             default:   // LIFT
                 out[0] = r.centerX();
@@ -305,10 +314,8 @@ final class OneHandPreview extends FrameLayout {
         @Override
         protected void onDraw(Canvas c) {
             Context ctx = getContext();
-            // 자판의 테두리: 손잡이가 어느 가장자리를 바꾸는지 보이게.
-            columnBounds(tmp);
-            float in = Ui.dp(ctx, 2);
-            tmp.inset(in, in);
+            // 자판의 윤곽선: 손잡이가 어느 변을 바꾸는지 보이게.
+            outlineBounds(tmp);
             stroke.setStrokeWidth(Ui.dp(ctx, 1.5f));
             stroke.setColor(theme.accent);
             stroke.setAlpha(dragging ? 200 : 110);
@@ -332,9 +339,8 @@ final class OneHandPreview extends FrameLayout {
             if (dragging && active != null) {
                 String text = active.label + "  " + dragValue + active.unit;
                 float tw = label.measureText(text);
-                columnBounds(tmp);
-                float cx = tmp.centerX();
-                float cy = body.getTop() + column.getTop() + keys.getTop() + keys.getHeight() / 2f;
+                outlineBounds(tmp);
+                float cx = tmp.centerX(), cy = tmp.centerY();
                 float padH = Ui.dp(ctx, 14), padV = Ui.dp(ctx, 9);
                 Paint.FontMetrics fm = label.getFontMetrics();
                 float th = fm.descent - fm.ascent;
