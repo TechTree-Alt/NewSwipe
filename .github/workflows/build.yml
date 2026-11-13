@@ -16,8 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-      # AAB(Google Play용)는 main에서 수동으로 돌렸을 때만 만든다.
-      BUILD_AAB: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
+      # AAB(Google Play용)는 v* 태그로 릴리스할 때만 만든다.
+      BUILD_AAB: ${{ startsWith(github.ref, 'refs/tags/v') }}
     steps:
       - uses: actions/checkout@v7
 
@@ -71,7 +71,7 @@ jobs:
           name: NewSwipe-apk
           path: out/*.apk
 
-      # Google Play에 올리는 파일. GitHub 릴리스에는 붙이지 않는다. main 수동 빌드에서만 만든다.
+      # Google Play에 올리는 파일. GitHub 릴리스에는 붙이지 않는다. v* 태그 릴리스에서만 만든다.
       - uses: actions/upload-artifact@v7
         if: ${{ env.BUILD_AAB == 'true' }}
         with:
