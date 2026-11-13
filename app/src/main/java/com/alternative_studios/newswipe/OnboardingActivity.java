@@ -112,6 +112,12 @@ public final class OnboardingActivity extends Activity {
             prefs.raw().edit().putBoolean(Prefs.ONBOARDING_DONE, false).apply();
         }
 
+        if (!prefs.raw().contains(Prefs.INPUT_KO)) {
+            // 입력 언어를 처음 정하는 것이면 시스템 언어로 기본값을 정해 둔다 (입력 언어 화면을 그냥 넘겨도 그대로 쓰인다).
+            // 쪽 표시 점의 수가 이 값을 따르므로 화면을 만들기 전에 정한다.
+            saveLanguages(isKoreanSystem(), true);
+        }
+
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(colors.bg);
@@ -363,10 +369,6 @@ public final class OnboardingActivity extends Activity {
         root.addView(pageNote(L.t("키보드로 입력할 언어를 고르세요. 나중에 설정 › 입력 언어에서 바꿀 수 있습니다.",
                 "Choose the languages you'll type in. You can change this later in Settings › Input languages.")));
 
-        if (!prefs.raw().contains(Prefs.INPUT_KO)) {
-            // 처음 고르는 것이면 시스템 언어로 기본값을 정해 저장해 둔다 (이 화면을 그냥 넘겨도 그대로 쓰인다).
-            saveLanguages(isKoreanSystem(), true);
-        }
         koreanCard = new SwitchCard(L.t("한국어", "Korean"),
                 L.t("두벌식·단모음·NewSwipe 단모음 자판", "한국어 · Dubeolsik, Danmoeum and NewSwipe Danmoeum layouts"),
                 prefs.inputKorean(), on -> onLanguageToggled(true, on));
