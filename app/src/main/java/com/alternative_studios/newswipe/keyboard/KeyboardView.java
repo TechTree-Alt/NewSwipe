@@ -170,6 +170,8 @@ public final class KeyboardView extends View {
     private boolean showHints = true;
     /** 글자 키 힌트의 자리 (Prefs.HINT_POS_*: 왼쪽 위부터 시계 방향, 기본 오른쪽 위). */
     private int hintPosition = 2;
+    /** 영어 글자 키에 그리는 두벌식 자모 힌트의 자리 (Prefs.HINT_POS_*). -1이면 그리지 않는다. */
+    private int dubeolsikHintPosition = -1;
     /** 숫자 키(1~0)의 힌트만 숨긴다. */
     private boolean numberHintHidden;
     /** 키를 길게 눌러 문자를 입력하는 기능. 끄면 팝업도, 키 위의 작은 글자도 없다. */
@@ -463,6 +465,17 @@ public final class KeyboardView extends View {
         if (showHints != on || hintPosition != position) {
             showHints = on;
             hintPosition = position;
+            invalidate();
+        }
+    }
+
+    /**
+     * 영어 글자 키에 두벌식 자판에서 같은 자리의 자모(q → ㅂ, Shift면 ㅃ)를 작게 그릴 자리.
+     * @param position Prefs.HINT_POS_*. -1이면 그리지 않는다. 길게 눌러 입력할 문자 힌트와 같은 자리면 맞은편에 그린다.
+     */
+    public void setDubeolsikHint(int position) {
+        if (dubeolsikHintPosition != position) {
+            dubeolsikHintPosition = position;
             invalidate();
         }
     }
@@ -868,15 +881,37 @@ public final class KeyboardView extends View {
             text.setTypeface(Typeface.DEFAULT);
             text.setTextSize(spHint);
             text.getFontMetrics(fm);
-            int pos = isLetterKey(k) ? hintPosition : 2;
-            // 열은 왼쪽(0·6·7)·가운데(1·5)·오른쪽(2·3·4), 줄은 위(0·1·2)·가운데(3·7)·아래(4·5·6).
-            float x = pos == 0 || pos == 6 || pos == 7 ? r.left + dp(7) : pos == 1 || pos == 5 ? cx : r.right - dp(7);
-            float shift = cy - r.centerY();   // 글자를 위아래로 옮겨 그린 키(맨 아래 줄 등)는 힌트도 같이 옮긴다
-            float y = pos <= 2 ? r.top + shift - fm.ascent + dp(2)
-                    : pos >= 4 && pos <= 6 ? r.bottom + shift - fm.descent - dp(2)
-                    : cy - (fm.ascent + fm.descent) / 2f;
-            c.drawText(hint, x, y, text);
+            drawHintAt(c, hint, isLetterKey(k) ? hintPosition : 2, r, cx, cy);
         }
+        String jamo = dubeolsikHint(k);
+        if (jamo != null) {
+            text.setColor(theme.hint);
+            text.setTypeface(Typeface.DEFAULT);
+            text.setTextSize(spHint);
+            int pos = dubeolsikHintPosition;
+            if (showHints && pos == hintPosition) pos = (pos + 4) % 8;   // 길게 누르기 힌트와 겹치지 않게
+            drawHintAt(c, jamo, pos, r, cx, cy);
+        }
+    }
+
+    /** 키 안의 여덟 자리(Prefs.HINT_POS_*) 가운데 한 곳에 작은 글자를 그린다. 글자 크기·색은 미리 정해 둔다. */
+    private void drawHintAt(Canvas c, String s, int pos, RectF r, float cx, float cy) {
+        text.getFontMetrics(fm);
+        // 열은 왼쪽(0·6·7)·가운데(1·5)·오른쪽(2·3·4), 줄은 위(0·1·2)·가운데(3·7)·아래(4·5·6).
+        float x = pos == 0 || pos == 6 || pos == 7 ? r.left + dp(7) : pos == 1 || pos == 5 ? cx : r.right - dp(7);
+        float shift = cy - r.centerY();   // 글자를 위아래로 옮겨 그린 키(맨 아래 줄 등)는 힌트도 같이 옮긴다
+        float y = pos <= 2 ? r.top + shift - fm.ascent + dp(2)
+                : pos >= 4 && pos <= 6 ? r.bottom + shift - fm.descent - dp(2)
+                : cy - (fm.ascent + fm.descent) / 2f;
+        c.drawText(s, x, y, text);
+    }
+
+    /** 영어 자판의 a~z 키에 그릴 두벌식 자모 (Shift를 누르면 쌍자음·ㅒㅖ). 그리지 않으면 null. */
+    private String dubeolsikHint(Key k) {
+        if (dubeolsikHintPosition < 0 || layout.kind != KeyboardLayout.ENGLISH || k.type != Key.CHAR
+                || k.label == null || k.label.length() != 1) return null;
+        char j = com.alternative_studios.newswipe.hangul.Dubeolsik.jamo(k.label.charAt(0), shiftState != 0);
+        return j == 0 ? null : String.valueOf(j);
     }
 
     // ---------------------------------------------------------------- 뉴모피즘

@@ -12,17 +12,20 @@ import com.alternative_studios.newswipe.keyboard.KeyboardTheme;
 /**
  * 글자 키 힌트의 자리를 고르는 그림: 키 하나를 크게 그리고 그 둘레 여덟 곳(Prefs.HINT_POS_*) 가운데 하나를 눌러 고른다.
  * 고른 자리에는 힌트 글자를 강조 색 동그라미 안에, 나머지 자리에는 빈 동그라미를 그린다.
+ * 다른 힌트가 이미 쓰는 자리(blocked)는 그 힌트 글자만 흐리게 그리고 고를 수 없다.
  */
 final class HintPositionPicker extends View {
     interface OnPick {
         void onPick(int position);
     }
 
-    private static final String LABEL = "ㄱ", HINT = "ㄲ";
-
     private final KeyboardTheme theme;
     private final int accent, onAccent;
     private final OnPick onPick;
+    /** 키 가운데 글자, 고를 힌트 글자, 다른 힌트가 쓰는 자리의 글자, 접근성 설명 앞머리. */
+    private final String label, hint, blockedHint, name;
+    /** 다른 힌트가 쓰고 있어 고를 수 없는 자리 (없으면 -1). */
+    private final int blocked;
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint ring = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint text = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -33,7 +36,17 @@ final class HintPositionPicker extends View {
     private int pressed = -1;
 
     HintPositionPicker(Context c, KeyboardTheme theme, int accent, int onAccent, int selected, OnPick onPick) {
+        this(c, theme, accent, onAccent, "ㄱ", "ㄲ", "글자 키 힌트 위치", selected, -1, null, onPick);
+    }
+
+    HintPositionPicker(Context c, KeyboardTheme theme, int accent, int onAccent, String label, String hint, String name,
+                       int selected, int blocked, String blockedHint, OnPick onPick) {
         super(c);
+        this.label = label;
+        this.hint = hint;
+        this.name = name;
+        this.blocked = blocked;
+        this.blockedHint = blockedHint;
         this.theme = theme;
         this.accent = accent;
         this.onAccent = onAccent;
@@ -51,7 +64,7 @@ final class HintPositionPicker extends View {
     }
 
     private void updateDescription() {
-        setContentDescription("글자 키 힌트 위치: " + Prefs.HINT_POSITION_NAMES[selected]);
+        setContentDescription(name + ": " + Prefs.HINT_POSITION_NAMES[selected]);
     }
 
     @Override
@@ -85,16 +98,21 @@ final class HintPositionPicker extends View {
 
         text.setColor(theme.text);
         text.setTextSize(dp(40));
-        drawCentered(c, LABEL, key.centerX(), key.centerY());
+        drawCentered(c, label, key.centerX(), key.centerY());
 
         float radius = dp(16);
         text.setTextSize(dp(16));
         for (int i = 0; i < 8; i++) {
-            if (i == selected) {
+            if (i == blocked) {
+                if (blockedHint != null) {
+                    text.setColor(theme.hint);
+                    drawCentered(c, blockedHint, px[i], py[i]);
+                }
+            } else if (i == selected) {
                 fill.setColor(accent);
                 c.drawCircle(px[i], py[i], radius, fill);
                 text.setColor(onAccent);
-                drawCentered(c, HINT, px[i], py[i]);
+                drawCentered(c, hint, px[i], py[i]);
             } else {
                 if (i == pressed) {
                     fill.setColor((accent & 0x00FFFFFF) | 0x33000000);
@@ -116,6 +134,7 @@ final class HintPositionPicker extends View {
         int best = -1;
         float bestD = dp(36) * dp(36);
         for (int i = 0; i < 8; i++) {
+            if (i == blocked) continue;
             float dx = x - px[i], dy = y - py[i], d = dx * dx + dy * dy;
             if (d < bestD) {
                 bestD = d;
