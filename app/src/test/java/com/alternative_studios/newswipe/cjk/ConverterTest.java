@@ -107,6 +107,14 @@ public class ConverterTest {
         KanaConverter k = new KanaConverter(CjkTestData.dict(CjkTestData.JA));
         List<String> t = texts(k.convert("ありが", 20));
         assertTrue(t.contains("有り難う"));
+        // 친 읽기와 똑같은 키는 예측이 아니라 그대로의 후보이고, 더 긴 읽기만 예측으로 붙는다 (바이트 길이로 견준다).
+        List<Candidate> full = k.convert("ありがとう", 20);
+        assertEquals("有り難う", full.get(0).text);
+        assertTrue(texts(full).contains("有難うございます"));
+        for (Candidate x : full) if (x.text.equals("有難うございます")) assertEquals(5, x.consumed);
+        ConversionDictionary d = CjkTestData.dict(CjkTestData.JA);
+        int i = d.find(ConversionDictionary.utf8("ありがとう"));
+        assertEquals(ConversionDictionary.utf8("ありがとう").length, d.keyByteLength(i));
     }
 
     @Test

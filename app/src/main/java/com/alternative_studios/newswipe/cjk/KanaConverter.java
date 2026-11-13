@@ -109,8 +109,9 @@ public final class KanaConverter implements Converter {
         byte[] k = ConversionDictionary.utf8(in);
         int lb = dict.lowerBound(k);
         List<int[]> found = new ArrayList<>();
+        // 키가 in으로 시작하므로 바이트가 더 길면 글자도 더 길다. 키를 칠 때마다 수천 개의 문자열을 만들지 않도록 바이트로 견준다.
         for (int i = lb, seen = 0; i < dict.size() && seen < PREDICT_SCAN && dict.startsWith(i, k); i++, seen++) {
-            if (dict.key(i).length() > in.length()) found.add(new int[]{i, dict.bestCost(i)});
+            if (dict.keyByteLength(i) > k.length) found.add(new int[]{i, dict.bestCost(i)});
         }
         found.sort((a, b) -> a[1] - b[1]);
         for (int i = 0; i < found.size() && i < PREDICT && out.size() < max; i++) {

@@ -304,6 +304,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             applyNavigationBarStyle();
             return;
         }
+        // 키보드가 내려가 있으면(설정 화면에서 슬라이더·손잡이를 끄는 중 등) 자판을 다시 만들지 않는다.
+        // 다시 올라올 때 onStartInputView가 applySettings()와 setLayoutKind()로 새 설정을 모두 반영한다.
+        // 외장 키보드를 쓰면 화면 자판 없이(onStartInputView 없이) 입력하므로 언어 전환 등에 쓰는 값을 예전처럼 바로 맞춘다.
+        if (windowHidden && !this.hwKeyboardConnected) return;
         applySettings();
         setLayoutKind(layoutKind);   // 숫자 줄·Shift 키·쉼표 키·길게 누르기 문자는 자판을 다시 만들어야 한다.
     };
@@ -368,6 +372,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             searchWaiting = false;
             releaseEmoji();
             if (!isInputViewShown()) {
+                Neu.trimCache();   // 그림자 비트맵은 다시 그릴 때 필요한 것만 굽는다
                 releaseCjk();
                 suggester.release();
                 warmingKo = warmingEn = false;
@@ -393,6 +398,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         releaseCjk();
         runIo(this::releaseLearned);
         correctionIgnored.clear();
+        Neu.trimCache();   // Neumorphism 그림자 비트맵: 다시 올라오면 필요한 크기만 다시 굽는다
     };
 
     /** 24시간이 지난 클립보드 항목과 그 이미지 파일을 지우고 기록을 메모리에서 내린다. */
@@ -1599,7 +1605,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     public InlineSuggestionsRequest onCreateInlineSuggestionsRequest(android.os.Bundle uiExtras) {
         if (autofill == null || !prefs.autofillInline()) return null;
         KeyboardTheme t = theme != null ? theme : KeyboardTheme.of(this);
-        int height = toolbarHeight > 0 ? toolbarHeight : toolbarHeightPx();
+        // 키보드가 내려가 있는 동안 바꾼 설정은 다시 올라올 때(onStartInputView) 반영되므로, 그보다 먼저 올 수 있는 이 요청은
+        // 도구 막대 높이를 설정에서 바로 구한다 (sizeToolbar와 같은 값).
+        int height = toolbarHeightPx();
         // 칩은 쪽으로 넘기며 보므로, 한 칩이 칩 줄(왼쪽 도구 버튼을 뺀 폭에서 쪽 넘김 버튼·고정 칩 자리를 뺀 폭)에
         // 들어갈 만큼만 키운다. 긴 글은 서비스가 줄여 보인다.
         int maxWidth = Math.max(Ui.dp(this, 96), Math.min(Ui.dp(this, 260), chipSlotWidth() - autofill.reservedWidth()));
@@ -2225,15 +2233,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
         CharSequence before = ic.getTextBeforeCursor(64, 0);
         if (before == null || before.length() == 0) return;
-        int i = before.length();
-        while (i > 0 && Character.isWhitespace(before.charAt(i - 1))) i--;
-        if (i > 0 && !Character.isLetterOrDigit(before.charAt(i - 1))) {
-            i--;   // 문장 부호 하나
-        } else {
-            while (i > 0 && Character.isLetterOrDigit(before.charAt(i - 1))) i--;
-        }
-        ic.deleteSurroundingText(before.length() - i, 0);
-        mirror.replaceTail(before.length() - i, "");
+        // 단어 단위 커서 이동과 같은 기준(공백 뒤의 글자 묶음, 아니면 문장 부호 하나)으로, 글자(코드 포인트) 단위로 센다.
+        // UTF-16 한 칸씩 세면 이모지 같은 두 칸짜리 글자의 반쪽만 지워 깨진 글자가 남는다.
+        int n = com.alternative_studios.newswipe.suggest.WordBoundary.distance(before, false);
+        if (n <= 0) return;
+        ic.deleteSurroundingText(n, 0);
+        mirror.replaceTail(n, "");
         scheduleSuggest();
     }
 

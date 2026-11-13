@@ -161,6 +161,11 @@ public final class ConversionDictionary {
         return startsWith(lowerBound(q), q);
     }
 
+    /** i번째 키의 길이 (UTF-8 바이트). 문자열을 만들지 않고 키 길이를 견줄 때 쓴다. */
+    public int keyByteLength(int i) {
+        return keyOff[i + 1] - keyOff[i];
+    }
+
     /** i번째 키의 읽기. */
     public String key(int i) {
         return new String(keys, keyOff[i], keyOff[i + 1] - keyOff[i], StandardCharsets.UTF_8);

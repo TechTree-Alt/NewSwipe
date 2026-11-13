@@ -34,6 +34,8 @@ public final class PinyinConverter implements Converter {
     public PinyinConverter(ConversionDictionary dict) {
         this.dict = dict;
         for (int i = 0; i < dict.size(); i++) {
+            // 음절은 a~z 6글자 이하라 6바이트를 넘는 키(여러 음절의 단어)는 문자열로 만들지 않고 건너뛴다.
+            if (dict.keyByteLength(i) > MAX_SYLLABLE) continue;
             String k = dict.key(i);
             if (k.indexOf('\'') < 0 && k.length() <= MAX_SYLLABLE && isLetters(k)) syllables.add(k);
         }
