@@ -834,10 +834,9 @@ public final class KeyboardView extends View {
                     }
                     return;
                 }
-                text.setColor(fg);
-                text.setTypeface(Typeface.DEFAULT);
-                text.setTextSize(spChar);   // 숫자 패드와 같은 크기·글꼴이라 모양과 굵기가 같다
-                drawCentered(c, "␣", cx, cy);
+                // ␣는 글꼴 글자가 아니라 직접 그린다: 일본어 자판은 글자 로케일이 일본어라 같은 ␣도 일본어 글꼴의
+                // (더 넓고 얇은) 모양으로 나온다. 숫자 패드와 일본어 12키가 완전히 같은 모양이 되게 한다.
+                drawSpaceSymbol(c, cx, cy, fg);
                 return;
             default:
                 break;
@@ -896,6 +895,25 @@ public final class KeyboardView extends View {
         if (k.swipeUp != null) drawCentered(c, k.swipeUp, cx, r.top + inset);
         if (k.swipeDown != null) drawCentered(c, k.swipeDown, cx, r.bottom - inset);
     }
+
+    /** 스페이스바 기호 ␣ (밑이 트인 네모의 아랫변): 글꼴과 무관하게 숫자 패드와 일본어 12키가 같은 모양이다. */
+    private void drawSpaceSymbol(Canvas c, float cx, float cy, int color) {
+        float w = spChar * 0.82f, h = spChar * 0.26f;
+        icon.setColor(color);
+        icon.setStyle(Paint.Style.STROKE);
+        icon.setStrokeWidth(spChar * 0.085f);
+        icon.setStrokeCap(Paint.Cap.SQUARE);
+        icon.setStrokeJoin(Paint.Join.MITER);
+        float top = cy + spChar * 0.02f;
+        symbolPath.reset();
+        symbolPath.moveTo(cx - w / 2, top);
+        symbolPath.lineTo(cx - w / 2, top + h);
+        symbolPath.lineTo(cx + w / 2, top + h);
+        symbolPath.lineTo(cx + w / 2, top);
+        c.drawPath(symbolPath, icon);
+    }
+
+    private final android.graphics.Path symbolPath = new android.graphics.Path();
 
     private void drawCentered(Canvas c, String s, float cx, float cy) {
         text.getFontMetrics(fm);
