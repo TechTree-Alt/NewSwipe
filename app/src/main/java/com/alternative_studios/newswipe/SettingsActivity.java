@@ -4129,17 +4129,18 @@ public final class SettingsActivity extends Activity {
     }
 
     /**
-     * 명예의 전당에 올릴 비공개 테스트 참여자 (닉네임, 프로필 사진). 사진은 앱 용량을 아끼려고
+     * 명예의 전당에 올릴 출시 테스트 참여자 (닉네임, 프로필 사진). 사진은 앱 용량을 아끼려고
      * 160×160 WebP로 줄여 res/drawable-nodpi에 둔다 (한 장에 몇 KB).
      */
     private static final Object[][] HALL_OF_FAME_PEOPLE = {
             {"마로코기", R.drawable.hof_marokogi},
+            {"ssonbin", R.drawable.hof_ssonbin},
     };
 
     private void buildHallOfFame() {
         LinearLayout c = card();
-        c.addView(note(L.t("비공개 테스트에 참여해 NewSwipe를 함께 다듬어 주신 분들입니다. 감사합니다.",
-                "People who joined the closed test and helped shape NewSwipe. Thank you.")));
+        c.addView(note(L.t("출시 테스트에 참여해 NewSwipe를 응원하고 함께 다듬어 주신 분들입니다. 감사합니다.",
+                "People who joined the pre-release test, cheered NewSwipe on and helped shape it. Thank you.")));
         int size = Ui.dp(this, 56);
         for (Object[] p : HALL_OF_FAME_PEOPLE) {
             LinearLayout row = new LinearLayout(this);
