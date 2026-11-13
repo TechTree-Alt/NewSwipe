@@ -121,7 +121,29 @@ public final class LanguageOrderEditorActivity extends Activity {
         for (String id : prefs.languageOrder()) if (available(id)) langs.addView(langRow(id));
 
         if (!available("ja") || !available("zh")) {
-            TextView more = text(L.t("일본어·중국어는 설정 › 실험실에서 사전 팩을 가져와 켜면 여기에 나타납니다.", "Japanese and Chinese appear here after you import a dictionary pack and turn them on in Settings › Labs."), 13, hintColor);
+            // '실험실'은 강조색 링크: 누르면 설정의 실험실 화면이 열린다.
+            String link = L.t("실험실", "Labs");
+            String msg = L.t("일본어·중국어는 설정 › " + link + "에서 사전 팩을 가져와 켜면 여기에 나타납니다.",
+                    "Japanese and Chinese appear here after you import a dictionary pack and turn them on in Settings › " + link + ".");
+            android.text.SpannableString span = new android.text.SpannableString(msg);
+            int at = msg.lastIndexOf(link);
+            span.setSpan(new android.text.style.ClickableSpan() {
+                @Override
+                public void onClick(View widget) {
+                    startActivity(new android.content.Intent(LanguageOrderEditorActivity.this, SettingsActivity.class)
+                            .putExtra(SettingsActivity.EXTRA_SECTION, "lab"));
+                }
+
+                @Override
+                public void updateDrawState(android.text.TextPaint ds) {
+                    ds.setColor(accentColor);
+                    ds.setUnderlineText(false);
+                }
+            }, at, at + link.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            TextView more = text("", 13, hintColor);
+            more.setText(span);
+            more.setMovementMethod(android.text.method.LinkMovementMethod.getInstance());
+            more.setHighlightColor(android.graphics.Color.TRANSPARENT);
             more.setPadding(Ui.dp(this, 4), Ui.dp(this, 10), 0, 0);
             list.addView(more);
         }
