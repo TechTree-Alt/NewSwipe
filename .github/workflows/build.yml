@@ -1,11 +1,10 @@
 name: Build
 
 on:
-  # main에 푸시(PR 병합 포함)해도 자동으로 빌드하지 않는다. main 빌드는 Actions 탭에서 수동(workflow_dispatch)으로 돌린다.
+  # 브랜치 푸시·PR(병합 포함)로는 자동으로 빌드하지 않는다. 필요하면 Actions 탭에서 수동(workflow_dispatch)으로 돌린다.
   # 릴리스 태그(v*)는 계속 자동으로 빌드·게시한다.
   push:
     tags: [ 'v*' ]
-  pull_request:
   workflow_dispatch:
 
 permissions:
