@@ -1290,7 +1290,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         keyboard.setLongPressActions(com.alternative_studios.newswipe.keyboard.LongPressActions.actions(prefs));
         keyboard.setFunctionSwipes(FunctionSwipes.load(prefs));
         keyboard.setFnKeyActions(com.alternative_studios.newswipe.keyboard.FnKeyActions.actions(prefs));
-        keyboard.setPopupHints(!prefs.popupHintHidden());
+        keyboard.setPopupHints(!prefs.popupHintHidden(), prefs.popupHintPosition());
         keyboard.setNumberHintHidden(prefs.numberHintHidden());
         keyboard.setRepeatChars(prefs.repeatChars());
         applySuggestLead();
