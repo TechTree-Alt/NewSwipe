@@ -91,6 +91,7 @@ public final class BottomKeysEditorActivity extends Activity {
         preview.setKeyRadius(Ui.dp(this, prefs.keyRadiusDp()));
         preview.setGridColors(prefs.gridColors());
         preview.setPopupHints(!prefs.popupHintHidden(), prefs.popupHintPosition());
+        preview.setDubeolsikHint(prefs.dubeolsikHintShown());
         preview.setNumberHintHidden(prefs.numberHintHidden());
         // 키보드와 같은 좌우 여백과 한 줄 높이(키보드 높이 설정 반영)를 쓴다.
         int p = Ui.dp(this, 4);

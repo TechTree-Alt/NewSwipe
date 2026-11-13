@@ -1792,6 +1792,8 @@ public final class SettingsActivity extends Activity {
                 LinearLayout lp = section("길게 누르기");
                 addLetterLongPress(lp);
                 lp.addView(popupHintToggle());
+                dubeolsikRow = null;
+                if (en) section("한글 자모 힌트").addView(dubeolsikHintToggle());
                 LinearLayout swipe = section("밀기");
                 swipe.addView(swipeDistanceSlider());
                 addKeyboardSwipe(swipe);
@@ -1923,8 +1925,14 @@ public final class SettingsActivity extends Activity {
         SettingsWidgets.ValueRow[] pos = new SettingsWidgets.ValueRow[1];
         pos[0] = widgets.valueRow("힌트 위치", Prefs.HINT_POSITION_NAMES[prefs.popupHintPosition()], v ->
                 pickHintPosition(p -> {
-                    prefs.raw().edit().putInt(Prefs.POPUP_HINT_POSITION, p).apply();
+                    android.content.SharedPreferences.Editor e = prefs.raw().edit().putInt(Prefs.POPUP_HINT_POSITION, p);
+                    // 두벌식 자모 힌트가 그 자리에 있으면 서로 자리를 바꾼다 (두 힌트가 겹치지 않게).
+                    if (prefs.dubeolsikHintPositionRaw() == p) {
+                        e.putInt(Prefs.DUBEOLSIK_HINT_POSITION, prefs.popupHintPosition());
+                    }
+                    e.apply();
                     pos[0].set(Prefs.HINT_POSITION_NAMES[p]);
+                    updateDubeolsikRow();
                     refreshLayoutPreview();
                 }));
         View position = subGroup(pos[0].view);
@@ -1935,10 +1943,75 @@ public final class SettingsActivity extends Activity {
         box.addView(toggle("글자 키 힌트 표시", "글자 키에 길게 눌러 입력할 문자 힌트를 작게 표시합니다.", shown, on -> {
             prefs.raw().edit().putBoolean(Prefs.POPUP_HINT_HIDDEN, !on).apply();
             Ui.setVisibleAnimated(position, on);
+            updateDubeolsikRow();
             refreshLayoutPreview();
         }), matchWrap());
         box.addView(position, matchWrap());
         return box;
+    }
+
+    /** 영어 글자 키 창의 '두벌식 자모 힌트 위치' 줄 (다른 창이면 null). 글자 키 힌트를 바꾸면 실제 자리가 바뀔 수 있어 다시 쓴다. */
+    private SettingsWidgets.ValueRow dubeolsikRow;
+
+    private void updateDubeolsikRow() {
+        if (dubeolsikRow != null) dubeolsikRow.set(Prefs.HINT_POSITION_NAMES[prefs.dubeolsikHintPosition()]);
+    }
+
+    /** '두벌식 자모 힌트 표시' 스위치와, 켜져 있을 때만 보이는 '힌트 위치' 줄 (영어 글자 키 창). */
+    private View dubeolsikHintToggle() {
+        SettingsWidgets.ValueRow[] pos = new SettingsWidgets.ValueRow[1];
+        pos[0] = widgets.valueRow("힌트 위치", Prefs.HINT_POSITION_NAMES[prefs.dubeolsikHintPosition()], v ->
+                pickDubeolsikHintPosition(p -> {
+                    prefs.raw().edit().putInt(Prefs.DUBEOLSIK_HINT_POSITION, p).apply();
+                    updateDubeolsikRow();
+                    refreshLayoutPreview();
+                }));
+        dubeolsikRow = pos[0];
+        View position = subGroup(pos[0].view);
+        boolean shown = prefs.dubeolsikHint();
+        position.setVisibility(shown ? View.VISIBLE : View.GONE);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.addView(toggle("두벌식 자모 힌트 표시",
+                "영어 글자 키에 두벌식 자판에서 같은 자리에 있는 한글 자모(q → ㅂ, a → ㅁ)를 작게 표시합니다. "
+                        + "Shift를 누르면 쌍자음·ㅒ·ㅖ로 바뀝니다.", shown, on -> {
+            prefs.raw().edit().putBoolean(Prefs.DUBEOLSIK_HINT, on).apply();
+            Ui.setVisibleAnimated(position, on);
+            refreshLayoutPreview();
+        }), matchWrap());
+        box.addView(position, matchWrap());
+        return box;
+    }
+
+    /** 두벌식 자모 힌트의 자리를 고르는 창. 글자 키 힌트가 보이면 그 자리는 막아 두고 그 힌트 글자를 흐리게 보여 준다. */
+    private void pickDubeolsikHintPosition(java.util.function.IntConsumer onPick) {
+        int current = prefs.dubeolsikHintPosition();
+        int blocked = prefs.popupHintHidden() ? -1 : prefs.popupHintPosition();
+        android.app.AlertDialog[] dialog = new android.app.AlertDialog[1];
+        HintPositionPicker picker = new HintPositionPicker(this,
+                com.alternative_studios.newswipe.keyboard.KeyboardTheme.of(this), accentColor, onAccentColor,
+                "r", "ㄱ", "두벌식 자모 힌트 위치", current, blocked, "4", p -> {
+                    if (dialog[0] != null) dialog[0].dismiss();
+                    if (p != current) onPick.accept(p);
+                });
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        int pad = Ui.dp(this, 20);
+        box.setPadding(pad, Ui.dp(this, 8), pad, 0);
+        box.addView(picker, matchWrap());
+        dialog[0] = AppTheme.dialogBuilder(this)
+                .setTitle("두벌식 자모 힌트 위치")
+                .setMessage(blocked < 0 ? "힌트를 표시할 자리를 누르세요."
+                        : "힌트를 표시할 자리를 누르세요. 길게 눌러 입력할 문자 힌트가 있는 자리는 고를 수 없습니다.")
+                .setView(box)
+                .setNeutralButton("기본값", (d, w) -> {
+                    // 기본 자리(왼쪽 아래)가 글자 키 힌트 자리면 Prefs가 맞은편(오른쪽 위)에 그린다.
+                    prefs.raw().edit().putInt(Prefs.DUBEOLSIK_HINT_POSITION, Prefs.HINT_POS_BOTTOM_LEFT).apply();
+                    updateDubeolsikRow();
+                    refreshLayoutPreview();
+                })
+                .setNegativeButton("취소", null)
+                .show();
     }
 
     /** 글자 키 힌트의 자리를 고르는 창: 키 그림에서 여덟 곳 가운데 하나를 누르면 바로 정하고 닫는다. */
@@ -3162,6 +3235,7 @@ public final class SettingsActivity extends Activity {
         preview.setKeyRadius(Ui.dp(this, prefs.keyRadiusDp()));
         preview.setGridColors(prefs.gridColors());
         preview.setPopupHints(!prefs.popupHintHidden(), prefs.popupHintPosition());
+        preview.setDubeolsikHint(prefs.dubeolsikHintShown());
         preview.setNumberHintHidden(prefs.numberHintHidden());
         int p = Ui.dp(this, 4);
         preview.setKeyGaps(Ui.dp(this, prefs.keyGapXDp()), Ui.dp(this, prefs.keyGapYDp()));

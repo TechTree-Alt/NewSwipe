@@ -204,6 +204,10 @@ public final class Prefs {
     /** 힌트 자리의 이름 (HINT_POS_* 차례). */
     public static final String[] HINT_POSITION_NAMES = {"왼쪽 위", "위쪽 가운데", "오른쪽 위", "오른쪽 중간",
             "오른쪽 아래", "아래 가운데", "왼쪽 아래", "왼쪽 중간"};
+    /** 영어 글자 키에 두벌식 자판의 같은 자리 자모(q → ㅂ)를 작게 표시한다 (기본 꺼짐). */
+    public static final String DUBEOLSIK_HINT = "dubeolsik_hint";
+    /** 두벌식 자모 힌트의 자리 (HINT_POS_*, 기본 왼쪽 아래). 길게 눌러 입력할 문자 힌트와 같은 자리에는 두지 않는다. */
+    public static final String DUBEOLSIK_HINT_POSITION = "dubeolsik_hint_position";
     // 커서 이동 속도 (%, 100 = 기본). 스페이스바·문자 키, 좌우·상하 따로.
     public static final String SPLIT_SPACE_JOIN = "split_space_join";   // 분리 키보드: 나뉜 스페이스바를 하나로 잇기
     public static final String SPLIT_FN_WIDTH = "split_fn_width";       // 분리 키보드(스페이스바를 이었을 때): 하단 기능키 폭(%)
@@ -511,8 +515,8 @@ public final class Prefs {
                     DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT, DOUBLE_TAP_CONSONANT_MS, SWIPE_DOWN_CONSONANT, SWIPE_DOWN_VOWEL,
                     ENGLISH_BALANCED, PORTRAIT_SPLIT),
                     keys(BALANCED_LAYOUT)),
-            new EditorScope(SCOPE_LETTERS_EN, "영어 글자 키 (자동 대문자·대문자 밀기·이메일 입력란)", keys(AUTO_CAP,
-                    ENGLISH_FIELDS, ENGLISH_SWIPE_UPPER), NONE),
+            new EditorScope(SCOPE_LETTERS_EN, "영어 글자 키 (자동 대문자·대문자 밀기·이메일 입력란·두벌식 자모 힌트)", keys(AUTO_CAP,
+                    ENGLISH_FIELDS, ENGLISH_SWIPE_UPPER, DUBEOLSIK_HINT, DUBEOLSIK_HINT_POSITION), NONE),
             new EditorScope(AREA_SCOPES[3], "기능키", concat(BOTTOM_KEY_VALUES, FN_ROW_HEIGHT, GRID_LAYOUT, DELETE_PRESS_MS,
                     FN_SWIPE_THRESHOLD, PORTRAIT_PREFIX + SPLIT_SPACE_JOIN, PORTRAIT_PREFIX + SPLIT_FN_WIDTH,
                     PORTRAIT_PREFIX + FN_FOLLOW_BLOCKS),
@@ -973,6 +977,18 @@ public final class Prefs {
     public boolean popupHintHidden() { return sp.getBoolean(POPUP_HINT_HIDDEN, false); }
     /** 글자 키 힌트의 자리 (HINT_POS_*, 기본 오른쪽 위). */
     public int popupHintPosition() { return clamp(sp.getInt(POPUP_HINT_POSITION, HINT_POS_TOP_RIGHT), 0, 7); }
+    public boolean dubeolsikHint() { return sp.getBoolean(DUBEOLSIK_HINT, false); }
+    /** 저장된 두벌식 자모 힌트 자리 (길게 누르기 힌트와 겹치는지 따지지 않은 값). */
+    public int dubeolsikHintPositionRaw() { return clamp(sp.getInt(DUBEOLSIK_HINT_POSITION, HINT_POS_BOTTOM_LEFT), 0, 7); }
+    /**
+     * 두벌식 자모 힌트를 실제로 그릴 자리. 글자 키 힌트가 보이고 저장된 자리가 그 자리와 같으면(가져온 설정 등) 맞은편에 둔다.
+     */
+    public int dubeolsikHintPosition() {
+        int p = dubeolsikHintPositionRaw();
+        return !popupHintHidden() && p == popupHintPosition() ? (p + 4) % 8 : p;
+    }
+    /** 키보드에 넘길 두벌식 자모 힌트 자리: 꺼져 있으면 -1. */
+    public int dubeolsikHintShown() { return dubeolsikHint() ? dubeolsikHintPosition() : -1; }
     /** 숫자 키(1~0)에만 길게 눌러 입력할 문자 힌트를 보이지 않게 하는지. */
     public boolean numberHintHidden() { return sp.getBoolean(NUMBER_HINT_HIDDEN, false); }
     public boolean spaceLangLabel() { return sp.getBoolean(SPACE_LANG_LABEL, false); }
