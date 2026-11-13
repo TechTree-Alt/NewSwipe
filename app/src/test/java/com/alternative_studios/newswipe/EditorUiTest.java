@@ -1938,7 +1938,7 @@ public class EditorUiTest {
 
     /** 폴더블 내부 화면에서는 판정 기준 섹션이 '한 손 모드' 섹션 아래(기본값으로 되돌리기 위)에 있고, 되돌리기로 기본값이 된다. */
     @Test
-    @Config(qualifiers = "w700dp-h900dp-port-xhdpi")
+    @Config(qualifiers = "ko-rKR-w700dp-h900dp-port-xhdpi")
     public void foldableThresholdBelowOneHandMode() throws Exception {
         Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
         pre.raw().edit().putInt(Prefs.LARGE_SCREEN_DP, 640).commit();
