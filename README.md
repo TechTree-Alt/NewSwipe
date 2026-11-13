@@ -8,8 +8,7 @@ NewSwipe는 가볍고 현대적이며 편안한 한국어 입력 시스템입니
   <a href="https://github.com/TechTree-Alt/NewSwipe/releases/latest"><img src="docs/get-apk-github.svg" alt="Get it on GitHub" height="50" /></a>
   <a href="https://techtree.tistory.com/280"><img src="docs/preregister-googleplay.png" alt="Preregister on Google Play" height="50" /></a>
   <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22com.alternative_studios.newswipe%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2FTechTree-Alt%2FNewSwipe%22%2C%22author%22%3A%22TechTree-Alt%22%2C%22name%22%3A%22NewSwipe%22%7D">
-  <img src="docs/badge_obtainium.png" alt="Get it on Obtainium" height="50">
-</a>
+  <img src="docs/badge_obtainium.png" alt="Get it on Obtainium" height="50"></a>
   <a href="https://fairy.hada.io/@newswipe"><img src="docs/support-on-fairy.png" alt="Fairy에서 후원하기" height="50" /></a>
 </p>
 <br />
