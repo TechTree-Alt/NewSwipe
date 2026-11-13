@@ -61,7 +61,7 @@ public final class ToolbarButtonsEditorActivity extends Activity {
         int pad = Ui.dp(this, 16);
         list.setPadding(pad, 0, pad, Ui.dp(this, 32));
         scroll.addView(list);
-        setContentView(new SettingsFrame(this, "도구 막대 버튼 사용자화", getString(R.string.app_name)).wrap(scroll));
+        setContentView(new SettingsFrame(this, L.t("도구 막대 버튼 사용자화", "Customize toolbar buttons"), getString(R.string.app_name)).wrap(scroll));
         render();
     }
 
@@ -81,7 +81,7 @@ public final class ToolbarButtonsEditorActivity extends Activity {
 
     private void render() {
         list.removeAllViews();
-        TextView note = text("버튼을 켜고 끄거나, 오른쪽의 ≡를 잡고 끌어 순서를 바꿉니다.", 13, hintColor);
+        TextView note = text(L.t("버튼을 켜고 끄거나, 오른쪽의 ≡를 잡고 끌어 순서를 바꿉니다.", "Turn buttons on or off, or drag ≡ on the right to reorder."), 13, hintColor);
         note.setPadding(Ui.dp(this, 4), 0, 0, Ui.dp(this, 4));
         list.addView(note);
 
@@ -112,13 +112,13 @@ public final class ToolbarButtonsEditorActivity extends Activity {
         klp.topMargin = Ui.dp(this, 12);
         list.addView(keys, klp);
         String[][] order = prefs.toolOrder();
-        keys.addView(header("왼쪽", false));
+        keys.addView(header(L.t("왼쪽", "Left"), false));
         for (String id : order[0]) keys.addView(buttonRow(id));
-        rightHeader = header("오른쪽", true);
+        rightHeader = header(L.t("오른쪽", "Right"), true);
         keys.addView(rightHeader);
         for (String id : order[1]) keys.addView(buttonRow(id));
         updatePreview();
-        list.addView(ResetDialog.button(this, "도구 막대 버튼 사용자화", () -> {
+        list.addView(ResetDialog.button(this, L.t("도구 막대 버튼 사용자화", "Customize toolbar buttons"), () -> {
             prefs.resetToolButtons();
             render();
         }));
@@ -161,7 +161,7 @@ public final class ToolbarButtonsEditorActivity extends Activity {
 
         ExpressiveSwitch sw = new ExpressiveSwitch(this, accentColor, onAccentColor, hintColor, card);
         sw.setCheckedImmediately(prefs.toolShown(id));
-        sw.setContentDescription(ToolbarButtons.label(id) + " 표시");
+        sw.setContentDescription(L.t(ToolbarButtons.label(id) + " 표시", "Show " + ToolbarButtons.label(id)));
         sw.setOnCheckedChangeListener(checked -> {
             prefs.setToolShown(id, checked);
             updatePreview();
@@ -172,7 +172,7 @@ public final class ToolbarButtonsEditorActivity extends Activity {
         row.addView(sw, slp);
 
         View handle = new DragHandle(this, hintColor);
-        handle.setContentDescription(ToolbarButtons.label(id) + " 순서 바꾸기");
+        handle.setContentDescription(L.t(ToolbarButtons.label(id) + " 순서 바꾸기", "Reorder " + ToolbarButtons.label(id)));
         handle.setOnTouchListener((v, ev) -> onHandleTouch(row, ev));
         // 끌 수 없는 화면 읽기(TalkBack) 사용자를 위해 '위로·아래로 옮기기' 동작도 둔다.
         handle.setAccessibilityDelegate(new View.AccessibilityDelegate() {
@@ -180,9 +180,9 @@ public final class ToolbarButtonsEditorActivity extends Activity {
             public void onInitializeAccessibilityNodeInfo(View host, android.view.accessibility.AccessibilityNodeInfo info) {
                 super.onInitializeAccessibilityNodeInfo(host, info);
                 info.addAction(new android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction(
-                        ACTION_MOVE_UP, "위로 옮기기"));
+                        ACTION_MOVE_UP, L.t("위로 옮기기", "Move up")));
                 info.addAction(new android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction(
-                        ACTION_MOVE_DOWN, "아래로 옮기기"));
+                        ACTION_MOVE_DOWN, L.t("아래로 옮기기", "Move down")));
             }
 
             @Override

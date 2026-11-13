@@ -1,5 +1,6 @@
 package com.alternative_studios.newswipe.ui;
 
+import com.alternative_studios.newswipe.L;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
@@ -372,8 +373,8 @@ public final class OnboardingArt {
 
             // 아래 설명: 지금 단계의 동작
             String caption = s.doubleTap
-                    ? s.row[s.index] + " 두 번 누르기 → " + s.result
-                    : s.row[s.index] + " 아래로 밀기 → " + s.result;
+                    ? s.row[s.index] + L.t(" 두 번 누르기 → ", " double tap → ") + s.result
+                    : s.row[s.index] + L.t(" 아래로 밀기 → ", " swipe down → ") + s.result;
             captionPaint.setAlpha(Math.round(255 * rowAlpha));
             canvas.drawText(caption, w / 2f, keyTop + keyH + pad + 44 * dp, captionPaint);
         }
@@ -672,7 +673,8 @@ public final class OnboardingArt {
     public static final class PageDots extends View {
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final RectF rect = new RectF();
-        private final int count, on, off;
+        private final int on, off;
+        private int count;
         private float pos;
         private ValueAnimator anim;
         private final float dot, pill, gap;
@@ -686,6 +688,14 @@ public final class OnboardingArt {
             pill = Ui.dp(c, 26);
             gap = Ui.dp(c, 8);
             setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
+        }
+
+        /** 점의 수를 바꾼다 (첫 시작 가이드에서 고른 언어에 따라 따라 하는 단계의 수가 달라진다). */
+        public void setCount(int n) {
+            if (n == count) return;
+            count = n;
+            requestLayout();
+            invalidate();
         }
 
         public void setPosition(int index, boolean animate) {

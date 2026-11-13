@@ -42,18 +42,24 @@ final class OneHandPreview extends FrameLayout {
 
     /** 손잡이: 끄는 방향(위아래인지)·이름·저장 키·단위. */
     enum Handle {
-        WIDTH(false, "자판 폭", Prefs.ONE_HAND_WIDTH, "%"),
-        HEIGHT(true, "키 높이", Prefs.ONE_HAND_HEIGHT, "%"),
-        LIFT(true, "세로 위치", Prefs.ONE_HAND_LIFT, "dp");
+        WIDTH(false, "자판 폭", "Keyboard width", Prefs.ONE_HAND_WIDTH, "%"),
+        HEIGHT(true, "키 높이", "Key height", Prefs.ONE_HAND_HEIGHT, "%"),
+        LIFT(true, "세로 위치", "Vertical position", Prefs.ONE_HAND_LIFT, "dp");
 
         final boolean vertical;
-        final String label, key, unit;
+        final String ko, en, key, unit;
 
-        Handle(boolean vertical, String label, String key, String unit) {
+        Handle(boolean vertical, String ko, String en, String key, String unit) {
             this.vertical = vertical;
-            this.label = label;
+            this.ko = ko;
+            this.en = en;
             this.key = key;
             this.unit = unit;
+        }
+
+        /** 끄는 동안 보이는 이름 (지금 화면 언어). */
+        String label() {
+            return L.t(ko, en);
         }
     }
 
@@ -307,9 +313,9 @@ final class OneHandPreview extends FrameLayout {
             label.setTextAlign(Paint.Align.CENTER);
             label.setTextSize(Ui.dp(c, 14));
             label.setFakeBoldText(true);
-            setContentDescription("한 손 모드 미리보기. 자판 오른쪽 가장자리의 손잡이를 좌우로 끌면 자판 폭이, "
+            setContentDescription(L.t("한 손 모드 미리보기. 자판 오른쪽 가장자리의 손잡이를 좌우로 끌면 자판 폭이, "
                     + "위 가장자리의 손잡이를 위·아래로 끌면 키 높이가, 아래 가장자리의 손잡이를 위·아래로 끌면 세로 위치가 바뀝니다. "
-                    + "아래 목록의 슬라이더로도 바꿀 수 있습니다.");
+                    + "아래 목록의 슬라이더로도 바꿀 수 있습니다.", "One-handed mode preview. Drag the handle on the right edge of the keyboard left or right to change the keyboard width, the handle on the top edge up or down to change the key height, and the handle on the bottom edge up or down to change the vertical position. You can also use the sliders in the list below."));
         }
 
         @Override
@@ -338,7 +344,7 @@ final class OneHandPreview extends FrameLayout {
             }
             // 끄는 동안: 무엇을 얼마로 바꾸는지 자판 가운데에 크게 보여 준다.
             if (dragging && active != null) {
-                String text = active.label + "  " + dragValue + active.unit;
+                String text = active.label() + "  " + dragValue + active.unit;
                 float tw = label.measureText(text);
                 outlineBounds(tmp);
                 float cx = tmp.centerX(), cy = tmp.centerY();

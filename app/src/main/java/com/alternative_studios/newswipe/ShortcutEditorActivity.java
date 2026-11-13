@@ -57,7 +57,7 @@ public final class ShortcutEditorActivity extends Activity {
         int pad = Ui.dp(this, 16);
         list.setPadding(pad, 0, pad, Ui.dp(this, 32));
         scroll.addView(list);
-        setContentView(new SettingsFrame(this, "단축어 사용자화", getString(R.string.app_name)).wrap(scroll));
+        setContentView(new SettingsFrame(this, L.t("단축어 사용자화", "Customize text shortcuts"), getString(R.string.app_name)).wrap(scroll));
         render();
     }
 
@@ -77,18 +77,18 @@ public final class ShortcutEditorActivity extends Activity {
 
     private void render() {
         list.removeAllViews();
-        TextView note = text("줄임말을 입력하면 정해 둔 문장이 추천란에 뜹니다 (예: 'ㅈㄱㅈ' → '지금 가는 중'). "
+        TextView note = text(L.t("줄임말을 입력하면 정해 둔 문장이 추천란에 뜹니다 (예: 'ㅈㄱㅈ' → '지금 가는 중'). "
                 + "줄임말은 한글(자음·모음 포함)이나 영어로만 정할 수 있고, 영어는 대소문자를 가리지 않습니다. "
-                + "문장을 눌러 입력하면 줄임말이 그 문장으로 바뀝니다.", 13, hintColor);
+                + "문장을 눌러 입력하면 줄임말이 그 문장으로 바뀝니다.", "Type a shortcut to see its phrase in the suggestions (e.g. 'ㅈㄱㅈ' → '지금 가는 중'). Shortcuts can only use Korean (including single consonants and vowels) or English letters, and English is not case-sensitive. Tap the phrase to replace the shortcut with it."), 13, hintColor);
         note.setLineSpacing(Ui.dp(this, 3), 1f);
         note.setPadding(Ui.dp(this, 4), 0, 0, Ui.dp(this, 8));
         list.addView(note);
 
-        list.addView(actionRow("단축어 추가", v -> edit(null)));
+        list.addView(actionRow(L.t("단축어 추가", "Add text shortcut"), v -> edit(null)));
 
         Map<String, String> all = prefs.shortcuts();
         if (all.isEmpty()) {
-            TextView empty = text("아직 정한 단축어가 없습니다.", 14, hintColor);
+            TextView empty = text(L.t("아직 정한 단축어가 없습니다.", "No text shortcuts yet."), 14, hintColor);
             empty.setGravity(Gravity.CENTER);
             empty.setPadding(0, Ui.dp(this, 32), 0, Ui.dp(this, 32));
             list.addView(empty);
@@ -107,19 +107,20 @@ public final class ShortcutEditorActivity extends Activity {
             card.addView(entryRow(e.getKey(), e.getValue()));
         }
 
-        TextView clear = text("단축어 모두 지우기", 15, accentColor);
+        TextView clear = text(L.t("단축어 모두 지우기", "Delete all text shortcuts"), 15, accentColor);
         clear.setGravity(Gravity.CENTER);
         clear.setPadding(0, Ui.dp(this, 14), 0, Ui.dp(this, 14));
         clear.setBackground(Ui.ripple(accentColor & 0x00FFFFFF | 0x33000000,
                 Ui.round(accentColor & 0x00FFFFFF | 0x1F000000, Ui.dp(this, 12)), Ui.dp(this, 12)));
         clear.setOnClickListener(v -> AppTheme.accentBuilder(AppTheme.dialogContext(this))
-                .setTitle("단축어 모두 지우기")
-                .setMessage("정해 둔 단축어 " + all.size() + "개를 모두 지웁니다. 되돌릴 수 없습니다.")
-                .setPositiveButton("모두 지우기", (d, w) -> {
+                .setTitle(L.t("단축어 모두 지우기", "Delete all text shortcuts"))
+                .setMessage(L.t("정해 둔 단축어 " + all.size() + "개를 모두 지웁니다. 되돌릴 수 없습니다.",
+                        "Deletes all " + all.size() + " text shortcuts. This can't be undone."))
+                .setPositiveButton(L.t("모두 지우기", "Delete all"), (d, w) -> {
                     prefs.clearShortcuts();
                     render();
                 })
-                .setNegativeButton("취소", null)
+                .setNegativeButton(L.t("취소", "Cancel"), null)
                 .show());
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -175,15 +176,15 @@ public final class ShortcutEditorActivity extends Activity {
         texts.addView(p);
         row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         IconButton trash = new IconButton(this, Icons.TRASH, hintColor, hintColor & 0x00FFFFFF | 0x33000000,
-                "'" + key + "' 단축어 지우기");
+                L.t("'" + key + "' 단축어 지우기", "Delete shortcut '" + key + "'"));
         trash.setOnClickListener(v -> AppTheme.accentBuilder(AppTheme.dialogContext(this))
-                .setTitle("단축어 지우기")
-                .setMessage("'" + key + "' 단축어를 지우시겠습니까?")
-                .setPositiveButton("지우기", (d, w) -> {
+                .setTitle(L.t("단축어 지우기", "Delete text shortcut"))
+                .setMessage(L.t("'" + key + "' 단축어를 지우시겠습니까?", "Delete the shortcut '" + key + "'?"))
+                .setPositiveButton(L.t("지우기", "Delete"), (d, w) -> {
                     prefs.removeShortcut(key);
                     render();
                 })
-                .setNegativeButton("취소", null)
+                .setNegativeButton(L.t("취소", "Cancel"), null)
                 .show());
         row.addView(trash, new LinearLayout.LayoutParams(Ui.dp(this, 44), Ui.dp(this, 44)));
         row.setClickable(true);
@@ -198,11 +199,11 @@ public final class ShortcutEditorActivity extends Activity {
         EditText keyInput = new EditText(this);
         keyInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
         keyInput.setSingleLine(true);
-        keyInput.setHint("단축어 (예: ㅈㄱㅈ)");
+        keyInput.setHint(L.t("단축어 (예: ㅈㄱㅈ)", "Shortcut (e.g. ㅈㄱㅈ)"));
         keyInput.setFilters(new InputFilter[]{new InputFilter.LengthFilter(Shortcuts.MAX_KEY)});
         EditText phraseInput = new EditText(this);
         phraseInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
-        phraseInput.setHint("문장 (예: 지금 가는 중)");
+        phraseInput.setHint(L.t("문장 (예: 지금 가는 중)", "Phrase (e.g. 지금 가는 중)"));
         phraseInput.setMaxLines(4);
         phraseInput.setFilters(new InputFilter[]{new InputFilter.LengthFilter(Shortcuts.MAX_PHRASE)});
         if (!adding) {
@@ -216,10 +217,10 @@ public final class ShortcutEditorActivity extends Activity {
         box.addView(keyInput);
         box.addView(phraseInput);
         AlertDialog.Builder b = AppTheme.dialogBuilder(this)
-                .setTitle(adding ? "단축어 추가" : "단축어 고치기")
+                .setTitle(adding ? L.t("단축어 추가", "Add text shortcut") : L.t("단축어 고치기", "Edit text shortcut"))
                 .setView(box)
-                .setPositiveButton("저장", null)
-                .setNegativeButton("취소", null);
+                .setPositiveButton(L.t("저장", "Save"), null)
+                .setNegativeButton(L.t("취소", "Cancel"), null);
         AlertDialog d = b.create();
         d.setOnShowListener(x -> d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             String newKey = keyInput.getText().toString().trim();
@@ -227,9 +228,9 @@ public final class ShortcutEditorActivity extends Activity {
             String error = Shortcuts.validate(newKey, phrase);
             Map<String, String> all = prefs.shortcuts();
             String norm = Shortcuts.normalize(newKey);
-            if (error == null && (adding || !norm.equals(key)) && all.containsKey(norm)) error = "이미 있는 단축어입니다";
+            if (error == null && (adding || !norm.equals(key)) && all.containsKey(norm)) error = L.t("이미 있는 단축어입니다", "This shortcut already exists");
             if (error == null && adding && all.size() >= Shortcuts.MAX_ENTRIES) {
-                error = "단축어는 " + Shortcuts.MAX_ENTRIES + "개까지 정할 수 있습니다";
+                error = L.t("단축어는 " + Shortcuts.MAX_ENTRIES + "개까지 정할 수 있습니다", "You can set up to " + Shortcuts.MAX_ENTRIES + " text shortcuts");
             }
             if (error != null) {
                 Toast.makeText(this, error, Toast.LENGTH_SHORT).show();

@@ -1,5 +1,6 @@
 package com.alternative_studios.newswipe.keyboard;
 
+import com.alternative_studios.newswipe.L;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,16 +25,16 @@ public final class BottomKeys {
     /** 하단 키 편집 화면에 보이는 이름 (이름과 키 모양). */
     public static String label(String id) {
         switch (id) {
-            case MODE: return "기호 키 (?123·가·ABC)";
-            case COMMA: return "쉼표 키 (,)";
-            case GLOBE: return "언어 전환 키 (🌐︎)";
-            case SPACE: return "스페이스바 (␣)";
-            case PERIOD: return "온점 키 (.)";
-            case ENTER: return "엔터 키 (↵)";
-            case EMOJI: return "이모지 키";
-            case CLIPBOARD: return "클립보드 키";
-            case CURSOR: return "커서 이동 키";
-            case VOICE: return "음성 입력 키";
+            case MODE: return L.t("기호 키 (?123·가·ABC)", "Symbol key (?123·가·ABC)");
+            case COMMA: return L.t("쉼표 키 (,)", "Comma key (,)");
+            case GLOBE: return L.t("언어 전환 키 (🌐︎)", "Globe key (🌐︎)");
+            case SPACE: return L.t("스페이스바 (␣)", "Space bar (␣)");
+            case PERIOD: return L.t("온점 키 (.)", "Period key (.)");
+            case ENTER: return L.t("엔터 키 (↵)", "Enter key (↵)");
+            case EMOJI: return L.t("이모지 키", "Emoji key");
+            case CLIPBOARD: return L.t("클립보드 키", "Clipboard key");
+            case CURSOR: return L.t("커서 이동 키", "Cursor key");
+            case VOICE: return L.t("음성 입력 키", "Voice input key");
             default: return id;
         }
     }
@@ -41,8 +42,8 @@ public final class BottomKeys {
     /** 편집 화면에 보이는 작은 설명. 없으면 null. */
     public static String hint(String id) {
         switch (id) {
-            case GLOBE: return "기호 자판에서는 이모지 키도 함께 없어집니다.";
-            case CURSOR: return "상하좌우로 밀면 커서가 움직입니다.";
+            case GLOBE: return L.t("기호 자판에서는 이모지 키도 함께 없어집니다.", "On the symbol keyboard, the emoji key is removed too.");
+            case CURSOR: return L.t("상하좌우로 밀면 커서가 움직입니다.", "Swipe in any direction to move the cursor.");
             default: return null;
         }
     }

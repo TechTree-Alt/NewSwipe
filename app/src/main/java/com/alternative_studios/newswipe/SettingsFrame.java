@@ -36,7 +36,7 @@ final class SettingsFrame {
     private EditText searchInput;
     private boolean searchWanted;
     /** 검색 버튼과 검색창에 보이는 이름 (설정 검색, 단어 검색). */
-    private String searchName = "설정 검색";
+    private String searchName = L.t("설정 검색", "Search settings");
     /** Android 13+의 뒤로 가기 처리 (입력창이 열려 있는 동안만 등록한다). */
     private Object backCallback;
     /**
@@ -191,7 +191,7 @@ final class SettingsFrame {
             header.addView(actionButton, alp);
         }
         // 강조색 동그라미 안에 키보드 아이콘. 입력 시험 창이 열려 있으면 색을 뒤집어 알린다.
-        testButton = circleButton(c, Icons.MENU_KEYBOARD, "키보드 열기", v -> toggleTestKeyboard());
+        testButton = circleButton(c, Icons.MENU_KEYBOARD, L.t("키보드 열기", "Open keyboard"), v -> toggleTestKeyboard());
         header.addView(testButton, new LinearLayout.LayoutParams(size, size));
         return header;
     }
@@ -271,7 +271,7 @@ final class SettingsFrame {
         int pad = Ui.dp(c, 16);
         testBar.setPadding(pad, 0, pad, Ui.dp(c, 8));
         testInput = new EditText(c);
-        testInput.setHint("여기에 입력해 보세요");
+        testInput.setHint(L.t("여기에 입력해 보세요", "Type here"));
         testInput.setTextColor(colors.text);
         testInput.setHintTextColor(colors.hint);
         testInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
@@ -285,7 +285,7 @@ final class SettingsFrame {
     private void updateTestButton() {
         // 열려 있으면 옅은 바탕에 강조색 아이콘, 닫혀 있으면 강조색 바탕에 흰 아이콘.
         testButton.setActive(testBarWanted);
-        testButton.setContentDescription(testBarWanted ? "키보드 닫기" : "키보드 열기");
+        testButton.setContentDescription(testBarWanted ? L.t("키보드 닫기", "Close keyboard") : L.t("키보드 열기", "Open keyboard"));
     }
 
     private void toggleTestKeyboard() {

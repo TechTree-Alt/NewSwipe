@@ -90,10 +90,10 @@ final class ActionPicker {
         for (String id : ids) if (!placed.contains(id)) rest.add(id);
         if (!rest.isEmpty()) {
             if (!headers.isEmpty()) list.addView(divider(c, colors));
-            TextView header = header(c, colors, "기타", headers.isEmpty());
+            TextView header = header(c, colors, L.t("기타", "Other"), headers.isEmpty());
             list.addView(header);
             headers.add(header);
-            names.add("기타");
+            names.add(L.t("기타", "Other"));
             for (String id : rest) {
                 View row = row(c, colors, id, id.equals(current), choose);
                 if (id.equals(current)) picked[0] = row;
@@ -159,8 +159,8 @@ final class ActionPicker {
         dialog[0] = AppTheme.accentBuilder(c)
                 .setTitle(title)
                 .setView(root)
-                .setNeutralButton("기본값", (d, w) -> onReset.run())
-                .setNegativeButton("취소", null)
+                .setNeutralButton(L.t("기본값", "Default"), (d, w) -> onReset.run())
+                .setNegativeButton(L.t("취소", "Cancel"), null)
                 .create();
         // 지금 고른 기능이 처음부터 보이게 (첫 배치가 끝난 뒤 그 줄이 위에서 조금 아래에 오도록).
         scroll.post(() -> {
@@ -200,7 +200,7 @@ final class ActionPicker {
 
     /** 이 창에서 보이는 기능 이름: '없음'만 뜻이 더 잘 드러나게 풀어 쓴다 (칩이나 메뉴에는 그대로 '없음'). */
     static String pickerLabel(String id) {
-        return SwipeAction.NONE.equals(id) ? "아무 기능 안 함" : SwipeAction.label(id);
+        return SwipeAction.NONE.equals(id) ? L.t("아무 기능 안 함", "Do nothing") : SwipeAction.label(id);
     }
 
     /** 기능 한 줄. 지금 고른 줄은 강조색을 옅게 깐 둥근 바탕에 강조색 글씨와 ✓. */
@@ -231,7 +231,7 @@ final class ActionPicker {
             check.setPadding(Ui.dp(c, 8), 0, 0, 0);
             check.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
             row.addView(check);
-            row.setContentDescription(pickerLabel(id) + ", 선택됨");
+            row.setContentDescription(pickerLabel(id) + L.t(", 선택됨", ", selected"));
         }
         return row;
     }

@@ -1,5 +1,7 @@
 package com.alternative_studios.newswipe.keyboard;
 
+import com.alternative_studios.newswipe.L;
+
 /**
  * 기능키 길게 누르기: Shift 키·기호 키·언어 전환 키·엔터 키·지우기 키와 더한 키(이모지·클립보드·
  * 커서 이동·음성 입력)를 길게 눌렀을 때 실행할 기능을 키마다 직접 정한다 (기능 목록은 {@link SwipeAction}).
@@ -15,21 +17,25 @@ public final class LongPressActions {
     public static final int SPACE = 9;
     /** 길게 누르기를 저장하는 칸 (SwipeSpec의 방향 자리를 하나만 쓴다). */
     public static final int DIR = Key.SWIPE_DOWN;
-    private static final String[] LABELS = {
-            "Shift 키 (⇧)", "기호 키 (?123·가·ABC)", "언어 전환 키 (🌐︎)", "엔터 키 (↵)", "지우기 키 (⌫)",
-            "이모지 키", "클립보드 키", "커서 이동 키", "음성 입력 키", "스페이스바"};
-    private static final String[] HINTS = {
-            "영어 자판의 대문자 키",
-            "글자 자판과 기호 자판을 오가는 왼쪽 아래 키",
-            "언어 전환. 기호 자판에서는 이 자리의 이모지 키",
-            "입력란에 따라 줄바꿈·보내기·검색 등",
-            "지우기",
-            "이모지 창 열기",
-            "클립보드 창 열기",
-            "상하좌우로 밀면 커서가 움직입니다.",
-            "음성 입력",
-            "띄어쓰기",
+    private static String[] labels() {
+        return new String[]{
+            L.t("Shift 키 (⇧)", "Shift key (⇧)"), L.t("기호 키 (?123·가·ABC)", "Symbol key (?123·가·ABC)"), L.t("언어 전환 키 (🌐︎)", "Globe key (🌐︎)"), L.t("엔터 키 (↵)", "Enter key (↵)"), L.t("지우기 키 (⌫)", "Delete key (⌫)"),
+            L.t("이모지 키", "Emoji key"), L.t("클립보드 키", "Clipboard key"), L.t("커서 이동 키", "Cursor key"), L.t("음성 입력 키", "Voice input key"), L.t("스페이스바", "Space bar")};
+    }
+    private static String[] hints() {
+        return new String[]{
+            L.t("영어 자판의 대문자 키", "Shift key on the English keyboard"),
+            L.t("글자 자판과 기호 자판을 오가는 왼쪽 아래 키", "Bottom-left key that switches between the letter and symbol keyboards"),
+            L.t("언어 전환. 기호 자판에서는 이 자리의 이모지 키", "Switches languages. The emoji key in this spot on the symbol keyboard"),
+            L.t("입력란에 따라 줄바꿈·보내기·검색 등", "New line, send, search, etc., depending on the field"),
+            L.t("지우기", "Delete"),
+            L.t("이모지 창 열기", "Opens the emoji panel"),
+            L.t("클립보드 창 열기", "Opens the clipboard panel"),
+            L.t("상하좌우로 밀면 커서가 움직입니다.", "Swipe in any direction to move the cursor."),
+            L.t("음성 입력", "Voice input"),
+            L.t("띄어쓰기", "Space"),
     };
+    }
     /** 더할 수 있는 키 칸의 맨 아래 줄 키 ID (BottomKeys). 편집 화면에 보일지 정할 때 쓴다. */
     private static final String[] EXTRA_IDS = {BottomKeys.EMOJI, BottomKeys.CLIPBOARD, BottomKeys.CURSOR, BottomKeys.VOICE};
 
@@ -70,22 +76,22 @@ public final class LongPressActions {
 
         @Override
         public String title() {
-            return "기능키 길게 누르기 기능 사용자화";
+            return L.t("기능키 길게 누르기 기능 사용자화", "Customize function key long press");
         }
 
         @Override
         public String note() {
-            return "기능키를 길게 누를 때 실행할 기능을 고릅니다.";
+            return L.t("기능키를 길게 누를 때 실행할 기능을 고릅니다.", "Choose what happens when you long press a function key.");
         }
 
         @Override
         public String cardTitle(int slot) {
-            return LABELS[slot];
+            return labels()[slot];
         }
 
         @Override
         public String cardHint(int slot) {
-            return HINTS[slot];
+            return hints()[slot];
         }
 
         @Override
@@ -95,7 +101,7 @@ public final class LongPressActions {
 
         @Override
         public String dirLabel(int dir) {
-            return "길게 누르기";
+            return L.t("길게 누르기", "Long press");
         }
 
         @Override
@@ -105,7 +111,7 @@ public final class LongPressActions {
 
         @Override
         public String dialogTitle(int slot, int dir) {
-            return "'" + cardTitle(slot) + "' 길게 누르기";
+            return L.t("'" + cardTitle(slot) + "' 길게 누르기", "Long press '" + cardTitle(slot) + "'");
         }
     };
 

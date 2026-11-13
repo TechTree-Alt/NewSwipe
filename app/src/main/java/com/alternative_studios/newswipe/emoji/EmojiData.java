@@ -1,5 +1,6 @@
 package com.alternative_studios.newswipe.emoji;
 
+import com.alternative_studios.newswipe.L;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Reader;
@@ -27,9 +28,11 @@ public final class EmojiData {
             "", "😀", "👋", "🐶", "🍔", "✈️", "⚽", "💡", "❤️", "🚩",
     };
     /** 하트는 기호 탭, 날씨는 자연 탭, 시계는 사물 탭에 있다 (tools/generate_emoji_data.py의 SUBGROUPS). */
-    public static final String[] GROUP_NAMES = {
-            "최근 사용", "표정", "사람·손", "동물·자연·날씨", "음식", "여행·장소", "활동", "사물", "하트·기호", "깃발",
+    public static String[] groupNames() {
+        return new String[]{
+            L.t("최근 사용", "Recent"), L.t("표정", "Smileys"), L.t("사람·손", "People & hands"), L.t("동물·자연·날씨", "Animals, nature & weather"), L.t("음식", "Food"), L.t("여행·장소", "Travel & places"), L.t("활동", "Activities"), L.t("사물", "Objects"), L.t("하트·기호", "Hearts & symbols"), L.t("깃발", "Flags"),
     };
+    }
 
     public static final class Emoji {
         public final String value;
@@ -61,7 +64,7 @@ public final class EmojiData {
                 System.arraycopy(ko, 0, kw, 0, ko.length);
                 System.arraycopy(en, 0, kw, ko.length, en.length);
                 koCount = ko.length;
-                koNames = nameCount(ko, "깃발: ");
+                koNames = nameCount(ko, L.t("깃발: ", "Flag: "));
                 enNames = nameCount(en, "flag: ");
                 keywords = kw;
             }

@@ -26,7 +26,7 @@ import static org.robolectric.Shadows.shadowOf;
  * 다른 항목까지 덮지 않는지 확인한다. -Dshots=폴더를 주면 깜빡이는 순간을 찍어 남긴다.
  */
 @RunWith(RobolectricTestRunner.class)
-@Config(sdk = 36, qualifiers = "w411dp-h914dp-port-xxhdpi")
+@Config(sdk = 36, qualifiers = "ko-rKR-w411dp-h914dp-port-xxhdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 public class SearchHighlightTest {
 

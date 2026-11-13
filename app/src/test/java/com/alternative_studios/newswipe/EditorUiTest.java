@@ -40,7 +40,7 @@ import static org.robolectric.Shadows.shadowOf;
  * 기본값으로 되돌리기, 바로 적용 등을 실제 화면을 만들어 눌러 보며 확인한다. -Dshots=폴더를 주면 화면을 찍어 남긴다.
  */
 @RunWith(RobolectricTestRunner.class)
-@Config(sdk = 36, qualifiers = "w411dp-h914dp-port-xxhdpi")
+@Config(sdk = 36, qualifiers = "ko-rKR-w411dp-h914dp-port-xxhdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 public class EditorUiTest {
     /** 화면을 찍어 둘 폴더 (-Dshots=폴더로 줄 때만 찍고 과정을 출력한다). */
@@ -1938,7 +1938,7 @@ public class EditorUiTest {
 
     /** 폴더블 내부 화면에서는 판정 기준 섹션이 '한 손 모드' 섹션 아래(기본값으로 되돌리기 위)에 있고, 되돌리기로 기본값이 된다. */
     @Test
-    @Config(qualifiers = "w700dp-h900dp-port-xhdpi")
+    @Config(qualifiers = "ko-rKR-w700dp-h900dp-port-xhdpi")
     public void foldableThresholdBelowOneHandMode() throws Exception {
         Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
         pre.raw().edit().putInt(Prefs.LARGE_SCREEN_DP, 640).commit();

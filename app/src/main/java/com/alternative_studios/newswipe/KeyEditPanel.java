@@ -156,26 +156,26 @@ final class KeyEditPanel {
         String shown = key.label;
         String kind;
         String g = group();
-        if (",".equals(slot())) kind = "쉼표 자리의 키 · 모든 자판이 함께 씁니다";
-        else if (".".equals(slot())) kind = "온점 자리의 키 · 모든 자판이 함께 씁니다";
-        else if (KeyboardLayout.GROUP_NUM.equals(g)) kind = "숫자 줄 · 한글·영어 자판이 함께 씁니다";
-        else if (KeyboardLayout.GROUP_SYM.equals(g)) kind = "기호 · 같은 기호는 모든 자판이 함께 씁니다";
-        else if (vowel()) kind = "한글 모음";
-        else if (hangul()) kind = "한글 자음";
-        else kind = "영어 글자";
-        header(shown, "'" + shown + "' 키", kind);
+        if (",".equals(slot())) kind = L.t("쉼표 자리의 키 · 모든 자판이 함께 씁니다", "Key in the comma spot · Shared by all keyboards");
+        else if (".".equals(slot())) kind = L.t("온점 자리의 키 · 모든 자판이 함께 씁니다", "Key in the period spot · Shared by all keyboards");
+        else if (KeyboardLayout.GROUP_NUM.equals(g)) kind = L.t("숫자 줄 · 한글·영어 자판이 함께 씁니다", "Number row · Shared by the Korean and English keyboards");
+        else if (KeyboardLayout.GROUP_SYM.equals(g)) kind = L.t("기호 · 같은 기호는 모든 자판이 함께 씁니다", "Symbol · The same symbol is shared by all keyboards");
+        else if (vowel()) kind = L.t("한글 모음", "Korean vowel");
+        else if (hangul()) kind = L.t("한글 자음", "Korean consonant");
+        else kind = L.t("영어 글자", "English letter");
+        header(shown, L.t("'" + shown + "' 키", "'" + shown + "' key"), kind);
 
         // ---- 누르기 (자음·모음 연속 탭처럼 모든 글자 키에 걸리는 설정은 '글자 키' 영역에 있다)
         if (",".equals(slot()) || ".".equals(slot())) {
-            LinearLayout press = section("누르기");
-            press.addView(valueRow("입력할 글자", prefs.keyChar(slot()), v -> editSlotChar(slot())));
+            LinearLayout press = section(L.t("누르기", "Tap"));
+            press.addView(valueRow(L.t("입력할 글자", "Character to type"), prefs.keyChar(slot()), v -> editSlotChar(slot())));
         }
 
         // ---- 길게 누르기 (문자 입력 · 연속 입력 · 없음)
-        LinearLayout lp = section("길게 누르기");
+        LinearLayout lp = section(L.t("길게 누르기", "Long press"));
         LinearLayout lpBody = new LinearLayout(a);
         lpBody.setOrientation(LinearLayout.VERTICAL);
-        lp.addView(Ui.choiceRow(a, new String[]{"문자 입력", "연속 입력", "없음"}, longPressMode(), accentColor, onAccentColor,
+        lp.addView(Ui.choiceRow(a, new String[]{L.t("문자 입력", "Pick a character"), L.t("연속 입력", "Repeat"), L.t("없음", "None")}, longPressMode(), accentColor, onAccentColor,
                 textColor, hintColor, 0, i -> {
                     setLongPressMode(i);
                     fillLongPress(lpBody);
@@ -186,7 +186,7 @@ final class KeyEditPanel {
         // ---- 밀기
         if (swipeEditable()) buildCharSwipe();
 
-        resetRow("'" + shown + "' 키 설정", this::resetCharKey);
+        resetRow(L.t("'" + shown + "' 키 설정", "'" + shown + "' key settings"), this::resetCharKey);
     }
 
     /** 0 = 문자 입력, 1 = 연속 입력, 2 = 없음. */
@@ -233,13 +233,13 @@ final class KeyEditPanel {
         int mode = longPressMode();
         if (mode == 0) {
             String[] items = currentPopup();
-            body.addView(valueRow("길게 눌러 고를 문자", items.length == 0 ? "없음" : joinItems(items), v -> editPopup()));
-            body.addView(note("첫 번째 문자는 키 오른쪽 위에 작게 보입니다."
-                    + (".".equals(slot()) ? " 이메일·인터넷 주소 입력란에서는 .com 같은 주소가 대신 나옵니다." : "")));
+            body.addView(valueRow(L.t("길게 눌러 고를 문자", "Characters to pick on long press"), items.length == 0 ? L.t("없음", "None") : joinItems(items), v -> editPopup()));
+            body.addView(note(L.t("첫 번째 문자는 키 오른쪽 위에 작게 보입니다.", "The first character is shown small at the top right of the key.")
+                    + (".".equals(slot()) ? L.t(" 이메일·인터넷 주소 입력란에서는 .com 같은 주소가 대신 나옵니다.", " On email and web address fields, addresses like .com appear instead.") : "")));
         } else if (mode == 1) {
-            body.addView(note("누르고 있는 동안 이 글자를 계속 입력합니다. 길게 눌러 고를 문자는 나오지 않습니다."));
+            body.addView(note(L.t("누르고 있는 동안 이 글자를 계속 입력합니다. 길게 눌러 고를 문자는 나오지 않습니다.", "Keeps typing this character while held down. No characters to pick appear.")));
         } else {
-            body.addView(note("길게 눌러도 아무것도 하지 않습니다."));
+            body.addView(note(L.t("길게 눌러도 아무것도 하지 않습니다.", "Long press does nothing.")));
         }
     }
 
@@ -254,14 +254,14 @@ final class KeyEditPanel {
     private LinearLayout swipePad;
 
     private void buildCharSwipe() {
-        LinearLayout card = section("밀기");
+        LinearLayout card = section(L.t("밀기", "Swipe"));
         swipePad = new LinearLayout(a);
         swipePad.setOrientation(LinearLayout.VERTICAL);
         card.addView(swipePad);
         fillCharPad();
-        card.addView(note("방향 칸을 눌러 그 방향으로 밀 때 입력할 글자를 정합니다. 비워 두면 그 방향은 아무것도 입력하지 않습니다."));
+        card.addView(note(L.t("방향 칸을 눌러 그 방향으로 밀 때 입력할 글자를 정합니다. 비워 두면 그 방향은 아무것도 입력하지 않습니다.", "Tap a direction to set the character to type when swiping that way. Leave it empty to type nothing in that direction.")));
         if (SwipeCustom.englishUpperSwipe(prefs, korean, slot(), Key.SWIPE_DOWN)) {
-            card.addView(note("영어 자판의 '아래로 밀어 대문자 입력'이 켜져 있어 아래쪽은 대문자로 고정됩니다. 글자 키 설정에서 끌 수 있습니다."));
+            card.addView(note(L.t("영어 자판의 '아래로 밀어 대문자 입력'이 켜져 있어 아래쪽은 대문자로 고정됩니다. 글자 키 설정에서 끌 수 있습니다.", "'Swipe down for capitals' on the English keyboard is on, so down is fixed to the capital letter. You can turn it off in the letter key settings.")));
         } else if (SwipeCustom.hangulDownLocked(prefs, korean, slot(), Key.SWIPE_DOWN)) {
             card.addView(note(downLockNote()));
         }
@@ -279,19 +279,19 @@ final class KeyEditPanel {
         for (int dir : DIRS) {
             String s = key.swipeText(dir);
             on[dir] = s != null && !s.isEmpty();
-            labels[dir] = on[dir] ? s : "없음";
+            labels[dir] = on[dir] ? s : L.t("없음", "None");
         }
         swipePad.addView(dpad(key.label, labels, on, this::editSwipeText));
     }
 
     /** 쌍자음·이중모음을 아래로 밀기로 입력해 이 키의 아래쪽이 고정된 이유. */
     private String downLockNote() {
-        return vowel() ? "'이중모음 입력'이 '아래로 밀기'를 쓰고 있어 아래쪽은 이중모음으로 고정됩니다. 글자 키 설정에서 '두 번 연속으로 누르기'로 바꾸면 정할 수 있습니다."
-                : "'쌍자음 입력'이 '아래로 밀기'를 쓰고 있어 아래쪽은 쌍자음으로 고정됩니다. 글자 키 설정에서 '두 번 연속으로 누르기'로 바꾸면 정할 수 있습니다.";
+        return vowel() ? L.t("'이중모음 입력'이 '아래로 밀기'를 쓰고 있어 아래쪽은 이중모음으로 고정됩니다. 글자 키 설정에서 '두 번 연속으로 누르기'로 바꾸면 정할 수 있습니다.", "'Y-vowel input' uses 'Swipe down', so down is fixed to the Y-vowel. Change it to 'Double tap' in the letter key settings to set it.")
+                : L.t("'쌍자음 입력'이 '아래로 밀기'를 쓰고 있어 아래쪽은 쌍자음으로 고정됩니다. 글자 키 설정에서 '두 번 연속으로 누르기'로 바꾸면 정할 수 있습니다.", "'Double consonant input' uses 'Swipe down', so down is fixed to the double consonant. Change it to 'Double tap' in the letter key settings to set it.");
     }
 
     private String dialogTitle(int dir) {
-        return "'" + key.label + "' " + SwipeCustom.label(dir) + "으로 밀기";
+        return SwipeCustom.swipeTitle("'" + key.label + "'", dir);
     }
 
     /** 글자 칸 아래에 놓는 빠른 선택: 이 키에 흔히 두는 글자 (쌍자음·거센소리·겹받침·이중모음, 온점 키는 쉼표). */
@@ -319,7 +319,7 @@ final class KeyEditPanel {
     private void editSwipeText(int dir) {
         String g = group(), s = slot();
         if (SwipeCustom.englishUpperSwipe(prefs, korean, s, dir)) {
-            android.widget.Toast.makeText(a, "'아래로 밀어 대문자 입력'이 켜져 있어 아래쪽은 대문자로 고정됩니다.",
+            android.widget.Toast.makeText(a, L.t("'아래로 밀어 대문자 입력'이 켜져 있어 아래쪽은 대문자로 고정됩니다.", "'Swipe down for capitals' is on, so down is fixed to the capital letter."),
                     android.widget.Toast.LENGTH_SHORT).show();
             return;
         }
@@ -337,8 +337,9 @@ final class KeyEditPanel {
         input.setSelection(input.getText().length());
         input.setGravity(Gravity.CENTER);
         input.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
-        LinearLayout box = dialogBox("입력할 글자를 적어 주세요 (최대 " + MAX_SWIPE_LENGTH
-                + "자). 비워 두면 이 방향은 아무것도 입력하지 않습니다.");
+        LinearLayout box = dialogBox(L.t("입력할 글자를 적어 주세요 (최대 " + MAX_SWIPE_LENGTH
+                + "자). 비워 두면 이 방향은 아무것도 입력하지 않습니다.", "Enter the text to type (up to " + MAX_SWIPE_LENGTH
+                + " characters). Leave it empty to type nothing in this direction."));
         box.addView(input);
         java.util.List<String> picks = suggestions(dir);
         if (!picks.isEmpty()) {
@@ -368,16 +369,16 @@ final class KeyEditPanel {
         AlertDialog d = AppTheme.dialogBuilder(a)
                 .setTitle(dialogTitle(dir))
                 .setView(box)
-                .setPositiveButton("저장", (dlg, w) -> {
+                .setPositiveButton(L.t("저장", "Save"), (dlg, w) -> {
                     prefs.setSwipeCustomOverride(g, s, dirName, input.getText().toString());
                     confirmed();
                     refreshCharPad();
                 })
-                .setNeutralButton("기본값", (dlg, w) -> {
+                .setNeutralButton(L.t("기본값", "Default"), (dlg, w) -> {
                     prefs.resetSwipeCustomOverride(g, s, dirName);
                     refreshCharPad();
                 })
-                .setNegativeButton("취소", null)
+                .setNegativeButton(L.t("취소", "Cancel"), null)
                 .show();
         showKeyboardFor(d, input);
     }
@@ -385,15 +386,15 @@ final class KeyEditPanel {
     /** 길게 눌러 고를 문자를 한 칸에 하나씩 고치는 대화상자 (띄어쓰기가 있는 문장도 한 항목). */
     private void editPopup() {
         String g = group(), s = slot();
-        LinearLayout box = dialogBox("길게 눌렀을 때 고를 문자를 한 칸에 하나씩 적어 주세요. 띄어쓰기가 있는 문장도 됩니다. "
-                + "첫 번째 칸이 키 위에 작게 표시되고, 모두 비우면 길게 누르기가 없어집니다.");
+        LinearLayout box = dialogBox(L.t("길게 눌렀을 때 고를 문자를 한 칸에 하나씩 적어 주세요. 띄어쓰기가 있는 문장도 됩니다. "
+                + "첫 번째 칸이 키 위에 작게 표시되고, 모두 비우면 길게 누르기가 없어집니다.", "Enter one character per box to pick on long press. Phrases with spaces work too. The first box is shown small on the key; clear them all to remove the long press."));
         LinearLayout rows = new LinearLayout(a);
         rows.setOrientation(LinearLayout.VERTICAL);
         box.addView(rows);
         for (String item : currentPopup()) addPopupRow(rows, item, false);
         // 입력란이 하나도 없는 채로 대화상자를 띄우면 시스템이 '글자를 칠 수 없는 창'으로 보고 키보드를 막는다.
         if (rows.getChildCount() == 0) addPopupRow(rows, "", true);
-        TextView add = text("+ 문자 추가", 15, accentColor);
+        TextView add = text(L.t("+ 문자 추가", "+ Add character"), 15, accentColor);
         add.setGravity(Gravity.CENTER_VERTICAL);
         add.setPadding(Ui.dp(a, 4), Ui.dp(a, 12), Ui.dp(a, 4), Ui.dp(a, 12));
         add.setOnClickListener(v -> addPopupRow(rows, "", true));
@@ -401,9 +402,9 @@ final class KeyEditPanel {
         ScrollView scroll = new ScrollView(a);
         scroll.addView(box);
         AlertDialog d = AppTheme.dialogBuilder(a)
-                .setTitle("'" + key.label + "' 길게 누르기")
+                .setTitle(L.t("'" + key.label + "' 길게 누르기", "Long press '" + key.label + "'"))
                 .setView(scroll)
-                .setPositiveButton("저장", (dlg, w) -> {
+                .setPositiveButton(L.t("저장", "Save"), (dlg, w) -> {
                     java.util.List<String> items = new java.util.ArrayList<>();
                     for (int i = 0; i < rows.getChildCount(); i++) {
                         EditText input = (EditText) ((LinearLayout) rows.getChildAt(i)).getChildAt(0);
@@ -416,11 +417,11 @@ final class KeyEditPanel {
                     confirmed();
                     rebuild();
                 })
-                .setNeutralButton("기본값", (dlg, w) -> {
+                .setNeutralButton(L.t("기본값", "Default"), (dlg, w) -> {
                     prefs.resetPopupOverride(g, s);
                     rebuild();
                 })
-                .setNegativeButton("취소", (dlg, w) -> rebuild())
+                .setNegativeButton(L.t("취소", "Cancel"), (dlg, w) -> rebuild())
                 .show();
         android.view.Window window = d.getWindow();
         if (window != null) {
@@ -437,11 +438,11 @@ final class KeyEditPanel {
         EditText input = new EditText(a);
         input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
         input.setSingleLine(true);
-        input.setHint("문자 또는 문장");
+        input.setHint(L.t("문자 또는 문장", "Character or phrase"));
         input.setText(value);
         row.addView(input, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         int press = (textColor & 0x00FFFFFF) | 0x33000000;
-        IconButton remove = new IconButton(a, Icons.CLOSE, hintColor, press, "이 문자 지우기");
+        IconButton remove = new IconButton(a, Icons.CLOSE, hintColor, press, L.t("이 문자 지우기", "Delete this character"));
         remove.setOnClickListener(v -> rows.removeView(row));
         row.addView(remove, new LinearLayout.LayoutParams(Ui.dp(a, 40), Ui.dp(a, 40)));
         rows.addView(row);
@@ -458,22 +459,22 @@ final class KeyEditPanel {
         input.setSelection(input.getText().length());
         input.setGravity(Gravity.CENTER);
         input.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
-        LinearLayout box = dialogBox("이 키가 입력할 글자를 한 글자만 적어 주세요 (예: ? ! …). 길게 누르기·밀기 설정은 그대로 이어집니다.");
+        LinearLayout box = dialogBox(L.t("이 키가 입력할 글자를 한 글자만 적어 주세요 (예: ? ! …). 길게 누르기·밀기 설정은 그대로 이어집니다.", "Enter a single character for this key to type (e.g. ? ! …). Long-press and swipe settings stay the same."));
         box.addView(input);
         AlertDialog d = AppTheme.dialogBuilder(a)
-                .setTitle(",".equals(slot) ? "쉼표 자리의 키" : "온점 자리의 키")
+                .setTitle(",".equals(slot) ? L.t("쉼표 자리의 키", "Key in the comma spot") : L.t("온점 자리의 키", "Key in the period spot"))
                 .setView(box)
-                .setPositiveButton("저장", null)
-                .setNeutralButton("기본값", (dlg, w) -> {
+                .setPositiveButton(L.t("저장", "Save"), null)
+                .setNeutralButton(L.t("기본값", "Default"), (dlg, w) -> {
                     prefs.setKeyChar(slot, slot);
                     rebuild();
                 })
-                .setNegativeButton("취소", null)
+                .setNegativeButton(L.t("취소", "Cancel"), null)
                 .create();
         d.setOnShowListener(x -> d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             String s = input.getText().toString();
             if (s.isEmpty() || s.codePointCount(0, s.length()) != 1 || Character.isWhitespace(s.codePointAt(0))) {
-                Toast.makeText(a, "공백이 아닌 한 글자만 적어 주세요", Toast.LENGTH_SHORT).show();
+                Toast.makeText(a, L.t("공백이 아닌 한 글자만 적어 주세요", "Enter a single character other than a space"), Toast.LENGTH_SHORT).show();
                 return;
             }
             prefs.setKeyChar(slot, s);
@@ -508,12 +509,12 @@ final class KeyEditPanel {
     }
 
     private String functionName() {
-        if (key.type == Key.FUNCTION) return "Fn 키";
-        if (key.type == Key.SPACE) return "스페이스바 (␣)";
+        if (key.type == Key.FUNCTION) return L.t("Fn 키", "Fn key");
+        if (key.type == Key.SPACE) return L.t("스페이스바 (␣)", "Space bar (␣)");
         int lp = lpSlot();
         if (lp >= 0) return LongPressActions.SPEC.cardTitle(lp);
         int fn = fnSlot();
-        return fn >= 0 ? FunctionSwipes.SPEC.cardTitle(fn) : "기능키";
+        return fn >= 0 ? FunctionSwipes.SPEC.cardTitle(fn) : L.t("기능키", "Function keys");
     }
 
     /** 네 방향 판 가운데에 쓰는 짧은 이름. */
@@ -529,7 +530,7 @@ final class KeyEditPanel {
             case Key.CLIPBOARD: return "📋︎";
             case Key.CURSOR_PAD: return "✥";
             case Key.VOICE: return "🎤︎";
-            default: return key.label == null || key.label.isEmpty() ? "키" : key.label;
+            default: return key.label == null || key.label.isEmpty() ? L.t("키", "Keys") : key.label;
         }
     }
 
@@ -543,13 +544,13 @@ final class KeyEditPanel {
 
         // ---- 누르기 (기능키의 순서·유무와 격자 정렬은 '기능키' 영역에 있다)
         if (key.type == Key.TO_SYMBOLS || key.type == Key.TO_LETTERS) {
-            section("누르기").addView(toggle("기호 자판 대신 숫자 패드 사용",
-                    "기호 키(?123)를 누르면 기호 자판 대신 3×4 숫자 패드가 열립니다. 숫자 패드의 ?!@ 키로 기호 자판을, 가·ABC 키로 글자 자판을 엽니다.",
+            section(L.t("누르기", "Tap")).addView(toggle(L.t("기호 자판 대신 숫자 패드 사용", "Use number pad instead of symbols"),
+                    L.t("기호 키(?123)를 누르면 기호 자판 대신 3×4 숫자 패드가 열립니다. 숫자 패드의 ?!@ 키로 기호 자판을, 가·ABC 키로 글자 자판을 엽니다.", "The symbol key (?123) opens a 3×4 number pad instead of the symbol keyboard. On the number pad, ?!@ opens the symbol keyboard and 가·ABC opens the letter keyboard."),
                     prefs.numberPadForSymbols(), on -> put(Prefs.NUMBER_PAD_SYMBOLS, on)));
         } else if (key.type == Key.LANGUAGE) {
-            LinearLayout press = section("누르기");
-            press.addView(button("언어 순서 사용자화", v -> open(new Intent(a, LanguageOrderEditorActivity.class))));
-            press.addView(note("🌐︎로 바꿀 언어와 '언어 고르기' 말풍선의 차례를 정합니다."));
+            LinearLayout press = section(L.t("누르기", "Tap"));
+            press.addView(button(L.t("입력 언어", "Input languages"), v -> open(new Intent(a, LanguageOrderEditorActivity.class))));
+            press.addView(note(L.t("🌐︎로 바꿀 언어를 켜고 끄며, '언어 고르기' 말풍선의 차례를 정합니다.", "Turns on the languages 🌐︎ switches between and sets their order in the 'Pick language' popup.")));
         } else if (key.type == Key.SPACE) {
             buildSpacePress();
         } else if (key.type == Key.DELETE) {
@@ -557,13 +558,13 @@ final class KeyEditPanel {
         }
 
         // ---- 길게 누르기
-        LinearLayout lp = section("길게 누르기");
+        LinearLayout lp = section(L.t("길게 누르기", "Long press"));
         if (lpSlot() >= 0) buildLongPressAction(lp);
 
         // ---- 밀기
         if (fnSlot() >= 0) buildFunctionSwipe();
 
-        resetRow(name + " 설정", () -> {
+        resetRow(name + L.t(" 설정", " settings"), () -> {
             // 이 창에 보이는 값 모두: 누르기 항목, 길게 누르기(와 그 지우는 속도), 밀기(와 커서 속도).
             android.content.SharedPreferences.Editor e = prefs.raw().edit();
             for (String k : pressKeys()) e.remove(k);
@@ -600,9 +601,9 @@ final class KeyEditPanel {
     private void buildLongPressAction(LinearLayout card) {
         int slot = lpSlot();
         String action = LongPressActions.SPEC.get(prefs, slot, LongPressActions.DIR);
-        card.addView(valueRow("길게 누르면", SwipeAction.label(action),
+        card.addView(valueRow(L.t("길게 누르면", "Long press"), SwipeAction.label(action),
                 v -> pickAction(LongPressActions.SPEC, slot, LongPressActions.DIR,
-                        "'" + functionName() + "' 길게 누르기", this::rebuild)));
+                        L.t("'" + functionName() + "' 길게 누르기", "Long press '" + functionName() + "'"), this::rebuild)));
         addLongPressDetail(card, action);
     }
 
@@ -612,29 +613,29 @@ final class KeyEditPanel {
      */
     private void addLongPressDetail(LinearLayout card, String action) {
         if (SwipeAction.DELETE_REPEAT.equals(action)) {
-            card.addView(subGroup(slider("지우는 속도", Prefs.DELETE_REPEAT_RATE, prefs.deleteRepeatRate(),
-                    Prefs.DELETE_REPEAT_RATE_MIN, Prefs.DELETE_REPEAT_RATE_MAX, 1, "글자/초")));
+            card.addView(subGroup(slider(L.t("지우는 속도", "Delete speed"), Prefs.DELETE_REPEAT_RATE, prefs.deleteRepeatRate(),
+                    Prefs.DELETE_REPEAT_RATE_MIN, Prefs.DELETE_REPEAT_RATE_MAX, 1, L.t("글자/초", "chars/s"))));
         } else if (SwipeAction.DELETE_WORD_REPEAT.equals(action)) {
-            card.addView(subGroup(slider("지우는 속도", Prefs.DELETE_WORD_REPEAT_RATE, prefs.deleteWordRepeatRate(),
-                    Prefs.DELETE_WORD_REPEAT_RATE_MIN, Prefs.DELETE_WORD_REPEAT_RATE_MAX, 1, "단어/초")));
+            card.addView(subGroup(slider(L.t("지우는 속도", "Delete speed"), Prefs.DELETE_WORD_REPEAT_RATE, prefs.deleteWordRepeatRate(),
+                    Prefs.DELETE_WORD_REPEAT_RATE_MIN, Prefs.DELETE_WORD_REPEAT_RATE_MAX, 1, L.t("단어/초", "words/s"))));
         } else if (SwipeAction.SPACE_SELECT.equals(action)) {
-            card.addView(note("길게 눌러 진동이 오면, 손을 떼지 않고 좌우로 밀어 글자 단위로, 위아래로 밀어 줄 단위로 글자를 "
-                    + "선택합니다. 밀지 않고 떼면 띄어쓰기가 입력됩니다."));
+            card.addView(note(L.t("길게 눌러 진동이 오면, 손을 떼지 않고 좌우로 밀어 글자 단위로, 위아래로 밀어 줄 단위로 글자를 "
+                    + "선택합니다. 밀지 않고 떼면 띄어쓰기가 입력됩니다.", "Long press until it vibrates, then without lifting, swipe left or right to select by character, or up and down to select by line. Lift without swiping to type a space.")));
         }
     }
 
     private void buildFunctionSwipe() {
         int slot = fnSlot();
-        LinearLayout card = section("밀기");
+        LinearLayout card = section(L.t("밀기", "Swipe"));
         card.addView(actionPad(FunctionSwipes.SPEC, slot, shortName()));
         if (key.type == Key.LANGUAGE) {
-            card.addView(note("위쪽에 '언어 고르기'를 정하면 위로 밀었을 때 켜 둔 언어가 말풍선으로 올라옵니다. "
-                    + "손을 떼지 않고 위아래로 옮겨 고릅니다."));
+            card.addView(note(L.t("위쪽에 '언어 고르기'를 정하면 위로 밀었을 때 켜 둔 언어가 말풍선으로 올라옵니다. "
+                    + "손을 떼지 않고 위아래로 옮겨 고릅니다.", "Set 'Pick language' for up, then swipe up to show your languages in a popup. Without lifting, move up or down to pick one.")));
         } else if (key.type == Key.SPACE || key.type == Key.CURSOR_PAD || usesFreeCursor(slot)) {
-            card.addView(note("'커서 자유 이동'을 정한 방향으로 밀면 커서가 움직입니다 (좌우는 글자, 위아래는 줄 단위)."));
-            card.addView(slider("커서 이동 속도 좌우", Prefs.SPACE_CURSOR_SPEED_H, prefs.spaceCursorSpeedH(), 50, 300, 10, "%"));
-            card.addView(slider("커서 이동 속도 상하", Prefs.SPACE_CURSOR_SPEED_V, prefs.spaceCursorSpeedV(), 50, 300, 10, "%"));
-            card.addView(note("스페이스바·커서 키·글자 키 트랙패드가 같은 속도를 씁니다. 값이 클수록 조금만 밀어도 커서가 빠르게 움직입니다."));
+            card.addView(note(L.t("'커서 자유 이동'을 정한 방향으로 밀면 커서가 움직입니다 (좌우는 글자, 위아래는 줄 단위).", "Swipe in a direction set to 'Free cursor' to move the cursor (by character left and right, by line up and down).")));
+            card.addView(slider(L.t("커서 이동 속도 좌우", "Cursor speed (horizontal)"), Prefs.SPACE_CURSOR_SPEED_H, prefs.spaceCursorSpeedH(), 50, 300, 10, "%"));
+            card.addView(slider(L.t("커서 이동 속도 상하", "Cursor speed (vertical)"), Prefs.SPACE_CURSOR_SPEED_V, prefs.spaceCursorSpeedV(), 50, 300, 10, "%"));
+            card.addView(note(L.t("스페이스바·커서 키·글자 키 트랙패드가 같은 속도를 씁니다. 값이 클수록 조금만 밀어도 커서가 빠르게 움직입니다.", "The space bar, cursor key, and letter key trackpad share this speed. Higher values move the cursor faster with shorter swipes.")));
         }
     }
 
@@ -646,19 +647,19 @@ final class KeyEditPanel {
 
     /** 스페이스바 누르기: 두 번으로 마침표, 인식 범위, 언어 이름. */
     private void buildSpacePress() {
-        LinearLayout press = section("누르기");
-        press.addView(toggle("두 번 눌러 마침표", "스페이스바를 빠르게 두 번 누르면 '. '을 넣습니다.",
+        LinearLayout press = section(L.t("누르기", "Tap"));
+        press.addView(toggle(L.t("두 번 눌러 마침표", "Double-tap for period"), L.t("스페이스바를 빠르게 두 번 누르면 '. '을 넣습니다.", "Double-tap the space bar to type '. '."),
                 prefs.doubleSpacePeriod(), on -> put(Prefs.DOUBLE_SPACE_PERIOD, on)));
-        View shrink = subGroup(slider("줄이는 정도", Prefs.SPACE_HIT_SHRINK_PCT, prefs.spaceHitShrinkPct(), 5, 50, 5, "%"));
+        View shrink = subGroup(slider(L.t("줄이는 정도", "Amount"), Prefs.SPACE_HIT_SHRINK_PCT, prefs.spaceHitShrinkPct(), 5, 50, 5, "%"));
         shrink.setVisibility(prefs.spaceHitShrink() ? View.VISIBLE : View.GONE);
-        press.addView(toggle("인식 범위 좁히기",
-                "스페이스바의 위쪽 가장자리를 누르면 윗줄 키를 누른 것으로 간주해 스페이스바가 잘못 눌리는 일을 줄입니다.",
+        press.addView(toggle(L.t("인식 범위 좁히기", "Shrink touch area"),
+                L.t("스페이스바의 위쪽 가장자리를 누르면 윗줄 키를 누른 것으로 간주해 스페이스바가 잘못 눌리는 일을 줄입니다.", "Taps on the top edge of the space bar count as the key above, so you hit the space bar by mistake less often."),
                 prefs.spaceHitShrink(), on -> {
                     put(Prefs.SPACE_HIT_SHRINK, on);
                     Ui.setVisibleAnimated(shrink, on);
                 }));
         press.addView(shrink);
-        press.addView(toggle("언어 이름 보이기", "스페이스바에 지금 쓰는 언어를 작게 보여 줍니다.",
+        press.addView(toggle(L.t("언어 이름 보이기", "Show language name"), L.t("스페이스바에 지금 쓰는 언어를 작게 보여 줍니다.", "Shows the current language small on the space bar."),
                 prefs.spaceLangLabel(), on -> {
                     put(Prefs.SPACE_LANG_LABEL, on);
                     refreshKey();
@@ -667,11 +668,11 @@ final class KeyEditPanel {
 
     /** ⌫ 누르기: 인식 범위. */
     private void buildDeletePress() {
-        LinearLayout press = section("누르기");
-        View shrink = subGroup(slider("줄이는 정도", Prefs.DELETE_HIT_SHRINK_PCT, prefs.deleteHitShrinkPct(), 5, 50, 5, "%"));
+        LinearLayout press = section(L.t("누르기", "Tap"));
+        View shrink = subGroup(slider(L.t("줄이는 정도", "Amount"), Prefs.DELETE_HIT_SHRINK_PCT, prefs.deleteHitShrinkPct(), 5, 50, 5, "%"));
         shrink.setVisibility(prefs.deleteHitShrink() ? View.VISIBLE : View.GONE);
-        press.addView(toggle("인식 범위 좁히기",
-                "⌫의 가장자리를 누르면 ⌫ 대신 이웃 키를 누른 것으로 간주해 잘못 지워지는 일을 줄입니다. 아래쪽은 아랫줄이 글자 키일 때만 적용됩니다.",
+        press.addView(toggle(L.t("인식 범위 좁히기", "Shrink touch area"),
+                L.t("⌫의 가장자리를 누르면 ⌫ 대신 이웃 키를 누른 것으로 간주해 잘못 지워지는 일을 줄입니다. 아래쪽은 아랫줄이 글자 키일 때만 적용됩니다.", "Taps on the edges of ⌫ count as the neighboring key, so you delete by mistake less often. The bottom edge applies only when the row below has letter keys."),
                 prefs.deleteHitShrink(), on -> {
                     put(Prefs.DELETE_HIT_SHRINK, on);
                     Ui.setVisibleAnimated(shrink, on);
@@ -681,7 +682,7 @@ final class KeyEditPanel {
 
     /** Fn 키: 누르기·길게 누르기·네 방향 밀기를 모두 직접 정한다. */
     private void buildFnKey() {
-        LinearLayout press = section("누르기·길게 누르기");
+        LinearLayout press = section(L.t("누르기·길게 누르기", "Tap · Long press"));
         for (int dir : FnKeyActions.SPEC.dirs(FnKeyActions.PRESS)) {
             String action = FnKeyActions.SPEC.get(prefs, FnKeyActions.PRESS, dir);
             press.addView(valueRow(FnKeyActions.SPEC.dirLabel(FnKeyActions.PRESS, dir), SwipeAction.label(action),
@@ -689,9 +690,9 @@ final class KeyEditPanel {
                             FnKeyActions.SPEC.dialogTitle(FnKeyActions.PRESS, dir), this::rebuild)));
         }
         addLongPressDetail(press, FnKeyActions.SPEC.get(prefs, FnKeyActions.PRESS, FnKeyActions.LONG));
-        LinearLayout swipe = section("밀기");
+        LinearLayout swipe = section(L.t("밀기", "Swipe"));
         swipe.addView(actionPad(FnKeyActions.SPEC, FnKeyActions.SWIPE, "Fn"));
-        resetRow("Fn 키 설정", () -> {
+        resetRow(L.t("Fn 키 설정", "Fn key settings"), () -> {
             prefs.resetSwipeActions(FnKeyActions.SPEC.group);
             rebuild();
         });
@@ -704,8 +705,8 @@ final class KeyEditPanel {
         // 버튼의 순서·유무는 도구 막대(영역)에서 바꾼다.
         int slot = toolSlot(id);
         if (slot >= 0) buildToolbarSwipe(slot, ToolbarButtons.label(id));
-        else section("버튼").addView(note("이 버튼은 따로 정할 것이 없습니다. 순서·유무는 도구 막대에서 바꿉니다."));
-        resetRow(ToolbarButtons.label(id) + " 버튼 설정", () -> {
+        else section(L.t("버튼", "Button")).addView(note(L.t("이 버튼은 따로 정할 것이 없습니다. 순서·유무는 도구 막대에서 바꿉니다.", "There is nothing to set for this button. Change the order and visibility in the toolbar.")));
+        resetRow(ToolbarButtons.label(id) + L.t(" 설정", " settings"), () -> {
             if (slot >= 0) for (int dir : DIRS) ToolbarSwipes.SPEC.reset(prefs, slot, dir);
             rebuild();
         });
@@ -727,28 +728,28 @@ final class KeyEditPanel {
 
     private void buildToolbar() {
         dependents.clear();
-        header(null, "도구 막대", null);   // 제목만 (설명 줄은 두지 않는다)
-        LinearLayout look = section("모양");
-        View toolButtons = subGroup(button("도구 막대 버튼 사용자화", v -> open(new Intent(a, ToolbarButtonsEditorActivity.class))),
-                note("도구 막대 버튼의 유무와 순서를 바꿉니다."));
+        header(null, L.t("도구 막대", "Toolbar"), null);   // 제목만 (설명 줄은 두지 않는다)
+        LinearLayout look = section(L.t("모양", "Look"));
+        View toolButtons = subGroup(button(L.t("도구 막대 버튼 사용자화", "Customize toolbar buttons"), v -> open(new Intent(a, ToolbarButtonsEditorActivity.class))),
+                note(L.t("도구 막대 버튼의 유무와 순서를 바꿉니다.", "Shows, hides, and reorders toolbar buttons.")));
         // 도구 막대를 끄면 이 스위치만 남기고 나머지 설정과 설명을 모두 감춘다 (켜면 다시 보인다).
         LinearLayout rest = new LinearLayout(a);
         rest.setOrientation(LinearLayout.VERTICAL);
         rest.addView(toolButtons);
-        rest.addView(toggle("자판 아래에 두기", "도구 막대를 자판 위가 아니라 아래에 놓습니다. ", prefs.toolbarBottom(),
+        rest.addView(toggle(L.t("자판 아래에 두기", "Place below keyboard"), L.t("도구 막대를 자판 위가 아니라 아래에 놓습니다. ", "Puts the toolbar below the keyboard instead of above it. "), prefs.toolbarBottom(),
                 on -> put(Prefs.TOOLBAR_BOTTOM, on)));
-        rest.addView(slider("도구 막대 높이", Prefs.TOOLBAR_HEIGHT, prefs.toolbarHeight(), 70, 150, 5, "%"));
-        rest.addView(slider("도구 버튼 크기", Prefs.TOOL_BUTTON_SIZE, prefs.toolButtonSize(), 70, 150, 1, "%"));
-        rest.addView(note("도구 버튼의 아이콘은 막대보다 커지지 않습니다."));
+        rest.addView(slider(L.t("도구 막대 높이", "Toolbar height"), Prefs.TOOLBAR_HEIGHT, prefs.toolbarHeight(), 70, 150, 5, "%"));
+        rest.addView(slider(L.t("도구 버튼 크기", "Toolbar button size"), Prefs.TOOL_BUTTON_SIZE, prefs.toolButtonSize(), 70, 150, 1, "%"));
+        rest.addView(note(L.t("도구 버튼의 아이콘은 막대보다 커지지 않습니다.", "Toolbar button icons never grow larger than the bar.")));
         boolean shown = prefs.toolbar();
-        look.addView(toggle("도구 막대 표시", "다양한 도구를 빠르게 쓸 수 있는 막대를 보여 줍니다.", shown, on -> {
+        look.addView(toggle(L.t("도구 막대 표시", "Show toolbar"), L.t("다양한 도구를 빠르게 쓸 수 있는 막대를 보여 줍니다.", "Shows a bar of handy tools."), shown, on -> {
             put(Prefs.TOOLBAR, on);
             for (View d : dependents) Ui.setVisibleAnimated(d, on);
             if (onToolbarShown != null) onToolbarShown.accept(on);
         }));
         look.addView(rest, SettingsWidgets.matchWrap());
         int swipeStart = root.getChildCount();
-        buildToolbarSwipe(ToolbarSwipes.BAR, "도구 막대");   // 소제목과 카드
+        buildToolbarSwipe(ToolbarSwipes.BAR, L.t("도구 막대", "Toolbar"));   // 소제목과 카드
         dependents.add(rest);
         for (int k = swipeStart; k < root.getChildCount(); k++) dependents.add(root.getChildAt(k));
         for (View d : dependents) d.setVisibility(shown ? View.VISIBLE : View.GONE);
@@ -756,9 +757,9 @@ final class KeyEditPanel {
     }
 
     private void buildToolbarSwipe(int slot, String name) {
-        LinearLayout card = section("밀기");
+        LinearLayout card = section(L.t("밀기", "Swipe"));
         card.addView(actionPad(ToolbarSwipes.SPEC, slot, name));
-        if (slot != ToolbarSwipes.BAR) card.addView(note("'없음'으로 둔 방향으로 밀면 도구 막대를 그 방향으로 민 것으로 봅니다."));
+        if (slot != ToolbarSwipes.BAR) card.addView(note(L.t("'없음'으로 둔 방향으로 밀면 도구 막대를 그 방향으로 민 것으로 봅니다.", "Swiping in a direction set to 'None' counts as swiping the toolbar that way.")));
     }
 
     // ================================================================ 공통 조각
@@ -909,7 +910,7 @@ final class KeyEditPanel {
                 c.setIdleColors(kt.key, kt.keyPressed);
                 c.setLabelSize(14);
                 c.setSubLabel(SwipeCustom.label(dir), 3, 12);
-                c.setContentDescription(SwipeCustom.label(dir) + "으로 밀기: " + labels[dir]);
+                c.setContentDescription(L.t(SwipeCustom.label(dir) + "으로 밀기: ", "Swipe " + SwipeCustom.label(dir).toLowerCase(java.util.Locale.ROOT) + ": ") + labels[dir]);
                 c.setOnClickListener(v -> onTap.accept(dir));
                 row.addView(c, lp);
             }

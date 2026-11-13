@@ -167,7 +167,7 @@ public final class SettingsBackup {
         }
         byte[] data = json.getBytes(StandardCharsets.UTF_8);
         try (OutputStream out = context.getContentResolver().openOutputStream(uri, "wt")) {
-            if (out == null) throw new IOException("파일을 열 수 없습니다");
+            if (out == null) throw new IOException(L.t("파일을 열 수 없습니다", "Can't open the file"));
             out.write(data);
         }
     }
@@ -176,13 +176,13 @@ public final class SettingsBackup {
     public static String read(Context context, Uri uri) throws IOException {
         String text;
         try (InputStream in = context.getContentResolver().openInputStream(uri)) {
-            if (in == null) throw new IOException("파일을 열 수 없습니다");
+            if (in == null) throw new IOException(L.t("파일을 열 수 없습니다", "Can't open the file"));
             ByteArrayOutputStream buf = new ByteArrayOutputStream();
             byte[] chunk = new byte[8192];
             int n;
             while ((n = in.read(chunk)) > 0) {
                 buf.write(chunk, 0, n);
-                if (buf.size() > MAX_BYTES) throw new IOException("백업 파일이 너무 큽니다");
+                if (buf.size() > MAX_BYTES) throw new IOException(L.t("백업 파일이 너무 큽니다", "The backup file is too large"));
             }
             text = buf.toString("UTF-8");
         }
@@ -203,13 +203,13 @@ public final class SettingsBackup {
     public static String decrypt(String text, char[] password) throws JSONException,
             java.security.GeneralSecurityException, BackupCrypto.WrongPasswordException {
         JSONObject env = new JSONObject(text);
-        if (!CIPHER.equals(env.optString("encrypted"))) throw new JSONException("지원하지 않는 암호화 방식입니다");
+        if (!CIPHER.equals(env.optString("encrypted"))) throw new JSONException(L.t("지원하지 않는 암호화 방식입니다", "Unsupported encryption method"));
         BackupCrypto.Sealed sealed;
         try {
             sealed = new BackupCrypto.Sealed(env.getInt("iterations"), BackupCrypto.unb64(env.getString("salt")),
                     BackupCrypto.unb64(env.getString("iv")), BackupCrypto.unb64(env.getString("data")));
         } catch (IllegalArgumentException e) {
-            throw new JSONException("암호화된 내용이 손상되었습니다");
+            throw new JSONException(L.t("암호화된 내용이 손상되었습니다", "The encrypted content is damaged"));
         }
         return new String(BackupCrypto.decrypt(sealed, password, AAD), StandardCharsets.UTF_8);
     }
@@ -218,10 +218,10 @@ public final class SettingsBackup {
     public static int[] apply(Context context, String text) throws JSONException {
         JSONObject root = new JSONObject(text);
         if (!APP.equals(root.optString("app")) || root.optInt("version", 0) < 1) {
-            throw new JSONException("NewSwipe 설정 백업 파일이 아닙니다");
+            throw new JSONException(L.t("NewSwipe 설정 백업 파일이 아닙니다", "Not a NewSwipe settings backup file"));
         }
         JSONObject settings = root.getJSONObject("settings");
-        if (settings.length() > MAX_KEYS) throw new JSONException("항목이 너무 많습니다");
+        if (settings.length() > MAX_KEYS) throw new JSONException(L.t("항목이 너무 많습니다", "Too many entries"));
         java.util.List<String[]> userWords = null;
         org.json.JSONArray wordArray = root.optJSONArray("user_words");
         if (wordArray != null) {
@@ -256,9 +256,9 @@ public final class SettingsBackup {
             }
         }
         String recentEmoji = root.has("recent_emoji") ? root.optString("recent_emoji", "").trim() : null;
-        if (recentEmoji != null && recentEmoji.length() > MAX_STRING) throw new JSONException("최근 이모지가 너무 깁니다");
+        if (recentEmoji != null && recentEmoji.length() > MAX_STRING) throw new JSONException(L.t("최근 이모지가 너무 깁니다", "Recent emoji list is too long"));
         String pinnedEmoji = root.has("pinned_emoji") ? root.optString("pinned_emoji", "").trim() : null;
-        if (pinnedEmoji != null && pinnedEmoji.length() > MAX_STRING) throw new JSONException("고정한 이모지가 너무 깁니다");
+        if (pinnedEmoji != null && pinnedEmoji.length() > MAX_STRING) throw new JSONException(L.t("고정한 이모지가 너무 깁니다", "Pinned emoji list is too long"));
 
         // 먼저 전부 읽어 검증한 뒤 한 번에 적용한다 (중간에 실패해도 현재 설정이 그대로 남는다).
         java.util.List<String> keys = new java.util.ArrayList<>();
@@ -276,7 +276,7 @@ public final class SettingsBackup {
                 case "float": value = (float) item.getDouble("value"); break;
                 case "string":
                     String s = item.getString("value");
-                    if (s.length() > MAX_STRING) throw new JSONException("값이 너무 깁니다: " + key);
+                    if (s.length() > MAX_STRING) throw new JSONException(L.t("값이 너무 깁니다: ", "Value is too long: ") + key);
                     value = s;
                     break;
                 default: continue;

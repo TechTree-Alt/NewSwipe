@@ -1,0 +1,31 @@
+NewSwipe does not collect personal information or send it off your device. The app has no internet permission at all, so what you type technically cannot be sent anywhere. The only permission this app requests is vibration, for key vibration.
+
+## Information stored on your device
+For keyboard features, the information below is kept in on-device storage that only this app can read. It is deleted when you uninstall the app.
+
+· Settings: the settings you change on this screen
+· Learned words: when 'Learn typed words' is on, words you type often and how many times you typed them
+· Korean typing history: when 'Learn typed words' is on, how often you used Korean words and two-word sequences (previous word, or the last syllable of the previous word → next word), to order suggestions (up to {USAGE_WORDS} words and {USAGE_PAIRS} word pairs; the least recently used are deleted first), and how often you typed something else instead of a shown next-word prediction. Whole sentences are never stored, and this history is not included in settings export files. To favor words repeated in the current conversation, a few dozen recently typed words are kept in memory only and never written to a file.
+· Recent and pinned emoji
+· Imported Korean dictionary pack: the dictionary data from the file you chose in 'Korean dictionary > Import dictionary pack' (only the file you choose is read; nothing is downloaded from the internet)
+· Clipboard history: when 'Save clipboard history' is on, up to {CLIP_MAX} recently copied or cut texts and images (up to {CLIP_IMAGES} images when 'Save images' is on, each kept as the original and a small preview). Unpinned items, including image files, are deleted after 24 hours, and copies marked as sensitive, such as passwords, are not saved.
+
+System app data backup (cloud backup) is also turned off, so this information never leaves through backups.
+
+## Sensitive fields
+On password and email fields, word suggestions, autocorrect and word learning are turned off. Words are also not learned in fields that ask apps not to learn, such as a browser's incognito mode.
+
+## Deleting it yourself
+· Learned words: one by one in 'Suggestions, learning & autofill > View learned words', or all at once with 'Delete all learned words' (Korean typing history is deleted too). You can also long-press a word on the suggestion bar to delete it.
+· Clipboard history: 'Clipboard & emoji > Delete all clipboard history'
+· All information: System settings > Apps > NewSwipe > Storage > Clear data
+
+## Backup files
+Files created with 'Import & export settings' are saved only where you choose. If you include learned words, emoji and clipboard history (text only, no images), the file contains personal content, so you can encrypt the whole file with a password when exporting (AES-256-GCM, with the key derived from the password by PBKDF2). If you forget the password, the file can't be opened. Be careful when sharing a file exported without a password.
+
+## Voice input
+The voice input button on the toolbar switches to another voice input app installed on your device (e.g. Google voice typing). While you use voice input, that app's privacy policy applies.
+
+## Contact
+For privacy questions, tap 'Contact' in 'About' and open a GitHub issue.
+{ISSUES_URL}

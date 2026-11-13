@@ -1,5 +1,6 @@
 package com.alternative_studios.newswipe.keyboard;
 
+import com.alternative_studios.newswipe.L;
 import com.alternative_studios.newswipe.Prefs;
 
 import java.util.function.BiFunction;
@@ -12,8 +13,10 @@ import java.util.function.BiFunction;
 public final class GapSwipes {
     /** 프로필마다의 밀기 칸 이름 (Prefs.gapSlot() 차례). 누르기 칸은 그 뒤에 "_press"를 붙인 이름으로 같은 차례에 이어진다. */
     public static final String[] SLOTS = {"portrait", "landscape", "large_port", "large_land"};
-    private static final String[] LABELS = {"가운데 공간", "가운데 공간 (가로 모드)", "가운데 공간 (폴더블 세로)",
-            "가운데 공간 (폴더블 가로)"};
+    private static String[] labels() {
+        return new String[]{L.t("가운데 공간", "Center gap"), L.t("가운데 공간 (가로 모드)", "Center gap (landscape)"), L.t("가운데 공간 (폴더블 세로)", "Center gap (inner screen, portrait)"),
+            L.t("가운데 공간 (폴더블 가로)", "Center gap (inner screen, landscape)")};
+    }
     /** 누르기 칸에서 방향 자리를 빌려 쓰는 누르기·길게 누르기 (Fn 키와 같다). */
     public static final int TAP = Key.SWIPE_DOWN, LONG = Key.SWIPE_UP;
     private static final int N = SLOTS.length;
@@ -55,13 +58,13 @@ public final class GapSwipes {
 
         @Override
         public String dirLabel(int slot, int dir) {
-            if (isPress(slot)) return dir == LONG ? "길게 누르기" : "누르기";
+            if (isPress(slot)) return dir == LONG ? L.t("길게 누르기", "Long press") : L.t("누르기", "Tap");
             return dirLabel(dir);
         }
 
         @Override
         public String dialogTitle(int slot, int dir) {
-            if (isPress(slot)) return "가운데 공간 " + (dir == LONG ? "길게 누르기" : "누르기");
+            if (isPress(slot)) return dir == LONG ? L.t("가운데 공간 길게 누르기", "Long press center gap") : L.t("가운데 공간 누르기", "Tap center gap");
             return super.dialogTitle(slot, dir);
         }
 
@@ -82,17 +85,17 @@ public final class GapSwipes {
 
         @Override
         public String title() {
-            return "가운데 공간 밀어서 기능 사용자화";
+            return L.t("가운데 공간 밀어서 기능 사용자화", "Customize center gap swipes");
         }
 
         @Override
         public String note() {
-            return "분리 키보드 가운데의 빈 공간을 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 고릅니다.";
+            return L.t("분리 키보드 가운데의 빈 공간을 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 고릅니다.", "Choose what happens when you swipe the empty center gap of the split keyboard up, down, left or right.");
         }
 
         @Override
         public String cardTitle(int slot) {
-            return LABELS[slot];
+            return labels()[slot];
         }
 
         @Override

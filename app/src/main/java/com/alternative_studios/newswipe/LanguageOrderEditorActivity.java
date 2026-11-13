@@ -10,8 +10,10 @@ import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.alternative_studios.newswipe.cjk.CjkPack;
+import com.alternative_studios.newswipe.ui.ExpressiveSwitch;
 import com.alternative_studios.newswipe.ui.Ui;
 
 import java.util.ArrayList;
@@ -24,11 +26,15 @@ import java.util.List;
  */
 public final class LanguageOrderEditorActivity extends Activity {
 
-    private static final String TITLE = "언어 순서 사용자화";
+    private static String title() {
+
+        return L.t("입력 언어", "Input languages");
+
+    }
     private Prefs prefs;
     private LinearLayout list, langList;
     private String themeSignature;
-    private int bg, card, textColor, hintColor;
+    private int bg, card, textColor, hintColor, accentColor, onAccentColor;
 
     @Override
     protected void attachBaseContext(Context base) {
@@ -45,6 +51,8 @@ public final class LanguageOrderEditorActivity extends Activity {
         card = colors.card;
         textColor = colors.text;
         hintColor = colors.hint;
+        accentColor = colors.accent;
+        onAccentColor = colors.onAccent;
 
         ScrollView scroll = new ScrollView(this);
         scroll.setBackgroundColor(bg);
@@ -54,7 +62,7 @@ public final class LanguageOrderEditorActivity extends Activity {
         int pad = Ui.dp(this, 16);
         list.setPadding(pad, 0, pad, Ui.dp(this, 32));
         scroll.addView(list);
-        setContentView(new SettingsFrame(this, TITLE, getString(R.string.app_name)).wrap(scroll));
+        setContentView(new SettingsFrame(this, title(), getString(R.string.app_name)).wrap(scroll));
         render();
     }
 
@@ -80,16 +88,19 @@ public final class LanguageOrderEditorActivity extends Activity {
 
     private static String name(String id) {
         switch (id) {
-            case "ko": return "한국어";
-            case "en": return "영어 (English)";
-            case "ja": return "일본어 (日本語)";
-            default: return "중국어 (中文)";
+            case "ko": return L.t("한국어", "Korean (한국어)");
+            case "en": return L.t("영어 (English)", "English");
+            case "ja": return L.t("일본어 (日本語)", "Japanese (日本語)");
+            default: return L.t("중국어 (中文)", "Chinese (中文)");
         }
     }
 
     private void render() {
         list.removeAllViews();
-        TextView note = text("오른쪽의 ≡를 잡고 끌어 순서를 바꿀 수 있습니다. 🌐︎을 위로 밀면 이 순서대로 위에서 아래로 언어가 놓입니다.",
+        TextView note = text(L.t("입력할 언어를 켜고, 오른쪽의 ≡를 잡고 끌어 순서를 바꿀 수 있습니다. 🌐︎을 누르면 켠 언어가 이 순서대로 바뀌고, "
+                + "위로 밀면 이 순서대로 위에서 아래로 언어가 놓입니다.",
+                "Turn on the languages you type in, and drag ≡ on the right to reorder. Tapping 🌐︎ switches between them in this order, "
+                + "and swiping 🌐︎ up lists them from top to bottom in this order."),
                 13, hintColor);
         note.setPadding(Ui.dp(this, 4), 0, 0, Ui.dp(this, 4));
         list.addView(note);
@@ -110,17 +121,39 @@ public final class LanguageOrderEditorActivity extends Activity {
         for (String id : prefs.languageOrder()) if (available(id)) langs.addView(langRow(id));
 
         if (!available("ja") || !available("zh")) {
-            TextView more = text("일본어·중국어는 설정 › 실험실에서 사전 팩을 가져와 켜면 여기에 나타납니다.", 13, hintColor);
+            TextView more = text(L.t("일본어·중국어는 설정 › 실험실에서 사전 팩을 가져와 켜면 여기에 나타납니다.", "Japanese and Chinese appear here after you import a dictionary pack and turn them on in Settings › Labs."), 13, hintColor);
             more.setPadding(Ui.dp(this, 4), Ui.dp(this, 10), 0, 0);
             list.addView(more);
         }
-        list.addView(ResetDialog.button(this, TITLE, () -> {
+        list.addView(ResetDialog.button(this, L.t("언어 순서", "the language order"), () -> {
             prefs.resetLanguageOrder();
             render();
         }));
     }
 
-    /** 언어 한 줄: 이름과 끌어서 옮기는 손잡이(≡). */
+    /** 한국어·영어를 켜고 끄는 스위치. 둘 다 끌 수는 없다 (일본어·중국어는 실험실에서 켜고 끈다). */
+    private View inputSwitch(String id) {
+        boolean ko = "ko".equals(id);
+        ExpressiveSwitch sw = new ExpressiveSwitch(this, accentColor, onAccentColor, hintColor, card);
+        sw.setCheckedImmediately(prefs.languageOn(id));
+        sw.setContentDescription(L.t(name(id) + " 사용", "Use " + name(id)));
+        sw.setOnCheckedChangeListener(checked -> {
+            boolean korean = ko ? checked : prefs.inputKorean(), english = ko ? prefs.inputEnglish() : checked;
+            if (!korean && !english) {
+                Toast.makeText(this, L.t("한국어와 영어 중 하나는 켜 두어야 합니다", "Keep Korean or English on"), Toast.LENGTH_SHORT).show();
+                sw.post(sw::toggle);
+                return;
+            }
+            prefs.setInputLanguages(korean, english);
+        });
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.rightMargin = Ui.dp(this, 4);
+        sw.setLayoutParams(lp);
+        return sw;
+    }
+
+    /** 언어 한 줄: 이름, (한국어·영어는) 켜고 끄는 스위치, 끌어서 옮기는 손잡이(≡). */
     private View langRow(String id) {
         LinearLayout row = new LinearLayout(this);
         row.setTag(id);
@@ -128,9 +161,10 @@ public final class LanguageOrderEditorActivity extends Activity {
         row.setPadding(Ui.dp(this, 10), Ui.dp(this, 8), 0, Ui.dp(this, 8));
         row.setBackground(Ui.round(card, Ui.dp(this, 12)));   // 끌어 올렸을 때 아래 줄이 비치지 않게
         row.addView(text(name(id), 16, textColor), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        if ("ko".equals(id) || "en".equals(id)) row.addView(inputSwitch(id));
 
         View handle = new DragHandle(this, hintColor);
-        handle.setContentDescription(name(id) + " 순서 바꾸기");
+        handle.setContentDescription(L.t(name(id) + " 순서 바꾸기", "Reorder " + name(id)));
         handle.setOnTouchListener((v, ev) -> onHandleTouch(row, ev));
         // 끌 수 없는 화면 읽기(TalkBack) 사용자를 위해 '위로·아래로 옮기기' 동작도 둔다.
         handle.setAccessibilityDelegate(new View.AccessibilityDelegate() {
@@ -138,9 +172,9 @@ public final class LanguageOrderEditorActivity extends Activity {
             public void onInitializeAccessibilityNodeInfo(View host, android.view.accessibility.AccessibilityNodeInfo info) {
                 super.onInitializeAccessibilityNodeInfo(host, info);
                 info.addAction(new android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction(
-                        ACTION_MOVE_UP, "위로 옮기기"));
+                        ACTION_MOVE_UP, L.t("위로 옮기기", "Move up")));
                 info.addAction(new android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction(
-                        ACTION_MOVE_DOWN, "아래로 옮기기"));
+                        ACTION_MOVE_DOWN, L.t("아래로 옮기기", "Move down")));
             }
 
             @Override

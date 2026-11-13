@@ -1,5 +1,6 @@
 package com.alternative_studios.newswipe.keyboard;
 
+import com.alternative_studios.newswipe.L;
 import com.alternative_studios.newswipe.Prefs;
 import com.alternative_studios.newswipe.hangul.HangulComposer;
 
@@ -11,7 +12,9 @@ import com.alternative_studios.newswipe.hangul.HangulComposer;
 public final class SwipeCustom {
     /** 편집 화면에 보이는 방향 순서. */
     public static final int[] DIRS = {Key.SWIPE_UP, Key.SWIPE_DOWN, Key.SWIPE_LEFT, Key.SWIPE_RIGHT};
-    public static final String[] LABELS = {"위쪽", "아래쪽", "왼쪽", "오른쪽"};
+    public static String[] labels() {
+        return new String[]{L.t("위쪽", "Up"), L.t("아래쪽", "Down"), L.t("왼쪽", "Left"), L.t("오른쪽", "Right")};
+    }
     private static final String[] NAMES = {"down", "up", "left", "right"};   // Key.SWIPE_* 순서
 
     private SwipeCustom() {
@@ -21,9 +24,15 @@ public final class SwipeCustom {
         return NAMES[dir];
     }
 
+    /** 'X'를 그 방향으로 밀기 (예: "'ㄱ' 위쪽으로 밀기", "Swipe 'ㄱ' up"). what은 따옴표까지 붙여서 준다. */
+    public static String swipeTitle(String what, int dir) {
+        String d = label(dir);
+        return L.t(what + " " + d + "으로 밀기", "Swipe " + what + " " + d.toLowerCase(java.util.Locale.ROOT));
+    }
+
     /** 화면에 보이는 방향 이름 (위쪽·아래쪽·왼쪽·오른쪽). */
     public static String label(int dir) {
-        for (int i = 0; i < DIRS.length; i++) if (DIRS[i] == dir) return LABELS[i];
+        for (int i = 0; i < DIRS.length; i++) if (DIRS[i] == dir) return labels()[i];
         return "";
     }
 

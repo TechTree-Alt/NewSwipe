@@ -1,5 +1,6 @@
 package com.alternative_studios.newswipe.suggest;
 
+import com.alternative_studios.newswipe.L;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -54,7 +55,7 @@ public final class DictionaryPack {
         public final long bytes;
 
         Info(Properties p, String licenseText, long bytes) {
-            name = p.getProperty("name", "이름 없는 사전");
+            name = p.getProperty("name", L.t("이름 없는 사전", "Untitled dictionary"));
             version = p.getProperty("version", "");
             description = p.getProperty("description", "");
             license = p.getProperty("license", "");
@@ -102,15 +103,15 @@ public final class DictionaryPack {
         synchronized (LOCK) {
             File tmp = new File(filesDir, DIR + ".tmp");
             deleteTree(tmp);
-            if (!tmp.mkdirs()) throw new IOException("임시 폴더를 만들지 못했습니다");
+            if (!tmp.mkdirs()) throw new IOException(L.t("임시 폴더를 만들지 못했습니다", "Couldn't create a temporary folder"));
             try {
                 Info info = unpackAndCheck(zip, tmp);
                 File dir = dir(filesDir), old = new File(filesDir, DIR + ".old");
                 deleteTree(old);
-                if (dir.exists() && !dir.renameTo(old)) throw new IOException("지금 사전을 옮기지 못했습니다");
+                if (dir.exists() && !dir.renameTo(old)) throw new IOException(L.t("지금 사전을 옮기지 못했습니다", "Couldn't move the current dictionary"));
                 if (!tmp.renameTo(dir)) {
                     old.renameTo(dir);   // 되돌린다
-                    throw new IOException("사전을 설치하지 못했습니다");
+                    throw new IOException(L.t("사전을 설치하지 못했습니다", "Couldn't install the dictionary"));
                 }
                 deleteTree(old);
                 changes++;
@@ -140,20 +141,20 @@ public final class DictionaryPack {
                 copyLimited(z, new File(into, name), max);
             }
         } catch (java.util.zip.ZipException ex) {
-            throw new InvalidPackException("사전 팩(zip) 파일이 아닙니다");
+            throw new InvalidPackException(L.t("사전 팩(zip) 파일이 아닙니다", "Not a dictionary pack (zip) file"));
         }
-        if (!manifest) throw new InvalidPackException("사전 팩 정보(" + MANIFEST + ")가 없습니다");
+        if (!manifest) throw new InvalidPackException(L.t("사전 팩 정보(" + MANIFEST + ")가 없습니다", "Missing pack info (" + MANIFEST + ")"));
         Properties p = readProperties(new File(into, MANIFEST));
         String lang = p.getProperty("lang");
         if ("ja".equals(lang) || "zh".equals(lang)) {
-            throw new InvalidPackException("일본어·중국어 사전 팩입니다. 설정 › 실험실의 일본어·중국어 자판에서 가져와 주세요");
+            throw new InvalidPackException(L.t("일본어·중국어 사전 팩입니다. 설정 › 실험실의 일본어·중국어 자판에서 가져와 주세요", "This is a Japanese/Chinese dictionary pack. Import it from the Japanese or Chinese keyboard in Settings › Labs"));
         }
-        if (!dict) throw new InvalidPackException("단어 사전(" + DICT + ")이 없습니다");
+        if (!dict) throw new InvalidPackException(L.t("단어 사전(" + DICT + ")이 없습니다", "Missing word dictionary (" + DICT + ")"));
 
         int format = parseInt(p.getProperty("format"));
-        if (format <= 0) throw new InvalidPackException("사전 팩 형식을 알 수 없습니다");
-        if (format > FORMAT) throw new InvalidPackException("이 버전의 앱이 읽을 수 없는 새 형식입니다. 앱을 업데이트해 주세요");
-        if (!"ko".equals(lang)) throw new InvalidPackException("한국어 사전 팩이 아닙니다");
+        if (format <= 0) throw new InvalidPackException(L.t("사전 팩 형식을 알 수 없습니다", "Unknown dictionary pack format"));
+        if (format > FORMAT) throw new InvalidPackException(L.t("이 버전의 앱이 읽을 수 없는 새 형식입니다. 앱을 업데이트해 주세요", "This format is too new for this version of the app. Please update the app"));
+        if (!"ko".equals(lang)) throw new InvalidPackException(L.t("한국어 사전 팩이 아닙니다", "Not a Korean dictionary pack"));
         verifyHash(p, new File(into, DICT));
         if (next) verifyHash(p, new File(into, NEXT));
         if (known) verifyHash(p, new File(into, KNOWN));
@@ -162,7 +163,7 @@ public final class DictionaryPack {
         try {
             l = read(into, true);
         } catch (IOException | RuntimeException ex) {
-            throw new InvalidPackException("사전 파일이 깨졌거나 단어 사전과 다음 단어 사전의 짝이 맞지 않습니다");
+            throw new InvalidPackException(L.t("사전 파일이 깨졌거나 단어 사전과 다음 단어 사전의 짝이 맞지 않습니다", "The dictionary files are damaged, or the word dictionary and next-word dictionary don't match"));
         }
         // 화면에 보일 수는 실제로 읽은 값으로 적어 둔다.
         p.setProperty("words", String.valueOf(l.dict.size()));
@@ -175,7 +176,7 @@ public final class DictionaryPack {
     }
 
     private static boolean check(boolean seen, String name) throws InvalidPackException {
-        if (seen) throw new InvalidPackException(name + "이(가) 두 번 들어 있습니다");
+        if (seen) throw new InvalidPackException(L.t(name + "이(가) 두 번 들어 있습니다", name + " appears twice"));
         return true;
     }
 
@@ -185,7 +186,7 @@ public final class DictionaryPack {
         try (OutputStream out = new FileOutputStream(to)) {
             for (int n; (n = in.read(buf)) > 0; ) {
                 total += n;
-                if (total > max) throw new InvalidPackException(to.getName() + "이(가) 너무 큽니다");
+                if (total > max) throw new InvalidPackException(L.t(to.getName() + "이(가) 너무 큽니다", to.getName() + " is too large"));
                 out.write(buf, 0, n);
             }
         }
@@ -195,7 +196,7 @@ public final class DictionaryPack {
         String want = p.getProperty("sha256." + f.getName());
         if (want == null || want.isEmpty()) return;   // 직접 만든 팩은 해시를 적지 않아도 된다
         if (!want.trim().equalsIgnoreCase(sha256(f))) {
-            throw new InvalidPackException(f.getName() + "이(가) 손상되었습니다 (해시가 다릅니다)");
+            throw new InvalidPackException(L.t(f.getName() + "이(가) 손상되었습니다 (해시가 다릅니다)", f.getName() + " is damaged (hash mismatch)"));
         }
     }
 
@@ -281,7 +282,7 @@ public final class DictionaryPack {
         try (InputStreamReader r = new InputStreamReader(new FileInputStream(f), StandardCharsets.UTF_8)) {
             p.load(r);
         } catch (IllegalArgumentException e) {
-            throw new InvalidPackException("사전 팩 정보(" + MANIFEST + ")를 읽지 못했습니다");
+            throw new InvalidPackException(L.t("사전 팩 정보(" + MANIFEST + ")를 읽지 못했습니다", "Couldn't read the pack info (" + MANIFEST + ")"));
         }
         return p;
     }

@@ -277,8 +277,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 }
             });
         }
-        String lang = prefs.language();
         refreshCjkAvailability();
+        String lang = prefs.language();
+        if (!languageAvailable(lang)) lang = firstLanguage();   // 입력 언어에서 껐다
         cjkLang = cjkAvailable(lang) ? lang : null;
         korean = cjkLang == null && !"en".equals(lang);
         emojiRepo = new EmojiRepository(this, io);
@@ -520,7 +521,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (hideButton == null) return;
         boolean show = hwToolbarOnly();
         hideButton.setFlipped(show);
-        hideButton.setContentDescription(show ? "키보드 보이기" : "키보드 숨기기");
+        hideButton.setContentDescription(show ? L.t("키보드 보이기", "Show keyboard") : L.t("키보드 숨기기", "Hide keyboard"));
     }
 
     /** 지금 자판 자리를 비우고 도구 막대만 보이는지. 이모지·클립보드·검색 화면은 원래 크기로 보인다. */
@@ -849,13 +850,13 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         });
         bar.setGravity(Gravity.CENTER_VERTICAL);
         // 좌우 여백은 applySettings에서 자판의 좌우 여백과 같게 맞춘다.
-        clipboardButton = toolButton(Icons.CLIPBOARD, "클립보드", v -> showPanel(PANEL_CLIPBOARD));
+        clipboardButton = toolButton(Icons.CLIPBOARD, L.t("클립보드", "Clipboard"), v -> showPanel(PANEL_CLIPBOARD));
         bar.addView(clipboardButton);
-        emojiButton = toolButton(Icons.EMOJI, "이모지", v -> showPanel(PANEL_EMOJI));
+        emojiButton = toolButton(Icons.EMOJI, L.t("이모지", "Emoji"), v -> showPanel(PANEL_EMOJI));
         bar.addView(emojiButton);
-        voiceButton = toolButton(Icons.MIC, "음성 입력", v -> startVoiceInput());
+        voiceButton = toolButton(Icons.MIC, L.t("음성 입력", "Voice input"), v -> startVoiceInput());
         bar.addView(voiceButton);
-        undoButton = toolButton(Icons.UNDO, "실행 취소", v -> undo());
+        undoButton = toolButton(Icons.UNDO, L.t("실행 취소", "Undo"), v -> undo());
         bar.addView(undoButton);
         toolSpacer = new View(this);
         bar.addView(toolSpacer, new LinearLayout.LayoutParams(0, 1, 1f));
@@ -877,11 +878,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (autofillBar != null) {
             bar.addView(autofillBar, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
         }
-        oneHandButton = toolButton(Icons.ONE_HAND, "한 손 모드", v -> toggleOneHand());
+        oneHandButton = toolButton(Icons.ONE_HAND, L.t("한 손 모드", "One-handed mode"), v -> toggleOneHand());
         bar.addView(oneHandButton);
-        settingsButton = toolButton(Icons.SETTINGS, "설정", v -> openSettings());
+        settingsButton = toolButton(Icons.SETTINGS, L.t("설정", "Settings"), v -> openSettings());
         bar.addView(settingsButton);
-        hideButton = toolButton(Icons.HIDE, "키보드 숨기기", v -> onHideButton());
+        hideButton = toolButton(Icons.HIDE, L.t("키보드 숨기기", "Hide keyboard"), v -> onHideButton());
         bar.addView(hideButton);
         // 버튼을 위·아래·왼쪽·오른쪽으로 밀면 정해 둔 기능을 실행한다 (기본: 클립보드 위 = 복사·아래 = 붙여넣기,
         // 이모지 아래 = 최근 이모지, 실행 취소 아래 = 다시 실행, 한 손 모드 왼쪽·오른쪽 = 그쪽 한 손 모드).
@@ -1164,10 +1165,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             }
         };
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.addView(editChip(Icons.CUT, "잘라내기", v -> contextAction(android.R.id.cut)));
-        row.addView(editChip(Icons.COPY, "복사", v -> copySelection(false)));
-        row.addView(editChip(Icons.PASTE, "붙여넣기", v -> contextAction(android.R.id.paste)));
-        row.addView(editChip(Icons.SELECT_ALL, "전체 선택", v -> contextAction(android.R.id.selectAll)));
+        row.addView(editChip(Icons.CUT, L.t("잘라내기", "Cut"), v -> contextAction(android.R.id.cut)));
+        row.addView(editChip(Icons.COPY, L.t("복사", "Copy"), v -> copySelection(false)));
+        row.addView(editChip(Icons.PASTE, L.t("붙여넣기", "Paste"), v -> contextAction(android.R.id.paste)));
+        row.addView(editChip(Icons.SELECT_ALL, L.t("전체 선택", "Select all"), v -> contextAction(android.R.id.selectAll)));
         frame.addView(row, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER));
         return frame;
@@ -1222,7 +1223,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         // 도구 막대 자리에 놓이므로 도구 막대와 같은 높이를 쓰고, 칩(뒤로·검색창)도 도구 막대 칩과 같은 높이다.
         // 높이는 sizeToolbar()가 설정의 도구 막대 높이에 맞춘다. 좌우 여백은 applySettings()가 도구 막대와 같게 맞춘다
         // (이모지 창 맨 위 줄과 같다).
-        IconButton back = new IconButton(this, Icons.BACK, theme.text, theme.keyPressed, "이모지로 돌아가기");
+        IconButton back = new IconButton(this, Icons.BACK, theme.text, theme.keyPressed, L.t("이모지로 돌아가기", "Back to emoji"));
         searchBack = back;
         back.setOnClickListener(v -> showPanel(PANEL_EMOJI));
         bar.addView(back, new LinearLayout.LayoutParams(Ui.dp(this, 44), ViewGroup.LayoutParams.MATCH_PARENT));
@@ -1252,8 +1253,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 설정값을 뷰에 적용한다. 설정 화면에서 돌아올 때마다 호출된다. */
     private void applySettings() {
         refreshCjkAvailability();
-        if (cjkLang != null && !cjkAvailable(cjkLang)) {
-            switchLanguage("ko");   // 실험실에서 껐거나 팩을 지웠다
+        if (!languageAvailable(currentLanguage())) {
+            switchLanguage(firstLanguage());   // 입력 언어·실험실에서 껐거나 팩을 지웠다
         } else if (cjkLang != null) {
             ensureCjk(cjkLang);
         }
@@ -1395,10 +1396,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         strip.setOrientation(LinearLayout.VERTICAL);
         strip.setGravity(Gravity.CENTER);
         strip.setVisibility(View.GONE);
-        sideSwap = sideButton(Icons.NEXT, "반대편으로 옮기기", v ->
+        sideSwap = sideButton(Icons.NEXT, L.t("반대편으로 옮기기", "Move to other side"), v ->
                 setOneHand(Prefs.ONE_HAND_LEFT.equals(prefs.oneHand()) ? Prefs.ONE_HAND_RIGHT : Prefs.ONE_HAND_LEFT));
         strip.addView(sideSwap);
-        sideExpand = sideButton(Icons.EXPAND, "한 손 모드 끄기", v -> setOneHand(Prefs.ONE_HAND_OFF));
+        sideExpand = sideButton(Icons.EXPAND, L.t("한 손 모드 끄기", "Turn off one-handed mode"), v -> setOneHand(Prefs.ONE_HAND_OFF));
         strip.addView(sideExpand);
         return strip;
     }
@@ -2781,16 +2782,29 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
     }
 
-    /** 지구본 키: 한글 → 영어 → (실험실에서 켰으면) 일본어 → 중국어 → 한글. */
+    /** 지구본 키: 한글 → 영어 → (실험실에서 켰으면) 일본어 → 중국어 → 한글. 입력 언어에서 끈 언어는 건너뛴다. */
     private void toggleLanguage() {
-        String now = currentLanguage(), next;
-        switch (now) {
-            case "ko": next = "en"; break;
-            case "en": next = cfgJa ? CjkComposer.JA : cfgZh ? CjkComposer.ZH : "ko"; break;
-            case CjkComposer.JA: next = cfgZh ? CjkComposer.ZH : "ko"; break;
-            default: next = "ko"; break;
+        int at = java.util.Arrays.asList(LANGUAGE_IDS).indexOf(currentLanguage());
+        for (int i = 1; i < LANGUAGE_IDS.length; i++) {
+            String next = LANGUAGE_IDS[(at + i) % LANGUAGE_IDS.length];
+            if (languageAvailable(next)) {
+                switchLanguage(next);
+                return;
+            }
         }
-        switchLanguage(next);
+    }
+
+    /** 이 언어로 바꿀 수 있는지: 한국어·영어는 입력 언어에서 켰을 때, 일본어·중국어는 실험실에서 켜고 사전 팩이 있을 때. */
+    private boolean languageAvailable(String id) {
+        if ("ko".equals(id)) return prefs.inputKorean();
+        if ("en".equals(id)) return prefs.inputEnglish();
+        return cjkAvailable(id);
+    }
+
+    /** 켜 둔 언어 중 언어 전환 차례로 첫 언어 (한국어·영어 중 하나는 늘 켜져 있다). */
+    private String firstLanguage() {
+        for (String id : LANGUAGE_IDS) if (languageAvailable(id)) return id;
+        return "ko";
     }
 
     /** 언어 전환 차례. */
@@ -2811,7 +2825,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         int selected = 0;
         for (String id : prefs.languageOrder()) {
             int i = java.util.Arrays.asList(LANGUAGE_IDS).indexOf(id);
-            if (i >= 2 && !cjkAvailable(id)) continue;
+            if (!languageAvailable(id)) continue;
             if (i == nowAt) selected = names.size();
             names.add(SPACE_NAMES[i]);
         }
@@ -3365,8 +3379,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 외장 키보드로 한·영을 바꾼다. 자판이 보이지 않으면(도구 막대만 보일 때도) 바뀐 언어를 짧게 알려 준다 (실험실에서 끌 수 있다). */
     private void hwToggleLanguage() {
         // 외장 키보드의 한·영 키는 한글과 영어만 오간다 (일본어·중국어에서 누르면 한글로).
+        // 입력 언어에서 한국어나 영어를 껐으면 바꿀 언어가 없다.
+        if (!prefs.inputKorean() || !prefs.inputEnglish()) return;
         switchLanguage(korean ? "en" : "ko");
-        if (prefs.hwToast() && (!isInputViewShown() || toolbarOnlyNow())) Toast.makeText(this, korean ? "한글" : "English", Toast.LENGTH_SHORT).show();
+        if (prefs.hwToast() && (!isInputViewShown() || toolbarOnlyNow())) Toast.makeText(this, korean ? L.t("한글", "Korean") : "English", Toast.LENGTH_SHORT).show();
     }
 
     // ---------------------------------------------------------------- 단어 추천
@@ -3739,7 +3755,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             if (chip) {
                 boolean masked = clipChipPreview == null || passwordField;
                 clipChip.setLabel(masked ? "••••••" : clipChipPreview);
-                clipChip.setContentDescription(masked ? "복사한 내용 붙여넣기" : "붙여넣기: " + clipChipPreview);
+                clipChip.setContentDescription(masked ? L.t("복사한 내용 붙여넣기", "Paste copied text") : L.t("붙여넣기: ", "Paste: ") + clipChipPreview);
             }
             clipChipSlot.setVisibility(chip ? View.VISIBLE : View.GONE);
         }
@@ -3896,18 +3912,19 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                     usageHistory.remove(word);
                     userWords.block(word, lang);
                     main.post(() -> {
-                        Toast.makeText(this, "'" + word + "'의 입력 기록을 지웠습니다. 다시 학습하지 않습니다",
+                        Toast.makeText(this, L.t("'" + word + "'의 입력 기록을 지웠습니다. 다시 학습하지 않습니다",
+                                "Deleted the typing history of '" + word + "'. It won't be learned again"),
                                 Toast.LENGTH_SHORT).show();
                         updateSuggestions();
                     });
                 });
                 if (!prefs.confirmLearnedDelete()
-                        || !confirmOnBar("'" + word + "'의 입력 기록을 지울까요?", "지우기", TextUtils.TruncateAt.MIDDLE, forget)) {
+                        || !confirmOnBar(L.t("'" + word + "'의 입력 기록을 지울까요?", "Delete the typing history of '" + word + "'?"), L.t("지우기", "Delete"), TextUtils.TruncateAt.MIDDLE, forget)) {
                     forget.run();
                 }
                 return true;
             }
-            Toast.makeText(this, "기본 사전의 단어라 지울 수 없습니다", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L.t("기본 사전의 단어라 지울 수 없습니다", "This word is in the built-in dictionary and can't be deleted"), Toast.LENGTH_SHORT).show();
             return true;
         }
         feedback.onKey(null);
@@ -3915,7 +3932,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             userWords.forget(word, lang);
             if (lang) usageHistory.remove(word);
             main.post(() -> {
-                Toast.makeText(this, "'" + word + "'" + WordSuggester.objectParticle(word) + " 지웠습니다. 다시 학습하지 않습니다",
+                Toast.makeText(this, L.t("'" + word + "'" + WordSuggester.objectParticle(word) + " 지웠습니다. 다시 학습하지 않습니다",
+                        "Deleted '" + word + "'. It won't be learned again"),
                         Toast.LENGTH_SHORT).show();
                 updateSuggestions();
             });
@@ -3935,7 +3953,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private Runnable forgetAction;
 
     private void confirmForget(String word, Runnable delete) {
-        confirmOnBar("'" + word + "'" + WordSuggester.objectParticle(word) + " 지울까요?", "지우기",
+        confirmOnBar(L.t("'" + word + "'" + WordSuggester.objectParticle(word) + " 지울까요?", "Delete '" + word + "'?"), L.t("지우기", "Delete"),
                 TextUtils.TruncateAt.MIDDLE, delete);
     }
 
@@ -3953,7 +3971,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             forgetText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
             forgetText.setSingleLine(true);
             forgetBar.addView(forgetText, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-            forgetBar.addView(forgetButton("취소", theme.text, theme.functionKey, v -> dismissForgetDialog()));
+            forgetBar.addView(forgetButton(L.t("취소", "Cancel"), theme.text, theme.functionKey, v -> dismissForgetDialog()));
             forgetOk = forgetButton("", theme.onAccent, theme.accent, v -> {
                 Runnable a = forgetAction;
                 dismissForgetDialog();
@@ -4203,7 +4221,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private void insertLastEmoji() {
         List<String> recent = EmojiRepository.parseRecent(prefs.recentEmoji());
         if (recent.isEmpty()) {
-            Toast.makeText(this, "최근 사용한 이모지가 없습니다", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L.t("최근 사용한 이모지가 없습니다", "No recent emoji"), Toast.LENGTH_SHORT).show();
             return;
         }
         onEmoji(recent.get(0));
@@ -4213,7 +4231,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private void insertFirstPinnedEmoji() {
         List<String> pinned = EmojiRepository.parseRecent(prefs.pinnedEmoji());
         if (pinned.isEmpty()) {
-            Toast.makeText(this, "고정한 이모지가 없습니다", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L.t("고정한 이모지가 없습니다", "No pinned emoji"), Toast.LENGTH_SHORT).show();
             return;
         }
         onEmoji(pinned.get(0));
@@ -4225,7 +4243,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             ClipboardHistory.Item pinned = clipHistory.firstPinned(System.currentTimeMillis());
             main.post(() -> {
                 if (pinned != null && pinned.isImage()) pasteImage(pinned);
-                else pasteClipOrNotify(pinned == null ? null : pinned.text, "고정한 클립보드 항목이 없습니다");
+                else pasteClipOrNotify(pinned == null ? null : pinned.text, L.t("고정한 클립보드 항목이 없습니다", "No pinned clipboard items"));
             });
         });
     }
@@ -4472,7 +4490,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             copyPending = true;
             main.postDelayed(copyRefused, COPY_WAIT_MS);
         } else if (selected != null && selected.length() > 0) {
-            showMessage("복사했습니다");
+            showMessage(L.t("복사했습니다", "Copied"));
         }
     }
 
@@ -4482,7 +4500,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private static final long COPY_WAIT_MS = 300;
     private final Runnable copyRefused = () -> {
         copyPending = false;
-        showMessage("복사가 제한되는 내용입니다.");
+        showMessage(L.t("복사가 제한되는 내용입니다.", "This content can't be copied."));
     };
 
     /** 안내 문구를 보여 주는 칸 (키보드 위쪽 가운데). */
@@ -4597,9 +4615,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
         // 켜 둔 음성 입력기가 없다: Google 음성 입력(음성 인식 및 합성 앱)을 설치하거나 켜도록 안내한다.
         if (!installed(GOOGLE_SPEECH)) {
-            askOnBar("음성 입력 앱을 설치할까요?", this::openSpeechAppStore);
+            askOnBar(L.t("음성 입력 앱을 설치할까요?", "Install a voice input app?"), this::openSpeechAppStore);
         } else {
-            askOnBar("Google 음성 입력을 활성화해주세요", this::openInputMethodSettings);
+            askOnBar(L.t("Google 음성 입력을 활성화해주세요", "Please turn on Google voice typing"), this::openInputMethodSettings);
         }
     }
 
@@ -4617,7 +4635,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /** 도구 막대에 묻고 확인을 누르면 action을 실행한다. 도구 막대 자리가 가려져 있으면 알림만 띄우고 바로 실행한다. */
     private void askOnBar(String message, Runnable action) {
-        if (confirmOnBar(message, "확인", TextUtils.TruncateAt.END, action)) return;
+        if (confirmOnBar(message, L.t("확인", "OK"), TextUtils.TruncateAt.END, action)) return;
         Toast.makeText(this, message, Toast.LENGTH_LONG).show();
         action.run();
     }
@@ -4730,7 +4748,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (searchText == null) return;
         String q = search + searchComposing;
         if (q.isEmpty()) {
-            searchText.setText(korean ? "이모지 검색 (한글)" : "Search emoji (English)");
+            searchText.setText(korean ? L.t("이모지 검색 (한글)", "Search emoji (Korean)") : "Search emoji (English)");
             searchText.setTextColor(theme.hint);
         } else {
             searchText.setText(q);
@@ -4783,7 +4801,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                     resultNote.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
                     resultNote.setPadding(Ui.dp(this, 10), 0, 0, 0);
                 }
-                resultNote.setText(q.trim().isEmpty() ? "검색어를 입력하세요" : "검색 결과가 없습니다");
+                resultNote.setText(q.trim().isEmpty() ? L.t("검색어를 입력하세요", "Type a search term") : L.t("검색 결과가 없습니다", "No results"));
                 results.addView(resultNote);
             }
         } else {
@@ -4850,7 +4868,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             // 비밀번호 입력란에서 요청한 복사가 실제로 됐다.
             copyPending = false;
             main.removeCallbacks(copyRefused);
-            showMessage("복사했습니다");
+            showMessage(L.t("복사했습니다", "Copied"));
         }
         boolean history = prefs.clipboardHistory(), chip = prefs.clipboardChip();
         if ((!history && !chip) || clipboard == null) return;
@@ -4991,7 +5009,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
      */
     private void pasteImage(ClipboardHistory.Item item) {
         if (!ClipboardHistory.original(clipHistory.imageDir(), item.text).isFile()) {
-            Toast.makeText(this, "이미지 파일을 찾을 수 없습니다", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, L.t("이미지 파일을 찾을 수 없습니다", "Image file not found"), Toast.LENGTH_SHORT).show();
             refreshClipboard();
             return;
         }
@@ -4999,20 +5017,20 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         InputConnection ic = getCurrentInputConnection();
         if (ic != null && acceptsContent(getCurrentInputEditorInfo(), item.mime)) {
             commitComposing();
-            InputContentInfo info = new InputContentInfo(uri, new ClipDescription("이미지", new String[]{item.mime}));
+            InputContentInfo info = new InputContentInfo(uri, new ClipDescription(L.t("이미지", "Image"), new String[]{item.mime}));
             if (ic.commitContent(info, InputConnection.INPUT_CONTENT_GRANT_READ_URI_PERMISSION, null)) return;
         }
         if (clipboard != null) {
             try {
-                clipboard.setPrimaryClip(ClipData.newUri(getContentResolver(), "이미지", uri));
-                Toast.makeText(this, "이 입력란은 이미지를 바로 받지 않아 클립보드에 담았습니다. 앱의 붙여넣기 메뉴로 넣어 보세요.",
+                clipboard.setPrimaryClip(ClipData.newUri(getContentResolver(), L.t("이미지", "Image"), uri));
+                Toast.makeText(this, L.t("이 입력란은 이미지를 바로 받지 않아 클립보드에 담았습니다. 앱의 붙여넣기 메뉴로 넣어 보세요.", "This field doesn't accept images directly, so the image was copied to the clipboard. Try pasting it from the app's paste menu."),
                         Toast.LENGTH_LONG).show();
                 return;
             } catch (RuntimeException ignored) {
                 // 클립보드에 넣지 못하면 아래 안내
             }
         }
-        Toast.makeText(this, "이 입력란에는 이미지를 붙여 넣을 수 없습니다", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, L.t("이 입력란에는 이미지를 붙여 넣을 수 없습니다", "Images can't be pasted into this field"), Toast.LENGTH_SHORT).show();
     }
 
     private static boolean acceptsContent(EditorInfo info, String mime) {
@@ -5049,7 +5067,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             boolean ok = clipHistory.setPinned(item, pinned);
             main.post(() -> {
                 if (!ok) {
-                    Toast.makeText(this, "클립보드 항목은 " + ClipboardHistory.MAX_PINNED + "개까지 고정할 수 있습니다",
+                    Toast.makeText(this, L.t("클립보드 항목은 " + ClipboardHistory.MAX_PINNED + "개까지 고정할 수 있습니다",
+                    "You can pin up to " + ClipboardHistory.MAX_PINNED + " clipboard items"),
                             Toast.LENGTH_SHORT).show();
                 }
                 refreshClipboard();
