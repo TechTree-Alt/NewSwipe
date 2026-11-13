@@ -4138,6 +4138,9 @@ public final class SettingsActivity extends Activity {
             {"청보라", R.drawable.hof_cheongbora},
     };
 
+    /** 사진과 닉네임을 싣지 않은 나머지 참여자 수. */
+    private static final int HALL_OF_FAME_OTHERS = 37;
+
     private void buildHallOfFame() {
         LinearLayout c = card();
         c.addView(note(L.t("출시 테스트에 참여해 NewSwipe를 응원하고 함께 다듬어 주신 분들입니다. 감사합니다.",
@@ -4163,6 +4166,11 @@ public final class SettingsActivity extends Activity {
             rlp.bottomMargin = Ui.dp(this, 4);
             c.addView(row, rlp);
         }
+        TextView more = note(L.t("외 " + HALL_OF_FAME_OTHERS + "명의 감사하신 분들",
+                "and " + HALL_OF_FAME_OTHERS + " other people we're grateful to"));
+        LinearLayout.LayoutParams mlp = matchWrap();
+        mlp.topMargin = Ui.dp(this, 16);
+        c.addView(more, mlp);
     }
 
     /** 정사각형 사진을 동그랗게 잘라 그리는 Drawable (외부 라이브러리 없이 BitmapShader로). */
