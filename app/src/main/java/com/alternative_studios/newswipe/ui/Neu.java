@@ -276,6 +276,25 @@ public final class Neu {
         return bm;
     }
 
+    /**
+     * 구워 둔 그림자 비트맵과 그라데이션을 놓아 준다 (키보드를 한동안 내려 두었거나 메모리가 부족할 때).
+     * 다음에 그릴 때 필요한 크기만 다시 굽는다. 화면이 아직 그 비트맵을 쓰고 있을 수 있으므로 recycle()은 하지 않고
+     * 참조만 끊는다. 메인 스레드에서만 부른다.
+     */
+    public static void trimCache() {
+        java.util.Arrays.fill(bitmaps, null);
+        java.util.Arrays.fill(keys, 0);
+        next = 0;
+        java.util.Arrays.fill(shaders, null);
+        java.util.Arrays.fill(shaderKeys, 0);
+        nextShader = 0;
+        java.util.Arrays.fill(edgeTops, null);
+        java.util.Arrays.fill(edgeLefts, null);
+        java.util.Arrays.fill(edgeColors, 0);
+        java.util.Arrays.fill(edgePxs, 0);
+        nextEdge = 0;
+    }
+
     /** 눌린 면: face로 칠하고 테두리 안쪽에 그림자를 넣어 오목하게 들어간 모양을 만든다. */
     public static void drawInset(Canvas c, RectF r, float radius, float offset, float blur, int face, int light, int dark,
                                  Paint fill) {
