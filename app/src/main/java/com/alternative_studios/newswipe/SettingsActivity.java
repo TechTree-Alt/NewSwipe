@@ -4122,7 +4122,7 @@ public final class SettingsActivity extends Activity {
         about.addView(button(L.t("오픈소스 라이선스", "Open source licenses"), v -> openSection(LICENSES)));
         about.addView(button(L.t("소스 코드", "Source code"), v -> openUrl(SOURCE_URL)));
         about.addView(button(L.t("문의", "Contact"), v -> openUrl(ISSUES_URL)));
-        about.addView(button(L.t("명예의 전당", "Hall of fame"), v -> openSection(HALL_OF_FAME)));
+        about.addView(hallOfFameButton());
 
         LinearLayout app = section(L.t("앱 아이콘", "App icon"));
         app.addView(launcherToggle());
@@ -4137,6 +4137,23 @@ public final class SettingsActivity extends Activity {
             {"ssonbin", R.drawable.hof_ssonbin},
             {"청보라", R.drawable.hof_cheongbora},
     };
+
+    /** 정보 화면의 '명예의 전당' 버튼. 다른 버튼과 달리 무지개빛 그라데이션 바탕으로 돋보이게 한다. */
+    private View hallOfFameButton() {
+        final int ink = 0xFF1F1B2E;   // 옅은 무지개 위에서는 화면 모드와 관계없이 짙은 글자가 잘 읽힌다
+        View row = button(L.t("명예의 전당", "Hall of fame"),
+                new Chevron(this, ink), v -> openSection(HALL_OF_FAME));
+        android.graphics.drawable.GradientDrawable rainbow = new android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{0xFFFFB3BA, 0xFFFFD8A8, 0xFFFFF3A6, 0xFFBDF2C4, 0xFFB5DEFF, 0xFFD5BEFF});
+        float r = Ui.dp(this, 12);
+        rainbow.setCornerRadius(r);
+        row.setBackground(Ui.ripple(0x33000000, rainbow, r));
+        TextView t = (TextView) ((ViewGroup) row).getChildAt(0);
+        t.setTextColor(ink);
+        t.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        return row;
+    }
 
     /** 사진과 닉네임을 싣지 않은 나머지 참여자 수. */
     private static final int HALL_OF_FAME_OTHERS = 37;
