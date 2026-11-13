@@ -225,7 +225,7 @@ public final class OnboardingActivity extends Activity {
         root.addView(title, tlp);
         welcomeTitle = title;
 
-        TextView sub = text(L.t("밀어서 입력하고 조작하는 한국어 입력 시스템", "Swipe to type and control, in Korean and English"), 15, colors.hint, false);
+        TextView sub = text(L.t("밀어서 입력하고 조작하는 한국어 입력 시스템", "Swipe to type and control, all in your way"), 15, colors.hint, false);
         sub.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams slp = wrap();
         slp.topMargin = Ui.dp(this, 8);
@@ -381,8 +381,8 @@ public final class OnboardingActivity extends Activity {
         second.topMargin = Ui.dp(this, 12);
         root.addView(englishCard.view, second);
 
-        TextView labs = text(L.t("일본어·중국어 입력은 설정 › 실험실에서 쓸 수 있습니다 (사전 팩을 가져와 켭니다).",
-                "Japanese and Chinese input are available in Settings › Labs (import a dictionary pack to turn them on)."),
+        TextView labs = text(L.t("중국어와 일본어는 실험실 기능으로 제공합니다. 설정을 마친 후 실험실 메뉴에서 활성화하세요.",
+                "Chinese and Japanese are available as a Labs feature. Enable them from the Labs menu after you finish setup."),
                 14, colors.hint, false);
         labs.setLineSpacing(Ui.dp(this, 2), 1f);
         labs.setBackground(Ui.round((colors.hint & 0x00FFFFFF) | 0x1A000000, Ui.dp(this, 16)));
