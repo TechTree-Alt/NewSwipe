@@ -824,7 +824,8 @@ public final class KeyboardView extends View {
                 return;
             case Key.SPACE:
                 // 글자·기호 자판의 스페이스바는 비워 두고(설정하면 글자 자판에 언어 이름), 숫자 자판에서만 ␣로 띄어쓰기 키임을 알린다.
-                if (layout.kind != KeyboardLayout.NUMBER) {
+                // 일본어 12키 자판의 스페이스바도 한 칸짜리 키라 숫자 패드처럼 ␣를 그린다.
+                if (layout.kind != KeyboardLayout.NUMBER && !layout.flickSpace()) {
                     if (spaceLabel != null && layout.isLetters() && r.width() > dp(48)) {
                         text.setColor(theme.hint);
                         text.setTypeface(Typeface.DEFAULT);
@@ -835,7 +836,7 @@ public final class KeyboardView extends View {
                 }
                 text.setColor(fg);
                 text.setTypeface(Typeface.DEFAULT);
-                text.setTextSize(spChar);
+                text.setTextSize(layout.kind == KeyboardLayout.NUMBER ? spChar : spLabel);
                 drawCentered(c, "␣", cx, cy);
                 return;
             default:

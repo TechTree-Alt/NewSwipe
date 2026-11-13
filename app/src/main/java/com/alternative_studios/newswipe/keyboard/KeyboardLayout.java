@@ -54,6 +54,13 @@ public final class KeyboardLayout {
         this.rows = rows.toArray(new Row[0]);
     }
 
+    /** 12키 플릭 자판인지 (스페이스바가 한 칸짜리 키라 ␣ 기호를 그린다). */
+    public boolean flickSpace() {
+        if (kind != JAPANESE) return false;
+        for (Row r : rows) for (Key k : r.keys) if (k.flick) return true;
+        return false;
+    }
+
     public boolean isLetters() {
         return kind == KOREAN || kind == ENGLISH || kind == JAPANESE || kind == CHINESE;
     }
