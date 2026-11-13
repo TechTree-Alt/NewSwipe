@@ -381,8 +381,8 @@ public final class OnboardingActivity extends Activity {
         second.topMargin = Ui.dp(this, 12);
         root.addView(englishCard.view, second);
 
-        TextView labs = text(L.t("중국어와 일본어는 실험실 기능으로 제공합니다. 설정을 마친 후 실험실 메뉴에서 활성화하세요.",
-                "Chinese and Japanese are available as a Labs feature. Enable them from the Labs menu after you finish setup."),
+        TextView labs = text(L.t("중국어와 일본어 입력은 실험실 기능으로 제공합니다. 설정을 마친 후 실험실 메뉴에서 활성화하세요.",
+                "Chinese and Japanese input are available as a Labs feature. Enable them from the Labs menu after you finish setup."),
                 14, colors.hint, false);
         labs.setLineSpacing(Ui.dp(this, 2), 1f);
         labs.setBackground(Ui.round((colors.hint & 0x00FFFFFF) | 0x1A000000, Ui.dp(this, 16)));
