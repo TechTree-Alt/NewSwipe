@@ -92,7 +92,7 @@ final class OneHandPreview extends FrameLayout {
         keys.setKeyShadow(prefs.keyShadow(), prefs.keyShadowStrength());
         keys.setKeyRadius(Ui.dp(c, prefs.keyRadiusDp()));
         keys.setGridColors(prefs.gridColors());
-        keys.setPopupHints(!prefs.popupHintHidden());
+        keys.setPopupHints(!prefs.popupHintHidden(), prefs.popupHintPosition());
         keys.setNumberHintHidden(prefs.numberHintHidden());
         keys.setKeyGaps(Ui.dp(c, prefs.keyGapXDp()), Ui.dp(c, prefs.keyGapYDp()));
         keys.setInsets(Ui.dp(c, prefs.padLeftDp()), Ui.dp(c, prefs.padTopDp()),
