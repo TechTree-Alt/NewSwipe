@@ -836,7 +836,7 @@ public final class KeyboardView extends View {
                 }
                 text.setColor(fg);
                 text.setTypeface(Typeface.DEFAULT);
-                text.setTextSize(layout.kind == KeyboardLayout.NUMBER ? spChar : spLabel);
+                text.setTextSize(spChar);   // 숫자 패드와 같은 크기·글꼴이라 모양과 굵기가 같다
                 drawCentered(c, "␣", cx, cy);
                 return;
             default:
