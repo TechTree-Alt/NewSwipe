@@ -396,7 +396,8 @@ public final class SettingsActivity extends Activity {
             {KEYBOARD, "숫자 줄 높이", "숫자 행 크기"},
             {KEYBOARD, "기능키 높이", "맨 아래 줄 스페이스바 줄 높이 크기"},
             {KEYBOARD, "키 누름 미리보기", "말풍선 팝업 확대"},
-            {KEYBOARD, "글자 키 힌트 없애기", "힌트 숨기기 오른쪽 위 길게 눌러 입력할 문자"},
+            {KEYBOARD, "글자 키 힌트 표시", "힌트 숨기기 없애기 보이기 길게 눌러 입력할 문자"},
+            {KEYBOARD, "힌트 위치", "글자 키 힌트 자리 왼쪽 위 오른쪽 위 가운데 아래 중간"},
             {KEYBOARD, "숫자 키 힌트 없애기", "힌트 숨기기"},
             {KEYBOARD, "스페이스바에 언어 이름 보이기", "스페이스 띄어쓰기 언어 표시 한국어 영어 일본어 중국어"},
             {KEYBOARD, "왼쪽 여백", "패딩 간격"},
@@ -1923,9 +1924,52 @@ public final class SettingsActivity extends Activity {
                 Prefs.KEY_PREVIEW, prefs.keyPreview()));
     }
 
+    /** '글자 키 힌트 표시' 스위치와, 켜져 있을 때만 보이는 '힌트 위치' 줄. 저장은 예전처럼 '없애기'(POPUP_HINT_HIDDEN)로 뒤집어 한다. */
     private View popupHintToggle() {
-        return toggle("글자 키 힌트 없애기", "글자 키의 오른쪽 위에 표시되는 길게 눌러 입력할 문자 힌트를 없앱니다.",
-                Prefs.POPUP_HINT_HIDDEN, prefs.popupHintHidden());
+        SettingsWidgets.ValueRow[] pos = new SettingsWidgets.ValueRow[1];
+        pos[0] = widgets.valueRow("힌트 위치", Prefs.HINT_POSITION_NAMES[prefs.popupHintPosition()], v ->
+                pickHintPosition(p -> {
+                    prefs.raw().edit().putInt(Prefs.POPUP_HINT_POSITION, p).apply();
+                    pos[0].set(Prefs.HINT_POSITION_NAMES[p]);
+                    refreshLayoutPreview();
+                }));
+        View position = subGroup(pos[0].view);
+        boolean shown = !prefs.popupHintHidden();
+        position.setVisibility(shown ? View.VISIBLE : View.GONE);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.addView(toggle("글자 키 힌트 표시", "글자 키에 길게 눌러 입력할 문자 힌트를 작게 표시합니다.", shown, on -> {
+            prefs.raw().edit().putBoolean(Prefs.POPUP_HINT_HIDDEN, !on).apply();
+            Ui.setVisibleAnimated(position, on);
+            refreshLayoutPreview();
+        }), matchWrap());
+        box.addView(position, matchWrap());
+        return box;
+    }
+
+    /** 글자 키 힌트의 자리를 고르는 창: 키 그림에서 여덟 곳 가운데 하나를 누르면 바로 정하고 닫는다. */
+    private void pickHintPosition(java.util.function.IntConsumer onPick) {
+        int current = prefs.popupHintPosition();
+        android.app.AlertDialog[] dialog = new android.app.AlertDialog[1];
+        HintPositionPicker picker = new HintPositionPicker(this,
+                com.alternative_studios.newswipe.keyboard.KeyboardTheme.of(this), accentColor, onAccentColor, current, p -> {
+                    if (dialog[0] != null) dialog[0].dismiss();
+                    if (p != current) onPick.accept(p);
+                });
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        int pad = Ui.dp(this, 20);
+        box.setPadding(pad, Ui.dp(this, 8), pad, 0);
+        box.addView(picker, matchWrap());
+        dialog[0] = AppTheme.dialogBuilder(this)
+                .setTitle("힌트 위치")
+                .setMessage("힌트를 표시할 자리를 누르세요.")
+                .setView(box)
+                .setNeutralButton("기본값", (d, w) -> {
+                    if (current != Prefs.HINT_POS_TOP_RIGHT) onPick.accept(Prefs.HINT_POS_TOP_RIGHT);
+                })
+                .setNegativeButton("취소", null)
+                .show();
     }
 
     // ---- 목록과 영역 편집 창이 함께 쓰는 항목 (같은 설정이 두 곳에 보여도 이름·설명이 어긋나지 않게 한곳에서 만든다)
@@ -3057,7 +3101,7 @@ public final class SettingsActivity extends Activity {
         oneHandKeys.setKeyShadow(prefs.keyShadow(), prefs.keyShadowStrength());
         oneHandKeys.setKeyRadius(Ui.dp(this, prefs.keyRadiusDp()));
         oneHandKeys.setGridColors(prefs.gridColors());
-        oneHandKeys.setPopupHints(!prefs.popupHintHidden());
+        oneHandKeys.setPopupHints(!prefs.popupHintHidden(), prefs.popupHintPosition());
         oneHandKeys.setNumberHintHidden(prefs.numberHintHidden());
         oneHandKeys.setKeyGaps(Ui.dp(this, prefs.keyGapXDp()), Ui.dp(this, prefs.keyGapYDp()));
         oneHandKeys.setInsets(Ui.dp(this, prefs.padLeftDp()), Ui.dp(this, prefs.padTopDp()),
@@ -3214,7 +3258,7 @@ public final class SettingsActivity extends Activity {
         preview.setKeyShadow(prefs.keyShadow(), prefs.keyShadowStrength());
         preview.setKeyRadius(Ui.dp(this, prefs.keyRadiusDp()));
         preview.setGridColors(prefs.gridColors());
-        preview.setPopupHints(!prefs.popupHintHidden());
+        preview.setPopupHints(!prefs.popupHintHidden(), prefs.popupHintPosition());
         preview.setNumberHintHidden(prefs.numberHintHidden());
         int p = Ui.dp(this, 4);
         preview.setKeyGaps(Ui.dp(this, prefs.keyGapXDp()), Ui.dp(this, prefs.keyGapYDp()));

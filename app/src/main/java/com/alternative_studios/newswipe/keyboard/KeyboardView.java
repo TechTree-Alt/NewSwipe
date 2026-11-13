@@ -168,6 +168,8 @@ public final class KeyboardView extends View {
     private float fnSwipeThreshold;
     private boolean showPreview = true;
     private boolean showHints = true;
+    /** 글자 키 힌트의 자리 (Prefs.HINT_POS_*: 왼쪽 위부터 시계 방향, 기본 오른쪽 위). */
+    private int hintPosition = 2;
     /** 숫자 키(1~0)의 힌트만 숨긴다. */
     private boolean numberHintHidden;
     /** 키를 길게 눌러 문자를 입력하는 기능. 끄면 팝업도, 키 위의 작은 글자도 없다. */
@@ -440,17 +442,22 @@ public final class KeyboardView extends View {
         }
     }
 
-    /** 글자 키인지: 한글·영어 글자 키와 기호 자판의 키 (숫자 줄·쉼표·온점 키는 아니다). '글자 키 힌트 없애기'가 적용된다. */
+    /** 글자 키인지: 한글·영어 글자 키와 기호 자판의 키 (숫자 줄·쉼표·온점 키는 아니다). '글자 키 힌트 표시'와 그 자리가 적용된다. */
     private boolean isLetterKey(Key k) {
         if (k.type != Key.CHAR || KeyboardLayout.isDigit(k.label)) return false;
         if (layout.kind == KeyboardLayout.SYMBOLS || layout.kind == KeyboardLayout.SYMBOLS_2) return true;
         return layout.isLetters() && !KeyboardLayout.isSymbol(k.label);
     }
 
-    /** 글자 키 오른쪽 위의 작은 글자(길게 눌러 입력할 문자 힌트)를 그릴지. 기호 자판의 키도 포함하고, 숫자 키는 따로 정한다. 길게 눌러 입력하는 기능과는 상관없다. */
-    public void setPopupHints(boolean on) {
-        if (showHints != on) {
+    /**
+     * 글자 키의 작은 글자(길게 눌러 입력할 문자 힌트)를 그릴지와 그 자리. 기호 자판의 키도 포함하고, 숫자 키는 따로 정한다.
+     * 길게 눌러 입력하는 기능과는 상관없다.
+     * @param position 키 안의 자리 (Prefs.HINT_POS_*: 왼쪽 위부터 시계 방향 여덟 곳). 글자 키가 아닌 키의 힌트는 늘 오른쪽 위다.
+     */
+    public void setPopupHints(boolean on, int position) {
+        if (showHints != on || hintPosition != position) {
             showHints = on;
+            hintPosition = position;
             invalidate();
         }
     }
@@ -856,7 +863,14 @@ public final class KeyboardView extends View {
             text.setTypeface(Typeface.DEFAULT);
             text.setTextSize(spHint);
             text.getFontMetrics(fm);
-            c.drawText(hint, r.right - dp(7), cy - r.centerY() + r.top - fm.ascent + dp(2), text);
+            int pos = isLetterKey(k) ? hintPosition : 2;
+            // 열은 왼쪽(0·6·7)·가운데(1·5)·오른쪽(2·3·4), 줄은 위(0·1·2)·가운데(3·7)·아래(4·5·6).
+            float x = pos == 0 || pos == 6 || pos == 7 ? r.left + dp(7) : pos == 1 || pos == 5 ? cx : r.right - dp(7);
+            float shift = cy - r.centerY();   // 글자를 위아래로 옮겨 그린 키(맨 아래 줄 등)는 힌트도 같이 옮긴다
+            float y = pos <= 2 ? r.top + shift - fm.ascent + dp(2)
+                    : pos >= 4 && pos <= 6 ? r.bottom + shift - fm.descent - dp(2)
+                    : cy - (fm.ascent + fm.descent) / 2f;
+            c.drawText(hint, x, y, text);
         }
     }
 

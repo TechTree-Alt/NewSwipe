@@ -193,7 +193,14 @@ public final class Prefs {
     /** 글자 자판의 스페이스바에 지금 언어 이름(한국어·English·日本語·中文)을 띄운다 (기본 꺼짐). */
     public static final String SPACE_LANG_LABEL = "space_lang_label";
     public static final String NUMBER_HINT_HIDDEN = "number_hint_hidden";     // 숫자 키만 길게 눌러 입력할 문자 힌트 없애기
-    public static final String POPUP_HINT_HIDDEN = "popup_hint_hidden";       // 글자 키(한글·영어) 오른쪽 위의 힌트 없애기
+    public static final String POPUP_HINT_HIDDEN = "popup_hint_hidden";       // 글자 키(한글·영어)의 힌트 없애기 (설정 화면에는 '글자 키 힌트 표시'로 뒤집어 보인다)
+    /** 글자 키 힌트의 자리: 키의 왼쪽 위부터 시계 방향으로 여덟 곳 (HINT_POS_*). */
+    public static final String POPUP_HINT_POSITION = "popup_hint_position";
+    public static final int HINT_POS_TOP_LEFT = 0, HINT_POS_TOP = 1, HINT_POS_TOP_RIGHT = 2, HINT_POS_RIGHT = 3,
+            HINT_POS_BOTTOM_RIGHT = 4, HINT_POS_BOTTOM = 5, HINT_POS_BOTTOM_LEFT = 6, HINT_POS_LEFT = 7;
+    /** 힌트 자리의 이름 (HINT_POS_* 차례). */
+    public static final String[] HINT_POSITION_NAMES = {"왼쪽 위", "위쪽 가운데", "오른쪽 위", "오른쪽 중간",
+            "오른쪽 아래", "아래 가운데", "왼쪽 아래", "왼쪽 중간"};
     // 커서 이동 속도 (%, 100 = 기본). 스페이스바·문자 키, 좌우·상하 따로.
     public static final String SPLIT_SPACE_JOIN = "split_space_join";   // 분리 키보드: 나뉜 스페이스바를 하나로 잇기
     public static final String SPLIT_FN_WIDTH = "split_fn_width";       // 분리 키보드(스페이스바를 이었을 때): 하단 기능키 폭(%)
@@ -494,7 +501,7 @@ public final class Prefs {
                     keys(AREA_PAD_PREFIX + PAD_AREAS[1] + "_")),
             // 글자 키: 세 자판이 함께 쓰는 값(높이·길게 누르기·밀기·여백)과 한글·영어 글자 키에만 있는 값.
             new EditorScope(AREA_SCOPES[2], "글자 키 공통 (높이·길게 누르기·밀기·여백)", keys(KEYBOARD_HEIGHT, LONG_PRESS_MS,
-                    POPUP_HINT_HIDDEN, SWIPE_THRESHOLD, SWIPE_PICK_SUGGESTION, PORTRAIT_PREFIX + SPLIT_REACH_COLUMN),
+                    POPUP_HINT_HIDDEN, POPUP_HINT_POSITION, SWIPE_THRESHOLD, SWIPE_PICK_SUGGESTION, PORTRAIT_PREFIX + SPLIT_REACH_COLUMN),
                     keys(AREA_PAD_PREFIX + PAD_AREAS[2] + "_", "swipe_kb_", PORTRAIT_PREFIX + "balanced_",
                             PORTRAIT_PREFIX + SPLIT_REACH_COLUMN + "_")),
             new EditorScope(SCOPE_LETTERS_KO, "한글 글자 키 (자판 배열·상세 배열·쌍자음·이중모음 입력)", keys(KOREAN_LAYOUT,
@@ -961,6 +968,8 @@ public final class Prefs {
     public boolean swipePickSuggestion() { return sp.getBoolean(SWIPE_PICK_SUGGESTION, false); }
 
     public boolean popupHintHidden() { return sp.getBoolean(POPUP_HINT_HIDDEN, false); }
+    /** 글자 키 힌트의 자리 (HINT_POS_*, 기본 오른쪽 위). */
+    public int popupHintPosition() { return clamp(sp.getInt(POPUP_HINT_POSITION, HINT_POS_TOP_RIGHT), 0, 7); }
     /** 숫자 키(1~0)에만 길게 눌러 입력할 문자 힌트를 보이지 않게 하는지. */
     public boolean numberHintHidden() { return sp.getBoolean(NUMBER_HINT_HIDDEN, false); }
     public boolean spaceLangLabel() { return sp.getBoolean(SPACE_LANG_LABEL, false); }
