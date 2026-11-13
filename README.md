@@ -1,4 +1,3 @@
-# NewSwipe
 <p align="center">
   <img src="docs/play-store/feature-graphic@3x.png" alt="NewSwipe — 밀어서 입력하고 조작하는 한국어 입력 시스템" width="100%" />
 </p>
