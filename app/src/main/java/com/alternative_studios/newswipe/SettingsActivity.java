@@ -4166,7 +4166,7 @@ public final class SettingsActivity extends Activity {
             rlp.bottomMargin = Ui.dp(this, 4);
             c.addView(row, rlp);
         }
-        TextView more = note(L.t("외 " + HALL_OF_FAME_OTHERS + "명의 감사하신 분들",
+        TextView more = note(L.t("외 " + HALL_OF_FAME_OTHERS + "명의 고마운 분들",
                 "and " + HALL_OF_FAME_OTHERS + " other people we're grateful to"));
         LinearLayout.LayoutParams mlp = matchWrap();
         mlp.topMargin = Ui.dp(this, 16);
