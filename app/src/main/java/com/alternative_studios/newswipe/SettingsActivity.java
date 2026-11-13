@@ -4253,7 +4253,7 @@ public final class SettingsActivity extends Activity {
 
     /**
      * 정보 화면 아이콘의 흰 키 위 화살표를 강조색으로 다시 그린다. ic_launcher_foreground.xml의 화살표와 같은 자리·굵기
-     * (108 단위 좌표)로 덮고, 런처 아이콘처럼 위는 밝게 아래는 짙게 칠한다. 밝은 강조색은 흰 키 위에서 보이도록 어둡게 맞춘다.
+     * (108 단위 좌표)로 덮고, 런처 아이콘처럼 위는 밝게 아래는 짙게 칠한다.
      */
     private static final class IconArrow extends android.graphics.drawable.Drawable {
         private final android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
@@ -4261,10 +4261,7 @@ public final class SettingsActivity extends Activity {
         private final int mid;
 
         IconArrow(int accent) {
-            int c = accent | 0xFF000000;
-            // 흰 바탕과 3:1 이상 대비가 나도록 검정을 조금씩 섞는다.
-            for (int i = 0; i < 10 && 1.05 / (android.graphics.Color.luminance(c) + 0.05) < 3; i++) c = mix(c, 0xFF000000, 0.12f);
-            mid = c;
+            mid = accent | 0xFF000000;
             path.moveTo(54, 47);
             path.lineTo(54, 65);
             path.moveTo(46.5f, 58);
