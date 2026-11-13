@@ -203,7 +203,10 @@ public final class KeyboardView extends View {
     private final Runnable repeatRunnable = new Runnable() {
         @Override
         public void run() {
-            if (listener != null) listener.onDeleteRepeat(repeatWord);
+            if (listener != null) {
+                if (repeatCursor != 0) listener.onCursorMove(repeatCursor);
+                else listener.onDeleteRepeat(repeatWord);
+            }
             handler.postDelayed(this, repeatWord ? wordRepeatMs : charRepeatMs);
         }
     };
@@ -400,6 +403,8 @@ public final class KeyboardView extends View {
 
     /** 길게 눌러 계속 지우기의 간격: 지금 누르고 있는 것이 단어 지우기인지와 글자·단어 사이 시간 (ms). */
     private boolean repeatWord;
+    /** 길게 누른 ◀(-1)·▶(+1) 키로 커서를 계속 옮기는 중이면 그 방향, 아니면 0 (⌫ 반복). */
+    private int repeatCursor;
     private long charRepeatMs = 50, wordRepeatMs = 200;
 
     /** 길게 눌러 계속 지우기의 속도 (초당 글자 수, 초당 단어 수). */
@@ -1071,10 +1076,11 @@ public final class KeyboardView extends View {
         boolean select = SwipeAction.SPACE_SELECT.equals(action);
         boolean lang = action != null && !del && !select;
         boolean chars = k.type == Key.CHAR && (k.popup != null || isRepeatChar(k));
-        if (del || lang || chars || select) {
+        boolean cursorKey = k.type == Key.CURSOR_LEFT || k.type == Key.CURSOR_RIGHT;
+        if (del || lang || chars || select || cursorKey) {
             longPressTarget = p;
             // 기능키는 모두 '기능키 길게 누르기 시간'을, 문자 키는 '문자 길게 누르기 시간'을 따른다.
-            long delay = del || lang || select ? fnPressMs : longPressMs;
+            long delay = del || lang || select || cursorKey ? fnPressMs : longPressMs;
             handler.postDelayed(longPressRunnable, delay);
         }
     }
@@ -1441,10 +1447,20 @@ public final class KeyboardView extends View {
         // Shift 키는 누르는 순간 입력되므로(CONSUMED) 그대로 길게 누를 수 있다. 다른 키와 함께 눌렀으면(chord) 하지 않는다.
         boolean shiftHeld = k.type == Key.SHIFT && p.mode == CONSUMED && !p.chord;
         if (p.mode != NORMAL && !shiftHeld) return;
+        if (k.type == Key.CURSOR_LEFT || k.type == Key.CURSOR_RIGHT) {   // 일본어 자판의 ◀·▶: 누르고 있는 동안 계속 옮긴다
+            p.mode = REPEAT;
+            repeatWord = false;
+            repeatCursor = k.type == Key.CURSOR_LEFT ? -1 : 1;
+            if (listener != null) listener.onCursorStart();
+            repeatRunnable.run();
+            invalidate();
+            return;
+        }
         String custom = customLongPress(k);
         if (custom != null) {
             if (SwipeAction.holdRepeat(custom)) {
                 p.mode = REPEAT;
+                repeatCursor = 0;
                 repeatWord = SwipeAction.DELETE_WORD_REPEAT.equals(custom);
                 repeatRunnable.run();
             } else if (SwipeAction.SPACE_SELECT.equals(custom)) {

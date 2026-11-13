@@ -2383,6 +2383,12 @@ public final class SettingsActivity extends Activity {
      * 실험실 '일본어 자판'·'중국어 자판'. 앱에는 변환 엔진만 들어 있어, 그 언어의 사전 팩을 가져와야 켤 수 있다
      * (쓰지 않는 사람의 앱 크기를 늘리지 않는다). 켜면 지구본 키가 한글 → 영어 → 일본어 → 중국어 차례로 바꾼다.
      */
+    /** 일본어·중국어 공통: 자주 고른 변환 후보를 앞에 놓기. */
+    private View cjkLearnToggle() {
+        return toggle("자주 쓰는 후보를 앞에", "변환 후보에서 고른 글자를 기억해, 같은 읽기(또는 그 앞부분)를 치면 자주 고른 것부터 "
+                + "후보 맨 앞에 놓습니다. 기록은 이 기기에만 저장됩니다.", Prefs.CJK_LEARN, prefs.cjkLearn());
+    }
+
     private void addCjkKeyboard(String lang) {
         boolean ja = com.alternative_studios.newswipe.cjk.CjkComposer.JA.equals(lang);
         String name = ja ? "일본어 자판" : "중국어 자판";
@@ -2403,11 +2409,16 @@ public final class SettingsActivity extends Activity {
                         i -> prefs.raw().edit().putString(Prefs.CJK_JA_LAYOUT, i == 1 ? Prefs.JA_QWERTY : Prefs.JA_FLICK).apply()),
                 note("12키 플릭: 키를 누르면 あ단, 왼쪽·위·오른쪽·아래로 밀면 い·う·え·お단이 들어갑니다. "
                         + "゛ 키는 앞 글자의 탁점·반탁점·작은 글자를 차례로 바꿉니다. "
-                        + "스페이스로 변환 후보를 고르고 엔터로 확정합니다."),
+                        + "스페이스로 변환 후보를 고르고 엔터로 확정합니다. ◀·▶ 키는 길게 누르면 커서가 계속 움직입니다."),
+                sizeSlider("일본어 자판 높이", Prefs.CJK_JA_HEIGHT, prefs::jaHeight, Prefs.CJK_JA_HEIGHT_MIN,
+                        Prefs.CJK_JA_HEIGHT_MAX, 5, "%"),
+                note("일본어로 입력하는 동안의 자판(글자·기호) 높이입니다. 다른 자판 높이에 대한 비율이고, 100%면 같습니다."),
                 toggle("반각 공백 쓰기", "스페이스로 반각 공백을 넣습니다. 끄면 Gboard처럼 일본어를 입력하는 동안에는 "
                         + "전각 공백(　)을 넣습니다 (변환 중에는 변환 후보를 고릅니다).",
-                        Prefs.CJK_JA_HALF_SPACE, prefs.jaHalfSpace()))
-                : subGroup(note("스페이스로 첫 후보를 넣고, 엔터는 병음을 그대로 넣습니다. 음절을 직접 나누려면 '를 씁니다 (xi'an)."));
+                        Prefs.CJK_JA_HALF_SPACE, prefs.jaHalfSpace()),
+                cjkLearnToggle())
+                : subGroup(note("스페이스로 첫 후보를 넣고, 엔터는 병음을 그대로 넣습니다. 음절을 직접 나누려면 '를 씁니다 (xi'an)."),
+                cjkLearnToggle());
         box.addView(toggle(name, "지구본 키로 " + (ja ? "일본어" : "중국어") + " 자판으로 바꿀 수 있게 합니다.",
                 Prefs.CJK_PREFIX + lang, prefs.cjkEnabled(lang), group));
         box.addView(group);

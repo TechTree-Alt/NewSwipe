@@ -749,45 +749,53 @@ public final class KeyboardLayout {
     // ---------------------------------------------------------------- 일본어·중국어 (실험실)
 
     /**
-     * 12키 플릭 자판의 가나 키: {탭, 왼쪽, 위, 오른쪽, 아래}. 아래 줄의 ゛ 키는 앞 글자의 탁점·반탁점·작은 글자를 돌린다.
-     * 오른쪽 열은 ⌫, 장음 ー, 괄호, 물음표다.
+     * 12키 플릭 자판의 가나 키: {탭, 왼쪽, 위, 오른쪽, 아래}. Gboard처럼 가운데 3열에 가나를 두고 양옆에 기능키를 둔다.
+     * ゛ 키는 앞 글자의 탁점·반탁점·작은 글자를 돌리고, 밀면 괄호·가운뎃점·물결표가 들어간다.
+     * <pre>
+     *  ゛   あ  か  さ  ⌫
+     *  ◀   た  な  は  ▶
+     *  ☺   ま  や  ら  ␣
+     *  ?123 🌐 わ  、  ↵
+     * </pre>
      */
     private static final String[][][] FLICK_ROWS = {
-            {{"あ", "い", "う", "え", "お"}, {"か", "き", "く", "け", "こ"}, {"さ", "し", "す", "せ", "そ"}, null},
-            {{"た", "ち", "つ", "て", "と"}, {"な", "に", "ぬ", "ね", "の"}, {"は", "ひ", "ふ", "へ", "ほ"},
-                    {"ー", "～", "…", "・", null}},
-            {{"ま", "み", "む", "め", "も"}, {"や", "（", "ゆ", "）", "よ"}, {"ら", "り", "る", "れ", "ろ"},
-                    {"「", "」", "『", "』", null}},
-            {{"゛", null, null, null, null}, {"わ", "を", "ん", "ー", null}, {"、", "。", "？", "！", "…"},
-                    {"？", "！", null, null, null}},
+            {{"あ", "い", "う", "え", "お"}, {"か", "き", "く", "け", "こ"}, {"さ", "し", "す", "せ", "そ"}},
+            {{"た", "ち", "つ", "て", "と"}, {"な", "に", "ぬ", "ね", "の"}, {"は", "ひ", "ふ", "へ", "ほ"}},
+            {{"ま", "み", "む", "め", "も"}, {"や", "（", "ゆ", "）", "よ"}, {"ら", "り", "る", "れ", "ろ"}},
+            {null, {"わ", "を", "ん", "ー", null}, {"、", "。", "？", "！", "…"}},
     };
+    private static final String[] FLICK_MARK_KEY = {"゛", "「", "・", "」", "～"};
 
-    /** 일본어 자판. qwerty면 로마자로 치는 QWERTY, 아니면 12키 플릭. 쉼표·온점 키는 、。로 바뀐다. */
+    /** 일본어 자판. qwerty면 로마자로 치는 QWERTY, 아니면 12키 플릭(5열, 스페이스바 줄 없음). */
     public static KeyboardLayout japanese(Prefs prefs, boolean qwerty) {
         if (qwerty) return cjkPunctuation(relabel(english(prefs), JAPANESE), "、", "。");
         List<Row> rows = new ArrayList<>();
         if (prefs != null && prefs.numberRow()) rows.add(numberRow(prefs));
-        for (String[][] r : FLICK_ROWS) {
-            Key[] keys = new Key[r.length];
-            for (int i = 0; i < r.length; i++) {
-                String[] f = r[i];
-                if (f == null) {
-                    keys[i] = fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1f);
-                    continue;
-                }
-                boolean side = i == 3;
-                Key k = side || f[0].equals("゛") || f[0].equals("、") ? fnChar(f[0], null) : ch(f[0], null);
-                k.swipeLeft = f[1];
-                k.swipeUp = f[2];
-                k.swipeRight = f[3];
-                k.swipeDown = f[4];
-                k.flick = true;
-                keys[i] = k;
+        Key[] left = {flickKey(FLICK_MARK_KEY, true), fn(Key.CURSOR_LEFT, "◀", 1f), fn(Key.EMOJI_KEY, "", 1f),
+                fn(Key.TO_SYMBOLS, "?123", 1f)};
+        Key[] right = {fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1f), fn(Key.CURSOR_RIGHT, "▶", 1f),
+                spaceKey(1f), fn(Key.ENTER, "", 1f)};
+        for (int r = 0; r < FLICK_ROWS.length; r++) {
+            String[][] kana = FLICK_ROWS[r];
+            Key[] keys = new Key[5];
+            keys[0] = left[r];
+            for (int i = 0; i < kana.length; i++) {
+                keys[i + 1] = kana[i] == null ? fn(Key.LANGUAGE, "", 1f) : flickKey(kana[i], kana[i][0].equals("、"));
             }
+            keys[4] = right[r];
             rows.add(new Row(1f, keys));
         }
-        rows.add(spaceRow(Key.TO_SYMBOLS, "?123", prefs));
-        return cjkPunctuation(new KeyboardLayout(JAPANESE, 4, rows), "、", "。");
+        return new KeyboardLayout(JAPANESE, 5, rows);
+    }
+
+    private static Key flickKey(String[] f, boolean gray) {
+        Key k = gray ? fnChar(f[0], null) : ch(f[0], null);
+        k.swipeLeft = f[1];
+        k.swipeUp = f[2];
+        k.swipeRight = f[3];
+        k.swipeDown = f[4];
+        k.flick = true;
+        return k;
     }
 
     /** 중국어 병음 자판: 영어 QWERTY와 같고, 쉼표·온점 키는 ，。로 바뀐다. */
