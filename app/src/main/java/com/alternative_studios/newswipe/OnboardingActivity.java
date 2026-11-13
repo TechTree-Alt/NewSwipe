@@ -203,12 +203,11 @@ public final class OnboardingActivity extends Activity {
 
         root.addView(new View(this), new LinearLayout.LayoutParams(1, 0, 1f));
 
-        // 아이콘 바탕과 같은 그라데이션의 물결 모양(Material 3 Expressive 모양)이 천천히 돌고, 그 위에 아이콘의 앞면(잔상, 키, 화살표)만 얹는다.
+        // 아이콘 바탕색의 물결 모양(Material 3 Expressive 모양)이 천천히 돌고, 그 위에 아이콘의 앞면(잔상, 키, 화살표)만 얹는다.
         // 물결 모양 자체가 아이콘의 바탕이 되어, 아이콘 모양과 물결이 따로 보이지 않는다.
         FrameLayout hero = new FrameLayout(this);
         OnboardingArt.ShapeBadge halo = new OnboardingArt.ShapeBadge(this,
-                getColor(R.color.ic_launcher_gradient_end), 9, 0.07f);
-        halo.setGradient(getColor(R.color.ic_launcher_gradient_start), getColor(R.color.ic_launcher_gradient_end));
+                getColor(R.color.ic_launcher_background), 9, 0.07f);
         int haloSize = Ui.dp(this, 216);
         hero.addView(halo, new FrameLayout.LayoutParams(haloSize, haloSize, Gravity.CENTER));
         ImageView icon = new ImageView(this);

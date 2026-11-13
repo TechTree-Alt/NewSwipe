@@ -3,10 +3,9 @@
 
 Every place the icon appears is drawn from the shapes below, so proportions and
 colors stay identical everywhere:
-  - app/src/main/res/drawable/ic_launcher_background.xml  (gradient backdrop)
   - app/src/main/res/drawable/ic_launcher_foreground.xml  (ghost key, shadow, key, arrow)
   - app/src/main/res/drawable/ic_launcher_monochrome.xml  (themed icon layer)
-  - app/src/main/res/values/colors.xml                    (gradient colors used by the onboarding halo)
+  - app/src/main/res/values/colors.xml                    (ic_launcher_background: icon backdrop, also the onboarding halo)
   - docs/play-store/icon-512.png                          (--png)
   - docs/play-store/feature-graphic@3x.png, feature-graphic.png (--png; the key is redrawn in place)
 
@@ -40,8 +39,7 @@ SHAFT = [(54, 47), (54, 65)]
 CHEVRON = [(46.5, 58), (54, 65.5), (61.5, 58)]
 STROKE = 6
 
-BG_START, BG_END = "#5A8BFF", "#2450D8"   # top-left → bottom-right
-HIGHLIGHT = (0.25, 0.18, 0.70, 0.22)      # radial white glow: centre x, y, radius (fractions of size), alpha
+BACKGROUND_COLOR = "#2F62E8"              # flat backdrop
 KEY_TOP, KEY_BOTTOM = "#FFFFFF", "#EEF3FF"
 ARROW_TOP, ARROW_BOTTOM = "#4A7EF7", "#1F48C9"
 GHOST_ALPHA = 0.28
@@ -84,11 +82,7 @@ def shadow_layers():
         yield dict(d=key(x - g, y + dy - g, w + 2 * g, h + 2 * g, max(1, r + g)), fill=(color, a))
 
 
-BACKGROUND = [
-    dict(d="M0,0h108v108h-108z", grad=("linear", (0, 0, 108, 108), [(0, BG_START, 1), (1, BG_END, 1)])),
-    dict(d="M0,0h108v108h-108z", grad=("radial", (HIGHLIGHT[0] * 108, HIGHLIGHT[1] * 108, HIGHLIGHT[2] * 108),
-                                       [(0, "#FFFFFF", HIGHLIGHT[3]), (1, "#FFFFFF", 0)])),
-]
+BACKGROUND = [dict(d="M0,0h108v108h-108z", fill=(BACKGROUND_COLOR, 1))]   # for the PNG/SVG only
 FOREGROUND = [
     dict(d=key(*GHOST), fill=("#FFFFFF", GHOST_ALPHA)),
     *shadow_layers(),
@@ -155,8 +149,6 @@ def write(path, text):
 
 def write_resources():
     d = os.path.join(RES, "drawable")
-    write(os.path.join(d, "ic_launcher_background.xml"),
-          vector(BACKGROUND, "앱 아이콘 바탕: 왼쪽 위가 밝은 파란 그라데이션."))
     write(os.path.join(d, "ic_launcher_foreground.xml"),
           vector(FOREGROUND, "밀려 내려간 키: 원래 자리의 반투명 잔상과 아래로 밀려 내려온 키로 스와이프(아래로 밀기)를 나타낸다."))
     write(os.path.join(d, "ic_launcher_monochrome.xml"),
@@ -164,10 +156,10 @@ def write_resources():
     colors = os.path.join(RES, "values", "colors.xml")
     with open(colors, encoding="utf-8") as fp:
         text = fp.read()
-    for name, value in (("ic_launcher_gradient_start", BG_START), ("ic_launcher_gradient_end", BG_END)):
-        text, n = re.subn(rf'(<color name="{name}">)#[0-9A-Fa-f]+(</color>)', rf"\g<1>{value}\g<2>", text)
-        if n != 1:
-            raise SystemExit(f"colors.xml: <color name=\"{name}\"> not found")
+    text, n = re.subn(r'(<color name="ic_launcher_background">)#[0-9A-Fa-f]+(</color>)',
+                      rf"\g<1>{BACKGROUND_COLOR}\g<2>", text)
+    if n != 1:
+        raise SystemExit('colors.xml: <color name="ic_launcher_background"> not found')
     write(colors, text)
 
 # ---------------------------------------------------------------- SVG / PNG
@@ -267,7 +259,7 @@ def main():
     ap.add_argument("--svg", metavar="DIR", help="also write SVG previews into DIR")
     args = ap.parse_args()
     write_resources()
-    print("wrote drawable/ic_launcher_{background,foreground,monochrome}.xml, values/colors.xml")
+    print("wrote drawable/ic_launcher_{foreground,monochrome}.xml, values/colors.xml")
     if args.svg:
         os.makedirs(args.svg, exist_ok=True)
         for name, (layers, view) in SVGS.items():

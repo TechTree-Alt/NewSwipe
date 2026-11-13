@@ -5,13 +5,9 @@ import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.LinearGradient;
-import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
-import android.graphics.RadialGradient;
 import android.graphics.RectF;
-import android.graphics.Shader;
 import android.view.View;
 import android.view.animation.LinearInterpolator;
 import android.view.animation.PathInterpolator;
@@ -107,11 +103,6 @@ public final class OnboardingArt {
     public static final class ShapeBadge extends Looping {
         private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint check = new Paint(Paint.ANTI_ALIAS_FLAG);
-        /** 그라데이션을 쓸 때 위에 얹는 왼쪽 위의 은은한 빛. */
-        private Paint glow;
-        private final Matrix shaderMatrix = new Matrix();
-        private int gradientStart, gradientEnd;
-        private boolean gradient;
         private final Path shape = new Path();
         private final Path checkPath = new Path();
         private final int lobes;
@@ -134,19 +125,6 @@ public final class OnboardingArt {
             check.setStrokeJoin(Paint.Join.ROUND);
         }
 
-        /**
-         * 단색 대신 앱 아이콘 바탕과 같은 그라데이션(왼쪽 위 → 오른쪽 아래, 왼쪽 위의 빛)으로 칠한다.
-         * 모양이 돌아도 빛의 방향은 화면에 고정된다. 빛의 위치와 세기는 tools/generate_launcher_icon.py의 HIGHLIGHT와 같다.
-         */
-        public void setGradient(int start, int end) {
-            gradient = true;
-            gradientStart = start;
-            gradientEnd = end;
-            glow = new Paint(Paint.ANTI_ALIAS_FLAG);
-            lastSize = -1f;
-            invalidate();
-        }
-
         /** 가운데에 체크 표시를 그린다. */
         public void setCheck(int color) {
             showCheck = true;
@@ -166,21 +144,12 @@ public final class OnboardingArt {
             if (size != lastSize) {
                 lastSize = size;
                 buildShape(size / 2f);
-                if (gradient) buildShaders(size / 2f);
             }
             canvas.save();
             canvas.translate(w / 2f, h / 2f);
             canvas.save();
-            float angle = phase * 360f;
-            canvas.rotate(angle);
-            if (gradient) {
-                // 모양과 함께 돌린 캔버스를 셰이더에서 되돌려, 빛이 늘 왼쪽 위에서 오게 한다.
-                shaderMatrix.setRotate(-angle);
-                fill.getShader().setLocalMatrix(shaderMatrix);
-                glow.getShader().setLocalMatrix(shaderMatrix);
-            }
+            canvas.rotate(phase * 360f);
             canvas.drawPath(shape, fill);
-            if (gradient) canvas.drawPath(shape, glow);
             canvas.restore();
             if (showCheck && checkProgress > 0f) {
                 float r = size / 2f;
@@ -200,13 +169,6 @@ public final class OnboardingArt {
                 canvas.drawPath(checkPath, check);
             }
             canvas.restore();
-        }
-
-        private void buildShaders(float r) {
-            fill.setShader(new LinearGradient(-r, -r, r, r, gradientStart, gradientEnd, Shader.TileMode.CLAMP));
-            float d = 2f * r;
-            glow.setShader(new RadialGradient(-r + 0.25f * d, -r + 0.18f * d, 0.70f * d,
-                    Color.argb(56, 255, 255, 255), Color.argb(0, 255, 255, 255), Shader.TileMode.CLAMP));
         }
 
         private void buildShape(float radius) {
