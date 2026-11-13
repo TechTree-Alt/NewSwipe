@@ -2441,7 +2441,10 @@ public final class SettingsActivity extends Activity {
                         i -> prefs.raw().edit().putString(Prefs.CJK_JA_LAYOUT, i == 1 ? Prefs.JA_QWERTY : Prefs.JA_FLICK).apply()),
                 note("12키 플릭: 키를 누르면 あ단, 왼쪽·위·오른쪽·아래로 밀면 い·う·え·お단이 들어갑니다. "
                         + "゛ 키는 앞 글자의 탁점·반탁점·작은 글자를 차례로 바꿉니다. "
-                        + "스페이스로 변환 후보를 고르고 엔터로 확정합니다."),
+                        + "스페이스로 변환 후보를 고르고 엔터로 확정합니다. ◀·▶ 키는 길게 누르면 커서가 계속 움직입니다."),
+                sizeSlider("일본어 자판 높이", Prefs.CJK_JA_HEIGHT, prefs::jaHeight, Prefs.CJK_JA_HEIGHT_MIN,
+                        Prefs.CJK_JA_HEIGHT_MAX, 5, "%"),
+                note("일본어로 입력하는 동안의 자판(글자·기호) 높이입니다. 다른 자판 높이에 대한 비율이고, 100%면 같습니다."),
                 toggle("반각 공백 쓰기", "스페이스로 반각 공백을 넣습니다. 끄면 Gboard처럼 일본어를 입력하는 동안에는 "
                         + "전각 공백(　)을 넣습니다 (변환 중에는 변환 후보를 고릅니다).",
                         Prefs.CJK_JA_HALF_SPACE, prefs.jaHalfSpace()))

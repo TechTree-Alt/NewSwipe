@@ -27,14 +27,31 @@ public class CjkLayoutTest {
         assertEquals("こ", ka.swipeText(Key.SWIPE_DOWN));
         assertTrue(ka.flick);
         assertNotNull(find(l, "゛"));
-        // 맨 아래 줄은 다른 자판과 같고, 쉼표·온점은 전각이 된다 (설정은 원래 자리 이름을 따른다)
-        Key period = find(l, "。");
-        assertNotNull(period);
-        assertEquals(".", period.slot());
-        assertNull(find(l, "."));
-        int deletes = 0;
-        for (KeyboardLayout.Row r : l.rows) for (Key k : r.keys) if (k.type == Key.DELETE) deletes++;
+        // Gboard처럼 5열: 가운데 3열이 가나, 양옆이 기능키이고 스페이스바 줄은 없다
+        assertEquals(5, l.columns);
+        assertEquals(4, l.rows.length);
+        for (KeyboardLayout.Row r : l.rows) assertEquals(5, r.keys.length);
+        assertEquals("゛", l.rows[0].keys[0].label);
+        assertEquals("あ", l.rows[0].keys[1].label);
+        assertEquals(Key.DELETE, l.rows[0].keys[4].type);
+        assertEquals(Key.CURSOR_LEFT, l.rows[1].keys[0].type);
+        assertEquals(Key.CURSOR_RIGHT, l.rows[1].keys[4].type);
+        assertEquals(Key.SPACE, l.rows[2].keys[4].type);
+        assertEquals(Key.TO_SYMBOLS, l.rows[3].keys[0].type);
+        assertEquals(Key.LANGUAGE, l.rows[3].keys[1].type);
+        assertEquals("わ", l.rows[3].keys[2].label);
+        assertEquals("、", l.rows[3].keys[3].label);
+        assertEquals("。", l.rows[3].keys[3].swipeText(Key.SWIPE_LEFT));
+        assertEquals(Key.ENTER, l.rows[3].keys[4].type);
+        int deletes = 0, spaces = 0;
+        for (KeyboardLayout.Row r : l.rows) {
+            for (Key k : r.keys) {
+                if (k.type == Key.DELETE) deletes++;
+                if (k.type == Key.SPACE) spaces++;
+            }
+        }
         assertEquals(1, deletes);
+        assertEquals(1, spaces);
     }
 
     @Test
