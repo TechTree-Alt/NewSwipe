@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 밀려 내려간 키: 원래 자리의 반투명 잔상과 아래로 밀려 내려온 키로 스와이프 단모음(아래로 밀기)을 나타낸다. 고칠 때는 ic_launcher_monochrome과 docs/play-store 그림도 함께 맞춘다. -->
+<!-- 밀려 내려간 키: 원래 자리의 반투명 잔상과 아래로 밀려 내려온 키로 스와이프(아래로 밀기)를 나타낸다. tools/generate_launcher_icon.py로 만든다. 손으로 고치지 않는다. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
@@ -60,7 +60,7 @@
         </aapt:attr>
     </path>
     <path
-        android:pathData="M54,47v18M46.5,58L54,65.5L61.5,58"
+        android:pathData="M54,47V65M46.5,58L54,65.5L61.5,58"
         android:strokeWidth="6"
         android:strokeLineCap="round"
         android:strokeLineJoin="round">

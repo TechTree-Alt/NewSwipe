@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="settings_background">#F4F5F8</color>
-    <color name="ic_launcher_background">#2F62E8</color>
+    <!-- 앱 아이콘 바탕 그라데이션(왼쪽 위 → 오른쪽 아래). 온보딩 첫 화면의 물결 배경도 쓴다. tools/generate_launcher_icon.py가 고친다. -->
+    <color name="ic_launcher_gradient_start">#5A8BFF</color>
+    <color name="ic_launcher_gradient_end">#2450D8</color>
     <!-- 키보드 배경(KeyboardTheme.background)과 같은 색. 하단 바 배경으로 쓴다. -->
     <color name="keyboard_background">#E6E8EC</color>
 </resources>

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 테마 아이콘용 단색 레이어: 잔상 30%, 앞 키는 화살표 모양으로 뚫는다. -->
+<!-- 테마 아이콘용 단색 레이어: 잔상 30%, 앞 키는 화살표 모양으로 뚫는다. tools/generate_launcher_icon.py로 만든다. 손으로 고치지 않는다. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
