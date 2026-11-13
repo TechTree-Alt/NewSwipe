@@ -239,6 +239,7 @@ public final class SettingsActivity extends Activity {
 
     /** 메뉴에는 없고 다른 화면에서 여는 하위 화면. */
     private static final String LEARNED = "learned", BLOCKED = "blocked", PRIVACY = "privacy", LICENSES = "licenses",
+            HALL_OF_FAME = "halloffame",
             LANDSCAPE_AREA = "landscapearea",
             LARGE_AREA = "largearea";
 
@@ -259,6 +260,7 @@ public final class SettingsActivity extends Activity {
             case BLOCKED: return L.t("학습하지 않는 단어", "Blocked words");
             case PRIVACY: return L.t("개인정보 처리방침", "Privacy policy");
             case LICENSES: return L.t("오픈소스 라이선스", "Open source licenses");
+            case HALL_OF_FAME: return L.t("명예의 전당", "Hall of fame");
             case LANDSCAPE_AREA: return L.t("가로 모드 키보드 사용자화", "Customize landscape keyboard");
             case LARGE_AREA: return L.t("폴더블 내부 화면 키보드 사용자화", "Customize inner screen keyboard");
             default: return null;
@@ -290,6 +292,7 @@ public final class SettingsActivity extends Activity {
             case "backup": buildBackup(); break;
             case PRIVACY: buildPrivacy(); break;
             case LICENSES: buildLicenses(); break;
+            case HALL_OF_FAME: buildHallOfFame(); break;
             case LANDSCAPE_AREA: buildLandscapeArea(); break;
             case "lab": buildLab(); break;
             case LARGE_AREA: buildLargeArea(); break;
@@ -496,6 +499,7 @@ public final class SettingsActivity extends Activity {
             {"app", L.t("오픈소스 라이선스", "Open source licenses"), L.t("라이센스 license 정보", "license")},
             {"app", L.t("소스 코드", "Source code"), L.t("깃허브 github 정보", "github source")},
             {"app", L.t("문의", "Contact"), L.t("이슈 버그 제보 연락 정보", "issue bug report contact")},
+            {"app", L.t("명예의 전당", "Hall of fame"), L.t("비공개 테스트 테스터 감사 정보", "closed test testers thanks")},
             {"app", L.t("런처에 앱 아이콘 표시", "Show app icon in launcher"), L.t("앱 아이콘 숨기기 홈 화면", "app icon hide home screen launcher")},
             {"backup", L.t("설정 가져오기", "Import settings"), L.t("복원 불러오기 import", "restore load import")},
             {"backup", L.t("설정 내보내기", "Export settings"), L.t("백업 저장 export", "backup save export")},
@@ -4118,9 +4122,68 @@ public final class SettingsActivity extends Activity {
         about.addView(button(L.t("오픈소스 라이선스", "Open source licenses"), v -> openSection(LICENSES)));
         about.addView(button(L.t("소스 코드", "Source code"), v -> openUrl(SOURCE_URL)));
         about.addView(button(L.t("문의", "Contact"), v -> openUrl(ISSUES_URL)));
+        about.addView(button(L.t("명예의 전당", "Hall of fame"), v -> openSection(HALL_OF_FAME)));
 
         LinearLayout app = section(L.t("앱 아이콘", "App icon"));
         app.addView(launcherToggle());
+    }
+
+    /**
+     * 명예의 전당에 올릴 비공개 테스트 참여자 (닉네임, 프로필 사진). 사진은 앱 용량을 아끼려고
+     * 160×160 WebP로 줄여 res/drawable-nodpi에 둔다 (한 장에 몇 KB).
+     */
+    private static final Object[][] HALL_OF_FAME_PEOPLE = {
+            {"마로코기", R.drawable.hof_marokogi},
+    };
+
+    private void buildHallOfFame() {
+        LinearLayout c = card();
+        c.addView(note(L.t("비공개 테스트에 참여해 NewSwipe를 함께 다듬어 주신 분들입니다. 감사합니다.",
+                "People who joined the closed test and helped shape NewSwipe. Thank you.")));
+        int size = Ui.dp(this, 56);
+        for (Object[] p : HALL_OF_FAME_PEOPLE) {
+            LinearLayout row = new LinearLayout(this);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            android.widget.ImageView photo = new android.widget.ImageView(this);
+            photo.setImageDrawable(circlePhoto((Integer) p[1]));
+            photo.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+            row.addView(photo, new LinearLayout.LayoutParams(size, size));
+            TextView name = new TextView(this);
+            name.setText((String) p[0]);
+            name.setTextColor(textColor);
+            name.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
+            LinearLayout.LayoutParams nlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT);
+            nlp.leftMargin = Ui.dp(this, 16);
+            row.addView(name, nlp);
+            LinearLayout.LayoutParams rlp = matchWrap();
+            rlp.topMargin = Ui.dp(this, 12);
+            rlp.bottomMargin = Ui.dp(this, 4);
+            c.addView(row, rlp);
+        }
+    }
+
+    /** 정사각형 사진을 동그랗게 잘라 그리는 Drawable (외부 라이브러리 없이 BitmapShader로). */
+    private android.graphics.drawable.Drawable circlePhoto(int res) {
+        android.graphics.Bitmap bmp = android.graphics.BitmapFactory.decodeResource(getResources(), res);
+        android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG
+                | android.graphics.Paint.FILTER_BITMAP_FLAG);
+        android.graphics.BitmapShader shader = new android.graphics.BitmapShader(bmp,
+                android.graphics.Shader.TileMode.CLAMP, android.graphics.Shader.TileMode.CLAMP);
+        paint.setShader(shader);
+        return new android.graphics.drawable.Drawable() {
+            @Override public void draw(android.graphics.Canvas c) {
+                android.graphics.Rect r = getBounds();
+                android.graphics.Matrix m = new android.graphics.Matrix();
+                m.setScale(r.width() / (float) bmp.getWidth(), r.height() / (float) bmp.getHeight());
+                m.postTranslate(r.left, r.top);
+                shader.setLocalMatrix(m);
+                c.drawOval(r.left, r.top, r.right, r.bottom, paint);
+            }
+            @Override public void setAlpha(int alpha) { paint.setAlpha(alpha); }
+            @Override public void setColorFilter(android.graphics.ColorFilter cf) { paint.setColorFilter(cf); }
+            @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
+        };
     }
 
     private void openUrl(String url) {
