@@ -176,8 +176,6 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 언어마다 자주 고른 변환 후보의 기록 (사전을 놓아 줘도 남겨 둔다). 저장은 백그라운드에서 한다. */
     private final java.util.Map<String, com.alternative_studios.newswipe.cjk.CjkLearning> cjkLearnings =
             new java.util.HashMap<>();
-    /** '자주 쓰는 후보를 앞에' 설정. */
-    private boolean cfgCjkLearn = true;
     /** 사전을 읽을 때의 {@link CjkPack#changes()}. 팩을 바꾸거나 지우면 다시 읽는다. */
     private int cjkPackChanges = -1;
     /** 실험실에서 켰고 사전 팩도 있는 언어 (applySettings에서 정한다). */
@@ -1266,10 +1264,6 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         cfgAutoCorrect = prefs.autoCorrect();   // 단어 추천과 따로 켜고 끈다
         cfgWords = cfgSuggest || cfgAutoCorrect;
         cfgLearn = cfgWords && prefs.learnWords();
-        cfgCjkLearn = prefs.cjkLearn();
-        for (java.util.Map.Entry<String, CjkComposer> e : cjkComposers.entrySet()) {
-            e.getValue().setLearning(cfgCjkLearn ? cjkLearnings.get(e.getKey()) : null);
-        }
         cfgPredict = prefs.predictNext();
         suggester.setUserEnabled(cfgLearn);
         suggester.setSuggestEnabled(cfgSuggest);   // 자동 수정만 쓰면 추천에만 쓰는 초성 색인을 만들지 않는다
@@ -2895,7 +2889,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 cjkLoading.remove(lang);
                 if (learn != null) cjkLearnings.putIfAbsent(lang, learn);
                 if (c != null && gen == CjkPack.changes()) {
-                    c.setLearning(cfgCjkLearn ? cjkLearnings.get(lang) : null);
+                    c.setLearning(cjkLearnings.get(lang));   // 자주 고른 후보를 앞에 (늘 켜져 있다)
                     cjkComposers.put(lang, c);
                 }
             });
