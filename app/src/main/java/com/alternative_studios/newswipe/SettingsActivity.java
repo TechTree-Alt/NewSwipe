@@ -4123,7 +4123,6 @@ public final class SettingsActivity extends Activity {
         about.addView(button(L.t("소스 코드", "Source code"), v -> openUrl(SOURCE_URL)));
         about.addView(button(L.t("문의", "Contact"), v -> openUrl(ISSUES_URL)));
         about.addView(hallOfFameButton());
-        about.addView(hallOfFameApplyNote(), matchWrap());
 
         LinearLayout app = section(L.t("앱 아이콘", "App icon"));
         app.addView(launcherToggle());
@@ -4220,6 +4219,9 @@ public final class SettingsActivity extends Activity {
         LinearLayout.LayoutParams mlp = matchWrap();
         mlp.topMargin = Ui.dp(this, 16);
         c.addView(more, mlp);
+
+        // 신청 안내는 참여자 목록과 따로 아래 카드에 둔다.
+        card().addView(hallOfFameApplyNote(), matchWrap());
     }
 
     /** 정사각형 사진을 동그랗게 잘라 그리는 Drawable (외부 라이브러리 없이 BitmapShader로). */
