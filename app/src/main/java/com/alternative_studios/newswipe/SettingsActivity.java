@@ -135,6 +135,7 @@ public final class SettingsActivity extends Activity {
             frame.withAction(Icons.UNDO, "마지막 변경 되돌리기", v -> undoLast());
             frame.keyboardOverlays();   // 아래 미리보기 위로 실제 키보드가 덮는다
         }
+        else if ("onehand".equals(sectionId)) frame.keyboardOverlays();   // 미리보기를 실제 키보드처럼 화면 아래에 붙인다
         ScrollView scroll = new ScrollView(this);
         scrollView = scroll;
         scroll.setFillViewport(true);
@@ -852,9 +853,7 @@ public final class SettingsActivity extends Activity {
 
     /** 화면 하나를 보이지 않는 곳에 만들어 항목 이름을 모으고 버린다. 진짜 화면이 쓰는 값은 건드리지 않게 되돌려 놓는다. */
     private void harvestScreen(String id, java.util.List<String[]> out) {
-        LinearLayout savedList = list, savedBody = oneHandBody, savedColumn = oneHandColumn, savedSide = oneHandSide;
-        View savedLift = oneHandLift;
-        com.alternative_studios.newswipe.keyboard.KeyboardView savedKeys = oneHandKeys;
+        LinearLayout savedList = list;
         ExpressiveSwitch savedClipSwitch = clipImagesSwitch;
         LinearLayout scratch = new LinearLayout(this);
         scratch.setOrientation(LinearLayout.VERTICAL);
@@ -868,11 +867,6 @@ public final class SettingsActivity extends Activity {
         } finally {
             harvesting = false;
             list = savedList;
-            oneHandBody = savedBody;
-            oneHandColumn = savedColumn;
-            oneHandSide = savedSide;
-            oneHandLift = savedLift;
-            oneHandKeys = savedKeys;
             clipImagesSwitch = savedClipSwitch;
             scratch.removeAllViews();
         }
@@ -3045,142 +3039,48 @@ public final class SettingsActivity extends Activity {
 
     // ---------------------------------------------------------------- 한 손 모드
 
-    /** 한 손 모드: 쏠릴 쪽을 고르고, 미리보기를 보면서 자판 폭·키 높이·세로 위치를 정한다. */
+    /** 한 손 모드 화면 아래의 미리보기 (손잡이로 자판 폭·키 높이·세로 위치를 바꾼다). 다른 화면에서는 null. */
+    private OneHandPreview oneHandPreview;
+
+    /**
+     * 한 손 모드: 폴더블 내부 화면 키보드 사용자화처럼 실제 키보드와 같은 미리보기를 화면 아래에 붙이고,
+     * 그 손잡이(자판 오른쪽 가장자리 = 자판 폭, 위 가장자리 = 키 높이, 아래 가장자리 = 세로 위치)로 값을 바꾼다.
+     * 목록의 슬라이더도 같은 값을 바꾸고, 손잡이를 끌면 슬라이더도 따라 움직인다.
+     */
     private void buildOneHand() {
-        LinearLayout card = section("한 손 모드");
-        card.addView(oneHandPreview());
-        card.addView(note("자판과 도구 막대가 한쪽으로 쏠려 한 손으로 편하게 입력할 수 있습니다.\n"
-                + "도구 막대의 한 손 모드 버튼으로 켭니다. 버튼을 왼쪽·오른쪽으로 밀면 그쪽으로 쏠린 한 손 모드가 됩니다."));
+        if (!harvesting) {
+            oneHandPreview = new OneHandPreview(this, prefs, this::syncSizeSliders);
+            pinnedBottom.addView(oneHandPreview, matchWrap());
+            pinnedBottom.setVisibility(View.VISIBLE);
+        }
+        LinearLayout intro = card();
+        intro.addView(note("자판과 도구 막대가 한쪽으로 쏠려 한 손으로 편하게 입력할 수 있습니다.\n"
+                + "도구 막대의 한 손 모드 버튼으로 켭니다. 버튼을 왼쪽·오른쪽으로 밀면 그쪽으로 쏠린 한 손 모드가 됩니다.\n"
+                + "아래 미리보기에서 자판 오른쪽 가장자리의 손잡이를 좌우로 끌면 자판 폭이, 위 가장자리의 손잡이를 끌면 키 높이가, "
+                + "아래 가장자리의 손잡이를 위로 끌면 세로 위치가 바뀝니다."));
 
         LinearLayout size = section("크기와 위치");
-        size.addView(slider("자판 폭", Prefs.ONE_HAND_WIDTH, prefs.oneHandWidth(), 60, 90, 5, "%",
-                this::refreshOneHandPreview));
+        size.addView(oneHandSlider("자판 폭", Prefs.ONE_HAND_WIDTH, prefs::oneHandWidth,
+                OneHandPreview.WIDTH_MIN, OneHandPreview.WIDTH_MAX, 5, "%"));
         size.addView(slider("가로 모드 자판 폭", Prefs.ONE_HAND_WIDTH_LAND, prefs.oneHandWidthLand(), 30, 90, 5, "%"));
-        size.addView(slider("키 높이", Prefs.ONE_HAND_HEIGHT, prefs.oneHandHeight(), 60, 100, 5, "%",
-                this::refreshOneHandPreview));
-        size.addView(slider("세로 위치", Prefs.ONE_HAND_LIFT, prefs.oneHandLiftDp(), 0, 160, 4, "dp",
-                this::refreshOneHandPreview));
+        size.addView(oneHandSlider("키 높이", Prefs.ONE_HAND_HEIGHT, prefs::oneHandHeight,
+                OneHandPreview.HEIGHT_MIN, OneHandPreview.HEIGHT_MAX, 5, "%"));
+        size.addView(oneHandSlider("세로 위치", Prefs.ONE_HAND_LIFT, prefs::oneHandLiftDp,
+                OneHandPreview.LIFT_MIN, OneHandPreview.LIFT_MAX, 4, "dp"));
         size.addView(note("자판 폭은 화면 폭에 대한 비율이고, 키 높이는 보통 키 높이에 대한 비율입니다. "
                 + "세로 위치는 자판을 화면 아래에서 띄우는 높이로, 값이 클수록 자판이 위로 올라갑니다."));
     }
 
-    /** 한 손 모드 미리보기의 부분들 (값을 바꾸면 refreshOneHandPreview가 다시 놓는다). */
-    private LinearLayout oneHandBody, oneHandColumn, oneHandSide;
-    private View oneHandLift;
-    private com.alternative_studios.newswipe.keyboard.KeyboardView oneHandKeys;
-
-    /** 키보드와 같은 모양으로 그린 한 손 모드 미리보기: [도구 막대 + 자판 | 빈 곳의 화살표·확장 아이콘], 아래에 띄운 높이. */
-    private View oneHandPreview() {
-        if (harvesting) return new View(this);   // 설정 검색용으로 글자만 모을 때는 무거운 미리보기를 만들지 않는다
-        com.alternative_studios.newswipe.keyboard.KeyboardTheme kt =
-                com.alternative_studios.newswipe.keyboard.KeyboardTheme.of(this);
-        LinearLayout frame = new LinearLayout(this);
-        frame.setOrientation(LinearLayout.VERTICAL);
-        frame.setBackgroundColor(kt.background);
-        frame.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
-        frame.setOutlineProvider(new android.view.ViewOutlineProvider() {
-            @Override
-            public void getOutline(View view, android.graphics.Outline outline) {
-                outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), Ui.dp(view.getContext(), 16));
-            }
-        });
-        frame.setClipToOutline(true);
-
-        oneHandBody = new LinearLayout(this);
-        oneHandBody.setOrientation(LinearLayout.HORIZONTAL);
-        frame.addView(oneHandBody, matchWrap());
-        oneHandLift = new View(this);
-        frame.addView(oneHandLift, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0));
-
-        oneHandColumn = new LinearLayout(this);
-        oneHandColumn.setOrientation(LinearLayout.VERTICAL);
-        if (prefs.toolbar()) oneHandColumn.addView(toolbarMock(kt));
-        oneHandKeys = new com.alternative_studios.newswipe.keyboard.KeyboardView(this);
-        oneHandKeys.setTheme(kt);
-        applyOneHandPreviewText();
-        oneHandKeys.setKeyShadow(prefs.keyShadow(), prefs.keyShadowStrength());
-        oneHandKeys.setKeyRadius(Ui.dp(this, prefs.keyRadiusDp()));
-        oneHandKeys.setGridColors(prefs.gridColors());
-        oneHandKeys.setPopupHints(!prefs.popupHintHidden(), prefs.popupHintPosition());
-        oneHandKeys.setNumberHintHidden(prefs.numberHintHidden());
-        oneHandKeys.setKeyGaps(Ui.dp(this, prefs.keyGapXDp()), Ui.dp(this, prefs.keyGapYDp()));
-        oneHandKeys.setInsets(Ui.dp(this, prefs.padLeftDp()), Ui.dp(this, prefs.padTopDp()),
-                Ui.dp(this, prefs.padRightDp()), Ui.dp(this, prefs.padBottomDp()));
-        oneHandKeys.setOnTouchListener((v, ev) -> true);
-        oneHandColumn.addView(oneHandKeys, matchWrap());
-
-        oneHandSide = new LinearLayout(this);
-        oneHandSide.setOrientation(LinearLayout.VERTICAL);
-        oneHandSide.setGravity(Gravity.CENTER);
-        oneHandSide.addView(previewSideButton(kt, Icons.NEXT));
-        oneHandSide.addView(previewSideButton(kt, Icons.EXPAND));
-        oneHandBody.addView(oneHandColumn, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        oneHandBody.addView(oneHandSide, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
-
-        refreshOneHandPreview();
-        LinearLayout.LayoutParams lp = matchWrap();
-        lp.topMargin = Ui.dp(this, 12);
-        lp.bottomMargin = Ui.dp(this, 4);
-        frame.setLayoutParams(lp);
-        return frame;
+    /** 미리보기 손잡이로도 바뀌는 한 손 모드 슬라이더: 바꾸면 미리보기를 다시 그리고, 손잡이를 끌면 따라 움직인다. */
+    private View oneHandSlider(String label, String key, java.util.function.IntSupplier current, int min, int max, int step,
+                               String unit) {
+        SettingsWidgets.Slider sl = sliderRow(label, key, current.getAsInt(), min, max, step, unit, this::refreshOneHandPreview);
+        if (!harvesting) sliderSink.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(() -> sl.set(current.getAsInt()));
+        return sl.view;
     }
 
-    /** 한 손 모드 미리보기의 키 글자 크기: 키 높이를 줄인 만큼 같은 비율로 줄인다 (키보드와 같다). */
-    private void applyOneHandPreviewText() {
-        oneHandKeys.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), false, Math.round(prefs.keyTextSize() * prefs.oneHandHeight() / 100f));
-    }
-
-    /** 키보드 도구 막대와 같은 자리·순서로 보이는 버튼들 (누를 수 없음). */
-    private View toolbarMock(com.alternative_studios.newswipe.keyboard.KeyboardTheme kt) {
-        LinearLayout bar = new LinearLayout(this);
-        bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setPadding(Ui.dp(this, prefs.padLeftDp()), 0, Ui.dp(this, prefs.padRightDp()), 0);
-        String[][] order = prefs.toolOrder();
-        for (int side = 0; side < 2; side++) {
-            if (side == 1) bar.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
-            for (String id : order[side]) {
-                if (!prefs.toolShown(id)) continue;
-                IconButton b = new IconButton(this, com.alternative_studios.newswipe.keyboard.ToolbarButtons.icon(id),
-                        kt.text, kt.keyPressed, null);
-                b.setToolbarStyle(kt, Ui.dp(this, 40));
-                b.setClickable(false);
-                b.setFocusable(false);
-                bar.addView(b, new LinearLayout.LayoutParams(Ui.dp(this, 40), Ui.dp(this, 40)));
-            }
-        }
-        bar.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 40)));
-        return bar;
-    }
-
-    private IconButton previewSideButton(com.alternative_studios.newswipe.keyboard.KeyboardTheme kt, int icon) {
-        IconButton b = new IconButton(this, icon, kt.hint, kt.keyPressed, null);
-        int r = Ui.dp(this, 12);
-        b.setBackground(Ui.round(kt.functionKey, r));
-        b.setClickable(false);
-        b.setFocusable(false);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 48));
-        lp.setMargins(Ui.dp(this, 6), Ui.dp(this, 6), Ui.dp(this, 6), Ui.dp(this, 6));
-        b.setLayoutParams(lp);
-        return b;
-    }
-
-    /** 키보드의 applyOneHand와 같은 규칙으로 미리보기를 다시 놓는다. */
     private void refreshOneHandPreview() {
-        if (oneHandBody == null) return;
-        // 왼쪽 한 손 모드로 보여 준다: 자판은 왼쪽, 빈 곳은 오른쪽. 자판 폭 비율만 바꾼다.
-        int width = prefs.oneHandWidth();
-        ((LinearLayout.LayoutParams) oneHandColumn.getLayoutParams()).weight = width;
-        ((LinearLayout.LayoutParams) oneHandSide.getLayoutParams()).weight = 100 - width;
-        oneHandBody.requestLayout();
-        com.alternative_studios.newswipe.keyboard.KeyboardLayout l =
-                com.alternative_studios.newswipe.keyboard.KeyboardLayout.korean(prefs.oneHandView());
-        oneHandKeys.setKeyboardHeight(Math.round(Ui.dp(this, 54) * l.totalHeight() * prefs.keyboardHeight() / 100f
-                * prefs.oneHandHeight() / 100f) + Ui.dp(this, prefs.padTopDp()) + Ui.dp(this, prefs.padBottomDp()));
-        applyOneHandPreviewText();
-        oneHandKeys.setLayout(l);
-        ViewGroup.LayoutParams llp = oneHandLift.getLayoutParams();
-        llp.height = Ui.dp(this, prefs.oneHandLiftDp());
-        oneHandLift.setLayoutParams(llp);
+        if (oneHandPreview != null) oneHandPreview.refresh();
     }
 
     /** 이 화면의 자판 미리보기와 각각이 그리는 프로필 (null = 세로 모드의 기본 값). */

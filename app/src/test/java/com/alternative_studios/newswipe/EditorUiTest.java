@@ -2172,6 +2172,70 @@ public class EditorUiTest {
         return null;
     }
 
+    /** 한 손 모드 미리보기에서 손잡이 h의 가운데 (미리보기 좌표). */
+    static float[] oneHandHandle(OneHandPreview p, OneHandPreview.Handle h) throws Exception {
+        java.lang.reflect.Method m = OneHandPreview.class.getDeclaredMethod("handleCenter", OneHandPreview.Handle.class, float[].class);
+        m.setAccessible(true);
+        float[] out = new float[2];
+        assertTrue((Boolean) m.invoke(p, h, out));
+        return out;
+    }
+
+    /**
+     * 한 손 모드: 폴더블 내부 화면 키보드 사용자화처럼 화면 아래에 미리보기가 붙고, 손잡이를 끌면 자판 폭·키 높이·세로 위치가 바뀌며
+     * 목록의 슬라이더도 따라 움직인다.
+     */
+    @Test
+    public void oneHandHandles() throws Exception {
+        SettingsActivity a = launch("onehand");
+        Prefs prefs = new Prefs(a);
+        OneHandPreview p = find(a.getWindow().getDecorView(), OneHandPreview.class);
+        assertNotNull(p);
+        assertNull("미리보기는 목록 안이 아니라 화면 아래에 붙는다", find(cur(a), OneHandPreview.class));
+        View overlay = p.getChildAt(1);
+        float density = a.getResources().getDisplayMetrics().density;
+        shot(a, "onehand-01");
+
+        // 자판 폭: 오른쪽 가장자리를 오른쪽으로 화면 폭의 5%만큼 → 80% → 85% (슬라이더도 따라간다)
+        assertEquals(Prefs.ONE_HAND_WIDTH_DEFAULT, prefs.oneHandWidth());
+        assertFalse(lines(cur(a)).contains("85%"));
+        float[] w = oneHandHandle(p, OneHandPreview.Handle.WIDTH);
+        // 손잡이는 윤곽선(자판 가장자리에서 2dp 안) 안쪽으로 9dp 들어와 있다.
+        assertEquals(p.getWidth() * 0.8f - 11 * density, w[0], 2f);
+        float[] top = oneHandHandle(p, OneHandPreview.Handle.HEIGHT), bottom = oneHandHandle(p, OneHandPreview.Handle.LIFT);
+        assertEquals(top[0], bottom[0], 0.5f);
+        assertEquals((top[1] + bottom[1]) / 2f, w[1], 1f);
+        drag(overlay, w[0], w[1], p.getWidth() * 0.05f, 0);
+        assertEquals(85, prefs.oneHandWidth());
+        assertTrue(lines(cur(a)).contains("85%"));
+        // 범위 밖으로 끌어도 60%에서 멈춘다.
+        w = oneHandHandle(p, OneHandPreview.Handle.WIDTH);
+        drag(overlay, w[0], w[1], -p.getWidth() * 0.6f, 0);
+        assertEquals(60, prefs.oneHandWidth());
+
+        // 키 높이: 위 가장자리를 아래로 끌면 작아진다.
+        int h0 = p.getHeight();
+        float[] ht = oneHandHandle(p, OneHandPreview.Handle.HEIGHT);
+        drag(overlay, ht[0], ht[1], 0, 60 * density);
+        assertTrue(prefs.oneHandHeight() < Prefs.ONE_HAND_HEIGHT_DEFAULT);
+        assertEquals(0, prefs.oneHandHeight() % 5);
+        assertTrue(p.getHeight() < h0);
+
+        // 세로 위치: 아래 가장자리를 위로 40dp 끌면 자판이 40dp 떠오른다 (미리보기도 그만큼 자란다).
+        int h1 = p.getHeight();
+        float[] lf = oneHandHandle(p, OneHandPreview.Handle.LIFT);
+        drag(overlay, lf[0], lf[1], 0, -40 * density);
+        assertEquals(40, prefs.oneHandLiftDp());
+        assertTrue(lines(cur(a)).contains("40dp"));
+        assertEquals(h1 + Math.round(40 * density), p.getHeight(), 2);
+        shot(a, "onehand-02");
+
+        // 손잡이 밖을 끌면 아무것도 바뀌지 않는다.
+        drag(overlay, p.getWidth() * 0.9f, p.getHeight() / 2f, -100, -100);
+        assertEquals(60, prefs.oneHandWidth());
+        assertEquals(40, prefs.oneHandLiftDp());
+    }
+
     static View findText(View v, String text) {
         // 선택 버튼은 폭이 좁으면 이름을 두 줄로 나눠 보이므로 ("NewSwipe\n단모음") 줄바꿈은 빈칸으로 본다.
         if (v instanceof TextView && v.isShown()
