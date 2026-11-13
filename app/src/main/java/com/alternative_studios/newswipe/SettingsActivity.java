@@ -4108,11 +4108,12 @@ public final class SettingsActivity extends Activity {
         about.addView(head, hlp);
 
         // 앱 아이콘: 런처와 같은 적응형 아이콘으로 그려 기기의 아이콘 모양(원·둥근 사각 등)으로 잘려 보이게 하고,
-        // 바탕만 런처의 파랑 대신 지금 고른 강조색으로 칠한다.
+        // 바탕과 화살표를 런처의 파랑 대신 지금 고른 강조색으로 칠한다.
         android.widget.ImageView icon = new android.widget.ImageView(this);
         icon.setImageDrawable(new android.graphics.drawable.AdaptiveIconDrawable(
                 new android.graphics.drawable.ColorDrawable(accentColor),
-                getDrawable(R.drawable.ic_launcher_foreground)));
+                new android.graphics.drawable.LayerDrawable(new android.graphics.drawable.Drawable[]{
+                        getDrawable(R.drawable.ic_launcher_foreground), new IconArrow(accentColor)})));
         icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         int iconSize = Ui.dp(this, 96);
         LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(iconSize, iconSize);
@@ -4248,6 +4249,55 @@ public final class SettingsActivity extends Activity {
             @Override public void setColorFilter(android.graphics.ColorFilter cf) { paint.setColorFilter(cf); }
             @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
         };
+    }
+
+    /**
+     * 정보 화면 아이콘의 흰 키 위 화살표를 강조색으로 다시 그린다. ic_launcher_foreground.xml의 화살표와 같은 자리·굵기
+     * (108 단위 좌표)로 덮고, 런처 아이콘처럼 위는 밝게 아래는 짙게 칠한다. 밝은 강조색은 흰 키 위에서 보이도록 어둡게 맞춘다.
+     */
+    private static final class IconArrow extends android.graphics.drawable.Drawable {
+        private final android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.Path path = new android.graphics.Path();
+        private final int mid;
+
+        IconArrow(int accent) {
+            int c = accent | 0xFF000000;
+            // 흰 바탕과 3:1 이상 대비가 나도록 검정을 조금씩 섞는다.
+            for (int i = 0; i < 10 && 1.05 / (android.graphics.Color.luminance(c) + 0.05) < 3; i++) c = mix(c, 0xFF000000, 0.12f);
+            mid = c;
+            path.moveTo(54, 47);
+            path.lineTo(54, 65);
+            path.moveTo(46.5f, 58);
+            path.lineTo(54, 65.5f);
+            path.lineTo(61.5f, 58);
+            paint.setStyle(android.graphics.Paint.Style.STROKE);
+            paint.setStrokeWidth(6.4f);   // 원래 화살표(6)의 가장자리까지 덮는다
+            paint.setStrokeCap(android.graphics.Paint.Cap.ROUND);
+            paint.setStrokeJoin(android.graphics.Paint.Join.ROUND);
+            paint.setShader(new android.graphics.LinearGradient(0, 47, 0, 65.5f,
+                    mix(mid, 0xFFFFFFFF, 0.15f), mix(mid, 0xFF000000, 0.25f), android.graphics.Shader.TileMode.CLAMP));
+        }
+
+        private static int mix(int a, int b, float t) {
+            int r = Math.round(android.graphics.Color.red(a) * (1 - t) + android.graphics.Color.red(b) * t);
+            int g = Math.round(android.graphics.Color.green(a) * (1 - t) + android.graphics.Color.green(b) * t);
+            int bl = Math.round(android.graphics.Color.blue(a) * (1 - t) + android.graphics.Color.blue(b) * t);
+            return android.graphics.Color.rgb(r, g, bl);
+        }
+
+        @Override
+        public void draw(android.graphics.Canvas c) {
+            android.graphics.Rect r = getBounds();
+            int save = c.save();
+            c.translate(r.left, r.top);
+            c.scale(r.width() / 108f, r.height() / 108f);
+            c.drawPath(path, paint);
+            c.restoreToCount(save);
+        }
+
+        @Override public void setAlpha(int alpha) { paint.setAlpha(alpha); }
+        @Override public void setColorFilter(android.graphics.ColorFilter cf) { paint.setColorFilter(cf); }
+        @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
     }
 
     private void openUrl(String url) {
