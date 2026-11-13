@@ -1,5 +1,6 @@
 package com.alternative_studios.newswipe.cjk;
 
+import com.alternative_studios.newswipe.L;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -44,7 +45,7 @@ public final class CjkPack {
 
         Info(Properties p, String licenseText, long bytes) {
             lang = p.getProperty("lang", "");
-            name = p.getProperty("name", "이름 없는 사전");
+            name = p.getProperty("name", L.t("이름 없는 사전", "Untitled dictionary"));
             version = p.getProperty("version", "");
             description = p.getProperty("description", "");
             license = p.getProperty("license", "");
@@ -68,7 +69,7 @@ public final class CjkPack {
 
     /** 언어 이름 (화면용). */
     public static String languageName(String lang) {
-        return CjkComposer.JA.equals(lang) ? "일본어" : CjkComposer.ZH.equals(lang) ? "중국어" : lang;
+        return CjkComposer.JA.equals(lang) ? L.t("일본어", "Japanese") : CjkComposer.ZH.equals(lang) ? L.t("중국어", "Chinese") : lang;
     }
 
     static boolean supported(String lang) {
@@ -87,15 +88,15 @@ public final class CjkPack {
         synchronized (LOCK) {
             File tmp = new File(filesDir, "cjkpack.tmp");
             deleteTree(tmp);
-            if (!tmp.mkdirs()) throw new IOException("임시 폴더를 만들지 못했습니다");
+            if (!tmp.mkdirs()) throw new IOException(L.t("임시 폴더를 만들지 못했습니다", "Couldn't create a temporary folder"));
             try {
                 Info info = unpackAndCheck(zip, tmp, expectLang);
                 File dir = dir(filesDir, info.lang), old = new File(filesDir, "cjkpack.old");
                 deleteTree(old);
-                if (dir.exists() && !dir.renameTo(old)) throw new IOException("지금 사전을 옮기지 못했습니다");
+                if (dir.exists() && !dir.renameTo(old)) throw new IOException(L.t("지금 사전을 옮기지 못했습니다", "Couldn't move the current dictionary"));
                 if (!tmp.renameTo(dir)) {
                     old.renameTo(dir);
-                    throw new IOException("사전을 설치하지 못했습니다");
+                    throw new IOException(L.t("사전을 설치하지 못했습니다", "Couldn't install the dictionary"));
                 }
                 deleteTree(old);
                 changes++;
@@ -123,32 +124,33 @@ public final class CjkPack {
                 copyLimited(z, new File(into, name), max);
             }
         } catch (java.util.zip.ZipException ex) {
-            throw new InvalidPackException("사전 팩(zip) 파일이 아닙니다");
+            throw new InvalidPackException(L.t("사전 팩(zip) 파일이 아닙니다", "Not a dictionary pack (zip) file"));
         }
-        if (!manifest) throw new InvalidPackException("사전 팩 정보(" + MANIFEST + ")가 없습니다");
-        if (!dict) throw new InvalidPackException("변환 사전(" + DICT + ")이 없습니다");
+        if (!manifest) throw new InvalidPackException(L.t("사전 팩 정보(" + MANIFEST + ")가 없습니다", "Missing pack info (" + MANIFEST + ")"));
+        if (!dict) throw new InvalidPackException(L.t("변환 사전(" + DICT + ")이 없습니다", "Missing conversion dictionary (" + DICT + ")"));
         Properties p = readProperties(new File(into, MANIFEST));
         int format = parseInt(p.getProperty("format"));
-        if (format <= 0) throw new InvalidPackException("사전 팩 형식을 알 수 없습니다");
-        if (format > FORMAT) throw new InvalidPackException("이 버전의 앱이 읽을 수 없는 새 형식입니다. 앱을 업데이트해 주세요");
+        if (format <= 0) throw new InvalidPackException(L.t("사전 팩 형식을 알 수 없습니다", "Unknown dictionary pack format"));
+        if (format > FORMAT) throw new InvalidPackException(L.t("이 버전의 앱이 읽을 수 없는 새 형식입니다. 앱을 업데이트해 주세요", "This format is too new for this version of the app. Please update the app"));
         String lang = p.getProperty("lang", "");
-        if (!supported(lang)) throw new InvalidPackException("일본어·중국어 사전 팩이 아닙니다");
+        if (!supported(lang)) throw new InvalidPackException(L.t("일본어·중국어 사전 팩이 아닙니다", "Not a Japanese/Chinese dictionary pack"));
         if (expectLang != null && !expectLang.equals(lang)) {
-            throw new InvalidPackException(languageName(lang) + " 사전 팩입니다. " + languageName(expectLang) + " 팩을 골라 주세요");
+            throw new InvalidPackException(L.t(languageName(lang) + " 사전 팩입니다. " + languageName(expectLang) + " 팩을 골라 주세요",
+                        "This is a " + languageName(lang) + " dictionary pack. Please choose a " + languageName(expectLang) + " pack"));
         }
         String want = p.getProperty("sha256." + DICT, "").trim();
         if (!want.isEmpty() && !want.equalsIgnoreCase(sha256(new File(into, DICT)))) {
-            throw new InvalidPackException(DICT + "이(가) 손상되었습니다 (해시가 다릅니다)");
+            throw new InvalidPackException(L.t(DICT + "이(가) 손상되었습니다 (해시가 다릅니다)", DICT + " is damaged (hash mismatch)"));
         }
         ConversionDictionary d;
         try (InputStream in = new FileInputStream(new File(into, DICT))) {
             d = ConversionDictionary.load(in);
         } catch (IOException | RuntimeException ex) {
-            throw new InvalidPackException("변환 사전이 깨졌습니다");
+            throw new InvalidPackException(L.t("변환 사전이 깨졌습니다", "The conversion dictionary is damaged"));
         }
-        if (d.size() == 0) throw new InvalidPackException("변환 사전이 비어 있습니다");
+        if (d.size() == 0) throw new InvalidPackException(L.t("변환 사전이 비어 있습니다", "The conversion dictionary is empty"));
         if (CjkComposer.ZH.equals(lang) && new PinyinConverter(d).syllableCount() < 300) {
-            throw new InvalidPackException("병음 음절(글자 하나의 읽기)이 너무 적습니다");
+            throw new InvalidPackException(L.t("병음 음절(글자 하나의 읽기)이 너무 적습니다", "Too few pinyin syllables (readings of single characters)"));
         }
         p.setProperty("words", String.valueOf(d.size()));
         try (OutputStream out = new FileOutputStream(new File(into, MANIFEST))) {
@@ -197,7 +199,7 @@ public final class CjkPack {
     }
 
     private static boolean check(boolean seen, String name) throws InvalidPackException {
-        if (seen) throw new InvalidPackException(name + "이(가) 두 번 들어 있습니다");
+        if (seen) throw new InvalidPackException(L.t(name + "이(가) 두 번 들어 있습니다", name + " appears twice"));
         return true;
     }
 
@@ -207,7 +209,7 @@ public final class CjkPack {
         try (OutputStream out = new FileOutputStream(to)) {
             for (int n; (n = in.read(buf)) > 0; ) {
                 total += n;
-                if (total > max) throw new InvalidPackException(to.getName() + "이(가) 너무 큽니다");
+                if (total > max) throw new InvalidPackException(L.t(to.getName() + "이(가) 너무 큽니다", to.getName() + " is too large"));
                 out.write(buf, 0, n);
             }
         }
@@ -231,7 +233,7 @@ public final class CjkPack {
         try (InputStreamReader r = new InputStreamReader(new FileInputStream(f), StandardCharsets.UTF_8)) {
             p.load(r);
         } catch (IllegalArgumentException e) {
-            throw new InvalidPackException("사전 팩 정보(" + MANIFEST + ")를 읽지 못했습니다");
+            throw new InvalidPackException(L.t("사전 팩 정보(" + MANIFEST + ")를 읽지 못했습니다", "Couldn't read the pack info (" + MANIFEST + ")"));
         }
         return p;
     }

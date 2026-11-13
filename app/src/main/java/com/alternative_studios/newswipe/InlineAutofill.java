@@ -94,8 +94,8 @@ final class InlineAutofill {
         // 칩은 서비스가 따로 그려 창 위에 얹는 화면이라 스크롤로 옮기면 가장자리에서 잘라 내는 시점이 칩 위치와 어긋나
         // 경계선이 흔들리고 도구 버튼 위로 잠깐 비쳐 보인다. 그래서 스크롤하지 않고, 줄에 온전히 들어가는 칩만 보여
         // 쪽(page)으로 넘긴다 (좌우로 밀거나 양옆 화살표를 누른다). 칩이 잘리는 일이 없다.
-        prev = arrow(theme, -1, "이전 자동 완성");
-        next = arrow(theme, 1, "다음 자동 완성");
+        prev = arrow(theme, -1, L.t("이전 자동 완성", "Previous autofill"));
+        next = arrow(theme, 1, L.t("다음 자동 완성", "Next autofill"));
         row = new ChipRow(context);
         // 이 쪽의 칩들을 칩 줄 가운데에 모아 놓는다 (가로·세로 모두 가운데).
         row.setGravity(Gravity.CENTER);

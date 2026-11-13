@@ -36,7 +36,7 @@ final class SettingsImport {
         try {
             text = SettingsBackup.read(activity, uri);
         } catch (Exception e) {
-            Toast.makeText(activity, "가져오지 못했습니다: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            Toast.makeText(activity, L.t("가져오지 못했습니다: ", "Couldn't import: ") + e.getMessage(), Toast.LENGTH_LONG).show();
             return;
         }
         if (SettingsBackup.isEncrypted(text)) askPassword(activity, text, onApplied);
@@ -50,16 +50,16 @@ final class SettingsImport {
         box.setOrientation(LinearLayout.VERTICAL);
         int pad = Ui.dp(activity, 20);
         box.setPadding(pad, Ui.dp(activity, 4), pad, 0);
-        EditText pw = passwordField(dc, "비밀번호");
+        EditText pw = passwordField(dc, L.t("비밀번호", "Password"));
         box.addView(pw);
         AppTheme.accentBuilder(dc)
-                .setTitle("암호화된 백업 파일")
-                .setMessage("백업 파일을 내보낼 때 정한 비밀번호를 입력하세요.")
+                .setTitle(L.t("암호화된 백업 파일", "Encrypted backup file"))
+                .setMessage(L.t("백업 파일을 내보낼 때 정한 비밀번호를 입력하세요.", "Enter the password you set when exporting the backup file."))
                 .setView(box)
-                .setPositiveButton("확인", (d, w) -> {
+                .setPositiveButton(L.t("확인", "OK"), (d, w) -> {
                     char[] password = chars(pw);
                     pw.getText().clear();
-                    Toast.makeText(activity, "암호를 푸는 중입니다…", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(activity, L.t("암호를 푸는 중입니다…", "Decrypting…"), Toast.LENGTH_SHORT).show();
                     new Thread(() -> {
                         String plain = null, error = null;
                         boolean wrong = false;
@@ -79,35 +79,37 @@ final class SettingsImport {
                             if (p != null) {
                                 confirm(activity, p, onApplied);
                             } else if (wr) {
-                                Toast.makeText(activity, "비밀번호가 맞지 않습니다", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(activity, L.t("비밀번호가 맞지 않습니다", "Wrong password"), Toast.LENGTH_SHORT).show();
                                 askPassword(activity, text, onApplied);
                             } else {
-                                Toast.makeText(activity, "가져오지 못했습니다: " + err, Toast.LENGTH_LONG).show();
+                                Toast.makeText(activity, L.t("가져오지 못했습니다: ", "Couldn't import: ") + err, Toast.LENGTH_LONG).show();
                             }
                         });
                     }).start();
                 })
-                .setNegativeButton("취소", null)
+                .setNegativeButton(L.t("취소", "Cancel"), null)
                 .show();
     }
 
     /** 가져올 내용(풀린 JSON)을 확인받고 적용한다. */
     private static void confirm(Activity activity, String json, Runnable onApplied) {
         AppTheme.dialogBuilder(activity)
-                .setTitle("설정 가져오기")
-                .setMessage("현재 설정을 백업 파일의 내용으로 바꿉니다. 현재 설정은 사라지니, 필요하면 먼저 내보내 두세요.")
-                .setPositiveButton("가져오기", (d, w) -> {
+                .setTitle(L.t("설정 가져오기", "Import settings"))
+                .setMessage(L.t("현재 설정을 백업 파일의 내용으로 바꿉니다. 현재 설정은 사라지니, 필요하면 먼저 내보내 두세요.", "Replaces your current settings with the contents of the backup file. Your current settings will be lost, so export them first if needed."))
+                .setPositiveButton(L.t("가져오기", "Import"), (d, w) -> {
                     try {
                         int[] n = SettingsBackup.apply(activity, json);
-                        Toast.makeText(activity, "설정 " + n[0] + "개를 가져왔습니다"
-                                + (n[1] >= 0 ? " (학습한 단어 " + n[1] + "개 포함)" : ""), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(activity, L.t("설정 " + n[0] + "개를 가져왔습니다"
+                                + (n[1] >= 0 ? " (학습한 단어 " + n[1] + "개 포함)" : ""),
+                                "Imported " + n[0] + " settings" + (n[1] >= 0 ? " (including " + n[1] + " learned words)" : "")),
+                                Toast.LENGTH_SHORT).show();
                         d.dismiss();
                         onApplied.run();
                     } catch (Exception e) {
-                        Toast.makeText(activity, "가져오지 못했습니다: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                        Toast.makeText(activity, L.t("가져오지 못했습니다: ", "Couldn't import: ") + e.getMessage(), Toast.LENGTH_LONG).show();
                     }
                 })
-                .setNegativeButton("취소", null)
+                .setNegativeButton(L.t("취소", "Cancel"), null)
                 .show();
     }
 

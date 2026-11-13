@@ -1,5 +1,6 @@
 package com.alternative_studios.newswipe.keyboard;
 
+import com.alternative_studios.newswipe.L;
 import com.alternative_studios.newswipe.Prefs;
 
 import java.util.function.BiFunction;
@@ -15,20 +16,24 @@ public final class FunctionSwipes {
     /** 기능키 순서·유무 사용자화에서 더할 수 있는 키 (켰을 때만 편집 화면에 보인다). */
     public static final int EMOJI_KEY = 5, CLIPBOARD = 6, CURSOR = 7, VOICE = 8;
     /** 편집 화면에 보이는 이름 (이름과 키 모양). */
-    private static final String[] LABELS = {
-            "기호 키 (?123·가·ABC)", "언어 전환 키 (🌐︎)", "스페이스바 (␣)", "엔터 키 (↵)", "지우기 키 (⌫)",
-            "이모지 키", "클립보드 키", "커서 이동 키", "음성 입력 키"};
-    private static final String[] HINTS = {
-            "글자 자판과 기호 자판을 오가는 왼쪽 아래 키",
-            "언어 전환. 기호 자판에서는 이 자리의 이모지 키",
-            "띄어쓰기",
-            "입력란에 따라 줄바꿈·보내기·검색 등",
-            "지우기",
-            "이모지 창 열기",
-            "클립보드 창 열기",
-            "밀어서 커서 이동 (처음에는 네 방향 모두 커서 이동)",
-            "음성 입력",
+    private static String[] labels() {
+        return new String[]{
+            L.t("기호 키 (?123·가·ABC)", "Symbol key (?123·가·ABC)"), L.t("언어 전환 키 (🌐︎)", "Globe key (🌐︎)"), L.t("스페이스바 (␣)", "Space bar (␣)"), L.t("엔터 키 (↵)", "Enter key (↵)"), L.t("지우기 키 (⌫)", "Delete key (⌫)"),
+            L.t("이모지 키", "Emoji key"), L.t("클립보드 키", "Clipboard key"), L.t("커서 이동 키", "Cursor key"), L.t("음성 입력 키", "Voice input key")};
+    }
+    private static String[] hints() {
+        return new String[]{
+            L.t("글자 자판과 기호 자판을 오가는 왼쪽 아래 키", "Bottom-left key that switches between the letter and symbol keyboards"),
+            L.t("언어 전환. 기호 자판에서는 이 자리의 이모지 키", "Switches languages. The emoji key in this spot on the symbol keyboard"),
+            L.t("띄어쓰기", "Space"),
+            L.t("입력란에 따라 줄바꿈·보내기·검색 등", "New line, send, search, etc., depending on the field"),
+            L.t("지우기", "Delete"),
+            L.t("이모지 창 열기", "Opens the emoji panel"),
+            L.t("클립보드 창 열기", "Opens the clipboard panel"),
+            L.t("밀어서 커서 이동 (처음에는 네 방향 모두 커서 이동)", "Swipe to move the cursor (all four directions move the cursor by default)"),
+            L.t("음성 입력", "Voice input"),
     };
+    }
     /** 칸마다 맨 아래 줄 키의 ID (BottomKeys). 지우기 키는 맨 아래 줄 키가 아니라 null. 편집 화면에 보일지 정할 때 쓴다. */
     private static final String[] BOTTOM_IDS = {BottomKeys.MODE, BottomKeys.GLOBE, BottomKeys.SPACE, BottomKeys.ENTER, null,
             BottomKeys.EMOJI, BottomKeys.CLIPBOARD, BottomKeys.CURSOR, BottomKeys.VOICE};
@@ -73,22 +78,22 @@ public final class FunctionSwipes {
 
         @Override
         public String title() {
-            return "기능키 밀어서 기능 사용자화";
+            return L.t("기능키 밀어서 기능 사용자화", "Customize function key swipes");
         }
 
         @Override
         public String note() {
-            return "기능키를 각 방향으로 밀 때 실행할 기능을 고릅니다.";
+            return L.t("기능키를 각 방향으로 밀 때 실행할 기능을 고릅니다.", "Choose what happens when you swipe a function key in each direction.");
         }
 
         @Override
         public String cardTitle(int slot) {
-            return LABELS[slot];
+            return labels()[slot];
         }
 
         @Override
         public String cardHint(int slot) {
-            return HINTS[slot];
+            return hints()[slot];
         }
 
         @Override

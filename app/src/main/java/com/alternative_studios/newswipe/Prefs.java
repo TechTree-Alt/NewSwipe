@@ -55,6 +55,11 @@ public final class Prefs {
     public static final String CLIPBOARD_CLOSE_ON_USE = "clipboard_close_on_use";   // 클립보드 항목을 입력하면 클립보드 창을 닫기
     public static final String CLIPBOARD_CHIP = "clipboard_chip";     // 방금 복사한 내용을 도구 막대에 칩으로
     public static final String ENGLISH_FIELDS = "english_fields";     // 이메일 입력란 등에서 영어 자판으로 시작
+    /**
+     * 입력 언어: 한국어·영어 자판을 쓰는지 (기본 둘 다 켜짐). 첫 시작 가이드와 '입력 언어' 화면에서 고르며, 둘 중 하나는 늘 켜져 있다.
+     * 일본어·중국어는 실험실에서 켠다 ({@link #CJK_PREFIX}).
+     */
+    public static final String INPUT_KO = "input_ko", INPUT_EN = "input_en";
     public static final String LANGUAGE = "language";                 // "ko" | "en" | "ja" | "zh" (예전 앱은 en이 아니면 한글로 읽는다)
     /** 실험실 '일본어·중국어 자판'의 값은 모두 이 말로 시작한다. 그 언어의 사전 팩을 가져와야 켤 수 있다. */
     public static final String CJK_PREFIX = "cjk_";
@@ -202,8 +207,10 @@ public final class Prefs {
     public static final int HINT_POS_TOP_LEFT = 0, HINT_POS_TOP = 1, HINT_POS_TOP_RIGHT = 2, HINT_POS_RIGHT = 3,
             HINT_POS_BOTTOM_RIGHT = 4, HINT_POS_BOTTOM = 5, HINT_POS_BOTTOM_LEFT = 6, HINT_POS_LEFT = 7;
     /** 힌트 자리의 이름 (HINT_POS_* 차례). */
-    public static final String[] HINT_POSITION_NAMES = {"왼쪽 위", "위쪽 가운데", "오른쪽 위", "오른쪽 중간",
-            "오른쪽 아래", "아래 가운데", "왼쪽 아래", "왼쪽 중간"};
+    public static String[] hintPositionNames() {
+        return new String[]{L.t("왼쪽 위", "Top left"), L.t("위쪽 가운데", "Top center"), L.t("오른쪽 위", "Top right"), L.t("오른쪽 중간", "Middle right"),
+            L.t("오른쪽 아래", "Bottom right"), L.t("아래 가운데", "Bottom center"), L.t("왼쪽 아래", "Bottom left"), L.t("왼쪽 중간", "Middle left")};
+    }
     /** 영어 글자 키에 두벌식 자판의 같은 자리 자모(q → ㅂ)를 작게 표시한다 (기본 꺼짐). */
     public static final String DUBEOLSIK_HINT = "dubeolsik_hint";
     /** 두벌식 자모 힌트의 자리 (HINT_POS_*, 기본 왼쪽 아래). 길게 눌러 입력할 문자 힌트와 같은 자리에는 두지 않는다. */
@@ -497,35 +504,37 @@ public final class Prefs {
     /** 글자 키 창에서 한글·영어 자판에만 있는 값의 범위 id (나머지는 AREA_SCOPES[글자 키]가 함께 쓴다). */
     public static final String SCOPE_LETTERS_KO = "letters_ko", SCOPE_LETTERS_EN = "letters_en";
 
-    private static final EditorScope[] EDITOR_SCOPES = {
+    private static EditorScope[] editorScopes() {
+
+        return new EditorScope[]{
             // 키보드 전체 설정 창의 값: 여백, 키 모양.
-            new EditorScope(SCOPE_BOARD, "키보드 전체 설정 (여백·키 모양)", keys(PAD_LEFT, PAD_RIGHT, PAD_TOP,
+            new EditorScope(SCOPE_BOARD, L.t("키보드 전체 설정 (여백·키 모양)", "Whole keyboard settings (padding · key look)"), keys(PAD_LEFT, PAD_RIGHT, PAD_TOP,
                     PAD_BOTTOM, KEY_TEXT_SIZE, KEY_RADIUS, KEY_GAP_X, KEY_GAP_Y, KEY_SHADOW,
                     KEY_SHADOW_STRENGTH, KEY_PREVIEW), NONE),
-            new EditorScope(AREA_SCOPES[0], "도구 막대", concat(TOOL_BUTTON_VALUES, TOOLBAR, TOOLBAR_BOTTOM, TOOLBAR_HEIGHT,
+            new EditorScope(AREA_SCOPES[0], L.t("도구 막대", "Toolbar"), concat(TOOL_BUTTON_VALUES, TOOLBAR, TOOLBAR_BOTTOM, TOOLBAR_HEIGHT,
                     TOOL_BUTTON_SIZE, PORTRAIT_PREFIX + TOOLBAR_FOLLOW_BLOCKS), keys(AREA_PAD_PREFIX + PAD_AREAS[0] + "_", "swipe_toolbar_bar_")),
-            new EditorScope(AREA_SCOPES[1], "숫자 줄", keys(NUMBER_ROW, NUMBER_ROW_HEIGHT, NUMBER_HINT_HIDDEN),
+            new EditorScope(AREA_SCOPES[1], L.t("숫자 줄", "Number row"), keys(NUMBER_ROW, NUMBER_ROW_HEIGHT, NUMBER_HINT_HIDDEN),
                     keys(AREA_PAD_PREFIX + PAD_AREAS[1] + "_")),
             // 글자 키: 세 자판이 함께 쓰는 값(높이·길게 누르기·밀기·여백)과 한글·영어 글자 키에만 있는 값.
-            new EditorScope(AREA_SCOPES[2], "글자 키 공통 (높이·길게 누르기·밀기·여백)", keys(KEYBOARD_HEIGHT, LONG_PRESS_MS,
+            new EditorScope(AREA_SCOPES[2], L.t("글자 키 공통 (높이·길게 누르기·밀기·여백)", "Letter keys, common (height · long press · swipe · padding)"), keys(KEYBOARD_HEIGHT, LONG_PRESS_MS,
                     POPUP_HINT_HIDDEN, POPUP_HINT_POSITION, SWIPE_THRESHOLD, SWIPE_PICK_SUGGESTION, PORTRAIT_PREFIX + SPLIT_REACH_COLUMN),
                     keys(AREA_PAD_PREFIX + PAD_AREAS[2] + "_", "swipe_kb_", PORTRAIT_PREFIX + "balanced_",
                             PORTRAIT_PREFIX + SPLIT_REACH_COLUMN + "_")),
-            new EditorScope(SCOPE_LETTERS_KO, "한글 글자 키 (자판 배열·상세 배열·쌍자음·이중모음 입력)", keys(KOREAN_LAYOUT,
+            new EditorScope(SCOPE_LETTERS_KO, L.t("한글 글자 키 (자판 배열·상세 배열·쌍자음·이중모음 입력)", "Korean letter keys (layout · advanced layout · double consonant and Y-vowel input)"), keys(KOREAN_LAYOUT,
                     DOUBLE_TAP_VOWEL, DOUBLE_TAP_CONSONANT, DOUBLE_TAP_CONSONANT_MS, SWIPE_DOWN_CONSONANT, SWIPE_DOWN_VOWEL,
                     ENGLISH_BALANCED, PORTRAIT_SPLIT),
                     keys(BALANCED_LAYOUT)),
-            new EditorScope(SCOPE_LETTERS_EN, "영어 글자 키 (자동 대문자·대문자 밀기·이메일 입력란·두벌식 자모 힌트)", keys(AUTO_CAP,
+            new EditorScope(SCOPE_LETTERS_EN, L.t("영어 글자 키 (자동 대문자·대문자 밀기·이메일 입력란·두벌식 자모 힌트)", "English letter keys (auto-capitalize · swipe for capitals · email fields · Dubeolsik hints)"), keys(AUTO_CAP,
                     ENGLISH_FIELDS, ENGLISH_SWIPE_UPPER, DUBEOLSIK_HINT, DUBEOLSIK_HINT_POSITION), NONE),
-            new EditorScope(AREA_SCOPES[3], "기능키", concat(BOTTOM_KEY_VALUES, FN_ROW_HEIGHT, GRID_LAYOUT, DELETE_PRESS_MS,
+            new EditorScope(AREA_SCOPES[3], L.t("기능키", "Function keys"), concat(BOTTOM_KEY_VALUES, FN_ROW_HEIGHT, GRID_LAYOUT, DELETE_PRESS_MS,
                     FN_SWIPE_THRESHOLD, PORTRAIT_PREFIX + SPLIT_SPACE_JOIN, PORTRAIT_PREFIX + SPLIT_FN_WIDTH,
                     PORTRAIT_PREFIX + FN_FOLLOW_BLOCKS),
                     keys(AREA_PAD_PREFIX + PAD_AREAS[3] + "_")),
-            new EditorScope(SCOPE_MIDDLE, "가운데 공간 (분리 키보드)", keys(PORTRAIT_PREFIX + SPLIT_GAP_CURSOR,
+            new EditorScope(SCOPE_MIDDLE, L.t("가운데 공간 (분리 키보드)", "Center gap (split keyboard)"), keys(PORTRAIT_PREFIX + SPLIT_GAP_CURSOR,
                     PORTRAIT_PREFIX + SPLIT_GAP_SPEED), keys("swipe_gap_portrait_")),
             // 목록의 '폴더블 내부 화면 별도 키보드' 스위치 (폴더블 내부 화면의 값은 아래 landscape 범위에 있다).
-            new EditorScope("large", "폴더블 내부 화면 별도 키보드", keys(LARGE_LAYOUT), NONE),
-            new EditorScope("keys", "키마다 정한 설정 (길게 누르기·밀기·키 창의 누르기 항목)", keys(NUMBER_PAD_SYMBOLS,
+            new EditorScope("large", L.t("폴더블 내부 화면 별도 키보드", "Separate inner screen keyboard"), keys(LARGE_LAYOUT), NONE),
+            new EditorScope("keys", L.t("키마다 정한 설정 (길게 누르기·밀기·키 창의 누르기 항목)", "Per-key settings (long press · swipe · tap options in key panels)"), keys(NUMBER_PAD_SYMBOLS,
                     DOUBLE_SPACE_PERIOD, SPACE_HIT_SHRINK, SPACE_HIT_SHRINK_PCT, SPACE_LANG_LABEL, SPACE_CURSOR_SPEED_H,
                     SPACE_CURSOR_SPEED_V, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, DELETE_REPEAT_RATE, DELETE_WORD_REPEAT_RATE,
                     LANGUAGE_ORDER), keys("popup_", "popupkept_", "repeat_", "swipe_custom_", "swipe_final_", "swipe_vowel_",
@@ -547,21 +556,23 @@ public final class Prefs {
                             LARGE_PREFIX + SPLIT_GAP_SPEED + "_", LARGE_PREFIX + ONE_HAND_WIDTH + "_", LARGE_PREFIX + "balanced_")),
     };
 
+    }
+
     private static EditorScope scope(String id) {
-        for (EditorScope sc : EDITOR_SCOPES) if (sc.id.equals(id)) return sc;
+        for (EditorScope sc : editorScopes()) if (sc.id.equals(id)) return sc;
         throw new IllegalArgumentException(id);
     }
 
     /** 목록의 '기본값으로 되돌리기'에서 고를 수 있는 범위들 ({id, 이름}, 보이는 차례). */
     public static String[][] editorResetChoices() {
         java.util.List<String[]> out = new java.util.ArrayList<>();
-        for (EditorScope sc : EDITOR_SCOPES) if (sc.label != null) out.add(new String[]{sc.id, sc.label});
+        for (EditorScope sc : editorScopes()) if (sc.label != null) out.add(new String[]{sc.id, sc.label});
         return out.toArray(new String[0][]);
     }
 
     /** 키보드 사용자화가 다루는 값인지: 키보드 사용자화의 '되돌리기'가 이 값들의 변경을 기억한다. */
     public static boolean isEditorKey(String key) {
-        for (EditorScope sc : EDITOR_SCOPES) {
+        for (EditorScope sc : editorScopes()) {
             for (String k : sc.keys) if (k.equals(key)) return true;
             for (String p : sc.prefixes) if (key.startsWith(p)) return true;
         }
@@ -1567,6 +1578,36 @@ public final class Prefs {
     public boolean korean() { return !"en".equals(sp.getString(LANGUAGE, "ko")); }
 
     /** 마지막으로 쓴 언어: "ko" | "en" | "ja" | "zh". */
+    /** 한국어 자판을 쓰는지. 저장된 값이 둘 다 꺼져 있으면(잘못 가져온 설정 등) 둘 다 켠 것으로 본다. */
+    public boolean inputKorean() {
+        return sp.getBoolean(INPUT_KO, true) || !sp.getBoolean(INPUT_EN, true);
+    }
+
+    /** 영어 자판을 쓰는지. */
+    public boolean inputEnglish() {
+        return sp.getBoolean(INPUT_EN, true) || !sp.getBoolean(INPUT_KO, true);
+    }
+
+    /** 한국어·영어 자판을 켜고 끈다. 둘 다 끌 수는 없다 (둘 다 false면 바꾸지 않는다). */
+    public void setInputLanguages(boolean korean, boolean english) {
+        if (!korean && !english) return;
+        sp.edit().putBoolean(INPUT_KO, korean).putBoolean(INPUT_EN, english).apply();
+    }
+
+    /** 이 언어("ko"·"en"·"ja"·"zh")를 켰는지. 일본어·중국어는 실험실 스위치만 보며, 사전 팩이 있는지는 따로 본다. */
+    public boolean languageOn(String id) {
+        if ("ko".equals(id)) return inputKorean();
+        if ("en".equals(id)) return inputEnglish();
+        return cjkEnabled(id);
+    }
+
+    /** 켠 언어가 하나뿐인지. 그러면 지구본 키 자리에는 (기호 자판처럼) 이모지 키가 놓인다. */
+    public boolean singleLanguage() {
+        int n = 0;
+        for (String id : LANGUAGES) if (languageOn(id)) n++;
+        return n <= 1;
+    }
+
     public String language() {
         String l = sp.getString(LANGUAGE, "ko");
         return "en".equals(l) || "ja".equals(l) || "zh".equals(l) ? l : "ko";

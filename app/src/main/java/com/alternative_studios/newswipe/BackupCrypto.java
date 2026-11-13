@@ -47,7 +47,7 @@ public final class BackupCrypto {
     /** 비밀번호가 틀렸거나 파일이 손상되었다. */
     public static final class WrongPasswordException extends Exception {
         WrongPasswordException() {
-            super("비밀번호가 맞지 않거나 파일이 손상되었습니다");
+            super(L.t("비밀번호가 맞지 않거나 파일이 손상되었습니다", "Wrong password, or the file is damaged"));
         }
     }
 
@@ -58,11 +58,11 @@ public final class BackupCrypto {
      * 비밀번호 규칙: 6자 이상, 영문·숫자·특수문자(공백 제외 ASCII)만. 맞으면 null, 아니면 안내 문구.
      */
     public static String checkPassword(CharSequence pw) {
-        if (pw.length() < MIN_PASSWORD) return "비밀번호는 " + MIN_PASSWORD + "자 이상이어야 합니다";
-        if (pw.length() > MAX_PASSWORD) return "비밀번호가 너무 깁니다";
+        if (pw.length() < MIN_PASSWORD) return L.t("비밀번호는 " + MIN_PASSWORD + "자 이상이어야 합니다", "Password must be at least " + MIN_PASSWORD + " characters");
+        if (pw.length() > MAX_PASSWORD) return L.t("비밀번호가 너무 깁니다", "Password is too long");
         for (int i = 0; i < pw.length(); i++) {
             char c = pw.charAt(i);
-            if (c < 0x21 || c > 0x7E) return "비밀번호에는 영문, 숫자, 특수문자만 쓸 수 있습니다 (공백 제외)";
+            if (c < 0x21 || c > 0x7E) return L.t("비밀번호에는 영문, 숫자, 특수문자만 쓸 수 있습니다 (공백 제외)", "Passwords can only contain English letters, numbers, and symbols (no spaces)");
         }
         return null;
     }
@@ -92,7 +92,7 @@ public final class BackupCrypto {
             throws GeneralSecurityException, WrongPasswordException {
         if (sealed.iterations < MIN_ITERATIONS || sealed.iterations > MAX_ITERATIONS
                 || sealed.salt.length != SALT_BYTES || sealed.iv.length != IV_BYTES) {
-            throw new GeneralSecurityException("암호화 정보가 올바르지 않습니다");
+            throw new GeneralSecurityException(L.t("암호화 정보가 올바르지 않습니다", "Encryption info is invalid"));
         }
         byte[] key = deriveKey(password, sealed.salt, sealed.iterations);
         try {

@@ -1,5 +1,6 @@
 package com.alternative_studios.newswipe.emoji;
 
+import com.alternative_studios.newswipe.L;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Canvas;
@@ -141,7 +142,7 @@ public final class EmojiPanel extends LinearLayout {
         searchRow = new LinearLayout(context);
         searchRow.setGravity(Gravity.CENTER_VERTICAL);
         searchRow.setPadding(Ui.dp(context, 4), 0, Ui.dp(context, 8), 0);
-        IconButton topBack = new IconButton(context, Icons.BACK, theme.text, theme.keyPressed, "키보드로 돌아가기");
+        IconButton topBack = new IconButton(context, Icons.BACK, theme.text, theme.keyPressed, L.t("키보드로 돌아가기", "Back to keyboard"));
         topBack.setToolbarStyle(theme, topBarHeight);   // 도구 막대 버튼과 같은 칩
         topBack.setOnClickListener(v -> {
             listener.onEmojiChipPress();
@@ -158,7 +159,7 @@ public final class EmojiPanel extends LinearLayout {
         icon.setClickable(false);
         search.addView(icon, new LayoutParams(Ui.dp(context, 28), ViewGroup.LayoutParams.MATCH_PARENT));
         TextView hint = new TextView(context);
-        hint.setText("이모지 검색 (한글·영어)");
+        hint.setText(L.t("이모지 검색 (한글·영어)", "Search emoji (Korean · English)"));
         hint.setTextColor(theme.hint);
         hint.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
         hint.setPadding(Ui.dp(context, 6), 0, 0, 0);
@@ -203,13 +204,13 @@ public final class EmojiPanel extends LinearLayout {
         for (int i = 0; i < tabs.length; i++) {
             View tab;
             if (i == 0) {
-                tab = new IconButton(context, Icons.RECENT, theme.hint, theme.keyPressed, EmojiData.GROUP_NAMES[0]);
+                tab = new IconButton(context, Icons.RECENT, theme.hint, theme.keyPressed, EmojiData.groupNames()[0]);
             } else {
                 TextView t = new TextView(context);
                 t.setText(EmojiData.GROUP_ICONS[i]);
                 t.setGravity(Gravity.CENTER);
                 t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
-                t.setContentDescription(EmojiData.GROUP_NAMES[i]);
+                t.setContentDescription(EmojiData.groupNames()[i]);
                 t.setBackground(Ui.ripple(theme.keyPressed, null, Ui.dp(context, 16)));
                 tab = t;
             }
@@ -227,7 +228,7 @@ public final class EmojiPanel extends LinearLayout {
         tabsLp.leftMargin = Ui.dp(context, 6);
         tabsLp.rightMargin = Ui.dp(context, 6);
         bar.addView(tabRow, tabsLp);
-        IconButton del = new IconButton(context, Icons.DELETE, theme.text, theme.keyPressed, "지우기");
+        IconButton del = new IconButton(context, Icons.DELETE, theme.text, theme.keyPressed, L.t("지우기", "Delete"));
         del.setBackground(Ui.ripple(theme.keyPressed, Ui.round(theme.functionKey, Ui.dp(context, 7)),
                 Ui.dp(context, 7)));
         Neu.apply(del, theme, theme.functionKey, Ui.dp(context, 7));
@@ -563,8 +564,8 @@ public final class EmojiPanel extends LinearLayout {
             t.setImportantForAccessibility(blank ? IMPORTANT_FOR_ACCESSIBILITY_NO : IMPORTANT_FOR_ACCESSIBILITY_AUTO);
             boolean isPinned = isRecent(position) && pinned.contains(e);   // 이 목록(Adapter)의 탭
             t.setPinned(isPinned);
-            t.setContentDescription(isPinned ? e + " (고정됨)" : group == 0 && !isRecent(position) && !blank
-                    ? e + " (추천)" : e);
+            t.setContentDescription(isPinned ? e + L.t(" (고정됨)", " (pinned)") : group == 0 && !isRecent(position) && !blank
+                    ? e + L.t(" (추천)", " (suggested)") : e);
             return t;
         }
     }
@@ -629,7 +630,7 @@ public final class EmojiPanel extends LinearLayout {
             // 고정 방법 안내는 클립보드처럼 목록 끝에 붙인다. GridView는 꼬리말을 둘 수 없어서,
             // 격자 아래에 안내 높이만큼 여백을 두고 마지막 줄 바로 밑에 안내를 따라 붙인다.
             hint = new TextView(context);
-            hint.setText("이모지를 길게 눌러 고정합니다. 다시 길게 눌러 고정을 해제합니다.");
+            hint.setText(L.t("이모지를 길게 눌러 고정합니다. 다시 길게 눌러 고정을 해제합니다.", "Long-press an emoji to pin it. Long-press it again to unpin."));
             hint.setTextColor(theme.hint);
             hint.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
             hint.setGravity(Gravity.CENTER);
@@ -658,7 +659,7 @@ public final class EmojiPanel extends LinearLayout {
             empty.setTextColor(theme.hint);
             empty.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
             empty.setGravity(Gravity.CENTER);
-            empty.setText("불러오는 중…");
+            empty.setText(L.t("불러오는 중…", "Loading…"));
             addView(empty, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT));
         }
@@ -696,7 +697,7 @@ public final class EmojiPanel extends LinearLayout {
         void updateNotes() {
             boolean none = adapter.getCount() == 0;
             empty.setVisibility(none ? VISIBLE : GONE);
-            empty.setText(data == null ? "불러오는 중…" : "최근 사용한 이모지가 없습니다");
+            empty.setText(data == null ? L.t("불러오는 중…", "Loading…") : L.t("최근 사용한 이모지가 없습니다", "No recent emoji"));
             showHint = adapter.group == 0 && adapter.recentStart < adapter.getCount();   // 고정·최근 이모지가 있을 때
             hint.setVisibility(showHint ? INVISIBLE : GONE);   // 자리는 positionHint가 정한 뒤 보인다
             positionHint();

@@ -49,7 +49,9 @@ final class KeyboardPreview extends FrameLayout {
     static final int LAYER_BOARD = 0, LAYER_AREA = 1, LAYER_KEY = 2, LAYERS = 3;
     /** 영역 층의 영역. */
     static final int AREA_TOOLBAR = 0, AREA_NUMBER = 1, AREA_LETTERS = 2, AREA_FUNCTION = 3, AREAS = 4;
-    static final String[] AREA_NAMES = {"도구 막대", "숫자 줄", "글자 키", "기능키"};
+    static String[] areaNames() {
+        return new String[]{L.t("도구 막대", "Toolbar"), L.t("숫자 줄", "Number row"), L.t("글자 키", "Letter keys"), L.t("기능키", "Function keys")};
+    }
     /**
      * 가로 모드·폴더블 내부 화면 키보드 사용자화의 영역 (AREA_LETTERS·AREA_FUNCTION과 함께 쓴다): 분리 키보드의 왼쪽·오른쪽 묶음과
      * 그 사이의 가운데 공간. 분리 키보드를 끄면 글자 키 하나다.
@@ -59,19 +61,21 @@ final class KeyboardPreview extends FrameLayout {
     /** 가로 모드·폴더블 내부 화면 키보드 사용자화의 영역 이름. */
     static String profileAreaName(int area) {
         switch (area) {
-            case AREA_LEFT: return "왼쪽 묶음";
-            case AREA_RIGHT: return "오른쪽 묶음";
-            case AREA_MIDDLE: return "가운데 공간";
-            default: return AREA_NAMES[area];
+            case AREA_LEFT: return L.t("왼쪽 묶음", "Left block");
+            case AREA_RIGHT: return L.t("오른쪽 묶음", "Right block");
+            case AREA_MIDDLE: return L.t("가운데 공간", "Center gap");
+            default: return areaNames()[area];
         }
     }
     /** 자판 탭 이름 (TAB_* 차례). */
-    static final String[] TAB_NAMES = {"한글", "영어", "기호"};
+    static String[] tabNames() {
+        return new String[]{L.t("한글", "Korean"), L.t("영어", "English"), L.t("기호", "Symbols")};
+    }
 
     /** 영역 이름. 글자 키는 자판마다 따로라 탭 이름을 붙인다 (예: 영어 글자 키). */
     static String areaName(int area, int tab) {
         if (area >= AREAS) return profileAreaName(area);   // 분리 키보드의 가운데 공간 등
-        return area == AREA_LETTERS ? TAB_NAMES[tab] + " " + AREA_NAMES[area] : AREA_NAMES[area];
+        return area == AREA_LETTERS ? tabNames()[tab] + " " + areaNames()[area] : areaNames()[area];
     }
 
     /** 고른 것. 자판을 다시 만들어도 같은 키를 다시 찾을 수 있게 키 객체 대신 종류·자리 이름·몇 번째인지로 기억한다. */
@@ -147,25 +151,25 @@ final class KeyboardPreview extends FrameLayout {
      * 손잡이마다 끄는 방향·이름·저장 키를 한곳에 둔다.
      */
     enum Handle {
-        TOOLBAR(true, "도구 막대 높이", Prefs.TOOLBAR_HEIGHT),
-        NUMBER_ROW(true, "숫자 줄 높이", Prefs.NUMBER_ROW_HEIGHT),
-        HEIGHT(true, "글자 키 높이", Prefs.KEYBOARD_HEIGHT),
-        PAD_LEFT(false, "왼쪽 여백", Prefs.PAD_LEFT),
-        PAD_RIGHT(false, "오른쪽 여백", Prefs.PAD_RIGHT),
-        PAD_BOTTOM(true, "아래쪽 여백", Prefs.PAD_BOTTOM),
-        PAD_TOP(true, "위쪽 여백", Prefs.PAD_TOP),
-        FN_ROW(true, "기능키 높이", Prefs.FN_ROW_HEIGHT),
+        TOOLBAR(true, L.t("도구 막대 높이", "Toolbar height"), Prefs.TOOLBAR_HEIGHT),
+        NUMBER_ROW(true, L.t("숫자 줄 높이", "Number row height"), Prefs.NUMBER_ROW_HEIGHT),
+        HEIGHT(true, L.t("글자 키 높이", "Letter key height"), Prefs.KEYBOARD_HEIGHT),
+        PAD_LEFT(false, L.t("왼쪽 여백", "Left padding"), Prefs.PAD_LEFT),
+        PAD_RIGHT(false, L.t("오른쪽 여백", "Right padding"), Prefs.PAD_RIGHT),
+        PAD_BOTTOM(true, L.t("아래쪽 여백", "Bottom padding"), Prefs.PAD_BOTTOM),
+        PAD_TOP(true, L.t("위쪽 여백", "Top padding"), Prefs.PAD_TOP),
+        FN_ROW(true, L.t("기능키 높이", "Function key height"), Prefs.FN_ROW_HEIGHT),
         // 자·모음 균형 배열·분리 키보드의 두 묶음: 왼쪽(자음) 묶음과 오른쪽(모음) 묶음의 왼쪽·오른쪽 가장자리.
         // 끌면 그 경계만 움직여 묶음의 폭·가로 위치가 함께 바뀐다. 저장 키는 한글 배열마다 다르다.
-        B_LEFT_START(false, "왼쪽 경계", null),
-        B_LEFT_END(false, "오른쪽 경계", null),
-        B_RIGHT_START(false, "왼쪽 경계", null),
-        B_RIGHT_END(false, "오른쪽 경계", null),
+        B_LEFT_START(false, L.t("왼쪽 경계", "Left edge"), null),
+        B_LEFT_END(false, L.t("오른쪽 경계", "Right edge"), null),
+        B_RIGHT_START(false, L.t("왼쪽 경계", "Left edge"), null),
+        B_RIGHT_END(false, L.t("오른쪽 경계", "Right edge"), null),
         // 두 묶음 가운데의 ↔ 버튼: 좌우로 끌면 폭은 그대로 두고 묶음을 옮긴다 (가로 위치).
-        B_LEFT_MOVE(false, "가로 위치", null),
-        B_RIGHT_MOVE(false, "가로 위치", null),
+        B_LEFT_MOVE(false, L.t("가로 위치", "Horizontal position"), null),
+        B_RIGHT_MOVE(false, L.t("가로 위치", "Horizontal position"), null),
         // 글자 키가 두 묶음으로 나뉘어 있을 때 오른쪽 묶음 위의 높이 손잡이 (HEIGHT는 왼쪽 묶음 위). 둘 다 글자 키 전체 높이를 바꾼다.
-        HEIGHT_RIGHT(true, "글자 키 높이", Prefs.KEYBOARD_HEIGHT);
+        HEIGHT_RIGHT(true, L.t("글자 키 높이", "Letter key height"), Prefs.KEYBOARD_HEIGHT);
 
         /** 위아래로 끄는지 (아니면 좌우). */
         final boolean vertical;
@@ -231,9 +235,12 @@ final class KeyboardPreview extends FrameLayout {
     private String handleName(Handle h) {
         if (h.balanced()) {
             boolean split = profileEdit != null || prefs.splitView();
-            String what = h.knob() ? "가로 위치" : split ? "폭" : "키 폭";
-            if (split) return (h.leftBlock() ? "왼쪽 묶음 " : "오른쪽 묶음 ") + what;
-            return (h.leftBlock() ? "자음 " : "모음 ") + what;
+            if (split) return h.leftBlock()
+                    ? (h.knob() ? L.t("왼쪽 묶음 가로 위치", "Left block position") : L.t("왼쪽 묶음 폭", "Left block width"))
+                    : (h.knob() ? L.t("오른쪽 묶음 가로 위치", "Right block position") : L.t("오른쪽 묶음 폭", "Right block width"));
+            return h.leftBlock()
+                    ? (h.knob() ? L.t("자음 가로 위치", "Consonant position") : L.t("자음 키 폭", "Consonant key width"))
+                    : (h.knob() ? L.t("모음 가로 위치", "Vowel position") : L.t("모음 키 폭", "Vowel key width"));
         }
         return h.label;
     }
@@ -268,12 +275,12 @@ final class KeyboardPreview extends FrameLayout {
         layerPos = LAYER_AREA;
         selection = null;
         selectedKey = null;
-        overlay.setContentDescription("키보드 미리보기. 좌우로 밀어 키보드 전체 설정 페이지와 영역 설정 페이지를 넘깁니다. "
+        overlay.setContentDescription(L.t("키보드 미리보기. 좌우로 밀어 키보드 전체 설정 페이지와 영역 설정 페이지를 넘깁니다. "
                 + "키보드 전체 설정 페이지에서 키보드를 누르면 키보드 전체 설정 창이 열리고, 가장자리의 손잡이를 끌어 여백을 바꿉니다. "
                 + "영역을 누르면 그 영역의 설정 창이 열리고, 고른 영역 위 가장자리의 "
                 + "손잡이를 위·아래로 끌면 그 영역의 높이가 바뀝니다. "
                 + "분리 키보드를 켜면 묶음 왼쪽·오른쪽 가장자리의 손잡이를 좌우로 끌어 묶음의 경계를, 가운데의 버튼을 끌어 "
-                + "묶음의 가로 위치를 옮깁니다.");
+                + "묶음의 가로 위치를 옮깁니다.", "Keyboard preview. Swipe left or right to switch between the Whole keyboard page and the Areas page. On the Whole keyboard page, tap the keyboard to open its settings and drag the edge handles to change the padding. Tap an area to open its settings, and drag the handle on the top edge of the selected area up or down to change its height. With the split keyboard on, drag the handles on the left and right edges of a block to move its edges, and drag the center button to move the block sideways."));
         refresh();
     }
 
@@ -1543,8 +1550,8 @@ final class KeyboardPreview extends FrameLayout {
             label.setTextAlign(Paint.Align.CENTER);
             label.setTextSize(Ui.dp(c, 14));
             label.setFakeBoldText(true);
-            setContentDescription("키보드 미리보기. 좌우로 밀어 키보드·영역·키 페이지를 넘깁니다. 키보드 전체나 영역, 키를 누르면 "
-                    + "그 설정 창이 열리고, 크기와 여백은 창의 슬라이더로도 바꿀 수 있습니다.");
+            setContentDescription(L.t("키보드 미리보기. 좌우로 밀어 키보드·영역·키 페이지를 넘깁니다. 키보드 전체나 영역, 키를 누르면 "
+                    + "그 설정 창이 열리고, 크기와 여백은 창의 슬라이더로도 바꿀 수 있습니다.", "Keyboard preview. Swipe left or right to switch between the Whole keyboard, Areas, and Keys pages. Tap the keyboard, an area, or a key to open its settings. You can also change sizes and padding with the sliders there."));
         }
 
         private final Paint areaLabel = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -1578,8 +1585,8 @@ final class KeyboardPreview extends FrameLayout {
                             c.drawRoundRect(area, rr, rr, fill);
                             continue;
                         }
-                        String name = AREA_NAMES[AREA_LETTERS];   // 두 쪽 모두 "글자 키"
-                        String text = "눌러서 " + name + suffix;
+                        String name = areaNames()[AREA_LETTERS];   // 두 쪽 모두 "글자 키"
+                        String text = L.t("눌러서 ", "Tap for ") + name + suffix;
                         float room = area.width() - Ui.dp(ctx, 4);
                         if (areaLabel.measureText(text) + Ui.dp(ctx, 16) > room) text = name;
                         if (areaLabel.measureText(text) + Ui.dp(ctx, 16) > room) continue;
@@ -1603,8 +1610,8 @@ final class KeyboardPreview extends FrameLayout {
                             c.drawRoundRect(area, rr, rr, fill);
                             continue;
                         }
-                        String name = side == AREA_MIDDLE ? profileAreaName(AREA_MIDDLE) : AREA_NAMES[AREA_LETTERS];   // 두 묶음 모두 "글자 키"
-                        String text = "눌러서 " + name + suffix;
+                        String name = side == AREA_MIDDLE ? profileAreaName(AREA_MIDDLE) : areaNames()[AREA_LETTERS];   // 두 묶음 모두 "글자 키"
+                        String text = L.t("눌러서 ", "Tap for ") + name + suffix;
                         float room = area.width() - Ui.dp(ctx, 4);
                         if (areaLabel.measureText(text) + Ui.dp(ctx, 16) > room) text = name;
                         if (areaLabel.measureText(text) + Ui.dp(ctx, 16) > room) continue;
@@ -1632,7 +1639,7 @@ final class KeyboardPreview extends FrameLayout {
                     c.drawRoundRect(area, rr, rr, fill);
                 }
                 // 이름표: 영역 한가운데의 작은 알약. 고른 영역은 이름표 없이 굵은 테두리만.
-                if (!chosen && !off) drawPill(c, "눌러서 " + areaName(a, tab) + suffix, area, alpha);
+                if (!chosen && !off) drawPill(c, L.t("눌러서 ", "Tap for ") + areaName(a, tab) + suffix, area, alpha);
             }
             c.restore();
         }
@@ -1669,7 +1676,7 @@ final class KeyboardPreview extends FrameLayout {
                 areaLabel.setTextSize(Ui.dp(ctx, 11));
                 areaLabel.setTextAlign(Paint.Align.CENTER);
                 areaLabel.setFakeBoldText(true);
-                drawPill(c, "눌러서 키보드 전체 설정", area, alpha);
+                drawPill(c, L.t("눌러서 키보드 전체 설정", "Tap for whole keyboard settings"), area, alpha);
             }
             c.restore();
         }
@@ -1694,7 +1701,7 @@ final class KeyboardPreview extends FrameLayout {
                     float rr = Math.min(r, Math.min(area.width(), area.height()) / 2f);
                     c.drawRoundRect(area, rr, rr, d);
                 }
-                String text = (a == AREA_TOOLBAR ? "도구 막대" : "숫자 줄") + " 꺼짐 · 눌러서 설정";
+                String text = (a == AREA_TOOLBAR ? L.t("도구 막대", "Toolbar") : L.t("숫자 줄", "Number row")) + L.t(" 꺼짐 · 눌러서 설정", " off · Tap to set");
                 c.drawText(text, area.centerX(), area.centerY() - (fm.ascent + fm.descent) / 2, hintPaint);
             }
         }
@@ -1739,7 +1746,7 @@ final class KeyboardPreview extends FrameLayout {
             float keyAlpha = Math.max(0f, 1f - Math.abs(layerPos - LAYER_KEY));
             // 키보드 층과 영역 층은 같은 영역 윤곽선을 쓰고 이름표만 다르다 (여백 조절 · 설정).
             if (boardAlpha > 0.01f) drawBoard(c, boardAlpha, (LAYER_BOARD - layerPos) * shift);
-            if (areaAlpha > 0.01f) drawAreas(c, LAYER_AREA, areaAlpha, (LAYER_AREA - layerPos) * shift, " 설정");
+            if (areaAlpha > 0.01f) drawAreas(c, LAYER_AREA, areaAlpha, (LAYER_AREA - layerPos) * shift, L.t(" 설정", " settings"));
             drawOffStrips(c, 1f - areaAlpha);
             if (keyAlpha > 0.01f) {
                 c.save();
@@ -1812,8 +1819,8 @@ final class KeyboardPreview extends FrameLayout {
                 }
                 if (off) continue;
                 // 이름표: 좁은 영역(가운데 공간 등)에서는 짧게, 그래도 넘치면 그리지 않는다.
-                String name = block ? AREA_NAMES[AREA_LETTERS] : profileAreaName(a);   // 두 묶음 모두 "글자 키"
-                String text = "눌러서 " + name + " 설정";
+                String name = block ? areaNames()[AREA_LETTERS] : profileAreaName(a);   // 두 묶음 모두 "글자 키"
+                String text = L.t("눌러서 " + name + " 설정", "Tap for " + name + " settings");
                 float room = area.width() - Ui.dp(ctx, 4);
                 if (areaLabel.measureText(text) + Ui.dp(ctx, 16) > room) text = name;
                 if (areaLabel.measureText(text) + Ui.dp(ctx, 16) > room) continue;

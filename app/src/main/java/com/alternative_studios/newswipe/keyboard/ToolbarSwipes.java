@@ -1,5 +1,6 @@
 package com.alternative_studios.newswipe.keyboard;
 
+import com.alternative_studios.newswipe.L;
 import com.alternative_studios.newswipe.Prefs;
 
 import java.util.function.BiFunction;
@@ -16,8 +17,10 @@ public final class ToolbarSwipes {
     public static final int BAR = 0;
     /** 도구 막대의 버튼들. 위·아래만 쓴다. */
     public static final int CLIPBOARD = 1, EMOJI = 2, VOICE = 3, UNDO = 4, SETTINGS = 5, HIDE = 6, ONE_HAND = 7;
-    private static final String[] LABELS = {"도구 막대", "클립보드", "이모지", "음성 입력", "실행 취소", "설정", "키보드 숨기기",
-            "한 손 모드"};
+    private static String[] labels() {
+        return new String[]{L.t("도구 막대", "Toolbar"), L.t("클립보드", "Clipboard"), L.t("이모지", "Emoji"), L.t("음성 입력", "Voice input"), L.t("실행 취소", "Undo"), L.t("설정", "Settings"), L.t("키보드 숨기기", "Hide keyboard"),
+            L.t("한 손 모드", "One-handed mode")};
+    }
     public static final SwipeSpec SPEC = new SwipeSpec("toolbar",
             new String[]{"bar", "clipboard", "emoji", "voice", "undo", "settings", "hide", "onehand"}) {
         @Override
@@ -59,27 +62,27 @@ public final class ToolbarSwipes {
 
         @Override
         public String title() {
-            return "도구 막대 밀어서 기능 사용자화";
+            return L.t("도구 막대 밀어서 기능 사용자화", "Customize toolbar swipes");
         }
 
         @Override
         public String note() {
-            return "도구 막대를 밀거나 도구 막대의 버튼을 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 고릅니다. "
-                    + "'없음'으로 둔 방향으로 밀면 도구 막대를 그 방향으로 민 것으로 봅니다.";
+            return L.t("도구 막대를 밀거나 도구 막대의 버튼을 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 고릅니다. "
+                    + "'없음'으로 둔 방향으로 밀면 도구 막대를 그 방향으로 민 것으로 봅니다.", "Choose what happens when you swipe the toolbar, or swipe a toolbar button up, down, left or right. Swiping a button in a direction set to 'None' counts as swiping the toolbar that way.");
         }
 
         @Override
         public String cardTitle(int slot) {
-            return slot == BAR ? LABELS[slot] : LABELS[slot] + " 버튼";
+            return slot == BAR ? labels()[slot] : labels()[slot] + L.t(" 버튼", " button");
         }
 
         @Override
         public String cardHint(int slot) {
             if (slot == ONE_HAND) {
-                return "처음에는 왼쪽·오른쪽으로 밀면 그쪽 한 손 모드가 됩니다.";
+                return L.t("처음에는 왼쪽·오른쪽으로 밀면 그쪽 한 손 모드가 됩니다.", "By default, swiping left or right turns on one-handed mode on that side.");
             }
             return slot == BAR
-                    ? "도구 막대의 빈 곳뿐만 아니라 추천 단어 위나 도구 막대의 버튼 위에서 시작해도 도구 막대 밀기가 됩니다."
+                    ? L.t("도구 막대의 빈 곳뿐만 아니라 추천 단어 위나 도구 막대의 버튼 위에서 시작해도 도구 막대 밀기가 됩니다.", "Toolbar swipes also work when they start on a suggestion or a toolbar button, not only on empty space.")
                     : "";
         }
 

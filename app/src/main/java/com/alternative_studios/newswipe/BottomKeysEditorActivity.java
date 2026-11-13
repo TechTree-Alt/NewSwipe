@@ -58,7 +58,7 @@ public final class BottomKeysEditorActivity extends Activity {
         int pad = Ui.dp(this, 16);
         list.setPadding(pad, 0, pad, Ui.dp(this, 32));
         scroll.addView(list);
-        setContentView(new SettingsFrame(this, "기능키 순서·유무 사용자화", getString(R.string.app_name)).wrap(scroll));
+        setContentView(new SettingsFrame(this, L.t("기능키 순서·유무 사용자화", "Customize function keys"), getString(R.string.app_name)).wrap(scroll));
         render();
     }
 
@@ -78,8 +78,9 @@ public final class BottomKeysEditorActivity extends Activity {
 
     private void render() {
         list.removeAllViews();
-        TextView note = text("오른쪽의 ≡를 잡고 끌어 순서를 바꿀 수 있습니다. 맨 아래 줄의 키는 스페이스바를 포함해 "
-                + BottomKeys.MAX_SHOWN + "개까지 켤 수 있습니다.", 13, hintColor);
+        TextView note = text(L.t("오른쪽의 ≡를 잡고 끌어 순서를 바꿀 수 있습니다. 맨 아래 줄의 키는 스페이스바를 포함해 "
+                + BottomKeys.MAX_SHOWN + "개까지 켤 수 있습니다.", "Drag ≡ on the right to reorder. Up to " + BottomKeys.MAX_SHOWN
+                + " keys can be on in the bottom row, including the space bar."), 13, hintColor);
         note.setPadding(Ui.dp(this, 4), 0, 0, Ui.dp(this, 4));
         list.addView(note);
 
@@ -147,9 +148,9 @@ public final class BottomKeysEditorActivity extends Activity {
         LinearLayout fnEdit = new LinearLayout(this);
         fnEdit.setOrientation(LinearLayout.VERTICAL);
         fnEdit.addView(fnEditButton());
-        View fnToggle = fixedRow("Shift 키 대신 Fn 키 사용",
-                "한글 자판의 Shift 자리에 Fn 키를 놓습니다. NewSwipe 단모음 배열에는 Shift 자리가 없어 나타나지 않습니다.",
-                prefs.koreanShiftFn(), "Shift 키 대신 Fn 키 사용",
+        View fnToggle = fixedRow(L.t("Shift 키 대신 Fn 키 사용", "Use Fn key instead of Shift"),
+                L.t("한글 자판의 Shift 자리에 Fn 키를 놓습니다. NewSwipe 단모음 배열에는 Shift 자리가 없어 나타나지 않습니다.", "Puts an Fn key where Shift is on the Korean keyboard. Not shown in the NewSwipe Danmoeum layout, which has no Shift key."),
+                prefs.koreanShiftFn(), L.t("Shift 키 대신 Fn 키 사용", "Use Fn key instead of Shift"),
                 on -> {
                     prefs.raw().edit().putBoolean(Prefs.KOREAN_SHIFT_FN, on).apply();
                     Ui.setVisibleAnimated(fnEdit, on);
@@ -161,10 +162,10 @@ public final class BottomKeysEditorActivity extends Activity {
         // 두벌식은 쌍자음·ㅒ·ㅖ에 Shift를 쓰므로 기본으로 보이고, 다른 배열과 따로 켜고 끈다.
         boolean noShiftSlot = prefs.koreanNewSwipe();
         String shiftKey = prefs.koreanDubeolsik() ? Prefs.DUBEOLSIK_SHIFT_HIDDEN : Prefs.KOREAN_SHIFT_HIDDEN;
-        View shiftRow = fixedRow("Shift 키 (⇧)",
-                noShiftSlot ? "이 레이아웃에서는 사용할 수 없습니다."
-                        : prefs.koreanDubeolsik() ? "끄면 두벌식에서 Shift로 치던 쌍자음·ㅒ·ㅖ는 두 번 연속으로 누르거나 밀어서 입력합니다."
-                        : "꺼도 한글 자판에서만 사라집니다.",
+        View shiftRow = fixedRow(L.t("Shift 키 (⇧)", "Shift key (⇧)"),
+                noShiftSlot ? L.t("이 레이아웃에서는 사용할 수 없습니다.", "Not available in this layout.")
+                        : prefs.koreanDubeolsik() ? L.t("끄면 두벌식에서 Shift로 치던 쌍자음·ㅒ·ㅖ는 두 번 연속으로 누르거나 밀어서 입력합니다.", "When off, the double consonants, ㅒ and ㅖ that Shift types in Dubeolsik are typed by double-tapping or swiping.")
+                        : L.t("꺼도 한글 자판에서만 사라집니다.", "Turning it off removes it from the Korean keyboard only."),
                 !noShiftSlot && !prefs.koreanShiftHidden(),
                 on -> {
                     prefs.raw().edit().putBoolean(shiftKey, !on).apply();
@@ -175,10 +176,10 @@ public final class BottomKeysEditorActivity extends Activity {
         fnGroup.setVisibility(!noShiftSlot && prefs.koreanShiftHidden() ? View.VISIBLE : View.GONE);
         fnEdit.setVisibility(prefs.koreanShiftFn() ? View.VISIBLE : View.GONE);
         fixed.addView(fnGroup);
-        fixed.addView(fixedRow("지우기 키 (⌫)", null,
+        fixed.addView(fixedRow(L.t("지우기 키 (⌫)", "Delete key (⌫)"), null,
                 !prefs.deleteKeyHidden(),
                 on -> prefs.raw().edit().putBoolean(Prefs.DELETE_KEY_HIDDEN, !on).apply()));
-        list.addView(ResetDialog.button(this, "기능키 순서·유무 사용자화", () -> {
+        list.addView(ResetDialog.button(this, L.t("기능키 순서·유무 사용자화", "Customize function keys"), () -> {
             prefs.resetBottomKeys();
             render();
         }));
@@ -186,8 +187,8 @@ public final class BottomKeysEditorActivity extends Activity {
 
     /** 쉼표·온점 키의 줄 이름: 다른 글자로 바꿨으면 그 글자를 괄호 안에 보여 준다. */
     private String rowName(String id) {
-        if (BottomKeys.COMMA.equals(id)) return "쉼표 키 (" + prefs.keyChar(",") + ")";
-        if (BottomKeys.PERIOD.equals(id)) return "온점 키 (" + prefs.keyChar(".") + ")";
+        if (BottomKeys.COMMA.equals(id)) return L.t("쉼표 키 (", "Comma key (") + prefs.keyChar(",") + ")";
+        if (BottomKeys.PERIOD.equals(id)) return L.t("온점 키 (", "Period key (") + prefs.keyChar(".") + ")";
         return BottomKeys.label(id);
     }
 
@@ -200,7 +201,7 @@ public final class BottomKeysEditorActivity extends Activity {
         row.setPadding(h, Ui.dp(this, 12), h, Ui.dp(this, 12));
         row.setBackground(Ui.ripple(accentColor & 0x00FFFFFF | 0x33000000,
                 Ui.round(accentColor & 0x00FFFFFF | 0x1F000000, Ui.dp(this, 12)), Ui.dp(this, 12)));
-        row.addView(text("다른 키로 설정", 15, accentColor),
+        row.addView(text(L.t("다른 키로 설정", "Change key"), 15, accentColor),
                 new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         TextView current = text(prefs.keyChar(slot), 15, accentColor);
         current.setPadding(0, 0, Ui.dp(this, 8), 0);
@@ -234,22 +235,22 @@ public final class BottomKeysEditorActivity extends Activity {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(pad, Ui.dp(this, 8), pad, 0);
-        box.addView(text("이 키가 입력할 글자를 한 글자만 적어 주세요 (예: ? ! …). 길게 누르기·밀기 설정은 그대로 이어집니다.", 13, hintColor));
+        box.addView(text(L.t("이 키가 입력할 글자를 한 글자만 적어 주세요 (예: ? ! …). 길게 누르기·밀기 설정은 그대로 이어집니다.", "Enter a single character for this key to type (e.g. ? ! …). Long-press and swipe settings stay the same."), 13, hintColor));
         box.addView(input);
         android.app.AlertDialog d = AppTheme.dialogBuilder(this)
-                .setTitle(slot.equals(",") ? "쉼표 키 다른 키로 설정" : "온점 키 다른 키로 설정")
+                .setTitle(slot.equals(",") ? L.t("쉼표 키 다른 키로 설정", "Change comma key") : L.t("온점 키 다른 키로 설정", "Change period key"))
                 .setView(box)
-                .setPositiveButton("저장", null)
-                .setNeutralButton("기본값", (dlg, w) -> {
+                .setPositiveButton(L.t("저장", "Save"), null)
+                .setNeutralButton(L.t("기본값", "Default"), (dlg, w) -> {
                     prefs.setKeyChar(slot, slot);
                     done.run();
                 })
-                .setNegativeButton("취소", null)
+                .setNegativeButton(L.t("취소", "Cancel"), null)
                 .create();
         d.setOnShowListener(x -> d.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             String s = input.getText().toString();
             if (s.isEmpty() || s.codePointCount(0, s.length()) != 1 || Character.isWhitespace(s.codePointAt(0))) {
-                Toast.makeText(this, "공백이 아닌 한 글자만 적어 주세요", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, L.t("공백이 아닌 한 글자만 적어 주세요", "Enter a single character other than a space"), Toast.LENGTH_SHORT).show();
                 return;
             }
             prefs.setKeyChar(slot, s);
@@ -267,7 +268,7 @@ public final class BottomKeysEditorActivity extends Activity {
         row.setPadding(h, Ui.dp(this, 12), h, Ui.dp(this, 12));
         row.setBackground(Ui.ripple(accentColor & 0x00FFFFFF | 0x33000000,
                 Ui.round(accentColor & 0x00FFFFFF | 0x1F000000, Ui.dp(this, 12)), Ui.dp(this, 12)));
-        row.addView(text("Fn 키 사용자화", 15, accentColor),
+        row.addView(text(L.t("Fn 키 사용자화", "Customize Fn key"), 15, accentColor),
                 new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         row.addView(new Chevron(this, accentColor));
         row.setClickable(true);
@@ -315,7 +316,7 @@ public final class BottomKeysEditorActivity extends Activity {
 
     /** 순서를 바꾸지 않는 키(Shift 키·⌫)의 줄: 이름·설명과 켜고 끄기. */
     private View fixedRow(String label, String hint, boolean shown, java.util.function.Consumer<Boolean> onChange) {
-        return fixedRow(label, hint, shown, label + " 표시", onChange);
+        return fixedRow(label, hint, shown, L.t(label + " 표시", "Show " + label), onChange);
     }
 
     private View fixedRow(String label, String hint, boolean shown, String description,
@@ -369,18 +370,19 @@ public final class BottomKeysEditorActivity extends Activity {
 
         ExpressiveSwitch sw = new ExpressiveSwitch(this, accentColor, onAccentColor, hintColor, card);
         sw.setCheckedImmediately(prefs.bottomKeyShown(id));
-        sw.setContentDescription(BottomKeys.label(id) + " 표시");
+        sw.setContentDescription(L.t(BottomKeys.label(id) + " 표시", "Show " + BottomKeys.label(id)));
         final View group = charGroup;
         sw.setOnCheckedChangeListener(checked -> {
             if (!checked && shownCount() <= 1) {
                 // 맨 아래 줄이 비지 않도록 마지막 키는 끌 수 없다.
-                Toast.makeText(this, "적어도 한 키는 남겨 두어야 합니다", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, L.t("적어도 한 키는 남겨 두어야 합니다", "At least one key must stay on"), Toast.LENGTH_SHORT).show();
                 sw.post(sw::toggle);
                 return;
             }
             if (checked && !prefs.bottomKeyShown(id) && shownCount() >= BottomKeys.MAX_SHOWN) {
                 // 맨 아래 줄에는 스페이스바를 포함해 MAX_SHOWN개까지만 켤 수 있다 (Shift 키·⌫는 세지 않는다).
-                Toast.makeText(this, "기능키는 스페이스바를 포함해 " + BottomKeys.MAX_SHOWN + "개까지 켤 수 있습니다",
+                Toast.makeText(this, L.t("기능키는 스페이스바를 포함해 " + BottomKeys.MAX_SHOWN + "개까지 켤 수 있습니다",
+                        "Up to " + BottomKeys.MAX_SHOWN + " function keys can be on, including the space bar"),
                         Toast.LENGTH_SHORT).show();
                 sw.post(sw::toggle);
                 return;
@@ -395,7 +397,7 @@ public final class BottomKeysEditorActivity extends Activity {
         row.addView(sw, slp);
 
         View handle = new DragHandle(this, hintColor);
-        handle.setContentDescription(BottomKeys.label(id) + " 순서 바꾸기");
+        handle.setContentDescription(L.t(BottomKeys.label(id) + " 순서 바꾸기", "Reorder " + BottomKeys.label(id)));
         handle.setOnTouchListener((v, ev) -> onHandleTouch(row, ev));
         // 끌 수 없는 화면 읽기(TalkBack) 사용자를 위해 '위로·아래로 옮기기' 동작도 둔다.
         handle.setAccessibilityDelegate(new View.AccessibilityDelegate() {
@@ -403,9 +405,9 @@ public final class BottomKeysEditorActivity extends Activity {
             public void onInitializeAccessibilityNodeInfo(View host, android.view.accessibility.AccessibilityNodeInfo info) {
                 super.onInitializeAccessibilityNodeInfo(host, info);
                 info.addAction(new android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction(
-                        ACTION_MOVE_UP, "위로 옮기기"));
+                        ACTION_MOVE_UP, L.t("위로 옮기기", "Move up")));
                 info.addAction(new android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction(
-                        ACTION_MOVE_DOWN, "아래로 옮기기"));
+                        ACTION_MOVE_DOWN, L.t("아래로 옮기기", "Move down")));
             }
 
             @Override

@@ -1,5 +1,6 @@
 package com.alternative_studios.newswipe.cjk;
 
+import com.alternative_studios.newswipe.L;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -49,10 +50,10 @@ public final class ConversionDictionary {
     /** 사전을 읽는다. 형식이 맞지 않으면 IOException. */
     public static ConversionDictionary load(InputStream in) throws IOException {
         DataInputStream d = new DataInputStream(new java.io.BufferedInputStream(in, 32 * 1024));
-        if (d.readInt() != MAGIC) throw new IOException("변환 사전 형식이 아닙니다");
+        if (d.readInt() != MAGIC) throw new IOException(L.t("변환 사전 형식이 아닙니다", "Not a conversion dictionary"));
         int n = d.readInt(), kl = d.readInt(), vl = d.readInt();
         if (n < 0 || n > MAX_KEYS || kl < 0 || kl > MAX_BLOB || vl < 0 || vl > MAX_BLOB) {
-            throw new IOException("변환 사전의 크기가 잘못되었습니다");
+            throw new IOException(L.t("변환 사전의 크기가 잘못되었습니다", "The conversion dictionary size is invalid"));
         }
         int[] ko = new int[n + 1], vo = new int[n + 1];
         for (int i = 0; i <= n; i++) ko[i] = d.readInt();
@@ -61,13 +62,13 @@ public final class ConversionDictionary {
         d.readFully(keys);
         d.readFully(vals);
         // 위치가 거꾸로 가거나 영역을 넘으면 깨진 파일이다 (찾는 도중에 배열 밖을 읽지 않게 여기서 막는다).
-        if (ko[0] != 0 || vo[0] != 0 || ko[n] != kl || vo[n] != vl) throw new IOException("변환 사전이 깨졌습니다");
+        if (ko[0] != 0 || vo[0] != 0 || ko[n] != kl || vo[n] != vl) throw new IOException(L.t("변환 사전이 깨졌습니다", "The conversion dictionary is damaged"));
         for (int i = 0; i < n; i++) {
-            if (ko[i] > ko[i + 1] || vo[i] > vo[i + 1]) throw new IOException("변환 사전이 깨졌습니다");
+            if (ko[i] > ko[i + 1] || vo[i] > vo[i + 1]) throw new IOException(L.t("변환 사전이 깨졌습니다", "The conversion dictionary is damaged"));
         }
         ConversionDictionary dict = new ConversionDictionary(ko, vo, keys, vals);
         for (int i = 0; i + 1 < n; i++) {
-            if (dict.compareKeys(i, i + 1) >= 0) throw new IOException("변환 사전의 순서가 맞지 않습니다");
+            if (dict.compareKeys(i, i + 1) >= 0) throw new IOException(L.t("변환 사전의 순서가 맞지 않습니다", "The conversion dictionary is out of order"));
         }
         for (int i = 0; i < n; i++) dict.checkValues(i);
         return dict;
@@ -76,10 +77,10 @@ public final class ConversionDictionary {
     private void checkValues(int i) throws IOException {
         int p = valOff[i], end = valOff[i + 1];
         while (p < end) {
-            if (p + 2 > end) throw new IOException("변환 사전이 깨졌습니다");
+            if (p + 2 > end) throw new IOException(L.t("변환 사전이 깨졌습니다", "The conversion dictionary is damaged"));
             int len = vals[p + 1] & 0xFF;
             p += 2 + len;
-            if (len == 0 || p > end) throw new IOException("변환 사전이 깨졌습니다");
+            if (len == 0 || p > end) throw new IOException(L.t("변환 사전이 깨졌습니다", "The conversion dictionary is damaged"));
         }
     }
 

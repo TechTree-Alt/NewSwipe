@@ -36,7 +36,7 @@ final class HintPositionPicker extends View {
     private int pressed = -1;
 
     HintPositionPicker(Context c, KeyboardTheme theme, int accent, int onAccent, int selected, OnPick onPick) {
-        this(c, theme, accent, onAccent, "ㄱ", "ㄲ", "글자 키 힌트 위치", selected, -1, null, onPick);
+        this(c, theme, accent, onAccent, "ㄱ", "ㄲ", L.t("글자 키 힌트 위치", "Letter key hint position"), selected, -1, null, onPick);
     }
 
     HintPositionPicker(Context c, KeyboardTheme theme, int accent, int onAccent, String label, String hint, String name,
@@ -64,7 +64,7 @@ final class HintPositionPicker extends View {
     }
 
     private void updateDescription() {
-        setContentDescription(name + ": " + Prefs.HINT_POSITION_NAMES[selected]);
+        setContentDescription(name + ": " + Prefs.hintPositionNames()[selected]);
     }
 
     @Override

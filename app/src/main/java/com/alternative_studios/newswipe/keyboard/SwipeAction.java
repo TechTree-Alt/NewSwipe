@@ -1,5 +1,7 @@
 package com.alternative_studios.newswipe.keyboard;
 
+import com.alternative_studios.newswipe.L;
+
 /**
  * 기능 키(기호 키, 지구본 키, 스페이스바, 엔터 키, 지우기 키)를 밀었을 때 고를 수 있는 기능 목록.
  * 설정에는 ID 문자열로 저장하고, 화면에는 이름(label)을 보여 준다. 실제 동작은 키보드 서비스가 한다.
@@ -66,91 +68,97 @@ public final class SwipeAction {
     public static final String CAPS_LOCK = "caps_lock";
 
     /** {ID, 목록에 보이는 이름, 편집 화면의 작은 칸에 보이는 짧은 이름}. 보이는 순서대로 적는다. */
-    private static final String[][] ALL = {
-            {NONE, "없음", "없음"},
-            {UNDO, "실행 취소", "실행 취소"},
-            {REDO, "다시 실행", "다시 실행"},
-            {SELECT_ALL, "전체 선택", "전체 선택"},
-            {SELECT_ALL_COPY, "전체 선택 후 복사", "전체 복사"},
-            {COPY, "복사", "복사"},
-            {CUT, "잘라내기", "잘라내기"},
-            {PASTE, "붙여넣기 (지금 클립보드)", "붙여넣기"},
-            {CLIPBOARD_OPEN, "클립보드 열기", "클립보드"},
-            {CLIPBOARD_PINNED, "첫 번째 고정 클립보드 항목 붙여넣기", "고정 클립보드 붙여넣기"},
-            {NUMBER_PAD, "숫자 패드 열기", "숫자 패드"},
-            {EMOJI_OPEN, "이모지 열기", "이모지"},
-            {EMOJI_LATEST, "가장 최근 사용한 이모지 붙여넣기", "최근 이모지"},
-            {EMOJI_PINNED, "첫 번째 고정 이모지 붙여넣기", "고정 이모지"},
-            {IME_PICKER, "입력 방법 전환 창 열기", "입력기 선택"},
-            {LANGUAGE, "언어 전환", "언어 전환"},
-            {LANGUAGE_PICK, "언어 고르기 (말풍선에서 골라 바꾸기)", "언어 고르기"},
-            {SYMBOLS, "기호 입력", "기호 입력"},
-            {ENTER, "엔터", "엔터"},
-            {SPACE, "띄어쓰기", "띄어쓰기"},
-            {FREE_CURSOR, "커서 자유 이동 (문자 키를 트랙패드처럼)", "커서 자유 이동"},
-            {CURSOR_MOVE, "커서 자유 이동", "커서 자유 이동"},
-            {LINE_START, "커서를 줄의 맨 앞으로 이동", "줄 맨 앞"},
-            {LINE_END, "커서를 줄의 맨 뒤로 이동", "줄 맨 뒤"},
-            {TEXT_START, "커서를 글 전체의 맨 앞으로 이동", "글 맨 앞"},
-            {TEXT_END, "커서를 글 전체의 맨 뒤로 이동", "글 맨 뒤"},
-            {CURSOR_LEFT, "커서를 한 글자 왼쪽으로 이동", "한 칸 왼쪽"},
-            {CURSOR_RIGHT, "커서를 한 글자 오른쪽으로 이동", "한 칸 오른쪽"},
-            {CURSOR_UP, "커서를 줄 한 칸 위로 이동", "한 줄 위"},
-            {CURSOR_DOWN, "커서를 줄 한 칸 아래로 이동", "한 줄 아래"},
-            {WORD_LEFT, "커서를 단어 단위로 왼쪽으로 이동", "단어 왼쪽"},
-            {WORD_RIGHT, "커서를 단어 단위로 오른쪽으로 이동", "단어 오른쪽"},
-            {BACKSPACE, "한 글자 지우기 (⌫)", "한 글자 지우기"},
-            {DELETE_WORD, "단어 지우기", "단어 지우기"},
-            {DELETE_LINE_START, "줄에서 커서 왼쪽 모두 지우기", "왼쪽 모두 지우기"},
-            {DELETE_LINE, "줄 전체 지우기", "줄 지우기"},
-            {VOICE, "음성 입력", "음성 입력"},
-            {HIDE_KEYBOARD, "키보드 숨기기", "키보드 숨기기"},
-            {ONE_HAND_LEFT, "한 손 모드 (왼쪽)", "한 손 왼쪽"},
-            {ONE_HAND_RIGHT, "한 손 모드 (오른쪽)", "한 손 오른쪽"},
-            {SETTINGS, "NewSwipe 설정 열기", "설정 열기"},
-            {DELETE_REPEAT, "계속 지우기 (누르고 있는 동안)", "계속 지우기"},
-            {DELETE_WORD_REPEAT, "단어 지우기 (누르고 있는 동안)", "계속 단어 지우기"},
-            {SPACE_SELECT, "길게 누른 뒤 밀어서 글자 선택", "밀어서 선택"},
-            {CAPS_LOCK, "Caps Lock 켜기 (영어 대문자 고정)", "Caps Lock"},
+    private static String[][] all() {
+        return new String[][]{
+            {NONE, L.t("없음", "None"), L.t("없음", "None")},
+            {UNDO, L.t("실행 취소", "Undo"), L.t("실행 취소", "Undo")},
+            {REDO, L.t("다시 실행", "Redo"), L.t("다시 실행", "Redo")},
+            {SELECT_ALL, L.t("전체 선택", "Select all"), L.t("전체 선택", "Select all")},
+            {SELECT_ALL_COPY, L.t("전체 선택 후 복사", "Select all and copy"), L.t("전체 복사", "Copy all")},
+            {COPY, L.t("복사", "Copy"), L.t("복사", "Copy")},
+            {CUT, L.t("잘라내기", "Cut"), L.t("잘라내기", "Cut")},
+            {PASTE, L.t("붙여넣기 (지금 클립보드)", "Paste (current clipboard)"), L.t("붙여넣기", "Paste")},
+            {CLIPBOARD_OPEN, L.t("클립보드 열기", "Open clipboard"), L.t("클립보드", "Clipboard")},
+            {CLIPBOARD_PINNED, L.t("첫 번째 고정 클립보드 항목 붙여넣기", "Paste first pinned clipboard item"), L.t("고정 클립보드 붙여넣기", "Paste pinned clip")},
+            {NUMBER_PAD, L.t("숫자 패드 열기", "Open number pad"), L.t("숫자 패드", "Number pad")},
+            {EMOJI_OPEN, L.t("이모지 열기", "Open emoji"), L.t("이모지", "Emoji")},
+            {EMOJI_LATEST, L.t("가장 최근 사용한 이모지 붙여넣기", "Paste most recent emoji"), L.t("최근 이모지", "Recent emoji")},
+            {EMOJI_PINNED, L.t("첫 번째 고정 이모지 붙여넣기", "Paste first pinned emoji"), L.t("고정 이모지", "Pinned emoji")},
+            {IME_PICKER, L.t("입력 방법 전환 창 열기", "Open input method picker"), L.t("입력기 선택", "Switch keyboard")},
+            {LANGUAGE, L.t("언어 전환", "Switch language"), L.t("언어 전환", "Switch language")},
+            {LANGUAGE_PICK, L.t("언어 고르기 (말풍선에서 골라 바꾸기)", "Pick language (choose from a popup)"), L.t("언어 고르기", "Pick language")},
+            {SYMBOLS, L.t("기호 입력", "Type symbols"), L.t("기호 입력", "Type symbols")},
+            {ENTER, L.t("엔터", "Enter"), L.t("엔터", "Enter")},
+            {SPACE, L.t("띄어쓰기", "Space"), L.t("띄어쓰기", "Space")},
+            {FREE_CURSOR, L.t("커서 자유 이동 (문자 키를 트랙패드처럼)", "Free cursor (letter keys as a trackpad)"), L.t("커서 자유 이동", "Free cursor")},
+            {CURSOR_MOVE, L.t("커서 자유 이동", "Free cursor"), L.t("커서 자유 이동", "Free cursor")},
+            {LINE_START, L.t("커서를 줄의 맨 앞으로 이동", "Move cursor to line start"), L.t("줄 맨 앞", "Line start")},
+            {LINE_END, L.t("커서를 줄의 맨 뒤로 이동", "Move cursor to line end"), L.t("줄 맨 뒤", "Line end")},
+            {TEXT_START, L.t("커서를 글 전체의 맨 앞으로 이동", "Move cursor to start of text"), L.t("글 맨 앞", "Text start")},
+            {TEXT_END, L.t("커서를 글 전체의 맨 뒤로 이동", "Move cursor to end of text"), L.t("글 맨 뒤", "Text end")},
+            {CURSOR_LEFT, L.t("커서를 한 글자 왼쪽으로 이동", "Move cursor one character left"), L.t("한 칸 왼쪽", "Left")},
+            {CURSOR_RIGHT, L.t("커서를 한 글자 오른쪽으로 이동", "Move cursor one character right"), L.t("한 칸 오른쪽", "Right")},
+            {CURSOR_UP, L.t("커서를 줄 한 칸 위로 이동", "Move cursor up one line"), L.t("한 줄 위", "Line up")},
+            {CURSOR_DOWN, L.t("커서를 줄 한 칸 아래로 이동", "Move cursor down one line"), L.t("한 줄 아래", "Line down")},
+            {WORD_LEFT, L.t("커서를 단어 단위로 왼쪽으로 이동", "Move cursor one word left"), L.t("단어 왼쪽", "Word left")},
+            {WORD_RIGHT, L.t("커서를 단어 단위로 오른쪽으로 이동", "Move cursor one word right"), L.t("단어 오른쪽", "Word right")},
+            {BACKSPACE, L.t("한 글자 지우기 (⌫)", "Delete character (⌫)"), L.t("한 글자 지우기", "Delete character")},
+            {DELETE_WORD, L.t("단어 지우기", "Delete word"), L.t("단어 지우기", "Delete word")},
+            {DELETE_LINE_START, L.t("줄에서 커서 왼쪽 모두 지우기", "Delete to line start"), L.t("왼쪽 모두 지우기", "Delete to line start")},
+            {DELETE_LINE, L.t("줄 전체 지우기", "Delete whole line"), L.t("줄 지우기", "Delete line")},
+            {VOICE, L.t("음성 입력", "Voice input"), L.t("음성 입력", "Voice input")},
+            {HIDE_KEYBOARD, L.t("키보드 숨기기", "Hide keyboard"), L.t("키보드 숨기기", "Hide keyboard")},
+            {ONE_HAND_LEFT, L.t("한 손 모드 (왼쪽)", "One-handed mode (left)"), L.t("한 손 왼쪽", "One-handed left")},
+            {ONE_HAND_RIGHT, L.t("한 손 모드 (오른쪽)", "One-handed mode (right)"), L.t("한 손 오른쪽", "One-handed right")},
+            {SETTINGS, L.t("NewSwipe 설정 열기", "Open NewSwipe settings"), L.t("설정 열기", "Open settings")},
+            {DELETE_REPEAT, L.t("계속 지우기 (누르고 있는 동안)", "Keep deleting (while held)"), L.t("계속 지우기", "Keep deleting")},
+            {DELETE_WORD_REPEAT, L.t("단어 지우기 (누르고 있는 동안)", "Delete words (while held)"), L.t("계속 단어 지우기", "Keep deleting words")},
+            {SPACE_SELECT, L.t("길게 누른 뒤 밀어서 글자 선택", "Long press, then swipe to select text"), L.t("밀어서 선택", "Swipe to select")},
+            {CAPS_LOCK, L.t("Caps Lock 켜기 (영어 대문자 고정)", "Caps Lock on (lock English capitals)"), "Caps Lock"},
     };
+    }
 
     /**
      * 기능을 고르는 창에서 묶어 보여 주는 갈래: {갈래 이름, 그 갈래의 ID들...}. 갈래도, 갈래 안의 기능도
      * 적은 순서대로 보인다 (자주 쓰는 것·짝이 되는 것끼리 가까이).
      */
-    private static final String[][] CATEGORIES = {
-            {"기능 없음", NONE},
-            {"커서 이동", FREE_CURSOR, CURSOR_MOVE, LINE_START, LINE_END, TEXT_START, TEXT_END,
+    private static String[][] categories() {
+        return new String[][]{
+            {L.t("기능 없음", "No action"), NONE},
+            {L.t("커서 이동", "Cursor"), FREE_CURSOR, CURSOR_MOVE, LINE_START, LINE_END, TEXT_START, TEXT_END,
                     CURSOR_LEFT, CURSOR_RIGHT, CURSOR_UP, CURSOR_DOWN, WORD_LEFT, WORD_RIGHT},
-            {"선택·복사·붙여넣기", SPACE_SELECT, SELECT_ALL, SELECT_ALL_COPY, COPY, CUT, PASTE,
+            {L.t("선택·복사·붙여넣기", "Select · Copy · Paste"), SPACE_SELECT, SELECT_ALL, SELECT_ALL_COPY, COPY, CUT, PASTE,
                     CLIPBOARD_OPEN, CLIPBOARD_PINNED},
-            {"지우기·실행 취소", BACKSPACE, DELETE_WORD, DELETE_LINE_START, DELETE_LINE,
+            {L.t("지우기·실행 취소", "Delete · Undo"), BACKSPACE, DELETE_WORD, DELETE_LINE_START, DELETE_LINE,
                     DELETE_REPEAT, DELETE_WORD_REPEAT, UNDO, REDO},
-            {"입력", SPACE, ENTER, CAPS_LOCK, EMOJI_LATEST, EMOJI_PINNED, VOICE},
-            {"자판·창 전환", SYMBOLS, NUMBER_PAD, EMOJI_OPEN, LANGUAGE, LANGUAGE_PICK, IME_PICKER},
-            {"키보드·설정", HIDE_KEYBOARD, ONE_HAND_LEFT, ONE_HAND_RIGHT, SETTINGS},
+            {L.t("입력", "Input"), SPACE, ENTER, CAPS_LOCK, EMOJI_LATEST, EMOJI_PINNED, VOICE},
+            {L.t("자판·창 전환", "Keyboards & panels"), SYMBOLS, NUMBER_PAD, EMOJI_OPEN, LANGUAGE, LANGUAGE_PICK, IME_PICKER},
+            {L.t("키보드·설정", "Keyboard & settings"), HIDE_KEYBOARD, ONE_HAND_LEFT, ONE_HAND_RIGHT, SETTINGS},
     };
+    }
 
     /** 갈래의 수. */
     public static int categoryCount() {
-        return CATEGORIES.length;
+        return categories().length;
     }
 
     /** 갈래 이름 (커서 이동, 지우기·실행 취소 등). */
     public static String categoryName(int category) {
-        return CATEGORIES[category][0];
+        return categories()[category][0];
     }
 
     /** 이 갈래에 든 기능 ID들 (보이는 순서). */
     public static String[] categoryIds(int category) {
-        return java.util.Arrays.copyOfRange(CATEGORIES[category], 1, CATEGORIES[category].length);
+        String[] c = categories()[category];
+        return java.util.Arrays.copyOfRange(c, 1, c.length);
     }
 
     /** 이 기능이 든 갈래의 번호. 모르는 ID면 -1. */
     public static int category(String id) {
         if (id == null) return -1;
-        for (int c = 0; c < CATEGORIES.length; c++) {
-            for (int i = 1; i < CATEGORIES[c].length; i++) if (CATEGORIES[c][i].equals(id)) return c;
+        String[][] cats = categories();
+        for (int c = 0; c < cats.length; c++) {
+            for (int i = 1; i < cats[c].length; i++) if (cats[c][i].equals(id)) return c;
         }
         return -1;
     }
@@ -173,7 +181,7 @@ public final class SwipeAction {
     /** 기능키 길게 누르기에서 고를 수 있는 ID들 (밀어야 하는 '커서 자유 이동'은 뺀다). */
     public static String[] idsForLongPress() {
         java.util.List<String> ids = new java.util.ArrayList<>();
-        for (String[] a : ALL) {
+        for (String[] a : all()) {
             if (!CURSOR_MOVE.equals(a[0]) && !FREE_CURSOR.equals(a[0]) && !globeUpOnly(a[0]) && !SPACE_SELECT.equals(a[0])) {
                 ids.add(a[0]);
             }
@@ -194,7 +202,7 @@ public final class SwipeAction {
     /** 키 slot(FunctionSwipes.SPACE 등)·도구 막대·분리 키보드 가운데 공간에서 고를 수 있는 ID들. 화면에 보이는 순서. */
     public static String[] idsFor(int slot) {
         java.util.List<String> ids = new java.util.ArrayList<>();
-        for (String[] a : ALL) {
+        for (String[] a : all()) {
             if (FREE_CURSOR.equals(a[0]) || longPressOnly(a[0])) continue;
             if (globeUpOnly(a[0]) && slot != FunctionSwipes.GLOBE) continue;
             ids.add(a[0]);
@@ -205,7 +213,7 @@ public final class SwipeAction {
     /** 키보드 밀기에서 고를 수 있는 ID들. '커서 자유 이동'은 한 손가락에서만 고를 수 있다. */
     public static String[] idsForKeyboard(boolean oneFinger) {
         java.util.List<String> ids = new java.util.ArrayList<>();
-        for (String[] a : ALL) {
+        for (String[] a : all()) {
             if (CURSOR_MOVE.equals(a[0]) || (!oneFinger && FREE_CURSOR.equals(a[0])) || longPressOnly(a[0])
                     || globeUpOnly(a[0])) continue;
             ids.add(a[0]);
@@ -225,18 +233,18 @@ public final class SwipeAction {
     /** 목록에 보이는 이름. 모르는 ID면 "없음". */
     public static String label(String id) {
         String[] a = find(id);
-        return a == null ? ALL[0][1] : a[1];
+        return a == null ? all()[0][1] : a[1];
     }
 
     /** 편집 화면의 작은 칸에 보이는 짧은 이름. */
     public static String shortLabel(String id) {
         String[] a = find(id);
-        return a == null ? ALL[0][2] : a[2];
+        return a == null ? all()[0][2] : a[2];
     }
 
     private static String[] find(String id) {
         if (id == null) return null;
-        for (String[] a : ALL) if (a[0].equals(id)) return a;
+        for (String[] a : all()) if (a[0].equals(id)) return a;
         return null;
     }
 }

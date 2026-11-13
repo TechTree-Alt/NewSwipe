@@ -40,14 +40,16 @@ import com.alternative_studios.newswipe.ui.Ui;
 /**
  * 앱을 처음 열 때 한 번 보여 주는 첫 시작 가이드.
  * 1. 앱 이름·아이콘과 '시작하기' (또는 '설정 가져오기'로 바로 끝내기) → 2. 키보드 사용 설정·기본 키보드로 선택
- * → 3. 자음 키를 아래로 밀어 된소리 입력해 보기 → 4. 모음 키를 아래로 밀거나 두 번 탭해 ㅣ계 이중모음 입력해 보기 → 5. 축하.
+ * → 3. 입력 언어 고르기 (한국어·영어) → 4. 자음 키를 아래로 밀어 된소리 입력해 보기
+ * → 5. 모음 키를 아래로 밀거나 두 번 탭해 ㅣ계 이중모음 입력해 보기 → 6. 축하.
+ * 한국어를 고르지 않으면 4·5(한글 입력 연습)는 건너뛴다.
  * 마치면 설정 화면으로 넘어가고, 다시는 뜨지 않는다.
  */
 public final class OnboardingActivity extends Activity {
 
-    private static final int PAGE_WELCOME = 0, PAGE_SETUP = 1, PAGE_SWIPE = 2, PAGE_VOWEL = 3, PAGE_FINISH = 4;
-    /** 쪽 표시 점은 2~4번째 화면(따라 하는 단계)에만 보인다. */
-    private static final int FIRST_STEP = PAGE_SETUP, STEP_COUNT = 3;
+    private static final int PAGE_WELCOME = 0, PAGE_SETUP = 1, PAGE_LANGUAGE = 2, PAGE_SWIPE = 3, PAGE_VOWEL = 4, PAGE_FINISH = 5;
+    /** 쪽 표시 점은 2~5번째 화면(따라 하는 단계)에만 보인다. 한국어를 고르지 않으면 한글 연습 두 화면이 빠진다. */
+    private static final int FIRST_STEP = PAGE_SETUP;
     private static final int REQ_IMPORT = 1;
 
     private Prefs prefs;
@@ -68,7 +70,10 @@ public final class OnboardingActivity extends Activity {
     private CheckMark enableCheck, selectCheck;
     private boolean nextShown;
 
-    // 3·4번째 화면
+    // 3번째 화면: 입력 언어
+    private SwitchCard koreanCard, englishCard;
+
+    // 4·5번째 화면
     private Practice swipePractice, vowelPractice;
 
     // 5번째 화면
@@ -112,13 +117,13 @@ public final class OnboardingActivity extends Activity {
         root.setBackgroundColor(colors.bg);
 
         FrameLayout top = new FrameLayout(this);
-        dots = new OnboardingArt.PageDots(this, STEP_COUNT, colors.accent, (colors.hint & 0x00FFFFFF) | 0x4D000000);
+        dots = new OnboardingArt.PageDots(this, stepCount(), colors.accent, (colors.hint & 0x00FFFFFF) | 0x4D000000);
         top.addView(dots, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
         root.addView(top, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 40)));
 
         pages = new FrameLayout(this);
-        pageViews = new View[]{buildWelcome(), buildSetup(), buildSwipe(), buildVowel(), buildFinish()};
+        pageViews = new View[]{buildWelcome(), buildSetup(), buildLanguage(), buildSwipe(), buildVowel(), buildFinish()};
         for (View v : pageViews) {
             v.setVisibility(View.GONE);
             pages.addView(v, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
@@ -129,6 +134,7 @@ public final class OnboardingActivity extends Activity {
         setContentView(root);
 
         page = savedInstanceState == null ? PAGE_WELCOME : savedInstanceState.getInt("page", PAGE_WELCOME);
+        if (page < 0 || page > PAGE_FINISH) page = PAGE_WELCOME;
         pageViews[page].setVisibility(View.VISIBLE);
         boolean stepPage = isStep(page);
         dots.setAlpha(stepPage ? 1f : 0f);
@@ -162,8 +168,24 @@ public final class OnboardingActivity extends Activity {
         SettingsImport.onPicked(this, data.getData(), this::finishOnboarding);
     }
 
-    private static boolean isStep(int p) {
-        return p >= FIRST_STEP && p < FIRST_STEP + STEP_COUNT;
+    private boolean isStep(int p) {
+        return p >= FIRST_STEP && p < FIRST_STEP + stepCount();
+    }
+
+    /** 따라 하는 단계의 수: 키보드 설정·입력 언어에, 한국어를 쓰면 한글 연습 두 화면을 더한다. */
+    private int stepCount() {
+        return prefs.inputKorean() ? 4 : 2;
+    }
+
+    /** 다음 화면. 한국어를 쓰지 않으면 입력 언어 다음에 한글 연습을 건너뛰고 축하 화면으로 간다. */
+    private int nextPage(int p) {
+        if (p == PAGE_LANGUAGE && !prefs.inputKorean()) return PAGE_FINISH;
+        return p + 1;
+    }
+
+    private int previousPage(int p) {
+        if (p == PAGE_FINISH && !prefs.inputKorean()) return PAGE_LANGUAGE;
+        return p - 1;
     }
 
     // ---------------------------------------------------------------- 1. 환영
@@ -197,7 +219,7 @@ public final class OnboardingActivity extends Activity {
         root.addView(title, tlp);
         welcomeTitle = title;
 
-        TextView sub = text("밀어서 입력하고 조작하는 한국어 입력 시스템", 15, colors.hint, false);
+        TextView sub = text(L.t("밀어서 입력하고 조작하는 한국어 입력 시스템", "Swipe to type and control, in Korean and English"), 15, colors.hint, false);
         sub.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams slp = wrap();
         slp.topMargin = Ui.dp(this, 8);
@@ -206,13 +228,13 @@ public final class OnboardingActivity extends Activity {
 
         root.addView(new View(this), new LinearLayout.LayoutParams(1, 0, 1f));
 
-        ExpressiveButton start = new ExpressiveButton(this, "시작하기", colors.accent, colors.onAccent);
+        ExpressiveButton start = new ExpressiveButton(this, L.t("시작하기", "Get started"), colors.accent, colors.onAccent);
         start.setOnClickListener(v -> goTo(PAGE_SETUP));
         root.addView(start, bottomButton());
         welcomeButton = start;
 
         // 오른쪽 아래: 다른 기기에서 내보낸 설정을 바로 가져온다.
-        View importButton = textButton("설정 가져오기", Icons.IMPORT, v -> SettingsImport.pick(this, REQ_IMPORT));
+        View importButton = textButton(L.t("설정 가져오기", "Import settings"), Icons.IMPORT, v -> SettingsImport.pick(this, REQ_IMPORT));
         LinearLayout.LayoutParams ilp = wrap();
         ilp.gravity = Gravity.END;
         ilp.topMargin = Ui.dp(this, 8);
@@ -244,8 +266,8 @@ public final class OnboardingActivity extends Activity {
 
     private View buildSetup() {
         LinearLayout root = column();
-        root.addView(pageTitle("키보드 설정"));
-        root.addView(pageNote("NewSwipe로 입력하려면 아래 두 가지를 차례로 해 주세요."));
+        root.addView(pageTitle(L.t("키보드 설정", "Keyboard setup")));
+        root.addView(pageNote(L.t("NewSwipe로 입력하려면 아래 두 가지를 차례로 해 주세요.", "To type with NewSwipe, do these two steps in order.")));
 
         miniKeyboard = new OnboardingArt.MiniKeyboard(this,
                 new int[]{keys.background, keys.key, keys.functionKey, keys.text, colors.accent, colors.onAccent});
@@ -256,14 +278,14 @@ public final class OnboardingActivity extends Activity {
         LinearLayout.LayoutParams first = matchWrap();
         first.topMargin = Ui.dp(this, 28);
         enableCheck = new CheckMark(this, colors.accent, colors.onAccent);
-        enableButton = stepButton("1. 키보드 사용 설정", v ->
+        enableButton = stepButton(L.t("1. 키보드 사용 설정", "1. Enable the keyboard"), v ->
                 startActivity(new Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)));
         root.addView(stepRow(enableButton, enableCheck), first);
 
         LinearLayout.LayoutParams second = matchWrap();
         second.topMargin = Ui.dp(this, 12);
         selectCheck = new CheckMark(this, colors.accent, colors.onAccent);
-        selectButton = stepButton("2. NewSwipe를 기본 키보드로 선택", v -> {
+        selectButton = stepButton(L.t("2. NewSwipe를 기본 키보드로 선택", "2. Select NewSwipe as default"), v -> {
             InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
             if (imm != null) imm.showInputMethodPicker();
         });
@@ -271,8 +293,8 @@ public final class OnboardingActivity extends Activity {
 
         root.addView(new View(this), new LinearLayout.LayoutParams(1, 0, 1f));
 
-        ExpressiveButton next = new ExpressiveButton(this, "다음으로", colors.accent, colors.onAccent);
-        next.setOnClickListener(v -> goTo(PAGE_SWIPE));
+        ExpressiveButton next = new ExpressiveButton(this, L.t("다음으로", "Next"), colors.accent, colors.onAccent);
+        next.setOnClickListener(v -> goTo(PAGE_LANGUAGE));
         next.setVisibility(View.INVISIBLE);   // 두 가지를 다 마치면 나타난다 (자리는 미리 잡아 둔다)
         root.addView(next, bottomButton());
         nextButton = next;
@@ -329,14 +351,133 @@ public final class OnboardingActivity extends Activity {
         check.setShown(done, animate);
     }
 
-    // ---------------------------------------------------------------- 3·4. 입력해 보기
+    // ---------------------------------------------------------------- 3. 입력 언어
+
+    /**
+     * 키보드로 입력할 언어(한국어·영어)를 고른다. 처음에는 시스템 언어가 한국어면 둘 다, 그 밖에는 영어만 골라져 있다.
+     * 둘 다 끌 수는 없다. 일본어·중국어는 실험실에서 쓸 수 있다고 알려 준다.
+     */
+    private View buildLanguage() {
+        LinearLayout root = column();
+        root.addView(pageTitle(L.t("입력 언어", "Input languages")));
+        root.addView(pageNote(L.t("키보드로 입력할 언어를 고르세요. 나중에 설정 › 입력 언어에서 바꿀 수 있습니다.",
+                "Choose the languages you'll type in. You can change this later in Settings › Input languages.")));
+
+        if (!prefs.raw().contains(Prefs.INPUT_KO)) {
+            // 처음 고르는 것이면 시스템 언어로 기본값을 정해 저장해 둔다 (이 화면을 그냥 넘겨도 그대로 쓰인다).
+            saveLanguages(isKoreanSystem(), true);
+        }
+        koreanCard = new SwitchCard(L.t("한국어", "Korean"),
+                L.t("두벌식·단모음·NewSwipe 단모음 자판", "한국어 · Dubeolsik, Danmoeum and NewSwipe Danmoeum layouts"),
+                prefs.inputKorean(), on -> onLanguageToggled(true, on));
+        englishCard = new SwitchCard(L.t("영어", "English"), L.t("English · QWERTY 자판", "QWERTY layout"),
+                prefs.inputEnglish(), on -> onLanguageToggled(false, on));
+        LinearLayout.LayoutParams first = matchWrap();
+        first.topMargin = Ui.dp(this, 28);
+        root.addView(koreanCard.view, first);
+        LinearLayout.LayoutParams second = matchWrap();
+        second.topMargin = Ui.dp(this, 12);
+        root.addView(englishCard.view, second);
+
+        TextView labs = text(L.t("일본어·중국어 입력은 설정 › 실험실에서 쓸 수 있습니다 (사전 팩을 가져와 켭니다).",
+                "Japanese and Chinese input are available in Settings › Labs (import a dictionary pack to turn them on)."),
+                14, colors.hint, false);
+        labs.setLineSpacing(Ui.dp(this, 2), 1f);
+        labs.setBackground(Ui.round((colors.hint & 0x00FFFFFF) | 0x1A000000, Ui.dp(this, 16)));
+        int pad = Ui.dp(this, 16);
+        labs.setPadding(pad, Ui.dp(this, 12), pad, Ui.dp(this, 12));
+        LinearLayout.LayoutParams llp = matchWrap();
+        llp.topMargin = Ui.dp(this, 20);
+        root.addView(labs, llp);
+
+        root.addView(new View(this), new LinearLayout.LayoutParams(1, 0, 1f));
+
+        ExpressiveButton next = new ExpressiveButton(this, L.t("다음으로", "Next"), colors.accent, colors.onAccent);
+        next.setOnClickListener(v -> goTo(nextPage(PAGE_LANGUAGE)));
+        root.addView(next, bottomButton());
+        return wrapScroll(root);
+    }
+
+    /** 시스템(기기) 언어가 한국어인지. 앱 언어를 따로 한국어로 정해 한국어 화면이 보이고 있어도 한국어로 본다. */
+    private boolean isKoreanSystem() {
+        android.os.LocaleList system = android.content.res.Resources.getSystem().getConfiguration().getLocales();
+        return L.ko() || (!system.isEmpty() && "ko".equals(system.get(0).getLanguage()));
+    }
+
+    private void onLanguageToggled(boolean korean, boolean on) {
+        boolean ko = korean ? on : prefs.inputKorean(), en = korean ? prefs.inputEnglish() : on;
+        if (!ko && !en) {
+            // 하나는 남겨 두어야 한다: 방금 끈 스위치를 되돌린다.
+            (korean ? koreanCard : englishCard).setChecked(true);
+            android.widget.Toast.makeText(this, L.t("한국어와 영어 중 하나는 골라야 합니다", "Choose Korean or English"),
+                    android.widget.Toast.LENGTH_SHORT).show();
+            return;
+        }
+        saveLanguages(ko, en);
+        dots.setCount(stepCount());
+    }
+
+    /** 입력 언어를 저장하고, 키보드가 켠 언어로 시작하게 한다 (한국어를 쓰면 한국어로). */
+    private void saveLanguages(boolean korean, boolean english) {
+        prefs.setInputLanguages(korean, english);
+        prefs.setLanguage(korean ? "ko" : "en");
+    }
+
+    /** 이름·설명과 오른쪽 스위치가 있는 카드. 카드 어디를 눌러도 스위치가 바뀐다. */
+    private final class SwitchCard {
+        final View view;
+        final com.alternative_studios.newswipe.ui.ExpressiveSwitch sw;
+
+        SwitchCard(String name, String desc, boolean checked,
+                   com.alternative_studios.newswipe.ui.ExpressiveSwitch.OnCheckedChange onChange) {
+            Context c = OnboardingActivity.this;
+            LinearLayout row = new LinearLayout(c);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setBackground(Ui.ripple((colors.accent & 0x00FFFFFF) | 0x33000000, Ui.round(colors.card, Ui.dp(c, 24)),
+                    Ui.dp(c, 24)));
+            row.setPadding(Ui.dp(c, 20), Ui.dp(c, 18), Ui.dp(c, 16), Ui.dp(c, 18));
+            LinearLayout texts = new LinearLayout(c);
+            texts.setOrientation(LinearLayout.VERTICAL);
+            texts.addView(text(name, 18, colors.text, true));
+            LinearLayout.LayoutParams dlp = wrap();
+            dlp.topMargin = Ui.dp(c, 2);
+            texts.addView(text(desc, 13, colors.hint, false), dlp);
+            row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+            sw = new com.alternative_studios.newswipe.ui.ExpressiveSwitch(c, colors.accent, colors.onAccent, colors.hint, colors.card);
+            sw.setCheckedImmediately(checked);
+            sw.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);   // 카드 전체가 스위치 역할을 한다
+            sw.setOnCheckedChangeListener(onChange);
+            LinearLayout.LayoutParams slp = wrap();
+            slp.leftMargin = Ui.dp(c, 12);
+            row.addView(sw, slp);
+            row.setClickable(true);
+            row.setFocusable(true);
+            row.setContentDescription(name);
+            row.setAccessibilityDelegate(new View.AccessibilityDelegate() {
+                @Override
+                public void onInitializeAccessibilityNodeInfo(View host, android.view.accessibility.AccessibilityNodeInfo info) {
+                    super.onInitializeAccessibilityNodeInfo(host, info);
+                    info.setCheckable(true);
+                    info.setChecked(sw.isChecked());
+                }
+            });
+            row.setOnClickListener(v -> sw.toggle());
+            view = row;
+        }
+
+        void setChecked(boolean on) {
+            sw.post(() -> sw.setCheckedSilently(on));
+        }
+    }
+
+    // ---------------------------------------------------------------- 4·5. 입력해 보기
 
     private View buildSwipe() {
         String[] row = {"ㅂ", "ㅈ", "ㄷ", "ㄱ", "ㅅ"};
-        swipePractice = new Practice("밀어서 된소리 입력",
-                "자음 키를 아래로 밀어 된소리를 입력하세요",
+        swipePractice = new Practice(L.t("밀어서 된소리 입력", "Swipe for double consonants"),
+                L.t("자음 키를 아래로 밀어 된소리를 입력하세요", "Swipe a consonant key down to type its double consonant"),
                 "빨간색 꼬까옷",
-                "ㅂ을 아래로 밀면 ㅃ, ㄱ을 아래로 밀면 ㄲ",
+                L.t("ㅂ을 아래로 밀면 ㅃ, ㄱ을 아래로 밀면 ㄲ", "Swipe ㅂ down for ㅃ, and ㄱ down for ㄲ"),
                 PAGE_VOWEL,
                 new OnboardingArt.Step(row, 0, "ㅃ", false),
                 new OnboardingArt.Step(row, 3, "ㄲ", false));
@@ -344,10 +485,10 @@ public final class OnboardingActivity extends Activity {
     }
 
     private View buildVowel() {
-        vowelPractice = new Practice("ㅣ계 이중모음 입력",
-                "모음 키를 아래로 밀거나 두 번 연속으로 눌러서 ㅣ계 이중모음을 입력하세요",
+        vowelPractice = new Practice(L.t("ㅣ계 이중모음 입력", "Type Y-vowels"),
+                L.t("모음 키를 아래로 밀거나 두 번 연속으로 눌러서 ㅣ계 이중모음을 입력하세요", "Swipe a vowel key down or double-tap it to type its Y-vowel"),
                 "여유 있는 요즘",
-                "ㅓ를 아래로 밀거나 두 번 누르면 ㅕ, ㅜ는 ㅠ, ㅗ는 ㅛ",
+                L.t("ㅓ를 아래로 밀거나 두 번 누르면 ㅕ, ㅜ는 ㅠ, ㅗ는 ㅛ", "Swipe ㅓ down or double-tap it for ㅕ; ㅜ gives ㅠ, ㅗ gives ㅛ"),
                 PAGE_FINISH,
                 new OnboardingArt.Step(new String[]{"ㅎ", "ㅓ", "ㅏ", "ㅣ"}, 1, "ㅕ", false),
                 new OnboardingArt.Step(new String[]{"ㅊ", "ㅍ", "ㅜ", "ㅡ"}, 2, "ㅠ", true),
@@ -385,7 +526,7 @@ public final class OnboardingActivity extends Activity {
             int p = Ui.dp(c, 20);
             card.setPadding(p, Ui.dp(c, 20), p, p);
 
-            card.addView(text("따라 입력해 보세요", 13, colors.hint, false), wrap());
+            card.addView(text(L.t("따라 입력해 보세요", "Try typing this"), 13, colors.hint, false), wrap());
             targetView = text(target, 30, colors.text, true);
             targetView.setGravity(Gravity.CENTER);
             LinearLayout.LayoutParams plp = wrap();
@@ -398,7 +539,7 @@ public final class OnboardingActivity extends Activity {
             card.addView(tipView, tlp);
 
             input = new EditText(c);
-            input.setHint("여기에 입력해 보세요");
+            input.setHint(L.t("여기에 입력해 보세요", "Type here"));
             input.setTextColor(colors.text);
             input.setHintTextColor(colors.hint);
             input.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
@@ -419,7 +560,7 @@ public final class OnboardingActivity extends Activity {
             ilp.topMargin = Ui.dp(c, 16);
             card.addView(input, ilp);
 
-            TextView doneView = text("잘하셨어요!", 15, colors.accent, true);
+            TextView doneView = text(L.t("잘하셨어요!", "Well done!"), 15, colors.accent, true);
             doneView.setGravity(Gravity.CENTER);
             doneView.setVisibility(View.GONE);
             LinearLayout.LayoutParams olp = matchWrap();
@@ -434,7 +575,7 @@ public final class OnboardingActivity extends Activity {
 
             // 아래쪽: 다 입력하면 '다음으로'가, 그전에는 '건너뛰기'가 보인다.
             FrameLayout bottom = new FrameLayout(c);
-            TextView skipView = text("건너뛰기", 15, colors.hint, false);
+            TextView skipView = text(L.t("건너뛰기", "Skip"), 15, colors.hint, false);
             skipView.setGravity(Gravity.CENTER);
             int sp = Ui.dp(c, 16);
             skipView.setPadding(sp * 2, sp, sp * 2, sp);
@@ -445,7 +586,7 @@ public final class OnboardingActivity extends Activity {
             bottom.addView(skipView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
             skip = skipView;
-            ExpressiveButton nextView = new ExpressiveButton(c, "다음으로", colors.accent, colors.onAccent);
+            ExpressiveButton nextView = new ExpressiveButton(c, L.t("다음으로", "Next"), colors.accent, colors.onAccent);
             nextView.setOnClickListener(v -> goTo(nextPage));
             nextView.setVisibility(View.INVISIBLE);
             bottom.addView(nextView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -510,7 +651,7 @@ public final class OnboardingActivity extends Activity {
         }
     }
 
-    // ---------------------------------------------------------------- 5. 축하
+    // ---------------------------------------------------------------- 6. 축하
 
     private View buildFinish() {
         FrameLayout frame = new FrameLayout(this);
@@ -523,7 +664,7 @@ public final class OnboardingActivity extends Activity {
         int size = Ui.dp(this, 168);
         root.addView(finishBadge, new LinearLayout.LayoutParams(size, size));
 
-        TextView title = text("축하합니다!\nNewSwipe의 기본기를\n모두 익히셨습니다.", 30, colors.text, true);
+        TextView title = text(L.t("축하합니다!\nNewSwipe의 기본기를\n모두 익히셨습니다.", "Congratulations!\nYou've learned\nthe NewSwipe basics."), 30, colors.text, true);
         title.setGravity(Gravity.CENTER);
         title.setLineSpacing(Ui.dp(this, 4), 1f);
         LinearLayout.LayoutParams tlp = wrap();
@@ -531,7 +672,7 @@ public final class OnboardingActivity extends Activity {
         root.addView(title, tlp);
         finishTitle = title;
 
-        TextView sub = text("설정에서 입맛에 맞게 모습과 동작을 바꿀 수 있습니다.", 15, colors.hint, false);
+        TextView sub = text(L.t("설정에서 입맛에 맞게 모습과 동작을 바꿀 수 있습니다.", "You can change how it looks and works in Settings."), 15, colors.hint, false);
         sub.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams slp = wrap();
         slp.topMargin = Ui.dp(this, 12);
@@ -540,7 +681,7 @@ public final class OnboardingActivity extends Activity {
 
         root.addView(new View(this), new LinearLayout.LayoutParams(1, 0, 1f));
 
-        ExpressiveButton settings = new ExpressiveButton(this, "설정하기", colors.accent, colors.onAccent);
+        ExpressiveButton settings = new ExpressiveButton(this, L.t("설정하기", "Go to settings"), colors.accent, colors.onAccent);
         settings.setOnClickListener(v -> finishOnboarding());
         root.addView(settings, bottomButton());
         finishButton = settings;
@@ -688,7 +829,7 @@ public final class OnboardingActivity extends Activity {
         if (Build.VERSION.SDK_INT < 33) return;
         android.window.OnBackInvokedDispatcher d = getOnBackInvokedDispatcher();
         if (page > PAGE_WELCOME && backCallback == null) {
-            android.window.OnBackInvokedCallback cb = () -> goTo(page - 1);
+            android.window.OnBackInvokedCallback cb = () -> goTo(previousPage(page));
             d.registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, cb);
             backCallback = cb;
         } else if (page == PAGE_WELCOME && backCallback != null) {
@@ -700,7 +841,7 @@ public final class OnboardingActivity extends Activity {
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {   // Android 12 이하
-        if (page > PAGE_WELCOME) goTo(page - 1);
+        if (page > PAGE_WELCOME) goTo(previousPage(page));
         else super.onBackPressed();
     }
 
@@ -841,7 +982,7 @@ public final class OnboardingActivity extends Activity {
             stroke.setStrokeWidth(Ui.dp(c, 3));
             pillWidth = Ui.dp(c, 56);
             gap = Ui.dp(c, 8);
-            setContentDescription("완료");
+            setContentDescription(L.t("완료", "Done"));
             setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
         }
 

@@ -18,10 +18,10 @@ final class ResetDialog {
     /** 'OOO을(를) 기본값으로 되돌리겠습니까?'를 묻고, 확인하면 onConfirm을 부른다. */
     static void confirm(Context context, String name, Runnable onConfirm) {
         AppTheme.accentBuilder(AppTheme.dialogContext(context))
-                .setTitle("기본값으로 되돌리기")
-                .setMessage(name + WordSuggester.objectParticle(name) + " 기본값으로 되돌리겠습니까?")
-                .setPositiveButton("확인", (d, w) -> onConfirm.run())
-                .setNegativeButton("취소", null)
+                .setTitle(L.t("기본값으로 되돌리기", "Reset to default"))
+                .setMessage(L.t(name + WordSuggester.objectParticle(name) + " 기본값으로 되돌리겠습니까?", "Reset " + name + " to default?"))
+                .setPositiveButton(L.t("확인", "OK"), (d, w) -> onConfirm.run())
+                .setNegativeButton(L.t("취소", "Cancel"), null)
                 .show();
     }
 
@@ -29,7 +29,7 @@ final class ResetDialog {
     static TextView button(Activity activity, String name, Runnable onReset) {
         int accent = AppTheme.of(activity).accent;
         TextView reset = new TextView(activity);
-        reset.setText("기본값으로 되돌리기");
+        reset.setText(L.t("기본값으로 되돌리기", "Reset to default"));
         reset.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15);
         reset.setTextColor(accent);
         reset.setGravity(Gravity.CENTER);

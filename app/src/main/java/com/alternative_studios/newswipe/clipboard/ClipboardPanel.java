@@ -1,5 +1,6 @@
 package com.alternative_studios.newswipe.clipboard;
 
+import com.alternative_studios.newswipe.L;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -97,7 +98,7 @@ public final class ClipboardPanel extends LinearLayout {
         header = new LinearLayout(context);
         header.setGravity(Gravity.CENTER_VERTICAL);
         header.setPadding(Ui.dp(context, 4), 0, Ui.dp(context, 8), 0);
-        IconButton back = new IconButton(context, Icons.BACK, theme.text, theme.keyPressed, "키보드로 돌아가기");
+        IconButton back = new IconButton(context, Icons.BACK, theme.text, theme.keyPressed, L.t("키보드로 돌아가기", "Back to keyboard"));
         back.setToolbarStyle(theme, topBarHeight);   // 도구 막대 버튼과 같은 칩
         back.setOnClickListener(v -> {
             listener.onClipChipPress();
@@ -106,14 +107,14 @@ public final class ClipboardPanel extends LinearLayout {
         header.addView(back, new LayoutParams(Ui.dp(context, 44), topBarHeight));
         this.barHeight = topBarHeight;
         title = new TextView(context);
-        title.setText("클립보드");
+        title.setText(L.t("클립보드", "Clipboard"));
         title.setTextColor(theme.text);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
         LayoutParams titleLp = new LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         titleLp.leftMargin = Ui.dp(context, 10);   // 뒤로 가기 칩에 붙지 않게
         header.addView(title, titleLp);
         // 모두 지우기: 휴지통 아이콘 칩 (뒤로 가기 칩과 같은 크기)
-        clear = new IconButton(context, Icons.TRASH, Ui.danger(theme.dark), theme.keyPressed, "모두 지우기");
+        clear = new IconButton(context, Icons.TRASH, Ui.danger(theme.dark), theme.keyPressed, L.t("모두 지우기", "Delete all"));
         clear.setToolbarStyle(theme, topBarHeight, theme.functionKey, Ui.danger(theme.dark));
         clear.setOnClickListener(v -> {
             listener.onClipChipPress();
@@ -132,20 +133,20 @@ public final class ClipboardPanel extends LinearLayout {
         confirmRow.setGravity(Gravity.CENTER_VERTICAL);
         confirmRow.setPadding(Ui.dp(context, 14), 0, Ui.dp(context, 8), 0);
         TextView ask = new TextView(context);
-        ask.setText("고정하지 않은 기록을 모두 지울까요?");
+        ask.setText(L.t("고정하지 않은 기록을 모두 지울까요?", "Delete all unpinned items?"));
         ask.setTextColor(theme.text);
         ask.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         ask.setMaxLines(2);
         ask.setEllipsize(TextUtils.TruncateAt.END);
         confirmRow.addView(ask, new LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        TextView cancel = Ui.chipButton(context, "취소", theme.text, theme.functionKey, topBarHeight);
+        TextView cancel = Ui.chipButton(context, L.t("취소", "Cancel"), theme.text, theme.functionKey, topBarHeight);
         Neu.apply(cancel, theme, theme.functionKey, Ui.chipRadius(context));
         cancel.setOnClickListener(v -> {
             listener.onClipChipPress();
             dismissDialog();
         });
         confirmRow.addView(cancel);
-        TextView ok = Ui.chipButton(context, "지우기", theme.onAccent, theme.accent, topBarHeight);
+        TextView ok = Ui.chipButton(context, L.t("지우기", "Delete"), theme.onAccent, theme.accent, topBarHeight);
         Neu.apply(ok, theme, theme.accent, Ui.chipRadius(context));
         ok.setOnClickListener(v -> {
             listener.onClipChipPress();
@@ -165,8 +166,8 @@ public final class ClipboardPanel extends LinearLayout {
         // 고정 항목 분리: 왼쪽 페이지는 일반 항목(list), 오른쪽 페이지는 고정 항목(pinList). 위의 두 글자로 어느 쪽인지 보이고 눌러 넘길 수 있다.
         tabs = new LinearLayout(context);
         tabs.setGravity(Gravity.CENTER);
-        tabPinned = tab(context, Icons.PIN, "고정 항목", 0, topBarHeight);
-        tabNormal = tab(context, Icons.CLIPBOARD, "기록", 1, topBarHeight);
+        tabPinned = tab(context, Icons.PIN, L.t("고정 항목", "Pinned"), 0, topBarHeight);
+        tabNormal = tab(context, Icons.CLIPBOARD, L.t("기록", "History"), 1, topBarHeight);
         tabs.addView(tabPinned, new LayoutParams(Ui.dp(context, 44), topBarHeight));
         tabs.addView(tabNormal, new LayoutParams(Ui.dp(context, 44), topBarHeight));
         tabs.setVisibility(GONE);
@@ -468,20 +469,20 @@ public final class ClipboardPanel extends LinearLayout {
                 lp.topMargin = Ui.dp(getContext(), GAP_DP);
                 list.addView(card, lp);
             }
-            list.addView(note("클립보드 기록이 꺼져 있습니다. 설정에서 켤 수 있습니다."));
+            list.addView(note(L.t("클립보드 기록이 꺼져 있습니다. 설정에서 켤 수 있습니다.", "Clipboard history is off. You can turn it on in settings.")));
             return;
         }
         if (items.isEmpty()) {
-            list.addView(note("복사하거나 잘라낸 텍스트와 이미지가 여기에 모입니다.\n누르면 바로 붙여넣습니다."));
+            list.addView(note(L.t("복사하거나 잘라낸 텍스트와 이미지가 여기에 모입니다.\n누르면 바로 붙여넣습니다.", "Text and images you copy or cut are collected here.\nTap one to paste it.")));
             return;
         }
         List<ClipboardHistory.Item> pinned = new java.util.ArrayList<>(), normal = new java.util.ArrayList<>();
         for (ClipboardHistory.Item it : items) (it.pinned ? pinned : normal).add(it);
         if (split) {
             addGrid(list, normal);
-            if (normal.isEmpty()) list.addView(note("고정하지 않은 항목이 없습니다."));
+            if (normal.isEmpty()) list.addView(note(L.t("고정하지 않은 항목이 없습니다.", "No unpinned items.")));
             addGrid(pinList, pinned);
-            if (pinned.isEmpty()) pinList.addView(note("고정한 항목이 여기에 모입니다.\n항목의 핀 버튼으로 고정할 수 있습니다."));
+            if (pinned.isEmpty()) pinList.addView(note(L.t("고정한 항목이 여기에 모입니다.\n항목의 핀 버튼으로 고정할 수 있습니다.", "Pinned items are collected here.\nTap an item's pin button to pin it.")));
         } else {
             // 고정 항목을 위에 모으고, 분리선으로 일반 항목과 구분한다.
             addGrid(list, pinned);
@@ -489,8 +490,10 @@ public final class ClipboardPanel extends LinearLayout {
             addGrid(list, normal);
         }
         if (!before.isEmpty()) animateMoves(before);
-        String footer = "클립보드 항목은 최대 " + ClipboardHistory.MAX_ITEMS + "개(이미지는 " + ClipboardHistory.MAX_IMAGES
-                + "개)이며, 24시간 후 삭제됩니다. 핀 버튼으로 최대 " + ClipboardHistory.MAX_PINNED + "개까지 고정할 수 있습니다.";
+        String footer = L.t("클립보드 항목은 최대 " + ClipboardHistory.MAX_ITEMS + "개(이미지는 " + ClipboardHistory.MAX_IMAGES
+                + "개)이며, 24시간 후 삭제됩니다. 핀 버튼으로 최대 " + ClipboardHistory.MAX_PINNED + "개까지 고정할 수 있습니다.",
+                "The clipboard keeps up to " + ClipboardHistory.MAX_ITEMS + " items (" + ClipboardHistory.MAX_IMAGES
+                + " images), deleted after 24 hours. Pin up to " + ClipboardHistory.MAX_PINNED + " items with the pin button.");
         list.addView(note(footer));
         if (split) pinList.addView(note(footer));
     }
@@ -628,14 +631,14 @@ public final class ClipboardPanel extends LinearLayout {
             card.addView(bar, barLp);
             // 고정 / 삭제 버튼 (고정된 항목의 핀은 강조색)
             IconButton pin = new IconButton(c, item.pinned ? Icons.PIN_FILLED : Icons.PIN, theme.accent, theme.keyPressed,
-                    item.pinned ? "고정 해제" : "고정");
+                    item.pinned ? L.t("고정 해제", "Unpin") : L.t("고정", "Pin"));
             pin.setOnClickListener(v -> {
                 animateNext = true;
                 listener.onClipPin(item, !item.pinned);
             });
             bar.addView(pin, new LayoutParams(Ui.dp(c, 36), Ui.dp(c, 36)));
             // 아이콘만 있는 버튼: 핀은 강조 색(고정 여부는 채워졌는지로 구분), 삭제는 붉은색
-            IconButton trash = new IconButton(c, Icons.TRASH, Ui.danger(theme.dark), theme.keyPressed, "지우기");
+            IconButton trash = new IconButton(c, Icons.TRASH, Ui.danger(theme.dark), theme.keyPressed, L.t("지우기", "Delete"));
             trash.setOnClickListener(v -> {
                 animateNext = true;
                 listener.onClipDelete(item);
@@ -650,7 +653,7 @@ public final class ClipboardPanel extends LinearLayout {
         Context c = getContext();
         FrameLayout box = new FrameLayout(c);
         ImageView img = new ThumbView(c, maxContentHeight(), Ui.dp(c, 56));
-        img.setContentDescription("복사한 이미지");
+        img.setContentDescription(L.t("복사한 이미지", "Copied image"));
         int r = Ui.dp(c, 6);
         img.setOutlineProvider(new ViewOutlineProvider() {
             @Override

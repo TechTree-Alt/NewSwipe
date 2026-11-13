@@ -52,6 +52,9 @@ android {
     // 키보드 편집 UI 시험(EditorUiTest, Robolectric)이 앱 리소스와 매니페스트를 쓴다.
     testOptions {
         unitTests.isIncludeAndroidResources = true
+        // 화면 글은 기본 로케일로 한국어·영어를 고른다(L). 시험은 한국어 글을 보므로 한국어 로케일로 돌린다.
+        // (Robolectric 시험은 @Config qualifiers의 ko-rKR로 같은 일을 한다.)
+        unitTests.all { it.jvmArgs("-Duser.language=ko", "-Duser.country=KR") }
     }
 
     dependenciesInfo {

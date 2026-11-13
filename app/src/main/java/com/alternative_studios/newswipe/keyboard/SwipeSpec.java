@@ -114,6 +114,6 @@ public abstract class SwipeSpec {
 
     /** 칸·방향을 눌렀을 때 뜨는 기능 목록 창의 제목. */
     public String dialogTitle(int slot, int dir) {
-        return "'" + cardTitle(slot) + "' " + SwipeCustom.label(dir) + "으로 밀기";
+        return SwipeCustom.swipeTitle("'" + cardTitle(slot) + "'", dir);
     }
 }

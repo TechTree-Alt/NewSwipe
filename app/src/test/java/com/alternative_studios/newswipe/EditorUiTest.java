@@ -40,7 +40,7 @@ import static org.robolectric.Shadows.shadowOf;
  * 기본값으로 되돌리기, 바로 적용 등을 실제 화면을 만들어 눌러 보며 확인한다. -Dshots=폴더를 주면 화면을 찍어 남긴다.
  */
 @RunWith(RobolectricTestRunner.class)
-@Config(sdk = 36, qualifiers = "w411dp-h914dp-port-xxhdpi")
+@Config(sdk = 36, qualifiers = "ko-rKR-w411dp-h914dp-port-xxhdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 public class EditorUiTest {
     /** 화면을 찍어 둘 폴더 (-Dshots=폴더로 줄 때만 찍고 과정을 출력한다). */

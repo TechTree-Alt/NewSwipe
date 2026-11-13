@@ -1,5 +1,6 @@
 package com.alternative_studios.newswipe.suggest;
 
+import com.alternative_studios.newswipe.L;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -34,14 +35,14 @@ public final class Shortcuts {
      * @return 안 되면 이유(사용자에게 보여 줄 문구), 되면 null
      */
     public static String validate(String key, String phrase) {
-        if (key == null || key.isEmpty()) return "단축어를 적어 주세요";
-        if (key.length() > MAX_KEY) return "단축어는 " + MAX_KEY + "자까지 쓸 수 있습니다";
+        if (key == null || key.isEmpty()) return L.t("단축어를 적어 주세요", "Enter a shortcut");
+        if (key.length() > MAX_KEY) return L.t("단축어는 " + MAX_KEY + "자까지 쓸 수 있습니다", "Shortcuts can be up to " + MAX_KEY + " characters");
         if (!(WordSuggester.currentWord(key, true).equals(key) || WordSuggester.currentWord(key, false).equals(key))
                 || key.indexOf('\'') >= 0) {
-            return "단축어는 한글(자음·모음 포함)이나 영어 글자만 쓸 수 있고, 한글과 영어를 섞을 수 없습니다";
+            return L.t("단축어는 한글(자음·모음 포함)이나 영어 글자만 쓸 수 있고, 한글과 영어를 섞을 수 없습니다", "Shortcuts can only use Korean letters (including single consonants and vowels) or English letters, and can't mix Korean and English");
         }
-        if (phrase == null || cleanPhrase(phrase).isEmpty()) return "문장을 적어 주세요";
-        if (cleanPhrase(phrase).length() > MAX_PHRASE) return "문장은 " + MAX_PHRASE + "자까지 쓸 수 있습니다";
+        if (phrase == null || cleanPhrase(phrase).isEmpty()) return L.t("문장을 적어 주세요", "Enter a phrase");
+        if (cleanPhrase(phrase).length() > MAX_PHRASE) return L.t("문장은 " + MAX_PHRASE + "자까지 쓸 수 있습니다", "Phrases can be up to " + MAX_PHRASE + " characters");
         return null;
     }
 

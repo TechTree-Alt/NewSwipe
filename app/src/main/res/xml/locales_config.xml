@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 13 이상의 앱별 언어 설정에 보이는 언어. 화면 글은 한국어(ko)와 영어(en, 기본)만 있다 (L 참고). -->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="ko" />
+</locale-config>

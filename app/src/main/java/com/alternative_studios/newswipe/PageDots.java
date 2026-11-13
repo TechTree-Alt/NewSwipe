@@ -90,7 +90,8 @@ final class PageDots extends LinearLayout {
         }
         nameView.setText(names[p]);
         descView.setText(descs[p]);
-        setContentDescription(names[p] + ". " + descs[p] + " 눌러서 " + names[(p + 1) % names.length] + "(으)로 넘기기");
+        String next = names[(p + 1) % names.length];
+        setContentDescription(names[p] + ". " + descs[p] + L.t(" 눌러서 " + next + "(으)로 넘기기", " Tap to go to " + next));
     }
 
     /** 사용자가 페이지를 넘겼다: 화면 읽기에 새 페이지의 이름과 설명을 읽어 준다. */

@@ -1,5 +1,6 @@
 package com.alternative_studios.newswipe.keyboard;
 
+import com.alternative_studios.newswipe.L;
 import com.alternative_studios.newswipe.Prefs;
 
 import java.util.ArrayList;
@@ -38,22 +39,22 @@ public final class FnKeyActions {
 
         @Override
         public String title() {
-            return "Fn 키 사용자화";
+            return L.t("Fn 키 사용자화", "Customize Fn key");
         }
 
         @Override
         public String note() {
-            return "한글 자판의 Shift 자리에 놓인 Fn 키를 누르거나 길게 누르거나 밀 때 실행할 기능을 고릅니다.";
+            return L.t("한글 자판의 Shift 자리에 놓인 Fn 키를 누르거나 길게 누르거나 밀 때 실행할 기능을 고릅니다.", "Choose what the Fn key, placed where Shift is on the Korean keyboard, does when you tap, long press or swipe it.");
         }
 
         @Override
         public String cardTitle(int slot) {
-            return slot == PRESS ? "Fn 키 누르기" : "Fn 키 밀기";
+            return slot == PRESS ? L.t("Fn 키 누르기", "Fn key tap") : L.t("Fn 키 밀기", "Fn key swipe");
         }
 
         @Override
         public String cardHint(int slot) {
-            return slot == PRESS ? "누르거나 길게 누를 때" : "위·아래·왼쪽·오른쪽으로 밀 때";
+            return slot == PRESS ? L.t("누르거나 길게 누를 때", "Tap or long press") : L.t("위·아래·왼쪽·오른쪽으로 밀 때", "Swipe up, down, left or right");
         }
 
         @Override
@@ -63,7 +64,7 @@ public final class FnKeyActions {
 
         @Override
         public String dirLabel(int slot, int dir) {
-            if (slot == PRESS) return dir == LONG ? "길게 누르기" : "누르기";
+            if (slot == PRESS) return dir == LONG ? L.t("길게 누르기", "Long press") : L.t("누르기", "Tap");
             return dirLabel(dir);
         }
 
@@ -86,8 +87,8 @@ public final class FnKeyActions {
 
         @Override
         public String dialogTitle(int slot, int dir) {
-            if (slot == PRESS) return "Fn 키 " + (dir == LONG ? "길게 누르기" : "누르기");
-            return "Fn 키 " + SwipeCustom.label(dir) + "으로 밀기";
+            if (slot == PRESS) return dir == LONG ? L.t("Fn 키 길게 누르기", "Fn key long press") : L.t("Fn 키 누르기", "Fn key tap");
+            return SwipeCustom.swipeTitle(L.t("Fn 키", "Fn key"), dir);
         }
     };
 
