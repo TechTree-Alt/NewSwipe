@@ -239,6 +239,7 @@ public final class SettingsActivity extends Activity {
 
     /** 메뉴에는 없고 다른 화면에서 여는 하위 화면. */
     private static final String LEARNED = "learned", BLOCKED = "blocked", PRIVACY = "privacy", LICENSES = "licenses",
+            HALL_OF_FAME = "halloffame",
             LANDSCAPE_AREA = "landscapearea",
             LARGE_AREA = "largearea";
 
@@ -259,6 +260,7 @@ public final class SettingsActivity extends Activity {
             case BLOCKED: return L.t("학습하지 않는 단어", "Blocked words");
             case PRIVACY: return L.t("개인정보 처리방침", "Privacy policy");
             case LICENSES: return L.t("오픈소스 라이선스", "Open source licenses");
+            case HALL_OF_FAME: return L.t("명예의 전당", "Hall of fame");
             case LANDSCAPE_AREA: return L.t("가로 모드 키보드 사용자화", "Customize landscape keyboard");
             case LARGE_AREA: return L.t("폴더블 내부 화면 키보드 사용자화", "Customize inner screen keyboard");
             default: return null;
@@ -290,6 +292,7 @@ public final class SettingsActivity extends Activity {
             case "backup": buildBackup(); break;
             case PRIVACY: buildPrivacy(); break;
             case LICENSES: buildLicenses(); break;
+            case HALL_OF_FAME: buildHallOfFame(); break;
             case LANDSCAPE_AREA: buildLandscapeArea(); break;
             case "lab": buildLab(); break;
             case LARGE_AREA: buildLargeArea(); break;
@@ -496,6 +499,7 @@ public final class SettingsActivity extends Activity {
             {"app", L.t("오픈소스 라이선스", "Open source licenses"), L.t("라이센스 license 정보", "license")},
             {"app", L.t("소스 코드", "Source code"), L.t("깃허브 github 정보", "github source")},
             {"app", L.t("문의", "Contact"), L.t("이슈 버그 제보 연락 정보", "issue bug report contact")},
+            {"app", L.t("명예의 전당", "Hall of fame"), L.t("비공개 테스트 테스터 감사 정보", "closed test testers thanks")},
             {"app", L.t("런처에 앱 아이콘 표시", "Show app icon in launcher"), L.t("앱 아이콘 숨기기 홈 화면", "app icon hide home screen launcher")},
             {"backup", L.t("설정 가져오기", "Import settings"), L.t("복원 불러오기 import", "restore load import")},
             {"backup", L.t("설정 내보내기", "Export settings"), L.t("백업 저장 export", "backup save export")},
@@ -4103,9 +4107,13 @@ public final class SettingsActivity extends Activity {
         hlp.bottomMargin = Ui.dp(this, 8);
         about.addView(head, hlp);
 
-        // 앱 아이콘: 런처와 같은 적응형 아이콘을 그대로 써서, 기기의 아이콘 모양(원·둥근 사각 등)으로 잘려 보인다.
+        // 앱 아이콘: 런처와 같은 적응형 아이콘으로 그려 기기의 아이콘 모양(원·둥근 사각 등)으로 잘려 보이게 하고,
+        // 바탕과 화살표를 런처의 파랑 대신 지금 고른 강조색으로 칠한다.
         android.widget.ImageView icon = new android.widget.ImageView(this);
-        icon.setImageDrawable(getDrawable(R.mipmap.ic_launcher));
+        icon.setImageDrawable(new android.graphics.drawable.AdaptiveIconDrawable(
+                new android.graphics.drawable.ColorDrawable(accentColor),
+                new android.graphics.drawable.LayerDrawable(new android.graphics.drawable.Drawable[]{
+                        getDrawable(R.drawable.ic_launcher_foreground), new IconArrow(accentColor)})));
         icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         int iconSize = Ui.dp(this, 96);
         LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(iconSize, iconSize);
@@ -4118,9 +4126,175 @@ public final class SettingsActivity extends Activity {
         about.addView(button(L.t("오픈소스 라이선스", "Open source licenses"), v -> openSection(LICENSES)));
         about.addView(button(L.t("소스 코드", "Source code"), v -> openUrl(SOURCE_URL)));
         about.addView(button(L.t("문의", "Contact"), v -> openUrl(ISSUES_URL)));
+        about.addView(hallOfFameButton());
 
         LinearLayout app = section(L.t("앱 아이콘", "App icon"));
         app.addView(launcherToggle());
+    }
+
+    /**
+     * 명예의 전당에 올릴 출시 테스트 참여자 (닉네임, 프로필 사진). 사진은 앱 용량을 아끼려고
+     * 160×160 WebP로 줄여 res/drawable-nodpi에 둔다 (한 장에 몇 KB).
+     */
+    private static final Object[][] HALL_OF_FAME_PEOPLE = {
+            {"마로코기", R.drawable.hof_marokogi},
+            {"ssonbin", R.drawable.hof_ssonbin},
+            {"청보라", R.drawable.hof_cheongbora},
+    };
+
+    /** 정보 화면의 '명예의 전당' 버튼. 다른 버튼과 달리 무지개빛 그라데이션 바탕으로 돋보이게 한다. */
+    private View hallOfFameButton() {
+        final int ink = 0xFF1F1B2E;   // 옅은 무지개 위에서는 화면 모드와 관계없이 짙은 글자가 잘 읽힌다
+        View row = button(L.t("명예의 전당", "Hall of fame"),
+                new Chevron(this, ink), v -> openSection(HALL_OF_FAME));
+        android.graphics.drawable.GradientDrawable rainbow = new android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{0xFFFFB3BA, 0xFFFFD8A8, 0xFFFFF3A6, 0xFFBDF2C4, 0xFFB5DEFF, 0xFFD5BEFF});
+        float r = Ui.dp(this, 12);
+        rainbow.setCornerRadius(r);
+        row.setBackground(Ui.ripple(0x33000000, rainbow, r));
+        TextView t = (TextView) ((ViewGroup) row).getChildAt(0);
+        t.setTextColor(ink);
+        t.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        return row;
+    }
+
+    /** 명예의 전당 신청 안내. 강조색 '신청서'를 누르면 신청서(Google 설문지)를 연다. */
+    private TextView hallOfFameApplyNote() {
+        String link = L.t("신청서", "application form");
+        String text = L.t("Google Play에서 유료로 NewSwipe를 구매해 사전 테스트에 참여하신 분들은 명예의 전당에 이름을 올릴 수 있습니다. "
+                        + "원하시는 분은 " + link + "를 작성해 주세요.",
+                "If you bought NewSwipe on Google Play and joined the pre-release test, you can have your name in the hall of fame. "
+                        + "If you'd like that, please fill out the " + link + ".");
+        android.text.SpannableString span = new android.text.SpannableString(text);
+        int start = text.lastIndexOf(link);
+        span.setSpan(new android.text.style.ClickableSpan() {
+            @Override
+            public void onClick(View widget) {
+                openUrl(HALL_OF_FAME_FORM_URL);
+            }
+
+            @Override
+            public void updateDrawState(android.text.TextPaint ds) {
+                ds.setColor(accentColor);
+                ds.setUnderlineText(false);
+            }
+        }, start, start + link.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        TextView t = note("");
+        t.setText(span);
+        t.setMovementMethod(android.text.method.LinkMovementMethod.getInstance());
+        t.setHighlightColor(android.graphics.Color.TRANSPARENT);
+        return t;
+    }
+
+    private static final String HALL_OF_FAME_FORM_URL =
+            "https://docs.google.com/forms/d/e/1FAIpQLSdFzCqaJ6oLivN73Gq8uxO9o-aiGtW04OgdLpjfNYDBHVjg1g/viewform?usp=header";
+
+    /** 사진과 닉네임을 싣지 않은 나머지 참여자 수. */
+    private static final int HALL_OF_FAME_OTHERS = 37;
+
+    private void buildHallOfFame() {
+        LinearLayout c = card();
+        c.addView(note(L.t("출시 테스트에 참여해 NewSwipe를 응원하고 함께 다듬어 주신 분들입니다. 감사합니다.",
+                "People who joined the pre-release test, cheered NewSwipe on and helped shape it. Thank you.")));
+        int size = Ui.dp(this, 56);
+        for (Object[] p : HALL_OF_FAME_PEOPLE) {
+            LinearLayout row = new LinearLayout(this);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            android.widget.ImageView photo = new android.widget.ImageView(this);
+            photo.setImageDrawable(circlePhoto((Integer) p[1]));
+            photo.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+            row.addView(photo, new LinearLayout.LayoutParams(size, size));
+            TextView name = new TextView(this);
+            name.setText((String) p[0]);
+            name.setTextColor(textColor);
+            name.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
+            LinearLayout.LayoutParams nlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT);
+            nlp.leftMargin = Ui.dp(this, 16);
+            row.addView(name, nlp);
+            LinearLayout.LayoutParams rlp = matchWrap();
+            rlp.topMargin = Ui.dp(this, 12);
+            rlp.bottomMargin = Ui.dp(this, 4);
+            c.addView(row, rlp);
+        }
+        TextView more = note(L.t("외 " + HALL_OF_FAME_OTHERS + "명의 고마운 분들",
+                "and " + HALL_OF_FAME_OTHERS + " other people we're grateful to"));
+        LinearLayout.LayoutParams mlp = matchWrap();
+        mlp.topMargin = Ui.dp(this, 16);
+        c.addView(more, mlp);
+
+        // 신청 안내는 참여자 목록과 따로 아래 카드에 둔다.
+        card().addView(hallOfFameApplyNote(), matchWrap());
+    }
+
+    /** 정사각형 사진을 동그랗게 잘라 그리는 Drawable (외부 라이브러리 없이 BitmapShader로). */
+    private android.graphics.drawable.Drawable circlePhoto(int res) {
+        android.graphics.Bitmap bmp = android.graphics.BitmapFactory.decodeResource(getResources(), res);
+        android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG
+                | android.graphics.Paint.FILTER_BITMAP_FLAG);
+        android.graphics.BitmapShader shader = new android.graphics.BitmapShader(bmp,
+                android.graphics.Shader.TileMode.CLAMP, android.graphics.Shader.TileMode.CLAMP);
+        paint.setShader(shader);
+        return new android.graphics.drawable.Drawable() {
+            @Override public void draw(android.graphics.Canvas c) {
+                android.graphics.Rect r = getBounds();
+                android.graphics.Matrix m = new android.graphics.Matrix();
+                m.setScale(r.width() / (float) bmp.getWidth(), r.height() / (float) bmp.getHeight());
+                m.postTranslate(r.left, r.top);
+                shader.setLocalMatrix(m);
+                c.drawOval(r.left, r.top, r.right, r.bottom, paint);
+            }
+            @Override public void setAlpha(int alpha) { paint.setAlpha(alpha); }
+            @Override public void setColorFilter(android.graphics.ColorFilter cf) { paint.setColorFilter(cf); }
+            @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
+        };
+    }
+
+    /**
+     * 정보 화면 아이콘의 흰 키 위 화살표를 강조색으로 다시 그린다. ic_launcher_foreground.xml의 화살표와 같은 자리·굵기
+     * (108 단위 좌표)로 덮고, 런처 아이콘처럼 위는 밝게 아래는 짙게 칠한다.
+     */
+    private static final class IconArrow extends android.graphics.drawable.Drawable {
+        private final android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.Path path = new android.graphics.Path();
+        private final int mid;
+
+        IconArrow(int accent) {
+            mid = accent | 0xFF000000;
+            path.moveTo(54, 47);
+            path.lineTo(54, 65);
+            path.moveTo(46.5f, 58);
+            path.lineTo(54, 65.5f);
+            path.lineTo(61.5f, 58);
+            paint.setStyle(android.graphics.Paint.Style.STROKE);
+            paint.setStrokeWidth(6.4f);   // 원래 화살표(6)의 가장자리까지 덮는다
+            paint.setStrokeCap(android.graphics.Paint.Cap.ROUND);
+            paint.setStrokeJoin(android.graphics.Paint.Join.ROUND);
+            paint.setShader(new android.graphics.LinearGradient(0, 47, 0, 65.5f,
+                    mix(mid, 0xFFFFFFFF, 0.15f), mix(mid, 0xFF000000, 0.25f), android.graphics.Shader.TileMode.CLAMP));
+        }
+
+        private static int mix(int a, int b, float t) {
+            int r = Math.round(android.graphics.Color.red(a) * (1 - t) + android.graphics.Color.red(b) * t);
+            int g = Math.round(android.graphics.Color.green(a) * (1 - t) + android.graphics.Color.green(b) * t);
+            int bl = Math.round(android.graphics.Color.blue(a) * (1 - t) + android.graphics.Color.blue(b) * t);
+            return android.graphics.Color.rgb(r, g, bl);
+        }
+
+        @Override
+        public void draw(android.graphics.Canvas c) {
+            android.graphics.Rect r = getBounds();
+            int save = c.save();
+            c.translate(r.left, r.top);
+            c.scale(r.width() / 108f, r.height() / 108f);
+            c.drawPath(path, paint);
+            c.restoreToCount(save);
+        }
+
+        @Override public void setAlpha(int alpha) { paint.setAlpha(alpha); }
+        @Override public void setColorFilter(android.graphics.ColorFilter cf) { paint.setColorFilter(cf); }
+        @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
     }
 
     private void openUrl(String url) {
