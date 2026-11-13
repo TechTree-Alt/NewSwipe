@@ -467,8 +467,13 @@ public final class BottomKeysEditorActivity extends Activity {
                 if (dragging != row) return false;
                 // 목록 안에서만 움직이게 한다.
                 float dy = ev.getRawY() - dragDownY;
-                float minDy = dragRows.get(0).getTop() - row.getTop();
-                float maxDy = dragRows.get(dragRows.size() - 1).getBottom() - row.getBottom();
+                // 끌고 있는 줄의 가운데가 맨 위 줄의 가운데 조금 위부터 맨 아래 줄의 가운데 조금 아래까지 움직이게 한다.
+                // 줄의 위아래 끝으로 막으면 줄의 가운데가 맨 아래 줄의 가운데를 넘지 못해(같거나 낮은 높이일 때)
+                // 맨 아래 항목 아래로 옮길 수 없었다.
+                View first = dragRows.get(0), last = dragRows.get(dragRows.size() - 1);
+                float rowCenter = row.getTop() + row.getHeight() / 2f;
+                float minDy = first.getTop() + first.getHeight() / 2f - 1 - rowCenter;
+                float maxDy = last.getTop() + last.getHeight() / 2f + 1 - rowCenter;
                 dy = Math.max(minDy, Math.min(maxDy, dy));
                 row.setTranslationY(dy);
                 // 끌고 있는 줄의 가운데가 지나간 줄 수만큼 자리를 옮긴다.
