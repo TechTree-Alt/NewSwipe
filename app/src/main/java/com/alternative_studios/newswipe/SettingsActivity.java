@@ -4103,6 +4103,17 @@ public final class SettingsActivity extends Activity {
         hlp.bottomMargin = Ui.dp(this, 8);
         about.addView(head, hlp);
 
+        // 앱 아이콘: 런처와 같은 적응형 아이콘을 그대로 써서, 기기의 아이콘 모양(원·둥근 사각 등)으로 잘려 보인다.
+        android.widget.ImageView icon = new android.widget.ImageView(this);
+        icon.setImageDrawable(getDrawable(R.mipmap.ic_launcher));
+        icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        int iconSize = Ui.dp(this, 96);
+        LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(iconSize, iconSize);
+        ilp.gravity = Gravity.CENTER_HORIZONTAL;
+        ilp.topMargin = Ui.dp(this, 8);
+        ilp.bottomMargin = Ui.dp(this, 20);
+        about.addView(icon, ilp);
+
         about.addView(button(L.t("개인정보 처리방침", "Privacy policy"), v -> openSection(PRIVACY)));
         about.addView(button(L.t("오픈소스 라이선스", "Open source licenses"), v -> openSection(LICENSES)));
         about.addView(button(L.t("소스 코드", "Source code"), v -> openUrl(SOURCE_URL)));

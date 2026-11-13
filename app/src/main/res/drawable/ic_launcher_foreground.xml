@@ -1,17 +1,74 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 키 하나를 아래로 미는 모양: 스와이프 단모음을 나타낸다. -->
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- 밀려 내려간 키: 원래 자리의 반투명 잔상과 아래로 밀려 내려온 키로 스와이프(아래로 밀기)를 나타낸다. tools/generate_launcher_icon.py로 만든다. 손으로 고치지 않는다. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M40,30h28a9,9 0,0 1,9 9v30a9,9 0,0 1,-9 9h-28a9,9 0,0 1,-9 -9v-30a9,9 0,0 1,9 -9z" />
+        android:fillColor="#47FFFFFF"
+        android:pathData="M45,24h18a10,10 0,0 1 10,10v18a10,10 0,0 1 -10,10h-18a10,10 0,0 1 -10,-10v-18a10,10 0,0 1 10,-10z" />
     <path
-        android:pathData="M54,40v24M44.5,55.5L54,65L63.5,55.5"
+        android:fillColor="#0B0E2A86"
+        android:pathData="M44,43.9h20a7.1,7.1 0,0 1 7.1,7.1v20a7.1,7.1 0,0 1 -7.1,7.1h-20a7.1,7.1 0,0 1 -7.1,-7.1v-20a7.1,7.1 0,0 1 7.1,-7.1z" />
+    <path
+        android:fillColor="#0B0E2A86"
+        android:pathData="M44,43.3h20a7.7,7.7 0,0 1 7.7,7.7v20a7.7,7.7 0,0 1 -7.7,7.7h-20a7.7,7.7 0,0 1 -7.7,-7.7v-20a7.7,7.7 0,0 1 7.7,-7.7z" />
+    <path
+        android:fillColor="#0B0E2A86"
+        android:pathData="M44,42.7h20a8.3,8.3 0,0 1 8.3,8.3v20a8.3,8.3 0,0 1 -8.3,8.3h-20a8.3,8.3 0,0 1 -8.3,-8.3v-20a8.3,8.3 0,0 1 8.3,-8.3z" />
+    <path
+        android:fillColor="#0B0E2A86"
+        android:pathData="M44,42.1h20a8.9,8.9 0,0 1 8.9,8.9v20a8.9,8.9 0,0 1 -8.9,8.9h-20a8.9,8.9 0,0 1 -8.9,-8.9v-20a8.9,8.9 0,0 1 8.9,-8.9z" />
+    <path
+        android:fillColor="#0B0E2A86"
+        android:pathData="M44,41.5h20a9.5,9.5 0,0 1 9.5,9.5v20a9.5,9.5 0,0 1 -9.5,9.5h-20a9.5,9.5 0,0 1 -9.5,-9.5v-20a9.5,9.5 0,0 1 9.5,-9.5z" />
+    <path
+        android:fillColor="#0B0E2A86"
+        android:pathData="M44,40.9h20a10.1,10.1 0,0 1 10.1,10.1v20a10.1,10.1 0,0 1 -10.1,10.1h-20a10.1,10.1 0,0 1 -10.1,-10.1v-20a10.1,10.1 0,0 1 10.1,-10.1z" />
+    <path
+        android:fillColor="#0B0E2A86"
+        android:pathData="M44,40.3h20a10.7,10.7 0,0 1 10.7,10.7v20a10.7,10.7 0,0 1 -10.7,10.7h-20a10.7,10.7 0,0 1 -10.7,-10.7v-20a10.7,10.7 0,0 1 10.7,-10.7z" />
+    <path
+        android:fillColor="#0B0E2A86"
+        android:pathData="M44,39.7h20a11.3,11.3 0,0 1 11.3,11.3v20a11.3,11.3 0,0 1 -11.3,11.3h-20a11.3,11.3 0,0 1 -11.3,-11.3v-20a11.3,11.3 0,0 1 11.3,-11.3z" />
+    <path
+        android:fillColor="#0B0E2A86"
+        android:pathData="M44,39.1h20a11.9,11.9 0,0 1 11.9,11.9v20a11.9,11.9 0,0 1 -11.9,11.9h-20a11.9,11.9 0,0 1 -11.9,-11.9v-20a11.9,11.9 0,0 1 11.9,-11.9z" />
+    <path
+        android:fillColor="#0B0E2A86"
+        android:pathData="M44,38.5h20a12.5,12.5 0,0 1 12.5,12.5v20a12.5,12.5 0,0 1 -12.5,12.5h-20a12.5,12.5 0,0 1 -12.5,-12.5v-20a12.5,12.5 0,0 1 12.5,-12.5z" />
+    <path
+        android:fillColor="#0B0E2A86"
+        android:pathData="M44,37.9h20a13.1,13.1 0,0 1 13.1,13.1v20a13.1,13.1 0,0 1 -13.1,13.1h-20a13.1,13.1 0,0 1 -13.1,-13.1v-20a13.1,13.1 0,0 1 13.1,-13.1z" />
+    <path
+        android:fillColor="#0B0E2A86"
+        android:pathData="M44,37.3h20a13.7,13.7 0,0 1 13.7,13.7v20a13.7,13.7 0,0 1 -13.7,13.7h-20a13.7,13.7 0,0 1 -13.7,-13.7v-20a13.7,13.7 0,0 1 13.7,-13.7z" />
+    <path
+        android:fillColor="#0B0E2A86"
+        android:pathData="M44,36.7h20a14.3,14.3 0,0 1 14.3,14.3v20a14.3,14.3 0,0 1 -14.3,14.3h-20a14.3,14.3 0,0 1 -14.3,-14.3v-20a14.3,14.3 0,0 1 14.3,-14.3z" />
+    <path
+        android:fillColor="#0B0E2A86"
+        android:pathData="M44,36.1h20a14.9,14.9 0,0 1 14.9,14.9v20a14.9,14.9 0,0 1 -14.9,14.9h-20a14.9,14.9 0,0 1 -14.9,-14.9v-20a14.9,14.9 0,0 1 14.9,-14.9z" />
+    <path
+        android:pathData="M44,36h20a11,11 0,0 1 11,11v20a11,11 0,0 1 -11,11h-20a11,11 0,0 1 -11,-11v-20a11,11 0,0 1 11,-11z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="0" android:startY="36" android:endX="0" android:endY="78">
+                <item android:offset="0" android:color="#FFFFFFFF" />
+                <item android:offset="1" android:color="#FFEEF3FF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path
+        android:pathData="M54,47V65M46.5,58L54,65.5L61.5,58"
         android:strokeWidth="6"
-        android:strokeColor="#2F62E8"
         android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
+        android:strokeLineJoin="round">
+        <aapt:attr name="android:strokeColor">
+            <gradient android:type="linear" android:startX="0" android:startY="47" android:endX="0" android:endY="65.5">
+                <item android:offset="0" android:color="#FF4A7EF7" />
+                <item android:offset="1" android:color="#FF1F48C9" />
+            </gradient>
+        </aapt:attr>
+    </path>
 </vector>

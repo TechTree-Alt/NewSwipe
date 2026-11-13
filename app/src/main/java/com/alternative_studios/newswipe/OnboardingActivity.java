@@ -203,7 +203,7 @@ public final class OnboardingActivity extends Activity {
 
         root.addView(new View(this), new LinearLayout.LayoutParams(1, 0, 1f));
 
-        // 아이콘 바탕색의 물결 모양(Material 3 Expressive 모양)이 천천히 돌고, 그 위에 아이콘의 앞면(흰 키와 화살표)만 얹는다.
+        // 아이콘 바탕색의 물결 모양(Material 3 Expressive 모양)이 천천히 돌고, 그 위에 아이콘의 앞면(잔상, 키, 화살표)만 얹는다.
         // 물결 모양 자체가 아이콘의 바탕이 되어, 아이콘 모양과 물결이 따로 보이지 않는다.
         FrameLayout hero = new FrameLayout(this);
         OnboardingArt.ShapeBadge halo = new OnboardingArt.ShapeBadge(this,
