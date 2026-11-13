@@ -1,26 +1,10 @@
 name: Build
 
 on:
+  # main에 푸시(PR 병합 포함)해도 자동으로 빌드하지 않는다. main 빌드는 Actions 탭에서 수동(workflow_dispatch)으로 돌린다.
+  # 릴리스 태그(v*)는 계속 자동으로 빌드·게시한다.
   push:
-    branches: [ main ]
     tags: [ 'v*' ]
-    # 앱에 영향을 주지 않는 변경(문서, 라이선스, 홍보 이미지, 데이터 생성 스크립트, 사전 도구·팩, Gradle 설정)만 있는 커밋은 빌드하지 않는다.
-    # 태그(릴리스)에는 적용되지 않아 릴리스는 항상 빌드된다.
-    paths-ignore:
-      - '**/*.md'
-      - 'docs/**'
-      - 'tools/**'
-      - 'dict/**'
-      - 'LICENSE'
-      - 'NOTICE'
-      - '.gitignore'
-      - '.gitattributes'
-      # Gradle 설정(버전업, 의존성 등). 바뀐 설정은 다음에 앱 코드가 바뀌어 빌드될 때나 릴리스 태그에서 확인된다.
-      - '**/*.gradle.kts'
-      - 'gradle.properties'
-      - 'gradle/**'
-      - 'gradlew'
-      - 'gradlew.bat'
   pull_request:
   workflow_dispatch:
 
@@ -32,6 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+      # AAB(Google Play용)는 main에서 수동으로 돌렸을 때만 만든다.
+      BUILD_AAB: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -58,26 +44,36 @@ jobs:
           NEWSWIPE_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           NEWSWIPE_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           NEWSWIPE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: ./gradlew --no-daemon testDebugUnitTest assembleRelease bundleRelease
+        run: |
+          tasks="testDebugUnitTest assembleRelease"
+          if [ "$BUILD_AAB" = "true" ]; then tasks="$tasks bundleRelease"; fi
+          ./gradlew --no-daemon $tasks
 
       - name: Warn if built without the release key
         if: ${{ env.KEYSTORE_BASE64 == '' }}
         run: echo "::warning::KEYSTORE_BASE64 시크릿이 없어 디버그 키로 서명했습니다. 이 APK/AAB는 배포하거나 Play에 올리지 마세요."
 
-      - name: Collect APK and AAB
+      - name: Collect APK
         run: |
-          mkdir -p out aab-out
+          mkdir -p out
           cp app/build/outputs/apk/release/app-release.apk "out/NewSwipe-${GITHUB_REF_NAME//\//-}.apk"
+          ls -la out
+
+      - name: Collect AAB
+        if: ${{ env.BUILD_AAB == 'true' }}
+        run: |
+          mkdir -p aab-out
           cp app/build/outputs/bundle/release/app-release.aab "aab-out/NewSwipe-${GITHUB_REF_NAME//\//-}.aab"
-          ls -la out aab-out
+          ls -la aab-out
 
       - uses: actions/upload-artifact@v7
         with:
           name: NewSwipe-apk
           path: out/*.apk
 
-      # Google Play에 올리는 파일. GitHub 릴리스에는 붙이지 않는다.
+      # Google Play에 올리는 파일. GitHub 릴리스에는 붙이지 않는다. main 수동 빌드에서만 만든다.
       - uses: actions/upload-artifact@v7
+        if: ${{ env.BUILD_AAB == 'true' }}
         with:
           name: NewSwipe-aab
           path: aab-out/*.aab
