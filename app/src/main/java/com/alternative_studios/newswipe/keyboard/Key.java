@@ -37,6 +37,8 @@ public final class Key {
     public static final int CURSOR_PAD = 15;
     /** 맨 아래 줄에 더할 수 있는 키: 음성 입력. */
     public static final int VOICE = 16;
+    /** 일본어 12키 자판의 ◀·▶ 키: 누르면 커서가 한 칸 움직이고, 길게 누르면 계속 움직인다. */
+    public static final int CURSOR_LEFT = 17, CURSOR_RIGHT = 18;
 
     /** 스와이프 방향. */
     public static final int SWIPE_DOWN = 0, SWIPE_UP = 1, SWIPE_LEFT = 2, SWIPE_RIGHT = 3;

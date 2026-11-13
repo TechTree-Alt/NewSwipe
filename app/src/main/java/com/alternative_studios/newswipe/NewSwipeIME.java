@@ -160,6 +160,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private EmojiPanel emojiPanel;
     private ClipboardPanel clipPanel;
     private int toolbarHeight, keyboardHeight;
+    /** keyboardHeight 중 키 줄이 차지하는 부분 (여백 제외). 일본어 자판 높이는 이 부분만 비율대로 바꾼다. */
+    private int keyRowsHeight;
+    /** 마지막으로 자판에 적용한 {@link #jaExtraHeight()}. */
+    private int appliedJaExtra;
 
     // 상태
     private boolean korean = true;
@@ -169,6 +173,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private final java.util.Map<String, CjkComposer> cjkComposers = new java.util.HashMap<>();
     /** 사전을 읽는 중인 언어. */
     private final java.util.Set<String> cjkLoading = new java.util.HashSet<>();
+    /** 언어마다 자주 고른 변환 후보의 기록 (사전을 놓아 줘도 남겨 둔다). 저장은 백그라운드에서 한다. */
+    private final java.util.Map<String, com.alternative_studios.newswipe.cjk.CjkLearning> cjkLearnings =
+            new java.util.HashMap<>();
     /** 사전을 읽을 때의 {@link CjkPack#changes()}. 팩을 바꾸거나 지우면 다시 읽는다. */
     private int cjkPackChanges = -1;
     /** 실험실에서 켰고 사전 팩도 있는 언어 (applySettings에서 정한다). */
@@ -346,6 +353,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         dismissForgetDialog();
         // 이미 맡긴 단어 기록이 끝난 뒤에 저장하고 내리도록 같은 작업 줄에 넣는다 (shutdown은 남은 작업을 마저 한다).
         runIo(this::releaseLearned);
+        saveCjkLearning();
         io.shutdown();
         searchSeq++;   // 지금 돌고 있는 검색이 끝나서 보내는 결과도 버린다
         searchIo.shutdownNow();   // 남은 검색은 보여 줄 곳이 없다
@@ -1339,7 +1347,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         appliedBarOnly = hwToolbarOnly();
         updateHideButton();
         // 한 손 모드에서는 키 높이를 '키 높이' 비율만큼 줄인다.
-        keyboardHeight = Math.round(Ui.dp(this, 54) * rows * sizePrefs.keyboardHeight() / 100f * oneHandScale)
+        keyRowsHeight = Math.round(Ui.dp(this, 54) * rows * sizePrefs.keyboardHeight() / 100f * oneHandScale);
+        keyboardHeight = keyRowsHeight
                 + Ui.dp(this, padPrefs().padTopDp()) + Ui.dp(this, padPrefs().padBottomDp()) + Ui.dp(this, padPrefs().areaPadVerticalDp());
         keyboard.setKeyboardHeight(keyboardHeight);
         applyOneHand();
@@ -1561,6 +1570,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             userWords.save();
             usageHistory.save();
         });
+        saveCjkLearning();
     }
 
     @Override
@@ -1754,6 +1764,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private void setLayoutKind(int kind) {
         layoutKind = kind;
         if (keyboard == null) return;   // 외장 키보드만 쓰면 자판 화면을 만들지 않은 채 언어를 바꿀 수 있다
+        if (jaExtraHeight() != appliedJaExtra) updatePanelSizes();   // 일본어 자판만 높이를 따로 정했다
         // 한 손 모드에서는 자·모음 균형 배열의 가운데 빈틈을 없앤 배열을 쓴다.
         Prefs prefs = !Prefs.ONE_HAND_OFF.equals(activeOneHand()) ? this.prefs.oneHandView() : this.prefs;
         // 자·모음 균형 배열의 키 폭·위치는 가로 모드·폴더블 내부 화면일 때 세로 모드와 따로 정한 값을 쓴다.
@@ -1883,6 +1894,18 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
     }
 
+    /**
+     * 일본어 자판 높이 설정으로 더하거나 뺄 높이 (px). 일본어로 입력하는 동안의 글자·기호 자판에만 쓴다
+     * (이모지·클립보드 창과 숫자 패드, 다른 언어는 그대로).
+     */
+    private int jaExtraHeight() {
+        if (!CjkComposer.JA.equals(cjkLang) || panel != PANEL_KEYBOARD) return 0;
+        if (layoutKind != KeyboardLayout.JAPANESE && layoutKind != KeyboardLayout.SYMBOLS
+                && layoutKind != KeyboardLayout.SYMBOLS_2) return 0;
+        int pct = prefs.jaHeight();
+        return pct == 100 ? 0 : Math.round(keyRowsHeight * (pct - 100) / 100f);
+    }
+
     private void updatePanelSizes() {
         if (content == null) return;
         boolean full = panel == PANEL_EMOJI || panel == PANEL_CLIPBOARD;
@@ -1902,7 +1925,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         int gapTop = raiseBar ? padT : 0;
         keyboard.setInsets(Ui.dp(this, padPrefs().padLeftDp()), padT - gapTop,
                 Ui.dp(this, padPrefs().padRightDp()), padB - gap);
-        keyboard.setKeyboardHeight(keyboardHeight - gap - gapTop);
+        appliedJaExtra = jaExtraHeight();
+        int kbH = keyboardHeight + appliedJaExtra;
+        keyboard.setKeyboardHeight(kbH - gap - gapTop);
         if (topSlot != null && topSlot.getLayoutParams() instanceof LinearLayout.LayoutParams) {
             LinearLayout.LayoutParams slp = (LinearLayout.LayoutParams) topSlot.getLayoutParams();
             if (slp.bottomMargin != gap || slp.topMargin != gapTop) {
@@ -1911,7 +1936,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 topSlot.setLayoutParams(slp);
             }
         }
-        int h = barOnly ? 0 : keyboardHeight - gap - gapTop + (full ? barSlotHeight() : 0);
+        int h = barOnly ? 0 : (full ? keyboardHeight : kbH) - gap - gapTop + (full ? barSlotHeight() : 0);
         ViewGroup.LayoutParams lp = content.getLayoutParams();
         if (lp != null && lp.height != h) {
             lp.height = h;
@@ -2108,6 +2133,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 break;
             case Key.CURSOR_PAD:
                 break;   // 밀어야 커서가 움직인다 (KeyboardView)
+            case Key.CURSOR_LEFT:
+            case Key.CURSOR_RIGHT:   // 일본어 12키 자판의 ◀·▶
+                forgetCursorEdges();
+                moveCursor(key.type == Key.CURSOR_LEFT ? -1 : 1);
+                break;
             default:
                 break;
         }
@@ -2849,14 +2879,26 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         cjkLoading.add(lang);
         final int gen = CjkPack.changes();
         final File dir = getFilesDir();
+        final boolean needLearning = !cjkLearnings.containsKey(lang);
         runIo(() -> {
             com.alternative_studios.newswipe.cjk.ConversionDictionary d = CjkPack.load(dir, lang);
             CjkComposer c = d == null ? null : new CjkComposer(lang, d);   // 병음 음절표도 여기서 만든다
+            com.alternative_studios.newswipe.cjk.CjkLearning learn = needLearning
+                    ? new com.alternative_studios.newswipe.cjk.CjkLearning(new File(dir, "cjk_learn_" + lang + ".txt")) : null;
             main.post(() -> {
                 cjkLoading.remove(lang);
-                if (c != null && gen == CjkPack.changes()) cjkComposers.put(lang, c);
+                if (learn != null) cjkLearnings.putIfAbsent(lang, learn);
+                if (c != null && gen == CjkPack.changes()) {
+                    c.setLearning(cjkLearnings.get(lang));   // 자주 고른 후보를 앞에 (늘 켜져 있다)
+                    cjkComposers.put(lang, c);
+                }
             });
         });
+    }
+
+    /** 자주 고른 변환 후보의 기록을 바뀐 것이 있으면 파일에 쓴다 (백그라운드). */
+    private void saveCjkLearning() {
+        for (com.alternative_studios.newswipe.cjk.CjkLearning l : cjkLearnings.values()) runIo(l::save);
     }
 
     /** 쓰지 않는 동안 사전을 놓아 준다 (다시 쓰면 읽는다). 조합 중이면 그대로 둔다. */

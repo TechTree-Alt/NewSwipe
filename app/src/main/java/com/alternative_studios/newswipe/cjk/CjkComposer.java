@@ -32,6 +32,8 @@ public final class CjkComposer {
     private int highlight = -1;
     private String cachedFor;
     private List<Candidate> cached = Collections.emptyList();
+    /** 자주 고른 후보를 앞에 놓는 기록. null이면 쓰지 않는다. */
+    private CjkLearning learning;
 
     public CjkComposer(String lang, ConversionDictionary dict) {
         this.lang = lang;
@@ -42,6 +44,18 @@ public final class CjkComposer {
             pinyin = null;
             converter = new KanaConverter(dict);
         }
+    }
+
+    /** 자주 고른 후보를 앞에 놓을 기록 (null이면 끈다). */
+    public void setLearning(CjkLearning l) {
+        if (learning != l) {
+            learning = l;
+            cachedFor = null;
+        }
+    }
+
+    public CjkLearning learning() {
+        return learning;
     }
 
     public boolean chinese() {
@@ -135,6 +149,7 @@ public final class CjkComposer {
         if (!r.equals(cachedFor)) {
             cachedFor = r;
             cached = r.isEmpty() ? Collections.emptyList() : converter.convert(r, MAX_CANDIDATES);
+            if (learning != null && !cached.isEmpty()) cached = learning.reorder(r, cached, MAX_CANDIDATES);
         }
         return cached;
     }
@@ -162,6 +177,10 @@ public final class CjkComposer {
         String r = convertible();
         int used = Math.min(x.consumed, r.length());
         picked.add(new String[]{x.text, r.substring(0, used)});
+        if (learning != null) {
+            learning.record(r.substring(0, used), x.text);
+            cachedFor = null;   // 고른 순서가 바뀌었다
+        }
         if (!chinese() && used >= r.length()) pending = "";   // 남은 n까지 썼다
         int fromReading = Math.min(used, reading.length());
         reading.delete(0, fromReading);
