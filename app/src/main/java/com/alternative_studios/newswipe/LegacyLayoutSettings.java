@@ -12,6 +12,8 @@ import android.content.SharedPreferences;
  *       켜짐이다. 예전 가로 모드(없으면 폴더블 내부 화면) 값을, 정한 적이 없으면 예전 기본값(꺼짐)을 적어 둔다.</li>
  *   <li>가로 모드·폴더블 내부 화면의 '세로 위치'(키보드를 화면 아래에서 띄우는 높이)는 없앴으므로 그 높이만큼 그 프로필의
  *       아래쪽 여백을 늘린다.</li>
+ *   <li>한 손 모드는 이제 키보드 전체 여백을 쓰지 않고 자기 '아래쪽 여백'(예전 '세로 위치')만 쓴다. 예전에는 둘을 더한 높이에
+ *       자판이 떠 있었으므로, 예전 키보드 아래쪽 여백을 한 손 모드 아래쪽 여백에 더해 같은 자리에 둔다.</li>
  * </ul>
  * 예전 버전을 쓰던 설정에서만 옮긴다 (처음 설치했거나 이미 2.0.0을 쓰던 설정은 표시만 남긴다). 예전 버전에서 내보낸 설정 파일을
  * 가져온 뒤에도 다시 돈다 ({@link LegacySwipeSettings#migrateIfNeeded}가 부른다).
@@ -47,6 +49,7 @@ final class LegacyLayoutSettings {
             migrateBlocks(sp, e);
             migrateReach(sp, e);
             migrateLift(sp, e);
+            migrateOneHandBottom(sp, e);
             e.apply();
         }
         sp.edit().putBoolean(DONE, true).apply();
@@ -173,6 +176,18 @@ final class LegacyLayoutSettings {
             int bottom = clamp(sp.getInt(padKey, portraitBottom), 0, Prefs.PAD_BOTTOM_MAX);
             e.putInt(padKey, bottom + lift);
         }
+    }
+
+    // ---------------------------------------------------------------- 한 손 모드 아래쪽 여백
+
+    /**
+     * 예전 한 손 모드: 키보드 아래쪽 여백(모든 방향이 함께 쓰던 한 값) 아래에 세로 위치만큼 띄웠다. 이제는 한 손 모드 아래쪽
+     * 여백 하나이고, 가로 모드·폴더블 내부 화면은 정하기 전에는 이 값을 따르므로 이 값 하나에 더하면 모든 방향이 예전 자리다.
+     */
+    private static void migrateOneHandBottom(SharedPreferences sp, SharedPreferences.Editor e) {
+        int lift = clamp(sp.getInt(Prefs.ONE_HAND_LIFT, Prefs.ONE_HAND_LIFT_DEFAULT), 0, Prefs.LEGACY_LIFT_MAX);
+        int bottom = clamp(sp.getInt(Prefs.PAD_BOTTOM, 4), 0, Prefs.PAD_BOTTOM_MAX);
+        if (bottom > 0) e.putInt(Prefs.ONE_HAND_LIFT, lift + bottom);
     }
 
     private static int clamp(int v, int lo, int hi) {

@@ -260,7 +260,7 @@ public final class Prefs {
     public static final String ONE_HAND_LAST = "one_hand_last";
     public static final String ONE_HAND_WIDTH = "one_hand_width";     // 자판 폭: 화면 폭의 %, 60~90
     public static final String ONE_HAND_HEIGHT = "one_hand_height";   // 키 높이: 보통 키 높이의 %, 60~100
-    public static final String ONE_HAND_LIFT = "one_hand_lift";       // 아래쪽 여백(dp), 0~160 (예전 이름: 세로 위치)
+    public static final String ONE_HAND_LIFT = "one_hand_lift";       // 아래쪽 여백(dp), 0~208 (예전 이름: 세로 위치)
     public static final String ONE_HAND_WIDTH_LAND = "one_hand_width_land";   // 가로 모드의 자판 폭: 화면 폭의 %, 30~90
     public static final int ONE_HAND_WIDTH_LAND_DEFAULT = 50;
     public static final int ONE_HAND_WIDTH_DEFAULT = 80, ONE_HAND_HEIGHT_DEFAULT = 90, ONE_HAND_LIFT_DEFAULT = 0;
@@ -377,7 +377,8 @@ public final class Prefs {
     // 정하기 전에는 가로 모드는 세로 모드의 값을(자판 폭만은 따로 기본값 50%), 폴더블 내부 화면은 같은 방향의 세로·가로 모드 값을 따른다.
 
     public static final int ONE_HAND_WIDTH_MIN = 60, ONE_HAND_WIDTH_MIN_LAND = 30, ONE_HAND_WIDTH_MAX = 90;
-    public static final int ONE_HAND_HEIGHT_MIN = 60, ONE_HAND_HEIGHT_MAX = 100, ONE_HAND_LIFT_MAX = 160;
+    /** 한 손 모드 아래쪽 여백의 최댓값 (dp): 예전 세로 위치(최대 160)에 예전 키보드 아래쪽 여백(최대 48)을 더해 옮겨 받는다. */
+    public static final int ONE_HAND_HEIGHT_MIN = 60, ONE_HAND_HEIGHT_MAX = 100, ONE_HAND_LIFT_MAX = 160 + 48;
 
     /** 이 프로필의 한 손 모드 값(base: ONE_HAND_WIDTH·ONE_HAND_HEIGHT·ONE_HAND_LIFT) 저장 키. */
     private String oneHandKey(String base) {

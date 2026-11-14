@@ -2207,6 +2207,8 @@ public class EditorUiTest {
         assertNotNull(p);
         assertNull("미리보기는 목록 안이 아니라 화면 아래에 붙는다", find(cur(a), OneHandPreview.class));
         assertTrue(lines(cur(a)).contains("세로로 들었을 때의 한 손 모드를 정합니다. 가로일 때의 설정은 기기를 가로로 돌리면 보입니다."));
+        // 세로로 고정된 다른 설정 화면과 달리 화면을 돌릴 수 있다.
+        assertEquals(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED, a.getRequestedOrientation());
         View overlay = p.getChildAt(1);
         float density = a.getResources().getDisplayMetrics().density;
         shot(a, "onehand-01");

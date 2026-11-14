@@ -94,9 +94,10 @@ public final class SettingsActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         prefs = new Prefs(this);
-        // 설정 화면은 세로로 고정이지만(매니페스트), 가로 모드·폴더블 내부 화면 키보드 사용자화는 화면을 돌려 가며 미리보기를 볼 수 있다.
+        // 설정 화면은 세로로 고정이지만(매니페스트), 가로 모드·폴더블 내부 화면 키보드 사용자화와 한 손 모드는
+        // 화면을 돌려 가며 그 방향의 미리보기와 설정을 볼 수 있다.
         String openId = getIntent().getStringExtra(EXTRA_SECTION);
-        if (LANDSCAPE_AREA.equals(openId) || LARGE_AREA.equals(openId)) {
+        if (LANDSCAPE_AREA.equals(openId) || LARGE_AREA.equals(openId) || "onehand".equals(openId)) {
             setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
         }
         // 앱을 처음 열면 첫 시작 가이드부터 보여 준다 (가이드를 마치면 이 화면을 다시 연다).

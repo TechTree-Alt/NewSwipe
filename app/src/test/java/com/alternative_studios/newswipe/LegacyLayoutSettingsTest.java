@@ -111,6 +111,24 @@ public class LegacyLayoutSettingsTest {
     }
 
     @Test
+    public void oneHandKeepsItsHeightAboveTheBottom() throws Exception {
+        // 1.9.1: 한 손 모드 자판은 키보드 아래쪽 여백(10) 위에 세로 위치(40)만큼 더 떠 있었다 → 한 손 모드 아래쪽 여백 50.
+        LegacySwipeSettingsTest.MapSp sp = upgraded(Prefs.PAD_BOTTOM, 10, Prefs.ONE_HAND_LIFT, 40);
+        assertEquals(50, view(sp, Prefs.PROFILE_PORTRAIT).oneHandBottomForProfile());
+        assertEquals(50, view(sp, Prefs.PROFILE_LANDSCAPE).oneHandBottomForProfile());
+        assertEquals(10, view(sp, Prefs.PROFILE_PORTRAIT).padBottomDp());   // 일반 모드의 여백은 그대로
+        // 기본값(여백 4, 세로 위치 0)만 쓰던 사람도 4dp 위에 그대로 있다.
+        assertEquals(4, view(upgraded(), Prefs.PROFILE_PORTRAIT).oneHandBottomForProfile());
+        // 둘 다 최대여도 잘리지 않는다.
+        LegacySwipeSettingsTest.MapSp max = upgraded(Prefs.PAD_BOTTOM, 48, Prefs.ONE_HAND_LIFT, 160);
+        assertEquals(208, view(max, Prefs.PROFILE_PORTRAIT).oneHandBottomForProfile());
+        // 처음 설치하면 기본값 0.
+        LegacySwipeSettingsTest.MapSp fresh = new LegacySwipeSettingsTest.MapSp();
+        LegacySwipeSettings.migrateIfNeeded(view(fresh, Prefs.PROFILE_PORTRAIT));
+        assertEquals(0, view(fresh, Prefs.PROFILE_PORTRAIT).oneHandBottomForProfile());
+    }
+
+    @Test
     public void customDownSwipesAreKept() throws Exception {
         LegacySwipeSettingsTest.MapSp sp = upgraded("swipe_custom", true, "swipe_custom_ko_ㄱ_down", "ㅋ",
                 "swipe_custom_ko_ㅏ_down", "");
