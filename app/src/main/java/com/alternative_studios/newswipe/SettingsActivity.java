@@ -4145,6 +4145,9 @@ public final class SettingsActivity extends Activity {
             {"낮은하늘", R.drawable.hof_najeunhaneul},
     };
 
+    /** 명예의 전당 버튼 바탕과 프로필 사진 테두리에 쓰는 옅은 무지개 색. */
+    private static final int[] RAINBOW = {0xFFFFB3BA, 0xFFFFD8A8, 0xFFFFF3A6, 0xFFBDF2C4, 0xFFB5DEFF, 0xFFD5BEFF};
+
     /** 정보 화면의 '명예의 전당' 버튼. 다른 버튼과 달리 무지개빛 그라데이션 바탕으로 돋보이게 한다. */
     private View hallOfFameButton() {
         final int ink = 0xFF1F1B2E;   // 옅은 무지개 위에서는 화면 모드와 관계없이 짙은 글자가 잘 읽힌다
@@ -4152,7 +4155,7 @@ public final class SettingsActivity extends Activity {
                 new Chevron(this, ink), v -> openSection(HALL_OF_FAME));
         android.graphics.drawable.GradientDrawable rainbow = new android.graphics.drawable.GradientDrawable(
                 android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[]{0xFFFFB3BA, 0xFFFFD8A8, 0xFFFFF3A6, 0xFFBDF2C4, 0xFFB5DEFF, 0xFFD5BEFF});
+                RAINBOW);
         float r = Ui.dp(this, 12);
         rainbow.setCornerRadius(r);
         row.setBackground(Ui.ripple(0x33000000, rainbow, r));
@@ -4243,11 +4246,12 @@ public final class SettingsActivity extends Activity {
         android.graphics.BitmapShader shader = new android.graphics.BitmapShader(bmp,
                 android.graphics.Shader.TileMode.CLAMP, android.graphics.Shader.TileMode.CLAMP);
         paint.setShader(shader);
-        // 흰 바탕 사진도 카드와 구분되도록 얇은 회색 테두리를 두른다.
+        // 명예의 전당 버튼과 같은 무지개 색으로 둥글게 이어지는 테두리를 두른다 (흰 바탕 사진도 카드와 구분된다).
         android.graphics.Paint ring = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
         ring.setStyle(android.graphics.Paint.Style.STROKE);
-        ring.setStrokeWidth(Ui.dp(this, 1));
-        ring.setColor((hintColor & 0x00FFFFFF) | 0x66000000);
+        ring.setStrokeWidth(Ui.dp(this, 2.5f));
+        int[] loop = java.util.Arrays.copyOf(RAINBOW, RAINBOW.length + 1);
+        loop[RAINBOW.length] = RAINBOW[0];   // 한 바퀴 돌아 처음 색으로 이어지게 한다
         return new android.graphics.drawable.Drawable() {
             @Override public void draw(android.graphics.Canvas c) {
                 android.graphics.Rect r = getBounds();
@@ -4256,6 +4260,7 @@ public final class SettingsActivity extends Activity {
                 m.postTranslate(r.left, r.top);
                 shader.setLocalMatrix(m);
                 c.drawOval(r.left, r.top, r.right, r.bottom, paint);
+                ring.setShader(new android.graphics.SweepGradient(r.exactCenterX(), r.exactCenterY(), loop, null));
                 float in = ring.getStrokeWidth() / 2;
                 c.drawOval(r.left + in, r.top + in, r.right - in, r.bottom - in, ring);
             }
