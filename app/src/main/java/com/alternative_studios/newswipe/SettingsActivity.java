@@ -1492,7 +1492,6 @@ public final class SettingsActivity extends Activity {
     private void undoLast() {
         if (editorUndo == null || !editorUndo.undo()) return;
         if (Build.VERSION.SDK_INT >= 30) undoButton.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM);
-        Toast.makeText(this, L.t("마지막 변경을 되돌렸습니다", "Undid the last change"), Toast.LENGTH_SHORT).show();
         if (editorPreview == null) {
             // 가로 모드·폴더블 내부 화면 키보드 사용자화: 목록·슬라이더·미리보기를 되돌린 값으로 다시 만든다.
             recreate();
