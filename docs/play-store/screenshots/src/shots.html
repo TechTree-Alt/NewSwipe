@@ -27,8 +27,8 @@
   .head { position: absolute; top: 120px; left: 80px; right: 80px; z-index: 2; }
   .brand { display: inline-flex; align-items: center; gap: 14px; font-weight: 700; font-size: 30px;
            opacity: .95; letter-spacing: -.3px; }
-  .brand .ic { width: 52px; height: 52px; border-radius: 14px; background: #fff;
-               display: grid; place-items: center; box-shadow: 0 6px 16px rgba(11,30,92,.3); }
+  .brand .ic { width: 60px; height: 60px; border-radius: 16px; display: block;
+               box-shadow: 0 0 0 2px rgba(255,255,255,.35), 0 6px 16px rgba(11,30,92,.35); }
   h1 { margin-top: 34px; font-size: 86px; font-weight: 900; line-height: 1.2; letter-spacing: -2.5px; }
   .head p { margin-top: 26px; font-size: 35px; font-weight: 500; line-height: 1.5; opacity: .88; letter-spacing: -.5px; }
 
@@ -62,24 +62,24 @@
 <!-- ============ 1. 레이아웃 ============ -->
 <section class="shot" id="s1">
   <div class="head">
-    <div class="brand"><span class="ic"><svg width="30" height="30" viewBox="0 0 64 64"><path d="M32 14v32M19 34l13 13 13-13" fill="none" stroke="#2F62E8" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>NewSwipe</div>
+    <div class="brand"><img class="ic" src="../../icon-512.png" alt="">NewSwipe</div>
     <h1>단모음 레이아웃,<br>원하는 대로</h1>
     <p>다양한 단모음 배열을 써 보고<br>내 손에 맞게 사용자화하세요</p>
   </div>
-  <div class="card" style="left:80px; top:630px; width:640px;"><img src="img/l1.jpg"></div>
-  <div class="label" style="left:720px; width:360px; top:810px; text-align:center;"><b>단모음</b></div>
+  <div class="card" style="left:80px; top:610px; width:600px;"><img src="img/l1.jpg"></div>
+  <div class="label" style="left:680px; width:400px; top:775px; text-align:center;"><b>단모음</b></div>
 
-  <div class="card" style="left:360px; top:1050px; width:640px;"><img src="img/l2-green.png"></div>
-  <div class="label" style="left:0; width:360px; top:1205px; text-align:center;"><b>NewSwipe<br>단모음</b></div>
+  <div class="card" style="left:400px; top:1038px; width:600px;"><img src="img/l2-green.png"></div>
+  <div class="label" style="left:0; width:400px; top:1175px; text-align:center;"><b>NewSwipe<br>단모음</b></div>
 
-  <div class="card" style="left:80px; top:1470px; width:640px;"><img src="img/l3.jpg"></div>
-  <div class="label" style="left:720px; width:360px; top:1625px; text-align:center;"><b>균형<br>레이아웃</b></div>
+  <div class="card" style="left:80px; top:1466px; width:600px;"><img src="img/l3.jpg"></div>
+  <div class="label" style="left:680px; width:400px; top:1603px; text-align:center;"><b>균형<br>레이아웃</b></div>
 </section>
 
 <!-- ============ 2. 분리 키보드 ============ -->
 <section class="shot" id="s2">
   <div class="head">
-    <div class="brand"><span class="ic"><svg width="30" height="30" viewBox="0 0 64 64"><path d="M32 14v32M19 34l13 13 13-13" fill="none" stroke="#2F62E8" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>NewSwipe</div>
+    <div class="brand"><img class="ic" src="../../icon-512.png" alt="">NewSwipe</div>
     <h1>큰 화면에서는<br>분리 키보드로</h1>
     <p>태블릿이나 폴더블 내부 화면에서<br>양손 엄지로 편하게 입력하세요</p>
   </div>
@@ -101,30 +101,16 @@
 <!-- ============ 3. 키 기능 ============ -->
 <section class="shot" id="s3">
   <div class="head">
-    <div class="brand"><span class="ic"><svg width="30" height="30" viewBox="0 0 64 64"><path d="M32 14v32M19 34l13 13 13-13" fill="none" stroke="#2F62E8" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>NewSwipe</div>
+    <div class="brand"><img class="ic" src="../../icon-512.png" alt="">NewSwipe</div>
     <h1>모든 키의 기능을<br>마음대로 정하세요</h1>
     <p>키마다 위·아래·왼쪽·오른쪽으로<br>밀었을 때 할 일을 상세하게 고르세요</p>
   </div>
-  <div class="device" style="left:50px; top:650px; width:600px; height:1600px; border-radius:56px; padding:16px;">
-    <div class="screen"><img src="img/settings.jpg" style="width:100%; display:block;"></div>
+  <div class="device" style="left:56px; top:630px; width:584px; border-radius:56px; padding:16px;">
+    <!-- 아래 모서리 라운딩에 키보드가 잘리지 않도록 키보드 바탕색(#E7E8EC)으로 여백을 둔다 -->
+    <div class="screen" style="padding-bottom:36px; background:#E7E8EC;"><img src="img/settings.jpg" style="width:100%; display:block;"></div>
   </div>
 
-  <!-- direction pad -->
-  <div style="position:absolute; left:684px; top:690px; width:450px; height:330px; z-index:5; transform:scale(.8); transform-origin:top left;
-              background:rgba(255,255,255,.96); border-radius:40px; box-shadow:0 26px 60px rgba(11,30,92,.4);">
-    <svg width="330" height="330" viewBox="0 0 330 330" style="position:absolute; left:60px; top:0;">
-      <g stroke="#2F62E8" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none">
-        <path d="M165 105V45M140 68l25-25 25 25"/>
-        <path d="M165 225v60M140 262l25 25 25-25"/>
-        <path d="M105 165H45M68 140l-25 25 25 25"/>
-        <path d="M225 165h60M262 140l25 25-25 25"/>
-      </g>
-    </svg>
-    <div style="position:absolute; left:175px; top:115px; width:100px; height:100px; border-radius:24px;
-                background:#fff; box-shadow:0 6px 14px rgba(0,0,0,.18); display:grid; place-items:center;
-                "><svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#111827" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M8 5h12v14H8l-6-7z"/><path d="M11.5 9.5l5 5M16.5 9.5l-5 5"/></svg></div>
-  </div>
-  <div style="position:absolute; left:684px; top:1000px; width:360px; display:flex; flex-direction:column; gap:18px; z-index:4;">
+  <div style="position:absolute; left:684px; top:820px; width:360px; display:flex; flex-direction:column; gap:18px; z-index:4;">
     <div class="act"><span class="dot"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5h12v14H8l-6-7z"/><path d="M11.5 9.5l5 5M16.5 9.5l-5 5"/></svg></span><span>밀어서<br>단어 지우기</span></div>
     <div class="act"><span class="dot"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg></span><span>밀어서<br>한·영 전환</span></div>
     <div class="act"><span class="dot"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 010 11H11"/></svg></span><span>실행 취소<br>다시 실행</span></div>
@@ -138,12 +124,12 @@
 <!-- ============ 4. 자동 수정 ============ -->
 <section class="shot" id="s4">
   <div class="head">
-    <div class="brand"><span class="ic"><svg width="30" height="30" viewBox="0 0 64 64"><path d="M32 14v32M19 34l13 13 13-13" fill="none" stroke="#2F62E8" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>NewSwipe</div>
+    <div class="brand"><img class="ic" src="../../icon-512.png" alt="">NewSwipe</div>
     <h1>한국어를 잘 아는<br>자동 수정과 추천</h1>
     <p>한국어의 특수성을 고려한 강력한<br>자동 수정과 단어 추천을 체감해 보세요</p>
   </div>
 
-  <div style="position:absolute; left:60px; right:60px; top:650px; height:200px; z-index:3;
+  <div style="position:absolute; left:60px; right:60px; top:670px; height:200px; z-index:3;
               background:#fff; border-radius:40px; box-shadow:0 26px 60px rgba(11,30,92,.35);
               display:flex; align-items:center; justify-content:center; gap:40px; color:var(--ink);">
     <div style="text-align:center;">
@@ -159,18 +145,19 @@
   </div>
 
   <!-- suggest.jpg 1440x1368 at 960 -> scale .6667 -->
-  <div class="card" style="left:60px; top:910px; width:960px;">
-    <img src="img/suggest.jpg">
-    <div style="position:absolute; left:0; top:0; width:960px; height:291px; background:#F7F7F5;">
-      <div style="position:absolute; left:40px; right:40px; top:44px; height:200px; background:#fff; border-radius:44px;
-                  box-shadow:0 2px 10px rgba(0,0,0,.08); display:flex; align-items:center; padding:0 36px 0 44px;">
+  <!-- 앱 입력창(위 291px)을 가리고, 그 자리를 낮게 다시 그린다: 사진을 121px 올려 자르고 입력창은 110px -->
+  <div class="card" style="left:60px; top:990px; width:960px; height:791px;">
+    <img src="img/suggest.jpg" style="margin-top:-121px;">
+    <div style="position:absolute; left:0; top:0; width:960px; height:170px; background:#F7F7F5;">
+      <div style="position:absolute; left:40px; right:40px; top:32px; height:110px; background:#fff; border-radius:55px;
+                  box-shadow:0 2px 10px rgba(0,0,0,.08); display:flex; align-items:center; padding:0 17px 0 44px;">
         <span style="font-size:46px; font-weight:500; color:#1F2937;">감사<span style="text-decoration:underline; text-underline-offset:8px;">헤요</span></span>
-        <span style="display:inline-block; width:3px; height:52px; background:var(--blue); margin-left:4px;"></span>
-        <span style="margin-left:auto; width:92px; height:92px; border-radius:50%; background:var(--blue); display:grid; place-items:center;">
-          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg></span>
+        <span style="display:inline-block; width:3px; height:48px; background:var(--blue); margin-left:4px;"></span>
+        <span style="margin-left:auto; width:76px; height:76px; border-radius:50%; background:var(--blue); display:grid; place-items:center;">
+          <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg></span>
       </div>
     </div>
-    <div style="position:absolute; left:384px; top:292px; width:570px; height:92px; border-radius:46px;
+    <div style="position:absolute; left:384px; top:171px; width:570px; height:92px; border-radius:46px;
                 border:6px solid #FFB020; box-shadow:0 0 0 8px rgba(255,176,32,.25);"></div>
   </div>
 </section>
@@ -178,20 +165,20 @@
 <!-- ============ 5. 이모지 · 클립보드 ============ -->
 <section class="shot" id="s5">
   <div class="head">
-    <div class="brand"><span class="ic"><svg width="30" height="30" viewBox="0 0 64 64"><path d="M32 14v32M19 34l13 13 13-13" fill="none" stroke="#2F62E8" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>NewSwipe</div>
+    <div class="brand"><img class="ic" src="../../icon-512.png" alt="">NewSwipe</div>
     <h1>최신 이모지부터<br>클립보드까지</h1>
-    <p>Emoji 18.0, 클립보드, Predictive Back Design,<br>시스템 자동완성 등 현대적인 기능들을<br>놓치지 마세요</p>
+    <p>Emoji 18.0, 클립보드, Predictive Back Design,<br>시스템 자동완성 등 현대적인 기능들을 놓치지 마세요</p>
   </div>
 
-  <div class="card" style="left:100px; top:690px; width:880px;"><img src="img/emoji.jpg"></div>
-  <div class="card" style="left:100px; top:1325px; width:880px; height:553px;"><img src="img/clipboard.jpg"></div>
+  <div class="card" style="left:100px; top:630px; width:880px;"><img src="img/emoji.jpg"></div>
+  <div class="card" style="left:100px; top:1250px; width:880px;"><img src="img/clipboard.jpg"></div>
 </section>
 
 
 <!-- ============ 6. 사용자화 ============ -->
 <section class="shot" id="s6">
   <div class="head">
-    <div class="brand"><span class="ic"><svg width="30" height="30" viewBox="0 0 64 64"><path d="M32 14v32M19 34l13 13 13-13" fill="none" stroke="#2F62E8" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>NewSwipe</div>
+    <div class="brand"><img class="ic" src="../../icon-512.png" alt="">NewSwipe</div>
     <h1>당신에게 맞게,<br>입맛대로 사용자화</h1>
     <p>기능키, 도구 막대 등 레이아웃을<br>원하는 대로 바꾸세요</p>
   </div>
