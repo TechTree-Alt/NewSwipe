@@ -1948,17 +1948,18 @@ public class EditorUiTest {
         assertFalse(visibleTexts(cur(lab)).contains("폴더블"));
     }
 
-    /** 폴더블 내부 화면에서는 판정 기준 섹션이 '한 손 모드' 섹션 아래(기본값으로 되돌리기 위)에 있고, 되돌리기로 기본값이 된다. */
+    /** 폴더블 내부 화면에서는 판정 기준 섹션이 기본값으로 되돌리기 위에 있고(한 손 모드 섹션은 없다), 되돌리기로 기본값이 된다. */
     @Test
     @Config(qualifiers = "ko-rKR-w700dp-h900dp-port-xhdpi")
-    public void foldableThresholdBelowOneHandMode() throws Exception {
+    public void foldableThresholdAboveReset() throws Exception {
         Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
         pre.raw().edit().putInt(Prefs.LARGE_SCREEN_DP, 640).commit();
         SettingsActivity a = launch("largearea");
         java.util.List<String> ls = lines(cur(a));
-        int oneHand = ls.indexOf("한 손 모드"), threshold = ls.indexOf("폴더블 내부 화면 판정 기준"),
-                reset = ls.lastIndexOf("기본값으로 되돌리기");
-        assertTrue(ls.toString(), oneHand >= 0 && oneHand < threshold && threshold < reset);
+        int threshold = ls.indexOf("폴더블 내부 화면 판정 기준"), reset = ls.lastIndexOf("기본값으로 되돌리기");
+        assertTrue(ls.toString(), threshold >= 0 && threshold < reset);
+        // 한 손 모드의 자판 폭은 '한 손 모드' 메뉴에서 화면 방향마다 정하므로 여기에는 없다.
+        assertFalse(ls.toString(), ls.contains("한 손 모드"));
         assertFalse(ls.contains("이 설정은 폴더블 내부 화면에서만 보입니다. 폴더블 내부 화면으로 전환하거나 폴더블 내부 화면 판정 기준을 조절하세요."));
         assertTrue(ls.toString(), ls.stream().anyMatch(l -> l.startsWith("폴더블 내부 화면을 ") && !l.contains("좌·우 균형 배열") && !l.contains("자·모음 분리 배열")));
         assertTrue(ls.contains("640dp"));
@@ -1999,8 +2000,9 @@ public class EditorUiTest {
         SettingsActivity now = c.get();
         java.util.List<String> after = lines(cur(now));
         assertFalse(after.toString(), after.contains(notice));
-        int oneHand = after.indexOf("한 손 모드"), t2 = after.indexOf("폴더블 내부 화면 판정 기준");
-        assertTrue(after.toString(), oneHand >= 0 && oneHand < t2);
+        // 다시 만든 화면은 폴더블 내부 화면의 설정을 보여 준다 (분리 키보드 섹션이 판정 기준 위에 있다).
+        int split = after.indexOf("분리 키보드"), t2 = after.indexOf("폴더블 내부 화면 판정 기준");
+        assertTrue(after.toString(), split >= 0 && split < t2);
     }
 
     /** 설정 검색: 별도 키보드는 키보드 사용자화에서, 판정 기준은 폴더블 내부 화면 키보드 사용자화에서 찾고, 누르면 그 화면을 연다. */
@@ -2194,7 +2196,7 @@ public class EditorUiTest {
     }
 
     /**
-     * 한 손 모드: 폴더블 내부 화면 키보드 사용자화처럼 화면 아래에 미리보기가 붙고, 손잡이를 끌면 자판 폭·키 높이·세로 위치가 바뀌며
+     * 한 손 모드: 폴더블 내부 화면 키보드 사용자화처럼 화면 아래에 미리보기가 붙고, 손잡이를 끌면 자판 폭·키 높이·아래쪽 여백이 바뀌며
      * 목록의 슬라이더도 따라 움직인다.
      */
     @Test
@@ -2204,12 +2206,15 @@ public class EditorUiTest {
         OneHandPreview p = find(a.getWindow().getDecorView(), OneHandPreview.class);
         assertNotNull(p);
         assertNull("미리보기는 목록 안이 아니라 화면 아래에 붙는다", find(cur(a), OneHandPreview.class));
+        assertTrue(lines(cur(a)).contains("세로로 들었을 때의 한 손 모드를 정합니다. 가로일 때의 설정은 기기를 가로로 돌리면 보입니다."));
+        // 세로로 고정된 다른 설정 화면과 달리 화면을 돌릴 수 있다.
+        assertEquals(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED, a.getRequestedOrientation());
         View overlay = p.getChildAt(1);
         float density = a.getResources().getDisplayMetrics().density;
         shot(a, "onehand-01");
 
         // 자판 폭: 오른쪽 가장자리를 오른쪽으로 화면 폭의 5%만큼 → 80% → 85% (슬라이더도 따라간다)
-        assertEquals(Prefs.ONE_HAND_WIDTH_DEFAULT, prefs.oneHandWidth());
+        assertEquals(Prefs.ONE_HAND_WIDTH_DEFAULT, prefs.oneHandWidthForProfile());
         assertFalse(lines(cur(a)).contains("85%"));
         float[] w = oneHandHandle(p, OneHandPreview.Handle.WIDTH);
         // 손잡이는 윤곽선(자판 가장자리에서 2dp 안) 안쪽으로 9dp 들어와 있다.
@@ -2218,34 +2223,65 @@ public class EditorUiTest {
         assertEquals(top[0], bottom[0], 0.5f);
         assertEquals((top[1] + bottom[1]) / 2f, w[1], 1f);
         drag(overlay, w[0], w[1], p.getWidth() * 0.05f, 0);
-        assertEquals(85, prefs.oneHandWidth());
+        assertEquals(85, prefs.oneHandWidthForProfile());
         assertTrue(lines(cur(a)).contains("85%"));
         // 범위 밖으로 끌어도 60%에서 멈춘다.
         w = oneHandHandle(p, OneHandPreview.Handle.WIDTH);
         drag(overlay, w[0], w[1], -p.getWidth() * 0.6f, 0);
-        assertEquals(60, prefs.oneHandWidth());
+        assertEquals(60, prefs.oneHandWidthForProfile());
 
         // 키 높이: 위 가장자리를 아래로 끌면 작아진다.
         int h0 = p.getHeight();
         float[] ht = oneHandHandle(p, OneHandPreview.Handle.HEIGHT);
         drag(overlay, ht[0], ht[1], 0, 60 * density);
-        assertTrue(prefs.oneHandHeight() < Prefs.ONE_HAND_HEIGHT_DEFAULT);
-        assertEquals(0, prefs.oneHandHeight() % 5);
+        assertTrue(prefs.oneHandHeightForProfile() < Prefs.ONE_HAND_HEIGHT_DEFAULT);
+        assertEquals(0, prefs.oneHandHeightForProfile() % 5);
         assertTrue(p.getHeight() < h0);
 
-        // 세로 위치: 아래 가장자리를 위로 40dp 끌면 자판이 40dp 떠오른다 (미리보기도 그만큼 자란다).
+        // 아래쪽 여백: 아래 가장자리를 위로 40dp 끌면 자판이 40dp 떠오른다 (미리보기도 그만큼 자란다).
         int h1 = p.getHeight();
         float[] lf = oneHandHandle(p, OneHandPreview.Handle.LIFT);
         drag(overlay, lf[0], lf[1], 0, -40 * density);
-        assertEquals(40, prefs.oneHandLiftDp());
+        assertEquals(40, prefs.oneHandBottomForProfile());
         assertTrue(lines(cur(a)).contains("40dp"));
         assertEquals(h1 + Math.round(40 * density), p.getHeight(), 2);
         shot(a, "onehand-02");
 
         // 손잡이 밖을 끌면 아무것도 바뀌지 않는다.
         drag(overlay, p.getWidth() * 0.9f, p.getHeight() / 2f, -100, -100);
-        assertEquals(60, prefs.oneHandWidth());
-        assertEquals(40, prefs.oneHandLiftDp());
+        assertEquals(60, prefs.oneHandWidthForProfile());
+        assertEquals(40, prefs.oneHandBottomForProfile());
+        // 세로 화면에서 바꾼 값은 세로 모드 키에만 저장된다 (가로 모드는 따로 정하기 전까지 이 값을 따른다).
+        assertEquals(40, prefs.raw().getInt(Prefs.ONE_HAND_LIFT, -1));
+        assertFalse(prefs.raw().contains(Prefs.ONE_HAND_LIFT + "_land"));
+        assertEquals(40, prefs.profileView(Prefs.PROFILE_LANDSCAPE).oneHandBottomForProfile());
+    }
+
+    /** 한 손 모드를 가로 화면에서 열면 가로 모드의 값만 보이고 바꾼다 (세로 모드 값은 그대로). */
+    @Test
+    @Config(qualifiers = "ko-rKR-w914dp-h411dp-land-xxhdpi")
+    public void oneHandLandscapeIsSeparate() throws Exception {
+        SettingsActivity a = launch("onehand");
+        Prefs prefs = new Prefs(a);
+        Prefs land = prefs.profileView(Prefs.PROFILE_LANDSCAPE);
+        OneHandPreview p = find(a.getWindow().getDecorView(), OneHandPreview.class);
+        assertNotNull(p);
+        assertTrue(lines(cur(a)).stream().anyMatch(l -> l.equals("가로로 들었을 때의 한 손 모드를 정합니다. 세로일 때의 설정은 기기를 세로로 돌리면 보입니다.")));
+        View overlay = p.getChildAt(1);
+        float density = a.getResources().getDisplayMetrics().density;
+        // 가로 모드 자판 폭의 기본값은 50%이고, 30%까지 줄일 수 있다.
+        assertEquals(Prefs.ONE_HAND_WIDTH_LAND_DEFAULT, land.oneHandWidthForProfile());
+        float[] w = oneHandHandle(p, OneHandPreview.Handle.WIDTH);
+        drag(overlay, w[0], w[1], -p.getWidth() * 0.5f, 0);
+        assertEquals(30, land.oneHandWidthForProfile());
+        float[] lf = oneHandHandle(p, OneHandPreview.Handle.LIFT);
+        drag(overlay, lf[0], lf[1], 0, -24 * density);
+        assertEquals(24, land.oneHandBottomForProfile());
+        assertEquals(24, prefs.raw().getInt(Prefs.ONE_HAND_LIFT + "_land", -1));
+        // 세로 모드 값은 바뀌지 않는다.
+        Prefs port = prefs.profileView(Prefs.PROFILE_PORTRAIT);
+        assertEquals(Prefs.ONE_HAND_WIDTH_DEFAULT, port.oneHandWidthForProfile());
+        assertEquals(0, port.oneHandBottomForProfile());
     }
 
     static View findText(View v, String text) {

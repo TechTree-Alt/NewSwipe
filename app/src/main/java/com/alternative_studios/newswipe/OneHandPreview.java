@@ -28,8 +28,10 @@ import com.alternative_studios.newswipe.ui.Ui;
  * <ul>
  *   <li>자판 오른쪽 가장자리 = 자판 폭 (좌우로 끈다, 5% 단위)</li>
  *   <li>자판 위 가장자리 = 키 높이 (위·아래로 끈다, 5% 단위)</li>
- *   <li>자판 아래 가장자리 = 세로 위치 (위로 끌면 자판이 화면 아래에서 떠오른다, 4dp 단위)</li>
+ *   <li>자판 아래 가장자리 = 아래쪽 여백 (위로 끌면 자판이 화면 아래에서 떠오른다, 4dp 단위)</li>
  * </ul>
+ * 값은 지금 화면 방향의 프로필(세로·가로 모드, 폴더블 내부 화면 세로·가로)의 것이다: 받은 설정 보기(profileView)가 그 프로필이다.
+ * 한 손 모드처럼 키보드 전체의 상하좌우 여백은 쓰지 않는다.
  * 실제 키보드처럼 화면 아래에 붙어 있어, 키를 키우거나 자판을 띄우면 미리보기가 위로 자란다.
  * 값은 바뀔 때마다 바로 저장하고, 설정 화면이 슬라이더를 맞추도록 알린다.
  */
@@ -40,20 +42,19 @@ final class OneHandPreview extends FrameLayout {
         void onSizeChanged(String prefKey);
     }
 
-    /** 손잡이: 끄는 방향(위아래인지)·이름·저장 키·단위. */
+    /** 손잡이: 끄는 방향(위아래인지)·이름·단위. 저장 키는 프로필마다 다르다 ({@link #keyOf}). */
     enum Handle {
-        WIDTH(false, "자판 폭", "Keyboard width", Prefs.ONE_HAND_WIDTH, "%"),
-        HEIGHT(true, "키 높이", "Key height", Prefs.ONE_HAND_HEIGHT, "%"),
-        LIFT(true, "세로 위치", "Vertical position", Prefs.ONE_HAND_LIFT, "dp");
+        WIDTH(false, "자판 폭", "Keyboard width", "%"),
+        HEIGHT(true, "키 높이", "Key height", "%"),
+        LIFT(true, "아래쪽 여백", "Bottom padding", "dp");
 
         final boolean vertical;
-        final String ko, en, key, unit;
+        final String ko, en, unit;
 
-        Handle(boolean vertical, String ko, String en, String key, String unit) {
+        Handle(boolean vertical, String ko, String en, String unit) {
             this.vertical = vertical;
             this.ko = ko;
             this.en = en;
-            this.key = key;
             this.unit = unit;
         }
 
@@ -62,8 +63,6 @@ final class OneHandPreview extends FrameLayout {
             return L.t(ko, en);
         }
     }
-
-    static final int WIDTH_MIN = 60, WIDTH_MAX = 90, HEIGHT_MIN = 60, HEIGHT_MAX = 100, LIFT_MIN = 0, LIFT_MAX = 160;
 
     private final Prefs prefs;
     private final Listener listener;
@@ -102,8 +101,7 @@ final class OneHandPreview extends FrameLayout {
         keys.setDubeolsikHint(prefs.dubeolsikHintShown());
         keys.setNumberHintHidden(prefs.numberHintHidden());
         keys.setKeyGaps(Ui.dp(c, prefs.keyGapXDp()), Ui.dp(c, prefs.keyGapYDp()));
-        keys.setInsets(Ui.dp(c, prefs.padLeftDp()), Ui.dp(c, prefs.padTopDp()),
-                Ui.dp(c, prefs.padRightDp()), Ui.dp(c, prefs.padBottomDp()));
+        keys.setInsets(0, 0, 0, 0);   // 한 손 모드는 키보드 전체 여백을 쓰지 않는다
         keys.setOnTouchListener((v, ev) -> true);
         column.addView(keys, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
@@ -135,20 +133,19 @@ final class OneHandPreview extends FrameLayout {
     /** 키보드의 applyOneHand와 같은 규칙으로 지금 값에 맞춰 다시 놓는다. */
     void refresh() {
         Context c = getContext();
-        int width = prefs.oneHandWidth();
+        int width = prefs.oneHandWidthForProfile();
         ((LinearLayout.LayoutParams) column.getLayoutParams()).weight = width;
         ((LinearLayout.LayoutParams) side.getLayoutParams()).weight = 100 - width;
         body.requestLayout();
         Prefs view = prefs.oneHandView();
         KeyboardLayout l = KeyboardLayout.korean(view);
-        keys.setKeyboardHeight(Math.round(keyUnit() * KeyboardLayout.rowUnits(view) * prefs.oneHandHeight() / 100f)
-                + Ui.dp(c, prefs.padTopDp()) + Ui.dp(c, prefs.padBottomDp()));
+        keys.setKeyboardHeight(Math.round(keyUnit() * KeyboardLayout.rowUnits(view) * prefs.oneHandHeightForProfile() / 100f));
         // 키 높이를 줄인 만큼 키 글자도 같은 비율로 줄인다 (키보드와 같다).
         keys.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), false,
-                Math.round(prefs.keyTextSize() * prefs.oneHandHeight() / 100f));
+                Math.round(prefs.keyTextSize() * prefs.oneHandHeightForProfile() / 100f));
         keys.setLayout(l);
         ViewGroup.LayoutParams llp = lift.getLayoutParams();
-        llp.height = Ui.dp(c, prefs.oneHandLiftDp());
+        llp.height = Ui.dp(c, prefs.oneHandBottomForProfile());
         lift.setLayoutParams(llp);
         overlay.invalidate();
         overlay.post(overlay::updateExclusion);
@@ -162,7 +159,6 @@ final class OneHandPreview extends FrameLayout {
     private View toolbarMock(Context c) {
         LinearLayout bar = new LinearLayout(c);
         bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setPadding(Ui.dp(c, prefs.padLeftDp()), 0, Ui.dp(c, prefs.padRightDp()), 0);
         String[][] order = prefs.toolOrder();
         for (int s = 0; s < 2; s++) {
             if (s == 1) bar.addView(new View(c), new LinearLayout.LayoutParams(0, 1, 1f));
@@ -194,7 +190,7 @@ final class OneHandPreview extends FrameLayout {
 
     /**
      * 손잡이가 붙는 윤곽선: 자판(키 부분)의 테두리를 조금 안으로 줄인 것 (미리보기 좌표). 세 손잡이가 모두 이 윤곽선의
-     * 변을 바꾼다 (오른쪽 = 자판 폭, 위 = 키 높이, 아래 = 세로 위치).
+     * 변을 바꾼다 (오른쪽 = 자판 폭, 위 = 키 높이, 아래 = 아래쪽 여백).
      */
     private void outlineBounds(RectF out) {
         float top = body.getTop() + column.getTop() + keys.getTop();
@@ -250,9 +246,18 @@ final class OneHandPreview extends FrameLayout {
 
     private int valueOf(Handle h) {
         switch (h) {
-            case WIDTH: return prefs.oneHandWidth();
-            case HEIGHT: return prefs.oneHandHeight();
-            default: return prefs.oneHandLiftDp();
+            case WIDTH: return prefs.oneHandWidthForProfile();
+            case HEIGHT: return prefs.oneHandHeightForProfile();
+            default: return prefs.oneHandBottomForProfile();
+        }
+    }
+
+    /** 이 프로필에서 손잡이 h의 값을 저장하는 키. */
+    String keyOf(Handle h) {
+        switch (h) {
+            case WIDTH: return prefs.oneHandWidthKey();
+            case HEIGHT: return prefs.oneHandHeightKey();
+            default: return prefs.oneHandBottomKey();
         }
     }
 
@@ -270,28 +275,29 @@ final class OneHandPreview extends FrameLayout {
         switch (h) {
             case WIDTH: {
                 float pct = dragStart + dx / Math.max(1, getWidth()) * 100f;
-                v = clamp(Math.round(pct / 5f) * 5, WIDTH_MIN, WIDTH_MAX);
+                v = clamp(Math.round(pct / 5f) * 5, prefs.oneHandWidthMin(), Prefs.ONE_HAND_WIDTH_MAX);
                 break;
             }
             case HEIGHT: {
                 // 키 높이 1%가 자판 높이를 얼마나 바꾸는지로 나눈다 (위로 끌면 커진다).
                 float perPct = keyUnit() * KeyboardLayout.rowUnits(prefs.oneHandView()) / 100f;
                 float pct = dragStart - dy / Math.max(0.01f, perPct);
-                v = clamp(Math.round(pct / 5f) * 5, HEIGHT_MIN, HEIGHT_MAX);
+                v = clamp(Math.round(pct / 5f) * 5, Prefs.ONE_HAND_HEIGHT_MIN, Prefs.ONE_HAND_HEIGHT_MAX);
                 break;
             }
             default: {
                 float dp = dragStart - dy / density;
-                v = clamp(Math.round(dp / 4f) * 4, LIFT_MIN, LIFT_MAX);
+                v = clamp(Math.round(dp / 4f) * 4, 0, Prefs.ONE_HAND_LIFT_MAX);
                 break;
             }
         }
         if (v == dragValue) return;
         dragValue = v;
-        prefs.raw().edit().putInt(h.key, v).apply();
+        String key = keyOf(h);
+        prefs.raw().edit().putInt(key, v).apply();
         refresh();
         overlay.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
-        listener.onSizeChanged(h.key);
+        listener.onSizeChanged(key);
     }
 
     private final class Overlay extends View {
@@ -314,8 +320,8 @@ final class OneHandPreview extends FrameLayout {
             label.setTextSize(Ui.dp(c, 14));
             label.setFakeBoldText(true);
             setContentDescription(L.t("한 손 모드 미리보기. 자판 오른쪽 가장자리의 손잡이를 좌우로 끌면 자판 폭이, "
-                    + "위 가장자리의 손잡이를 위·아래로 끌면 키 높이가, 아래 가장자리의 손잡이를 위·아래로 끌면 세로 위치가 바뀝니다. "
-                    + "아래 목록의 슬라이더로도 바꿀 수 있습니다.", "One-handed mode preview. Drag the handle on the right edge of the keyboard left or right to change the keyboard width, the handle on the top edge up or down to change the key height, and the handle on the bottom edge up or down to change the vertical position. You can also use the sliders in the list below."));
+                    + "위 가장자리의 손잡이를 위·아래로 끌면 키 높이가, 아래 가장자리의 손잡이를 위·아래로 끌면 아래쪽 여백이 바뀝니다. "
+                    + "아래 목록의 슬라이더로도 바꿀 수 있습니다.", "One-handed mode preview. Drag the handle on the right edge of the keyboard left or right to change the keyboard width, the handle on the top edge up or down to change the key height, and the handle on the bottom edge up or down to change the bottom padding. You can also use the sliders in the list below."));
         }
 
         @Override

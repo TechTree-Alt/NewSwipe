@@ -122,7 +122,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /**
      * 한 손 모드 배치: body(가로) = [column(도구 막대·검색 결과·자판) | sideStrip(반대편 빈 곳)], 그 아래 liftSpace.
      * 한 손 모드가 꺼져 있으면 column만 꽉 차게 들어가고 sideStrip은 숨긴다. liftSpace는 가로 모드·폴더블 내부 화면의
-     * '세로 위치'를 정했을 때만 보인다.
+     * '아래쪽 여백'을 정했을 때만 보인다.
      */
     private LinearLayout body, column, sideStrip;
     private View liftSpace;
@@ -1292,7 +1292,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         // 가로 모드·폴더블 내부 화면에서 따로 정한 키보드 높이·글자 크기는 그 화면에서만 쓴다.
         Prefs sizePrefs = prefs.profileView(profile());
         // 한 손 모드에서는 키 높이를 줄인 만큼 키 글자도 같은 비율로 줄인다 (도구 막대는 줄어든 자판 바로 위에 붙어 따라온다).
-        float oneHandScale = !Prefs.ONE_HAND_OFF.equals(activeOneHand()) ? prefs.oneHandHeight() / 100f : 1f;
+        float oneHandScale = !Prefs.ONE_HAND_OFF.equals(activeOneHand()) ? sizePrefs.oneHandHeightForProfile() / 100f : 1f;
         keyboard.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), prefs.keyPreview(),
                 Math.round(sizePrefs.keyTextSize() * oneHandScale));
         keyboard.setDirectionRatios(prefs.swipeDownRatio(), prefs.swipeUpRatio());
@@ -1428,8 +1428,13 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
      * 키보드 여백(좌우·위·아래, 도구 막대·기능키 영역 여백)을 읽는 설정 보기. 가로 모드·폴더블 내부 화면에서 세로 모드와 따로 정한 값은
      * 그 화면에서만 쓴다 (세로 모드는 그대로).
      */
+    /**
+     * 키보드 여백을 읽는 설정 보기: 지금 화면의 프로필. 한 손 모드에서는 키보드 전체의 상하좌우 여백을 쓰지 않는 보기
+     * (아래쪽은 한 손 모드의 '아래쪽 여백'만 applyOneHand가 둔다). 영역 여백은 그대로 쓴다.
+     */
     private Prefs padPrefs() {
-        return prefs.profileView(profile());
+        Prefs p = prefs.profileView(profile());
+        return Prefs.ONE_HAND_OFF.equals(activeOneHand()) ? p : p.oneHandView();
     }
 
     /** 지금 화면에서 쓸 키보드 모습의 묶음: 세로·가로 모드, 또는 (실험실 '폴더블 내부 화면 별도 키보드'이 켜져 있으면) 폴더블 내부 화면 세로·가로. */
@@ -1464,7 +1469,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /**
      * 한 손 모드 배치를 뷰에 반영한다: column을 '자판 폭'만큼만 쓰고 한쪽으로 붙이며, 반대편에 sideStrip을 둔다.
-     * 아래에는 '세로 위치'만큼 빈 칸을 두어 자판을 띄운다 (한 손 모드가 아니어도 가로 모드·폴더블 내부 화면의 세로 위치를 쓴다).
+     * 아래에는 그 화면 방향의 한 손 모드 '아래쪽 여백'만큼 빈 칸을 둔다 (한 손 모드가 아니면 0).
      */
     private void applyOneHand() {
         if (body == null) return;
@@ -1472,9 +1477,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         boolean on = !Prefs.ONE_HAND_OFF.equals(side);
         Prefs profilePrefs = prefs.profileView(profile());
         int width = profilePrefs.oneHandWidthForProfile();
-        // 세로 위치: 한 손 모드에서만 한 손 모드의 값을 쓴다 (그 밖에는 0).
-        // 외장 키보드로 도구 막대만 보일 때는 띄우지 않는다 (막대 아래에 빈 칸만 남는다).
-        int lift = appliedBarOnly ? 0 : Ui.dp(this, on ? prefs.oneHandLiftDp() : 0);
+        // 아래쪽 여백: 한 손 모드에서만 그 화면 방향의 한 손 모드 값을 쓴다 (그 밖에는 0).
+        // 외장 키보드로 도구 막대만 보일 때는 두지 않는다 (막대 아래에 빈 칸만 남는다).
+        int lift = appliedBarOnly ? 0 : Ui.dp(this, on ? profilePrefs.oneHandBottomForProfile() : 0);
         String signature = side + "/" + width + "/" + lift;
         if (signature.equals(appliedOneHand)) return;
         appliedOneHand = signature;

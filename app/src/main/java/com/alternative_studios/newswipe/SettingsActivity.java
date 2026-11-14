@@ -94,9 +94,10 @@ public final class SettingsActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         prefs = new Prefs(this);
-        // 설정 화면은 세로로 고정이지만(매니페스트), 가로 모드·폴더블 내부 화면 키보드 사용자화는 화면을 돌려 가며 미리보기를 볼 수 있다.
+        // 설정 화면은 세로로 고정이지만(매니페스트), 가로 모드·폴더블 내부 화면 키보드 사용자화와 한 손 모드는
+        // 화면을 돌려 가며 그 방향의 미리보기와 설정을 볼 수 있다.
         String openId = getIntent().getStringExtra(EXTRA_SECTION);
-        if (LANDSCAPE_AREA.equals(openId) || LARGE_AREA.equals(openId)) {
+        if (LANDSCAPE_AREA.equals(openId) || LARGE_AREA.equals(openId) || "onehand".equals(openId)) {
             setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
         }
         // 앱을 처음 열면 첫 시작 가이드부터 보여 준다 (가이드를 마치면 이 화면을 다시 연다).
@@ -239,7 +240,7 @@ public final class SettingsActivity extends Activity {
             {"feedback", L.t("소리 및 진동", "Sound & vibration"), L.t("키를 누를 때의 진동과 소리", "Vibration and sound when you press keys")},
             {"words", L.t("추천, 학습 및 완성", "Suggestions, learning & autofill"), L.t("단어 추천, 학습, 단축어, 자동 완성", "Word suggestions, learning, text shortcuts, autofill")},
             {"clipemoji", L.t("클립보드 및 이모지", "Clipboard & emoji"), L.t("클립보드 기록, 편집 버튼, 이모지 크기·추천", "Clipboard history, edit buttons, emoji size and suggestions")},
-            {"onehand", L.t("한 손 모드", "One-handed mode"), L.t("자판 폭·키 높이, 세로 위치", "Keyboard width, key height, vertical position")},
+            {"onehand", L.t("한 손 모드", "One-handed mode"), L.t("자판 폭·키 높이, 아래쪽 여백", "Keyboard width, key height, bottom padding")},
             {"backup", L.t("설정 가져오기 및 내보내기", "Import & export settings"), L.t("모든 설정을 파일로 저장하거나 불러오기", "Save all settings to a file or load them")},
             {"lab", L.t("실험실", "Labs"), L.t("밀기 방향 판정, 외국어 자판, 외장 키보드", "Swipe direction, other languages, physical keyboard")},
     };
@@ -490,10 +491,9 @@ public final class SettingsActivity extends Activity {
             {"clipemoji", L.t("고정 항목 분리", "Separate pinned items"), L.t("클립보드 고정 핀 페이지 따로", "clipboard pinned pin page separate")},
             {"clipemoji", L.t("선택하면 편집 버튼 보이기", "Show edit buttons on selection"), L.t("잘라내기 복사 붙여넣기 전체 선택 편집 칩", "cut copy paste select all edit chips")},
             {"clipemoji", L.t("클립보드 기록 모두 지우기", "Delete all clipboard history"), L.t("복사 기록 삭제", "copy history delete clear")},
-            {"onehand", L.t("자판 폭", "Keyboard width"), L.t("한 손 모드 너비", "one-handed mode width")},
-            {"onehand", L.t("가로 모드 자판 폭", "Landscape keyboard width"), L.t("한 손 모드 너비 가로", "one-handed mode width landscape")},
+            {"onehand", L.t("자판 폭", "Keyboard width"), L.t("한 손 모드 너비 가로 세로", "one-handed mode width landscape portrait")},
             {"onehand", L.t("키 높이", "Key height"), L.t("한 손 모드 높이", "one-handed mode height")},
-            {"onehand", L.t("세로 위치", "Vertical position"), L.t("한 손 모드 위치 올리기", "one-handed mode position raise")},
+            {"onehand", L.t("아래쪽 여백", "Bottom padding"), L.t("한 손 모드 세로 위치 올리기 띄우기", "one-handed mode vertical position raise lift")},
             {"lab", L.t("일본어 자판", "Japanese keyboard"), L.t("일본어 히라가나 가타카나 한자 변환 플릭 로마자 사전 팩 japanese", "japanese hiragana katakana kanji conversion flick romaji dictionary pack")},
             {"lab", L.t("반각 공백 쓰기", "Use half-width spaces"), L.t("일본어 스페이스 전각 공백 반각 공백 띄어쓰기", "japanese space full-width half-width spacing")},
             {"lab", L.t("중국어 자판", "Chinese keyboard"), L.t("중국어 병음 한자 간체 사전 팩 chinese pinyin", "chinese pinyin hanzi simplified dictionary pack")},
@@ -1722,7 +1722,7 @@ public final class SettingsActivity extends Activity {
             c.addView(sizeSlider(L.t("왼쪽 여백", "Left padding"), Prefs.PAD_LEFT, prefs::padLeftDp, 0, 24, 1, "dp"));
             c.addView(sizeSlider(L.t("오른쪽 여백", "Right padding"), Prefs.PAD_RIGHT, prefs::padRightDp, 0, 24, 1, "dp"));
             c.addView(sizeSlider(L.t("위쪽 여백", "Top padding"), Prefs.PAD_TOP, prefs::padTopDp, 0, 24, 1, "dp"));
-            c.addView(sizeSlider(L.t("아래쪽 여백", "Bottom padding"), Prefs.PAD_BOTTOM, prefs::padBottomDp, 0, 48, 1, "dp"));
+            c.addView(sizeSlider(L.t("아래쪽 여백", "Bottom padding"), Prefs.PAD_BOTTOM, prefs::padBottomDp, 0, prefs.padBottomMax(), 1, "dp"));
             c.addView(note(L.t("키보드 전체 둘레의 여백입니다. 영역마다 따로 주는 여백은 '영역 설정' 페이지에서 그 영역을 눌러 "
                     + "창 맨 아래의 '여백'에서 정합니다.", "Padding around the whole keyboard. To set padding for each area, tap the area on the 'Areas' page and use 'Padding' at the bottom of its panel.")));
             return;
@@ -2762,10 +2762,7 @@ public final class SettingsActivity extends Activity {
         if (harvesting) {
             // 설정 검색: 두 방향의 항목을 모두 모은다.
             addProfileSplit(Prefs.PROFILE_LARGE_PORTRAIT, L.t("폴더블 내부 화면", "Inner screen"));
-            for (String p : new String[]{Prefs.PROFILE_LARGE_PORTRAIT, Prefs.PROFILE_LARGE_LANDSCAPE}) {
-                addOneHandWidth(p, L.t("폴더블 내부 화면에서", "On the inner screen"));
-                harvestProfileAreas(p);
-            }
+            for (String p : new String[]{Prefs.PROFILE_LARGE_PORTRAIT, Prefs.PROFILE_LARGE_LANDSCAPE}) harvestProfileAreas(p);
             addLargeScreenThreshold();
             return;
         }
@@ -2778,7 +2775,6 @@ public final class SettingsActivity extends Activity {
             return;
         }
         boolean land = Prefs.PROFILE_LARGE_LANDSCAPE.equals(profile);
-        String when = land ? L.t("폴더블 내부 화면을 가로로 들었을 때", "When the inner screen is held sideways") : L.t("폴더블 내부 화면을 세로로 들었을 때", "When the inner screen is held upright");
         addProfilePreview(profile);
         String now = land ? "가로" : "세로", other = land ? "세로" : "가로";
         LinearLayout intro = card();
@@ -2790,8 +2786,7 @@ public final class SettingsActivity extends Activity {
                 + "Portrait and landscape share whether the split keyboard is on, but everything else is set separately for each.\n"
                 + "Anything you can't set here is shared with 'Customize keyboard'.")));
         addProfileSplit(profile, L.t("폴더블 내부 화면", "Inner screen"));
-        // 키 글자 크기와 여백은 미리보기의 키보드 전체 설정 창에 있다.
-        addOneHandWidth(profile, when);
+        // 키 글자 크기와 여백은 미리보기의 키보드 전체 설정 창에 있다. 한 손 모드의 자판 폭은 '한 손 모드' 메뉴에서 이 화면 방향의 값을 정한다.
         addLargeScreenThreshold();
     }
 
@@ -2864,7 +2859,7 @@ public final class SettingsActivity extends Activity {
         card.addView(profileSlider(L.t("왼쪽 여백", "Left padding"), edit.padKey(Prefs.SIDE_LEFT), edit::padLeftDp, 0, 24, 1, "dp"));
         card.addView(profileSlider(L.t("오른쪽 여백", "Right padding"), edit.padKey(Prefs.SIDE_RIGHT), edit::padRightDp, 0, 24, 1, "dp"));
         card.addView(profileSlider(L.t("위쪽 여백", "Top padding"), edit.padKey(Prefs.SIDE_TOP), edit::padTopDp, 0, 24, 1, "dp"));
-        card.addView(profileSlider(L.t("아래쪽 여백", "Bottom padding"), edit.padKey(Prefs.SIDE_BOTTOM), edit::padBottomDp, 0, 48, 1, "dp"));
+        card.addView(profileSlider(L.t("아래쪽 여백", "Bottom padding"), edit.padKey(Prefs.SIDE_BOTTOM), edit::padBottomDp, 0, edit.padBottomMax(), 1, "dp"));
         card.addView(note(L.t("키보드 전체 둘레의 여백입니다. 정하기 전에는 세로 모드('키보드 사용자화')의 값을 따릅니다. "
                 + "미리보기의 키보드 전체 설정 페이지에서 키보드를 고르면 가장자리의 손잡이를 끌어서도 바꿀 수 있습니다.", "Padding around the whole keyboard. Until set, it follows portrait mode ('Customize keyboard'). You can also drag the edge handles after selecting the keyboard on the Whole keyboard page of the preview.")));
     }
@@ -2880,17 +2875,6 @@ public final class SettingsActivity extends Activity {
         if (Prefs.PROFILE_LARGE_LANDSCAPE.equals(profile)) return L.t("폴더블 내부 화면을 가로로 들었을 때", "When the inner screen is held sideways");
         if (Prefs.PROFILE_LARGE_PORTRAIT.equals(profile)) return L.t("폴더블 내부 화면을 세로로 들었을 때", "When the inner screen is held upright");
         return L.t("화면을 가로로 돌렸을 때", "When the screen is rotated sideways");
-    }
-
-    /** 폴더블 내부 화면 세로·가로의 한 손 모드 자판 폭 (정하기 전에는 세로·가로 모드의 값). */
-    private void addOneHandWidth(String profile, String when) {
-        Prefs edit = prefs.profileEditView(profile);
-        String widthKey = edit.oneHandWidthKey();
-        if (widthKey == null) return;
-        LinearLayout oneHand = section(L.t("한 손 모드", "One-handed mode"));
-        oneHand.addView(slider(L.t("자판 폭", "Keyboard width"), widthKey, edit.oneHandWidthForProfile(), 30, 90, 5, "%"));
-        oneHand.addView(note(L.t(when + " 한 손 모드에서 쓰는 자판 폭(화면 폭의 %)입니다.",
-                when + ", the keyboard width in one-handed mode (% of the screen width).")));
     }
 
     /** 설정 검색용으로 화면을 만들 때는 영역 설정 창의 항목도 목록에 넣어 찾을 수 있게 한다. */
@@ -3179,36 +3163,50 @@ public final class SettingsActivity extends Activity {
 
     // ---------------------------------------------------------------- 한 손 모드
 
-    /** 한 손 모드 화면 아래의 미리보기 (손잡이로 자판 폭·키 높이·세로 위치를 바꾼다). 다른 화면에서는 null. */
+    /** 한 손 모드 화면 아래의 미리보기 (손잡이로 자판 폭·키 높이·아래쪽 여백을 바꾼다). 다른 화면에서는 null. */
     private OneHandPreview oneHandPreview;
 
     /**
-     * 한 손 모드: 폴더블 내부 화면 키보드 사용자화처럼 실제 키보드와 같은 미리보기를 화면 아래에 붙이고,
-     * 그 손잡이(자판 오른쪽 가장자리 = 자판 폭, 위 가장자리 = 키 높이, 아래 가장자리 = 세로 위치)로 값을 바꾼다.
-     * 목록의 슬라이더도 같은 값을 바꾸고, 손잡이를 끌면 슬라이더도 따라 움직인다.
+     * 한 손 모드: 폴더블 내부 화면 키보드 사용자화처럼 지금 화면 방향(세로·가로, 폴더블 내부 화면 세로·가로)의 값만 보여 주고,
+     * 기기를 돌리면 그 방향의 값이 보인다. 실제 키보드와 같은 미리보기를 화면 아래에 붙이고, 그 손잡이(자판 오른쪽 가장자리 =
+     * 자판 폭, 위 가장자리 = 키 높이, 아래 가장자리 = 아래쪽 여백)로 값을 바꾼다. 목록의 슬라이더도 같은 값을 바꾸고,
+     * 손잡이를 끌면 슬라이더도 따라 움직인다.
      */
     private void buildOneHand() {
-        if (!harvesting) {
-            oneHandPreview = new OneHandPreview(this, prefs, this::syncSizeSliders);
-            pinnedBottom.addView(oneHandPreview, matchWrap());
-            pinnedBottom.setVisibility(View.VISIBLE);
+        if (harvesting) {
+            // 설정 검색: 항목 이름은 방향과 상관없이 같다. 지금 방향의 것만 모아도 된다.
+            addOneHandSize(prefs.profileView(prefs.profileFor(this)));
+            return;
         }
+        String profile = prefs.profileFor(this);
+        Prefs view = prefs.profileView(profile);
+        oneHandPreview = new OneHandPreview(this, view, this::syncSizeSliders);
+        pinnedBottom.addView(oneHandPreview, matchWrap());
+        pinnedBottom.setVisibility(View.VISIBLE);
+        boolean land = Prefs.PROFILE_LANDSCAPE.equals(profile) || Prefs.PROFILE_LARGE_LANDSCAPE.equals(profile);
+        String now = land ? "가로" : "세로", other = land ? "세로" : "가로";
         LinearLayout intro = card();
-        intro.addView(note(L.t("자판과 도구 막대가 한쪽으로 쏠려 한 손으로 편하게 입력할 수 있습니다.\n"
-                + "도구 막대의 한 손 모드 버튼으로 켭니다. 버튼을 왼쪽·오른쪽으로 밀면 그쪽으로 쏠린 한 손 모드가 됩니다.\n"
-                + "아래 미리보기에서 자판 오른쪽 가장자리의 손잡이를 좌우로 끌면 자판 폭이, 위 가장자리의 손잡이를 끌면 키 높이가, "
-                + "아래 가장자리의 손잡이를 위로 끌면 세로 위치가 바뀝니다.", "Moves the keyboard and toolbar to one side so you can type comfortably with one hand.\nTurn it on with the one-handed mode button on the toolbar. Swipe the button left or right to shift it to that side.\nIn the preview below, drag the handle on the right edge of the keyboard left or right to change the keyboard width, the top edge to change the key height, and the bottom edge up to change the vertical position.")));
+        intro.addView(note(L.t(now + "로 들었을 때의 한 손 모드를 정합니다. " + other + "일 때의 설정은 기기를 " + other + "로 돌리면 보입니다.",
+                "Sets one-handed mode for when the device is held " + (land ? "sideways" : "upright") + ". To see the settings for "
+                + (land ? "portrait" : "landscape") + ", rotate the device.")));
+        addOneHandSize(view);
+    }
 
-        LinearLayout size = section(L.t("크기와 위치", "Size & position"));
-        size.addView(oneHandSlider(L.t("자판 폭", "Keyboard width"), Prefs.ONE_HAND_WIDTH, prefs::oneHandWidth,
-                OneHandPreview.WIDTH_MIN, OneHandPreview.WIDTH_MAX, 5, "%"));
-        size.addView(slider(L.t("가로 모드 자판 폭", "Landscape keyboard width"), Prefs.ONE_HAND_WIDTH_LAND, prefs.oneHandWidthLand(), 30, 90, 5, "%"));
-        size.addView(oneHandSlider(L.t("키 높이", "Key height"), Prefs.ONE_HAND_HEIGHT, prefs::oneHandHeight,
-                OneHandPreview.HEIGHT_MIN, OneHandPreview.HEIGHT_MAX, 5, "%"));
-        size.addView(oneHandSlider(L.t("세로 위치", "Vertical position"), Prefs.ONE_HAND_LIFT, prefs::oneHandLiftDp,
-                OneHandPreview.LIFT_MIN, OneHandPreview.LIFT_MAX, 4, "dp"));
+    /** 이 프로필(view)의 한 손 모드 '크기와 여백' 섹션. */
+    private void addOneHandSize(Prefs view) {
+        LinearLayout size = section(L.t("크기와 여백", "Size & padding"));
+        size.addView(oneHandSlider(L.t("자판 폭", "Keyboard width"), view.oneHandWidthKey(), view::oneHandWidthForProfile,
+                view.oneHandWidthMin(), Prefs.ONE_HAND_WIDTH_MAX, 5, "%"));
+        size.addView(oneHandSlider(L.t("키 높이", "Key height"), view.oneHandHeightKey(), view::oneHandHeightForProfile,
+                Prefs.ONE_HAND_HEIGHT_MIN, Prefs.ONE_HAND_HEIGHT_MAX, 5, "%"));
+        size.addView(oneHandSlider(L.t("아래쪽 여백", "Bottom padding"), view.oneHandBottomKey(), view::oneHandBottomForProfile,
+                0, Prefs.ONE_HAND_LIFT_MAX, 4, "dp"));
         size.addView(note(L.t("자판 폭은 화면 폭에 대한 비율이고, 키 높이는 보통 키 높이에 대한 비율입니다. "
-                + "세로 위치는 자판을 화면 아래에서 띄우는 높이로, 값이 클수록 자판이 위로 올라갑니다.", "Keyboard width is relative to the screen width, and key height is relative to the normal key height. Vertical position is how high the keyboard sits above the bottom of the screen; higher values move it up.")));
+                + "아래쪽 여백은 자판 아래의 빈 공간으로, 값이 클수록 자판이 위로 올라갑니다. "
+                + "한 손 모드에서는 '키보드 사용자화'의 상하좌우 여백 대신 이 값만 씁니다.",
+                "Keyboard width is relative to the screen width, and key height is relative to the normal key height. "
+                + "Bottom padding is the empty space below the keyboard; higher values move it up. "
+                + "In one-handed mode, only this value is used instead of the padding in 'Customize keyboard'.")));
     }
 
     /** 미리보기 손잡이로도 바뀌는 한 손 모드 슬라이더: 바꾸면 미리보기를 다시 그리고, 손잡이를 끌면 따라 움직인다. */

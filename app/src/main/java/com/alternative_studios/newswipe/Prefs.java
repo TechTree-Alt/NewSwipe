@@ -85,7 +85,7 @@ public final class Prefs {
     public static final int SIDE_LEFT = 0, SIDE_TOP = 1, SIDE_RIGHT = 2, SIDE_BOTTOM = 3;
     public static final String KEY_GAP_X = "key_gap_x";               // 키 사이 좌우 간격 dp, 0~12
     public static final String KEY_GAP_Y = "key_gap_y";               // 키 사이 상하 간격 dp, 0~20
-    public static final String PAD_BOTTOM = "pad_bottom";             // dp, 0~48
+    public static final String PAD_BOTTOM = "pad_bottom";             // dp, 0~48 (가로 모드·폴더블 내부 화면은 padBottomMax)
     public static final String COMMA_CHAR = "bottom_comma_char";           // 하단 쉼표 키가 입력하는 한 글자 (기본 ",")
     public static final String PERIOD_CHAR = "bottom_period_char";         // 하단 온점 키가 입력하는 한 글자 (기본 ".")
     public static final String SHORTCUTS_ENABLED = "shortcuts_enabled";   // 단축어 사용
@@ -260,7 +260,7 @@ public final class Prefs {
     public static final String ONE_HAND_LAST = "one_hand_last";
     public static final String ONE_HAND_WIDTH = "one_hand_width";     // 자판 폭: 화면 폭의 %, 60~90
     public static final String ONE_HAND_HEIGHT = "one_hand_height";   // 키 높이: 보통 키 높이의 %, 60~100
-    public static final String ONE_HAND_LIFT = "one_hand_lift";       // 아래에서 띄우는 높이(dp), 0~160
+    public static final String ONE_HAND_LIFT = "one_hand_lift";       // 아래쪽 여백(dp), 0~208 (예전 이름: 세로 위치)
     public static final String ONE_HAND_WIDTH_LAND = "one_hand_width_land";   // 가로 모드의 자판 폭: 화면 폭의 %, 30~90
     public static final int ONE_HAND_WIDTH_LAND_DEFAULT = 50;
     public static final int ONE_HAND_WIDTH_DEFAULT = 80, ONE_HAND_HEIGHT_DEFAULT = 90, ONE_HAND_LIFT_DEFAULT = 0;
@@ -372,27 +372,51 @@ public final class Prefs {
         e.apply();
     }
 
-    public int oneHandWidth() { return clamp(sp.getInt(ONE_HAND_WIDTH, ONE_HAND_WIDTH_DEFAULT), 60, 90); }
-    /** 이 프로필(폴더블 내부 화면 세로·가로)의 한 손 모드 자판 폭을 저장하는 키. 폴더블 내부 화면이 아닌 프로필에는 없다(null). */
-    public String oneHandWidthKey() {
-        return large() ? LARGE_PREFIX + ONE_HAND_WIDTH + "_" + largeSide() : null;
+    // 한 손 모드의 자판 폭·키 높이·아래쪽 여백: 이 보기의 프로필(세로 모드·가로 모드·폴더블 내부 화면 세로·가로)마다 따로 정한다.
+    // 세로 모드는 예전 키를, 가로 모드는 이름 뒤에 _land를, 폴더블 내부 화면은 large_ + 이름 + _port·_land를 쓴다.
+    // 정하기 전에는 가로 모드는 세로 모드의 값을(자판 폭만은 따로 기본값 50%), 폴더블 내부 화면은 같은 방향의 세로·가로 모드 값을 따른다.
+
+    public static final int ONE_HAND_WIDTH_MIN = 60, ONE_HAND_WIDTH_MIN_LAND = 30, ONE_HAND_WIDTH_MAX = 90;
+    /** 한 손 모드 아래쪽 여백의 최댓값 (dp): 예전 세로 위치(최대 160)에 예전 키보드 아래쪽 여백(최대 48)을 더해 옮겨 받는다. */
+    public static final int ONE_HAND_HEIGHT_MIN = 60, ONE_HAND_HEIGHT_MAX = 100, ONE_HAND_LIFT_MAX = 160 + 48;
+
+    /** 이 프로필의 한 손 모드 값(base: ONE_HAND_WIDTH·ONE_HAND_HEIGHT·ONE_HAND_LIFT) 저장 키. */
+    private String oneHandKey(String base) {
+        if (portrait()) return base;
+        return large() ? LARGE_PREFIX + base + "_" + largeSide() : base + LANDSCAPE_SUFFIX;
     }
 
-    /**
-     * 이 보기의 프로필에서 쓸 한 손 모드 자판 폭 (화면 폭의 %, 30~90).
-     * 폴더블 내부 화면 세로·가로는 따로 정한 값을, 정하기 전에는 폴더블 내부 화면이 아닌 세로·가로 모드의 값을 쓴다.
-     */
+    /** 이 프로필이 가로 방향인지 (가로 모드, 폴더블 내부 화면 가로). */
+    private boolean landSide() { return PROFILE_LANDSCAPE.equals(profile) || PROFILE_LARGE_LANDSCAPE.equals(profile); }
+
+    /** landDef < 0이면 가로 모드도 정하기 전에는 세로 모드 값을 따른다. */
+    private int oneHandValue(String base, int def, int landDef, int min, int max) {
+        int portraitValue = sp.getInt(base, def);
+        int fallback = landSide() ? sp.getInt(base + LANDSCAPE_SUFFIX, landDef < 0 ? portraitValue : landDef) : portraitValue;
+        return clamp(sp.getInt(oneHandKey(base), fallback), min, max);
+    }
+
+    public String oneHandWidthKey() { return oneHandKey(ONE_HAND_WIDTH); }
+    public String oneHandHeightKey() { return oneHandKey(ONE_HAND_HEIGHT); }
+    public String oneHandBottomKey() { return oneHandKey(ONE_HAND_LIFT); }
+
+    /** 이 프로필의 한 손 모드 자판 폭 최솟값 (%): 세로 모드 60, 그 밖에는 30 (화면이 넓다). */
+    public int oneHandWidthMin() { return portrait() ? ONE_HAND_WIDTH_MIN : ONE_HAND_WIDTH_MIN_LAND; }
+
+    /** 이 프로필의 한 손 모드 자판 폭 (화면 폭의 %). */
     public int oneHandWidthForProfile() {
-        int fallback = profile.equals(PROFILE_LARGE_LANDSCAPE) || profile.equals(PROFILE_LANDSCAPE)
-                ? oneHandWidthLand() : oneHandWidth();
-        String key = oneHandWidthKey();
-        return key == null ? fallback : clamp(sp.getInt(key, fallback), 30, 90);
+        return oneHandValue(ONE_HAND_WIDTH, ONE_HAND_WIDTH_DEFAULT, ONE_HAND_WIDTH_LAND_DEFAULT, oneHandWidthMin(), ONE_HAND_WIDTH_MAX);
     }
 
-    /** 화면이 가로 방향일 때 쓰는 자판 폭 (화면 폭의 %). */
-    public int oneHandWidthLand() { return clamp(sp.getInt(ONE_HAND_WIDTH_LAND, ONE_HAND_WIDTH_LAND_DEFAULT), 30, 90); }
-    public int oneHandHeight() { return clamp(sp.getInt(ONE_HAND_HEIGHT, ONE_HAND_HEIGHT_DEFAULT), 60, 100); }
-    public int oneHandLiftDp() { return clamp(sp.getInt(ONE_HAND_LIFT, ONE_HAND_LIFT_DEFAULT), 0, 160); }
+    /** 이 프로필의 한 손 모드 키 높이 (보통 키 높이의 %). */
+    public int oneHandHeightForProfile() {
+        return oneHandValue(ONE_HAND_HEIGHT, ONE_HAND_HEIGHT_DEFAULT, -1, ONE_HAND_HEIGHT_MIN, ONE_HAND_HEIGHT_MAX);
+    }
+
+    /** 이 프로필의 한 손 모드 아래쪽 여백 (dp). 한 손 모드에서는 키보드 전체의 상하좌우 여백 대신 이 값만 쓴다. */
+    public int oneHandBottomForProfile() {
+        return oneHandValue(ONE_HAND_LIFT, ONE_HAND_LIFT_DEFAULT, -1, 0, ONE_HAND_LIFT_MAX);
+    }
 
     /** 글자 키를 밀 때 아래로 치는 데 필요한 (세로 ÷ 가로) 비율. */
     public float swipeDownRatio() {
@@ -458,7 +482,9 @@ public final class Prefs {
         // 실험실: 폴더블 내부 화면 별도 키보드(large_)는 키보드 사용자화로, 판정 기준은 폴더블 내부 화면 키보드 사용자화로 옮겼다.
         MENU_KEYS.put("lab", keys(SWIPE_DOWN_RATIO, SWIPE_UP_RATIO));
         MENU_PREFIXES.put("lab", keys(HW_PREFIX, CJK_PREFIX));
-        MENU_KEYS.put("onehand", keys(ONE_HAND_WIDTH, ONE_HAND_WIDTH_LAND, ONE_HAND_HEIGHT, ONE_HAND_LIFT));
+        MENU_KEYS.put("onehand", keys(ONE_HAND_WIDTH, ONE_HAND_WIDTH_LAND, ONE_HAND_HEIGHT, ONE_HAND_HEIGHT + LANDSCAPE_SUFFIX,
+                ONE_HAND_LIFT, ONE_HAND_LIFT + LANDSCAPE_SUFFIX));
+        MENU_PREFIXES.put("onehand", keys(LARGE_PREFIX + "one_hand_"));
     }
 
     // ---------------------------------------------------------------- 키보드 사용자화의 값 묶음
@@ -553,7 +579,7 @@ public final class Prefs {
                             LARGE_PREFIX + TOOLBAR_FOLLOW_BLOCKS + "_", LARGE_PREFIX + FN_FOLLOW_BLOCKS + "_",
                             LARGE_PREFIX + SPLIT_SPACE_JOIN + "_", LARGE_PREFIX + SPLIT_FN_WIDTH + "_",
                             LARGE_PREFIX + SPLIT_REACH_COLUMN + "_", LARGE_PREFIX + SPLIT_GAP_CURSOR + "_",
-                            LARGE_PREFIX + SPLIT_GAP_SPEED + "_", LARGE_PREFIX + ONE_HAND_WIDTH + "_", LARGE_PREFIX + "balanced_")),
+                            LARGE_PREFIX + SPLIT_GAP_SPEED + "_", LARGE_PREFIX + "balanced_")),
     };
 
     }
@@ -633,7 +659,7 @@ public final class Prefs {
     public void resetProfileArea() {
         resetBalancedKeys();
         removeKeys(new String[]{splitKey(), sizeKey(), heightKey(), fnRowHeightKey(), toolbarHeightKey(), textSizeKey(),
-                toolbarFollowKey(), fnFollowKey(), oneHandWidthKey(), splitGapCursorKey(),
+                toolbarFollowKey(), fnFollowKey(), splitGapCursorKey(),
                 splitGapSpeedKey(), splitSpaceJoinKey(), splitFnWidthKey(), ownReachBaseKey()},
                 new String[]{splitKey() + "_", ownReachBaseKey() + "_", profilePadKey(""), "swipe_gap_" + com.alternative_studios.newswipe.keyboard.GapSwipes.SLOTS[gapSlot()] + "_"});   // 예전에 배열마다 저장하던 분리 키보드 값도 함께
     }
@@ -831,6 +857,7 @@ public final class Prefs {
     public int padTopDp() { return padValue(SIDE_TOP, sp.getInt(PAD_TOP, 0), 24); }
 
     private int padValue(int side, int portraitValue, int max) {
+        if (oneHandView) return 0;   // 한 손 모드는 키보드 전체 여백을 쓰지 않는다 (아래쪽 여백은 한 손 모드의 값만)
         return profileSize() ? clamp(sp.getInt(padKey(side), portraitValue), 0, max) : portraitValue;
     }
 
@@ -845,7 +872,13 @@ public final class Prefs {
 
     /** 가로 모드·폴더블 내부 화면 보기의 여백 키 (name: 키보드는 l·t·r·b, 영역은 영역 번호 + l·t·r·b). 세로·가로가 각각 따로 쓴다. */
     private String profilePadKey(String name) {
-        return large() ? LARGE_PREFIX + "pad_" + largeSide() + "_" + name : LANDSCAPE_PAD_PREFIX + name;
+        return profilePadKeyFor(profile, name);
+    }
+
+    /** 가로 모드·폴더블 내부 화면 프로필(PROFILE_*)의 여백 키 ({@link #profilePadKey}와 같은 규칙). */
+    static String profilePadKeyFor(String profile, String name) {
+        return profile.startsWith(LARGE_PREFIX) ? LARGE_PREFIX + "pad_" + largeSideOf(profile) + "_" + name
+                : LANDSCAPE_PAD_PREFIX + name;
     }
 
     /** 영역 area(0 도구 막대·1 숫자 줄·2 글자 키·3 기능키)의 side(SIDE_*) 여백 설정 키. */
@@ -926,7 +959,16 @@ public final class Prefs {
         }
         return sum;
     }
-    public int padBottomDp() { return padValue(SIDE_BOTTOM, sp.getInt(PAD_BOTTOM, 4), 48); }
+    public int padBottomDp() { return padValue(SIDE_BOTTOM, sp.getInt(PAD_BOTTOM, 4), padBottomMax()); }
+
+    /**
+     * 아래쪽 여백의 최댓값 (dp). 세로 모드는 48. 가로 모드·폴더블 내부 화면은 예전 '세로 위치'(키보드를 화면 아래에서 띄우는
+     * 높이, 최대 160dp)를 아래쪽 여백으로 옮겨 받으므로 그만큼 더 크다 (LegacyLayoutSettings).
+     */
+    public int padBottomMax() { return profileSize() ? PAD_BOTTOM_MAX + LEGACY_LIFT_MAX : PAD_BOTTOM_MAX; }
+    public static final int PAD_BOTTOM_MAX = 48;
+    /** 예전 가로 모드·폴더블 내부 화면 '세로 위치'의 최댓값 (dp). */
+    static final int LEGACY_LIFT_MAX = 160;
     public boolean periodComma() { return sp.getBoolean(PERIOD_COMMA, true); }
 
     public boolean shortcutsEnabled() { return sp.getBoolean(SHORTCUTS_ENABLED, true); }
@@ -1113,7 +1155,9 @@ public final class Prefs {
 
 
     /** 폴더블 내부 화면 프로필의 방향 이름 ("port", "land"). */
-    private String largeSide() { return PROFILE_LARGE_PORTRAIT.equals(profile) ? "port" : "land"; }
+    private String largeSide() { return largeSideOf(profile); }
+
+    private static String largeSideOf(String profile) { return PROFILE_LARGE_PORTRAIT.equals(profile) ? "port" : "land"; }
 
     /**
      * '분리 키보드 레이아웃'(분리 키보드 켜기, 좌·우 균형 배열, 스페이스바 잇기, 하단 기능키 폭)의 폴더블 내부 화면 키 이름에 붙는 말.
@@ -1165,10 +1209,18 @@ public final class Prefs {
 
     /** 지금 한글 배열(과 프로필)의 키 폭·위치 설정 키. 세로 모드는 예전 이름을, 가로 모드는 _land를 붙인 이름을 그대로 쓴다. */
     private String balancedKey(String base) {
-        if (!profileValues()) return base + "_" + koreanLayoutId();
-        if (portrait()) return PORTRAIT_PREFIX + base + "_" + koreanLayoutId();
-        return large() ? LARGE_PREFIX + base + "_" + largeSide() + "_" + koreanLayoutId()
-                : base + LANDSCAPE_SUFFIX + "_" + koreanLayoutId();
+        return balancedKeyFor(base, profile, profileValues(), koreanLayoutId());
+    }
+
+    /**
+     * 프로필(PROFILE_*)·한글 배열(layout)의 묶음 폭·위치 키. split이 false면 세로 모드 균형 배열의 키다.
+     * {@link #balancedKey}와 같은 규칙이며, 예전 설정을 옮길 때 지금 고른 배열이 아닌 배열의 키도 만든다 (LegacyLayoutSettings).
+     */
+    static String balancedKeyFor(String base, String profile, boolean split, String layout) {
+        if (!split) return base + "_" + layout;
+        if (profile.isEmpty()) return PORTRAIT_PREFIX + base + "_" + layout;
+        return profile.startsWith(LARGE_PREFIX) ? LARGE_PREFIX + base + "_" + largeSideOf(profile) + "_" + layout
+                : base + LANDSCAPE_SUFFIX + "_" + layout;
     }
     public String balancedVowelWidthKey() { return balancedKey(BALANCED_VOWEL_WIDTH); }
     public String balancedVowelPosKey() { return balancedKey(BALANCED_VOWEL_EDGE); }

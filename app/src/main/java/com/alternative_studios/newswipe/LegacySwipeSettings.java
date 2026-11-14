@@ -60,6 +60,8 @@ final class LegacySwipeSettings {
     /** 아직 옮기지 않았으면 옮긴다. 이미 옮겼으면 값 하나만 읽고 끝난다. */
     static void migrateIfNeeded(Prefs prefs) {
         SharedPreferences sp = prefs.raw();
+        // 예전 버전에서 쓰던 설정인지: 아래 옮기기들이 표시를 남기기 전에 판단한다 (처음 설치하면 설정이 비어 있다).
+        boolean legacyUser = !sp.getBoolean(DONE, false) && !sp.getAll().isEmpty();
         if (!sp.getBoolean(DONE, false)) {
             if (!sp.getAll().isEmpty()) migrate(prefs, sp);
             SharedPreferences.Editor e = sp.edit();
@@ -80,6 +82,7 @@ final class LegacySwipeSettings {
             }
             sp.edit().remove(SPACE_SELECT).putBoolean(SPACE_SELECT_DONE, true).apply();
         }
+        LegacyLayoutSettings.migrateIfNeeded(prefs, legacyUser);
     }
 
     /** 스페이스바 '밀어서 선택' 스위치를 스페이스바 길게 누르기 기능으로 옮겼다는 표시. */
@@ -127,6 +130,7 @@ final class LegacySwipeSettings {
 
     private static void migrate(Prefs prefs, SharedPreferences sp) {
         if (!sp.getBoolean(SWIPE_CUSTOM, false)) migrateChars(prefs, sp);
+        else keepCustomChars(prefs, sp);
         if (!sp.getBoolean(SWIPE_FN_CUSTOM, false)) migrateFunctionSwipes(prefs, sp);
         if (!sp.getBoolean(LONG_PRESS_CUSTOM, false)) migrateLongPress(prefs, sp);
         if (!sp.getBoolean(SWIPE_TOOLBAR_CUSTOM, false)) migrateToolbar(prefs, sp);
@@ -158,6 +162,42 @@ final class LegacySwipeSettings {
         if (!sp.getBoolean(SWIPE_DOUBLE, true)) e.putBoolean(Prefs.SWIPE_DOWN_CONSONANT, false);
         if (!sp.getBoolean(SWIPE_IOTIZED, true)) e.putBoolean(Prefs.SWIPE_DOWN_VOWEL, false);
         e.apply();
+    }
+
+    /**
+     * 글자 밀기 완전 사용자화를 켜 두었던 경우: 키마다 정한 값은 그대로 쓰지만, 새 판에서 달라지는 두 곳을 맞춘다.
+     * <ul>
+     *   <li>'쌍자음 입력'·'이중모음 입력'이 아래로 밀기(기본)면 기본 글자가 있는 키의 아래로 밀기를 쌍자음·ㅣ계 이중모음으로
+     *       고정한다 ({@link SwipeCustom#hangulDownLocked}). 그런 키의 아래 칸을 바꿔 두었으면 고정을 풀고(아래로 밀기 끔),
+     *       바꾸지 않은 키에는 기본 글자를 적어 두어 예전처럼 입력되게 한다. 자음과 모음은 따로 본다.</li>
+     *   <li>온점 키 위로 밀기의 기본값이 쉼표가 되었다. 예전 완전 사용자화에서는 기본값이 없음이었으므로, 정하지 않았으면 없음을 적는다.</li>
+     * </ul>
+     */
+    private static void keepCustomChars(Prefs prefs, SharedPreferences sp) {
+        boolean newSwipe = prefs.koreanNewSwipe();
+        String down = SwipeCustom.dirName(Key.SWIPE_DOWN);
+        for (boolean vowels : new boolean[]{false, true}) {
+            java.util.List<String> fixed = new java.util.ArrayList<>();
+            boolean changed = false;
+            for (char c = 'ㄱ'; c <= 'ㅣ'; c++) {
+                if (HangulComposer.isVowel(c) != vowels) continue;
+                String label = String.valueOf(c);
+                String def = SwipeCustom.defaultFor(true, newSwipe, label, Key.SWIPE_DOWN);
+                if (def == null) continue;   // 기본 글자가 없는 키는 고정되지 않는다
+                String own = prefs.swipeCustomOverride(KeyboardLayout.GROUP_KO, label, down);
+                if (own == null) fixed.add(label);
+                else if (!own.equals(def)) changed = true;
+            }
+            if (!changed) continue;
+            for (String label : fixed) {
+                prefs.setSwipeCustomOverride(KeyboardLayout.GROUP_KO, label, down,
+                        SwipeCustom.defaultFor(true, newSwipe, label, Key.SWIPE_DOWN));
+            }
+            sp.edit().putBoolean(vowels ? Prefs.SWIPE_DOWN_VOWEL : Prefs.SWIPE_DOWN_CONSONANT, false).apply();
+        }
+        String up = SwipeCustom.dirName(Key.SWIPE_UP);
+        String sym = KeyboardLayout.groupOf(true, ".");
+        if (prefs.swipeCustomOverride(sym, ".", up) == null) prefs.setSwipeCustomOverride(sym, ".", up, "");
     }
 
     /** 예전 규칙 스위치로 한글 자모 키 c를 dir로 밀 때 입력되던 글자 (예전 KeyboardLayout.letterKeys와 같다). */

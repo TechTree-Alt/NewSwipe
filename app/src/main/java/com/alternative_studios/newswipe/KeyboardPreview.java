@@ -1430,7 +1430,7 @@ final class KeyboardPreview extends FrameLayout {
                 break;
             case PAD_LEFT: v = clamp(Math.round(dragStart + dx / density), 0, 24); break;
             case PAD_RIGHT: v = clamp(Math.round(dragStart - dx / density), 0, 24); break;
-            case PAD_BOTTOM: v = clamp(Math.round(dragStart - dy / density), 0, 48); break;
+            case PAD_BOTTOM: v = clamp(Math.round(dragStart - dy / density), 0, prefs.padBottomMax()); break;
             case PAD_TOP: v = clamp(Math.round(dragStart - dy / density), 0, 24); break;
             case B_LEFT_START:
             case B_LEFT_END:
