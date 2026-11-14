@@ -2206,6 +2206,7 @@ public class EditorUiTest {
         OneHandPreview p = find(a.getWindow().getDecorView(), OneHandPreview.class);
         assertNotNull(p);
         assertNull("미리보기는 목록 안이 아니라 화면 아래에 붙는다", find(cur(a), OneHandPreview.class));
+        assertTrue(lines(cur(a)).contains("세로로 들었을 때의 한 손 모드를 정합니다. 가로일 때의 설정은 기기를 가로로 돌리면 보입니다."));
         View overlay = p.getChildAt(1);
         float density = a.getResources().getDisplayMetrics().density;
         shot(a, "onehand-01");
@@ -2263,7 +2264,7 @@ public class EditorUiTest {
         Prefs land = prefs.profileView(Prefs.PROFILE_LANDSCAPE);
         OneHandPreview p = find(a.getWindow().getDecorView(), OneHandPreview.class);
         assertNotNull(p);
-        assertTrue(lines(cur(a)).stream().anyMatch(l -> l.contains("화면을 가로로 들었을 때의 한 손 모드")));
+        assertTrue(lines(cur(a)).stream().anyMatch(l -> l.equals("가로로 들었을 때의 한 손 모드를 정합니다. 세로일 때의 설정은 기기를 세로로 돌리면 보입니다.")));
         View overlay = p.getChildAt(1);
         float density = a.getResources().getDisplayMetrics().density;
         // 가로 모드 자판 폭의 기본값은 50%이고, 30%까지 줄일 수 있다.

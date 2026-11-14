@@ -3183,22 +3183,11 @@ public final class SettingsActivity extends Activity {
         pinnedBottom.addView(oneHandPreview, matchWrap());
         pinnedBottom.setVisibility(View.VISIBLE);
         boolean land = Prefs.PROFILE_LANDSCAPE.equals(profile) || Prefs.PROFILE_LARGE_LANDSCAPE.equals(profile);
-        boolean large = profile.startsWith("large_");
-        String screenKo = (large ? "폴더블 내부 화면을 " : "화면을 ") + (land ? "가로" : "세로") + "로 들었을 때";
-        String otherKo = land ? "세로" : "가로";
-        String screenEn = (large ? "the inner screen" : "the screen") + " is held " + (land ? "sideways" : "upright");
+        String now = land ? "가로" : "세로", other = land ? "세로" : "가로";
         LinearLayout intro = card();
-        intro.addView(note(L.t("자판과 도구 막대가 한쪽으로 쏠려 한 손으로 편하게 입력할 수 있습니다.\n"
-                + "도구 막대의 한 손 모드 버튼으로 켭니다. 버튼을 왼쪽·오른쪽으로 밀면 그쪽으로 쏠린 한 손 모드가 됩니다.\n"
-                + screenKo + "의 한 손 모드를 정합니다. " + otherKo + "일 때의 설정은 기기를 " + otherKo + "로 돌리면 보입니다.\n"
-                + "아래 미리보기에서 자판 오른쪽 가장자리의 손잡이를 좌우로 끌면 자판 폭이, 위 가장자리의 손잡이를 끌면 키 높이가, "
-                + "아래 가장자리의 손잡이를 위로 끌면 아래쪽 여백이 바뀝니다.",
-                "Moves the keyboard and toolbar to one side so you can type comfortably with one hand.\n"
-                + "Turn it on with the one-handed mode button on the toolbar. Swipe the button left or right to shift it to that side.\n"
-                + "Sets one-handed mode for when " + screenEn + ". To see the settings for " + (land ? "portrait" : "landscape")
-                + ", rotate the device.\n"
-                + "In the preview below, drag the handle on the right edge of the keyboard left or right to change the keyboard width, "
-                + "the top edge to change the key height, and the bottom edge up to change the bottom padding.")));
+        intro.addView(note(L.t(now + "로 들었을 때의 한 손 모드를 정합니다. " + other + "일 때의 설정은 기기를 " + other + "로 돌리면 보입니다.",
+                "Sets one-handed mode for when the device is held " + (land ? "sideways" : "upright") + ". To see the settings for "
+                + (land ? "portrait" : "landscape") + ", rotate the device.")));
         addOneHandSize(view);
     }
 
