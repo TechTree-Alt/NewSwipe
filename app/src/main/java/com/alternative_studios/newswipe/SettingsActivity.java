@@ -4196,7 +4196,7 @@ public final class SettingsActivity extends Activity {
      * 명예의 전당에 올릴 참여자 전체 수. '외 N명'은 이 수에서 사진과 닉네임을 실은 사람 수를 빼서 구하므로,
      * HALL_OF_FAME_PEOPLE에 한 사람을 더하면 N이 저절로 하나 줄어든다.
      */
-    private static final int HALL_OF_FAME_TOTAL = 41;
+    private static final int HALL_OF_FAME_TOTAL = 40;
     private static final int HALL_OF_FAME_OTHERS = HALL_OF_FAME_TOTAL - HALL_OF_FAME_PEOPLE.length;
 
     private void buildHallOfFame() {
