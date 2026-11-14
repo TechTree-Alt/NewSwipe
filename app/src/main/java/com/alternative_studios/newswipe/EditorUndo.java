@@ -28,7 +28,8 @@ final class EditorUndo {
     /** 키보드 사용자화 값의 마지막 모습 (바뀐 값의 이전 값을 알려고 둔다). null이면 아직 시작하지 않았다. */
     private static Map<String, Object> snapshot;
     private static long lastStepTime;
-    private static String lastStepKey;
+    /** 마지막 단계(합친 것 포함)에서 바뀐 값들. 다음 변경이 이 안의 값만 바꾸면 그 단계에 합친다. */
+    private static Set<String> lastStepKeys;
     /** 되돌리는 중 (그 변경은 기록하지 않는다). */
     private static boolean undoing;
 
@@ -59,7 +60,7 @@ final class EditorUndo {
     static void clearAll() {
         steps.clear();
         snapshot = null;
-        lastStepKey = null;
+        lastStepKeys = null;
         floor = 0;
         scope = null;
         rootActive = false;
@@ -88,7 +89,7 @@ final class EditorUndo {
             return;
         }
         while (steps.size() > floor) steps.removeLast();
-        lastStepKey = null;
+        lastStepKeys = null;
         floor = 0;
         scope = null;
     }
@@ -134,14 +135,26 @@ final class EditorUndo {
         // 그사이 키보드 사용자화를 떠나 기록을 버렸으면 (clearAll) 쌓지 않는다.
         if (step == null || step.isEmpty() || snapshot == null) return;
         long t = SystemClock.uptimeMillis();
-        String single = step.size() == 1 ? step.keySet().iterator().next() : null;
-        boolean merge = single != null && single.equals(lastStepKey) && t - lastStepTime < MERGE_MS && !steps.isEmpty();
-        if (!merge) steps.addLast(step);   // 합칠 때는 앞 단계의 '바뀌기 전 값'을 그대로 둔다
-        lastStepKey = single;
+        // 손잡이·슬라이더 하나가 값 여러 개를 함께 바꾸기도 한다 (묶음 경계 손잡이는 폭과 가로 위치를 함께).
+        // 앞 단계에서 바뀐 값들 안에서만 다시 바뀌면 같은 조작으로 보고 합친다.
+        boolean merge = lastStepKeys != null && lastStepKeys.containsAll(step.keySet())
+                && t - lastStepTime < MERGE_MS && !steps.isEmpty();
+        if (merge) {
+            // 앞 단계의 '바뀌기 전 값'은 그대로 둔다 (앞 단계에 없던 값만 더한다).
+            Map<String, Object> top = steps.peekLast();
+            for (Map.Entry<String, Object> en : step.entrySet()) top.putIfAbsent(en.getKey(), en.getValue());
+        } else {
+            steps.addLast(step);
+            lastStepKeys = new java.util.HashSet<>();
+        }
+        lastStepKeys.addAll(step.keySet());
         lastStepTime = t;
         // 합쳐서 결국 원래 값으로 돌아왔으면 (스위치를 켰다 끔) 되돌릴 것이 없다.
         Map<String, Object> top = steps.peekLast();
-        if (top != null && isNoop(top)) steps.removeLast();
+        if (top != null && isNoop(top)) {
+            steps.removeLast();
+            lastStepKeys = null;   // 그 아래 단계는 다른 조작이라 합치지 않는다
+        }
         while (steps.size() > MAX_STEPS) {
             steps.removeFirst();
             if (floor > 0) floor--;
@@ -185,7 +198,7 @@ final class EditorUndo {
             undoing = false;
             if (snapshot != null) snapshot = editorValues();   // 그사이 키보드 사용자화를 떠났으면 다시 시작하지 않는다
         });
-        lastStepKey = null;
+        lastStepKeys = null;
         onChange.run();
         return true;
     }
