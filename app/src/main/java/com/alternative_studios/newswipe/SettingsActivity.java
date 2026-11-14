@@ -4140,7 +4140,13 @@ public final class SettingsActivity extends Activity {
             {"마로코기", R.drawable.hof_marokogi},
             {"ssonbin", R.drawable.hof_ssonbin},
             {"청보라", R.drawable.hof_cheongbora},
+            {"ia297", R.drawable.hof_ia297},
+            {"LinusJS", R.drawable.hof_linusjs},
+            {"낮은하늘", R.drawable.hof_najeunhaneul},
     };
+
+    /** 명예의 전당 버튼 바탕과 프로필 사진 테두리에 쓰는 옅은 무지개 색. */
+    private static final int[] RAINBOW = {0xFFFFB3BA, 0xFFFFD8A8, 0xFFFFF3A6, 0xFFBDF2C4, 0xFFB5DEFF, 0xFFD5BEFF};
 
     /** 정보 화면의 '명예의 전당' 버튼. 다른 버튼과 달리 무지개빛 그라데이션 바탕으로 돋보이게 한다. */
     private View hallOfFameButton() {
@@ -4149,7 +4155,7 @@ public final class SettingsActivity extends Activity {
                 new Chevron(this, ink), v -> openSection(HALL_OF_FAME));
         android.graphics.drawable.GradientDrawable rainbow = new android.graphics.drawable.GradientDrawable(
                 android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[]{0xFFFFB3BA, 0xFFFFD8A8, 0xFFFFF3A6, 0xFFBDF2C4, 0xFFB5DEFF, 0xFFD5BEFF});
+                RAINBOW);
         float r = Ui.dp(this, 12);
         rainbow.setCornerRadius(r);
         row.setBackground(Ui.ripple(0x33000000, rainbow, r));
@@ -4190,8 +4196,12 @@ public final class SettingsActivity extends Activity {
     private static final String HALL_OF_FAME_FORM_URL =
             "https://docs.google.com/forms/d/e/1FAIpQLSdFzCqaJ6oLivN73Gq8uxO9o-aiGtW04OgdLpjfNYDBHVjg1g/viewform?usp=header";
 
-    /** 사진과 닉네임을 싣지 않은 나머지 참여자 수. */
-    private static final int HALL_OF_FAME_OTHERS = 37;
+    /**
+     * 명예의 전당에 올릴 참여자 전체 수. '외 N명'은 이 수에서 사진과 닉네임을 실은 사람 수를 빼서 구하므로,
+     * HALL_OF_FAME_PEOPLE에 한 사람을 더하면 N이 저절로 하나 줄어든다.
+     */
+    private static final int HALL_OF_FAME_TOTAL = 40;
+    private static final int HALL_OF_FAME_OTHERS = HALL_OF_FAME_TOTAL - HALL_OF_FAME_PEOPLE.length;
 
     private void buildHallOfFame() {
         LinearLayout c = card();
@@ -4236,6 +4246,12 @@ public final class SettingsActivity extends Activity {
         android.graphics.BitmapShader shader = new android.graphics.BitmapShader(bmp,
                 android.graphics.Shader.TileMode.CLAMP, android.graphics.Shader.TileMode.CLAMP);
         paint.setShader(shader);
+        // 명예의 전당 버튼과 같은 무지개 색으로 둥글게 이어지는 테두리를 두른다 (흰 바탕 사진도 카드와 구분된다).
+        android.graphics.Paint ring = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        ring.setStyle(android.graphics.Paint.Style.STROKE);
+        ring.setStrokeWidth(Ui.dp(this, 2.5f));
+        int[] loop = java.util.Arrays.copyOf(RAINBOW, RAINBOW.length + 1);
+        loop[RAINBOW.length] = RAINBOW[0];   // 한 바퀴 돌아 처음 색으로 이어지게 한다
         return new android.graphics.drawable.Drawable() {
             @Override public void draw(android.graphics.Canvas c) {
                 android.graphics.Rect r = getBounds();
@@ -4244,6 +4260,9 @@ public final class SettingsActivity extends Activity {
                 m.postTranslate(r.left, r.top);
                 shader.setLocalMatrix(m);
                 c.drawOval(r.left, r.top, r.right, r.bottom, paint);
+                ring.setShader(new android.graphics.SweepGradient(r.exactCenterX(), r.exactCenterY(), loop, null));
+                float in = ring.getStrokeWidth() / 2;
+                c.drawOval(r.left + in, r.top + in, r.right - in, r.bottom - in, ring);
             }
             @Override public void setAlpha(int alpha) { paint.setAlpha(alpha); }
             @Override public void setColorFilter(android.graphics.ColorFilter cf) { paint.setColorFilter(cf); }
