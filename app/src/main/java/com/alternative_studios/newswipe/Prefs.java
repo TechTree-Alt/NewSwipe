@@ -85,7 +85,7 @@ public final class Prefs {
     public static final int SIDE_LEFT = 0, SIDE_TOP = 1, SIDE_RIGHT = 2, SIDE_BOTTOM = 3;
     public static final String KEY_GAP_X = "key_gap_x";               // 키 사이 좌우 간격 dp, 0~12
     public static final String KEY_GAP_Y = "key_gap_y";               // 키 사이 상하 간격 dp, 0~20
-    public static final String PAD_BOTTOM = "pad_bottom";             // dp, 0~48
+    public static final String PAD_BOTTOM = "pad_bottom";             // dp, 0~48 (가로 모드·폴더블 내부 화면은 padBottomMax)
     public static final String COMMA_CHAR = "bottom_comma_char";           // 하단 쉼표 키가 입력하는 한 글자 (기본 ",")
     public static final String PERIOD_CHAR = "bottom_period_char";         // 하단 온점 키가 입력하는 한 글자 (기본 ".")
     public static final String SHORTCUTS_ENABLED = "shortcuts_enabled";   // 단축어 사용
@@ -845,7 +845,13 @@ public final class Prefs {
 
     /** 가로 모드·폴더블 내부 화면 보기의 여백 키 (name: 키보드는 l·t·r·b, 영역은 영역 번호 + l·t·r·b). 세로·가로가 각각 따로 쓴다. */
     private String profilePadKey(String name) {
-        return large() ? LARGE_PREFIX + "pad_" + largeSide() + "_" + name : LANDSCAPE_PAD_PREFIX + name;
+        return profilePadKeyFor(profile, name);
+    }
+
+    /** 가로 모드·폴더블 내부 화면 프로필(PROFILE_*)의 여백 키 ({@link #profilePadKey}와 같은 규칙). */
+    static String profilePadKeyFor(String profile, String name) {
+        return profile.startsWith(LARGE_PREFIX) ? LARGE_PREFIX + "pad_" + largeSideOf(profile) + "_" + name
+                : LANDSCAPE_PAD_PREFIX + name;
     }
 
     /** 영역 area(0 도구 막대·1 숫자 줄·2 글자 키·3 기능키)의 side(SIDE_*) 여백 설정 키. */
@@ -926,7 +932,16 @@ public final class Prefs {
         }
         return sum;
     }
-    public int padBottomDp() { return padValue(SIDE_BOTTOM, sp.getInt(PAD_BOTTOM, 4), 48); }
+    public int padBottomDp() { return padValue(SIDE_BOTTOM, sp.getInt(PAD_BOTTOM, 4), padBottomMax()); }
+
+    /**
+     * 아래쪽 여백의 최댓값 (dp). 세로 모드는 48. 가로 모드·폴더블 내부 화면은 예전 '세로 위치'(키보드를 화면 아래에서 띄우는
+     * 높이, 최대 160dp)를 아래쪽 여백으로 옮겨 받으므로 그만큼 더 크다 (LegacyLayoutSettings).
+     */
+    public int padBottomMax() { return profileSize() ? PAD_BOTTOM_MAX + LEGACY_LIFT_MAX : PAD_BOTTOM_MAX; }
+    public static final int PAD_BOTTOM_MAX = 48;
+    /** 예전 가로 모드·폴더블 내부 화면 '세로 위치'의 최댓값 (dp). */
+    static final int LEGACY_LIFT_MAX = 160;
     public boolean periodComma() { return sp.getBoolean(PERIOD_COMMA, true); }
 
     public boolean shortcutsEnabled() { return sp.getBoolean(SHORTCUTS_ENABLED, true); }
@@ -1113,7 +1128,9 @@ public final class Prefs {
 
 
     /** 폴더블 내부 화면 프로필의 방향 이름 ("port", "land"). */
-    private String largeSide() { return PROFILE_LARGE_PORTRAIT.equals(profile) ? "port" : "land"; }
+    private String largeSide() { return largeSideOf(profile); }
+
+    private static String largeSideOf(String profile) { return PROFILE_LARGE_PORTRAIT.equals(profile) ? "port" : "land"; }
 
     /**
      * '분리 키보드 레이아웃'(분리 키보드 켜기, 좌·우 균형 배열, 스페이스바 잇기, 하단 기능키 폭)의 폴더블 내부 화면 키 이름에 붙는 말.
@@ -1165,10 +1182,18 @@ public final class Prefs {
 
     /** 지금 한글 배열(과 프로필)의 키 폭·위치 설정 키. 세로 모드는 예전 이름을, 가로 모드는 _land를 붙인 이름을 그대로 쓴다. */
     private String balancedKey(String base) {
-        if (!profileValues()) return base + "_" + koreanLayoutId();
-        if (portrait()) return PORTRAIT_PREFIX + base + "_" + koreanLayoutId();
-        return large() ? LARGE_PREFIX + base + "_" + largeSide() + "_" + koreanLayoutId()
-                : base + LANDSCAPE_SUFFIX + "_" + koreanLayoutId();
+        return balancedKeyFor(base, profile, profileValues(), koreanLayoutId());
+    }
+
+    /**
+     * 프로필(PROFILE_*)·한글 배열(layout)의 묶음 폭·위치 키. split이 false면 세로 모드 균형 배열의 키다.
+     * {@link #balancedKey}와 같은 규칙이며, 예전 설정을 옮길 때 지금 고른 배열이 아닌 배열의 키도 만든다 (LegacyLayoutSettings).
+     */
+    static String balancedKeyFor(String base, String profile, boolean split, String layout) {
+        if (!split) return base + "_" + layout;
+        if (profile.isEmpty()) return PORTRAIT_PREFIX + base + "_" + layout;
+        return profile.startsWith(LARGE_PREFIX) ? LARGE_PREFIX + base + "_" + largeSideOf(profile) + "_" + layout
+                : base + LANDSCAPE_SUFFIX + "_" + layout;
     }
     public String balancedVowelWidthKey() { return balancedKey(BALANCED_VOWEL_WIDTH); }
     public String balancedVowelPosKey() { return balancedKey(BALANCED_VOWEL_EDGE); }

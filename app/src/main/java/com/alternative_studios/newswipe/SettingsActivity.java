@@ -1722,7 +1722,7 @@ public final class SettingsActivity extends Activity {
             c.addView(sizeSlider(L.t("왼쪽 여백", "Left padding"), Prefs.PAD_LEFT, prefs::padLeftDp, 0, 24, 1, "dp"));
             c.addView(sizeSlider(L.t("오른쪽 여백", "Right padding"), Prefs.PAD_RIGHT, prefs::padRightDp, 0, 24, 1, "dp"));
             c.addView(sizeSlider(L.t("위쪽 여백", "Top padding"), Prefs.PAD_TOP, prefs::padTopDp, 0, 24, 1, "dp"));
-            c.addView(sizeSlider(L.t("아래쪽 여백", "Bottom padding"), Prefs.PAD_BOTTOM, prefs::padBottomDp, 0, 48, 1, "dp"));
+            c.addView(sizeSlider(L.t("아래쪽 여백", "Bottom padding"), Prefs.PAD_BOTTOM, prefs::padBottomDp, 0, prefs.padBottomMax(), 1, "dp"));
             c.addView(note(L.t("키보드 전체 둘레의 여백입니다. 영역마다 따로 주는 여백은 '영역 설정' 페이지에서 그 영역을 눌러 "
                     + "창 맨 아래의 '여백'에서 정합니다.", "Padding around the whole keyboard. To set padding for each area, tap the area on the 'Areas' page and use 'Padding' at the bottom of its panel.")));
             return;
@@ -2864,7 +2864,7 @@ public final class SettingsActivity extends Activity {
         card.addView(profileSlider(L.t("왼쪽 여백", "Left padding"), edit.padKey(Prefs.SIDE_LEFT), edit::padLeftDp, 0, 24, 1, "dp"));
         card.addView(profileSlider(L.t("오른쪽 여백", "Right padding"), edit.padKey(Prefs.SIDE_RIGHT), edit::padRightDp, 0, 24, 1, "dp"));
         card.addView(profileSlider(L.t("위쪽 여백", "Top padding"), edit.padKey(Prefs.SIDE_TOP), edit::padTopDp, 0, 24, 1, "dp"));
-        card.addView(profileSlider(L.t("아래쪽 여백", "Bottom padding"), edit.padKey(Prefs.SIDE_BOTTOM), edit::padBottomDp, 0, 48, 1, "dp"));
+        card.addView(profileSlider(L.t("아래쪽 여백", "Bottom padding"), edit.padKey(Prefs.SIDE_BOTTOM), edit::padBottomDp, 0, edit.padBottomMax(), 1, "dp"));
         card.addView(note(L.t("키보드 전체 둘레의 여백입니다. 정하기 전에는 세로 모드('키보드 사용자화')의 값을 따릅니다. "
                 + "미리보기의 키보드 전체 설정 페이지에서 키보드를 고르면 가장자리의 손잡이를 끌어서도 바꿀 수 있습니다.", "Padding around the whole keyboard. Until set, it follows portrait mode ('Customize keyboard'). You can also drag the edge handles after selecting the keyboard on the Whole keyboard page of the preview.")));
     }
