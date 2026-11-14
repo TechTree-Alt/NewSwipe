@@ -132,7 +132,10 @@ public class EditorUiTest {
 
     static void touch(View target, int action, float x, float y) {
         MotionEvent e = MotionEvent.obtain(t0, SystemClock.uptimeMillis(), action, x, y, 0);
+        // 뷰에 바로 보내므로 SettingsActivity.dispatchTouchEvent가 하는 일(되돌리기 단계의 터치 시작·끝)을 여기서 한다.
+        if (action == MotionEvent.ACTION_DOWN) EditorUndo.touchDown();
         target.dispatchTouchEvent(e);
+        if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) EditorUndo.touchUp();
         e.recycle();
     }
 
@@ -966,7 +969,7 @@ public class EditorUiTest {
         log("toolbar bottom " + before + " -> undo -> " + prefs.raw().getBoolean(Prefs.TOOLBAR_BOTTOM, false));
         assertEquals(before, prefs.raw().getBoolean(Prefs.TOOLBAR_BOTTOM, false));
         assertFalse(byDesc(decor, "마지막 변경 되돌리기").isEnabled());
-        // 손잡이로 높이를 끌면 한 번의 되돌리기로 끈 처음 값으로
+        // 손잡이로 높이를 끌면 한 번의 되돌리기로 그 터치를 시작한 때의 값으로
         a.onBackPressed(); idle();
         int h0 = prefs.keyboardHeight();
         p.select(KeyboardPreview.Selection.area(KeyboardPreview.AREA_LETTERS));
@@ -977,7 +980,15 @@ public class EditorUiTest {
         float[] lk = handle(p, 2);
         drag(p.getChildAt(1), lk[0], lk[1], 0, -200);
         log("height " + h0 + " -> " + prefs.keyboardHeight());
-        assertTrue(prefs.keyboardHeight() > h0);
+        int h1 = prefs.keyboardHeight();
+        assertTrue(h1 > h0);
+        // 손을 뗐다가 다시 끌면 따로 한 단계: 되돌리기 한 번은 두 번째로 끌기 전 값까지만
+        lk = handle(p, 2);
+        drag(p.getChildAt(1), lk[0], lk[1], 0, 120);
+        log("height " + h1 + " -> " + prefs.keyboardHeight());
+        assertTrue(prefs.keyboardHeight() < h1);
+        byDesc(decor, "마지막 변경 되돌리기").performClick(); idle();
+        assertEquals(h1, prefs.keyboardHeight());
         byDesc(decor, "마지막 변경 되돌리기").performClick(); idle();
         assertEquals(h0, prefs.keyboardHeight());
         // 좌우로 밀어 페이지 넘기기

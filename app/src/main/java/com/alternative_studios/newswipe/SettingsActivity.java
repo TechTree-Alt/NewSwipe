@@ -201,6 +201,19 @@ public final class SettingsActivity extends Activity {
         super.onDestroy();
     }
 
+    /** 되돌리기 단계: 화면을 한 번 눌렀다 뗄 때까지(손잡이·슬라이더 끌기) 바뀐 값을 한 단계로 묶는다. */
+    @Override
+    public boolean dispatchTouchEvent(android.view.MotionEvent e) {
+        if (e.getActionMasked() == android.view.MotionEvent.ACTION_DOWN) EditorUndo.touchDown();
+        try {
+            return super.dispatchTouchEvent(e);
+        } finally {
+            int action = e.getActionMasked();
+            // 떼는 순간에 저장하는 값까지 이 터치에 넣고 나서 끝낸다.
+            if (action == android.view.MotionEvent.ACTION_UP || action == android.view.MotionEvent.ACTION_CANCEL) EditorUndo.touchUp();
+        }
+    }
+
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
