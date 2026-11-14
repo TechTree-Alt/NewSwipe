@@ -4141,6 +4141,7 @@ public final class SettingsActivity extends Activity {
             {"ssonbin", R.drawable.hof_ssonbin},
             {"청보라", R.drawable.hof_cheongbora},
             {"ia297", R.drawable.hof_ia297},
+            {"LinusJS", R.drawable.hof_linusjs},
     };
 
     /** 정보 화면의 '명예의 전당' 버튼. 다른 버튼과 달리 무지개빛 그라데이션 바탕으로 돋보이게 한다. */
@@ -4191,8 +4192,12 @@ public final class SettingsActivity extends Activity {
     private static final String HALL_OF_FAME_FORM_URL =
             "https://docs.google.com/forms/d/e/1FAIpQLSdFzCqaJ6oLivN73Gq8uxO9o-aiGtW04OgdLpjfNYDBHVjg1g/viewform?usp=header";
 
-    /** 사진과 닉네임을 싣지 않은 나머지 참여자 수. */
-    private static final int HALL_OF_FAME_OTHERS = 37;
+    /**
+     * 명예의 전당에 올릴 참여자 전체 수. '외 N명'은 이 수에서 사진과 닉네임을 실은 사람 수를 빼서 구하므로,
+     * HALL_OF_FAME_PEOPLE에 한 사람을 더하면 N이 저절로 하나 줄어든다.
+     */
+    private static final int HALL_OF_FAME_TOTAL = 41;
+    private static final int HALL_OF_FAME_OTHERS = HALL_OF_FAME_TOTAL - HALL_OF_FAME_PEOPLE.length;
 
     private void buildHallOfFame() {
         LinearLayout c = card();
@@ -4237,6 +4242,11 @@ public final class SettingsActivity extends Activity {
         android.graphics.BitmapShader shader = new android.graphics.BitmapShader(bmp,
                 android.graphics.Shader.TileMode.CLAMP, android.graphics.Shader.TileMode.CLAMP);
         paint.setShader(shader);
+        // 흰 바탕 사진도 카드와 구분되도록 얇은 회색 테두리를 두른다.
+        android.graphics.Paint ring = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        ring.setStyle(android.graphics.Paint.Style.STROKE);
+        ring.setStrokeWidth(Ui.dp(this, 1));
+        ring.setColor((hintColor & 0x00FFFFFF) | 0x66000000);
         return new android.graphics.drawable.Drawable() {
             @Override public void draw(android.graphics.Canvas c) {
                 android.graphics.Rect r = getBounds();
@@ -4245,6 +4255,8 @@ public final class SettingsActivity extends Activity {
                 m.postTranslate(r.left, r.top);
                 shader.setLocalMatrix(m);
                 c.drawOval(r.left, r.top, r.right, r.bottom, paint);
+                float in = ring.getStrokeWidth() / 2;
+                c.drawOval(r.left + in, r.top + in, r.right - in, r.bottom - in, ring);
             }
             @Override public void setAlpha(int alpha) { paint.setAlpha(alpha); }
             @Override public void setColorFilter(android.graphics.ColorFilter cf) { paint.setColorFilter(cf); }
