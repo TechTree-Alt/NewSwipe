@@ -896,7 +896,7 @@ final class KeyboardPreview extends FrameLayout {
         if (profileEdit != null && profileBoardLayer() && layer == LAYER_BOARD) {
             // 키보드 전체 설정 페이지: 키보드 전체 하나.
             RectF r = new RectF();
-            boolean inside = boardBounds(r) && y >= r.top - Ui.dp(getContext(), 12) && y <= r.bottom + Ui.dp(getContext(), 12);
+            boolean inside = boardBounds(r) && y >= r.top - Ui.dp(getContext(), 12) && y <= Math.max(r.bottom + Ui.dp(getContext(), 12), column.getBottom());
             listener.onTap(inside ? Selection.board() : null);
             return;
         }
@@ -927,7 +927,7 @@ final class KeyboardPreview extends FrameLayout {
         if (balancedMode) return;   // 손잡이만 쓰는 미리보기: 고를 것이 없다
         if (layer == LAYER_BOARD) {   // 키보드 층: 키보드 전체 하나
             RectF r = new RectF();
-            boolean inside = boardBounds(r) && y >= r.top - Ui.dp(getContext(), 12) && y <= r.bottom + Ui.dp(getContext(), 12);
+            boolean inside = boardBounds(r) && y >= r.top - Ui.dp(getContext(), 12) && y <= Math.max(r.bottom + Ui.dp(getContext(), 12), column.getBottom());
             listener.onTap(inside ? Selection.board() : null);
             return;
         }
@@ -1026,8 +1026,9 @@ final class KeyboardPreview extends FrameLayout {
     /** 키보드 전체(도구 막대·자판)를 감싼 테두리 자리. */
     boolean boardBounds(RectF out) {
         if (column.getChildCount() == 0) return false;
-        // 좌우는 키(와 영역 여백)를 따라가는 안쪽 가장자리, 위아래는 키보드 전체 여백의 바깥 가장자리.
-        // 어느 쪽이든 그 여백을 늘리면 손가락을 따라 움직이는 변이다.
+        // 좌우·아래는 키(와 영역 여백)를 따라가는 안쪽 가장자리, 위는 키보드 전체 여백의 바깥 가장자리.
+        // 어느 쪽이든 그 여백을 바꾸면 손가락을 따라 움직이는 변이다: 미리보기는 화면 아래에 붙어 위로 자라므로
+        // 아래쪽 여백을 늘리면 바깥 가장자리는 제자리이고 키가 위로 올라간다.
         Context c = getContext();
         float pad = Ui.dp(c, 2);
         float left = Float.MAX_VALUE, right = -Float.MAX_VALUE;
@@ -1041,7 +1042,8 @@ final class KeyboardPreview extends FrameLayout {
             left = pad;
             right = vw() - pad;
         }
-        out.set(Math.max(left, pad), column.getTop() + pad, Math.min(right, vw() - pad), column.getBottom() - pad);
+        float bottom = column.getBottom() - Ui.dp(c, prefs.padBottomDp());
+        out.set(Math.max(left, pad), column.getTop() + pad, Math.min(right, vw() - pad), Math.min(bottom, column.getBottom() - pad));
         return out.height() > 0;
     }
 

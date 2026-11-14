@@ -201,6 +201,19 @@ public final class SettingsActivity extends Activity {
         super.onDestroy();
     }
 
+    /** 되돌리기 단계: 화면을 한 번 눌렀다 뗄 때까지(손잡이·슬라이더 끌기) 바뀐 값을 한 단계로 묶는다. */
+    @Override
+    public boolean dispatchTouchEvent(android.view.MotionEvent e) {
+        if (e.getActionMasked() == android.view.MotionEvent.ACTION_DOWN) EditorUndo.touchDown();
+        try {
+            return super.dispatchTouchEvent(e);
+        } finally {
+            int action = e.getActionMasked();
+            // 떼는 순간에 저장하는 값까지 이 터치에 넣고 나서 끝낸다.
+            if (action == android.view.MotionEvent.ACTION_UP || action == android.view.MotionEvent.ACTION_CANCEL) EditorUndo.touchUp();
+        }
+    }
+
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
@@ -1479,7 +1492,6 @@ public final class SettingsActivity extends Activity {
     private void undoLast() {
         if (editorUndo == null || !editorUndo.undo()) return;
         if (Build.VERSION.SDK_INT >= 30) undoButton.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM);
-        Toast.makeText(this, L.t("마지막 변경을 되돌렸습니다", "Undid the last change"), Toast.LENGTH_SHORT).show();
         if (editorPreview == null) {
             // 가로 모드·폴더블 내부 화면 키보드 사용자화: 목록·슬라이더·미리보기를 되돌린 값으로 다시 만든다.
             recreate();
