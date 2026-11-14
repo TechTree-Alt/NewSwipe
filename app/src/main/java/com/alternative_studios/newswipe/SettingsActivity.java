@@ -4142,6 +4142,7 @@ public final class SettingsActivity extends Activity {
             {"청보라", R.drawable.hof_cheongbora},
             {"ia297", R.drawable.hof_ia297},
             {"LinusJS", R.drawable.hof_linusjs},
+            {"낮은하늘", R.drawable.hof_najeunhaneul},
     };
 
     /** 정보 화면의 '명예의 전당' 버튼. 다른 버튼과 달리 무지개빛 그라데이션 바탕으로 돋보이게 한다. */
