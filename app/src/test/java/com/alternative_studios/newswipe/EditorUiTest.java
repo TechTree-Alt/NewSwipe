@@ -268,10 +268,11 @@ public class EditorUiTest {
         shot(a, "05c-top-padding-above-toolbar");
         prefs.raw().edit().putInt(Prefs.PAD_TOP, 0).commit();
         idle();
-        // 왼쪽 여백 오른쪽으로 끌기
+        // 왼쪽 여백 오른쪽으로 끌기 (손잡이는 키보드 윤곽선 왼쪽 변의 세로 가운데)
         int padBefore = prefs.padLeftDp();
-        float midY = kv.getTop() + kv.getHeight() / 2f;
-        drag(overlay, Math.max(prefs.padLeftDp(), 3) * a.getResources().getDisplayMetrics().density, midY - 0, 60, 0);
+        float[] lp = new float[2];
+        hcTop.invoke(p, KeyboardPreview.Handle.values()[3], lp);
+        drag(overlay, lp[0], lp[1], 60, 0);
         log("padLeft " + padBefore + " -> " + prefs.padLeftDp());
         assertTrue(prefs.padLeftDp() > padBefore);
         p.setLayer(KeyboardPreview.LAYER_KEY);
