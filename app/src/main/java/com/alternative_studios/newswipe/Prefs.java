@@ -260,7 +260,7 @@ public final class Prefs {
     public static final String ONE_HAND_LAST = "one_hand_last";
     public static final String ONE_HAND_WIDTH = "one_hand_width";     // 자판 폭: 화면 폭의 %, 60~90
     public static final String ONE_HAND_HEIGHT = "one_hand_height";   // 키 높이: 보통 키 높이의 %, 60~100
-    public static final String ONE_HAND_LIFT = "one_hand_lift";       // 아래에서 띄우는 높이(dp), 0~160
+    public static final String ONE_HAND_LIFT = "one_hand_lift";       // 아래쪽 여백(dp), 0~160 (예전 이름: 세로 위치)
     public static final String ONE_HAND_WIDTH_LAND = "one_hand_width_land";   // 가로 모드의 자판 폭: 화면 폭의 %, 30~90
     public static final int ONE_HAND_WIDTH_LAND_DEFAULT = 50;
     public static final int ONE_HAND_WIDTH_DEFAULT = 80, ONE_HAND_HEIGHT_DEFAULT = 90, ONE_HAND_LIFT_DEFAULT = 0;
@@ -372,27 +372,50 @@ public final class Prefs {
         e.apply();
     }
 
-    public int oneHandWidth() { return clamp(sp.getInt(ONE_HAND_WIDTH, ONE_HAND_WIDTH_DEFAULT), 60, 90); }
-    /** 이 프로필(폴더블 내부 화면 세로·가로)의 한 손 모드 자판 폭을 저장하는 키. 폴더블 내부 화면이 아닌 프로필에는 없다(null). */
-    public String oneHandWidthKey() {
-        return large() ? LARGE_PREFIX + ONE_HAND_WIDTH + "_" + largeSide() : null;
+    // 한 손 모드의 자판 폭·키 높이·아래쪽 여백: 이 보기의 프로필(세로 모드·가로 모드·폴더블 내부 화면 세로·가로)마다 따로 정한다.
+    // 세로 모드는 예전 키를, 가로 모드는 이름 뒤에 _land를, 폴더블 내부 화면은 large_ + 이름 + _port·_land를 쓴다.
+    // 정하기 전에는 가로 모드는 세로 모드의 값을(자판 폭만은 따로 기본값 50%), 폴더블 내부 화면은 같은 방향의 세로·가로 모드 값을 따른다.
+
+    public static final int ONE_HAND_WIDTH_MIN = 60, ONE_HAND_WIDTH_MIN_LAND = 30, ONE_HAND_WIDTH_MAX = 90;
+    public static final int ONE_HAND_HEIGHT_MIN = 60, ONE_HAND_HEIGHT_MAX = 100, ONE_HAND_LIFT_MAX = 160;
+
+    /** 이 프로필의 한 손 모드 값(base: ONE_HAND_WIDTH·ONE_HAND_HEIGHT·ONE_HAND_LIFT) 저장 키. */
+    private String oneHandKey(String base) {
+        if (portrait()) return base;
+        return large() ? LARGE_PREFIX + base + "_" + largeSide() : base + LANDSCAPE_SUFFIX;
     }
 
-    /**
-     * 이 보기의 프로필에서 쓸 한 손 모드 자판 폭 (화면 폭의 %, 30~90).
-     * 폴더블 내부 화면 세로·가로는 따로 정한 값을, 정하기 전에는 폴더블 내부 화면이 아닌 세로·가로 모드의 값을 쓴다.
-     */
+    /** 이 프로필이 가로 방향인지 (가로 모드, 폴더블 내부 화면 가로). */
+    private boolean landSide() { return PROFILE_LANDSCAPE.equals(profile) || PROFILE_LARGE_LANDSCAPE.equals(profile); }
+
+    /** landDef < 0이면 가로 모드도 정하기 전에는 세로 모드 값을 따른다. */
+    private int oneHandValue(String base, int def, int landDef, int min, int max) {
+        int portraitValue = sp.getInt(base, def);
+        int fallback = landSide() ? sp.getInt(base + LANDSCAPE_SUFFIX, landDef < 0 ? portraitValue : landDef) : portraitValue;
+        return clamp(sp.getInt(oneHandKey(base), fallback), min, max);
+    }
+
+    public String oneHandWidthKey() { return oneHandKey(ONE_HAND_WIDTH); }
+    public String oneHandHeightKey() { return oneHandKey(ONE_HAND_HEIGHT); }
+    public String oneHandBottomKey() { return oneHandKey(ONE_HAND_LIFT); }
+
+    /** 이 프로필의 한 손 모드 자판 폭 최솟값 (%): 세로 모드 60, 그 밖에는 30 (화면이 넓다). */
+    public int oneHandWidthMin() { return portrait() ? ONE_HAND_WIDTH_MIN : ONE_HAND_WIDTH_MIN_LAND; }
+
+    /** 이 프로필의 한 손 모드 자판 폭 (화면 폭의 %). */
     public int oneHandWidthForProfile() {
-        int fallback = profile.equals(PROFILE_LARGE_LANDSCAPE) || profile.equals(PROFILE_LANDSCAPE)
-                ? oneHandWidthLand() : oneHandWidth();
-        String key = oneHandWidthKey();
-        return key == null ? fallback : clamp(sp.getInt(key, fallback), 30, 90);
+        return oneHandValue(ONE_HAND_WIDTH, ONE_HAND_WIDTH_DEFAULT, ONE_HAND_WIDTH_LAND_DEFAULT, oneHandWidthMin(), ONE_HAND_WIDTH_MAX);
     }
 
-    /** 화면이 가로 방향일 때 쓰는 자판 폭 (화면 폭의 %). */
-    public int oneHandWidthLand() { return clamp(sp.getInt(ONE_HAND_WIDTH_LAND, ONE_HAND_WIDTH_LAND_DEFAULT), 30, 90); }
-    public int oneHandHeight() { return clamp(sp.getInt(ONE_HAND_HEIGHT, ONE_HAND_HEIGHT_DEFAULT), 60, 100); }
-    public int oneHandLiftDp() { return clamp(sp.getInt(ONE_HAND_LIFT, ONE_HAND_LIFT_DEFAULT), 0, 160); }
+    /** 이 프로필의 한 손 모드 키 높이 (보통 키 높이의 %). */
+    public int oneHandHeightForProfile() {
+        return oneHandValue(ONE_HAND_HEIGHT, ONE_HAND_HEIGHT_DEFAULT, -1, ONE_HAND_HEIGHT_MIN, ONE_HAND_HEIGHT_MAX);
+    }
+
+    /** 이 프로필의 한 손 모드 아래쪽 여백 (dp). 한 손 모드에서는 키보드 전체의 상하좌우 여백 대신 이 값만 쓴다. */
+    public int oneHandBottomForProfile() {
+        return oneHandValue(ONE_HAND_LIFT, ONE_HAND_LIFT_DEFAULT, -1, 0, ONE_HAND_LIFT_MAX);
+    }
 
     /** 글자 키를 밀 때 아래로 치는 데 필요한 (세로 ÷ 가로) 비율. */
     public float swipeDownRatio() {
@@ -458,7 +481,9 @@ public final class Prefs {
         // 실험실: 폴더블 내부 화면 별도 키보드(large_)는 키보드 사용자화로, 판정 기준은 폴더블 내부 화면 키보드 사용자화로 옮겼다.
         MENU_KEYS.put("lab", keys(SWIPE_DOWN_RATIO, SWIPE_UP_RATIO));
         MENU_PREFIXES.put("lab", keys(HW_PREFIX, CJK_PREFIX));
-        MENU_KEYS.put("onehand", keys(ONE_HAND_WIDTH, ONE_HAND_WIDTH_LAND, ONE_HAND_HEIGHT, ONE_HAND_LIFT));
+        MENU_KEYS.put("onehand", keys(ONE_HAND_WIDTH, ONE_HAND_WIDTH_LAND, ONE_HAND_HEIGHT, ONE_HAND_HEIGHT + LANDSCAPE_SUFFIX,
+                ONE_HAND_LIFT, ONE_HAND_LIFT + LANDSCAPE_SUFFIX));
+        MENU_PREFIXES.put("onehand", keys(LARGE_PREFIX + "one_hand_"));
     }
 
     // ---------------------------------------------------------------- 키보드 사용자화의 값 묶음
@@ -553,7 +578,7 @@ public final class Prefs {
                             LARGE_PREFIX + TOOLBAR_FOLLOW_BLOCKS + "_", LARGE_PREFIX + FN_FOLLOW_BLOCKS + "_",
                             LARGE_PREFIX + SPLIT_SPACE_JOIN + "_", LARGE_PREFIX + SPLIT_FN_WIDTH + "_",
                             LARGE_PREFIX + SPLIT_REACH_COLUMN + "_", LARGE_PREFIX + SPLIT_GAP_CURSOR + "_",
-                            LARGE_PREFIX + SPLIT_GAP_SPEED + "_", LARGE_PREFIX + ONE_HAND_WIDTH + "_", LARGE_PREFIX + "balanced_")),
+                            LARGE_PREFIX + SPLIT_GAP_SPEED + "_", LARGE_PREFIX + "balanced_")),
     };
 
     }
@@ -633,7 +658,7 @@ public final class Prefs {
     public void resetProfileArea() {
         resetBalancedKeys();
         removeKeys(new String[]{splitKey(), sizeKey(), heightKey(), fnRowHeightKey(), toolbarHeightKey(), textSizeKey(),
-                toolbarFollowKey(), fnFollowKey(), oneHandWidthKey(), splitGapCursorKey(),
+                toolbarFollowKey(), fnFollowKey(), splitGapCursorKey(),
                 splitGapSpeedKey(), splitSpaceJoinKey(), splitFnWidthKey(), ownReachBaseKey()},
                 new String[]{splitKey() + "_", ownReachBaseKey() + "_", profilePadKey(""), "swipe_gap_" + com.alternative_studios.newswipe.keyboard.GapSwipes.SLOTS[gapSlot()] + "_"});   // 예전에 배열마다 저장하던 분리 키보드 값도 함께
     }
@@ -831,6 +856,7 @@ public final class Prefs {
     public int padTopDp() { return padValue(SIDE_TOP, sp.getInt(PAD_TOP, 0), 24); }
 
     private int padValue(int side, int portraitValue, int max) {
+        if (oneHandView) return 0;   // 한 손 모드는 키보드 전체 여백을 쓰지 않는다 (아래쪽 여백은 한 손 모드의 값만)
         return profileSize() ? clamp(sp.getInt(padKey(side), portraitValue), 0, max) : portraitValue;
     }
 
