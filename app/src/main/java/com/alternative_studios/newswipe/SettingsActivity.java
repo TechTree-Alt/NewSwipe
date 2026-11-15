@@ -206,13 +206,22 @@ public final class SettingsActivity extends Activity {
         previewToggle = new com.alternative_studios.newswipe.ui.ExpressiveButton(this, "", t.accent, t.onAccent)
                 .compact(13, Ui.dp(this, 12), Ui.dp(this, 16));
         previewToggle.setOnClickListener(v -> setPreviewShown(!previewShown));
-        // 설정 창(시트, 그림자 12dp)보다 위에 그려지도록 그보다 조금 높이 띄운다 (같은 틀 안에서는 높이 순서로 그린다).
-        previewToggle.setElevation(Ui.dp(this, 12) + 1);
+        previewToggle.setElevation(Ui.dp(this, 3));   // 버튼 자체는 낮게 띄워 그림자를 작게 둔다
         updatePreviewToggle();
+        // 설정 창(시트, 그림자 12dp)보다 위에 그려지도록, 그림자 없는 투명한 틀을 그보다 높이 두고 버튼을 그 안에 넣는다
+        // (같은 틀 안의 형제끼리는 높이 순서로 그린다). 틀은 버튼 밖의 터치를 아래로 그대로 넘긴다.
+        android.widget.FrameLayout holder = new android.widget.FrameLayout(this);
+        holder.setOutlineProvider(null);
+        holder.setElevation(Ui.dp(this, 12) + 1);
+        holder.setClipChildren(false);
+        holder.setClipToPadding(false);
+        int shadowRoom = Ui.dp(this, 8);
+        holder.setPadding(shadowRoom, shadowRoom, shadowRoom, shadowRoom);
+        holder.addView(previewToggle, new android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, h));
         android.widget.FrameLayout.LayoutParams lp = new android.widget.FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, h, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-        lp.bottomMargin = Ui.dp(this, 10);
-        overlayHost.addView(previewToggle, lp);
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        lp.bottomMargin = Ui.dp(this, 10) - shadowRoom;
+        overlayHost.addView(holder, lp);
         int room = h + Ui.dp(this, 24);
         list.setPadding(list.getPaddingLeft(), list.getPaddingTop(), list.getPaddingRight(), Math.max(list.getPaddingBottom(), room));
         if (sheet != null) {

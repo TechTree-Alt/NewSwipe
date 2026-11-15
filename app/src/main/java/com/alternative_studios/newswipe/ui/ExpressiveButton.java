@@ -72,7 +72,10 @@ public final class ExpressiveButton extends TextView {
         setMinWidth(0);
         setMinimumHeight(0);
         setMinimumWidth(0);
-        setSingleLine(true);
+        // setSingleLine은 가로 스크롤을 켜서, 가운데 정렬이면 TextView가 캔버스를 멀리 스크롤해 아래 onDraw에서
+        // 직접 그리는 면·아이콘이 화면 밖으로 밀린다. 줄 수만 하나로 막는다.
+        setHorizontallyScrolling(false);
+        setMaxLines(1);
         setPadding(padStartPx, 0, padEndPx, 0);
         return this;
     }
@@ -97,12 +100,14 @@ public final class ExpressiveButton extends TextView {
 
     @Override
     protected void onDraw(Canvas canvas) {
+        // 캔버스는 TextView의 스크롤만큼 옮겨져 있다. 면·아이콘은 그만큼 더해 뷰 자리에 그린다 (글자는 super.onDraw가 맞춰 그린다).
+        float sx = getScrollX(), sy = getScrollY();
         float w = getWidth(), h = getHeight();
         float p = Math.max(-0.3f, Math.min(1f, press));
         float radius = radius(h, p);
         // 누르면 모양이 가운데로 살짝 줄어든다 (놓을 때는 스프링으로 원래 크기를 조금 넘었다 돌아온다).
         float inset = Math.min(w, h) * 0.04f * p;
-        rect.set(inset, inset, w - inset, h - inset);
+        rect.set(sx + inset, sy + inset, sx + w - inset, sy + h - inset);
         paint.setColor(fill);
         canvas.drawRoundRect(rect, radius, radius, paint);
         if (p > 0.01f) {   // 누른 느낌: 면 위에 글자색을 옅게 얹는다
@@ -111,11 +116,11 @@ public final class ExpressiveButton extends TextView {
         }
         canvas.save();
         float textScale = 1f - 0.04f * Math.max(0f, p);
-        canvas.scale(textScale, textScale, w / 2f, h / 2f);
+        canvas.scale(textScale, textScale, sx + w / 2f, sy + h / 2f);
         if (icon != 0) {   // 글자 바로 앞 (왼쪽 안쪽 여백의 끝)
             paint.setColor(ink);
-            float cx = getPaddingLeft() - iconGap - iconSize / 2f;
-            com.alternative_studios.newswipe.keyboard.Icons.draw(canvas, icon, cx, h / 2f, iconSize, paint, 2.4f);
+            float cx = sx + getPaddingLeft() - iconGap - iconSize / 2f;
+            com.alternative_studios.newswipe.keyboard.Icons.draw(canvas, icon, cx, sy + h / 2f, iconSize, paint, 2.4f);
             paint.setStyle(Paint.Style.FILL);
         }
         super.onDraw(canvas);
