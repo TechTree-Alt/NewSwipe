@@ -4437,7 +4437,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         // 단축어의 문장은 첫 칸 하나가 추천란을 채우므로 어느 자리에서 밀어도 그 문장을 입력한다.
         int index = shortcutShown ? 0 : slot;
         if (index >= suggestions.length) return;
-        // 진동은 KeyboardView가 밀기 진동(onGesture)으로 이미 울렸다.
+        // KeyboardView가 밀기 진동(onGesture)을 이미 울렸고, 추천 단어를 넣을 때 한 번 더 울린다 (예전처럼 두 번).
+        feedback.onGesture();
         applySuggestion(index);
     }
 
