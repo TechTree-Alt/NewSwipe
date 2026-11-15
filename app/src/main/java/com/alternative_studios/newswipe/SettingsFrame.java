@@ -105,6 +105,43 @@ final class SettingsFrame {
         return this;
     }
 
+    /** 화면 아래 키보드 미리보기를 숨기거나 보이는 머리글 버튼 (withPreviewToggle). 없으면 null. */
+    private java.util.function.Consumer<Boolean> previewListener;
+    private ExpressiveIconButton previewButton;
+    private boolean previewShown = true;
+
+    /**
+     * 머리글 오른쪽 버튼들 맨 앞에 '미리보기 숨기기' 버튼을 둔다. 누르면 미리보기를 숨기고 버튼이 '미리보기 보이기'로 바뀐다.
+     * onShownChanged는 바뀐 상태(보이면 true)를 받아 미리보기를 실제로 숨기거나 보인다.
+     */
+    SettingsFrame withPreviewToggle(java.util.function.Consumer<Boolean> onShownChanged) {
+        previewListener = onShownChanged;
+        return this;
+    }
+
+    /** 미리보기가 보이는지 (withPreviewToggle 버튼 상태). */
+    boolean previewShown() {
+        return previewShown;
+    }
+
+    /** 미리보기를 보이거나 숨기고 버튼을 맞춘다 (화면을 다시 만들 때 예전 상태를 되살리는 데도 쓴다). */
+    void setPreviewShown(boolean shown) {
+        previewShown = shown;
+        updatePreviewButton();
+        if (previewListener != null) previewListener.accept(shown);
+    }
+
+    /** 이 화면에 미리보기가 없으면 버튼을 뺀다. */
+    void hidePreviewToggle() {
+        if (previewButton != null) previewButton.setVisibility(View.GONE);
+    }
+
+    private void updatePreviewButton() {
+        if (previewButton == null) return;
+        previewButton.setIcon(previewShown ? Icons.PREVIEW_HIDE : Icons.PREVIEW_SHOW);
+        previewButton.setContentDescription(previewShown ? L.t("미리보기 숨기기", "Hide preview") : L.t("미리보기 보이기", "Show preview"));
+    }
+
     /** withAction으로 더한 버튼 (wrap 뒤에만 있다). */
     ExpressiveIconButton actionButton() {
         return actionButton;
@@ -182,6 +219,14 @@ final class SettingsFrame {
             searchButton = circleButton(c, Icons.SEARCH, searchName, v -> toggleSearch());
             header.addView(searchButton, new LinearLayout.LayoutParams(size, size));
             return header;
+        }
+        if (previewListener != null) {
+            previewButton = circleButton(c, Icons.PREVIEW_HIDE, "", v -> setPreviewShown(!previewShown));
+            previewButton.setActive(true);   // 옅은 바탕: 보조 버튼
+            updatePreviewButton();
+            LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(size, size);
+            plp.rightMargin = Ui.dp(c, 8);
+            header.addView(previewButton, plp);
         }
         if (actionListener != null) {
             actionButton = circleButton(c, actionIcon, actionDescription, actionListener);

@@ -53,6 +53,8 @@ public final class Icons {
     public static final int COPY = 42;            // 복사 (겹친 두 장)
     public static final int PASTE = 43;           // 붙여넣기 (아래 화살표가 든 클립보드)
     public static final int SELECT_ALL = 44;      // 전체 선택 (점선 테두리 안의 네모)
+    public static final int PREVIEW_HIDE = 45;    // 미리보기 숨기기 (아래 자판과, 그쪽으로 내려가는 화살표)
+    public static final int PREVIEW_SHOW = 46;    // 미리보기 보이기 (아래 자판과, 위로 올라오는 화살표)
 
     private static final Path path = new Path();
     private static final RectF oval = new RectF();
@@ -494,6 +496,19 @@ public final class Icons {
                 p.setStyle(Paint.Style.FILL_AND_STROKE);
                 c.drawRoundRect(oval, 1, 1, p);
                 break;
+            case PREVIEW_HIDE:
+            case PREVIEW_SHOW: {
+                // 아래쪽의 자판(둥근 네모와 키 줄)과, 그 위의 내리는·올리는 꺾쇠.
+                oval.set(4, 12.5f, 20, 20.5f);
+                c.drawRoundRect(oval, 2, 2, p);
+                c.drawLine(8.5f, 17.5f, 15.5f, 17.5f, p);
+                boolean hide = icon == PREVIEW_HIDE;
+                path.moveTo(8, hide ? 4.5f : 8.5f);
+                path.lineTo(12, hide ? 8.5f : 4.5f);
+                path.lineTo(16, hide ? 4.5f : 8.5f);
+                c.drawPath(path, p);
+                break;
+            }
             default:
                 break;
         }
