@@ -2172,7 +2172,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 setLayoutKind(layoutKind == KeyboardLayout.SYMBOLS ? KeyboardLayout.SYMBOLS_2 : KeyboardLayout.SYMBOLS);
                 break;
             case Key.LANGUAGE:
-                toggleLanguage();
+                // 일본어 12키 자판에서 글자를 조합하는 동안에는 Gboard처럼 ゛゜小 키로 쓴다.
+                if (languageKeyIsMark()) typeCjk("゛");
+                else toggleLanguage();
                 break;
             case Key.EMOJI:
             case Key.EMOJI_KEY:
@@ -3007,6 +3009,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return cjkLang == null ? null : cjkComposers.get(cjkLang);
     }
 
+    /** 🌐 키가 지금 ゛゜小 키 노릇을 하는지 (일본어 12키 자판에서 가나를 조합하는 중). */
+    private boolean languageKeyIsMark() {
+        return CjkComposer.JA.equals(cjkLang) && layoutKind == KeyboardLayout.JAPANESE && !prefs.jaQwerty()
+                && panel == PANEL_KEYBOARD && cjkComposing();
+    }
+
     /** 일본어·중국어 조합 중인 글자가 있는지. */
     private boolean cjkComposing() {
         CjkComposer c = cjkComposer();
@@ -3041,7 +3049,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 중국어 자판에서 조합을 끝내며 넣는 문장 부호는 전각으로. */
     private static final String ZH_PUNCT_FROM = ",.?!:;()", ZH_PUNCT_TO = "，。？！：；（）";
     /** 일본어 읽기에 그대로 넣는 기호 (변환하면 그대로 남는다). */
-    private static final String JA_READING_MARKS = "゛、。ー「」『』（）？！…・～";
+    private static final String JA_READING_MARKS = "゛↻、。ー「」『』（）？！…・～";
     private static final String JA_ASCII_FROM = "?!~", JA_ASCII_TO = "？！～";
 
     private static boolean jaReadingText(String s) {
@@ -3057,7 +3065,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private void typeCjk(String s) {
         CjkComposer c = cjkComposer();
         if (c == null) {   // 사전을 읽는 중이다 (처음 바꾼 직후 잠깐): 친 글자를 그대로 넣는다
-            commitText(s);
+            if (!CjkComposer.ROW_CYCLE.equals(s)) commitText(s);
             return;
         }
         char ch = s.length() == 1 ? s.charAt(0) : 0;
@@ -3151,6 +3159,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             EditorInfo ei = getCurrentInputEditorInfo();
             keyboard.setEnterIcon(composing ? Icons.DONE : ei != null ? enterIcon(ei) : Icons.ENTER);
         }
+        if (keyboard != null) keyboard.setLanguageKeyMark(languageKeyIsMark());
         if ((candidateBar.getVisibility() == View.VISIBLE) != show) {
             candidateBar.setVisibility(show ? View.VISIBLE : View.GONE);
             refreshToolbarVisibility();

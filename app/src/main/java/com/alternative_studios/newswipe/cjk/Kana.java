@@ -45,6 +45,31 @@ public final class Kana {
         return n == null ? 0 : n;
     }
 
+    // ---------------------------------------------------------------- ↻ 키 (같은 행 돌리기)
+
+    /**
+     * 12키 자판의 ↻ 키 차례: 같은 키(50음도의 같은 행)의 글자를 차례로 돌린다 (예: あ→い→う→え→お→あ).
+     * 탁점·작은 글자는 그 모양 그대로 돈다 (が→ぎ, ぁ→ぃ).
+     */
+    private static final String[] ROW_CYCLES = {
+            "あいうえお", "かきくけこ", "さしすせそ", "たちつてと", "なにぬねの", "はひふへほ",
+            "まみむめも", "やゆよ", "らりるれろ", "わをんー", "、。？！…",
+            "ぁぃぅぇぉ", "がぎぐげご", "ざじずぜぞ", "だぢづでど", "ばびぶべぼ", "ぱぴぷぺぽ", "ゃゅょ",
+    };
+    private static final Map<Character, Character> ROW_NEXT = new HashMap<>();
+
+    static {
+        for (String c : ROW_CYCLES) {
+            for (int i = 0; i < c.length(); i++) ROW_NEXT.put(c.charAt(i), c.charAt((i + 1) % c.length()));
+        }
+    }
+
+    /** ↻ 키를 눌렀을 때 c가 바뀔 같은 행의 다음 글자. 바뀌지 않으면 0. */
+    public static char rowCycle(char c) {
+        Character n = ROW_NEXT.get(c);
+        return n == null ? 0 : n;
+    }
+
     // ---------------------------------------------------------------- 로마자
 
     private static final Map<String, String> ROMAJI = new HashMap<>();

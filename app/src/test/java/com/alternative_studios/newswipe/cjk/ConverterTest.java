@@ -191,6 +191,26 @@ public class ConverterTest {
     }
 
     @Test
+    public void japaneseRowCycle() {
+        CjkComposer c = new CjkComposer(CjkComposer.JA, CjkTestData.dict(CjkTestData.JA));
+        c.typeKana(CjkComposer.ROW_CYCLE);   // 돌릴 글자가 없으면 아무것도 하지 않는다
+        assertTrue(c.isEmpty());
+        c.typeKana("か");
+        c.typeKana(CjkComposer.ROW_CYCLE);
+        assertEquals("き", c.composingText());
+        c.typeKana("゛");
+        c.typeKana(CjkComposer.ROW_CYCLE);   // 탁점은 그대로: ぎ → ぐ
+        assertEquals("ぐ", c.composingText());
+        c.typeKana("お");
+        c.typeKana(CjkComposer.ROW_CYCLE);   // 행의 끝에서 처음으로
+        assertEquals("ぐあ", c.composingText());
+        assertEquals('ゆ', Kana.rowCycle('や'));
+        assertEquals('を', Kana.rowCycle('わ'));
+        assertEquals('。', Kana.rowCycle('、'));
+        assertEquals(0, Kana.rowCycle('x'));
+    }
+
+    @Test
     public void japaneseComposer() {
         CjkComposer c = new CjkComposer(CjkComposer.JA, CjkTestData.dict(CjkTestData.JA));
         c.typeKana("き");

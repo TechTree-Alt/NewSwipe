@@ -26,12 +26,12 @@ public class CjkLayoutTest {
         assertEquals("け", ka.swipeText(Key.SWIPE_RIGHT));
         assertEquals("こ", ka.swipeText(Key.SWIPE_DOWN));
         assertTrue(ka.flick);
-        assertNotNull(find(l, "゛"));
+        assertNotNull(find(l, "↻"));
         // Gboard처럼 5열: 가운데 3열이 가나, 양옆이 기능키이고 스페이스바 줄은 없다
         assertEquals(5, l.columns);
         assertEquals(4, l.rows.length);
         for (KeyboardLayout.Row r : l.rows) assertEquals(5, r.keys.length);
-        assertEquals("゛", l.rows[0].keys[0].label);
+        assertEquals("↻", l.rows[0].keys[0].label);
         assertEquals("あ", l.rows[0].keys[1].label);
         assertEquals(Key.DELETE, l.rows[0].keys[4].type);
         assertEquals(Key.CURSOR_LEFT, l.rows[1].keys[0].type);

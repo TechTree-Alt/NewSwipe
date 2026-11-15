@@ -90,12 +90,20 @@ public final class CjkComposer {
         return done;
     }
 
-    /** 일본어: 가나·기호를 읽기에 더한다. "゛"는 마지막 글자의 탁점·반탁점·작은 글자를 돌린다. */
+    /** ↻ 키가 보내는 글자 (같은 행의 다음 글자로 돌린다). */
+    public static final String ROW_CYCLE = "↻";
+
+    /**
+     * 일본어: 가나·기호를 읽기에 더한다. "゛"는 마지막 글자의 탁점·반탁점·작은 글자를,
+     * "↻"는 마지막 글자를 50음도 같은 행의 다음 글자로 돌린다.
+     */
     public String typeKana(String s) {
-        if (s.equals("゛")) {
+        boolean row = s.equals(ROW_CYCLE);
+        if (row || s.equals("゛")) {
             if (highlight >= 0) highlight = -1;
             int last = reading.length() - 1;
-            char next = last >= 0 ? Kana.cycle(reading.charAt(last)) : 0;
+            char ch = last >= 0 ? reading.charAt(last) : 0;
+            char next = last < 0 ? 0 : row ? Kana.rowCycle(ch) : Kana.cycle(ch);
             if (next != 0) reading.setCharAt(last, next);
             return null;
         }

@@ -830,6 +830,13 @@ public final class KeyboardView extends View {
                 Icons.draw(c, enterIcon, cx, cy, iconSize(iconSize, 24, iconMax), icon);
                 return;
             case Key.LANGUAGE:
+                if (languageKeyMark && layout.kind == KeyboardLayout.JAPANESE) {   // 조합 중인 일본어 12키: ゛゜小 키
+                    text.setColor(fg);
+                    text.setTypeface(Typeface.DEFAULT);
+                    text.setTextSize(Math.min(spHint * 1.4f, r.width() * 0.26f));
+                    drawCentered(c, "゛゜小", cx, cy);
+                    return;
+                }
                 Icons.draw(c, Icons.GLOBE, cx, cy, iconSize(iconSize, 22, iconMax), icon);
                 return;
             case Key.EMOJI:
@@ -1456,7 +1463,8 @@ public final class KeyboardView extends View {
         String action = swipeDistance(dir, dx, dy) > need ? fnSwipes.action(slot, dir) : null;
         if (SwipeAction.LANGUAGE_PICK.equals(action)) {
             // 🌐︎를 위로 밀었다: 켜 둔 언어를 세로로 늘어놓은 말풍선을 띄운다. 손가락을 위아래로 옮겨 고르고 떼면 바꾼다.
-            if (p.key.type != Key.LANGUAGE || languagePopup == null || deferred != null) return;
+            if (p.key.type != Key.LANGUAGE || languagePopup == null || deferred != null
+                    || (languageKeyMark && layout.kind == KeyboardLayout.JAPANESE)) return;
             cancelLongPress(p);
             p.mode = POPUP;
             openPopup(p, languagePopup.clone(), languagePopupSelected, true);
@@ -1580,6 +1588,16 @@ public final class KeyboardView extends View {
     public void setSpaceLabel(String label) {
         if (!java.util.Objects.equals(spaceLabel, label)) {
             spaceLabel = label;
+            invalidate();
+        }
+    }
+
+    /** 🌐︎ 키를 ゛゜小 키로 그리는지 (일본어 12키 자판에서 글자를 조합하는 동안). */
+    private boolean languageKeyMark;
+
+    public void setLanguageKeyMark(boolean on) {
+        if (languageKeyMark != on) {
+            languageKeyMark = on;
             invalidate();
         }
     }
