@@ -1311,7 +1311,7 @@ public class EditorUiTest {
         key(p, "ㅛ", Key.CHAR);
         key(p, null, Key.SHIFT);
         assertTrue(visibleTexts(cur(a)).contains("컴퓨터 키보드와 같은 표준 한글 배열입니다."));
-        assertTrue(visibleTexts(cur(a)).contains("상세 배열\n  사용 안 함"));
+        assertEquals(java.util.Arrays.asList("사용 안 함"), afterLabel(cur(a), "상세 배열", 1));
         assertFalse(visibleTexts(cur(a)).contains("반으로 나"));   // '사용 안 함'이면 상세 배열 설명이 없다
         assertFalse(visibleTexts(cur(a)).contains("왼쪽 묶음 폭"));
         assertFalse(visibleTexts(cur(a)).contains("영어 자판도 균형 배열"));   // 균형 배열을 켠 뒤에만 보인다
@@ -1319,7 +1319,7 @@ public class EditorUiTest {
         shot(a, "a0-dubeolsik");
         // 균형 배열: 자음은 왼쪽 절반, 모음은 오른쪽 절반으로 나누되 각 쪽 안의 자리는 일반 두벌식 그대로
         // 상세 배열: 스페이스바 길게 누르기처럼 줄을 눌러 사용 안 함·자·모음 균형 배열·분리 키보드 중에서 고른다
-        ((View) findText(cur(a), "상세 배열").getParent()).performClick();
+        clickableOf(findText(cur(a), "상세 배열")).performClick();
         idle();
         AlertDialog detail = (AlertDialog) ShadowDialog.getLatestDialog();
         assertEquals(3, detail.getListView().getCount());
@@ -1329,7 +1329,7 @@ public class EditorUiTest {
         assertTrue(prefs.raw().getBoolean(Prefs.PORTRAIT_SPLIT, false));
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
         String st = visibleTexts(cur(a));
-        assertTrue(st, st.contains("상세 배열\n  분리 키보드"));
+        assertEquals(st, java.util.Arrays.asList("분리 키보드"), afterLabel(cur(a), "상세 배열", 1));
         // 고르면 창을 다시 열지 않아도 분리 키보드 섹션이 바로 보이고, 설명은 분리 키보드의 것만
         assertTrue(st, st.contains("왼쪽 묶음 폭") && st.contains("오른쪽 묶음 가로 위치"));
         assertTrue(st, st.contains("분리 키보드는 키보드 전체를 반으로 나눕니다. 영어 자판과 기호 자판에도 적용됩니다."));
@@ -1340,9 +1340,8 @@ public class EditorUiTest {
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
         assertTrue(prefs.portraitSplit());
         String dt = visibleTexts(cur(a));
-        assertTrue(dt, dt.contains("상세 배열\n  분리 키보드"));
         // 단모음: 분리 키보드의 하위 항목으로 '자·모음 분리 배열' 토글이 상세 배열 바로 아래(설명보다 위)에 보인다
-        assertTrue(dt, dt.contains("상세 배열\n  분리 키보드\n  자·모음 분리 배열"));
+        assertEquals(dt, java.util.Arrays.asList("분리 키보드", "자·모음 분리 배열"), afterLabel(cur(a), "상세 배열", 2));
         findText(cur(a), "NewSwipe 단모음").performClick();
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
         String nt = visibleTexts(cur(a));
@@ -1351,7 +1350,7 @@ public class EditorUiTest {
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
         assertTrue(prefs.portraitSplit());
         assertFalse(visibleTexts(cur(a)).contains("좌·우 균형 배열"));
-        ((View) findText(cur(a), "상세 배열").getParent()).performClick();
+        clickableOf(findText(cur(a), "상세 배열")).performClick();
         idle();
         shadowOf((AlertDialog) ShadowDialog.getLatestDialog()).clickOnItem(1);   // 자·모음 균형 배열
         idle();
@@ -1373,7 +1372,7 @@ public class EditorUiTest {
         for (KeyboardPreview.Handle bh : new KeyboardPreview.Handle[]{KeyboardPreview.Handle.B_LEFT_START, KeyboardPreview.Handle.B_LEFT_END,
                 KeyboardPreview.Handle.B_RIGHT_START, KeyboardPreview.Handle.B_RIGHT_END}) assertTrue(bh.name(), (Boolean) bShown.invoke(p, bh));
         assertTrue(visibleTexts(cur(a)).contains("영어 자판도 균형 배열"));
-        View enRow = (View) findText(cur(a), "영어 자판도 균형 배열").getParent().getParent();
+        View enRow = clickableOf(findText(cur(a), "영어 자판도 균형 배열"));
         enRow.performClick();
         idle();
         assertTrue(prefs.englishBalanced());
@@ -1692,7 +1691,7 @@ public class EditorUiTest {
         SettingsActivity a = launch("keyboard");
         View decor = a.getWindow().getDecorView();
         assertNotNull(findText(decor, "가로 키보드 사용자화"));
-        assertTrue(lines(cur(a)).stream().anyMatch(l -> l.startsWith("기기를 가로로 들었을 때 쓰는 가로 키보드의 모양을 정합니다.")));
+        assertTrue(lines(cur(a)).stream().anyMatch(l -> l.startsWith("가로 키보드의 모양과 동작을 정합니다. 세로일 때의 설정은 기기를 세로로 돌리면 보입니다.")));
         KeyboardPreview p = find(decor, KeyboardPreview.class);
         android.graphics.RectF lb = new android.graphics.RectF(), rb = new android.graphics.RectF();
         assertTrue(p.blockBounds(true, lb) && p.blockBounds(false, rb));
@@ -1800,7 +1799,7 @@ public class EditorUiTest {
         View decor = a.getWindow().getDecorView();
         assertNotNull(findText(decor, "세로 키보드 사용자화"));
         java.util.List<String> ls = lines(cur(a));
-        assertTrue(ls.toString(), ls.stream().anyMatch(l -> l.startsWith("기기를 세로로 들었을 때 쓰는 세로 키보드의 모양을 정합니다.")));
+        assertTrue(ls.toString(), ls.stream().anyMatch(l -> l.startsWith("세로 키보드의 모양과 동작을 정합니다. 가로일 때의 설정은 기기를 가로로 돌리면 보입니다.")));
         assertFalse(ls.contains("가로 모드 키보드 사용자화"));
         shot(a, "e1-portrait-intro");
     }
@@ -1947,6 +1946,14 @@ public class EditorUiTest {
 
     // ---- 폴더블 내부 화면: 별도 키보드와 판정 기준은 키보드 사용자화의 '폴더블 설정'에, 내부 화면에서 열면 내부 화면 키보드를 편집
 
+    /** 보이는 글자 중 label 다음의 n줄 ('세로만' 같은 키보드 표시는 건너뛴다). */
+    static java.util.List<String> afterLabel(View v, String label, int n) {
+        java.util.List<String> ls = lines(v), out = new java.util.ArrayList<>();
+        java.util.Set<String> badges = new java.util.HashSet<>(java.util.Arrays.asList("세로만", "가로만", "폴더블 세로만", "폴더블 가로만"));
+        for (int i = ls.indexOf(label) + 1; i > 0 && i < ls.size() && out.size() < n; i++) if (!badges.contains(ls.get(i))) out.add(ls.get(i));
+        return out;
+    }
+
     /** 보이는 글자를 위에서 아래 차례로 (줄마다 하나). */
     static java.util.List<String> lines(View v) {
         java.util.List<String> out = new java.util.ArrayList<>();
@@ -1985,7 +1992,7 @@ public class EditorUiTest {
         ScrollView sc = cur(a);
         java.util.List<String> ls = lines(sc);
         int intro = -1;
-        for (int i = 0; i < ls.size(); i++) if (intro < 0 && ls.get(i).startsWith("기기를 세로로 들었을 때")) intro = i;
+        for (int i = 0; i < ls.size(); i++) if (intro < 0 && ls.get(i).startsWith("세로 키보드의 모양과 동작을 정합니다.")) intro = i;
         int large = ls.indexOf("폴더블 설정"), reset = ls.lastIndexOf("기본값으로 되돌리기");
         assertTrue(ls.toString(), intro >= 0 && intro < large && large < reset);
         assertEquals("섹션 제목", 1, allTexts(sc, "폴더블 설정").size());
@@ -2031,7 +2038,7 @@ public class EditorUiTest {
         View decor = a.getWindow().getDecorView();
         assertNotNull(findText(decor, "폴더블 내부 화면 세로 키보드 사용자화"));
         java.util.List<String> ls = lines(cur(a));
-        assertTrue(ls.toString(), ls.stream().anyMatch(l -> l.startsWith("폴더블 내부 화면을 세로로 들었을 때 쓰는 폴더블 세로 키보드의 모양을 정합니다.")));
+        assertTrue(ls.toString(), ls.stream().anyMatch(l -> l.startsWith("폴더블 세로 키보드의 모양과 동작을 정합니다. 가로일 때의 설정은 기기를 가로로 돌리면 보입니다.")));
         assertTrue(ls.toString(), ls.stream().anyMatch(l -> l.startsWith("'폴더블 세로만' 표시가 있는 설정")));
         assertTrue(visibleTexts(cur(a)).contains("640dp"));
         // 글자 키 창: 함께 쓰는 값(자판 배열)과 폴더블 세로만의 값(글자 키 높이, 표시 붙음)이 함께 있다.

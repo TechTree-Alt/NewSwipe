@@ -715,12 +715,16 @@ public class SplitBottomRowTest {
         assertTrue(p.splitReachColumn());
         sp.m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_8);
         assertTrue("NewSwipe 단모음의 값이 단모음에 이어지지 않는다", p.splitSeparateJamo() && !p.splitReachColumn());
-        // 배열별로 나누기 전의 (세로 모드) 값은 값을 정하기 전까지 그 배열이 이어 쓰고, 가로 모드도 그 값을 따른다
+        // 배열별로 나누기 전의 값은 값을 정하기 전까지 그 배열이 이어 쓴다 (키보드마다 따로: 세로 모드 값은 가로 모드가 따르지 않는다)
         FakeSp old = new FakeSp();
         Prefs q = c.newInstance(old, false, Prefs.PROFILE_LANDSCAPE, true);
+        Prefs qp = c.newInstance(old, false, Prefs.PROFILE_PORTRAIT, true);
         old.m.put("portrait_split_reach_column", false);
+        assertTrue(qp.splitSeparateJamo());
+        assertTrue("가로 모드는 자기 값 (기본값: 좌·우 균형 배열)", !q.splitSeparateJamo());
+        old.m.put("land_split_reach_column", false);
         assertTrue(q.splitSeparateJamo());
-        // 가로 모드가 예전에 따로 저장하던 값은 더 이상 읽지 않는다 (세로 모드 '한글 글자 키 설정'을 따른다)
+        // 가로 모드가 2.0.0 전에 따로 저장하던 값은 읽지 않는다
         FakeSp landOld = new FakeSp();
         Prefs r = c.newInstance(landOld, false, Prefs.PROFILE_LANDSCAPE, true);
         landOld.m.put("split_reach_column", false);
@@ -913,10 +917,19 @@ public class SplitBottomRowTest {
                 {portraitView.splitFnWidthKey(), land.splitFnWidthKey(), port.splitFnWidthKey(), largeLand.splitFnWidthKey()}}) {
             assertEquals(java.util.Arrays.toString(keys), 4, new java.util.HashSet<>(java.util.Arrays.asList(keys)).size());
         }
-        assertEquals(port.splitReachColumnKey(), largeLand.splitReachColumnKey());
-        // 좌·우 균형 배열은 따로 정하지 않고 세로 모드 값을 따른다.
-        assertEquals(editView(sp, Prefs.PROFILE_PORTRAIT).splitReachColumnKey(), land.splitReachColumnKey());
-        assertEquals(editView(sp, Prefs.PROFILE_PORTRAIT).splitReachColumnKey(), port.splitReachColumnKey());
+        // 상세 배열(좌·우 균형 배열, 자·모음 균형 배열 켜기·묶음 폭, 영어 자판도 균형 배열)도 네 키보드가 따로 쓴다.
+        for (String[] keys : new String[][]{
+                {portraitView.splitReachColumnKey(), land.splitReachColumnKey(), port.splitReachColumnKey(), largeLand.splitReachColumnKey()},
+                {portraitView.balancedLayoutKey(), land.balancedLayoutKey(), port.balancedLayoutKey(), largeLand.balancedLayoutKey()},
+                {portraitView.englishBalancedKey(), land.englishBalancedKey(), port.englishBalancedKey(), largeLand.englishBalancedKey()},
+                {Prefs.balancedKeyFor(Prefs.BALANCED_VOWEL_WIDTH, "", false, "danmoeum8"), Prefs.balancedKeyFor(Prefs.BALANCED_VOWEL_WIDTH, Prefs.PROFILE_LANDSCAPE, false, "danmoeum8"),
+                        Prefs.balancedKeyFor(Prefs.BALANCED_VOWEL_WIDTH, Prefs.PROFILE_LARGE_PORTRAIT, false, "danmoeum8"),
+                        Prefs.balancedKeyFor(Prefs.BALANCED_VOWEL_WIDTH, Prefs.PROFILE_LARGE_LANDSCAPE, false, "danmoeum8")}}) {
+            assertEquals(java.util.Arrays.toString(keys), 4, new java.util.HashSet<>(java.util.Arrays.asList(keys)).size());
+        }
+        // 세로 모드는 예전 키 이름 그대로.
+        assertEquals(Prefs.BALANCED_LAYOUT, portraitView.balancedLayoutKey());
+        assertEquals(Prefs.ENGLISH_BALANCED, portraitView.englishBalancedKey());
         assertTrue(!land.splitSpaceJoinKey().equals(port.splitSpaceJoinKey()));
         // 분리 키보드 모양: 셋 모두 다른 키.
         for (String[] keys : new String[][]{

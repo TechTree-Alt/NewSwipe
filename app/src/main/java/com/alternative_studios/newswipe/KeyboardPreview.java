@@ -319,7 +319,7 @@ final class KeyboardPreview extends FrameLayout {
     }
 
     private int vh() {
-        return virtualWidth > 0 || fitWidth > 0 ? column.getHeight() : getHeight();
+        return virtualWidth > 0 ? column.getHeight() : getHeight();
     }
 
     /** 지금 보이는 영역들 (분리 키보드면 왼쪽·오른쪽 묶음, 가운데 공간, 기능키, 아니면 글자 키, 기능키). */
@@ -583,7 +583,6 @@ final class KeyboardPreview extends FrameLayout {
                     MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
             int h = column.getMeasuredHeight();
             overlay.measure(MeasureSpec.makeMeasureSpec(virtualWidth, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(h, MeasureSpec.EXACTLY));
-            fitWidth = 0;
             applyScale(viewScale, 0f);
             setMeasuredDimension(avail, Math.round(h * viewScale));
             return;
@@ -591,16 +590,7 @@ final class KeyboardPreview extends FrameLayout {
         measureChild(column, widthMeasureSpec, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
         int w = column.getMeasuredWidth(), h = column.getMeasuredHeight();
         overlay.measure(MeasureSpec.makeMeasureSpec(w, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(h, MeasureSpec.EXACTLY));
-        if (maxHeight > 0 && h > maxHeight) {
-            // 화면이 낮아(가로로 든 휴대폰 등) 키보드가 너무 높다: 실제 크기로 만든 키보드를 통째로 줄여 가운데에 둔다.
-            viewScale = maxHeight / (float) h;
-            fitWidth = w;
-            applyScale(viewScale, (w - w * viewScale) / 2f);
-            setMeasuredDimension(w, maxHeight);
-            return;
-        }
         viewScale = 1f;
-        fitWidth = 0;
         applyScale(1f, 0f);
         setMeasuredDimension(w, h);
     }
@@ -616,17 +606,7 @@ final class KeyboardPreview extends FrameLayout {
         }
     }
 
-    /** 미리보기의 최대 높이 (px, 0이면 제한 없음). 키보드가 이보다 높으면 실제 비율 그대로 줄여 보여 준다. */
-    private int maxHeight;
-    /** maxHeight 때문에 줄여 보여 주는 동안의 키보드 좌표계 폭 (px). 줄이지 않으면 0. */
-    private int fitWidth;
 
-    /** 미리보기의 최대 높이를 정한다 (px, 0이면 제한 없음): 낮은 화면에서 설정 창이 들어갈 자리를 남긴다. */
-    void setMaxHeight(int px) {
-        if (maxHeight == px) return;
-        maxHeight = px;
-        requestLayout();
-    }
 
     void setTab(int t) {
         if (tab == t) return;

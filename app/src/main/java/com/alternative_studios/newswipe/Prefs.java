@@ -339,6 +339,8 @@ public final class Prefs {
      * <ul>
      *   <li>폴더블 내부 화면 세로·가로가 함께 쓰던 분리 키보드 켜기·스페이스바 잇기·하단 기능키 폭(세로 쪽 키 이름)을 이제 따로 쓴다:
      *       함께 쓰던 값을 가로 쪽 키에도 적어 둔다 (가로 쪽 값이 이미 있으면 그대로).</li>
+     *   <li>상세 배열(자·모음 균형 배열 켜기, 영어 자판도 균형 배열, 균형 배열의 묶음 폭·위치, 분리 키보드의 좌·우 균형 배열)을
+     *       이제 키보드마다 따로 쓴다: 함께 쓰던 세로 모드 값을 가로 모드·폴더블 내부 화면 세로·가로에도 적어 둔다.</li>
      *   <li>한 손 모드: 폴더블 내부 화면 가로는 이제 정하기 전에 가로 모드 값을 따르지 않는다. 가로 모드에서 정해 둔 값이 있으면
      *       폴더블 내부 화면 가로에도 적어 둔다. 폴더블 내부 화면 세로의 자판 폭도 세로 모드 값 대신 기본값(40%)을 쓰므로,
      *       세로 모드에서 정해 둔 자판 폭이 있으면 적어 둔다.</li>
@@ -359,6 +361,36 @@ public final class Prefs {
                 boolean perLayout = pair[0].equals(LARGE_PREFIX + "split_port") && k.startsWith(pair[0] + "_");
                 if (!exact && !perLayout) continue;
                 String to = pair[1] + k.substring(pair[0].length());
+                if (all.containsKey(to)) continue;
+                Object v = en.getValue();
+                if (v instanceof Boolean) e.putBoolean(to, (Boolean) v);
+                else if (v instanceof Integer) e.putInt(to, (Integer) v);
+            }
+        }
+        // 상세 배열: 예전에는 모든 키보드가 세로 모드의 자·모음 균형 배열 켜기·영어 자판도 균형 배열·균형 배열의 묶음 폭·위치와
+        // 분리 키보드의 좌·우 균형 배열을 함께 썼다. 이제 키보드마다 따로 쓰므로 세로 모드 값을 다른 키보드에도 적어 둔다.
+        java.util.Map<String, Object> shared = new java.util.LinkedHashMap<>();   // 세로 모드 키 이름(앞말 없이) → 값
+        String reach = PORTRAIT_PREFIX + SPLIT_REACH_COLUMN;
+        for (java.util.Map.Entry<String, ?> en : all.entrySet()) {
+            String k = en.getKey();
+            if (k.equals(BALANCED_LAYOUT) || k.startsWith(BALANCED_LAYOUT + "_") || k.equals(ENGLISH_BALANCED)) shared.put(k, en.getValue());
+            else if (k.equals(reach) || k.startsWith(reach + "_")) shared.put(SPLIT_REACH_COLUMN + k.substring(reach.length()), en.getValue());
+        }
+        for (String layout : new String[]{KOREAN_LAYOUT_DUBEOLSIK, KOREAN_LAYOUT_8, KOREAN_LAYOUT_D7}) {
+            for (String base : new String[]{BALANCED_VOWEL_WIDTH, BALANCED_VOWEL_EDGE, BALANCED_VOWEL_POS, BALANCED_CONSONANT_WIDTH,
+                    BALANCED_CONSONANT_EDGE, BALANCED_CONSONANT_POS, BALANCED_BOUNDARY}) {
+                String pk = base + "_" + layout;
+                Object v = all.get(pk);
+                // 배열별로 나누기 전의 값(8열 단모음만 이어 쓰던 폭·예전 가로 위치)
+                boolean legacy = KOREAN_LAYOUT_8.equals(layout) && (base.equals(BALANCED_VOWEL_WIDTH) || base.equals(BALANCED_CONSONANT_WIDTH)
+                        || base.equals(BALANCED_VOWEL_POS) || base.equals(BALANCED_CONSONANT_POS));
+                if (v == null && legacy) v = all.get(base);
+                if (v != null) shared.put(pk, v);
+            }
+        }
+        for (String profile : new String[]{PROFILE_LANDSCAPE, PROFILE_LARGE_PORTRAIT, PROFILE_LARGE_LANDSCAPE}) {
+            for (java.util.Map.Entry<String, Object> en : shared.entrySet()) {
+                String to = ownTagOf(profile) + "_" + en.getKey();
                 if (all.containsKey(to)) continue;
                 Object v = en.getValue();
                 if (v instanceof Boolean) e.putBoolean(to, (Boolean) v);
@@ -681,7 +713,10 @@ public final class Prefs {
                             LARGE_PREFIX + TOOLBAR_FOLLOW_BLOCKS + "_", LARGE_PREFIX + FN_FOLLOW_BLOCKS + "_",
                             LARGE_PREFIX + SPLIT_SPACE_JOIN + "_", LARGE_PREFIX + SPLIT_FN_WIDTH + "_",
                             LARGE_PREFIX + SPLIT_REACH_COLUMN + "_", LARGE_PREFIX + SPLIT_GAP_CURSOR + "_",
-                            LARGE_PREFIX + SPLIT_GAP_SPEED + "_", LARGE_PREFIX + "balanced_")),
+                            LARGE_PREFIX + SPLIT_GAP_SPEED + "_", LARGE_PREFIX + "balanced_",
+                            // 키보드마다 따로 정하는 상세 배열 (ownTagOf + "_" + 이름)
+                            PROFILE_LANDSCAPE + "_balanced_", PROFILE_LANDSCAPE + "_" + ENGLISH_BALANCED, PROFILE_LANDSCAPE + "_" + SPLIT_REACH_COLUMN,
+                            LARGE_PREFIX + "port_", LARGE_PREFIX + "land_")),
     };
 
     }
@@ -736,10 +771,15 @@ public final class Prefs {
         own.put(TOOLBAR_HEIGHT, toolbarHeightKey());
         own.put(FN_ROW_HEIGHT, fnRowHeightKey());
         own.put(PORTRAIT_SPLIT, splitKey());
+        own.put(BALANCED_LAYOUT, balancedLayoutKey());
+        own.put(ENGLISH_BALANCED, englishBalancedKey());
+        own.put(PORTRAIT_PREFIX + SPLIT_REACH_COLUMN, splitReachColumnBaseKey());
         own.put(PORTRAIT_PREFIX + SPLIT_SPACE_JOIN, splitSpaceJoinKey());
         own.put(PORTRAIT_PREFIX + SPLIT_FN_WIDTH, splitFnWidthKey());
         java.util.Map<String, String> ownPrefix = new java.util.HashMap<>();
         for (int a = 0; a < PAD_AREAS.length; a++) ownPrefix.put(AREA_PAD_PREFIX + PAD_AREAS[a] + "_", profilePadKey("a" + a));
+        ownPrefix.put(BALANCED_LAYOUT, balancedLayoutKey());   // 켜기와 예전에 배열마다 저장하던 켜기(+ "_" + 배열)
+        ownPrefix.put(PORTRAIT_PREFIX + SPLIT_REACH_COLUMN + "_", splitReachColumnBaseKey() + "_");
         java.util.List<String> exact = new java.util.ArrayList<>();
         java.util.List<String> prefixes = new java.util.ArrayList<>();
         for (String k : sc.keys) {
@@ -802,7 +842,7 @@ public final class Prefs {
                 balancedVowelPosKey(), balancedConsonantWidthKey(), balancedConsonantPosKey(), balancedBoundaryKey(),
                 legacyVowelPosKey(), legacyConsonantPosKey()));
         // 배열별로 나누기 전의 값(세로 모드의 8열 단모음)이 이어지지 않게 그 값도 지운다.
-        if (!profileValues() && KOREAN_LAYOUT_8.equals(koreanLayoutId())) {
+        if (!profileValues() && portrait() && KOREAN_LAYOUT_8.equals(koreanLayoutId())) {
             keys.addAll(java.util.Arrays.asList(BALANCED_VOWEL_WIDTH, BALANCED_VOWEL_POS, BALANCED_CONSONANT_WIDTH,
                     BALANCED_CONSONANT_POS));
         }
@@ -944,7 +984,7 @@ public final class Prefs {
      * 이 값 하나를 함께 썼다). 배열별 값을 정하기 전까지 그 배열이 이어 쓴다.
      */
     private String splitReachColumnBaseKey() {
-        return PORTRAIT_PREFIX + SPLIT_REACH_COLUMN;
+        return profile.isEmpty() ? PORTRAIT_PREFIX + SPLIT_REACH_COLUMN : ownKey(SPLIT_REACH_COLUMN);   // 키보드마다 따로
     }
 
 
@@ -1315,8 +1355,25 @@ public final class Prefs {
         return koreanD7() ? KOREAN_LAYOUT_D7 : KOREAN_LAYOUT_8;
     }
 
-    /** 자·모음 균형 배열 설정 키. 모든 한글 배열이 함께 쓴다. */
-    public String balancedLayoutKey() { return BALANCED_LAYOUT; }
+    /** 자·모음 균형 배열 설정 키. 모든 한글 배열이 함께 쓰고, 키보드(세로·가로·폴더블 내부 화면 세로·가로)마다 따로 정한다. */
+    public String balancedLayoutKey() { return ownKey(BALANCED_LAYOUT); }
+
+    /**
+     * 상세 배열(자·모음 균형 배열 켜기, 영어 자판도 균형 배열, 균형 배열의 묶음 폭·위치, 분리 키보드의 좌·우 균형 배열)을
+     * 세로 모드 말고 다른 키보드가 따로 저장할 때 키 앞에 붙이는 말: "land", "large_port", "large_land" (세로 모드는 "").
+     */
+    static String ownTagOf(String profile) {
+        if (profile.isEmpty()) return "";
+        return profile.startsWith(LARGE_PREFIX) ? LARGE_PREFIX + largeSideOf(profile) : PROFILE_LANDSCAPE;
+    }
+
+    /** 이 키보드의 상세 배열 값 키: 세로 모드는 base 그대로, 그 밖은 ownTagOf + "_" + base. */
+    private String ownKey(String base) {
+        return profile.isEmpty() ? base : ownTagOf(profile) + "_" + base;
+    }
+
+    /** '영어 자판도 균형 배열' 설정 키 (키보드마다 따로). */
+    public String englishBalancedKey() { return ownKey(ENGLISH_BALANCED); }
 
     /**
      * 지금 한글 배열에서 자·모음 균형 배열을 쓰는지. 배열마다 따로 기억한다.
@@ -1338,7 +1395,7 @@ public final class Prefs {
         String key = balancedLayoutKey();
         if (sp.contains(key)) return sp.getBoolean(key, false);
         // 모든 배열이 함께 쓰기 전에 배열마다 따로 저장하던 값(이 이름 + "_" + 배열)은 정하기 전까지 그 배열이 이어 쓴다.
-        return sp.getBoolean(BALANCED_LAYOUT + "_" + koreanLayoutId(), false);
+        return sp.getBoolean(key + "_" + koreanLayoutId(), false);
     }
     private boolean large() { return profile.startsWith(LARGE_PREFIX); }
 
@@ -1413,8 +1470,9 @@ public final class Prefs {
      * 프로필(PROFILE_*)·한글 배열(layout)의 묶음 폭·위치 키. split이 false면 세로 모드 균형 배열의 키다.
      * {@link #balancedKey}와 같은 규칙이며, 예전 설정을 옮길 때 지금 고른 배열이 아닌 배열의 키도 만든다 (LegacyLayoutSettings).
      */
-    static String balancedKeyFor(String base, String profile, boolean split, String layout) {
-        if (!split) return base + "_" + layout;
+    public static String balancedKeyFor(String base, String profile, boolean split, String layout) {
+        // 자·모음 균형 배열(분리 키보드가 아닐 때)도 키보드마다 따로: 세로 모드는 예전 이름, 그 밖은 ownTagOf를 앞에 붙인다.
+        if (!split) return profile.isEmpty() ? base + "_" + layout : ownTagOf(profile) + "_" + base + "_" + layout;
         if (profile.isEmpty()) return PORTRAIT_PREFIX + base + "_" + layout;
         return profile.startsWith(LARGE_PREFIX) ? LARGE_PREFIX + base + "_" + largeSideOf(profile) + "_" + layout
                 : base + LANDSCAPE_SUFFIX + "_" + layout;
@@ -1438,7 +1496,7 @@ public final class Prefs {
     /** 배열별 값이 있으면 그것을, 없으면 배열별로 나누기 전의 값(세로 모드의 8열 단모음만)을, 그것도 없으면 기본값을 쓴다. */
     private int perLayoutInt(String key, String legacyKey, int def) {
         if (sp.contains(key)) return sp.getInt(key, def);
-        return !KOREAN_LAYOUT_8.equals(koreanLayoutId()) || profileValues() ? def : sp.getInt(legacyKey, def);
+        return !KOREAN_LAYOUT_8.equals(koreanLayoutId()) || profileValues() || !portrait() ? def : sp.getInt(legacyKey, def);
     }
 
     /** 지금 보기에서 자음·모음 키 폭의 최솟값 (%): 가로 모드·폴더블 내부 화면 값은 30, 세로 모드는 60. */
@@ -1451,7 +1509,7 @@ public final class Prefs {
 
     /** 예전 방식의 가로 위치가 저장되어 있는지 (배열별 값, 또는 배열별로 나누기 전의 세로 모드 8열 단모음 값). */
     private boolean hasLegacyPos(String key, String base) {
-        return sp.contains(key) || (!profileValues() && KOREAN_LAYOUT_8.equals(koreanLayoutId()) && sp.contains(base));
+        return sp.contains(key) || (!profileValues() && portrait() && KOREAN_LAYOUT_8.equals(koreanLayoutId()) && sp.contains(base));
     }
 
     /**
@@ -1616,7 +1674,7 @@ public final class Prefs {
     /** 영어 자판의 글자 키를 아래로 밀면 대문자를 입력하는지. */
     public boolean englishSwipeUpper() { return sp.getBoolean(ENGLISH_SWIPE_UPPER, false); }
     /** 영어 자판도 두벌식의 자·모음 균형 배열을 따르는지 (두벌식이고 균형 배열이 켜져 있을 때만, 세로 모드). */
-    public boolean englishBalanced() { return sp.getBoolean(ENGLISH_BALANCED, false) && koreanDubeolsik() && balancedLayout(); }
+    public boolean englishBalanced() { return sp.getBoolean(englishBalancedKey(), false) && koreanDubeolsik() && balancedLayout(); }
     /** 한글 자판에서 Shift 키를 껐을 때 그 자리에 Fn 키를 놓는지. */
     public boolean koreanShiftFn() { return sp.getBoolean(KOREAN_SHIFT_FN, false); }
     /** 글자 자판의 기호 키로 기호 자판 대신 3×4 숫자 패드를 여는지. */
