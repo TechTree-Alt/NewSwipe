@@ -274,7 +274,10 @@ final class KeyboardPreview extends FrameLayout {
     /** 미리보기를 화면에 맞춘 배율 (virtualWidth를 쓰지 않으면 1). 손가락 움직임은 이 값으로 나눠 키보드 좌표로 바꾼다. */
     private float viewScale = 1f;
 
-    /** 가로 모드·폴더블 내부 화면 키보드 사용자화 화면으로 쓴다 (edit = 그 프로필의 편집 보기, width = 그 프로필이 쓰는 화면 폭 px). */
+    /**
+     * 가로 모드·폴더블 내부 화면 키보드 사용자화 화면으로 쓴다 (edit = 그 프로필의 편집 보기, width = 그 프로필이 쓰는 화면 폭 px).
+     * 지금은 설정 화면에서 쓰지 않는다: 키보드 사용자화가 편집기 모드로 네 키보드를 모두 편집한다 (prefs에 그 키보드의 보기를 넘긴다).
+     */
     void setProfileMode(Prefs edit, int width) {
         profileEdit = edit;
         virtualWidth = width;
@@ -316,7 +319,7 @@ final class KeyboardPreview extends FrameLayout {
     }
 
     private int vh() {
-        return virtualWidth > 0 ? column.getHeight() : getHeight();
+        return virtualWidth > 0 || fitWidth > 0 ? column.getHeight() : getHeight();
     }
 
     /** 지금 보이는 영역들 (분리 키보드면 왼쪽·오른쪽 묶음, 가운데 공간, 기능키, 아니면 글자 키, 기능키). */
@@ -580,24 +583,49 @@ final class KeyboardPreview extends FrameLayout {
                     MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
             int h = column.getMeasuredHeight();
             overlay.measure(MeasureSpec.makeMeasureSpec(virtualWidth, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(h, MeasureSpec.EXACTLY));
-            for (View v : new View[]{column, overlay}) {
-                v.setPivotX(0f);
-                v.setPivotY(0f);
-                v.setScaleX(viewScale);
-                v.setScaleY(viewScale);
-            }
+            fitWidth = 0;
+            applyScale(viewScale, 0f);
             setMeasuredDimension(avail, Math.round(h * viewScale));
             return;
-        }
-        viewScale = 1f;
-        for (View v : new View[]{column, overlay}) {
-            v.setScaleX(1f);
-            v.setScaleY(1f);
         }
         measureChild(column, widthMeasureSpec, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
         int w = column.getMeasuredWidth(), h = column.getMeasuredHeight();
         overlay.measure(MeasureSpec.makeMeasureSpec(w, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(h, MeasureSpec.EXACTLY));
+        if (maxHeight > 0 && h > maxHeight) {
+            // 화면이 낮아(가로로 든 휴대폰 등) 키보드가 너무 높다: 실제 크기로 만든 키보드를 통째로 줄여 가운데에 둔다.
+            viewScale = maxHeight / (float) h;
+            fitWidth = w;
+            applyScale(viewScale, (w - w * viewScale) / 2f);
+            setMeasuredDimension(w, maxHeight);
+            return;
+        }
+        viewScale = 1f;
+        fitWidth = 0;
+        applyScale(1f, 0f);
         setMeasuredDimension(w, h);
+    }
+
+    /** 키보드와 손잡이 층을 같은 배율로 줄이거나 늘리고 가로로 옮긴다 (왼쪽 위 기준). 터치 좌표는 뷰가 알아서 되돌려 준다. */
+    private void applyScale(float scale, float dx) {
+        for (View v : new View[]{column, overlay}) {
+            v.setPivotX(0f);
+            v.setPivotY(0f);
+            v.setScaleX(scale);
+            v.setScaleY(scale);
+            v.setTranslationX(dx);
+        }
+    }
+
+    /** 미리보기의 최대 높이 (px, 0이면 제한 없음). 키보드가 이보다 높으면 실제 비율 그대로 줄여 보여 준다. */
+    private int maxHeight;
+    /** maxHeight 때문에 줄여 보여 주는 동안의 키보드 좌표계 폭 (px). 줄이지 않으면 0. */
+    private int fitWidth;
+
+    /** 미리보기의 최대 높이를 정한다 (px, 0이면 제한 없음): 낮은 화면에서 설정 창이 들어갈 자리를 남긴다. */
+    void setMaxHeight(int px) {
+        if (maxHeight == px) return;
+        maxHeight = px;
+        requestLayout();
     }
 
     void setTab(int t) {

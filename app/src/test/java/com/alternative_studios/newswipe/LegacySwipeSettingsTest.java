@@ -187,7 +187,7 @@ public class LegacySwipeSettingsTest {
         MapSp sp = new MapSp();
         Prefs p = prefs(sp);
         LegacySwipeSettings.migrateIfNeeded(p);
-        assertEquals(4, sp.getAll().size());   // 옮김 표시 네 개뿐 (자판 모양 옮기기 포함)
+        assertEquals(5, sp.getAll().size());   // 옮김 표시 다섯 개뿐 (자판 모양 옮기기, 폴더블 내부 화면 세로·가로 나누기 포함)
         assertEquals(SwipeAction.SPACE_SELECT, LongPressActions.SPEC.get(p, LongPressActions.SPACE, LongPressActions.DIR));
         assertEquals(SwipeAction.UNDO, KeyboardSwipes.SPEC.get(p, KeyboardSwipes.TWO, Key.SWIPE_LEFT));
     }

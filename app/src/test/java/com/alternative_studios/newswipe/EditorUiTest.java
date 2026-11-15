@@ -1692,7 +1692,7 @@ public class EditorUiTest {
         SettingsActivity a = launch("keyboard");
         View decor = a.getWindow().getDecorView();
         assertNotNull(findText(decor, "가로 키보드 사용자화"));
-        assertTrue(lines(cur(a)).stream().anyMatch(l -> l.startsWith("기기를 가로로 들었을 때 키보드 모양을 정합니다.")));
+        assertTrue(lines(cur(a)).stream().anyMatch(l -> l.startsWith("기기를 가로로 들었을 때 쓰는 가로 키보드의 모양을 정합니다.")));
         KeyboardPreview p = find(decor, KeyboardPreview.class);
         android.graphics.RectF lb = new android.graphics.RectF(), rb = new android.graphics.RectF();
         assertTrue(p.blockBounds(true, lb) && p.blockBounds(false, rb));
@@ -1765,7 +1765,8 @@ public class EditorUiTest {
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
         assertTrue(open(a));
         String t = visibleTexts(sheetOf(a).body());
-        assertTrue(t, t.contains("키 글자 크기") && t.contains("키 곡률") && t.contains("왼쪽 여백"));
+        assertTrue(t, t.contains("키 글자 크기") && t.contains("키 곡률") && t.contains("왼쪽 여백") && t.contains("가로만"));
+        shot(a, "e2-landscape-board");
         assertEquals(120, land.keyTextSize());
         assertEquals(7, land.padLeftDp());
         // 가로 모드 값을 바꿔도 세로 모드 값은 그대로
@@ -1799,8 +1800,9 @@ public class EditorUiTest {
         View decor = a.getWindow().getDecorView();
         assertNotNull(findText(decor, "세로 키보드 사용자화"));
         java.util.List<String> ls = lines(cur(a));
-        assertTrue(ls.toString(), ls.stream().anyMatch(l -> l.startsWith("기기를 세로로 들었을 때 키보드 모양을 정합니다.")));
+        assertTrue(ls.toString(), ls.stream().anyMatch(l -> l.startsWith("기기를 세로로 들었을 때 쓰는 세로 키보드의 모양을 정합니다.")));
         assertFalse(ls.contains("가로 모드 키보드 사용자화"));
+        shot(a, "e1-portrait-intro");
     }
 
     static int count(View v, String text) {
@@ -1943,7 +1945,7 @@ public class EditorUiTest {
         shot(a, "98-board-reset");
     }
 
-    // ---- 폴더블 내부 화면: 별도 키보드는 키보드 사용자화의 가로 모드 아래, 판정 기준은 폴더블 내부 화면 키보드 사용자화 안
+    // ---- 폴더블 내부 화면: 별도 키보드와 판정 기준은 키보드 사용자화의 '폴더블 설정'에, 내부 화면에서 열면 내부 화면 키보드를 편집
 
     /** 보이는 글자를 위에서 아래 차례로 (줄마다 하나). */
     static java.util.List<String> lines(View v) {
@@ -1973,11 +1975,11 @@ public class EditorUiTest {
     }
 
     /**
-     * 키보드 사용자화 목록: 세로·가로 안내 아래에 '폴더블 내부 화면 별도 키보드' 섹션이 있고, 켜면 사용자화 버튼이 보인다.
-     * 판정 기준 슬라이더는 여기에 없다. 켜고 끄는 것도 머리글의 되돌리기로 되돌린다. 실험실에는 폴더블 설정이 남지 않는다.
+     * 키보드 사용자화 목록: 안내 아래에 '폴더블 설정' 섹션이 있고, 별도 키보드를 켜면 판정 기준 슬라이더가 보인다
+     * (따로 된 폴더블 화면은 없다). 휴대폰 화면은 켜도 그대로 세로 키보드를 편집한다. 켜고 끄는 것도 머리글의 되돌리기로 되돌린다.
      */
     @Test
-    public void foldableKeyboardUnderLandscapeSection() throws Exception {
+    public void foldableSectionInEditorList() throws Exception {
         Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
         SettingsActivity a = launch("keyboard");
         ScrollView sc = cur(a);
@@ -1988,18 +1990,16 @@ public class EditorUiTest {
         assertTrue(ls.toString(), intro >= 0 && intro < large && large < reset);
         assertEquals("섹션 제목", 1, allTexts(sc, "폴더블 설정").size());
         assertEquals("스위치", 1, allTexts(sc, "폴더블 내부 화면 별도 키보드").size());
-        assertFalse(ls.contains("폴더블 내부 화면 판정 기준"));
-        assertNull("꺼져 있으면 사용자화 버튼은 접혀 있다", findText(sc, "폴더블 내부 화면 키보드 사용자화"));
+        assertNull("꺼져 있으면 판정 기준은 접혀 있다", findText(sc, "폴더블 내부 화면 판정 기준"));
+        assertNull("따로 된 폴더블 화면으로 가는 버튼은 없다", findText(sc, "폴더블 내부 화면 키보드 사용자화"));
 
-        // 스위치를 켜면 버튼이 보이고, 누르면 폴더블 내부 화면 키보드 사용자화를 연다.
+        // 스위치를 켜면 판정 기준이 보인다. 휴대폰 화면(411dp)은 내부 화면이 아니라 계속 세로 키보드를 편집한다.
         clickableOf(allTexts(sc, "폴더블 내부 화면 별도 키보드").get(0)).performClick();
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
         assertTrue(pre.largeLayout());
-        View open = findText(cur(a), "폴더블 내부 화면 키보드 사용자화");
-        assertNotNull(open);
-        clickableOf(open).performClick();
-        Intent next = shadowOf(a).getNextStartedActivity();
-        assertEquals("largearea", next.getStringExtra(SettingsActivity.EXTRA_SECTION));
+        assertNotNull(findText(cur(a), "폴더블 내부 화면 판정 기준"));
+        assertTrue(visibleTexts(cur(a)).contains("411dp"));
+        assertNotNull(findText(a.getWindow().getDecorView(), "세로 키보드 사용자화"));
 
         // 머리글의 되돌리기로 스위치를 되돌린다.
         View undo = byDesc(a.getWindow().getDecorView(), "마지막 변경 되돌리기");
@@ -2008,70 +2008,65 @@ public class EditorUiTest {
         undo.performClick();
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
         assertFalse(pre.largeLayout());
-        assertNull(findText(cur(a), "폴더블 내부 화면 키보드 사용자화"));
+        assertNull(findText(cur(a), "폴더블 내부 화면 판정 기준"));
 
         SettingsActivity lab = launch("lab");
         assertFalse(visibleTexts(cur(lab)).contains("폴더블"));
     }
 
-    /** 폴더블 내부 화면에서는 판정 기준 섹션이 기본값으로 되돌리기 위에 있고(한 손 모드 섹션은 없다), 되돌리기로 기본값이 된다. */
-    @Test
-    @Config(qualifiers = "ko-rKR-w700dp-h900dp-port-xhdpi")
-    public void foldableThresholdAboveReset() throws Exception {
-        Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
-        pre.raw().edit().putInt(Prefs.LARGE_SCREEN_DP, 640).commit();
-        SettingsActivity a = launch("largearea");
-        java.util.List<String> ls = lines(cur(a));
-        int threshold = ls.indexOf("폴더블 내부 화면 판정 기준"), reset = ls.lastIndexOf("기본값으로 되돌리기");
-        assertTrue(ls.toString(), threshold >= 0 && threshold < reset);
-        // 한 손 모드의 자판 폭은 '한 손 모드' 메뉴에서 화면 방향마다 정하므로 여기에는 없다.
-        assertFalse(ls.toString(), ls.contains("한 손 모드"));
-        assertFalse(ls.contains("이 설정은 폴더블 내부 화면에서만 보입니다. 폴더블 내부 화면으로 전환하거나 폴더블 내부 화면 판정 기준을 조절하세요."));
-        assertTrue(ls.toString(), ls.stream().anyMatch(l -> l.startsWith("폴더블 내부 화면을 ") && !l.contains("좌·우 균형 배열") && !l.contains("자·모음 분리 배열")));
-        assertTrue(ls.contains("640dp"));
-        // 이 화면의 기본값으로 되돌리기는 판정 기준도 기본값으로 되돌린다.
-        clickableOf(findText(cur(a), "기본값으로 되돌리기")).performClick();
-        idle();
-        click((AlertDialog) ShadowDialog.getLatestDialog(), AlertDialog.BUTTON_POSITIVE);
-        idle();
-        assertFalse(pre.raw().contains(Prefs.LARGE_SCREEN_DP));
-        assertEquals(Prefs.LARGE_SCREEN_DP_DEFAULT, pre.largeScreenDp());
-    }
-
     /**
-     * 폴더블 내부 화면이 아니면 안내 문구 바로 아래에 판정 기준 섹션이 보인다. 기준을 낮춰 지금 화면이 폴더블 내부 화면이 되면
-     * 손을 뗄 때 화면을 다시 만들어 설정을 보여 준다.
+     * 폴더블 내부 화면(별도 키보드를 켬)에서 연 키보드 사용자화는 폴더블 세로 키보드를 편집한다: 제목·안내·'폴더블 세로만' 표시,
+     * 손잡이는 폴더블 세로의 값만 바꾼다. 판정 기준을 올려 이 화면이 내부 화면이 아니게 되면 다시 만들어 세로 키보드를 편집한다.
      */
     @Test
-    public void foldableThresholdBelowNoticeOffInnerScreen() throws Exception {
-        String notice = "이 설정은 폴더블 내부 화면에서만 보입니다. 폴더블 내부 화면으로 전환하거나 폴더블 내부 화면 판정 기준을 조절하세요.";
+    @Config(qualifiers = "ko-rKR-w700dp-h900dp-port-xhdpi")
+    public void innerScreenEditorEditsInnerKeyboard() throws Exception {
         Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
+        pre.raw().edit().putBoolean(Prefs.LARGE_LAYOUT, true).putInt(Prefs.LARGE_SCREEN_DP, 640).commit();
+        EditorUndo.clearAll();
         org.robolectric.android.controller.ActivityController<SettingsActivity> c = Robolectric.buildActivity(SettingsActivity.class,
-                new Intent(RuntimeEnvironment.getApplication(), SettingsActivity.class).putExtra("section", "largearea")).setup();
+                new Intent(RuntimeEnvironment.getApplication(), SettingsActivity.class).putExtra("section", "keyboard")).setup();
         idle();
         SettingsActivity a = c.get();
+        View decor = a.getWindow().getDecorView();
+        assertNotNull(findText(decor, "폴더블 내부 화면 세로 키보드 사용자화"));
         java.util.List<String> ls = lines(cur(a));
-        int n = ls.indexOf(notice), threshold = ls.indexOf("폴더블 내부 화면 판정 기준");
-        assertTrue(ls.toString(), n >= 0 && n < threshold);
-        assertTrue("판정 기준은 되돌릴 수 있다", ls.contains("기본값으로 되돌리기"));
-        assertFalse(ls.contains("한 손 모드"));
-        // 슬라이더 맨 왼쪽(400dp)을 누르면 이 화면(411dp)이 폴더블 내부 화면이 된다.
+        assertTrue(ls.toString(), ls.stream().anyMatch(l -> l.startsWith("폴더블 내부 화면을 세로로 들었을 때 쓰는 폴더블 세로 키보드의 모양을 정합니다.")));
+        assertTrue(ls.toString(), ls.stream().anyMatch(l -> l.startsWith("'폴더블 세로만' 표시가 있는 설정")));
+        assertTrue(visibleTexts(cur(a)).contains("640dp"));
+        // 글자 키 창: 함께 쓰는 값(자판 배열)과 폴더블 세로만의 값(글자 키 높이, 표시 붙음)이 함께 있다.
+        KeyboardPreview p = find(decor, KeyboardPreview.class);
+        tapArea(p, KeyboardPreview.AREA_LETTERS);
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
+        assertTrue(open(a));
+        String t = visibleTexts(sheetOf(a).body());
+        assertTrue(t, t.contains("글자 키 높이") && t.contains("폴더블 세로만") && t.contains("한글 자판 배열"));
+        shot(a, "e0-inner-portrait-letters");
+        // 높이 손잡이는 폴더블 세로의 글자 키 높이만 바꾼다.
+        Prefs lp = pre.profileView(Prefs.PROFILE_LARGE_PORTRAIT);
+        int kh0 = lp.keyboardHeight();
+        float[] h = handle(p, KeyboardPreview.Handle.HEIGHT.ordinal());
+        drag(p.getChildAt(1), h[0], h[1], 0, 150);
+        assertTrue("height " + kh0 + " -> " + lp.keyboardHeight(), lp.keyboardHeight() < kh0);
+        assertTrue(pre.raw().contains(lp.heightKey()));
+        assertFalse(pre.raw().contains(Prefs.KEYBOARD_HEIGHT));
+        assertFalse(pre.raw().contains(Prefs.KEYBOARD_HEIGHT_LAND));
+        a.onBackPressed();
+        idle();
+        // 판정 기준을 맨 오른쪽(1000dp)으로 올리면 이 화면(700dp)은 내부 화면이 아니다: 세로 키보드 사용자화로 다시 만든다.
         com.alternative_studios.newswipe.ui.ExpressiveSlider bar = find(cur(a), com.alternative_studios.newswipe.ui.ExpressiveSlider.class);
         assertNotNull(bar);
         t0 = SystemClock.uptimeMillis();
-        touch(bar, MotionEvent.ACTION_DOWN, 1, bar.getHeight() / 2f);
-        touch(bar, MotionEvent.ACTION_UP, 1, bar.getHeight() / 2f);
+        touch(bar, MotionEvent.ACTION_DOWN, bar.getWidth() - 1, bar.getHeight() / 2f);
+        touch(bar, MotionEvent.ACTION_UP, bar.getWidth() - 1, bar.getHeight() / 2f);
         idle();
-        assertEquals(Prefs.LARGE_SCREEN_DP_MIN, pre.largeScreenDp());
+        assertEquals(Prefs.LARGE_SCREEN_DP_MAX, pre.largeScreenDp());
         SettingsActivity now = c.get();
-        java.util.List<String> after = lines(cur(now));
-        assertFalse(after.toString(), after.contains(notice));
-        // 다시 만든 화면은 폴더블 내부 화면의 설정을 보여 준다 (분리 키보드 섹션이 판정 기준 위에 있다).
-        int split = after.indexOf("분리 키보드"), t2 = after.indexOf("폴더블 내부 화면 판정 기준");
-        assertTrue(after.toString(), split >= 0 && split < t2);
+        assertNotNull(findText(now.getWindow().getDecorView(), "세로 키보드 사용자화"));
+        pre.raw().edit().remove(Prefs.LARGE_LAYOUT).remove(Prefs.LARGE_SCREEN_DP).remove(lp.heightKey()).commit();
     }
 
-    /** 설정 검색: 별도 키보드는 키보드 사용자화에서, 판정 기준은 폴더블 내부 화면 키보드 사용자화에서 찾고, 누르면 그 화면을 연다. */
+    /** 설정 검색: 별도 키보드와 판정 기준은 키보드 사용자화에서 찾고, 누르면 그 화면을 연다. */
     @Test
     public void foldableSettingsSearch() throws Exception {
         Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
@@ -2088,15 +2083,15 @@ public class EditorUiTest {
         assertTrue(ls.toString(), ls.contains("폴더블 내부 화면 판정 기준"));
         assertFalse("실험실에는 폴더블 설정이 없다: " + ls, ls.contains("실험실"));
 
-        // 판정 기준 → 폴더블 내부 화면 키보드 사용자화
+        // 판정 기준 → 키보드 사용자화
         q.invoke(a, "판정 기준");
         idle();
         TextView hit = allTexts(results, "폴더블 내부 화면 판정 기준").get(0);
         ViewGroup row = (ViewGroup) clickableOf(hit);
-        assertNotNull(findText(row, "폴더블 내부 화면 키보드 사용자화"));
+        assertNotNull(findText(row, "키보드 사용자화"));
         row.performClick();
         Intent next = shadowOf(a).getNextStartedActivity();
-        assertEquals("largearea", next.getStringExtra(SettingsActivity.EXTRA_SECTION));
+        assertEquals("keyboard", next.getStringExtra(SettingsActivity.EXTRA_SECTION));
         assertEquals("폴더블 내부 화면 판정 기준", next.getStringExtra(SettingsActivity.EXTRA_HIGHLIGHT));
 
         // 별도 키보드 → 키보드 사용자화
@@ -2181,61 +2176,34 @@ public class EditorUiTest {
     }
 
     /**
-     * 폴더블 내부 화면 키보드 사용자화: 미리보기의 설정 창(키보드 전체·영역)에 있는 항목은 그 창의 id로 모으고,
-     * 검색 결과로 들어오면 그 창을 열어 항목을 보여 준다.
+     * 검색 결과로 판정 기준을 찾아 키보드 사용자화에 들어오면: 별도 키보드를 꺼 두어 접혀 있으면 그것을 켜는 스위치를,
+     * 켜 두었으면 판정 기준을 깜빡인다. 따로 된 폴더블 화면의 검색 항목은 모으지 않는다.
      */
     @Test
-    @Config(qualifiers = "ko-rKR-w700dp-h900dp-port-xhdpi")
-    public void searchOpensProfileSheets() throws Exception {
-        new Prefs(RuntimeEnvironment.getApplication()).raw().edit().putBoolean(Prefs.ONBOARDING_DONE, true).commit();
-        SettingsActivity main = launch(null);
-        java.lang.reflect.Method hs = SettingsActivity.class.getDeclaredMethod("harvestScreen", String.class, java.util.List.class);
-        hs.setAccessible(true);
-        java.util.List<String[]> large = new java.util.ArrayList<>();
-        hs.invoke(main, "largearea", large);
-        java.util.Map<String, String> where = new java.util.HashMap<>();
-        for (String[] e : large) where.putIfAbsent(e[1], e[0]);
-        log("inner screen harvested " + large.size() + ": " + where);
-        assertEquals("largearea", where.get("폴더블 내부 화면 분리 키보드"));   // 목록의 항목은 그대로 화면 id
-        assertEquals("profilepart:largearea:0:도구 막대", where.get("도구 막대 높이"));
-        assertEquals("profilepart:largearea:3:기능키", where.get("스페이스바 잇기"));
-        assertEquals("profilepart:largearea:-1:키보드 전체 설정", where.get("키 글자 크기"));
-        assertEquals("profilepart:largearea:0:도구 막대", where.get("도구 막대 설정"));
-        // 가로 모드 키보드는 키보드 사용자화에서 정하므로 따로 된 화면을 모으지 않는다.
+    public void searchOpensFoldableThresholdInEditor() throws Exception {
         java.lang.reflect.Field ids = SettingsActivity.class.getDeclaredField("HARVEST_IDS");
         ids.setAccessible(true);
-        assertFalse(java.util.Arrays.asList((String[]) ids.get(null)).contains("landscapearea"));
-
-        // 검색 결과에서 고른 것처럼 연다: 화면이 열리고 미리보기의 그 창이 올라와 항목이 보인다.
+        java.util.List<String> harvest = java.util.Arrays.asList((String[]) ids.get(null));
+        assertFalse(harvest.contains("largearea"));
+        assertFalse(harvest.contains("landscapearea"));
         Intent i = new Intent(RuntimeEnvironment.getApplication(), SettingsActivity.class)
-                .putExtra("section", "largearea")
-                .putExtra("target", where.get("스페이스바 잇기"))
-                .putExtra("highlight", "스페이스바 잇기");
-        // 분리 키보드를 꺼 두면 '스페이스바 잇기'는 창에 없다: 창을 닫고 그것을 켜는 분리 키보드 스위치를 깜빡인다.
+                .putExtra("section", "keyboard")
+                .putExtra("highlight", "폴더블 내부 화면 판정 기준");
         EditorUndo.clearAll();
         SettingsActivity off = Robolectric.buildActivity(SettingsActivity.class, i).setup().get();
-        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(2000));
-        assertFalse(sheetOf(off).isOpen());
-        assertNotNull(off.lastFlashed);
-        assertTrue(visibleTexts(off.lastFlashed).contains("폴더블 내부 화면 분리 키보드"));
-        off.finish(); idle();
-        // 분리 키보드를 켜면 창이 열린 채 그 항목을 깜빡인다.
-        Prefs p = new Prefs(RuntimeEnvironment.getApplication());
-        p.raw().edit().putBoolean(p.profileEditView(Prefs.PROFILE_LARGE_PORTRAIT).splitKey(), true).commit();
-        EditorUndo.clearAll();
-        SettingsActivity a = Robolectric.buildActivity(SettingsActivity.class, i).setup().get();
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(1200));
-        assertTrue(sheetOf(a).isOpen());
-        assertTrue(visibleTexts(sheetOf(a).body()).contains("기능키 높이"));
-        assertNotNull(a.lastFlashed);
-        assertTrue(visibleTexts(a.lastFlashed).contains("스페이스바 잇기"));
-        a.onBackPressed(); idle();
-        java.lang.reflect.Method ot = SettingsActivity.class.getDeclaredMethod("openProfileTarget", String.class, String.class);
-        ot.setAccessible(true);
-        ot.invoke(a, where.get("키 글자 크기"), "키 글자 크기");
-        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(800));
-        assertTrue(sheetOf(a).isOpen());
-        assertTrue(visibleTexts(sheetOf(a).body()).contains("키 글자 크기"));
+        assertNotNull(off.lastFlashed);
+        assertTrue(visibleTexts(off.lastFlashed).contains("폴더블 내부 화면 별도 키보드"));
+        off.finish();
+        idle();
+        Prefs p = new Prefs(RuntimeEnvironment.getApplication());
+        p.raw().edit().putBoolean(Prefs.LARGE_LAYOUT, true).commit();
+        EditorUndo.clearAll();
+        SettingsActivity on = Robolectric.buildActivity(SettingsActivity.class, i).setup().get();
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(1200));
+        assertNotNull(on.lastFlashed);
+        assertTrue(visibleTexts(on.lastFlashed).contains("폴더블 내부 화면 판정 기준"));
+        p.raw().edit().remove(Prefs.LARGE_LAYOUT).commit();
     }
 
     /** 방향 이름(작은 글자)을 가진 칸. */
@@ -2262,7 +2230,7 @@ public class EditorUiTest {
     }
 
     /**
-     * 한 손 모드: 폴더블 내부 화면 키보드 사용자화처럼 화면 아래에 미리보기가 붙고, 손잡이를 끌면 자판 폭·키 높이·아래쪽 여백이 바뀌며
+     * 한 손 모드: 키보드 사용자화처럼 화면 아래에 미리보기가 붙고, 손잡이를 끌면 자판 폭·키 높이·아래쪽 여백이 바뀌며
      * 목록의 슬라이더도 따라 움직인다.
      */
     @Test
