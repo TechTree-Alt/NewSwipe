@@ -71,6 +71,9 @@ public final class ClipboardPanel extends LinearLayout {
     private final FrameLayout headerWrap;
     private final int barHeight;
     private boolean splitPinned, splitShown;
+    /** 아래 안내 글에 보일 한도 (클립보드 고급 설정). */
+    private int maxItems = ClipboardHistory.MAX_ITEMS, maxImages = ClipboardHistory.MAX_IMAGES,
+            expireHours = ClipboardHistory.EXPIRE_HOURS, maxPinned = ClipboardHistory.MAX_PINNED;
     private final IconButton clear;
     /** 맨 위 줄(뒤로·제목·모두 지우기)과, 모두 지우기를 누르면 그 자리에 대신 보이는 확인 줄. */
     private final LinearLayout header, confirmRow;
@@ -430,6 +433,14 @@ public final class ClipboardPanel extends LinearLayout {
         splitPinned = on;
     }
 
+    /** 아래 안내 글에 보일 한도 (클립보드 고급 설정). */
+    public void setLimits(int items, int images, int expireHours, int pinned) {
+        maxItems = items;
+        maxImages = images;
+        this.expireHours = expireHours;
+        maxPinned = pinned;
+    }
+
     /**
      * 키보드의 여백 설정을 따른다. 맨 위 줄(뒤로 가기·제목·모두 지우기, 지우기 확인 줄)은 도구 막대처럼 좌우 여백
      * (barLeft·barRight)만큼, 항목 카드는 자판 키의 가장자리(keyLeft·keyRight)에 맞춘다.
@@ -490,10 +501,10 @@ public final class ClipboardPanel extends LinearLayout {
             addGrid(list, normal);
         }
         if (!before.isEmpty()) animateMoves(before);
-        String footer = L.t("클립보드 항목은 최대 " + ClipboardHistory.MAX_ITEMS + "개(이미지는 " + ClipboardHistory.MAX_IMAGES
-                + "개)이며, 24시간 후 삭제됩니다. 핀 버튼으로 최대 " + ClipboardHistory.MAX_PINNED + "개까지 고정할 수 있습니다.",
-                "The clipboard keeps up to " + ClipboardHistory.MAX_ITEMS + " items (" + ClipboardHistory.MAX_IMAGES
-                + " images), deleted after 24 hours. Pin up to " + ClipboardHistory.MAX_PINNED + " items with the pin button.");
+        String footer = L.t("클립보드 항목은 최대 " + maxItems + "개(이미지는 " + maxImages
+                + "개)이며, " + expireHours + "시간 후 삭제됩니다. 핀 버튼으로 최대 " + maxPinned + "개까지 고정할 수 있습니다.",
+                "The clipboard keeps up to " + maxItems + " items (" + maxImages
+                + " images), deleted after " + expireHours + (expireHours == 1 ? " hour" : " hours") + ". Pin up to " + maxPinned + " items with the pin button.");
         list.addView(note(footer));
         if (split) pinList.addView(note(footer));
     }

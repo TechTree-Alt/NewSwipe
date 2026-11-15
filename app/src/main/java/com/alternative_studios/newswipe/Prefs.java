@@ -3,6 +3,8 @@ package com.alternative_studios.newswipe;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import com.alternative_studios.newswipe.clipboard.ClipboardHistory;
+
 /** 설정값. 키보드 서비스와 설정 화면이 함께 쓴다. */
 public final class Prefs {
     public static final String FILE = "settings";
@@ -54,6 +56,11 @@ public final class Prefs {
     public static final String CLIPBOARD_SPLIT_PINNED = "clipboard_split_pinned";   // 고정 항목을 오른쪽 따로 된 페이지에 모으기
     public static final String CLIPBOARD_CLOSE_ON_USE = "clipboard_close_on_use";   // 클립보드 항목을 입력하면 클립보드 창을 닫기
     public static final String CLIPBOARD_CHIP = "clipboard_chip";     // 방금 복사한 내용을 도구 막대에 칩으로
+    // 클립보드 고급 설정: 보관 항목 수, 이미지 수, 지우는 시간(시간), 고정 항목 수.
+    public static final String CLIPBOARD_MAX_ITEMS = "clipboard_max_items";
+    public static final String CLIPBOARD_MAX_IMAGES = "clipboard_max_images";
+    public static final String CLIPBOARD_EXPIRE_HOURS = "clipboard_expire_hours";
+    public static final String CLIPBOARD_MAX_PINNED = "clipboard_max_pinned";
     public static final String ENGLISH_FIELDS = "english_fields";     // 이메일 입력란 등에서 영어 자판으로 시작
     /**
      * 입력 언어: 한국어·영어 자판을 쓰는지 (기본 둘 다 켜짐). 첫 시작 가이드와 '입력 언어' 화면에서 고르며, 둘 중 하나는 늘 켜져 있다.
@@ -476,6 +483,7 @@ public final class Prefs {
                 VIBRATE_GESTURE_ON, VIBRATE_GESTURE_LEVEL, SOUND, SOUND_VOLUME));
         // 클립보드 및 이모지: 메인 화면의 따로 된 메뉴.
         MENU_KEYS.put("clipemoji", keys(CLIPBOARD_HISTORY, CLIPBOARD_IMAGES, CLIPBOARD_SENSITIVE, CLIPBOARD_CLOSE_ON_USE, CLIPBOARD_SPLIT_PINNED, CLIPBOARD_CHIP,
+                CLIPBOARD_MAX_ITEMS, CLIPBOARD_MAX_IMAGES, CLIPBOARD_EXPIRE_HOURS, CLIPBOARD_MAX_PINNED,
                 SELECTION_CHIPS, EMOJI_SIZE, EMOJI_SUGGEST));
         MENU_KEYS.put("words", keys(SHORTCUTS_ENABLED, SUGGEST_WORDS, SUGGEST_FULL_BAR, SUGGEST_SPACE, PREDICT_NEXT, AUTO_CORRECT, LEARN_WORDS,
                 CONFIRM_LEARNED_DELETE, AUTOFILL_INLINE));
@@ -845,6 +853,36 @@ public final class Prefs {
     public boolean clipboardSplitPinned() { return sp.getBoolean(CLIPBOARD_SPLIT_PINNED, false); }
     public boolean clipboardCloseOnUse() { return sp.getBoolean(CLIPBOARD_CLOSE_ON_USE, false); }
     public boolean clipboardChip() { return sp.getBoolean(CLIPBOARD_CHIP, true); }
+    /** 클립보드에 보관할 항목 수 (기본 30개, 5개 단위, 최대 100개). */
+    public int clipboardMaxItems() {
+        return stepped(sp.getInt(CLIPBOARD_MAX_ITEMS, ClipboardHistory.MAX_ITEMS), ClipboardHistory.ITEMS_LIMIT, ClipboardHistory.COUNT_STEP);
+    }
+    /** 그중 이미지 수 (기본 5개, 5개 단위, 최대 30개). */
+    public int clipboardMaxImages() {
+        return stepped(sp.getInt(CLIPBOARD_MAX_IMAGES, ClipboardHistory.MAX_IMAGES), ClipboardHistory.IMAGES_LIMIT, ClipboardHistory.COUNT_STEP);
+    }
+    /** 고정하지 않은 항목을 지우기까지의 시간 (기본 24시간, 12시간 단위, 최대 120시간). */
+    public int clipboardExpireHours() {
+        return stepped(sp.getInt(CLIPBOARD_EXPIRE_HOURS, ClipboardHistory.EXPIRE_HOURS), ClipboardHistory.EXPIRE_HOURS_LIMIT, ClipboardHistory.HOURS_STEP);
+    }
+    /** 고정할 수 있는 항목 수 (기본 10개, 5개 단위, 최대 30개). */
+    public int clipboardMaxPinned() {
+        return stepped(sp.getInt(CLIPBOARD_MAX_PINNED, ClipboardHistory.MAX_PINNED), ClipboardHistory.PINNED_LIMIT, ClipboardHistory.COUNT_STEP);
+    }
+    /** 저장된 값을 단위(step)에 맞춰 가장 가까운 칸으로 옮기고 [step, max] 안에 둔다. */
+    private static int stepped(int v, int max, int step) {
+        return clamp(Math.round(v / (float) step) * step, step, max);
+    }
+    /** 클립보드 고급 설정의 한도를 기록에 적용한다. */
+    public ClipboardHistory applyClipboardLimits(ClipboardHistory h) {
+        h.setLimits(clipboardMaxItems(), clipboardMaxImages(), clipboardExpireHours(), clipboardMaxPinned());
+        return h;
+    }
+    /** 클립보드 고급 설정 값인지 (바뀌면 기록의 한도를 다시 정한다). */
+    public static boolean isClipboardLimitKey(String key) {
+        return CLIPBOARD_MAX_ITEMS.equals(key) || CLIPBOARD_MAX_IMAGES.equals(key)
+                || CLIPBOARD_EXPIRE_HOURS.equals(key) || CLIPBOARD_MAX_PINNED.equals(key);
+    }
     /** 이메일 입력란이나 앱이 영어 입력을 요청한 칸에서 영어 자판으로 시작하는지 (기본 켬). */
     public boolean englishFields() { return sp.getBoolean(ENGLISH_FIELDS, true); }
     public int keyGapXDp() { return clamp(sp.getInt(KEY_GAP_X, 5), 0, 12); }

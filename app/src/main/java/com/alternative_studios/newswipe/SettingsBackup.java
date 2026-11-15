@@ -138,7 +138,8 @@ public final class SettingsBackup {
     }
 
     private static ClipboardHistory clipboard(Context context) {
-        return new ClipboardHistory(new java.io.File(context.getFilesDir(), "clipboard.txt"));
+        return new Prefs(context).applyClipboardLimits(
+                new ClipboardHistory(new java.io.File(context.getFilesDir(), "clipboard.txt")));
     }
 
     /** 암호화한 파일의 표시와, 암호문에 함께 묶어 바꿔치기를 막는 값. */

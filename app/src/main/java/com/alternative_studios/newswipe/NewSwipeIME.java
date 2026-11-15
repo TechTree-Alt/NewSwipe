@@ -243,6 +243,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private boolean clipChipActive;
     /** 칩의 미리보기 (복사한 글의 앞부분 한 줄). 민감한 정보로 표시된 복사면 null이고 내용은 기억하지 않는다. */
     private String clipChipPreview;
+    /** 방금 복사한 것이 이미지면 칩이 붙여 넣을 이미지 형식(image/...), 텍스트면 null. */
+    private String clipChipImageMime;
     private static final long CLIP_CHIP_MS = 60_000;
     private final Runnable expireClipChip = this::dismissClipChip;
     private boolean shortcutAllowed;   // 현재 입력란에서 단축어를 쓸 수 있는지 (비밀번호만 제외, 이메일 입력란은 허용)
@@ -291,7 +293,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         userWords = UserDictionary.shared(getFilesDir());
         usageHistory = UsageHistory.shared(getFilesDir());
         suggester = new WordSuggester(this, userWords, usageHistory);
-        clipHistory = new ClipboardHistory(new File(getFilesDir(), "clipboard.txt"));
+        clipHistory = prefs.applyClipboardLimits(new ClipboardHistory(new File(getFilesDir(), "clipboard.txt")));
         clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
         if (clipboard != null) clipboard.addPrimaryClipChangedListener(this);
         pruneClipboard();
@@ -334,6 +336,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 if (Prefs.CLIPBOARD_SPLIT_PINNED.equals(key) && clipPanel != null && panel == PANEL_CLIPBOARD) {
                     refreshClipboard();
                 }
+                // 클립보드 고급 설정(개수·시간 한도)이 바뀌면 기록에 적용하고, 떠 있는 클립보드 창을 다시 그린다.
+                if ((key == null || Prefs.isClipboardLimitKey(key)) && clipHistory != null) {
+                    prefs.applyClipboardLimits(clipHistory);
+                    if (clipPanel != null && panel == PANEL_CLIPBOARD) refreshClipboard();
+                }
                 if (key == null || Prefs.HW_TOOLBAR.equals(key)) {
                     updateInputViewShown();
                     refreshHwToolbar();
@@ -347,7 +354,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 사용할 때마다 설정에서 직접 읽는 값이나 키보드 화면과 상관없는 값은 다시 그릴 필요가 없다. */
     private static boolean affectsKeyboard(String key) {
         return !(Prefs.LANGUAGE.equals(key) || Prefs.RECENT_EMOJI.equals(key) || Prefs.PINNED_EMOJI.equals(key)
-                || Prefs.CLIPBOARD_HISTORY.equals(key) || Prefs.CLIPBOARD_IMAGES.equals(key) || Prefs.CLIPBOARD_SENSITIVE.equals(key) || Prefs.CLIPBOARD_CLOSE_ON_USE.equals(key) || Prefs.CLIPBOARD_SPLIT_PINNED.equals(key) || Prefs.CLIPBOARD_CHIP.equals(key) || Prefs.AUTO_CAP.equals(key)
+                || Prefs.CLIPBOARD_HISTORY.equals(key) || Prefs.CLIPBOARD_IMAGES.equals(key) || Prefs.CLIPBOARD_SENSITIVE.equals(key) || Prefs.CLIPBOARD_CLOSE_ON_USE.equals(key) || Prefs.CLIPBOARD_SPLIT_PINNED.equals(key) || Prefs.CLIPBOARD_CHIP.equals(key) || Prefs.isClipboardLimitKey(key) || Prefs.AUTO_CAP.equals(key)
                 || Prefs.DOUBLE_SPACE_PERIOD.equals(key) || Prefs.CONFIRM_LEARNED_DELETE.equals(key)
                 || Prefs.ONE_HAND_LAST.equals(key) || Prefs.ENGLISH_FIELDS.equals(key)
                 || key.startsWith(Prefs.HW_PREFIX));   // 외장 키보드 설정은 키를 누를 때 읽는다
@@ -406,7 +413,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         Neu.trimCache();   // Neumorphism 그림자 비트맵: 다시 올라오면 필요한 크기만 다시 굽는다
     };
 
-    /** 24시간이 지난 클립보드 항목과 그 이미지 파일을 지우고 기록을 메모리에서 내린다. */
+    /** 기한이 지난 클립보드 항목과 그 이미지 파일을 지우고 기록을 메모리에서 내린다. */
     private void pruneClipboard() {
         runIo(() -> {
             clipHistory.prune(System.currentTimeMillis());
@@ -3831,7 +3838,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         for (String id : order[1]) toolButtonOf(id).setVisibility(right && prefs.toolShown(id) ? View.VISIBLE : View.GONE);
         toolSpacer.setVisibility(suggesting || chip ? View.GONE : View.VISIBLE);
         if (clipChipSlot != null) {
-            if (chip) {
+            if (chip && clipChipImageMime != null) {
+                clipChip.setLabel(L.t("이미지", "Image"));
+                clipChip.setContentDescription(L.t("복사한 이미지 붙여넣기", "Paste copied image"));
+            } else if (chip) {
                 boolean masked = clipChipPreview == null || passwordField;
                 clipChip.setLabel(masked ? "••••••" : clipChipPreview);
                 clipChip.setContentDescription(masked ? L.t("복사한 내용 붙여넣기", "Paste copied text") : L.t("붙여넣기: ", "Paste: ") + clipChipPreview);
@@ -3857,6 +3867,18 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
         clipChipActive = true;
         clipChipPreview = preview;
+        clipChipImageMime = null;
+        main.removeCallbacks(expireClipChip);
+        main.postDelayed(expireClipChip, CLIP_CHIP_MS);
+        refreshToolbarVisibility();
+        applyTopSlotVisibility();   // 도구 막대를 꺼 두었으면 칩이 뜰 줄을 다시 연다
+    }
+
+    /** 방금 복사한 이미지로 칩을 띄운다. 칩에는 내용 대신 '이미지'라고 보인다. */
+    private void offerClipImageChip(String mime) {
+        clipChipActive = true;
+        clipChipPreview = null;
+        clipChipImageMime = mime;
         main.removeCallbacks(expireClipChip);
         main.postDelayed(expireClipChip, CLIP_CHIP_MS);
         refreshToolbarVisibility();
@@ -3878,24 +3900,69 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (!clipChipActive) return;
         clipChipActive = false;
         clipChipPreview = null;
+        clipChipImageMime = null;
         refreshToolbarVisibility();
         applyTopSlotVisibility();   // 도구 막대를 꺼 두었으면 칩과 함께 그 줄도 거둔다
     }
 
-    /** 칩을 눌렀다: 지금 클립보드의 텍스트를 커서 자리에 붙여 넣는다 (칩에 보인 미리보기가 아니라 원래 내용 전체). */
+    /**
+     * 칩을 눌렀다: 지금 클립보드의 텍스트를 커서 자리에 붙여 넣는다 (칩에 보인 미리보기가 아니라 원래 내용 전체).
+     * 이미지면 그 이미지를 붙여 넣는다.
+     */
     private void pasteClipChip() {
         CharSequence text = null;
+        Uri imageUri = null;
+        String mime = null;
         try {
             ClipData clip = clipboard != null ? clipboard.getPrimaryClip() : null;
-            if (clip != null && clip.getItemCount() > 0) text = clip.getItemAt(0).getText();
+            if (clip != null && clip.getItemCount() > 0) {
+                ClipData.Item first = clip.getItemAt(0);
+                mime = first.getUri() != null ? imageMime(clip.getDescription(), first.getUri()) : null;
+                if (mime != null) imageUri = first.getUri();
+                else text = first.getText();
+            }
         } catch (RuntimeException ignored) {
             // 클립보드를 읽지 못했다
         }
         dismissClipChip();
+        if (imageUri != null) {
+            pasteClipboardImage(imageUri, mime);
+            return;
+        }
         if (text == null || text.length() == 0) return;
         correctedTo = null;
         lastWasSpace = false;
         pasteText(text.toString());
+    }
+
+    /**
+     * 시스템 클립보드의 이미지를 붙여 넣는다. 입력란이 이미지를 받으면 앱 전용 저장소에 복사해(이미 기록에 있으면 그것을 써서)
+     * 키보드가 내보내는 주소로 넣는다. 받지 않으면 앱의 붙여넣기 기능에 맡긴다 (클립보드에 이미 그 이미지가 있다).
+     */
+    private void pasteClipboardImage(Uri uri, String mime) {
+        InputConnection ic = getCurrentInputConnection();
+        if (ic == null) return;
+        if (!acceptsContent(getCurrentInputEditorInfo(), mime)) {
+            commitComposing();
+            if (!ic.performContextMenuAction(android.R.id.paste)) {
+                Toast.makeText(this, L.t("이 입력란에는 이미지를 붙여 넣을 수 없습니다", "Images can't be pasted into this field"), Toast.LENGTH_SHORT).show();
+            }
+            return;
+        }
+        final String own = ClipImageProvider.idOf(this, uri);
+        final long now = System.currentTimeMillis();
+        runIo(() -> {
+            String id = own != null ? own
+                    : ClipImages.save(getContentResolver(), uri, clipHistory.imageDir(), getCacheDir());
+            ClipboardHistory.Item item = id == null ? null : ClipboardHistory.Item.image(id, mime, now);
+            main.post(() -> {
+                if (item != null) {
+                    pasteImage(item);
+                } else {
+                    Toast.makeText(this, L.t("이미지를 붙여 넣지 못했습니다", "Couldn't paste the image"), Toast.LENGTH_SHORT).show();
+                }
+            });
+        });
     }
 
     private void applyTopSlotVisibility() {
@@ -4966,15 +5033,16 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         PersistableBundle extras = desc != null ? desc.getExtras() : null;
         boolean sensitive = extras != null && extras.getBoolean(SENSITIVE_EXTRA, false);
         ClipData.Item first = clip.getItemAt(0);
+        String imageMime = imageMime(desc, first.getUri());
         if (chip) {
-            // 방금 복사한 텍스트를 칩으로 띄운다. 비밀번호처럼 민감한 정보도 붙여 넣을 수 있게 하되 내용은 가린다.
+            // 방금 복사한 텍스트나 이미지를 칩으로 띄운다. 비밀번호처럼 민감한 정보도 붙여 넣을 수 있게 하되 내용은 가린다.
             if (first.getUri() == null && first.getText() != null) offerClipChip(first.getText(), sensitive);
+            else if (imageMime != null) offerClipImageChip(imageMime);
             else dismissClipChip();
         }
         // 비밀번호 관리자 등이 민감 정보로 표시한 복사와, 비밀번호 입력란에서 한 복사(글자가 보이게 바꾼 칸 포함)는
         // 클립보드 기록에 저장하지 않는다 (설정에서 '민감한 정보도 저장'을 켠 경우만 저장한다). 키보드가 내려가 있을 때의 복사는 다른 앱에서 한 것이라 지난 입력란을 따르지 않는다.
         if (!history || ((sensitive || (passwordField && !windowHidden)) && !prefs.clipboardSensitive())) return;
-        String imageMime = imageMime(desc, first.getUri());
         if (imageMime != null) {
             if (prefs.clipboardImages()) saveClipImage(first.getUri(), imageMime);
             return;
@@ -5029,6 +5097,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         final boolean enabled = prefs.clipboardHistory();
         final String current = currentClipText();
         clipPanel.setSplitPinned(prefs.clipboardSplitPinned());
+        clipPanel.setLimits(prefs.clipboardMaxItems(), prefs.clipboardMaxImages(), prefs.clipboardExpireHours(),
+                prefs.clipboardMaxPinned());
         if (!enabled) {
             clipPanel.show(Collections.emptyList(), false, current);
             return;
@@ -5147,8 +5217,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             boolean ok = clipHistory.setPinned(item, pinned);
             main.post(() -> {
                 if (!ok) {
-                    Toast.makeText(this, L.t("클립보드 항목은 " + ClipboardHistory.MAX_PINNED + "개까지 고정할 수 있습니다",
-                    "You can pin up to " + ClipboardHistory.MAX_PINNED + " clipboard items"),
+                    int max = clipHistory.maxPinned();
+                    Toast.makeText(this, L.t("클립보드 항목은 " + max + "개까지 고정할 수 있습니다",
+                    "You can pin up to " + max + " clipboard items"),
                             Toast.LENGTH_SHORT).show();
                 }
                 refreshClipboard();
