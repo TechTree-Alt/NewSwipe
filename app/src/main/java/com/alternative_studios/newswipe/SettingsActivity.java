@@ -186,8 +186,10 @@ public final class SettingsActivity extends Activity {
     private static final String STATE_PREVIEW_SHOWN = "previewShown";
     /** 머리글부터 미리보기 위까지를 덮는 틀: 설정 창(시트)과 꺾쇠 버튼을 여기에 겹쳐 띄운다. */
     private android.widget.FrameLayout overlayHost;
-    /** 미리보기 바로 위 가운데에 뜬 강조색 꺾쇠 버튼: 보일 때는 아래 꺾쇠(숨기기), 숨겼을 때는 위 꺾쇠(보이기). */
-    private com.alternative_studios.newswipe.ui.ExpressiveIconButton previewToggle;
+    /** 미리보기 바로 위 가운데에 뜬 강조색 알약 버튼 (꺾쇠 + '미리보기 닫기'·'미리보기 열기'). */
+    private LinearLayout previewToggle;
+    private View previewToggleIcon;
+    private TextView previewToggleText;
     private boolean previewShown = true;
 
     @Override
@@ -202,23 +204,48 @@ public final class SettingsActivity extends Activity {
      */
     private void addPreviewToggle() {
         AppTheme t = AppTheme.of(this);
-        previewToggle = new com.alternative_studios.newswipe.ui.ExpressiveIconButton(this, Icons.HIDE, t.accent, t.onAccent, "");
+        int h = Ui.dp(this, 32);
+        previewToggle = new LinearLayout(this);
+        previewToggle.setGravity(Gravity.CENTER_VERTICAL);
+        previewToggle.setPadding(Ui.dp(this, 12), 0, Ui.dp(this, 16), 0);
+        previewToggle.setBackground(Ui.ripple((t.onAccent & 0x00FFFFFF) | 0x33000000, Ui.round(t.accent, h / 2f), h / 2f));
+        previewToggle.setClickable(true);
+        previewToggle.setFocusable(true);
         previewToggle.setOnClickListener(v -> setPreviewShown(!previewShown));
         // 설정 창(시트, 그림자 12dp)보다 위에 그려지도록 그보다 조금 높이 띄운다 (같은 틀 안에서는 높이 순서로 그린다).
         previewToggle.setElevation(Ui.dp(this, 12) + 1);
         previewToggle.setOutlineProvider(new android.view.ViewOutlineProvider() {
             @Override
             public void getOutline(View view, android.graphics.Outline outline) {
-                outline.setOval(0, 0, view.getWidth(), view.getHeight());
+                outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), view.getHeight() / 2f);
             }
         });
+        previewToggleIcon = new View(this) {
+            private final android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+
+            @Override
+            protected void onDraw(android.graphics.Canvas c) {
+                paint.setColor(t.onAccent);
+                Icons.draw(c, previewShown ? Icons.HIDE : Icons.CHEVRON_UP, getWidth() / 2f, getHeight() / 2f,
+                        getWidth(), paint, 2.4f);
+            }
+        };
+        int icon = Ui.dp(this, 18);
+        LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(icon, icon);
+        ilp.rightMargin = Ui.dp(this, 6);
+        previewToggle.addView(previewToggleIcon, ilp);
+        previewToggleText = new TextView(this);
+        previewToggleText.setTextColor(t.onAccent);
+        previewToggleText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        previewToggleText.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        previewToggleText.setSingleLine(true);
+        previewToggle.addView(previewToggleText);
         updatePreviewToggle();
-        int size = Ui.dp(this, 44);
-        android.widget.FrameLayout.LayoutParams lp = new android.widget.FrameLayout.LayoutParams(size, size,
-                Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        android.widget.FrameLayout.LayoutParams lp = new android.widget.FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, h, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
         lp.bottomMargin = Ui.dp(this, 10);
         overlayHost.addView(previewToggle, lp);
-        int room = size + Ui.dp(this, 24);
+        int room = h + Ui.dp(this, 24);
         list.setPadding(list.getPaddingLeft(), list.getPaddingTop(), list.getPaddingRight(), Math.max(list.getPaddingBottom(), room));
         if (sheet != null) {
             LinearLayout b = sheet.body();
@@ -227,8 +254,8 @@ public final class SettingsActivity extends Activity {
     }
 
     private void updatePreviewToggle() {
-        previewToggle.setIcon(previewShown ? Icons.HIDE : Icons.CHEVRON_UP);
-        previewToggle.setContentDescription(previewShown ? L.t("미리보기 숨기기", "Hide preview") : L.t("미리보기 보이기", "Show preview"));
+        previewToggleText.setText(previewShown ? L.t("미리보기 닫기", "Hide preview") : L.t("미리보기 열기", "Show preview"));
+        previewToggleIcon.invalidate();
     }
 
     /** 꺾쇠 버튼: 화면 아래의 미리보기(와 그 위 자판 탭·페이지 표시)를 접거나 펼친다. 꺾쇠 버튼은 그대로 남는다. */
