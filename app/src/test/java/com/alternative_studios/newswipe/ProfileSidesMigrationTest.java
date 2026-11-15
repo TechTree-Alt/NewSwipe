@@ -82,9 +82,23 @@ public class ProfileSidesMigrationTest {
         assertEquals(12, ll.oneHandBottomForProfile());
         assertEquals(45, ll.oneHandWidthForProfile());
         assertEquals(75, ll.oneHandHeightForProfile());
-        // 폴더블 내부 화면 세로는 손대지 않는다 (예전처럼 세로 모드 값).
+        // 폴더블 내부 화면 세로의 키 높이·아래쪽 여백은 손대지 않는다 (예전처럼 세로 모드 값).
         assertEquals(40, lp.oneHandBottomForProfile());
         assertFalse(sp.contains(lp.oneHandBottomKey()));
+        // 세로 모드 자판 폭을 정하지 않았으면 폴더블 내부 화면 세로는 새 기본값 40%.
+        assertEquals(Prefs.ONE_HAND_WIDTH_LARGE_PORT_DEFAULT, lp.oneHandWidthForProfile());
+    }
+
+    @Test
+    public void portraitOneHandWidthIsCopiedToTheInnerPortrait() throws Exception {
+        LegacySwipeSettingsTest.MapSp sp = new LegacySwipeSettingsTest.MapSp();
+        sp.m.put(Prefs.ONE_HAND_WIDTH, 70);   // 세로 모드에서 정했다 (예전에는 폴더블 세로도 이 값을 따랐다)
+        view(sp, Prefs.PROFILE_PORTRAIT).migrateProfileSides();
+        Prefs lp = view(sp, Prefs.PROFILE_LARGE_PORTRAIT);
+        assertEquals(70, lp.oneHandWidthForProfile());
+        // 이제는 따로: 세로 모드를 바꿔도 폴더블 세로는 그대로.
+        sp.m.put(Prefs.ONE_HAND_WIDTH, 85);
+        assertEquals(70, lp.oneHandWidthForProfile());
     }
 
     @Test

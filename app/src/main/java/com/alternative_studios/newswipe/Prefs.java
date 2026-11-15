@@ -282,8 +282,11 @@ public final class Prefs {
     public static final String ONE_HAND_LIFT = "one_hand_lift";       // 아래쪽 여백(dp), 0~208 (예전 이름: 세로 위치)
     public static final String ONE_HAND_WIDTH_LAND = "one_hand_width_land";   // 가로 모드의 자판 폭: 화면 폭의 %, 30~90
     public static final int ONE_HAND_WIDTH_LAND_DEFAULT = 50;
-    /** 폴더블 내부 화면 가로의 한 손 모드 자판 폭 기본값 (%): 아주 넓은 화면이라 세로 휴대폰의 한 손 자판과 비슷한 폭이 되게. */
-    public static final int ONE_HAND_WIDTH_LARGE_LAND_DEFAULT = 35;
+    /**
+     * 폴더블 내부 화면의 한 손 모드 자판 폭 기본값 (%): 넓은 화면이라 세로 휴대폰의 한 손 자판과 비슷한 폭이 되게
+     * (세로는 짧은 쪽도 600dp 이상, 가로는 그보다 더 넓다).
+     */
+    public static final int ONE_HAND_WIDTH_LARGE_PORT_DEFAULT = 40, ONE_HAND_WIDTH_LARGE_LAND_DEFAULT = 35;
     public static final int ONE_HAND_WIDTH_DEFAULT = 80, ONE_HAND_HEIGHT_DEFAULT = 90, ONE_HAND_LIFT_DEFAULT = 0;
     public static final String THEME_MODE = "theme_mode";
     public static final String ACCENT_MODE = "accent_mode";
@@ -337,7 +340,8 @@ public final class Prefs {
      *   <li>폴더블 내부 화면 세로·가로가 함께 쓰던 분리 키보드 켜기·스페이스바 잇기·하단 기능키 폭(세로 쪽 키 이름)을 이제 따로 쓴다:
      *       함께 쓰던 값을 가로 쪽 키에도 적어 둔다 (가로 쪽 값이 이미 있으면 그대로).</li>
      *   <li>한 손 모드: 폴더블 내부 화면 가로는 이제 정하기 전에 가로 모드 값을 따르지 않는다. 가로 모드에서 정해 둔 값이 있으면
-     *       폴더블 내부 화면 가로에도 적어 둔다.</li>
+     *       폴더블 내부 화면 가로에도 적어 둔다. 폴더블 내부 화면 세로의 자판 폭도 세로 모드 값 대신 기본값(40%)을 쓰므로,
+     *       세로 모드에서 정해 둔 자판 폭이 있으면 적어 둔다.</li>
      * </ul>
      */
     void migrateProfileSides() {
@@ -369,6 +373,10 @@ public final class Prefs {
             Object v = all.get(landKey);
             if (v instanceof Integer && !all.containsKey(largeKey)) e.putInt(largeKey, (Integer) v);
         }
+        // 자판 폭: 예전에는 폴더블 내부 화면 세로가 세로 모드 값을 따랐다 (이제 기본값 40%). 세로 모드에서 정해 두었으면 적어 둔다.
+        String largePortWidth = new Prefs(sp, false, PROFILE_LARGE_PORTRAIT, false).oneHandKey(ONE_HAND_WIDTH);
+        Object portWidth = all.get(ONE_HAND_WIDTH);
+        if (portWidth instanceof Integer && !all.containsKey(largePortWidth)) e.putInt(largePortWidth, (Integer) portWidth);
         e.putBoolean(PROFILE_SIDES_DONE, true).apply();
     }
 
@@ -450,7 +458,7 @@ public final class Prefs {
 
     // 한 손 모드의 자판 폭·키 높이·아래쪽 여백: 이 보기의 프로필(세로 모드·가로 모드·폴더블 내부 화면 세로·가로)마다 따로 정한다.
     // 세로 모드는 예전 키를, 가로 모드는 이름 뒤에 _land를, 폴더블 내부 화면은 large_ + 이름 + _port·_land를 쓴다.
-    // 정하기 전에는 세로 모드의 값을 따른다. 자판 폭만은 가로 모드(기본값 50%)와 폴더블 내부 화면 가로(기본값 35%)가 따로 기본값을 쓴다:
+    // 정하기 전에는 세로 모드의 값을 따른다. 자판 폭만은 가로 모드(기본값 50%)와 폴더블 내부 화면 세로·가로(기본값 40%·35%)가 따로 기본값을 쓴다:
     // 화면 폭에 대한 비율이라 아주 넓은 화면에서 세로 모드 값(80%)을 따르면 자판이 너무 넓다.
     // (예전에는 폴더블 내부 화면 가로가 가로 모드 값을 따랐다: 가로 모드는 높이가 낮아 줄여 둔 값이라 따르지 않게 바꾸었다.
     //  가로 모드에서 정해 둔 값은 migrateProfileSides가 폴더블 내부 화면 가로에 한 번 옮겨 적는다.)
@@ -470,11 +478,12 @@ public final class Prefs {
 
     /**
      * 이 프로필의 한 손 모드 값. 정하기 전에는 세로 모드 값을 따르되, ownDef가 0 이상이면 세로 모드가 아닌 프로필은 그 기본값을 쓴다
-     * (자판 폭: 가로 모드는 landDef, 폴더블 내부 화면 가로는 largeLandDef, 폴더블 내부 화면 세로는 세로 모드 값).
+     * (자판 폭: 가로 모드는 landDef, 폴더블 내부 화면 세로는 largePortDef, 폴더블 내부 화면 가로는 largeLandDef).
      */
-    private int oneHandValue(String base, int def, int landDef, int largeLandDef, int min, int max) {
+    private int oneHandValue(String base, int def, int landDef, int largePortDef, int largeLandDef, int min, int max) {
         int fallback = sp.getInt(base, def);
         if (PROFILE_LANDSCAPE.equals(profile) && landDef >= 0) fallback = landDef;
+        else if (PROFILE_LARGE_PORTRAIT.equals(profile) && largePortDef >= 0) fallback = largePortDef;
         else if (PROFILE_LARGE_LANDSCAPE.equals(profile) && largeLandDef >= 0) fallback = largeLandDef;
         return clamp(sp.getInt(oneHandKey(base), fallback), min, max);
     }
@@ -488,18 +497,19 @@ public final class Prefs {
 
     /** 이 프로필의 한 손 모드 자판 폭 (화면 폭의 %). */
     public int oneHandWidthForProfile() {
-        return oneHandValue(ONE_HAND_WIDTH, ONE_HAND_WIDTH_DEFAULT, ONE_HAND_WIDTH_LAND_DEFAULT, ONE_HAND_WIDTH_LARGE_LAND_DEFAULT,
+        return oneHandValue(ONE_HAND_WIDTH, ONE_HAND_WIDTH_DEFAULT, ONE_HAND_WIDTH_LAND_DEFAULT, ONE_HAND_WIDTH_LARGE_PORT_DEFAULT,
+                ONE_HAND_WIDTH_LARGE_LAND_DEFAULT,
                 oneHandWidthMin(), ONE_HAND_WIDTH_MAX);
     }
 
     /** 이 프로필의 한 손 모드 키 높이 (보통 키 높이의 %). */
     public int oneHandHeightForProfile() {
-        return oneHandValue(ONE_HAND_HEIGHT, ONE_HAND_HEIGHT_DEFAULT, -1, -1, ONE_HAND_HEIGHT_MIN, ONE_HAND_HEIGHT_MAX);
+        return oneHandValue(ONE_HAND_HEIGHT, ONE_HAND_HEIGHT_DEFAULT, -1, -1, -1, ONE_HAND_HEIGHT_MIN, ONE_HAND_HEIGHT_MAX);
     }
 
     /** 이 프로필의 한 손 모드 아래쪽 여백 (dp). 한 손 모드에서는 키보드 전체의 상하좌우 여백 대신 이 값만 쓴다. */
     public int oneHandBottomForProfile() {
-        return oneHandValue(ONE_HAND_LIFT, ONE_HAND_LIFT_DEFAULT, -1, -1, 0, ONE_HAND_LIFT_MAX);
+        return oneHandValue(ONE_HAND_LIFT, ONE_HAND_LIFT_DEFAULT, -1, -1, -1, 0, ONE_HAND_LIFT_MAX);
     }
 
     /** 글자 키를 밀 때 아래로 치는 데 필요한 (세로 ÷ 가로) 비율. */
