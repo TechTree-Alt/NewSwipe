@@ -4058,8 +4058,8 @@ public final class SettingsActivity extends Activity {
                 ClipboardHistory.HOURS_STEP, ClipboardHistory.EXPIRE_HOURS_LIMIT, ClipboardHistory.HOURS_STEP, L.t("시간", " h"), refreshDescs));
         advBox.addView(slider(L.t("고정 항목 개수", "Maximum pinned items"), Prefs.CLIPBOARD_MAX_PINNED, prefs.clipboardMaxPinned(),
                 ClipboardHistory.COUNT_STEP, ClipboardHistory.PINNED_LIMIT, ClipboardHistory.COUNT_STEP, countUnit, refreshDescs));
-        advBox.addView(note(L.t("이미지는 항목 최대 개수 안에 함께 셉니다. 고정한 항목은 삭제 시간이 지나도 지워지지 않습니다. 개수를 줄이면 넘치는 오래된 항목은 지워집니다.",
-                "Images count toward the maximum items. Pinned items are not deleted after the time limit. Lowering a limit deletes the oldest items over it.")));
+        advBox.addView(note(L.t("이미지 최대 개수를 늘리면 메모리 사용량이 늘어나고 성능에 영향을 미칠 수 있습니다. 현재 항목의 수보다 개수를 줄이면 넘치는 오래된 항목은 지워지니 주의하기 바랍니다.",
+                "Raising the maximum number of images increases memory usage and may affect performance. If you lower a limit below the current number of items, the oldest items over it are deleted, so be careful.")));
         View advSub = subGroup(advBox);
         advSub.setVisibility(View.GONE);
         // 누르면 그 자리에 펼치고 접는다 (화살표가 아래를 가리키면 펼친 상태).
