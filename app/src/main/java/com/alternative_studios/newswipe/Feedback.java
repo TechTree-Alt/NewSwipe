@@ -22,28 +22,29 @@ final class Feedback {
     /** 진동 단계: 1 약하게(틱), 2 기본(클릭), 3 강하게(강한 클릭). 키 종류별 진동은 이 단계를 그대로 쓴다. */
     static final int WEAK = 1, BASE = 2, STRONG = 3;
     /**
-     * 일반 키 진동 방식 (Prefs.vibrateStyle): 0 = 틱, 1 = 클릭, 3 = 직접 설정, 4 = 시스템 키보드 진동.
-     * 2는 예전의 '강하게'로, 이제 클릭으로 본다 ({@link #normalizeStyle}).
+     * 진동 방식 (Prefs.vibrateStyle 등): 0 = 틱(EFFECT_TICK), 1 = 클릭(EFFECT_CLICK), 2 = 강한 클릭(EFFECT_HEAVY_CLICK),
+     * 3 = 사용자 설정, 4 = 시스템 기본. 틱·클릭·강한 클릭은 단계 1~3과 같은 진동이다 (방식 + 1 = 단계).
+     * 사용자 설정은 primitive를 쓸 수 있으면 primitive 틱·클릭 중 하나를 고른 세기로, 아니면(일반 키만) 길이·강도의 한 번 진동.
      */
-    static final int STYLE_TICK = 0, STYLE_CLICK = 1, STYLE_CUSTOM = 3, STYLE_SYSTEM = 4;
-    /** 시스템 키보드 진동을 울릴 뷰 (키보드 창). 없으면 기본 진동으로 대신한다. */
-    private View hapticView;
-    private boolean systemKey;
-    private boolean vibrate, sound, perKey, gesture;
-    private float volume;
+    static final int STYLE_TICK = 0, STYLE_CLICK = 1, STYLE_HEAVY_CLICK = 2, STYLE_CUSTOM = 3, STYLE_SYSTEM = 4;
+    /** 사용자 설정의 primitive (Prefs.vibratePrimitive 등): 0 = PRIMITIVE_TICK, 1 = PRIMITIVE_CLICK. */
+    static final int PRIMITIVE_TICK = 0, PRIMITIVE_CLICK = 1;
     /** 진동을 쓰는 곳: 일반 키, 반복 입력·연속 지우기, 밀기·길게 누르기. 셋 다 진동 방식과 세기를 따로 고른다. */
     static final int CH_KEY = 0, CH_REPEAT = 1, CH_GESTURE = 2;
-    private boolean repeat;
-    private int repeatStyle, repeatAmp, gestureStyle, gestureAmp;
-    private VibrationEffect repeatEffect, gestureEffect;
+    /** 시스템 진동을 울릴 뷰 (키보드 창). 없으면 클릭으로 대신한다. */
+    private View hapticView;
+    private boolean vibrate, sound, perKey, gesture, repeat;
+    private float volume;
+    /** 곳(CH_*)마다 진동 방식·primitive·세기 %. */
+    private final int[] style = new int[3], primitive = new int[3], amp = new int[3];
+    /** 곳(CH_*)마다 울릴 진동 (시스템 기본이면 키보드 창이 없을 때 대신 울릴 클릭). */
+    private final VibrationEffect[] effect = new VibrationEffect[3];
     private int deleteLevel = BASE, spaceLevel = BASE, enterLevel = BASE,
             shiftLevel = BASE, symbolLevel = BASE, languageLevel = BASE, toolbarLevel = BASE;
     /** 단계별 고정 진동 (인덱스 = 단계). */
     private final VibrationEffect[] levels = new VibrationEffect[4];
-    /** 일반 키를 눌렀을 때의 진동 (약하게·기본·강하게 중 하나이거나 직접 설정한 값). */
-    private VibrationEffect keyEffect;
-    private int builtSignature = Integer.MIN_VALUE;
-    private int customMs, customAmp;
+    /** 일반 키 사용자 설정(primitive를 못 쓰는 기기)의 길이 ms. */
+    private int customMs;
 
     @SuppressWarnings("deprecation")
     Feedback(Context context) {
@@ -69,12 +70,12 @@ final class Feedback {
         primitives = prim;
     }
 
-    /** 틱·클릭의 세기를 조절할 수 있는가 (아니면 설정 화면에서 세기 대신 직접 설정(길이·강도)을 보인다). */
+    /** primitive 틱·클릭을 세기를 바꿔 울릴 수 있는가 (사용자 설정에서 primitive와 세기를 고를 수 있는가). */
     boolean supportsPrimitives() {
         return primitives;
     }
 
-    /** 시스템 키보드 진동(performHapticFeedback)을 울릴 뷰. 키보드 창을 새로 만들 때마다 알려 준다. */
+    /** 시스템 진동(performHapticFeedback)을 울릴 뷰. 키보드 창을 새로 만들 때마다 알려 준다. */
     void setHapticView(View view) {
         hapticView = view;
     }
@@ -90,30 +91,21 @@ final class Feedback {
         languageLevel = clampLevel(prefs.vibrateLanguage());
         toolbarLevel = clampLevel(prefs.vibrateToolbar());
         gesture = prefs.vibrateGestureOn();
-        gestureStyle = channelStyle(prefs.vibrateGestureStyle());
-        gestureAmp = prefs.vibrateGestureAmp();
         repeat = prefs.vibrateRepeatOn();
-        repeatStyle = channelStyle(prefs.vibrateRepeatStyle());
-        repeatAmp = prefs.vibrateRepeatAmp();
-        int style = prefs.vibrateStyle(), ms = prefs.vibrateMs(), amp = prefs.vibrateAmp();
-        customMs = ms;
-        customAmp = amp;
-        int signature = (style * 1009 + ms) * 1009 + amp;
-        if (signature != builtSignature) {
-            builtSignature = signature;
-            for (int level = WEAK; level <= STRONG; level++) levels[level] = fixed(level, ms);
-            keyEffect = keyEffectFor(style, ms, amp);
-        }
-        repeatEffect = keyEffectFor(repeatStyle, ms, repeatAmp);
-        gestureEffect = keyEffectFor(gestureStyle, ms, gestureAmp);
-        systemKey = normalizeStyle(style, primitives) == STYLE_SYSTEM;
+        customMs = prefs.vibrateMs();
+        for (int level = WEAK; level <= STRONG; level++) levels[level] = fixed(level, customMs);
+        set(CH_KEY, prefs.vibrateStyle(), prefs.vibratePrimitive(), prefs.vibrateAmp());
+        set(CH_REPEAT, prefs.vibrateRepeatStyle(), prefs.vibrateRepeatPrimitive(), prefs.vibrateRepeatAmp());
+        set(CH_GESTURE, prefs.vibrateGestureStyle(), prefs.vibrateGesturePrimitive(), prefs.vibrateGestureAmp());
         sound = prefs.sound();
         volume = prefs.soundVolume() / 100f;
     }
 
-    /** 반복 입력·밀기 진동의 방식: 틱·클릭·시스템 기본만 있다 (직접 설정은 없다). */
-    private static int channelStyle(int style) {
-        return style == STYLE_TICK || style == STYLE_SYSTEM ? style : STYLE_CLICK;
+    private void set(int channel, int s, int p, int a) {
+        style[channel] = normalizeStyle(s, primitives || channel == CH_KEY);
+        primitive[channel] = p == PRIMITIVE_TICK ? PRIMITIVE_TICK : PRIMITIVE_CLICK;
+        amp[channel] = a;
+        effect[channel] = effectFor(style[channel], primitive[channel], a);
     }
 
     private static int clampLevel(int v) {
@@ -121,33 +113,38 @@ final class Feedback {
     }
 
     /**
-     * 저장된 진동 방식을 지금 기기에서 쓸 방식으로 바꾼다. 예전의 '강하게'(2)는 클릭으로 본다.
-     * 틱·클릭의 세기를 조절할 수 있는 기기에서는 직접 설정이 '세기를 고른 클릭'과 같으므로 클릭으로 본다.
+     * 저장된 진동 방식을 고를 수 있는 방식으로 바꾼다. 사용자 설정을 쓸 수 없으면(primitive를 못 쓰는 기기의 반복 입력·밀기)
+     * 클릭으로 본다.
+     *
+     * @param customAllowed 사용자 설정을 고를 수 있는가
      */
-    static int normalizeStyle(int style, boolean primitives) {
-        if (style == STYLE_TICK || style == STYLE_SYSTEM) return style;
-        if (style == STYLE_CUSTOM && !primitives) return STYLE_CUSTOM;
+    static int normalizeStyle(int style, boolean customAllowed) {
+        if (style == STYLE_TICK || style == STYLE_HEAVY_CLICK || style == STYLE_SYSTEM) return style;
+        if (style == STYLE_CUSTOM && customAllowed) return STYLE_CUSTOM;
         return STYLE_CLICK;
     }
 
     /**
-     * 일반 키(반복 입력·밀기도 같다) 진동. 세기를 조절할 수 있는 기기에서는 틱·클릭 primitive를 강도 %의 세기로 울린다.
-     * 아니면 틱·클릭은 미리 정해진 효과(세기 고정), 직접 설정은 길이 ms와 강도 %의 한 번 진동이다.
-     * 시스템 진동은 키보드 창이 없을 때(설정 화면 밖 등) 클릭으로 대신한다.
+     * 진동 방식의 진동. 틱·클릭·강한 클릭은 미리 정해진 효과, 사용자 설정은 primitive(prim)를 세기 amp %로
+     * (primitive를 못 쓰는 기기에서는 길이 ms·강도 amp %의 한 번 진동). 시스템 기본은 키보드 창이 없을 때 대신 울릴 클릭.
      */
-    private VibrationEffect keyEffectFor(int style, int ms, int amp) {
-        style = normalizeStyle(style, primitives);
-        if (style == STYLE_CUSTOM) return custom(ms, amp);
-        if (primitives && style != STYLE_SYSTEM) {
-            return primitive(style == STYLE_TICK ? VibrationEffect.Composition.PRIMITIVE_TICK
-                    : VibrationEffect.Composition.PRIMITIVE_CLICK, amp / 100f);
+    private VibrationEffect effectFor(int style, int prim, int amp) {
+        switch (style) {
+            case STYLE_TICK: return fixed(WEAK, customMs);
+            case STYLE_HEAVY_CLICK: return fixed(STRONG, customMs);
+            case STYLE_CUSTOM:
+                if (primitives) {
+                    return primitive(prim == PRIMITIVE_TICK ? VibrationEffect.Composition.PRIMITIVE_TICK
+                            : VibrationEffect.Composition.PRIMITIVE_CLICK, amp / 100f);
+                }
+                return custom(customMs, amp);
+            default: return fixed(BASE, customMs);
         }
-        return fixed(style == STYLE_TICK ? WEAK : BASE, ms);
     }
 
     /**
-     * 단계마다 정해진 진동 (키 종류별 진동): 약하게 = 틱, 기본 = 클릭, 강하게 = 강한 클릭
-     * (Android 10부터, 미리 정해진 효과). 그 아래 버전에서는 길이 ms로 비슷하게 흉내 낸다.
+     * 단계마다 정해진 진동: 약하게 = 틱, 기본 = 클릭, 강하게 = 강한 클릭 (Android 10부터, 미리 정해진 효과).
+     * 그 아래 버전에서는 길이 ms로 비슷하게 흉내 낸다.
      */
     private static VibrationEffect fixed(int level, int ms) {
         if (Build.VERSION.SDK_INT >= 29) {
@@ -165,7 +162,7 @@ final class Feedback {
                 .compose();
     }
 
-    /** 직접 설정: 길이 ms와 강도 %. 강도 100%는 기기 기본 강도, 강도를 조절할 수 없는 기기에서는 늘 기본 강도. */
+    /** 사용자 설정(primitive를 못 쓰는 기기): 길이 ms와 강도 %. 강도 100%는 기기 기본 강도, 강도를 조절할 수 없는 기기에서는 늘 기본 강도. */
     private VibrationEffect custom(int ms, int ampPct) {
         int amplitude = VibrationEffect.DEFAULT_AMPLITUDE;
         if (vibrator != null && vibrator.hasAmplitudeControl() && ampPct < 100) {
@@ -174,29 +171,25 @@ final class Feedback {
         return VibrationEffect.createOneShot(Math.max(1, ms), amplitude);
     }
 
-    /** 설정 화면에서 지금 설정을 느껴 보게 한다. level 0이면 일반 키 진동 (시스템 진동이면 view로 울린다). */
-    void preview(int level, View view) {
-        if (level == 0 && systemKey && view != null) {
-            playSystem(view, HapticFeedbackConstants.KEYBOARD_TAP);
-            return;
-        }
-        play(level == 0 ? keyEffect : levels[clampLevel(level)]);
+    /** 설정 화면: 키 종류별 진동의 단계 level(1~3)을 느껴 보게 한다. */
+    void previewLevel(int level) {
+        play(levels[clampLevel(level)]);
     }
 
-    /**
-     * 설정 화면의 고르기 창: 아직 저장하지 않은 진동 방식 style을 channel(CH_*)의 지금 세기로 느껴 보게 한다
-     * (일반 키의 직접 설정은 지금 길이·강도).
-     */
-    void previewStyle(int channel, int style, View view) {
-        if (style == STYLE_SYSTEM && view != null) playSystem(view, systemFeedback(channel));
-        else play(keyEffectFor(channel == CH_KEY ? style : channelStyle(style), customMs,
-                channel == CH_REPEAT ? repeatAmp : channel == CH_GESTURE ? gestureAmp : customAmp));
-    }
-
-    /** 설정 화면: channel(CH_*)의 지금 진동을 느껴 보게 한다 (세기 막대를 움직였을 때). */
+    /** 설정 화면: channel(CH_*)의 지금 진동을 느껴 보게 한다 (세기·길이 막대를 움직였을 때). */
     void previewChannel(int channel, View view) {
-        if (channel == CH_KEY) preview(0, view);
-        else previewStyle(channel, channel == CH_REPEAT ? repeatStyle : gestureStyle, view);
+        previewStyle(channel, style[channel], view);
+    }
+
+    /** 설정 화면의 고르기 창: 아직 저장하지 않은 진동 방식 s를 channel(CH_*)의 지금 primitive·세기로 느껴 보게 한다. */
+    void previewStyle(int channel, int s, View view) {
+        if (s == STYLE_SYSTEM && view != null) playSystem(view, systemFeedback(channel));
+        else play(effectFor(normalizeStyle(s, primitives || channel == CH_KEY), primitive[channel], amp[channel]));
+    }
+
+    /** 설정 화면: 사용자 설정의 primitive p(PRIMITIVE_*)를 channel의 지금 세기로 느껴 보게 한다. */
+    void previewPrimitive(int channel, int p) {
+        if (primitives) play(effectFor(STYLE_CUSTOM, p, amp[channel]));
     }
 
     /**
@@ -214,13 +207,16 @@ final class Feedback {
 
     /** 일반 키 진동: 시스템 키보드 진동이면 키보드 창으로, 아니면 정해 둔 진동으로 울린다. */
     private void playKey() {
-        playChannel(CH_KEY, systemKey, keyEffect);
+        playChannel(CH_KEY);
     }
 
     /** 시스템 기본이면 키보드 창으로 시스템 진동을, 아니면 정해 둔 진동을 울린다 (키보드 창이 없으면 정해 둔 진동). */
-    private void playChannel(int channel, boolean system, VibrationEffect e) {
-        if (system && hapticView != null && hapticView.isAttachedToWindow()) playSystem(hapticView, systemFeedback(channel));
-        else play(e);
+    private void playChannel(int channel) {
+        if (style[channel] == STYLE_SYSTEM && hapticView != null && hapticView.isAttachedToWindow()) {
+            playSystem(hapticView, systemFeedback(channel));
+        } else {
+            play(effect[channel]);
+        }
     }
 
     /**
@@ -246,7 +242,7 @@ final class Feedback {
 
     /** 밀기·길게 누르기가 끝났을 때의 진동 (설정에서 켠 경우만, 키 진동과 따로 켜고 끈다). */
     void onGesture() {
-        if (gesture) playChannel(CH_GESTURE, gestureStyle == STYLE_SYSTEM, gestureEffect);
+        if (gesture) playChannel(CH_GESTURE);
     }
 
     /** 도구 막대 버튼을 눌렀거나 도구 막대를 밀었을 때의 진동 (키 종류별 설정을 켰으면 그 단계). */
@@ -260,7 +256,7 @@ final class Feedback {
 
     /** 키를 누르고 있어 글자가 반복 입력되거나 연속으로 지워질 때, 한 글자마다 울리는 진동 (키 진동과 따로 고른다). */
     void onRepeat() {
-        if (repeat) playChannel(CH_REPEAT, repeatStyle == STYLE_SYSTEM, repeatEffect);
+        if (repeat) playChannel(CH_REPEAT);
     }
 
     void onKey(Key key) {
