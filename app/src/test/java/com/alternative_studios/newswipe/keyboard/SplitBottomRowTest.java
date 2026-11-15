@@ -922,10 +922,17 @@ public class SplitBottomRowTest {
         assertEquals(30, land.keyTextSize());
         sp.m.put(land.textSizeKey(), 5);
         assertEquals(30, land.keyTextSize());
-        // 분리 키보드 가운데 빈 공간의 커서 이동 속도: 기본 100%, 프로필마다 따로, 50~300%.
+        // 분리 키보드 가운데 빈 공간의 커서 이동 속도: 기본 100%, 50~300%. 세로 모드·가로 모드는 함께 쓰고 폴더블 내부 화면은 따로.
         assertEquals(100, land.splitGapSpeed());
+        Prefs portraitView = editView(sp, Prefs.PROFILE_PORTRAIT);
+        assertEquals(portraitView.splitGapSpeedKey(), land.splitGapSpeedKey());
+        assertEquals(portraitView.splitGapCursorKey(), land.splitGapCursorKey());
+        assertEquals(portraitView.gapSlot(), land.gapSlot());
+        assertEquals(portraitView.toolbarFollowKey(), land.toolbarFollowKey());
+        assertEquals(portraitView.fnFollowKey(), land.fnFollowKey());
         assertTrue(!land.splitGapSpeedKey().equals(port.splitGapSpeedKey()));
         assertTrue(!port.splitGapSpeedKey().equals(largeLand.splitGapSpeedKey()));
+        assertTrue(port.gapSlot() != largeLand.gapSlot() && port.gapSlot() != land.gapSlot());
         sp.m.put(port.splitGapSpeedKey(), 200);
         assertEquals(200, port.splitGapSpeed());
         assertEquals(100, largeLand.splitGapSpeed());

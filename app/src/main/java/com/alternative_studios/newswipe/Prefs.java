@@ -658,7 +658,7 @@ public final class Prefs {
             return;
         }
         EditorScope sc = scope(id);
-        // 세로 모드 키 → 이 보기의 키 (세로·가로가 따로 정하는 값).
+        // 세로 모드 키 → 이 보기의 키 (세로·가로가 따로 정하는 값). 묶음 좌우 따라가기·가운데 공간은 세로·가로가 함께 쓰므로 그대로 지운다.
         java.util.Map<String, String> own = new java.util.HashMap<>();
         own.put(PAD_LEFT, padKey(SIDE_LEFT));
         own.put(PAD_RIGHT, padKey(SIDE_RIGHT));
@@ -669,16 +669,11 @@ public final class Prefs {
         own.put(TOOLBAR_HEIGHT, toolbarHeightKey());
         own.put(FN_ROW_HEIGHT, fnRowHeightKey());
         own.put(PORTRAIT_SPLIT, splitKey());
-        own.put(PORTRAIT_PREFIX + TOOLBAR_FOLLOW_BLOCKS, toolbarFollowKey());
-        own.put(PORTRAIT_PREFIX + FN_FOLLOW_BLOCKS, fnFollowKey());
         own.put(PORTRAIT_PREFIX + SPLIT_SPACE_JOIN, splitSpaceJoinKey());
         own.put(PORTRAIT_PREFIX + SPLIT_FN_WIDTH, splitFnWidthKey());
-        own.put(PORTRAIT_PREFIX + SPLIT_GAP_CURSOR, splitGapCursorKey());
-        own.put(PORTRAIT_PREFIX + SPLIT_GAP_SPEED, splitGapSpeedKey());
         java.util.Map<String, String> ownPrefix = new java.util.HashMap<>();
         ownPrefix.put(AREA_PAD_PREFIX + PAD_AREAS[0] + "_", profilePadKey("a0"));
         ownPrefix.put(AREA_PAD_PREFIX + PAD_AREAS[3] + "_", profilePadKey("a3"));
-        ownPrefix.put("swipe_gap_portrait_", "swipe_gap_" + com.alternative_studios.newswipe.keyboard.GapSwipes.SLOTS[gapSlot()] + "_");
         java.util.List<String> exact = new java.util.ArrayList<>();
         java.util.List<String> prefixes = new java.util.ArrayList<>();
         for (String k : sc.keys) {
@@ -922,8 +917,11 @@ public final class Prefs {
     /** 단모음(8열)의 설정 화면 '자·모음 분리 배열' 켜짐 여부 (좌·우 균형 배열의 반대). */
     public boolean splitSeparateJamo() { return !reachValue(); }
 
-    /** 이 프로필(가로 모드, 폴더블 내부 화면 세로·가로)의 '가운데 빈 공간을 밀어서 커서 이동' 설정 키. */
-    public String splitGapCursorKey() { return portrait() ? PORTRAIT_PREFIX + SPLIT_GAP_CURSOR : large() ? LARGE_PREFIX + SPLIT_GAP_CURSOR + "_" + largeSide() : SPLIT_GAP_CURSOR; }
+    /**
+     * 이 프로필의 '가운데 빈 공간을 밀어서 커서 이동' 설정 키. 세로 모드와 가로 모드는 함께 쓰고(세로 모드 키),
+     * 폴더블 내부 화면 세로·가로는 각각 따로 쓴다. (예전 가로 모드 키 SPLIT_GAP_CURSOR는 이제 읽지 않는다.)
+     */
+    public String splitGapCursorKey() { return large() ? LARGE_PREFIX + SPLIT_GAP_CURSOR + "_" + largeSide() : PORTRAIT_PREFIX + SPLIT_GAP_CURSOR; }
 
     /**
      * 분리 키보드의 가운데 빈 공간을 밀어서 커서를 옮기는지. 가로 모드와 폴더블 내부 화면 세로·가로가 각각 따로 정한다
@@ -931,16 +929,19 @@ public final class Prefs {
      */
     public boolean splitGapCursor() { return sp.getBoolean(splitGapCursorKey(), true); }
 
-    /** 이 프로필의 가운데 공간 밀기 칸 번호 (GapSwipes.SLOTS 차례). */
-    public int gapSlot() { return portrait() ? 0 : large() ? ("port".equals(largeSide()) ? 2 : 3) : 1; }
+    /**
+     * 이 프로필의 가운데 공간 밀기 칸 번호 (GapSwipes.SLOTS 차례). 세로 모드와 가로 모드는 세로 모드 칸(0)을 함께 쓰고,
+     * 폴더블 내부 화면 세로·가로는 각각 따로 쓴다 (예전 가로 모드 칸 1은 이제 쓰지 않는다).
+     */
+    public int gapSlot() { return large() ? ("port".equals(largeSide()) ? 2 : 3) : 0; }
 
     /** 이 프로필의 가운데 공간 밀기 배치. 예전 '밀어서 커서 이동' 스위치가 꺼져 있었으면 정하지 않은 방향은 없음. */
     public com.alternative_studios.newswipe.keyboard.GapSwipes gapSwipes() {
         return com.alternative_studios.newswipe.keyboard.GapSwipes.load(this, gapSlot(), !splitGapCursor());
     }
 
-    /** 이 프로필의 '밀어서 커서 이동' 속도 설정 키. */
-    public String splitGapSpeedKey() { return portrait() ? PORTRAIT_PREFIX + SPLIT_GAP_SPEED : large() ? LARGE_PREFIX + SPLIT_GAP_SPEED + "_" + largeSide() : SPLIT_GAP_SPEED; }
+    /** 이 프로필의 '밀어서 커서 이동' 속도 설정 키. 세로 모드와 가로 모드는 함께 쓰고, 폴더블 내부 화면 세로·가로는 각각 따로 쓴다. */
+    public String splitGapSpeedKey() { return large() ? LARGE_PREFIX + SPLIT_GAP_SPEED + "_" + largeSide() : PORTRAIT_PREFIX + SPLIT_GAP_SPEED; }
 
     /** 분리 키보드 가운데 빈 공간 커서 이동 속도 (%, 50~300, 기본 100). 스페이스바 설정과 따로 정한다. */
     public int splitGapSpeed() { return clamp(sp.getInt(splitGapSpeedKey(), 100), 50, 300); }
@@ -1024,11 +1025,11 @@ public final class Prefs {
     /** 영역 area(0 도구 막대·1 숫자 줄·2 글자 키·3 기능키)의 side(SIDE_*) 여백 설정 키. */
     /**
      * 분리 키보드에서 도구 막대의 양 끝이 왼쪽·오른쪽 묶음의 바깥 끝을 따라가는지의 설정 키 (기본 켬).
-     * 폴더블 내부 화면 세로·가로가 함께 쓴다 (분리 키보드 켜기와 같다).
+     * 세로 모드와 가로 모드가 함께 쓰고, 폴더블 내부 화면 세로·가로가 함께 쓴다 (분리 키보드 켜기와 같다).
      */
     public String toolbarFollowKey() {
-        if (portrait()) return PORTRAIT_PREFIX + TOOLBAR_FOLLOW_BLOCKS;
-        return large() ? LARGE_PREFIX + TOOLBAR_FOLLOW_BLOCKS + "_" + LARGE_LAYOUT_SIDE : TOOLBAR_FOLLOW_BLOCKS + LANDSCAPE_SUFFIX;
+        // 세로 모드와 가로 모드는 함께 쓴다 (예전 가로 모드 키 TOOLBAR_FOLLOW_BLOCKS + _land는 이제 읽지 않는다).
+        return large() ? LARGE_PREFIX + TOOLBAR_FOLLOW_BLOCKS + "_" + LARGE_LAYOUT_SIDE : PORTRAIT_PREFIX + TOOLBAR_FOLLOW_BLOCKS;
     }
 
     /** '묶음 좌우 따라가기' 설정값 (기본 켬). 분리 키보드를 켰는지와는 상관없이 저장된 값이다. */
@@ -1040,8 +1041,8 @@ public final class Prefs {
      * 분리 키보드에서 기능키 줄(맨 아래 줄)이 두 묶음의 자리·폭을 따라가는지의 설정 키 (기본 켬). 도구 막대의 것과 같은 범위로 저장한다.
      */
     public String fnFollowKey() {
-        if (portrait()) return PORTRAIT_PREFIX + FN_FOLLOW_BLOCKS;
-        return large() ? LARGE_PREFIX + FN_FOLLOW_BLOCKS + "_" + LARGE_LAYOUT_SIDE : FN_FOLLOW_BLOCKS + LANDSCAPE_SUFFIX;
+        // 세로 모드와 가로 모드는 함께 쓴다 (예전 가로 모드 키 FN_FOLLOW_BLOCKS + _land는 이제 읽지 않는다).
+        return large() ? LARGE_PREFIX + FN_FOLLOW_BLOCKS + "_" + LARGE_LAYOUT_SIDE : PORTRAIT_PREFIX + FN_FOLLOW_BLOCKS;
     }
 
     /** 기능키의 '묶음 좌우 따라가기' 설정값 (기본 켬). 분리 키보드를 켰는지와는 상관없이 저장된 값이다. */

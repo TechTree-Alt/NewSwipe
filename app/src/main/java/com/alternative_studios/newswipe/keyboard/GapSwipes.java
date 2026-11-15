@@ -8,7 +8,8 @@ import java.util.function.BiFunction;
 /**
  * 분리 키보드 가운데 빈 공간 밀기: 도구 막대처럼 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 직접 정한다
  * (기능 목록은 {@link SwipeAction}). 기본은 네 방향 모두 '커서 자유 이동'이다.
- * 가로 모드·폴더블 내부 화면 세로·가로가 각각 따로 정하므로 칸이 프로필마다 하나씩 있다 ({@link Prefs#gapSlot()}).
+ * 세로 모드와 가로 모드는 한 칸(portrait)을 함께 쓰고, 폴더블 내부 화면 세로·가로는 각각 따로 정한다 ({@link Prefs#gapSlot()}).
+ * landscape 칸은 가로 모드가 따로 정하던 때의 것으로, 이제는 쓰지 않는다.
  */
 public final class GapSwipes {
     /** 프로필마다의 밀기 칸 이름 (Prefs.gapSlot() 차례). 누르기 칸은 그 뒤에 "_press"를 붙인 이름으로 같은 차례에 이어진다. */

@@ -1534,12 +1534,12 @@ public final class SettingsActivity extends Activity {
         String now = land ? "가로" : "세로", other = land ? "세로" : "가로";
         LinearLayout intro = card();
         intro.addView(note(L.t("기기를 " + now + "로 들었을 때 키보드 모양을 정합니다. " + other + "일 때의 설정은 기기를 " + other + "로 돌리면 보입니다.\n"
-                + "분리 키보드 사용 유무와 분리 키보드의 묶음 폭·위치·따라가기·스페이스바 잇기·하단 기능키 폭·가운데 공간, "
+                + "분리 키보드 사용 유무와 분리 키보드의 묶음 폭·위치·스페이스바 잇기·하단 기능키 폭, "
                 + "키 글자 크기, 글자 키·기능키·도구 막대 높이, 키보드 여백, 도구 막대·기능키 여백은 세로·가로가 각각 따로 설정합니다. "
                 + "나머지 설정은 세로와 가로가 공유하며, 세로와 가로 어느 쪽에서도 바꿀 수 있습니다.",
                 "Sets the keyboard look for when the device is held " + (land ? "sideways" : "upright") + ". To see the settings for "
                 + (land ? "portrait" : "landscape") + ", rotate the device.\n"
-                + "Whether the split keyboard is on, the split keyboard's block width, position, follow blocks, joined space bar, bottom function key width and center gap, "
+                + "Whether the split keyboard is on, the split keyboard's block width, position, joined space bar and bottom function key width, "
                 + "key text size, letter key, function key and toolbar height, keyboard padding, and toolbar and function key padding are set separately for portrait and landscape. "
                 + "Everything else is shared, and you can change it in either orientation.")));
         // 폴더블 내부 화면에서 별도 키보드를 쓰면 실제 키보드는 폴더블 내부 화면 키보드 사용자화의 값(세로·가로가 따로 정하는 값)을 쓴다.
