@@ -25,17 +25,23 @@ public class OneHandPrefsTest {
         sp.m.put(Prefs.ONE_HAND_LIFT, 40);
         Prefs port = view(sp, Prefs.PROFILE_PORTRAIT), land = view(sp, Prefs.PROFILE_LANDSCAPE);
         Prefs largePort = view(sp, Prefs.PROFILE_LARGE_PORTRAIT), largeLand = view(sp, Prefs.PROFILE_LARGE_LANDSCAPE);
-        // 가로 모드·폴더블 내부 화면은 정하기 전에는 세로 모드 값을 따른다 (자판 폭만 가로 기본값 50%).
+        // 가로 모드·폴더블 내부 화면은 정하기 전에는 세로 모드 값을 따른다
+        // (자판 폭만 가로 모드 기본값 50%, 폴더블 내부 화면 가로 기본값 35%, 폴더블 내부 화면 세로는 세로 모드 값).
         assertEquals(70, land.oneHandHeightForProfile());
         assertEquals(40, largeLand.oneHandBottomForProfile());
+        assertEquals(70, largeLand.oneHandHeightForProfile());
         assertEquals(Prefs.ONE_HAND_WIDTH_DEFAULT, port.oneHandWidthForProfile());
         assertEquals(Prefs.ONE_HAND_WIDTH_LAND_DEFAULT, land.oneHandWidthForProfile());
-        assertEquals(Prefs.ONE_HAND_WIDTH_LAND_DEFAULT, largeLand.oneHandWidthForProfile());
-        // 가로 모드에서 정하면 가로 모드와 폴더블 내부 화면 가로가 그 값을 쓰고, 세로 쪽은 그대로다.
+        assertEquals(Prefs.ONE_HAND_WIDTH_LARGE_LAND_DEFAULT, largeLand.oneHandWidthForProfile());
+        assertEquals(Prefs.ONE_HAND_WIDTH_DEFAULT, largePort.oneHandWidthForProfile());
+        // 가로 모드에서 정하면 가로 모드만 바뀐다: 높이가 넉넉한 폴더블 내부 화면 가로는 가로 모드 값을 따르지 않는다.
         sp.m.put(land.oneHandBottomKey(), 12);
         sp.m.put(land.oneHandHeightKey(), 80);
+        sp.m.put(land.oneHandWidthKey(), 40);
         assertEquals(12, land.oneHandBottomForProfile());
-        assertEquals(12, largeLand.oneHandBottomForProfile());
+        assertEquals(40, largeLand.oneHandBottomForProfile());
+        assertEquals(70, largeLand.oneHandHeightForProfile());
+        assertEquals(Prefs.ONE_HAND_WIDTH_LARGE_LAND_DEFAULT, largeLand.oneHandWidthForProfile());
         assertEquals(40, port.oneHandBottomForProfile());
         assertEquals(40, largePort.oneHandBottomForProfile());
         assertEquals(80, land.oneHandHeightForProfile());

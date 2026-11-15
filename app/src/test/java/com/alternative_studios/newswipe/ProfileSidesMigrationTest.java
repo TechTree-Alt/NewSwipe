@@ -11,7 +11,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
- * 폴더블 내부 화면 세로·가로를 나누고, 따로 정하는 크기·여백이 정하기 전에 같은 방향의 일반 키보드 값을 따르게 바꾼 뒤에도
+ * 폴더블 내부 화면 세로·가로를 나누고, 한 손 모드의 폴더블 내부 화면 가로가 가로 모드 값을 따르지 않게 바꾼 뒤에도
  * 업데이트 전과 같은 모습인지 (Prefs.migrateProfileSides).
  */
 public class ProfileSidesMigrationTest {
@@ -54,29 +54,37 @@ public class ProfileSidesMigrationTest {
     }
 
     @Test
-    public void landscapeOnlyValuesDoNotChangeTheInnerLandscapeKeyboard() throws Exception {
+    public void sizesStillFollowPortraitAndAreNotPinned() throws Exception {
         LegacySwipeSettingsTest.MapSp sp = new LegacySwipeSettingsTest.MapSp();
         sp.m.put(Prefs.KEYBOARD_HEIGHT, 110);
         sp.m.put(Prefs.KEYBOARD_HEIGHT_LAND, 60);   // 가로 모드에서만 정했다
         sp.m.put("land_pad_b", 30);
-        sp.m.put("land_pad_a0t", 5);                 // 가로 모드 도구 막대 위쪽 여백
-        sp.m.put("large_toolbar_height_land", 90);   // 폴더블 가로에서 이미 정한 값은 그대로
-        sp.m.put(Prefs.TOOLBAR_HEIGHT + "_land", 130);
-        Prefs port = view(sp, Prefs.PROFILE_PORTRAIT);
-        int padBottom = port.padBottomDp();
-        port.migrateProfileSides();
-        Prefs ll = view(sp, Prefs.PROFILE_LARGE_LANDSCAPE), land = view(sp, Prefs.PROFILE_LANDSCAPE);
-        // 업데이트 전처럼 세로 모드 값이다 (가로 모드 값을 따라가지 않는다).
+        view(sp, Prefs.PROFILE_PORTRAIT).migrateProfileSides();
+        Prefs ll = view(sp, Prefs.PROFILE_LARGE_LANDSCAPE);
+        // 폴더블 내부 화면 가로는 예전처럼 세로 모드 값을 따르고, 값을 적어 두지 않아 세로 모드를 바꾸면 따라간다.
         assertEquals(110, ll.keyboardHeight());
-        assertEquals(padBottom, ll.padBottomDp());
-        assertEquals(0, ll.areaPadDp(0, Prefs.SIDE_TOP));
-        assertEquals(90, ll.toolbarHeight());
-        // 가로 모드는 그대로, 가로 모드에서 정하지 않은 값은 적어 두지 않는다 (정하기 전 규칙대로 따른다).
-        assertEquals(60, land.keyboardHeight());
-        assertFalse(sp.contains(ll.textSizeKey()));
-        assertFalse(sp.contains(ll.padKey(Prefs.SIDE_LEFT)));
-        // 폴더블 내부 화면 세로는 손대지 않는다.
-        assertFalse(sp.contains(view(sp, Prefs.PROFILE_LARGE_PORTRAIT).heightKey()));
+        assertFalse(sp.contains(ll.heightKey()));
+        assertFalse(sp.contains(ll.padKey(Prefs.SIDE_BOTTOM)));
+        sp.m.put(Prefs.KEYBOARD_HEIGHT, 120);
+        assertEquals(120, ll.keyboardHeight());
+    }
+
+    @Test
+    public void landscapeOneHandValuesAreCopiedToTheInnerLandscape() throws Exception {
+        LegacySwipeSettingsTest.MapSp sp = new LegacySwipeSettingsTest.MapSp();
+        sp.m.put(Prefs.ONE_HAND_LIFT, 40);
+        sp.m.put(Prefs.ONE_HAND_LIFT + "_land", 12);     // 가로 모드에서 정했다 (예전에는 폴더블 가로도 이 값을 따랐다)
+        sp.m.put(Prefs.ONE_HAND_WIDTH + "_land", 45);
+        sp.m.put("large_one_hand_height_land", 75);      // 폴더블 가로에서 이미 정한 값은 그대로
+        sp.m.put(Prefs.ONE_HAND_HEIGHT + "_land", 85);
+        view(sp, Prefs.PROFILE_PORTRAIT).migrateProfileSides();
+        Prefs ll = view(sp, Prefs.PROFILE_LARGE_LANDSCAPE), lp = view(sp, Prefs.PROFILE_LARGE_PORTRAIT);
+        assertEquals(12, ll.oneHandBottomForProfile());
+        assertEquals(45, ll.oneHandWidthForProfile());
+        assertEquals(75, ll.oneHandHeightForProfile());
+        // 폴더블 내부 화면 세로는 손대지 않는다 (예전처럼 세로 모드 값).
+        assertEquals(40, lp.oneHandBottomForProfile());
+        assertFalse(sp.contains(lp.oneHandBottomKey()));
     }
 
     @Test

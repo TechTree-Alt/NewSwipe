@@ -830,7 +830,7 @@ public class SplitBottomRowTest {
     }
 
     @Test
-    public void boardPaddingIsSeparatePerProfileAndFollowsTheSameSideUntilSet() throws Exception {
+    public void boardPaddingIsSeparatePerProfileAndFollowsPortraitUntilSet() throws Exception {
         FakeSp sp = new FakeSp();
         Prefs port = editView(sp, Prefs.PROFILE_PORTRAIT), land = editView(sp, Prefs.PROFILE_LANDSCAPE);
         Prefs lp = editView(sp, Prefs.PROFILE_LARGE_PORTRAIT), ll = editView(sp, Prefs.PROFILE_LARGE_LANDSCAPE);
@@ -841,13 +841,13 @@ public class SplitBottomRowTest {
             assertEquals(8, v.padLeftDp());
             assertEquals(20, v.padBottomDp());
         }
-        // 가로 모드에서 정하면 가로 모드와, 정하기 전인 폴더블 내부 화면 가로(같은 방향)가 그 값을 쓴다.
+        // 가로 모드에서 정하면 가로 모드만 바뀐다 (폴더블 내부 화면 가로도 정하기 전에는 세로 모드 값).
         sp.m.put(land.padKey(Prefs.SIDE_LEFT), 1);
         sp.m.put(land.padKey(Prefs.SIDE_BOTTOM), 40);
         assertEquals(1, land.padLeftDp());
         assertEquals(40, land.padBottomDp());
-        assertEquals(1, ll.padLeftDp());
-        assertEquals(40, ll.padBottomDp());
+        assertEquals(8, ll.padLeftDp());
+        assertEquals(20, ll.padBottomDp());
         assertEquals(8, port.padLeftDp());
         assertEquals(8, lp.padLeftDp());
         // 폴더블 내부 화면 가로에서 정하면 그 값.
@@ -888,10 +888,10 @@ public class SplitBottomRowTest {
         sp.m.put(land.profileAreaPadKey(2, Prefs.SIDE_LEFT), 4);
         assertEquals(4, land.areaPadDp(2, Prefs.SIDE_LEFT));
         assertEquals(9, port.areaPadDp(2, Prefs.SIDE_LEFT));
-        // 폴더블 내부 화면 가로는 정하기 전에는 가로 모드 값, 폴더블 내부 화면 세로는 세로 모드 값을 따른다.
+        // 폴더블 내부 화면 세로·가로는 정하기 전에는 세로 모드 값을 따른다.
         Prefs ll = editView(sp, Prefs.PROFILE_LARGE_LANDSCAPE), lp = editView(sp, Prefs.PROFILE_LARGE_PORTRAIT);
-        assertEquals(4, ll.areaPadDp(2, Prefs.SIDE_LEFT));
-        assertEquals(2, ll.areaPadDp(0, Prefs.SIDE_LEFT));
+        assertEquals(9, ll.areaPadDp(2, Prefs.SIDE_LEFT));
+        assertEquals(6, ll.areaPadDp(0, Prefs.SIDE_LEFT));
         assertEquals(9, lp.areaPadDp(2, Prefs.SIDE_LEFT));
         assertEquals(6, lp.areaPadDp(0, Prefs.SIDE_LEFT));
         // 세로 모드는 세로 모드 값.
@@ -966,11 +966,11 @@ public class SplitBottomRowTest {
         sp.m.put(land.toolbarHeightKey(), 80);
         assertEquals(80, land.toolbarHeight());
         assertEquals(120, portrait.toolbarHeight());
-        assertEquals(120, port.toolbarHeight());          // 폴더블 내부 화면 세로: 세로 모드 값
-        assertEquals(80, largeLand.toolbarHeight());      // 폴더블 내부 화면 가로: 같은 방향인 가로 모드 값
+        // 폴더블 내부 화면 세로·가로는 세로 모드 값 (가로 모드는 높이가 낮아 줄여 둔 값이라 따르지 않는다).
+        assertEquals(120, port.toolbarHeight());
+        assertEquals(120, largeLand.toolbarHeight());
         assertTrue(!port.toolbarHeightKey().equals(largeLand.toolbarHeightKey()));
-        // 키보드 높이도 폴더블 내부 화면 가로는 가로 모드 값을 따른다.
-        assertEquals(land.keyboardHeight(), largeLand.keyboardHeight());
+        assertEquals(120, largeLand.keyboardHeight());
         assertEquals(120, port.keyboardHeight());
         // 폴더블 내부 화면 세로에서 켠 분리 키보드는 폴더블 내부 화면 가로에는 적용되지 않는다 (따로 정한다).
         sp.m.put(port.splitKey(), true);

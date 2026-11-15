@@ -1534,10 +1534,10 @@ public final class SettingsActivity extends Activity {
                         : "To see the inner screen keyboard, turn on 'Separate inner screen keyboard' and open this menu on the inner screen."))));
         intro.addView(note(L.t("'" + ownBadgeText(p) + "' 표시가 있는 설정(분리 키보드 사용 유무, 묶음 폭·위치, 스페이스바 잇기, 하단 기능키 폭, "
                 + "키 글자 크기, 높이, 여백)은 이 키보드에만 적용됩니다. 표시가 없는 설정은 세로·가로·폴더블 내부 화면 키보드가 모두 함께 쓰며, "
-                + "어느 키보드에서 바꿔도 됩니다. 따로 정하는 값은 정하기 전에는 같은 방향의 일반 키보드 값(세로는 기본값)을 따릅니다.",
+                + "어느 키보드에서 바꿔도 됩니다. 따로 정하는 값은 정하기 전에는 세로 키보드 값을 따릅니다.",
                 "Settings marked '" + ownBadgeText(p) + "' (split keyboard on or off, block width and position, joined space bar, bottom function key width, "
                 + "key text size, heights and padding) apply only to this keyboard. Unmarked settings are shared by the portrait, landscape and inner screen keyboards, "
-                + "and you can change them from any of them. Until set, separate values follow the regular keyboard of the same orientation.")));
+                + "and you can change them from any of them. Until set, separate values follow the portrait keyboard.")));
     }
 
     /**
