@@ -474,11 +474,13 @@ public final class SettingsActivity extends Activity {
             {"words", L.t("학습하지 않는 단어 보기", "View blocked words"), L.t("학습 제외 차단 지운 단어 다시 학습", "blocked excluded deleted words learn again")},
             {"words", L.t("학습한 단어 모두 지우기", "Delete all learned words"), L.t("사용자 사전 초기화 삭제", "personal dictionary reset clear")},
             {"words", L.t("자동 완성 제안", "Autofill suggestions"), L.t("오토필 Autofill Google 삼성패스 비밀번호 아이디 계정 칩 인증번호", "autofill google samsung pass passwords username account chips codes")},
-            {"feedback", L.t("키 진동", "Key vibration"), L.t("햅틱 진동 켜기 끄기", "haptics vibration on off")},
+            {"feedback", L.t("키 진동", "Key vibration"), L.t("햅틱 진동 켜기 끄기 진동 없음 틱 클릭 강한 클릭 시스템 기본 사용자 설정 진동 방식", "haptics vibration on off none tick click heavy click system default custom type")},
+            {"feedback", L.t("반복 입력·연속 지우기 진동", "Repeat and hold-delete vibration"), L.t("햅틱 길게 눌러 반복 연속 지우기 틱 클릭", "haptics hold repeat continuous delete tick click")},
+            {"feedback", L.t("진동 세기", "Vibration strength"), L.t("햅틱 세기 사용자 설정 primitive 틱 클릭", "haptics strength custom primitive tick click")},
             {"feedback", L.t("진동 길이", "Vibration length"), L.t("햅틱 ms 밀리초 진동 시간", "haptics ms milliseconds vibration duration")},
             {"feedback", L.t("진동 강도", "Vibration strength"), L.t("햅틱 세기 진폭", "haptics strength amplitude")},
             {"feedback", L.t("키 종류별로 다르게", "Different for each key type"), L.t("진동 지우기 스페이스 엔터 Shift 기호 언어 전환 도구 막대 키 햅틱", "vibration delete space enter shift symbols language switch toolbar keys haptics")},
-            {"feedback", L.t("밀기·길게 누르기 진동", "Vibrate on swipe and long press"), L.t("햅틱 스와이프 롱프레스", "haptics swipe long press")},
+            {"feedback", L.t("밀기·길게 누르기 진동", "Swipe and long-press vibration"), L.t("햅틱 스와이프 롱프레스 틱 클릭", "haptics swipe long press tick click")},
             {"feedback", L.t("키 소리", "Key sound"), L.t("클릭음 사운드 소리 켜기", "click sound audio on")},
             {"feedback", L.t("소리 크기", "Sound volume"), L.t("볼륨 클릭음", "volume click sound")},
             {KEYBOARD, L.t("도구 막대 표시", "Show toolbar"), L.t("툴바 켜기 끄기", "toolbar on off")},
@@ -3949,80 +3951,231 @@ public final class SettingsActivity extends Activity {
 
     private Feedback vibePreview;
 
-    /** 방금 바꾼 진동 설정을 바로 느껴 보게 한다 (level 0 = 일반 키 진동, 1~3 = 약하게·기본·강하게). */
-    private void previewVibration(int level) {
+    private Feedback vibePreview() {
         if (vibePreview == null) vibePreview = new Feedback(this);
         vibePreview.configure(prefs);
-        vibePreview.preview(level);
+        return vibePreview;
     }
 
-    private static String[] levelLabels() {
-
-        return new String[]{L.t("약하게", "Light"), L.t("기본", "Default"), L.t("강하게", "Strong")};
-
+    /** 방금 바꾼 일반 키 진동 설정(직접 정한 길이·강도)을 바로 느껴 보게 한다. */
+    private void previewVibration() {
+        vibePreview().previewChannel(Feedback.CH_KEY, list);
     }
 
-    /** 약하게(틱)·기본(클릭)·강하게(강한 클릭) 중에서 고르는 줄. 고르면 저장하고 그 진동을 한 번 울려 준다. */
-    private View levelRow(String label, String key, int level) {
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(0, Ui.dp(this, 8), 0, Ui.dp(this, 4));
-        if (label != null) {
-            TextView t = new TextView(this);
-            t.setText(label);
-            t.setTextColor(textColor);
-            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-            markItem(t, box);
-            box.addView(t);
+    /**
+     * 진동 방식을 고르기 창에 보이는 차례 ('진동 없음' 다음). 사용자 설정은 primitive를 쓸 수 있는 기기이거나
+     * (primitive 틱·클릭과 세기) 일반 키일 때(길이와 강도)만 있다.
+     */
+    private static int[] styleOrder(boolean customAllowed) {
+        return customAllowed
+                ? new int[]{Feedback.STYLE_TICK, Feedback.STYLE_CLICK, Feedback.STYLE_HEAVY_CLICK, Feedback.STYLE_SYSTEM, Feedback.STYLE_CUSTOM}
+                : new int[]{Feedback.STYLE_TICK, Feedback.STYLE_CLICK, Feedback.STYLE_HEAVY_CLICK, Feedback.STYLE_SYSTEM};
+    }
+
+    /** 사용자 설정의 primitive 이름 (Feedback.PRIMITIVE_* 차례). */
+    private static String[] primitiveLabels() {
+        return new String[]{L.t("틱 (primitive)", "Tick (primitive)"), L.t("클릭 (primitive)", "Click (primitive)")};
+    }
+
+    /** 설정 화면의 키 진동 목록에서 '진동 없음' (키 진동 스위치를 끈 것). */
+    private static final int STYLE_NONE = Feedback.STYLE_NONE;
+
+    /** 일반 키 진동 방식의 이름 ({@link Feedback#normalizeStyle}로 바꾼 값, 또는 STYLE_NONE). */
+    private static String styleLabel(int style) {
+        switch (style) {
+            case STYLE_NONE: return L.t("진동 없음", "No vibration");
+            case Feedback.STYLE_TICK: return L.t("틱", "Tick");
+            case Feedback.STYLE_HEAVY_CLICK: return L.t("강한 클릭", "Heavy click");
+            case Feedback.STYLE_CUSTOM: return L.t("사용자 설정", "Custom");
+            case Feedback.STYLE_SYSTEM: return L.t("시스템 기본", "System default");
+            default: return L.t("클릭", "Click");
         }
-        box.addView(Ui.muteHaptics(choiceRowRepeat(levelLabels(), Math.max(1, Math.min(3, level)) - 1, i -> {
-            prefs.raw().edit().putInt(key, i + 1).apply();
-            previewVibration(i + 1);
-        })));
-        return box;
+    }
+
+    /**
+     * 진동을 고르는 창 (길게 누르기·밀기 기능을 고르는 창처럼 목록, 기본값, 취소). 항목을 누르면 그 진동을 바로 울려 주고
+     * 창은 닫히지 않아 여러 개를 느껴 보고 비교할 수 있다. '확인'을 눌러야 저장한다.
+     *
+     * @param preview 항목을 눌렀을 때 그 진동을 울린다 (목록 뷰, 목록 차례)
+     * @param onPick  '확인'·'기본값'으로 바뀐 목록 차례를 알려 준다
+     */
+    private void pickVibration(String title, String[] labels, int current, int defaultIndex,
+                               java.util.function.ObjIntConsumer<View> preview, java.util.function.IntConsumer onPick) {
+        int[] chosen = {current};
+        AppTheme.dialogBuilder(this)
+                .setTitle(title)
+                .setSingleChoiceItems(labels, current, (d, which) -> {
+                    chosen[0] = which;
+                    preview.accept(((android.app.AlertDialog) d).getListView(), which);
+                })
+                .setPositiveButton(L.t("확인", "OK"), (d, w) -> {
+                    if (chosen[0] != current) onPick.accept(chosen[0]);
+                })
+                .setNeutralButton(L.t("기본값", "Default"), (d, w) -> {
+                    if (current != defaultIndex) onPick.accept(defaultIndex);
+                })
+                .setNegativeButton(L.t("취소", "Cancel"), null)
+                .show();
+    }
+
+    /**
+     * 진동 없음·틱·클릭·강한 클릭·시스템 기본·사용자 설정 중에서 고르는 줄과 그 하위 항목.
+     * '진동 없음'은 onKey 스위치를 끈 것이다 (onKey가 null이면 styleKey에 STYLE_NONE으로 저장한다). 사용자 설정이면 primitive 틱·클릭과 세기 막대가
+     * (primitive를 못 쓰는 기기의 일반 키는 길이·강도 막대가), 시스템 기본이면 안내가 펼쳐진다.
+     * 고르기 창에서 항목을 누르면 그 진동을 바로 울려 준다.
+     *
+     * @param channel      Feedback.CH_*
+     * @param on           지금 켜져 있는가 (onKey)
+     * @param storedStyle  저장된 진동 방식 (styleKey)
+     * @param defaultStyle '기본값'으로 돌아갈 방식
+     * @param primKey      사용자 설정의 primitive (Feedback.PRIMITIVE_*)
+     * @param defaultPrim  primitive의 기본값
+     * @param ampKey       사용자 설정의 세기 %
+     * @param extra        하위 항목 끝에 더 붙일 것 (일반 키의 키 종류별 진동)
+     * @return {줄, 하위 항목 묶음}: 하위 항목 묶음은 '진동 없음'이면 감춘다
+     */
+    private View[] vibrationChooser(int channel, String title, String onKey, java.util.function.BooleanSupplier on,
+                                    String styleKey, java.util.function.IntSupplier storedStyle, int defaultStyle,
+                                    String primKey, int prim, int defaultPrim, String ampKey, int amp,
+                                    String systemDesc, View... extra) {
+        boolean primitives = vibePreview().supportsPrimitives();
+        boolean key = channel == Feedback.CH_KEY;
+        boolean customAllowed = primitives || key;
+        int[] styles = styleOrder(customAllowed);
+        int[] order = new int[styles.length + 1];
+        order[0] = STYLE_NONE;
+        System.arraycopy(styles, 0, order, 1, styles.length);
+        java.util.function.IntSupplier current = () -> on == null || on.getAsBoolean()
+                ? Feedback.normalizeStyle(storedStyle.getAsInt(), customAllowed) : STYLE_NONE;
+        int style0 = current.getAsInt();
+        View customGroup;
+        if (primitives) {
+            // 사용자 설정: primitive 틱·클릭 중 하나와 그 세기.
+            SettingsWidgets.ValueRow[] primRow = new SettingsWidgets.ValueRow[1];
+            int[] nowPrim = {prim == Feedback.PRIMITIVE_TICK ? Feedback.PRIMITIVE_TICK : Feedback.PRIMITIVE_CLICK};
+            String primTitle = L.t("진동 종류", "Vibration kind");
+            primRow[0] = widgets.valueRow(primTitle, primitiveLabels()[nowPrim[0]], v ->
+                    pickVibration(primTitle, primitiveLabels(), nowPrim[0], defaultPrim,
+                            (view, i) -> vibePreview().previewPrimitive(channel, i), i -> {
+                                nowPrim[0] = i;
+                                prefs.raw().edit().putInt(primKey, i).apply();
+                                primRow[0].set(primitiveLabels()[i]);
+                            }));
+            customGroup = fold(primRow[0].view,
+                    slider(L.t("진동 세기", "Vibration strength"), ampKey, amp, 10, 100, 5, "%",
+                            () -> vibePreview().previewChannel(channel, list)));
+        } else if (key) {
+            // primitive를 못 쓰는 기기의 일반 키 사용자 설정: 길이와 강도로 정하는 한 번 진동.
+            customGroup = fold(
+                    slider(L.t("진동 길이", "Vibration length"), Prefs.VIBRATE_MS, prefs.vibrateMs(), 1, 40, 1, "ms",
+                            () -> previewVibration()),
+                    slider(L.t("진동 강도", "Vibration strength"), ampKey, amp, 10, 100, 5, "%",
+                            () -> previewVibration()),
+                    note(L.t("강도는 진동 세기를 조절할 수 있는 기기에서만 적용됩니다.", "Strength works only on devices that can adjust vibration strength.")));
+        } else {
+            customGroup = null;
+        }
+        View systemGroup = fold(note(systemDesc));
+        java.util.function.BiConsumer<Integer, Boolean> showFor = (style, animate) -> {
+            View[] views = {customGroup, systemGroup};
+            boolean[] shown = {style == Feedback.STYLE_CUSTOM, style == Feedback.STYLE_SYSTEM};
+            for (int i = 0; i < views.length; i++) {
+                if (views[i] == null) continue;
+                if (animate) Ui.setVisibleAnimated(views[i], shown[i]);
+                else views[i].setVisibility(shown[i] ? View.VISIBLE : View.GONE);
+            }
+        };
+        showFor.accept(style0, false);
+        String[] labels = new String[order.length];
+        int defaultIndex = 0;
+        for (int i = 0; i < order.length; i++) {
+            labels[i] = styleLabel(order[i]);
+            if (order[i] == defaultStyle) defaultIndex = i;
+        }
+        int defaultIdx = defaultIndex;
+        java.util.List<View> children = new java.util.ArrayList<>();
+        if (customGroup != null) children.add(customGroup);
+        children.add(systemGroup);
+        children.addAll(java.util.Arrays.asList(extra));
+        View options = subGroup(children.toArray(new View[0]));
+        // 하위 항목이 하나도 보이지 않으면 세로 안내선만 남지 않게 묶음째 감춘다.
+        java.util.function.IntPredicate hasOptions = st -> st != STYLE_NONE
+                && (extra.length > 0 || st == Feedback.STYLE_SYSTEM || (st == Feedback.STYLE_CUSTOM && customGroup != null));
+        options.setVisibility(hasOptions.test(style0) ? View.VISIBLE : View.GONE);
+        SettingsWidgets.ValueRow[] row = new SettingsWidgets.ValueRow[1];
+        row[0] = widgets.valueRow(title, styleLabel(style0), v -> {
+            int style = current.getAsInt(), now = 0;
+            for (int i = 0; i < order.length; i++) if (order[i] == style) now = i;
+            pickVibration(title, labels, now, defaultIdx,
+                    (view, i) -> {
+                        if (order[i] != STYLE_NONE) vibePreview().previewStyle(channel, order[i], view);
+                    }, i -> {
+                        int picked = order[i];
+                        android.content.SharedPreferences.Editor e = prefs.raw().edit();
+                        if (onKey != null) e.putBoolean(onKey, picked != STYLE_NONE);
+                        if (onKey == null || picked != STYLE_NONE) e.putInt(styleKey, picked);
+                        e.apply();
+                        row[0].set(styleLabel(picked));
+                        if (picked != STYLE_NONE) showFor.accept(picked, true);
+                        Ui.setVisibleAnimated(options, hasOptions.test(picked));
+                    });
+        });
+        return new View[]{row[0].view, options};
     }
 
     private void buildFeedback() {
-        LinearLayout fb = card();
-        // 진동 방식: 약하게(틱)·기본(클릭)·강하게(강한 클릭)이거나 길이·강도를 직접 정한다.
-        LinearLayout customGroup = new LinearLayout(this);
-        customGroup.setOrientation(LinearLayout.VERTICAL);
-        customGroup.addView(slider(L.t("진동 길이", "Vibration length"), Prefs.VIBRATE_MS, prefs.vibrateMs(), 1, 40, 1, "ms",
-                () -> previewVibration(0)));
-        customGroup.addView(slider(L.t("진동 강도", "Vibration strength"), Prefs.VIBRATE_AMP, prefs.vibrateAmp(), 10, 100, 5, "%",
-                () -> previewVibration(0)));
-        customGroup.addView(note(L.t("강도는 진동 세기를 조절할 수 있는 기기에서만 적용됩니다.", "Strength works only on devices that can adjust vibration strength.")));
-        customGroup.setVisibility(prefs.vibrateStyle() == 3 ? View.VISIBLE : View.GONE);
-        View styleRow = Ui.muteHaptics(choiceRowRepeat(new String[]{L.t("약하게", "Light"), L.t("기본", "Default"), L.t("강하게", "Strong"), L.t("직접 설정", "Custom")},
-                prefs.vibrateStyle(), i -> {
-            prefs.raw().edit().putInt(Prefs.VIBRATE_STYLE, i).apply();
-            Ui.setVisibleAnimated(customGroup, i == 3);
-            previewVibration(0);
-        }));
+        LinearLayout vib = section(L.t("진동", "Vibration"));
+        String systemNote = L.t("시스템에 정해진 진동을 씁니다. 세기는 시스템 설정을 따르며, "
+                        + "시스템에서 키보드 진동(터치 진동)을 끄면 울리지 않습니다.",
+                "Uses the vibration set by the system. Strength follows the system settings, "
+                        + "and it does not vibrate if keyboard (touch) vibration is turned off in the system.");
+        // 키 종류별 진동: 키마다 진동 없음·틱·클릭·강한 클릭·시스템 기본·사용자 설정 (Prefs.VIBRATE_KEYS 차례).
         LinearLayout perKeyBox = new LinearLayout(this);
         perKeyBox.setOrientation(LinearLayout.VERTICAL);
-        perKeyBox.addView(levelRow(L.t("지우기 키", "Delete key"), Prefs.VIBRATE_DELETE, prefs.vibrateDelete()));
-        perKeyBox.addView(levelRow(L.t("스페이스 키", "Space key"), Prefs.VIBRATE_SPACE, prefs.vibrateSpace()));
-        perKeyBox.addView(levelRow(L.t("엔터 키", "Enter key"), Prefs.VIBRATE_ENTER, prefs.vibrateEnter()));
-        perKeyBox.addView(levelRow(L.t("Shift 키 (Fn 키)", "Shift key (Fn key)"), Prefs.VIBRATE_SHIFT, prefs.vibrateShift()));
-        perKeyBox.addView(levelRow(L.t("기호 키", "Symbol key"), Prefs.VIBRATE_SYMBOL, prefs.vibrateSymbol()));
-        perKeyBox.addView(levelRow(L.t("언어 전환 키", "Language switch key"), Prefs.VIBRATE_LANGUAGE, prefs.vibrateLanguage()));
-        perKeyBox.addView(levelRow(L.t("도구 막대 키", "Toolbar keys"), Prefs.VIBRATE_TOOLBAR, prefs.vibrateToolbar()));
+        String[] perKeyNames = {L.t("지우기 키", "Delete key"), L.t("스페이스 키", "Space key"), L.t("엔터 키", "Enter key"),
+                L.t("Shift 키 (Fn 키)", "Shift key (Fn key)"), L.t("기호 키", "Symbol key"),
+                L.t("언어 전환 키", "Language switch key"), L.t("도구 막대 키", "Toolbar keys")};
+        for (int i = 0; i < Prefs.VIBRATE_KEYS.length; i++) {
+            String base = Prefs.VIBRATE_KEYS[i];
+            for (View v : vibrationChooser(Feedback.CH_DELETE + i, perKeyNames[i], null, null,
+                    base + "_style", () -> prefs.vibrateKeyStyle(base), Feedback.STYLE_CLICK,
+                    base + "_primitive", prefs.vibrateKeyPrimitive(base), Feedback.PRIMITIVE_CLICK,
+                    base + "_amp", prefs.vibrateKeyAmp(base), systemNote)) {
+                perKeyBox.addView(v);
+            }
+        }
         perKeyBox.addView(note(L.t("그 밖의 키는 위에서 고른 진동을 씁니다.", "Other keys use the vibration chosen above.")));
         View perKeySub = subGroup(perKeyBox);
-        View gestureSub = subGroup(levelRow(null, Prefs.VIBRATE_GESTURE_LEVEL, prefs.vibrateGestureLevel()));
-        View vibrateOptions = subGroup(styleRow, customGroup,
-                toggle(L.t("키 종류별로 다르게", "Different for each key type"), null,
-                        Prefs.VIBRATE_PER_KEY, prefs.vibratePerKey(), perKeySub),
-                perKeySub,
-                toggle(L.t("밀기·길게 누르기 진동", "Vibrate on swipe and long press"), L.t("밀거나 길게 눌렀을 때도 진동합니다.", "Also vibrates when you swipe or long press."),
-                        Prefs.VIBRATE_GESTURE_ON, prefs.vibrateGestureOn(), gestureSub),
-                gestureSub);
-        fb.addView(toggle(L.t("키 진동", "Key vibration"), null, Prefs.VIBRATE, prefs.vibrate(), vibrateOptions));
-        fb.addView(vibrateOptions);
+        View perKeyToggle = toggle(L.t("키 종류별로 다르게", "Different for each key type"), null,
+                Prefs.VIBRATE_PER_KEY, prefs.vibratePerKey(), perKeySub);
+        // 키 진동: '진동 없음'은 키 진동 스위치(Prefs.VIBRATE)를 끈 것이다.
+        for (View v : vibrationChooser(Feedback.CH_KEY, L.t("키 진동", "Key vibration"), Prefs.VIBRATE, prefs::vibrate,
+                Prefs.VIBRATE_STYLE, prefs::vibrateStyle, Feedback.STYLE_CLICK,
+                Prefs.VIBRATE_PRIMITIVE, prefs.vibratePrimitive(), Feedback.PRIMITIVE_CLICK, Prefs.VIBRATE_AMP, prefs.vibrateAmp(),
+                L.t("기기 제조사가 키보드용으로 맞춰 둔 진동을 씁니다. 세기는 시스템 설정을 따르며, "
+                                + "시스템에서 키보드 진동(터치 진동)을 끄면 울리지 않습니다.",
+                        "Uses the vibration your device maker tuned for keyboards. Strength follows the system settings, "
+                                + "and it does not vibrate if keyboard (touch) vibration is turned off in the system."),
+                perKeyToggle, perKeySub)) {
+            vib.addView(v);
+        }
+        // 반복 입력·연속 지우기와 밀기·길게 누르기 진동은 키 진동과 따로 고른다.
+        for (View v : vibrationChooser(Feedback.CH_REPEAT, L.t("반복 입력·연속 지우기 진동", "Repeat and hold-delete vibration"),
+                Prefs.VIBRATE_REPEAT_ON, prefs::vibrateRepeatOn, Prefs.VIBRATE_REPEAT_STYLE, prefs::vibrateRepeatStyle,
+                Feedback.STYLE_TICK, Prefs.VIBRATE_REPEAT_PRIMITIVE, prefs.vibrateRepeatPrimitive(), Feedback.PRIMITIVE_TICK,
+                Prefs.VIBRATE_REPEAT_AMP, prefs.vibrateRepeatAmp(), systemNote)) {
+            vib.addView(v);
+        }
+        for (View v : vibrationChooser(Feedback.CH_GESTURE, L.t("밀기·길게 누르기 진동", "Swipe and long-press vibration"),
+                Prefs.VIBRATE_GESTURE_ON, prefs::vibrateGestureOn, Prefs.VIBRATE_GESTURE_STYLE, prefs::vibrateGestureStyle,
+                Feedback.STYLE_CLICK, Prefs.VIBRATE_GESTURE_PRIMITIVE, prefs.vibrateGesturePrimitive(), Feedback.PRIMITIVE_CLICK,
+                Prefs.VIBRATE_GESTURE_AMP, prefs.vibrateGestureAmp(), systemNote)) {
+            vib.addView(v);
+        }
+        LinearLayout snd = section(L.t("소리", "Sound"));
         View soundVolume = subGroup(slider(L.t("소리 크기", "Sound volume"), Prefs.SOUND_VOLUME, prefs.soundVolume(), 0, 100, 5, "%"));
-        fb.addView(toggle(L.t("키 소리", "Key sound"), null, Prefs.SOUND, prefs.sound(), soundVolume));
-        fb.addView(soundVolume);
+        snd.addView(toggle(L.t("키 소리", "Key sound"), null, Prefs.SOUND, prefs.sound(), soundVolume));
+        snd.addView(soundVolume);
     }
 
     private void buildTools() {
@@ -4614,14 +4767,14 @@ public final class SettingsActivity extends Activity {
     }
 
     /**
-     * view를 여백 없는 틀로 감싼다. 위아래 여백이 있는 줄(버튼 등)을 펼치고 접을 때는 줄 자체가 아니라 이 틀을
+     * views를 (차례대로) 여백 없는 틀로 감싼다. 위아래 여백이 있는 줄(버튼 등)을 펼치고 접을 때는 줄 자체가 아니라 이 틀을
      * setVisibleAnimated로 움직여야 여백이 높이와 함께 부드럽게 줄어든다.
      */
-    private View fold(View view) {
+    private View fold(View... views) {
         LinearLayout frame = new LinearLayout(this);
         frame.setOrientation(LinearLayout.VERTICAL);
         frame.setLayoutParams(matchWrap());
-        frame.addView(view);
+        for (View view : views) frame.addView(view);
         return frame;
     }
 

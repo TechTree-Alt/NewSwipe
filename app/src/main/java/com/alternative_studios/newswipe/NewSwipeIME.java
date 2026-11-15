@@ -655,6 +655,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             if (r - l != or - ol) applyToolbarEdges();
         });
         keyboard.setListener(this);
+        feedback.setHapticView(keyboard);   // 시스템 키보드 진동은 키보드 창으로 울린다
         // 손가락이 자판에 닿아 있는 동안은 선택 편집 칩 때문에 도구 막대 자리가 생기거나 없어지지 않게 한다 (editHoldsSlot).
         // 이벤트는 그대로 자판이 받는다 (false).
         keyboard.setOnTouchListener((v, e) -> {
@@ -4436,7 +4437,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         // 단축어의 문장은 첫 칸 하나가 추천란을 채우므로 어느 자리에서 밀어도 그 문장을 입력한다.
         int index = shortcutShown ? 0 : slot;
         if (index >= suggestions.length) return;
-        feedback.onKey(null);
+        // KeyboardView가 밀기 진동(onGesture)을 이미 울렸고, 추천 단어를 넣을 때 한 번 더 울린다 (예전처럼 두 번).
+        feedback.onGesture();
         applySuggestion(index);
     }
 
