@@ -4051,13 +4051,13 @@ public final class SettingsActivity extends Activity {
         LinearLayout advBox = new LinearLayout(this);
         advBox.setOrientation(LinearLayout.VERTICAL);
         advBox.addView(slider(L.t("항목 최대 개수", "Maximum items"), Prefs.CLIPBOARD_MAX_ITEMS, prefs.clipboardMaxItems(),
-                1, ClipboardHistory.ITEMS_LIMIT, 1, countUnit, refreshDescs));
+                ClipboardHistory.COUNT_STEP, ClipboardHistory.ITEMS_LIMIT, ClipboardHistory.COUNT_STEP, countUnit, refreshDescs));
         advBox.addView(slider(L.t("이미지 최대 개수", "Maximum images"), Prefs.CLIPBOARD_MAX_IMAGES, prefs.clipboardMaxImages(),
-                1, ClipboardHistory.IMAGES_LIMIT, 1, countUnit, refreshDescs));
+                ClipboardHistory.COUNT_STEP, ClipboardHistory.IMAGES_LIMIT, ClipboardHistory.COUNT_STEP, countUnit, refreshDescs));
         advBox.addView(slider(L.t("삭제 시간", "Delete after"), Prefs.CLIPBOARD_EXPIRE_HOURS, prefs.clipboardExpireHours(),
-                1, ClipboardHistory.EXPIRE_HOURS_LIMIT, 1, L.t("시간", " h"), refreshDescs));
+                ClipboardHistory.HOURS_STEP, ClipboardHistory.EXPIRE_HOURS_LIMIT, ClipboardHistory.HOURS_STEP, L.t("시간", " h"), refreshDescs));
         advBox.addView(slider(L.t("고정 항목 개수", "Maximum pinned items"), Prefs.CLIPBOARD_MAX_PINNED, prefs.clipboardMaxPinned(),
-                1, ClipboardHistory.PINNED_LIMIT, 1, countUnit, refreshDescs));
+                ClipboardHistory.COUNT_STEP, ClipboardHistory.PINNED_LIMIT, ClipboardHistory.COUNT_STEP, countUnit, refreshDescs));
         advBox.addView(note(L.t("이미지는 항목 최대 개수 안에 함께 셉니다. 고정한 항목은 삭제 시간이 지나도 지워지지 않습니다. 개수를 줄이면 넘치는 오래된 항목은 지워집니다.",
                 "Images count toward the maximum items. Pinned items are not deleted after the time limit. Lowering a limit deletes the oldest items over it.")));
         View advSub = subGroup(advBox);

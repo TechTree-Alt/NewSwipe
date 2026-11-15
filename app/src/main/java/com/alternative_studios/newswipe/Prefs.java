@@ -853,21 +853,25 @@ public final class Prefs {
     public boolean clipboardSplitPinned() { return sp.getBoolean(CLIPBOARD_SPLIT_PINNED, false); }
     public boolean clipboardCloseOnUse() { return sp.getBoolean(CLIPBOARD_CLOSE_ON_USE, false); }
     public boolean clipboardChip() { return sp.getBoolean(CLIPBOARD_CHIP, true); }
-    /** 클립보드에 보관할 항목 수 (기본 30개, 최대 100개). */
+    /** 클립보드에 보관할 항목 수 (기본 30개, 5개 단위, 최대 100개). */
     public int clipboardMaxItems() {
-        return clamp(sp.getInt(CLIPBOARD_MAX_ITEMS, ClipboardHistory.MAX_ITEMS), 1, ClipboardHistory.ITEMS_LIMIT);
+        return stepped(sp.getInt(CLIPBOARD_MAX_ITEMS, ClipboardHistory.MAX_ITEMS), ClipboardHistory.ITEMS_LIMIT, ClipboardHistory.COUNT_STEP);
     }
-    /** 그중 이미지 수 (기본 5개, 최대 30개). */
+    /** 그중 이미지 수 (기본 5개, 5개 단위, 최대 30개). */
     public int clipboardMaxImages() {
-        return clamp(sp.getInt(CLIPBOARD_MAX_IMAGES, ClipboardHistory.MAX_IMAGES), 1, ClipboardHistory.IMAGES_LIMIT);
+        return stepped(sp.getInt(CLIPBOARD_MAX_IMAGES, ClipboardHistory.MAX_IMAGES), ClipboardHistory.IMAGES_LIMIT, ClipboardHistory.COUNT_STEP);
     }
-    /** 고정하지 않은 항목을 지우기까지의 시간 (기본 24시간, 최대 120시간). */
+    /** 고정하지 않은 항목을 지우기까지의 시간 (기본 24시간, 12시간 단위, 최대 120시간). */
     public int clipboardExpireHours() {
-        return clamp(sp.getInt(CLIPBOARD_EXPIRE_HOURS, ClipboardHistory.EXPIRE_HOURS), 1, ClipboardHistory.EXPIRE_HOURS_LIMIT);
+        return stepped(sp.getInt(CLIPBOARD_EXPIRE_HOURS, ClipboardHistory.EXPIRE_HOURS), ClipboardHistory.EXPIRE_HOURS_LIMIT, ClipboardHistory.HOURS_STEP);
     }
-    /** 고정할 수 있는 항목 수 (기본 10개, 최대 30개). */
+    /** 고정할 수 있는 항목 수 (기본 10개, 5개 단위, 최대 30개). */
     public int clipboardMaxPinned() {
-        return clamp(sp.getInt(CLIPBOARD_MAX_PINNED, ClipboardHistory.MAX_PINNED), 1, ClipboardHistory.PINNED_LIMIT);
+        return stepped(sp.getInt(CLIPBOARD_MAX_PINNED, ClipboardHistory.MAX_PINNED), ClipboardHistory.PINNED_LIMIT, ClipboardHistory.COUNT_STEP);
+    }
+    /** 저장된 값을 단위(step)에 맞춰 가장 가까운 칸으로 옮기고 [step, max] 안에 둔다. */
+    private static int stepped(int v, int max, int step) {
+        return clamp(Math.round(v / (float) step) * step, step, max);
     }
     /** 클립보드 고급 설정의 한도를 기록에 적용한다. */
     public ClipboardHistory applyClipboardLimits(ClipboardHistory h) {

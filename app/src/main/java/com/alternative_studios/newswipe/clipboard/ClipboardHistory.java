@@ -22,6 +22,8 @@ import java.util.List;
 public final class ClipboardHistory {
     /** 보관할 항목 수의 기본값. 설정에서 ITEMS_LIMIT까지 늘릴 수 있다. */
     public static final int MAX_ITEMS = 30;
+    /** 설정에서 개수(항목·이미지·고정 항목)를 정하는 단위와 지우는 시간을 정하는 단위(시간). 가장 작은 값이기도 하다. */
+    public static final int COUNT_STEP = 5, HOURS_STEP = 12;
     public static final int ITEMS_LIMIT = 100;
     /** 고정하지 않은 항목을 지우기까지의 시간 기본값(시간 단위). 설정에서 EXPIRE_HOURS_LIMIT까지 늘릴 수 있다. */
     public static final int EXPIRE_HOURS = 24;
@@ -93,10 +95,10 @@ public final class ClipboardHistory {
      * 보관 개수와 지우는 시간을 정한다 (범위를 벗어난 값은 가장 가까운 값으로). 줄인 한도는 다음에 기록을 읽거나 쓸 때 반영된다.
      */
     public synchronized void setLimits(int items, int images, int expireHours, int pinned) {
-        maxItems = clamp(items, 1, ITEMS_LIMIT);
-        maxImages = clamp(images, 1, IMAGES_LIMIT);
-        expireMs = clamp(expireHours, 1, EXPIRE_HOURS_LIMIT) * 60L * 60 * 1000;
-        maxPinned = clamp(pinned, 1, PINNED_LIMIT);
+        maxItems = clamp(items, COUNT_STEP, ITEMS_LIMIT);
+        maxImages = clamp(images, COUNT_STEP, IMAGES_LIMIT);
+        expireMs = clamp(expireHours, HOURS_STEP, EXPIRE_HOURS_LIMIT) * 60L * 60 * 1000;
+        maxPinned = clamp(pinned, COUNT_STEP, PINNED_LIMIT);
     }
 
     public synchronized int maxPinned() {

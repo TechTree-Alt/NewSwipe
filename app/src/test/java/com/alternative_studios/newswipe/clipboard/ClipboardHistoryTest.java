@@ -100,9 +100,9 @@ public class ClipboardHistoryTest {
         for (int i = 0; i < 30; i++) assertTrue(h.setPinned(items.get(i), true));
         assertFalse(h.setPinned(items.get(30), true));
         // 줄이면 넘치는 오래된 항목과 기한이 지난 항목이 지워진다 (고정한 것은 남는다).
-        h.setLimits(5, 1, 1, 10);
+        h.setLimits(5, 5, 12, 10);
         assertEquals(35, h.items(2000).size());
-        assertEquals(30, h.items(1000 + 2 * HOUR).size());
+        assertEquals(30, h.items(1000 + 13 * HOUR).size());
         assertEquals(10, h.maxPinned());
     }
 
@@ -113,6 +113,9 @@ public class ClipboardHistoryTest {
         assertEquals(ClipboardHistory.PINNED_LIMIT, h.maxPinned());
         for (int i = 0; i < 150; i++) h.add("t" + i, 1000 + i);
         assertEquals(ClipboardHistory.ITEMS_LIMIT, h.items(2000).size());
+        h.setLimits(1, 1, 1, 1);   // 단위보다 작은 값은 가장 작은 칸으로
+        assertEquals(ClipboardHistory.COUNT_STEP, h.maxPinned());
+        assertEquals(ClipboardHistory.COUNT_STEP, h.items(2000).size());
     }
 
     @Test
