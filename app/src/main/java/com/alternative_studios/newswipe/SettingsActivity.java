@@ -158,21 +158,16 @@ public final class SettingsActivity extends Activity {
         middle.addView(scroll, new android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
         content.addView(middle, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        // 화면 맨 아래의 키보드 미리보기 (미리보기가 있는 화면에서만 보인다). 설정 창은 이것을 가리지 않는다.
         pinnedBottom = new LinearLayout(this);
         pinnedBottom.setOrientation(LinearLayout.VERTICAL);
         pinnedBottom.setVisibility(View.GONE);
-        // 아래 미리보기 묶음: 맨 위의 꺾쇠 버튼(숨기기·보이기)과 그 아래 pinnedBottom (미리보기가 있는 화면에서만 보인다).
-        bottomDock = new LinearLayout(this);
-        bottomDock.setOrientation(LinearLayout.VERTICAL);
-        bottomDock.setVisibility(View.GONE);
-        bottomDock.addView(buildPreviewToggle(), matchWrap());
-        bottomDock.addView(pinnedBottom, matchWrap());
-        content.addView(bottomDock, matchWrap());
-        setContentView(frame.wrap(content));
+        setContentView(frame.wrap(content, pinnedBottom));
+        overlayHost = frame.overlayHost();
         undoButton = frame.actionButton();
         build();
         if (pinnedBottom.getChildCount() > 0) {
-            bottomDock.setVisibility(View.VISIBLE);
+            addPreviewToggle();
             // 화면을 다시 만들었으면(회전 등) 숨겨 두었던 미리보기를 그대로 숨긴다.
             if (savedInstanceState != null && !savedInstanceState.getBoolean(STATE_PREVIEW_SHOWN, true)) setPreviewShown(false);
         }
@@ -189,10 +184,10 @@ public final class SettingsActivity extends Activity {
     }
 
     private static final String STATE_PREVIEW_SHOWN = "previewShown";
-    /** 아래 미리보기 묶음 (꺾쇠 버튼 + pinnedBottom). */
-    private LinearLayout bottomDock;
-    /** 미리보기 바로 위의 꺾쇠 버튼: 보일 때는 아래 꺾쇠(숨기기), 숨겼을 때는 위 꺾쇠(보이기). */
-    private View previewToggle;
+    /** 머리글부터 미리보기 위까지를 덮는 틀: 설정 창(시트)과 꺾쇠 버튼을 여기에 겹쳐 띄운다. */
+    private android.widget.FrameLayout overlayHost;
+    /** 미리보기 바로 위 가운데에 뜬 강조색 꺾쇠 버튼: 보일 때는 아래 꺾쇠(숨기기), 숨겼을 때는 위 꺾쇠(보이기). */
+    private com.alternative_studios.newswipe.ui.ExpressiveIconButton previewToggle;
     private boolean previewShown = true;
 
     @Override
@@ -201,36 +196,39 @@ public final class SettingsActivity extends Activity {
         out.putBoolean(STATE_PREVIEW_SHOWN, previewShown);
     }
 
-    /** 미리보기 바로 위 가운데의 꺾쇠 버튼. */
-    private View buildPreviewToggle() {
+    /**
+     * 미리보기 바로 위 가운데에 강조색 플로팅 꺾쇠 버튼을 띄운다. 설정 창(시트)보다 위에 놓이도록 build() 뒤에 더한다.
+     * 목록·창의 마지막 항목이 버튼에 가리지 않게 아래 여백을 늘린다.
+     */
+    private void addPreviewToggle() {
         AppTheme t = AppTheme.of(this);
-        LinearLayout row = new LinearLayout(this);
-        row.setGravity(Gravity.CENTER);
-        row.setBackgroundColor(t.bg);
-        View chevron = new View(this) {
-            private final android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
-
+        previewToggle = new com.alternative_studios.newswipe.ui.ExpressiveIconButton(this, Icons.HIDE, t.accent, t.onAccent, "");
+        previewToggle.setOnClickListener(v -> setPreviewShown(!previewShown));
+        // 설정 창(시트, 그림자 12dp)보다 위에 그려지도록 그보다 조금 높이 띄운다 (같은 틀 안에서는 높이 순서로 그린다).
+        previewToggle.setElevation(Ui.dp(this, 12) + 1);
+        previewToggle.setOutlineProvider(new android.view.ViewOutlineProvider() {
             @Override
-            protected void onDraw(android.graphics.Canvas c) {
-                paint.setColor(t.hint);
-                Icons.draw(c, previewShown ? Icons.HIDE : Icons.CHEVRON_UP, getWidth() / 2f, getHeight() / 2f,
-                        Ui.dp(getContext(), 24), paint, 2.2f);
+            public void getOutline(View view, android.graphics.Outline outline) {
+                outline.setOval(0, 0, view.getWidth(), view.getHeight());
             }
-        };
-        int r = Ui.dp(this, 14);
-        chevron.setBackground(Ui.ripple(t.accent & 0x00FFFFFF | 0x33000000, null, r));
-        chevron.setClickable(true);
-        chevron.setFocusable(true);
-        chevron.setOnClickListener(v -> setPreviewShown(!previewShown));
-        previewToggle = chevron;
+        });
         updatePreviewToggle();
-        row.addView(chevron, new LinearLayout.LayoutParams(Ui.dp(this, 64), Ui.dp(this, 28)));
-        return row;
+        int size = Ui.dp(this, 44);
+        android.widget.FrameLayout.LayoutParams lp = new android.widget.FrameLayout.LayoutParams(size, size,
+                Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        lp.bottomMargin = Ui.dp(this, 10);
+        overlayHost.addView(previewToggle, lp);
+        int room = size + Ui.dp(this, 24);
+        list.setPadding(list.getPaddingLeft(), list.getPaddingTop(), list.getPaddingRight(), Math.max(list.getPaddingBottom(), room));
+        if (sheet != null) {
+            LinearLayout b = sheet.body();
+            b.setPadding(b.getPaddingLeft(), b.getPaddingTop(), b.getPaddingRight(), Math.max(b.getPaddingBottom(), room));
+        }
     }
 
     private void updatePreviewToggle() {
+        previewToggle.setIcon(previewShown ? Icons.HIDE : Icons.CHEVRON_UP);
         previewToggle.setContentDescription(previewShown ? L.t("미리보기 숨기기", "Hide preview") : L.t("미리보기 보이기", "Show preview"));
-        previewToggle.invalidate();
     }
 
     /** 꺾쇠 버튼: 화면 아래의 미리보기(와 그 위 자판 탭·페이지 표시)를 접거나 펼친다. 꺾쇠 버튼은 그대로 남는다. */
@@ -1606,7 +1604,7 @@ public final class SettingsActivity extends Activity {
 
     /** 설정 창을 만든다: 키 창(KeyEditPanel)과 그 아래 영역·여백 창(areaBox)을 담는다. */
     private void buildSheet() {
-        sheet = new EditorSheet(this, middle, this::closeKeyPanel);
+        sheet = new EditorSheet(this, overlayHost, this::closeKeyPanel);
         areaNoteBox = widgets.card(sheet.body());
         sheet.body().removeView(areaNoteBox);
         sheet.body().addView(areaNoteBox, 0, areaNoteBox.getLayoutParams());
@@ -2509,7 +2507,7 @@ public final class SettingsActivity extends Activity {
         pinnedBottom.addView(profilePreview, matchWrap());
         pinnedBottom.setVisibility(View.VISIBLE);
         // 영역 설정 창: 목록 위로 아래에서 올라온다 (키보드 사용자화와 같다).
-        sheet = new EditorSheet(this, middle, this::closeKeyPanel);
+        sheet = new EditorSheet(this, overlayHost, this::closeKeyPanel);
         areaBox = new LinearLayout(this);
         areaBox.setOrientation(LinearLayout.VERTICAL);
         sheet.body().addView(areaBox, matchWrap());
