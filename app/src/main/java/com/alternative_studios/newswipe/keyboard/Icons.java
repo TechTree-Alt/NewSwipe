@@ -53,6 +53,7 @@ public final class Icons {
     public static final int COPY = 42;            // 복사 (겹친 두 장)
     public static final int PASTE = 43;           // 붙여넣기 (아래 화살표가 든 클립보드)
     public static final int SELECT_ALL = 44;      // 전체 선택 (점선 테두리 안의 네모)
+    public static final int CHEVRON_UP = 45;      // 위 꺾쇠 (HIDE를 뒤집은 것: 접은 미리보기 펼치기)
 
     private static final Path path = new Path();
     private static final RectF oval = new RectF();
@@ -493,6 +494,12 @@ public final class Icons {
                 oval.set(8.5f, 8.5f, 15.5f, 15.5f);
                 p.setStyle(Paint.Style.FILL_AND_STROKE);
                 c.drawRoundRect(oval, 1, 1, p);
+                break;
+            case CHEVRON_UP:
+                path.moveTo(6, 14.5f);
+                path.lineTo(12, 8.5f);
+                path.lineTo(18, 14.5f);
+                c.drawPath(path, p);
                 break;
             default:
                 break;

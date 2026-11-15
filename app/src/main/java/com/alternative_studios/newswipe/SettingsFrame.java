@@ -134,18 +134,40 @@ final class SettingsFrame {
 
     /** 머리글·입력 시험 창과 content(스크롤 뷰)를 한 화면으로 묶어 돌려준다. setContentView에 넘기면 된다. */
     View wrap(View content) {
+        return wrap(content, null);
+    }
+
+    /** 머리글·입력 창·content를 덮는 틀 (wrap 뒤에만 있다). 설정 창(시트)을 머리글 높이까지 올려 띄울 때 쓴다. */
+    private android.widget.FrameLayout overlayHost;
+
+    android.widget.FrameLayout overlayHost() {
+        return overlayHost;
+    }
+
+    /**
+     * wrap(content)와 같되, bottom(없으면 null)을 화면 맨 아래에 따로 둔다 (키보드 미리보기).
+     * 머리글·입력 창·content는 overlayHost 틀 안에 들어가, 그 위에 겹쳐 띄우는 창은 머리글까지 덮고 bottom은 가리지 않는다.
+     */
+    View wrap(View content, View bottom) {
         LinearLayout root = new LinearLayout(activity);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(colors.bg);
-        root.addView(buildHeader(), matchWrap());
+        LinearLayout upper = new LinearLayout(activity);
+        upper.setOrientation(LinearLayout.VERTICAL);
+        upper.addView(buildHeader(), matchWrap());
         if (onSearch != null) {
             buildSearchBar();
-            root.addView(searchBar, matchWrap());
+            upper.addView(searchBar, matchWrap());
         } else {
             buildTestBar();
-            root.addView(testBar, matchWrap());
+            upper.addView(testBar, matchWrap());
         }
-        root.addView(content, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        upper.addView(content, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        overlayHost = new android.widget.FrameLayout(activity);
+        overlayHost.addView(upper, new android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+        root.addView(overlayHost, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        if (bottom != null) root.addView(bottom, matchWrap());
         Ui.padForSystemBars(root, !keyboardOverlays);
         return root;
     }

@@ -492,6 +492,10 @@ public final class Prefs {
 
     private static String[] keys(String... k) { return k; }
 
+    /** 키 종류별 진동의 키들 (Feedback.CH_DELETE부터의 차례).
+     * 아래 static 블록(MENU_PREFIXES)이 vibrateKeyPrefixes로 읽으므로 그보다 앞에 선언해야 한다 (뒤에 두면 null). */
+    public static final String[] VIBRATE_KEYS = {VIBRATE_DELETE, VIBRATE_SPACE, VIBRATE_ENTER, VIBRATE_SHIFT,
+            VIBRATE_SYMBOL, VIBRATE_LANGUAGE, VIBRATE_TOOLBAR};
     /** 메뉴(SettingsActivity의 하위 메뉴 id)별로 그 메뉴가 저장하는 값의 키. 키보드 사용자화의 값은 EDITOR_SCOPES에 따로 있다. */
     private static final java.util.Map<String, String[]> MENU_KEYS = new java.util.HashMap<>();
     /** 메뉴별로 키 앞부분이 같은 값들 (배열·방향·칸마다 따로 저장하는 값). */
@@ -734,9 +738,6 @@ public final class Prefs {
     public int vibrateAmp() { return sp.getInt(VIBRATE_AMP, 100); }
     public int vibratePrimitive() { return sp.getInt(VIBRATE_PRIMITIVE, 1); }
     public boolean vibratePerKey() { return sp.getBoolean(VIBRATE_PER_KEY, false); }
-    /** 키 종류별 진동의 키들 (Feedback.CH_DELETE부터의 차례). */
-    public static final String[] VIBRATE_KEYS = {VIBRATE_DELETE, VIBRATE_SPACE, VIBRATE_ENTER, VIBRATE_SHIFT,
-            VIBRATE_SYMBOL, VIBRATE_LANGUAGE, VIBRATE_TOOLBAR};
 
     private static String[] vibrateKeyPrefixes() {
         String[] out = new String[VIBRATE_KEYS.length];

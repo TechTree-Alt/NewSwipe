@@ -26,6 +26,9 @@ public final class ExpressiveButton extends TextView {
     private float press;   // 0 = 놓음, 1 = 누름 (스프링으로 0 아래로 조금 내려갈 수 있다)
     private ValueAnimator pressAnim;
     private boolean down;
+    /** 글자 앞에 그리는 아이콘 (Icons.*, 0이면 없음)과 그 크기·글자와의 간격. */
+    private int icon;
+    private float iconSize, iconGap;
 
     /**
      * @param fill 버튼 면 색 (강조색)
@@ -46,17 +49,65 @@ public final class ExpressiveButton extends TextView {
         setPadding(Ui.dp(c, 36), Ui.dp(c, 18), Ui.dp(c, 36), Ui.dp(c, 18));
         setClickable(true);
         setFocusable(true);
+        // 그림자(elevation)를 줄 때 그림자도 눌린 모양을 따라가게 한다.
+        setOutlineProvider(new android.view.ViewOutlineProvider() {
+            @Override
+            public void getOutline(android.view.View view, android.graphics.Outline outline) {
+                float p = Math.max(-0.3f, Math.min(1f, press));
+                float w = view.getWidth(), h = view.getHeight();
+                float inset = Math.min(w, h) * 0.04f * p;
+                outline.setRoundRect(Math.round(inset), Math.round(inset), Math.round(w - inset), Math.round(h - inset),
+                        radius(h, p));
+            }
+        });
+    }
+
+    /**
+     * 작은 알약 (미리보기 열기·닫기처럼 화면 위에 뜨는 보조 버튼): 높이 height에 맞게 글자를 줄이고 최소 크기를 없앤다.
+     * 누를 때의 모양·진동은 그대로다.
+     */
+    public ExpressiveButton compact(float textSp, int padStartPx, int padEndPx) {
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, textSp);
+        setMinHeight(0);
+        setMinWidth(0);
+        setMinimumHeight(0);
+        setMinimumWidth(0);
+        // setSingleLine은 가로 스크롤을 켜서, 가운데 정렬이면 TextView가 캔버스를 멀리 스크롤해 아래 onDraw에서
+        // 직접 그리는 면·아이콘이 화면 밖으로 밀린다. 줄 수만 하나로 막는다.
+        setHorizontallyScrolling(false);
+        setMaxLines(1);
+        setPadding(padStartPx, 0, padEndPx, 0);
+        return this;
+    }
+
+    /** 글자 앞에 아이콘을 둔다 (0이면 뺀다). 아이콘 자리만큼 왼쪽 안쪽 여백이 늘어난다. */
+    public ExpressiveButton setLeadingIcon(int icon) {
+        float size = Ui.dp(getContext(), 18), gap = Ui.dp(getContext(), 6);
+        int was = this.icon == 0 ? 0 : Math.round(iconSize + iconGap);
+        int now = icon == 0 ? 0 : Math.round(size + gap);
+        this.icon = icon;
+        this.iconSize = size;
+        this.iconGap = gap;
+        if (was != now) setPadding(getPaddingLeft() - was + now, getPaddingTop(), getPaddingRight(), getPaddingBottom());
+        invalidate();
+        return this;
+    }
+
+    private float radius(float h, float p) {
+        float full = h / 2f;
+        return Math.max(0f, Math.min(full, full + (pressedRadius - full) * p));
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
+        // 캔버스는 TextView의 스크롤만큼 옮겨져 있다. 면·아이콘은 그만큼 더해 뷰 자리에 그린다 (글자는 super.onDraw가 맞춰 그린다).
+        float sx = getScrollX(), sy = getScrollY();
         float w = getWidth(), h = getHeight();
-        float full = h / 2f;
         float p = Math.max(-0.3f, Math.min(1f, press));
-        float radius = Math.max(0f, Math.min(full, full + (pressedRadius - full) * p));
+        float radius = radius(h, p);
         // 누르면 모양이 가운데로 살짝 줄어든다 (놓을 때는 스프링으로 원래 크기를 조금 넘었다 돌아온다).
         float inset = Math.min(w, h) * 0.04f * p;
-        rect.set(inset, inset, w - inset, h - inset);
+        rect.set(sx + inset, sy + inset, sx + w - inset, sy + h - inset);
         paint.setColor(fill);
         canvas.drawRoundRect(rect, radius, radius, paint);
         if (p > 0.01f) {   // 누른 느낌: 면 위에 글자색을 옅게 얹는다
@@ -65,7 +116,13 @@ public final class ExpressiveButton extends TextView {
         }
         canvas.save();
         float textScale = 1f - 0.04f * Math.max(0f, p);
-        canvas.scale(textScale, textScale, w / 2f, h / 2f);
+        canvas.scale(textScale, textScale, sx + w / 2f, sy + h / 2f);
+        if (icon != 0) {   // 글자 바로 앞 (왼쪽 안쪽 여백의 끝)
+            paint.setColor(ink);
+            float cx = sx + getPaddingLeft() - iconGap - iconSize / 2f;
+            com.alternative_studios.newswipe.keyboard.Icons.draw(canvas, icon, cx, sy + h / 2f, iconSize, paint, 2.4f);
+            paint.setStyle(Paint.Style.FILL);
+        }
         super.onDraw(canvas);
         canvas.restore();
     }
@@ -78,6 +135,7 @@ public final class ExpressiveButton extends TextView {
         pressAnim.addUpdateListener(a -> {
             press = (float) a.getAnimatedValue();
             invalidate();
+            invalidateOutline();
         });
         pressAnim.start();
     }
