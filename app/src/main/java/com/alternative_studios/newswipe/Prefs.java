@@ -27,9 +27,13 @@ public final class Prefs {
     public static final String VIBRATE_SYMBOL = "vibrate_symbol";     // 기호 키 (?123·가/ABC·기호 1/2쪽)
     public static final String VIBRATE_LANGUAGE = "vibrate_language"; // 언어 전환 키 (지구본·이모지 열기)
     public static final String VIBRATE_TOOLBAR = "vibrate_toolbar";   // 도구 막대 버튼
-    public static final String VIBRATE_GESTURE_ON = "vibrate_gesture_on";       // 밀기·길게 누르기 진동 (기본 켬)
-    public static final String VIBRATE_GESTURE_LEVEL = "vibrate_gesture_level"; // 1~3, 위와 같은 단계
-    public static final String VIBRATE_REPEAT = "vibrate_repeat";     // 반복 입력·연속 지우기 진동: 0 없음, 1~3 위와 같은 단계 (기본 1)
+    public static final String VIBRATE_GESTURE_ON = "vibrate_gesture_on";       // 밀기·길게 누르기 진동 (기본 켬, 끄면 '진동 없음')
+    public static final String VIBRATE_GESTURE_LEVEL = "vibrate_gesture_level"; // 예전 1~3 단계: 진동 방식을 정하지 않았을 때만 읽는다
+    public static final String VIBRATE_GESTURE_STYLE = "vibrate_gesture_style"; // 0 틱, 1 클릭, 4 시스템 기본
+    public static final String VIBRATE_GESTURE_AMP = "vibrate_gesture_amp";     // 틱·클릭의 세기 %, 10~100
+    public static final String VIBRATE_REPEAT_ON = "vibrate_repeat_on";         // 반복 입력·연속 지우기 진동 (기본 켬, 끄면 '진동 없음')
+    public static final String VIBRATE_REPEAT_STYLE = "vibrate_repeat_style";   // 0 틱(기본), 1 클릭, 4 시스템 기본
+    public static final String VIBRATE_REPEAT_AMP = "vibrate_repeat_amp";       // 틱·클릭의 세기 %, 10~100
     public static final String SOUND = "sound";
     public static final String SOUND_VOLUME = "sound_volume";         // %, 0~100
     public static final String KEY_PREVIEW = "key_preview";
@@ -319,8 +323,8 @@ public final class Prefs {
      * 키 진동을 꺼 둔 사용자는 둘 다 꺼 둔 것으로 한 번 옮긴다 (반복 입력 진동 값이 아직 없을 때만).
      */
     private void migrateVibrateOff() {
-        if (sp.contains(VIBRATE_REPEAT) || sp.getBoolean(VIBRATE, true)) return;
-        sp.edit().putInt(VIBRATE_REPEAT, 0).putBoolean(VIBRATE_GESTURE_ON, false).apply();
+        if (sp.contains(VIBRATE_REPEAT_ON) || sp.getBoolean(VIBRATE, true)) return;
+        sp.edit().putBoolean(VIBRATE_REPEAT_ON, false).putBoolean(VIBRATE_GESTURE_ON, false).apply();
     }
 
     /** 예전 실험실 '두벌식 자판' 스위치를 한글 배열 값으로 옮긴다: 켜 두었으면 배열을 두벌식으로 하고, 스위치는 지운다. */
@@ -491,7 +495,8 @@ public final class Prefs {
         MENU_KEYS.put("theme", keys(THEME_MODE, ACCENT_MODE, ACCENT_COLOR, GRID_COLORS, NEUMORPHISM));
         MENU_KEYS.put("feedback", keys(VIBRATE, VIBRATE_MS, VIBRATE_STYLE, VIBRATE_AMP, VIBRATE_PER_KEY,
                 VIBRATE_DELETE, VIBRATE_SPACE, VIBRATE_ENTER, VIBRATE_SHIFT, VIBRATE_SYMBOL, VIBRATE_LANGUAGE, VIBRATE_TOOLBAR,
-                VIBRATE_GESTURE_ON, VIBRATE_GESTURE_LEVEL, VIBRATE_REPEAT, SOUND, SOUND_VOLUME));
+                VIBRATE_GESTURE_ON, VIBRATE_GESTURE_LEVEL, VIBRATE_GESTURE_STYLE, VIBRATE_GESTURE_AMP,
+                VIBRATE_REPEAT_ON, VIBRATE_REPEAT_STYLE, VIBRATE_REPEAT_AMP, SOUND, SOUND_VOLUME));
         // 클립보드 및 이모지: 메인 화면의 따로 된 메뉴.
         MENU_KEYS.put("clipemoji", keys(CLIPBOARD_HISTORY, CLIPBOARD_IMAGES, CLIPBOARD_SENSITIVE, CLIPBOARD_CLOSE_ON_USE, CLIPBOARD_SPLIT_PINNED, CLIPBOARD_CHIP,
                 CLIPBOARD_MAX_ITEMS, CLIPBOARD_MAX_IMAGES, CLIPBOARD_EXPIRE_HOURS, CLIPBOARD_MAX_PINNED,
@@ -731,7 +736,14 @@ public final class Prefs {
     public int vibrateToolbar() { return sp.getInt(VIBRATE_TOOLBAR, 2); }
     public boolean vibrateGestureOn() { return sp.getBoolean(VIBRATE_GESTURE_ON, true); }
     public int vibrateGestureLevel() { return sp.getInt(VIBRATE_GESTURE_LEVEL, 2); }
-    public int vibrateRepeat() { return sp.getInt(VIBRATE_REPEAT, 1); }
+    /** 밀기·길게 누르기 진동 방식. 아직 고르지 않았으면 예전 단계에서 옮긴다 (약하게 = 틱, 기본·강하게 = 클릭). */
+    public int vibrateGestureStyle() {
+        return sp.getInt(VIBRATE_GESTURE_STYLE, sp.getInt(VIBRATE_GESTURE_LEVEL, 2) == 1 ? 0 : 1);
+    }
+    public int vibrateGestureAmp() { return sp.getInt(VIBRATE_GESTURE_AMP, 100); }
+    public boolean vibrateRepeatOn() { return sp.getBoolean(VIBRATE_REPEAT_ON, true); }
+    public int vibrateRepeatStyle() { return sp.getInt(VIBRATE_REPEAT_STYLE, 0); }
+    public int vibrateRepeatAmp() { return sp.getInt(VIBRATE_REPEAT_AMP, 100); }
     public boolean sound() { return sp.getBoolean(SOUND, false); }
     public int soundVolume() { return sp.getInt(SOUND_VOLUME, 50); }
     public boolean keyPreview() { return sp.getBoolean(KEY_PREVIEW, true); }
