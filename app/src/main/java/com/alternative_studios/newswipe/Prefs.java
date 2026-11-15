@@ -166,7 +166,7 @@ public final class Prefs {
     /** 외장 키보드를 연결해 화면 자판이 감춰질 때도 도구 막대만 보이기 (기본 꺼짐). */
     public static final String HW_TOOLBAR = "hw_toolbar";
     /**
-     * 키보드 모습의 묶음(프로필). 세로 모드는 기본 값을, 가로 모드는 '가로 모드 키보드 사용자화'의 값을,
+     * 키보드 모습의 묶음(프로필). 세로 모드는 기본 값을, 가로 모드는 '키보드 사용자화'를 가로로 들고 정한 값을,
      * 폴더블 내부 화면 세로·가로는 '폴더블 내부 화면 키보드 사용자화'의 값을 쓴다.
      */
     public static final String PROFILE_PORTRAIT = "", PROFILE_LANDSCAPE = "land",
@@ -599,7 +599,8 @@ public final class Prefs {
                     SPACE_CURSOR_SPEED_V, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, DELETE_REPEAT_RATE, DELETE_WORD_REPEAT_RATE,
                     LANGUAGE_ORDER), keys("popup_", "popupkept_", "repeat_", "swipe_custom_", "swipe_final_", "swipe_vowel_",
                     "swipe_lp_", "swipe_fn_", "swipe_fk_", "swipe_toolbar_")),
-            // 가로 모드 키보드 사용자화 화면의 값과 자·모음 균형 배열의 키 폭·위치: 그 화면에 따로 되돌리기가 있어 목록에는 보이지 않지만,
+            // 가로 모드·폴더블 내부 화면이 따로 정하는 값과 자·모음 균형 배열의 키 폭·위치: 목록의 되돌리기에는 보이지 않지만
+            // (가로 키보드 사용자화의 되돌리기는 resetEditorScopeInView가 위 범위를 가로 모드의 키로 바꿔 지운다),
             // 키보드 사용자화를 연 채 바꾸면 되돌리기 기록에는 남는다.
             new EditorScope("landscape", null, keys(LANDSCAPE_SPLIT, LANDSCAPE_SIZE, KEYBOARD_HEIGHT_LAND, KEY_TEXT_SIZE_LAND,
                     SPLIT_GAP_CURSOR, SPLIT_GAP_SPEED, SPLIT_SPACE_JOIN, SPLIT_FN_WIDTH, SPLIT_REACH_COLUMN,
@@ -645,6 +646,64 @@ public final class Prefs {
         // 자·모음 균형 배열의 키 폭·위치는 배열마다 따로 저장되므로 지금 배열의 것을 지운다 (배열 값을 지우기 전에).
         if (SCOPE_LETTERS_KO.equals(id)) resetBalancedKeys();
         removeKeys(sc.keys, sc.prefixes);
+    }
+
+    /**
+     * 이 보기(세로 모드 또는 가로 모드)의 키보드 사용자화에서 그 범위를 기본값으로 되돌린다. 세로 모드는 {@link #resetEditorScope}와 같다.
+     * 가로 모드는 세로·가로가 함께 쓰는 값은 그대로 지우고, 세로·가로가 따로 정하는 값은 세로 모드의 값 대신 이 보기(가로 모드)의 값을 지운다.
+     */
+    public void resetEditorScopeInView(String id) {
+        if (portrait()) {
+            resetEditorScope(id);
+            return;
+        }
+        EditorScope sc = scope(id);
+        // 세로 모드 키 → 이 보기의 키 (세로·가로가 따로 정하는 값).
+        java.util.Map<String, String> own = new java.util.HashMap<>();
+        own.put(PAD_LEFT, padKey(SIDE_LEFT));
+        own.put(PAD_RIGHT, padKey(SIDE_RIGHT));
+        own.put(PAD_TOP, padKey(SIDE_TOP));
+        own.put(PAD_BOTTOM, padKey(SIDE_BOTTOM));
+        own.put(KEY_TEXT_SIZE, textSizeKey());
+        own.put(KEYBOARD_HEIGHT, heightKey());
+        own.put(TOOLBAR_HEIGHT, toolbarHeightKey());
+        own.put(FN_ROW_HEIGHT, fnRowHeightKey());
+        own.put(PORTRAIT_SPLIT, splitKey());
+        own.put(PORTRAIT_PREFIX + TOOLBAR_FOLLOW_BLOCKS, toolbarFollowKey());
+        own.put(PORTRAIT_PREFIX + FN_FOLLOW_BLOCKS, fnFollowKey());
+        own.put(PORTRAIT_PREFIX + SPLIT_SPACE_JOIN, splitSpaceJoinKey());
+        own.put(PORTRAIT_PREFIX + SPLIT_FN_WIDTH, splitFnWidthKey());
+        own.put(PORTRAIT_PREFIX + SPLIT_GAP_CURSOR, splitGapCursorKey());
+        own.put(PORTRAIT_PREFIX + SPLIT_GAP_SPEED, splitGapSpeedKey());
+        java.util.Map<String, String> ownPrefix = new java.util.HashMap<>();
+        ownPrefix.put(AREA_PAD_PREFIX + PAD_AREAS[0] + "_", profilePadKey("a0"));
+        ownPrefix.put(AREA_PAD_PREFIX + PAD_AREAS[3] + "_", profilePadKey("a3"));
+        ownPrefix.put("swipe_gap_portrait_", "swipe_gap_" + com.alternative_studios.newswipe.keyboard.GapSwipes.SLOTS[gapSlot()] + "_");
+        java.util.List<String> exact = new java.util.ArrayList<>();
+        java.util.List<String> prefixes = new java.util.ArrayList<>();
+        for (String k : sc.keys) {
+            exact.add(own.containsKey(k) ? own.get(k) : k);
+            if (PORTRAIT_SPLIT.equals(k)) prefixes.add(splitKey() + "_");   // 예전에 배열마다 저장하던 분리 키보드 값도 함께
+        }
+        boolean splitBlocks = false;
+        for (String p : sc.prefixes) {
+            if ((PORTRAIT_PREFIX + "balanced_").equals(p)) {
+                splitBlocks = true;   // 세로 모드 분리 키보드의 묶음 폭·위치 → 이 보기의 분리 키보드 묶음 폭·위치 (아래)
+                continue;
+            }
+            prefixes.add(ownPrefix.containsKey(p) ? ownPrefix.get(p) : p);
+        }
+        if (splitBlocks) {
+            for (String layout : new String[]{KOREAN_LAYOUT_DUBEOLSIK, KOREAN_LAYOUT_8, KOREAN_LAYOUT_D7}) {
+                for (String base : new String[]{BALANCED_VOWEL_WIDTH, BALANCED_VOWEL_EDGE, BALANCED_VOWEL_POS,
+                        BALANCED_CONSONANT_WIDTH, BALANCED_CONSONANT_EDGE, BALANCED_CONSONANT_POS, BALANCED_BOUNDARY}) {
+                    exact.add(balancedKeyFor(base, profile, true, layout));
+                }
+            }
+        }
+        // 자·모음 균형 배열의 키 폭·위치는 배열마다 따로 저장되므로 지금 배열의 것을 지운다 (배열 값을 지우기 전에).
+        if (SCOPE_LETTERS_KO.equals(id)) resetBalancedKeys();
+        removeKeys(exact.toArray(new String[0]), prefixes.toArray(new String[0]));
     }
 
     /** 이 메뉴가 저장한 모든 값을 지워 기본값으로 되돌린다 (학습한 단어·클립보드 기록 같은 사용 기록과 한 손 모드의 켜짐 상태는 그대로). */

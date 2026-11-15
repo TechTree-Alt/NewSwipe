@@ -219,9 +219,9 @@ final class KeyboardPreview extends FrameLayout {
             case B_LEFT_MOVE: return prefs.balancedConsonantPosKey();
             case B_RIGHT_MOVE: return prefs.balancedVowelPosKey();
             case HEIGHT:
-            case HEIGHT_RIGHT: return profileEdit != null ? prefs.heightKey() : h.key;
-            case FN_ROW: return profileEdit != null ? prefs.fnRowHeightKey() : h.key;
-            case TOOLBAR: return profileEdit != null ? prefs.toolbarHeightKey() : h.key;
+            case HEIGHT_RIGHT: return ownSizes() ? prefs.heightKey() : h.key;
+            case FN_ROW: return ownSizes() ? prefs.fnRowHeightKey() : h.key;
+            case TOOLBAR: return ownSizes() ? prefs.toolbarHeightKey() : h.key;
             // 키보드 여백: 가로 모드·폴더블 내부 화면은 그 프로필의 키 (세로 모드는 예전 키 그대로).
             case PAD_LEFT: return prefs.padKey(Prefs.SIDE_LEFT);
             case PAD_RIGHT: return prefs.padKey(Prefs.SIDE_RIGHT);
@@ -229,6 +229,14 @@ final class KeyboardPreview extends FrameLayout {
             case PAD_BOTTOM: return prefs.padKey(Prefs.SIDE_BOTTOM);
             default: return h.key;
         }
+    }
+
+    /**
+     * 높이 손잡이가 세로 모드와 따로 정하는 값(그 프로필의 키)을 바꾸는지: 가로 모드·폴더블 내부 화면 키보드 사용자화와,
+     * 기기를 가로로 들었을 때의 키보드 사용자화(가로 모드 보기를 받은 미리보기).
+     */
+    private boolean ownSizes() {
+        return profileEdit != null || prefs.profileSize();
     }
 
     /** 끄는 동안 보이는 이름. 두 묶음의 경계는 그 묶음의 폭으로 보인다. */
@@ -1426,7 +1434,7 @@ final class KeyboardPreview extends FrameLayout {
             case HEIGHT_RIGHT:
             case HEIGHT:
                 v = clamp(snap5((dragStart - dy) / (Ui.dp(c, 54) * rowUnits()) * 100f),
-                        profileEdit != null ? Prefs.PROFILE_HEIGHT_MIN : 70, 140);
+                        ownSizes() ? Prefs.PROFILE_HEIGHT_MIN : 70, 140);
                 break;
             case PAD_LEFT: v = clamp(Math.round(dragStart + dx / density), 0, 24); break;
             case PAD_RIGHT: v = clamp(Math.round(dragStart - dx / density), 0, 24); break;

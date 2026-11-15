@@ -738,7 +738,7 @@ final class KeyEditPanel {
         rest.addView(toolButtons);
         rest.addView(toggle(L.t("자판 아래에 두기", "Place below keyboard"), L.t("도구 막대를 자판 위가 아니라 아래에 놓습니다. ", "Puts the toolbar below the keyboard instead of above it. "), prefs.toolbarBottom(),
                 on -> put(Prefs.TOOLBAR_BOTTOM, on)));
-        rest.addView(slider(L.t("도구 막대 높이", "Toolbar height"), Prefs.TOOLBAR_HEIGHT, prefs.toolbarHeight(), 70, 150, 5, "%"));
+        rest.addView(slider(L.t("도구 막대 높이", "Toolbar height"), prefs.toolbarHeightKey(), prefs.toolbarHeight(), 70, 150, 5, "%"));
         rest.addView(slider(L.t("도구 버튼 크기", "Toolbar button size"), Prefs.TOOL_BUTTON_SIZE, prefs.toolButtonSize(), 70, 150, 1, "%"));
         rest.addView(note(L.t("도구 버튼의 아이콘은 막대보다 커지지 않습니다.", "Toolbar button icons never grow larger than the bar.")));
         boolean shown = prefs.toolbar();
