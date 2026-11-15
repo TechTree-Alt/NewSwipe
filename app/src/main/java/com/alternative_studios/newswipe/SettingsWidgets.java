@@ -157,6 +157,12 @@ final class SettingsWidgets {
         return row;
     }
 
+    /** toggle()로 만든 줄의 설명 글. 설명 없이 만들었으면 null. */
+    static TextView descOf(View toggleRow) {
+        ViewGroup texts = (ViewGroup) ((ViewGroup) toggleRow).getChildAt(0);
+        return texts.getChildCount() > 1 ? (TextView) texts.getChildAt(1) : null;
+    }
+
     /** toggle()로 만든 줄의 스위치 (줄의 맨 오른쪽). */
     static ExpressiveSwitch switchOf(View toggleRow) {
         ViewGroup row = (ViewGroup) toggleRow;

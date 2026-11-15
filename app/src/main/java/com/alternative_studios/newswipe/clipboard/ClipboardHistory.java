@@ -14,20 +14,27 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * 클립보드 기록. 최근 30개(그중 이미지는 5개)를 앱 전용 저장소에 보관하고,
- * 고정하지 않은 항목은 24시간이 지나면 지운다.
+ * 클립보드 기록. 최근 항목(기본 30개, 그중 이미지는 기본 5개)을 앱 전용 저장소에 보관하고,
+ * 고정하지 않은 항목은 정한 시간(기본 24시간)이 지나면 지운다. 개수·시간은 {@link #setLimits}로 바꾼다.
  * 이미지는 원본 파일과 작은 미리보기 파일을 {@link #IMAGE_DIR}에 두고, 항목이 사라지면 파일도 함께 지운다.
  * 안드로이드 의존성이 없어 단위 테스트할 수 있다 (파일 복사와 미리보기 만들기는 {@link ClipImages}).
  */
 public final class ClipboardHistory {
+    /** 보관할 항목 수의 기본값. 설정에서 ITEMS_LIMIT까지 늘릴 수 있다. */
     public static final int MAX_ITEMS = 30;
-    public static final long EXPIRE_MS = 24L * 60 * 60 * 1000;
+    public static final int ITEMS_LIMIT = 100;
+    /** 고정하지 않은 항목을 지우기까지의 시간 기본값(시간 단위). 설정에서 EXPIRE_HOURS_LIMIT까지 늘릴 수 있다. */
+    public static final int EXPIRE_HOURS = 24;
+    public static final int EXPIRE_HOURS_LIMIT = 120;
+    public static final long EXPIRE_MS = EXPIRE_HOURS * 60L * 60 * 1000;
     /** 너무 긴 텍스트는 잘라서 저장한다. */
     public static final int MAX_LENGTH = 20_000;
-    /** 고정할 수 있는 항목 수. 이미 이보다 많이 고정돼 있던 기록은 그대로 두고, 새로 고정하는 것만 막는다. */
+    /** 고정할 수 있는 항목 수의 기본값. 이미 이보다 많이 고정돼 있던 기록은 그대로 두고, 새로 고정하는 것만 막는다. */
     public static final int MAX_PINNED = 10;
-    /** 고정하지 않은 이미지는 최근 이만큼만 둔다 (MAX_ITEMS 안에 함께 센다). */
+    public static final int PINNED_LIMIT = 30;
+    /** 고정하지 않은 이미지는 최근 이만큼만 둔다 (항목 수 안에 함께 센다). 기본값. */
     public static final int MAX_IMAGES = 5;
+    public static final int IMAGES_LIMIT = 30;
     /** 이보다 큰 이미지는 저장하지 않는다. */
     public static final long MAX_IMAGE_BYTES = 30L * 1024 * 1024;
     /** 이미지 파일을 두는 폴더 (기록 파일과 같은 폴더 아래). */
@@ -57,6 +64,12 @@ public final class ClipboardHistory {
             return mime != null;
         }
 
+        /** 기록에 넣지 않고 붙여 넣기만 할 이미지 항목 (방금 복사한 이미지 칩). 이름이나 형식이 바르지 않으면 null. */
+        public static Item image(String id, String mime, long time) {
+            String m = cleanMime(mime);
+            return isImageId(id) && m != null ? new Item(id, m, time, false) : null;
+        }
+
         /** 화면에서 항목을 구별하는 값 (텍스트와 이미지 이름이 겹치지 않게). */
         public String key() {
             return isImage() ? "\0img:" + text : text;
@@ -68,10 +81,30 @@ public final class ClipboardHistory {
     private final List<Item> items = new ArrayList<>();   // 최신 항목이 앞
     private boolean loaded;
     private long knownStamp;
+    private int maxItems = MAX_ITEMS, maxImages = MAX_IMAGES, maxPinned = MAX_PINNED;
+    private long expireMs = EXPIRE_MS;
 
     public ClipboardHistory(File file) {
         this.file = file;
         this.imageDir = file == null ? null : new File(file.getAbsoluteFile().getParentFile(), IMAGE_DIR);
+    }
+
+    /**
+     * 보관 개수와 지우는 시간을 정한다 (범위를 벗어난 값은 가장 가까운 값으로). 줄인 한도는 다음에 기록을 읽거나 쓸 때 반영된다.
+     */
+    public synchronized void setLimits(int items, int images, int expireHours, int pinned) {
+        maxItems = clamp(items, 1, ITEMS_LIMIT);
+        maxImages = clamp(images, 1, IMAGES_LIMIT);
+        expireMs = clamp(expireHours, 1, EXPIRE_HOURS_LIMIT) * 60L * 60 * 1000;
+        maxPinned = clamp(pinned, 1, PINNED_LIMIT);
+    }
+
+    public synchronized int maxPinned() {
+        return maxPinned;
+    }
+
+    private static int clamp(int v, int min, int max) {
+        return Math.max(min, Math.min(max, v));
     }
 
     /** filesDir 아래의 이미지 폴더 (이미지를 내보내는 ContentProvider용). */
@@ -198,13 +231,13 @@ public final class ClipboardHistory {
     /**
      * 고정하거나 고정을 푼다. 화면이 들고 있던 항목은 그사이 파일을 다시 읽었으면 다른 객체일 수 있어
      * 텍스트(이미지는 이름)로 찾는다 (같은 텍스트는 add에서 하나로 합치므로 텍스트가 곧 항목이다).
-     * 이미 MAX_PINNED개를 고정했으면 고정하지 않고 false를 돌려준다.
+     * 이미 고정 한도만큼 고정했으면 고정하지 않고 false를 돌려준다.
      */
     public synchronized boolean setPinned(Item item, boolean pinned) {
         load();
         Item it = find(item);
         if (it == null || it.pinned == pinned) return true;
-        if (pinned && pinnedCount() >= MAX_PINNED) return false;
+        if (pinned && pinnedCount() >= maxPinned) return false;
         it.pinned = pinned;
         save();
         return true;
@@ -313,7 +346,7 @@ public final class ClipboardHistory {
 
     /**
      * 오래된 항목, 개수 초과분, 원본 파일이 사라진 이미지를 지운다. 바뀌었으면 true.
-     * 이미지는 고정하지 않은 것 중 최근 MAX_IMAGES개만 남기고, MAX_ITEMS에도 함께 센다.
+     * 이미지는 고정하지 않은 것 중 최근 maxImages개만 남기고, maxItems에도 함께 센다.
      */
     private boolean trim(long now) {
         boolean changed = false;
@@ -328,7 +361,7 @@ public final class ClipboardHistory {
                 continue;
             }
             if (it.pinned) continue;
-            if (now - it.time > EXPIRE_MS || unpinned >= MAX_ITEMS || it.isImage() && images >= MAX_IMAGES) {
+            if (now - it.time > expireMs || unpinned >= maxItems || it.isImage() && images >= maxImages) {
                 items.remove(i--);
                 deleteFiles(it);
                 changed = true;

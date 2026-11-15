@@ -488,6 +488,8 @@ public final class SettingsActivity extends Activity {
             {KEYBOARD, L.t("도구 버튼 크기", "Toolbar button size"), L.t("툴바 아이콘 크기", "toolbar icon size")},
             {"clipemoji", L.t("이미지 저장", "Save images"), L.t("클립보드 사진", "clipboard photos pictures")},
             {"clipemoji", L.t("클립보드 기록 저장", "Save clipboard history"), L.t("복사 기록 히스토리", "copy history")},
+            {"clipemoji", L.t("클립보드 고급 설정", "Advanced clipboard settings"), L.t("클립보드 항목 최대 개수 이미지 최대 개수 삭제 시간 고정 항목 개수", "clipboard maximum items images delete time pinned count limit")},
+            {"clipemoji", L.t("방금 복사한 내용 붙여넣기", "Paste recently copied content"), L.t("클립보드 칩 도구 막대 이미지", "clipboard chip toolbar image")},
             {"clipemoji", L.t("고정 항목 분리", "Separate pinned items"), L.t("클립보드 고정 핀 페이지 따로", "clipboard pinned pin page separate")},
             {"clipemoji", L.t("선택하면 편집 버튼 보이기", "Show edit buttons on selection"), L.t("잘라내기 복사 붙여넣기 전체 선택 편집 칩", "cut copy paste select all edit chips")},
             {"clipemoji", L.t("클립보드 기록 모두 지우기", "Delete all clipboard history"), L.t("복사 기록 삭제", "copy history delete clear")},
@@ -4025,8 +4027,7 @@ public final class SettingsActivity extends Activity {
 
     private void buildTools() {
         LinearLayout clip = section(L.t("클립보드", "Clipboard"));
-        View clipImagesToggle = toggle(L.t("이미지 저장", "Save images"), L.t("복사한 이미지도 클립보드에 저장합니다 (최대 " + ClipboardHistory.MAX_IMAGES + "개).",
-                        "Also saves copied images to the clipboard (up to " + ClipboardHistory.MAX_IMAGES + ").") ,
+        View clipImagesToggle = toggle(L.t("이미지 저장", "Save images"), clipImagesDesc(),
                 prefs.clipboardImages(), this::onClipImagesChanged);
         clipImagesSwitch = switchOf(clipImagesToggle);
         View clipSensitiveToggle = toggle(L.t("민감한 정보도 저장", "Save sensitive content"),
@@ -4038,23 +4039,52 @@ public final class SettingsActivity extends Activity {
         View clipSplitToggle = toggle(L.t("고정 항목 분리", "Separate pinned items"),
                 L.t("클립보드를 두 페이지로 나눠 왼쪽에 고정 항목을 따로 모아 둡니다.", "Splits the clipboard into two pages, with pinned items on the left."),
                 Prefs.CLIPBOARD_SPLIT_PINNED, prefs.clipboardSplitPinned());
-        View clipImages = subGroup(clipImagesToggle, clipSensitiveToggle, clipCloseToggle, clipSplitToggle);
-        clip.addView(toggle(L.t("클립보드 기록 저장", "Save clipboard history"), L.t("복사·잘라낸 내용을 최근 " + ClipboardHistory.MAX_ITEMS
-                        + "개까지 모아 둡니다. 고정하지 않은 항목은 24시간 뒤 지워집니다. ",
-                        "Keeps the last " + ClipboardHistory.MAX_ITEMS + " items you copied or cut. Unpinned items are deleted after 24 hours. "),
-                Prefs.CLIPBOARD_HISTORY, prefs.clipboardHistory(), clipImages));
+        // 클립보드 고급 설정: 보관 개수·지우는 시간·고정 개수. 값을 바꾸면 위 스위치들의 설명도 바로 바뀐다.
+        View[] historyToggle = new View[1];
+        Runnable refreshDescs = () -> {
+            TextView d = SettingsWidgets.descOf(clipImagesToggle);
+            if (d != null) d.setText(clipImagesDesc());
+            d = historyToggle[0] != null ? SettingsWidgets.descOf(historyToggle[0]) : null;
+            if (d != null) d.setText(clipHistoryDesc());
+        };
+        String countUnit = L.t("개", "");
+        LinearLayout advBox = new LinearLayout(this);
+        advBox.setOrientation(LinearLayout.VERTICAL);
+        advBox.addView(slider(L.t("항목 최대 개수", "Maximum items"), Prefs.CLIPBOARD_MAX_ITEMS, prefs.clipboardMaxItems(),
+                1, ClipboardHistory.ITEMS_LIMIT, 1, countUnit, refreshDescs));
+        advBox.addView(slider(L.t("이미지 최대 개수", "Maximum images"), Prefs.CLIPBOARD_MAX_IMAGES, prefs.clipboardMaxImages(),
+                1, ClipboardHistory.IMAGES_LIMIT, 1, countUnit, refreshDescs));
+        advBox.addView(slider(L.t("삭제 시간", "Delete after"), Prefs.CLIPBOARD_EXPIRE_HOURS, prefs.clipboardExpireHours(),
+                1, ClipboardHistory.EXPIRE_HOURS_LIMIT, 1, L.t("시간", " h"), refreshDescs));
+        advBox.addView(slider(L.t("고정 항목 개수", "Maximum pinned items"), Prefs.CLIPBOARD_MAX_PINNED, prefs.clipboardMaxPinned(),
+                1, ClipboardHistory.PINNED_LIMIT, 1, countUnit, refreshDescs));
+        advBox.addView(note(L.t("이미지는 항목 최대 개수 안에 함께 셉니다. 고정한 항목은 삭제 시간이 지나도 지워지지 않습니다. 개수를 줄이면 넘치는 오래된 항목은 지워집니다.",
+                "Images count toward the maximum items. Pinned items are not deleted after the time limit. Lowering a limit deletes the oldest items over it.")));
+        View advSub = subGroup(advBox);
+        advSub.setVisibility(View.GONE);
+        // 누르면 그 자리에 펼치고 접는다 (화살표가 아래를 가리키면 펼친 상태).
+        Chevron advArrow = new Chevron(this, accentColor);
+        View advToggle = button(L.t("클립보드 고급 설정", "Advanced clipboard settings"), advArrow, v -> {
+            boolean open = advSub.getVisibility() != View.VISIBLE;
+            Ui.setVisibleAnimated(advSub, open);
+            advArrow.animate().rotation(open ? 90f : 0f).setDuration(200).start();
+        });
+        View clipImages = subGroup(clipImagesToggle, clipSensitiveToggle, clipCloseToggle, clipSplitToggle, advToggle, advSub);
+        historyToggle[0] = toggle(L.t("클립보드 기록 저장", "Save clipboard history"), clipHistoryDesc(),
+                Prefs.CLIPBOARD_HISTORY, prefs.clipboardHistory(), clipImages);
+        clip.addView(historyToggle[0]);
         clip.addView(clipImages);
         clip.addView(toggle(L.t("선택하면 편집 버튼 보이기", "Show edit buttons on selection"),
                 L.t("글자를 선택하면 도구 막대에 잘라내기·복사·붙여넣기·전체 선택 버튼이 뜹니다.", "When you select text, cut, copy, paste and select all buttons appear on the toolbar."),
                 Prefs.SELECTION_CHIPS, prefs.selectionChips()));
-        clip.addView(toggle(L.t("방금 복사한 내용 붙여넣기", "Paste recently copied text"),
-                L.t("방금 복사한 텍스트를 도구 막대에 1분 간 보여 주어 빠르게 붙여 넣을 수 있게 합니다.", "Shows text you just copied on the toolbar for 1 minute so you can paste it quickly."),
+        clip.addView(toggle(L.t("방금 복사한 내용 붙여넣기", "Paste recently copied content"),
+                L.t("방금 복사한 텍스트나 이미지를 도구 막대에 1분 간 보여 주어 빠르게 붙여 넣을 수 있게 합니다.", "Shows text or an image you just copied on the toolbar for 1 minute so you can paste it quickly."),
                 Prefs.CLIPBOARD_CHIP, prefs.clipboardChip()));
         clip.addView(trashButton(L.t("클립보드 기록 모두 지우기", "Delete all clipboard history"), v -> AppTheme.dialogBuilder(this)
                 .setTitle(L.t("클립보드 기록 모두 지우기", "Delete all clipboard history"))
                 .setMessage(L.t("저장된 클립보드 기록을 모두 지웁니다. 고정한 항목도 함께 지워지며 되돌릴 수 없습니다.", "Deletes all saved clipboard history, including pinned items. This can't be undone."))
                 .setPositiveButton(L.t("모두 지우기", "Delete all"), (d, w) -> {
-                    new ClipboardHistory(new File(getFilesDir(), "clipboard.txt")).clearAll();
+                    clipHistory().clearAll();
                     Toast.makeText(this, L.t("클립보드 기록을 지웠습니다", "Clipboard history deleted"), Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton(L.t("취소", "Cancel"), null)
@@ -4065,12 +4095,32 @@ public final class SettingsActivity extends Activity {
         emoji.addView(toggle(L.t("이모지 추천", "Emoji suggestions"), L.t("이모지 창을 열면 커서 앞에 쓴 글(마지막 12단어)에 맞는 이모지를 보여 줍니다.", "When you open the emoji panel, shows emoji that match the text before the cursor (last 12 words)."), Prefs.EMOJI_SUGGEST, prefs.emojiSuggest()));
     }
 
+    /** 클립보드 고급 설정의 한도를 따르는 클립보드 기록. */
+    private ClipboardHistory clipHistory() {
+        return prefs.applyClipboardLimits(new ClipboardHistory(new File(getFilesDir(), "clipboard.txt")));
+    }
+
+    /** '클립보드 기록 저장' 설명 (고급 설정의 항목 수·삭제 시간을 따른다). */
+    private String clipHistoryDesc() {
+        int items = prefs.clipboardMaxItems(), hours = prefs.clipboardExpireHours();
+        return L.t("복사·잘라낸 내용을 최근 " + items + "개까지 모아 둡니다. 고정하지 않은 항목은 " + hours + "시간 뒤 지워집니다.",
+                "Keeps the last " + items + (items == 1 ? " item" : " items") + " you copied or cut. Unpinned items are deleted after "
+                        + hours + (hours == 1 ? " hour." : " hours."));
+    }
+
+    /** '이미지 저장' 설명 (고급 설정의 이미지 수를 따른다). */
+    private String clipImagesDesc() {
+        int images = prefs.clipboardMaxImages();
+        return L.t("복사한 이미지도 클립보드에 저장합니다 (최대 " + images + "개).",
+                "Also saves copied images to the clipboard (up to " + images + ").");
+    }
+
     /**
      * 이미지 저장을 끄면 보관 중인 이미지를 고정한 것까지 모두 지운다.
      * 지울 이미지가 있으면 먼저 확인하고, 취소하면 스위치를 다시 켠다.
      */
     private void onClipImagesChanged(boolean checked) {
-        ClipboardHistory history = new ClipboardHistory(new File(getFilesDir(), "clipboard.txt"));
+        ClipboardHistory history = clipHistory();
         if (checked || !history.hasImages(System.currentTimeMillis())) {
             prefs.raw().edit().putBoolean(Prefs.CLIPBOARD_IMAGES, checked).apply();
             if (!checked) history.clearImages();   // 기한이 지나 남은 파일까지 정리한다
@@ -4361,8 +4411,9 @@ public final class SettingsActivity extends Activity {
      */
     private void buildGuide(String asset, boolean noteIntro) {
         java.util.Map<String, String> values = new java.util.HashMap<>();
-        values.put("CLIP_MAX", String.valueOf(ClipboardHistory.MAX_ITEMS));
-        values.put("CLIP_IMAGES", String.valueOf(ClipboardHistory.MAX_IMAGES));
+        values.put("CLIP_MAX", String.valueOf(prefs.clipboardMaxItems()));
+        values.put("CLIP_IMAGES", String.valueOf(prefs.clipboardMaxImages()));
+        values.put("CLIP_HOURS", String.valueOf(prefs.clipboardExpireHours()));
         values.put("USAGE_WORDS", String.valueOf(UsageHistory.MAX_WORDS));
         values.put("USAGE_PAIRS", String.valueOf(UsageHistory.MAX_PAIRS));
         values.put("ISSUES_URL", ISSUES_URL);
@@ -4417,7 +4468,7 @@ public final class SettingsActivity extends Activity {
                 || new File(getFilesDir(), "usage.txt").length() > 0
                 || new File(getFilesDir(), "picked_corrections.txt").length() > 0;   // 단어 사용 기록·자동 수정 기억
         boolean hasEmoji = !prefs.recentEmoji().isEmpty() || !prefs.pinnedEmoji().isEmpty();
-        boolean hasClip = !new ClipboardHistory(new File(getFilesDir(), "clipboard.txt"))
+        boolean hasClip = !clipHistory()
                 .snapshot(System.currentTimeMillis()).isEmpty();   // 이미지는 백업에 넣지 않는다
         if (!hasWords && !hasEmoji && !hasClip) {
             startExport(false, false, false, null);
