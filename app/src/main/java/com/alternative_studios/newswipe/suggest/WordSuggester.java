@@ -676,16 +676,30 @@ public final class WordSuggester {
         return c >= '\uAC00' && c <= '\uD7A3';
     }
 
-    /** 커서 앞 글자에서 추천에 쓸 '입력 중인 단어'를 뽑는다. 없으면 빈 문자열. */
+    /**
+     * 커서 앞 글자에서 추천에 쓸 '입력 중인 단어'를 뽑는다. 없으면 빈 문자열.
+     * 영어는 글자 뒤에 붙은 '도 단어에 넣는다: 끝에 막 친 '도 넣어야 don' 에서 don't 를 추천한다.
+     */
     public static String currentWord(CharSequence before, boolean korean) {
         int i = before.length();
         while (i > 0) {
             char c = before.charAt(i - 1);
             boolean ok = korean ? (c >= '가' && c <= '힣') || (c >= 'ㄱ' && c <= 'ㅣ')
-                    : (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c == '\'' && i < before.length() && i > 1);
+                    : isAsciiLetter(c) || (c == '\'' && i > 1 && isAsciiLetter(before.charAt(i - 2)));
             if (!ok) break;
             i--;
         }
         return before.subSequence(i, before.length()).toString();
+    }
+
+    private static boolean isAsciiLetter(char c) {
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+    }
+
+    /** 영어 단어 끝에 붙은 '를 뗀다 (닫는 따옴표나 아직 덜 친 줄임말: 학습·자동 수정에는 앞부분만 쓴다). */
+    public static String stripTrailingApostrophe(String word) {
+        int n = word.length();
+        while (n > 0 && word.charAt(n - 1) == '\'') n--;
+        return n == word.length() ? word : word.substring(0, n);
     }
 }

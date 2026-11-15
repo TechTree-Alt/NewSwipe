@@ -119,6 +119,15 @@ public class WordDictionaryTest {
         assertEquals("hel", WordSuggester.currentWord("say hel", false));
         assertEquals("don't", WordSuggester.currentWord("I don't", false));
         assertEquals("", WordSuggester.currentWord("abc.", false));
+        // 끝에 막 친 '도 단어에 넣어야 don' 에서 don't 를 추천한다
+        assertEquals("don'", WordSuggester.currentWord("I don'", false));
+        assertEquals("I'", WordSuggester.currentWord("I'", false));
+        // 여는 따옴표와 글자 없이 붙은 '는 넣지 않는다
+        assertEquals("hel", WordSuggester.currentWord("say 'hel", false));
+        assertEquals("", WordSuggester.currentWord("say '", false));
+        assertEquals("", WordSuggester.currentWord("abc''", false));
+        assertEquals("hello", WordSuggester.stripTrailingApostrophe("hello'"));
+        assertEquals("don't", WordSuggester.stripTrailingApostrophe("don't"));
     }
 
     @Test

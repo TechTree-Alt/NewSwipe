@@ -189,6 +189,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private int shiftState;
     private long lastShiftTime;
     private boolean hadComposing;
+    /**
+     * 앱이 조합 영역(밑줄)만 없앤 한글 조합 글자. 커서는 그 글자 바로 뒤에 그대로 있어서 사용자가 옮긴 것이 아니다.
+     * 다음 입력 때 이 글자를 다시 조합 영역으로 만들고 이어서 조합한다 ({@link #restoreLostComposing}). 없으면 null.
+     */
+    private String lostComposing;
     private boolean lastWasSpace;
     private long lastSpaceTime;
     private final StringBuilder search = new StringBuilder();
@@ -1530,12 +1535,19 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             setInputView(onCreateInputView());
         }
         applySettings();
-        composer.reset();
+        InputConnection startIc = getCurrentInputConnection();
+        // 같은 입력란을 앱이 다시 연결했을 뿐이고(검색창이 글자마다 결과를 새로 고칠 때 등) 조합하던 글자가 커서 앞에
+        // 그대로 있으면, 조합을 이어 간다. 비우면 다음 자모가 새 글자로 시작해 '김'이 'ㄱㅣㅁ'으로 갈라진다.
+        String keep = restarting ? composingBeforeCursor(startIc, info.initialSelStart, info.initialSelEnd) : null;
+        if (keep == null) {
+            composer.reset();
+            hadComposing = false;
+        }
+        lostComposing = keep;
         resetCjk();
-        hadComposing = false;
         // 다른 앱에 다녀오면 입력란에 조합 중 표시(밑줄)가 남아 있는 일이 있다. 조합 상태는 위에서 비웠으므로
         // 그 표시도 확정해 둔다. 그대로 두면 다음 글자의 setComposingText가 남은 조합 영역(마지막 글자)을 덮어 지운다.
-        InputConnection startIc = getCurrentInputConnection();
+        // (이어 가는 조합은 다음 입력 때 그 글자를 다시 조합 영역으로 만든다.)
         if (startIc != null) startIc.finishComposingText();
         lastWasSpace = false;
         if (!restarting || panel == PANEL_SEARCH) showPanel(PANEL_KEYBOARD);
@@ -1560,6 +1572,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             setLayoutKind(KeyboardLayout.NUMBER);
         } else {
             setLayoutKind(lettersKind());
+        }
+        if (lostComposing != null && !(korean && lettersLayout())) {
+            // 이 입력란에서는 한글 자판으로 시작하지 않는다: 이어 가던 조합은 버린다 (글자는 입력란에 확정된 그대로다).
+            composer.reset();
+            hadComposing = false;
+            lostComposing = null;
         }
         keyboard.setEnterIcon(enterIcon(info));
         setShift(0);
@@ -1593,6 +1611,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         composer.reset();
         resetCjk();
         hadComposing = false;
+        lostComposing = null;
         mirror.forget();
         clearSuggestions();
         if (autofill != null) autofill.clear();   // 입력란을 떠나면 그 칸의 자동 완성 칩도 버린다
@@ -1664,13 +1683,22 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         // 글자를 선택하거나 선택을 풀면 선택 편집 칩을 띄우거나 감춘다.
         if (hadSelection != (newSelStart >= 0 && newSelEnd >= 0 && newSelStart != newSelEnd)) onAutofillChipsChanged();
         // 사용자가 커서를 옮기면 조합 중인 글자를 확정하고 조합을 끝낸다.
+        // 다만 조합 영역만 사라지고(candidatesEnd == -1) 커서는 조합하던 글자 바로 뒤에 그대로면 사용자가 옮긴 것이 아니다.
+        // 바쁜 입력란(카카오톡 검색창 등)은 글자마다 결과를 고치며 조합 영역을 지우거나, 키보드의 편집 중간 상태나 늦은
+        // 소식을 보낸다. 이때 조합을 끝내면 다음 자모가 새 글자로 시작해 '김'이 'ㄱㅣㅁ'으로 갈라진다.
         if (hadComposing && (candidatesEnd == -1 || newSelStart != candidatesEnd || newSelEnd != candidatesEnd)) {
-            composer.reset();
-            resetCjk();
-            hadComposing = false;
             InputConnection ic = getCurrentInputConnection();
-            if (ic != null) ic.finishComposingText();
-            mirror.forget();
+            String keep = candidatesEnd == -1 ? composingBeforeCursor(ic, newSelStart, newSelEnd) : null;
+            if (keep != null) {
+                lostComposing = keep;   // 조합은 이어 가고, 다음 입력 때 조합 영역을 되살린다
+            } else {
+                composer.reset();
+                resetCjk();
+                hadComposing = false;
+                lostComposing = null;
+                if (ic != null) ic.finishComposingText();
+                mirror.forget();
+            }
         }
         if (composer.isEmpty()) updateAutoCap();
         scheduleSuggest();
@@ -2541,7 +2569,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                     return;
                 }
             }
-            if (letters && !Character.isLetterOrDigit(s.charAt(0))) learnCurrentWord(null);
+            // 영어의 '는 단어를 끝내지 않는다 (don't): 앞부분(don)을 단어로 학습하지 않는다.
+            if (letters && !Character.isLetterOrDigit(s.charAt(0)) && !(s.equals("'") && !korean)) learnCurrentWord(null);
             commitText(s);
         }
         if (shiftState == 1 && letters && !keyboard.isShiftHeld()) setShift(0);
@@ -2561,6 +2590,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         InputConnection ic = getCurrentInputConnection();
         if (ic == null) return;
         ic.beginBatchEdit();
+        restoreLostComposing(ic);
         if (!commit.isEmpty()) {
             ic.commitText(commit, 1);
             mirror.commit(commit);
@@ -2587,7 +2617,36 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (ic != null) ic.finishComposingText();
         composer.reset();
         hadComposing = false;
+        lostComposing = null;
         mirror.forget();
+    }
+
+    /**
+     * 커서가 한 점이고 바로 앞 글자가 지금 조합 중인 한글이면 그 글자를, 아니면 null (앱이 조합 영역만 없앴는지 볼 때).
+     * 일본어·중국어 조합은 읽기와 입력란의 글자가 달라 따지지 않는다.
+     */
+    private String composingBeforeCursor(InputConnection ic, int selStart, int selEnd) {
+        if (ic == null || !hadComposing || cjkComposing() || selStart < 0 || selStart != selEnd) return null;
+        String comp = composer.getComposing();
+        if (comp.isEmpty() || selStart < comp.length()) return null;
+        CharSequence before = ic.getTextBeforeCursor(comp.length(), 0);
+        return before != null && comp.contentEquals(before) ? comp : null;
+    }
+
+    /**
+     * 앱이 없앤 조합 영역을 되살린다: 커서 앞이 아직 그 글자면 지우고 같은 글자를 조합 글자로 다시 넣는다
+     * (입력란에 보이는 글자는 그대로다). 이어지는 setComposingText·commitText가 그 글자를 바꾸게 된다.
+     * 일괄 편집(beginBatchEdit) 안에서 부른다.
+     */
+    private void restoreLostComposing(InputConnection ic) {
+        String lost = lostComposing;
+        lostComposing = null;
+        if (lost == null || !hadComposing) return;
+        CharSequence before = ic.getTextBeforeCursor(lost.length(), 0);
+        if (before == null || !lost.contentEquals(before)) return;   // 그사이 글자가 바뀌었다: 손대지 않는다
+        ic.deleteSurroundingText(lost.length(), 0);
+        ic.setComposingText(lost, 1);
+        mirror.forget();   // 앱이 확정한 글자를 다시 조합 글자로 바꿨다. 다음에 필요할 때 앱에 다시 묻는다
     }
 
     private void commitComposing() {
@@ -2608,7 +2667,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         InputConnection ic = getCurrentInputConnection();
         if (ic != null) {
             if (!s.isEmpty()) {
+                ic.beginBatchEdit();
+                restoreLostComposing(ic);   // 조합 영역이 없으면 commitText가 글자를 한 번 더 넣는다
                 ic.commitText(s, 1);
+                ic.endBatchEdit();
                 mirror.commit(s);
             } else {
                 ic.finishComposingText();
@@ -3581,8 +3643,15 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
         // 자동 수정이 켜져 있으면 스페이스에서 고칠 단어를 맨 앞에 굵게 보인다 (이번에 되돌린 단어는 고치지 않으니 보이지 않는다).
         syncIgnoredWithUserWords();
-        boolean preview = autoCorrectActive() && !correctionIgnored.contains(word);
+        boolean preview = autoCorrectActive() && !correctionIgnored.contains(word) && !endsWithApostrophe(word);
         showSuggestions(word, suggester.suggestIfLoaded(word, prev, korean, fieldKind, preview));
+    }
+
+    /**
+     * 영어 단어가 '로 끝나는지 (don' 처럼 줄임말을 치는 중이거나 닫는 따옴표). 이런 단어는 추천만 하고 자동 수정하지 않는다.
+     */
+    private boolean endsWithApostrophe(String word) {
+        return !korean && word.endsWith("'");
     }
 
     /** 입력 중인 단어 바로 앞의 한글 단어 (없으면 null). 따라 적은 글자로 알 수 없을 때만 앱에 묻는다. */
@@ -4030,7 +4099,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             word = wordBeforeCursor(ic);
             prev = korean && !word.isEmpty() ? prevWordBeforeCursor(ic) : null;
         }
-        if (korean) word = WordSuggester.learnablePart(word);   // '알겠어ㅋㅋ' → 알겠어
+        word = korean ? WordSuggester.learnablePart(word)   // '알겠어ㅋㅋ' → 알겠어
+                : WordSuggester.stripTrailingApostrophe(word);   // 'hello' → hello
         if (word.isEmpty()) return;
         // 자동 수정을 되돌려 이번에 그냥 두는 단어는 되돌릴 때만 센다 (두 번 되돌려야 학습되도록).
         syncIgnoredWithUserWords();
@@ -4042,7 +4112,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private void learnFromText(String text) {
         if (!learningOn()) return;
         String word = WordSuggester.currentWord(text, korean);
-        if (korean) word = WordSuggester.learnablePart(word);
+        word = korean ? WordSuggester.learnablePart(word) : WordSuggester.stripTrailingApostrophe(word);
         if (word.isEmpty()) return;
         syncIgnoredWithUserWords();
         if (cfgAutoCorrect && correctionIgnored.contains(word)) return;
@@ -4093,7 +4163,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         // 읽은 글자 전체가 한 단어면 더 긴 글자 덩어리의 뒷부분일 수 있어 고치지 않는다.
         syncIgnoredWithUserWords();
         if (word.isEmpty() || word.length() == before.length() && before.length() == 32
-                || correctionIgnored.contains(word)) {
+                || correctionIgnored.contains(word) || endsWithApostrophe(word)) {
             return false;
         }
         if (cfgLearn && !userWords.isLoaded()) {
