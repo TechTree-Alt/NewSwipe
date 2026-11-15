@@ -23,7 +23,7 @@ public final class ExpressiveIconButton extends View {
 
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF rect = new RectF();
-    private int icon;
+    private final int icon;
     private final int accent, onAccent;
     private final float pressedRadius, activeRadius, activePressedRadius;
     private boolean active;
@@ -48,13 +48,6 @@ public final class ExpressiveIconButton extends View {
         setContentDescription(description);
         setClickable(true);
         setFocusable(true);
-    }
-
-    /** 아이콘을 바꾼다 (미리보기 숨기기 ↔ 보이기처럼 한 버튼이 두 일을 오갈 때). */
-    public void setIcon(int icon) {
-        if (this.icon == icon) return;
-        this.icon = icon;
-        invalidate();
     }
 
     /** 켜짐 상태: 옅은 바탕에 강조색 아이콘. */

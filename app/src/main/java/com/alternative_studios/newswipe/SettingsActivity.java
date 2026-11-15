@@ -137,11 +137,6 @@ public final class SettingsActivity extends Activity {
             frame.keyboardOverlays();   // 아래 미리보기 위로 실제 키보드가 덮는다
         }
         else if ("onehand".equals(sectionId)) frame.keyboardOverlays();   // 미리보기를 실제 키보드처럼 화면 아래에 붙인다
-        // 화면 아래에 키보드 미리보기를 붙이는 화면: 머리글에 미리보기 숨기기·보이기 버튼
-        if (KEYBOARD.equals(sectionId) || LANDSCAPE_AREA.equals(sectionId) || LARGE_AREA.equals(sectionId)
-                || "onehand".equals(sectionId)) {
-            frame.withPreviewToggle(this::setPreviewShown);
-        }
         ScrollView scroll = new ScrollView(this);
         scrollView = scroll;
         scroll.setFillViewport(true);
@@ -166,14 +161,21 @@ public final class SettingsActivity extends Activity {
         pinnedBottom = new LinearLayout(this);
         pinnedBottom.setOrientation(LinearLayout.VERTICAL);
         pinnedBottom.setVisibility(View.GONE);
-        content.addView(pinnedBottom, matchWrap());
+        // 아래 미리보기 묶음: 맨 위의 꺾쇠 버튼(숨기기·보이기)과 그 아래 pinnedBottom (미리보기가 있는 화면에서만 보인다).
+        bottomDock = new LinearLayout(this);
+        bottomDock.setOrientation(LinearLayout.VERTICAL);
+        bottomDock.setVisibility(View.GONE);
+        bottomDock.addView(buildPreviewToggle(), matchWrap());
+        bottomDock.addView(pinnedBottom, matchWrap());
+        content.addView(bottomDock, matchWrap());
         setContentView(frame.wrap(content));
         undoButton = frame.actionButton();
-        settingsFrame = frame;
         build();
-        if (pinnedBottom.getChildCount() == 0) frame.hidePreviewToggle();   // 미리보기를 붙이지 않은 경우
-        // 화면을 다시 만들었으면(회전 등) 숨겨 두었던 미리보기를 그대로 숨긴다.
-        else if (savedInstanceState != null && !savedInstanceState.getBoolean(STATE_PREVIEW_SHOWN, true)) frame.setPreviewShown(false);
+        if (pinnedBottom.getChildCount() > 0) {
+            bottomDock.setVisibility(View.VISIBLE);
+            // 화면을 다시 만들었으면(회전 등) 숨겨 두었던 미리보기를 그대로 숨긴다.
+            if (savedInstanceState != null && !savedInstanceState.getBoolean(STATE_PREVIEW_SHOWN, true)) setPreviewShown(false);
+        }
         // 검색 결과에서 들어왔으면 그 항목까지 스크롤하고 깜빡여 알려 준다.
         String highlight = getIntent().getStringExtra(EXTRA_HIGHLIGHT);
         String target = getIntent().getStringExtra(EXTRA_TARGET);
@@ -187,17 +189,54 @@ public final class SettingsActivity extends Activity {
     }
 
     private static final String STATE_PREVIEW_SHOWN = "previewShown";
-    private SettingsFrame settingsFrame;
+    /** 아래 미리보기 묶음 (꺾쇠 버튼 + pinnedBottom). */
+    private LinearLayout bottomDock;
+    /** 미리보기 바로 위의 꺾쇠 버튼: 보일 때는 아래 꺾쇠(숨기기), 숨겼을 때는 위 꺾쇠(보이기). */
+    private View previewToggle;
+    private boolean previewShown = true;
 
     @Override
     protected void onSaveInstanceState(Bundle out) {
         super.onSaveInstanceState(out);
-        if (settingsFrame != null) out.putBoolean(STATE_PREVIEW_SHOWN, settingsFrame.previewShown());
+        out.putBoolean(STATE_PREVIEW_SHOWN, previewShown);
     }
 
-    /** 머리글의 미리보기 숨기기·보이기 버튼: 화면 아래의 미리보기(와 그 위 자판 탭·페이지 표시)를 접거나 펼친다. */
+    /** 미리보기 바로 위 가운데의 꺾쇠 버튼. */
+    private View buildPreviewToggle() {
+        AppTheme t = AppTheme.of(this);
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER);
+        row.setBackgroundColor(t.bg);
+        View chevron = new View(this) {
+            private final android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+
+            @Override
+            protected void onDraw(android.graphics.Canvas c) {
+                paint.setColor(t.hint);
+                Icons.draw(c, previewShown ? Icons.HIDE : Icons.CHEVRON_UP, getWidth() / 2f, getHeight() / 2f,
+                        Ui.dp(getContext(), 24), paint, 2.2f);
+            }
+        };
+        int r = Ui.dp(this, 14);
+        chevron.setBackground(Ui.ripple(t.accent & 0x00FFFFFF | 0x33000000, null, r));
+        chevron.setClickable(true);
+        chevron.setFocusable(true);
+        chevron.setOnClickListener(v -> setPreviewShown(!previewShown));
+        previewToggle = chevron;
+        updatePreviewToggle();
+        row.addView(chevron, new LinearLayout.LayoutParams(Ui.dp(this, 64), Ui.dp(this, 28)));
+        return row;
+    }
+
+    private void updatePreviewToggle() {
+        previewToggle.setContentDescription(previewShown ? L.t("미리보기 숨기기", "Hide preview") : L.t("미리보기 보이기", "Show preview"));
+        previewToggle.invalidate();
+    }
+
+    /** 꺾쇠 버튼: 화면 아래의 미리보기(와 그 위 자판 탭·페이지 표시)를 접거나 펼친다. 꺾쇠 버튼은 그대로 남는다. */
     private void setPreviewShown(boolean shown) {
-        if (pinnedBottom == null || pinnedBottom.getChildCount() == 0) return;
+        previewShown = shown;
+        updatePreviewToggle();
         Ui.setVisibleAnimated(pinnedBottom, shown);
     }
 
