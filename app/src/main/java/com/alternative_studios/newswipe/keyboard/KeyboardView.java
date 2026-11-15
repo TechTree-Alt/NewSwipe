@@ -68,9 +68,9 @@ public final class KeyboardView extends View {
         void onShiftChordEnd();
 
         /**
-         * 밀기나 길게 누르기가 인식됐다 (밀기·길게 누르기 진동용). 밀기는 손을 떼어 실행할 때(밀어서 커서 이동은 커서가 처음 움직일 때),
-         * 길게 누르기는 인식한 순간 한 번 부른다.
-         * 누르고 있는 동안 반복 입력·연속 지우기로 넘어가는 길게 누르기는 반복마다 따로 울리므로 부르지 않는다.
+         * 밀기나 길게 누르기가 인식됐다 (밀기·길게 누르기 진동용). 밀기는 손을 떼어 실행할 때, 길게 누르기는 인식한 순간 한 번 부른다.
+         * 누르고 있는 동안 반복 입력·연속 지우기로 넘어가는 길게 누르기와 밀어서 커서 이동은 반복 입력 진동이
+         * 칸마다 따로 울리므로 부르지 않는다.
          */
         default void onGesture() {
         }
@@ -1297,7 +1297,6 @@ public final class KeyboardView extends View {
                 if (!p.cursorStarted && listener != null
                         && ((curH && Math.abs(d) >= stepX) || (curV && Math.abs(dv) >= stepY))) {
                     p.cursorStarted = true;
-                    listener.onGesture();   // 밀어서 커서 이동이 시작됐다 (칸마다의 틱은 반복 입력 진동)
                     listener.onCursorStart();
                 }
                 while (curH && Math.abs(d) >= stepX) {
@@ -1521,10 +1520,7 @@ public final class KeyboardView extends View {
             p.mode = REPEAT;
             repeatWord = false;
             repeatCursor = k.type == Key.CURSOR_LEFT ? -1 : 1;
-            if (listener != null) {
-                listener.onGesture();
-                listener.onCursorStart();
-            }
+            if (listener != null) listener.onCursorStart();
             repeatRunnable.run();
             invalidate();
             return;
