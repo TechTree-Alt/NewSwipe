@@ -475,7 +475,8 @@ public final class SettingsActivity extends Activity {
             {"words", L.t("학습한 단어 모두 지우기", "Delete all learned words"), L.t("사용자 사전 초기화 삭제", "personal dictionary reset clear")},
             {"words", L.t("자동 완성 제안", "Autofill suggestions"), L.t("오토필 Autofill Google 삼성패스 비밀번호 아이디 계정 칩 인증번호", "autofill google samsung pass passwords username account chips codes")},
             {"feedback", L.t("키 진동", "Key vibration"), L.t("햅틱 진동 켜기 끄기", "haptics vibration on off")},
-            {"feedback", L.t("진동 방식", "Vibration type"), L.t("햅틱 약하게 기본 강하게 시스템 기본 직접 설정", "haptics light default strong system default custom")},
+            {"feedback", L.t("진동 방식", "Vibration type"), L.t("햅틱 틱 클릭 시스템 기본 직접 설정", "haptics tick click system default custom")},
+            {"feedback", L.t("진동 세기", "Vibration strength"), L.t("햅틱 세기 틱 클릭", "haptics strength tick click")},
             {"feedback", L.t("진동 길이", "Vibration length"), L.t("햅틱 ms 밀리초 진동 시간", "haptics ms milliseconds vibration duration")},
             {"feedback", L.t("진동 강도", "Vibration strength"), L.t("햅틱 세기 진폭", "haptics strength amplitude")},
             {"feedback", L.t("키 종류별로 다르게", "Different for each key type"), L.t("진동 지우기 스페이스 엔터 Shift 기호 언어 전환 도구 막대 키 햅틱", "vibration delete space enter shift symbols language switch toolbar keys haptics")},
@@ -3965,15 +3966,22 @@ public final class SettingsActivity extends Activity {
         return new String[]{L.t("약하게", "Light"), L.t("기본", "Default"), L.t("강하게", "Strong")};
     }
 
-    /** 일반 키 진동 방식을 고르기 창에 보이는 차례 (값은 Prefs.vibrateStyle: 0~2 약하게·기본·강하게, 3 직접 설정, 4 시스템 기본). */
-    private static final int[] STYLE_ORDER = {0, 1, 2, Feedback.STYLE_SYSTEM, Feedback.STYLE_CUSTOM};
+    /**
+     * 일반 키 진동 방식을 고르기 창에 보이는 차례 (값은 Prefs.vibrateStyle). 틱·클릭의 세기를 조절할 수 있는 기기에서는
+     * 세기 막대가 직접 설정을 대신하므로 직접 설정을 보이지 않는다.
+     */
+    private static int[] styleOrder(boolean primitives) {
+        return primitives ? new int[]{Feedback.STYLE_TICK, Feedback.STYLE_CLICK, Feedback.STYLE_SYSTEM}
+                : new int[]{Feedback.STYLE_TICK, Feedback.STYLE_CLICK, Feedback.STYLE_SYSTEM, Feedback.STYLE_CUSTOM};
+    }
 
-    /** 일반 키 진동 방식의 이름 (Prefs.vibrateStyle 값 차례). */
+    /** 일반 키 진동 방식의 이름 ({@link Feedback#normalizeStyle}로 바꾼 값). */
     private static String styleLabel(int style) {
         switch (style) {
+            case Feedback.STYLE_TICK: return L.t("틱", "Tick");
             case Feedback.STYLE_CUSTOM: return L.t("직접 설정", "Custom");
             case Feedback.STYLE_SYSTEM: return L.t("시스템 기본", "System default");
-            default: return levelLabels()[Math.max(0, Math.min(2, style))];
+            default: return L.t("클릭", "Click");
         }
     }
 
@@ -4020,46 +4028,55 @@ public final class SettingsActivity extends Activity {
     private void buildFeedback() {
         LinearLayout vib = section(L.t("진동", "Vibration"));
         boolean primitives = vibePreview().supportsPrimitives();
-        // 직접 설정: 짧은 클릭의 세기를 고를 수 있는 기기에서는 강도만, 아니면 길이와 강도를 정한다.
-        LinearLayout customBox = new LinearLayout(this);
-        customBox.setOrientation(LinearLayout.VERTICAL);
-        if (!primitives) {
-            customBox.addView(slider(L.t("진동 길이", "Vibration length"), Prefs.VIBRATE_MS, prefs.vibrateMs(), 1, 40, 1, "ms",
-                    () -> previewVibration(0)));
-        }
-        customBox.addView(slider(L.t("진동 강도", "Vibration strength"), Prefs.VIBRATE_AMP, prefs.vibrateAmp(), 10, 100, 5, "%",
+        int[] order = styleOrder(primitives);
+        int style0 = Feedback.normalizeStyle(prefs.vibrateStyle(), primitives);
+        // 세기: 틱·클릭의 세기를 조절할 수 있는 기기에서 틱·클릭을 골랐을 때 보인다.
+        View strengthGroup = fold(slider(L.t("진동 세기", "Vibration strength"), Prefs.VIBRATE_AMP, prefs.vibrateAmp(), 10, 100, 5, "%",
                 () -> previewVibration(0)));
-        customBox.addView(note(primitives
-                ? L.t("짧고 또렷한 클릭 진동의 세기를 정합니다.", "Sets the strength of a short, crisp click.")
-                : L.t("강도는 진동 세기를 조절할 수 있는 기기에서만 적용됩니다.", "Strength works only on devices that can adjust vibration strength.")));
-        View customGroup = fold(customBox);
+        // 세기를 조절할 수 없는 기기: 틱·클릭은 세기가 정해져 있으므로 직접 설정(길이·강도)을 알려 준다.
+        View fixedNote = fold(note(L.t("이 기기에서는 틱·클릭의 세기를 바꿀 수 없습니다. 세기를 바꾸려면 직접 설정을 고르세요.",
+                "This device can't change the strength of Tick and Click. To change the strength, choose Custom.")));
+        // 직접 설정 (세기를 조절할 수 없는 기기만): 길이와 강도로 정하는 한 번 진동.
+        View customGroup = fold(
+                slider(L.t("진동 길이", "Vibration length"), Prefs.VIBRATE_MS, prefs.vibrateMs(), 1, 40, 1, "ms",
+                        () -> previewVibration(0)),
+                slider(L.t("진동 강도", "Vibration strength"), Prefs.VIBRATE_AMP, prefs.vibrateAmp(), 10, 100, 5, "%",
+                        () -> previewVibration(0)),
+                note(L.t("강도는 진동 세기를 조절할 수 있는 기기에서만 적용됩니다.", "Strength works only on devices that can adjust vibration strength.")));
         TextView systemNote = note(L.t("기기 제조사가 키보드용으로 맞춰 둔 진동을 씁니다. 세기는 시스템 설정을 따르며, "
                         + "시스템에서 키보드 진동(터치 진동)을 끄면 울리지 않습니다.",
                 "Uses the vibration your device maker tuned for keyboards. Strength follows the system settings, "
                         + "and it does not vibrate if keyboard (touch) vibration is turned off in the system."));
         View systemGroup = fold(systemNote);
-        int style0 = prefs.vibrateStyle();
-        customGroup.setVisibility(style0 == Feedback.STYLE_CUSTOM ? View.VISIBLE : View.GONE);
-        systemGroup.setVisibility(style0 == Feedback.STYLE_SYSTEM ? View.VISIBLE : View.GONE);
-        String[] styleLabels = new String[STYLE_ORDER.length];
+        java.util.function.BiConsumer<Integer, Boolean> showFor = (style, animate) -> {
+            boolean tickOrClick = style == Feedback.STYLE_TICK || style == Feedback.STYLE_CLICK;
+            View[] views = {strengthGroup, fixedNote, customGroup, systemGroup};
+            boolean[] shown = {primitives && tickOrClick, !primitives && tickOrClick,
+                    style == Feedback.STYLE_CUSTOM, style == Feedback.STYLE_SYSTEM};
+            for (int i = 0; i < views.length; i++) {
+                if (animate) Ui.setVisibleAnimated(views[i], shown[i]);
+                else views[i].setVisibility(shown[i] ? View.VISIBLE : View.GONE);
+            }
+        };
+        showFor.accept(style0, false);
+        String[] styleLabels = new String[order.length];
         int defaultIndex = 0;
-        for (int i = 0; i < STYLE_ORDER.length; i++) {
-            styleLabels[i] = styleLabel(STYLE_ORDER[i]);
-            if (STYLE_ORDER[i] == 1) defaultIndex = i;
+        for (int i = 0; i < order.length; i++) {
+            styleLabels[i] = styleLabel(order[i]);
+            if (order[i] == Feedback.STYLE_CLICK) defaultIndex = i;
         }
         int defaultStyleIndex = defaultIndex;
         SettingsWidgets.ValueRow[] styleRow = new SettingsWidgets.ValueRow[1];
         String styleTitle = L.t("진동 방식", "Vibration type");
         styleRow[0] = widgets.valueRow(styleTitle, styleLabel(style0), v -> {
-            int style = prefs.vibrateStyle(), current = 0;
-            for (int i = 0; i < STYLE_ORDER.length; i++) if (STYLE_ORDER[i] == style) current = i;
+            int style = Feedback.normalizeStyle(prefs.vibrateStyle(), primitives), current = 0;
+            for (int i = 0; i < order.length; i++) if (order[i] == style) current = i;
             pickVibration(styleTitle, styleLabels, current, defaultStyleIndex,
-                    (view, i) -> vibePreview().previewStyle(STYLE_ORDER[i], view), i -> {
-                        int picked = STYLE_ORDER[i];
+                    (view, i) -> vibePreview().previewStyle(order[i], view), i -> {
+                        int picked = order[i];
                         prefs.raw().edit().putInt(Prefs.VIBRATE_STYLE, picked).apply();
                         styleRow[0].set(styleLabel(picked));
-                        Ui.setVisibleAnimated(customGroup, picked == Feedback.STYLE_CUSTOM);
-                        Ui.setVisibleAnimated(systemGroup, picked == Feedback.STYLE_SYSTEM);
+                        showFor.accept(picked, true);
                     });
         });
         LinearLayout perKeyBox = new LinearLayout(this);
@@ -4074,7 +4091,7 @@ public final class SettingsActivity extends Activity {
         perKeyBox.addView(note(L.t("그 밖의 키는 위에서 고른 진동을 씁니다.", "Other keys use the vibration chosen above.")));
         View perKeySub = subGroup(perKeyBox);
         View gestureSub = subGroup(levelRow(L.t("진동 세기", "Strength"), Prefs.VIBRATE_GESTURE_LEVEL, prefs.vibrateGestureLevel()));
-        View vibrateOptions = subGroup(styleRow[0].view, customGroup, systemGroup,
+        View vibrateOptions = subGroup(styleRow[0].view, strengthGroup, fixedNote, customGroup, systemGroup,
                 toggle(L.t("키 종류별로 다르게", "Different for each key type"), null,
                         Prefs.VIBRATE_PER_KEY, prefs.vibratePerKey(), perKeySub),
                 perKeySub,
@@ -4678,14 +4695,14 @@ public final class SettingsActivity extends Activity {
     }
 
     /**
-     * view를 여백 없는 틀로 감싼다. 위아래 여백이 있는 줄(버튼 등)을 펼치고 접을 때는 줄 자체가 아니라 이 틀을
+     * views를 (차례대로) 여백 없는 틀로 감싼다. 위아래 여백이 있는 줄(버튼 등)을 펼치고 접을 때는 줄 자체가 아니라 이 틀을
      * setVisibleAnimated로 움직여야 여백이 높이와 함께 부드럽게 줄어든다.
      */
-    private View fold(View view) {
+    private View fold(View... views) {
         LinearLayout frame = new LinearLayout(this);
         frame.setOrientation(LinearLayout.VERTICAL);
         frame.setLayoutParams(matchWrap());
-        frame.addView(view);
+        for (View view : views) frame.addView(view);
         return frame;
     }
 

@@ -17,8 +17,8 @@ public final class Prefs {
     public static final String FN_SWIPE_THRESHOLD = "fn_swipe_threshold";   // 밀어서 기능의 미는 거리, dp, 12~48
     public static final String VIBRATE = "vibrate";
     public static final String VIBRATE_MS = "vibrate_ms";             // 1~40
-    public static final String VIBRATE_STYLE = "vibrate_style";       // 0 약하게(틱), 1 기본(클릭), 2 강하게(강한 클릭), 3 직접 설정
-    public static final String VIBRATE_AMP = "vibrate_amp";           // 진동 강도 %, 10~100 (100 = 기기 기본)
+    public static final String VIBRATE_STYLE = "vibrate_style";       // 0 틱, 1 클릭, 2 (예전의 강하게, 이제 클릭), 3 직접 설정, 4 시스템 기본
+    public static final String VIBRATE_AMP = "vibrate_amp";           // 진동 강도 %, 10~100: 틱·클릭의 세기, 또는 직접 설정의 강도 (100 = 기기 기본)
     public static final String VIBRATE_PER_KEY = "vibrate_per_key";   // 키 종류별로 다르게
     public static final String VIBRATE_DELETE = "vibrate_delete";     // 1 약하게(틱), 2 기본(클릭), 3 강하게(강한 클릭)
     public static final String VIBRATE_SPACE = "vibrate_space";
