@@ -655,6 +655,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             if (r - l != or - ol) applyToolbarEdges();
         });
         keyboard.setListener(this);
+        feedback.setHapticView(keyboard);   // 시스템 키보드 진동은 키보드 창으로 울린다
         // 손가락이 자판에 닿아 있는 동안은 선택 편집 칩 때문에 도구 막대 자리가 생기거나 없어지지 않게 한다 (editHoldsSlot).
         // 이벤트는 그대로 자판이 받는다 (false).
         keyboard.setOnTouchListener((v, e) -> {
