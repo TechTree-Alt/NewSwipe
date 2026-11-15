@@ -1556,7 +1556,10 @@ public final class SettingsActivity extends Activity {
     /** 머리글의 되돌리기 버튼: 마지막 단계를 되돌리고 미리보기·열린 창·목록을 되돌린 값으로 다시 그린다. */
     private void undoLast() {
         if (editorUndo == null || !editorUndo.undo()) return;
-        if (Build.VERSION.SDK_INT >= 30) undoButton.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM);
+        if (Build.VERSION.SDK_INT >= 30) {
+            View b = sheet != null && sheet.isOpen() && sheet.undoButton() != null ? sheet.undoButton() : undoButton;
+            if (b != null) b.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM);
+        }
         if (editorPreview == null) {
             // 가로 모드·폴더블 내부 화면 키보드 사용자화: 목록·슬라이더·미리보기를 되돌린 값으로 다시 만든다.
             recreate();
@@ -1569,10 +1572,13 @@ public final class SettingsActivity extends Activity {
     }
 
     private void updateUndoButton() {
-        if (undoButton == null) return;
         boolean any = editorUndo != null && editorUndo.canUndo();
-        undoButton.setEnabled(any);
-        undoButton.setAlpha(any ? 1f : 0.38f);
+        // 머리글의 버튼과, 머리글을 덮는 설정 창 헤더의 버튼을 함께 맞춘다.
+        for (View b : new View[]{undoButton, sheet == null ? null : sheet.undoButton()}) {
+            if (b == null) continue;
+            b.setEnabled(any);
+            b.setAlpha(any ? 1f : 0.38f);
+        }
     }
 
     private void syncSizeSliders(String key) {
@@ -1604,7 +1610,8 @@ public final class SettingsActivity extends Activity {
 
     /** 설정 창을 만든다: 키 창(KeyEditPanel)과 그 아래 영역·여백 창(areaBox)을 담는다. */
     private void buildSheet() {
-        sheet = new EditorSheet(this, overlayHost, this::closeKeyPanel);
+        sheet = new EditorSheet(this, overlayHost, this::closeKeyPanel, v -> undoLast());
+        updateUndoButton();
         areaNoteBox = widgets.card(sheet.body());
         sheet.body().removeView(areaNoteBox);
         sheet.body().addView(areaNoteBox, 0, areaNoteBox.getLayoutParams());
@@ -2507,7 +2514,8 @@ public final class SettingsActivity extends Activity {
         pinnedBottom.addView(profilePreview, matchWrap());
         pinnedBottom.setVisibility(View.VISIBLE);
         // 영역 설정 창: 목록 위로 아래에서 올라온다 (키보드 사용자화와 같다).
-        sheet = new EditorSheet(this, overlayHost, this::closeKeyPanel);
+        sheet = new EditorSheet(this, overlayHost, this::closeKeyPanel, v -> undoLast());
+        updateUndoButton();
         areaBox = new LinearLayout(this);
         areaBox.setOrientation(LinearLayout.VERTICAL);
         sheet.body().addView(areaBox, matchWrap());

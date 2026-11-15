@@ -17,6 +17,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import com.alternative_studios.newswipe.keyboard.Icons;
+import com.alternative_studios.newswipe.ui.ExpressiveIconButton;
 import com.alternative_studios.newswipe.ui.IconButton;
 import com.alternative_studios.newswipe.ui.SpringMotion;
 import com.alternative_studios.newswipe.ui.Ui;
@@ -37,12 +38,23 @@ final class EditorSheet {
     /** 열 때 움직이는 스프링 (닫을 때는 sheet.animate()를 쓴다). */
     private ValueAnimator spring;
     private boolean closing;
+    /** 헤더 오른쪽: 되돌리기(없을 수 있다)와 키보드 열기. 창이 머리글을 덮어도 같은 일을 할 수 있게 둔다. */
+    private ExpressiveIconButton undoButton, keyboardButton;
+    /** 키보드 열기를 누르면 헤더 아래에 펼치는 입력 시험 창. */
+    private final LinearLayout testRow;
+    private final android.widget.EditText testInput;
+    private boolean testWanted;
 
     /**
      * @param parent         창과 막을 겹쳐 놓을 틀 (설정 목록이 든 곳)
      * @param onCloseRequest X나 막을 눌렀을 때 (닫기는 부르는 쪽이 close로 한다)
      */
     EditorSheet(Context context, FrameLayout parent, Runnable onCloseRequest) {
+        this(context, parent, onCloseRequest, null);
+    }
+
+    /** @param onUndo 헤더의 되돌리기 버튼을 눌렀을 때 (null이면 버튼을 두지 않는다) */
+    EditorSheet(Context context, FrameLayout parent, Runnable onCloseRequest, View.OnClickListener onUndo) {
         this.c = context;
         this.parent = parent;
         AppTheme colors = AppTheme.of(context);
@@ -80,18 +92,56 @@ final class EditorSheet {
         cancel.setOnClickListener(v -> onCloseRequest.run());
         int size = Ui.dp(c, 44);
         header.addView(cancel, new FrameLayout.LayoutParams(size, size, Gravity.START | Gravity.CENTER_VERTICAL));
+        // 오른쪽: 머리글과 같은 되돌리기·키보드 열기 버튼 (창이 머리글을 덮으므로 여기서도 쓸 수 있게).
+        LinearLayout actions = new LinearLayout(c);
+        actions.setGravity(Gravity.CENTER_VERTICAL);
+        int gap = Ui.dp(c, 8);
+        int actionsWidth = 0;
+        if (onUndo != null) {
+            undoButton = new ExpressiveIconButton(c, Icons.UNDO, colors.accent, colors.onAccent, L.t("마지막 변경 되돌리기", "Undo last change"));
+            undoButton.setActive(true);   // 옅은 바탕: 키보드 열기와 구분되는 보조 버튼
+            undoButton.setOnClickListener(onUndo);
+            LinearLayout.LayoutParams ulp = new LinearLayout.LayoutParams(size, size);
+            ulp.rightMargin = gap;
+            actions.addView(undoButton, ulp);
+            actionsWidth += size + gap;
+        }
+        keyboardButton = new ExpressiveIconButton(c, Icons.MENU_KEYBOARD, colors.accent, colors.onAccent, L.t("키보드 열기", "Open keyboard"));
+        keyboardButton.setOnClickListener(v -> toggleTestInput());
+        actions.addView(keyboardButton, new LinearLayout.LayoutParams(size, size));
+        actionsWidth += size;
+        header.addView(actions, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.END | Gravity.CENTER_VERTICAL));
+        // 가운데(X와 오른쪽 버튼들 사이): 고른 것의 이름. 오른쪽 버튼이 더 넓어 왼쪽에 붙여 자리를 넉넉히 쓴다.
         title = new TextView(c);
         title.setTextColor(colors.text);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
         title.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-        title.setGravity(Gravity.CENTER);
+        title.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
         title.setSingleLine(true);
         title.setEllipsize(android.text.TextUtils.TruncateAt.END);
         FrameLayout.LayoutParams tlp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
-        tlp.leftMargin = tlp.rightMargin = size + Ui.dp(c, 8);
+                ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER_VERTICAL);
+        tlp.leftMargin = size + gap;
+        tlp.rightMargin = actionsWidth + gap;
         header.addView(title, tlp);
         sheet.addView(header, SettingsWidgets.matchWrap());
+
+        // 헤더 아래 입력 시험 창 (머리글의 것과 같은 모양). 키보드 열기를 누르면 펼친다.
+        testRow = new LinearLayout(c);
+        testRow.setVisibility(View.GONE);
+        int tp = Ui.dp(c, 16);
+        testRow.setPadding(tp, Ui.dp(c, 4), tp, Ui.dp(c, 8));
+        testInput = new android.widget.EditText(c);
+        testInput.setHint(L.t("여기에 입력해 보세요", "Type here"));
+        testInput.setTextColor(colors.text);
+        testInput.setHintTextColor(colors.hint);
+        testInput.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+        testInput.setMaxLines(3);
+        testInput.setBackground(Ui.round(colors.card, Ui.dp(c, 12)));
+        testInput.setPadding(Ui.dp(c, 14), Ui.dp(c, 10), Ui.dp(c, 14), Ui.dp(c, 10));
+        testRow.addView(testInput, SettingsWidgets.matchWrap());
+        sheet.addView(testRow, SettingsWidgets.matchWrap());
 
         scroll = new ScrollView(c);
         scroll.setFillViewport(true);
@@ -128,6 +178,42 @@ final class EditorSheet {
     /** 움직이는 창 자체 (시험에서 자리를 확인할 때). */
     View view() {
         return sheet;
+    }
+
+    /** 헤더의 되돌리기 버튼 (onUndo 없이 만들었으면 null). 되돌릴 것이 있는지에 따라 부르는 쪽이 켜고 끈다. */
+    View undoButton() {
+        return undoButton;
+    }
+
+    /** 헤더의 키보드 열기: 입력 시험 창을 펼쳐 키보드를 띄우거나, 접고 키보드를 내린다. */
+    void toggleTestInput() {
+        setTestInput(!testWanted);
+    }
+
+    private void setTestInput(boolean on) {
+        if (testWanted == on) return;
+        testWanted = on;
+        keyboardButton.setActive(on);   // 열려 있으면 옅은 바탕에 강조색 아이콘
+        keyboardButton.setContentDescription(on ? L.t("키보드 닫기", "Close keyboard") : L.t("키보드 열기", "Open keyboard"));
+        android.view.inputmethod.InputMethodManager imm =
+                (android.view.inputmethod.InputMethodManager) c.getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (!on) {
+            if (imm != null) imm.hideSoftInputFromWindow(testInput.getWindowToken(), 0);
+            testInput.clearFocus();
+            Ui.setVisibleAnimated(testRow, false);
+            return;
+        }
+        Ui.setVisibleAnimated(testRow, true, this::focusTestInput);
+        testRow.post(this::focusTestInput);
+    }
+
+    private void focusTestInput() {
+        if (!testWanted) return;
+        if (!testInput.hasFocus()) testInput.requestFocus();
+        if (!testInput.hasFocus()) return;
+        android.view.inputmethod.InputMethodManager imm =
+                (android.view.inputmethod.InputMethodManager) c.getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) imm.showSoftInput(testInput, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
     }
 
     void setTitle(CharSequence t) {
@@ -177,6 +263,7 @@ final class EditorSheet {
      */
     void close(Runnable onHidden) {
         if (!isOpen()) return;
+        setTestInput(false);   // 창과 함께 입력 시험 창도 닫고 키보드를 내린다
         closing = true;
         cancelMotion();
         PathInterpolator accel = new PathInterpolator(0.3f, 0f, 0.8f, 0.15f);
