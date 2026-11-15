@@ -15,7 +15,7 @@ public final class Prefs {
     public static final String LONG_PRESS_MS = "long_press_ms";       // 100~800
     public static final String SWIPE_THRESHOLD = "swipe_threshold";   // 밀어서 글자 입력의 미는 거리, dp, 12~48
     public static final String FN_SWIPE_THRESHOLD = "fn_swipe_threshold";   // 밀어서 기능의 미는 거리, dp, 12~48
-    public static final String VIBRATE = "vibrate";
+    public static final String VIBRATE = "vibrate";                  // 키 진동 (끄면 설정의 키 진동이 '진동 없음')
     public static final String VIBRATE_MS = "vibrate_ms";             // 1~40
     public static final String VIBRATE_STYLE = "vibrate_style";       // 0 틱, 1 클릭, 2 (예전의 강하게, 이제 클릭), 3 직접 설정, 4 시스템 기본
     public static final String VIBRATE_AMP = "vibrate_amp";           // 진동 강도 %, 10~100: 틱·클릭의 세기, 또는 직접 설정의 강도 (100 = 기기 기본)
@@ -29,6 +29,7 @@ public final class Prefs {
     public static final String VIBRATE_TOOLBAR = "vibrate_toolbar";   // 도구 막대 버튼
     public static final String VIBRATE_GESTURE_ON = "vibrate_gesture_on";       // 밀기·길게 누르기 진동 (기본 켬)
     public static final String VIBRATE_GESTURE_LEVEL = "vibrate_gesture_level"; // 1~3, 위와 같은 단계
+    public static final String VIBRATE_REPEAT = "vibrate_repeat";     // 반복 입력·연속 지우기 진동: 0 없음, 1~3 위와 같은 단계 (기본 1)
     public static final String SOUND = "sound";
     public static final String SOUND_VOLUME = "sound_volume";         // %, 0~100
     public static final String KEY_PREVIEW = "key_preview";
@@ -310,6 +311,16 @@ public final class Prefs {
         this(new SafePrefs(context.getSharedPreferences(FILE, Context.MODE_PRIVATE)), false, PROFILE_PORTRAIT, false);
         LegacySwipeSettings.migrateIfNeeded(this);   // 예전 밀기 규칙 스위치를 키마다 정한 값으로 한 번 옮긴다
         migrateLabDubeolsik();
+        migrateVibrateOff();
+    }
+
+    /**
+     * 예전에는 키 진동을 끄면 밀기·길게 누르기 진동과 반복 입력 진동도 함께 꺼졌다. 이제 따로 켜고 끄므로,
+     * 키 진동을 꺼 둔 사용자는 둘 다 꺼 둔 것으로 한 번 옮긴다 (반복 입력 진동 값이 아직 없을 때만).
+     */
+    private void migrateVibrateOff() {
+        if (sp.contains(VIBRATE_REPEAT) || sp.getBoolean(VIBRATE, true)) return;
+        sp.edit().putInt(VIBRATE_REPEAT, 0).putBoolean(VIBRATE_GESTURE_ON, false).apply();
     }
 
     /** 예전 실험실 '두벌식 자판' 스위치를 한글 배열 값으로 옮긴다: 켜 두었으면 배열을 두벌식으로 하고, 스위치는 지운다. */
@@ -480,7 +491,7 @@ public final class Prefs {
         MENU_KEYS.put("theme", keys(THEME_MODE, ACCENT_MODE, ACCENT_COLOR, GRID_COLORS, NEUMORPHISM));
         MENU_KEYS.put("feedback", keys(VIBRATE, VIBRATE_MS, VIBRATE_STYLE, VIBRATE_AMP, VIBRATE_PER_KEY,
                 VIBRATE_DELETE, VIBRATE_SPACE, VIBRATE_ENTER, VIBRATE_SHIFT, VIBRATE_SYMBOL, VIBRATE_LANGUAGE, VIBRATE_TOOLBAR,
-                VIBRATE_GESTURE_ON, VIBRATE_GESTURE_LEVEL, SOUND, SOUND_VOLUME));
+                VIBRATE_GESTURE_ON, VIBRATE_GESTURE_LEVEL, VIBRATE_REPEAT, SOUND, SOUND_VOLUME));
         // 클립보드 및 이모지: 메인 화면의 따로 된 메뉴.
         MENU_KEYS.put("clipemoji", keys(CLIPBOARD_HISTORY, CLIPBOARD_IMAGES, CLIPBOARD_SENSITIVE, CLIPBOARD_CLOSE_ON_USE, CLIPBOARD_SPLIT_PINNED, CLIPBOARD_CHIP,
                 CLIPBOARD_MAX_ITEMS, CLIPBOARD_MAX_IMAGES, CLIPBOARD_EXPIRE_HOURS, CLIPBOARD_MAX_PINNED,
@@ -720,6 +731,7 @@ public final class Prefs {
     public int vibrateToolbar() { return sp.getInt(VIBRATE_TOOLBAR, 2); }
     public boolean vibrateGestureOn() { return sp.getBoolean(VIBRATE_GESTURE_ON, true); }
     public int vibrateGestureLevel() { return sp.getInt(VIBRATE_GESTURE_LEVEL, 2); }
+    public int vibrateRepeat() { return sp.getInt(VIBRATE_REPEAT, 1); }
     public boolean sound() { return sp.getBoolean(SOUND, false); }
     public int soundVolume() { return sp.getInt(SOUND_VOLUME, 50); }
     public boolean keyPreview() { return sp.getBoolean(KEY_PREVIEW, true); }

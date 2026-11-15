@@ -31,6 +31,8 @@ final class Feedback {
     private boolean systemKey;
     private boolean vibrate, sound, perKey, gesture;
     private float volume;
+    /** 반복 입력·연속 지우기 진동 단계 (0 = 진동 없음). */
+    private int repeatLevel = WEAK;
     private int deleteLevel = BASE, spaceLevel = BASE, enterLevel = BASE, gestureLevel = BASE,
             shiftLevel = BASE, symbolLevel = BASE, languageLevel = BASE, toolbarLevel = BASE;
     /** 단계별 고정 진동 (인덱스 = 단계). */
@@ -86,6 +88,7 @@ final class Feedback {
         toolbarLevel = clampLevel(prefs.vibrateToolbar());
         gesture = prefs.vibrateGestureOn();
         gestureLevel = clampLevel(prefs.vibrateGestureLevel());
+        repeatLevel = Math.max(0, Math.min(STRONG, prefs.vibrateRepeat()));
         int style = prefs.vibrateStyle(), ms = prefs.vibrateMs(), amp = prefs.vibrateAmp();
         customMs = ms;
         customAmp = amp;
@@ -200,9 +203,9 @@ final class Feedback {
         }
     }
 
-    /** 밀기·길게 누르기가 끝났을 때의 진동 (설정에서 켠 경우만). */
+    /** 밀기·길게 누르기가 끝났을 때의 진동 (설정에서 켠 경우만, 키 진동과 따로 켜고 끈다). */
     void onGesture() {
-        if (vibrate && gesture) play(levels[gestureLevel]);
+        if (gesture) play(levels[gestureLevel]);
     }
 
     /** 도구 막대 버튼을 눌렀거나 도구 막대를 밀었을 때의 진동 (키 종류별 설정을 켰으면 그 단계). */
@@ -214,9 +217,9 @@ final class Feedback {
         playClickSound(null);
     }
 
-    /** 키를 누르고 있어 글자가 반복 입력되거나 연속으로 지워질 때, 한 글자마다 울리는 틱. */
+    /** 키를 누르고 있어 글자가 반복 입력되거나 연속으로 지워질 때, 한 글자마다 울리는 진동 (키 진동과 따로 고른다). */
     void onRepeat() {
-        if (vibrate) play(levels[WEAK]);
+        if (repeatLevel > 0) play(levels[repeatLevel]);
     }
 
     void onKey(Key key) {
