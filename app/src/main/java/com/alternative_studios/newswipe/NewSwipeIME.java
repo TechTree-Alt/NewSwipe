@@ -1384,7 +1384,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private void applyToolbarEdges() {
         int barL = Ui.dp(this, padPrefs().padLeftDp() + padPrefs().areaPadDp(0, Prefs.SIDE_LEFT));
         int barR = Ui.dp(this, padPrefs().padRightDp() + padPrefs().areaPadDp(0, Prefs.SIDE_RIGHT));
-        if (keyboard != null && splitActive() && prefs.profileView(profile()).toolbarFollowBlocks()) {
+        if (keyboard != null && splitActive() && layoutPrefs().toolbarFollowBlocks()) {
             float[] e = keyboard.keyExtent();
             int w = keyboard.getWidth();
             if (e != null && w > 0) {
@@ -1821,6 +1821,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         // 자·모음 균형 배열의 키 폭·위치는 가로 모드·폴더블 내부 화면일 때 세로 모드와 따로 정한 값을 쓴다.
         // 화면을 돌리면 시스템이 입력 뷰를 다시 만들고(onCreateInputView → applySettings), 입력을 다시 시작하므로 여기서 방향을 읽으면 된다.
         prefs = prefs.profileView(profile());
+        // 상세 배열(자·모음 균형 배열·분리 키보드)은 한글 자판과 영어 자판이 따로 정한다. 기호 자판은 들어온 글자 자판의 것을 따른다.
+        prefs = prefs.languageView(englishLayoutFor(kind));
         KeyboardLayout l;
         switch (kind) {
             case KeyboardLayout.ENGLISH:
@@ -3687,9 +3689,24 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         for (int i = 1; i < suggestViews.length; i++) suggestViews[i].setVisibility(on ? View.GONE : View.VISIBLE);
     }
 
-    /** 분리 키보드를 쓰는 중인지 (가로 모드·폴더블 내부 화면에서 분리를 켰고 한 손 모드가 아닐 때). */
+    /** 분리 키보드를 쓰는 중인지 (지금 자판의 상세 배열이 분리 키보드이고 한 손 모드가 아닐 때). */
     private boolean splitActive() {
-        return Prefs.ONE_HAND_OFF.equals(activeOneHand()) && prefs.profileView(profile()).splitView();
+        return Prefs.ONE_HAND_OFF.equals(activeOneHand()) && layoutPrefs().splitView();
+    }
+
+    /**
+     * 자판 kind가 영어 자판의 상세 배열(자·모음 균형 배열·분리 키보드)을 따르는지: 영어 자판, 그리고 영어 자판에서 들어온 기호 자판.
+     * 한글·일본어·중국어 자판과 거기서 들어온 기호 자판은 한글 자판의 상세 배열을 따른다.
+     */
+    private boolean englishLayoutFor(int kind) {
+        if (kind == KeyboardLayout.ENGLISH) return true;
+        boolean symbols = kind == KeyboardLayout.SYMBOLS || kind == KeyboardLayout.SYMBOLS_2;
+        return symbols && !korean && cjkLang == null;
+    }
+
+    /** 지금 자판이 읽는 설정 보기 (지금 화면의 프로필, 지금 자판의 상세 배열). */
+    private Prefs layoutPrefs() {
+        return prefs.profileView(profile()).languageView(englishLayoutFor(layoutKind));
     }
 
     /** 분리 키보드에서 추천 단어 한 칸의 폭 (dp). 추천 단어는 이 폭에서 앞이 …로 줄어든다. */

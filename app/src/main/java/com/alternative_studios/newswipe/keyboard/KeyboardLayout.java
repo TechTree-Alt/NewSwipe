@@ -302,6 +302,7 @@ public final class KeyboardLayout {
     }
 
     public static KeyboardLayout korean(Prefs prefs) {
+        if (prefs != null) prefs = prefs.koreanView();   // 한글 자판의 상세 배열 (영어 자판과 따로 정한다)
         if (balanced(prefs)) return balancedLayout(prefs, prefs.numberRow());
         // 두벌식은 쿼티 모양 (분리 키보드에서는 영어 자판처럼 가운데에서 나눈다: Prefs.balancedLayout은 거기서 늘 false).
         if (dubeolsik(prefs)) return qwertyLayout(KOREAN, DUBEOLSIK_ROWS, DUBEOLSIK_POPUPS, true, prefs);
@@ -589,7 +590,8 @@ public final class KeyboardLayout {
     }
 
     public static KeyboardLayout english(Prefs prefs) {
-        return qwertyLayout(ENGLISH, ENGLISH_ROWS, ENGLISH_POPUPS, false, prefs);
+        // 영어 자판의 상세 배열(자·모음 균형 배열·분리 키보드, 묶음 폭·위치)은 한글 자판과 따로 정한다.
+        return qwertyLayout(ENGLISH, ENGLISH_ROWS, ENGLISH_POPUPS, false, prefs == null ? null : prefs.englishView());
     }
 
     /** 쿼티 모양 자판 왼쪽 아래 키: 영어는 늘 Shift, 한글(두벌식)은 한글 Shift 설정을 따른다 (없앴으면 빈 칸 또는 Fn). */
@@ -1046,6 +1048,8 @@ public final class KeyboardLayout {
      * 아래 줄 키의 폭은 바뀌지 않는다.
      */
     private static float gridKey(Prefs prefs) {
+        // 영어·기호 자판도 한글 자판의 키 한 칸에 맞춘다: 한글 자판의 상세 배열로 잰다 (영어 자판의 상세 배열은 따로 정한다).
+        if (prefs != null) prefs = prefs.koreanView();
         // 자·모음 균형 배열: 왼쪽 절반을 나눠 가진 자음 키 한 칸 (5열이면 1칸, 4열이면 1.25칸).
         // 8열 단모음의 좌·우 균형 배열은 자음이 4열이 되므로 그 폭을 따른다.
         // 두벌식은 자음 쪽이 들여쓰기·1.5칸 Shift를 포함해 5.5칸이라 키 한 칸이 그만큼 좁다.

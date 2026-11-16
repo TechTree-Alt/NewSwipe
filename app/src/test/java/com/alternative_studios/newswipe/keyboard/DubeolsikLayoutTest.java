@@ -513,28 +513,33 @@ public class DubeolsikLayoutTest {
         return labels(row);
     }
 
-    /** 두벌식 균형 배열을 켜고 '영어 자판도 균형 배열'을 켜면 영어 자판도 같은 모양으로 나뉜다. */
+    /**
+     * 영어 자판의 상세 배열은 한글 자판과 따로 정한다: 영어 자판을 자·모음 균형 배열로 하면 두벌식 균형 배열과 같은 모양으로 나뉘고
+     * (한글 배열·한글 자판의 상세 배열과 상관없이), 묶음 폭·위치도 영어 자판의 값을 따로 쓴다.
+     */
     @Test
-    public void englishFollowsTheBalancedLayout() throws Exception {
+    public void englishBalancedIsSetSeparately() throws Exception {
         String[][] english = {{"q", "w", "e", "r", "t", "y", "u", "i", "o", "p"}, {"a", "s", "d", "f", "g", "h", "j", "k", "l"},
                 {"z", "x", "c", "v", "b", "n", "m"}};
         for (boolean numberRow : new boolean[]{false, true}) {
             FakeSp sp = dubeolsik(true);
             sp.m.put(Prefs.NUMBER_ROW, numberRow);
-            // 옵션을 켜지 않으면 일반 영어 자판
+            // 한글 자판이 균형 배열이어도 영어 자판의 상세 배열을 정하지 않으면 일반 영어 자판
             assertEquals(10, KeyboardLayout.english(portrait(sp)).columns);
             assertEquals(1f, key(KeyboardLayout.english(portrait(sp)), "a").weight, 1e-3f);
-            sp.m.put(Prefs.ENGLISH_BALANCED, true);
+            Prefs en = portrait(sp).englishView();
+            sp.m.put(en.balancedLayoutKey(), true);
+            assertEquals(Prefs.ENGLISH_BALANCED, en.balancedLayoutKey());
             Prefs p = portrait(sp);
             assertTrue(p.englishBalanced());
-            KeyboardLayout en = KeyboardLayout.english(p), ko = KeyboardLayout.korean(p);
+            KeyboardLayout enl = KeyboardLayout.english(p), ko = KeyboardLayout.korean(p);
             int first = numberRow ? 1 : 0;
-            assertEquals(ko.rows.length, en.rows.length);
+            assertEquals(ko.rows.length, enl.rows.length);
             for (int r = 0; r < 3; r++) {
-                KeyboardLayout.Row row = en.rows[first + r], kr = ko.rows[first + r];
+                KeyboardLayout.Row row = enl.rows[first + r], kr = ko.rows[first + r];
                 assertArrayEquals(english[r], qwertyLabels(row));
                 assertEquals(10f, total(row), 1e-3f);
-                // 한글 두벌식 줄과 키 하나하나의 자리·폭이 같다
+                // 기본 폭·위치에서는 한글 두벌식 균형 배열 줄과 키 하나하나의 자리·폭이 같다
                 java.util.List<Key> e = letters(row), k = letters(kr);
                 assertEquals(e.size(), k.size());
                 for (int i = 0; i < e.size(); i++) {
@@ -542,33 +547,44 @@ public class DubeolsikLayoutTest {
                     assertEquals(r + ":" + i, k.get(i).weight, e.get(i).weight, 1e-3f);
                 }
             }
-            KeyboardLayout.Row third = en.rows[first + 2];
+            KeyboardLayout.Row third = enl.rows[first + 2];
             assertEquals(Key.SHIFT, firstKey(third).type);   // 영어는 늘 Shift (한글 두벌식에서 Shift를 없애도)
-            // 두벌식의 Shift를 없애도 영어 Shift는 그대로
             sp.m.put(Prefs.DUBEOLSIK_SHIFT_HIDDEN, true);
             assertEquals(1, count(KeyboardLayout.english(portrait(sp)), Key.SHIFT));
             sp.m.remove(Prefs.DUBEOLSIK_SHIFT_HIDDEN);
-            // 키 폭 설정도 함께 따른다
-            sp.m.put(p.balancedConsonantWidthKey(), 80);
-            KeyboardLayout moved = KeyboardLayout.english(portrait(sp));
-            assertEquals(KeyboardLayout.korean(portrait(sp)).rows[first].keys.length, moved.rows[first].keys.length);
+            // 묶음 폭은 영어 자판의 값을 따로 쓴다: 영어 자판의 왼쪽 묶음을 줄여도 한글 자판은 그대로다
+            float koA = key(KeyboardLayout.korean(portrait(sp)), "ㅁ").weight;
+            assertTrue(!en.balancedConsonantWidthKey().equals(portrait(sp).balancedConsonantWidthKey()));
+            sp.m.put(en.balancedConsonantWidthKey(), 60);
+            assertTrue(key(KeyboardLayout.english(portrait(sp)), "a").weight < key(enl, "a").weight - 1e-3f);
+            assertEquals(koA, key(KeyboardLayout.korean(portrait(sp)), "ㅁ").weight, 1e-3f);
         }
-        // 켜지지 않는 경우: 균형 배열이 꺼짐, 두벌식이 아님, 한 손 모드, 가로 모드 분리 키보드
+        // 한글 자판이 균형 배열이 아니어도(한글 배열과도 상관없이) 영어 자판만 균형 배열로 할 수 있다
         FakeSp off = dubeolsik(false);
         off.m.put(Prefs.ENGLISH_BALANCED, true);
-        assertFalse(portrait(off).englishBalanced());
-        assertEquals(1f, key(KeyboardLayout.english(portrait(off)), "a").weight, 1e-3f);
+        assertTrue(portrait(off).englishBalanced());
+        assertFalse(portrait(off).balancedLayout());
+        assertTrue(key(KeyboardLayout.english(portrait(off)), "a").weight != 1f);
         FakeSp d8 = new FakeSp();
         d8.m.put(Prefs.ENGLISH_BALANCED, true);
-        d8.m.put(Prefs.BALANCED_LAYOUT + "_" + Prefs.KOREAN_LAYOUT_8, true);
-        assertFalse(portrait(d8).englishBalanced());
+        assertTrue(portrait(d8).englishBalanced());
+        // 한 손 모드에서는 나누지 않는다
         FakeSp on = dubeolsik(true);
         on.m.put(Prefs.ENGLISH_BALANCED, true);
         assertFalse(portrait(on).oneHandView().englishBalanced());
-        // 가로 모드 분리 키보드는 영어 자판도 늘 영어 자판처럼 가운데에서 나눈다
+        // 분리 키보드도 영어 자판이 따로 정한다: 한글 자판의 분리 키보드를 켜도 영어 자판은 균형 배열 그대로
         Prefs land = view(on, Prefs.PROFILE_LANDSCAPE);
         on.m.put(land.splitKey(), true);
+        on.m.put(land.englishView().balancedLayoutKey(), true);
+        assertTrue(view(on, Prefs.PROFILE_LANDSCAPE).englishBalanced());
+        assertFalse(KeyboardLayout.english(view(on, Prefs.PROFILE_LANDSCAPE)).staggeredSplit);
+        assertTrue(KeyboardLayout.korean(view(on, Prefs.PROFILE_LANDSCAPE)).staggeredSplit);
+        // 영어 자판의 분리 키보드를 켜면 영어 자판은 가운데에서 나뉘고(균형 배열보다 먼저), 한글 자판의 분리 키보드를 꺼도 그대로다
+        on.m.put(land.englishView().splitKey(), true);
+        on.m.put(land.splitKey(), false);
         assertFalse(view(on, Prefs.PROFILE_LANDSCAPE).englishBalanced());
+        assertTrue(KeyboardLayout.english(view(on, Prefs.PROFILE_LANDSCAPE)).staggeredSplit);
+        assertFalse(KeyboardLayout.korean(view(on, Prefs.PROFILE_LANDSCAPE)).staggeredSplit);
         assertEquals(1, count(KeyboardLayout.english(view(on, Prefs.PROFILE_LANDSCAPE)), Key.SHIFT));
     }
 

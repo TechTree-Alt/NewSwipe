@@ -74,10 +74,14 @@ public class SplitBottomRowTest {
         FakeSp sp = new FakeSp();
         Prefs p = landscapeEditView(sp);
         sp.m.put(Prefs.NUMBER_ROW, numberRow);
-        sp.m.put(p.legacyConsonantPosKey(), s[0]);
-        sp.m.put(p.legacyVowelPosKey(), s[1]);
-        sp.m.put(p.balancedConsonantWidthKey(), s[2]);
-        sp.m.put(p.balancedVowelWidthKey(), s[3]);
+        // 영어 자판은 상세 배열(분리 키보드, 묶음 폭·위치)을 따로 정한다: 같은 모양이 되게 영어 자판에도 같은 값을 둔다.
+        for (Prefs v : new Prefs[]{p, p.englishView()}) {
+            sp.m.put(v.splitKey(), true);
+            sp.m.put(v.legacyConsonantPosKey(), s[0]);
+            sp.m.put(v.legacyVowelPosKey(), s[1]);
+            sp.m.put(v.balancedConsonantWidthKey(), s[2]);
+            sp.m.put(v.balancedVowelWidthKey(), s[3]);
+        }
         return p;
     }
 
@@ -174,10 +178,13 @@ public class SplitBottomRowTest {
     /** 두 묶음이 각자 절반을 꽉 채우도록 폭 100%·가운데 위치(왼쪽 0, 오른쪽 100)로 둔 가로 모드 보기. */
     private static Prefs fullWidthLandscape(FakeSp sp) throws Exception {
         Prefs p = landscapeEditView(sp);
-        sp.m.put(p.balancedConsonantWidthKey(), 100);
-        sp.m.put(p.legacyConsonantPosKey(), 0);
-        sp.m.put(p.balancedVowelWidthKey(), 100);
-        sp.m.put(p.legacyVowelPosKey(), 100);
+        for (Prefs v : new Prefs[]{p, p.englishView()}) {   // 영어 자판도 같은 모양으로 (상세 배열을 따로 정한다)
+            sp.m.put(v.splitKey(), true);
+            sp.m.put(v.balancedConsonantWidthKey(), 100);
+            sp.m.put(v.legacyConsonantPosKey(), 0);
+            sp.m.put(v.balancedVowelWidthKey(), 100);
+            sp.m.put(v.legacyVowelPosKey(), 100);
+        }
         return p;
     }
 

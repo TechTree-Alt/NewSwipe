@@ -1314,7 +1314,7 @@ public class EditorUiTest {
         assertEquals(java.util.Arrays.asList("사용 안 함"), afterLabel(cur(a), "상세 배열", 1));
         assertFalse(visibleTexts(cur(a)).contains("반으로 나"));   // '사용 안 함'이면 상세 배열 설명이 없다
         assertFalse(visibleTexts(cur(a)).contains("왼쪽 묶음 폭"));
-        assertFalse(visibleTexts(cur(a)).contains("영어 자판도 균형 배열"));   // 균형 배열을 켠 뒤에만 보인다
+        assertFalse(visibleTexts(cur(a)).contains("영어 자판도 균형 배열"));   // 영어 자판의 상세 배열은 영어 글자 키 창에서 따로 정한다
         assertFalse(visibleTexts(cur(a)).contains("영어 자판 아래로 밀어 대문자 입력"));   // 영어 글자 키 창에만 있다
         shot(a, "a0-dubeolsik");
         // 균형 배열: 자음은 왼쪽 절반, 모음은 오른쪽 절반으로 나누되 각 쪽 안의 자리는 일반 두벌식 그대로
@@ -1332,7 +1332,7 @@ public class EditorUiTest {
         assertEquals(st, java.util.Arrays.asList("분리 키보드"), afterLabel(cur(a), "상세 배열", 1));
         // 고르면 창을 다시 열지 않아도 분리 키보드 섹션이 바로 보이고, 설명은 분리 키보드의 것만
         assertTrue(st, st.contains("왼쪽 묶음 폭") && st.contains("오른쪽 묶음 가로 위치"));
-        assertTrue(st, st.contains("분리 키보드는 키보드 전체를 반으로 나눕니다. 영어 자판과 기호 자판에도 적용됩니다."));
+        assertTrue(st, st.contains("분리 키보드는 한글 자판 전체를 반으로 나눕니다. 한글 자판에서 연 기호 자판에도 적용됩니다."));
         assertFalse(st, st.contains("자·모음 균형 배열은"));
         assertFalse(st, st.contains("자음 키 폭"));   // 자·모음 균형 배열 섹션은 균형 배열을 골랐을 때만
         assertFalse(st, st.contains("자·모음 분리 배열"));   // 두벌식에는 분리 키보드의 하위 토글이 없다
@@ -1371,14 +1371,8 @@ public class EditorUiTest {
         bShown.setAccessible(true);
         for (KeyboardPreview.Handle bh : new KeyboardPreview.Handle[]{KeyboardPreview.Handle.B_LEFT_START, KeyboardPreview.Handle.B_LEFT_END,
                 KeyboardPreview.Handle.B_RIGHT_START, KeyboardPreview.Handle.B_RIGHT_END}) assertTrue(bh.name(), (Boolean) bShown.invoke(p, bh));
-        assertTrue(visibleTexts(cur(a)).contains("영어 자판도 균형 배열"));
-        View enRow = clickableOf(findText(cur(a), "영어 자판도 균형 배열"));
-        enRow.performClick();
-        idle();
-        assertTrue(prefs.englishBalanced());
-        enRow.performClick();   // 다시 끈다
-        idle();
-        assertFalse(prefs.englishBalanced());
+        assertFalse(visibleTexts(cur(a)).contains("영어 자판도 균형 배열"));   // 없앴다: 영어 글자 키 창의 상세 배열로 정한다
+        assertFalse(prefs.englishBalanced());   // 한글 자판의 균형 배열이 영어 자판을 나누지 않는다
         KeyboardView kv = find(p, KeyboardView.class);
         Key m = key(p, "ㅁ", Key.CHAR), b = key(p, "ㅂ", Key.CHAR), o = key(p, "ㅗ", Key.CHAR), yo = key(p, "ㅛ", Key.CHAR);
         assertEquals(b.rect.left + b.rect.width() / 2f, m.rect.left, 1.5f);   // ㅁ은 ㅂ보다 반 칸 들어간다
@@ -1388,7 +1382,7 @@ public class EditorUiTest {
         assertEquals(e.rect.right, del.rect.right, 1.5f);
         assertTrue(key(p, "ㅎ", Key.CHAR).rect.right <= kv.getWidth() / 2f + 1f);
         assertTrue(o.rect.left >= kv.getWidth() / 2f - 1f);
-        cur(a).scrollTo(0, 450);   // 균형 배열의 하위 묶음(균형 배열 사용자화, 영어 자판도 균형 배열)이 보이게
+        cur(a).scrollTo(0, 450);   // 균형 배열 섹션이 보이게
         shot(a, "a1-dubeolsik-balanced");
         cur(a).scrollTo(0, 0);
         // 격자 정렬과도 함께 쓴다
@@ -1790,6 +1784,64 @@ public class EditorUiTest {
         assertFalse(pre.raw().contains(land.toolbarHeightKey()));
         assertEquals(110, pre.raw().getInt(Prefs.TOOLBAR_HEIGHT, 0));
         pre.raw().edit().remove(Prefs.KEY_TEXT_SIZE).remove(Prefs.PAD_LEFT).remove(Prefs.TOOLBAR_HEIGHT).commit();
+    }
+
+    /**
+     * 영어 글자 키 창에 한글 자판과 따로 정하는 '상세 배열'이 있다: 자·모음 균형 배열·분리 키보드를 고르면 영어 자판만 바뀌고
+     * (한글 자판은 그대로), 미리보기의 영어 탭도 그 모양으로 그린다. 영어 글자 키 되돌리기는 영어 자판의 상세 배열만 되돌린다.
+     */
+    @Test
+    public void englishDetailLayoutIsSeparate() throws Exception {
+        Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
+        SettingsActivity a = launch("keyboard");
+        View decor = a.getWindow().getDecorView();
+        KeyboardPreview p = find(decor, KeyboardPreview.class);
+        p.setTab(KeyboardPreview.TAB_ENGLISH);
+        idle();
+        tapArea(p, KeyboardPreview.AREA_LETTERS);
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
+        assertTrue(open(a));
+        assertNotNull(findText(decor, "영어 글자 키 설정"));
+        String t = visibleTexts(sheetOf(a).body());
+        assertTrue(t, t.contains("영어 자판 배열") && t.contains("상세 배열") && t.contains("세로만"));
+        assertFalse(t, t.contains("한글 자판 배열") || t.contains("영어 자판도 균형 배열"));
+        assertEquals(java.util.Arrays.asList("사용 안 함"), afterLabel(sheetOf(a).body(), "상세 배열", 1));
+        Prefs en = pre.englishView();
+        // 자·모음 균형 배열: 영어 자판만 나뉜다
+        clickableOf(findText(sheetOf(a).body(), "상세 배열")).performClick();
+        idle();
+        shadowOf((AlertDialog) ShadowDialog.getLatestDialog()).clickOnItem(1);
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
+        assertTrue(pre.raw().getBoolean(en.balancedLayoutKey(), false));
+        assertFalse(pre.balancedLayoutSetting());   // 한글 자판은 그대로
+        assertTrue(pre.englishBalanced());
+        t = visibleTexts(sheetOf(a).body());
+        assertTrue(t, t.contains("자·모음 균형 배열은 영어 자판을") && t.contains("왼쪽 묶음 폭") && t.contains("오른쪽 묶음 가로 위치"));
+        java.lang.reflect.Method shown = KeyboardPreview.class.getDeclaredMethod("handleShown", KeyboardPreview.Handle.class);
+        shown.setAccessible(true);
+        assertTrue((Boolean) shown.invoke(p, KeyboardPreview.Handle.B_LEFT_END));
+        assertTrue(key(p, "a", Key.CHAR).weight != 1f);
+        // 분리 키보드: 영어 자판만 나뉘고, 한글 탭은 나뉘지 않는다
+        clickableOf(findText(sheetOf(a).body(), "상세 배열")).performClick();
+        idle();
+        shadowOf((AlertDialog) ShadowDialog.getLatestDialog()).clickOnItem(2);
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
+        assertTrue(pre.raw().getBoolean(en.splitKey(), false));
+        assertFalse(pre.portraitSplit());
+        assertTrue(p.layout().staggeredSplit);
+        t = visibleTexts(sheetOf(a).body());
+        assertTrue(t, t.contains("분리 키보드는 영어 자판 전체를") && !t.contains("자·모음 분리 배열"));   // 하위 토글은 한글 자판에만
+        shot(a, "e3-english-split");
+        p.setTab(KeyboardPreview.TAB_KOREAN);
+        idle();
+        assertFalse(p.layout().staggeredSplit);
+        // 영어 글자 키 되돌리기: 영어 자판의 상세 배열만 되돌린다
+        pre.raw().edit().putBoolean(Prefs.BALANCED_LAYOUT, true).commit();
+        pre.resetEditorScope(Prefs.SCOPE_LETTERS_EN);
+        assertFalse(pre.raw().contains(en.splitKey()));
+        assertFalse(pre.raw().contains(en.balancedLayoutKey()));
+        assertTrue(pre.raw().getBoolean(Prefs.BALANCED_LAYOUT, false));
+        pre.raw().edit().remove(Prefs.BALANCED_LAYOUT).commit();
     }
 
     /** 세로로 들고 연 키보드 사용자화는 세로 키보드를 편집하고, 그 사실을 제목과 안내로 알린다. */

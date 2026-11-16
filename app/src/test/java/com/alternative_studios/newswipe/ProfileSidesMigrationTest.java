@@ -101,6 +101,47 @@ public class ProfileSidesMigrationTest {
         assertEquals(70, lp.oneHandWidthForProfile());
     }
 
+    /** 예전에는 분리 키보드를 켜면 영어 자판도 나뉘었다: 영어 자판의 분리 키보드를 켜 두고, 묶음 폭·위치도 옮긴다. */
+    @Test
+    public void englishFollowsTheOldSplitKeyboard() throws Exception {
+        LegacySwipeSettingsTest.MapSp sp = new LegacySwipeSettingsTest.MapSp();
+        sp.m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_D7);
+        Prefs land = view(sp, Prefs.PROFILE_LANDSCAPE);
+        sp.m.put(land.splitKey(), true);
+        sp.m.put(Prefs.balancedKeyFor(Prefs.BALANCED_VOWEL_WIDTH, Prefs.PROFILE_LANDSCAPE, true, Prefs.KOREAN_LAYOUT_D7), 70);
+        view(sp, Prefs.PROFILE_PORTRAIT).migrateProfileSides();
+        Prefs en = view(sp, Prefs.PROFILE_LANDSCAPE).englishView();
+        assertTrue(en.profileSplit());
+        assertEquals(70, en.balancedVowelWidth());
+        // 세로 모드는 분리 키보드를 쓰지 않았으니 영어 자판도 그대로
+        assertFalse(view(sp, Prefs.PROFILE_PORTRAIT).englishView().profileSplit());
+    }
+
+    /**
+     * 예전 '영어 자판도 균형 배열'은 두벌식에서 한글 자판이 균형 배열일 때만 영어 자판을 나눴다: 그때만 영어 자판의 균형 배열을 켜 두고
+     * (두벌식 균형 배열의 묶음 폭·위치를 옮긴다), 나뉘지 않던 경우는 끈다.
+     */
+    @Test
+    public void oldEnglishBalancedKeepsItsLook() throws Exception {
+        LegacySwipeSettingsTest.MapSp shown = new LegacySwipeSettingsTest.MapSp();
+        shown.m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_DUBEOLSIK);
+        shown.m.put(Prefs.BALANCED_LAYOUT, true);
+        shown.m.put(Prefs.ENGLISH_BALANCED, true);
+        shown.m.put(Prefs.BALANCED_CONSONANT_WIDTH + "_" + Prefs.KOREAN_LAYOUT_DUBEOLSIK, 80);
+        view(shown, Prefs.PROFILE_PORTRAIT).migrateProfileSides();
+        Prefs en = view(shown, Prefs.PROFILE_PORTRAIT).englishView();
+        assertTrue(en.englishBalanced());
+        assertEquals(80, en.balancedConsonantWidth());
+        assertTrue(view(shown, Prefs.PROFILE_LANDSCAPE).englishBalanced());   // 키보드마다 옮겨 적었다
+
+        LegacySwipeSettingsTest.MapSp hidden = new LegacySwipeSettingsTest.MapSp();   // 단모음: 예전에는 영어 자판이 나뉘지 않았다
+        hidden.m.put(Prefs.BALANCED_LAYOUT, true);
+        hidden.m.put(Prefs.ENGLISH_BALANCED, true);
+        view(hidden, Prefs.PROFILE_PORTRAIT).migrateProfileSides();
+        assertFalse(view(hidden, Prefs.PROFILE_PORTRAIT).englishBalanced());
+        assertFalse(view(hidden, Prefs.PROFILE_LANDSCAPE).englishBalanced());
+    }
+
     @Test
     public void freshInstallWritesOnlyTheMark() throws Exception {
         LegacySwipeSettingsTest.MapSp sp = new LegacySwipeSettingsTest.MapSp();
