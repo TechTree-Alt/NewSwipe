@@ -3012,24 +3012,35 @@ public final class SettingsActivity extends Activity {
         intro.addView(note(L.t(now + "로 들었을 때의 한 손 모드를 정합니다. " + other + "일 때의 설정은 기기를 " + other + "로 돌리면 보입니다.",
                 "Sets one-handed mode for when the device is held " + (land ? "sideways" : "upright") + ". To see the settings for "
                 + (land ? "portrait" : "landscape") + ", rotate the device.")));
+        intro.addView(note(L.t("'" + ownBadgeText(profile) + "' 표시가 있는 설정은 이 키보드에만 적용됩니다.",
+                "Settings marked '" + ownBadgeText(profile) + "' apply only to this keyboard.")));
         addOneHandSize(view);
     }
 
-    /** 이 프로필(view)의 한 손 모드 '크기와 여백' 섹션. */
+    /**
+     * 이 프로필(view)의 한 손 모드 '크기와 여백' 섹션. 세 값 모두 키보드(세로·가로·폴더블 내부 화면 세로·가로)마다 따로 정하므로
+     * 키보드 사용자화처럼 '세로만' 같은 표시를 붙인다.
+     */
     private void addOneHandSize(Prefs view) {
         LinearLayout size = section(L.t("크기와 여백", "Size & padding"));
-        size.addView(oneHandSlider(L.t("자판 폭", "Keyboard width"), view.oneHandWidthKey(), view::oneHandWidthForProfile,
-                view.oneHandWidthMin(), Prefs.ONE_HAND_WIDTH_MAX, 5, "%"));
-        size.addView(oneHandSlider(L.t("키 높이", "Key height"), view.oneHandHeightKey(), view::oneHandHeightForProfile,
-                Prefs.ONE_HAND_HEIGHT_MIN, Prefs.ONE_HAND_HEIGHT_MAX, 5, "%"));
-        size.addView(oneHandSlider(L.t("아래쪽 여백", "Bottom padding"), view.oneHandBottomKey(), view::oneHandBottomForProfile,
-                0, Prefs.ONE_HAND_LIFT_MAX, 4, "dp"));
+        size.addView(oneHandOwn(view, oneHandSlider(L.t("자판 폭", "Keyboard width"), view.oneHandWidthKey(), view::oneHandWidthForProfile,
+                view.oneHandWidthMin(), Prefs.ONE_HAND_WIDTH_MAX, 5, "%")));
+        size.addView(oneHandOwn(view, oneHandSlider(L.t("키 높이", "Key height"), view.oneHandHeightKey(), view::oneHandHeightForProfile,
+                Prefs.ONE_HAND_HEIGHT_MIN, Prefs.ONE_HAND_HEIGHT_MAX, 5, "%")));
+        size.addView(oneHandOwn(view, oneHandSlider(L.t("아래쪽 여백", "Bottom padding"), view.oneHandBottomKey(), view::oneHandBottomForProfile,
+                0, Prefs.ONE_HAND_LIFT_MAX, 4, "dp")));
         size.addView(note(L.t("자판 폭은 화면 폭에 대한 비율이고, 키 높이는 보통 키 높이에 대한 비율입니다. "
                 + "아래쪽 여백은 자판 아래의 빈 공간으로, 값이 클수록 자판이 위로 올라갑니다. "
                 + "한 손 모드에서는 '키보드 사용자화'의 상하좌우 여백 대신 이 값만 씁니다.",
                 "Keyboard width is relative to the screen width, and key height is relative to the normal key height. "
                 + "Bottom padding is the empty space below the keyboard; higher values move it up. "
                 + "In one-handed mode, only this value is used instead of the padding in 'Customize keyboard'.")));
+    }
+
+    /** 한 손 모드 줄에 그 키보드(view의 프로필) 이름 표시를 붙인다 (설정 검색 목록을 모을 때는 붙이지 않는다). */
+    private View oneHandOwn(Prefs view, View row) {
+        if (!harvesting) SettingsWidgets.badge(row, ownBadgeText(view.profile()), accentColor);
+        return row;
     }
 
     /** 미리보기 손잡이로도 바뀌는 한 손 모드 슬라이더: 바꾸면 미리보기를 다시 그리고, 손잡이를 끌면 따라 움직인다. */

@@ -56,8 +56,10 @@ public class OneHandPrefsTest {
         sp.m.put(largePort.oneHandBottomKey(), 8);
         assertEquals(8, largePort.oneHandBottomForProfile());
         assertEquals(40, port.oneHandBottomForProfile());
-        assertEquals(30, land.oneHandWidthMin());
-        assertEquals(60, port.oneHandWidthMin());
+        assertEquals(10, land.oneHandWidthMin());   // 모든 키보드가 10%까지
+        assertEquals(10, port.oneHandWidthMin());
+        sp.m.put(port.oneHandWidthKey(), 10);
+        assertEquals(10, port.oneHandWidthForProfile());
     }
 
     @Test

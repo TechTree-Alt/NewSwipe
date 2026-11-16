@@ -2393,6 +2393,10 @@ public class EditorUiTest {
         assertNotNull(p);
         assertNull("미리보기는 목록 안이 아니라 화면 아래에 붙는다", find(cur(a), OneHandPreview.class));
         assertTrue(lines(cur(a)).contains("세로로 들었을 때의 한 손 모드를 정합니다. 가로일 때의 설정은 기기를 가로로 돌리면 보입니다."));
+        // 자판 폭·키 높이·아래쪽 여백은 모두 키보드마다 따로 정한다: 세 줄에 '세로만' 표시, 안내에 그 뜻
+        assertTrue(lines(cur(a)).contains("'세로만' 표시가 있는 설정은 이 키보드에만 적용됩니다."));
+        java.util.List<String> ls = lines(cur(a));
+        for (String label : new String[]{"자판 폭", "키 높이", "아래쪽 여백"}) assertEquals(label, "세로만", ls.get(ls.indexOf(label) + 1));
         // 세로로 고정된 다른 설정 화면과 달리 화면을 돌릴 수 있다.
         assertEquals(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED, a.getRequestedOrientation());
         View overlay = p.getChildAt(1);
@@ -2411,10 +2415,10 @@ public class EditorUiTest {
         drag(overlay, w[0], w[1], p.getWidth() * 0.05f, 0);
         assertEquals(85, prefs.oneHandWidthForProfile());
         assertTrue(lines(cur(a)).contains("85%"));
-        // 범위 밖으로 끌어도 60%에서 멈춘다.
+        // 범위 밖으로 끌어도 10%에서 멈춘다.
         w = oneHandHandle(p, OneHandPreview.Handle.WIDTH);
-        drag(overlay, w[0], w[1], -p.getWidth() * 0.6f, 0);
-        assertEquals(60, prefs.oneHandWidthForProfile());
+        drag(overlay, w[0], w[1], -p.getWidth() * 0.9f, 0);
+        assertEquals(10, prefs.oneHandWidthForProfile());
 
         // 키 높이: 위 가장자리를 아래로 끌면 작아진다.
         int h0 = p.getHeight();
@@ -2435,7 +2439,7 @@ public class EditorUiTest {
 
         // 손잡이 밖을 끌면 아무것도 바뀌지 않는다.
         drag(overlay, p.getWidth() * 0.9f, p.getHeight() / 2f, -100, -100);
-        assertEquals(60, prefs.oneHandWidthForProfile());
+        assertEquals(10, prefs.oneHandWidthForProfile());
         assertEquals(40, prefs.oneHandBottomForProfile());
         // 세로 화면에서 바꾼 값은 세로 모드 키에만 저장된다 (가로 모드는 따로 정하기 전까지 이 값을 따른다).
         assertEquals(40, prefs.raw().getInt(Prefs.ONE_HAND_LIFT, -1));
@@ -2455,11 +2459,13 @@ public class EditorUiTest {
         assertTrue(lines(cur(a)).stream().anyMatch(l -> l.equals("가로로 들었을 때의 한 손 모드를 정합니다. 세로일 때의 설정은 기기를 세로로 돌리면 보입니다.")));
         View overlay = p.getChildAt(1);
         float density = a.getResources().getDisplayMetrics().density;
-        // 가로 모드 자판 폭의 기본값은 50%이고, 30%까지 줄일 수 있다.
+        // 가로 모드 자판 폭의 기본값은 50%이고, 10%까지 줄일 수 있다. 표시는 '가로만'.
+        java.util.List<String> ls = lines(cur(a));
+        assertEquals("가로만", ls.get(ls.indexOf("자판 폭") + 1));
         assertEquals(Prefs.ONE_HAND_WIDTH_LAND_DEFAULT, land.oneHandWidthForProfile());
         float[] w = oneHandHandle(p, OneHandPreview.Handle.WIDTH);
         drag(overlay, w[0], w[1], -p.getWidth() * 0.5f, 0);
-        assertEquals(30, land.oneHandWidthForProfile());
+        assertEquals(10, land.oneHandWidthForProfile());
         float[] lf = oneHandHandle(p, OneHandPreview.Handle.LIFT);
         drag(overlay, lf[0], lf[1], 0, -24 * density);
         assertEquals(24, land.oneHandBottomForProfile());

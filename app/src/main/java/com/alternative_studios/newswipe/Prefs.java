@@ -291,10 +291,10 @@ public final class Prefs {
     public static final String ONE_HAND_OFF = "off", ONE_HAND_LEFT = "left", ONE_HAND_RIGHT = "right";
     /** 한 손 모드 버튼을 눌러 켤 때 쓰는 쪽 (마지막으로 쓴 쪽). */
     public static final String ONE_HAND_LAST = "one_hand_last";
-    public static final String ONE_HAND_WIDTH = "one_hand_width";     // 자판 폭: 화면 폭의 %, 60~90
+    public static final String ONE_HAND_WIDTH = "one_hand_width";     // 자판 폭: 화면 폭의 %, 10~90
     public static final String ONE_HAND_HEIGHT = "one_hand_height";   // 키 높이: 보통 키 높이의 %, 60~100
     public static final String ONE_HAND_LIFT = "one_hand_lift";       // 아래쪽 여백(dp), 0~208 (예전 이름: 세로 위치)
-    public static final String ONE_HAND_WIDTH_LAND = "one_hand_width_land";   // 가로 모드의 자판 폭: 화면 폭의 %, 30~90
+    public static final String ONE_HAND_WIDTH_LAND = "one_hand_width_land";   // 가로 모드의 자판 폭: 화면 폭의 %, 10~90
     public static final int ONE_HAND_WIDTH_LAND_DEFAULT = 50;
     /**
      * 폴더블 내부 화면의 한 손 모드 자판 폭 기본값 (%): 넓은 화면이라 세로 휴대폰의 한 손 자판과 비슷한 폭이 되게
@@ -585,7 +585,8 @@ public final class Prefs {
     // (예전에는 폴더블 내부 화면 가로가 가로 모드 값을 따랐다: 가로 모드는 높이가 낮아 줄여 둔 값이라 따르지 않게 바꾸었다.
     //  가로 모드에서 정해 둔 값은 migrateProfileSides가 폴더블 내부 화면 가로에 한 번 옮겨 적는다.)
 
-    public static final int ONE_HAND_WIDTH_MIN = 60, ONE_HAND_WIDTH_MIN_LAND = 30, ONE_HAND_WIDTH_MAX = 90;
+    /** 한 손 모드 자판 폭의 범위 (%): 화면이 큰 기기에서도 좁게 쓸 수 있게 모든 키보드가 10%까지 줄일 수 있다 (예전에는 세로 60, 가로 30). */
+    public static final int ONE_HAND_WIDTH_MIN = 10, ONE_HAND_WIDTH_MAX = 90;
     /** 한 손 모드 아래쪽 여백의 최댓값 (dp): 예전 세로 위치(최대 160)에 예전 키보드 아래쪽 여백(최대 48)을 더해 옮겨 받는다. */
     public static final int ONE_HAND_HEIGHT_MIN = 60, ONE_HAND_HEIGHT_MAX = 100, ONE_HAND_LIFT_MAX = 160 + 48;
 
@@ -611,8 +612,8 @@ public final class Prefs {
     public String oneHandHeightKey() { return oneHandKey(ONE_HAND_HEIGHT); }
     public String oneHandBottomKey() { return oneHandKey(ONE_HAND_LIFT); }
 
-    /** 이 프로필의 한 손 모드 자판 폭 최솟값 (%): 세로 모드 60, 그 밖에는 30 (화면이 넓다). */
-    public int oneHandWidthMin() { return portrait() ? ONE_HAND_WIDTH_MIN : ONE_HAND_WIDTH_MIN_LAND; }
+    /** 한 손 모드 자판 폭 최솟값 (%): 모든 키보드가 10. */
+    public int oneHandWidthMin() { return ONE_HAND_WIDTH_MIN; }
 
     /** 이 프로필의 한 손 모드 자판 폭 (화면 폭의 %). */
     public int oneHandWidthForProfile() {
