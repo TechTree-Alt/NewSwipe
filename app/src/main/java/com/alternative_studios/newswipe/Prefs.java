@@ -496,9 +496,6 @@ public final class Prefs {
         return board == b ? this : new Prefs(sp, oneHandView, profile, profileEdit, b);
     }
 
-    /** 영어 자판(english) 또는 한글 자판의 상세 배열을 읽는 보기. */
-    public Prefs languageView(boolean english) { return boardView(english ? BOARD_ENGLISH : BOARD_KOREAN); }
-
     /** 영어 자판의 상세 배열을 읽는 보기 (한글 자판 따라가기면 한글 자판의 보기). */
     public Prefs englishView() { return boardView(BOARD_ENGLISH); }
 
@@ -597,9 +594,6 @@ public final class Prefs {
         if (portrait()) return base;
         return large() ? LARGE_PREFIX + base + "_" + largeSide() : base + LANDSCAPE_SUFFIX;
     }
-
-    /** 이 프로필이 가로 방향인지 (가로 모드, 폴더블 내부 화면 가로). */
-    private boolean landSide() { return PROFILE_LANDSCAPE.equals(profile) || PROFILE_LARGE_LANDSCAPE.equals(profile); }
 
     /**
      * 이 프로필의 한 손 모드 값. 정하기 전에는 세로 모드 값을 따르되, ownDef가 0 이상이면 세로 모드가 아닌 프로필은 그 기본값을 쓴다
@@ -1540,13 +1534,6 @@ public final class Prefs {
     private static String largeSideOf(String profile) { return PROFILE_LARGE_PORTRAIT.equals(profile) ? "port" : "land"; }
 
     /**
-     * 폴더블 내부 화면 세로·가로가 함께 쓰던 때의 '분리 키보드 레이아웃'(분리 키보드 켜기, 스페이스바 잇기, 하단 기능키 폭,
-     * 예전 좌·우 균형 배열) 키 이름에 붙던 말. 이제 세로는 이 키를 그대로, 가로는 "land" 키를 따로 쓴다
-     * (함께 쓰던 값은 {@link #migrateProfileSides}가 가로 쪽에 한 번 옮겨 적는다).
-     */
-    private static final String LARGE_LAYOUT_SIDE = "port";
-
-    /**
      * 이 프로필의 '분리 키보드' 켜짐 설정 키. 어떤 한글 배열을 골랐든 같은 값이고, 네 화면(세로·가로·폴더블 내부 화면 세로·가로)이 따로 정한다.
      * (예전에는 배열마다 따로 저장했다: 이 키 + "_" + 배열. 새 값이 없으면 그 값을 이어 쓴다.)
      */
@@ -1558,11 +1545,7 @@ public final class Prefs {
     /** 예전에 배열마다 따로 저장하던 '분리 키보드' 설정 키 (두벌식은 그때 배열이 아니었으므로 8열 단모음의 값). */
     private String legacySplitKey() { return splitKey() + "_" + (koreanD7() ? KOREAN_LAYOUT_D7 : KOREAN_LAYOUT_8); }
 
-    /**
-     * 이 프로필의 키보드 높이·글자 크기 값의 키. sizeKey는 예전 '키보드 높이·글자 크기 따로 정하기' 스위치의 키로,
-     * 이제는 쓰지 않지만 기본값으로 되돌릴 때 함께 지운다.
-     */
-    public String sizeKey() { return large() ? LARGE_PREFIX + "size_" + largeSide() : LANDSCAPE_SIZE; }
+    /** 이 프로필의 키보드 높이 값의 키. */
     public String heightKey() { return large() ? LARGE_PREFIX + KEYBOARD_HEIGHT + "_" + largeSide() : KEYBOARD_HEIGHT_LAND; }
     /** 이 프로필(가로 모드·폴더블 내부 화면 세로·가로)의 도구 막대 높이 설정 키. 세로 모드는 예전 키를 그대로 쓴다. */
     public String toolbarHeightKey() {
