@@ -192,7 +192,11 @@ public final class Prefs {
     private static final String LANDSCAPE_SUFFIX = "_land";
     /** 가로 모드 보기에서 따로 정하는 여백 키의 앞부분 (폴더블 내부 화면은 large_pad_로 시작한다). */
     private static final String LANDSCAPE_PAD_PREFIX = "land_pad_";
-    public static final int BALANCED_WIDTH_MIN = 60;
+    /**
+     * 자·모음 균형 배열·분리 키보드 묶음 폭의 최솟값 (%): 화면이 큰 기기(태블릿·폴더블 내부 화면)에서 묶음을 좁게 쓸 수 있게
+     * 모든 키보드가 10%까지 줄일 수 있다 (예전에는 균형 배열 60%, 분리 키보드 30%).
+     */
+    public static final int BALANCED_WIDTH_MIN = 10;
     /**
      * 두 묶음의 기본 모양: 모든 한글 배열의 자·모음 균형 배열과 분리 키보드(세로 모드·가로 모드·폴더블 내부 화면)가 같다.
      * 왼쪽(자음) 묶음은 폭 90%에 가로 위치 -10, 오른쪽(모음) 묶음은 폭 90%에 가로 위치 10
@@ -204,8 +208,6 @@ public final class Prefs {
             SPLIT_LEFT_POS_DEFAULT = 20, SPLIT_RIGHT_POS_DEFAULT = 80;
     /** 묶음 가로 위치의 범위 (줄 왼쪽 끝 -100 ~ 가운데 0 ~ 오른쪽 끝 100). */
     public static final int BALANCED_POS_MIN = -100, BALANCED_POS_MAX = 100;
-    /** 가로 모드는 키를 더 좁게 (30%까지) 줄일 수 있다. */
-    public static final int BALANCED_WIDTH_MIN_LANDSCAPE = 30;
     // (예전 '스페이스바를 길게 누른 뒤 밀어서 선택' 스위치 "space_select"는 스페이스바 길게 누르기 기능으로 옮겼다: LegacySwipeSettings)
     /** 길게 눌러 계속 지우기의 속도 (초당 글자 수)와 단어 지우기의 속도 (초당 단어 수). */
     public static final String DELETE_REPEAT_RATE = "delete_repeat_rate", DELETE_WORD_REPEAT_RATE = "delete_word_repeat_rate";
@@ -1499,8 +1501,8 @@ public final class Prefs {
         return !KOREAN_LAYOUT_8.equals(koreanLayoutId()) || profileValues() || !portrait() ? def : sp.getInt(legacyKey, def);
     }
 
-    /** 지금 보기에서 자음·모음 키 폭의 최솟값 (%): 가로 모드·폴더블 내부 화면 값은 30, 세로 모드는 60. */
-    public int balancedWidthMin() { return profileValues() ? BALANCED_WIDTH_MIN_LANDSCAPE : BALANCED_WIDTH_MIN; }
+    /** 묶음 폭의 최솟값 (%): 자·모음 균형 배열·분리 키보드 모두 10. */
+    public int balancedWidthMin() { return BALANCED_WIDTH_MIN; }
 
     /** 묶음 폭 기본값 (%): 모든 한글 배열·균형 배열·분리 키보드가 90. */
     private int widthDefault() {

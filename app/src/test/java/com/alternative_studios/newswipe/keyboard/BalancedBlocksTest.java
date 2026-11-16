@@ -261,6 +261,31 @@ public class BalancedBlocksTest {
     }
 
     /** 어떤 값이어도 두 묶음은 겹치지 않고 줄 안에 있으며, 보이는 값(막힌 값)을 다시 저장해도 모양이 같다. */
+    /** 큰 화면을 위해 묶음 폭을 10%까지 줄일 수 있다: 자·모음 균형 배열(세로 모드)과 분리 키보드(가로 모드) 모두 자판이 제대로 만들어진다. */
+    @Test
+    public void blocksCanShrinkToTenPercent() throws Exception {
+        for (String profile : new String[]{Prefs.PROFILE_PORTRAIT, Prefs.PROFILE_LANDSCAPE, Prefs.PROFILE_LARGE_LANDSCAPE}) {
+            for (String layout : new String[]{Prefs.KOREAN_LAYOUT_DUBEOLSIK, Prefs.KOREAN_LAYOUT_8, Prefs.KOREAN_LAYOUT_D7}) {
+                FakeSp sp = new FakeSp();
+                sp.m.put(Prefs.KOREAN_LAYOUT, layout);
+                Prefs p = view(sp, profile, false);
+                if (profile.isEmpty()) sp.m.put(p.balancedLayoutKey(), true);
+                else sp.m.put(p.splitKey(), true);
+                assertEquals(10, p.balancedWidthMin());
+                sp.m.put(p.balancedConsonantWidthKey(), 0);   // 범위 밖 값은 최솟값으로
+                sp.m.put(p.balancedVowelWidthKey(), 10);
+                String at = profile + " " + layout;
+                assertEquals(at, 10, p.balancedConsonantWidth());
+                assertEquals(at, 10, p.balancedVowelWidth());
+                float[] e = p.balancedExtents();
+                assertEquals(at, 0.5f, e[1], 1e-4f);   // 절반(5칸)의 10%
+                assertEquals(at, 0.5f, e[3], 1e-4f);
+                KeyboardLayout l = KeyboardLayout.korean(p);
+                for (KeyboardLayout.Row row : l.rows) for (Key k : row.keys) assertTrue(at + " " + k.label, k.weight >= 0f);
+            }
+        }
+    }
+
     @Test
     public void blocksNeverOverlapForAnyValue() throws Exception {
         Random rnd = new Random(7);
