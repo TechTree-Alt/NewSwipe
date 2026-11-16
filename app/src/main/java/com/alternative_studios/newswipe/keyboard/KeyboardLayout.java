@@ -590,7 +590,7 @@ public final class KeyboardLayout {
     }
 
     public static KeyboardLayout english(Prefs prefs) {
-        // 영어 자판의 상세 배열(자·모음 균형 배열·분리 키보드, 묶음 폭·위치)은 한글 자판과 따로 정한다.
+        // 영어 자판의 상세 배열(자·모음 균형 배열·분리 키보드, 묶음 폭·위치)은 한글 자판과 따로 정한다 (한글 자판 따라가기면 한글 자판의 것).
         return qwertyLayout(ENGLISH, ENGLISH_ROWS, ENGLISH_POPUPS, false, prefs == null ? null : prefs.englishView());
     }
 
@@ -606,7 +606,7 @@ public final class KeyboardLayout {
     private static KeyboardLayout qwertyLayout(int kind, String[][] letterRows, String[][][] popups, boolean korean,
                                                Prefs prefs) {
         if (prefs != null && prefs.splitView()) return splitQwerty(kind, letterRows, popups, korean, prefs);   // 가로 모드 분리 키보드
-        if (!korean && prefs != null && prefs.englishBalanced()) return balancedQwerty(kind, letterRows, popups, false, prefs);
+        if (!korean && prefs != null && prefs.boardBalanced()) return balancedQwerty(kind, letterRows, popups, false, prefs);
         boolean numberRow = prefs != null && prefs.numberRow();
         List<Row> rows = new ArrayList<>();
         if (numberRow) rows.add(numberRow(prefs));
@@ -626,6 +626,8 @@ public final class KeyboardLayout {
 
     /** back: 글자 자판으로 돌아가는 키의 이름 (가, ABC, あ, 中). */
     public static KeyboardLayout symbols(String back, Prefs prefs) {
+        // 기호 자판의 상세 배열은 한글·영어 자판과 따로 정한다 (한글 자판 따라가기면 한글 자판의 것).
+        if (prefs != null) prefs = prefs.symbolsView();
         return symbols(back, prefs, prefs != null && prefs.numberRow());
     }
 
@@ -665,6 +667,7 @@ public final class KeyboardLayout {
     }
 
     public static KeyboardLayout symbols2(String back, Prefs prefs) {
+        if (prefs != null) prefs = prefs.symbolsView();   // 기호 자판의 상세 배열 (symbols와 같다)
         return symbols2(back, prefs, prefs != null && prefs.numberRow());
     }
 
@@ -1078,13 +1081,17 @@ public final class KeyboardLayout {
     }
 
     /**
-     * 기호 자판의 맨 아래 줄 위쪽 줄들을 마무리한다. 분리 키보드(가로 모드·폴더블 내부 화면)에서는 숫자 줄을 포함한 모든 줄을
-     * 일반 자판과 같은 모양 그대로 가운데에서 나눠 왼쪽·오른쪽 묶음에 놓는다 ({@link #splitNormal}).
+     * 기호 자판의 맨 아래 줄 위쪽 줄들을 마무리한다. 분리 키보드에서는 숫자 줄을 포함한 모든 줄을 일반 자판과 같은 모양 그대로
+     * 가운데에서 나눠 왼쪽·오른쪽 묶음에 놓는다 ({@link #splitNormal}). 자·모음 균형 배열도 같은 자리에서 나누되 맨 아래 줄은
+     * 전체 폭을 쓰고, 두 묶음 사이의 빈틈은 누르면 가까운 키가 눌린다 (한글·영어 자판의 균형 배열과 같다).
      */
     private static void finishSymbols(List<Row> rows, String back, Prefs prefs) {
         if (splitView(prefs)) {
             for (int i = 0; i < rows.size(); i++) rows.set(i, splitNormal(rows.get(i), prefs));
             rows.add(blockSpaceRow(prefs, Key.TO_LETTERS, back, true));
+        } else if (prefs != null && prefs.boardBalanced()) {
+            for (int i = 0; i < rows.size(); i++) rows.set(i, splitNormal(rows.get(i), prefs, false));
+            rows.add(spaceRow(Key.TO_LETTERS, back, prefs, true));
         } else {
             rows.add(spaceRow(Key.TO_LETTERS, back, prefs, true));
         }
@@ -1234,6 +1241,11 @@ public final class KeyboardLayout {
      * 두 묶음의 폭이 달라 가운데에서 겹치면, 묶음 안의 남는 폭만큼 바깥쪽으로 옮기고 그래도 겹치면 같은 비율로 줄인다.
      */
     private static Row splitNormal(Row row, Prefs prefs) {
+        return splitNormal(row, prefs, true);
+    }
+
+    /** dragMiddle: 두 묶음 사이를 분리 키보드처럼 누르지 않는 가운데 공간(밀어서 커서 이동)으로 둘지 (아니면 균형 배열의 빈틈). */
+    private static Row splitNormal(Row row, Prefs prefs, boolean dragMiddle) {
         float total = 0f;
         for (Key k : row.keys) total += k.weight;
         float scale = total > SPACE_ROW_UNITS ? SPACE_ROW_UNITS / total : 1f;
@@ -1278,7 +1290,7 @@ public final class KeyboardLayout {
                 rs = end - rw;
             }
         }
-        return blockLine(left, ls, lw, right, rs, rw, row.height);
+        return blockLine(left, ls, lw, right, rs, rw, row.height, dragMiddle);
     }
 
     /**
@@ -1286,12 +1298,18 @@ public final class KeyboardLayout {
      * 가운데 빈 자리는 눌러도 반응하지 않는다(SPACER). 양 바깥의 빈틈은 누르면 가까운 키가 눌린다(GAP).
      */
     private static Row blockLine(List<Key> left, float ls, float lw, List<Key> right, float rs, float rw, float height) {
+        return blockLine(left, ls, lw, right, rs, rw, height, true);
+    }
+
+    /** dragMiddle이 false면 가운데 빈 자리도 양 바깥처럼 누르면 가까운 키가 눌리는 빈틈(GAP)이다 (자·모음 균형 배열). */
+    private static Row blockLine(List<Key> left, float ls, float lw, List<Key> right, float rs, float rw, float height,
+                                 boolean dragMiddle) {
         List<Key> keys = new ArrayList<>();
         if (ls > 0.001f) keys.add(fn(Key.GAP, "", ls));
         keys.addAll(left);
         if (rs - ls - lw > 0.001f) {
-            Key middle = fn(Key.SPACER, "", rs - ls - lw);
-            middle.dragCursor = true;
+            Key middle = fn(dragMiddle ? Key.SPACER : Key.GAP, "", rs - ls - lw);
+            middle.dragCursor = dragMiddle;
             keys.add(middle);
         }
         for (Key k : right) k.rightBlock = true;   // 묶음이 가운데를 넘어 옮겨 가도 오른쪽 묶음 키임을 알 수 있게

@@ -101,45 +101,51 @@ public class ProfileSidesMigrationTest {
         assertEquals(70, lp.oneHandWidthForProfile());
     }
 
-    /** 예전에는 분리 키보드를 켜면 영어 자판도 나뉘었다: 영어 자판의 분리 키보드를 켜 두고, 묶음 폭·위치도 옮긴다. */
+    /** 예전에는 분리 키보드를 켜면 영어·기호 자판도 함께 나뉘었다: 기본값(한글 자판 따라가기)이 같으므로 아무것도 적지 않는다. */
     @Test
-    public void englishFollowsTheOldSplitKeyboard() throws Exception {
+    public void splitKeyboardKeepsFollowing() throws Exception {
         LegacySwipeSettingsTest.MapSp sp = new LegacySwipeSettingsTest.MapSp();
         sp.m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_D7);
         Prefs land = view(sp, Prefs.PROFILE_LANDSCAPE);
         sp.m.put(land.splitKey(), true);
         sp.m.put(Prefs.balancedKeyFor(Prefs.BALANCED_VOWEL_WIDTH, Prefs.PROFILE_LANDSCAPE, true, Prefs.KOREAN_LAYOUT_D7), 70);
         view(sp, Prefs.PROFILE_PORTRAIT).migrateProfileSides();
-        Prefs en = view(sp, Prefs.PROFILE_LANDSCAPE).englishView();
-        assertTrue(en.profileSplit());
-        assertEquals(70, en.balancedVowelWidth());
-        // 세로 모드는 분리 키보드를 쓰지 않았으니 영어 자판도 그대로
-        assertFalse(view(sp, Prefs.PROFILE_PORTRAIT).englishView().profileSplit());
+        Prefs l = view(sp, Prefs.PROFILE_LANDSCAPE);
+        assertFalse(sp.contains(l.detailKeyOf(Prefs.BOARD_ENGLISH)));
+        assertTrue(l.englishView().profileSplit());
+        assertEquals(70, l.englishView().balancedVowelWidth());
+        assertTrue(l.symbolsView().profileSplit());
     }
 
     /**
-     * 예전 '영어 자판도 균형 배열'은 두벌식에서 한글 자판이 균형 배열일 때만 영어 자판을 나눴다: 그때만 영어 자판의 균형 배열을 켜 두고
-     * (두벌식 균형 배열의 묶음 폭·위치를 옮긴다), 나뉘지 않던 경우는 끈다.
+     * 예전 '영어 자판도 균형 배열'은 두벌식에서 한글 자판이 균형 배열일 때만 영어 자판을 나눴고, 기호 자판은 나뉘지 않았다:
+     * 따라가기로는 달라지는 자판에만 '사용 안 함'을 적어 둔다.
      */
     @Test
-    public void oldEnglishBalancedKeepsItsLook() throws Exception {
-        LegacySwipeSettingsTest.MapSp shown = new LegacySwipeSettingsTest.MapSp();
+    public void oldBalancedLayoutKeepsItsLook() throws Exception {
+        LegacySwipeSettingsTest.MapSp shown = new LegacySwipeSettingsTest.MapSp();   // 두벌식 + 영어 자판도 균형 배열
         shown.m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_DUBEOLSIK);
         shown.m.put(Prefs.BALANCED_LAYOUT, true);
         shown.m.put(Prefs.ENGLISH_BALANCED, true);
-        shown.m.put(Prefs.BALANCED_CONSONANT_WIDTH + "_" + Prefs.KOREAN_LAYOUT_DUBEOLSIK, 80);
         view(shown, Prefs.PROFILE_PORTRAIT).migrateProfileSides();
-        Prefs en = view(shown, Prefs.PROFILE_PORTRAIT).englishView();
-        assertTrue(en.englishBalanced());
-        assertEquals(80, en.balancedConsonantWidth());
-        assertTrue(view(shown, Prefs.PROFILE_LANDSCAPE).englishBalanced());   // 키보드마다 옮겨 적었다
+        Prefs p = view(shown, Prefs.PROFILE_PORTRAIT);
+        assertEquals(Prefs.DETAIL_FOLLOW, p.detailModeOf(Prefs.BOARD_ENGLISH));
+        assertTrue(p.englishBalanced());
+        assertEquals(Prefs.DETAIL_NONE, p.detailModeOf(Prefs.BOARD_SYMBOLS));
+        assertEquals(Prefs.DETAIL_NONE, view(shown, Prefs.PROFILE_LANDSCAPE).detailModeOf(Prefs.BOARD_SYMBOLS));   // 키보드마다
 
-        LegacySwipeSettingsTest.MapSp hidden = new LegacySwipeSettingsTest.MapSp();   // 단모음: 예전에는 영어 자판이 나뉘지 않았다
+        LegacySwipeSettingsTest.MapSp hidden = new LegacySwipeSettingsTest.MapSp();   // 단모음 균형 배열: 영어 자판은 나뉘지 않았다
         hidden.m.put(Prefs.BALANCED_LAYOUT, true);
         hidden.m.put(Prefs.ENGLISH_BALANCED, true);
         view(hidden, Prefs.PROFILE_PORTRAIT).migrateProfileSides();
         assertFalse(view(hidden, Prefs.PROFILE_PORTRAIT).englishBalanced());
         assertFalse(view(hidden, Prefs.PROFILE_LANDSCAPE).englishBalanced());
+        assertEquals(Prefs.DETAIL_NONE, view(hidden, Prefs.PROFILE_PORTRAIT).detailModeOf(Prefs.BOARD_SYMBOLS));
+
+        LegacySwipeSettingsTest.MapSp plain = new LegacySwipeSettingsTest.MapSp();   // 균형 배열을 쓰지 않았다: 따라가기 그대로
+        view(plain, Prefs.PROFILE_PORTRAIT).migrateProfileSides();
+        assertEquals(Prefs.DETAIL_FOLLOW, view(plain, Prefs.PROFILE_PORTRAIT).detailModeOf(Prefs.BOARD_ENGLISH));
+        assertEquals(Prefs.DETAIL_FOLLOW, view(plain, Prefs.PROFILE_PORTRAIT).detailModeOf(Prefs.BOARD_SYMBOLS));
     }
 
     @Test

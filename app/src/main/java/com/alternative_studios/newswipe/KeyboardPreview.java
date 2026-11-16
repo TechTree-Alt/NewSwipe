@@ -242,8 +242,8 @@ final class KeyboardPreview extends FrameLayout {
     /** 끄는 동안 보이는 이름. 두 묶음의 경계는 그 묶음의 폭으로 보인다. */
     private String handleName(Handle h) {
         if (h.balanced()) {
-            // 영어 자판의 균형 배열도 자음·모음이 아니라 왼쪽·오른쪽 묶음이다.
-            boolean split = profileEdit != null || prefs.splitView() || prefs.english();
+            // 영어·기호 자판의 균형 배열도 자음·모음이 아니라 왼쪽·오른쪽 묶음이다.
+            boolean split = profileEdit != null || prefs.splitView() || prefs.board() != Prefs.BOARD_KOREAN;
             if (split) return h.leftBlock()
                     ? (h.knob() ? L.t("왼쪽 묶음 가로 위치", "Left block position") : L.t("왼쪽 묶음 폭", "Left block width"))
                     : (h.knob() ? L.t("오른쪽 묶음 가로 위치", "Right block position") : L.t("오른쪽 묶음 폭", "Right block width"));
@@ -364,7 +364,7 @@ final class KeyboardPreview extends FrameLayout {
      * ('분리 키보드 사용'을 켰고 한글·영어 자판일 때).
      */
     private boolean editorSplit() {
-        return profileEdit == null && !balancedMode && tab != TAB_SYMBOLS && prefs.splitView()
+        return profileEdit == null && !balancedMode && prefs.splitView()
                 && blockBounds(true, new RectF()) && blockBounds(false, new RectF());
     }
 
@@ -373,15 +373,14 @@ final class KeyboardPreview extends FrameLayout {
      * (분리 키보드 없이 자·모음 균형 배열을 쓰고 한글 자판일 때).
      */
     private boolean editorBalanced() {
-        if (profileEdit != null || balancedMode || tab == TAB_SYMBOLS || prefs.splitView()) return false;
-        boolean on = tab == TAB_KOREAN ? prefs.balancedLayout() : prefs.englishBalanced();   // 영어 자판도 따로 정한다
+        if (profileEdit != null || balancedMode || prefs.splitView()) return false;
+        // 한글·영어·기호 자판이 상세 배열을 따로 정한다 (prefs는 탭의 자판 보기: 따라가기면 한글 자판의 것).
+        boolean on = tab == TAB_KOREAN ? prefs.balancedLayout() : prefs.boardBalanced();
         return on && blockBounds(true, new RectF()) && blockBounds(false, new RectF());
     }
 
-    /** 키보드 사용자화가 받은 설정 보기 (한글 자판의 것). refresh가 탭에 맞는 자판의 보기(languageView)를 prefs에 둔다. */
+    /** 키보드 사용자화가 받은 설정 보기 (한글 자판의 것). refresh가 탭에 맞는 자판의 보기(boardView)를 prefs에 둔다. */
     private final Prefs basePrefs;
-    /** 마지막으로 본 글자 자판 탭 (TAB_KOREAN·TAB_ENGLISH): 기호 자판이 그 자판의 상세 배열을 따른다. */
-    private int lastLetterTab = TAB_KOREAN;
 
     /** 글자 키가 두 묶음으로 나뉘어 그려지는지 (키보드 사용자화의 분리 키보드·자·모음 균형 배열, 가로 모드·폴더블 내부 화면의 분리 키보드). */
     private boolean splitLetters() {
@@ -619,7 +618,6 @@ final class KeyboardPreview extends FrameLayout {
     void setTab(int t) {
         if (tab == t) return;
         tab = t;
-        if (t != TAB_SYMBOLS) lastLetterTab = t;
         symbolsPage2 = false;
         // 영역·키보드 전체를 고른 채면 다른 자판에서도 그대로 둔다 (그 자판에 없는 영역이면 refresh가 푼다). 키는 자판마다 달라 푼다.
         if (selection != null && selection.kind != SEL_AREA && selection.kind != SEL_BOARD) selection = null;
@@ -657,9 +655,9 @@ final class KeyboardPreview extends FrameLayout {
         Context c = getContext();
         // 가로 모드·폴더블 내부 화면: 분리 키보드를 켰으면 편집 보기(묶음 폭·위치를 그 프로필 값으로), 껐으면 실제 키보드처럼 나누지 않은 보기.
         if (profileEdit != null) prefs = profileEdit.profileSplit() ? profileEdit : profileEdit.profileView(profileEdit.profile());
-        // 키보드 사용자화: 상세 배열(자·모음 균형 배열·분리 키보드)은 한글 자판과 영어 자판이 따로 정한다.
-        // 기호 자판은 키보드처럼 마지막으로 본 글자 자판(한글·영어)의 것을 따른다. 손잡이도 그 자판의 값을 바꾼다.
-        else prefs = basePrefs.languageView(tab == TAB_ENGLISH || (tab == TAB_SYMBOLS && lastLetterTab == TAB_ENGLISH));
+        // 키보드 사용자화: 상세 배열(자·모음 균형 배열·분리 키보드)은 한글·영어·기호 자판이 따로 정한다 (영어·기호 자판은 한글 자판
+        // 따라가기면 한글 자판의 보기). 손잡이도 그 자판의 값을 바꾼다.
+        else prefs = basePrefs.boardView(tab == TAB_ENGLISH ? Prefs.BOARD_ENGLISH : tab == TAB_SYMBOLS ? Prefs.BOARD_SYMBOLS : Prefs.BOARD_KOREAN);
         theme = KeyboardTheme.of(c);
         setBackgroundColor(theme.background);
         keys.setTheme(theme);

@@ -117,8 +117,17 @@ public final class Prefs {
     /** 두벌식에서 자·모음 균형 배열을 켰을 때 영어 자판도 같은 모양으로 나눈다. */
     /** 영어 자판의 상세 배열이 자·모음 균형 배열인지 (예전 '영어 자판도 균형 배열'의 키). 키보드마다 따로: ownKey로 앞말을 붙인다. */
     public static final String ENGLISH_BALANCED = "english_balanced";
-    /** 영어 자판의 상세 배열이 분리 키보드인지. 키보드마다 따로: ownKey로 앞말을 붙인다. */
-    public static final String ENGLISH_SPLIT = "english_split";
+    /**
+     * 영어·기호 자판의 상세 배열 (DETAIL_*): 한글 자판 따라가기(기본)·사용 안 함·자·모음 균형 배열·분리 키보드.
+     * 키보드마다 따로: ownKey로 앞말을 붙인다.
+     */
+    public static final String ENGLISH_DETAIL = "english_detail", SYMBOLS_DETAIL = "symbols_detail";
+    /** 상세 배열을 따로 정하는 자판: 한글·영어·기호. */
+    public static final int BOARD_KOREAN = 0, BOARD_ENGLISH = 1, BOARD_SYMBOLS = 2;
+    /**
+     * 상세 배열의 종류. DETAIL_FOLLOW는 영어·기호 자판에만 있고, 상세 배열의 종류와 묶음 폭·가로 위치를 모두 한글 자판의 것으로 쓴다.
+     */
+    public static final int DETAIL_FOLLOW = -1, DETAIL_NONE = 0, DETAIL_BALANCED = 1, DETAIL_SPLIT = 2;
     public static final String KOREAN_SHIFT_FN = "korean_shift_fn";           // Shift 키를 껐을 때 그 자리에 Fn 키 놓기
     public static final String PERIOD_KEY_HIDDEN = "period_key_hidden";       // 글자·기호 자판 아래 줄의 온점 키 없애기
     /** 기호 자판 대신 숫자 패드 사용: 글자 자판의 기호 키(?123)를 누르면 기호 자판 대신 3×4 숫자 패드가 열린다 (기본 꺼짐). */
@@ -346,7 +355,8 @@ public final class Prefs {
      *       함께 쓰던 값을 가로 쪽 키에도 적어 둔다 (가로 쪽 값이 이미 있으면 그대로).</li>
      *   <li>상세 배열(자·모음 균형 배열 켜기, 영어 자판도 균형 배열, 균형 배열의 묶음 폭·위치, 분리 키보드의 좌·우 균형 배열)을
      *       이제 키보드마다 따로 쓴다: 함께 쓰던 세로 모드 값을 가로 모드·폴더블 내부 화면 세로·가로에도 적어 둔다.</li>
-     *   <li>영어 자판의 상세 배열(분리 키보드·균형 배열 켜기, 묶음 폭·위치)을 한글 자판과 따로 쓴다: 예전에 보이던 대로 적어 둔다.</li>
+     *   <li>영어·기호 자판의 상세 배열을 한글 자판과 따로 쓴다 (기본은 한글 자판 따라가기): 따라가기로는 예전 모습과 달라질 때만
+     *       '사용 안 함'을 적어 둔다.</li>
      *   <li>한 손 모드: 폴더블 내부 화면 가로는 이제 정하기 전에 가로 모드 값을 따르지 않는다. 가로 모드에서 정해 둔 값이 있으면
      *       폴더블 내부 화면 가로에도 적어 둔다. 폴더블 내부 화면 세로의 자판 폭도 세로 모드 값 대신 기본값(40%)을 쓰므로,
      *       세로 모드에서 정해 둔 자판 폭이 있으면 적어 둔다.</li>
@@ -403,28 +413,18 @@ public final class Prefs {
                 else if (v instanceof Integer) e.putInt(to, (Integer) v);
             }
         }
-        // 영어 자판의 상세 배열: 예전에는 분리 키보드를 켜면 영어 자판도 나뉘었고(묶음 폭·위치는 지금 한글 배열의 분리 키보드 값),
-        // '영어 자판도 균형 배열'은 두벌식에서 한글 자판이 균형 배열일 때만 영어 자판을 두벌식 균형 배열의 폭·위치로 나눴다.
-        // 이제 영어 자판이 따로 정하므로 예전에 보이던 대로 적어 둔다 (위에서 키보드마다 옮겨 적은 값을 보고 정한다).
+        // 영어·기호 자판의 상세 배열: 기본은 '한글 자판 따라가기'다. 예전에는 분리 키보드를 켜면 영어·기호 자판도 함께 나뉘었고(따라가기와 같다),
+        // 영어 자판은 '영어 자판도 균형 배열'을 켜고 두벌식에서 한글 자판이 균형 배열일 때만 나뉘었다. 기호 자판은 균형 배열이 없었다.
+        // 따라가기로는 예전 모습과 달라지는 경우(한글 자판만 균형 배열)에 '사용 안 함'을 적어 둔다 (위에서 키보드마다 옮겨 적은 값을 보고 정한다).
         e.apply();
         all = sp.getAll();
         e = sp.edit();
         for (String profile : new String[]{PROFILE_PORTRAIT, PROFILE_LANDSCAPE, PROFILE_LARGE_PORTRAIT, PROFILE_LARGE_LANDSCAPE}) {
-            Prefs ko = new Prefs(sp, false, profile, false), en = ko.englishView();
-            boolean split = ko.profileSplit();
-            if (split && !all.containsKey(en.splitKey())) e.putBoolean(en.splitKey(), true);
-            String balKey = en.balancedLayoutKey();
-            boolean oldBalanced = sp.getBoolean(balKey, false) && ko.koreanDubeolsik() && ko.balancedLayoutSetting() && !split;
-            if (all.containsKey(balKey) && sp.getBoolean(balKey, false) != oldBalanced) e.putBoolean(balKey, oldBalanced);
-            for (String base : BLOCK_BASES) {
-                String[][] copies = {
-                        {balancedKeyFor(base, profile, false, KOREAN_LAYOUT_DUBEOLSIK), balancedKeyFor(base, profile, false, ENGLISH_BLOCKS)},
-                        {balancedKeyFor(base, profile, true, ko.koreanLayoutId()), balancedKeyFor(base, profile, true, ENGLISH_BLOCKS)}};
-                for (String[] c : copies) {
-                    Object v = all.get(c[0]);
-                    if (v instanceof Integer && !all.containsKey(c[1])) e.putInt(c[1], (Integer) v);
-                }
-            }
+            Prefs ko = new Prefs(sp, false, profile, false);
+            if (ko.profileSplit() || !ko.balancedLayoutSetting()) continue;   // 따라가기가 예전과 같다
+            boolean englishWas = sp.getBoolean(ko.englishBalancedKey(), false) && ko.koreanDubeolsik();
+            if (!englishWas && !all.containsKey(ko.detailKeyOf(BOARD_ENGLISH))) e.putInt(ko.detailKeyOf(BOARD_ENGLISH), DETAIL_NONE);
+            if (!all.containsKey(ko.detailKeyOf(BOARD_SYMBOLS))) e.putInt(ko.detailKeyOf(BOARD_SYMBOLS), DETAIL_NONE);
         }
         // 한 손 모드: 예전에는 폴더블 내부 화면 가로가 정하기 전에 가로 모드 값을 따랐다. 가로 모드에서 정해 둔 값이 있으면
         // 폴더블 내부 화면 가로에도 적어 두어 예전 모습을 지킨다 (정하지 않은 값은 새 규칙: 세로 모드 값, 자판 폭은 35%).
@@ -470,45 +470,84 @@ public final class Prefs {
     }
 
     private Prefs(SharedPreferences sp, boolean oneHandView, String profile, boolean profileEdit) {
-        this(sp, oneHandView, profile, profileEdit, false);
+        this(sp, oneHandView, profile, profileEdit, BOARD_KOREAN);
     }
 
-    private Prefs(SharedPreferences sp, boolean oneHandView, String profile, boolean profileEdit, boolean english) {
+    private Prefs(SharedPreferences sp, boolean oneHandView, String profile, boolean profileEdit, int board) {
         this.sp = sp;
         this.oneHandView = oneHandView;
         this.profile = profile;
         this.profileEdit = profileEdit;
-        this.english = english;
+        this.board = board;
     }
 
     /**
-     * 이 보기가 영어 자판의 상세 배열(자·모음 균형 배열·분리 키보드 켜기, 묶음 폭·위치)을 읽는지. 한글 자판과 영어 자판은 상세 배열을
-     * 따로 정한다 (키보드마다도 따로). 그 밖의 값은 같다.
+     * 이 보기가 상세 배열(자·모음 균형 배열·분리 키보드 켜기, 묶음 폭·위치)을 읽는 자판 (BOARD_*). 한글·영어·기호 자판이 따로 정한다
+     * (키보드마다도 따로). 그 밖의 값은 같다.
      */
-    private final boolean english;
+    private final int board;
 
-    /** 영어 자판의 상세 배열을 읽는 보기 (english true) 또는 한글 자판의 상세 배열을 읽는 보기 (false). 다른 값은 같다. */
-    public Prefs languageView(boolean english) {
-        return this.english == english ? this : new Prefs(sp, oneHandView, profile, profileEdit, english);
+    /**
+     * 자판 b(BOARD_*)의 상세 배열을 읽는 보기. 영어·기호 자판이 '한글 자판 따라가기'(DETAIL_FOLLOW)면 한글 자판의 보기다
+     * (상세 배열의 종류와 묶음 폭·가로 위치를 모두 한글 자판의 것으로 쓴다).
+     */
+    public Prefs boardView(int b) {
+        if (b != BOARD_KOREAN && detailModeOf(b) == DETAIL_FOLLOW) b = BOARD_KOREAN;
+        return board == b ? this : new Prefs(sp, oneHandView, profile, profileEdit, b);
     }
 
-    /** 영어 자판의 상세 배열을 읽는 보기. */
-    public Prefs englishView() { return languageView(true); }
+    /** 영어 자판(english) 또는 한글 자판의 상세 배열을 읽는 보기. */
+    public Prefs languageView(boolean english) { return boardView(english ? BOARD_ENGLISH : BOARD_KOREAN); }
+
+    /** 영어 자판의 상세 배열을 읽는 보기 (한글 자판 따라가기면 한글 자판의 보기). */
+    public Prefs englishView() { return boardView(BOARD_ENGLISH); }
+
+    /** 기호 자판의 상세 배열을 읽는 보기 (한글 자판 따라가기면 한글 자판의 보기). */
+    public Prefs symbolsView() { return boardView(BOARD_SYMBOLS); }
 
     /** 한글 자판의 상세 배열을 읽는 보기. */
-    public Prefs koreanView() { return languageView(false); }
+    public Prefs koreanView() { return boardView(BOARD_KOREAN); }
 
-    /** 이 보기가 영어 자판의 상세 배열을 읽는지. */
-    public boolean english() { return english; }
+    /** 이 보기가 상세 배열을 읽는 자판 (BOARD_*). 따라가기인 영어·기호 자판의 보기는 BOARD_KOREAN이다. */
+    public int board() { return board; }
+
+    /** 영어·기호 자판의 상세 배열 키 (이 키보드의 것). */
+    public String detailKeyOf(int b) { return ownKey(b == BOARD_ENGLISH ? ENGLISH_DETAIL : SYMBOLS_DETAIL); }
+
+    /**
+     * 이 키보드에서 자판 b의 상세 배열 (DETAIL_*). 영어·기호 자판은 정하기 전에는 DETAIL_FOLLOW, 한글 자판은
+     * 분리 키보드·자·모음 균형 배열 설정에서 읽는다.
+     */
+    public int detailModeOf(int b) {
+        if (b == BOARD_KOREAN) {
+            Prefs ko = board == BOARD_KOREAN ? this : new Prefs(sp, oneHandView, profile, profileEdit, BOARD_KOREAN);
+            return ko.profileSplit() ? DETAIL_SPLIT : ko.balancedLayoutSetting() ? DETAIL_BALANCED : DETAIL_NONE;
+        }
+        int v = sp.getInt(detailKeyOf(b), DETAIL_FOLLOW);
+        return v >= DETAIL_FOLLOW && v <= DETAIL_SPLIT ? v : DETAIL_FOLLOW;
+    }
+
+    /** 이 키보드에서 자판 b의 상세 배열을 mode(DETAIL_*)로 정한다. 한글 자판에는 DETAIL_FOLLOW가 없다. */
+    public void setDetailMode(int b, int mode) {
+        SharedPreferences.Editor e = sp.edit();
+        if (b == BOARD_KOREAN) {
+            Prefs ko = board == BOARD_KOREAN ? this : new Prefs(sp, oneHandView, profile, profileEdit, BOARD_KOREAN);
+            e.putBoolean(ko.splitKey(), mode == DETAIL_SPLIT);
+            if (mode != DETAIL_SPLIT) e.putBoolean(ko.balancedLayoutKey(), mode == DETAIL_BALANCED);
+        } else {
+            e.putInt(detailKeyOf(b), mode);
+        }
+        e.apply();
+    }
 
     /** 이 프로필(PROFILE_*)의 키 폭·위치·크기를 읽는 설정 보기. 값은 같다. */
     public Prefs profileView(String profile) {
-        return this.profile.equals(profile) && !profileEdit ? this : new Prefs(sp, oneHandView, profile, false, english);
+        return this.profile.equals(profile) && !profileEdit ? this : new Prefs(sp, oneHandView, profile, false, board);
     }
 
     /** 설정 화면에서 이 프로필의 값(분리 키보드의 키 폭·위치, 키보드 높이·글자 크기)을 고치고 미리보는 설정 보기. */
     public Prefs profileEditView(String profile) {
-        return profileEdit && this.profile.equals(profile) ? this : new Prefs(sp, false, profile, true, english);
+        return profileEdit && this.profile.equals(profile) ? this : new Prefs(sp, false, profile, true, board);
     }
 
     /** 이 보기의 프로필. */
@@ -519,7 +558,7 @@ public final class Prefs {
      * (설정 화면의 균형 배열 스위치는 그대로다).
      */
     public Prefs oneHandView() {
-        return oneHandView ? this : new Prefs(sp, true, profile, profileEdit, english);
+        return oneHandView ? this : new Prefs(sp, true, profile, profileEdit, board);
     }
 
     /** 한 손 모드 상태 (ONE_HAND_OFF·LEFT·RIGHT). */
@@ -715,7 +754,7 @@ public final class Prefs {
     /** 세로 모드 분리 키보드의 가운데 공간 창 (밀어서 커서 이동·속도). */
     public static final String SCOPE_MIDDLE = "area_middle";
     /** 글자 키 창에서 한글·영어 자판에만 있는 값의 범위 id (나머지는 AREA_SCOPES[글자 키]가 함께 쓴다). */
-    public static final String SCOPE_LETTERS_KO = "letters_ko", SCOPE_LETTERS_EN = "letters_en";
+    public static final String SCOPE_LETTERS_KO = "letters_ko", SCOPE_LETTERS_EN = "letters_en", SCOPE_LETTERS_SYM = "letters_sym";
 
     private static EditorScope[] editorScopes() {
 
@@ -738,7 +777,8 @@ public final class Prefs {
                     PORTRAIT_SPLIT),
                     keys(BALANCED_LAYOUT)),
             new EditorScope(SCOPE_LETTERS_EN, L.t("영어 글자 키 (상세 배열·자동 대문자·대문자 밀기·이메일 입력란·두벌식 자모 힌트)", "English letter keys (advanced layout · auto-capitalize · swipe for capitals · email fields · Dubeolsik hints)"), keys(AUTO_CAP,
-                    ENGLISH_FIELDS, ENGLISH_SWIPE_UPPER, DUBEOLSIK_HINT, DUBEOLSIK_HINT_POSITION, ENGLISH_BALANCED, ENGLISH_SPLIT), NONE),
+                    ENGLISH_FIELDS, ENGLISH_SWIPE_UPPER, DUBEOLSIK_HINT, DUBEOLSIK_HINT_POSITION, ENGLISH_BALANCED, ENGLISH_DETAIL), NONE),
+            new EditorScope(SCOPE_LETTERS_SYM, L.t("기호 글자 키 (상세 배열)", "Symbol keys (advanced layout)"), keys(SYMBOLS_DETAIL), NONE),
             new EditorScope(AREA_SCOPES[3], L.t("기능키", "Function keys"), concat(BOTTOM_KEY_VALUES, FN_ROW_HEIGHT, GRID_LAYOUT, DELETE_PRESS_MS,
                     FN_SWIPE_THRESHOLD, PORTRAIT_PREFIX + SPLIT_SPACE_JOIN, PORTRAIT_PREFIX + SPLIT_FN_WIDTH,
                     PORTRAIT_PREFIX + FN_FOLLOW_BLOCKS),
@@ -769,7 +809,8 @@ public final class Prefs {
                             LARGE_PREFIX + SPLIT_REACH_COLUMN + "_", LARGE_PREFIX + SPLIT_GAP_CURSOR + "_",
                             LARGE_PREFIX + SPLIT_GAP_SPEED + "_", LARGE_PREFIX + "balanced_",
                             // 키보드마다 따로 정하는 상세 배열 (ownTagOf + "_" + 이름)
-                            PROFILE_LANDSCAPE + "_balanced_", PROFILE_LANDSCAPE + "_" + ENGLISH_BALANCED, PROFILE_LANDSCAPE + "_" + ENGLISH_SPLIT,
+                            PROFILE_LANDSCAPE + "_balanced_", PROFILE_LANDSCAPE + "_" + ENGLISH_BALANCED, PROFILE_LANDSCAPE + "_" + ENGLISH_DETAIL,
+                            PROFILE_LANDSCAPE + "_" + SYMBOLS_DETAIL,
                             PROFILE_LANDSCAPE + "_" + SPLIT_REACH_COLUMN,
                             LARGE_PREFIX + "port_", LARGE_PREFIX + "land_")),
     };
@@ -802,16 +843,16 @@ public final class Prefs {
         EditorScope sc = scope(id);
         // 자·모음 균형 배열의 키 폭·위치는 배열마다 따로 저장되므로 지금 배열의 것을 지운다 (배열 값을 지우기 전에).
         if (SCOPE_LETTERS_KO.equals(id)) koreanView().resetBalancedKeys();
-        if (SCOPE_LETTERS_EN.equals(id)) resetEnglishLayout();
+        if (SCOPE_LETTERS_EN.equals(id)) resetBoardLayout(BOARD_ENGLISH);
+        if (SCOPE_LETTERS_SYM.equals(id)) resetBoardLayout(BOARD_SYMBOLS);
         removeKeys(sc.keys, sc.prefixes);
     }
 
-    /** 이 키보드의 영어 자판 상세 배열(균형 배열·분리 키보드 켜기)과 영어 자판의 묶음 폭·위치를 기본값으로 되돌린다. */
-    private void resetEnglishLayout() {
-        Prefs en = englishView();
-        java.util.List<String> keys = new java.util.ArrayList<>(java.util.Arrays.asList(en.splitKey(), en.balancedLayoutKey()));
+    /** 이 키보드에서 영어·기호 자판 b의 상세 배열과 그 자판의 묶음 폭·위치를 기본값(한글 자판 따라가기)으로 되돌린다. */
+    private void resetBoardLayout(int b) {
+        java.util.List<String> keys = new java.util.ArrayList<>(java.util.Collections.singletonList(detailKeyOf(b)));
         for (boolean split : new boolean[]{false, true}) {
-            for (String base : BLOCK_BASES) keys.add(balancedKeyFor(base, profile, split, ENGLISH_BLOCKS));
+            for (String base : BLOCK_BASES) keys.add(balancedKeyFor(base, profile, split, blockIdOf(b)));
         }
         removeKeys(keys.toArray(new String[0]), NONE);
     }
@@ -843,7 +884,8 @@ public final class Prefs {
         own.put(PORTRAIT_SPLIT, splitKey());
         own.put(BALANCED_LAYOUT, balancedLayoutKey());
         own.put(ENGLISH_BALANCED, englishBalancedKey());
-        own.put(ENGLISH_SPLIT, englishView().splitKey());
+        own.put(ENGLISH_DETAIL, detailKeyOf(BOARD_ENGLISH));
+        own.put(SYMBOLS_DETAIL, detailKeyOf(BOARD_SYMBOLS));
         own.put(PORTRAIT_PREFIX + SPLIT_REACH_COLUMN, splitReachColumnBaseKey());
         own.put(PORTRAIT_PREFIX + SPLIT_SPACE_JOIN, splitSpaceJoinKey());
         own.put(PORTRAIT_PREFIX + SPLIT_FN_WIDTH, splitFnWidthKey());
@@ -875,7 +917,8 @@ public final class Prefs {
         }
         // 자·모음 균형 배열의 키 폭·위치는 배열마다 따로 저장되므로 지금 배열의 것을 지운다 (배열 값을 지우기 전에).
         if (SCOPE_LETTERS_KO.equals(id)) koreanView().resetBalancedKeys();
-        if (SCOPE_LETTERS_EN.equals(id)) resetEnglishLayout();
+        if (SCOPE_LETTERS_EN.equals(id)) resetBoardLayout(BOARD_ENGLISH);
+        if (SCOPE_LETTERS_SYM.equals(id)) resetBoardLayout(BOARD_SYMBOLS);
         removeKeys(exact.toArray(new String[0]), prefixes.toArray(new String[0]));
     }
 
@@ -914,7 +957,7 @@ public final class Prefs {
                 balancedVowelPosKey(), balancedConsonantWidthKey(), balancedConsonantPosKey(), balancedBoundaryKey(),
                 legacyVowelPosKey(), legacyConsonantPosKey()));
         // 배열별로 나누기 전의 값(세로 모드의 8열 단모음)이 이어지지 않게 그 값도 지운다.
-        if (!profileValues() && portrait() && !english && KOREAN_LAYOUT_8.equals(koreanLayoutId())) {
+        if (!profileValues() && portrait() && board == BOARD_KOREAN && KOREAN_LAYOUT_8.equals(koreanLayoutId())) {
             keys.addAll(java.util.Arrays.asList(BALANCED_VOWEL_WIDTH, BALANCED_VOWEL_POS, BALANCED_CONSONANT_WIDTH,
                     BALANCED_CONSONANT_POS));
         }
@@ -1075,7 +1118,7 @@ public final class Prefs {
      * (ㄱ·ㄹ·ㅅ)을 왼쪽에 그대로 둔 채 오른쪽 묶음의 모음 앞에도 하나씩 더 놓는다.
      * 8열 단모음에서는 왼쪽 묶음 바로 오른쪽의 키 하나 폭 빈 자리를 누르면 옮겨 간 키가 눌린다.
      */
-    public boolean splitReachColumn() { return !english && profileValues() && reachValue(); }
+    public boolean splitReachColumn() { return board == BOARD_KOREAN && profileValues() && reachValue(); }
 
     /** 값이 없을 때의 좌·우 균형 배열: 단모음(8열)은 켜짐, NewSwipe 단모음은 꺼짐 (두벌식은 쓰지 않는다). */
     private boolean reachDefault() { return !koreanD7(); }
@@ -1423,9 +1466,14 @@ public final class Prefs {
     public boolean gridLayout() { return sp.getBoolean(GRID_LAYOUT, false); }
     /** 영어 자판의 묶음 폭·위치 키에 한글 배열 이름 대신 붙는 말. */
     public static final String ENGLISH_BLOCKS = "english";
+    /** 기호 자판의 묶음 폭·위치 키에 한글 배열 이름 대신 붙는 말. */
+    public static final String SYMBOLS_BLOCKS = "symbols";
 
-    /** 묶음 폭·위치 키에 붙는 배열 이름: 한글 자판은 지금 한글 배열, 영어 자판은 "english" (영어 자판은 배열이 하나다). */
-    private String blockLayoutId() { return english ? ENGLISH_BLOCKS : koreanLayoutId(); }
+    /** 묶음 폭·위치 키에 붙는 배열 이름: 한글 자판은 지금 한글 배열, 영어·기호 자판은 "english"·"symbols" (배열이 하나다). */
+    private String blockLayoutId() { return board == BOARD_KOREAN ? koreanLayoutId() : blockIdOf(board); }
+
+    /** 영어·기호 자판의 묶음 폭·위치 키에 붙는 말. */
+    private static String blockIdOf(int b) { return b == BOARD_ENGLISH ? ENGLISH_BLOCKS : SYMBOLS_BLOCKS; }
 
     /** 지금 한글 배열의 이름 ("dubeolsik", "danmoeum8", "danmoeum7"). 배열별 값의 키에 붙는다. */
     public String koreanLayoutId() {
@@ -1434,7 +1482,7 @@ public final class Prefs {
     }
 
     /** 자·모음 균형 배열 설정 키. 모든 한글 배열이 함께 쓰고, 키보드(세로·가로·폴더블 내부 화면 세로·가로)마다 따로 정한다. */
-    public String balancedLayoutKey() { return english ? englishBalancedKey() : ownKey(BALANCED_LAYOUT); }
+    public String balancedLayoutKey() { return ownKey(BALANCED_LAYOUT); }
 
     /**
      * 상세 배열(자·모음 균형 배열 켜기, 영어 자판도 균형 배열, 균형 배열의 묶음 폭·위치, 분리 키보드의 좌·우 균형 배열)을
@@ -1461,7 +1509,7 @@ public final class Prefs {
         if (oneHandView) return false;
         // 가로 모드·폴더블 내부 화면 분리 키보드는 세로 모드의 균형 배열과 상관없이 나눈다.
         // 두벌식은 쿼티와 자리가 같아, 분리 키보드에서는 영어 자판처럼 일반 배열을 가운데에서 나눈다 (자음이 왼쪽, 모음이 오른쪽).
-        if (profileValues()) return english || !koreanDubeolsik();
+        if (profileValues()) return board != BOARD_KOREAN || !koreanDubeolsik();
         return balancedLayoutSetting();
     }
 
@@ -1470,8 +1518,9 @@ public final class Prefs {
      * 분리 키보드를 쓰는 동안 설정 화면의 토글(비활성)이 원래 값을 보이게 할 때 쓴다.
      */
     public boolean balancedLayoutSetting() {
+        if (board != BOARD_KOREAN) return detailModeOf(board) == DETAIL_BALANCED;
         String key = balancedLayoutKey();
-        if (sp.contains(key) || english) return sp.getBoolean(key, false);
+        if (sp.contains(key)) return sp.getBoolean(key, false);
         // 모든 배열이 함께 쓰기 전에 배열마다 따로 저장하던 값(이 이름 + "_" + 배열)은 정하기 전까지 그 배열이 이어 쓴다.
         return sp.getBoolean(key + "_" + koreanLayoutId(), false);
     }
@@ -1502,7 +1551,6 @@ public final class Prefs {
      * (예전에는 배열마다 따로 저장했다: 이 키 + "_" + 배열. 새 값이 없으면 그 값을 이어 쓴다.)
      */
     public String splitKey() {
-        if (english) return ownKey(ENGLISH_SPLIT);   // 영어 자판: english_split, land_english_split, large_port_english_split …
         if (portrait()) return PORTRAIT_SPLIT;
         return large() ? LARGE_PREFIX + "split_" + largeSide() : LANDSCAPE_SPLIT;
     }
@@ -1527,7 +1575,7 @@ public final class Prefs {
 
     /** 이 프로필에서 자판을 자음(왼쪽)·모음(오른쪽)으로 나누는지. 한글 배열과 상관없이 켜고 끈 상태가 유지된다. 세로 모드는 늘 false. */
     public boolean profileSplit() {
-        if (english) return sp.getBoolean(splitKey(), false);
+        if (board != BOARD_KOREAN) return detailModeOf(board) == DETAIL_SPLIT;
         if (portrait()) return portraitSplit();
         return sp.contains(splitKey()) ? sp.getBoolean(splitKey(), false) : sp.getBoolean(legacySplitKey(), false);
     }
@@ -1576,7 +1624,7 @@ public final class Prefs {
     /** 배열별 값이 있으면 그것을, 없으면 배열별로 나누기 전의 값(세로 모드의 8열 단모음만)을, 그것도 없으면 기본값을 쓴다. */
     private int perLayoutInt(String key, String legacyKey, int def) {
         if (sp.contains(key)) return sp.getInt(key, def);
-        return !KOREAN_LAYOUT_8.equals(koreanLayoutId()) || profileValues() || !portrait() || english ? def : sp.getInt(legacyKey, def);
+        return !KOREAN_LAYOUT_8.equals(koreanLayoutId()) || profileValues() || !portrait() || board != BOARD_KOREAN ? def : sp.getInt(legacyKey, def);
     }
 
     /** 묶음 폭의 최솟값 (%): 자·모음 균형 배열·분리 키보드 모두 10. */
@@ -1589,7 +1637,7 @@ public final class Prefs {
 
     /** 예전 방식의 가로 위치가 저장되어 있는지 (배열별 값, 또는 배열별로 나누기 전의 세로 모드 8열 단모음 값). */
     private boolean hasLegacyPos(String key, String base) {
-        return sp.contains(key) || (!profileValues() && portrait() && !english && KOREAN_LAYOUT_8.equals(koreanLayoutId()) && sp.contains(base));
+        return sp.contains(key) || (!profileValues() && portrait() && board == BOARD_KOREAN && KOREAN_LAYOUT_8.equals(koreanLayoutId()) && sp.contains(base));
     }
 
     /**
@@ -1753,12 +1801,16 @@ public final class Prefs {
     }
     /** 영어 자판의 글자 키를 아래로 밀면 대문자를 입력하는지. */
     public boolean englishSwipeUpper() { return sp.getBoolean(ENGLISH_SWIPE_UPPER, false); }
-    /** 영어 자판도 두벌식의 자·모음 균형 배열을 따르는지 (두벌식이고 균형 배열이 켜져 있을 때만, 세로 모드). */
-    /** 영어 자판을 자·모음 균형 배열처럼(두벌식 자리대로) 가운데에서 나누는지: 영어 자판의 상세 배열이 균형 배열일 때 (분리 키보드가 아닐 때). */
-    public boolean englishBalanced() {
-        if (!english) return englishView().englishBalanced();
+    /**
+     * 이 보기의 자판을 자·모음 균형 배열로 가운데에서 나누는지 (분리 키보드가 아니고, 한 손 모드가 아닐 때).
+     * 영어·기호 자판은 따라가기면 한글 자판의 균형 배열을 따른다 (boardView).
+     */
+    public boolean boardBalanced() {
         return !oneHandView && !profileValues() && balancedLayoutSetting();
     }
+
+    /** 영어 자판을 자·모음 균형 배열로 가운데에서 나누는지 (영어 자판의 상세 배열, 따라가기면 한글 자판의 것). */
+    public boolean englishBalanced() { return englishView().boardBalanced(); }
     /** 한글 자판에서 Shift 키를 껐을 때 그 자리에 Fn 키를 놓는지. */
     public boolean koreanShiftFn() { return sp.getBoolean(KOREAN_SHIFT_FN, false); }
     /** 글자 자판의 기호 키로 기호 자판 대신 3×4 숫자 패드를 여는지. */

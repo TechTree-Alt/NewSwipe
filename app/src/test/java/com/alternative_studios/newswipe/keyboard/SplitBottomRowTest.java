@@ -556,6 +556,9 @@ public class SplitBottomRowTest {
             normalSp.m.put(normal.balancedConsonantPosKey(), 0);
             normalSp.m.put(normal.balancedVowelWidthKey(), 100);
             normalSp.m.put(normal.balancedVowelPosKey(), 0);
+            // 영어·기호 자판은 한글 자판을 따라가지 않고 일반 배열로 둔다 (상세 배열을 따로 정한다).
+            normalSp.m.put(normal.detailKeyOf(Prefs.BOARD_ENGLISH), Prefs.DETAIL_NONE);
+            normalSp.m.put(normal.detailKeyOf(Prefs.BOARD_SYMBOLS), Prefs.DETAIL_NONE);
             KeyboardLayout[][] pairs = {
                     {KeyboardLayout.english(split), KeyboardLayout.english(normal)},
                     {KeyboardLayout.symbols(true, split), KeyboardLayout.symbols(true, normal)},

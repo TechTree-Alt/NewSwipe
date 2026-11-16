@@ -771,7 +771,8 @@ public final class SettingsActivity extends Activity {
         }
         values.add(L.t("기본값으로 되돌리기", "Reset to default"));
         values.addAll(java.util.Arrays.asList(inputModes()));   // 쌍자음·이중모음 입력 줄 옆의 지금 값
-        values.add(detailLayouts()[DETAIL_NONE]);   // 상세 배열 줄 옆의 지금 값 (나머지 둘은 설정 이름으로도 찾게 둔다)
+        values.add(detailName(Prefs.DETAIL_NONE));   // 상세 배열 줄 옆의 지금 값 (나머지는 설정 이름으로도 찾게 둔다)
+        values.add(detailName(Prefs.DETAIL_FOLLOW));
         out.removeIf(e -> e[0].startsWith(EDITOR_PART) && values.contains(e[1]) && !e[1].endsWith(L.t(" 설정", " settings")));
     }
 
@@ -1810,6 +1811,8 @@ public final class SettingsActivity extends Activity {
                 v.resetEditorScopeInView(Prefs.SCOPE_LETTERS_KO);
             } else if (area == KeyboardPreview.AREA_LETTERS && tab == KeyboardPreview.TAB_ENGLISH) {
                 v.resetEditorScopeInView(Prefs.SCOPE_LETTERS_EN);
+            } else if (area == KeyboardPreview.AREA_LETTERS && tab == KeyboardPreview.TAB_SYMBOLS) {
+                v.resetEditorScopeInView(Prefs.SCOPE_LETTERS_SYM);
             }
             editorPreview.refresh();
             showSelection(editorPreview.selection());   // 창의 슬라이더·스위치를 되돌린 값으로 다시 만든다
@@ -1937,21 +1940,20 @@ public final class SettingsActivity extends Activity {
                 splitHolder = null;
                 balancedHolder = null;
                 if (ko) buildKoreanLayoutSection();
-                if (en) buildEnglishLayoutSection();   // 영어 자판의 상세 배열은 한글 자판과 따로
+                if (en) buildEnglishLayoutSection();   // 영어·기호 자판의 상세 배열은 한글 자판과 따로 (따라갈 수도 있다)
+                if (letterTab == KeyboardPreview.TAB_SYMBOLS) buildSymbolsLayoutSection();
                 LinearLayout size = section(L.t("모양", "Look"));
                 // 글자 키 높이는 세로·가로가 따로 정한다 (가로 모드는 더 낮게 줄일 수 있다).
                 Prefs v = editorView();
                 size.addView(own(sizeSlider(L.t("글자 키 높이", "Letter key height"), editingOwn() ? v.heightKey() : Prefs.KEYBOARD_HEIGHT, v::keyboardHeight,
                         editingOwn() ? Prefs.PROFILE_HEIGHT_MIN : 70, 140, 5, "%")));
                 // 분리 키보드 섹션은 틀에 담아, 상세 배열에서 분리 키보드를 고르면 창을 다시 만들지 않고 그 자리에 채워 펼친다.
-                if (letterTab != KeyboardPreview.TAB_SYMBOLS) {
-                    splitHolder = new LinearLayout(this);
-                    splitHolder.setOrientation(LinearLayout.VERTICAL);
-                    list.addView(splitHolder, matchWrap());
-                    fillSplitHolder();
-                }
-                // 자·모음 균형 배열 섹션도 같은 방식: 상세 배열에서 자·모음 균형 배열을 고르면 그 자리에 채워 펼친다 (한글·영어 자판).
-                if (ko || en) {
+                splitHolder = new LinearLayout(this);
+                splitHolder.setOrientation(LinearLayout.VERTICAL);
+                list.addView(splitHolder, matchWrap());
+                fillSplitHolder();
+                // 자·모음 균형 배열 섹션도 같은 방식: 상세 배열에서 자·모음 균형 배열을 고르면 그 자리에 채워 펼친다 (세 자판 모두).
+                {
                     balancedHolder = new LinearLayout(this);
                     balancedHolder.setOrientation(LinearLayout.VERTICAL);
                     list.addView(balancedHolder, matchWrap());
@@ -2362,7 +2364,7 @@ public final class SettingsActivity extends Activity {
                     layoutNote.setText(layoutNoteText());
                     if (detailRefresh != null) detailRefresh.run();
                     // 균형 배열·분리 키보드의 묶음 폭·위치는 배열마다 따로 저장하므로 고른 배열의 것으로 다시 채운다.
-                    if (detailLayout() == DETAIL_BALANCED) fillBalancedHolder();
+                    if (detailLayout() == Prefs.DETAIL_BALANCED) fillBalancedHolder();
                     if (letterView().profileSplit()) fillSplitHolder();
                     refreshLayoutPreview();
                 });
@@ -2371,9 +2373,14 @@ public final class SettingsActivity extends Activity {
         addDetailLayout(korean);
     }
 
-    /** 영어 글자 키 창의 '영어 자판 배열' 섹션: 한글 자판과 따로 정하는 상세 배열 (사용 안 함·자·모음 균형 배열·분리 키보드). */
+    /** 영어 글자 키 창의 '영어 자판 배열' 섹션: 한글 자판과 따로 정하는 상세 배열 (한글 자판 따라가기·사용 안 함·균형 배열·분리 키보드). */
     private void buildEnglishLayoutSection() {
         addDetailLayout(section(L.t("영어 자판 배열", "English layout")));
+    }
+
+    /** 기호 글자 키 창의 '기호 자판 배열' 섹션: 한글 자판과 따로 정하는 상세 배열 (영어 자판과 같다). */
+    private void buildSymbolsLayoutSection() {
+        addDetailLayout(section(L.t("기호 자판 배열", "Symbols layout")));
     }
 
     /** 한글 자판 배열을 바꿨을 때 상세 배열 줄·하위 토글·설명을 그 배열에 맞추는 일 (한글 글자 키 창에서만). */
@@ -2385,7 +2392,7 @@ public final class SettingsActivity extends Activity {
      * 분리 키보드의 하위 항목(좌·우 균형 배열 또는 자·모음 분리 배열)은 두벌식이 아닌 한글 자판에만 있다.
      */
     private void addDetailLayout(LinearLayout card) {
-        boolean english = letterTab == KeyboardPreview.TAB_ENGLISH;
+        int board = letterBoard();
         // 하위 토글의 값과 이름이 분리 키보드 사용 여부·배열에 따라 달라지므로 보일 때마다 새로 만든다.
         LinearLayout splitSub = new LinearLayout(this);
         splitSub.setOrientation(LinearLayout.VERTICAL);
@@ -2402,21 +2409,17 @@ public final class SettingsActivity extends Activity {
         splitSub.setVisibility(splitSubShown() ? View.VISIBLE : View.GONE);
         // 상세 배열 아래의 설명: 고른 배열의 것만 보인다 ('사용 안 함'이면 감춘다).
         // 글에 위아래 여백이 있어 여백 없는 틀(fold)로 감싸 그 틀을 펼치고 접는다 (하위 항목과 같은 까닭).
-        TextView detailNote = note(detailNoteText(detailLayout(), english));
+        TextView detailNote = note(detailNoteText(detailLayout(), board));
         View detailNoteBox = fold(detailNote);
-        detailNoteBox.setVisibility(detailLayout() == DETAIL_NONE ? View.GONE : View.VISIBLE);
+        detailNoteBox.setVisibility(detailLayout() == Prefs.DETAIL_NONE ? View.GONE : View.VISIBLE);
         SettingsWidgets.ValueRow[] detail = new SettingsWidgets.ValueRow[1];
-        detail[0] = widgets.valueRow(L.t("상세 배열", "Advanced layout"), detailLayouts()[detailLayout()], v ->
+        detail[0] = widgets.valueRow(L.t("상세 배열", "Advanced layout"), detailName(detailLayout()), v ->
                 pickDetailLayout(mode -> {
-                    Prefs lv = letterView();
-                    android.content.SharedPreferences.Editor e = prefs.raw().edit();
-                    e.putBoolean(lv.splitKey(), mode == DETAIL_SPLIT);   // 상세 배열은 자판·키보드마다 따로
-                    if (mode != DETAIL_SPLIT) e.putBoolean(lv.balancedLayoutKey(), mode == DETAIL_BALANCED);
-                    e.apply();
-                    detail[0].set(detailLayouts()[mode]);
-                    showDetailNote(detailNoteBox, detailNote, mode, english);
+                    editorView().setDetailMode(board, mode);   // 상세 배열은 자판·키보드마다 따로
+                    detail[0].set(detailName(mode));
+                    showDetailNote(detailNoteBox, detailNote, mode, board);
                     if (balancedHolder != null) {
-                        if (mode == DETAIL_BALANCED) {
+                        if (mode == Prefs.DETAIL_BALANCED) {
                             fillBalancedHolder();
                             balancedHolder.setVisibility(View.GONE);
                             Ui.setVisibleAnimated(balancedHolder, true);
@@ -2432,7 +2435,7 @@ public final class SettingsActivity extends Activity {
                         Ui.setVisibleAnimated(splitSub, false);
                     }
                     if (splitHolder != null) {
-                        if (mode == DETAIL_SPLIT) {
+                        if (mode == Prefs.DETAIL_SPLIT) {
                             fillSplitHolder();
                             splitHolder.setVisibility(View.GONE);
                             Ui.setVisibleAnimated(splitHolder, true);
@@ -2442,10 +2445,10 @@ public final class SettingsActivity extends Activity {
                     }
                     refreshLayoutPreview();
                 }));
-        detailRefresh = english ? null : () -> {
+        detailRefresh = board != Prefs.BOARD_KOREAN ? null : () -> {
             // 예전에 배열마다 저장한 균형 배열 값이 남아 있으면 배열에 따라 달라질 수 있으므로 상세 배열을 다시 맞춘다.
-            detail[0].set(detailLayouts()[detailLayout()]);
-            showDetailNote(detailNoteBox, detailNote, detailLayout(), false);
+            detail[0].set(detailName(detailLayout()));
+            showDetailNote(detailNoteBox, detailNote, detailLayout(), Prefs.BOARD_KOREAN);
             // 하위 토글은 배열마다 이름이 달라 (두벌식은 없음) 고른 배열의 것으로 다시 만든다.
             if (splitSubShown()) fillSplitSub.run();
             Ui.setVisibleAnimated(splitSub, splitSubShown());
@@ -2462,12 +2465,22 @@ public final class SettingsActivity extends Activity {
      * (묶음 좌우 따라가기, 스페이스바 잇기 등)을 보인다. 이 항목들은 두 자판이 함께 쓴다.
      */
     private boolean anySplit() {
-        return editorView().koreanView().profileSplit() || editorView().englishView().profileSplit();
+        return editorView().koreanView().profileSplit() || editorView().englishView().profileSplit()
+                || editorView().symbolsView().profileSplit();
     }
 
-    /** 글자 키 창이 편집하는 자판의 설정 보기: 영어 글자 키 창이면 영어 자판의 상세 배열, 아니면 한글 자판의 것 (편집하는 키보드의 보기). */
+    /** 글자 키 창이 편집하는 자판 (Prefs.BOARD_*): 한글·영어·기호. */
+    private int letterBoard() {
+        return letterTab == KeyboardPreview.TAB_ENGLISH ? Prefs.BOARD_ENGLISH
+                : letterTab == KeyboardPreview.TAB_SYMBOLS ? Prefs.BOARD_SYMBOLS : Prefs.BOARD_KOREAN;
+    }
+
+    /**
+     * 글자 키 창이 편집하는 자판의 설정 보기 (편집하는 키보드의 보기): 그 자판의 상세 배열·묶음 폭·위치를 읽는다.
+     * 영어·기호 자판이 한글 자판 따라가기면 한글 자판의 보기다.
+     */
     private Prefs letterView() {
-        return editorView().languageView(letterTab == KeyboardPreview.TAB_ENGLISH);
+        return editorView().boardView(letterBoard());
     }
 
     /** 분리 키보드의 하위 항목(좌·우 균형 배열·자·모음 분리 배열)이 보이는지: 한글 자판에서 분리 키보드를 골랐고 두벌식이 아닐 때. */
@@ -2475,52 +2488,73 @@ public final class SettingsActivity extends Activity {
         return letterTab == KeyboardPreview.TAB_KOREAN && letterView().profileSplit() && !prefs.koreanDubeolsik();
     }
 
-    /** 상세 배열 아래의 설명 (고른 배열의 것). '사용 안 함'이면 빈 글. english는 영어 자판의 설명인지. */
-    private static String detailNoteText(int mode, boolean english) {
-        if (mode == DETAIL_BALANCED) {
-            return english ? L.t("자·모음 균형 배열은 영어 자판을 두벌식처럼 가운데에서 나눠 왼쪽 5·5·4키, 오른쪽 5·4·3키로 놓습니다.", "The balanced layout splits the English keyboard in the middle like Dubeolsik, with 5·5·4 keys on the left and 5·4·3 on the right.")
-                    : L.t("자·모음 균형 배열은 한글 글자 키 영역을 반으로 나눠 각각에 자음과 모음을 놓습니다.", "The balanced consonant/vowel layout splits the Korean letter keys in half, with consonants on one side and vowels on the other.");
+    /** 상세 배열 아래의 설명 (고른 배열의 것). '사용 안 함'이면 빈 글. board는 그 자판 (Prefs.BOARD_*). */
+    private static String detailNoteText(int mode, int board) {
+        String name = board == Prefs.BOARD_ENGLISH ? L.t("영어 자판", "English keyboard")
+                : board == Prefs.BOARD_SYMBOLS ? L.t("기호 자판", "symbol keyboard") : L.t("한글 자판", "Korean keyboard");
+        if (mode == Prefs.DETAIL_FOLLOW) {
+            return L.t("상세 배열의 종류와 묶음 폭·가로 위치를 모두 한글 자판의 것으로 씁니다. 한글 글자 키 창에서 바꿉니다.",
+                    "Uses the Korean keyboard's advanced layout, block width and position. Change them in the Korean letter keys panel.");
         }
-        if (mode == DETAIL_SPLIT) {
-            return english ? L.t("분리 키보드는 영어 자판 전체를 반으로 나눕니다. 영어 자판에서 연 기호 자판에도 적용됩니다.", "The split keyboard splits the whole English keyboard in half. It also applies to the symbol keyboard opened from it.")
-                    : L.t("분리 키보드는 한글 자판 전체를 반으로 나눕니다. 한글 자판에서 연 기호 자판에도 적용됩니다.", "The split keyboard splits the whole Korean keyboard in half. It also applies to the symbol keyboard opened from it.");
+        if (mode == Prefs.DETAIL_BALANCED) {
+            if (board == Prefs.BOARD_ENGLISH) return L.t("자·모음 균형 배열은 영어 자판을 두벌식처럼 가운데에서 나눠 왼쪽 5·5·4키, 오른쪽 5·4·3키로 놓습니다.", "The balanced layout splits the English keyboard in the middle like Dubeolsik, with 5·5·4 keys on the left and 5·4·3 on the right.");
+            if (board == Prefs.BOARD_SYMBOLS) return L.t("자·모음 균형 배열은 기호 자판의 줄을 가운데에서 나눠 왼쪽·오른쪽 묶음에 놓습니다. 맨 아래 줄은 그대로입니다.", "The balanced layout splits the symbol keyboard's rows in the middle into left and right blocks. The bottom row stays as it is.");
+            return L.t("자·모음 균형 배열은 한글 글자 키 영역을 반으로 나눠 각각에 자음과 모음을 놓습니다.", "The balanced consonant/vowel layout splits the Korean letter keys in half, with consonants on one side and vowels on the other.");
+        }
+        if (mode == Prefs.DETAIL_SPLIT) {
+            return L.t("분리 키보드는 " + name + " 전체를 반으로 나눕니다.", "The split keyboard splits the whole " + name + " in half.");
         }
         return "";
     }
 
     /** 상세 배열을 바꾸면 설명을 고른 배열의 것으로 바꾼다 ('사용 안 함'이면 접는다. 접는 동안은 앞의 글을 그대로 둔다). */
-    private void showDetailNote(View box, TextView note, int mode, boolean english) {
-        if (mode != DETAIL_NONE) note.setText(detailNoteText(mode, english));
-        Ui.setVisibleAnimated(box, mode != DETAIL_NONE);
+    private void showDetailNote(View box, TextView note, int mode, int board) {
+        if (mode != Prefs.DETAIL_NONE) note.setText(detailNoteText(mode, board));
+        Ui.setVisibleAnimated(box, mode != Prefs.DETAIL_NONE);
     }
 
-    /** 상세 배열의 이름 (DETAIL_* 차례). */
-    private static String[] detailLayouts() {
-        return new String[]{L.t("사용 안 함", "Off"), L.t("자·모음 균형 배열", "Balanced consonant/vowel layout"), L.t("분리 키보드", "Split keyboard")};
+    /** 상세 배열 종류(Prefs.DETAIL_*)의 이름. */
+    private static String detailName(int mode) {
+        switch (mode) {
+            case Prefs.DETAIL_FOLLOW: return L.t("한글 자판 따라가기", "Follow Korean keyboard");
+            case Prefs.DETAIL_BALANCED: return L.t("자·모음 균형 배열", "Balanced consonant/vowel layout");
+            case Prefs.DETAIL_SPLIT: return L.t("분리 키보드", "Split keyboard");
+            default: return L.t("사용 안 함", "Off");
+        }
     }
-    private static final int DETAIL_NONE = 0, DETAIL_BALANCED = 1, DETAIL_SPLIT = 2;
+
+    /** 자판 board에서 고를 수 있는 상세 배열 (차례대로): 영어·기호 자판은 맨 앞에 '한글 자판 따라가기'가 있다. */
+    private static int[] detailModes(int board) {
+        return board == Prefs.BOARD_KOREAN ? new int[]{Prefs.DETAIL_NONE, Prefs.DETAIL_BALANCED, Prefs.DETAIL_SPLIT}
+                : new int[]{Prefs.DETAIL_FOLLOW, Prefs.DETAIL_NONE, Prefs.DETAIL_BALANCED, Prefs.DETAIL_SPLIT};
+    }
 
     /**
-     * 글자 키 창이 편집하는 자판의 상세 배열: 그 자판의 분리 키보드가 켜져 있으면 분리 키보드, 아니면 그 자판의 균형 배열 설정.
-     * 상세 배열은 한글·영어 자판마다, 키보드(세로·가로·폴더블 내부 화면 세로·가로)마다 따로 정한다.
+     * 글자 키 창이 편집하는 자판의 상세 배열 (Prefs.DETAIL_*): 영어·기호 자판은 한글 자판 따라가기(DETAIL_FOLLOW)일 수 있다.
+     * 상세 배열은 한글·영어·기호 자판마다, 키보드(세로·가로·폴더블 내부 화면 세로·가로)마다 따로 정한다.
      */
     private int detailLayout() {
-        Prefs lv = letterView();
-        if (lv.profileSplit()) return DETAIL_SPLIT;
-        return lv.balancedLayoutSetting() ? DETAIL_BALANCED : DETAIL_NONE;
+        return editorView().detailModeOf(letterBoard());
     }
 
-    /** 상세 배열을 고르는 창 (사용 안 함·자·모음 균형 배열·분리 키보드). 다른 고르기 창과 같은 모양: 목록, 기본값, 취소. */
+    /** 상세 배열을 고르는 창. 다른 고르기 창과 같은 모양: 목록, 기본값(한글 자판은 사용 안 함, 영어·기호 자판은 따라가기), 취소. */
     private void pickDetailLayout(java.util.function.IntConsumer onPick) {
-        int current = detailLayout();
+        int[] modes = detailModes(letterBoard());
+        String[] names = new String[modes.length];
+        int current = detailLayout(), checked = 0;
+        for (int i = 0; i < modes.length; i++) {
+            names[i] = detailName(modes[i]);
+            if (modes[i] == current) checked = i;
+        }
+        int def = modes[0];
         AppTheme.dialogBuilder(this)
                 .setTitle(L.t("상세 배열", "Advanced layout"))
-                .setSingleChoiceItems(detailLayouts(), current, (d, which) -> {
+                .setSingleChoiceItems(names, checked, (d, which) -> {
                     d.dismiss();
-                    if (which != current) onPick.accept(which);
+                    if (modes[which] != current) onPick.accept(modes[which]);
                 })
                 .setNeutralButton(L.t("기본값", "Default"), (d, w) -> {
-                    if (current != DETAIL_NONE) onPick.accept(DETAIL_NONE);
+                    if (current != def) onPick.accept(def);
                 })
                 .setNegativeButton(L.t("취소", "Cancel"), null)
                 .show();
@@ -2808,7 +2842,7 @@ public final class SettingsActivity extends Activity {
     private void fillSplitHolder() {
         if (splitHolder == null) return;
         splitHolder.removeAllViews();
-        if (!letterView().profileSplit()) return;
+        if (detailLayout() != Prefs.DETAIL_SPLIT) return;   // 한글 자판 따라가기면 한글 글자 키 창에서 정한다
         LinearLayout saved = list;
         list = splitHolder;
         try {
@@ -2831,8 +2865,8 @@ public final class SettingsActivity extends Activity {
     private void fillBalancedHolder() {
         if (balancedHolder == null) return;
         balancedHolder.removeAllViews();
-        if (detailLayout() != DETAIL_BALANCED && !harvesting) {
-            if (detailRow != null) markAbsent(detailRow, balancedItems(letterTab == KeyboardPreview.TAB_ENGLISH));
+        if (detailLayout() != Prefs.DETAIL_BALANCED && !harvesting) {
+            if (detailRow != null) markAbsent(detailRow, balancedItems(letterTab != KeyboardPreview.TAB_KOREAN));
             return;
         }
         LinearLayout saved = list;
@@ -2863,8 +2897,8 @@ public final class SettingsActivity extends Activity {
     private void addEditorBalancedBlocks() {
         Prefs p = letterView();   // 분리 키보드를 쓰지 않는 보기: 이 자판·키보드의 균형 배열 키 폭·위치 (따로 정한다)
         LinearLayout c = section(balancedItems()[0]);
-        if (p.english()) {
-            // 영어 자판은 자음·모음이 아니라 왼쪽·오른쪽 묶음이다.
+        if (letterBoard() != Prefs.BOARD_KOREAN) {
+            // 영어·기호 자판은 자음·모음이 아니라 왼쪽·오른쪽 묶음이다 (검색 목록을 모을 때 따라가기여도 같은 이름).
             c.addView(own(blockSlider(p, L.t("왼쪽 묶음 폭", "Left block width"), p.balancedConsonantWidthKey(), p::balancedConsonantWidth, p.balancedWidthMin(), p.balancedWidthMax(), "%", this::syncKeyPanel)));
             c.addView(own(blockSlider(p, L.t("왼쪽 묶음 가로 위치", "Left block position"), p.balancedConsonantPosKey(), p::balancedConsonantPos, Prefs.BALANCED_POS_MIN, Prefs.BALANCED_POS_MAX, "", this::syncKeyPanel)));
             c.addView(own(blockSlider(p, L.t("오른쪽 묶음 폭", "Right block width"), p.balancedVowelWidthKey(), p::balancedVowelWidth, p.balancedWidthMin(), p.balancedWidthMax(), "%", this::syncKeyPanel)));
