@@ -1871,6 +1871,60 @@ public class EditorUiTest {
         pre.raw().edit().remove(Prefs.BALANCED_LAYOUT).commit();
     }
 
+    /**
+     * 영어 자판의 균형 배열과 기호 자판의 균형 배열·분리 키보드의 묶음 윤곽선은 영어 분리 키보드처럼 맨 윗 글자 줄에 맞춘다:
+     * 왼쪽 묶음은 t(기호 자판은 ^)의 오른쪽, 오른쪽 묶음은 y(=)의 왼쪽. 기호 자판도 숫자 줄을 켜면 숫자 줄은 글자 키와 따로 고르는
+     * '숫자 줄' 영역이고 묶음 윤곽선에 들지 않는다.
+     */
+    @Test
+    public void staggeredOutlinesAndSymbolsNumberRow() throws Exception {
+        Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
+        pre.raw().edit().putInt(pre.detailKeyOf(Prefs.BOARD_ENGLISH), Prefs.DETAIL_BALANCED)
+                .putInt(pre.detailKeyOf(Prefs.BOARD_SYMBOLS), Prefs.DETAIL_BALANCED).putBoolean(Prefs.NUMBER_ROW, true).commit();
+        SettingsActivity a = launch("keyboard");
+        KeyboardPreview p = find(a.getWindow().getDecorView(), KeyboardPreview.class);
+        float tol = 8 * a.getResources().getDisplayMetrics().density;   // 키 간격 절반 + 윤곽선 여유
+        android.graphics.RectF l = new android.graphics.RectF(), r = new android.graphics.RectF();
+        // 영어 자판의 균형 배열
+        p.setTab(KeyboardPreview.TAB_ENGLISH);
+        idle();
+        assertTrue(p.blockBounds(true, l) && p.blockBounds(false, r));
+        Key t = key(p, "t", Key.CHAR), g = key(p, "g", Key.CHAR), y = key(p, "y", Key.CHAR);
+        assertEquals("왼쪽 묶음은 t의 오른쪽", t.rect.right, l.right, tol);
+        assertTrue("g는 윤곽선 밖으로 나온다", g.rect.right > l.right + 1f);
+        assertEquals("오른쪽 묶음은 y의 왼쪽", y.rect.left, r.left, tol);
+        // 기호 자판의 균형 배열 (숫자 줄을 켠 5줄 배열)
+        p.setTab(KeyboardPreview.TAB_SYMBOLS);
+        idle();
+        assertTrue(p.blockBounds(true, l) && p.blockBounds(false, r));
+        Key caret = key(p, "^", Key.CHAR), eq = key(p, "=", Key.CHAR), colon = key(p, ":", Key.CHAR), one = key(p, "1", Key.CHAR);
+        assertEquals("왼쪽 묶음은 ^의 오른쪽", caret.rect.right, l.right, tol);
+        assertTrue(": 는 윤곽선 밖으로 나온다", colon.rect.right > l.right + 1f);
+        assertEquals("오른쪽 묶음은 =의 왼쪽", eq.rect.left, r.left, tol);
+        View keysView = find(p, KeyboardView.class);
+        assertTrue("숫자 줄은 묶음 윤곽선 밖", l.top >= keysView.getTop() + one.rect.bottom - tol);
+        // 숫자 줄은 '숫자 줄' 영역 (글자 키와 따로)
+        android.graphics.RectF nb = new android.graphics.RectF();
+        assertTrue(p.areaBounds(KeyboardPreview.AREA_NUMBER, nb));
+        tap(p.getChildAt(1), nb.centerX(), nb.centerY());
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
+        assertEquals(KeyboardPreview.AREA_NUMBER, p.selection().area());
+        assertNotNull(findText(a.getWindow().getDecorView(), "숫자 줄 설정"));
+        a.onBackPressed();
+        idle();
+        // 기호 자판의 분리 키보드도 같은 윤곽선
+        pre.raw().edit().putInt(pre.detailKeyOf(Prefs.BOARD_SYMBOLS), Prefs.DETAIL_SPLIT).commit();
+        idle();
+        p.refresh();
+        assertTrue(p.blockBounds(true, l) && p.blockBounds(false, r));
+        caret = key(p, "^", Key.CHAR);
+        eq = key(p, "=", Key.CHAR);
+        assertEquals(caret.rect.right, l.right, tol);
+        assertEquals(eq.rect.left, r.left, tol);
+        shot(a, "e5-symbols-split-outline");
+        pre.raw().edit().remove(pre.detailKeyOf(Prefs.BOARD_ENGLISH)).remove(pre.detailKeyOf(Prefs.BOARD_SYMBOLS)).remove(Prefs.NUMBER_ROW).commit();
+    }
+
     /** 세로로 들고 연 키보드 사용자화는 세로 키보드를 편집하고, 그 사실을 제목과 안내로 알린다. */
     @Test
     public void portraitEditorTitleAndIntro() throws Exception {

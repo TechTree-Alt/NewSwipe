@@ -447,7 +447,7 @@ final class KeyboardPreview extends FrameLayout {
      */
     private boolean onStaggeredBlockKey(float x, float y) {
         KeyboardLayout l = keys.getLayout();
-        if (l == null || !l.staggeredSplit) return false;
+        if (l == null || !l.staggerOutline) return false;
         int first = numberRowShown && profileEdit == null ? 1 : 0;
         float ky = y - keys.getTop();
         for (int r = first; r <= l.rows.length - 2; r++) {
@@ -470,10 +470,10 @@ final class KeyboardPreview extends FrameLayout {
         float gx = Ui.dp(c, prefs.keyGapXDp()) / 2f, gy = Ui.dp(c, prefs.keyGapYDp()) / 2f;
         // 분리 키보드의 두 묶음에는 숫자 줄(1~5, 6~0)도 들어간다. 세로 모드의 균형 배열은 숫자 줄을 뺀 글자 키만 감싼다.
         int first = numberRowShown && profileEdit == null ? 1 : 0, last = l.rows.length - 2;
-        // 쿼티 모양 분리 자판(영어·두벌식)은 줄이 엇갈려 g·v가 왼쪽 묶음 끝 밖으로 나와 있다.
-        // 왼쪽 묶음 윤곽선의 오른쪽 가장자리는 t(맨 윗 글자 줄까지)에 맞춘다: 한글 자판의 묶음 윤곽선과 같은 자리다.
-        // 오른쪽 묶음은 y가 묶음 시작에 있어 그대로 감싼다.
-        boolean stagger = split && l.staggeredSplit && consonant;
+        // 쿼티 모양 자판(영어의 분리 키보드·균형 배열, 두벌식 분리 키보드)과 기호 자판(분리 키보드·균형 배열)은 줄이 엇갈려
+        // g·v(기호 자판은 :)가 왼쪽 묶음 끝 밖으로 나와 있다. 왼쪽 묶음 윤곽선의 오른쪽 가장자리는 맨 윗 글자 줄의 t(기호 자판은 ^ 또는 5)에
+        // 맞춘다: 한글 자판의 묶음 윤곽선과 같은 자리다. 오른쪽 묶음은 y(= 또는 6)가 묶음 시작에 있어 그대로 감싼다.
+        boolean stagger = l.staggerOutline && consonant;
         int topLetters = last - 2;
         float inner = Float.NEGATIVE_INFINITY;
         boolean any = false;
@@ -694,7 +694,8 @@ final class KeyboardPreview extends FrameLayout {
                 break;
             }
         }
-        numberRowShown = tab != TAB_SYMBOLS && prefs.numberRow() && firstKey != null && KeyboardLayout.isDigit(firstKey.label);
+        // 기호 자판도 숫자 줄을 켜면(5줄 배열) 첫 줄을 숫자 줄로 다룬다: 글자 키와 따로 '숫자 줄' 영역이다 (한글·영어 자판과 같다).
+        numberRowShown = prefs.numberRow() && firstKey != null && KeyboardLayout.isDigit(firstKey.label);
         // 키보드와 같은 높이: 글자 4줄 + 숫자 줄 (기호 자판도 같은 높이를 쓴다).
         float rows = KeyboardLayout.rowUnits(prefs);
         keys.setKeyboardHeight(Math.round(Ui.dp(c, 54) * rows * prefs.keyboardHeight() / 100f) + padT + padB - lift - raise

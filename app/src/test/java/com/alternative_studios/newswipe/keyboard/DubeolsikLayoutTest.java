@@ -624,6 +624,40 @@ public class DubeolsikLayoutTest {
         assertTrue(portrait(sp).symbolsView().profileSplit());
     }
 
+    /**
+     * 기호 자판의 균형 배열은 숫자 줄을 켠 5줄 배열이면 숫자 줄을 나누지 않고 전체 폭으로 둔다 (한글·영어 자판의 균형 배열처럼).
+     * 숫자 줄을 끈 4줄 배열의 1~0 줄은 기호 글자 줄이라 나눈다. 분리 키보드·균형 배열의 윤곽선은 쿼티 자판처럼 맨 윗 글자 줄에 맞춘다.
+     */
+    @Test
+    public void symbolsBalancedKeepsTheNumberRowWhole() throws Exception {
+        FakeSp sp = new FakeSp();
+        Prefs p = portrait(sp);
+        sp.m.put(p.detailKeyOf(Prefs.BOARD_SYMBOLS), Prefs.DETAIL_BALANCED);
+        sp.m.put(Prefs.NUMBER_ROW, true);
+        KeyboardLayout five = KeyboardLayout.symbols(true, portrait(sp));
+        assertEquals(5, five.rows.length);   // 숫자 줄 · ~ 줄 · @ 줄 · =\\< 줄 · 맨 아래 줄
+        assertFalse("숫자 줄은 나누지 않는다", hasMiddleGap(five.rows[0]));
+        assertEquals(1f, key(five, "1").weight, 1e-3f);
+        assertTrue("~ 줄부터 나눈다", hasMiddleGap(five.rows[1]));
+        assertTrue(five.staggerOutline);
+        KeyboardLayout five2 = KeyboardLayout.symbols2(true, portrait(sp));
+        assertFalse(hasMiddleGap(five2.rows[0]));
+        assertTrue(hasMiddleGap(five2.rows[1]));
+        sp.m.put(Prefs.NUMBER_ROW, false);
+        KeyboardLayout four = KeyboardLayout.symbols(true, portrait(sp));
+        assertTrue("4줄 배열의 1~0 줄은 글자 줄이라 나눈다", hasMiddleGap(four.rows[0]));
+        // 윤곽선 규칙: 영어의 균형 배열·분리 키보드, 기호 자판의 균형 배열·분리 키보드 (일반 배열은 아니다)
+        sp.m.put(p.detailKeyOf(Prefs.BOARD_ENGLISH), Prefs.DETAIL_BALANCED);
+        assertTrue(KeyboardLayout.english(portrait(sp)).staggerOutline);
+        sp.m.put(p.detailKeyOf(Prefs.BOARD_ENGLISH), Prefs.DETAIL_NONE);
+        assertFalse(KeyboardLayout.english(portrait(sp)).staggerOutline);
+        sp.m.put(p.detailKeyOf(Prefs.BOARD_SYMBOLS), Prefs.DETAIL_SPLIT);
+        assertTrue(KeyboardLayout.symbols(true, portrait(sp)).staggerOutline);
+        assertTrue(KeyboardLayout.symbols2(true, portrait(sp)).staggerOutline);
+        sp.m.put(p.detailKeyOf(Prefs.BOARD_SYMBOLS), Prefs.DETAIL_NONE);
+        assertFalse(KeyboardLayout.symbols(true, portrait(sp)).staggerOutline);
+    }
+
     /** 줄 가운데(4.5~5.5칸 근처)에 키가 아닌 빈틈(GAP)이 있는지. */
     private static boolean hasMiddleGap(KeyboardLayout.Row row) {
         float x = 0f;

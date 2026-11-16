@@ -47,6 +47,13 @@ public final class KeyboardLayout {
      * 나와 있다. 미리보기는 왼쪽 묶음 윤곽선의 오른쪽 가장자리를 t에 맞춘다.
      */
     public boolean staggeredSplit;
+    /**
+     * 두 묶음의 윤곽선을 쿼티 모양 분리 자판처럼 맨 윗 글자 줄에 맞추는지: 왼쪽 묶음 윤곽선의 오른쪽 가장자리는 맨 윗 글자 줄 왼쪽 반의
+     * 끝(영어 t, 기호 자판 ^ 또는 5)에, 오른쪽 묶음은 그 줄 오른쪽 반의 시작(y, = 또는 6)에 맞춘다. 아래 줄에서 가운데로
+     * 나온 키(g·v, 기호 자판의 :)는 윤곽선 밖에 남는다. 영어 자판의 분리 키보드·자·모음 균형 배열, 기호 자판의 분리 키보드·
+     * 자·모음 균형 배열, 두벌식의 분리 키보드.
+     */
+    public boolean staggerOutline;
 
     private KeyboardLayout(int kind, int columns, List<Row> rows) {
         this.kind = kind;
@@ -438,7 +445,9 @@ public final class KeyboardLayout {
         if (prefs.numberRow()) out.add(numberRow(prefs));
         for (int r = 0; r < 3; r++) out.add(qwertyBalancedRow(r, rows, popups, korean, prefs));
         out.add(splitBottom(prefs));
-        return new KeyboardLayout(kind, BALANCED_COLUMNS, out);
+        KeyboardLayout layout = new KeyboardLayout(kind, BALANCED_COLUMNS, out);
+        layout.staggerOutline = true;   // 윤곽선은 분리 키보드처럼 t·y에 맞춘다
+        return layout;
     }
 
     /**
@@ -490,6 +499,7 @@ public final class KeyboardLayout {
         rows.add(splitBottom(prefs));
         KeyboardLayout layout = new KeyboardLayout(kind, BALANCED_COLUMNS, rows);
         layout.staggeredSplit = true;
+        layout.staggerOutline = true;
         return layout;
     }
 
@@ -659,7 +669,7 @@ public final class KeyboardLayout {
         rows.add(gridSides(r3, prefs));
         applySymbolPopups(rows, prefs);
         finishSymbols(rows, back, prefs);
-        return new KeyboardLayout(SYMBOLS, 10, rows);
+        return symbolsLayout(SYMBOLS, rows, prefs);
     }
 
     public static KeyboardLayout symbols2(boolean korean, Prefs prefs) {
@@ -709,7 +719,7 @@ public final class KeyboardLayout {
         rows.add(gridSides(r3, prefs));
         applySymbolPopups(rows, prefs);
         finishSymbols(rows, back, prefs);
-        return new KeyboardLayout(SYMBOLS_2, 10, rows);
+        return symbolsLayout(SYMBOLS_2, rows, prefs);
     }
 
     /**
@@ -1080,6 +1090,13 @@ public final class KeyboardLayout {
         return prefs != null && prefs.splitView();
     }
 
+    /** 기호 자판(1·2쪽): 분리 키보드·자·모음 균형 배열이면 두 묶음의 윤곽선을 쿼티 자판처럼 맨 윗 글자 줄에 맞춘다. */
+    private static KeyboardLayout symbolsLayout(int kind, List<Row> rows, Prefs prefs) {
+        KeyboardLayout layout = new KeyboardLayout(kind, 10, rows);
+        layout.staggerOutline = splitView(prefs) || (prefs != null && prefs.boardBalanced());
+        return layout;
+    }
+
     /**
      * 기호 자판의 맨 아래 줄 위쪽 줄들을 마무리한다. 분리 키보드에서는 숫자 줄을 포함한 모든 줄을 일반 자판과 같은 모양 그대로
      * 가운데에서 나눠 왼쪽·오른쪽 묶음에 놓는다 ({@link #splitNormal}). 자·모음 균형 배열도 같은 자리에서 나누되 맨 아래 줄은
@@ -1090,7 +1107,8 @@ public final class KeyboardLayout {
             for (int i = 0; i < rows.size(); i++) rows.set(i, splitNormal(rows.get(i), prefs));
             rows.add(blockSpaceRow(prefs, Key.TO_LETTERS, back, true));
         } else if (prefs != null && prefs.boardBalanced()) {
-            for (int i = 0; i < rows.size(); i++) rows.set(i, splitNormal(rows.get(i), prefs, false));
+            // 숫자 줄을 켠 5줄 배열의 첫 줄(숫자 줄)은 한글·영어 자판의 균형 배열처럼 나누지 않고 전체 폭으로 둔다.
+            for (int i = prefs.numberRow() ? 1 : 0; i < rows.size(); i++) rows.set(i, splitNormal(rows.get(i), prefs, false));
             rows.add(spaceRow(Key.TO_LETTERS, back, prefs, true));
         } else {
             rows.add(spaceRow(Key.TO_LETTERS, back, prefs, true));
