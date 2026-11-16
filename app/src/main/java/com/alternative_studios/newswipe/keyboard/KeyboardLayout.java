@@ -360,7 +360,9 @@ public final class KeyboardLayout {
         if (numberRow) rows.add(splitView(prefs) ? splitNumberRow(prefs) : numberRow(prefs));
         rows.addAll(letters);
         rows.add(splitBottom(prefs));
-        return new KeyboardLayout(KOREAN, BALANCED_COLUMNS, rows);
+        KeyboardLayout layout = new KeyboardLayout(KOREAN, BALANCED_COLUMNS, rows);
+        layout.staggerOutline = dubeolsik(prefs);   // 두벌식은 쿼티 모양이라 윤곽선을 영어 자판처럼 맨 윗 글자 줄에 맞춘다
+        return layout;
     }
 
     /**
@@ -412,31 +414,21 @@ public final class KeyboardLayout {
         return splitRow(consonants, vowels, 1f, prefs);
     }
 
-    /** 쿼티 모양 자판을 자·모음 균형 배열로 나눌 때 줄마다 자음(왼쪽) 쪽에 가는 글자 수: q~t, a~g, z~v / ㅂ~ㅅ, ㅁ~ㅎ, ㅋ~ㅍ. */
-    private static final int[] QWERTY_LEFT_COUNT = {5, 5, 4};
-    /** 쿼티 모양 균형 배열 왼쪽(자음) 쪽의 칸 수: 5키와 반 칸 (둘째 줄 들여쓰기, 셋째 줄 1.5칸 Shift). */
-    private static final float QWERTY_LEFT_UNITS = 5.5f;
 
     /**
      * 쿼티 모양 자판(두벌식, 영어)의 자·모음 균형 배열 r번째 줄 (세로 모드만: 분리 키보드는 {@link #splitNormal}로 나눈다).
-     * 일반 자판을 가운데에서 나누기만 하고, 각 쪽 안에서 키의 상대적인 자리와 폭은 그대로 둔다:
-     * 왼쪽은 5키 / 반 칸 들어간 5키 / 1.5칸 Shift와 4키 (5.5칸), 오른쪽은 5키 / 반 칸 들어간 4키 / 반 칸 들어간 3키와 1.5칸 ⌫ (5칸).
-     * 줄마다 각 쪽의 폭이 같아 키 폭과 엇갈림이 줄 사이에서 맞는다.
+     * 기호 자판처럼 일반 자판의 줄을 그대로 만들어 가운데에서 자르고, 각 쪽을 묶음 폭만큼 줄이거나 늘린다.
+     * 가운데에 걸친 ㅎ·ㅍ(g·v)는 왼쪽(자음) 묶음으로 간다. 두 묶음이 100%면 일반 자판과 키 하나하나의 자리가 같다.
      */
     private static Row qwertyBalancedRow(int r, String[][] rows, String[][][] popups, boolean korean, Prefs prefs) {
+        // 기호 자판의 균형 배열처럼 일반 자판의 줄(a~l 줄 반 칸 들여쓰기, 1.5칸 Shift·⌫, 격자 정렬 포함)을 그대로 만들어
+        // 가운데에서 자른다: 두 묶음을 100%로 두면 일반 자판처럼 빈틈 없이 붙는다. 두 묶음 사이 빈틈은 누르면 가까운 키가 눌린다.
         Key[] letters = letterKeys(rows[r], popups[r], korean, prefs);
-        List<Key> consonants = new ArrayList<>(), vowels = new ArrayList<>();
-        if (r == 1) consonants.add(fn(Key.GAP, "", 0.5f));
-        if (r == 2) {
-            int shift = qwertyShiftSlot(korean, prefs);
-            consonants.add(fn(shift, shift == Key.FUNCTION ? "Fn" : "", 1.5f));
-        }
-        for (int i = 0; i < letters.length; i++) (i < QWERTY_LEFT_COUNT[r] ? consonants : vowels).add(letters[i]);
-        if (r == 0) consonants.add(fn(Key.GAP, "", 0.5f));
-        if (r > 0) vowels.add(0, fn(Key.GAP, "", 0.5f));
-        if (r == 1) vowels.add(fn(Key.GAP, "", 0.5f));
-        if (r == 2) vowels.add(fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1.5f));
-        return splitRow(consonants, vowels, 1f, prefs);
+        int shift = qwertyShiftSlot(korean, prefs);
+        Row normal = r < 2 ? new Row(1f, letters)
+                : prefs.gridLayout() ? gridBottomLetterRow(letters, shift, deleteKey(prefs), prefs)
+                : bottomLetterRow(letters, 1.5f, shift, deleteKey(prefs));
+        return splitNormal(normal, prefs, false);
     }
 
     /** 쿼티 모양 자판의 자·모음 균형 배열 (두벌식, 두벌식 균형 배열을 따르는 영어 자판). */
@@ -1065,8 +1057,8 @@ public final class KeyboardLayout {
         if (prefs != null) prefs = prefs.koreanView();
         // 자·모음 균형 배열: 왼쪽 절반을 나눠 가진 자음 키 한 칸 (5열이면 1칸, 4열이면 1.25칸).
         // 8열 단모음의 좌·우 균형 배열은 자음이 4열이 되므로 그 폭을 따른다.
-        // 두벌식은 자음 쪽이 들여쓰기·1.5칸 Shift를 포함해 5.5칸이라 키 한 칸이 그만큼 좁다.
-        if (balanced(prefs) && dubeolsik(prefs)) return BALANCED_HALF / QWERTY_LEFT_UNITS;
+        // 두벌식은 일반 자판의 줄을 그대로 가운데에서 잘라 나누므로 키 한 칸이 일반 두벌식과 같다 (10열).
+        if (balanced(prefs) && dubeolsik(prefs)) return SPACE_ROW_UNITS / koreanColumns(prefs);
         if (balanced(prefs)) {
             int columns = balancedConsonants(prefs);
             if (!newSwipe(prefs) && splitView(prefs) && prefs.splitReachColumn()) columns--;
