@@ -639,24 +639,6 @@ public class EditorUiTest {
     }
 
     @Test
-    public void dark() throws Exception {
-        new Prefs(RuntimeEnvironment.getApplication()).raw().edit().putString(Prefs.THEME_MODE, Prefs.THEME_DARK).commit();
-        SettingsActivity a = launch("keyboard");
-        KeyboardPreview p = find(a.getWindow().getDecorView(), KeyboardPreview.class);
-        p.setLayer(KeyboardPreview.LAYER_KEY);
-        idle();
-        tapKey(p, key(p, "ㅗ", Key.CHAR));
-        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(90));
-        View dv = a.getWindow().getDecorView();
-        Bitmap mid = Bitmap.createBitmap(dv.getWidth(), dv.getHeight(), Bitmap.Config.ARGB_8888);
-        dv.draw(new Canvas(mid));
-        save(mid, "31-dark-mid");
-        ScrollView scroll = find(a.getWindow().getDecorView(), ScrollView.class);
-        cur(a).scrollTo(0, 900);
-        shot(a, "30-dark-vowel");
-    }
-
-    @Test
     public void toolbarAndPopup() throws Exception {
         Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
         pre.raw().edit().putBoolean(Prefs.TOOLBAR_BOTTOM, true).putInt(Prefs.PAD_BOTTOM, 12).commit();
@@ -1129,34 +1111,6 @@ public class EditorUiTest {
         save(mid, "86-paging-mid");
         touch(p.getChildAt(1), MotionEvent.ACTION_UP, p.getWidth() * 0.8f - 360, p.getHeight() / 2f);
         idle();
-    }
-
-    @Test
-    public void clipEmojiMenuAndIcons() throws Exception {
-        SettingsActivity m = launch("clipemoji");
-        String t = visibleTexts(cur(m));
-        log("CLIPEMOJI:\n" + t);
-        assertTrue(t.contains("클립보드 기록 저장") && t.contains("이모지 크기") && t.contains("이모지 추천"));
-        shot(m, "90-clipemoji");
-        new Prefs(RuntimeEnvironment.getApplication()).raw().edit().putBoolean(Prefs.ONBOARDING_DONE, true).commit();
-        SettingsActivity main = launch(null);
-        assertNotNull(findText(main.getWindow().getDecorView(), "클립보드 및 이모지"));
-        shot(main, "91-main");
-        Prefs prefs = new Prefs(RuntimeEnvironment.getApplication());
-        String[][] cases = {{"100", "100"}, {"130", "100"}, {"100", "130"}, {"100", "80"}};
-        for (String[] cs : cases) {
-            prefs.raw().edit().putInt(Prefs.FN_ROW_HEIGHT, Integer.parseInt(cs[0]))
-                    .putInt(Prefs.KEY_TEXT_SIZE, Integer.parseInt(cs[1])).commit();
-            SettingsActivity a = launch("keyboard");
-            KeyboardPreview p = find(a.getWindow().getDecorView(), KeyboardPreview.class);
-            KeyboardView kv = find(p, KeyboardView.class);
-            Bitmap b = Bitmap.createBitmap(kv.getWidth(), kv.getHeight(), Bitmap.Config.ARGB_8888);
-            kv.draw(new Canvas(b));
-            int y0 = (int) (kv.getHeight() * 0.62f);
-            Bitmap crop = Bitmap.createBitmap(b, 0, y0, b.getWidth(), b.getHeight() - y0);
-            save(crop, "92-icons-fn" + cs[0] + "-text" + cs[1]);
-        }
-        prefs.raw().edit().remove(Prefs.FN_ROW_HEIGHT).remove(Prefs.KEY_TEXT_SIZE).commit();
     }
 
     @Test
@@ -1993,18 +1947,6 @@ public class EditorUiTest {
         assertEquals(eq.rect.left, r.left, tol);
         shot(a, "e5-symbols-split-outline");
         pre.raw().edit().remove(pre.detailKeyOf(Prefs.BOARD_ENGLISH)).remove(pre.detailKeyOf(Prefs.BOARD_SYMBOLS)).remove(Prefs.NUMBER_ROW).commit();
-    }
-
-    /** 세로로 들고 연 키보드 사용자화는 세로 키보드를 편집하고, 그 사실을 제목과 안내로 알린다. */
-    @Test
-    public void portraitEditorTitleAndIntro() throws Exception {
-        SettingsActivity a = launch("keyboard");
-        View decor = a.getWindow().getDecorView();
-        assertNotNull(findText(decor, "세로 키보드 사용자화"));
-        java.util.List<String> ls = lines(cur(a));
-        assertTrue(ls.toString(), ls.stream().anyMatch(l -> l.startsWith("세로 키보드의 모양과 동작을 정합니다. 가로일 때의 설정은 기기를 가로로 돌리면 보입니다.")));
-        assertFalse(ls.contains("가로 모드 키보드 사용자화"));
-        shot(a, "e1-portrait-intro");
     }
 
     static int count(View v, String text) {

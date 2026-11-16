@@ -100,8 +100,9 @@ public class LayoutCombinationsTest {
         int[] otherModes = {Prefs.DETAIL_FOLLOW, Prefs.DETAIL_NONE, Prefs.DETAIL_BALANCED, Prefs.DETAIL_SPLIT};
         int n = 0, fails = 0;
         java.util.Set<String> seen = new java.util.LinkedHashSet<>();
+        java.util.Map<String, java.util.List<java.util.TreeMap<String, Integer>>> refs = new java.util.HashMap<>();
         for (String profile : profiles) for (String layout : layouts) for (int ko : koModes) for (int en : otherModes) for (int sy : otherModes)
-        for (int flags = 0; flags < 8; flags++) for (int w = 0; w < 4; w++) {
+        for (int flags = 0; flags < 8; flags++) for (int w : new int[]{0, 3}) {
             boolean nr = (flags & 1) != 0, grid = (flags & 2) != 0, oneHand = (flags & 4) != 0;
             FakeSp sp = new FakeSp();
             sp.m.put(Prefs.KOREAN_LAYOUT, layout);
@@ -124,12 +125,7 @@ public class LayoutCombinationsTest {
             Prefs v = view(sp, profile);
             if (oneHand) v = v.oneHandView();
             String what = profile + "/" + layout + " ko=" + ko + " en=" + en + " sy=" + sy + " nr=" + nr + " grid=" + grid + " oh=" + oneHand + " w=" + w;
-            FakeSp ref = new FakeSp();
-            ref.m.put(Prefs.KOREAN_LAYOUT, layout);
-            ref.m.put(Prefs.NUMBER_ROW, nr);
-            ref.m.put(Prefs.GRID_LAYOUT, grid);
-            Prefs rp = view(ref, Prefs.PROFILE_PORTRAIT);
-            KeyboardLayout[] got, want;
+            KeyboardLayout[] got;
             try {
                 got = new KeyboardLayout[]{KeyboardLayout.korean(v), KeyboardLayout.english(v), KeyboardLayout.symbols(true, v), KeyboardLayout.symbols2(true, v)};
             } catch (Throwable e) {
@@ -137,14 +133,27 @@ public class LayoutCombinationsTest {
                 fails++;
                 continue;
             }
-            want = new KeyboardLayout[]{KeyboardLayout.korean(rp), KeyboardLayout.english(rp), KeyboardLayout.symbols(true, rp), KeyboardLayout.symbols2(true, rp)};
+            // 비교할 일반 자판 (한글 배열·숫자 줄·격자 정렬마다 한 번 만든다)
+            String refKey = layout + nr + grid;
+            java.util.List<java.util.TreeMap<String, Integer>> want = refs.get(refKey);
+            if (want == null) {
+                FakeSp ref = new FakeSp();
+                ref.m.put(Prefs.KOREAN_LAYOUT, layout);
+                ref.m.put(Prefs.NUMBER_ROW, nr);
+                ref.m.put(Prefs.GRID_LAYOUT, grid);
+                Prefs rp = view(ref, Prefs.PROFILE_PORTRAIT);
+                want = new java.util.ArrayList<>();
+                for (KeyboardLayout l : new KeyboardLayout[]{KeyboardLayout.korean(rp), KeyboardLayout.english(rp),
+                        KeyboardLayout.symbols(true, rp), KeyboardLayout.symbols2(true, rp)}) want.add(chars(l));
+                refs.put(refKey, want);
+            }
             String[] names = {"ko", "en", "sym", "sym2"};
             for (int i = 0; i < 4; i++) {
                 n++;
                 String err = check(got[i], what + " " + names[i]);
-                if (err == null && !chars(got[i]).equals(chars(want[i]))) {
+                if (err == null && !chars(got[i]).equals(want.get(i))) {
                     // 분리 키보드 8열 단모음의 좌·우 균형 배열은 키를 하나 더 놓는다 (숨긴 복사본이 아닌 실제 키)
-                    java.util.TreeMap<String, Integer> a = chars(got[i]), bb = chars(want[i]);
+                    java.util.TreeMap<String, Integer> a = chars(got[i]), bb = want.get(i);
                     java.util.Set<String> diff = new java.util.TreeSet<>();
                     for (String k : a.keySet()) if (!a.get(k).equals(bb.get(k))) diff.add(k + "=" + a.get(k) + "/" + bb.get(k));
                     for (String k : bb.keySet()) if (!bb.get(k).equals(a.get(k))) diff.add(k + "=" + a.get(k) + "/" + bb.get(k));

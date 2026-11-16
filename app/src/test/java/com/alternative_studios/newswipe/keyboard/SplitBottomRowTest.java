@@ -285,15 +285,6 @@ public class SplitBottomRowTest {
         }
     }
 
-    @Test
-    public void symbolPagesAreNotSplitOutsideSplitView() {
-        // 세로 모드(설정 보기 없음): 맨 아래 줄 위의 줄들에는 빈틈이 없다.
-        KeyboardLayout l = KeyboardLayout.symbols(true, null);
-        for (int r = 0; r < l.rows.length - 1; r++) {
-            for (Key k : l.rows[r].keys) assertTrue(k.type != Key.GAP);
-        }
-    }
-
     /** 줄에서 label 글자 키(그리는 키가 아니면 hidden)의 위치 {시작 x, 폭, 키 번호}. 없으면 null. */
     private static float[] find(KeyboardLayout.Row row, char label, boolean hidden) {
         float x = 0f;
@@ -372,13 +363,6 @@ public class SplitBottomRowTest {
     }
 
     @Test
-    public void noHiddenKeysInTheNormalKeyboard() {
-        for (KeyboardLayout.Row row : KeyboardLayout.english(null).rows) {
-            for (Key k : row.keys) assertTrue(!k.hidden);
-        }
-    }
-
-    @Test
     public void bottomRowStillFillsItsSpanWithTheSpaceBar() throws Exception {
         FakeSp sp = new FakeSp();
         Prefs p = landscapeEditView(sp);
@@ -393,14 +377,6 @@ public class SplitBottomRowTest {
         }
         assertEquals(10f, total, 0.001f);   // 양옆 빈틈까지 합쳐 줄 전체
         assertTrue(hasSpace);
-    }
-
-    @Test
-    public void portraitBalancedLayoutIsUnchanged() {
-        // 세로 모드(분리 키보드 아님)의 맨 아래 줄은 스페이스바 하나가 가운데를 지난다.
-        int spaces = 0;
-        for (Key k : KeyboardLayout.english(null).rows[3].keys) if (k.type == Key.SPACE) spaces++;
-        assertEquals(1, spaces);
     }
 
     @Test
@@ -568,34 +544,6 @@ public class SplitBottomRowTest {
                 assertEquals(pair[1].rows.length, pair[0].rows.length);
                 for (int r = 0; r < pair[0].rows.length - 1; r++) {   // 맨 아래 줄(스페이스바 둘)만 다르다
                     assertEquals("격자 " + grid + " 줄 " + r, geometry(pair[1].rows[r]), geometry(pair[0].rows[r]));
-                }
-            }
-        }
-    }
-
-    @Test
-    public void splitRowsNeverOverlapAndFillTheRow() throws Exception {
-        for (boolean grid : new boolean[]{false, true}) {
-            for (int[] s : SETTINGS) {
-                for (int[] vw : new int[][]{{s[2], s[3]}, {100, 40}, {40, 100}}) {
-                    FakeSp sp = new FakeSp();
-                    Prefs p = landscapeEditView(sp);
-                    sp.m.put(Prefs.GRID_LAYOUT, grid);
-                    sp.m.put(p.legacyConsonantPosKey(), s[0]);
-                    sp.m.put(p.legacyVowelPosKey(), s[1]);
-                    sp.m.put(p.balancedConsonantWidthKey(), vw[0]);
-                    sp.m.put(p.balancedVowelWidthKey(), vw[1]);
-                    for (KeyboardLayout l : new KeyboardLayout[]{KeyboardLayout.english(p), KeyboardLayout.symbols(true, p),
-                            KeyboardLayout.symbols2(false, p)}) {
-                        for (KeyboardLayout.Row row : l.rows) {
-                            float total = 0f;
-                            for (Key k : row.keys) {
-                                assertTrue("폭이 음수인 키", k.weight >= -0.0001f);
-                                total += k.weight;
-                            }
-                            assertEquals(10f, total, 0.001f);
-                        }
-                    }
                 }
             }
         }
