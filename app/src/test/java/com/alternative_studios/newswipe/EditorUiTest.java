@@ -1289,6 +1289,46 @@ public class EditorUiTest {
         pre.raw().edit().remove(Prefs.KEY_GAP_X).remove(Prefs.KEY_GAP_Y).commit();
     }
 
+    /**
+     * 기호 자판도 한글·영어 자판과 키 높이가 같다. 숫자 줄을 켜고 숫자 줄 영역에 위·아래 여백을 두면, 예전에는 기호 자판만
+     * 숫자 줄을 글자 키 영역으로 봐서 그 여백을 높이에서 빼지 않아 기호 자판의 키가 조금 더 높았다.
+     */
+    @Test
+    public void symbolsKeepTheSameKeyHeights() throws Exception {
+        for (boolean nr : new boolean[]{false, true}) {
+            Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
+            pre.raw().edit().putBoolean(Prefs.NUMBER_ROW, nr)
+                    .putInt(Prefs.areaPadKey(KeyboardView.AREA_NUMBER, Prefs.SIDE_TOP), 4)
+                    .putInt(Prefs.areaPadKey(KeyboardView.AREA_NUMBER, Prefs.SIDE_BOTTOM), 10)
+                    .putInt(Prefs.areaPadKey(KeyboardView.AREA_NUMBER, Prefs.SIDE_LEFT), 8)
+                    .putInt(Prefs.areaPadKey(KeyboardView.AREA_LETTERS, Prefs.SIDE_TOP), 6).commit();
+            SettingsActivity a = launch("keyboard");
+            KeyboardPreview p = find(a.getWindow().getDecorView(), KeyboardPreview.class);
+            float[][] korean = null;
+            for (int tab : new int[]{KeyboardPreview.TAB_KOREAN, KeyboardPreview.TAB_ENGLISH, KeyboardPreview.TAB_SYMBOLS}) {
+                p.setTab(tab);
+                idle();
+                KeyboardLayout l = p.layout();
+                float[][] rows = new float[l.rows.length][];
+                for (int r = 0; r < l.rows.length; r++) {
+                    Key k = null;
+                    for (Key x : l.rows[r].keys) if (x.type != Key.GAP && x.type != Key.SPACER) { k = x; break; }
+                    rows[r] = new float[]{k.rect.top, k.rect.height(), k.rect.left};
+                }
+                if (korean == null) korean = rows;
+                assertEquals("nr=" + nr + " tab=" + tab, korean.length, rows.length);
+                for (int r = 0; r < rows.length; r++) {
+                    String what = "nr=" + nr + " tab=" + tab + " row=" + r;
+                    assertEquals(what, korean[r][0], rows[r][0], 0.01f);
+                    assertEquals(what, korean[r][1], rows[r][1], 0.01f);
+                }
+                // 숫자 줄 영역의 왼쪽 여백도 기호 자판의 숫자 줄에 똑같이 들어간다
+                if (nr) assertEquals("tab=" + tab, korean[0][2], rows[0][2], 0.01f);
+            }
+            a.finish();
+        }
+    }
+
     /** 한글 자판 배열에서 두벌식을 고르고, 균형 배열·격자 정렬과 함께 미리보기와 설정 창이 맞게 바뀌는지. */
     @Test
     public void dubeolsikLayout() throws Exception {

@@ -54,6 +54,11 @@ public final class KeyboardLayout {
      * 자·모음 균형 배열, 두벌식의 분리 키보드.
      */
     public boolean staggerOutline;
+    /**
+     * 기호 자판의 첫 줄이 숫자 줄(숫자 줄을 켠 5줄 배열)인지. 한글·영어 자판처럼 그 줄을 숫자 줄 영역으로 보고 숫자 줄 영역의
+     * 여백을 둔다. 숫자 줄을 끈 기호 자판의 1~0 줄은 글자 키 영역이다.
+     */
+    public boolean numberRowOnTop;
 
     private KeyboardLayout(int kind, int columns, List<Row> rows) {
         this.kind = kind;
@@ -661,7 +666,9 @@ public final class KeyboardLayout {
         rows.add(gridSides(r3, prefs));
         applySymbolPopups(rows, prefs);
         finishSymbols(rows, back, prefs);
-        return symbolsLayout(SYMBOLS, rows, prefs);
+        KeyboardLayout layout = symbolsLayout(SYMBOLS, rows, prefs);
+        layout.numberRowOnTop = five;
+        return layout;
     }
 
     public static KeyboardLayout symbols2(boolean korean, Prefs prefs) {
@@ -711,7 +718,9 @@ public final class KeyboardLayout {
         rows.add(gridSides(r3, prefs));
         applySymbolPopups(rows, prefs);
         finishSymbols(rows, back, prefs);
-        return symbolsLayout(SYMBOLS_2, rows, prefs);
+        KeyboardLayout layout = symbolsLayout(SYMBOLS_2, rows, prefs);
+        layout.numberRowOnTop = five;
+        return layout;
     }
 
     /**
