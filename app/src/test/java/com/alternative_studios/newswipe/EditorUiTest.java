@@ -1289,6 +1289,36 @@ public class EditorUiTest {
         pre.raw().edit().remove(Prefs.KEY_GAP_X).remove(Prefs.KEY_GAP_Y).commit();
     }
 
+    /** 기호 탭도 한글·영어 탭처럼 숫자 줄을 끄면 점선 빈 칸이 남고, 그 칸을 눌러 숫자 줄 창을 열어 다시 켤 수 있다. */
+    @Test
+    public void symbolsTabShowsTheNumberRowOffStrip() throws Exception {
+        SettingsActivity a = launch("keyboard");
+        Prefs prefs = new Prefs(a);
+        assertFalse(prefs.numberRow());
+        KeyboardPreview p = find(a.getWindow().getDecorView(), KeyboardPreview.class);
+        android.graphics.RectF korean = new android.graphics.RectF(), gap = new android.graphics.RectF();
+        assertTrue(p.areaBounds(KeyboardPreview.AREA_NUMBER, korean));
+        p.setTab(KeyboardPreview.TAB_SYMBOLS);
+        idle();
+        assertTrue(p.areaBounds(KeyboardPreview.AREA_NUMBER, gap));
+        assertEquals(korean.top, gap.top, 0.5f);   // 다른 탭과 같은 자리
+        assertEquals(korean.height(), gap.height(), 0.5f);
+        shot(a, "e6-symbols-number-off");
+        tap(p.getChildAt(1), gap.centerX(), gap.centerY());
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(400));
+        assertTrue(open(a));
+        assertEquals(KeyboardPreview.AREA_NUMBER, p.selection().area());
+        View nrRow = findText(cur(a), "숫자 줄 표시");
+        while (!nrRow.isClickable()) nrRow = (View) nrRow.getParent();
+        nrRow.performClick();
+        idle();
+        assertTrue(prefs.numberRow());
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(400));
+        assertEquals(KeyboardPreview.TAB_SYMBOLS, p.tab());
+        assertTrue(KeyboardLayout.isDigit(p.layout().rows[0].keys[0].label));
+        assertTrue(p.layout().numberRowOnTop);   // 켜면 첫 줄이 숫자 줄 영역 (점선 칸은 사라진다)
+    }
+
     /**
      * 기호 자판도 한글·영어 자판과 키 높이가 같다. 숫자 줄을 켜고 숫자 줄 영역에 위·아래 여백을 두면, 예전에는 기호 자판만
      * 숫자 줄을 글자 키 영역으로 봐서 그 여백을 높이에서 빼지 않아 기호 자판의 키가 조금 더 높았다.

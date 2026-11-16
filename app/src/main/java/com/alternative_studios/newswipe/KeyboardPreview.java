@@ -829,8 +829,9 @@ final class KeyboardPreview extends FrameLayout {
         boolean bottom = prefs.toolbarBottom();
         int barT = Ui.dp(c, prefs.areaPadDp(AREA_TOOLBAR, Prefs.SIDE_TOP));
         int barB = Ui.dp(c, prefs.areaPadDp(AREA_TOOLBAR, Prefs.SIDE_BOTTOM));
-        // 키보드 사용자화에서 숫자 줄을 꺼 두면 그 자리에 빈 칸을 남겨 다시 눌러 켤 수 있게 한다 (기호 자판에는 숫자 줄 영역이 없다).
-        boolean numberGap = profileEdit == null && !balancedMode && tab != TAB_SYMBOLS && !prefs.numberRow();
+        // 키보드 사용자화에서 숫자 줄을 꺼 두면 그 자리에 빈 칸을 남겨 다시 눌러 켤 수 있게 한다. 기호 자판도 숫자 줄을 켜면 첫 줄이
+        // 숫자 줄 영역이라 한글·영어 자판과 똑같이 빈 칸을 둔다 (숫자 줄을 끈 기호 자판의 1~0 줄은 글자 키다).
+        boolean numberGap = profileEdit == null && !balancedMode && !prefs.numberRow();
         String colSig = shown + "," + bottom + "," + height + "," + lift + "," + raise + "," + barT + "," + barB + "," + numberGap;
         if (colSig.equals(columnSignature)) return;
         columnSignature = colSig;
