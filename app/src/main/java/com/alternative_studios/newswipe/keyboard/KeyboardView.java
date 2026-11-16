@@ -299,7 +299,9 @@ public final class KeyboardView extends View {
     public int rowArea(int i) {
         if (layout == null || layout.kind == KeyboardLayout.NUMBER || layout.rows.length < 2) return -1;
         if (i == layout.rows.length - 1) return AREA_FN;
-        if (i == 0 && layout.isLetters() && digitRow(layout.rows[0])) return AREA_NUMBER;
+        // 기호 자판도 숫자 줄을 켜면 첫 줄이 숫자 줄 영역이다: 숫자 줄 영역의 여백이 한글·영어 자판과 똑같이 들어가야
+        // 전체 높이에서 같은 만큼을 빼서 키 높이가 자판마다 같다.
+        if (i == 0 && (layout.isLetters() || layout.numberRowOnTop) && digitRow(layout.rows[0])) return AREA_NUMBER;
         return AREA_LETTERS;
     }
 

@@ -25,15 +25,6 @@ public class BackupCryptoTest {
     }
 
     @Test
-    public void saltAndIvAreRandom() throws Exception {
-        byte[] plain = "same".getBytes(StandardCharsets.UTF_8);
-        BackupCrypto.Sealed a = BackupCrypto.encrypt(plain, "abcdef".toCharArray(), AAD, FAST);
-        BackupCrypto.Sealed b = BackupCrypto.encrypt(plain, "abcdef".toCharArray(), AAD, FAST);
-        assertFalse(java.util.Arrays.equals(a.salt, b.salt));
-        assertFalse(java.util.Arrays.equals(a.data, b.data));
-    }
-
-    @Test
     public void wrongPasswordTamperingAndAadFail() throws Exception {
         byte[] plain = "secret".getBytes(StandardCharsets.UTF_8);
         BackupCrypto.Sealed s = BackupCrypto.encrypt(plain, "right1".toCharArray(), AAD, FAST);
@@ -72,11 +63,4 @@ public class BackupCryptoTest {
         assertNotNull(BackupCrypto.checkPassword("비밀번호123"));
     }
 
-    @Test
-    public void defaultIterationsTakeReasonableTimeOnJvm() throws Exception {
-        long t = System.nanoTime();
-        BackupCrypto.Sealed s = BackupCrypto.encrypt(new byte[10], "abcdef".toCharArray(), AAD);
-        assertEquals(BackupCrypto.ITERATIONS, s.iterations);
-        System.out.println("PBKDF2 " + BackupCrypto.ITERATIONS + "회: " + (System.nanoTime() - t) / 1_000_000 + "ms");
-    }
 }

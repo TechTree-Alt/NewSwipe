@@ -83,6 +83,7 @@ final class LegacySwipeSettings {
             sp.edit().remove(SPACE_SELECT).putBoolean(SPACE_SELECT_DONE, true).apply();
         }
         LegacyLayoutSettings.migrateIfNeeded(prefs, legacyUser);
+        prefs.migrateProfileSides();   // 폴더블 내부 화면 세로·가로 나누기 (위의 옮기기가 적은 값까지 보고 옮긴다)
     }
 
     /** 스페이스바 '밀어서 선택' 스위치를 스페이스바 길게 누르기 기능으로 옮겼다는 표시. */

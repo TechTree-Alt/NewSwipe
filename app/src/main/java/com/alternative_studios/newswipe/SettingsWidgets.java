@@ -157,6 +157,64 @@ final class SettingsWidgets {
         return row;
     }
 
+    /** badge()로 붙인 표시임을 알리는 태그. */
+    private static final Object BADGE = new Object();
+
+    /** badge()로 붙인 표시인지 (설정 검색 목록을 모을 때 항목 이름·설명으로 보지 않는다). */
+    static boolean isBadge(View v) {
+        return v.getTag() == BADGE;
+    }
+
+    /**
+     * toggle()·slider()·valueRow()로 만든 줄의 이름 글자 바로 오른쪽에 작은 표시(예: '세로만')를 붙인다. 이름 글자는 그대로라
+     * 검색·깜빡임·접근성 이름은 바뀌지 않는다. 이미 붙어 있으면 글만 바꾼다.
+     */
+    static void badge(View row, String text, int accent) {
+        TextView label = firstText(row);
+        if (label == null || !(label.getParent() instanceof ViewGroup)) return;
+        ViewGroup parent = (ViewGroup) label.getParent();
+        for (int i = 0; i < parent.getChildCount(); i++) {
+            View v = parent.getChildAt(i);
+            if (isBadge(v)) {
+                ((TextView) v).setText(text);
+                return;
+            }
+        }
+        Context c = row.getContext();
+        int idx = parent.indexOfChild(label);
+        ViewGroup.LayoutParams lp = label.getLayoutParams();
+        parent.removeViewAt(idx);
+        LinearLayout line = new LinearLayout(c);
+        line.setOrientation(LinearLayout.HORIZONTAL);
+        line.setGravity(Gravity.CENTER_VERTICAL);
+        line.addView(label, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        TextView b = new TextView(c);
+        b.setTag(BADGE);
+        b.setText(text);
+        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+        b.setTextColor(accent);
+        b.setSingleLine(true);
+        b.setBackground(Ui.round((accent & 0x00FFFFFF) | 0x24000000, Ui.dp(c, 8)));
+        b.setPadding(Ui.dp(c, 6), Ui.dp(c, 1), Ui.dp(c, 6), Ui.dp(c, 1));
+        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        blp.leftMargin = Ui.dp(c, 6);
+        line.addView(b, blp);
+        parent.addView(line, idx, lp);
+    }
+
+    /** v 안에서 처음 만나는 글자 (줄의 이름 글자). */
+    private static TextView firstText(View v) {
+        if (v instanceof TextView) return (TextView) v;
+        if (v instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) {
+                TextView t = firstText(g.getChildAt(i));
+                if (t != null) return t;
+            }
+        }
+        return null;
+    }
+
     /** toggle()로 만든 줄의 설명 글. 설명 없이 만들었으면 null. */
     static TextView descOf(View toggleRow) {
         ViewGroup texts = (ViewGroup) ((ViewGroup) toggleRow).getChildAt(0);

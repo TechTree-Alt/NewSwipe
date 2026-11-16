@@ -47,6 +47,18 @@ public final class KeyboardLayout {
      * 나와 있다. 미리보기는 왼쪽 묶음 윤곽선의 오른쪽 가장자리를 t에 맞춘다.
      */
     public boolean staggeredSplit;
+    /**
+     * 두 묶음의 윤곽선을 쿼티 모양 분리 자판처럼 맨 윗 글자 줄에 맞추는지: 왼쪽 묶음 윤곽선의 오른쪽 가장자리는 맨 윗 글자 줄 왼쪽 반의
+     * 끝(영어 t, 기호 자판 ^ 또는 5)에, 오른쪽 묶음은 그 줄 오른쪽 반의 시작(y, = 또는 6)에 맞춘다. 아래 줄에서 가운데로
+     * 나온 키(g·v, 기호 자판의 :)는 윤곽선 밖에 남는다. 영어 자판의 분리 키보드·자·모음 균형 배열, 기호 자판의 분리 키보드·
+     * 자·모음 균형 배열, 두벌식의 분리 키보드.
+     */
+    public boolean staggerOutline;
+    /**
+     * 기호 자판의 첫 줄이 숫자 줄(숫자 줄을 켠 5줄 배열)인지. 한글·영어 자판처럼 그 줄을 숫자 줄 영역으로 보고 숫자 줄 영역의
+     * 여백을 둔다. 숫자 줄을 끈 기호 자판의 1~0 줄은 글자 키 영역이다.
+     */
+    public boolean numberRowOnTop;
 
     private KeyboardLayout(int kind, int columns, List<Row> rows) {
         this.kind = kind;
@@ -302,6 +314,7 @@ public final class KeyboardLayout {
     }
 
     public static KeyboardLayout korean(Prefs prefs) {
+        if (prefs != null) prefs = prefs.koreanView();   // 한글 자판의 상세 배열 (영어 자판과 따로 정한다)
         if (balanced(prefs)) return balancedLayout(prefs, prefs.numberRow());
         // 두벌식은 쿼티 모양 (분리 키보드에서는 영어 자판처럼 가운데에서 나눈다: Prefs.balancedLayout은 거기서 늘 false).
         if (dubeolsik(prefs)) return qwertyLayout(KOREAN, DUBEOLSIK_ROWS, DUBEOLSIK_POPUPS, true, prefs);
@@ -352,7 +365,9 @@ public final class KeyboardLayout {
         if (numberRow) rows.add(splitView(prefs) ? splitNumberRow(prefs) : numberRow(prefs));
         rows.addAll(letters);
         rows.add(splitBottom(prefs));
-        return new KeyboardLayout(KOREAN, BALANCED_COLUMNS, rows);
+        KeyboardLayout layout = new KeyboardLayout(KOREAN, BALANCED_COLUMNS, rows);
+        layout.staggerOutline = dubeolsik(prefs);   // 두벌식은 쿼티 모양이라 윤곽선을 영어 자판처럼 맨 윗 글자 줄에 맞춘다
+        return layout;
     }
 
     /**
@@ -404,31 +419,21 @@ public final class KeyboardLayout {
         return splitRow(consonants, vowels, 1f, prefs);
     }
 
-    /** 쿼티 모양 자판을 자·모음 균형 배열로 나눌 때 줄마다 자음(왼쪽) 쪽에 가는 글자 수: q~t, a~g, z~v / ㅂ~ㅅ, ㅁ~ㅎ, ㅋ~ㅍ. */
-    private static final int[] QWERTY_LEFT_COUNT = {5, 5, 4};
-    /** 쿼티 모양 균형 배열 왼쪽(자음) 쪽의 칸 수: 5키와 반 칸 (둘째 줄 들여쓰기, 셋째 줄 1.5칸 Shift). */
-    private static final float QWERTY_LEFT_UNITS = 5.5f;
 
     /**
      * 쿼티 모양 자판(두벌식, 영어)의 자·모음 균형 배열 r번째 줄 (세로 모드만: 분리 키보드는 {@link #splitNormal}로 나눈다).
-     * 일반 자판을 가운데에서 나누기만 하고, 각 쪽 안에서 키의 상대적인 자리와 폭은 그대로 둔다:
-     * 왼쪽은 5키 / 반 칸 들어간 5키 / 1.5칸 Shift와 4키 (5.5칸), 오른쪽은 5키 / 반 칸 들어간 4키 / 반 칸 들어간 3키와 1.5칸 ⌫ (5칸).
-     * 줄마다 각 쪽의 폭이 같아 키 폭과 엇갈림이 줄 사이에서 맞는다.
+     * 기호 자판처럼 일반 자판의 줄을 그대로 만들어 가운데에서 자르고, 각 쪽을 묶음 폭만큼 줄이거나 늘린다.
+     * 가운데에 걸친 ㅎ·ㅍ(g·v)는 왼쪽(자음) 묶음으로 간다. 두 묶음이 100%면 일반 자판과 키 하나하나의 자리가 같다.
      */
     private static Row qwertyBalancedRow(int r, String[][] rows, String[][][] popups, boolean korean, Prefs prefs) {
+        // 기호 자판의 균형 배열처럼 일반 자판의 줄(a~l 줄 반 칸 들여쓰기, 1.5칸 Shift·⌫, 격자 정렬 포함)을 그대로 만들어
+        // 가운데에서 자른다: 두 묶음을 100%로 두면 일반 자판처럼 빈틈 없이 붙는다. 두 묶음 사이 빈틈은 누르면 가까운 키가 눌린다.
         Key[] letters = letterKeys(rows[r], popups[r], korean, prefs);
-        List<Key> consonants = new ArrayList<>(), vowels = new ArrayList<>();
-        if (r == 1) consonants.add(fn(Key.GAP, "", 0.5f));
-        if (r == 2) {
-            int shift = qwertyShiftSlot(korean, prefs);
-            consonants.add(fn(shift, shift == Key.FUNCTION ? "Fn" : "", 1.5f));
-        }
-        for (int i = 0; i < letters.length; i++) (i < QWERTY_LEFT_COUNT[r] ? consonants : vowels).add(letters[i]);
-        if (r == 0) consonants.add(fn(Key.GAP, "", 0.5f));
-        if (r > 0) vowels.add(0, fn(Key.GAP, "", 0.5f));
-        if (r == 1) vowels.add(fn(Key.GAP, "", 0.5f));
-        if (r == 2) vowels.add(fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1.5f));
-        return splitRow(consonants, vowels, 1f, prefs);
+        int shift = qwertyShiftSlot(korean, prefs);
+        Row normal = r < 2 ? new Row(1f, letters)
+                : prefs.gridLayout() ? gridBottomLetterRow(letters, shift, deleteKey(prefs), prefs)
+                : bottomLetterRow(letters, 1.5f, shift, deleteKey(prefs));
+        return splitNormal(normal, prefs, false);
     }
 
     /** 쿼티 모양 자판의 자·모음 균형 배열 (두벌식, 두벌식 균형 배열을 따르는 영어 자판). */
@@ -437,7 +442,9 @@ public final class KeyboardLayout {
         if (prefs.numberRow()) out.add(numberRow(prefs));
         for (int r = 0; r < 3; r++) out.add(qwertyBalancedRow(r, rows, popups, korean, prefs));
         out.add(splitBottom(prefs));
-        return new KeyboardLayout(kind, BALANCED_COLUMNS, out);
+        KeyboardLayout layout = new KeyboardLayout(kind, BALANCED_COLUMNS, out);
+        layout.staggerOutline = true;   // 윤곽선은 분리 키보드처럼 t·y에 맞춘다
+        return layout;
     }
 
     /**
@@ -489,6 +496,7 @@ public final class KeyboardLayout {
         rows.add(splitBottom(prefs));
         KeyboardLayout layout = new KeyboardLayout(kind, BALANCED_COLUMNS, rows);
         layout.staggeredSplit = true;
+        layout.staggerOutline = true;
         return layout;
     }
 
@@ -589,7 +597,8 @@ public final class KeyboardLayout {
     }
 
     public static KeyboardLayout english(Prefs prefs) {
-        return qwertyLayout(ENGLISH, ENGLISH_ROWS, ENGLISH_POPUPS, false, prefs);
+        // 영어 자판의 상세 배열(자·모음 균형 배열·분리 키보드, 묶음 폭·위치)은 한글 자판과 따로 정한다 (한글 자판 따라가기면 한글 자판의 것).
+        return qwertyLayout(ENGLISH, ENGLISH_ROWS, ENGLISH_POPUPS, false, prefs == null ? null : prefs.englishView());
     }
 
     /** 쿼티 모양 자판 왼쪽 아래 키: 영어는 늘 Shift, 한글(두벌식)은 한글 Shift 설정을 따른다 (없앴으면 빈 칸 또는 Fn). */
@@ -604,7 +613,7 @@ public final class KeyboardLayout {
     private static KeyboardLayout qwertyLayout(int kind, String[][] letterRows, String[][][] popups, boolean korean,
                                                Prefs prefs) {
         if (prefs != null && prefs.splitView()) return splitQwerty(kind, letterRows, popups, korean, prefs);   // 가로 모드 분리 키보드
-        if (!korean && prefs != null && prefs.englishBalanced()) return balancedQwerty(kind, letterRows, popups, false, prefs);
+        if (!korean && prefs != null && prefs.boardBalanced()) return balancedQwerty(kind, letterRows, popups, false, prefs);
         boolean numberRow = prefs != null && prefs.numberRow();
         List<Row> rows = new ArrayList<>();
         if (numberRow) rows.add(numberRow(prefs));
@@ -624,6 +633,8 @@ public final class KeyboardLayout {
 
     /** back: 글자 자판으로 돌아가는 키의 이름 (가, ABC, あ, 中). */
     public static KeyboardLayout symbols(String back, Prefs prefs) {
+        // 기호 자판의 상세 배열은 한글·영어 자판과 따로 정한다 (한글 자판 따라가기면 한글 자판의 것).
+        if (prefs != null) prefs = prefs.symbolsView();
         return symbols(back, prefs, prefs != null && prefs.numberRow());
     }
 
@@ -655,7 +666,9 @@ public final class KeyboardLayout {
         rows.add(gridSides(r3, prefs));
         applySymbolPopups(rows, prefs);
         finishSymbols(rows, back, prefs);
-        return new KeyboardLayout(SYMBOLS, 10, rows);
+        KeyboardLayout layout = symbolsLayout(SYMBOLS, rows, prefs);
+        layout.numberRowOnTop = five;
+        return layout;
     }
 
     public static KeyboardLayout symbols2(boolean korean, Prefs prefs) {
@@ -663,6 +676,7 @@ public final class KeyboardLayout {
     }
 
     public static KeyboardLayout symbols2(String back, Prefs prefs) {
+        if (prefs != null) prefs = prefs.symbolsView();   // 기호 자판의 상세 배열 (symbols와 같다)
         return symbols2(back, prefs, prefs != null && prefs.numberRow());
     }
 
@@ -704,7 +718,9 @@ public final class KeyboardLayout {
         rows.add(gridSides(r3, prefs));
         applySymbolPopups(rows, prefs);
         finishSymbols(rows, back, prefs);
-        return new KeyboardLayout(SYMBOLS_2, 10, rows);
+        KeyboardLayout layout = symbolsLayout(SYMBOLS_2, rows, prefs);
+        layout.numberRowOnTop = five;
+        return layout;
     }
 
     /**
@@ -1046,10 +1062,12 @@ public final class KeyboardLayout {
      * 아래 줄 키의 폭은 바뀌지 않는다.
      */
     private static float gridKey(Prefs prefs) {
+        // 영어·기호 자판도 한글 자판의 키 한 칸에 맞춘다: 한글 자판의 상세 배열로 잰다 (영어 자판의 상세 배열은 따로 정한다).
+        if (prefs != null) prefs = prefs.koreanView();
         // 자·모음 균형 배열: 왼쪽 절반을 나눠 가진 자음 키 한 칸 (5열이면 1칸, 4열이면 1.25칸).
         // 8열 단모음의 좌·우 균형 배열은 자음이 4열이 되므로 그 폭을 따른다.
-        // 두벌식은 자음 쪽이 들여쓰기·1.5칸 Shift를 포함해 5.5칸이라 키 한 칸이 그만큼 좁다.
-        if (balanced(prefs) && dubeolsik(prefs)) return BALANCED_HALF / QWERTY_LEFT_UNITS;
+        // 두벌식은 일반 자판의 줄을 그대로 가운데에서 잘라 나누므로 키 한 칸이 일반 두벌식과 같다 (10열).
+        if (balanced(prefs) && dubeolsik(prefs)) return SPACE_ROW_UNITS / koreanColumns(prefs);
         if (balanced(prefs)) {
             int columns = balancedConsonants(prefs);
             if (!newSwipe(prefs) && splitView(prefs) && prefs.splitReachColumn()) columns--;
@@ -1073,14 +1091,26 @@ public final class KeyboardLayout {
         return prefs != null && prefs.splitView();
     }
 
+    /** 기호 자판(1·2쪽): 분리 키보드·자·모음 균형 배열이면 두 묶음의 윤곽선을 쿼티 자판처럼 맨 윗 글자 줄에 맞춘다. */
+    private static KeyboardLayout symbolsLayout(int kind, List<Row> rows, Prefs prefs) {
+        KeyboardLayout layout = new KeyboardLayout(kind, 10, rows);
+        layout.staggerOutline = splitView(prefs) || (prefs != null && prefs.boardBalanced());
+        return layout;
+    }
+
     /**
-     * 기호 자판의 맨 아래 줄 위쪽 줄들을 마무리한다. 분리 키보드(가로 모드·폴더블 내부 화면)에서는 숫자 줄을 포함한 모든 줄을
-     * 일반 자판과 같은 모양 그대로 가운데에서 나눠 왼쪽·오른쪽 묶음에 놓는다 ({@link #splitNormal}).
+     * 기호 자판의 맨 아래 줄 위쪽 줄들을 마무리한다. 분리 키보드에서는 숫자 줄을 포함한 모든 줄을 일반 자판과 같은 모양 그대로
+     * 가운데에서 나눠 왼쪽·오른쪽 묶음에 놓는다 ({@link #splitNormal}). 자·모음 균형 배열도 같은 자리에서 나누되 맨 아래 줄은
+     * 전체 폭을 쓰고, 두 묶음 사이의 빈틈은 누르면 가까운 키가 눌린다 (한글·영어 자판의 균형 배열과 같다).
      */
     private static void finishSymbols(List<Row> rows, String back, Prefs prefs) {
         if (splitView(prefs)) {
             for (int i = 0; i < rows.size(); i++) rows.set(i, splitNormal(rows.get(i), prefs));
             rows.add(blockSpaceRow(prefs, Key.TO_LETTERS, back, true));
+        } else if (prefs != null && prefs.boardBalanced()) {
+            // 숫자 줄을 켠 5줄 배열의 첫 줄(숫자 줄)은 한글·영어 자판의 균형 배열처럼 나누지 않고 전체 폭으로 둔다.
+            for (int i = prefs.numberRow() ? 1 : 0; i < rows.size(); i++) rows.set(i, splitNormal(rows.get(i), prefs, false));
+            rows.add(spaceRow(Key.TO_LETTERS, back, prefs, true));
         } else {
             rows.add(spaceRow(Key.TO_LETTERS, back, prefs, true));
         }
@@ -1230,6 +1260,11 @@ public final class KeyboardLayout {
      * 두 묶음의 폭이 달라 가운데에서 겹치면, 묶음 안의 남는 폭만큼 바깥쪽으로 옮기고 그래도 겹치면 같은 비율로 줄인다.
      */
     private static Row splitNormal(Row row, Prefs prefs) {
+        return splitNormal(row, prefs, true);
+    }
+
+    /** dragMiddle: 두 묶음 사이를 분리 키보드처럼 누르지 않는 가운데 공간(밀어서 커서 이동)으로 둘지 (아니면 균형 배열의 빈틈). */
+    private static Row splitNormal(Row row, Prefs prefs, boolean dragMiddle) {
         float total = 0f;
         for (Key k : row.keys) total += k.weight;
         float scale = total > SPACE_ROW_UNITS ? SPACE_ROW_UNITS / total : 1f;
@@ -1274,7 +1309,7 @@ public final class KeyboardLayout {
                 rs = end - rw;
             }
         }
-        return blockLine(left, ls, lw, right, rs, rw, row.height);
+        return blockLine(left, ls, lw, right, rs, rw, row.height, dragMiddle);
     }
 
     /**
@@ -1282,12 +1317,18 @@ public final class KeyboardLayout {
      * 가운데 빈 자리는 눌러도 반응하지 않는다(SPACER). 양 바깥의 빈틈은 누르면 가까운 키가 눌린다(GAP).
      */
     private static Row blockLine(List<Key> left, float ls, float lw, List<Key> right, float rs, float rw, float height) {
+        return blockLine(left, ls, lw, right, rs, rw, height, true);
+    }
+
+    /** dragMiddle이 false면 가운데 빈 자리도 양 바깥처럼 누르면 가까운 키가 눌리는 빈틈(GAP)이다 (자·모음 균형 배열). */
+    private static Row blockLine(List<Key> left, float ls, float lw, List<Key> right, float rs, float rw, float height,
+                                 boolean dragMiddle) {
         List<Key> keys = new ArrayList<>();
         if (ls > 0.001f) keys.add(fn(Key.GAP, "", ls));
         keys.addAll(left);
         if (rs - ls - lw > 0.001f) {
-            Key middle = fn(Key.SPACER, "", rs - ls - lw);
-            middle.dragCursor = true;
+            Key middle = fn(dragMiddle ? Key.SPACER : Key.GAP, "", rs - ls - lw);
+            middle.dragCursor = dragMiddle;
             keys.add(middle);
         }
         for (Key k : right) k.rightBlock = true;   // 묶음이 가운데를 넘어 옮겨 가도 오른쪽 묶음 키임을 알 수 있게

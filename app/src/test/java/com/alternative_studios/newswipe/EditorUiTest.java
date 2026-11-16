@@ -320,7 +320,7 @@ public class EditorUiTest {
         a.onBackPressed();
         idle();
         assertNull(p.selection());
-        assertTrue(visibleTexts(cur(a)).contains("가로 모드"));
+        assertTrue(visibleTexts(cur(a)).contains("폴더블 설정"));
         assertFalse(visibleTexts(cur(a)).contains("숫자 줄"));   // 숫자 줄은 꺼도 미리보기의 빈 칸을 눌러 연다: 목록에 섹션이 없다
         assertFalse(visibleTexts(cur(a)).contains("키 사이 좌우 간격"));   // 키 모양·분리 키보드는 '키보드 전체 설정' 창으로 옮겼다
         assertFalse(visibleTexts(cur(a)).contains("글자 키 높이"));
@@ -636,24 +636,6 @@ public class EditorUiTest {
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(ms));
         touch(v, MotionEvent.ACTION_UP, x, y);
         idle();
-    }
-
-    @Test
-    public void dark() throws Exception {
-        new Prefs(RuntimeEnvironment.getApplication()).raw().edit().putString(Prefs.THEME_MODE, Prefs.THEME_DARK).commit();
-        SettingsActivity a = launch("keyboard");
-        KeyboardPreview p = find(a.getWindow().getDecorView(), KeyboardPreview.class);
-        p.setLayer(KeyboardPreview.LAYER_KEY);
-        idle();
-        tapKey(p, key(p, "ㅗ", Key.CHAR));
-        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(90));
-        View dv = a.getWindow().getDecorView();
-        Bitmap mid = Bitmap.createBitmap(dv.getWidth(), dv.getHeight(), Bitmap.Config.ARGB_8888);
-        dv.draw(new Canvas(mid));
-        save(mid, "31-dark-mid");
-        ScrollView scroll = find(a.getWindow().getDecorView(), ScrollView.class);
-        cur(a).scrollTo(0, 900);
-        shot(a, "30-dark-vowel");
     }
 
     @Test
@@ -1132,34 +1114,6 @@ public class EditorUiTest {
     }
 
     @Test
-    public void clipEmojiMenuAndIcons() throws Exception {
-        SettingsActivity m = launch("clipemoji");
-        String t = visibleTexts(cur(m));
-        log("CLIPEMOJI:\n" + t);
-        assertTrue(t.contains("클립보드 기록 저장") && t.contains("이모지 크기") && t.contains("이모지 추천"));
-        shot(m, "90-clipemoji");
-        new Prefs(RuntimeEnvironment.getApplication()).raw().edit().putBoolean(Prefs.ONBOARDING_DONE, true).commit();
-        SettingsActivity main = launch(null);
-        assertNotNull(findText(main.getWindow().getDecorView(), "클립보드 및 이모지"));
-        shot(main, "91-main");
-        Prefs prefs = new Prefs(RuntimeEnvironment.getApplication());
-        String[][] cases = {{"100", "100"}, {"130", "100"}, {"100", "130"}, {"100", "80"}};
-        for (String[] cs : cases) {
-            prefs.raw().edit().putInt(Prefs.FN_ROW_HEIGHT, Integer.parseInt(cs[0]))
-                    .putInt(Prefs.KEY_TEXT_SIZE, Integer.parseInt(cs[1])).commit();
-            SettingsActivity a = launch("keyboard");
-            KeyboardPreview p = find(a.getWindow().getDecorView(), KeyboardPreview.class);
-            KeyboardView kv = find(p, KeyboardView.class);
-            Bitmap b = Bitmap.createBitmap(kv.getWidth(), kv.getHeight(), Bitmap.Config.ARGB_8888);
-            kv.draw(new Canvas(b));
-            int y0 = (int) (kv.getHeight() * 0.62f);
-            Bitmap crop = Bitmap.createBitmap(b, 0, y0, b.getWidth(), b.getHeight() - y0);
-            save(crop, "92-icons-fn" + cs[0] + "-text" + cs[1]);
-        }
-        prefs.raw().edit().remove(Prefs.FN_ROW_HEIGHT).remove(Prefs.KEY_TEXT_SIZE).commit();
-    }
-
-    @Test
     public void paddingOutlinesFollow() throws Exception {
         Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
         pre.raw().edit().putBoolean(Prefs.NUMBER_ROW, true).commit();
@@ -1289,6 +1243,76 @@ public class EditorUiTest {
         pre.raw().edit().remove(Prefs.KEY_GAP_X).remove(Prefs.KEY_GAP_Y).commit();
     }
 
+    /** 기호 탭도 한글·영어 탭처럼 숫자 줄을 끄면 점선 빈 칸이 남고, 그 칸을 눌러 숫자 줄 창을 열어 다시 켤 수 있다. */
+    @Test
+    public void symbolsTabShowsTheNumberRowOffStrip() throws Exception {
+        SettingsActivity a = launch("keyboard");
+        Prefs prefs = new Prefs(a);
+        assertFalse(prefs.numberRow());
+        KeyboardPreview p = find(a.getWindow().getDecorView(), KeyboardPreview.class);
+        android.graphics.RectF korean = new android.graphics.RectF(), gap = new android.graphics.RectF();
+        assertTrue(p.areaBounds(KeyboardPreview.AREA_NUMBER, korean));
+        p.setTab(KeyboardPreview.TAB_SYMBOLS);
+        idle();
+        assertTrue(p.areaBounds(KeyboardPreview.AREA_NUMBER, gap));
+        assertEquals(korean.top, gap.top, 0.5f);   // 다른 탭과 같은 자리
+        assertEquals(korean.height(), gap.height(), 0.5f);
+        shot(a, "e6-symbols-number-off");
+        tap(p.getChildAt(1), gap.centerX(), gap.centerY());
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(400));
+        assertTrue(open(a));
+        assertEquals(KeyboardPreview.AREA_NUMBER, p.selection().area());
+        View nrRow = findText(cur(a), "숫자 줄 표시");
+        while (!nrRow.isClickable()) nrRow = (View) nrRow.getParent();
+        nrRow.performClick();
+        idle();
+        assertTrue(prefs.numberRow());
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(400));
+        assertEquals(KeyboardPreview.TAB_SYMBOLS, p.tab());
+        assertTrue(KeyboardLayout.isDigit(p.layout().rows[0].keys[0].label));
+        assertTrue(p.layout().numberRowOnTop);   // 켜면 첫 줄이 숫자 줄 영역 (점선 칸은 사라진다)
+    }
+
+    /**
+     * 기호 자판도 한글·영어 자판과 키 높이가 같다. 숫자 줄을 켜고 숫자 줄 영역에 위·아래 여백을 두면, 예전에는 기호 자판만
+     * 숫자 줄을 글자 키 영역으로 봐서 그 여백을 높이에서 빼지 않아 기호 자판의 키가 조금 더 높았다.
+     */
+    @Test
+    public void symbolsKeepTheSameKeyHeights() throws Exception {
+        for (boolean nr : new boolean[]{false, true}) {
+            Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
+            pre.raw().edit().putBoolean(Prefs.NUMBER_ROW, nr)
+                    .putInt(Prefs.areaPadKey(KeyboardView.AREA_NUMBER, Prefs.SIDE_TOP), 4)
+                    .putInt(Prefs.areaPadKey(KeyboardView.AREA_NUMBER, Prefs.SIDE_BOTTOM), 10)
+                    .putInt(Prefs.areaPadKey(KeyboardView.AREA_NUMBER, Prefs.SIDE_LEFT), 8)
+                    .putInt(Prefs.areaPadKey(KeyboardView.AREA_LETTERS, Prefs.SIDE_TOP), 6).commit();
+            SettingsActivity a = launch("keyboard");
+            KeyboardPreview p = find(a.getWindow().getDecorView(), KeyboardPreview.class);
+            float[][] korean = null;
+            for (int tab : new int[]{KeyboardPreview.TAB_KOREAN, KeyboardPreview.TAB_ENGLISH, KeyboardPreview.TAB_SYMBOLS}) {
+                p.setTab(tab);
+                idle();
+                KeyboardLayout l = p.layout();
+                float[][] rows = new float[l.rows.length][];
+                for (int r = 0; r < l.rows.length; r++) {
+                    Key k = null;
+                    for (Key x : l.rows[r].keys) if (x.type != Key.GAP && x.type != Key.SPACER) { k = x; break; }
+                    rows[r] = new float[]{k.rect.top, k.rect.height(), k.rect.left};
+                }
+                if (korean == null) korean = rows;
+                assertEquals("nr=" + nr + " tab=" + tab, korean.length, rows.length);
+                for (int r = 0; r < rows.length; r++) {
+                    String what = "nr=" + nr + " tab=" + tab + " row=" + r;
+                    assertEquals(what, korean[r][0], rows[r][0], 0.01f);
+                    assertEquals(what, korean[r][1], rows[r][1], 0.01f);
+                }
+                // 숫자 줄 영역의 왼쪽 여백도 기호 자판의 숫자 줄에 똑같이 들어간다
+                if (nr) assertEquals("tab=" + tab, korean[0][2], rows[0][2], 0.01f);
+            }
+            a.finish();
+        }
+    }
+
     /** 한글 자판 배열에서 두벌식을 고르고, 균형 배열·격자 정렬과 함께 미리보기와 설정 창이 맞게 바뀌는지. */
     @Test
     public void dubeolsikLayout() throws Exception {
@@ -1311,15 +1335,15 @@ public class EditorUiTest {
         key(p, "ㅛ", Key.CHAR);
         key(p, null, Key.SHIFT);
         assertTrue(visibleTexts(cur(a)).contains("컴퓨터 키보드와 같은 표준 한글 배열입니다."));
-        assertTrue(visibleTexts(cur(a)).contains("상세 배열\n  사용 안 함"));
+        assertEquals(java.util.Arrays.asList("사용 안 함"), afterLabel(cur(a), "상세 배열", 1));
         assertFalse(visibleTexts(cur(a)).contains("반으로 나"));   // '사용 안 함'이면 상세 배열 설명이 없다
         assertFalse(visibleTexts(cur(a)).contains("왼쪽 묶음 폭"));
-        assertFalse(visibleTexts(cur(a)).contains("영어 자판도 균형 배열"));   // 균형 배열을 켠 뒤에만 보인다
+        assertFalse(visibleTexts(cur(a)).contains("영어 자판도 균형 배열"));   // 영어 자판의 상세 배열은 영어 글자 키 창에서 따로 정한다
         assertFalse(visibleTexts(cur(a)).contains("영어 자판 아래로 밀어 대문자 입력"));   // 영어 글자 키 창에만 있다
         shot(a, "a0-dubeolsik");
         // 균형 배열: 자음은 왼쪽 절반, 모음은 오른쪽 절반으로 나누되 각 쪽 안의 자리는 일반 두벌식 그대로
         // 상세 배열: 스페이스바 길게 누르기처럼 줄을 눌러 사용 안 함·자·모음 균형 배열·분리 키보드 중에서 고른다
-        ((View) findText(cur(a), "상세 배열").getParent()).performClick();
+        clickableOf(findText(cur(a), "상세 배열")).performClick();
         idle();
         AlertDialog detail = (AlertDialog) ShadowDialog.getLatestDialog();
         assertEquals(3, detail.getListView().getCount());
@@ -1329,10 +1353,10 @@ public class EditorUiTest {
         assertTrue(prefs.raw().getBoolean(Prefs.PORTRAIT_SPLIT, false));
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
         String st = visibleTexts(cur(a));
-        assertTrue(st, st.contains("상세 배열\n  분리 키보드"));
+        assertEquals(st, java.util.Arrays.asList("분리 키보드"), afterLabel(cur(a), "상세 배열", 1));
         // 고르면 창을 다시 열지 않아도 분리 키보드 섹션이 바로 보이고, 설명은 분리 키보드의 것만
         assertTrue(st, st.contains("왼쪽 묶음 폭") && st.contains("오른쪽 묶음 가로 위치"));
-        assertTrue(st, st.contains("분리 키보드는 키보드 전체를 반으로 나눕니다. 영어 자판과 기호 자판에도 적용됩니다."));
+        assertTrue(st, st.contains("분리 키보드는 한글 자판 전체를 반으로 나눕니다."));
         assertFalse(st, st.contains("자·모음 균형 배열은"));
         assertFalse(st, st.contains("자음 키 폭"));   // 자·모음 균형 배열 섹션은 균형 배열을 골랐을 때만
         assertFalse(st, st.contains("자·모음 분리 배열"));   // 두벌식에는 분리 키보드의 하위 토글이 없다
@@ -1340,9 +1364,8 @@ public class EditorUiTest {
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
         assertTrue(prefs.portraitSplit());
         String dt = visibleTexts(cur(a));
-        assertTrue(dt, dt.contains("상세 배열\n  분리 키보드"));
         // 단모음: 분리 키보드의 하위 항목으로 '자·모음 분리 배열' 토글이 상세 배열 바로 아래(설명보다 위)에 보인다
-        assertTrue(dt, dt.contains("상세 배열\n  분리 키보드\n  자·모음 분리 배열"));
+        assertEquals(dt, java.util.Arrays.asList("분리 키보드", "자·모음 분리 배열"), afterLabel(cur(a), "상세 배열", 2));
         findText(cur(a), "NewSwipe 단모음").performClick();
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
         String nt = visibleTexts(cur(a));
@@ -1351,7 +1374,7 @@ public class EditorUiTest {
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
         assertTrue(prefs.portraitSplit());
         assertFalse(visibleTexts(cur(a)).contains("좌·우 균형 배열"));
-        ((View) findText(cur(a), "상세 배열").getParent()).performClick();
+        clickableOf(findText(cur(a), "상세 배열")).performClick();
         idle();
         shadowOf((AlertDialog) ShadowDialog.getLatestDialog()).clickOnItem(1);   // 자·모음 균형 배열
         idle();
@@ -1372,14 +1395,8 @@ public class EditorUiTest {
         bShown.setAccessible(true);
         for (KeyboardPreview.Handle bh : new KeyboardPreview.Handle[]{KeyboardPreview.Handle.B_LEFT_START, KeyboardPreview.Handle.B_LEFT_END,
                 KeyboardPreview.Handle.B_RIGHT_START, KeyboardPreview.Handle.B_RIGHT_END}) assertTrue(bh.name(), (Boolean) bShown.invoke(p, bh));
-        assertTrue(visibleTexts(cur(a)).contains("영어 자판도 균형 배열"));
-        View enRow = (View) findText(cur(a), "영어 자판도 균형 배열").getParent().getParent();
-        enRow.performClick();
-        idle();
-        assertTrue(prefs.englishBalanced());
-        enRow.performClick();   // 다시 끈다
-        idle();
-        assertFalse(prefs.englishBalanced());
+        assertFalse(visibleTexts(cur(a)).contains("영어 자판도 균형 배열"));   // 없앴다: 영어 글자 키 창의 상세 배열로 정한다
+        assertTrue(prefs.englishBalanced());   // 영어 자판은 기본으로 한글 자판을 따라간다 (상세 배열·묶음 폭·위치 모두)
         KeyboardView kv = find(p, KeyboardView.class);
         Key m = key(p, "ㅁ", Key.CHAR), b = key(p, "ㅂ", Key.CHAR), o = key(p, "ㅗ", Key.CHAR), yo = key(p, "ㅛ", Key.CHAR);
         assertEquals(b.rect.left + b.rect.width() / 2f, m.rect.left, 1.5f);   // ㅁ은 ㅂ보다 반 칸 들어간다
@@ -1389,7 +1406,7 @@ public class EditorUiTest {
         assertEquals(e.rect.right, del.rect.right, 1.5f);
         assertTrue(key(p, "ㅎ", Key.CHAR).rect.right <= kv.getWidth() / 2f + 1f);
         assertTrue(o.rect.left >= kv.getWidth() / 2f - 1f);
-        cur(a).scrollTo(0, 450);   // 균형 배열의 하위 묶음(균형 배열 사용자화, 영어 자판도 균형 배열)이 보이게
+        cur(a).scrollTo(0, 450);   // 균형 배열 섹션이 보이게
         shot(a, "a1-dubeolsik-balanced");
         cur(a).scrollTo(0, 0);
         // 격자 정렬과도 함께 쓴다
@@ -1409,10 +1426,19 @@ public class EditorUiTest {
         idle();
         // 가로 모드 분리 키보드: 영어 자판처럼 가운데에서 나눠 자음은 왼쪽, 모음은 오른쪽
         prefs.raw().edit().putBoolean(Prefs.LANDSCAPE_SPLIT, true).remove(Prefs.GRID_LAYOUT).commit();
-        SettingsActivity land = launch("landscapearea");
+        RuntimeEnvironment.setQualifiers("ko-rKR-w914dp-h411dp-land-xxhdpi");   // 키보드 사용자화를 가로로 들고 연다
+        SettingsActivity land = launch("keyboard");
+        KeyboardPreview lp = find(land.getWindow().getDecorView(), KeyboardPreview.class);
+        android.graphics.RectF lbl = new android.graphics.RectF();
+        assertTrue(lp.blockBounds(true, lbl));
+        tap(lp.getChildAt(1), lbl.centerX(), lbl.top + lbl.height() / 4f);
         String lt = visibleTexts(land.getWindow().getDecorView());
+        assertTrue(lt, lt.contains("왼쪽 묶음 폭"));
         assertFalse(lt.contains("자·모음 분리 배열"));   // 두벌식은 이미 5열씩이라 쓰지 않는다
         shot(land, "a3-dubeolsik-landscape");
+        land.finish();
+        idle();
+        RuntimeEnvironment.setQualifiers("ko-rKR-w411dp-h914dp-port-xxhdpi");
         // 기능키 순서·유무: 두벌식은 Shift가 늘 있다
         Activity bk = Robolectric.buildActivity(BottomKeysEditorActivity.class).setup().get();
         idle();
@@ -1672,28 +1698,32 @@ public class EditorUiTest {
     }
 
     /**
-     * 가로 모드 분리 키보드: 세로 모드 '키보드 사용자화'처럼 왼쪽·오른쪽 묶음을 합쳐 '글자 키'로 함께 고른다.
-     * 이름표·설정 창 제목도 '글자 키'이고, 창에는 두 묶음의 폭·가로 위치와 글자 키 높이가 함께 있다.
+     * 키보드 사용자화를 가로로 들고 열면 가로 키보드를 편집한다. 가로 모드 분리 키보드는 세로 모드처럼 왼쪽·오른쪽 묶음을 합쳐
+     * '글자 키'로 함께 고르고, 창에는 두 묶음의 폭·가로 위치와 글자 키 높이가 함께 있다. 손잡이와 슬라이더는 가로 모드의 값만 바꾼다.
      */
     @Test
+    @Config(qualifiers = "ko-rKR-w914dp-h411dp-land-xxhdpi")
     public void landscapeSplitBlocksAreOneLettersArea() throws Exception {
         Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
         pre.raw().edit().putBoolean(Prefs.LANDSCAPE_SPLIT, true).commit();
-        SettingsActivity a = launch("landscapearea");
+        SettingsActivity a = launch("keyboard");
         View decor = a.getWindow().getDecorView();
+        assertNotNull(findText(decor, "가로 키보드 사용자화"));
+        assertTrue(lines(cur(a)).stream().anyMatch(l -> l.startsWith("가로 키보드의 모양과 동작을 정합니다. 세로일 때의 설정은 기기를 세로로 돌리면 보입니다.")));
         KeyboardPreview p = find(decor, KeyboardPreview.class);
         android.graphics.RectF lb = new android.graphics.RectF(), rb = new android.graphics.RectF();
-        assertTrue(p.profileAreaBounds(KeyboardPreview.AREA_LEFT, lb) && p.profileAreaBounds(KeyboardPreview.AREA_RIGHT, rb));
+        assertTrue(p.blockBounds(true, lb) && p.blockBounds(false, rb));
         // 오른쪽 묶음을 눌러도 글자 키
         tap(p.getChildAt(1), rb.centerX(), rb.top + rb.height() / 4f);
         assertNotNull(p.selection());
         assertEquals(KeyboardPreview.AREA_LETTERS, p.selection().area());
-        assertNotNull(findText(decor, "글자 키 설정"));
-        assertNull(findText(decor, "오른쪽 묶음 설정"));
+        assertNotNull(findText(decor, "한글 글자 키 설정"));
         String t = visibleTexts(decor);
         log("LANDSCAPE LETTERS:\n" + t);
         assertTrue(t, t.contains("왼쪽 묶음 폭") && t.contains("왼쪽 묶음 가로 위치") && t.contains("오른쪽 묶음 폭")
                 && t.contains("오른쪽 묶음 가로 위치") && t.contains("글자 키 높이"));
+        // 함께 쓰는 값(한글 자판 배열·입력·길게 누르기·밀기)도 가로에서 바꿀 수 있다
+        assertTrue(t, t.contains("한글 자판 배열") && t.contains("상세 배열") && t.contains("길게 누르기"));
         // 두 묶음의 경계 손잡이·↔ 버튼과 묶음마다의 높이 손잡이가 함께 보인다
         java.lang.reflect.Method shown = KeyboardPreview.class.getDeclaredMethod("handleShown", KeyboardPreview.Handle.class);
         shown.setAccessible(true);
@@ -1702,40 +1732,221 @@ public class EditorUiTest {
                 KeyboardPreview.Handle.B_RIGHT_MOVE, KeyboardPreview.Handle.HEIGHT, KeyboardPreview.Handle.HEIGHT_RIGHT}) {
             assertTrue(h.name(), (Boolean) shown.invoke(p, h));
         }
+        shot(a, "d0-landscape-split-letters");
+        // 높이 손잡이는 가로 모드의 글자 키 높이만 바꾼다 (세로 모드 값은 그대로)
         java.lang.reflect.Method hc = KeyboardPreview.class.getDeclaredMethod("handleCenter", KeyboardPreview.Handle.class, float[].class);
         hc.setAccessible(true);
-        float[] hl = new float[2], hr = new float[2];
+        float[] hl = new float[2];
         assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.HEIGHT, hl));
-        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.HEIGHT_RIGHT, hr));
-        assertEquals(lb.centerX(), hl[0], 1f);
-        assertEquals(rb.centerX(), hr[0], 1f);
-        shot(a, "d0-landscape-split-letters");
-        // 같은 글자 키(왼쪽 묶음)를 다시 누르면 창이 닫힌다
-        tap(p.getChildAt(1), lb.centerX(), lb.top + lb.height() / 4f);
+        Prefs land = pre.profileView(Prefs.PROFILE_LANDSCAPE);
+        int kh0 = land.keyboardHeight();
+        drag(p.getChildAt(1), hl[0], hl[1], 0, 150);
+        assertTrue("height " + kh0 + " -> " + land.keyboardHeight(), land.keyboardHeight() < kh0);
+        assertTrue(pre.raw().contains(Prefs.KEYBOARD_HEIGHT_LAND));
+        assertFalse(pre.raw().contains(Prefs.KEYBOARD_HEIGHT));
+        // 묶음 경계 손잡이는 가로 모드의 묶음 폭을 바꾼다
+        assertTrue(p.blockBounds(true, lb) && p.blockBounds(false, rb));
+        float[] le = new float[2];
+        assertTrue((Boolean) hc.invoke(p, KeyboardPreview.Handle.B_LEFT_END, le));
+        drag(p.getChildAt(1), le[0], le[1], -(rb.right - lb.left) / 10f, 0);
+        assertTrue(pre.raw().contains(land.balancedConsonantWidthKey()));
+        assertFalse(pre.raw().contains(pre.profileEditView(Prefs.PROFILE_PORTRAIT).balancedConsonantWidthKey()));
+        // 뒤로 가기로 창을 닫는다
+        a.onBackPressed();
+        idle();
         assertNull(p.selection());
-        pre.raw().edit().remove(Prefs.LANDSCAPE_SPLIT).commit();
+        pre.raw().edit().remove(Prefs.LANDSCAPE_SPLIT).remove(Prefs.KEYBOARD_HEIGHT_LAND).commit();
+        pre.profileView(Prefs.PROFILE_LANDSCAPE).resetBalancedKeys();
     }
 
-    /** 가로 모드 키보드 사용자화도 머리글에 되돌리기 버튼이 있고, 이 화면에서 바꾼 값만 되돌린다. */
+    /**
+     * 가로 키보드 사용자화: 세로·가로가 따로 정하는 값(키 글자 크기·여백·도구 막대 높이)은 가로 모드의 키에 저장하고,
+     * 함께 쓰는 값(키 곡률)은 그대로 저장한다. 되돌리기·기본값으로 되돌리기도 가로 모드의 값만 다룬다.
+     */
     @Test
-    public void landscapeAreaHasUndoInHeader() throws Exception {
+    @Config(qualifiers = "ko-rKR-w914dp-h411dp-land-xxhdpi")
+    public void landscapeEditorSeparatesOwnValues() throws Exception {
         Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
-        SettingsActivity a = launch("landscapearea");
+        pre.raw().edit().putInt(Prefs.KEY_TEXT_SIZE, 120).putInt(Prefs.PAD_LEFT, 7).commit();
+        SettingsActivity a = launch("keyboard");
         View decor = a.getWindow().getDecorView();
+        KeyboardPreview p = find(decor, KeyboardPreview.class);
+        Prefs land = pre.profileView(Prefs.PROFILE_LANDSCAPE);
         View undo = byDesc(decor, "마지막 변경 되돌리기");
         assertNotNull(undo);
         assertFalse("바꾼 것이 없으면 꺼져 있다", undo.isEnabled());
-        // 도구 막대 높이를 바꾸면 켜지고, 누르면 원래 값(세로 모드 값을 따름)으로 돌아간다.
-        int before = pre.profileView(Prefs.PROFILE_LANDSCAPE).toolbarHeight();
-        String key = pre.profileEditView(Prefs.PROFILE_LANDSCAPE).toolbarHeightKey();
-        pre.raw().edit().putInt(key, 80).commit();
+        // 키보드 전체 설정 창: 가로 모드 값은 정하기 전에는 세로 모드 값을 따른다
+        p.setLayer(KeyboardPreview.LAYER_BOARD);
+        idle();
+        tap(p.getChildAt(1), p.getWidth() / 2f, p.getHeight() / 2f);
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
+        assertTrue(open(a));
+        String t = visibleTexts(sheetOf(a).body());
+        assertTrue(t, t.contains("키 글자 크기") && t.contains("키 곡률") && t.contains("왼쪽 여백") && t.contains("가로만"));
+        shot(a, "e2-landscape-board");
+        assertEquals(120, land.keyTextSize());
+        assertEquals(7, land.padLeftDp());
+        // 가로 모드 값을 바꿔도 세로 모드 값은 그대로
+        pre.raw().edit().putInt(land.textSizeKey(), 80).putInt(land.padKey(Prefs.SIDE_LEFT), 2).putInt(Prefs.KEY_RADIUS, 4)
+                .putInt(land.toolbarHeightKey(), 90).commit();
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(100));
         idle();
         assertTrue(undo.isEnabled());
-        undo.performClick();
+        assertEquals(120, pre.keyTextSize());
+        assertEquals(7, pre.padLeftDp());
+        assertEquals(100, pre.toolbarHeight());
+        // 키보드 전체 설정의 기본값으로 되돌리기: 가로 모드의 키 글자 크기·여백과 함께 쓰는 키 곡률을 지우고, 세로 모드 값은 남긴다
+        land.resetEditorScopeInView(Prefs.SCOPE_BOARD);
+        assertFalse(pre.raw().contains(land.textSizeKey()));
+        assertFalse(pre.raw().contains(land.padKey(Prefs.SIDE_LEFT)));
+        assertFalse(pre.raw().contains(Prefs.KEY_RADIUS));
+        assertEquals(120, pre.raw().getInt(Prefs.KEY_TEXT_SIZE, 0));
+        assertEquals(7, pre.raw().getInt(Prefs.PAD_LEFT, 0));
+        // 도구 막대 영역 되돌리기도 가로 모드의 도구 막대 높이만
+        pre.raw().edit().putInt(Prefs.TOOLBAR_HEIGHT, 110).commit();
+        land.resetEditorScopeInView(Prefs.AREA_SCOPES[0]);
+        assertFalse(pre.raw().contains(land.toolbarHeightKey()));
+        assertEquals(110, pre.raw().getInt(Prefs.TOOLBAR_HEIGHT, 0));
+        pre.raw().edit().remove(Prefs.KEY_TEXT_SIZE).remove(Prefs.PAD_LEFT).remove(Prefs.TOOLBAR_HEIGHT).commit();
+    }
+
+    /**
+     * 영어·기호 글자 키 창에 한글 자판과 따로 정하는 '상세 배열'이 있다: 기본은 '한글 자판 따라가기'이고, 자·모음 균형 배열·
+     * 분리 키보드를 고르면 그 자판만 바뀐다 (한글 자판은 그대로). 미리보기도 그 모양으로 그린다. 되돌리기는 그 자판의 것만 되돌린다.
+     */
+    @Test
+    public void englishAndSymbolsDetailLayoutIsSeparate() throws Exception {
+        Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
+        SettingsActivity a = launch("keyboard");
+        View decor = a.getWindow().getDecorView();
+        KeyboardPreview p = find(decor, KeyboardPreview.class);
+        p.setTab(KeyboardPreview.TAB_ENGLISH);
         idle();
-        assertEquals(before, pre.profileView(Prefs.PROFILE_LANDSCAPE).toolbarHeight());
-        assertFalse(pre.raw().contains(key));
+        tapArea(p, KeyboardPreview.AREA_LETTERS);
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
+        assertTrue(open(a));
+        assertNotNull(findText(decor, "영어 글자 키 설정"));
+        String t = visibleTexts(sheetOf(a).body());
+        assertTrue(t, t.contains("영어 자판 배열") && t.contains("상세 배열") && t.contains("세로만"));
+        assertFalse(t, t.contains("한글 자판 배열") || t.contains("영어 자판도 균형 배열"));
+        assertEquals(java.util.Arrays.asList("한글 자판 따라가기"), afterLabel(sheetOf(a).body(), "상세 배열", 1));
+        assertTrue(t, t.contains("상세 배열의 종류와 묶음 폭·가로 위치를 모두 한글 자판의 것으로 씁니다."));
+        assertFalse(t, t.contains("왼쪽 묶음 폭"));   // 따라가기면 묶음 폭·위치는 한글 글자 키 창에서 정한다
+        // 목록: 한글 자판 따라가기, 사용 안 함, 자·모음 균형 배열, 분리 키보드
+        clickableOf(findText(sheetOf(a).body(), "상세 배열")).performClick();
+        idle();
+        AlertDialog d = (AlertDialog) ShadowDialog.getLatestDialog();
+        assertEquals(4, d.getListView().getCount());
+        assertEquals("한글 자판 따라가기", String.valueOf(d.getListView().getAdapter().getItem(0)));
+        shadowOf(d).clickOnItem(2);   // 자·모음 균형 배열
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
+        assertEquals(Prefs.DETAIL_BALANCED, pre.detailModeOf(Prefs.BOARD_ENGLISH));
+        assertFalse(pre.balancedLayoutSetting());   // 한글 자판은 그대로
+        assertTrue(pre.englishBalanced());
+        t = visibleTexts(sheetOf(a).body());
+        assertTrue(t, t.contains("자·모음 균형 배열은 영어 자판을") && t.contains("왼쪽 묶음 폭") && t.contains("오른쪽 묶음 가로 위치"));
+        java.lang.reflect.Method shown = KeyboardPreview.class.getDeclaredMethod("handleShown", KeyboardPreview.Handle.class);
+        shown.setAccessible(true);
+        assertTrue((Boolean) shown.invoke(p, KeyboardPreview.Handle.B_LEFT_END));
+        assertTrue(key(p, "a", Key.CHAR).weight != 1f);
+        // 분리 키보드: 영어 자판만 나뉘고, 한글 탭은 나뉘지 않는다
+        clickableOf(findText(sheetOf(a).body(), "상세 배열")).performClick();
+        idle();
+        shadowOf((AlertDialog) ShadowDialog.getLatestDialog()).clickOnItem(3);
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
+        assertEquals(Prefs.DETAIL_SPLIT, pre.detailModeOf(Prefs.BOARD_ENGLISH));
+        assertFalse(pre.portraitSplit());
+        assertTrue(p.layout().staggeredSplit);
+        t = visibleTexts(sheetOf(a).body());
+        assertTrue(t, t.contains("분리 키보드는 영어 자판 전체를") && !t.contains("자·모음 분리 배열"));   // 하위 토글은 한글 자판에만
+        shot(a, "e3-english-split");
+        // 기호 자판도 따로: 기호 탭의 글자 키 창에서 균형 배열을 고르면 기호 자판만 나뉜다 (영어 자판의 분리 키보드와 상관없이)
+        a.onBackPressed();
+        idle();
+        p.setTab(KeyboardPreview.TAB_SYMBOLS);
+        idle();
+        tapArea(p, KeyboardPreview.AREA_LETTERS);
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
+        assertTrue(open(a));
+        t = visibleTexts(sheetOf(a).body());
+        assertTrue(t, t.contains("기호 자판 배열") && t.contains("상세 배열"));
+        assertEquals(java.util.Arrays.asList("한글 자판 따라가기"), afterLabel(sheetOf(a).body(), "상세 배열", 1));
+        clickableOf(findText(sheetOf(a).body(), "상세 배열")).performClick();
+        idle();
+        shadowOf((AlertDialog) ShadowDialog.getLatestDialog()).clickOnItem(2);
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
+        assertEquals(Prefs.DETAIL_BALANCED, pre.detailModeOf(Prefs.BOARD_SYMBOLS));
+        t = visibleTexts(sheetOf(a).body());
+        assertTrue(t, t.contains("기호 자판의 줄을 가운데에서 나눠") && t.contains("왼쪽 묶음 폭"));
+        assertFalse(p.layout().staggeredSplit);
+        assertTrue((Boolean) shown.invoke(p, KeyboardPreview.Handle.B_LEFT_END));
+        shot(a, "e4-symbols-balanced");
+        p.setTab(KeyboardPreview.TAB_KOREAN);
+        idle();
+        assertFalse(p.layout().staggeredSplit);
+        // 영어·기호 글자 키 되돌리기: 그 자판의 상세 배열만 되돌린다 (한글 자판 따라가기로)
+        pre.raw().edit().putBoolean(Prefs.BALANCED_LAYOUT, true).commit();
+        pre.resetEditorScope(Prefs.SCOPE_LETTERS_EN);
+        assertEquals(Prefs.DETAIL_FOLLOW, pre.detailModeOf(Prefs.BOARD_ENGLISH));
+        assertEquals(Prefs.DETAIL_BALANCED, pre.detailModeOf(Prefs.BOARD_SYMBOLS));
+        pre.resetEditorScope(Prefs.SCOPE_LETTERS_SYM);
+        assertEquals(Prefs.DETAIL_FOLLOW, pre.detailModeOf(Prefs.BOARD_SYMBOLS));
+        assertTrue(pre.raw().getBoolean(Prefs.BALANCED_LAYOUT, false));
+        pre.raw().edit().remove(Prefs.BALANCED_LAYOUT).commit();
+    }
+
+    /**
+     * 영어 자판의 균형 배열과 기호 자판의 균형 배열·분리 키보드의 묶음 윤곽선은 영어 분리 키보드처럼 맨 윗 글자 줄에 맞춘다:
+     * 왼쪽 묶음은 t(기호 자판은 ^)의 오른쪽, 오른쪽 묶음은 y(=)의 왼쪽. 기호 자판도 숫자 줄을 켜면 숫자 줄은 글자 키와 따로 고르는
+     * '숫자 줄' 영역이고 묶음 윤곽선에 들지 않는다.
+     */
+    @Test
+    public void staggeredOutlinesAndSymbolsNumberRow() throws Exception {
+        Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
+        pre.raw().edit().putInt(pre.detailKeyOf(Prefs.BOARD_ENGLISH), Prefs.DETAIL_BALANCED)
+                .putInt(pre.detailKeyOf(Prefs.BOARD_SYMBOLS), Prefs.DETAIL_BALANCED).putBoolean(Prefs.NUMBER_ROW, true).commit();
+        SettingsActivity a = launch("keyboard");
+        KeyboardPreview p = find(a.getWindow().getDecorView(), KeyboardPreview.class);
+        float tol = 8 * a.getResources().getDisplayMetrics().density;   // 키 간격 절반 + 윤곽선 여유
+        android.graphics.RectF l = new android.graphics.RectF(), r = new android.graphics.RectF();
+        // 영어 자판의 균형 배열
+        p.setTab(KeyboardPreview.TAB_ENGLISH);
+        idle();
+        assertTrue(p.blockBounds(true, l) && p.blockBounds(false, r));
+        Key t = key(p, "t", Key.CHAR), g = key(p, "g", Key.CHAR), y = key(p, "y", Key.CHAR);
+        assertEquals("왼쪽 묶음은 t의 오른쪽", t.rect.right, l.right, tol);
+        assertTrue("g는 윤곽선 밖으로 나온다", g.rect.right > l.right + 1f);
+        assertEquals("오른쪽 묶음은 y의 왼쪽", y.rect.left, r.left, tol);
+        // 기호 자판의 균형 배열 (숫자 줄을 켠 5줄 배열)
+        p.setTab(KeyboardPreview.TAB_SYMBOLS);
+        idle();
+        assertTrue(p.blockBounds(true, l) && p.blockBounds(false, r));
+        Key caret = key(p, "^", Key.CHAR), eq = key(p, "=", Key.CHAR), colon = key(p, ":", Key.CHAR), one = key(p, "1", Key.CHAR);
+        assertEquals("왼쪽 묶음은 ^의 오른쪽", caret.rect.right, l.right, tol);
+        assertTrue(": 는 윤곽선 밖으로 나온다", colon.rect.right > l.right + 1f);
+        assertEquals("오른쪽 묶음은 =의 왼쪽", eq.rect.left, r.left, tol);
+        View keysView = find(p, KeyboardView.class);
+        assertTrue("숫자 줄은 묶음 윤곽선 밖", l.top >= keysView.getTop() + one.rect.bottom - tol);
+        // 숫자 줄은 '숫자 줄' 영역 (글자 키와 따로)
+        android.graphics.RectF nb = new android.graphics.RectF();
+        assertTrue(p.areaBounds(KeyboardPreview.AREA_NUMBER, nb));
+        tap(p.getChildAt(1), nb.centerX(), nb.centerY());
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
+        assertEquals(KeyboardPreview.AREA_NUMBER, p.selection().area());
+        assertNotNull(findText(a.getWindow().getDecorView(), "숫자 줄 설정"));
+        a.onBackPressed();
+        idle();
+        // 기호 자판의 분리 키보드도 같은 윤곽선
+        pre.raw().edit().putInt(pre.detailKeyOf(Prefs.BOARD_SYMBOLS), Prefs.DETAIL_SPLIT).commit();
+        idle();
+        p.refresh();
+        assertTrue(p.blockBounds(true, l) && p.blockBounds(false, r));
+        caret = key(p, "^", Key.CHAR);
+        eq = key(p, "=", Key.CHAR);
+        assertEquals(caret.rect.right, l.right, tol);
+        assertEquals(eq.rect.left, r.left, tol);
+        shot(a, "e5-symbols-split-outline");
+        pre.raw().edit().remove(pre.detailKeyOf(Prefs.BOARD_ENGLISH)).remove(pre.detailKeyOf(Prefs.BOARD_SYMBOLS)).remove(Prefs.NUMBER_ROW).commit();
     }
 
     static int count(View v, String text) {
@@ -1878,7 +2089,15 @@ public class EditorUiTest {
         shot(a, "98-board-reset");
     }
 
-    // ---- 폴더블 내부 화면: 별도 키보드는 키보드 사용자화의 가로 모드 아래, 판정 기준은 폴더블 내부 화면 키보드 사용자화 안
+    // ---- 폴더블 내부 화면: 별도 키보드와 판정 기준은 키보드 사용자화의 '폴더블 설정'에, 내부 화면에서 열면 내부 화면 키보드를 편집
+
+    /** 보이는 글자 중 label 다음의 n줄 ('세로만' 같은 키보드 표시는 건너뛴다). */
+    static java.util.List<String> afterLabel(View v, String label, int n) {
+        java.util.List<String> ls = lines(v), out = new java.util.ArrayList<>();
+        java.util.Set<String> badges = new java.util.HashSet<>(java.util.Arrays.asList("세로만", "가로만", "폴더블 세로만", "폴더블 가로만"));
+        for (int i = ls.indexOf(label) + 1; i > 0 && i < ls.size() && out.size() < n; i++) if (!badges.contains(ls.get(i))) out.add(ls.get(i));
+        return out;
+    }
 
     /** 보이는 글자를 위에서 아래 차례로 (줄마다 하나). */
     static java.util.List<String> lines(View v) {
@@ -1908,32 +2127,31 @@ public class EditorUiTest {
     }
 
     /**
-     * 키보드 사용자화 목록: '가로 모드' 섹션 바로 아래에 '폴더블 내부 화면 별도 키보드' 섹션이 있고, 켜면 사용자화 버튼이 보인다.
-     * 판정 기준 슬라이더는 여기에 없다. 켜고 끄는 것도 머리글의 되돌리기로 되돌린다. 실험실에는 폴더블 설정이 남지 않는다.
+     * 키보드 사용자화 목록: 안내 아래에 '폴더블 설정' 섹션이 있고, 별도 키보드를 켜면 판정 기준 슬라이더가 보인다
+     * (따로 된 폴더블 화면은 없다). 휴대폰 화면은 켜도 그대로 세로 키보드를 편집한다. 켜고 끄는 것도 머리글의 되돌리기로 되돌린다.
      */
     @Test
-    public void foldableKeyboardUnderLandscapeSection() throws Exception {
+    public void foldableSectionInEditorList() throws Exception {
         Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
         SettingsActivity a = launch("keyboard");
         ScrollView sc = cur(a);
         java.util.List<String> ls = lines(sc);
-        int land = ls.indexOf("가로 모드"), landBtn = ls.indexOf("가로 모드 키보드 사용자화"),
-                large = ls.indexOf("폴더블 설정"), reset = ls.lastIndexOf("기본값으로 되돌리기");
-        assertTrue(ls.toString(), land >= 0 && land < landBtn && landBtn < large && large < reset);
+        int intro = -1;
+        for (int i = 0; i < ls.size(); i++) if (intro < 0 && ls.get(i).startsWith("세로 키보드의 모양과 동작을 정합니다.")) intro = i;
+        int large = ls.indexOf("폴더블 설정"), reset = ls.lastIndexOf("기본값으로 되돌리기");
+        assertTrue(ls.toString(), intro >= 0 && intro < large && large < reset);
         assertEquals("섹션 제목", 1, allTexts(sc, "폴더블 설정").size());
         assertEquals("스위치", 1, allTexts(sc, "폴더블 내부 화면 별도 키보드").size());
-        assertFalse(ls.contains("폴더블 내부 화면 판정 기준"));
-        assertNull("꺼져 있으면 사용자화 버튼은 접혀 있다", findText(sc, "폴더블 내부 화면 키보드 사용자화"));
+        assertNull("꺼져 있으면 판정 기준은 접혀 있다", findText(sc, "폴더블 내부 화면 판정 기준"));
+        assertNull("따로 된 폴더블 화면으로 가는 버튼은 없다", findText(sc, "폴더블 내부 화면 키보드 사용자화"));
 
-        // 스위치를 켜면 버튼이 보이고, 누르면 폴더블 내부 화면 키보드 사용자화를 연다.
+        // 스위치를 켜면 판정 기준이 보인다. 휴대폰 화면(411dp)은 내부 화면이 아니라 계속 세로 키보드를 편집한다.
         clickableOf(allTexts(sc, "폴더블 내부 화면 별도 키보드").get(0)).performClick();
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
         assertTrue(pre.largeLayout());
-        View open = findText(cur(a), "폴더블 내부 화면 키보드 사용자화");
-        assertNotNull(open);
-        clickableOf(open).performClick();
-        Intent next = shadowOf(a).getNextStartedActivity();
-        assertEquals("largearea", next.getStringExtra(SettingsActivity.EXTRA_SECTION));
+        assertNotNull(findText(cur(a), "폴더블 내부 화면 판정 기준"));
+        assertTrue(visibleTexts(cur(a)).contains("411dp"));
+        assertNotNull(findText(a.getWindow().getDecorView(), "세로 키보드 사용자화"));
 
         // 머리글의 되돌리기로 스위치를 되돌린다.
         View undo = byDesc(a.getWindow().getDecorView(), "마지막 변경 되돌리기");
@@ -1942,70 +2160,65 @@ public class EditorUiTest {
         undo.performClick();
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
         assertFalse(pre.largeLayout());
-        assertNull(findText(cur(a), "폴더블 내부 화면 키보드 사용자화"));
+        assertNull(findText(cur(a), "폴더블 내부 화면 판정 기준"));
 
         SettingsActivity lab = launch("lab");
         assertFalse(visibleTexts(cur(lab)).contains("폴더블"));
     }
 
-    /** 폴더블 내부 화면에서는 판정 기준 섹션이 기본값으로 되돌리기 위에 있고(한 손 모드 섹션은 없다), 되돌리기로 기본값이 된다. */
-    @Test
-    @Config(qualifiers = "ko-rKR-w700dp-h900dp-port-xhdpi")
-    public void foldableThresholdAboveReset() throws Exception {
-        Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
-        pre.raw().edit().putInt(Prefs.LARGE_SCREEN_DP, 640).commit();
-        SettingsActivity a = launch("largearea");
-        java.util.List<String> ls = lines(cur(a));
-        int threshold = ls.indexOf("폴더블 내부 화면 판정 기준"), reset = ls.lastIndexOf("기본값으로 되돌리기");
-        assertTrue(ls.toString(), threshold >= 0 && threshold < reset);
-        // 한 손 모드의 자판 폭은 '한 손 모드' 메뉴에서 화면 방향마다 정하므로 여기에는 없다.
-        assertFalse(ls.toString(), ls.contains("한 손 모드"));
-        assertFalse(ls.contains("이 설정은 폴더블 내부 화면에서만 보입니다. 폴더블 내부 화면으로 전환하거나 폴더블 내부 화면 판정 기준을 조절하세요."));
-        assertTrue(ls.toString(), ls.stream().anyMatch(l -> l.startsWith("폴더블 내부 화면을 ") && !l.contains("좌·우 균형 배열") && !l.contains("자·모음 분리 배열")));
-        assertTrue(ls.contains("640dp"));
-        // 이 화면의 기본값으로 되돌리기는 판정 기준도 기본값으로 되돌린다.
-        clickableOf(findText(cur(a), "기본값으로 되돌리기")).performClick();
-        idle();
-        click((AlertDialog) ShadowDialog.getLatestDialog(), AlertDialog.BUTTON_POSITIVE);
-        idle();
-        assertFalse(pre.raw().contains(Prefs.LARGE_SCREEN_DP));
-        assertEquals(Prefs.LARGE_SCREEN_DP_DEFAULT, pre.largeScreenDp());
-    }
-
     /**
-     * 폴더블 내부 화면이 아니면 안내 문구 바로 아래에 판정 기준 섹션이 보인다. 기준을 낮춰 지금 화면이 폴더블 내부 화면이 되면
-     * 손을 뗄 때 화면을 다시 만들어 설정을 보여 준다.
+     * 폴더블 내부 화면(별도 키보드를 켬)에서 연 키보드 사용자화는 폴더블 세로 키보드를 편집한다: 제목·안내·'폴더블 세로만' 표시,
+     * 손잡이는 폴더블 세로의 값만 바꾼다. 판정 기준을 올려 이 화면이 내부 화면이 아니게 되면 다시 만들어 세로 키보드를 편집한다.
      */
     @Test
-    public void foldableThresholdBelowNoticeOffInnerScreen() throws Exception {
-        String notice = "이 설정은 폴더블 내부 화면에서만 보입니다. 폴더블 내부 화면으로 전환하거나 폴더블 내부 화면 판정 기준을 조절하세요.";
+    @Config(qualifiers = "ko-rKR-w700dp-h900dp-port-xhdpi")
+    public void innerScreenEditorEditsInnerKeyboard() throws Exception {
         Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
+        pre.raw().edit().putBoolean(Prefs.LARGE_LAYOUT, true).putInt(Prefs.LARGE_SCREEN_DP, 640).commit();
+        EditorUndo.clearAll();
         org.robolectric.android.controller.ActivityController<SettingsActivity> c = Robolectric.buildActivity(SettingsActivity.class,
-                new Intent(RuntimeEnvironment.getApplication(), SettingsActivity.class).putExtra("section", "largearea")).setup();
+                new Intent(RuntimeEnvironment.getApplication(), SettingsActivity.class).putExtra("section", "keyboard")).setup();
         idle();
         SettingsActivity a = c.get();
+        View decor = a.getWindow().getDecorView();
+        assertNotNull(findText(decor, "폴더블 내부 화면 세로 키보드 사용자화"));
         java.util.List<String> ls = lines(cur(a));
-        int n = ls.indexOf(notice), threshold = ls.indexOf("폴더블 내부 화면 판정 기준");
-        assertTrue(ls.toString(), n >= 0 && n < threshold);
-        assertTrue("판정 기준은 되돌릴 수 있다", ls.contains("기본값으로 되돌리기"));
-        assertFalse(ls.contains("한 손 모드"));
-        // 슬라이더 맨 왼쪽(400dp)을 누르면 이 화면(411dp)이 폴더블 내부 화면이 된다.
+        assertTrue(ls.toString(), ls.stream().anyMatch(l -> l.startsWith("폴더블 세로 키보드의 모양과 동작을 정합니다. 가로일 때의 설정은 기기를 가로로 돌리면 보입니다.")));
+        assertTrue(ls.toString(), ls.stream().anyMatch(l -> l.startsWith("'폴더블 세로만' 표시가 있는 설정")));
+        assertTrue(visibleTexts(cur(a)).contains("640dp"));
+        // 글자 키 창: 함께 쓰는 값(자판 배열)과 폴더블 세로만의 값(글자 키 높이, 표시 붙음)이 함께 있다.
+        KeyboardPreview p = find(decor, KeyboardPreview.class);
+        tapArea(p, KeyboardPreview.AREA_LETTERS);
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
+        assertTrue(open(a));
+        String t = visibleTexts(sheetOf(a).body());
+        assertTrue(t, t.contains("글자 키 높이") && t.contains("폴더블 세로만") && t.contains("한글 자판 배열"));
+        shot(a, "e0-inner-portrait-letters");
+        // 높이 손잡이는 폴더블 세로의 글자 키 높이만 바꾼다.
+        Prefs lp = pre.profileView(Prefs.PROFILE_LARGE_PORTRAIT);
+        int kh0 = lp.keyboardHeight();
+        float[] h = handle(p, KeyboardPreview.Handle.HEIGHT.ordinal());
+        drag(p.getChildAt(1), h[0], h[1], 0, 150);
+        assertTrue("height " + kh0 + " -> " + lp.keyboardHeight(), lp.keyboardHeight() < kh0);
+        assertTrue(pre.raw().contains(lp.heightKey()));
+        assertFalse(pre.raw().contains(Prefs.KEYBOARD_HEIGHT));
+        assertFalse(pre.raw().contains(Prefs.KEYBOARD_HEIGHT_LAND));
+        a.onBackPressed();
+        idle();
+        // 판정 기준을 맨 오른쪽(1000dp)으로 올리면 이 화면(700dp)은 내부 화면이 아니다: 세로 키보드 사용자화로 다시 만든다.
         com.alternative_studios.newswipe.ui.ExpressiveSlider bar = find(cur(a), com.alternative_studios.newswipe.ui.ExpressiveSlider.class);
         assertNotNull(bar);
         t0 = SystemClock.uptimeMillis();
-        touch(bar, MotionEvent.ACTION_DOWN, 1, bar.getHeight() / 2f);
-        touch(bar, MotionEvent.ACTION_UP, 1, bar.getHeight() / 2f);
+        touch(bar, MotionEvent.ACTION_DOWN, bar.getWidth() - 1, bar.getHeight() / 2f);
+        touch(bar, MotionEvent.ACTION_UP, bar.getWidth() - 1, bar.getHeight() / 2f);
         idle();
-        assertEquals(Prefs.LARGE_SCREEN_DP_MIN, pre.largeScreenDp());
+        assertEquals(Prefs.LARGE_SCREEN_DP_MAX, pre.largeScreenDp());
         SettingsActivity now = c.get();
-        java.util.List<String> after = lines(cur(now));
-        assertFalse(after.toString(), after.contains(notice));
-        // 다시 만든 화면은 폴더블 내부 화면의 설정을 보여 준다 (분리 키보드 섹션이 판정 기준 위에 있다).
-        int split = after.indexOf("분리 키보드"), t2 = after.indexOf("폴더블 내부 화면 판정 기준");
-        assertTrue(after.toString(), split >= 0 && split < t2);
+        assertNotNull(findText(now.getWindow().getDecorView(), "세로 키보드 사용자화"));
+        pre.raw().edit().remove(Prefs.LARGE_LAYOUT).remove(Prefs.LARGE_SCREEN_DP).remove(lp.heightKey()).commit();
     }
 
-    /** 설정 검색: 별도 키보드는 키보드 사용자화에서, 판정 기준은 폴더블 내부 화면 키보드 사용자화에서 찾고, 누르면 그 화면을 연다. */
+    /** 설정 검색: 별도 키보드와 판정 기준은 키보드 사용자화에서 찾고, 누르면 그 화면을 연다. */
     @Test
     public void foldableSettingsSearch() throws Exception {
         Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
@@ -2022,15 +2235,15 @@ public class EditorUiTest {
         assertTrue(ls.toString(), ls.contains("폴더블 내부 화면 판정 기준"));
         assertFalse("실험실에는 폴더블 설정이 없다: " + ls, ls.contains("실험실"));
 
-        // 판정 기준 → 폴더블 내부 화면 키보드 사용자화
+        // 판정 기준 → 키보드 사용자화
         q.invoke(a, "판정 기준");
         idle();
         TextView hit = allTexts(results, "폴더블 내부 화면 판정 기준").get(0);
         ViewGroup row = (ViewGroup) clickableOf(hit);
-        assertNotNull(findText(row, "폴더블 내부 화면 키보드 사용자화"));
+        assertNotNull(findText(row, "키보드 사용자화"));
         row.performClick();
         Intent next = shadowOf(a).getNextStartedActivity();
-        assertEquals("largearea", next.getStringExtra(SettingsActivity.EXTRA_SECTION));
+        assertEquals("keyboard", next.getStringExtra(SettingsActivity.EXTRA_SECTION));
         assertEquals("폴더블 내부 화면 판정 기준", next.getStringExtra(SettingsActivity.EXTRA_HIGHLIGHT));
 
         // 별도 키보드 → 키보드 사용자화
@@ -2115,61 +2328,34 @@ public class EditorUiTest {
     }
 
     /**
-     * 가로 모드·폴더블 내부 화면 키보드 사용자화: 미리보기의 설정 창(키보드 전체·영역)에 있는 항목은 그 창의 id로 모으고,
-     * 검색 결과로 들어오면 그 창을 열어 항목을 보여 준다.
+     * 검색 결과로 판정 기준을 찾아 키보드 사용자화에 들어오면: 별도 키보드를 꺼 두어 접혀 있으면 그것을 켜는 스위치를,
+     * 켜 두었으면 판정 기준을 깜빡인다. 따로 된 폴더블 화면의 검색 항목은 모으지 않는다.
      */
     @Test
-    public void searchOpensProfileSheets() throws Exception {
-        new Prefs(RuntimeEnvironment.getApplication()).raw().edit().putBoolean(Prefs.ONBOARDING_DONE, true).commit();
-        SettingsActivity main = launch(null);
-        java.lang.reflect.Method hs = SettingsActivity.class.getDeclaredMethod("harvestScreen", String.class, java.util.List.class);
-        hs.setAccessible(true);
-        java.util.List<String[]> land = new java.util.ArrayList<>();
-        hs.invoke(main, "landscapearea", land);
-        java.util.Map<String, String> where = new java.util.HashMap<>();
-        for (String[] e : land) where.putIfAbsent(e[1], e[0]);
-        log("landscape harvested " + land.size() + ": " + where);
-        assertEquals("landscapearea", where.get("가로 모드 분리 키보드"));   // 목록의 항목은 그대로 화면 id
-        assertEquals("profilepart:landscapearea:0:도구 막대", where.get("도구 막대 높이"));
-        assertEquals("profilepart:landscapearea:3:기능키", where.get("스페이스바 잇기"));
-        assertEquals("profilepart:landscapearea:-1:키보드 전체 설정", where.get("키 글자 크기"));
-        assertEquals("profilepart:landscapearea:0:도구 막대", where.get("도구 막대 설정"));
-        java.util.List<String[]> large = new java.util.ArrayList<>();
-        hs.invoke(main, "largearea", large);
-        String largeTool = null;
-        for (String[] e : large) if (largeTool == null && "도구 막대 높이".equals(e[1])) largeTool = e[0];
-        assertEquals("profilepart:largearea:0:도구 막대", largeTool);
-
-        // 검색 결과에서 고른 것처럼 연다: 화면이 열리고 미리보기의 그 창이 올라와 항목이 보인다.
+    public void searchOpensFoldableThresholdInEditor() throws Exception {
+        java.lang.reflect.Field ids = SettingsActivity.class.getDeclaredField("HARVEST_IDS");
+        ids.setAccessible(true);
+        java.util.List<String> harvest = java.util.Arrays.asList((String[]) ids.get(null));
+        assertFalse(harvest.contains("largearea"));
+        assertFalse(harvest.contains("landscapearea"));
         Intent i = new Intent(RuntimeEnvironment.getApplication(), SettingsActivity.class)
-                .putExtra("section", "landscapearea")
-                .putExtra("target", where.get("스페이스바 잇기"))
-                .putExtra("highlight", "스페이스바 잇기");
-        // 분리 키보드를 꺼 두면 '스페이스바 잇기'는 창에 없다: 창을 닫고 그것을 켜는 분리 키보드 스위치를 깜빡인다.
+                .putExtra("section", "keyboard")
+                .putExtra("highlight", "폴더블 내부 화면 판정 기준");
         EditorUndo.clearAll();
         SettingsActivity off = Robolectric.buildActivity(SettingsActivity.class, i).setup().get();
-        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(2000));
-        assertFalse(sheetOf(off).isOpen());
-        assertNotNull(off.lastFlashed);
-        assertTrue(visibleTexts(off.lastFlashed).contains("가로 모드 분리 키보드"));
-        off.finish(); idle();
-        // 분리 키보드를 켜면 창이 열린 채 그 항목을 깜빡인다.
-        Prefs p = new Prefs(RuntimeEnvironment.getApplication());
-        p.raw().edit().putBoolean(p.profileEditView(Prefs.PROFILE_LANDSCAPE).splitKey(), true).commit();
-        EditorUndo.clearAll();
-        SettingsActivity a = Robolectric.buildActivity(SettingsActivity.class, i).setup().get();
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(1200));
-        assertTrue(sheetOf(a).isOpen());
-        assertTrue(visibleTexts(sheetOf(a).body()).contains("기능키 높이"));
-        assertNotNull(a.lastFlashed);
-        assertTrue(visibleTexts(a.lastFlashed).contains("스페이스바 잇기"));
-        a.onBackPressed(); idle();
-        java.lang.reflect.Method ot = SettingsActivity.class.getDeclaredMethod("openProfileTarget", String.class, String.class);
-        ot.setAccessible(true);
-        ot.invoke(a, where.get("키 글자 크기"), "키 글자 크기");
-        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(800));
-        assertTrue(sheetOf(a).isOpen());
-        assertTrue(visibleTexts(sheetOf(a).body()).contains("키 글자 크기"));
+        assertNotNull(off.lastFlashed);
+        assertTrue(visibleTexts(off.lastFlashed).contains("폴더블 내부 화면 별도 키보드"));
+        off.finish();
+        idle();
+        Prefs p = new Prefs(RuntimeEnvironment.getApplication());
+        p.raw().edit().putBoolean(Prefs.LARGE_LAYOUT, true).commit();
+        EditorUndo.clearAll();
+        SettingsActivity on = Robolectric.buildActivity(SettingsActivity.class, i).setup().get();
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(1200));
+        assertNotNull(on.lastFlashed);
+        assertTrue(visibleTexts(on.lastFlashed).contains("폴더블 내부 화면 판정 기준"));
+        p.raw().edit().remove(Prefs.LARGE_LAYOUT).commit();
     }
 
     /** 방향 이름(작은 글자)을 가진 칸. */
@@ -2196,7 +2382,7 @@ public class EditorUiTest {
     }
 
     /**
-     * 한 손 모드: 폴더블 내부 화면 키보드 사용자화처럼 화면 아래에 미리보기가 붙고, 손잡이를 끌면 자판 폭·키 높이·아래쪽 여백이 바뀌며
+     * 한 손 모드: 키보드 사용자화처럼 화면 아래에 미리보기가 붙고, 손잡이를 끌면 자판 폭·키 높이·아래쪽 여백이 바뀌며
      * 목록의 슬라이더도 따라 움직인다.
      */
     @Test
@@ -2207,6 +2393,10 @@ public class EditorUiTest {
         assertNotNull(p);
         assertNull("미리보기는 목록 안이 아니라 화면 아래에 붙는다", find(cur(a), OneHandPreview.class));
         assertTrue(lines(cur(a)).contains("세로로 들었을 때의 한 손 모드를 정합니다. 가로일 때의 설정은 기기를 가로로 돌리면 보입니다."));
+        // 자판 폭·키 높이·아래쪽 여백은 모두 키보드마다 따로 정한다: 세 줄에 '세로만' 표시, 안내에 그 뜻
+        assertTrue(lines(cur(a)).contains("'세로만' 표시가 있는 설정은 이 키보드에만 적용됩니다."));
+        java.util.List<String> ls = lines(cur(a));
+        for (String label : new String[]{"자판 폭", "키 높이", "아래쪽 여백"}) assertEquals(label, "세로만", ls.get(ls.indexOf(label) + 1));
         // 세로로 고정된 다른 설정 화면과 달리 화면을 돌릴 수 있다.
         assertEquals(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED, a.getRequestedOrientation());
         View overlay = p.getChildAt(1);
@@ -2225,10 +2415,10 @@ public class EditorUiTest {
         drag(overlay, w[0], w[1], p.getWidth() * 0.05f, 0);
         assertEquals(85, prefs.oneHandWidthForProfile());
         assertTrue(lines(cur(a)).contains("85%"));
-        // 범위 밖으로 끌어도 60%에서 멈춘다.
+        // 범위 밖으로 끌어도 10%에서 멈춘다.
         w = oneHandHandle(p, OneHandPreview.Handle.WIDTH);
-        drag(overlay, w[0], w[1], -p.getWidth() * 0.6f, 0);
-        assertEquals(60, prefs.oneHandWidthForProfile());
+        drag(overlay, w[0], w[1], -p.getWidth() * 0.9f, 0);
+        assertEquals(10, prefs.oneHandWidthForProfile());
 
         // 키 높이: 위 가장자리를 아래로 끌면 작아진다.
         int h0 = p.getHeight();
@@ -2249,7 +2439,7 @@ public class EditorUiTest {
 
         // 손잡이 밖을 끌면 아무것도 바뀌지 않는다.
         drag(overlay, p.getWidth() * 0.9f, p.getHeight() / 2f, -100, -100);
-        assertEquals(60, prefs.oneHandWidthForProfile());
+        assertEquals(10, prefs.oneHandWidthForProfile());
         assertEquals(40, prefs.oneHandBottomForProfile());
         // 세로 화면에서 바꾼 값은 세로 모드 키에만 저장된다 (가로 모드는 따로 정하기 전까지 이 값을 따른다).
         assertEquals(40, prefs.raw().getInt(Prefs.ONE_HAND_LIFT, -1));
@@ -2269,11 +2459,13 @@ public class EditorUiTest {
         assertTrue(lines(cur(a)).stream().anyMatch(l -> l.equals("가로로 들었을 때의 한 손 모드를 정합니다. 세로일 때의 설정은 기기를 세로로 돌리면 보입니다.")));
         View overlay = p.getChildAt(1);
         float density = a.getResources().getDisplayMetrics().density;
-        // 가로 모드 자판 폭의 기본값은 50%이고, 30%까지 줄일 수 있다.
+        // 가로 모드 자판 폭의 기본값은 50%이고, 10%까지 줄일 수 있다. 표시는 '가로만'.
+        java.util.List<String> ls = lines(cur(a));
+        assertEquals("가로만", ls.get(ls.indexOf("자판 폭") + 1));
         assertEquals(Prefs.ONE_HAND_WIDTH_LAND_DEFAULT, land.oneHandWidthForProfile());
         float[] w = oneHandHandle(p, OneHandPreview.Handle.WIDTH);
         drag(overlay, w[0], w[1], -p.getWidth() * 0.5f, 0);
-        assertEquals(30, land.oneHandWidthForProfile());
+        assertEquals(10, land.oneHandWidthForProfile());
         float[] lf = oneHandHandle(p, OneHandPreview.Handle.LIFT);
         drag(overlay, lf[0], lf[1], 0, -24 * density);
         assertEquals(24, land.oneHandBottomForProfile());

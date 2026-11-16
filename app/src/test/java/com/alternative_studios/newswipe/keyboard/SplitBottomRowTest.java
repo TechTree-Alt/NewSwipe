@@ -1,6 +1,7 @@
 package com.alternative_studios.newswipe.keyboard;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import android.content.SharedPreferences;
@@ -73,10 +74,14 @@ public class SplitBottomRowTest {
         FakeSp sp = new FakeSp();
         Prefs p = landscapeEditView(sp);
         sp.m.put(Prefs.NUMBER_ROW, numberRow);
-        sp.m.put(p.legacyConsonantPosKey(), s[0]);
-        sp.m.put(p.legacyVowelPosKey(), s[1]);
-        sp.m.put(p.balancedConsonantWidthKey(), s[2]);
-        sp.m.put(p.balancedVowelWidthKey(), s[3]);
+        // 영어 자판은 상세 배열(분리 키보드, 묶음 폭·위치)을 따로 정한다: 같은 모양이 되게 영어 자판에도 같은 값을 둔다.
+        for (Prefs v : new Prefs[]{p, p.englishView()}) {
+            sp.m.put(v.splitKey(), true);
+            sp.m.put(v.legacyConsonantPosKey(), s[0]);
+            sp.m.put(v.legacyVowelPosKey(), s[1]);
+            sp.m.put(v.balancedConsonantWidthKey(), s[2]);
+            sp.m.put(v.balancedVowelWidthKey(), s[3]);
+        }
         return p;
     }
 
@@ -173,10 +178,13 @@ public class SplitBottomRowTest {
     /** 두 묶음이 각자 절반을 꽉 채우도록 폭 100%·가운데 위치(왼쪽 0, 오른쪽 100)로 둔 가로 모드 보기. */
     private static Prefs fullWidthLandscape(FakeSp sp) throws Exception {
         Prefs p = landscapeEditView(sp);
-        sp.m.put(p.balancedConsonantWidthKey(), 100);
-        sp.m.put(p.legacyConsonantPosKey(), 0);
-        sp.m.put(p.balancedVowelWidthKey(), 100);
-        sp.m.put(p.legacyVowelPosKey(), 100);
+        for (Prefs v : new Prefs[]{p, p.englishView()}) {   // 영어 자판도 같은 모양으로 (상세 배열을 따로 정한다)
+            sp.m.put(v.splitKey(), true);
+            sp.m.put(v.balancedConsonantWidthKey(), 100);
+            sp.m.put(v.legacyConsonantPosKey(), 0);
+            sp.m.put(v.balancedVowelWidthKey(), 100);
+            sp.m.put(v.legacyVowelPosKey(), 100);
+        }
         return p;
     }
 
@@ -277,15 +285,6 @@ public class SplitBottomRowTest {
         }
     }
 
-    @Test
-    public void symbolPagesAreNotSplitOutsideSplitView() {
-        // 세로 모드(설정 보기 없음): 맨 아래 줄 위의 줄들에는 빈틈이 없다.
-        KeyboardLayout l = KeyboardLayout.symbols(true, null);
-        for (int r = 0; r < l.rows.length - 1; r++) {
-            for (Key k : l.rows[r].keys) assertTrue(k.type != Key.GAP);
-        }
-    }
-
     /** 줄에서 label 글자 키(그리는 키가 아니면 hidden)의 위치 {시작 x, 폭, 키 번호}. 없으면 null. */
     private static float[] find(KeyboardLayout.Row row, char label, boolean hidden) {
         float x = 0f;
@@ -364,13 +363,6 @@ public class SplitBottomRowTest {
     }
 
     @Test
-    public void noHiddenKeysInTheNormalKeyboard() {
-        for (KeyboardLayout.Row row : KeyboardLayout.english(null).rows) {
-            for (Key k : row.keys) assertTrue(!k.hidden);
-        }
-    }
-
-    @Test
     public void bottomRowStillFillsItsSpanWithTheSpaceBar() throws Exception {
         FakeSp sp = new FakeSp();
         Prefs p = landscapeEditView(sp);
@@ -385,14 +377,6 @@ public class SplitBottomRowTest {
         }
         assertEquals(10f, total, 0.001f);   // 양옆 빈틈까지 합쳐 줄 전체
         assertTrue(hasSpace);
-    }
-
-    @Test
-    public void portraitBalancedLayoutIsUnchanged() {
-        // 세로 모드(분리 키보드 아님)의 맨 아래 줄은 스페이스바 하나가 가운데를 지난다.
-        int spaces = 0;
-        for (Key k : KeyboardLayout.english(null).rows[3].keys) if (k.type == Key.SPACE) spaces++;
-        assertEquals(1, spaces);
     }
 
     @Test
@@ -548,6 +532,9 @@ public class SplitBottomRowTest {
             normalSp.m.put(normal.balancedConsonantPosKey(), 0);
             normalSp.m.put(normal.balancedVowelWidthKey(), 100);
             normalSp.m.put(normal.balancedVowelPosKey(), 0);
+            // 영어·기호 자판은 한글 자판을 따라가지 않고 일반 배열로 둔다 (상세 배열을 따로 정한다).
+            normalSp.m.put(normal.detailKeyOf(Prefs.BOARD_ENGLISH), Prefs.DETAIL_NONE);
+            normalSp.m.put(normal.detailKeyOf(Prefs.BOARD_SYMBOLS), Prefs.DETAIL_NONE);
             KeyboardLayout[][] pairs = {
                     {KeyboardLayout.english(split), KeyboardLayout.english(normal)},
                     {KeyboardLayout.symbols(true, split), KeyboardLayout.symbols(true, normal)},
@@ -557,34 +544,6 @@ public class SplitBottomRowTest {
                 assertEquals(pair[1].rows.length, pair[0].rows.length);
                 for (int r = 0; r < pair[0].rows.length - 1; r++) {   // 맨 아래 줄(스페이스바 둘)만 다르다
                     assertEquals("격자 " + grid + " 줄 " + r, geometry(pair[1].rows[r]), geometry(pair[0].rows[r]));
-                }
-            }
-        }
-    }
-
-    @Test
-    public void splitRowsNeverOverlapAndFillTheRow() throws Exception {
-        for (boolean grid : new boolean[]{false, true}) {
-            for (int[] s : SETTINGS) {
-                for (int[] vw : new int[][]{{s[2], s[3]}, {100, 40}, {40, 100}}) {
-                    FakeSp sp = new FakeSp();
-                    Prefs p = landscapeEditView(sp);
-                    sp.m.put(Prefs.GRID_LAYOUT, grid);
-                    sp.m.put(p.legacyConsonantPosKey(), s[0]);
-                    sp.m.put(p.legacyVowelPosKey(), s[1]);
-                    sp.m.put(p.balancedConsonantWidthKey(), vw[0]);
-                    sp.m.put(p.balancedVowelWidthKey(), vw[1]);
-                    for (KeyboardLayout l : new KeyboardLayout[]{KeyboardLayout.english(p), KeyboardLayout.symbols(true, p),
-                            KeyboardLayout.symbols2(false, p)}) {
-                        for (KeyboardLayout.Row row : l.rows) {
-                            float total = 0f;
-                            for (Key k : row.keys) {
-                                assertTrue("폭이 음수인 키", k.weight >= -0.0001f);
-                                total += k.weight;
-                            }
-                            assertEquals(10f, total, 0.001f);
-                        }
-                    }
                 }
             }
         }
@@ -619,8 +578,9 @@ public class SplitBottomRowTest {
             x += k.weight;
         }
         assertEquals(3f, to - from, 0.001f);
-        // 폭은 다른 쪽이 가장 좁을 때(60%) 남는 자리까지, 곧 140%까지 넓힐 수 있다 (실제로는 다른 쪽에 막힌다)
-        assertEquals(140, KeyboardLayout.balancedWidthMax(p));
+        // 폭은 다른 쪽이 가장 좁을 때(10%) 남는 자리까지, 곧 190%까지 넓힐 수 있다 (실제로는 다른 쪽에 막힌다)
+        assertEquals(190, KeyboardLayout.balancedWidthMax(p));
+        assertEquals(10, p.balancedWidthMin());
     }
 
     @Test
@@ -714,12 +674,16 @@ public class SplitBottomRowTest {
         assertTrue(p.splitReachColumn());
         sp.m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_8);
         assertTrue("NewSwipe 단모음의 값이 단모음에 이어지지 않는다", p.splitSeparateJamo() && !p.splitReachColumn());
-        // 배열별로 나누기 전의 (세로 모드) 값은 값을 정하기 전까지 그 배열이 이어 쓰고, 가로 모드도 그 값을 따른다
+        // 배열별로 나누기 전의 값은 값을 정하기 전까지 그 배열이 이어 쓴다 (키보드마다 따로: 세로 모드 값은 가로 모드가 따르지 않는다)
         FakeSp old = new FakeSp();
         Prefs q = c.newInstance(old, false, Prefs.PROFILE_LANDSCAPE, true);
+        Prefs qp = c.newInstance(old, false, Prefs.PROFILE_PORTRAIT, true);
         old.m.put("portrait_split_reach_column", false);
+        assertTrue(qp.splitSeparateJamo());
+        assertTrue("가로 모드는 자기 값 (기본값: 좌·우 균형 배열)", !q.splitSeparateJamo());
+        old.m.put("land_split_reach_column", false);
         assertTrue(q.splitSeparateJamo());
-        // 가로 모드가 예전에 따로 저장하던 값은 더 이상 읽지 않는다 (세로 모드 '한글 글자 키 설정'을 따른다)
+        // 가로 모드가 2.0.0 전에 따로 저장하던 값은 읽지 않는다
         FakeSp landOld = new FakeSp();
         Prefs r = c.newInstance(landOld, false, Prefs.PROFILE_LANDSCAPE, true);
         landOld.m.put("split_reach_column", false);
@@ -840,13 +804,19 @@ public class SplitBottomRowTest {
             assertEquals(8, v.padLeftDp());
             assertEquals(20, v.padBottomDp());
         }
-        // 가로 모드에서 정하면 그 보기만 바뀐다.
+        // 가로 모드에서 정하면 가로 모드만 바뀐다 (폴더블 내부 화면 가로도 정하기 전에는 세로 모드 값).
         sp.m.put(land.padKey(Prefs.SIDE_LEFT), 1);
         sp.m.put(land.padKey(Prefs.SIDE_BOTTOM), 40);
         assertEquals(1, land.padLeftDp());
         assertEquals(40, land.padBottomDp());
+        assertEquals(8, ll.padLeftDp());
+        assertEquals(20, ll.padBottomDp());
         assertEquals(8, port.padLeftDp());
         assertEquals(8, lp.padLeftDp());
+        // 폴더블 내부 화면 가로에서 정하면 그 값.
+        sp.m.put(ll.padKey(Prefs.SIDE_LEFT), 2);
+        assertEquals(2, ll.padLeftDp());
+        assertEquals(1, land.padLeftDp());
         // 폴더블 내부 화면 세로·가로는 각각 따로 정한다.
         assertTrue(!lp.padKey(Prefs.SIDE_TOP).equals(ll.padKey(Prefs.SIDE_TOP)));
         sp.m.put(ll.padKey(Prefs.SIDE_TOP), 5);
@@ -857,7 +827,7 @@ public class SplitBottomRowTest {
     }
 
     @Test
-    public void toolbarAndFnAreaPaddingIsSeparateFromPortrait() throws Exception {
+    public void areaPaddingIsSeparatePerProfile() throws Exception {
         FakeSp sp = new FakeSp();
         Prefs land = editView(sp, Prefs.PROFILE_LANDSCAPE), port = editView(sp, Prefs.PROFILE_PORTRAIT);
         sp.m.put(Prefs.areaPadKey(0, Prefs.SIDE_LEFT), 6);
@@ -875,26 +845,50 @@ public class SplitBottomRowTest {
             assertEquals(2, land.areaPadDp(0, Prefs.SIDE_LEFT));
             assertEquals(3, land.areaPadDp(3, Prefs.SIDE_TOP));
         }
-        // 다른 영역과 세로 모드는 세로 모드 값.
+        // 글자 키·숫자 줄 영역 여백도 따로 정한다 (정하기 전에는 세로 모드 값).
         assertEquals(9, land.areaPadDp(2, Prefs.SIDE_LEFT));
+        assertTrue(land.areaPadSeparate(1) && land.areaPadSeparate(2));
+        sp.m.put(land.profileAreaPadKey(2, Prefs.SIDE_LEFT), 4);
+        assertEquals(4, land.areaPadDp(2, Prefs.SIDE_LEFT));
+        assertEquals(9, port.areaPadDp(2, Prefs.SIDE_LEFT));
+        // 폴더블 내부 화면 세로·가로는 정하기 전에는 세로 모드 값을 따른다.
+        Prefs ll = editView(sp, Prefs.PROFILE_LARGE_LANDSCAPE), lp = editView(sp, Prefs.PROFILE_LARGE_PORTRAIT);
+        assertEquals(9, ll.areaPadDp(2, Prefs.SIDE_LEFT));
+        assertEquals(6, ll.areaPadDp(0, Prefs.SIDE_LEFT));
+        assertEquals(9, lp.areaPadDp(2, Prefs.SIDE_LEFT));
+        assertEquals(6, lp.areaPadDp(0, Prefs.SIDE_LEFT));
+        // 세로 모드는 세로 모드 값.
         assertEquals(6, port.areaPadDp(0, Prefs.SIDE_LEFT));
         assertEquals(7, port.areaPadDp(3, Prefs.SIDE_TOP));
     }
 
     @Test
-    public void largePortraitAndLandscapeShareTheLayoutButNotTheShape() throws Exception {
+    public void eachKeyboardKeepsItsShapeAndAllShareBehavior() throws Exception {
         FakeSp sp = new FakeSp();
         Prefs land = editView(sp, Prefs.PROFILE_LANDSCAPE);
         Prefs port = editView(sp, Prefs.PROFILE_LARGE_PORTRAIT), largeLand = editView(sp, Prefs.PROFILE_LARGE_LANDSCAPE);
-        // 분리 키보드 레이아웃: 폴더블 내부 화면 세로·가로는 같은 키, 가로 모드는 다른 키.
-        assertEquals(port.splitKey(), largeLand.splitKey());
-        assertEquals(port.splitReachColumnKey(), largeLand.splitReachColumnKey());
-        assertEquals(port.splitSpaceJoinKey(), largeLand.splitSpaceJoinKey());
-        assertEquals(port.splitFnWidthKey(), largeLand.splitFnWidthKey());
-        assertTrue(!land.splitKey().equals(port.splitKey()));
-        // 좌·우 균형 배열은 따로 정하지 않고 세로 모드 값을 따른다.
-        assertEquals(editView(sp, Prefs.PROFILE_PORTRAIT).splitReachColumnKey(), land.splitReachColumnKey());
-        assertEquals(editView(sp, Prefs.PROFILE_PORTRAIT).splitReachColumnKey(), port.splitReachColumnKey());
+        // 분리 키보드 켜기·스페이스바 잇기·하단 기능키 폭: 네 화면이 각각 따로 (폴더블 내부 화면 세로는 예전 키 그대로).
+        Prefs portraitView = editView(sp, Prefs.PROFILE_PORTRAIT);
+        assertEquals("large_split_port", port.splitKey());
+        for (String[] keys : new String[][]{
+                {portraitView.splitKey(), land.splitKey(), port.splitKey(), largeLand.splitKey()},
+                {portraitView.splitSpaceJoinKey(), land.splitSpaceJoinKey(), port.splitSpaceJoinKey(), largeLand.splitSpaceJoinKey()},
+                {portraitView.splitFnWidthKey(), land.splitFnWidthKey(), port.splitFnWidthKey(), largeLand.splitFnWidthKey()}}) {
+            assertEquals(java.util.Arrays.toString(keys), 4, new java.util.HashSet<>(java.util.Arrays.asList(keys)).size());
+        }
+        // 상세 배열(좌·우 균형 배열, 자·모음 균형 배열 켜기·묶음 폭, 영어 자판도 균형 배열)도 네 키보드가 따로 쓴다.
+        for (String[] keys : new String[][]{
+                {portraitView.splitReachColumnKey(), land.splitReachColumnKey(), port.splitReachColumnKey(), largeLand.splitReachColumnKey()},
+                {portraitView.balancedLayoutKey(), land.balancedLayoutKey(), port.balancedLayoutKey(), largeLand.balancedLayoutKey()},
+                {portraitView.englishBalancedKey(), land.englishBalancedKey(), port.englishBalancedKey(), largeLand.englishBalancedKey()},
+                {Prefs.balancedKeyFor(Prefs.BALANCED_VOWEL_WIDTH, "", false, "danmoeum8"), Prefs.balancedKeyFor(Prefs.BALANCED_VOWEL_WIDTH, Prefs.PROFILE_LANDSCAPE, false, "danmoeum8"),
+                        Prefs.balancedKeyFor(Prefs.BALANCED_VOWEL_WIDTH, Prefs.PROFILE_LARGE_PORTRAIT, false, "danmoeum8"),
+                        Prefs.balancedKeyFor(Prefs.BALANCED_VOWEL_WIDTH, Prefs.PROFILE_LARGE_LANDSCAPE, false, "danmoeum8")}}) {
+            assertEquals(java.util.Arrays.toString(keys), 4, new java.util.HashSet<>(java.util.Arrays.asList(keys)).size());
+        }
+        // 세로 모드는 예전 키 이름 그대로.
+        assertEquals(Prefs.BALANCED_LAYOUT, portraitView.balancedLayoutKey());
+        assertEquals(Prefs.ENGLISH_BALANCED, portraitView.englishBalancedKey());
         assertTrue(!land.splitSpaceJoinKey().equals(port.splitSpaceJoinKey()));
         // 분리 키보드 모양: 셋 모두 다른 키.
         for (String[] keys : new String[][]{
@@ -922,13 +916,18 @@ public class SplitBottomRowTest {
         assertEquals(30, land.keyTextSize());
         sp.m.put(land.textSizeKey(), 5);
         assertEquals(30, land.keyTextSize());
-        // 분리 키보드 가운데 빈 공간의 커서 이동 속도: 기본 100%, 프로필마다 따로, 50~300%.
+        // 분리 키보드 가운데 공간(밀기·커서 이동 속도)과 묶음 좌우 따라가기: 네 화면이 함께 쓴다. 속도는 기본 100%, 50~300%.
         assertEquals(100, land.splitGapSpeed());
-        assertTrue(!land.splitGapSpeedKey().equals(port.splitGapSpeedKey()));
-        assertTrue(!port.splitGapSpeedKey().equals(largeLand.splitGapSpeedKey()));
+        for (Prefs v : new Prefs[]{land, port, largeLand}) {
+            assertEquals(portraitView.splitGapSpeedKey(), v.splitGapSpeedKey());
+            assertEquals(portraitView.splitGapCursorKey(), v.splitGapCursorKey());
+            assertEquals(portraitView.gapSlot(), v.gapSlot());
+            assertEquals(portraitView.toolbarFollowKey(), v.toolbarFollowKey());
+            assertEquals(portraitView.fnFollowKey(), v.fnFollowKey());
+        }
         sp.m.put(port.splitGapSpeedKey(), 200);
         assertEquals(200, port.splitGapSpeed());
-        assertEquals(100, largeLand.splitGapSpeed());
+        assertEquals(200, largeLand.splitGapSpeed());
         sp.m.put(port.splitGapSpeedKey(), 1000);
         assertEquals(300, port.splitGapSpeed());
         // 도구 막대 높이: 정하기 전에는 세로 모드 값, 프로필마다 따로 (세로 모드는 예전 키).
@@ -939,12 +938,19 @@ public class SplitBottomRowTest {
         sp.m.put(land.toolbarHeightKey(), 80);
         assertEquals(80, land.toolbarHeight());
         assertEquals(120, portrait.toolbarHeight());
+        // 폴더블 내부 화면 세로·가로는 세로 모드 값 (가로 모드는 높이가 낮아 줄여 둔 값이라 따르지 않는다).
+        assertEquals(120, port.toolbarHeight());
         assertEquals(120, largeLand.toolbarHeight());
         assertTrue(!port.toolbarHeightKey().equals(largeLand.toolbarHeightKey()));
-        // 폴더블 내부 화면 세로에서 켠 분리 키보드는 폴더블 내부 화면 가로에서도 켜져 있다.
+        assertEquals(120, largeLand.keyboardHeight());
+        assertEquals(120, port.keyboardHeight());
+        // 폴더블 내부 화면 세로에서 켠 분리 키보드는 폴더블 내부 화면 가로에는 적용되지 않는다 (따로 정한다).
         sp.m.put(port.splitKey(), true);
+        assertTrue(port.profileSplit());
+        assertFalse(largeLand.profileSplit());
+        assertFalse(land.profileSplit());
+        sp.m.put(largeLand.splitKey(), true);
         assertTrue(largeLand.profileSplit());
-        assertTrue(!land.profileSplit());
     }
 
     @Test

@@ -236,8 +236,8 @@ public class DubeolsikLayoutTest {
                     assertEquals(what, 10, l.columns);
                     int first = numberRow ? 1 : 0;
                     assertEquals(what, first + 4, l.rows.length);
-                    // 자음 쪽은 5.5칸, 모음 쪽은 5칸을 각 절반의 width%에 맞춘 단위
-                    float cu = 5f / 5.5f * width / 100f, vu = 5f / 5f * width / 100f;
+                    // 일반 자판의 줄을 가운데에서 잘라 각 쪽을 width%로 줄인다: 키 한 칸은 일반 자판 키의 width%
+                    float cu = width / 100f, vu = width / 100f;
                     for (int r = 0; r < 3; r++) {
                         KeyboardLayout.Row row = l.rows[first + r];
                         assertArrayEquals(what, STANDARD[r], labels(row));
@@ -246,7 +246,8 @@ public class DubeolsikLayoutTest {
                             boolean vowel = HangulComposer.isVowel(k.label.charAt(0));
                             float x = leftOf(row, k, 10);
                             if (vowel) assertTrue(what + " " + k.label, x >= 5f - 1e-3f);
-                            else assertTrue(what + " " + k.label, x + k.weight <= 5f + 1e-3f);
+                            // ㅎ·ㅍ는 일반 자판처럼 가운데에 걸쳐 있어도 자음(왼쪽) 묶음이다
+                            else assertTrue(what + " " + k.label, x + k.weight <= 5.5f + 1e-3f);
                             assertEquals(what + " " + k.label, vowel ? vu : cu, k.weight, 1e-3f);
                         }
                     }
@@ -255,7 +256,9 @@ public class DubeolsikLayoutTest {
                     assertEquals(what, 0.5f * cu, leftOf(r1, key(l, "ㅁ"), 10) - leftOf(r0, key(l, "ㅂ"), 10), 1e-3f);
                     Key shift = firstKey(r2);
                     assertEquals(what, Key.SHIFT, shift.type);
-                    assertEquals(what, 1.5f * cu, shift.weight, 1e-3f);
+                    // 격자 정렬이면 일반 자판처럼 Shift·⌫가 한 칸이고 남는 반 칸은 글자 쪽 빈 칸이다
+                    float side = grid ? 1f : 1.5f;
+                    assertEquals(what, side * cu, shift.weight, 1e-3f);
                     assertEquals(what, leftOf(r0, key(l, "ㅂ"), 10), leftOf(r2, shift, 10), 1e-3f);
                     assertEquals(what, 1.5f * cu, leftOf(r2, key(l, "ㅋ"), 10) - leftOf(r2, shift, 10), 1e-3f);
                     // 모음 쪽: ㅗ·ㅠ는 ㅛ보다 반 칸, ⌫는 1.5칸 (일반 자판과 같다)
@@ -265,7 +268,7 @@ public class DubeolsikLayoutTest {
                     Key delete = r2.keys[r2.keys.length - 1].type == Key.DELETE ? r2.keys[r2.keys.length - 1]
                             : r2.keys[r2.keys.length - 2];
                     assertEquals(what, Key.DELETE, delete.type);
-                    assertEquals(what, 1.5f * vu, delete.weight, 1e-3f);
+                    assertEquals(what, side * vu, delete.weight, 1e-3f);
                     // ⌫의 오른쪽 끝은 ㅔ의 오른쪽 끝과 같다
                     Key e = key(l, "ㅔ");
                     assertEquals(what, leftOf(r0, e, 10) + e.weight, leftOf(r2, delete, 10) + delete.weight, 1e-3f);
@@ -286,7 +289,7 @@ public class DubeolsikLayoutTest {
         sp.m.put(p0.balancedBoundaryKey(), 60);   // 예전 '자·모음 경계 위치' 값은 쓰지 않는다
         assertTrue(p0.balancedVowelWidthKey().endsWith("_" + Prefs.KOREAN_LAYOUT_DUBEOLSIK));
         KeyboardLayout l = KeyboardLayout.korean(portrait(sp));
-        float consonant = 5f / 5.5f * 0.9f, vowel = 5f / 5f * 0.8f;
+        float consonant = 0.9f, vowel = 0.8f;
         for (int r = 0; r < 3; r++) {
             KeyboardLayout.Row row = l.rows[r];
             assertEquals(10f, total(row), 1e-3f);
@@ -294,7 +297,7 @@ public class DubeolsikLayoutTest {
                 boolean v = HangulComposer.isVowel(k.label.charAt(0));
                 assertEquals(k.label, v ? vowel : consonant, k.weight, 1e-3f);
                 if (v) assertTrue(k.label, leftOf(row, k, 10) >= 5f - 1e-3f);   // 가운데 오른쪽
-                else assertTrue(k.label, leftOf(row, k, 10) + k.weight <= 5f + 1e-3f);
+                else assertTrue(k.label, leftOf(row, k, 10) + k.weight <= 5.5f + 1e-3f);
             }
         }
         // 모음 위치 0: 모음 묶음이 가운데에 붙는다 (ㅛ가 가운데에서 시작)
@@ -342,8 +345,8 @@ public class DubeolsikLayoutTest {
         KeyboardLayout l = KeyboardLayout.korean(portrait(sp));
         KeyboardLayout.Row bottom = l.rows[l.rows.length - 1];
         assertEquals(10f, total(bottom), 1e-3f);
-        // 기능키 한 칸 = 자음 쪽을 꽉 채웠을 때의 자음 키 한 칸 (자음 쪽은 5.5칸)
-        assertEquals(5f / 5.5f, bottom.keys[0].weight, 1e-3f);
+        // 기능키 한 칸 = 일반 두벌식 키 한 칸 (일반 자판의 줄을 가운데에서 자르므로 10열)
+        assertEquals(1f, bottom.keys[0].weight, 1e-3f);
         sp.m.put(portrait(sp).balancedConsonantWidthKey(), 100);
         KeyboardLayout full = KeyboardLayout.korean(portrait(sp));
         assertEquals(key(full, "ㅂ").weight, full.rows[full.rows.length - 1].keys[0].weight, 1e-3f);
@@ -513,28 +516,29 @@ public class DubeolsikLayoutTest {
         return labels(row);
     }
 
-    /** 두벌식 균형 배열을 켜고 '영어 자판도 균형 배열'을 켜면 영어 자판도 같은 모양으로 나뉜다. */
+    /**
+     * 영어·기호 자판의 상세 배열: 기본은 '한글 자판 따라가기'로 한글 자판의 상세 배열·묶음 폭·위치를 그대로 쓰고, 따로 정하면
+     * (사용 안 함·자·모음 균형 배열·분리 키보드) 한글 자판과 상관없이 그 자판의 값을 쓴다.
+     */
     @Test
-    public void englishFollowsTheBalancedLayout() throws Exception {
+    public void englishAndSymbolsFollowOrSetTheirOwnLayout() throws Exception {
         String[][] english = {{"q", "w", "e", "r", "t", "y", "u", "i", "o", "p"}, {"a", "s", "d", "f", "g", "h", "j", "k", "l"},
                 {"z", "x", "c", "v", "b", "n", "m"}};
         for (boolean numberRow : new boolean[]{false, true}) {
-            FakeSp sp = dubeolsik(true);
+            FakeSp sp = dubeolsik(true);   // 한글 자판: 두벌식 균형 배열
             sp.m.put(Prefs.NUMBER_ROW, numberRow);
-            // 옵션을 켜지 않으면 일반 영어 자판
-            assertEquals(10, KeyboardLayout.english(portrait(sp)).columns);
-            assertEquals(1f, key(KeyboardLayout.english(portrait(sp)), "a").weight, 1e-3f);
-            sp.m.put(Prefs.ENGLISH_BALANCED, true);
             Prefs p = portrait(sp);
+            assertEquals(Prefs.DETAIL_FOLLOW, p.detailModeOf(Prefs.BOARD_ENGLISH));
+            assertEquals(Prefs.DETAIL_FOLLOW, p.detailModeOf(Prefs.BOARD_SYMBOLS));
+            // 따라가기: 영어 자판은 한글 두벌식 균형 배열과 줄·키 하나하나의 자리·폭이 같다
             assertTrue(p.englishBalanced());
-            KeyboardLayout en = KeyboardLayout.english(p), ko = KeyboardLayout.korean(p);
+            KeyboardLayout enl = KeyboardLayout.english(p), ko = KeyboardLayout.korean(p);
             int first = numberRow ? 1 : 0;
-            assertEquals(ko.rows.length, en.rows.length);
+            assertEquals(ko.rows.length, enl.rows.length);
             for (int r = 0; r < 3; r++) {
-                KeyboardLayout.Row row = en.rows[first + r], kr = ko.rows[first + r];
+                KeyboardLayout.Row row = enl.rows[first + r], kr = ko.rows[first + r];
                 assertArrayEquals(english[r], qwertyLabels(row));
                 assertEquals(10f, total(row), 1e-3f);
-                // 한글 두벌식 줄과 키 하나하나의 자리·폭이 같다
                 java.util.List<Key> e = letters(row), k = letters(kr);
                 assertEquals(e.size(), k.size());
                 for (int i = 0; i < e.size(); i++) {
@@ -542,34 +546,170 @@ public class DubeolsikLayoutTest {
                     assertEquals(r + ":" + i, k.get(i).weight, e.get(i).weight, 1e-3f);
                 }
             }
-            KeyboardLayout.Row third = en.rows[first + 2];
-            assertEquals(Key.SHIFT, firstKey(third).type);   // 영어는 늘 Shift (한글 두벌식에서 Shift를 없애도)
-            // 두벌식의 Shift를 없애도 영어 Shift는 그대로
+            assertEquals(Key.SHIFT, firstKey(enl.rows[first + 2]).type);   // 영어는 늘 Shift (한글 두벌식에서 Shift를 없애도)
             sp.m.put(Prefs.DUBEOLSIK_SHIFT_HIDDEN, true);
             assertEquals(1, count(KeyboardLayout.english(portrait(sp)), Key.SHIFT));
             sp.m.remove(Prefs.DUBEOLSIK_SHIFT_HIDDEN);
-            // 키 폭 설정도 함께 따른다
-            sp.m.put(p.balancedConsonantWidthKey(), 80);
-            KeyboardLayout moved = KeyboardLayout.english(portrait(sp));
-            assertEquals(KeyboardLayout.korean(portrait(sp)).rows[first].keys.length, moved.rows[first].keys.length);
+            // 따라가기면 한글 자판의 묶음 폭도 따른다
+            float a0 = key(enl, "a").weight;
+            sp.m.put(p.balancedConsonantWidthKey(), 60);
+            float a1 = key(KeyboardLayout.english(portrait(sp)), "a").weight;
+            assertTrue(a1 < a0 - 1e-3f);
+            // 따로 정하면(균형 배열) 영어 자판의 묶음 폭을 쓴다: 한글 자판의 폭을 바꿔도 그대로
+            sp.m.put(p.detailKeyOf(Prefs.BOARD_ENGLISH), Prefs.DETAIL_BALANCED);
+            Prefs en = portrait(sp).englishView();
+            assertEquals(Prefs.BOARD_ENGLISH, en.board());
+            assertTrue(!en.balancedConsonantWidthKey().equals(portrait(sp).balancedConsonantWidthKey()));
+            assertEquals(a0, key(KeyboardLayout.english(portrait(sp)), "a").weight, 1e-3f);   // 영어 자판의 기본 폭
+            sp.m.put(en.balancedConsonantWidthKey(), 60);
+            assertEquals(a1, key(KeyboardLayout.english(portrait(sp)), "a").weight, 1e-3f);
+            // 사용 안 함: 한글 자판이 균형 배열이어도 일반 영어 자판
+            sp.m.put(p.detailKeyOf(Prefs.BOARD_ENGLISH), Prefs.DETAIL_NONE);
+            assertFalse(portrait(sp).englishBalanced());
+            assertEquals(1f, key(KeyboardLayout.english(portrait(sp)), "a").weight, 1e-3f);
         }
-        // 켜지지 않는 경우: 균형 배열이 꺼짐, 두벌식이 아님, 한 손 모드, 가로 모드 분리 키보드
-        FakeSp off = dubeolsik(false);
-        off.m.put(Prefs.ENGLISH_BALANCED, true);
-        assertFalse(portrait(off).englishBalanced());
-        assertEquals(1f, key(KeyboardLayout.english(portrait(off)), "a").weight, 1e-3f);
+        // 한글 자판이 균형 배열이 아니어도(한글 배열과도 상관없이) 영어 자판만 균형 배열로 할 수 있다
         FakeSp d8 = new FakeSp();
-        d8.m.put(Prefs.ENGLISH_BALANCED, true);
-        d8.m.put(Prefs.BALANCED_LAYOUT + "_" + Prefs.KOREAN_LAYOUT_8, true);
-        assertFalse(portrait(d8).englishBalanced());
+        d8.m.put(portrait(d8).detailKeyOf(Prefs.BOARD_ENGLISH), Prefs.DETAIL_BALANCED);
+        assertTrue(portrait(d8).englishBalanced());
+        assertFalse(portrait(d8).balancedLayout());
+        assertFalse(portrait(d8).oneHandView().englishBalanced());   // 한 손 모드에서는 나누지 않는다
+        // 분리 키보드도 자판마다: 한글 자판만 분리 키보드여도 영어 자판(균형 배열)은 그대로
         FakeSp on = dubeolsik(true);
-        on.m.put(Prefs.ENGLISH_BALANCED, true);
-        assertFalse(portrait(on).oneHandView().englishBalanced());
-        // 가로 모드 분리 키보드는 영어 자판도 늘 영어 자판처럼 가운데에서 나눈다
         Prefs land = view(on, Prefs.PROFILE_LANDSCAPE);
         on.m.put(land.splitKey(), true);
-        assertFalse(view(on, Prefs.PROFILE_LANDSCAPE).englishBalanced());
+        assertTrue("따라가기면 함께 나뉜다", KeyboardLayout.english(view(on, Prefs.PROFILE_LANDSCAPE)).staggeredSplit);
+        on.m.put(land.detailKeyOf(Prefs.BOARD_ENGLISH), Prefs.DETAIL_BALANCED);
+        assertTrue(view(on, Prefs.PROFILE_LANDSCAPE).englishBalanced());
+        assertFalse(KeyboardLayout.english(view(on, Prefs.PROFILE_LANDSCAPE)).staggeredSplit);
+        assertTrue(KeyboardLayout.korean(view(on, Prefs.PROFILE_LANDSCAPE)).staggeredSplit);
+        // 영어 자판만 분리 키보드
+        on.m.put(land.detailKeyOf(Prefs.BOARD_ENGLISH), Prefs.DETAIL_SPLIT);
+        on.m.put(land.splitKey(), false);
+        assertTrue(KeyboardLayout.english(view(on, Prefs.PROFILE_LANDSCAPE)).staggeredSplit);
+        assertFalse(KeyboardLayout.korean(view(on, Prefs.PROFILE_LANDSCAPE)).staggeredSplit);
         assertEquals(1, count(KeyboardLayout.english(view(on, Prefs.PROFILE_LANDSCAPE)), Key.SHIFT));
+    }
+
+    /** 기호 자판의 상세 배열: 따라가기(한글 자판)·사용 안 함·자·모음 균형 배열·분리 키보드. 균형 배열은 맨 아래 줄을 빼고 가운데에서 나눈다. */
+    @Test
+    public void symbolsFollowOrSetTheirOwnLayout() throws Exception {
+        FakeSp sp = dubeolsik(true);   // 한글 자판: 균형 배열
+        Prefs p = portrait(sp);
+        // 따라가기: 기호 자판도 균형 배열로 나뉜다 (가운데 빈틈은 누르면 가까운 키가 눌리는 GAP)
+        KeyboardLayout sym = KeyboardLayout.symbols(true, p);
+        assertEquals(10f, total(sym.rows[0]), 1e-3f);
+        assertTrue(hasMiddleGap(sym.rows[0]));
+        assertFalse(sym.staggeredSplit);
+        KeyboardLayout.Row bottom = sym.rows[sym.rows.length - 1];
+        for (Key k : bottom.keys) assertTrue("맨 아래 줄은 그대로", k.type != Key.GAP);
+        // 사용 안 함: 일반 기호 자판 (한글 자판이 균형 배열이어도)
+        sp.m.put(p.detailKeyOf(Prefs.BOARD_SYMBOLS), Prefs.DETAIL_NONE);
+        KeyboardLayout normal = KeyboardLayout.symbols(true, portrait(sp));
+        assertFalse(hasMiddleGap(normal.rows[0]));
+        // 균형 배열: 기호 자판의 묶음 폭을 따로 쓴다
+        sp.m.put(p.detailKeyOf(Prefs.BOARD_SYMBOLS), Prefs.DETAIL_BALANCED);
+        Prefs sv = portrait(sp).symbolsView();
+        assertEquals(Prefs.BOARD_SYMBOLS, sv.board());
+        assertTrue(hasMiddleGap(KeyboardLayout.symbols(true, portrait(sp)).rows[0]));
+        float w0 = key(KeyboardLayout.symbols(true, portrait(sp)), "1").weight;
+        sp.m.put(sv.balancedConsonantWidthKey(), 50);
+        assertTrue(key(KeyboardLayout.symbols(true, portrait(sp)), "1").weight < w0 - 1e-3f);
+        assertTrue(key(KeyboardLayout.symbols2(true, portrait(sp)), "~").weight < w0 - 1e-3f);   // 둘째 쪽도 같다
+        // 분리 키보드 (세로에서도 고를 수 있다)
+        sp.m.put(p.detailKeyOf(Prefs.BOARD_SYMBOLS), Prefs.DETAIL_SPLIT);
+        KeyboardLayout split = KeyboardLayout.symbols(true, portrait(sp));
+        boolean drag = false;
+        for (Key k : split.rows[0].keys) drag |= k.isDragCursor();
+        assertTrue("분리 키보드의 가운데 공간", drag);
+        // 한글 자판의 균형 배열을 꺼도 기호 자판은 자기 값
+        sp.m.put(Prefs.BALANCED_LAYOUT, false);
+        assertTrue(portrait(sp).symbolsView().profileSplit());
+    }
+
+    /**
+     * 기호 자판의 균형 배열은 숫자 줄을 켠 5줄 배열이면 숫자 줄을 나누지 않고 전체 폭으로 둔다 (한글·영어 자판의 균형 배열처럼).
+     * 숫자 줄을 끈 4줄 배열의 1~0 줄은 기호 글자 줄이라 나눈다. 분리 키보드·균형 배열의 윤곽선은 쿼티 자판처럼 맨 윗 글자 줄에 맞춘다.
+     */
+    @Test
+    public void symbolsBalancedKeepsTheNumberRowWhole() throws Exception {
+        FakeSp sp = new FakeSp();
+        Prefs p = portrait(sp);
+        sp.m.put(p.detailKeyOf(Prefs.BOARD_SYMBOLS), Prefs.DETAIL_BALANCED);
+        sp.m.put(Prefs.NUMBER_ROW, true);
+        KeyboardLayout five = KeyboardLayout.symbols(true, portrait(sp));
+        assertEquals(5, five.rows.length);   // 숫자 줄 · ~ 줄 · @ 줄 · =\\< 줄 · 맨 아래 줄
+        assertFalse("숫자 줄은 나누지 않는다", hasMiddleGap(five.rows[0]));
+        assertEquals(1f, key(five, "1").weight, 1e-3f);
+        assertTrue("~ 줄부터 나눈다", hasMiddleGap(five.rows[1]));
+        assertTrue(five.staggerOutline);
+        KeyboardLayout five2 = KeyboardLayout.symbols2(true, portrait(sp));
+        assertFalse(hasMiddleGap(five2.rows[0]));
+        assertTrue(hasMiddleGap(five2.rows[1]));
+        sp.m.put(Prefs.NUMBER_ROW, false);
+        KeyboardLayout four = KeyboardLayout.symbols(true, portrait(sp));
+        assertTrue("4줄 배열의 1~0 줄은 글자 줄이라 나눈다", hasMiddleGap(four.rows[0]));
+        // 윤곽선 규칙: 영어의 균형 배열·분리 키보드, 기호 자판의 균형 배열·분리 키보드 (일반 배열은 아니다)
+        sp.m.put(p.detailKeyOf(Prefs.BOARD_ENGLISH), Prefs.DETAIL_BALANCED);
+        assertTrue(KeyboardLayout.english(portrait(sp)).staggerOutline);
+        sp.m.put(p.detailKeyOf(Prefs.BOARD_ENGLISH), Prefs.DETAIL_NONE);
+        assertFalse(KeyboardLayout.english(portrait(sp)).staggerOutline);
+        sp.m.put(p.detailKeyOf(Prefs.BOARD_SYMBOLS), Prefs.DETAIL_SPLIT);
+        assertTrue(KeyboardLayout.symbols(true, portrait(sp)).staggerOutline);
+        assertTrue(KeyboardLayout.symbols2(true, portrait(sp)).staggerOutline);
+        sp.m.put(p.detailKeyOf(Prefs.BOARD_SYMBOLS), Prefs.DETAIL_NONE);
+        assertFalse(KeyboardLayout.symbols(true, portrait(sp)).staggerOutline);
+    }
+
+    /** 줄 가운데(4.5~5.5칸 근처)에 키가 아닌 빈틈(GAP)이 있는지. */
+    /**
+     * 두벌식·영어의 자·모음 균형 배열도 기호 자판처럼 일반 자판의 줄을 가운데에서 자른다: 두 묶음을 100%로 두면
+     * 가운데 빈틈 없이 일반 자판과 키 하나하나의 자리·폭이 같다. 줄이면 그만큼 가운데에 빈틈이 생긴다.
+     */
+    @Test
+    public void balancedAtFullWidthJoinsLikeTheNormalKeyboard() throws Exception {
+        for (boolean grid : new boolean[]{false, true}) {
+            FakeSp sp = dubeolsik(true);
+            sp.m.put(Prefs.GRID_LAYOUT, grid);
+            Prefs p0 = portrait(sp);
+            sp.m.put(p0.balancedConsonantWidthKey(), 100);
+            sp.m.put(p0.balancedVowelWidthKey(), 100);
+            sp.m.put(p0.balancedConsonantPosKey(), 0);
+            sp.m.put(p0.balancedVowelPosKey(), 0);
+            Prefs p = portrait(sp);
+            FakeSp plain = dubeolsik(false);
+            plain.m.put(Prefs.GRID_LAYOUT, grid);
+            Prefs n = portrait(plain);
+            KeyboardLayout[][] pairs = {{KeyboardLayout.korean(p), KeyboardLayout.korean(n)},
+                    {KeyboardLayout.english(p), KeyboardLayout.english(n)}};
+            for (KeyboardLayout[] pair : pairs) {
+                for (int r = 0; r < 3; r++) {
+                    KeyboardLayout.Row row = pair[0].rows[r], normal = pair[1].rows[r];
+                    String what = "grid=" + grid + " " + r;
+                    assertFalse(what, hasMiddleGap(row));
+                    java.util.List<Key> a = letters(row), b = letters(normal);
+                    assertEquals(what, b.size(), a.size());
+                    for (int i = 0; i < a.size(); i++) {
+                        assertEquals(what + ":" + i, leftOf(normal, b.get(i), 10), leftOf(row, a.get(i), 10), 1e-3f);
+                        assertEquals(what + ":" + i, b.get(i).weight, a.get(i).weight, 1e-3f);
+                    }
+                }
+            }
+            sp.m.put(p0.balancedConsonantWidthKey(), 90);
+            sp.m.put(p0.balancedVowelWidthKey(), 90);
+            sp.m.remove(p0.balancedConsonantPosKey());   // 기본 위치: 자음은 왼쪽 끝, 모음은 오른쪽 끝
+            sp.m.remove(p0.balancedVowelPosKey());
+            assertTrue("줄이면 가운데에 빈틈", hasMiddleGap(KeyboardLayout.korean(portrait(sp)).rows[0]));
+        }
+    }
+
+    private static boolean hasMiddleGap(KeyboardLayout.Row row) {
+        float x = 0f;
+        for (Key k : row.keys) {
+            if (k.type == Key.GAP && x < 5.5f && x + k.weight > 4.5f) return true;
+            x += k.weight;
+        }
+        return false;
     }
 
     /** 쌍자음·이중모음 입력 방식: 아래로 밀기·연속 탭·둘 다. 연속 탭만이면 기본 배치의 아래로 밀기는 쓰지 않는다. */
