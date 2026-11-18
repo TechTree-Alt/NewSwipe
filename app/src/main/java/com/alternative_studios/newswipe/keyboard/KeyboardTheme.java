@@ -123,10 +123,11 @@ public final class KeyboardTheme {
         boolean neu = prefs.neumorphism();
         int[] tune = t.dark ? DARK_TUNE : LIGHT_TUNE;
         int[] shadows = t.dark ? DARK_SHADOW : LIGHT_SHADOW;
-        if (cached == null || cached.dark != t.dark || cached.accent != t.accent || cached.onAccent != t.onAccent
+        // 키보드의 강조색 키는 설정 화면용으로 보정한 색이 아니라 고른 색 그대로 쓴다.
+        if (cached == null || cached.dark != t.dark || cached.accent != t.keyAccent || cached.onAccent != t.keyOnAccent
                 || cached.neu != neu || !java.util.Arrays.equals(cached.neuTune, tune)
                 || !java.util.Arrays.equals(cached.neuShadow, shadows)) {
-            cached = new KeyboardTheme(t.dark, t.accent, t.onAccent, neu, tune, shadows);
+            cached = new KeyboardTheme(t.dark, t.keyAccent, t.keyOnAccent, neu, tune, shadows);
         }
         return cached;
     }

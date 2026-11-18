@@ -14,11 +14,18 @@ public final class AppTheme {
 
     public final boolean dark;
     public final int bg, card, text, hint, accent, onAccent;
+    /**
+     * 키보드의 강조색 키에 쓰는 색. 설정 화면의 {@link #accent}는 바탕에 묻히지 않게 보정될 수 있지만,
+     * 키보드는 사용자가 고른 색을 그대로 쓴다 (강조색 키는 면을 칠하므로 바탕과 비슷해도 키 모양으로 구분된다).
+     */
+    public final int keyAccent, keyOnAccent;
 
-    private AppTheme(boolean dark, int accent, int onAccent) {
+    private AppTheme(boolean dark, int accent, int onAccent, int keyAccent, int keyOnAccent) {
         this.dark = dark;
         this.accent = accent;
         this.onAccent = onAccent;
+        this.keyAccent = keyAccent;
+        this.keyOnAccent = keyOnAccent;
         bg = dark ? 0xFF121316 : 0xFFF4F5F8;
         card = dark ? 0xFF1E1F23 : 0xFFFFFFFF;
         text = dark ? 0xFFECECEF : 0xFF1D1E21;
@@ -28,7 +35,14 @@ public final class AppTheme {
     public static AppTheme of(Context context) {
         Prefs prefs = new Prefs(context);
         boolean dark = isDark(context, prefs);
-        return new AppTheme(dark, accent(context, prefs, dark), onAccent(context, prefs, dark));
+        int key = keyAccent(context, prefs, dark);
+        int shown = accent(context, prefs, dark);
+        return new AppTheme(dark, shown, onAccent(context, prefs, dark, shown), key, onAccent(context, prefs, dark, key));
+    }
+
+    /** 설정 화면의 강조 색이 시인성 때문에 고른 색(키보드에 쓰는 색)과 다르게 보정되었는지. */
+    public boolean accentAdjusted() {
+        return (accent & 0xFFFFFF) != (keyAccent & 0xFFFFFF);
     }
 
     public static boolean isDark(Context context, Prefs prefs) {
@@ -47,13 +61,21 @@ public final class AppTheme {
         return Prefs.ACCENT_SYSTEM.equals(prefs.accentMode()) && Build.VERSION.SDK_INT >= 31;
     }
 
-    static int accent(Context context, Prefs prefs, boolean dark) {
+    /** 보정하지 않은 강조 색 (시스템 색, 기본 파랑의 다크 모드 짝, 또는 고른 색 그대로). 키보드가 쓴다. */
+    static int keyAccent(Context context, Prefs prefs, boolean dark) {
         if (useSystemAccent(prefs)) {
             return context.getColor(dark ? android.R.color.system_accent1_200 : android.R.color.system_accent1_600);
         }
         int c = prefs.accentColor();
         // 기본 파랑은 다크 모드에서 어두운 바탕에 어울리는 밝은 파랑을 쓴다 (예전 모양 유지).
         if (c == DEFAULT_ACCENT && dark) return 0xFF7FA6FF;
+        return c;
+    }
+
+    /** 설정 화면에 쓰는 강조 색. 고른 색이 바탕에 묻히면 {@link #readable}로 보정한다. */
+    static int accent(Context context, Prefs prefs, boolean dark) {
+        int c = keyAccent(context, prefs, dark);
+        if (useSystemAccent(prefs) || c == 0xFF7FA6FF) return c;
         return readable(c, dark);
     }
 
@@ -105,11 +127,11 @@ public final class AppTheme {
         return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
     }
 
-    static int onAccent(Context context, Prefs prefs, boolean dark) {
+    /** 강조 색 {@code c} 위에 얹는 글자·아이콘 색. */
+    static int onAccent(Context context, Prefs prefs, boolean dark, int c) {
         if (useSystemAccent(prefs)) {
             return context.getColor(dark ? android.R.color.system_accent1_800 : android.R.color.system_accent1_0);
         }
-        int c = accent(context, prefs, dark);
         if (c == 0xFF7FA6FF) return 0xFF0B1A3A;   // 기본 파랑의 다크 모드 짝
         // 흰 글자와 어두운 글자 중 대비가 더 큰 쪽을 고른다.
         double l = Color.luminance(c);
