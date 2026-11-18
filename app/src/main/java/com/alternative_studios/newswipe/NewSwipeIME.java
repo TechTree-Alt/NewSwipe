@@ -647,6 +647,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         floatLeft = new View(this);
         floatRight = new View(this);
         floatingApplied = false;
+        updateFloatBack();   // 새 화면은 아직 떠 있지 않다 (떠 있으면 applySettings가 다시 둔다)
         floatClosing = false;
         floatEnterPending = false;
         main.removeCallbacks(floatCloseFallback);
@@ -752,8 +753,15 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     public void onWindowShown() {
         super.onWindowShown();
         windowHidden = false;
+        boolean entering = floatEnterPending;
         endFloatClose();
         startFloatEnter();
+        // 올라오는 움직임이 없으면(onStartInputView 없이 다시 보일 때 등) 내릴 때의 모습이 남지 않게 되돌린다.
+        if (!entering && column != null && !floatDragging) {
+            root.setTranslationY(0);
+            resetFloatPreview();
+        }
+        updateFloatBack();
         refreshHwToolbar();
         main.removeCallbacks(releaseWhileHidden);
         applyNavigationBarStyle();
@@ -889,8 +897,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     public void onWindowHidden() {
         super.onWindowHidden();
         windowHidden = true;
-        endFloatClose();   // 사라지는 움직임으로 바꿔 둔 모습을 다음에 올라올 때를 위해 되돌린다
-        endFloatTransitions();
+        // 진행 중인 움직임은 멈추되 모습은 그대로 둔다: 창은 이 뒤에도 시스템의 내리는 움직임으로 잠깐 더 그려지므로,
+        // 여기서 카드를 되돌리면 사라졌던 카드가 다시 보이며 한 번 더 내려간다. 모습은 다음에 올라올 때 되돌린다.
+        stopFloatAnimations();
+        updateFloatBack();
         hwFullKeyboard = false;   // 다음에 올라올 때는 다시 도구 막대만 보인다
         windowOnlyBottom = 0;   // 옛 값이 남아 다음에 올라올 때 자판 아래에 빈 띠가 생기지 않게 한다
         callbackBottom = -1;
@@ -1709,17 +1719,48 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
     }
 
-    /** 키보드가 내려가면 진행 중인 움직임을 끝난 모습으로 둔다 (다음에 올라올 때 중간 모습으로 보이지 않게). */
-    private void endFloatTransitions() {
+    /** 진행 중인 움직임과 예약을 멈춘다 (모습은 그대로). */
+    private void stopFloatAnimations() {
         main.removeCallbacks(floatEnterFallback);
+        main.removeCallbacks(floatCloseFallback);
         floatEnterPending = false;
-        if (root != null) {
-            root.animate().cancel();
-            root.setTranslationY(0);
+        floatClosing = false;
+        if (root != null) root.animate().cancel();
+        if (column != null) column.animate().cancel();
+    }
+
+    /**
+     * Android 13 이상에서 뒤로 가기(손짓 포함)는 키 대신 뒤로 가기 콜백으로 온다. 입력기가 따로 콜백을 두지 않으면 앱 쪽이
+     * 시스템의 키보드 내리는 움직임으로 바로 내리는데, 떠 있는 키보드는 인셋이 0이라 그 움직임이 보이지 않는다.
+     * 떠 있는 동안에는 콜백을 직접 두어 사라지는 움직임을 보인 뒤 내린다.
+     */
+    private void updateFloatBack() {
+        if (Build.VERSION.SDK_INT < 33 || getWindow() == null) return;
+        boolean want = floatingApplied && !windowHidden;
+        if (want == (floatBack != null)) return;
+        if (want) floatBack = FloatBack.register(getWindow(), this::hideKeyboard);
+        else {
+            FloatBack.unregister(getWindow(), floatBack);
+            floatBack = null;
         }
-        if (column != null && !floatClosing) {
-            column.animate().cancel();
-            if (floatingApplied) resetFloatPreview();
+    }
+
+    /** 등록한 뒤로 가기 콜백 (android.window.OnBackInvokedCallback). 없으면 null. */
+    private Object floatBack;
+
+    /** Android 13 이상에만 있는 클래스를 이 안에서만 쓴다 (낮은 버전에서 이 클래스를 읽지 않게). */
+    @android.annotation.TargetApi(33)
+    @SuppressWarnings("UseRequiresApi")   // AndroidX가 없어 @RequiresApi를 쓰지 않는다
+    private static final class FloatBack {
+        static Object register(android.app.Dialog window, Runnable onBack) {
+            android.window.OnBackInvokedCallback cb = onBack::run;
+            window.getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                    android.window.OnBackInvokedDispatcher.PRIORITY_OVERLAY, cb);
+            return cb;
+        }
+
+        static void unregister(android.app.Dialog window, Object cb) {
+            if (cb != null) window.getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback((android.window.OnBackInvokedCallback) cb);
         }
     }
 
@@ -1838,6 +1879,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         resetFloatPreview();
         column.setClipToOutline(floating);
         applyNavigationBarStyle();
+        updateFloatBack();
     }
 
     /**
@@ -2065,7 +2107,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         WindowInsets fresh = freshInsets();
         android.view.WindowManager wm = Build.VERSION.SDK_INT >= 30 && getWindow() != null && getWindow().getWindow() != null
                 ? getWindow().getWindow().getWindowManager() : null;
-        if (fresh != null && wm != null) {
+        if (Build.VERSION.SDK_INT >= 30 && fresh != null && wm != null) {
             return Math.max(0, wm.getCurrentWindowMetrics().getBounds().height()
                     - fresh.getInsets(WindowInsets.Type.statusBars() | WindowInsets.Type.displayCutout()).top);
         }
@@ -2100,7 +2142,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             setInputView(onCreateInputView());
         }
         applySettings();
-        if (appearing) prepareFloatEnter();
+        if (appearing) {
+            // 내릴 때의 모습(사라진 카드, 미끄러지던 자판)은 올라올 때 되돌린다.
+            if (root != null) root.setTranslationY(0);
+            if (floatingApplied) prepareFloatEnter();
+            else if (column != null) resetFloatPreview();
+        }
         InputConnection startIc = getCurrentInputConnection();
         // 같은 입력란을 앱이 다시 연결했을 뿐이고(검색창이 글자마다 결과를 새로 고칠 때 등) 조합하던 글자가 커서 앞에
         // 그대로 있으면, 조합을 이어 간다. 비우면 다음 자모가 새 글자로 시작해 '김'이 'ㄱㅣㅁ'으로 갈라진다.
