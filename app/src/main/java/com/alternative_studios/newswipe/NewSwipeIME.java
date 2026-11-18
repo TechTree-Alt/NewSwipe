@@ -245,6 +245,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private String clipChipPreview;
     /** 방금 복사한 것이 이미지면 칩이 붙여 넣을 이미지 형식(image/...), 텍스트면 null. */
     private String clipChipImageMime;
+    /** 칩이 붙여 넣을 텍스트의 길이 (이미지면 -1). 내용 대신 길이만 기억해, 같은 글을 붙여 넣었는지 빨리 걸러 낼 때 쓴다. */
+    private int clipChipTextLength = -1;
     private static final long CLIP_CHIP_MS = 60_000;
     private final Runnable expireClipChip = this::dismissClipChip;
     private boolean shortcutAllowed;   // 현재 입력란에서 단축어를 쓸 수 있는지 (비밀번호만 제외, 이메일 입력란은 허용)
@@ -1710,6 +1712,29 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
         if (composer.isEmpty()) updateAutoCap();
         scheduleSuggest();
+    }
+
+    /** 지금 클립보드의 이미지가 키보드가 저장한 이미지면 그 id (아니면 null). */
+    private String primaryClipImageId() {
+        try {
+            ClipData clip = clipboard != null ? clipboard.getPrimaryClip() : null;
+            if (clip == null || clip.getItemCount() == 0 || clip.getItemAt(0).getUri() == null) return null;
+            return ClipImageProvider.idOf(this, clip.getItemAt(0).getUri());
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    /** 지금 클립보드의 텍스트 (이미지이거나 읽지 못하면 null). */
+    private CharSequence primaryClipText() {
+        try {
+            ClipData clip = clipboard != null ? clipboard.getPrimaryClip() : null;
+            if (clip == null || clip.getItemCount() == 0) return null;
+            ClipData.Item first = clip.getItemAt(0);
+            return first.getUri() == null ? first.getText() : null;
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 
     /**
@@ -3895,6 +3920,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         clipChipActive = true;
         clipChipPreview = preview;
         clipChipImageMime = null;
+        clipChipTextLength = text.length();
         main.removeCallbacks(expireClipChip);
         main.postDelayed(expireClipChip, CLIP_CHIP_MS);
         refreshToolbarVisibility();
@@ -3906,6 +3932,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         clipChipActive = true;
         clipChipPreview = null;
         clipChipImageMime = mime;
+        clipChipTextLength = -1;
         main.removeCallbacks(expireClipChip);
         main.postDelayed(expireClipChip, CLIP_CHIP_MS);
         refreshToolbarVisibility();
@@ -3928,6 +3955,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         clipChipActive = false;
         clipChipPreview = null;
         clipChipImageMime = null;
+        clipChipTextLength = -1;
         refreshToolbarVisibility();
         applyTopSlotVisibility();   // 도구 막대를 꺼 두었으면 칩과 함께 그 줄도 거둔다
     }
@@ -4645,6 +4673,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (!beginEdit()) return;
         getCurrentInputConnection().performContextMenuAction(id);
         endEdit();
+        if (id == android.R.id.paste) dismissClipChip();   // 방금 복사한 것을 붙여 넣었으니 칩은 할 일을 다 했다
     }
 
     /** 선택한 글자를 복사하고, 실제로 복사했으면 키보드 위에 알린다 (선택한 글자가 없으면 아무것도 보이지 않는다). */
@@ -5196,7 +5225,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (ic != null && acceptsContent(getCurrentInputEditorInfo(), item.mime)) {
             commitComposing();
             InputContentInfo info = new InputContentInfo(uri, new ClipDescription(L.t("이미지", "Image"), new String[]{item.mime}));
-            if (ic.commitContent(info, InputConnection.INPUT_CONTENT_GRANT_READ_URI_PERMISSION, null)) return;
+            if (ic.commitContent(info, InputConnection.INPUT_CONTENT_GRANT_READ_URI_PERMISSION, null)) {
+                if (clipChipImageMime != null && item.text.equals(primaryClipImageId())) dismissClipChip();
+                return;
+            }
         }
         if (clipboard != null) {
             try {
@@ -5226,6 +5258,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             commitComposing();
             ic.commitText(text, 1);
             mirror.commit(text);
+            // 클립보드 창·고정 항목 등에서 방금 복사한 것과 같은 글을 붙여 넣었으면 칩을 거둔다.
+            if (clipChipActive && clipChipTextLength == text.length()) {
+                CharSequence clip = primaryClipText();
+                if (clip != null && text.equals(clip.toString())) dismissClipChip();
+            }
         }
     }
 
