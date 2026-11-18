@@ -177,20 +177,29 @@ public final class Prefs {
     public static final String HW_TOAST = "hw_toast";                   // 자판이 안 보일 때 바뀐 언어 알림 (기본 켜짐)
     /** 외장 키보드를 연결해 화면 자판이 감춰질 때도 도구 막대만 보이기 (기본 꺼짐). */
     public static final String HW_TOOLBAR = "hw_toolbar";
-    /** 실험실 '플로팅 키보드'의 값은 모두 이 말로 시작한다 (폴더블 내부 화면 값은 large_ + 이 말). */
+    /** 떠 있는 키보드의 값은 모두 이 말로 시작한다 (폴더블 내부 화면 값은 large_ + 이 말). */
     public static final String FLOAT_PREFIX = "float_";
-    /** 실험실 '플로팅 키보드' (기본 꺼짐). 켜면 도구 막대의 한 손 모드 버튼이 플로팅 키보드를 켜고 끈다. */
+    /**
+     * 실험실 '상태를 방향마다 기억' (기본 꺼짐). 켜면 떠 있는 키보드가 켜져 있는지를 화면(세로·가로, 폴더블 내부 화면 세로·가로)마다
+     * 따로 기억한다 ({@link #FLOAT_ON_PREFIX}). 끄면 한 손 모드 상태(ONE_HAND)에 함께 둔다.
+     */
+    public static final String FLOAT_PER_SCREEN = "float_per_screen";
+    /** 화면마다 떠 있는 키보드를 켰는지: 이 말 + {@link #floatScreen}. */
+    public static final String FLOAT_ON_PREFIX = "float_on_";
+    /** 예전 실험실 '떠 있는 키보드' 스위치. 이제 쓰지 않는다 (남은 값은 실험실 되돌리기가 지운다). */
     public static final String FLOAT_KEYBOARD = "float_keyboard";
-    /** 플로팅 키보드의 자리: 손잡이로 옮길 때마다 저장한다. 프로필(세로·가로·폴더블 내부 화면)마다 따로 둔다. */
+    /** 도구 막대의 떠 있는 키보드 버튼 (기본 감춤). */
+    public static final String TOOL_FLOAT = "tool_float";
+    /** 떠 있는 키보드의 자리: 손잡이로 옮길 때마다 저장한다. 프로필(세로·가로·폴더블 내부 화면)마다 따로 둔다. */
     public static final String FLOAT_POS_PREFIX = "float_pos_";
     /** 가로 자리: 좌우 빈 곳 가운데 왼쪽에 둔 몫 (‰, 0 = 왼쪽 끝, 1000 = 오른쪽 끝). */
     public static final String FLOAT_POS_X = FLOAT_POS_PREFIX + "x";
     /** 세로 자리: 화면 아래에서 띄운 높이 (dp). 키보드 창이 화면을 넘지 않게 쓸 때 다시 줄인다. */
     public static final String FLOAT_POS_LIFT = FLOAT_POS_PREFIX + "lift";
     public static final int FLOAT_POS_X_DEFAULT = 500, FLOAT_POS_LIFT_DEFAULT = 48, FLOAT_POS_LIFT_MAX = 4000;
-    /** 플로팅 키보드만의 자판 폭 (화면 폭의 %). 정하기 전에는 한 손 모드 자판 폭을 따른다. */
+    /** 떠 있는 키보드만의 자판 폭 (화면 폭의 %). 정하기 전에는 한 손 모드 자판 폭을 따른다. */
     public static final String FLOAT_POS_WIDTH = FLOAT_POS_PREFIX + "width";
-    /** 플로팅 키보드만의 키 높이 (보통 키 높이의 %). 정하기 전에는 한 손 모드 키 높이를 따른다. */
+    /** 떠 있는 키보드만의 키 높이 (보통 키 높이의 %). 정하기 전에는 한 손 모드 키 높이를 따른다. */
     public static final String FLOAT_POS_HEIGHT = FLOAT_POS_PREFIX + "height";
     public static final int FLOAT_WIDTH_MIN = 20, FLOAT_WIDTH_MAX = 100, FLOAT_HEIGHT_MIN = 50, FLOAT_HEIGHT_MAX = 130;
     /**
@@ -305,7 +314,7 @@ public final class Prefs {
     /** 한 손 모드 상태: "off" | "left" | "right". 키보드에서 켜고 끄는 상태라 설정 내보내기에서는 뺀다. */
     public static final String ONE_HAND = "one_hand";
     public static final String ONE_HAND_OFF = "off", ONE_HAND_LEFT = "left", ONE_HAND_RIGHT = "right";
-    /** 한 손 모드의 세 번째 상태: 플로팅 키보드 (실험실 '플로팅 키보드'를 켰을 때만 쓴다). */
+    /** 한 손 모드의 세 번째 상태: 떠 있는 키보드 (도구 막대의 떠 있는 키보드 버튼·기능으로 켠다). */
     public static final String ONE_HAND_FLOAT = "float";
     /** 한 손 모드 버튼을 눌러 켤 때 쓰는 쪽 (마지막으로 쓴 쪽). */
     public static final String ONE_HAND_LAST = "one_hand_last";
@@ -576,37 +585,88 @@ public final class Prefs {
         return oneHandView ? this : new Prefs(sp, true, profile, profileEdit, board);
     }
 
-    /** 한 손 모드 상태 (ONE_HAND_OFF·LEFT·RIGHT·FLOAT). 플로팅은 실험실 '플로팅 키보드'를 켰을 때만 (끄면 OFF). */
+    /** 저장된 한 손 모드 상태 (ONE_HAND_OFF·LEFT·RIGHT·FLOAT). 화면에서 실제로 쓰는 상태는 {@link #oneHand(String)}. */
     public String oneHand() {
         String v = sp.getString(ONE_HAND, ONE_HAND_OFF);
-        if (ONE_HAND_FLOAT.equals(v)) return floatKeyboard() ? v : ONE_HAND_OFF;
-        return ONE_HAND_LEFT.equals(v) || ONE_HAND_RIGHT.equals(v) ? v : ONE_HAND_OFF;
+        return ONE_HAND_LEFT.equals(v) || ONE_HAND_RIGHT.equals(v) || ONE_HAND_FLOAT.equals(v) ? v : ONE_HAND_OFF;
     }
 
-    /** 실험실 '플로팅 키보드'. */
-    public boolean floatKeyboard() { return sp.getBoolean(FLOAT_KEYBOARD, false); }
+    /**
+     * 이 화면({@link #floatScreen})에서 쓰는 한 손 모드 상태. '상태를 방향마다 기억'을 켰으면 떠 있는 키보드인지는 화면마다 따로
+     * 기억한 값을 따르고, 그 화면에서 꺼져 있으면 저장된 한 손 모드(왼쪽·오른쪽·끔)를 쓴다.
+     */
+    public String oneHand(String screen) {
+        String v = oneHand();
+        if (!floatPerScreen()) return v;
+        if (sp.getBoolean(FLOAT_ON_PREFIX + screen, false)) return ONE_HAND_FLOAT;
+        return ONE_HAND_FLOAT.equals(v) ? ONE_HAND_OFF : v;
+    }
 
-    /** 이 프로필의 플로팅 키보드 가로 자리 (‰). */
+    /** 이 화면의 한 손 모드 상태를 바꾼다. '상태를 방향마다 기억'을 켰으면 떠 있는 키보드인지는 이 화면에만 저장한다. */
+    public void setOneHand(String screen, String side) {
+        if (!floatPerScreen()) {
+            setOneHand(side);
+            return;
+        }
+        SharedPreferences.Editor e = sp.edit().putBoolean(FLOAT_ON_PREFIX + screen, ONE_HAND_FLOAT.equals(side));
+        if (!ONE_HAND_FLOAT.equals(side)) {
+            e.putString(ONE_HAND, side);
+            if (!ONE_HAND_OFF.equals(side)) e.putString(ONE_HAND_LAST, side);
+        }
+        e.apply();
+    }
+
+    /** 실험실 '상태를 방향마다 기억'. */
+    public boolean floatPerScreen() { return sp.getBoolean(FLOAT_PER_SCREEN, false); }
+
+    /**
+     * '상태를 방향마다 기억'을 켜고 끈다. 켤 때 떠 있는 키보드였으면 지금 화면에서만 켜 두고, 끌 때는 지금 화면의 상태를 모든 화면에 쓴다.
+     */
+    public void setFloatPerScreen(String screen, boolean on) {
+        if (on == floatPerScreen()) return;
+        String now = oneHand(screen);
+        SharedPreferences.Editor e = sp.edit().putBoolean(FLOAT_PER_SCREEN, on);
+        if (on) {
+            e.putBoolean(FLOAT_ON_PREFIX + screen, ONE_HAND_FLOAT.equals(now));
+            if (ONE_HAND_FLOAT.equals(now)) e.putString(ONE_HAND, ONE_HAND_OFF);
+        } else {
+            e.putString(ONE_HAND, now);
+        }
+        e.apply();
+    }
+
+    /**
+     * 떠 있는 키보드 상태를 기억하는 화면: 세로·가로와, 화면의 짧은 쪽 폭이 '폴더블 내부 화면 판정 기준' 이상이면 내부 화면.
+     * '폴더블 내부 화면 별도 키보드'를 켜지 않아도 폴더블의 내부·외부 화면을 나눈다.
+     */
+    public String floatScreen(Context c) {
+        android.content.res.Configuration cfg = c.getResources().getConfiguration();
+        boolean land = cfg.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+        boolean large = cfg.smallestScreenWidthDp >= largeScreenDp();
+        return (large ? "large_" : "") + (land ? "land" : "port");
+    }
+
+    /** 이 프로필의 떠 있는 키보드 가로 자리 (‰). */
     public int floatX() { return clamp(sp.getInt(oneHandKey(FLOAT_POS_X), FLOAT_POS_X_DEFAULT), 0, 1000); }
 
-    /** 이 프로필의 플로팅 키보드 띄운 높이 (dp). */
+    /** 이 프로필의 떠 있는 키보드 띄운 높이 (dp). */
     public int floatLiftDp() { return clamp(sp.getInt(oneHandKey(FLOAT_POS_LIFT), FLOAT_POS_LIFT_DEFAULT), 0, FLOAT_POS_LIFT_MAX); }
 
-    /** 이 프로필의 플로팅 키보드 자판 폭 (%). 손잡이 오른쪽 모서리로 정하기 전에는 한 손 모드 자판 폭. */
+    /** 이 프로필의 떠 있는 키보드 자판 폭 (%). 손잡이 오른쪽 모서리로 정하기 전에는 한 손 모드 자판 폭. */
     public int floatWidthForProfile() {
         String key = oneHandKey(FLOAT_POS_WIDTH);
         return sp.contains(key) ? clamp(sp.getInt(key, 0), FLOAT_WIDTH_MIN, FLOAT_WIDTH_MAX)
                 : clamp(oneHandWidthForProfile(), FLOAT_WIDTH_MIN, FLOAT_WIDTH_MAX);
     }
 
-    /** 이 프로필의 플로팅 키보드 키 높이 (%). 정하기 전에는 한 손 모드 키 높이. */
+    /** 이 프로필의 떠 있는 키보드 키 높이 (%). 정하기 전에는 한 손 모드 키 높이. */
     public int floatHeightForProfile() {
         String key = oneHandKey(FLOAT_POS_HEIGHT);
         return sp.contains(key) ? clamp(sp.getInt(key, 0), FLOAT_HEIGHT_MIN, FLOAT_HEIGHT_MAX)
                 : clamp(oneHandHeightForProfile(), FLOAT_HEIGHT_MIN, FLOAT_HEIGHT_MAX);
     }
 
-    /** 이 프로필의 플로팅 키보드 크기와 자리를 한 번에 저장한다 (크기를 바꾸면 자리도 함께 바뀐다). */
+    /** 이 프로필의 떠 있는 키보드 크기와 자리를 한 번에 저장한다 (크기를 바꾸면 자리도 함께 바뀐다). */
     public void setFloatGeometry(int widthPct, int heightPct, int xPermille, int liftDp) {
         sp.edit().putInt(oneHandKey(FLOAT_POS_WIDTH), clamp(widthPct, FLOAT_WIDTH_MIN, FLOAT_WIDTH_MAX))
                 .putInt(oneHandKey(FLOAT_POS_HEIGHT), clamp(heightPct, FLOAT_HEIGHT_MIN, FLOAT_HEIGHT_MAX))
@@ -614,7 +674,7 @@ public final class Prefs {
                 .putInt(oneHandKey(FLOAT_POS_LIFT), clamp(liftDp, 0, FLOAT_POS_LIFT_MAX)).apply();
     }
 
-    /** 이 프로필의 플로팅 키보드 자리를 저장한다. */
+    /** 이 프로필의 떠 있는 키보드 자리를 저장한다. */
     public void setFloatPos(int xPermille, int liftDp) {
         sp.edit().putInt(oneHandKey(FLOAT_POS_X), clamp(xPermille, 0, 1000))
                 .putInt(oneHandKey(FLOAT_POS_LIFT), clamp(liftDp, 0, FLOAT_POS_LIFT_MAX)).apply();
@@ -778,7 +838,7 @@ public final class Prefs {
             DUBEOLSIK_SHIFT_HIDDEN, KOREAN_SHIFT_FN, BOTTOM_EMOJI_KEY, BOTTOM_CLIPBOARD_KEY, BOTTOM_CURSOR_KEY, BOTTOM_VOICE_KEY};
     /** 도구 막대 버튼 사용자화 화면의 값. */
     private static final String[] TOOL_BUTTON_VALUES = {TOOL_ORDER, TOOL_CLIPBOARD, TOOL_EMOJI, VOICE_KEY, TOOL_UNDO,
-            TOOL_SETTINGS, TOOL_ONE_HAND, TOOL_HIDE};
+            TOOL_SETTINGS, TOOL_ONE_HAND, TOOL_FLOAT, TOOL_HIDE};
 
     /** 키보드 사용자화의 한 설정 범위: 목록의 되돌리기에 보이는 이름(null이면 보이지 않음)과 그 범위의 값 키·키 앞부분. */
     private static final class EditorScope {
@@ -1960,11 +2020,15 @@ public final class Prefs {
             case com.alternative_studios.newswipe.keyboard.ToolbarButtons.UNDO: return TOOL_UNDO;
             case com.alternative_studios.newswipe.keyboard.ToolbarButtons.SETTINGS: return TOOL_SETTINGS;
             case com.alternative_studios.newswipe.keyboard.ToolbarButtons.ONE_HAND: return TOOL_ONE_HAND;
+            case com.alternative_studios.newswipe.keyboard.ToolbarButtons.FLOAT: return TOOL_FLOAT;
             default: return TOOL_HIDE;
         }
     }
 
-    public boolean toolShown(String id) { return sp.getBoolean(toolShownKey(id), true); }
+    public boolean toolShown(String id) {
+        // 떠 있는 키보드 버튼은 나중에 생겨, 켜야 보인다.
+        return sp.getBoolean(toolShownKey(id), !com.alternative_studios.newswipe.keyboard.ToolbarButtons.FLOAT.equals(id));
+    }
 
     public void setToolShown(String id, boolean shown) { sp.edit().putBoolean(toolShownKey(id), shown).apply(); }
 

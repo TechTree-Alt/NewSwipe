@@ -299,7 +299,7 @@ public final class SettingsActivity extends Activity {
             {"clipemoji", L.t("클립보드 및 이모지", "Clipboard & emoji"), L.t("클립보드 기록, 편집 버튼, 이모지 크기·추천", "Clipboard history, edit buttons, emoji size and suggestions")},
             {"onehand", L.t("한 손 모드", "One-handed mode"), L.t("자판 폭·키 높이, 아래쪽 여백", "Keyboard width, key height, bottom padding")},
             {"backup", L.t("설정 가져오기 및 내보내기", "Import & export settings"), L.t("모든 설정을 파일로 저장하거나 불러오기", "Save all settings to a file or load them")},
-            {"lab", L.t("실험실", "Labs"), L.t("밀기 방향 판정, 외국어 자판, 외장 키보드, 플로팅 키보드", "Swipe direction, other languages, physical keyboard, floating keyboard")},
+            {"lab", L.t("실험실", "Labs"), L.t("밀기 방향 판정, 외국어 자판, 외장 키보드, 떠 있는 키보드", "Swipe direction, other languages, physical keyboard, floating keyboard")},
     };
     }
 
@@ -2705,23 +2705,25 @@ public final class SettingsActivity extends Activity {
         addFloatKeyboard();
     }
 
-    /** 실험실 '플로팅 키보드': 한 손 모드의 자판 폭·키 높이를 그대로 쓰고, 화면 위 원하는 자리로 옮겨 띄운다. */
+    /** 실험실 '떠 있는 키보드': 떠 있는 키보드 상태를 화면(방향)마다 기억할지. 떠 있는 키보드는 도구 막대 버튼이나 기능으로 켠다. */
     private void addFloatKeyboard() {
-        LinearLayout box = section(L.t("플로팅 키보드", "Floating keyboard"));
-        box.addView(toggle(L.t("플로팅 키보드", "Floating keyboard"),
-                L.t("도구 막대의 한 손 모드 버튼을 누르면 키보드를 화면 위에 띄웁니다. 키보드 아래의 손잡이를 끌어 옮기고, "
-                        + "카드를 화면 아래 끝까지 끌어 놓거나 버튼을 다시 누르면 원래대로 돌아옵니다. "
-                        + "손잡이 오른쪽 모서리를 끌면 폭과 키 높이를 바꾸고, 도구 막대도 키 높이를 따라 커지고 작아집니다. 이 크기는 플로팅 키보드에만 쓰고, 정하기 전에는 한 손 모드 설정을 따릅니다. "
-                        + "자리와 크기는 화면 방향마다 기억합니다. "
-                        + "한 손 모드 버튼을 왼쪽·오른쪽으로 밀면 한 손 모드를 씁니다. "
+        LinearLayout box = section(L.t("떠 있는 키보드", "Floating keyboard"));
+        box.addView(note(L.t("도구 막대의 떠 있는 키보드 버튼(도구 막대 사용자화에서 켭니다)이나 '떠 있는 키보드' 기능으로 키보드를 화면 위에 띄웁니다. "
+                        + "키보드 아래의 손잡이를 끌어 옮기고, 카드를 화면 아래 끝까지 끌어 놓거나 버튼을 다시 누르면 원래대로 돌아옵니다. "
+                        + "손잡이 오른쪽 모서리를 끌면 폭과 키 높이를 바꾸고, 도구 막대도 키 높이를 따라 커지고 작아집니다. "
+                        + "이 크기는 떠 있는 키보드에만 쓰고, 정하기 전에는 한 손 모드 설정을 따릅니다. 자리와 크기는 화면 방향마다 기억합니다. "
                         + "키보드가 떠 있는 동안 앱 화면은 줄어들지 않으므로, 입력란이 가려지면 키보드를 옮기세요.",
-                        "Tapping the one-handed mode button on the toolbar floats the keyboard over the screen. Drag the handle under the keyboard to move it. "
-                        + "To dock it, drag the keyboard down to the bottom of the screen or tap the button again. "
-                        + "Drag the right corner of the handle to change the width and key height; the toolbar scales with the key height. This size applies only to the floating keyboard and follows the one-handed mode settings until you change it. "
-                        + "Position and size are remembered for each screen orientation. "
-                        + "Swipe the one-handed mode button left or right for one-handed mode. "
-                        + "The app doesn't shrink while the keyboard floats, so move the keyboard if it covers the text field."),
-                Prefs.FLOAT_KEYBOARD, prefs.floatKeyboard()));
+                "Float the keyboard over the screen with the floating keyboard button on the toolbar (turn it on in toolbar customization) or the 'Floating keyboard' action. "
+                        + "Drag the handle under the keyboard to move it. To dock it, drag the keyboard down to the bottom of the screen or tap the button again. "
+                        + "Drag the right corner of the handle to change the width and key height; the toolbar scales with the key height. "
+                        + "This size applies only to the floating keyboard and follows the one-handed mode settings until you change it. Position and size are remembered for each screen orientation. "
+                        + "The app doesn't shrink while the keyboard floats, so move the keyboard if it covers the text field.")));
+        box.addView(toggle(L.t("상태를 방향마다 기억", "Remember state per orientation"),
+                L.t("키보드를 띄웠는지를 세로·가로 화면, 접는 기기의 안쪽·바깥 화면마다 따로 기억합니다. "
+                        + "예를 들어 가로 화면에서 띄워도 세로 화면에서 꺼져 있었다면 세로로 돌릴 때 원래 키보드로 돌아오고, 다시 가로로 돌리면 뜹니다.",
+                        "Remembers whether the keyboard floats separately for portrait and landscape, and for a foldable's inner and outer screens. "
+                        + "For example, if you float it in landscape but it was docked in portrait, it docks when you rotate to portrait and floats again in landscape."),
+                prefs.floatPerScreen(), on -> prefs.setFloatPerScreen(prefs.floatScreen(this), on)));
     }
 
     /**

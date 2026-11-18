@@ -54,6 +54,7 @@ public final class Icons {
     public static final int PASTE = 43;           // 붙여넣기 (아래 화살표가 든 클립보드)
     public static final int SELECT_ALL = 44;      // 전체 선택 (점선 테두리 안의 네모)
     public static final int CHEVRON_UP = 45;      // 위 꺾쇠 (HIDE를 뒤집은 것: 접은 미리보기 펼치기)
+    public static final int FLOAT = 46;           // 떠 있는 키보드 (휴대폰 화면 가운데에 뜬 작은 자판)
 
     private static final Path path = new Path();
     private static final RectF oval = new RectF();
@@ -494,6 +495,21 @@ public final class Icons {
                 oval.set(8.5f, 8.5f, 15.5f, 15.5f);
                 p.setStyle(Paint.Style.FILL_AND_STROKE);
                 c.drawRoundRect(oval, 1, 1, p);
+                break;
+            case FLOAT:
+                // 휴대폰 화면 가운데에 뜬 작은 자판(점 네 개가 든 둥근 네모)과 그 아래 손잡이.
+                oval.set(5, 2.5f, 19, 21.5f);
+                c.drawRoundRect(oval, 2.6f, 2.6f, p);
+                p.setStyle(Paint.Style.FILL);
+                for (int r = 0; r < 2; r++) {
+                    for (int col = 0; col < 2; col++) {
+                        oval.set(9.2f + col * 3.2f, 8.2f + r * 3.2f, 11.6f + col * 3.2f, 10.6f + r * 3.2f);
+                        c.drawRoundRect(oval, 0.6f, 0.6f, p);
+                    }
+                }
+                oval.set(10, 16, 14, 17.2f);
+                c.drawRoundRect(oval, 0.6f, 0.6f, p);
+                p.setStyle(Paint.Style.STROKE);
                 break;
             case CHEVRON_UP:
                 path.moveTo(6, 14.5f);

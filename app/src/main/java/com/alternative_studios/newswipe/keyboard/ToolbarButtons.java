@@ -11,11 +11,11 @@ import java.util.List;
  */
 public final class ToolbarButtons {
     public static final String CLIPBOARD = "clipboard", EMOJI = "emoji", VOICE = "voice", UNDO = "undo",
-            SETTINGS = "settings", HIDE = "hide", ONE_HAND = "onehand";
+            SETTINGS = "settings", HIDE = "hide", ONE_HAND = "onehand", FLOAT = "float";
     /** 기본 배치. */
     public static final String[] DEFAULT_LEFT = {CLIPBOARD, EMOJI, VOICE, UNDO};
-    public static final String[] DEFAULT_RIGHT = {ONE_HAND, SETTINGS, HIDE};
-    public static final String[] ALL = {CLIPBOARD, EMOJI, VOICE, UNDO, ONE_HAND, SETTINGS, HIDE};
+    public static final String[] DEFAULT_RIGHT = {ONE_HAND, FLOAT, SETTINGS, HIDE};
+    public static final String[] ALL = {CLIPBOARD, EMOJI, VOICE, UNDO, ONE_HAND, FLOAT, SETTINGS, HIDE};
 
     private ToolbarButtons() {
     }
@@ -30,6 +30,7 @@ public final class ToolbarButtons {
             case SETTINGS: return L.t("설정 버튼", "Settings button");
             case HIDE: return L.t("키보드 숨기기 버튼", "Hide keyboard button");
             case ONE_HAND: return L.t("한 손 모드 버튼", "One-handed mode button");
+            case FLOAT: return L.t("떠 있는 키보드 버튼", "Floating keyboard button");
             default: return id;
         }
     }
@@ -41,6 +42,7 @@ public final class ToolbarButtons {
             case UNDO: return L.t("입력란에 Ctrl+Z를 보냅니다. 앱이 지원하면 방금 한 입력이나 지우기를 되돌립니다.", "Sends Ctrl+Z to the field. If the app supports it, undoes what you just typed or deleted.");
             case HIDE: return L.t("외장 키보드를 연결해 도구 막대만 보일 때는 뒤집혀 '키보드 보이기' 버튼이 됩니다. 누르면 자판 전체가 보입니다.", "When a physical keyboard is connected and only the toolbar is shown, it flips into a 'Show keyboard' button. Tap it to show the whole keyboard.");
             case ONE_HAND: return L.t("누르면 한 손 모드를 켜고 끕니다. 왼쪽·오른쪽으로 밀면 그쪽으로 쏠린 한 손 모드가 됩니다.", "Tap to turn one-handed mode on or off. Swipe left or right to shift it to that side.");
+            case FLOAT: return L.t("누르면 키보드를 화면 위에 띄우고, 다시 누르면 원래대로 돌아옵니다.", "Tap to float the keyboard over the screen; tap again to dock it.");
             default: return null;
         }
     }
@@ -53,6 +55,7 @@ public final class ToolbarButtons {
             case UNDO: return Icons.UNDO;
             case SETTINGS: return Icons.SETTINGS;
             case ONE_HAND: return Icons.ONE_HAND;
+            case FLOAT: return Icons.FLOAT;
             default: return Icons.HIDE;
         }
     }

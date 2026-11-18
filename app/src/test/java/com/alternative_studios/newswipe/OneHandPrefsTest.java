@@ -90,18 +90,14 @@ public class OneHandPrefsTest {
     }
 
     @Test
-    public void floatingNeedsLabSwitchAndKeepsPositionPerProfile() throws Exception {
+    public void floatingKeepsPositionPerProfile() throws Exception {
         LegacySwipeSettingsTest.MapSp sp = new LegacySwipeSettingsTest.MapSp();
         Prefs port = view(sp, Prefs.PROFILE_PORTRAIT), land = view(sp, Prefs.PROFILE_LANDSCAPE);
         Prefs largeLand = view(sp, Prefs.PROFILE_LARGE_LANDSCAPE);
-        // 실험실 스위치가 꺼져 있으면 플로팅 상태가 저장되어 있어도 한 손 모드는 꺼진 것으로 본다 (예전 버전·백업도 같다).
         port.setOneHand(Prefs.ONE_HAND_FLOAT);
-        assertEquals(Prefs.ONE_HAND_OFF, port.oneHand());
-        sp.m.put(Prefs.FLOAT_KEYBOARD, true);
         assertEquals(Prefs.ONE_HAND_FLOAT, port.oneHand());
-        sp.m.put(Prefs.FLOAT_KEYBOARD, false);
-        assertEquals(Prefs.ONE_HAND_OFF, port.oneHand());
-        // 플로팅은 버튼으로 켤 한 손 모드 쪽으로 기억하지 않는다.
+        assertEquals(Prefs.ONE_HAND_FLOAT, port.oneHand("land"));   // 방향마다 기억하지 않으면 모든 화면이 같다
+        // 떠 있는 키보드는 버튼으로 켤 한 손 모드 쪽으로 기억하지 않는다.
         port.setOneHand(Prefs.ONE_HAND_LEFT);
         port.setOneHand(Prefs.ONE_HAND_FLOAT);
         assertEquals(Prefs.ONE_HAND_LEFT, port.oneHandLast());
@@ -116,14 +112,14 @@ public class OneHandPrefsTest {
         assertEquals(300, land.floatLiftDp());
         assertEquals(Prefs.FLOAT_POS_X_DEFAULT, largeLand.floatX());
         assertEquals(1000, port.floatX());
-        // 실험실 되돌리기는 플로팅 설정과 자리를 모두 지운다.
+        // 실험실 되돌리기는 떠 있는 키보드 설정과 자리를 모두 지운다.
         largeLand.setFloatPos(10, 10);
-        sp.m.put(Prefs.FLOAT_KEYBOARD, true);
+        sp.m.put(Prefs.FLOAT_PER_SCREEN, true);
         port.resetSection("lab");
         assertEquals(Prefs.FLOAT_POS_X_DEFAULT, port.floatX());
         assertEquals(Prefs.FLOAT_POS_X_DEFAULT, land.floatX());
         assertEquals(Prefs.FLOAT_POS_X_DEFAULT, largeLand.floatX());
-        assertEquals(false, port.floatKeyboard());
+        assertEquals(false, port.floatPerScreen());
     }
 
     @Test
@@ -135,7 +131,7 @@ public class OneHandPrefsTest {
         sp.m.put(port.oneHandHeightKey(), 80);
         assertEquals(70, port.floatWidthForProfile());
         assertEquals(80, port.floatHeightForProfile());
-        // 플로팅에서 정하면 플로팅만 바뀌고 한 손 모드 값은 그대로다. 자리도 함께 저장한다.
+        // 떠 있는 키보드에서 정하면 떠 있는 키보드만 바뀌고 한 손 모드 값은 그대로다. 자리도 함께 저장한다.
         port.setFloatGeometry(55, 120, 300, 100);
         assertEquals(55, port.floatWidthForProfile());
         assertEquals(120, port.floatHeightForProfile());
@@ -149,5 +145,32 @@ public class OneHandPrefsTest {
         assertEquals(Prefs.FLOAT_WIDTH_MIN, land.floatWidthForProfile());
         assertEquals(Prefs.FLOAT_HEIGHT_MAX, land.floatHeightForProfile());
         assertEquals(55, port.floatWidthForProfile());
+    }
+
+    @Test
+    public void floatingStateCanBeRememberedPerScreen() throws Exception {
+        LegacySwipeSettingsTest.MapSp sp = new LegacySwipeSettingsTest.MapSp();
+        Prefs p = view(sp, Prefs.PROFILE_PORTRAIT);
+        // 켜 둔 채로 '방향마다 기억'을 켜면 지금 화면에서만 떠 있다.
+        p.setOneHand("land", Prefs.ONE_HAND_FLOAT);
+        p.setFloatPerScreen("land", true);
+        assertEquals(Prefs.ONE_HAND_FLOAT, p.oneHand("land"));
+        assertEquals(Prefs.ONE_HAND_OFF, p.oneHand("port"));
+        // 폴더블 내부 화면에서 켜도 외부 화면은 그대로다.
+        p.setOneHand("large_port", Prefs.ONE_HAND_FLOAT);
+        assertEquals(Prefs.ONE_HAND_FLOAT, p.oneHand("large_port"));
+        assertEquals(Prefs.ONE_HAND_OFF, p.oneHand("port"));
+        // 외부 화면에서 한 손 모드를 켜면, 떠 있지 않은 화면은 한 손 모드를 쓰고 떠 있는 화면은 그대로 떠 있다.
+        p.setOneHand("port", Prefs.ONE_HAND_LEFT);
+        assertEquals(Prefs.ONE_HAND_LEFT, p.oneHand("port"));
+        assertEquals(Prefs.ONE_HAND_FLOAT, p.oneHand("land"));
+        // 떠 있는 화면에서 끄면 그 화면만 꺼진다.
+        p.setOneHand("land", Prefs.ONE_HAND_OFF);
+        assertEquals(Prefs.ONE_HAND_OFF, p.oneHand("land"));
+        assertEquals(Prefs.ONE_HAND_FLOAT, p.oneHand("large_port"));
+        // '방향마다 기억'을 끄면 지금 화면의 상태를 모든 화면이 쓴다.
+        p.setFloatPerScreen("large_port", false);
+        assertEquals(Prefs.ONE_HAND_FLOAT, p.oneHand("port"));
+        assertEquals(Prefs.ONE_HAND_FLOAT, p.oneHand("land"));
     }
 }
