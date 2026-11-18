@@ -4,6 +4,12 @@
     <!-- 키 진동. 이 앱이 요청하는 유일한 권한이다 (설치 시 자동 허용되는 일반 권한). -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!-- 액티비티를 세로 고정(screenOrientation="portrait")하면 이 기능이 '필수'로 자동 선언되어
+         가로 화면 전용 기기(일부 태블릿·크롬북·데스크톱·XR)에서 설치가 막힌다. 선택사항으로 표시해 둔다. -->
+    <uses-feature
+        android:name="android.hardware.screen.portrait"
+        android:required="false" />
+
     <!-- 음성 입력 버튼이 기기에 설치된 음성 입력기(예: Google 음성 입력)를 찾을 수 있게 한다. -->
     <queries>
         <intent>
