@@ -648,7 +648,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         floatRight = new View(this);
         floatingApplied = false;
         floatClosing = false;
+        floatEnterPending = false;
         main.removeCallbacks(floatCloseFallback);
+        main.removeCallbacks(floatEnterFallback);
         veilOutline = null;   // 예전 body에 붙어 있던 것
         appliedOneHand = null;
         body.addView(column, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
@@ -751,6 +753,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         super.onWindowShown();
         windowHidden = false;
         endFloatClose();
+        startFloatEnter();
         refreshHwToolbar();
         main.removeCallbacks(releaseWhileHidden);
         applyNavigationBarStyle();
@@ -887,6 +890,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         super.onWindowHidden();
         windowHidden = true;
         endFloatClose();   // 사라지는 움직임으로 바꿔 둔 모습을 다음에 올라올 때를 위해 되돌린다
+        endFloatTransitions();
         hwFullKeyboard = false;   // 다음에 올라올 때는 다시 도구 막대만 보인다
         windowOnlyBottom = 0;   // 옛 값이 남아 다음에 올라올 때 자판 아래에 빈 띠가 생기지 않게 한다
         callbackBottom = -1;
@@ -1558,8 +1562,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         prefs.setOneHand(prefs.floatScreen(this), side);
         if (keyboard == null) return;
         keyboard.cancelAll();
+        boolean wasFloating = floatingApplied;
         applySettings();
         setLayoutKind(layoutKind);   // 자·모음 균형 배열은 한 손 모드에서 빈틈 없는 배열로 바뀐다
+        // 아래 키보드 ↔ 떠 있는 키보드: 새 배치가 놓인 첫 프레임부터 움직임을 보인다.
+        if (!wasFloating && floatingApplied) beforeNextDraw(column, this::animateFloatIn);
+        else if (wasFloating && !floatingApplied) beforeNextDraw(root, this::animateDockIn);
     }
 
     /**
@@ -1648,6 +1656,84 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                     // 시스템이 내리지 않았으면(그 사이 입력란이 바뀌는 등) 카드를 다시 보인다.
                     main.postDelayed(floatCloseFallback, 500);
                 }).start();
+    }
+
+    // ---- 떠 있는 키보드가 나타나고, 아래 키보드로 돌아갈 때의 움직임.
+    // 떠 있는 키보드는 인셋이 0이라 시스템이 올리고 내리는 움직임을 보이지 않으므로 직접 보인다.
+
+    /** 키보드가 올라오기 전에, 떠 있는 키보드면 카드를 사라진 모습(아래로 조금, 작게, 투명)으로 둔다. onWindowShown에서 움직인다. */
+    private void prepareFloatEnter() {
+        if (!floatingApplied || column == null) return;
+        floatEnterPending = true;
+        setFloatHiddenPose();
+        main.removeCallbacks(floatEnterFallback);
+        main.postDelayed(floatEnterFallback, 300);   // onWindowShown이 오지 않아도 투명한 채로 남지 않게
+    }
+
+    /** 사라진 모습: 카드 아래쪽 가운데를 중심으로 조금 작고, 24dp 아래이고, 투명하다 (사라질 때 끝나는 모습과 같다). */
+    private void setFloatHiddenPose() {
+        column.animate().cancel();
+        column.setPivotX(column.getWidth() / 2f);
+        column.setPivotY(column.getHeight());
+        column.setAlpha(0f);
+        column.setTranslationY(Ui.dp(this, 24));
+        column.setScaleX(0.94f);
+        column.setScaleY(0.94f);
+    }
+
+    private boolean floatEnterPending;
+
+    private final Runnable floatEnterFallback = this::startFloatEnter;
+
+    private void startFloatEnter() {
+        main.removeCallbacks(floatEnterFallback);
+        if (!floatEnterPending) return;
+        floatEnterPending = false;
+        if (floatingApplied && column != null) animateFloatIn();
+    }
+
+    /** 카드가 사라진 모습에서 제자리로: 아래에서 살짝 올라오며 커지고 또렷해진다. */
+    private void animateFloatIn() {
+        if (column.getAlpha() == 1f) setFloatHiddenPose();   // 아래 키보드에서 바꿀 때는 여기서 처음 둔다
+        column.setPivotX(column.getWidth() / 2f);
+        column.setPivotY(column.getHeight());
+        column.animate().alpha(1f).translationY(0).scaleX(1f).scaleY(1f)
+                .setDuration(200).setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+    }
+
+    /** 떠 있는 키보드에서 아래 키보드로: 시스템이 키보드를 올릴 때처럼 화면 아래에서 미끄러져 올라온다. */
+    private void animateDockIn() {
+        root.animate().cancel();
+        root.setTranslationY(root.getHeight());
+        root.animate().translationY(0).setDuration(220)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+    }
+
+    /** 키보드가 내려가면 진행 중인 움직임을 끝난 모습으로 둔다 (다음에 올라올 때 중간 모습으로 보이지 않게). */
+    private void endFloatTransitions() {
+        main.removeCallbacks(floatEnterFallback);
+        floatEnterPending = false;
+        if (root != null) {
+            root.animate().cancel();
+            root.setTranslationY(0);
+        }
+        if (column != null && !floatClosing) {
+            column.animate().cancel();
+            if (floatingApplied) resetFloatPreview();
+        }
+    }
+
+    /** 다음 프레임을 그리기 직전(새 배치가 놓인 뒤)에 한 번 부른다. */
+    private static void beforeNextDraw(View v, Runnable r) {
+        v.getViewTreeObserver().addOnPreDrawListener(new android.view.ViewTreeObserver.OnPreDrawListener() {
+            @Override
+            public boolean onPreDraw() {
+                v.getViewTreeObserver().removeOnPreDrawListener(this);
+                r.run();
+                return true;
+            }
+        });
+        v.invalidate();
     }
 
     /** 떠 있는 키보드가 사라지는 움직임 중인지. */
@@ -2008,11 +2094,13 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     @Override
     public void onStartInputView(EditorInfo info, boolean restarting) {
         super.onStartInputView(info, restarting);
+        boolean appearing = windowHidden;   // 내려가 있던 키보드가 이제 올라온다
         windowHidden = false;   // 창이 실제로 보이기(onWindowShown) 전에 불리므로 여기서도 켠다
         if (KeyboardTheme.of(this) != theme) {
             setInputView(onCreateInputView());
         }
         applySettings();
+        if (appearing) prepareFloatEnter();
         InputConnection startIc = getCurrentInputConnection();
         // 같은 입력란을 앱이 다시 연결했을 뿐이고(검색창이 글자마다 결과를 새로 고칠 때 등) 조합하던 글자가 커서 앞에
         // 그대로 있으면, 조합을 이어 간다. 비우면 다음 자모가 새 글자로 시작해 '김'이 'ㄱㅣㅁ'으로 갈라진다.
