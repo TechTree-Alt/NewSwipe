@@ -3175,6 +3175,10 @@ public final class SettingsActivity extends Activity {
             ((LinearLayout.LayoutParams) hex.getLayoutParams()).topMargin = Ui.dp(this, 16);   // 색 동그라미와 띄운다
             accent.addView(hex);
         }
+        if (AppTheme.of(this).accentAdjusted()) {
+            accent.addView(note(L.t("시인성 문제로 색이 조정되어 보일 수 있습니다. 실제 키보드 강조 색 키에는 조정된 색이 아닌 원본 색으로 보입니다.",
+                    "The color may look adjusted here for visibility. Accent keys on the keyboard use your original color, not the adjusted one.")));
+        }
 
         LinearLayout keyColors = section(L.t("키 색", "Key colors"));
         keyColors.addView(toggle(L.t("색 정렬", "Color alignment"),
@@ -4169,6 +4173,7 @@ public final class SettingsActivity extends Activity {
             {"ia297", R.drawable.hof_ia297},
             {"LinusJS", R.drawable.hof_linusjs},
             {"낮은하늘", R.drawable.hof_najeunhaneul},
+            {"수취인불명", R.drawable.hof_suchwiinbulmyeong},
     };
 
     /** 명예의 전당 버튼 바탕과 프로필 사진 테두리에 쓰는 옅은 무지개 색. */
