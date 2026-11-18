@@ -4169,6 +4169,7 @@ public final class SettingsActivity extends Activity {
             {"ia297", R.drawable.hof_ia297},
             {"LinusJS", R.drawable.hof_linusjs},
             {"낮은하늘", R.drawable.hof_najeunhaneul},
+            {"수취인불명", R.drawable.hof_suchwiinbulmyeong},
     };
 
     /** 명예의 전당 버튼 바탕과 프로필 사진 테두리에 쓰는 옅은 무지개 색. */
