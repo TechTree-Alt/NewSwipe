@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/play-store/feature-graphic-en@3x.png" alt="NewSwipe — a Korean keyboard you type and control by swiping" width="100%" />
+  <img src="docs/play-store/feature-graphic-en@3x.png" alt="NewSwipe — Input system built for extreme customization" width="100%" />
 </p>
 
 [한국어](README.md) · **English**
