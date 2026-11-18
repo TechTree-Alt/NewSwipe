@@ -2729,8 +2729,9 @@ public final class SettingsActivity extends Activity {
                         i -> prefs.raw().edit().putString(Prefs.CJK_JA_LAYOUT, i == 1 ? Prefs.JA_QWERTY : Prefs.JA_FLICK).apply()),
                 note(L.t("12키 플릭: 키를 누르면 あ단, 왼쪽·위·오른쪽·아래로 밀면 い·う·え·お단이 들어갑니다. "
                         + "글자를 치는 동안 🌐 키는 ゛゜小 키가 되어 앞 글자의 탁점·반탁점·작은 글자를 차례로 바꾸고, "
-                        + "↻ 키는 앞 글자를 같은 행의 다음 글자로 바꿉니다 (あ→い→う…). "
-                        + "스페이스로 변환 후보를 고르고 엔터로 확정합니다. ◀·▶ 키는 길게 누르면 커서가 계속 움직입니다.", "12-key flick: tap a key for the あ column; swipe left, up, right, or down for い, う, え, or お. While typing, the 🌐 key becomes ゛゜小 and cycles the previous character through dakuten, handakuten and small forms; the ↻ key moves it to the next kana in the same row (あ→い→う…). Use space to pick a conversion and enter to confirm. Hold ◀ or ▶ to keep moving the cursor.")),
+                        + "같은 키를 이어 탭하면 그 키의 글자가 차례로 바뀌고(あ→い→う…), ↶ 키는 거꾸로 돌립니다. "
+                        + "같은 글자를 이어 쓰려면 ▶ 키를 누른 뒤 탭합니다. "
+                        + "스페이스로 변환 후보를 고르고 엔터로 확정합니다. ◀·▶ 키는 길게 누르면 커서가 계속 움직입니다.", "12-key flick: tap a key for the あ column; swipe left, up, right, or down for い, う, え, or お. While typing, the 🌐 key becomes ゛゜小 and cycles the previous character through dakuten, handakuten and small forms; tapping the same key again cycles its kana (あ→い→う…) and the ↶ key cycles back. To type the same kana twice, press ▶ before tapping again. Use space to pick a conversion and enter to confirm. Hold ◀ or ▶ to keep moving the cursor.")),
                 sizeSlider(L.t("일본어 자판 높이", "Japanese keyboard height"), Prefs.CJK_JA_HEIGHT, prefs::jaHeight, Prefs.CJK_JA_HEIGHT_MIN,
                         Prefs.CJK_JA_HEIGHT_MAX, 5, "%"),
                 note(L.t("일본어로 입력하는 동안의 자판(글자·기호) 높이입니다. 다른 자판 높이에 대한 비율이고, 100%면 같습니다.", "Height of the keyboard (letters and symbols) while typing Japanese, relative to the other keyboards. 100% means the same.")),

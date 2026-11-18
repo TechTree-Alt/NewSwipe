@@ -45,6 +45,7 @@ import com.alternative_studios.newswipe.clipboard.ClipboardPanel;
 import com.alternative_studios.newswipe.cjk.Candidate;
 import com.alternative_studios.newswipe.cjk.CjkComposer;
 import com.alternative_studios.newswipe.cjk.CjkPack;
+import com.alternative_studios.newswipe.cjk.Kana;
 import com.alternative_studios.newswipe.emoji.EmojiData;
 import com.alternative_studios.newswipe.emoji.EmojiPanel;
 import com.alternative_studios.newswipe.emoji.EmojiRepository;
@@ -2198,7 +2199,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 break;
             case Key.LANGUAGE:
                 // 일본어 12키 자판에서 글자를 조합하는 동안에는 Gboard처럼 ゛゜小 키로 쓴다.
-                if (languageKeyIsMark()) typeCjk("゛");
+                if (languageKeyIsMark()) typeCjk("゛", false);
                 else toggleLanguage();
                 break;
             case Key.EMOJI:
@@ -2215,6 +2216,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 break;   // 밀어야 커서가 움직인다 (KeyboardView)
             case Key.CURSOR_LEFT:
             case Key.CURSOR_RIGHT:   // 일본어 12키 자판의 ◀·▶
+                if (key.type == Key.CURSOR_RIGHT && endJaToggle()) break;   // Gboard처럼 ▶는 먼저 토글만 끝낸다
                 forgetCursorEdges();
                 moveCursor(key.type == Key.CURSOR_LEFT ? -1 : 1);
                 break;
@@ -2586,7 +2588,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         correctedTo = null;
         boolean letters = lettersLayout();
         if (cjkTyping(letters)) {
-            typeCjk(s);
+            typeCjk(s, tap);
             if (shiftState == 1 && !keyboard.isShiftHeld()) setShift(0);
             return;
         }
@@ -3036,8 +3038,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /** 🌐 키가 지금 ゛゜小 키 노릇을 하는지 (일본어 12키 자판에서 가나를 조합하는 중). */
     private boolean languageKeyIsMark() {
-        return CjkComposer.JA.equals(cjkLang) && layoutKind == KeyboardLayout.JAPANESE && !prefs.jaQwerty()
-                && panel == PANEL_KEYBOARD && cjkComposing();
+        return jaFlick() && panel == PANEL_KEYBOARD && cjkComposing();
     }
 
     /** 일본어·중국어 조합 중인 글자가 있는지. */
@@ -3074,7 +3075,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 중국어 자판에서 조합을 끝내며 넣는 문장 부호는 전각으로. */
     private static final String ZH_PUNCT_FROM = ",.?!:;()", ZH_PUNCT_TO = "，。？！：；（）";
     /** 일본어 읽기에 그대로 넣는 기호 (변환하면 그대로 남는다). */
-    private static final String JA_READING_MARKS = "゛↻、。ー「」『』（）？！…・～";
+    private static final String JA_READING_MARKS = "゛↶、。ー「」『』（）？！…・～";
     private static final String JA_ASCII_FROM = "?!~", JA_ASCII_TO = "？！～";
 
     private static boolean jaReadingText(String s) {
@@ -3086,16 +3087,33 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return !s.isEmpty();
     }
 
-    /** 일본어·중국어 자판에서 친 글자. */
-    private void typeCjk(String s) {
+    /** 일본어 12키 자판에서 같은 키를 이어 탭해 돌리는 중이면 그 토글을 끝내고 true. */
+    private boolean endJaToggle() {
+        CjkComposer c = cjkComposer();
+        if (c == null || c.chinese() || !c.toggleActive()) return false;
+        c.endToggle();
+        updateCandidates();
+        return true;
+    }
+
+    /** 일본어 12키 자판인지 (로마자 QWERTY가 아니다). */
+    private boolean jaFlick() {
+        return CjkComposer.JA.equals(cjkLang) && layoutKind == KeyboardLayout.JAPANESE && !prefs.jaQwerty();
+    }
+
+    /** 일본어·중국어 자판에서 친 글자. tap = 그냥 탭했는지 (12키 자판의 토글 입력은 탭에서만). */
+    private void typeCjk(String s, boolean tap) {
         CjkComposer c = cjkComposer();
         if (c == null) {   // 사전을 읽는 중이다 (처음 바꾼 직후 잠깐): 친 글자를 그대로 넣는다
-            if (!CjkComposer.ROW_CYCLE.equals(s)) commitText(s);
+            if (!CjkComposer.TOGGLE_BACK.equals(s)) commitText(s);
             return;
         }
         char ch = s.length() == 1 ? s.charAt(0) : 0;
+        String toggle = tap && ch != 0 && jaFlick() ? Kana.toggleCycle(ch) : null;
         String done;
-        if (c.chinese()) {
+        if (toggle != null) {   // 12키 자판의 가나 키를 탭했다: 같은 키를 이어 탭하면 글자가 돈다 (あ→い→う…)
+            done = c.typeToggle(toggle);
+        } else if (c.chinese()) {
             if ((ch >= 'a' && ch <= 'z') || (ch == '\'' && !c.isEmpty())) {
                 done = c.typeLetter(ch);
             } else {   // 대문자·숫자·문장 부호: 조합 중인 병음을 첫 후보로 끝내고 그 글자를 넣는다
@@ -3184,7 +3202,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             EditorInfo ei = getCurrentInputEditorInfo();
             keyboard.setEnterIcon(composing ? Icons.DONE : ei != null ? enterIcon(ei) : Icons.ENTER);
         }
-        if (keyboard != null) keyboard.setLanguageKeyMark(languageKeyIsMark());
+        if (keyboard != null) {
+            keyboard.setLanguageKeyMark(languageKeyIsMark());
+            keyboard.setToggleBackEnabled(c != null && c.toggleActive() && panel == PANEL_KEYBOARD);
+        }
         if ((candidateBar.getVisibility() == View.VISIBLE) != show) {
             candidateBar.setVisibility(show ? View.VISIBLE : View.GONE);
             refreshToolbarVisibility();
