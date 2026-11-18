@@ -88,4 +88,41 @@ public class OneHandPrefsTest {
         view(sp, Prefs.PROFILE_PORTRAIT).resetSection("onehand");
         assertEquals(0, sp.m.size());
     }
+
+    @Test
+    public void floatingNeedsLabSwitchAndKeepsPositionPerProfile() throws Exception {
+        LegacySwipeSettingsTest.MapSp sp = new LegacySwipeSettingsTest.MapSp();
+        Prefs port = view(sp, Prefs.PROFILE_PORTRAIT), land = view(sp, Prefs.PROFILE_LANDSCAPE);
+        Prefs largeLand = view(sp, Prefs.PROFILE_LARGE_LANDSCAPE);
+        // 실험실 스위치가 꺼져 있으면 플로팅 상태가 저장되어 있어도 한 손 모드는 꺼진 것으로 본다 (예전 버전·백업도 같다).
+        port.setOneHand(Prefs.ONE_HAND_FLOAT);
+        assertEquals(Prefs.ONE_HAND_OFF, port.oneHand());
+        sp.m.put(Prefs.FLOAT_KEYBOARD, true);
+        assertEquals(Prefs.ONE_HAND_FLOAT, port.oneHand());
+        sp.m.put(Prefs.FLOAT_KEYBOARD, false);
+        assertEquals(Prefs.ONE_HAND_OFF, port.oneHand());
+        // 플로팅은 버튼으로 켤 한 손 모드 쪽으로 기억하지 않는다.
+        port.setOneHand(Prefs.ONE_HAND_LEFT);
+        port.setOneHand(Prefs.ONE_HAND_FLOAT);
+        assertEquals(Prefs.ONE_HAND_LEFT, port.oneHandLast());
+        // 자리는 프로필마다 따로이고, 정하기 전에는 기본값이다.
+        assertEquals(Prefs.FLOAT_POS_X_DEFAULT, land.floatX());
+        assertEquals(Prefs.FLOAT_POS_LIFT_DEFAULT, land.floatLiftDp());
+        port.setFloatPos(1200, -5);
+        assertEquals(1000, port.floatX());
+        assertEquals(0, port.floatLiftDp());
+        land.setFloatPos(250, 300);
+        assertEquals(250, land.floatX());
+        assertEquals(300, land.floatLiftDp());
+        assertEquals(Prefs.FLOAT_POS_X_DEFAULT, largeLand.floatX());
+        assertEquals(1000, port.floatX());
+        // 실험실 되돌리기는 플로팅 설정과 자리를 모두 지운다.
+        largeLand.setFloatPos(10, 10);
+        sp.m.put(Prefs.FLOAT_KEYBOARD, true);
+        port.resetSection("lab");
+        assertEquals(Prefs.FLOAT_POS_X_DEFAULT, port.floatX());
+        assertEquals(Prefs.FLOAT_POS_X_DEFAULT, land.floatX());
+        assertEquals(Prefs.FLOAT_POS_X_DEFAULT, largeLand.floatX());
+        assertEquals(false, port.floatKeyboard());
+    }
 }

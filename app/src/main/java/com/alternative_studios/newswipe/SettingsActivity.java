@@ -299,7 +299,7 @@ public final class SettingsActivity extends Activity {
             {"clipemoji", L.t("클립보드 및 이모지", "Clipboard & emoji"), L.t("클립보드 기록, 편집 버튼, 이모지 크기·추천", "Clipboard history, edit buttons, emoji size and suggestions")},
             {"onehand", L.t("한 손 모드", "One-handed mode"), L.t("자판 폭·키 높이, 아래쪽 여백", "Keyboard width, key height, bottom padding")},
             {"backup", L.t("설정 가져오기 및 내보내기", "Import & export settings"), L.t("모든 설정을 파일로 저장하거나 불러오기", "Save all settings to a file or load them")},
-            {"lab", L.t("실험실", "Labs"), L.t("밀기 방향 판정, 외국어 자판, 외장 키보드", "Swipe direction, other languages, physical keyboard")},
+            {"lab", L.t("실험실", "Labs"), L.t("밀기 방향 판정, 외국어 자판, 외장 키보드, 플로팅 키보드", "Swipe direction, other languages, physical keyboard, floating keyboard")},
     };
     }
 
@@ -2702,6 +2702,22 @@ public final class SettingsActivity extends Activity {
         addCjkKeyboard(com.alternative_studios.newswipe.cjk.CjkComposer.JA);
         addCjkKeyboard(com.alternative_studios.newswipe.cjk.CjkComposer.ZH);
         addHardwareKeyboard();
+        addFloatKeyboard();
+    }
+
+    /** 실험실 '플로팅 키보드': 한 손 모드의 자판 폭·키 높이를 그대로 쓰고, 화면 위 원하는 자리로 옮겨 띄운다. */
+    private void addFloatKeyboard() {
+        LinearLayout box = section(L.t("플로팅 키보드", "Floating keyboard"));
+        box.addView(toggle(L.t("플로팅 키보드", "Floating keyboard"),
+                L.t("도구 막대의 한 손 모드 버튼을 누르면 키보드를 화면 위에 띄웁니다. 키보드 아래의 손잡이를 끌어 옮기고, "
+                        + "버튼을 다시 누르면 원래대로 돌아옵니다. 자판 폭과 키 높이는 한 손 모드 설정을 따르고, 자리는 화면 방향마다 기억합니다. "
+                        + "한 손 모드 버튼을 왼쪽·오른쪽으로 밀면 한 손 모드를 씁니다. "
+                        + "키보드가 떠 있는 동안 앱 화면은 줄어들지 않으므로, 입력란이 가려지면 키보드를 옮기세요.",
+                        "Tapping the one-handed mode button on the toolbar floats the keyboard over the screen. Drag the handle under the keyboard to move it, "
+                        + "and tap the button again to dock it. Width and key height follow the one-handed mode settings, and the position is remembered for each screen orientation. "
+                        + "Swipe the one-handed mode button left or right for one-handed mode. "
+                        + "The app doesn't shrink while the keyboard floats, so move the keyboard if it covers the text field."),
+                Prefs.FLOAT_KEYBOARD, prefs.floatKeyboard()));
     }
 
     /**

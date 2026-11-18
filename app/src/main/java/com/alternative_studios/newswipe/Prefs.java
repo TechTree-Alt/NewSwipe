@@ -177,6 +177,17 @@ public final class Prefs {
     public static final String HW_TOAST = "hw_toast";                   // 자판이 안 보일 때 바뀐 언어 알림 (기본 켜짐)
     /** 외장 키보드를 연결해 화면 자판이 감춰질 때도 도구 막대만 보이기 (기본 꺼짐). */
     public static final String HW_TOOLBAR = "hw_toolbar";
+    /** 실험실 '플로팅 키보드'의 값은 모두 이 말로 시작한다 (폴더블 내부 화면 값은 large_ + 이 말). */
+    public static final String FLOAT_PREFIX = "float_";
+    /** 실험실 '플로팅 키보드' (기본 꺼짐). 켜면 도구 막대의 한 손 모드 버튼이 플로팅 키보드를 켜고 끈다. */
+    public static final String FLOAT_KEYBOARD = "float_keyboard";
+    /** 플로팅 키보드의 자리: 손잡이로 옮길 때마다 저장한다. 프로필(세로·가로·폴더블 내부 화면)마다 따로 둔다. */
+    public static final String FLOAT_POS_PREFIX = "float_pos_";
+    /** 가로 자리: 좌우 빈 곳 가운데 왼쪽에 둔 몫 (‰, 0 = 왼쪽 끝, 1000 = 오른쪽 끝). */
+    public static final String FLOAT_POS_X = FLOAT_POS_PREFIX + "x";
+    /** 세로 자리: 화면 아래에서 띄운 높이 (dp). 키보드 창이 화면을 넘지 않게 쓸 때 다시 줄인다. */
+    public static final String FLOAT_POS_LIFT = FLOAT_POS_PREFIX + "lift";
+    public static final int FLOAT_POS_X_DEFAULT = 500, FLOAT_POS_LIFT_DEFAULT = 48, FLOAT_POS_LIFT_MAX = 4000;
     /**
      * 키보드 모습의 묶음(프로필). 키보드 사용자화는 그 화면에서 쓰는 프로필({@link #profileFor})을 편집한다.
      * 화면마다 따로 정하는 값(분리 키보드 사용 유무·묶음 폭·위치·스페이스바 잇기·하단 기능키 폭, 키 글자 크기, 높이, 여백)만
@@ -289,6 +300,8 @@ public final class Prefs {
     /** 한 손 모드 상태: "off" | "left" | "right". 키보드에서 켜고 끄는 상태라 설정 내보내기에서는 뺀다. */
     public static final String ONE_HAND = "one_hand";
     public static final String ONE_HAND_OFF = "off", ONE_HAND_LEFT = "left", ONE_HAND_RIGHT = "right";
+    /** 한 손 모드의 세 번째 상태: 플로팅 키보드 (실험실 '플로팅 키보드'를 켰을 때만 쓴다). */
+    public static final String ONE_HAND_FLOAT = "float";
     /** 한 손 모드 버튼을 눌러 켤 때 쓰는 쪽 (마지막으로 쓴 쪽). */
     public static final String ONE_HAND_LAST = "one_hand_last";
     public static final String ONE_HAND_WIDTH = "one_hand_width";     // 자판 폭: 화면 폭의 %, 10~90
@@ -558,10 +571,26 @@ public final class Prefs {
         return oneHandView ? this : new Prefs(sp, true, profile, profileEdit, board);
     }
 
-    /** 한 손 모드 상태 (ONE_HAND_OFF·LEFT·RIGHT). */
+    /** 한 손 모드 상태 (ONE_HAND_OFF·LEFT·RIGHT·FLOAT). 플로팅은 실험실 '플로팅 키보드'를 켰을 때만 (끄면 OFF). */
     public String oneHand() {
         String v = sp.getString(ONE_HAND, ONE_HAND_OFF);
+        if (ONE_HAND_FLOAT.equals(v)) return floatKeyboard() ? v : ONE_HAND_OFF;
         return ONE_HAND_LEFT.equals(v) || ONE_HAND_RIGHT.equals(v) ? v : ONE_HAND_OFF;
+    }
+
+    /** 실험실 '플로팅 키보드'. */
+    public boolean floatKeyboard() { return sp.getBoolean(FLOAT_KEYBOARD, false); }
+
+    /** 이 프로필의 플로팅 키보드 가로 자리 (‰). */
+    public int floatX() { return clamp(sp.getInt(oneHandKey(FLOAT_POS_X), FLOAT_POS_X_DEFAULT), 0, 1000); }
+
+    /** 이 프로필의 플로팅 키보드 띄운 높이 (dp). */
+    public int floatLiftDp() { return clamp(sp.getInt(oneHandKey(FLOAT_POS_LIFT), FLOAT_POS_LIFT_DEFAULT), 0, FLOAT_POS_LIFT_MAX); }
+
+    /** 이 프로필의 플로팅 키보드 자리를 저장한다. */
+    public void setFloatPos(int xPermille, int liftDp) {
+        sp.edit().putInt(oneHandKey(FLOAT_POS_X), clamp(xPermille, 0, 1000))
+                .putInt(oneHandKey(FLOAT_POS_LIFT), clamp(liftDp, 0, FLOAT_POS_LIFT_MAX)).apply();
     }
 
     public boolean oneHandOn() { return !ONE_HAND_OFF.equals(oneHand()); }
@@ -574,7 +603,7 @@ public final class Prefs {
     /** 한 손 모드를 켜거나(left·right) 끈다(off). 켜면 그 쪽을 다음에 버튼으로 켤 쪽으로 기억한다. */
     public void setOneHand(String side) {
         SharedPreferences.Editor e = sp.edit().putString(ONE_HAND, side);
-        if (!ONE_HAND_OFF.equals(side)) e.putString(ONE_HAND_LAST, side);
+        if (ONE_HAND_LEFT.equals(side) || ONE_HAND_RIGHT.equals(side)) e.putString(ONE_HAND_LAST, side);
         e.apply();
     }
 
@@ -702,7 +731,7 @@ public final class Prefs {
                 CONFIRM_LEARNED_DELETE, AUTOFILL_INLINE));
         // 실험실: 폴더블 내부 화면 별도 키보드(large_)와 판정 기준은 키보드 사용자화의 '폴더블 설정'으로 옮겼다.
         MENU_KEYS.put("lab", keys(SWIPE_DOWN_RATIO, SWIPE_UP_RATIO));
-        MENU_PREFIXES.put("lab", keys(HW_PREFIX, CJK_PREFIX));
+        MENU_PREFIXES.put("lab", keys(HW_PREFIX, CJK_PREFIX, FLOAT_PREFIX, LARGE_PREFIX + FLOAT_PREFIX));
         MENU_KEYS.put("onehand", keys(ONE_HAND_WIDTH, ONE_HAND_WIDTH_LAND, ONE_HAND_HEIGHT, ONE_HAND_HEIGHT + LANDSCAPE_SUFFIX,
                 ONE_HAND_LIFT, ONE_HAND_LIFT + LANDSCAPE_SUFFIX));
         MENU_PREFIXES.put("onehand", keys(LARGE_PREFIX + "one_hand_"));
