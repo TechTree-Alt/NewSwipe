@@ -32,5 +32,9 @@ public class AccentContrastTest {
         assertEquals(0xFF000000, AppTheme.readable(0xFF000000, false));
         assertEquals(0xFFFFFFFF, AppTheme.readable(0xFFFFFFFF, true));
         assertEquals(0xFFE53935, AppTheme.readable(0xFFE53935, true));
+        // 주황·노랑은 라이트 모드에서 대비가 3:1에 못 미쳐도 잘 보이므로 고른 그대로 쓴다.
+        assertEquals(0xFFF57C00, AppTheme.readable(0xFFF57C00, false));
+        assertEquals(0xFFFF9800, AppTheme.readable(0xFFFF9800, false));
+        assertEquals(0xFFFBC02D, AppTheme.readable(0xFFFBC02D, false));
     }
 }

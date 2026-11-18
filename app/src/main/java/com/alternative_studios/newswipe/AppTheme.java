@@ -57,11 +57,16 @@ public final class AppTheme {
         return readable(c, dark);
     }
 
-    /** 강조 색이 바탕·카드와 이 대비(WCAG 비율)는 넘어야 글자와 표시가 보인다. */
+    /**
+     * 강조 색과 바탕·카드의 대비(WCAG 비율)가 이보다 낮을 때만 색을 고친다. 다크 모드의 검정·라이트 모드의 흰색처럼
+     * 거의 안 보이는 경우만 잡고, 주황·노랑처럼 대비는 조금 낮아도 잘 보이는 색은 고른 그대로 둔다.
+     */
+    static final double FIX_BELOW = 1.5;
+    /** 고칠 때는 이 대비까지 올려서 확실히 보이게 한다. */
     static final double MIN_CONTRAST = 3.0;
 
     /**
-     * 지정한 강조 색이 바탕에 묻히면(다크 모드의 검정, 라이트 모드의 흰색 등) 바탕에서 멀어지는 쪽으로
+     * 지정한 강조 색이 바탕에 묻히면(대비가 {@link #FIX_BELOW} 미만: 다크 모드의 검정, 라이트 모드의 흰색 등) 바탕에서 멀어지는 쪽으로
      * (다크는 흰색, 라이트는 검정 쪽으로) 조금씩 섞어 대비가 {@link #MIN_CONTRAST}를 넘는 가장 가까운 색을 쓴다.
      * 원래 색의 색조는 최대한 남고, 이미 잘 보이는 색은 그대로 둔다. 고른 색 자체(설정값)는 바꾸지 않는다.
      */
@@ -70,6 +75,7 @@ public final class AppTheme {
         int card = dark ? 0xFF1E1F23 : 0xFFFFFFFF;
         int target = dark ? 0xFFFFFFFF : 0xFF000000;
         color |= 0xFF000000;
+        if (contrast(color, bg) >= FIX_BELOW && contrast(color, card) >= FIX_BELOW) return color;
         for (int step = 0; step <= 20; step++) {
             int c = blend(color, target, step / 20f);
             if (contrast(c, bg) >= MIN_CONTRAST && contrast(c, card) >= MIN_CONTRAST) return c;
