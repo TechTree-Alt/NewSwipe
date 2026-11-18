@@ -20,29 +20,26 @@ NewSwipe is a lightweight, modern and comfortable Korean keyboard.
 
 ### Lightweight
 
-A keyboard is always running in the background, and it has to respond right away, whenever and wherever you need it.  
+An input system always runs in the background, and it has to respond promptly, whenever and wherever you need it.  
 NewSwipe keeps its resource use to a minimum so it stays fast and responsive.  
 It draws as few views as possible and uses no external libraries.  
-The app is under 3 MB and uses less than 90 MB of RAM (measured on Android 16 with 16 GB of RAM).  
+The app is under 3 MB and uses less than 90 MB of RAM (measured on Android 16 device with 16 GB of RAM).  
 
 ### Modern
 
-Being light and well optimized doesn't mean an app has to look stiff or plain.  
+Being light and well optimized doesn't mean an app has to look dated or plain.  
 NewSwipe keeps up with the latest Android APIs, features and UX.  
-Its UI is inspired by Material 3 Expressive, and it supports dark mode, predictive back, system autofill and Emoji 18.0.  
+UI is inspired by Material 3 Expressive, and supports dark mode, predictive back, system autofill and Emoji 18.0.  
 It also has everything you expect from a modern keyboard — clipboard, word suggestions and word learning — so you won't miss a thing.  
 
 ### Comfortable
 
 The keyboard is one of the apps you use most on your phone, and also one of the most personal.  
 Rather than forcing one experience on everyone, NewSwipe offers a wide range of customization for people who type in different ways.  
-Build a keyboard that is truly your own, for typing that fits you perfectly.  
+Build an input system that is truly your own, one that fits you perfectly.  
 <br />
 
 # Highlights
-- ⬇️ Add **swipe to type** to the familiar Danmoeum layout for fast, satisfying typing.
-- 👐 Try the new **NewSwipe Danmoeum** layout, designed for typing with both hands.
-- 🥁 Type predictably and rhythmically with the **balanced consonant/vowel layout**, which puts consonants under your left hand and vowels under your right.
 - 🛠️ **Customize** what every key does when you long press it or swipe it up, down, left or right.
 - 📺 Build your own **layouts for large screens** such as tablets and foldable inner screens.
 - 🇰🇷 Experience powerful **word suggestions, autocorrect and learning**, built with the particulars of Korean in mind.
@@ -72,7 +69,7 @@ Build a keyboard that is truly your own, for typing that fits you perfectly.
 
 ### ✨ Word suggestions, autocorrect & learning
 - **Suggestions that understand Korean** · Builds and suggests words based on what you type, even words that aren't in the dictionary. Supports initial-consonant search, words typed without spaces, ordering by the previous word, and next-word prediction.
-- **Smart autocorrect** · Fixes swipe mistakes (ㄷ↔ㅌ↔ㄸ), typos from hitting a neighboring key, and spellings written the way they sound (재밋네요 → 재밌네요, 됬다 → 됐다). The word that will be replaced is shown in bold on the suggestion bar in advance, and if a correction was wrong, press ⌫ to undo it.
+- **Smart autocorrect** · Fixes swipe mistakes (ㄷ↔ㅌ↔ㄸ), typos from hitting a neighboring key, and spellings written the way they sound (재밋네요 → 재밌네요, 됬다 → 됐다). The word that will be replaced is shown in bold on the suggestion bar in advance. If a correction was wrong, press ⌫ to undo it.
 - **Learns how you write** · Learns the words, names and slang you use often and shows them in the suggestions. Long press a wrong suggestion to delete it.
 - **Dictionary packs** · Import a larger Korean dictionary (zip) for better accuracy.
 
@@ -80,7 +77,7 @@ Build a keyboard that is truly your own, for typing that fits you perfectly.
 
 # 🔒 Privacy
 
-Privacy and security are the foundation of any keyboard. NewSwipe does not collect personal information or send it off your device.
+Privacy and security are the core value of a sound input system. NewSwipe does not collect personal information or send it off your device.
 - **The app has no internet permission, so no data is ever sent anywhere.**
 - Learned words and clipboard history (text and images) are kept only in the app's private storage and are not included in system backups (`allowBackup=false`).
   You can turn off saving or delete everything in Settings.
@@ -89,18 +86,18 @@ Privacy and security are the foundation of any keyboard. NewSwipe does not colle
   and you can then encrypt the whole file with a password (AES-256-GCM, with the key derived using PBKDF2-HMAC-SHA256).
 <br />
 
-# 🤝 Our promise
+# 🤝 NewSwipe's promise
 
-NewSwipe is free on GitHub but sold as a paid app on Google Play. I don't charge for it to make money, though — **I'm simply curious how much good people will appreciate something I made with everything I had.**
+NewSwipe is free on GitHub but sold as a paid app on Google Play. I don't charge for it to make money, though — **I'm simply curious how much good people will appreciate something I made with love.**
 
-As the developer of NewSwipe, I, Alternative, make two promises to every user.
+As the developer of NewSwipe, I, Alternative, make two promises to users;
 
-1. NewSwipe will **stay open source**, and the APK will always be free to download from GitHub. NewSwipe's core values rest on users' trust, and open source is essential to that.
+1. NewSwipe will **stay open source**, and the APK will always be free to download from GitHub. NewSwipe's core values are based on users' trust, and open source is an essential part to that.
 
 2. **The GitHub and Play versions of NewSwipe will be identical.** No features or perks will be reserved for paying users. There are only two reasons to buy the Play version: the convenience of **automatic updates through Google Play**, and **supporting the developer**.
 <br />
 
-# 💡 Inspiration
+# 💡 Inspirations
 
 NewSwipe's layouts and input methods take ideas from the works below.
 This project and its developer are not affiliated with any of their developers or designers.
