@@ -144,6 +144,13 @@ final class SettingsFrame {
         return overlayHost;
     }
 
+    /** 화면 전체(머리글부터 bottom까지)를 덮는 틀 (bottom을 준 wrap 뒤에만 있다, 아니면 null). 설정 창을 화면 왼쪽 절반에 띄울 때 쓴다. */
+    private android.widget.FrameLayout fullHost;
+
+    android.widget.FrameLayout fullHost() {
+        return fullHost;
+    }
+
     /**
      * wrap(content)와 같되, bottom(없으면 null)을 화면 맨 아래에 따로 둔다 (키보드 미리보기).
      * 머리글·입력 창·content는 overlayHost 틀 안에 들어가, 그 위에 겹쳐 띄우는 창은 머리글까지 덮고 bottom은 가리지 않는다.
@@ -167,9 +174,18 @@ final class SettingsFrame {
         overlayHost.addView(upper, new android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
         root.addView(overlayHost, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
-        if (bottom != null) root.addView(bottom, matchWrap());
-        Ui.padForSystemBars(root, !keyboardOverlays);
-        return root;
+        if (bottom == null) {
+            Ui.padForSystemBars(root, !keyboardOverlays);
+            return root;
+        }
+        root.addView(bottom, matchWrap());
+        // 화면 전체를 덮는 틀로 한 번 더 감싼다: bottom(미리보기)까지 내려오는 창을 여기에 겹쳐 띄울 수 있다.
+        fullHost = new android.widget.FrameLayout(activity);
+        fullHost.setBackgroundColor(colors.bg);
+        fullHost.addView(root, new android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+        Ui.padForSystemBars(fullHost, !keyboardOverlays);
+        return fullHost;
     }
 
     private static LinearLayout.LayoutParams matchWrap() {

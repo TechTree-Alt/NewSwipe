@@ -44,6 +44,14 @@ final class EditorSheet {
     private final LinearLayout testRow;
     private final android.widget.EditText testInput;
     private boolean testWanted;
+    /** 창을 화면 왼쪽 절반에 띄울 때 놓는 틀 (화면 전체를 덮는다, 없으면 null). */
+    private FrameLayout splitHost;
+    /** 지금 왼쪽 절반(splitHost)에 놓여 있는지. */
+    private boolean split;
+    /** 스프링이 넘칠 때를 위해 창 아래로 더 둔 길이. */
+    private final int overshoot;
+    /** 뒤의 목록이 조금 보이게 창 위에 두는 틈. */
+    private final int topGap;
 
     /**
      * @param parent         창과 막을 겹쳐 놓을 틀 (설정 목록이 든 곳)
@@ -80,7 +88,8 @@ final class EditorSheet {
         sheet.setClickable(true);   // 시트 위의 빈 곳을 눌러도 뒤의 막(닫기)으로 넘어가지 않게
         sheet.setVisibility(View.GONE);
         // 스프링이 목표를 살짝 넘어 올라갈 때 아래가 비어 보이지 않게 시트를 틀 아래로 조금 더 길게 둔다 (넘친 부분은 잘린다).
-        int overshoot = Ui.dp(c, 40);
+        overshoot = Ui.dp(c, 40);
+        topGap = Ui.dp(c, 14);   // 뒤의 목록이 조금 보여 그 위에 뜬 창이라는 것을 알 수 있게
         sheet.setPadding(0, 0, 0, overshoot);
 
         // 헤더: 왼쪽 X(닫기), 가운데 고른 것의 이름.
@@ -152,11 +161,35 @@ final class EditorSheet {
         scroll.addView(body);
         sheet.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
 
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT);
-        lp.topMargin = Ui.dp(c, 14);   // 뒤의 목록이 조금 보여 그 위에 뜬 창이라는 것을 알 수 있게
+        place(false);
+    }
+
+    /**
+     * 창을 놓을 틀을 바꾼다. 보통은 설정 목록 위(parent)를 다 덮고, 왼쪽 절반이면 화면 전체 틀(splitHost)의 왼쪽 절반에
+     * 위에서 아래(미리보기 옆)까지 놓는다.
+     */
+    private void place(boolean half) {
+        split = half;
+        ViewGroup now = (ViewGroup) sheet.getParent();
+        if (now != null) now.removeView(sheet);
+        FrameLayout host = half ? splitHost : parent;
+        int width = ViewGroup.LayoutParams.MATCH_PARENT;
+        if (half) width = Math.max(0, host.getWidth() - host.getPaddingLeft() - host.getPaddingRight()) / 2;
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(width, ViewGroup.LayoutParams.MATCH_PARENT,
+                Gravity.START | Gravity.TOP);
+        lp.topMargin = topGap;
         lp.bottomMargin = -overshoot;
-        parent.addView(sheet, lp);
+        host.addView(sheet, lp);
+    }
+
+    /** 창을 화면 왼쪽 절반에 띄울 수 있게 화면 전체를 덮는 틀을 준다 (open(true)에 쓴다). */
+    void setSplitHost(FrameLayout host) {
+        splitHost = host;
+    }
+
+    /** 창이 화면 왼쪽 절반에 떠 있는지. */
+    boolean isSplit() {
+        return split;
     }
 
     private static int blend(int a, int b, float t) {
@@ -227,7 +260,9 @@ final class EditorSheet {
 
     /** 창을 연 위치에서 아래로 내려 숨기는 거리 (틀의 높이만큼, 아직 배치 전이면 넉넉히). */
     private float hiddenY() {
-        return parent.getHeight() > 0 ? parent.getHeight() : Ui.dp(c, 800);
+        View host = (View) sheet.getParent();
+        int h = host != null ? host.getHeight() : 0;
+        return h > 0 ? h : Ui.dp(c, 800);
     }
 
     /**
@@ -236,8 +271,21 @@ final class EditorSheet {
      * 방금 만든 내용의 배치가 첫 프레임을 잡아먹어 움직임이 늦게 시작해 보이지 않도록, 배치가 끝난 다음 프레임에 시작한다.
      */
     void open() {
+        open(false);
+    }
+
+    /**
+     * open()과 같되, half면 창을 화면 왼쪽 절반에 위에서 아래까지 띄운다 (미리보기가 화면 높이의 절반을 넘을 때, 부르는 쪽이
+     * 미리보기를 오른쪽 절반으로 줄인다). 화면 전체 틀이 없거나 아직 배치 전이면 보통처럼 띄운다.
+     */
+    void open(boolean half) {
         closing = false;
         cancelMotion();
+        if (half && (splitHost == null || splitHost.getWidth() == 0)) half = false;
+        if (half != split) {
+            place(half);
+            sheet.setVisibility(View.GONE);   // 다른 틀로 옮겼으면 아래에서 새로 올린다
+        }
         if (sheet.getVisibility() != View.VISIBLE) sheet.setTranslationY(hiddenY());
         sheet.setVisibility(View.VISIBLE);
         scrim.setVisibility(View.VISIBLE);
@@ -286,6 +334,7 @@ final class EditorSheet {
                         closing = false;
                         sheet.setVisibility(View.GONE);
                         scrim.setVisibility(View.GONE);
+                        if (split) place(false);   // 다음에 보통처럼 열 수 있게 제자리로 돌려 둔다
                         if (onHidden != null) onHidden.run();
                     }
                 }).start();
