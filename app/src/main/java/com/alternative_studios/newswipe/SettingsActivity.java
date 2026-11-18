@@ -1702,11 +1702,31 @@ public final class SettingsActivity extends Activity {
     /** 오른쪽 절반에 맞춘 미리보기 배율: 폭이 화면의 절반이 된다. */
     private static final float SPLIT_SCALE = 0.5f;
 
-    /** 미리보기(자판 탭·페이지 표시 포함)가 화면 높이의 절반을 넘는지: 그러면 설정 창을 열 때 화면을 좌우로 나눈다. */
+    /** 설정 창을 보통처럼 미리보기 위에 띄울 때 보이는 높이가 이보다 낮으면 화면을 좌우로 나눈다. */
+    private static final int SPLIT_MAX_ROOM_DP = 250;
+    /** 화면 폭이 이만큼은 되어야 좌우로 나눈다 (좁은 화면에서는 반으로 나눈 설정 창이 너무 좁다). */
+    private static final int SPLIT_MIN_WIDTH_DP = 500;
+
+    /**
+     * 화면 폭이 500dp 이상이고, 설정 창을 보통처럼 미리보기(실제 크기, 자판 탭·페이지 표시 포함) 위에 띄우면 보이는 높이가
+     * 250dp보다 낮은지: 그러면 설정 창을 열 때 화면을 좌우로 나눈다 (바형 폰의 가로 키보드 등).
+     */
     private boolean previewTooTall() {
         if (fullHost == null || pinnedBottom == null || !previewShown || pinnedBottom.getVisibility() != View.VISIBLE) return false;
         int screen = fullHost.getHeight() - fullHost.getPaddingTop() - fullHost.getPaddingBottom();
-        return screen > 0 && fullHost.getWidth() > 0 && pinnedBottom.getHeight() * 2 > screen;
+        int width = fullHost.getWidth() - fullHost.getPaddingLeft() - fullHost.getPaddingRight();
+        if (screen <= 0 || width < Ui.dp(this, SPLIT_MIN_WIDTH_DP)) return false;
+        // 보통일 때 창이 보이는 높이: 미리보기 위 전부에서 그 아래쪽을 가리는 꺾쇠 버튼 자리를 뺀다.
+        return screen - pinnedBottom.getHeight() - previewToggleCover() < Ui.dp(this, SPLIT_MAX_ROOM_DP);
+    }
+
+    /** 꺾쇠 버튼이 설정 창 아래쪽을 가리는 높이 (버튼 위 끝부터 미리보기 위 끝까지). */
+    private int previewToggleCover() {
+        View holder = previewToggleHolder;
+        if (holder == null || holder.getVisibility() == View.GONE || holder.getHeight() == 0) return 0;
+        ViewGroup.LayoutParams raw = holder.getLayoutParams();
+        int margin = raw instanceof ViewGroup.MarginLayoutParams ? ((ViewGroup.MarginLayoutParams) raw).bottomMargin : 0;
+        return holder.getHeight() - holder.getPaddingTop() + margin;
     }
 
     /** 미리보기를 오른쪽 절반으로 줄이거나(on) 실제 크기로 되돌린다. 설정 창이 오르내리는 동안 함께 움직인다. */

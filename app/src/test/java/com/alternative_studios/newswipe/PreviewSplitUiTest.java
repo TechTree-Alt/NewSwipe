@@ -19,8 +19,9 @@ import static org.junit.Assert.*;
 import static org.robolectric.Shadows.shadowOf;
 
 /**
- * 키보드 사용자화에서 미리보기가 화면 높이의 절반을 넘으면(바형 폰의 가로 키보드 등) 설정 창을 화면 왼쪽 절반에 띄우고 미리보기를
- * 오른쪽 절반으로 줄이며, 창을 닫으면 실제 크기로 되돌리는지 확인한다.
+ * 키보드 사용자화에서 화면 폭이 500dp 이상이고 미리보기가 커서(바형 폰의 가로 키보드 등) 설정 창을 보통처럼 띄우면 보이는
+ * 높이가 250dp보다 낮을 때, 설정 창을 화면 왼쪽 절반에 띄우고 미리보기를 오른쪽 절반으로 줄이며, 창을 닫으면 실제 크기로
+ * 되돌리는지 확인한다.
  */
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 36, qualifiers = "ko-rKR-w411dp-h914dp-port-xxhdpi")
@@ -65,14 +66,13 @@ public class PreviewSplitUiTest {
             int screen = full.getHeight() - full.getPaddingTop() - full.getPaddingBottom();
             int h = bottom.getHeight();
             log("preview " + h + " / screen " + screen);
-            assertTrue("preview " + h + " should be over half of " + screen, h * 2 > screen);
             KeyboardPreview p = find(decor, KeyboardPreview.class);
 
             tapArea(p, KeyboardPreview.AREA_LETTERS);
             settle();
             EditorSheet sheet = sheetOf(a);
             assertTrue(sheet.isOpen());
-            assertTrue(sheet.isSplit());
+            assertTrue(describe(a), sheet.isSplit());
             // 창: 화면 전체 틀의 왼쪽 절반, 아래 끝까지
             View sv = sheet.view();
             assertSame(full, sv.getParent());
@@ -123,6 +123,16 @@ public class PreviewSplitUiTest {
         }
     }
 
+    /** 실패했을 때 알아보기 쉽게: 화면 폭·높이와 미리보기 높이(dp). */
+    private static String describe(SettingsActivity a) throws Exception {
+        LinearLayout bottom = field(a, "pinnedBottom");
+        FrameLayout full = field(a, "fullHost");
+        float d = a.getResources().getDisplayMetrics().density;
+        return "screen " + (full.getWidth() - full.getPaddingLeft() - full.getPaddingRight()) / d
+                + "x" + (full.getHeight() - full.getPaddingTop() - full.getPaddingBottom()) / d
+                + " preview " + bottom.getHeight() / d;
+    }
+
     @Test
     public void shortPreviewKeepsSheetAboveIt() throws Exception {
         SettingsActivity a = launch("keyboard");
@@ -135,11 +145,36 @@ public class PreviewSplitUiTest {
         settle();
         EditorSheet sheet = sheetOf(a);
         assertTrue(sheet.isOpen());
-        assertFalse(sheet.isSplit());
+        assertFalse(describe(a), sheet.isSplit());
         assertSame(overlay, sheet.view().getParent());
         assertEquals(1f, bottom.getScaleX(), 0.001f);
         a.onBackPressed();
         settle();
         assertFalse(sheet.isOpen());
+    }
+
+    /** 화면 폭이 500dp보다 좁으면 미리보기가 커도 나누지 않는다 (반으로 나눈 설정 창이 너무 좁아서). */
+    @Test
+    @Config(qualifiers = "ko-rKR-w480dp-h360dp-land-xxhdpi")
+    public void narrowScreenKeepsSheetAboveTallPreview() throws Exception {
+        Prefs pre = new Prefs(RuntimeEnvironment.getApplication());
+        pre.raw().edit().putInt(Prefs.KEYBOARD_HEIGHT_LAND, 140).commit();
+        try {
+            SettingsActivity a = launch("keyboard");
+            View decor = a.getWindow().getDecorView();
+            LinearLayout bottom = field(a, "pinnedBottom");
+            FrameLayout overlay = field(a, "overlayHost");
+            settle();
+            KeyboardPreview p = find(decor, KeyboardPreview.class);
+            tapArea(p, KeyboardPreview.AREA_LETTERS);
+            settle();
+            EditorSheet sheet = sheetOf(a);
+            assertTrue(sheet.isOpen());
+            assertFalse(describe(a), sheet.isSplit());
+            assertSame(overlay, sheet.view().getParent());
+            assertEquals(1f, bottom.getScaleX(), 0.001f);
+        } finally {
+            pre.raw().edit().remove(Prefs.KEYBOARD_HEIGHT_LAND).commit();
+        }
     }
 }
