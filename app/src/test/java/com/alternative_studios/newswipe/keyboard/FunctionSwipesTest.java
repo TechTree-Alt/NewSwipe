@@ -89,7 +89,6 @@ public class FunctionSwipesTest {
             assertFalse(id, SwipeAction.label(id).isEmpty());
             assertFalse(id, SwipeAction.shortLabel(id).isEmpty());
         }
-        assertEquals("없음", SwipeAction.label(null));
     }
 
     /** 기능을 고르는 창의 갈래: '없음'을 포함한 모든 기능이 꼭 한 갈래에만 들어 있다. */

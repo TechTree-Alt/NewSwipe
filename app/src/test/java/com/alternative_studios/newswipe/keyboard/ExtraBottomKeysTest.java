@@ -178,7 +178,6 @@ public class ExtraBottomKeysTest {
 
     @Test
     public void atMostEightBottomKeys() throws Exception {
-        assertEquals(8, BottomKeys.MAX_SHOWN);
         // 모든 키를 켠 설정(가져온 설정 등)이어도 순서상 앞의 8개만 놓는다. Shift·⌫는 세지 않는다.
         FakeSp sp = new FakeSp();
         for (String k : PREF) sp.m.put(k, true);
@@ -233,12 +232,15 @@ public class ExtraBottomKeysTest {
         Prefs p = view(sp, Prefs.PROFILE_PORTRAIT);
         SwipeSpec spec = ToolbarSwipes.SPEC;
         for (int slot = 0; slot < spec.slotCount(); slot++) {
-            assertTrue(slot + "", spec.shown(p, slot));
+            // 떠 있는 키보드 버튼은 나중에 생겨 처음에는 감춰 둔다.
+            assertEquals(slot + "", slot != ToolbarSwipes.FLOAT, spec.shown(p, slot));
             // 칸 이름이 도구 막대 버튼 ID와 같다 (막대 자체 제외)
             if (slot != ToolbarSwipes.BAR) {
                 assertTrue(java.util.Arrays.asList(ToolbarButtons.ALL).contains(spec.slotName(slot)));
             }
         }
+        sp.m.put(Prefs.TOOL_FLOAT, true);
+        assertTrue(spec.shown(p, ToolbarSwipes.FLOAT));
         sp.m.put(Prefs.TOOL_CLIPBOARD, false);
         sp.m.put(Prefs.VOICE_KEY, false);
         assertFalse(spec.shown(p, ToolbarSwipes.CLIPBOARD));

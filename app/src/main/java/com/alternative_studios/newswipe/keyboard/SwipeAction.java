@@ -58,6 +58,8 @@ public final class SwipeAction {
     /** 왼쪽(오른쪽)으로 쏠린 한 손 모드를 켠다. 이미 그쪽 한 손 모드면 끈다. */
     public static final String ONE_HAND_LEFT = "one_hand_left";
     public static final String ONE_HAND_RIGHT = "one_hand_right";
+    /** 떠 있는 키보드를 켠다. 이미 떠 있으면 원래대로 돌아간다. */
+    public static final String FLOAT_KEYBOARD = "float_keyboard";
     /** 길게 누르기 전용: 누르고 있는 동안 계속 지우기. */
     public static final String DELETE_REPEAT = "delete_repeat";
     /** 길게 누르기 전용: 누르고 있는 동안 단어 단위로 계속 지우기. */
@@ -110,6 +112,7 @@ public final class SwipeAction {
             {HIDE_KEYBOARD, L.t("키보드 숨기기", "Hide keyboard"), L.t("키보드 숨기기", "Hide keyboard")},
             {ONE_HAND_LEFT, L.t("한 손 모드 (왼쪽)", "One-handed mode (left)"), L.t("한 손 왼쪽", "One-handed left")},
             {ONE_HAND_RIGHT, L.t("한 손 모드 (오른쪽)", "One-handed mode (right)"), L.t("한 손 오른쪽", "One-handed right")},
+            {FLOAT_KEYBOARD, L.t("떠 있는 키보드", "Floating keyboard"), L.t("떠 있는 키보드", "Floating keyboard")},
             {SETTINGS, L.t("NewSwipe 설정 열기", "Open NewSwipe settings"), L.t("설정 열기", "Open settings")},
             {DELETE_REPEAT, L.t("계속 지우기 (누르고 있는 동안)", "Keep deleting (while held)"), L.t("계속 지우기", "Keep deleting")},
             {DELETE_WORD_REPEAT, L.t("단어 지우기 (누르고 있는 동안)", "Delete words (while held)"), L.t("계속 단어 지우기", "Keep deleting words")},
@@ -133,7 +136,7 @@ public final class SwipeAction {
                     DELETE_REPEAT, DELETE_WORD_REPEAT, UNDO, REDO},
             {L.t("입력", "Input"), SPACE, ENTER, CAPS_LOCK, EMOJI_LATEST, EMOJI_PINNED, VOICE},
             {L.t("자판·창 전환", "Keyboards & panels"), SYMBOLS, NUMBER_PAD, EMOJI_OPEN, LANGUAGE, LANGUAGE_PICK, IME_PICKER},
-            {L.t("키보드·설정", "Keyboard & settings"), HIDE_KEYBOARD, ONE_HAND_LEFT, ONE_HAND_RIGHT, SETTINGS},
+            {L.t("키보드·설정", "Keyboard & settings"), HIDE_KEYBOARD, ONE_HAND_LEFT, ONE_HAND_RIGHT, FLOAT_KEYBOARD, SETTINGS},
     };
     }
 

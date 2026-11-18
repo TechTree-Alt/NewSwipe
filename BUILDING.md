@@ -6,7 +6,7 @@ NewSwipe를 직접 빌드하고 서명하는 방법입니다. 사용법은 [READ
 
 | 항목 | 값 |
 |---|---|
-| JDK | 21 (CI도 Temurin 21을 씁니다. 앱은 Java 17 문법으로 빌드되고, 키보드 사용자화 UI 시험(Robolectric)이 Java 21을 요구합니다) |
+| JDK | 17 이상 (CI는 Temurin 21을 씁니다. 앱은 Java 17 문법으로 빌드됩니다) |
 | Android SDK | 플랫폼 36 (`compileSdk = 36`). `ANDROID_HOME`을 지정하거나 저장소 루트에 `local.properties`를 만들어 `sdk.dir=/경로/Android/sdk`를 적습니다 |
 | Gradle | 래퍼가 받습니다 (`gradle/wrapper/gradle-wrapper.properties`, 9.6.1) |
 | Android Gradle 플러그인 | 9.4.0 (`gradle/libs.versions.toml`) |
@@ -22,7 +22,7 @@ NewSwipe를 직접 빌드하고 서명하는 방법입니다. 사용법은 [READ
 저장소 루트에서 실행합니다 (Windows는 `gradlew.bat`).
 
 ```bash
-./gradlew testDebugUnitTest     # 단위 테스트 (키보드 사용자화 UI 시험 EditorUiTest 포함)
+./gradlew testDebugUnitTest     # 단위 테스트
 ./gradlew assembleDebug         # 디버그 APK → app/build/outputs/apk/debug/app-debug.apk
 ./gradlew assembleRelease       # 릴리스 APK → app/build/outputs/apk/release/app-release.apk
 ./gradlew bundleRelease         # 릴리스 AAB(Play용) → app/build/outputs/bundle/release/app-release.aab
@@ -170,3 +170,4 @@ export NEWSWIPE_KEY_PASSWORD=...
 - **하단 바 (비보 등):** 라이트·다크 모드와 세로·가로에서 키보드 아래의 하단 바 아이콘이 키보드 배경과 구분되는지, 키가 제스처 바와 겹치지 않는지.
 - **큰 화면 (태블릿, 폴더블 내부 화면):** 설정 화면 등 9개 화면이 `screenOrientation="portrait"`로 선언되어 있는데, 36에서는 큰 화면에서 이 값이 무시됩니다. 가로나 분할 창에서도 열려도 레이아웃이 깨지지 않는지.
 - **뒤로 가기:** 첫 시작 가이드와 설정 화면에서 뒤로 가기 동작 (예측형 뒤로 가기가 켜져 있습니다).
+- **떠 있는 키보드:** 버튼·제스처 탐색에서 키보드를 띄웠을 때 하단 바가 투명해지고 아이콘이 뒤의 앱과 구분되는지, 키보드 밖을 누르면 뒤의 앱이 눌리는지, 손잡이로 옮기고 오른쪽 모서리로 크기를 바꿀 때 끊기지 않고 놓은 자리에서 튀지 않는지, 화면 아래 끝까지 끌어 놓으면 아래 키보드로 돌아가는지, 크기를 바꾸는 동안 카드 안이 흐려지는지, 카드 윤곽선이 글자 키 옆에서도 보이는지, 흐릴 때 도구 막대와 자판 사이에 어두운 띠가 생기지 않는지, '상태를 방향마다 기억'을 켜고 화면을 돌리거나 폴더블을 펼칠 때 화면마다 띄운 상태가 따로 남는지, 옮긴 자리와 크기가 화면 방향마다 남고 화면을 돌려도 키보드가 상태 표시줄 아래에 들어가는지, 키보드가 올라오고 내려가는 움직임이 어색하지 않은지 (키보드가 떠 있는 동안에는 키보드 창이 화면 높이만큼 크다).

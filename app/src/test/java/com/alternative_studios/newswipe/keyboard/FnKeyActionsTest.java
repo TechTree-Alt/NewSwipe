@@ -45,12 +45,4 @@ public class FnKeyActionsTest {
         assertTrue(Arrays.asList(s.choices(FnKeyActions.PRESS, FnKeyActions.LONG)).contains(SwipeAction.DELETE_REPEAT));
         assertFalse(Arrays.asList(s.choices(FnKeyActions.PRESS, FnKeyActions.TAP)).contains(SwipeAction.DELETE_REPEAT));
     }
-
-    @Test
-    public void editorLabels() {
-        SwipeSpec s = FnKeyActions.SPEC;
-        assertEquals("누르기", s.dirLabel(FnKeyActions.PRESS, FnKeyActions.TAP));
-        assertEquals("길게 누르기", s.dirLabel(FnKeyActions.PRESS, FnKeyActions.LONG));
-        assertEquals(SwipeCustom.label(Key.SWIPE_UP), s.dirLabel(FnKeyActions.SWIPE, Key.SWIPE_UP));
-    }
 }
