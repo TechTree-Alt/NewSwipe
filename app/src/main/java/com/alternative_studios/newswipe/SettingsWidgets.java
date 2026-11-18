@@ -121,9 +121,13 @@ final class SettingsWidgets {
         return box;
     }
 
+    /** card()로 만든 카드와 subGroup()으로 묶은 하위 설정임을 알리는 태그 (설정 창이 항목을 셀 때 쓴다). */
+    static final Object CARD = new Object(), SUB_GROUP = new Object();
+
     /** parent에 빈 카드(둥근 바탕)를 더하고 돌려준다. */
     LinearLayout card(LinearLayout parent) {
         LinearLayout box = new LinearLayout(c);
+        box.setTag(CARD);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setBackground(Ui.round(card, Ui.dp(c, 16)));
         int p = Ui.dp(c, 16);
@@ -282,6 +286,7 @@ final class SettingsWidgets {
     /** 위 설정의 하위 설정들을 묶는다: 왼쪽 들여쓰기와 세로 안내선으로 위계를 보여 준다. */
     View subGroup(View... children) {
         LinearLayout group = new LinearLayout(c);
+        group.setTag(SUB_GROUP);
         group.setOrientation(LinearLayout.HORIZONTAL);
         LinearLayout.LayoutParams glp = matchWrap();
         glp.leftMargin = Ui.dp(c, 6);

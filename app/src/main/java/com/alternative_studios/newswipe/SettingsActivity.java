@@ -1717,7 +1717,7 @@ public final class SettingsActivity extends Activity {
         if (screen <= 0 || width <= 0) return false;
         // 보통일 때 창이 보이는 높이: 미리보기 위 전부에서 그 아래쪽을 가리는 꺾쇠 버튼 자리를 뺀다.
         int room = screen - pinnedBottom.getHeight() - previewToggleCover();
-        java.util.ArrayList<View> rows = new java.util.ArrayList<>();
+        java.util.Set<View> rows = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
         for (java.lang.ref.WeakReference<View> ref : itemRow.values()) {
             View row = ref.get();
             if (row != null) rows.add(row);

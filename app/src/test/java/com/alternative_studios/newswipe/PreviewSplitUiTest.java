@@ -172,41 +172,55 @@ public class PreviewSplitUiTest {
     }
 
     /**
-     * 창이 항목 2개를 온전히 보이려면 필요한 높이: 틈 + 헤더 + 내용 위부터 둘째 항목의 아래 끝까지. 숨긴 항목과 창 밖의 줄은 세지 않고,
-     * 항목이 모자라면 마지막 항목까지 잰다.
+     * 창이 항목 2개를 온전히 보이려면 필요한 높이: 틈 + 헤더 + 내용 위부터 둘째 항목의 아래 끝까지. 항목은 카드 안의 줄(설명 글,
+     * 선택 버튼 줄 등 표시 없는 것도)과 표시한 항목 줄이다. 카드 밖의 소제목, 구분선, 숨긴 줄은 세지 않고 바탕 없는 세로 틀과
+     * 하위 설정 묶음은 그 안을 센다. 항목이 모자라면 마지막 항목까지 잰다.
      */
     @Test
-    public void heightToShowCountsVisibleItemsInsideSheet() {
+    public void heightToShowCountsVisibleItemsInsideCards() {
         SettingsActivity a = launch("keyboard");
         FrameLayout host = new FrameLayout(a);
         EditorSheet sheet = new EditorSheet(a, host, () -> { });
         LinearLayout body = sheet.body();
-        int px = Ui.dp(a, 50);
-        View top = fixed(a, Ui.dp(a, 30));      // 항목이 아닌 안내 글
-        View first = fixed(a, px), hidden = fixed(a, px), second = fixed(a, px), third = fixed(a, px);
-        hidden.setVisibility(View.GONE);
-        LinearLayout card = new LinearLayout(a);  // 카드 안에 든 항목도 센다
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(0, Ui.dp(a, 8), 0, Ui.dp(a, 8));
-        card.addView(second);
-        card.addView(third);
-        body.addView(top);
-        body.addView(first);
-        body.addView(hidden);
-        body.addView(card);
-        View outside = fixed(a, px);              // 창 밖의 줄 (설정 목록 등)
+        SettingsWidgets w = new SettingsWidgets(a, AppTheme.of(a), null);
+        int u = Ui.dp(a, 10);
         int width = Ui.dp(a, 400);
-        int gapAndHeader = sheet.heightToShow(java.util.Collections.emptyList(), 2, width)
-                - (body.getMeasuredHeight() - body.getPaddingBottom());
-        java.util.List<View> rows = java.util.Arrays.asList(third, outside, hidden, second, first);
-        int need = sheet.heightToShow(rows, 2, width);
-        assertEquals(gapAndHeader + Ui.dp(a, 30) + px + Ui.dp(a, 8) + px, need);
-        assertEquals(gapAndHeader + Ui.dp(a, 30) + px, sheet.heightToShow(java.util.Arrays.asList(first, outside), 2, width));
+        java.util.Set<View> none = java.util.Collections.emptySet();
+
+        body.addView(fixed(new android.widget.TextView(a), 3 * u));   // 카드 밖의 소제목: 항목이 아니다
+        LinearLayout card = w.card(body);                               // 카드: 위 여백 8dp, 안쪽 위 8dp
+        card.addView(fixed(new View(a), u));                            // 구분선: 항목이 아니다
+        View hidden = fixed(new android.widget.TextView(a), 5 * u);
+        hidden.setVisibility(View.GONE);
+        card.addView(hidden);
+        LinearLayout wrapper = new LinearLayout(a);                     // 바탕 없는 세로 틀: 그 안을 센다
+        wrapper.setOrientation(LinearLayout.VERTICAL);
+        View first = fixed(new android.widget.TextView(a), 4 * u);
+        wrapper.addView(first);
+        card.addView(wrapper);
+        View second = fixed(new LinearLayout(a), 6 * u);                // 가로 줄 (선택 버튼 줄 등)
+        card.addView(second);
+        View third = fixed(new android.widget.TextView(a), 2 * u);
+        card.addView(w.subGroup(third));
+
+        int above = 3 * u + Ui.dp(a, 8) + Ui.dp(a, 8) + u;               // 소제목 + 카드 위 여백 + 카드 안쪽 + 구분선
+        int head = sheet.heightToShow(none, 1, width) - (above + 4 * u);  // 틈 + 헤더
+        assertEquals(head + above + 4 * u + 6 * u, sheet.heightToShow(none, 2, width));
+        assertEquals(head + above + 4 * u + 6 * u + 2 * u, sheet.heightToShow(none, 3, width));
+        assertEquals(head + above + 4 * u + 6 * u + 2 * u, sheet.heightToShow(none, 9, width));
+
+        // 표시한 항목 줄은 카드 밖에 있어도 세고, 그 안은 따로 살피지 않는다.
+        LinearLayout outside = new LinearLayout(a);
+        outside.setOrientation(LinearLayout.VERTICAL);
+        body.addView(outside, 0);
+        outside.addView(fixed(new android.widget.TextView(a), u));
+        outside.addView(fixed(new android.widget.TextView(a), u));
+        java.util.Set<View> marked = java.util.Collections.singleton(outside);
+        assertEquals(head + 2 * u, sheet.heightToShow(marked, 1, width));
+        assertEquals(head + 2 * u + above + 4 * u, sheet.heightToShow(marked, 2, width));
     }
 
-    private static View fixed(android.content.Context c, int h) {
-        View v = new View(c);
-        v.setMinimumHeight(h);
+    private static View fixed(View v, int h) {
         v.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, h));
         return v;
     }
