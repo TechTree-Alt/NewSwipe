@@ -1620,10 +1620,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             float r = Ui.dp(this, 6);
             android.graphics.RenderEffect blur = android.graphics.RenderEffect.createBlurEffect(r, r,
                     android.graphics.Shader.TileMode.CLAMP);
-            for (int i = 0; i < column.getChildCount(); i++) {
-                View c = column.getChildAt(i);
-                if (c != floatHandle) c.setRenderEffect(blur);
-            }
+            for (int i = 0; i < column.getChildCount(); i++) column.getChildAt(i).setRenderEffect(blur);   // 손잡이까지
         }
     }
 
