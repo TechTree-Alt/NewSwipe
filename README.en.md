@@ -12,7 +12,6 @@ NewSwipe is a lightweight, modern and comfortable Korean keyboard.
   <a href="https://play.google.com/store/apps/details?id=com.alternative_studios.newswipe"><img src="docs/get-it-googleplay.svg" alt="Get it on Google Play" height="50" /></a>
   <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22com.alternative_studios.newswipe%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2FTechTree-Alt%2FNewSwipe%22%2C%22author%22%3A%22TechTree-Alt%22%2C%22name%22%3A%22NewSwipe%22%7D">
   <img src="docs/badge_obtainium.png" alt="Get it on Obtainium" height="50"></a>
-  <a href="https://fairy.hada.io/@newswipe"><img src="docs/support-on-fairy.png" alt="Support on Fairy" height="50" /></a>
 </p>
 <br />
 
