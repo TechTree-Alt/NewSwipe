@@ -124,6 +124,33 @@ public class PreviewSplitUiTest {
         }
     }
 
+    /** 실패했을 때 알아보기 쉽게: 화면·미리보기 높이와 창 속 항목들의 위치(dp). */
+    private static String describe(SettingsActivity a, EditorSheet sheet) throws Exception {
+        LinearLayout bottom = field(a, "pinnedBottom");
+        FrameLayout full = field(a, "fullHost");
+        float d = a.getResources().getDisplayMetrics().density;
+        StringBuilder b = new StringBuilder();
+        b.append("screen ").append((full.getHeight() - full.getPaddingTop() - full.getPaddingBottom()) / d)
+                .append(" preview ").append(bottom.getHeight() / d).append(" items:");
+        java.util.Map<android.widget.TextView, java.lang.ref.WeakReference<View>> rows = field(a, "itemRow");
+        for (java.util.Map.Entry<android.widget.TextView, java.lang.ref.WeakReference<View>> e : rows.entrySet()) {
+            View v = e.getValue().get();
+            if (v == null) continue;
+            int y = v.getTop();
+            android.view.ViewParent q = v.getParent();
+            boolean shown = v.getVisibility() == View.VISIBLE;
+            while (q instanceof View && q != sheet.body()) {
+                shown &= ((View) q).getVisibility() == View.VISIBLE;
+                y += ((View) q).getTop();
+                q = q.getParent();
+            }
+            if (q != sheet.body()) continue;
+            b.append(" [").append(e.getKey().getText()).append(' ').append(y / d).append('+').append(v.getHeight() / d)
+                    .append(shown ? "" : " hidden").append(']');
+        }
+        return b.toString();
+    }
+
     @Test
     public void shortPreviewKeepsSheetAboveIt() throws Exception {
         SettingsActivity a = launch("keyboard");
@@ -136,7 +163,7 @@ public class PreviewSplitUiTest {
         settle();
         EditorSheet sheet = sheetOf(a);
         assertTrue(sheet.isOpen());
-        assertFalse(sheet.isSplit());
+        assertFalse(describe(a, sheet), sheet.isSplit());
         assertSame(overlay, sheet.view().getParent());
         assertEquals(1f, bottom.getScaleX(), 0.001f);
         a.onBackPressed();
