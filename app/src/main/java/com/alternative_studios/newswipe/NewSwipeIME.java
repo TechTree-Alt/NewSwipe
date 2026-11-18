@@ -1127,7 +1127,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 떠 있는 키보드에서 도구 막대(높이·버튼·아이콘·추천 글자)를 키 높이와 같은 비율로 맞춘다. 그 밖에는 1. */
     private float toolbarScale() {
         return prefs != null && Prefs.ONE_HAND_FLOAT.equals(activeOneHand())
-                ? prefs.profileView(profile()).floatHeightForProfile() / 100f : 1f;
+                ? prefs.profileView(profile()).floatHeight(prefs.floatScreen(this)) / 100f : 1f;
     }
 
     /**
@@ -1369,7 +1369,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         // 한 손 모드에서는 키 높이를 줄인 만큼 키 글자도 같은 비율로 줄인다 (도구 막대는 줄어든 자판 바로 위에 붙어 따라온다).
         // 떠 있는 키보드는 따로 정한 키 높이를 따로 쓴다 (정하기 전에는 한 손 모드 값).
         String oneHandSide = activeOneHand();
-        float oneHandScale = Prefs.ONE_HAND_FLOAT.equals(oneHandSide) ? sizePrefs.floatHeightForProfile() / 100f
+        float oneHandScale = Prefs.ONE_HAND_FLOAT.equals(oneHandSide) ? sizePrefs.floatHeight(prefs.floatScreen(this)) / 100f
                 : !Prefs.ONE_HAND_OFF.equals(oneHandSide) ? sizePrefs.oneHandHeightForProfile() / 100f : 1f;
         keyboard.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), prefs.keyPreview(),
                 Math.round(sizePrefs.keyTextSize() * oneHandScale));
@@ -1572,11 +1572,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         // 외장 키보드로 도구 막대만 보일 때는 두지 않는다 (막대 아래에 빈 칸만 남는다).
         int lift = appliedBarOnly ? 0 : Ui.dp(this, on ? profilePrefs.oneHandBottomForProfile() : 0);
         boolean floating = Prefs.ONE_HAND_FLOAT.equals(side);
-        int floatX = floating ? profilePrefs.floatX() : 0;
+        String floatScreen = prefs.floatScreen(this);
+        int floatX = floating ? profilePrefs.floatX(floatScreen) : 0;
         int floatWindow = 0;
         if (floating) {
-            width = profilePrefs.floatWidthForProfile();
-            lift = clampFloatLift(Ui.dp(this, profilePrefs.floatLiftDp()));
+            width = profilePrefs.floatWidth(floatScreen);
+            lift = clampFloatLift(Ui.dp(this, profilePrefs.floatLiftDp(floatScreen)));
             floatWindow = floatWindowHeight();
         }
         String signature = side + "/" + width + "/" + lift + "/" + floatX + "/" + floatWindow;
@@ -1799,7 +1800,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         int free = body.getWidth() - dragStartW;
         int x = free > 0 ? Math.round((column.getLeft() + tx) * 1000f / free) : Prefs.FLOAT_POS_X_DEFAULT;
         int liftDp = Math.round((dragStartLift - ty) / getResources().getDisplayMetrics().density);
-        prefs.profileView(profile()).setFloatPos(x, liftDp);
+        prefs.setFloatPos(prefs.floatScreen(this), x, liftDp);
         applyOneHand();
         resetFloatPreviewAfterLayout();
     }
@@ -1821,7 +1822,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         resizeWidthPct = Math.max(Prefs.FLOAT_WIDTH_MIN, Math.min(Prefs.FLOAT_WIDTH_MAX, (dragStartW + dx) * 100f / bodyW));
         float newW = bodyW * resizeWidthPct / 100f;
         int keyH = Math.max(1, dragStartH - dragOtherH);
-        float startHPct = p.floatHeightForProfile();
+        float startHPct = p.floatHeight(prefs.floatScreen(this));
         float hPct = startHPct * (keyH + dy) / keyH;
         float maxGrow = dragStartLift + dragStartTop;   // 아래쪽 여유 + 위쪽 여유
         hPct = Math.min(hPct, startHPct * (keyH + maxGrow) / keyH);
@@ -1850,7 +1851,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         float lift = dragStartLift - (newH - dragStartH) - column.getTranslationY();
         float density = getResources().getDisplayMetrics().density;
         floatHeightHint = Math.round(newH);   // 새 높이가 놓이기 전에 띄운 높이를 옛 높이로 줄이지 않게
-        p.setFloatGeometry(Math.round(resizeWidthPct), Math.round(resizeHeightPct), x, Math.round(Math.max(0, lift) / density));
+        p.setFloatGeometry(prefs.floatScreen(this), Math.round(resizeWidthPct), Math.round(resizeHeightPct), x, Math.round(Math.max(0, lift) / density));
         keyboard.cancelAll();
         applySettings();   // 키 높이·글자 크기·자판 폭을 새 크기로 (applyOneHand 포함)
         resetFloatPreviewAfterLayout();

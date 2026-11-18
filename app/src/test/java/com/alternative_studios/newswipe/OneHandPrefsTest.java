@@ -101,50 +101,59 @@ public class OneHandPrefsTest {
         port.setOneHand(Prefs.ONE_HAND_LEFT);
         port.setOneHand(Prefs.ONE_HAND_FLOAT);
         assertEquals(Prefs.ONE_HAND_LEFT, port.oneHandLast());
-        // 자리는 프로필마다 따로이고, 정하기 전에는 기본값이다.
-        assertEquals(Prefs.FLOAT_POS_X_DEFAULT, land.floatX());
-        assertEquals(Prefs.FLOAT_POS_LIFT_DEFAULT, land.floatLiftDp());
-        port.setFloatPos(1200, -5);
-        assertEquals(1000, port.floatX());
-        assertEquals(0, port.floatLiftDp());
-        land.setFloatPos(250, 300);
-        assertEquals(250, land.floatX());
-        assertEquals(300, land.floatLiftDp());
-        assertEquals(Prefs.FLOAT_POS_X_DEFAULT, largeLand.floatX());
-        assertEquals(1000, port.floatX());
-        // 실험실 되돌리기는 떠 있는 키보드 설정과 자리를 모두 지운다.
-        largeLand.setFloatPos(10, 10);
+        // 방향마다 기억하지 않으면 자리는 모든 화면이 함께 쓰고, 정하기 전에는 기본값이다.
+        assertEquals(Prefs.FLOAT_POS_X_DEFAULT, land.floatX("land"));
+        assertEquals(Prefs.FLOAT_POS_LIFT_DEFAULT, land.floatLiftDp("land"));
+        port.setFloatPos("port", 1200, -5);
+        assertEquals(1000, port.floatX("port"));
+        assertEquals(0, port.floatLiftDp("port"));
+        assertEquals(1000, land.floatX("land"));
+        // 방향마다 기억하면 화면마다 따로이고, 그 화면에서 정하기 전에는 함께 쓰던 값을 따른다.
         sp.m.put(Prefs.FLOAT_PER_SCREEN, true);
+        land.setFloatPos("land", 250, 300);
+        assertEquals(250, land.floatX("land"));
+        assertEquals(300, land.floatLiftDp("land"));
+        assertEquals(1000, port.floatX("port"));
+        assertEquals(1000, largeLand.floatX("large_land"));
+        largeLand.setFloatPos("large_land", 10, 10);
+        assertEquals(10, largeLand.floatX("large_land"));
+        assertEquals(250, land.floatX("land"));
+        // 실험실 되돌리기는 떠 있는 키보드 설정과 자리를 모두 지운다.
         port.resetSection("lab");
-        assertEquals(Prefs.FLOAT_POS_X_DEFAULT, port.floatX());
-        assertEquals(Prefs.FLOAT_POS_X_DEFAULT, land.floatX());
-        assertEquals(Prefs.FLOAT_POS_X_DEFAULT, largeLand.floatX());
         assertEquals(false, port.floatPerScreen());
+        assertEquals(Prefs.FLOAT_POS_X_DEFAULT, port.floatX("port"));
+        sp.m.put(Prefs.FLOAT_PER_SCREEN, true);
+        assertEquals(Prefs.FLOAT_POS_X_DEFAULT, land.floatX("land"));
+        assertEquals(Prefs.FLOAT_POS_X_DEFAULT, largeLand.floatX("large_land"));
     }
 
     @Test
-    public void floatingSizeIsSeparateFromOneHandedMode() throws Exception {
+    public void floatingSizeIsSeparateFromOneHandedModeAndPerScreen() throws Exception {
         LegacySwipeSettingsTest.MapSp sp = new LegacySwipeSettingsTest.MapSp();
         Prefs port = view(sp, Prefs.PROFILE_PORTRAIT), land = view(sp, Prefs.PROFILE_LANDSCAPE);
-        // 정하기 전에는 한 손 모드 값을 따른다.
+        // 정하기 전에는 그 프로필의 한 손 모드 값을 따른다.
         sp.m.put(port.oneHandWidthKey(), 70);
         sp.m.put(port.oneHandHeightKey(), 80);
-        assertEquals(70, port.floatWidthForProfile());
-        assertEquals(80, port.floatHeightForProfile());
+        assertEquals(70, port.floatWidth("port"));
+        assertEquals(80, port.floatHeight("port"));
+        assertEquals(Prefs.ONE_HAND_WIDTH_LAND_DEFAULT, land.floatWidth("land"));
         // 떠 있는 키보드에서 정하면 떠 있는 키보드만 바뀌고 한 손 모드 값은 그대로다. 자리도 함께 저장한다.
-        port.setFloatGeometry(55, 120, 300, 100);
-        assertEquals(55, port.floatWidthForProfile());
-        assertEquals(120, port.floatHeightForProfile());
-        assertEquals(300, port.floatX());
-        assertEquals(100, port.floatLiftDp());
+        port.setFloatGeometry("port", 55, 120, 300, 100);
+        assertEquals(55, port.floatWidth("port"));
+        assertEquals(120, port.floatHeight("port"));
+        assertEquals(300, port.floatX("port"));
+        assertEquals(100, port.floatLiftDp("port"));
         assertEquals(70, port.oneHandWidthForProfile());
         assertEquals(80, port.oneHandHeightForProfile());
-        // 다른 화면 방향은 따로이고, 범위를 넘는 값은 줄인다.
-        assertEquals(Prefs.ONE_HAND_WIDTH_LAND_DEFAULT, land.floatWidthForProfile());
-        land.setFloatGeometry(5, 500, 0, 0);
-        assertEquals(Prefs.FLOAT_WIDTH_MIN, land.floatWidthForProfile());
-        assertEquals(Prefs.FLOAT_HEIGHT_MAX, land.floatHeightForProfile());
-        assertEquals(55, port.floatWidthForProfile());
+        // 방향마다 기억하지 않으면 모든 화면이 같은 크기다.
+        assertEquals(55, land.floatWidth("land"));
+        // 방향마다 기억하면 화면마다 따로이고, 범위를 넘는 값은 줄인다.
+        sp.m.put(Prefs.FLOAT_PER_SCREEN, true);
+        land.setFloatGeometry("land", 5, 500, 0, 0);
+        assertEquals(Prefs.FLOAT_WIDTH_MIN, land.floatWidth("land"));
+        assertEquals(Prefs.FLOAT_HEIGHT_MAX, land.floatHeight("land"));
+        assertEquals(55, port.floatWidth("port"));
+        assertEquals(120, port.floatHeight("large_port"));   // 정하지 않은 화면은 함께 쓰던 값
     }
 
     @Test

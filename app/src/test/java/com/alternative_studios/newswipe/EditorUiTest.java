@@ -2163,7 +2163,9 @@ public class EditorUiTest {
         assertNull(findText(cur(a), "폴더블 내부 화면 판정 기준"));
 
         SettingsActivity lab = launch("lab");
-        assertFalse(visibleTexts(cur(lab)).contains("폴더블"));
+        // 실험실에는 폴더블 설정이 없다 (떠 있는 키보드의 '상태를 방향마다 기억' 설명에만 폴더블이 나온다).
+        String labTexts = visibleTexts(cur(lab)).replace("폴더블 기기의 내부·외부 화면마다", "");
+        assertFalse(labTexts.contains("폴더블"));
     }
 
     /**
@@ -2233,7 +2235,10 @@ public class EditorUiTest {
         for (int i = 0; i < 40; i++) shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(50));   // 검색 목록을 모은다
         java.util.List<String> ls = lines(results);
         assertTrue(ls.toString(), ls.contains("폴더블 내부 화면 판정 기준"));
-        assertFalse("실험실에는 폴더블 설정이 없다: " + ls, ls.contains("실험실"));
+        // 실험실에는 폴더블 설정이 없다 (떠 있는 키보드의 '상태를 방향마다 기억' 설명에만 폴더블이 나온다).
+        for (int i = 0; i < ls.size(); i++) {
+            if (ls.get(i).equals("실험실")) assertEquals("실험실에는 폴더블 설정이 없다: " + ls, "상태를 방향마다 기억", ls.get(i - 1));
+        }
 
         // 판정 기준 → 키보드 사용자화
         q.invoke(a, "판정 기준");

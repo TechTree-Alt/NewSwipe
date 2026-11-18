@@ -646,38 +646,49 @@ public final class Prefs {
         return (large ? "large_" : "") + (land ? "land" : "port");
     }
 
-    /** 이 프로필의 떠 있는 키보드 가로 자리 (‰). */
-    public int floatX() { return clamp(sp.getInt(oneHandKey(FLOAT_POS_X), FLOAT_POS_X_DEFAULT), 0, 1000); }
+    // 떠 있는 키보드의 자리(가로 비율·띄운 높이)와 크기(자판 폭·키 높이). '상태를 방향마다 기억'을 켜면 화면({@link #floatScreen})마다
+    // 따로(이름 뒤에 _ + 화면), 끄면 모든 화면이 함께 쓴다. 화면마다 정하기 전에는 함께 쓰는 값을 따른다.
 
-    /** 이 프로필의 떠 있는 키보드 띄운 높이 (dp). */
-    public int floatLiftDp() { return clamp(sp.getInt(oneHandKey(FLOAT_POS_LIFT), FLOAT_POS_LIFT_DEFAULT), 0, FLOAT_POS_LIFT_MAX); }
-
-    /** 이 프로필의 떠 있는 키보드 자판 폭 (%). 손잡이 오른쪽 모서리로 정하기 전에는 한 손 모드 자판 폭. */
-    public int floatWidthForProfile() {
-        String key = oneHandKey(FLOAT_POS_WIDTH);
-        return sp.contains(key) ? clamp(sp.getInt(key, 0), FLOAT_WIDTH_MIN, FLOAT_WIDTH_MAX)
-                : clamp(oneHandWidthForProfile(), FLOAT_WIDTH_MIN, FLOAT_WIDTH_MAX);
+    private String floatKey(String base, String screen) {
+        return floatPerScreen() ? base + "_" + screen : base;
     }
 
-    /** 이 프로필의 떠 있는 키보드 키 높이 (%). 정하기 전에는 한 손 모드 키 높이. */
-    public int floatHeightForProfile() {
-        String key = oneHandKey(FLOAT_POS_HEIGHT);
-        return sp.contains(key) ? clamp(sp.getInt(key, 0), FLOAT_HEIGHT_MIN, FLOAT_HEIGHT_MAX)
-                : clamp(oneHandHeightForProfile(), FLOAT_HEIGHT_MIN, FLOAT_HEIGHT_MAX);
+    /** 이 화면에서 쓸 값: 화면마다 따로 정한 값, 없으면 함께 쓰는 값, 그것도 없으면 def. */
+    private int floatValue(String base, String screen, int def) {
+        String key = floatKey(base, screen);
+        return sp.contains(key) ? sp.getInt(key, def) : sp.getInt(base, def);
     }
 
-    /** 이 프로필의 떠 있는 키보드 크기와 자리를 한 번에 저장한다 (크기를 바꾸면 자리도 함께 바뀐다). */
-    public void setFloatGeometry(int widthPct, int heightPct, int xPermille, int liftDp) {
-        sp.edit().putInt(oneHandKey(FLOAT_POS_WIDTH), clamp(widthPct, FLOAT_WIDTH_MIN, FLOAT_WIDTH_MAX))
-                .putInt(oneHandKey(FLOAT_POS_HEIGHT), clamp(heightPct, FLOAT_HEIGHT_MIN, FLOAT_HEIGHT_MAX))
-                .putInt(oneHandKey(FLOAT_POS_X), clamp(xPermille, 0, 1000))
-                .putInt(oneHandKey(FLOAT_POS_LIFT), clamp(liftDp, 0, FLOAT_POS_LIFT_MAX)).apply();
+    /** 떠 있는 키보드 가로 자리 (‰). */
+    public int floatX(String screen) { return clamp(floatValue(FLOAT_POS_X, screen, FLOAT_POS_X_DEFAULT), 0, 1000); }
+
+    /** 떠 있는 키보드 띄운 높이 (dp). */
+    public int floatLiftDp(String screen) {
+        return clamp(floatValue(FLOAT_POS_LIFT, screen, FLOAT_POS_LIFT_DEFAULT), 0, FLOAT_POS_LIFT_MAX);
     }
 
-    /** 이 프로필의 떠 있는 키보드 자리를 저장한다. */
-    public void setFloatPos(int xPermille, int liftDp) {
-        sp.edit().putInt(oneHandKey(FLOAT_POS_X), clamp(xPermille, 0, 1000))
-                .putInt(oneHandKey(FLOAT_POS_LIFT), clamp(liftDp, 0, FLOAT_POS_LIFT_MAX)).apply();
+    /** 떠 있는 키보드 자판 폭 (%). 손잡이 오른쪽 모서리로 정하기 전에는 이 프로필의 한 손 모드 자판 폭. */
+    public int floatWidth(String screen) {
+        return clamp(floatValue(FLOAT_POS_WIDTH, screen, oneHandWidthForProfile()), FLOAT_WIDTH_MIN, FLOAT_WIDTH_MAX);
+    }
+
+    /** 떠 있는 키보드 키 높이 (%). 정하기 전에는 이 프로필의 한 손 모드 키 높이. */
+    public int floatHeight(String screen) {
+        return clamp(floatValue(FLOAT_POS_HEIGHT, screen, oneHandHeightForProfile()), FLOAT_HEIGHT_MIN, FLOAT_HEIGHT_MAX);
+    }
+
+    /** 떠 있는 키보드 크기와 자리를 한 번에 저장한다 (크기를 바꾸면 자리도 함께 바뀐다). */
+    public void setFloatGeometry(String screen, int widthPct, int heightPct, int xPermille, int liftDp) {
+        sp.edit().putInt(floatKey(FLOAT_POS_WIDTH, screen), clamp(widthPct, FLOAT_WIDTH_MIN, FLOAT_WIDTH_MAX))
+                .putInt(floatKey(FLOAT_POS_HEIGHT, screen), clamp(heightPct, FLOAT_HEIGHT_MIN, FLOAT_HEIGHT_MAX))
+                .putInt(floatKey(FLOAT_POS_X, screen), clamp(xPermille, 0, 1000))
+                .putInt(floatKey(FLOAT_POS_LIFT, screen), clamp(liftDp, 0, FLOAT_POS_LIFT_MAX)).apply();
+    }
+
+    /** 떠 있는 키보드 자리를 저장한다. */
+    public void setFloatPos(String screen, int xPermille, int liftDp) {
+        sp.edit().putInt(floatKey(FLOAT_POS_X, screen), clamp(xPermille, 0, 1000))
+                .putInt(floatKey(FLOAT_POS_LIFT, screen), clamp(liftDp, 0, FLOAT_POS_LIFT_MAX)).apply();
     }
 
     public boolean oneHandOn() { return !ONE_HAND_OFF.equals(oneHand()); }

@@ -2705,24 +2705,12 @@ public final class SettingsActivity extends Activity {
         addFloatKeyboard();
     }
 
-    /** 실험실 '떠 있는 키보드': 떠 있는 키보드 상태를 화면(방향)마다 기억할지. 떠 있는 키보드는 도구 막대 버튼이나 기능으로 켠다. */
+    /** 실험실 '떠 있는 키보드': 떠 있는 키보드의 사용 여부·크기·위치를 화면(방향)마다 기억할지. 떠 있는 키보드는 도구 막대 버튼이나 기능으로 켠다. */
     private void addFloatKeyboard() {
         LinearLayout box = section(L.t("떠 있는 키보드", "Floating keyboard"));
-        box.addView(note(L.t("도구 막대의 떠 있는 키보드 버튼(도구 막대 사용자화에서 켭니다)이나 '떠 있는 키보드' 기능으로 키보드를 화면 위에 띄웁니다. "
-                        + "키보드 아래의 손잡이를 끌어 옮기고, 카드를 화면 아래 끝까지 끌어 놓거나 버튼을 다시 누르면 원래대로 돌아옵니다. "
-                        + "손잡이 오른쪽 모서리를 끌면 폭과 키 높이를 바꾸고, 도구 막대도 키 높이를 따라 커지고 작아집니다. "
-                        + "이 크기는 떠 있는 키보드에만 쓰고, 정하기 전에는 한 손 모드 설정을 따릅니다. 자리와 크기는 화면 방향마다 기억합니다. "
-                        + "키보드가 떠 있는 동안 앱 화면은 줄어들지 않으므로, 입력란이 가려지면 키보드를 옮기세요.",
-                "Float the keyboard over the screen with the floating keyboard button on the toolbar (turn it on in toolbar customization) or the 'Floating keyboard' action. "
-                        + "Drag the handle under the keyboard to move it. To dock it, drag the keyboard down to the bottom of the screen or tap the button again. "
-                        + "Drag the right corner of the handle to change the width and key height; the toolbar scales with the key height. "
-                        + "This size applies only to the floating keyboard and follows the one-handed mode settings until you change it. Position and size are remembered for each screen orientation. "
-                        + "The app doesn't shrink while the keyboard floats, so move the keyboard if it covers the text field.")));
         box.addView(toggle(L.t("상태를 방향마다 기억", "Remember state per orientation"),
-                L.t("키보드를 띄웠는지를 세로·가로 화면, 접는 기기의 안쪽·바깥 화면마다 따로 기억합니다. "
-                        + "예를 들어 가로 화면에서 띄워도 세로 화면에서 꺼져 있었다면 세로로 돌릴 때 원래 키보드로 돌아오고, 다시 가로로 돌리면 뜹니다.",
-                        "Remembers whether the keyboard floats separately for portrait and landscape, and for a foldable's inner and outer screens. "
-                        + "For example, if you float it in landscape but it was docked in portrait, it docks when you rotate to portrait and floats again in landscape."),
+                L.t("떠 있는 키보드의 사용 여부, 크기, 위치를 세로·가로 화면, 폴더블 기기의 내부·외부 화면마다 따로 기억합니다.",
+                        "Remembers whether the keyboard floats, and its size and position, separately for portrait and landscape and for a foldable's inner and outer screens."),
                 prefs.floatPerScreen(), on -> prefs.setFloatPerScreen(prefs.floatScreen(this), on)));
     }
 
