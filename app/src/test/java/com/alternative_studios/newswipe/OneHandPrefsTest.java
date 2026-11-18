@@ -125,4 +125,29 @@ public class OneHandPrefsTest {
         assertEquals(Prefs.FLOAT_POS_X_DEFAULT, largeLand.floatX());
         assertEquals(false, port.floatKeyboard());
     }
+
+    @Test
+    public void floatingSizeIsSeparateFromOneHandedMode() throws Exception {
+        LegacySwipeSettingsTest.MapSp sp = new LegacySwipeSettingsTest.MapSp();
+        Prefs port = view(sp, Prefs.PROFILE_PORTRAIT), land = view(sp, Prefs.PROFILE_LANDSCAPE);
+        // 정하기 전에는 한 손 모드 값을 따른다.
+        sp.m.put(port.oneHandWidthKey(), 70);
+        sp.m.put(port.oneHandHeightKey(), 80);
+        assertEquals(70, port.floatWidthForProfile());
+        assertEquals(80, port.floatHeightForProfile());
+        // 플로팅에서 정하면 플로팅만 바뀌고 한 손 모드 값은 그대로다. 자리도 함께 저장한다.
+        port.setFloatGeometry(55, 120, 300, 100);
+        assertEquals(55, port.floatWidthForProfile());
+        assertEquals(120, port.floatHeightForProfile());
+        assertEquals(300, port.floatX());
+        assertEquals(100, port.floatLiftDp());
+        assertEquals(70, port.oneHandWidthForProfile());
+        assertEquals(80, port.oneHandHeightForProfile());
+        // 다른 화면 방향은 따로이고, 범위를 넘는 값은 줄인다.
+        assertEquals(Prefs.ONE_HAND_WIDTH_LAND_DEFAULT, land.floatWidthForProfile());
+        land.setFloatGeometry(5, 500, 0, 0);
+        assertEquals(Prefs.FLOAT_WIDTH_MIN, land.floatWidthForProfile());
+        assertEquals(Prefs.FLOAT_HEIGHT_MAX, land.floatHeightForProfile());
+        assertEquals(55, port.floatWidthForProfile());
+    }
 }

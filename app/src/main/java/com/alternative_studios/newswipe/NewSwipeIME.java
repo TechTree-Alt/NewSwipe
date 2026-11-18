@@ -128,10 +128,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private LinearLayout body, column, sideStrip;
     private View liftSpace;
     /**
-     * 플로팅 키보드(실험실): body = [floatLeft | column | floatRight] (좌우는 투명한 빈 곳), column 맨 아래에 끌기 손잡이(floatHandle).
-     * 키보드 창은 화면 아래에 붙은 그대로이고, 세로 자리는 liftSpace 높이로 띄운다. 터치는 column 영역만 받는다 (onComputeInsets).
+     * 플로팅 키보드(실험실): root = [floatTop | body | liftSpace], body = [floatLeft | column | floatRight] (빈 곳은 모두 투명),
+     * column 맨 아래에 손잡이(floatHandle). 키보드 창은 상태 표시줄 아래부터 화면 아래까지 늘 같은 높이이고(root 최소 높이),
+     * 세로 자리는 liftSpace 높이로 정하며 floatTop이 남는 위쪽을 채운다. 끄는 동안에는 translation·scale만 바꿔
+     * 창 크기도 레이아웃도 바뀌지 않는다. 터치는 column 영역만 받는다 (onComputeInsets).
      */
-    private View floatLeft, floatRight, floatHandle;
+    private View floatTop, floatLeft, floatRight, floatHandle;
     /** 지금 배치가 플로팅 키보드인지 (applyOneHand가 마지막으로 놓은 상태). */
     private boolean floatingApplied;
     private final int[] floatLoc = new int[2];
@@ -638,6 +640,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         column.setClipToPadding(false);
         sideStrip = buildSideStrip();
         liftSpace = new View(this);
+        // Space는 남는 높이만 받는다 (보통 View는 WRAP_CONTENT로 재면 받을 수 있는 높이를 다 차지한다).
+        floatTop = new android.widget.Space(this);
+        floatTop.setVisibility(View.GONE);
+        root.addView(floatTop, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
         floatLeft = new View(this);
         floatRight = new View(this);
         floatingApplied = false;
@@ -699,7 +705,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         column.addView(floatHandle);
         // 플로팅 키보드에서 column 높이가 바뀌면(검색 결과 줄, 패널 전환 등) 화면 위로 넘지 않게 띄운 높이를 다시 맞춘다.
         column.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
-            if (floatingApplied && !floatDragging && b - t != ob - ot) main.post(this::applyOneHand);
+            if (b - t == ob - ot) return;
+            floatHeightHint = -1;   // 새 높이가 놓였다
+            if (floatingApplied && !floatDragging) main.post(this::applyOneHand);
         });
         applySettings();
         // 새 자판 뷰에도 바로 배열을 놓는다 (회전·테마 변경으로 다시 만들 때 onStartInputView 전에 배열이 비어 있지 않게).
@@ -782,7 +790,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         lastImeNavBarFrame = frame;
         bottom = Math.max(bottom, frame);
         if (bottom < 0) return;   // 어느 값도 모른다: 지금 그대로 둔다
-        if (root.getPaddingBottom() != bottom) root.setPadding(0, 0, 0, bottom);
+        if (root.getPaddingBottom() != bottom) {
+            root.setPadding(0, 0, 0, bottom);
+            if (floatingApplied) applyOneHand();   // 띄울 수 있는 높이가 바뀌었다
+        }
     }
 
     /** 키보드 창에만 붙는 하단 영역의 높이 (인셋 콜백 값 - 창 관리자 값). 키보드가 내려가면 0으로 비운다. */
@@ -1340,7 +1351,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         // 가로 모드·폴더블 내부 화면에서 따로 정한 키보드 높이·글자 크기는 그 화면에서만 쓴다.
         Prefs sizePrefs = prefs.profileView(profile());
         // 한 손 모드에서는 키 높이를 줄인 만큼 키 글자도 같은 비율로 줄인다 (도구 막대는 줄어든 자판 바로 위에 붙어 따라온다).
-        float oneHandScale = !Prefs.ONE_HAND_OFF.equals(activeOneHand()) ? sizePrefs.oneHandHeightForProfile() / 100f : 1f;
+        // 플로팅 키보드는 플로팅에서 정한 키 높이를 따로 쓴다 (정하기 전에는 한 손 모드 값).
+        String oneHandSide = activeOneHand();
+        float oneHandScale = Prefs.ONE_HAND_FLOAT.equals(oneHandSide) ? sizePrefs.floatHeightForProfile() / 100f
+                : !Prefs.ONE_HAND_OFF.equals(oneHandSide) ? sizePrefs.oneHandHeightForProfile() / 100f : 1f;
         keyboard.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), prefs.keyPreview(),
                 Math.round(sizePrefs.keyTextSize() * oneHandScale));
         keyboard.setDirectionRatios(prefs.swipeDownRatio(), prefs.swipeUpRatio());
@@ -1532,11 +1546,17 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         int lift = appliedBarOnly ? 0 : Ui.dp(this, on ? profilePrefs.oneHandBottomForProfile() : 0);
         boolean floating = Prefs.ONE_HAND_FLOAT.equals(side);
         int floatX = floating ? profilePrefs.floatX() : 0;
-        if (floating) lift = clampFloatLift(Ui.dp(this, profilePrefs.floatLiftDp()));
-        String signature = side + "/" + width + "/" + lift + "/" + floatX;
+        int floatWindow = 0;
+        if (floating) {
+            width = profilePrefs.floatWidthForProfile();
+            lift = clampFloatLift(Ui.dp(this, profilePrefs.floatLiftDp()));
+            floatWindow = floatWindowHeight();
+        }
+        String signature = side + "/" + width + "/" + lift + "/" + floatX + "/" + floatWindow;
         if (signature.equals(appliedOneHand)) return;
         appliedOneHand = signature;
         applyFloating(floating);
+        root.setMinimumHeight(floatWindow);   // 플로팅이 아니면 0
         // 한 손 모드를 켜고 끌 때마다 자동 완성 칩을 다시 배치한다 (한 손 모드에서는 열쇠만, 아니면 계정 칩 모두).
         if (autofill != null) autofill.setCompact(on);
         body.removeAllViews();
@@ -1573,11 +1593,17 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     // ---------------------------------------------------------------- 플로팅 키보드 (실험실)
 
-    /** 플로팅 키보드를 켜고 끌 때 바뀌는 모습: 투명한 바탕과 하단 바, 둥근 카드, 끌기 손잡이. */
+    /** 손잡이 줄의 높이 (dp). */
+    private static final int FLOAT_HANDLE_DP = 24;
+    /** 손잡이를 화면 아래로 이만큼(dp) 더 끌어 놓으면 원래의 아래 키보드로 돌아간다. */
+    private static final int FLOAT_DOCK_DP = 48;
+
+    /** 플로팅 키보드를 켜고 끌 때 바뀌는 모습: 투명한 바탕과 하단 바, 둥근 카드, 손잡이, 위쪽 빈 곳. */
     private void applyFloating(boolean floating) {
         if (floating == floatingApplied) return;
         floatingApplied = floating;
         floatHandle.setVisibility(floating ? View.VISIBLE : View.GONE);
+        floatTop.setVisibility(floating ? View.VISIBLE : View.GONE);
         root.setBackgroundColor(floating ? android.graphics.Color.TRANSPARENT : theme.background);
         if (floating) {
             android.graphics.drawable.GradientDrawable card = Ui.round(theme.background, Ui.dp(this, 16));
@@ -1585,70 +1611,198 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             column.setBackground(card);
         } else {
             column.setBackground(null);
-            column.setTranslationX(0);
+            resetFloatPreview();
         }
         column.setClipToOutline(floating);
         applyNavigationBarStyle();
     }
 
-    /** 끌기 손잡이: column 맨 아래의 가는 줄. 끌면 키보드를 옮기고, 놓으면 그 자리를 프로필마다 저장한다. */
+    /**
+     * 손잡이 줄: 가운데를 끌면 키보드를 옮기고(화면 아래로 더 끌어 놓으면 아래 키보드로 돌아간다), 오른쪽 모서리를 끌면
+     * 폭과 키 높이를 바꾼다. 놓으면 그 자리·크기를 프로필마다 저장한다 (크기는 플로팅 키보드에만 쓴다).
+     */
     private View buildFloatHandle() {
         FrameLayout handle = new FrameLayout(this);
-        handle.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 20)));
+        handle.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, FLOAT_HANDLE_DP)));
         handle.setContentDescription(L.t("키보드 옮기기", "Move keyboard"));
         handle.setVisibility(View.GONE);
         View pill = new View(this);
         pill.setBackground(Ui.round(theme.hint, Ui.dp(this, 2)));
         handle.addView(pill, new FrameLayout.LayoutParams(Ui.dp(this, 36), Ui.dp(this, 4), Gravity.CENTER));
-        handle.setOnTouchListener((v, e) -> {
-            switch (e.getActionMasked()) {
-                case MotionEvent.ACTION_DOWN:
-                    dragRawX = e.getRawX();
-                    dragRawY = e.getRawY();
-                    dragStartTx = column.getTranslationX();
-                    dragStartLift = currentLift();
-                    floatDragging = true;
-                    feedback.onToolbar();
-                    break;
-                case MotionEvent.ACTION_MOVE:
-                    // 가로는 translation으로만 옮기고(창 크기 그대로), 세로는 띄운 높이를 바로 바꾼다 (창이 위로 자란다).
-                    float tx = dragStartTx + e.getRawX() - dragRawX;
-                    tx = Math.max(-column.getLeft(), Math.min(body.getWidth() - column.getRight(), tx));
-                    column.setTranslationX(tx);
-                    setLift(clampFloatLift(Math.round(dragStartLift - (e.getRawY() - dragRawY))));
-                    break;
-                case MotionEvent.ACTION_UP:
-                case MotionEvent.ACTION_CANCEL:
-                    commitFloatDrag();
-                    break;
-                default:
-                    break;
+        final int hint = theme.hint;
+        View grip = new View(this) {
+            private final android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+
+            @Override
+            protected void onDraw(android.graphics.Canvas c) {
+                paint.setColor(hint);
+                paint.setStrokeWidth(Ui.dp(getContext(), 2));
+                paint.setStrokeCap(android.graphics.Paint.Cap.ROUND);
+                float s = Ui.dp(getContext(), 10), r = getWidth() - Ui.dp(getContext(), 10), b = getHeight() - Ui.dp(getContext(), 6);
+                c.drawLine(r - s, b, r, b - s, paint);
+                c.drawLine(r - s / 2, b, r, b - s / 2, paint);
             }
-            return true;
-        });
+        };
+        grip.setContentDescription(L.t("키보드 크기 조절", "Resize keyboard"));
+        handle.addView(grip, new FrameLayout.LayoutParams(Ui.dp(this, 48), ViewGroup.LayoutParams.MATCH_PARENT,
+                Gravity.END | Gravity.CENTER_VERTICAL));
+        handle.setOnTouchListener((v, e) -> onFloatDrag(e, false));
+        grip.setOnTouchListener((v, e) -> onFloatDrag(e, true));
         return handle;
     }
 
-    private float dragRawX, dragRawY, dragStartTx;
-    private int dragStartLift;
+    private float dragRawX, dragRawY;
+    private int dragStartLift, dragStartTop, dragStartW, dragStartH, dragOtherH;
     /** 손잡이를 끄는 중인지 (그동안은 column 높이가 바뀌어도 자리를 다시 맞추지 않는다). */
     private boolean floatDragging;
+    /** 이번 끌기가 크기 조절인지 (아니면 옮기기). */
+    private boolean floatResizing;
+    /** 옮기기에서 화면 아래로 충분히 끌어 놓으면 아래 키보드로 돌아갈 상태인지. */
+    private boolean floatDocking;
+    /** 크기 조절 중의 폭(%)·키 높이(%) (놓을 때 저장한다). */
+    private float resizeWidthPct, resizeHeightPct;
+    /** 크기를 바꾼 직후, 새 column 높이가 놓이기 전까지 쓸 예상 높이 (-1 = 없음). */
+    private int floatHeightHint = -1;
 
-    /** 손을 떼면 지금 자리를 저장하고 배치(빈 곳 비율·띄운 높이)에 반영한다. translation은 새 배치가 놓인 뒤에 지운다 (한 프레임 튀지 않게). */
-    private void commitFloatDrag() {
-        floatDragging = false;
-        if (!floatingApplied) return;
-        int free = body.getWidth() - column.getWidth();
-        int x = free > 0 ? Math.round((column.getLeft() + column.getTranslationX()) * 1000f / free) : Prefs.FLOAT_POS_X_DEFAULT;
-        int liftDp = Math.round(currentLift() / getResources().getDisplayMetrics().density);
+    private boolean onFloatDrag(MotionEvent e, boolean resize) {
+        if (!floatingApplied) return false;
+        switch (e.getActionMasked()) {
+            case MotionEvent.ACTION_DOWN:
+                dragRawX = e.getRawX();
+                dragRawY = e.getRawY();
+                dragStartLift = currentLift();
+                dragStartTop = floatTop.getHeight();
+                dragStartW = column.getWidth();
+                dragStartH = column.getHeight();
+                dragOtherH = dragStartH - keyboard.getHeight();   // 도구 막대·손잡이처럼 키 높이를 따르지 않는 부분
+                floatDragging = true;
+                floatResizing = resize;
+                floatDocking = false;
+                column.setPivotX(0);
+                column.setPivotY(0);
+                feedback.onToolbar();
+                break;
+            case MotionEvent.ACTION_MOVE:
+                if (!floatDragging) break;
+                float dx = e.getRawX() - dragRawX, dy = e.getRawY() - dragRawY;
+                if (floatResizing) previewFloatResize(dx, dy);
+                else previewFloatMove(dx, dy);
+                break;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                if (!floatDragging) break;
+                floatDragging = false;
+                if (floatResizing) commitFloatResize();
+                else if (floatDocking && e.getActionMasked() == MotionEvent.ACTION_UP) dockFloating();
+                else commitFloatMove();
+                break;
+            default:
+                break;
+        }
+        return true;
+    }
+
+    /** 옮기기: 레이아웃은 그대로 두고 translation만 바꾼다. 화면 아래 끝을 넘겨 끌면 살짝 따라 내려가며 흐려진다 (놓으면 돌아간다). */
+    private void previewFloatMove(float dx, float dy) {
+        int left = column.getLeft();
+        column.setTranslationX(Math.max(-left, Math.min(body.getWidth() - left - dragStartW, dx)));
+        float ty;
+        if (dy <= dragStartLift) {
+            ty = Math.max(-dragStartTop, dy);
+        } else {
+            float over = dy - dragStartLift;
+            ty = dragStartLift + Math.min(over * 0.35f, root.getPaddingBottom() + Ui.dp(this, 16));
+        }
+        column.setTranslationY(ty);
+        boolean docking = dy - dragStartLift > Ui.dp(this, FLOAT_DOCK_DP);
+        if (docking != floatDocking) {
+            floatDocking = docking;
+            column.setAlpha(docking ? 0.5f : 1f);
+            feedback.onToolbar();
+        }
+    }
+
+    private void commitFloatMove() {
+        float tx = column.getTranslationX();
+        float ty = Math.min(column.getTranslationY(), dragStartLift);
+        int free = body.getWidth() - dragStartW;
+        int x = free > 0 ? Math.round((column.getLeft() + tx) * 1000f / free) : Prefs.FLOAT_POS_X_DEFAULT;
+        int liftDp = Math.round((dragStartLift - ty) / getResources().getDisplayMetrics().density);
         prefs.profileView(profile()).setFloatPos(x, liftDp);
         applyOneHand();
+        resetFloatPreviewAfterLayout();
+    }
+
+    /** 화면 아래로 끌어 놓았다: 자리는 저장하지 않고(다음에 켜면 원래 자리) 아래 키보드로 돌아간다. */
+    private void dockFloating() {
+        resetFloatPreview();
+        setOneHand(Prefs.ONE_HAND_OFF);
+    }
+
+    /**
+     * 크기 조절: 왼쪽 위를 고정한 scale로 미리 보인다 (자판을 다시 배치하지 않아 끊기지 않는다).
+     * 오른쪽·아래가 화면 끝에 닿으면 왼쪽·위로 밀어 자란다. 키 높이 비율에 맞춰 키 영역만 늘고 줄어든다고 보고 높이를 잰다.
+     */
+    private void previewFloatResize(float dx, float dy) {
+        Prefs p = prefs.profileView(profile());
+        int bodyW = body.getWidth();
+        if (bodyW <= 0 || dragStartW <= 0 || dragStartH <= 0) return;
+        resizeWidthPct = Math.max(Prefs.FLOAT_WIDTH_MIN, Math.min(Prefs.FLOAT_WIDTH_MAX, (dragStartW + dx) * 100f / bodyW));
+        float newW = bodyW * resizeWidthPct / 100f;
+        int keyH = Math.max(1, dragStartH - dragOtherH);
+        float startHPct = p.floatHeightForProfile();
+        float hPct = startHPct * (keyH + dy) / keyH;
+        float maxGrow = dragStartLift + dragStartTop;   // 아래쪽 여유 + 위쪽 여유
+        hPct = Math.min(hPct, startHPct * (keyH + maxGrow) / keyH);
+        resizeHeightPct = Math.max(Prefs.FLOAT_HEIGHT_MIN, Math.min(Prefs.FLOAT_HEIGHT_MAX, hPct));
+        float newH = dragOtherH + keyH * resizeHeightPct / startHPct;
+        column.setScaleX(newW / dragStartW);
+        column.setScaleY(newH / dragStartH);
+        int left = column.getLeft();
+        column.setTranslationX(Math.max(-left, Math.min(0, bodyW - left - newW)));
+        column.setTranslationY(Math.max(-dragStartTop, Math.min(0, dragStartLift - (newH - dragStartH))));
+    }
+
+    private void commitFloatResize() {
+        Prefs p = prefs.profileView(profile());
+        int bodyW = body.getWidth();
+        if (bodyW <= 0 || column.getScaleX() == 1f && column.getScaleY() == 1f) {
+            resetFloatPreview();
+            return;
+        }
+        float newW = dragStartW * column.getScaleX(), newH = dragStartH * column.getScaleY();
+        float left = column.getLeft() + column.getTranslationX();
+        float free = bodyW - newW;
+        int x = free > 0.5f ? Math.round(left * 1000f / free) : Prefs.FLOAT_POS_X_DEFAULT;
+        // 위쪽 끝을 고정한다: 새 띄운 높이 = 처음 띄운 높이 - (늘어난 높이) - (위로 민 만큼).
+        float lift = dragStartLift - (newH - dragStartH) - column.getTranslationY();
+        float density = getResources().getDisplayMetrics().density;
+        floatHeightHint = Math.round(newH);   // 새 높이가 놓이기 전에 띄운 높이를 옛 높이로 줄이지 않게
+        p.setFloatGeometry(Math.round(resizeWidthPct), Math.round(resizeHeightPct), x, Math.round(Math.max(0, lift) / density));
+        keyboard.cancelAll();
+        applySettings();   // 키 높이·글자 크기·자판 폭을 새 크기로 (applyOneHand 포함)
+        resetFloatPreviewAfterLayout();
+    }
+
+    /** 미리 보기로 바꾼 translation·scale·흐림을 지운다. */
+    private void resetFloatPreview() {
+        column.setTranslationX(0);
+        column.setTranslationY(0);
+        column.setScaleX(1f);
+        column.setScaleY(1f);
+        column.setAlpha(1f);
+        floatDocking = false;
+    }
+
+    /** 새 배치가 놓인 그 프레임에 미리 보기를 지운다 (손을 뗄 때 한 프레임 튀지 않게). */
+    private void resetFloatPreviewAfterLayout() {
         final View c = column;
         c.getViewTreeObserver().addOnPreDrawListener(new android.view.ViewTreeObserver.OnPreDrawListener() {
             @Override
             public boolean onPreDraw() {
                 c.getViewTreeObserver().removeOnPreDrawListener(this);
-                c.setTranslationX(0);
+                floatHeightHint = -1;   // 새 배치가 놓였다
+                if (!floatDragging) resetFloatPreview();
                 return true;
             }
         });
@@ -1659,30 +1813,23 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return liftSpace.getVisibility() == View.VISIBLE ? liftSpace.getLayoutParams().height : 0;
     }
 
-    private void setLift(int px) {
-        ViewGroup.LayoutParams lp = liftSpace.getLayoutParams();
-        int vis = px > 0 ? View.VISIBLE : View.GONE;
-        if (lp.height == px && liftSpace.getVisibility() == vis) return;
-        lp.height = px;
-        liftSpace.setLayoutParams(lp);
-        liftSpace.setVisibility(vis);
-    }
-
-    /** 띄운 높이(px)를 키보드가 상태 표시줄 아래에 다 들어가는 만큼으로 줄인다 (화면을 돌리거나 키보드 높이가 바뀌어도). */
-    private int clampFloatLift(int px) {
-        int screen, top;
+    /** 플로팅 키보드 창의 높이: 상태 표시줄 아래부터 화면 아래까지 (px). root의 최소 높이로 쓴다. */
+    private int floatWindowHeight() {
         WindowInsets fresh = freshInsets();
         android.view.WindowManager wm = Build.VERSION.SDK_INT >= 30 && getWindow() != null && getWindow().getWindow() != null
                 ? getWindow().getWindow().getWindowManager() : null;
         if (fresh != null && wm != null) {
-            screen = wm.getCurrentWindowMetrics().getBounds().height();
-            top = fresh.getInsets(WindowInsets.Type.statusBars() | WindowInsets.Type.displayCutout()).top;
-        } else {
-            screen = getResources().getDisplayMetrics().heightPixels;
-            top = Ui.dp(this, 24);
+            return Math.max(0, wm.getCurrentWindowMetrics().getBounds().height()
+                    - fresh.getInsets(WindowInsets.Type.statusBars() | WindowInsets.Type.displayCutout()).top);
         }
-        int columnH = column.getHeight() > 0 ? column.getHeight() : toolbarHeight + keyboardHeight + Ui.dp(this, 20);
-        int max = Math.max(0, screen - top - root.getPaddingBottom() - columnH);
+        return Math.max(0, getResources().getDisplayMetrics().heightPixels - Ui.dp(this, 24));
+    }
+
+    /** 띄운 높이(px)를 키보드가 상태 표시줄 아래에 다 들어가는 만큼으로 줄인다 (화면을 돌리거나 키보드 높이가 바뀌어도). */
+    private int clampFloatLift(int px) {
+        int columnH = floatHeightHint > 0 ? floatHeightHint
+                : column.getHeight() > 0 ? column.getHeight() : toolbarHeight + keyboardHeight + Ui.dp(this, FLOAT_HANDLE_DP);
+        int max = floatWindowHeight() - root.getPaddingBottom() - columnH;
         return Math.max(0, Math.min(max, px));
     }
 

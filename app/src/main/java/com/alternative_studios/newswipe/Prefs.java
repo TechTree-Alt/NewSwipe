@@ -188,6 +188,11 @@ public final class Prefs {
     /** 세로 자리: 화면 아래에서 띄운 높이 (dp). 키보드 창이 화면을 넘지 않게 쓸 때 다시 줄인다. */
     public static final String FLOAT_POS_LIFT = FLOAT_POS_PREFIX + "lift";
     public static final int FLOAT_POS_X_DEFAULT = 500, FLOAT_POS_LIFT_DEFAULT = 48, FLOAT_POS_LIFT_MAX = 4000;
+    /** 플로팅 키보드만의 자판 폭 (화면 폭의 %). 정하기 전에는 한 손 모드 자판 폭을 따른다. */
+    public static final String FLOAT_POS_WIDTH = FLOAT_POS_PREFIX + "width";
+    /** 플로팅 키보드만의 키 높이 (보통 키 높이의 %). 정하기 전에는 한 손 모드 키 높이를 따른다. */
+    public static final String FLOAT_POS_HEIGHT = FLOAT_POS_PREFIX + "height";
+    public static final int FLOAT_WIDTH_MIN = 20, FLOAT_WIDTH_MAX = 100, FLOAT_HEIGHT_MIN = 50, FLOAT_HEIGHT_MAX = 130;
     /**
      * 키보드 모습의 묶음(프로필). 키보드 사용자화는 그 화면에서 쓰는 프로필({@link #profileFor})을 편집한다.
      * 화면마다 따로 정하는 값(분리 키보드 사용 유무·묶음 폭·위치·스페이스바 잇기·하단 기능키 폭, 키 글자 크기, 높이, 여백)만
@@ -586,6 +591,28 @@ public final class Prefs {
 
     /** 이 프로필의 플로팅 키보드 띄운 높이 (dp). */
     public int floatLiftDp() { return clamp(sp.getInt(oneHandKey(FLOAT_POS_LIFT), FLOAT_POS_LIFT_DEFAULT), 0, FLOAT_POS_LIFT_MAX); }
+
+    /** 이 프로필의 플로팅 키보드 자판 폭 (%). 손잡이 오른쪽 모서리로 정하기 전에는 한 손 모드 자판 폭. */
+    public int floatWidthForProfile() {
+        String key = oneHandKey(FLOAT_POS_WIDTH);
+        return sp.contains(key) ? clamp(sp.getInt(key, 0), FLOAT_WIDTH_MIN, FLOAT_WIDTH_MAX)
+                : clamp(oneHandWidthForProfile(), FLOAT_WIDTH_MIN, FLOAT_WIDTH_MAX);
+    }
+
+    /** 이 프로필의 플로팅 키보드 키 높이 (%). 정하기 전에는 한 손 모드 키 높이. */
+    public int floatHeightForProfile() {
+        String key = oneHandKey(FLOAT_POS_HEIGHT);
+        return sp.contains(key) ? clamp(sp.getInt(key, 0), FLOAT_HEIGHT_MIN, FLOAT_HEIGHT_MAX)
+                : clamp(oneHandHeightForProfile(), FLOAT_HEIGHT_MIN, FLOAT_HEIGHT_MAX);
+    }
+
+    /** 이 프로필의 플로팅 키보드 크기와 자리를 한 번에 저장한다 (크기를 바꾸면 자리도 함께 바뀐다). */
+    public void setFloatGeometry(int widthPct, int heightPct, int xPermille, int liftDp) {
+        sp.edit().putInt(oneHandKey(FLOAT_POS_WIDTH), clamp(widthPct, FLOAT_WIDTH_MIN, FLOAT_WIDTH_MAX))
+                .putInt(oneHandKey(FLOAT_POS_HEIGHT), clamp(heightPct, FLOAT_HEIGHT_MIN, FLOAT_HEIGHT_MAX))
+                .putInt(oneHandKey(FLOAT_POS_X), clamp(xPermille, 0, 1000))
+                .putInt(oneHandKey(FLOAT_POS_LIFT), clamp(liftDp, 0, FLOAT_POS_LIFT_MAX)).apply();
+    }
 
     /** 이 프로필의 플로팅 키보드 자리를 저장한다. */
     public void setFloatPos(int xPermille, int liftDp) {
