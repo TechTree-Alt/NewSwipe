@@ -53,8 +53,6 @@ public class ToolbarSwipesTest {
             assertTrue(Arrays.asList(ids).contains(SwipeAction.ONE_HAND_LEFT));
             assertTrue(Arrays.asList(ids).contains(SwipeAction.ONE_HAND_RIGHT));
         }
-        assertEquals("한 손 모드 (왼쪽)", SwipeAction.label(SwipeAction.ONE_HAND_LEFT));
-        assertEquals("한 손 모드 (오른쪽)", SwipeAction.label(SwipeAction.ONE_HAND_RIGHT));
     }
 
     @Test

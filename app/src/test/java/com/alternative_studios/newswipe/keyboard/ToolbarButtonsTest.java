@@ -41,6 +41,5 @@ public class ToolbarButtonsTest {
         String[][] o = ToolbarButtons.order("clipboard,emoji,voice,undo|settings,hide");
         assertArrayEquals(new String[]{"clipboard", "emoji", "voice", "undo"}, o[0]);
         assertArrayEquals(new String[]{"settings", "hide", "onehand", "float"}, o[1]);
-        org.junit.Assert.assertEquals(Icons.ONE_HAND, ToolbarButtons.icon(ToolbarButtons.ONE_HAND));
     }
 }

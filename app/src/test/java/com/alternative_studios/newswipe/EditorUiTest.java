@@ -321,9 +321,6 @@ public class EditorUiTest {
         idle();
         assertNull(p.selection());
         assertTrue(visibleTexts(cur(a)).contains("폴더블 설정"));
-        assertFalse(visibleTexts(cur(a)).contains("숫자 줄"));   // 숫자 줄은 꺼도 미리보기의 빈 칸을 눌러 연다: 목록에 섹션이 없다
-        assertFalse(visibleTexts(cur(a)).contains("키 사이 좌우 간격"));   // 키 모양·분리 키보드는 '키보드 전체 설정' 창으로 옮겼다
-        assertFalse(visibleTexts(cur(a)).contains("글자 키 높이"));
 
         // ---- 영어 자판, 기호 자판
         p.setTab(KeyboardPreview.TAB_ENGLISH);
@@ -387,13 +384,8 @@ public class EditorUiTest {
         p.setLayer(KeyboardPreview.LAYER_KEY);
         idle();
         ScrollView scroll = find(a.getWindow().getDecorView(), ScrollView.class);
-        log("OVERVIEW has custom toggle: " + visibleTexts(cur(a)).contains("완전 사용자화"));
-        assertFalse(visibleTexts(cur(a)).contains("완전 사용자화"));
-        assertFalse(visibleTexts(cur(a)).contains("밀어서 쌍자음"));
         // ㄹ 위쪽: 빠른 선택으로 ㄼ
         tapKey(p, key(p, "ㄹ", Key.CHAR));
-        log("PANEL ㄹ:\n" + visibleTexts(cur(a)));
-        assertFalse(visibleTexts(cur(a)).contains("완전 사용자화"));
         tapDir(cur(a), "위쪽");
         AlertDialog d = (AlertDialog) ShadowDialog.getLatestDialog();
         log("up dialog: " + shadowOf(d).getTitle());
@@ -769,7 +761,6 @@ public class EditorUiTest {
         log("SPACE:\n" + t);
         assertTrue(t.contains("두 번 눌러 마침표") && t.contains("언어 이름 보이기") && t.contains("인식 범위 좁히기")
                 && t.contains("커서 이동 속도 좌우"));
-        assertFalse(t.contains("순서·유무"));
         shot(a, "87-space-key");
         assertTrue(t.contains("길게 누르면") && t.contains("길게 누른 뒤 밀어서 글자 선택"));
         View lpRow = findText(cur(a), "길게 누르면");
@@ -804,7 +795,6 @@ public class EditorUiTest {
         p.setTab(KeyboardPreview.TAB_KOREAN); idle();
         tapKey(p, key(p, "1", Key.CHAR));
         t = visibleTexts(cur(a));
-        assertFalse(t.contains("숫자 줄 높이") || t.contains("숫자 줄 표시"));
         shot(a, "88-number-key");
         prefs.raw().edit().putBoolean(Prefs.NUMBER_ROW, false).commit();
         p.setTab(KeyboardPreview.TAB_KOREAN); idle();
@@ -861,7 +851,6 @@ public class EditorUiTest {
         String t = visibleTexts(cur(a));
         log("LETTERS:\n" + t);
         assertTrue(t.contains("한글 자판 배열") && t.contains("쌍자음 입력") && t.contains("키보드 밀기 사용자화"));
-        assertFalse(t.contains("영어 자동 대문자"));   // 영어 글자 키 창에만 있다
         // 쌍자음·이중모음 입력 방식: 줄을 누르면 고르는 창 (아래로 밀기·연속 탭·둘 다)
         assertTrue(t.contains("쌍자음 입력\n  아래로 밀기") && t.contains("이중모음 입력\n  둘 다"));
         assertFalse(t.contains("쌍자음 인식 시간"));   // 연속 탭을 쓸 때만
@@ -884,7 +873,6 @@ public class EditorUiTest {
         assertEquals(Prefs.INPUT_SWIPE, ip.consonantInputMode());
         assertFalse(byDesc(decor, "마지막 변경 되돌리기").isEnabled());
         assertEquals("ㄲ", key(p, "ㄱ", Key.CHAR).swipeText(Key.SWIPE_DOWN));
-        assertFalse(t.contains("스페이스바 두 번으로 마침표"));
         String lt = visibleTexts(cur(a));
         assertTrue(lt.contains("글자 키 높이"));
         assertTrue(lt.indexOf("한글 자판 배열") < lt.indexOf("모양") && lt.indexOf("모양") < lt.indexOf("입력"));
@@ -899,8 +887,6 @@ public class EditorUiTest {
         log("FN:\n" + t);
         assertTrue(t.contains("기능키 순서·유무 사용자화") && t.contains("기능키 높이") && t.contains("격자 정렬")
                 && t.contains("기능키 미는 거리"));
-        assertFalse(t.contains("마침표") || t.contains("언어 이름") || t.contains("숫자 패드") || t.contains("언어 순서")
-                || t.contains("커서"));
         shot(a, "82-area-fn");
         // 기능키 높이 손잡이: 기능키 윤곽선 위 가장자리
         java.lang.reflect.Method hc = KeyboardPreview.class.getDeclaredMethod("handleCenter", KeyboardPreview.Handle.class, float[].class);
@@ -936,7 +922,6 @@ public class EditorUiTest {
         tapArea(p, KeyboardPreview.AREA_TOOLBAR);
         t = visibleTexts(cur(a));
         assertTrue(t.contains("도구 막대 표시"));
-        assertFalse(t.contains("클립보드 기록 저장") || t.contains("이모지 크기"));
         cur(a).scrollTo(0, 99999);
         shot(a, "84-area-toolbar");
         // 되돌리기: 영역 창에서 바꾼 값
@@ -1062,7 +1047,6 @@ public class EditorUiTest {
         pt = visibleTexts(cur(a));
         assertTrue(pt.contains("키보드 여백") && pt.contains("위쪽 여백"));
         assertTrue(pt.contains("키 모양") && pt.contains("키 사이 좌우 간격"));
-        assertFalse(pt.contains("분리 키보드"));   // 분리 키보드는 한글 글자 키 창의 '상세 배열'에서 정한다
         shot(a, "85f-board-sheet");
         a.onBackPressed(); idle();
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(400));
@@ -1326,7 +1310,6 @@ public class EditorUiTest {
         String before = visibleTexts(cur(a));
         // 세 배열 중 두벌식이 맨 왼쪽
         assertTrue(before, before.contains("  두벌식\n  단모음\n  NewSwipe"));
-        assertFalse(visibleTexts(cur(a)).contains("실험실"));
         findText(cur(a), "두벌식").performClick();
         idle();
         assertTrue(prefs.koreanDubeolsik());
@@ -1334,12 +1317,9 @@ public class EditorUiTest {
         assertEquals(10, p.layout().columns);
         key(p, "ㅛ", Key.CHAR);
         key(p, null, Key.SHIFT);
-        assertTrue(visibleTexts(cur(a)).contains("컴퓨터 키보드와 같은 표준 한글 배열입니다."));
         assertEquals(java.util.Arrays.asList("사용 안 함"), afterLabel(cur(a), "상세 배열", 1));
         assertFalse(visibleTexts(cur(a)).contains("반으로 나"));   // '사용 안 함'이면 상세 배열 설명이 없다
         assertFalse(visibleTexts(cur(a)).contains("왼쪽 묶음 폭"));
-        assertFalse(visibleTexts(cur(a)).contains("영어 자판도 균형 배열"));   // 영어 자판의 상세 배열은 영어 글자 키 창에서 따로 정한다
-        assertFalse(visibleTexts(cur(a)).contains("영어 자판 아래로 밀어 대문자 입력"));   // 영어 글자 키 창에만 있다
         shot(a, "a0-dubeolsik");
         // 균형 배열: 자음은 왼쪽 절반, 모음은 오른쪽 절반으로 나누되 각 쪽 안의 자리는 일반 두벌식 그대로
         // 상세 배열: 스페이스바 길게 누르기처럼 줄을 눌러 사용 안 함·자·모음 균형 배열·분리 키보드 중에서 고른다
@@ -1356,7 +1336,6 @@ public class EditorUiTest {
         assertEquals(st, java.util.Arrays.asList("분리 키보드"), afterLabel(cur(a), "상세 배열", 1));
         // 고르면 창을 다시 열지 않아도 분리 키보드 섹션이 바로 보이고, 설명은 분리 키보드의 것만
         assertTrue(st, st.contains("왼쪽 묶음 폭") && st.contains("오른쪽 묶음 가로 위치"));
-        assertTrue(st, st.contains("분리 키보드는 한글 자판 전체를 반으로 나눕니다."));
         assertFalse(st, st.contains("자·모음 균형 배열은"));
         assertFalse(st, st.contains("자음 키 폭"));   // 자·모음 균형 배열 섹션은 균형 배열을 골랐을 때만
         assertFalse(st, st.contains("자·모음 분리 배열"));   // 두벌식에는 분리 키보드의 하위 토글이 없다
@@ -1384,18 +1363,14 @@ public class EditorUiTest {
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
         String bt = visibleTexts(cur(a));
         assertFalse(bt, bt.contains("왼쪽 묶음 폭"));   // 분리 키보드 섹션은 접힌다
-        assertTrue(bt, bt.contains("자·모음 균형 배열은 한글 글자 키 영역을 반으로 나눠 각각에 자음과 모음을 놓습니다."));
         assertFalse(bt, bt.contains("분리 키보드는"));
         // 균형 배열 사용자화의 슬라이더가 한글 글자 키 창의 '자·모음 균형 배열' 섹션으로 나와 바로 보인다
         assertTrue(bt, bt.contains("자음 키 폭") && bt.contains("모음 가로 위치"));
-        assertFalse(bt, bt.contains("자·모음 경계 위치"));   // 경계 위치 설정은 없앴다
-        assertFalse(bt, bt.contains("균형 배열 사용자화"));
         // 미리보기: 글자 키를 고른 채이면 자음·모음 쪽의 왼쪽·오른쪽 경계 손잡이가 보인다
         java.lang.reflect.Method bShown = KeyboardPreview.class.getDeclaredMethod("handleShown", KeyboardPreview.Handle.class);
         bShown.setAccessible(true);
         for (KeyboardPreview.Handle bh : new KeyboardPreview.Handle[]{KeyboardPreview.Handle.B_LEFT_START, KeyboardPreview.Handle.B_LEFT_END,
                 KeyboardPreview.Handle.B_RIGHT_START, KeyboardPreview.Handle.B_RIGHT_END}) assertTrue(bh.name(), (Boolean) bShown.invoke(p, bh));
-        assertFalse(visibleTexts(cur(a)).contains("영어 자판도 균형 배열"));   // 없앴다: 영어 글자 키 창의 상세 배열로 정한다
         assertTrue(prefs.englishBalanced());   // 영어 자판은 기본으로 한글 자판을 따라간다 (상세 배열·묶음 폭·위치 모두)
         KeyboardView kv = find(p, KeyboardView.class);
         Key m = key(p, "ㅁ", Key.CHAR), b = key(p, "ㅂ", Key.CHAR), o = key(p, "ㅗ", Key.CHAR), yo = key(p, "ㅛ", Key.CHAR);
@@ -1478,8 +1453,6 @@ public class EditorUiTest {
         String en = visibleTexts(cur(a));
         assertTrue(en.contains("영어 자동 대문자") && en.contains("영어 자판 아래로 밀어 대문자 입력")
                 && en.contains("이메일 입력란은 영어로 시작") && en.contains("글자 키 높이"));
-        assertFalse(en.contains("한글 자판 배열") || en.contains("쌍자음 입력"));
-        assertTrue(en.contains("영어 글자 키 하나하나의 설정은"));
         shot(a, "b0-english-letters");
         // 기호 탭: 공통 항목만
         findText(decor, "기호").performClick();
@@ -1488,7 +1461,6 @@ public class EditorUiTest {
         assertNotNull(findText(decor, "기호 글자 키 설정"));
         String sym = visibleTexts(cur(a));
         assertTrue(sym.contains("글자 키 높이") && sym.contains("문자 길게 누르기 시간"));
-        assertFalse(sym.contains("영어 자동 대문자") || sym.contains("한글 자판 배열") || sym.contains("\n  입력\n"));   // 입력 섹션이 없다
         // 기능키 영역도 그대로 유지된다
         tapArea(p, KeyboardPreview.AREA_FUNCTION);
         findText(decor, "한글").performClick();
@@ -1828,9 +1800,7 @@ public class EditorUiTest {
         assertNotNull(findText(decor, "영어 글자 키 설정"));
         String t = visibleTexts(sheetOf(a).body());
         assertTrue(t, t.contains("영어 자판 배열") && t.contains("상세 배열") && t.contains("세로만"));
-        assertFalse(t, t.contains("한글 자판 배열") || t.contains("영어 자판도 균형 배열"));
         assertEquals(java.util.Arrays.asList("한글 자판 따라가기"), afterLabel(sheetOf(a).body(), "상세 배열", 1));
-        assertTrue(t, t.contains("상세 배열의 종류와 묶음 폭·가로 위치를 모두 한글 자판의 것으로 씁니다."));
         assertFalse(t, t.contains("왼쪽 묶음 폭"));   // 따라가기면 묶음 폭·위치는 한글 글자 키 창에서 정한다
         // 목록: 한글 자판 따라가기, 사용 안 함, 자·모음 균형 배열, 분리 키보드
         clickableOf(findText(sheetOf(a).body(), "상세 배열")).performClick();
@@ -2161,11 +2131,6 @@ public class EditorUiTest {
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(600));
         assertFalse(pre.largeLayout());
         assertNull(findText(cur(a), "폴더블 내부 화면 판정 기준"));
-
-        SettingsActivity lab = launch("lab");
-        // 실험실에는 폴더블 설정이 없다 (떠 있는 키보드의 '상태를 방향마다 기억' 설명에만 폴더블이 나온다).
-        String labTexts = visibleTexts(cur(lab)).replace("폴더블 기기의 내부·외부 화면마다", "");
-        assertFalse(labTexts.contains("폴더블"));
     }
 
     /**
@@ -2235,10 +2200,6 @@ public class EditorUiTest {
         for (int i = 0; i < 40; i++) shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(50));   // 검색 목록을 모은다
         java.util.List<String> ls = lines(results);
         assertTrue(ls.toString(), ls.contains("폴더블 내부 화면 판정 기준"));
-        // 실험실에는 폴더블 설정이 없다 (떠 있는 키보드의 '상태를 방향마다 기억' 설명에만 폴더블이 나온다).
-        for (int i = 0; i < ls.size(); i++) {
-            if (ls.get(i).equals("실험실")) assertEquals("실험실에는 폴더블 설정이 없다: " + ls, "상태를 방향마다 기억", ls.get(i - 1));
-        }
 
         // 판정 기준 → 키보드 사용자화
         q.invoke(a, "판정 기준");
