@@ -54,7 +54,49 @@ public final class AppTheme {
         int c = prefs.accentColor();
         // 기본 파랑은 다크 모드에서 어두운 바탕에 어울리는 밝은 파랑을 쓴다 (예전 모양 유지).
         if (c == DEFAULT_ACCENT && dark) return 0xFF7FA6FF;
-        return c;
+        return readable(c, dark);
+    }
+
+    /** 강조 색이 바탕·카드와 이 대비(WCAG 비율)는 넘어야 글자와 표시가 보인다. */
+    static final double MIN_CONTRAST = 3.0;
+
+    /**
+     * 지정한 강조 색이 바탕에 묻히면(다크 모드의 검정, 라이트 모드의 흰색 등) 바탕에서 멀어지는 쪽으로
+     * (다크는 흰색, 라이트는 검정 쪽으로) 조금씩 섞어 대비가 {@link #MIN_CONTRAST}를 넘는 가장 가까운 색을 쓴다.
+     * 원래 색의 색조는 최대한 남고, 이미 잘 보이는 색은 그대로 둔다. 고른 색 자체(설정값)는 바꾸지 않는다.
+     */
+    static int readable(int color, boolean dark) {
+        int bg = dark ? 0xFF121316 : 0xFFF4F5F8;
+        int card = dark ? 0xFF1E1F23 : 0xFFFFFFFF;
+        int target = dark ? 0xFFFFFFFF : 0xFF000000;
+        color |= 0xFF000000;
+        for (int step = 0; step <= 20; step++) {
+            int c = blend(color, target, step / 20f);
+            if (contrast(c, bg) >= MIN_CONTRAST && contrast(c, card) >= MIN_CONTRAST) return c;
+        }
+        return target;
+    }
+
+    private static int blend(int a, int b, float t) {
+        int r = Math.round(((a >> 16) & 0xFF) * (1 - t) + ((b >> 16) & 0xFF) * t);
+        int g = Math.round(((a >> 8) & 0xFF) * (1 - t) + ((b >> 8) & 0xFF) * t);
+        int bl = Math.round((a & 0xFF) * (1 - t) + (b & 0xFF) * t);
+        return 0xFF000000 | (r << 16) | (g << 8) | bl;
+    }
+
+    /** WCAG 상대 휘도 (android.graphics.Color.luminance와 같은 식, JVM 테스트에서도 쓸 수 있게 직접 계산). */
+    static double luminance(int c) {
+        return 0.2126 * channel((c >> 16) & 0xFF) + 0.7152 * channel((c >> 8) & 0xFF) + 0.0722 * channel(c & 0xFF);
+    }
+
+    private static double channel(int v) {
+        double s = v / 255.0;
+        return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+    }
+
+    static double contrast(int a, int b) {
+        double la = luminance(a), lb = luminance(b);
+        return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
     }
 
     static int onAccent(Context context, Prefs prefs, boolean dark) {
