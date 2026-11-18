@@ -41,7 +41,8 @@ public final class SettingsBackup {
 
     private static boolean excluded(String key) {
         return Prefs.RECENT_EMOJI.equals(key) || Prefs.PINNED_EMOJI.equals(key) || Prefs.LANGUAGE.equals(key)
-                || Prefs.ONE_HAND.equals(key) || Prefs.ONBOARDING_DONE.equals(key);
+                || Prefs.ONE_HAND.equals(key) || key.startsWith(Prefs.FLOAT_ON_PREFIX)   // 한 손 모드·떠 있는 키보드의 켜짐 상태
+                || Prefs.ONBOARDING_DONE.equals(key);
     }
 
     private static ComponentName launcherAlias(Context context) {

@@ -647,6 +647,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         floatLeft = new View(this);
         floatRight = new View(this);
         floatingApplied = false;
+        floatDragging = false;   // 끄는 도중 화면을 다시 만들면 새 손잡이에는 손을 뗀 이벤트가 오지 않는다
+        floatWindowPx = -1;      // 화면 설정이 바뀌었을 수 있다
         updateFloatBack();   // 새 화면은 아직 떠 있지 않다 (떠 있으면 applySettings가 다시 둔다)
         floatClosing = false;
         floatEnterPending = false;
@@ -753,6 +755,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     public void onWindowShown() {
         super.onWindowShown();
         windowHidden = false;
+        floatWindowPx = -1;   // 상태 표시줄·잘린 화면 영역이 앱마다 다를 수 있어 올라올 때마다 한 번 다시 잰다
         boolean entering = floatEnterPending;
         endFloatClose();
         startFloatEnter();
@@ -887,6 +890,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     @Override
     public void onConfigurationChanged(android.content.res.Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
+        floatWindowPx = -1;   // 화면 크기·방향이 바뀌었을 수 있다
         refreshBottomInset(null);   // 폴더블을 접고 펴거나 탐색 방법을 바꾸면 하단 바가 달라진다
         hwKeyboardConnected = findHwKeyboard();   // 외장 키보드를 연결하거나 뺐다
         updateInputViewShown();
@@ -1725,6 +1729,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         main.removeCallbacks(floatCloseFallback);
         floatEnterPending = false;
         floatClosing = false;
+        floatDragging = false;   // 끄는 도중 키보드가 내려갔다 (모습은 다음에 올라올 때 되돌린다)
         if (root != null) root.animate().cancel();
         if (column != null) column.animate().cancel();
     }
@@ -1918,6 +1923,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     private float dragRawX, dragRawY;
     private int dragStartLift, dragStartTop, dragStartW, dragStartH, dragOtherH;
+    /** 끌기를 시작할 때의 키 높이 비율 (%). 크기 조절 미리 보기가 움직일 때마다 설정을 다시 읽지 않게 둔다. */
+    private float dragStartHPct = 100f;
     /** 손잡이를 끄는 중인지 (그동안은 column 높이가 바뀌어도 자리를 다시 맞추지 않는다). */
     private boolean floatDragging;
     /** 이번 끌기가 크기 조절인지 (아니면 옮기기). */
@@ -1939,6 +1946,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 dragStartTop = floatTop.getHeight();
                 dragStartW = column.getWidth();
                 dragStartH = column.getHeight();
+                dragStartHPct = floatHeightPct();
                 // 키 높이 비율을 따르는 부분: 자판과 도구 막대(여백 빼고). 나머지(손잡이, 영역 여백)는 그대로다.
                 dragOtherH = dragStartH - keyboard.getHeight()
                         - (topSlot.getVisibility() == View.VISIBLE ? toolbarHeight : 0);
@@ -2015,13 +2023,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
      * 오른쪽·아래가 화면 끝에 닿으면 왼쪽·위로 밀어 자란다. 키 높이 비율에 맞춰 키 영역만 늘고 줄어든다고 보고 높이를 잰다.
      */
     private void previewFloatResize(float dx, float dy) {
-        Prefs p = prefs.profileView(profile());
         int bodyW = body.getWidth();
         if (bodyW <= 0 || dragStartW <= 0 || dragStartH <= 0) return;
         resizeWidthPct = Math.max(Prefs.FLOAT_WIDTH_MIN, Math.min(Prefs.FLOAT_WIDTH_MAX, (dragStartW + dx) * 100f / bodyW));
         float newW = bodyW * resizeWidthPct / 100f;
         int keyH = Math.max(1, dragStartH - dragOtherH);
-        float startHPct = floatHeightPct();
+        float startHPct = dragStartHPct;
         float hPct = startHPct * (keyH + dy) / keyH;
         float maxGrow = dragStartLift + dragStartTop;   // 아래쪽 여유 + 위쪽 여유
         hPct = Math.min(hPct, startHPct * (keyH + maxGrow) / keyH);
@@ -2102,17 +2109,29 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return liftSpace.getVisibility() == View.VISIBLE ? liftSpace.getLayoutParams().height : 0;
     }
 
-    /** 떠 있는 키보드 창의 높이: 상태 표시줄 아래부터 화면 아래까지 (px). root의 최소 높이로 쓴다. */
+    /**
+     * 떠 있는 키보드 창의 높이: 상태 표시줄 아래부터 화면 아래까지 (px). root의 최소 높이로 쓴다.
+     * 키보드 창은 상태 표시줄이 숨겨져 있어도 그 아래에 놓이므로 보이는지와 상관없이 뺀다 (안 빼면 창보다 커져 아래가 잘린다).
+     * 창 관리자에 묻는 일(프로세스 사이 호출)이라, 올라올 때·화면 설정이 바뀔 때만 다시 재고 그 사이에는 기억해 둔 값을 쓴다.
+     */
     private int floatWindowHeight() {
-        WindowInsets fresh = freshInsets();
-        android.view.WindowManager wm = Build.VERSION.SDK_INT >= 30 && getWindow() != null && getWindow().getWindow() != null
-                ? getWindow().getWindow().getWindowManager() : null;
-        if (Build.VERSION.SDK_INT >= 30 && fresh != null && wm != null) {
-            return Math.max(0, wm.getCurrentWindowMetrics().getBounds().height()
-                    - fresh.getInsets(WindowInsets.Type.statusBars() | WindowInsets.Type.displayCutout()).top);
+        if (floatWindowPx >= 0) return floatWindowPx;
+        int h = Math.max(0, getResources().getDisplayMetrics().heightPixels - Ui.dp(this, 24));
+        if (Build.VERSION.SDK_INT >= 30) {
+            WindowInsets fresh = freshInsets();
+            android.view.WindowManager wm = getWindow() != null && getWindow().getWindow() != null
+                    ? getWindow().getWindow().getWindowManager() : null;
+            if (fresh != null && wm != null) {
+                h = Math.max(0, wm.getCurrentWindowMetrics().getBounds().height()
+                        - fresh.getInsetsIgnoringVisibility(WindowInsets.Type.statusBars() | WindowInsets.Type.displayCutout()).top);
+            }
         }
-        return Math.max(0, getResources().getDisplayMetrics().heightPixels - Ui.dp(this, 24));
+        floatWindowPx = h;
+        return h;
     }
+
+    /** 기억해 둔 떠 있는 키보드 창의 높이 (-1 = 다시 잰다). */
+    private int floatWindowPx = -1;
 
     /** 띄운 높이(px)를 키보드가 상태 표시줄 아래에 다 들어가는 만큼으로 줄인다 (화면을 돌리거나 키보드 높이가 바뀌어도). */
     private int clampFloatLift(int px) {
