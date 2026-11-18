@@ -1702,11 +1702,36 @@ public final class SettingsActivity extends Activity {
     /** 오른쪽 절반에 맞춘 미리보기 배율: 폭이 화면의 절반이 된다. */
     private static final float SPLIT_SCALE = 0.5f;
 
-    /** 미리보기(자판 탭·페이지 표시 포함)가 화면 높이의 절반을 넘는지: 그러면 설정 창을 열 때 화면을 좌우로 나눈다. */
+    /** 설정 창을 보통처럼 미리보기 위에 띄울 때 적어도 이만큼의 항목은 온전히 보여야 한다 (아니면 화면을 좌우로 나눈다). */
+    private static final int SHEET_MIN_ITEMS = 2;
+
+    /**
+     * 설정 창을 보통처럼 미리보기(실제 크기, 자판 탭·페이지 표시 포함) 위에 띄우면 창 속 항목이 2개도 온전히 보이지 않는지:
+     * 그러면 설정 창을 열 때 화면을 좌우로 나눈다. 창 내용은 미리 채워 두어야 한다.
+     */
     private boolean previewTooTall() {
-        if (fullHost == null || pinnedBottom == null || !previewShown || pinnedBottom.getVisibility() != View.VISIBLE) return false;
+        if (fullHost == null || pinnedBottom == null || sheet == null || !previewShown
+                || pinnedBottom.getVisibility() != View.VISIBLE) return false;
         int screen = fullHost.getHeight() - fullHost.getPaddingTop() - fullHost.getPaddingBottom();
-        return screen > 0 && fullHost.getWidth() > 0 && pinnedBottom.getHeight() * 2 > screen;
+        int width = fullHost.getWidth() - fullHost.getPaddingLeft() - fullHost.getPaddingRight();
+        if (screen <= 0 || width <= 0) return false;
+        // 보통일 때 창이 보이는 높이: 미리보기 위 전부에서 그 아래쪽을 가리는 꺾쇠 버튼 자리를 뺀다.
+        int room = screen - pinnedBottom.getHeight() - previewToggleCover();
+        java.util.ArrayList<View> rows = new java.util.ArrayList<>();
+        for (java.lang.ref.WeakReference<View> ref : itemRow.values()) {
+            View row = ref.get();
+            if (row != null) rows.add(row);
+        }
+        return sheet.heightToShow(rows, SHEET_MIN_ITEMS, width) > room;
+    }
+
+    /** 꺾쇠 버튼이 설정 창 아래쪽을 가리는 높이 (버튼 위 끝부터 미리보기 위 끝까지). */
+    private int previewToggleCover() {
+        View holder = previewToggleHolder;
+        if (holder == null || holder.getVisibility() == View.GONE || holder.getHeight() == 0) return 0;
+        ViewGroup.LayoutParams raw = holder.getLayoutParams();
+        int margin = raw instanceof ViewGroup.MarginLayoutParams ? ((ViewGroup.MarginLayoutParams) raw).bottomMargin : 0;
+        return holder.getHeight() - holder.getPaddingTop() + margin;
     }
 
     /** 미리보기를 오른쪽 절반으로 줄이거나(on) 실제 크기로 되돌린다. 설정 창이 오르내리는 동안 함께 움직인다. */

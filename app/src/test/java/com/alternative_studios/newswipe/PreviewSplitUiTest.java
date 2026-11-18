@@ -7,6 +7,8 @@ import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 
+import com.alternative_studios.newswipe.ui.Ui;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
@@ -19,8 +21,8 @@ import static org.junit.Assert.*;
 import static org.robolectric.Shadows.shadowOf;
 
 /**
- * 키보드 사용자화에서 미리보기가 화면 높이의 절반을 넘으면(바형 폰의 가로 키보드 등) 설정 창을 화면 왼쪽 절반에 띄우고 미리보기를
- * 오른쪽 절반으로 줄이며, 창을 닫으면 실제 크기로 되돌리는지 확인한다.
+ * 키보드 사용자화에서 미리보기가 커서(바형 폰의 가로 키보드 등) 설정 창을 보통처럼 띄우면 항목이 2개도 온전히 보이지 않을 때
+ * 설정 창을 화면 왼쪽 절반에 띄우고 미리보기를 오른쪽 절반으로 줄이며, 창을 닫으면 실제 크기로 되돌리는지 확인한다.
  */
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 36, qualifiers = "ko-rKR-w411dp-h914dp-port-xxhdpi")
@@ -65,7 +67,6 @@ public class PreviewSplitUiTest {
             int screen = full.getHeight() - full.getPaddingTop() - full.getPaddingBottom();
             int h = bottom.getHeight();
             log("preview " + h + " / screen " + screen);
-            assertTrue("preview " + h + " should be over half of " + screen, h * 2 > screen);
             KeyboardPreview p = find(decor, KeyboardPreview.class);
 
             tapArea(p, KeyboardPreview.AREA_LETTERS);
@@ -141,5 +142,45 @@ public class PreviewSplitUiTest {
         a.onBackPressed();
         settle();
         assertFalse(sheet.isOpen());
+    }
+
+    /**
+     * 창이 항목 2개를 온전히 보이려면 필요한 높이: 틈 + 헤더 + 내용 위부터 둘째 항목의 아래 끝까지. 숨긴 항목과 창 밖의 줄은 세지 않고,
+     * 항목이 모자라면 마지막 항목까지 잰다.
+     */
+    @Test
+    public void heightToShowCountsVisibleItemsInsideSheet() {
+        SettingsActivity a = launch("keyboard");
+        FrameLayout host = new FrameLayout(a);
+        EditorSheet sheet = new EditorSheet(a, host, () -> { });
+        LinearLayout body = sheet.body();
+        int px = Ui.dp(a, 50);
+        View top = fixed(a, Ui.dp(a, 30));      // 항목이 아닌 안내 글
+        View first = fixed(a, px), hidden = fixed(a, px), second = fixed(a, px), third = fixed(a, px);
+        hidden.setVisibility(View.GONE);
+        LinearLayout card = new LinearLayout(a);  // 카드 안에 든 항목도 센다
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(0, Ui.dp(a, 8), 0, Ui.dp(a, 8));
+        card.addView(second);
+        card.addView(third);
+        body.addView(top);
+        body.addView(first);
+        body.addView(hidden);
+        body.addView(card);
+        View outside = fixed(a, px);              // 창 밖의 줄 (설정 목록 등)
+        int width = Ui.dp(a, 400);
+        int gapAndHeader = sheet.heightToShow(java.util.Collections.emptyList(), 2, width)
+                - (body.getMeasuredHeight() - body.getPaddingBottom());
+        java.util.List<View> rows = java.util.Arrays.asList(third, outside, hidden, second, first);
+        int need = sheet.heightToShow(rows, 2, width);
+        assertEquals(gapAndHeader + Ui.dp(a, 30) + px + Ui.dp(a, 8) + px, need);
+        assertEquals(gapAndHeader + Ui.dp(a, 30) + px, sheet.heightToShow(java.util.Arrays.asList(first, outside), 2, width));
+    }
+
+    private static View fixed(android.content.Context c, int h) {
+        View v = new View(c);
+        v.setMinimumHeight(h);
+        v.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, h));
+        return v;
     }
 }

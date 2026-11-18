@@ -192,6 +192,48 @@ final class EditorSheet {
         return split;
     }
 
+    /**
+     * 창을 폭 width로 띄웠을 때 맨 위(틈 포함)부터 내용 속 count번째 항목의 아래 끝까지의 높이: 이만큼 보여야 항목 count개가
+     * 온전히 보인다. items는 항목 줄의 후보로, 지금 창 내용 안에서 보이는 것만 센다. 항목이 count개보다 적으면 마지막 항목까지,
+     * 하나도 없으면 내용 전체까지 잰다. 창이 숨어 있어도 잴 수 있게 헤더·내용을 그 폭으로 직접 재고 배치해 본다.
+     */
+    int heightToShow(Iterable<View> items, int count, int width) {
+        int wSpec = View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY);
+        int free = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
+        int top = topGap;
+        for (int i = 0; i < sheet.getChildCount(); i++) {
+            View child = sheet.getChildAt(i);
+            if (child == scroll || child.getVisibility() == View.GONE) continue;
+            child.measure(wSpec, free);
+            top += child.getMeasuredHeight();
+        }
+        body.measure(wSpec, free);
+        body.layout(0, 0, body.getMeasuredWidth(), body.getMeasuredHeight());
+        java.util.ArrayList<Integer> bottoms = new java.util.ArrayList<>();
+        for (View item : items) {
+            int bottom = bottomInBody(item);
+            if (bottom >= 0) bottoms.add(bottom);
+        }
+        java.util.Collections.sort(bottoms);
+        int end = bottoms.isEmpty() ? body.getMeasuredHeight() - body.getPaddingBottom()
+                : bottoms.get(Math.min(count, bottoms.size()) - 1);
+        return top + end;
+    }
+
+    /** v의 아래 끝이 내용(body) 위에서 얼마나 떨어져 있는지. v가 내용 안에 없거나 보이지 않으면 -1. */
+    private int bottomInBody(View v) {
+        if (v == null || v.getVisibility() != View.VISIBLE) return -1;
+        int y = v.getBottom();
+        android.view.ViewParent p = v.getParent();
+        while (p != body) {
+            if (!(p instanceof View) || ((View) p).getVisibility() != View.VISIBLE) return -1;
+            View pv = (View) p;
+            y += pv.getTop();
+            p = pv.getParent();
+        }
+        return y;
+    }
+
     private static int blend(int a, int b, float t) {
         int r = Math.round(Color.red(a) + (Color.red(b) - Color.red(a)) * t);
         int g = Math.round(Color.green(a) + (Color.green(b) - Color.green(a)) * t);
@@ -275,7 +317,7 @@ final class EditorSheet {
     }
 
     /**
-     * open()과 같되, half면 창을 화면 왼쪽 절반에 위에서 아래까지 띄운다 (미리보기가 화면 높이의 절반을 넘을 때, 부르는 쪽이
+     * open()과 같되, half면 창을 화면 왼쪽 절반에 위에서 아래까지 띄운다 (미리보기가 커서 보통처럼 띄우면 항목이 2개도 온전히 보이지 않을 때, 부르는 쪽이
      * 미리보기를 오른쪽 절반으로 줄인다). 화면 전체 틀이 없거나 아직 배치 전이면 보통처럼 띄운다.
      */
     void open(boolean half) {
