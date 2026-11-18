@@ -5,6 +5,8 @@
         그러면 제조사 하단 바가 배경을 어둡다고 보고 밝은 아이콘을 쓰므로, 키보드 창은 이 강제 적용에서 빠진다.
         targetSdk 36 이상(기본 빌드, Play 요건)에서는 시스템이 이 설정을 무시하고, 키보드 창은 인셋 처리(NewSwipeIME)와
         applyNavigationBarStyle로 하단 바 배경·아이콘 밝기를 맞춘다. 이 설정은 -Pnewswipe.targetSdk=35 시험 빌드에서만 효과가 있다.
+        그 시험 빌드에서 하단 바 색은 여기 적은 색(시스템 화면 모드를 따르는 기본 키보드 배경색)으로 고정된다:
+        Android 15에서 지원 중단된 Window.setNavigationBarColor로 키보드 테마 색에 맞춰 바꾸지 않는다.
     -->
     <style name="Theme.NewSwipe.Ime" parent="android:Theme.DeviceDefault.InputMethod">
         <item name="android:navigationBarColor">@color/keyboard_background</item>
