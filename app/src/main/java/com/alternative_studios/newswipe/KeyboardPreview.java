@@ -485,6 +485,16 @@ final class KeyboardPreview extends FrameLayout {
         refresh();
     }
 
+    /**
+     * 미리보기를 줄여 보이는 배율 (설정 창을 화면 왼쪽 절반에 띄우는 동안 오른쪽 절반으로 줄인다). 손잡이는 화면 좌표로 끄는 거리를
+     * 재므로, 이 배율로 나눠 손가락 아래의 손잡이가 손가락을 그대로 따라오게 한다.
+     */
+    private float touchScale = 1f;
+
+    void setTouchScale(float scale) {
+        touchScale = scale > 0f ? scale : 1f;
+    }
+
     /** 크기는 도구 막대 + 자판이 정한다. 위에 덮은 손잡이 층은 그 크기를 그대로 따른다 (덮개가 높이를 키우지 않게). */
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
@@ -1747,7 +1757,7 @@ final class KeyboardPreview extends FrameLayout {
                     paging = false;
                     return true;
                 case MotionEvent.ACTION_MOVE: {
-                    float dx = e.getRawX() - downRawX, dy = e.getRawY() - downRawY;
+                    float dx = (e.getRawX() - downRawX) / touchScale, dy = (e.getRawY() - downRawY) / touchScale;
                     if (!dragging && !moved && Math.hypot(dx, dy) > slop) {
                         moved = true;
                         // 손잡이를 그 방향으로 끌기 시작했을 때만 크기를 바꾼다 (손잡이 위에서 옆으로 밀면 아무것도 하지 않는다).
@@ -1787,7 +1797,7 @@ final class KeyboardPreview extends FrameLayout {
                     if (paging) {
                         paging = false;
                         // 3분의 1 넘게 넘겼거나 빠르게 밀었으면 그 층으로, 아니면 제자리로.
-                        float moveX = e.getRawX() - downRawX;
+                        float moveX = (e.getRawX() - downRawX) / touchScale;
                         int target = Math.abs(layerPos - pageStart) > 0.33f || Math.abs(moveX) > Ui.dp(getContext(), 72)
                                 ? Math.max(0, Math.min((LAYERS - 1), layer + (moveX < 0 ? 1 : -1))) : layer;
                         setLayer(target);

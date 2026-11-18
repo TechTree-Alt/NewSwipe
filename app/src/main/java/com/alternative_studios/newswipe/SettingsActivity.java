@@ -154,6 +154,7 @@ public final class SettingsActivity extends Activity {
         pinnedBottom.setVisibility(View.GONE);
         setContentView(frame.wrap(content, pinnedBottom));
         overlayHost = frame.overlayHost();
+        fullHost = frame.fullHost();
         undoButton = frame.actionButton();
         build();
         if (pinnedBottom.getChildCount() > 0) {
@@ -174,8 +175,12 @@ public final class SettingsActivity extends Activity {
     private static final String STATE_PREVIEW_SHOWN = "previewShown";
     /** 머리글부터 미리보기 위까지를 덮는 틀: 설정 창(시트)과 꺾쇠 버튼을 여기에 겹쳐 띄운다. */
     private android.widget.FrameLayout overlayHost;
+    /** 화면 전체(머리글부터 미리보기까지)를 덮는 틀: 미리보기가 클 때 설정 창을 여기의 왼쪽 절반에 띄운다. */
+    private android.widget.FrameLayout fullHost;
     /** 미리보기 바로 위 가운데에 뜬 강조색 알약 버튼 (꺾쇠 + '미리보기 닫기'·'미리보기 열기'). 다른 버튼처럼 누르면 줄며 모서리가 바뀌고 진동한다. */
     private com.alternative_studios.newswipe.ui.ExpressiveButton previewToggle;
+    /** 꺾쇠 버튼을 담은 틀 (설정 창을 왼쪽 절반에 띄운 동안 숨긴다). */
+    private View previewToggleHolder;
     private boolean previewShown = true;
 
     @Override
@@ -210,6 +215,7 @@ public final class SettingsActivity extends Activity {
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
         lp.bottomMargin = Ui.dp(this, 10) - shadowRoom;
         overlayHost.addView(holder, lp);
+        previewToggleHolder = holder;
         int room = h + Ui.dp(this, 24);
         list.setPadding(list.getPaddingLeft(), list.getPaddingTop(), list.getPaddingRight(), Math.max(list.getPaddingBottom(), room));
         if (sheet != null) {
@@ -1664,6 +1670,11 @@ public final class SettingsActivity extends Activity {
     /** 설정 창을 만든다: 키 창(KeyEditPanel)과 그 아래 영역·여백 창(areaBox)을 담는다. */
     private void buildSheet() {
         sheet = new EditorSheet(this, overlayHost, this::closeKeyPanel, v -> undoLast());
+        sheet.setSplitHost(fullHost);
+        // 창을 왼쪽 절반에 띄운 채 미리보기 높이가 바뀌면(키보드 높이 슬라이더 등) 줄인 자리를 다시 맞춘다.
+        pinnedBottom.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+            if (previewSplit > 0f && (r - l != or - ol || b - t != ob - ot)) v.post(this::applyPreviewSplit);
+        });
         updateUndoButton();
         areaNoteBox = widgets.card(sheet.body());
         sheet.body().removeView(areaNoteBox);
@@ -1677,8 +1688,74 @@ public final class SettingsActivity extends Activity {
     }
 
     private void openSheet() {
-        sheet.open();
+        boolean half = previewTooTall();
+        sheet.open(half);
+        setPreviewSplit(half);
         setPanelBack(true);
+    }
+
+    // ---- 큰 미리보기 (바형 폰의 가로 키보드 등): 설정 창을 왼쪽 절반에, 미리보기를 오른쪽 절반으로 줄인다
+
+    /** 미리보기를 줄인 정도: 0 = 실제 크기, 1 = 화면 오른쪽 절반에 맞춘 크기 (그 사이는 움직이는 중). */
+    private float previewSplit;
+    private android.animation.ValueAnimator previewSplitAnim;
+    /** 오른쪽 절반에 맞춘 미리보기 배율: 폭이 화면의 절반이 된다. */
+    private static final float SPLIT_SCALE = 0.5f;
+
+    /** 미리보기(자판 탭·페이지 표시 포함)가 화면 높이의 절반을 넘는지: 그러면 설정 창을 열 때 화면을 좌우로 나눈다. */
+    private boolean previewTooTall() {
+        if (fullHost == null || pinnedBottom == null || !previewShown || pinnedBottom.getVisibility() != View.VISIBLE) return false;
+        int screen = fullHost.getHeight() - fullHost.getPaddingTop() - fullHost.getPaddingBottom();
+        return screen > 0 && fullHost.getWidth() > 0 && pinnedBottom.getHeight() * 2 > screen;
+    }
+
+    /** 미리보기를 오른쪽 절반으로 줄이거나(on) 실제 크기로 되돌린다. 설정 창이 오르내리는 동안 함께 움직인다. */
+    private void setPreviewSplit(boolean on) {
+        float target = on ? 1f : 0f;
+        if (previewSplitAnim != null) previewSplitAnim.cancel();
+        previewSplitAnim = null;
+        if (previewSplit == target) {
+            applyPreviewSplit();
+            return;
+        }
+        android.animation.ValueAnimator a = android.animation.ValueAnimator.ofFloat(previewSplit, target);
+        a.setDuration(on ? 300 : 200);
+        a.setInterpolator(on ? new android.view.animation.PathInterpolator(0.2f, 0f, 0f, 1f)
+                : new android.view.animation.PathInterpolator(0.3f, 0f, 0.8f, 0.15f));
+        a.addUpdateListener(an -> {
+            previewSplit = (float) an.getAnimatedValue();
+            applyPreviewSplit();
+        });
+        previewSplitAnim = a;
+        a.start();
+    }
+
+    /**
+     * 지금 줄인 정도대로 미리보기를 오른쪽 아래 모서리를 기준으로 줄이고, 줄어서 빈 높이만큼 위의 목록에 자리를 돌려준다
+     * (음수 위 여백). 손잡이를 끄는 거리도 배율에 맞춘다. 꺾쇠 버튼은 나눈 동안 숨긴다.
+     */
+    private void applyPreviewSplit() {
+        if (pinnedBottom == null) return;
+        float scale = 1f - previewSplit * (1f - SPLIT_SCALE);
+        View p = pinnedBottom;
+        p.setPivotX(p.getWidth());
+        p.setPivotY(p.getHeight());
+        p.setScaleX(scale);
+        p.setScaleY(scale);
+        ViewGroup.LayoutParams raw = p.getLayoutParams();
+        if (raw instanceof LinearLayout.LayoutParams) {
+            LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) raw;
+            int margin = previewSplit > 0f ? -Math.round(p.getHeight() * (1f - scale)) : 0;
+            if (lp.topMargin != margin) {
+                lp.topMargin = margin;
+                p.setLayoutParams(lp);
+            }
+        }
+        if (editorPreview != null) editorPreview.setTouchScale(scale);
+        if (previewToggleHolder != null) {
+            previewToggleHolder.setAlpha(1f - previewSplit);
+            previewToggleHolder.setVisibility(previewSplit >= 1f ? View.INVISIBLE : View.VISIBLE);
+        }
     }
 
     /** 미리보기에서 키·버튼·도구 막대를 눌렀다: 그것을 편집하는 창을 연다. 빈 곳이면 닫는다. */
@@ -2017,6 +2094,7 @@ public final class SettingsActivity extends Activity {
         if (editorPreview != null) editorPreview.select(null);
         if (!panelOpen()) return;
         setPanelBack(false);
+        setPreviewSplit(false);   // 창이 내려가는 동안 미리보기도 실제 크기로 돌아간다
         sheet.close(this::rebuildOverviewIfStale);
     }
 
