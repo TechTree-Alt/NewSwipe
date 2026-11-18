@@ -1702,27 +1702,22 @@ public final class SettingsActivity extends Activity {
     /** 오른쪽 절반에 맞춘 미리보기 배율: 폭이 화면의 절반이 된다. */
     private static final float SPLIT_SCALE = 0.5f;
 
-    /** 설정 창을 보통처럼 미리보기 위에 띄울 때 적어도 이만큼의 항목은 온전히 보여야 한다 (아니면 화면을 좌우로 나눈다). */
-    private static final int SHEET_MIN_ITEMS = 2;
+    /** 설정 창을 보통처럼 미리보기 위에 띄울 때 보이는 높이가 이보다 낮으면 화면을 좌우로 나눈다. */
+    private static final int SPLIT_MAX_ROOM_DP = 250;
+    /** 화면 폭이 이만큼은 되어야 좌우로 나눈다 (좁은 화면에서는 반으로 나눈 설정 창이 너무 좁다). */
+    private static final int SPLIT_MIN_WIDTH_DP = 500;
 
     /**
-     * 설정 창을 보통처럼 미리보기(실제 크기, 자판 탭·페이지 표시 포함) 위에 띄우면 창 속 항목이 2개도 온전히 보이지 않는지:
-     * 그러면 설정 창을 열 때 화면을 좌우로 나눈다. 창 내용은 미리 채워 두어야 한다.
+     * 화면 폭이 500dp 이상이고, 설정 창을 보통처럼 미리보기(실제 크기, 자판 탭·페이지 표시 포함) 위에 띄우면 보이는 높이가
+     * 250dp보다 낮은지: 그러면 설정 창을 열 때 화면을 좌우로 나눈다 (바형 폰의 가로 키보드 등).
      */
     private boolean previewTooTall() {
-        if (fullHost == null || pinnedBottom == null || sheet == null || !previewShown
-                || pinnedBottom.getVisibility() != View.VISIBLE) return false;
+        if (fullHost == null || pinnedBottom == null || !previewShown || pinnedBottom.getVisibility() != View.VISIBLE) return false;
         int screen = fullHost.getHeight() - fullHost.getPaddingTop() - fullHost.getPaddingBottom();
         int width = fullHost.getWidth() - fullHost.getPaddingLeft() - fullHost.getPaddingRight();
-        if (screen <= 0 || width <= 0) return false;
+        if (screen <= 0 || width < Ui.dp(this, SPLIT_MIN_WIDTH_DP)) return false;
         // 보통일 때 창이 보이는 높이: 미리보기 위 전부에서 그 아래쪽을 가리는 꺾쇠 버튼 자리를 뺀다.
-        int room = screen - pinnedBottom.getHeight() - previewToggleCover();
-        java.util.Set<View> rows = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
-        for (java.lang.ref.WeakReference<View> ref : itemRow.values()) {
-            View row = ref.get();
-            if (row != null) rows.add(row);
-        }
-        return sheet.heightToShow(rows, SHEET_MIN_ITEMS, width) > room;
+        return screen - pinnedBottom.getHeight() - previewToggleCover() < Ui.dp(this, SPLIT_MAX_ROOM_DP);
     }
 
     /** 꺾쇠 버튼이 설정 창 아래쪽을 가리는 높이 (버튼 위 끝부터 미리보기 위 끝까지). */

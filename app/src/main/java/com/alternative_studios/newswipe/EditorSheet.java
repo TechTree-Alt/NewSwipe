@@ -192,57 +192,6 @@ final class EditorSheet {
         return split;
     }
 
-    /**
-     * 창을 폭 width로 띄웠을 때 맨 위(틈 포함)부터 내용 속 count번째 항목의 아래 끝까지의 높이: 이만큼 보여야 항목 count개가
-     * 온전히 보인다. 항목은 카드 안의 한 줄 한 줄(선택 버튼 줄, 설명 글, 스위치·슬라이더 줄 등)과 rows(설정 검색에 쓰는 항목 줄)
-     * 가운데 지금 보이는 것이다. 카드 밖의 소제목·안내 글과 줄 사이의 구분선은 세지 않는다. 항목이 count개보다 적으면 마지막
-     * 항목까지, 하나도 없으면 내용 전체까지 잰다. 창이 숨어 있어도 잴 수 있게 헤더·내용을 그 폭으로 직접 재고 배치해 본다.
-     */
-    int heightToShow(java.util.Set<View> rows, int count, int width) {
-        int wSpec = View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY);
-        int free = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
-        int top = topGap;
-        for (int i = 0; i < sheet.getChildCount(); i++) {
-            View child = sheet.getChildAt(i);
-            if (child == scroll || child.getVisibility() == View.GONE) continue;
-            child.measure(wSpec, free);
-            top += child.getMeasuredHeight();
-        }
-        body.measure(wSpec, free);
-        body.layout(0, 0, body.getMeasuredWidth(), body.getMeasuredHeight());
-        java.util.ArrayList<Integer> bottoms = new java.util.ArrayList<>();
-        for (int i = 0; i < body.getChildCount(); i++) collectItems(body.getChildAt(i), 0, false, rows, bottoms);
-        java.util.Collections.sort(bottoms);
-        int end = bottoms.isEmpty() ? body.getMeasuredHeight() - body.getPaddingBottom()
-                : bottoms.get(Math.min(count, bottoms.size()) - 1);
-        return top + end;
-    }
-
-    /**
-     * v와 그 안에서 항목을 찾아 그 아래 끝(내용 위에서부터)을 bottoms에 더한다. y는 v의 부모가 내용 위에서 떨어진 거리,
-     * inCard는 v가 카드 안에 있는지. 카드·하위 설정 묶음·바탕 없는 세로 틀은 그 안을 살피고, 카드 안의 나머지 보이는 것은
-     * 그대로 하나의 항목이다.
-     */
-    private static void collectItems(View v, int y, boolean inCard, java.util.Set<View> rows, java.util.List<Integer> bottoms) {
-        if (v.getVisibility() != View.VISIBLE || v.getHeight() == 0) return;
-        if (rows.contains(v)) {
-            bottoms.add(y + v.getBottom());
-            return;
-        }
-        Object tag = v.getTag();
-        boolean card = tag == SettingsWidgets.CARD;
-        boolean container = card || tag == SettingsWidgets.SUB_GROUP
-                || (v instanceof LinearLayout && ((LinearLayout) v).getOrientation() == LinearLayout.VERTICAL
-                && v.getBackground() == null && !v.isClickable());
-        if (container) {
-            ViewGroup g = (ViewGroup) v;
-            for (int i = 0; i < g.getChildCount(); i++) collectItems(g.getChildAt(i), y + v.getTop(), inCard || card, rows, bottoms);
-            return;
-        }
-        // 카드 안의 구분선·하위 설정의 세로 안내선 같은 맨 View는 항목이 아니다.
-        if (inCard && v.getClass() != View.class) bottoms.add(y + v.getBottom());
-    }
-
     private static int blend(int a, int b, float t) {
         int r = Math.round(Color.red(a) + (Color.red(b) - Color.red(a)) * t);
         int g = Math.round(Color.green(a) + (Color.green(b) - Color.green(a)) * t);
@@ -326,7 +275,7 @@ final class EditorSheet {
     }
 
     /**
-     * open()과 같되, half면 창을 화면 왼쪽 절반에 위에서 아래까지 띄운다 (미리보기가 커서 보통처럼 띄우면 항목이 2개도 온전히 보이지 않을 때, 부르는 쪽이
+     * open()과 같되, half면 창을 화면 왼쪽 절반에 위에서 아래까지 띄운다 (미리보기가 커서 그 위에 남는 높이가 낮을 때, 부르는 쪽이
      * 미리보기를 오른쪽 절반으로 줄인다). 화면 전체 틀이 없거나 아직 배치 전이면 보통처럼 띄운다.
      */
     void open(boolean half) {
