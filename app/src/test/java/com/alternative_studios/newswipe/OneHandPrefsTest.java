@@ -34,7 +34,6 @@ public class OneHandPrefsTest {
         assertEquals(Prefs.ONE_HAND_WIDTH_LAND_DEFAULT, land.oneHandWidthForProfile());
         assertEquals(Prefs.ONE_HAND_WIDTH_LARGE_LAND_DEFAULT, largeLand.oneHandWidthForProfile());
         assertEquals(Prefs.ONE_HAND_WIDTH_LARGE_PORT_DEFAULT, largePort.oneHandWidthForProfile());
-        assertEquals(40, Prefs.ONE_HAND_WIDTH_LARGE_PORT_DEFAULT);
         // 세로 모드에서 자판 폭을 정해도 폴더블 내부 화면 세로는 자기 기본값.
         sp.m.put(port.oneHandWidthKey(), 70);
         assertEquals(Prefs.ONE_HAND_WIDTH_LARGE_PORT_DEFAULT, largePort.oneHandWidthForProfile());

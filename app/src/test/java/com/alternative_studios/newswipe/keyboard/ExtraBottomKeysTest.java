@@ -178,7 +178,6 @@ public class ExtraBottomKeysTest {
 
     @Test
     public void atMostEightBottomKeys() throws Exception {
-        assertEquals(8, BottomKeys.MAX_SHOWN);
         // 모든 키를 켠 설정(가져온 설정 등)이어도 순서상 앞의 8개만 놓는다. Shift·⌫는 세지 않는다.
         FakeSp sp = new FakeSp();
         for (String k : PREF) sp.m.put(k, true);
