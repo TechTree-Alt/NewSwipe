@@ -1113,9 +1113,15 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return b;
     }
 
-    /** 설정의 '도구 막대 높이'(%)를 px로. 100%가 40dp. */
+    /** 설정의 '도구 막대 높이'(%)를 px로. 100%가 40dp. 플로팅 키보드에서는 키 높이 비율만큼 줄이고 키운다. */
     private int toolbarHeightPx() {
-        return Math.round(Ui.dp(this, 40) * padPrefs().toolbarHeight() / 100f);
+        return Math.round(Ui.dp(this, 40) * padPrefs().toolbarHeight() / 100f * toolbarScale());
+    }
+
+    /** 플로팅 키보드에서 도구 막대(높이·버튼·아이콘·추천 글자)를 키 높이와 같은 비율로 맞춘다. 그 밖에는 1. */
+    private float toolbarScale() {
+        return prefs != null && Prefs.ONE_HAND_FLOAT.equals(activeOneHand())
+                ? prefs.profileView(profile()).floatHeightForProfile() / 100f : 1f;
     }
 
     /**
@@ -1130,8 +1136,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         topSlot.setPadding(topSlot.getPaddingLeft(), barPadTop, topSlot.getPaddingRight(), barPadBottom);
         setHeight(topSlot, barSlotHeight());
         dropStalePanels();
-        float scale = prefs.toolButtonSize() / 100f;
+        float barScale = toolbarScale();
+        float scale = prefs.toolButtonSize() / 100f * barScale;
         int width = Math.round(Ui.dp(this, 40) * scale);
+        for (TextView t : suggestViews) {
+            if (t != null) t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16 * barScale);   // 같은 크기면 아무 일도 하지 않는다
+        }
         float icon = Ui.dp(this, 22) * scale;
         // 버튼마다 자동 완성 칩과 같은 모양의 칩 배경을 씌운다 (IconButton.setToolbarStyle).
         int chipH = Ui.chipHeight(this, toolbarHeight);
@@ -1603,7 +1613,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return d;
     }
 
-    /** 크기 조절 중: 카드 안을 바탕색으로 덮고 (Android 12 이상은 흐림 효과도) 늘어나 보이는 글자가 드러나지 않게 한다. */
+    /** 크기 조절 중과 아래 키보드로 돌아가기 직전: 카드 안을 바탕색으로 덮고 (Android 12 이상은 흐림 효과도) 늘어나 보이는 글자가 드러나지 않게 한다. */
     private void veilFloatCard() {
         column.setForeground(floatCardFront((theme.background & 0x00FFFFFF) | 0xB3000000));
         if (Build.VERSION.SDK_INT >= 31) {
@@ -1693,7 +1703,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 dragStartTop = floatTop.getHeight();
                 dragStartW = column.getWidth();
                 dragStartH = column.getHeight();
-                dragOtherH = dragStartH - keyboard.getHeight();   // 도구 막대·손잡이처럼 키 높이를 따르지 않는 부분
+                // 키 높이 비율을 따르는 부분: 자판과 도구 막대(여백 빼고). 나머지(손잡이, 영역 여백)는 그대로다.
+                dragOtherH = dragStartH - keyboard.getHeight()
+                        - (topSlot.getVisibility() == View.VISIBLE ? toolbarHeight : 0);
                 floatDragging = true;
                 floatResizing = resize;
                 floatDocking = false;
@@ -1738,7 +1750,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         boolean docking = dy >= dragStartLift && dy > Ui.dp(this, FLOAT_DOCK_DP);
         if (docking != floatDocking) {
             floatDocking = docking;
-            column.setAlpha(docking ? 0.5f : 1f);
+            if (docking) veilFloatCard();
+            else unveilFloatCard();
             feedback.onToolbar();
         }
     }
@@ -1805,12 +1818,17 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         resetFloatPreviewAfterLayout();
     }
 
-    /** 미리 보기로 바꾼 translation·scale·흐림을 지우고, 플로팅이면 윤곽선만 남긴다. */
-    private void resetFloatPreview() {
+    /** 흐림을 걷고 플로팅이면 윤곽선만 남긴다. */
+    private void unveilFloatCard() {
         column.setForeground(floatingApplied ? floatCardFront(0) : null);
         if (Build.VERSION.SDK_INT >= 31) {
             for (int i = 0; i < column.getChildCount(); i++) column.getChildAt(i).setRenderEffect(null);
         }
+    }
+
+    /** 미리 보기로 바꾼 translation·scale·흐림을 지운다. */
+    private void resetFloatPreview() {
+        unveilFloatCard();
         column.setTranslationX(0);
         column.setTranslationY(0);
         column.setScaleX(1f);
