@@ -279,6 +279,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     public void onCreate() {
         setTheme(R.style.Theme_NewSwipe_Ime);   // super.onCreate()보다 먼저 지정해야 키보드 창에 적용된다.
         super.onCreate();
+        // 키보드 창을 하단 바 뒤까지 그린다 (applyNavigationBarStyle 참고). Android 15부터는 시스템이 강제하므로
+        // (targetSdk 35 시험 빌드에서 테마로 빠진 경우도 그대로 둔다) Android 11~14에서만 지정한다.
+        if (Build.VERSION.SDK_INT >= 30 && Build.VERSION.SDK_INT < 35
+                && getWindow() != null && getWindow().getWindow() != null) {
+            getWindow().getWindow().setDecorFitsSystemWindows(false);
+        }
         prefs = new Prefs(this);
         feedback = new Feedback(this);
         inputManager = (android.hardware.input.InputManager) getSystemService(INPUT_SERVICE);
@@ -754,17 +760,19 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     /**
-     * 하단 바(내비게이션 바) 색과 아이콘 밝기를 키보드 테마에 맞춘다.
-     * 창 테마(Theme.NewSwipe.Ime)는 시스템 화면 모드만 따르므로, 설정에서 시스템과 다른 화면 모드를 골랐을 때를 위해
-     * 여기서 다시 지정한다. targetSdk 36 이상(기본 빌드)에서는 키보드 창이 하단 바 뒤까지 그려지는 것을 끌 수 없고
-     * (windowOptOutEdgeToEdgeEnforcement 무시), 키보드가 하단 바 영역을 직접 배경색으로 채운다 (입력 뷰의 root 배경과
-     * 아래쪽 인셋 패딩). 일부 기기(비보 등)의 하단 바 아이콘 색은 기기에서 확인해야 한다 (BUILDING.md '배포 전 기기에서 확인할 것').
+     * 하단 바(내비게이션 바) 영역의 색과 아이콘 밝기를 키보드 테마에 맞춘다.
+     * 키보드 창은 모든 Android 버전에서 하단 바 뒤까지 그리고(Android 15부터는 시스템이 강제, 11~14는 onCreate의
+     * setDecorFitsSystemWindows, 9~10은 아래의 배치 플래그), 하단 바 자체는 테마에서 투명이다. 하단 바 영역은
+     * 입력 뷰의 root가 배경색으로 직접 채운다 (아래쪽 인셋 패딩, refreshBottomInset). 떠 있는 키보드에서는 root 배경이
+     * 투명이라 하단 바 뒤로 앱이 보인다. 그래서 Android 15에서 지원 중단된 Window.setNavigationBarColor는 쓰지 않는다.
+     * 아이콘 밝기는 창 테마(Theme.NewSwipe.Ime)가 시스템 화면 모드만 따르므로, 설정에서 시스템과 다른 화면 모드·키보드 테마를
+     * 골랐을 때를 위해 여기서 다시 지정한다. 일부 기기(비보 등)의 하단 바 아이콘 색은 기기에서 확인해야 한다
+     * (BUILDING.md '배포 전 기기에서 확인할 것').
      */
+    @SuppressWarnings("deprecation")   // Android 9~10에는 WindowInsetsController·setDecorFitsSystemWindows가 없다
     private void applyNavigationBarStyle() {
         if (theme == null || getWindow() == null || getWindow().getWindow() == null) return;
         android.view.Window w = getWindow().getWindow();
-        // 떠 있는 키보드는 아래가 비어 뒤의 앱이 보이므로 하단 바도 투명하게 둔다.
-        w.setNavigationBarColor(floatingApplied ? android.graphics.Color.TRANSPARENT : theme.background);
         View d = w.getDecorView();
         if (Build.VERSION.SDK_INT >= 30) {
             android.view.WindowInsetsController c = d.getWindowInsetsController();
@@ -773,10 +781,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                         android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS);
             }
         } else {
-            // Android 9~10(minSdk 28)에는 WindowInsetsController가 없다.
-            int f = d.getSystemUiVisibility();
+            // Android 9~10(minSdk 28): 키보드 창은 하단 바 아래까지 놓이고 바 위까지만 내용 인셋을 받는다.
+            // LAYOUT_HIDE_NAVIGATION으로 창 장식(decor)이 하단 바 높이를 먹지 않게 해 root가 그 높이만큼 직접 띄운다
+            // (하단 바를 숨기는 것이 아니라 배치만 바꾼다).
+            int f = d.getSystemUiVisibility() | View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
             f = theme.dark ? f & ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR : f | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
-            d.setSystemUiVisibility(f);
+            if (f != d.getSystemUiVisibility()) d.setSystemUiVisibility(f);
         }
     }
 

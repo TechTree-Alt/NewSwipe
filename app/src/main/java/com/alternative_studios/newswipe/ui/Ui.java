@@ -171,19 +171,69 @@ public final class Ui {
         return row;
     }
 
-    /** Android 15부터 화면이 시스템 바 뒤까지 그려지므로 시스템 바·키보드·노치만큼 안쪽 여백을 준다. */
+    /**
+     * 화면(액티비티 창)을 상태 표시줄·하단 바 뒤까지 그린다. Android 15부터는 시스템이 이렇게 강제하므로,
+     * 그 전 버전(Android 9~14)에서도 같은 모습이 되게 맞춘다. 바는 테마에서 투명이고, 바 뒤에는 padForSystemBars로
+     * 안쪽 여백을 준 root의 배경이 보인다. 앱 화면 모드(dark)가 시스템과 달라도 바 아이콘이 배경과 구분되게 아이콘 밝기를 정한다.
+     * Android 15에서 지원 중단된 Window.setStatusBarColor·setNavigationBarColor는 쓰지 않는다 (색은 테마에서 투명으로 둔다).
+     * setContentView 전에 부른다.
+     */
+    @SuppressWarnings("deprecation")   // Android 9~10에는 setDecorFitsSystemWindows·WindowInsetsController가 없다
+    public static void edgeToEdge(android.view.Window w, boolean dark) {
+        android.view.View decor = w.getDecorView();
+        if (android.os.Build.VERSION.SDK_INT >= 30) {
+            w.setDecorFitsSystemWindows(false);
+            android.view.WindowInsetsController c = w.getInsetsController();
+            int light = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                    | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+            if (c != null) c.setSystemBarsAppearance(dark ? 0 : light, light);
+        }
+        if (android.os.Build.VERSION.SDK_INT < 31) {
+            // Android 9~10: 창 배치 플래그로 바 뒤까지 그린다. Android 11은 창이 붙기 전 아이콘 밝기가 테마 값으로
+            // 되돌아가는 일이 있어 예전 플래그로도 한 번 더 지정한다.
+            int f = decor.getSystemUiVisibility();
+            if (android.os.Build.VERSION.SDK_INT < 30) {
+                f |= android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                        | android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                        | android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN;
+            }
+            int light = android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+                    | android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+            f = dark ? f & ~light : f | light;
+            decor.setSystemUiVisibility(f);
+        }
+    }
+
+    /** 화면이 시스템 바 뒤까지 그려지므로(edgeToEdge) 시스템 바·키보드·노치만큼 안쪽 여백을 준다. */
     public static void padForSystemBars(android.view.View v) {
         padForSystemBars(v, true);
     }
 
     /** ime가 false면 키보드는 피하지 않는다: 키보드가 화면 아래를 그대로 덮는다. */
+    @SuppressWarnings("deprecation")   // Android 9~10에는 WindowInsets.Type이 없다
     public static void padForSystemBars(android.view.View v, boolean ime) {
-        if (android.os.Build.VERSION.SDK_INT < 35) return;
         v.setOnApplyWindowInsetsListener((view, insets) -> {
-            android.graphics.Insets i = insets.getInsets(android.view.WindowInsets.Type.systemBars()
-                    | (ime ? android.view.WindowInsets.Type.ime() : 0) | android.view.WindowInsets.Type.displayCutout());
-            view.setPadding(i.left, i.top, i.right, i.bottom);
-            return android.view.WindowInsets.CONSUMED;
+            if (android.os.Build.VERSION.SDK_INT >= 30) {
+                android.graphics.Insets i = insets.getInsets(android.view.WindowInsets.Type.systemBars()
+                        | (ime ? android.view.WindowInsets.Type.ime() : 0) | android.view.WindowInsets.Type.displayCutout());
+                view.setPadding(i.left, i.top, i.right, i.bottom);
+                return android.view.WindowInsets.CONSUMED;
+            }
+            // Android 9~10: 시스템 창 인셋에는 화면을 줄이는 키보드(adjustResize)까지 들어 있다.
+            // 키보드를 피하지 않을 때는 바 높이만 담긴 안정 인셋을 쓴다.
+            int l = ime ? insets.getSystemWindowInsetLeft() : insets.getStableInsetLeft();
+            int t = ime ? insets.getSystemWindowInsetTop() : insets.getStableInsetTop();
+            int r = ime ? insets.getSystemWindowInsetRight() : insets.getStableInsetRight();
+            int b = ime ? insets.getSystemWindowInsetBottom() : insets.getStableInsetBottom();
+            android.view.DisplayCutout cut = insets.getDisplayCutout();
+            if (cut != null) {
+                l = Math.max(l, cut.getSafeInsetLeft());
+                t = Math.max(t, cut.getSafeInsetTop());
+                r = Math.max(r, cut.getSafeInsetRight());
+                b = Math.max(b, cut.getSafeInsetBottom());
+            }
+            view.setPadding(l, t, r, b);
+            return insets.consumeSystemWindowInsets().consumeStableInsets().consumeDisplayCutout();
         });
     }
 

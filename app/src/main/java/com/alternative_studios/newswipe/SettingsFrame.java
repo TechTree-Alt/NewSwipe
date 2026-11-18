@@ -156,6 +156,7 @@ final class SettingsFrame {
      * 머리글·입력 창·content는 overlayHost 틀 안에 들어가, 그 위에 겹쳐 띄우는 창은 머리글까지 덮고 bottom은 가리지 않는다.
      */
     View wrap(View content, View bottom) {
+        Ui.edgeToEdge(activity.getWindow(), colors.dark);
         LinearLayout root = new LinearLayout(activity);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(colors.bg);

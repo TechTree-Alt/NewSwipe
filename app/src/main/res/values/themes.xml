@@ -1,22 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 밝은 테마. 다크 모드에서는 values-night/themes.xml이 쓰인다. 제목은 화면 안에 직접 그린다. -->
+    <!--
+        밝은 테마. 다크 모드에서는 values-night/themes.xml이 쓰인다. 제목은 화면 안에 직접 그린다.
+        화면은 모든 Android 버전에서 상태 표시줄·하단 바 뒤까지 그린다 (Ui.edgeToEdge). 바는 투명이고, 바 뒤에는
+        시스템 바만큼 안쪽 여백을 준 화면 root의 배경(AppTheme.bg)이 보인다. Android 15부터는 이 색 지정을 시스템이 무시한다.
+    -->
     <style name="Theme.NewSwipe" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:colorAccent">#2F62E8</item>
-        <item name="android:statusBarColor">#F4F5F8</item>
-        <item name="android:navigationBarColor">#F4F5F8</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowLightNavigationBar">true</item>
         <item name="android:windowBackground">@color/settings_background</item>
     </style>
 
     <!--
-        키보드 창 테마. 하단 바(내비게이션 바) 배경을 키보드 색으로 칠하고, 밝은 배경에서는 아이콘을 어둡게 한다.
-        일부 제조사(비보 등)의 키보드 하단 바는 창의 내비게이션 바 색을 보고 아이콘 색을 정하는 것으로 보여
-        테마에서도 지정한다.
+        키보드 창 테마. 키보드 창은 모든 Android 버전에서 하단 바(내비게이션 바) 뒤까지 그리고, 하단 바 영역은
+        키보드가 직접 배경색으로 채운다 (NewSwipeIME.applyNavigationBarStyle, refreshBottomInset). 그래서 하단 바 자체는 투명이다.
+        Android 15에서 지원 중단된 Window.setNavigationBarColor로 색을 바꾸지 않는다.
+        밝은 배경에서는 아이콘을 어둡게 한다 (키보드 테마에 따라 applyNavigationBarStyle이 다시 정한다).
     -->
     <style name="Theme.NewSwipe.Ime" parent="android:Theme.DeviceDefault.InputMethod">
-        <item name="android:navigationBarColor">@color/keyboard_background</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightNavigationBar">true</item>
     </style>
 </resources>

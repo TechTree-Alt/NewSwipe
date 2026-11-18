@@ -118,6 +118,7 @@ public final class OnboardingActivity extends Activity {
             saveLanguages(isKoreanSystem(), true);
         }
 
+        Ui.edgeToEdge(getWindow(), colors.dark);
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(colors.bg);
