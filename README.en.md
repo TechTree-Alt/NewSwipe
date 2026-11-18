@@ -4,7 +4,7 @@
 
 [한국어](README.md) · **English**
 
-NewSwipe is a lightweight, modern and comfortable Korean keyboard.
+NewSwipe is a lightweight, modern and comfortable Input system.
 <br />
 <br />
 <p align="left">
