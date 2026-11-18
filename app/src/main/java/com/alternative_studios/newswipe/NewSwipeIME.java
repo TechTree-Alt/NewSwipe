@@ -1593,10 +1593,34 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     // ---------------------------------------------------------------- 플로팅 키보드 (실험실)
 
+    /** 카드 모서리 반지름 (dp). */
+    private static final int FLOAT_RADIUS_DP = 16;
+
+    /** 카드 윤곽선. fill이 0이 아니면 그 색으로 카드 안을 덮는다 (크기 조절 중에 흐리게). */
+    private android.graphics.drawable.GradientDrawable floatCardFront(int fill) {
+        android.graphics.drawable.GradientDrawable d = Ui.round(fill, Ui.dp(this, FLOAT_RADIUS_DP));
+        d.setStroke(Math.max(1, Ui.dp(this, 1)), (theme.hint & 0x00FFFFFF) | 0x40000000);
+        return d;
+    }
+
+    /** 크기 조절 중: 카드 안을 바탕색으로 덮고 (Android 12 이상은 흐림 효과도) 늘어나 보이는 글자가 드러나지 않게 한다. */
+    private void veilFloatCard() {
+        column.setForeground(floatCardFront((theme.background & 0x00FFFFFF) | 0xB3000000));
+        if (Build.VERSION.SDK_INT >= 31) {
+            float r = Ui.dp(this, 6);
+            android.graphics.RenderEffect blur = android.graphics.RenderEffect.createBlurEffect(r, r,
+                    android.graphics.Shader.TileMode.CLAMP);
+            for (int i = 0; i < column.getChildCount(); i++) {
+                View c = column.getChildAt(i);
+                if (c != floatHandle) c.setRenderEffect(blur);
+            }
+        }
+    }
+
     /** 손잡이 줄의 높이 (dp). */
     private static final int FLOAT_HANDLE_DP = 24;
-    /** 손잡이를 화면 아래로 이만큼(dp) 더 끌어 놓으면 원래의 아래 키보드로 돌아간다. */
-    private static final int FLOAT_DOCK_DP = 48;
+    /** 아래 키보드로 돌아가려면 손잡이를 적어도 이만큼(dp) 아래로 끌어야 한다 (손잡이를 잡기만 해서 돌아가지 않게). */
+    private static final int FLOAT_DOCK_DP = 8;
 
     /** 플로팅 키보드를 켜고 끌 때 바뀌는 모습: 투명한 바탕과 하단 바, 둥근 카드, 손잡이, 위쪽 빈 곳. */
     private void applyFloating(boolean floating) {
@@ -1605,14 +1629,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         floatHandle.setVisibility(floating ? View.VISIBLE : View.GONE);
         floatTop.setVisibility(floating ? View.VISIBLE : View.GONE);
         root.setBackgroundColor(floating ? android.graphics.Color.TRANSPARENT : theme.background);
-        if (floating) {
-            android.graphics.drawable.GradientDrawable card = Ui.round(theme.background, Ui.dp(this, 16));
-            card.setStroke(Math.max(1, Ui.dp(this, 1)), (theme.hint & 0x00FFFFFF) | 0x40000000);
-            column.setBackground(card);
-        } else {
-            column.setBackground(null);
-            resetFloatPreview();
-        }
+        // 바탕은 카드 모양(둥근 잘라내기)만 맡고, 윤곽선은 자판이 그린 바탕에 가리지 않게 맨 위(foreground)에 그린다.
+        column.setBackground(floating ? Ui.round(theme.background, Ui.dp(this, FLOAT_RADIUS_DP)) : null);
+        resetFloatPreview();
         column.setClipToOutline(floating);
         applyNavigationBarStyle();
     }
@@ -1680,6 +1699,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 floatDocking = false;
                 column.setPivotX(0);
                 column.setPivotY(0);
+                if (resize) veilFloatCard();
                 feedback.onToolbar();
                 break;
             case MotionEvent.ACTION_MOVE:
@@ -1714,7 +1734,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             ty = dragStartLift + Math.min(over * 0.35f, root.getPaddingBottom() + Ui.dp(this, 16));
         }
         column.setTranslationY(ty);
-        boolean docking = dy - dragStartLift > Ui.dp(this, FLOAT_DOCK_DP);
+        // 카드 아래쪽이 화면 아래 끝에 닿으면 (처음부터 닿아 있었으면 조금이라도 아래로 끌면) 놓을 때 아래 키보드로 돌아간다.
+        boolean docking = dy >= dragStartLift && dy > Ui.dp(this, FLOAT_DOCK_DP);
         if (docking != floatDocking) {
             floatDocking = docking;
             column.setAlpha(docking ? 0.5f : 1f);
@@ -1784,8 +1805,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         resetFloatPreviewAfterLayout();
     }
 
-    /** 미리 보기로 바꾼 translation·scale·흐림을 지운다. */
+    /** 미리 보기로 바꾼 translation·scale·흐림을 지우고, 플로팅이면 윤곽선만 남긴다. */
     private void resetFloatPreview() {
+        column.setForeground(floatingApplied ? floatCardFront(0) : null);
+        if (Build.VERSION.SDK_INT >= 31) {
+            for (int i = 0; i < column.getChildCount(); i++) column.getChildAt(i).setRenderEffect(null);
+        }
         column.setTranslationX(0);
         column.setTranslationY(0);
         column.setScaleX(1f);

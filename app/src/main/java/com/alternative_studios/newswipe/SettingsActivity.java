@@ -2710,13 +2710,13 @@ public final class SettingsActivity extends Activity {
         LinearLayout box = section(L.t("플로팅 키보드", "Floating keyboard"));
         box.addView(toggle(L.t("플로팅 키보드", "Floating keyboard"),
                 L.t("도구 막대의 한 손 모드 버튼을 누르면 키보드를 화면 위에 띄웁니다. 키보드 아래의 손잡이를 끌어 옮기고, "
-                        + "손잡이를 화면 아래 끝 너머로 끌어 놓거나 버튼을 다시 누르면 원래대로 돌아옵니다. "
+                        + "카드를 화면 아래 끝까지 끌어 놓거나 버튼을 다시 누르면 원래대로 돌아옵니다. "
                         + "손잡이 오른쪽 모서리를 끌면 폭과 키 높이를 바꿉니다. 이 크기는 플로팅 키보드에만 쓰고, 정하기 전에는 한 손 모드 설정을 따릅니다. "
                         + "자리와 크기는 화면 방향마다 기억합니다. "
                         + "한 손 모드 버튼을 왼쪽·오른쪽으로 밀면 한 손 모드를 씁니다. "
                         + "키보드가 떠 있는 동안 앱 화면은 줄어들지 않으므로, 입력란이 가려지면 키보드를 옮기세요.",
                         "Tapping the one-handed mode button on the toolbar floats the keyboard over the screen. Drag the handle under the keyboard to move it. "
-                        + "To dock it, drag the handle past the bottom of the screen or tap the button again. "
+                        + "To dock it, drag the keyboard down to the bottom of the screen or tap the button again. "
                         + "Drag the right corner of the handle to change the width and key height. This size applies only to the floating keyboard and follows the one-handed mode settings until you change it. "
                         + "Position and size are remembered for each screen orientation. "
                         + "Swipe the one-handed mode button left or right for one-handed mode. "
