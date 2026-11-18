@@ -106,7 +106,7 @@ NewSwipe's layouts and input methods take ideas from the works below.
 This project and its developer are not affiliated with any of their developers or designers.
 
 - **Google Danmoeum** — the Danmoeum layout first introduced in Google Korean Input in 2010.
-- **Cukey Keyboard** — typing double consonants on a Danmoeum layout by swiping the key down.
+- **Ker Keyboard** — typing double consonants on a Danmoeum layout by swiping the key down.
 - **Ortholinear keyboards** — grid alignment.
 <br />
 
