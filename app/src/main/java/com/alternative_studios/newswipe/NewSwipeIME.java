@@ -544,7 +544,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             hwFullKeyboard = true;
             refreshHwToolbar();
         } else {
-            requestHideSelf(0);
+            hideKeyboard();
         }
     }
 
@@ -647,6 +647,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         floatLeft = new View(this);
         floatRight = new View(this);
         floatingApplied = false;
+        floatClosing = false;
+        main.removeCallbacks(floatCloseFallback);
         veilOutline = null;   // 예전 body에 붙어 있던 것
         appliedOneHand = null;
         body.addView(column, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
@@ -748,6 +750,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     public void onWindowShown() {
         super.onWindowShown();
         windowHidden = false;
+        endFloatClose();
         refreshHwToolbar();
         main.removeCallbacks(releaseWhileHidden);
         applyNavigationBarStyle();
@@ -883,6 +886,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     public void onWindowHidden() {
         super.onWindowHidden();
         windowHidden = true;
+        endFloatClose();   // 사라지는 움직임으로 바꿔 둔 모습을 다음에 올라올 때를 위해 되돌린다
         hwFullKeyboard = false;   // 다음에 올라올 때는 다시 도구 막대만 보인다
         windowOnlyBottom = 0;   // 옛 값이 남아 다음에 올라올 때 자판 아래에 빈 띠가 생기지 않게 한다
         callbackBottom = -1;
@@ -1622,6 +1626,45 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     // ---------------------------------------------------------------- 떠 있는 키보드 (실험실)
+
+    /**
+     * 키보드를 내린다. 떠 있는 키보드는 앱 화면을 가리지 않아(인셋이 0) 시스템이 내리는 움직임을 보이지 않으므로,
+     * 카드가 아래로 살짝 내려가며 흐려지는 움직임을 직접 보인 뒤 내린다. 앱이 키보드를 내릴 때는 이 길을 거치지 않는다.
+     */
+    private void hideKeyboard() {
+        if (!floatingApplied || column == null || !column.isShown()) {
+            requestHideSelf(0);
+            return;
+        }
+        if (floatClosing) return;
+        floatClosing = true;
+        keyboard.cancelAll();
+        column.setPivotX(column.getWidth() / 2f);
+        column.setPivotY(column.getHeight());
+        column.animate().alpha(0f).translationY(Ui.dp(this, 24)).scaleX(0.94f).scaleY(0.94f)
+                .setDuration(160).setInterpolator(new android.view.animation.AccelerateInterpolator())
+                .withEndAction(() -> {
+                    requestHideSelf(0);
+                    // 시스템이 내리지 않았으면(그 사이 입력란이 바뀌는 등) 카드를 다시 보인다.
+                    main.postDelayed(floatCloseFallback, 500);
+                }).start();
+    }
+
+    /** 떠 있는 키보드가 사라지는 움직임 중인지. */
+    private boolean floatClosing;
+
+    private final Runnable floatCloseFallback = () -> {
+        if (!windowHidden) endFloatClose();
+    };
+
+    /** 사라지는 움직임을 멈추고 카드를 원래 모습으로 되돌린다. */
+    private void endFloatClose() {
+        main.removeCallbacks(floatCloseFallback);
+        if (!floatClosing || column == null) return;
+        floatClosing = false;
+        column.animate().cancel();
+        resetFloatPreview();
+    }
 
     /** 이 화면에서 보통 키 한 줄의 높이 (dp): 54dp × 키보드 높이 설정. */
     private static float baseRowDp(Prefs sizePrefs) {
@@ -3838,6 +3881,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event) {
+        // 떠 있는 키보드를 뒤로 가기로 내릴 때도 사라지는 움직임을 보인 뒤 내린다
+        // (Android 13 이상의 뒤로 가기 손짓도 시스템이 이 키로 보낸다).
+        if (keyCode == KeyEvent.KEYCODE_BACK && !event.isCanceled() && floatingApplied && isInputViewShown()) {
+            hideKeyboard();
+            return true;
+        }
         if (keyCode == hwAloneKey && hwAloneKey != 0) {
             hwAloneKey = 0;
             hwToggleLanguage();
@@ -5065,7 +5114,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 startVoiceInput();
                 break;
             case SwipeAction.HIDE_KEYBOARD:
-                requestHideSelf(0);
+                hideKeyboard();
                 break;
             case SwipeAction.SETTINGS:
                 openSettings();
