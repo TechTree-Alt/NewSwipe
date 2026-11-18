@@ -117,11 +117,19 @@ svg{position:absolute;left:0;top:0;overflow:visible}
 const D = __DATA__;
 const panel = document.getElementById('panel');
 const PAD = 45, TOP = 205, KH = 182, GAP = 18, INNER = D.pw - 2 * PAD, U = (INNER + GAP) / 10;
+// Icon shapes copied from keyboard/Icons.java (24-unit grid, stroke 1.9); the globe is drawn
+// at 22/24 the size of the others, as in KeyboardView.
+const ICON_SIZE = { shift: 96, back: 96, enter: 96, globe: 88 };
 const ICON = {
-  shift: '<path d="M0,-34 L32,4 H14 V30 H-14 V4 H-32 Z" fill="none" stroke="#1F2228" stroke-width="6" stroke-linejoin="round"/>',
-  back: '<path d="M-46,0 L-24,-28 H40 a8,8 0 0 1 8,8 V20 a8,8 0 0 1 -8,8 H-24 Z" fill="none" stroke="#1F2228" stroke-width="7" stroke-linejoin="round"/><path d="M-6,-12 L18,12 M18,-12 L-6,12" stroke="#1F2228" stroke-width="7" stroke-linecap="round"/>',
-  globe: '<g fill="none" stroke="#1F2228" stroke-width="6"><circle r="30"/><ellipse rx="13" ry="30"/><path d="M-30,0 H30 M-26,-15 H26 M-26,15 H26"/></g>',
-  enter: '<path d="M34,-26 V6 H-30 M-12,-14 L-32,6 L-12,26" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>',
+  shift: '<path d="M12,3.5 L20.5,12.5 H15.5 V18.5 H8.5 V12.5 H3.5 Z"/>',
+  back: '<path d="M8,5 H21 V19 H8 L2.5,12 Z"/><path d="M11.5,9 L17,15 M17,9 L11.5,15"/>',
+  enter: '<path d="M19.5,5 V13 H5"/><path d="M9,8.5 L4.5,13 L9,17.5"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4.2" ry="9"/><path d="M3,12 H21 M12,3 V21"/>',
+};
+const iconSvg = (name, w, h, color) => {
+  const u = ICON_SIZE[name] / 24;
+  return `<svg width="${w}" height="${h}"><g transform="translate(${w / 2},${h / 2}) scale(${u}) translate(-12,-12)"
+    fill="none" stroke="${color}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${ICON[name]}</g></svg>`;
 };
 const keys = [];
 ['qwertyuiop', 'asdfghjkl'].forEach((r, ri) => [...r].forEach((c, i) => keys.push({ x: (ri ? 0.5 : 0) + i, w: 1, row: ri, label: c })));
@@ -141,7 +149,7 @@ for (const k of keys) {
   el.className = 'k' + (k.fn ? ' fn' : '') + (k.blue || hit ? ' blue' : '') + (k.small ? ' lbl' : '');
   if (hit) el.style.alignItems = 'flex-start', el.style.paddingTop = '22px', el.style.boxSizing = 'border-box';
   Object.assign(el.style, { left: x + 'px', top: y + 'px', width: w + 'px', height: KH + 'px' });
-  if (k.icon) el.innerHTML = `<svg width="${w}" height="${KH}"><g transform="translate(${w / 2},${KH / 2})">${ICON[k.icon]}</g></svg>`;
+  if (k.icon) el.innerHTML = iconSvg(k.icon, w, KH, k.blue ? '#fff' : '#1F2228');
   else el.textContent = k.label;
   panel.appendChild(el);
   if (hit) swiped = { x, y, w };
