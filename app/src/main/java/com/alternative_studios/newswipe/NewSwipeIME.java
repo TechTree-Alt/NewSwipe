@@ -245,7 +245,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private String clipChipPreview;
     /** 방금 복사한 것이 이미지면 칩이 붙여 넣을 이미지 형식(image/...), 텍스트면 null. */
     private String clipChipImageMime;
-    /** 칩이 붙여 넣을 텍스트의 길이 (이미지면 -1). 내용 대신 길이만 기억해, 사용자가 직접 붙여 넣었는지 알아볼 때 쓴다. */
+    /** 칩이 붙여 넣을 텍스트의 길이 (이미지면 -1). 내용 대신 길이만 기억해, 같은 글을 붙여 넣었는지 빨리 걸러 낼 때 쓴다. */
     private int clipChipTextLength = -1;
     private static final long CLIP_CHIP_MS = 60_000;
     private final Runnable expireClipChip = this::dismissClipChip;
@@ -1711,29 +1711,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             }
         }
         if (composer.isEmpty()) updateAutoCap();
-        dismissClipChipIfPasted(oldSelStart, oldSelEnd, newSelStart, newSelEnd);
         scheduleSuggest();
-    }
-
-    /**
-     * 앱의 붙여넣기 메뉴 등으로 사용자가 직접 붙여 넣었으면 칩을 거둔다. 커서가 복사한 글의 길이만큼 앞으로 나아갔고
-     * (선택한 글자를 덮어 붙여 넣었으면 선택의 앞에서부터) 커서 앞 글자가 지금 클립보드의 글과 같으면 붙여 넣은 것으로 본다.
-     * 길이가 맞을 때만 입력란과 클립보드를 읽는다.
-     */
-    private void dismissClipChipIfPasted(int oldSelStart, int oldSelEnd, int newSelStart, int newSelEnd) {
-        if (!clipChipActive || clipChipTextLength <= 0) return;
-        if (newSelStart < 0 || newSelStart != newSelEnd || oldSelStart < 0 || oldSelEnd < 0) return;
-        if (newSelStart - Math.min(oldSelStart, oldSelEnd) != clipChipTextLength) return;
-        CharSequence clip = primaryClipText();
-        if (clip == null || clip.length() != clipChipTextLength) return;
-        InputConnection ic = getCurrentInputConnection();
-        CharSequence before;
-        try {
-            before = ic == null ? null : ic.getTextBeforeCursor(clipChipTextLength, 0);
-        } catch (RuntimeException e) {
-            return;
-        }
-        if (before != null && TextUtils.equals(before.toString(), clip.toString())) dismissClipChip();
     }
 
     /** 지금 클립보드의 이미지가 키보드가 저장한 이미지면 그 id (아니면 null). */
