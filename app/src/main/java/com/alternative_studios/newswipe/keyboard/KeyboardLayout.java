@@ -773,12 +773,14 @@ public final class KeyboardLayout {
 
     /**
      * 12키 플릭 자판의 가나 키: {탭, 왼쪽, 위, 오른쪽, 아래}. Gboard처럼 가운데 3열에 가나를 두고 양옆에 기능키를 둔다.
-     * ゛ 키는 앞 글자의 탁점·반탁점·작은 글자를 돌리고, 밀면 괄호·가운뎃점·물결표가 들어간다.
+     * ↻ 키는 앞 글자를 50음도 같은 행의 다음 글자로 돌리고(あ→い→う…), 밀면 괄호·가운뎃점·물결표가 들어간다.
+     * 🌐 키는 글자를 조합하는 동안 Gboard처럼 ゛゜小 키가 되어 앞 글자의 탁점·반탁점·작은 글자를 돌린다
+     * (NewSwipeIME·KeyboardView가 조합 상태를 보고 바꾼다).
      * <pre>
-     *  ゛   あ  か  さ  ⌫
+     *  ↻   あ  か  さ  ⌫
      *  ◀   た  な  は  ▶
      *  ☺   ま  や  ら  ␣
-     *  ?123 🌐 わ  、  ↵
+     *  ?123 🌐 わ  、  ↵      (조합 중: 🌐 → ゛゜小)
      * </pre>
      */
     private static final String[][][] FLICK_ROWS = {
@@ -787,7 +789,7 @@ public final class KeyboardLayout {
             {{"ま", "み", "む", "め", "も"}, {"や", "（", "ゆ", "）", "よ"}, {"ら", "り", "る", "れ", "ろ"}},
             {null, {"わ", "を", "ん", "ー", null}, {"、", "。", "？", "！", "…"}},
     };
-    private static final String[] FLICK_MARK_KEY = {"゛", "「", "・", "」", "～"};
+    private static final String[] FLICK_MARK_KEY = {"↻", "「", "・", "」", "～"};
 
     /** 일본어 자판. qwerty면 로마자로 치는 QWERTY, 아니면 12키 플릭(5열, 스페이스바 줄 없음). */
     public static KeyboardLayout japanese(Prefs prefs, boolean qwerty) {

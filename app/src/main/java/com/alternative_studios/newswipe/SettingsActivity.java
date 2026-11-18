@@ -2630,8 +2630,9 @@ public final class SettingsActivity extends Activity {
         View group = ja ? subGroup(choiceRow(new String[]{L.t("12키 플릭", "12-key flick"), L.t("로마자 (QWERTY)", "Romaji (QWERTY)")}, prefs.jaQwerty() ? 1 : 0,
                         i -> prefs.raw().edit().putString(Prefs.CJK_JA_LAYOUT, i == 1 ? Prefs.JA_QWERTY : Prefs.JA_FLICK).apply()),
                 note(L.t("12키 플릭: 키를 누르면 あ단, 왼쪽·위·오른쪽·아래로 밀면 い·う·え·お단이 들어갑니다. "
-                        + "゛ 키는 앞 글자의 탁점·반탁점·작은 글자를 차례로 바꿉니다. "
-                        + "스페이스로 변환 후보를 고르고 엔터로 확정합니다. ◀·▶ 키는 길게 누르면 커서가 계속 움직입니다.", "12-key flick: tap a key for the あ column; swipe left, up, right, or down for い, う, え, or お. The ゛ key cycles the previous character through dakuten, handakuten and small forms. Use space to pick a conversion and enter to confirm. Hold ◀ or ▶ to keep moving the cursor.")),
+                        + "글자를 치는 동안 🌐 키는 ゛゜小 키가 되어 앞 글자의 탁점·반탁점·작은 글자를 차례로 바꾸고, "
+                        + "↻ 키는 앞 글자를 같은 행의 다음 글자로 바꿉니다 (あ→い→う…). "
+                        + "스페이스로 변환 후보를 고르고 엔터로 확정합니다. ◀·▶ 키는 길게 누르면 커서가 계속 움직입니다.", "12-key flick: tap a key for the あ column; swipe left, up, right, or down for い, う, え, or お. While typing, the 🌐 key becomes ゛゜小 and cycles the previous character through dakuten, handakuten and small forms; the ↻ key moves it to the next kana in the same row (あ→い→う…). Use space to pick a conversion and enter to confirm. Hold ◀ or ▶ to keep moving the cursor.")),
                 sizeSlider(L.t("일본어 자판 높이", "Japanese keyboard height"), Prefs.CJK_JA_HEIGHT, prefs::jaHeight, Prefs.CJK_JA_HEIGHT_MIN,
                         Prefs.CJK_JA_HEIGHT_MAX, 5, "%"),
                 note(L.t("일본어로 입력하는 동안의 자판(글자·기호) 높이입니다. 다른 자판 높이에 대한 비율이고, 100%면 같습니다.", "Height of the keyboard (letters and symbols) while typing Japanese, relative to the other keyboards. 100% means the same.")),
