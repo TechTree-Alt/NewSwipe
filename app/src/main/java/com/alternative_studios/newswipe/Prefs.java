@@ -201,6 +201,11 @@ public final class Prefs {
     public static final String FLOAT_POS_WIDTH = FLOAT_POS_PREFIX + "width";
     /** 떠 있는 키보드만의 키 높이 (보통 키 높이의 %). 정하기 전에는 한 손 모드 키 높이를 따른다. */
     public static final String FLOAT_POS_HEIGHT = FLOAT_POS_PREFIX + "height";
+    /**
+     * '상태를 방향마다 기억'을 껐을 때 모든 화면이 함께 쓰는 크기: 자판 폭(dp)과 키 한 줄 높이(dp). 비율이 아니라 고정값이라
+     * 화면이 달라도 떠 있는 키보드의 크기가 같다. 정하기 전에는 그 화면의 비율 값(한 손 모드 값)을 따른다.
+     */
+    public static final String FLOAT_WIDTH_DP = FLOAT_POS_PREFIX + "width_dp", FLOAT_ROW_DP = FLOAT_POS_PREFIX + "row_dp";
     public static final int FLOAT_WIDTH_MIN = 20, FLOAT_WIDTH_MAX = 100, FLOAT_HEIGHT_MIN = 50, FLOAT_HEIGHT_MAX = 130;
     /**
      * 키보드 모습의 묶음(프로필). 키보드 사용자화는 그 화면에서 쓰는 프로필({@link #profileFor})을 편집한다.
@@ -683,6 +688,19 @@ public final class Prefs {
                 .putInt(floatKey(FLOAT_POS_HEIGHT, screen), clamp(heightPct, FLOAT_HEIGHT_MIN, FLOAT_HEIGHT_MAX))
                 .putInt(floatKey(FLOAT_POS_X, screen), clamp(xPermille, 0, 1000))
                 .putInt(floatKey(FLOAT_POS_LIFT, screen), clamp(liftDp, 0, FLOAT_POS_LIFT_MAX)).apply();
+    }
+
+    /** 모든 화면이 함께 쓰는 자판 폭 (dp). 정하지 않았으면 -1. */
+    public int floatWidthDp() { return sp.getInt(FLOAT_WIDTH_DP, -1); }
+
+    /** 모든 화면이 함께 쓰는 키 한 줄 높이 (dp). 정하지 않았으면 -1. */
+    public int floatRowDp() { return sp.getInt(FLOAT_ROW_DP, -1); }
+
+    /** '상태를 방향마다 기억'을 껐을 때: 크기는 dp로, 자리는 함께 쓰는 값으로 저장한다. */
+    public void setFloatGeometryDp(int widthDp, int rowDp, int xPermille, int liftDp) {
+        sp.edit().putInt(FLOAT_WIDTH_DP, Math.max(1, widthDp)).putInt(FLOAT_ROW_DP, Math.max(1, rowDp))
+                .putInt(FLOAT_POS_X, clamp(xPermille, 0, 1000))
+                .putInt(FLOAT_POS_LIFT, clamp(liftDp, 0, FLOAT_POS_LIFT_MAX)).apply();
     }
 
     /** 떠 있는 키보드 자리를 저장한다. */

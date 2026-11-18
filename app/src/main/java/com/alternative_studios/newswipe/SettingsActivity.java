@@ -299,7 +299,7 @@ public final class SettingsActivity extends Activity {
             {"clipemoji", L.t("클립보드 및 이모지", "Clipboard & emoji"), L.t("클립보드 기록, 편집 버튼, 이모지 크기·추천", "Clipboard history, edit buttons, emoji size and suggestions")},
             {"onehand", L.t("한 손 모드", "One-handed mode"), L.t("자판 폭·키 높이, 아래쪽 여백", "Keyboard width, key height, bottom padding")},
             {"backup", L.t("설정 가져오기 및 내보내기", "Import & export settings"), L.t("모든 설정을 파일로 저장하거나 불러오기", "Save all settings to a file or load them")},
-            {"lab", L.t("실험실", "Labs"), L.t("밀기 방향 판정, 외국어 자판, 외장 키보드, 떠 있는 키보드", "Swipe direction, other languages, physical keyboard, floating keyboard")},
+            {"lab", L.t("실험실", "Labs"), L.t("외국어 자판, 외장 키보드, 떠 있는 키보드", "Other languages, physical keyboard, floating keyboard")},
     };
     }
 

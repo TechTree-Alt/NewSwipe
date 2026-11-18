@@ -181,4 +181,18 @@ public class OneHandPrefsTest {
         assertEquals(Prefs.ONE_HAND_FLOAT, p.oneHand("port"));
         assertEquals(Prefs.ONE_HAND_FLOAT, p.oneHand("land"));
     }
+
+    @Test
+    public void sharedFloatingSizeIsStoredInDp() throws Exception {
+        LegacySwipeSettingsTest.MapSp sp = new LegacySwipeSettingsTest.MapSp();
+        Prefs p = view(sp, Prefs.PROFILE_PORTRAIT);
+        assertEquals(-1, p.floatWidthDp());
+        assertEquals(-1, p.floatRowDp());
+        p.setFloatGeometryDp(320, 40, 700, 60);
+        assertEquals(320, p.floatWidthDp());
+        assertEquals(40, p.floatRowDp());
+        // 자리는 함께 쓰는 값이라 어느 화면에서 읽어도 같다.
+        assertEquals(700, p.floatX("land"));
+        assertEquals(60, p.floatLiftDp("large_port"));
+    }
 }

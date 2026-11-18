@@ -1127,7 +1127,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 떠 있는 키보드에서 도구 막대(높이·버튼·아이콘·추천 글자)를 키 높이와 같은 비율로 맞춘다. 그 밖에는 1. */
     private float toolbarScale() {
         return prefs != null && Prefs.ONE_HAND_FLOAT.equals(activeOneHand())
-                ? prefs.profileView(profile()).floatHeight(prefs.floatScreen(this)) / 100f : 1f;
+                ? floatHeightPct() / 100f : 1f;
     }
 
     /**
@@ -1369,7 +1369,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         // 한 손 모드에서는 키 높이를 줄인 만큼 키 글자도 같은 비율로 줄인다 (도구 막대는 줄어든 자판 바로 위에 붙어 따라온다).
         // 떠 있는 키보드는 따로 정한 키 높이를 따로 쓴다 (정하기 전에는 한 손 모드 값).
         String oneHandSide = activeOneHand();
-        float oneHandScale = Prefs.ONE_HAND_FLOAT.equals(oneHandSide) ? sizePrefs.floatHeight(prefs.floatScreen(this)) / 100f
+        float oneHandScale = Prefs.ONE_HAND_FLOAT.equals(oneHandSide) ? floatHeightPct() / 100f
                 : !Prefs.ONE_HAND_OFF.equals(oneHandSide) ? sizePrefs.oneHandHeightForProfile() / 100f : 1f;
         keyboard.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), prefs.keyPreview(),
                 Math.round(sizePrefs.keyTextSize() * oneHandScale));
@@ -1575,8 +1575,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         String floatScreen = prefs.floatScreen(this);
         int floatX = floating ? profilePrefs.floatX(floatScreen) : 0;
         int floatWindow = 0;
+        float floatW = 0;
         if (floating) {
-            width = profilePrefs.floatWidth(floatScreen);
+            floatW = floatWidthPct();
+            width = Math.round(floatW * 100);   // 서명에만 쓴다 (0.01% 단위)
             lift = clampFloatLift(Ui.dp(this, profilePrefs.floatLiftDp(floatScreen)));
             floatWindow = floatWindowHeight();
         }
@@ -1589,9 +1591,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (autofill != null) autofill.setCompact(on);
         body.removeAllViews();
         if (floating) {
-            float free = 100 - width;
+            float free = 100 - floatW;
             body.addView(floatLeft, new LinearLayout.LayoutParams(0, 0, free * floatX / 1000f));
-            body.addView(column, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, width));
+            body.addView(column, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, floatW));
             body.addView(floatRight, new LinearLayout.LayoutParams(0, 0, free * (1000 - floatX) / 1000f));
             sideStrip.setVisibility(View.GONE);
         } else if (on) {
@@ -1620,6 +1622,32 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     // ---------------------------------------------------------------- 떠 있는 키보드 (실험실)
+
+    /** 이 화면에서 보통 키 한 줄의 높이 (dp): 54dp × 키보드 높이 설정. */
+    private static float baseRowDp(Prefs sizePrefs) {
+        return 54f * sizePrefs.keyboardHeight() / 100f;
+    }
+
+    /**
+     * 떠 있는 키보드의 키 높이 (보통 키 높이의 %). '상태를 방향마다 기억'을 켰으면 화면마다 정한 비율,
+     * 껐으면 모든 화면이 함께 쓰는 키 한 줄 높이(dp)를 이 화면의 비율로 바꾼 값 (정하기 전에는 비율 값).
+     */
+    private float floatHeightPct() {
+        Prefs p = prefs.profileView(profile());
+        int rowDp = prefs.floatPerScreen() ? -1 : prefs.floatRowDp();
+        if (rowDp <= 0) return p.floatHeight(prefs.floatScreen(this));
+        return Math.max(Prefs.FLOAT_HEIGHT_MIN, Math.min(Prefs.FLOAT_HEIGHT_MAX, rowDp * 100f / baseRowDp(p)));
+    }
+
+    /** 떠 있는 키보드의 자판 폭 (화면 폭의 %). '상태를 방향마다 기억'을 껐으면 함께 쓰는 폭(dp)을 이 화면의 비율로 바꾼다. */
+    private float floatWidthPct() {
+        Prefs p = prefs.profileView(profile());
+        int widthDp = prefs.floatPerScreen() ? -1 : prefs.floatWidthDp();
+        if (widthDp <= 0) return p.floatWidth(prefs.floatScreen(this));
+        float density = getResources().getDisplayMetrics().density;
+        int screenPx = body != null && body.getWidth() > 0 ? body.getWidth() : getResources().getDisplayMetrics().widthPixels;
+        return Math.max(Prefs.FLOAT_WIDTH_MIN, Math.min(Prefs.FLOAT_WIDTH_MAX, widthDp * density * 100f / screenPx));
+    }
 
     /** 카드 모서리 반지름 (dp). */
     private static final int FLOAT_RADIUS_DP = 16;
@@ -1822,7 +1850,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         resizeWidthPct = Math.max(Prefs.FLOAT_WIDTH_MIN, Math.min(Prefs.FLOAT_WIDTH_MAX, (dragStartW + dx) * 100f / bodyW));
         float newW = bodyW * resizeWidthPct / 100f;
         int keyH = Math.max(1, dragStartH - dragOtherH);
-        float startHPct = p.floatHeight(prefs.floatScreen(this));
+        float startHPct = floatHeightPct();
         float hPct = startHPct * (keyH + dy) / keyH;
         float maxGrow = dragStartLift + dragStartTop;   // 아래쪽 여유 + 위쪽 여유
         hPct = Math.min(hPct, startHPct * (keyH + maxGrow) / keyH);
@@ -1851,7 +1879,13 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         float lift = dragStartLift - (newH - dragStartH) - column.getTranslationY();
         float density = getResources().getDisplayMetrics().density;
         floatHeightHint = Math.round(newH);   // 새 높이가 놓이기 전에 띄운 높이를 옛 높이로 줄이지 않게
-        p.setFloatGeometry(prefs.floatScreen(this), Math.round(resizeWidthPct), Math.round(resizeHeightPct), x, Math.round(Math.max(0, lift) / density));
+        int liftDp = Math.round(Math.max(0, lift) / density);
+        if (prefs.floatPerScreen()) {
+            p.setFloatGeometry(prefs.floatScreen(this), Math.round(resizeWidthPct), Math.round(resizeHeightPct), x, liftDp);
+        } else {
+            // 모든 화면이 함께 쓰는 크기는 dp로 저장한다 (화면 폭·키보드 높이 설정이 다른 화면에서도 같은 크기로 보이게).
+            p.setFloatGeometryDp(Math.round(newW / density), Math.round(baseRowDp(p) * resizeHeightPct / 100f), x, liftDp);
+        }
         keyboard.cancelAll();
         applySettings();   // 키 높이·글자 크기·자판 폭을 새 크기로 (applyOneHand 포함)
         resetFloatPreviewAfterLayout();
