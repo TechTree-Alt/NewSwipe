@@ -71,6 +71,7 @@ public final class CjkComposer {
     }
 
     public void reset() {
+        toggle = null;
         reading.setLength(0);
         pending = "";
         picked.clear();
@@ -79,6 +80,7 @@ public final class CjkComposer {
 
     /** 중국어 병음 글자·'(a~z, ') 또는 일본어 로마자 글자를 더한다. 일본어 변환 중이었으면 그 변환을 확정해 돌려준다. */
     public String typeLetter(char c) {
+        toggle = null;
         String done = confirmHighlight();
         c = Character.toLowerCase(c);
         if (chinese()) {
@@ -90,20 +92,30 @@ public final class CjkComposer {
         return done;
     }
 
-    /** ↻ 키가 보내는 글자 (같은 행의 다음 글자로 돌린다). */
-    public static final String ROW_CYCLE = "↻";
+    /** ↶ 키가 보내는 글자 (토글 중인 글자를 거꾸로 돌린다). */
+    public static final String TOGGLE_BACK = "↶";
+
+    /** 같은 키를 이어 탭해 돌리는 중인 토글 차례와 지금 자리. 토글 중이 아니면 null. */
+    private String toggle;
+    private int toggleAt;
 
     /**
-     * 일본어: 가나·기호를 읽기에 더한다. "゛"는 마지막 글자의 탁점·반탁점·작은 글자를,
-     * "↻"는 마지막 글자를 50음도 같은 행의 다음 글자로 돌린다.
+     * 일본어: 가나·기호를 읽기에 더한다. "゛"는 마지막 글자의 탁점·반탁점·작은 글자를 돌리고,
+     * "↶"는 토글 중인 글자를 거꾸로 돌린다 (토글 중이 아니면 아무것도 하지 않는다).
      */
     public String typeKana(String s) {
-        boolean row = s.equals(ROW_CYCLE);
-        if (row || s.equals("゛")) {
+        if (s.equals(TOGGLE_BACK)) {
+            if (toggleActive()) {
+                toggleAt = (toggleAt + toggle.length() - 1) % toggle.length();
+                reading.setCharAt(reading.length() - 1, toggle.charAt(toggleAt));
+            }
+            return null;
+        }
+        toggle = null;
+        if (s.equals("゛")) {
             if (highlight >= 0) highlight = -1;
             int last = reading.length() - 1;
-            char ch = last >= 0 ? reading.charAt(last) : 0;
-            char next = last < 0 ? 0 : row ? Kana.rowCycle(ch) : Kana.cycle(ch);
+            char next = last >= 0 ? Kana.cycle(reading.charAt(last)) : 0;
             if (next != 0) reading.setCharAt(last, next);
             return null;
         }
@@ -111,6 +123,34 @@ public final class CjkComposer {
         flushPending();
         reading.append(s);
         return done;
+    }
+
+    /**
+     * 12키 자판에서 토글 키(あ·か…)를 탭했다. 바로 앞에 같은 키를 탭해 넣은 글자가 있으면 그 글자를 차례의 다음 글자로
+     * 바꾸고(あ→い), 아니면 차례의 첫 글자를 새로 넣는다. 끝내려면 다른 키를 치거나 {@link #endToggle()}.
+     */
+    public String typeToggle(String cycle) {
+        if (toggleActive() && toggle.equals(cycle)) {
+            toggleAt = (toggleAt + 1) % cycle.length();
+            reading.setCharAt(reading.length() - 1, cycle.charAt(toggleAt));
+            return null;
+        }
+        String done = typeKana(cycle.substring(0, 1));
+        toggle = cycle;
+        toggleAt = 0;
+        return done;
+    }
+
+    /** 같은 키를 이어 탭해 마지막 글자를 돌리는 중인지 (↶ 키가 쓸 수 있는지). */
+    public boolean toggleActive() {
+        int last = reading.length() - 1;
+        return toggle != null && highlight < 0 && pending.isEmpty() && last >= 0
+                && reading.charAt(last) == toggle.charAt(toggleAt);
+    }
+
+    /** 토글을 끝낸다: 다음에 같은 키를 탭하면 새 글자가 들어간다 (ああ). */
+    public void endToggle() {
+        toggle = null;
     }
 
     private void flushPending() {
@@ -122,6 +162,7 @@ public final class CjkComposer {
 
     /** 지울 것이 있었으면 true (변환 취소, 로마자, 읽기, 고른 후보 되돌리기 순서). */
     public boolean backspace() {
+        toggle = null;
         if (highlight >= 0) {
             highlight = -1;
             return true;
@@ -179,6 +220,7 @@ public final class CjkComposer {
 
     /** i번째 후보를 고른다. 읽기를 다 썼으면 확정할 글자 전체를 돌려주고 비운다. */
     public String pick(int i) {
+        toggle = null;
         List<Candidate> c = candidates();
         if (i < 0 || i >= c.size()) return null;
         Candidate x = c.get(i);
@@ -207,6 +249,7 @@ public final class CjkComposer {
 
     /** 스페이스: 중국어는 후보를 고르고, 일본어는 다음 변환 후보를 조합 영역에 보인다. */
     public String space() {
+        toggle = null;
         List<Candidate> c = candidates();
         if (c.isEmpty()) return commitRaw();
         if (chinese()) return pick(highlight >= 0 ? highlight : 0);

@@ -191,23 +191,48 @@ public class ConverterTest {
     }
 
     @Test
-    public void japaneseRowCycle() {
+    public void japaneseToggleInput() {
         CjkComposer c = new CjkComposer(CjkComposer.JA, CjkTestData.dict(CjkTestData.JA));
-        c.typeKana(CjkComposer.ROW_CYCLE);   // 돌릴 글자가 없으면 아무것도 하지 않는다
+        String a = Kana.toggleCycle('あ'), ka = Kana.toggleCycle('か');
+        assertEquals("あいうえおぁぃぅぇぉ", a);
+        assertNull(Kana.toggleCycle('い'));
+        c.typeKana(CjkComposer.TOGGLE_BACK);   // 토글 중이 아니면 아무것도 하지 않는다
         assertTrue(c.isEmpty());
-        c.typeKana("か");
-        c.typeKana(CjkComposer.ROW_CYCLE);
-        assertEquals("き", c.composingText());
+        c.typeToggle(a);
+        assertTrue(c.toggleActive());
+        c.typeToggle(a);
+        c.typeToggle(a);
+        assertEquals("う", c.composingText());   // あ→い→う
+        // 영상의 Gboard처럼 ↶는 거꾸로 돈다, 작은 글자까지: う→い→あ→ぉ→ぇ
+        for (int i = 0; i < 3; i++) c.typeKana(CjkComposer.TOGGLE_BACK);
+        assertEquals("ぉ", c.composingText());
+        c.typeKana(CjkComposer.TOGGLE_BACK);
+        assertEquals("ぇ", c.composingText());
+        // 다른 키를 탭하면 새 글자. か 행은 か→こ→け로 거꾸로
+        c.typeToggle(ka);
+        c.typeKana(CjkComposer.TOGGLE_BACK);
+        c.typeKana(CjkComposer.TOGGLE_BACK);
+        assertEquals("ぇけ", c.composingText());
+        // 토글을 끝내면 같은 키를 탭해도 새 글자가 들어간다 (かか)
+        c.reset();
+        c.typeToggle(ka);
+        c.endToggle();
+        assertFalse(c.toggleActive());
+        c.typeToggle(ka);
+        assertEquals("かか", c.composingText());
+        // 밀어 넣은 글자·탁점 뒤에는 토글이 끝난다
         c.typeKana("゛");
-        c.typeKana(CjkComposer.ROW_CYCLE);   // 탁점은 그대로: ぎ → ぐ
-        assertEquals("ぐ", c.composingText());
-        c.typeKana("お");
-        c.typeKana(CjkComposer.ROW_CYCLE);   // 행의 끝에서 처음으로
-        assertEquals("ぐあ", c.composingText());
-        assertEquals('ゆ', Kana.rowCycle('や'));
-        assertEquals('を', Kana.rowCycle('わ'));
-        assertEquals('。', Kana.rowCycle('、'));
-        assertEquals(0, Kana.rowCycle('x'));
+        assertFalse(c.toggleActive());
+        assertEquals("かが", c.composingText());
+        c.typeToggle(ka);
+        c.typeKana("く");
+        c.typeToggle(ka);
+        assertEquals("かがかくか", c.composingText());
+        c.backspace();
+        c.typeKana(CjkComposer.TOGGLE_BACK);   // 지운 뒤에는 ↶가 듣지 않는다
+        assertEquals("かがかく", c.composingText());
+        assertEquals("ゆ", String.valueOf(Kana.toggleCycle('や').charAt(1)));
+        assertEquals('ー', Kana.toggleCycle('わ').charAt(4));
     }
 
     @Test
