@@ -8,6 +8,7 @@ colors stay identical everywhere:
   - app/src/main/res/values/colors.xml                    (ic_launcher_background: icon backdrop, also the onboarding halo)
   - docs/play-store/icon-512.png                          (--png)
   - docs/play-store/feature-graphic@3x.png, feature-graphic.png (--png; the key is redrawn in place)
+    (then run tools/generate_feature_graphic_en.py to refresh the English feature graphic)
 
 Usage:
   python3 tools/generate_launcher_icon.py          # Android resources only
