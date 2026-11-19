@@ -237,6 +237,15 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private String suggestTail = "";
     /** 지금 추천란의 추천이 단어 전체로 찾은 것인지 ([단어]처럼 괄호를 씌워 커서 앞만 보고 찾은 추천과 구분한다). */
     private boolean wholeWordShown;
+    /**
+     * 커서 앞 단어를 지금 키로 입력하는 중인지 (글자 키나 지우기 키를 누른 뒤 커서를 옮기지 않았다).
+     * 단축어는 입력하는 중에만 찾는다: 커서를 옮겨 단축어 위에 놓았을 때는 보이지 않는다.
+     */
+    private boolean typingWord;
+    /** 마지막으로 글자 키나 지우기 키를 누른 시각 (SystemClock.uptimeMillis). */
+    private long typedAt;
+    /** 키를 누른 뒤 이 시간 안에 온 예상 밖의 커서 소식은 그 입력의 결과로 본다 (글자마다 내용을 고치는 바쁜 입력란). */
+    private static final long TYPED_SELECTION_MS = 500;
     private boolean domainField;   // 이메일 주소·인터넷 주소 입력란: 온점 키를 길게 누르면 .com 등이 나온다
     private boolean passwordField;   // 비밀번호 입력란: 복사한 내용 칩의 미리보기를 가린다
     /** 이메일 입력란 등에서 영어로 시작했다 (설정에는 저장하지 않는다). 그런 칸이 아닌 곳으로 가면 한글로 돌아간다. */
@@ -2238,6 +2247,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         // 시크릿 모드 등 앱이 학습하지 말라고 표시한 입력란에서는 단어를 학습하지 않는다 (추천은 그대로).
         learnAllowed = (info.imeOptions & EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) == 0;
         mirror.start(info.initialSelStart, info.initialSelEnd);
+        typingWord = false;   // 새 입력란: 아직 아무것도 입력하지 않았다
         if (initialTextFresh) seedMirror(info);
         initialTextFresh = false;
         selStart = info.initialSelStart;
@@ -2347,7 +2357,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                                   int candidatesStart, int candidatesEnd) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd);
         String mirrored = mirror.text();
-        mirror.onSelection(newSelStart, newSelEnd);   // 이모지 검색 중에도 실제 입력란의 커서 변화는 따라간다
+        // 이모지 검색 중에도 실제 입력란의 커서 변화는 따라간다
+        boolean moved = mirror.onSelection(newSelStart, newSelEnd);
+        // 키 입력의 결과가 아닌 커서 변화(사용자가 커서를 옮겼다 등)면 입력 중이 아니다: 단축어를 찾지 않는다.
+        if (moved && SystemClock.uptimeMillis() - typedAt > TYPED_SELECTION_MS) typingWord = false;
         // 메신저의 보내기 버튼처럼 앱이 입력란을 한 번에 비웠다: 스페이스 없이 끝난 마지막 단어도 학습한다.
         if (newSelStart == 0 && newSelEnd == 0 && oldSelStart > 1 && oldSelStart == oldSelEnd
                 && mirrored != null && mirror.text() == null && panel != PANEL_SEARCH) {
@@ -3265,6 +3278,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 글자 하나(또는 문자열)를 입력한다. tap = 그냥 탭했는지 (모음·자음 연속 탭 판단용). */
     private void typeText(String s, boolean tap) {
         if (s == null || s.isEmpty()) return;
+        markTyped();
         correctedTo = null;
         boolean letters = lettersLayout();
         if (cjkTyping(letters)) {
@@ -3466,6 +3480,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** @param skipSelectionCheck 연속 삭제 중이라 선택 영역 확인을 건너뛴다. */
     private void handleDelete(boolean skipSelectionCheck) {
         lastWasSpace = false;
+        markTyped();
         if (cjkComposing()) {
             cjkComposer().backspace();
             syncCjk(null);
@@ -4363,6 +4378,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         main.postDelayed(suggestRunnable, 30);
     }
 
+    /** 글자 키나 지우기 키를 눌렀다: 지금 단어를 입력하는 중이다. */
+    private void markTyped() {
+        typingWord = true;
+        typedAt = SystemClock.uptimeMillis();
+    }
+
     /** 커서 앞의 입력 중인 단어. 따라 적은 글자로 알 수 없을 때만 앱에 묻는다. */
     private String wordBeforeCursor(InputConnection ic) {
         String word = mirror.currentWord(korean);
@@ -4393,8 +4414,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         suggestTail = head.isEmpty() ? "" : wordAfterCursor(ic);
         String word = head + suggestTail;
         // 입력 중인 단어가 정해 둔 단축어면 기존 추천은 모두 숨기고 그 문장이 추천란 전체를 채운다.
-        String phrase = shortcutsOn() ? shortcuts.lookup(word) : null;
-        if (phrase == null && !suggestTail.isEmpty() && shortcutsOn()) {
+        // 키로 입력하는 중일 때만 찾는다. 커서를 옮겨 놓은 단어로는 단축어를 찾지 않는다.
+        boolean shortcutLookup = shortcutsOn() && typingWord;
+        String phrase = shortcutLookup ? shortcuts.lookup(word) : null;
+        if (phrase == null && !suggestTail.isEmpty() && shortcutLookup) {
             phrase = shortcuts.lookup(head);
             if (phrase != null) {
                 suggestTail = "";
@@ -5145,6 +5168,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private boolean beginEdit() {
         if (getCurrentInputConnection() == null) return false;
         commitComposing();
+        typingWord = false;   // 커서 이동·붙여넣기 등은 입력이 아니다: 단축어를 찾지 않는다
         correctedTo = null;
         lastWasSpace = false;
         return true;

@@ -145,11 +145,14 @@ public final class TextMirror {
         pending[pendingCount++] = cursor;
     }
 
-    /** 앱이 알려 준 새 커서 위치. 키보드가 한 편집의 (늦게 도착한) 결과가 아니면 기억을 버린다. */
-    public void onSelection(int selStart, int selEnd) {
+    /**
+     * 앱이 알려 준 새 커서 위치. 키보드가 한 편집의 (늦게 도착한) 결과가 아니면 기억을 버린다.
+     * @return 키보드가 한 편집의 결과라고 확인하지 못했으면 true (사용자가 커서를 옮겼거나 앱이 글자를 바꿨을 수 있다)
+     */
+    public boolean onSelection(int selStart, int selEnd) {
         if (selStart != selEnd || selStart < 0) {
             forget();
-            return;
+            return true;
         }
         if (committedEnd < 0) {
             // 기준 위치를 모르던 상태: 이 위치를 기준으로 삼되, 글자 기억은 믿을 수 없으니 버린다.
@@ -157,22 +160,23 @@ public final class TextMirror {
             text.setLength(0);
             committedEnd = Math.max(0, selStart - composing.length());
             pendingCount = 0;
-            return;
+            return true;
         }
         for (int i = 0; i < pendingCount; i++) {
             if (pending[i] == selStart) {
                 // i번째 편집까지 앱에 반영됐다. 그 뒤 편집의 소식은 아직 오는 중이다.
                 System.arraycopy(pending, i + 1, pending, 0, pendingCount - i - 1);
                 pendingCount -= i + 1;
-                return;
+                return false;
             }
         }
-        if (pendingCount == 0 && selStart == committedEnd + composing.length()) return;
+        if (pendingCount == 0 && selStart == committedEnd + composing.length()) return false;
         // 예상하지 못한 위치: 사용자가 커서를 옮겼거나 앱이 글자를 바꿨다.
         valid = false;
         text.setLength(0);
         committedEnd = Math.max(0, selStart - composing.length());
         pendingCount = 0;
+        return true;
     }
 
     /**
