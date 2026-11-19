@@ -43,7 +43,7 @@ public final class Prefs {
     public static final String SOUND_VOLUME = "sound_volume";         // %, 0~100
     public static final String KEY_PREVIEW = "key_preview";
     public static final String NUMBER_ROW = "number_row";
-    public static final String NUMBER_ROW_HEIGHT = "number_row_height";   // 숫자 줄 높이: 일반 키 높이의 %, 50~100
+    public static final String NUMBER_ROW_HEIGHT = "number_row_height";   // 숫자 줄 높이: 일반 키 높이의 %, 50~100 (세로 모드, 가로 모드·폴더블 내부 화면은 numberRowHeightKey)
     public static final int NUMBER_ROW_HEIGHT_MIN = 50, NUMBER_ROW_HEIGHT_MAX = 100, NUMBER_ROW_HEIGHT_DEFAULT = 80;
     public static final String FN_ROW_HEIGHT = "fn_row_height";   // 기능키 줄(맨 아래 줄) 높이: 일반 키 높이의 %, 70~130
     public static final int FN_ROW_HEIGHT_MIN = 70, FN_ROW_HEIGHT_MAX = 130, FN_ROW_HEIGHT_DEFAULT = 100;
@@ -939,13 +939,13 @@ public final class Prefs {
             // 키보드 사용자화를 연 채 바꾸면 되돌리기 기록에는 남는다.
             new EditorScope("landscape", null, keys(LANDSCAPE_SPLIT, LANDSCAPE_SIZE, KEYBOARD_HEIGHT_LAND, KEY_TEXT_SIZE_LAND,
                     SPLIT_GAP_CURSOR, SPLIT_GAP_SPEED, SPLIT_SPACE_JOIN, SPLIT_FN_WIDTH, SPLIT_REACH_COLUMN,
-                    FN_ROW_HEIGHT + LANDSCAPE_SUFFIX, TOOLBAR_HEIGHT + LANDSCAPE_SUFFIX, TOOLBAR_FOLLOW_BLOCKS + LANDSCAPE_SUFFIX,
+                    FN_ROW_HEIGHT + LANDSCAPE_SUFFIX, NUMBER_ROW_HEIGHT + LANDSCAPE_SUFFIX, TOOLBAR_HEIGHT + LANDSCAPE_SUFFIX, TOOLBAR_FOLLOW_BLOCKS + LANDSCAPE_SUFFIX,
                     FN_FOLLOW_BLOCKS + LANDSCAPE_SUFFIX), keys(LANDSCAPE_SPLIT + "_", "balanced_", "swipe_gap_landscape_", "swipe_gap_large_", LANDSCAPE_PAD_PREFIX,
                             SPLIT_REACH_COLUMN + "_",
                             // 폴더블 내부 화면(세로·가로)이 따로 정하는 값 (실험실의 다른 large_ 값은 넣지 않는다).
                             LARGE_PREFIX + "pad_", LARGE_PREFIX + "size_", LARGE_PREFIX + "split_",
                             LARGE_PREFIX + KEYBOARD_HEIGHT + "_", LARGE_PREFIX + KEY_TEXT_SIZE + "_",
-                            LARGE_PREFIX + FN_ROW_HEIGHT + "_", LARGE_PREFIX + TOOLBAR_HEIGHT + "_",
+                            LARGE_PREFIX + FN_ROW_HEIGHT + "_", LARGE_PREFIX + NUMBER_ROW_HEIGHT + "_", LARGE_PREFIX + TOOLBAR_HEIGHT + "_",
                             LARGE_PREFIX + TOOLBAR_FOLLOW_BLOCKS + "_", LARGE_PREFIX + FN_FOLLOW_BLOCKS + "_",
                             LARGE_PREFIX + SPLIT_SPACE_JOIN + "_", LARGE_PREFIX + SPLIT_FN_WIDTH + "_",
                             LARGE_PREFIX + SPLIT_REACH_COLUMN + "_", LARGE_PREFIX + SPLIT_GAP_CURSOR + "_",
@@ -1023,6 +1023,7 @@ public final class Prefs {
         own.put(KEYBOARD_HEIGHT, heightKey());
         own.put(TOOLBAR_HEIGHT, toolbarHeightKey());
         own.put(FN_ROW_HEIGHT, fnRowHeightKey());
+        own.put(NUMBER_ROW_HEIGHT, numberRowHeightKey());
         own.put(PORTRAIT_SPLIT, splitKey());
         own.put(BALANCED_LAYOUT, balancedLayoutKey());
         own.put(ENGLISH_BALANCED, englishBalancedKey());
@@ -1175,9 +1176,11 @@ public final class Prefs {
     public int soundVolume() { return sp.getInt(SOUND_VOLUME, 50); }
     public boolean keyPreview() { return sp.getBoolean(KEY_PREVIEW, true); }
     public boolean numberRow() { return sp.getBoolean(NUMBER_ROW, false); }
-    /** 숫자 줄 높이: 일반 키 높이의 % (50~100, 기본 80). */
+    /** 숫자 줄 높이: 일반 키 높이의 % (50~100, 기본 80). 세로·가로·폴더블 내부 화면 세로·가로가 따로 정한다. */
     public int numberRowHeight() {
-        return clamp(sp.getInt(NUMBER_ROW_HEIGHT, NUMBER_ROW_HEIGHT_DEFAULT), NUMBER_ROW_HEIGHT_MIN, NUMBER_ROW_HEIGHT_MAX);
+        int v = clamp(sp.getInt(NUMBER_ROW_HEIGHT, NUMBER_ROW_HEIGHT_DEFAULT), NUMBER_ROW_HEIGHT_MIN, NUMBER_ROW_HEIGHT_MAX);
+        // 가로 모드·폴더블 내부 화면 보기에서 따로 정했으면 그 값 (정하기 전에는 세로 모드 값).
+        return profileSize() ? clamp(sp.getInt(numberRowHeightKey(), v), NUMBER_ROW_HEIGHT_MIN, NUMBER_ROW_HEIGHT_MAX) : v;
     }
     /** 기능키 줄(맨 아래 줄) 높이: 일반 키 높이의 % (70~130, 기본 100). */
     public int fnRowHeight() {
@@ -1730,6 +1733,10 @@ public final class Prefs {
     }
     /** 이 프로필(가로 모드·폴더블 내부 화면 세로·가로)의 기능키 높이 설정 키. */
     public String fnRowHeightKey() { return large() ? LARGE_PREFIX + FN_ROW_HEIGHT + "_" + largeSide() : FN_ROW_HEIGHT + LANDSCAPE_SUFFIX; }
+    /** 이 프로필(가로 모드·폴더블 내부 화면 세로·가로)의 숫자 줄 높이 설정 키. */
+    public String numberRowHeightKey() {
+        return large() ? LARGE_PREFIX + NUMBER_ROW_HEIGHT + "_" + largeSide() : NUMBER_ROW_HEIGHT + LANDSCAPE_SUFFIX;
+    }
     public String textSizeKey() { return large() ? LARGE_PREFIX + KEY_TEXT_SIZE + "_" + largeSide() : KEY_TEXT_SIZE_LAND; }
 
     /** 이 프로필에서 자판을 자음(왼쪽)·모음(오른쪽)으로 나누는지. 한글 배열과 상관없이 켜고 끈 상태가 유지된다. 세로 모드는 늘 false. */

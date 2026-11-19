@@ -221,6 +221,7 @@ final class KeyboardPreview extends FrameLayout {
             case HEIGHT:
             case HEIGHT_RIGHT: return ownSizes() ? prefs.heightKey() : h.key;
             case FN_ROW: return ownSizes() ? prefs.fnRowHeightKey() : h.key;
+            case NUMBER_ROW: return ownSizes() ? prefs.numberRowHeightKey() : h.key;
             case TOOLBAR: return ownSizes() ? prefs.toolbarHeightKey() : h.key;
             // 키보드 여백: 가로 모드·폴더블 내부 화면은 그 프로필의 키 (세로 모드는 예전 키 그대로).
             case PAD_LEFT: return prefs.padKey(Prefs.SIDE_LEFT);
