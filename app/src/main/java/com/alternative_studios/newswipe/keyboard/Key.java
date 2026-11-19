@@ -72,6 +72,15 @@ public final class Key {
     boolean rightBlock;
     /** 일본어 12키 플릭 키: 키 위에 네 방향 글자를 작게 그린다. */
     boolean flick;
+    /**
+     * 일본어 12키 자판의 아래 둘째 칸 키: 가나를 조합하는 동안에는 이 자리에 markKey(゛゜小 키)를 대신 둔다 (KeyboardView).
+     * 그 칸에 어떤 기능키를 두든 ゛゜小 키는 이 자리에 나온다.
+     */
+    Key markKey;
+    /** ゛゜小 키가 대신하고 있는 원래 키 (조합이 끝나면 되돌린다). */
+    Key normalKey;
+    /** ゛゜小 키 (markKey로 만든 키): 누르면 앞 글자의 탁점·반탁점·작은 글자를 돌린다. */
+    public boolean kanaMark;
     /** 길게 눌러 연속 입력으로 정해 둔 글자여도 연속 입력을 쓰지 않는다 (이메일·인터넷 주소 입력란의 온점 키). */
     boolean noRepeat;
 
