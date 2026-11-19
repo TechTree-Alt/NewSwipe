@@ -388,6 +388,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         // 백그라운드 작업이 보내 둔 화면 갱신도 모두 버린다 (끝난 서비스를 붙잡거나, 닫힌 작업 줄에 다시 일을 맡기지 않게).
         main.removeCallbacksAndMessages(null);
         dismissForgetDialog();
+        if (langNotice != null) langNotice.dismiss();
         // 이미 맡긴 단어 기록이 끝난 뒤에 저장하고 내리도록 같은 작업 줄에 넣는다 (shutdown은 남은 작업을 마저 한다).
         runIo(this::releaseLearned);
         saveCjkLearning();
@@ -4187,7 +4188,25 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         // 입력 언어에서 한국어나 영어를 껐으면 바꿀 언어가 없다.
         if (!prefs.inputKorean() || !prefs.inputEnglish()) return;
         switchLanguage(korean ? "en" : "ko");
-        if (prefs.hwToast() && (!isInputViewShown() || toolbarOnlyNow())) Toast.makeText(this, korean ? L.t("한글", "Korean") : "English", Toast.LENGTH_SHORT).show();
+        if (prefs.hwToast() && (!isInputViewShown() || toolbarOnlyNow())) showLangNotice(korean ? L.t("한글", "Korean") : "English");
+    }
+
+    /** 바뀐 언어를 화면 아래쪽에 잠깐 띄운다. 토스트는 다른 앱을 쓰는 중에 보이지 않을 수 있어 키보드 창 토큰으로 직접 그린다 (LangNotice). */
+    private LangNotice langNotice;
+
+    private void showLangNotice(String text) {
+        android.view.Window w = getWindow() != null ? getWindow().getWindow() : null;
+        android.os.IBinder token = w != null ? w.getAttributes().token : null;
+        // 도구 막대가 보이면 그 위에, 아니면 화면 아래 끝 가까이에 띄운다
+        int bottom = isInputViewShown() && root != null && root.getHeight() > 0
+                ? root.getHeight() + dpToPx(12) : dpToPx(56);
+        if (langNotice == null) langNotice = new LangNotice(this);
+        if (langNotice.show(w != null ? w.getWindowManager() : null, token, text, bottom)) return;
+        Toast.makeText(this, text, Toast.LENGTH_SHORT).show();   // 창을 붙이지 못한 기기에서만
+    }
+
+    private int dpToPx(int dp) {
+        return Math.round(dp * getResources().getDisplayMetrics().density);
     }
 
     // ---------------------------------------------------------------- 단어 추천
