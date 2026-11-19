@@ -810,8 +810,10 @@ public final class KeyboardLayout {
         if (qwerty) return cjkPunctuation(relabel(english(prefs), JAPANESE), "、", "。");
         List<Row> rows = new ArrayList<>();
         if (prefs != null && prefs.numberRow()) rows.add(numberRow(prefs));
-        Key[] left = {flickKey(FLICK_MARK_KEY, true), fn(Key.CURSOR_LEFT, "◀", 1f), fn(Key.EMOJI_KEY, "", 1f),
-                fn(Key.TO_SYMBOLS, "?123", 1f)};
+        // 기능키 4개(↶·이모지·?123·🌐)는 설정에서 고른 자리에 둔다: 왼쪽 위, 왼쪽 셋째 줄, 왼쪽 아래, 아래 둘째 칸.
+        String order = prefs != null ? prefs.jaFnOrder() : Prefs.JA_FN_ORDER_DEFAULT;
+        Key[] left = {flickFnKey(order.charAt(0)), fn(Key.CURSOR_LEFT, "◀", 1f), flickFnKey(order.charAt(1)),
+                flickFnKey(order.charAt(2))};
         Key[] right = {fn(deleteKey(prefs) ? Key.DELETE : Key.SPACER, "", 1f), fn(Key.CURSOR_RIGHT, "▶", 1f),
                 spaceKey(1f), fn(Key.ENTER, "", 1f)};
         for (int r = 0; r < FLICK_ROWS.length; r++) {
@@ -819,12 +821,27 @@ public final class KeyboardLayout {
             Key[] keys = new Key[5];
             keys[0] = left[r];
             for (int i = 0; i < kana.length; i++) {
-                keys[i + 1] = kana[i] == null ? fn(Key.LANGUAGE, "", 1f) : flickKey(kana[i], kana[i][0].equals("、"));
+                keys[i + 1] = kana[i] == null ? flickFnKey(order.charAt(3)) : flickKey(kana[i], kana[i][0].equals("、"));
             }
             keys[4] = right[r];
+            if (r == FLICK_ROWS.length - 1) {
+                // 격자 정렬: ま·ら 아래 칸(기능키, 、 키)은 위 가나 키와 같은 글자 키 색으로 그린다.
+                keys[1].gridLetterColor = true;
+                keys[3].gridLetterColor = true;
+            }
             rows.add(new Row(1f, keys));
         }
         return new KeyboardLayout(JAPANESE, 5, rows);
+    }
+
+    /** 12키 플릭 자판의 기능키: Prefs.CJK_JA_FN_ORDER의 한 글자 (U·E·S·L). */
+    private static Key flickFnKey(char c) {
+        switch (c) {
+            case 'E': return fn(Key.EMOJI_KEY, "", 1f);
+            case 'S': return fn(Key.TO_SYMBOLS, "?123", 1f);
+            case 'L': return fn(Key.LANGUAGE, "", 1f);
+            default: return flickKey(FLICK_MARK_KEY, true);
+        }
     }
 
     private static Key flickKey(String[] f, boolean gray) {

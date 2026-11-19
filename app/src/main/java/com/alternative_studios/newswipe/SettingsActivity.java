@@ -2736,16 +2736,18 @@ public final class SettingsActivity extends Activity {
             box.addView(iconButton(L.t("사전 팩 가져오기", "Import dictionary pack"), Icons.IMPORT, v -> SettingsImport.pick(this, req)));
             return;
         }
+        // 기능키 자리 버튼은 12키 플릭 자판에만 쓰여, 12키 플릭을 골랐을 때만 보인다.
+        View fnOrder = ja ? jaFnOrderRows() : null;
+        if (fnOrder != null) fnOrder.setVisibility(prefs.jaQwerty() ? View.GONE : View.VISIBLE);
         View group = ja ? subGroup(choiceRow(new String[]{L.t("12키 플릭", "12-key flick"), L.t("로마자 (QWERTY)", "Romaji (QWERTY)")}, prefs.jaQwerty() ? 1 : 0,
-                        i -> prefs.raw().edit().putString(Prefs.CJK_JA_LAYOUT, i == 1 ? Prefs.JA_QWERTY : Prefs.JA_FLICK).apply()),
-                note(L.t("12키 플릭: 키를 누르면 あ단, 왼쪽·위·오른쪽·아래로 밀면 い·う·え·お단이 들어갑니다. "
-                        + "글자를 치는 동안 🌐 키는 ゛゜小 키가 되어 앞 글자의 탁점·반탁점·작은 글자를 차례로 바꾸고, "
-                        + "같은 키를 이어 탭하면 그 키의 글자가 차례로 바뀌고(あ→い→う…), ↶ 키는 거꾸로 돌립니다. "
-                        + "같은 글자를 이어 쓰려면 ▶ 키를 누른 뒤 탭합니다. "
-                        + "스페이스로 변환 후보를 고르고 엔터로 확정합니다. ◀·▶ 키는 길게 누르면 커서가 계속 움직입니다.", "12-key flick: tap a key for the あ column; swipe left, up, right, or down for い, う, え, or お. While typing, the 🌐 key becomes ゛゜小 and cycles the previous character through dakuten, handakuten and small forms; tapping the same key again cycles its kana (あ→い→う…) and the ↶ key cycles back. To type the same kana twice, press ▶ before tapping again. Use space to pick a conversion and enter to confirm. Hold ◀ or ▶ to keep moving the cursor.")),
+                        i -> {
+                            prefs.raw().edit().putString(Prefs.CJK_JA_LAYOUT, i == 1 ? Prefs.JA_QWERTY : Prefs.JA_FLICK).apply();
+                            fnOrder.setVisibility(i == 1 ? View.GONE : View.VISIBLE);
+                        }),
+                fnOrder,
                 sizeSlider(L.t("일본어 자판 높이", "Japanese keyboard height"), Prefs.CJK_JA_HEIGHT, prefs::jaHeight, Prefs.CJK_JA_HEIGHT_MIN,
                         Prefs.CJK_JA_HEIGHT_MAX, 5, "%"),
-                note(L.t("일본어로 입력하는 동안의 자판(글자·기호) 높이입니다. 다른 자판 높이에 대한 비율이고, 100%면 같습니다.", "Height of the keyboard (letters and symbols) while typing Japanese, relative to the other keyboards. 100% means the same.")),
+                note(L.t("다른 자판 높이에 대한 비율입니다.", "Relative to the other keyboards.")),
                 toggle(L.t("반각 공백 쓰기", "Use half-width spaces"), L.t("스페이스로 반각 공백을 넣습니다. 끄면 Gboard처럼 일본어를 입력하는 동안에는 "
                         + "전각 공백(　)을 넣습니다 (변환 중에는 변환 후보를 고릅니다).", "Space types a half-width space. When off, it types a full-width space (　) while typing Japanese, like Gboard (during conversion it picks a candidate)."),
                         Prefs.CJK_JA_HALF_SPACE, prefs.jaHalfSpace()))
@@ -2784,6 +2786,55 @@ public final class SettingsActivity extends Activity {
                 })
                 .setNegativeButton(L.t("취소", "Cancel"), null)
                 .show()));
+    }
+
+    /**
+     * 12키 플릭 자판의 기능키(↶·이모지·?123·🌐) 자리. 자리마다 둘 키를 고르면 그 키가 있던 자리와 서로 바꾼다.
+     */
+    private View jaFnOrderRows() {
+        String[] slots = {L.t("왼쪽 위", "Top left"), L.t("왼쪽 셋째 줄", "Left, third row"),
+                L.t("왼쪽 아래", "Bottom left"), L.t("아래 둘째 칸", "Bottom, second key")};
+        String codes = Prefs.JA_FN_ORDER_DEFAULT;
+        String[] names = {L.t("↶ 되돌리기", "↶ Undo"), L.t("이모지", "Emoji"), L.t("?123 기호", "?123 Symbols"),
+                L.t("🌐 언어 전환", "🌐 Language")};
+        TextView[] values = new TextView[slots.length];
+        Runnable refresh = () -> {
+            String order = prefs.jaFnOrder();
+            for (int i = 0; i < values.length; i++) values[i].setText(names[codes.indexOf(order.charAt(i))]);
+        };
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        for (int i = 0; i < slots.length; i++) {
+            int slot = i;
+            values[i] = new TextView(this);
+            values[i].setTextColor(hintColor);
+            values[i].setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+            box.addView(button(L.t("기능키 자리: ", "Function key: ") + slots[i], values[i], v -> {
+                String order = prefs.jaFnOrder();
+                AppTheme.dialogBuilder(this)
+                        .setTitle(slots[slot])
+                        .setSingleChoiceItems(names, codes.indexOf(order.charAt(slot)), (d, which) -> {
+                            d.dismiss();
+                            char[] o = order.toCharArray();
+                            int from = order.indexOf(codes.charAt(which));
+                            char t = o[slot];
+                            o[slot] = o[from];
+                            o[from] = t;
+                            prefs.raw().edit().putString(Prefs.CJK_JA_FN_ORDER, new String(o)).apply();
+                            refresh.run();
+                        })
+                        .setNeutralButton(L.t("기본값", "Default"), (d, w) -> {
+                            prefs.raw().edit().putString(Prefs.CJK_JA_FN_ORDER, Prefs.JA_FN_ORDER_DEFAULT).apply();
+                            refresh.run();
+                        })
+                        .setNegativeButton(L.t("취소", "Cancel"), null)
+                        .show();
+            }));
+        }
+        refresh.run();
+        box.addView(note(L.t("12키 플릭에서 고른 키는 그 자리에 있던 키와 서로 바뀝니다.",
+                "On the 12-key flick keyboard, the chosen key swaps places with the key already there.")));
+        return box;
     }
 
     /** 고른 일본어·중국어 사전 팩을 검사해 설치하고, 그 언어의 자판을 켠다. */
