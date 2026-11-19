@@ -43,7 +43,7 @@ public final class Prefs {
     public static final String SOUND_VOLUME = "sound_volume";         // %, 0~100
     public static final String KEY_PREVIEW = "key_preview";
     public static final String NUMBER_ROW = "number_row";
-    public static final String NUMBER_ROW_HEIGHT = "number_row_height";   // 숫자 줄 높이: 일반 키 높이의 %, 50~100
+    public static final String NUMBER_ROW_HEIGHT = "number_row_height";   // 숫자 줄 높이: 일반 키 높이의 %, 50~100 (세로 모드, 가로 모드·폴더블 내부 화면은 numberRowHeightKey)
     public static final int NUMBER_ROW_HEIGHT_MIN = 50, NUMBER_ROW_HEIGHT_MAX = 100, NUMBER_ROW_HEIGHT_DEFAULT = 80;
     public static final String FN_ROW_HEIGHT = "fn_row_height";   // 기능키 줄(맨 아래 줄) 높이: 일반 키 높이의 %, 70~130
     public static final int FN_ROW_HEIGHT_MIN = 70, FN_ROW_HEIGHT_MAX = 130, FN_ROW_HEIGHT_DEFAULT = 100;
@@ -105,6 +105,8 @@ public final class Prefs {
     public static final String PAD_BOTTOM = "pad_bottom";             // dp, 0~48 (가로 모드·폴더블 내부 화면은 padBottomMax)
     public static final String COMMA_CHAR = "bottom_comma_char";           // 하단 쉼표 키가 입력하는 한 글자 (기본 ",")
     public static final String PERIOD_CHAR = "bottom_period_char";         // 하단 온점 키가 입력하는 한 글자 (기본 ".")
+    /** 기호 자판의 기호 키가 입력하는 한 글자: "symbol_char_<원래 기호>" (바꾸지 않았으면 없다). */
+    public static final String SYMBOL_CHAR_PREFIX = "symbol_char_";
     public static final String SHORTCUTS_ENABLED = "shortcuts_enabled";   // 단축어 사용
     public static final String SHORTCUT_PREFIX = "shortcut_";              // 단축어 하나는 "shortcut_<줄임말>" = 문장
     public static final String PERIOD_COMMA = "period_comma";         // 쉼표 키 대신 온점 길게 누르기
@@ -930,20 +932,20 @@ public final class Prefs {
             new EditorScope("keys", L.t("키마다 정한 설정 (길게 누르기·밀기·키 창의 누르기 항목)", "Per-key settings (long press · swipe · tap options in key panels)"), keys(NUMBER_PAD_SYMBOLS,
                     DOUBLE_SPACE_PERIOD, SPACE_HIT_SHRINK, SPACE_HIT_SHRINK_PCT, SPACE_LANG_LABEL, SPACE_CURSOR_SPEED_H,
                     SPACE_CURSOR_SPEED_V, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, DELETE_REPEAT_RATE, DELETE_WORD_REPEAT_RATE,
-                    LANGUAGE_ORDER), keys("popup_", "popupkept_", "repeat_", "swipe_custom_", "swipe_final_", "swipe_vowel_",
+                    LANGUAGE_ORDER), keys("popup_", "popupkept_", "repeat_", "swipe_custom_", SYMBOL_CHAR_PREFIX, "swipe_final_", "swipe_vowel_",
                     "swipe_lp_", "swipe_fn_", "swipe_fk_", "swipe_toolbar_")),
             // 가로 모드·폴더블 내부 화면이 따로 정하는 값과 자·모음 균형 배열의 키 폭·위치: 목록의 되돌리기에는 보이지 않지만
             // (가로 키보드 사용자화의 되돌리기는 resetEditorScopeInView가 위 범위를 가로 모드의 키로 바꿔 지운다),
             // 키보드 사용자화를 연 채 바꾸면 되돌리기 기록에는 남는다.
             new EditorScope("landscape", null, keys(LANDSCAPE_SPLIT, LANDSCAPE_SIZE, KEYBOARD_HEIGHT_LAND, KEY_TEXT_SIZE_LAND,
                     SPLIT_GAP_CURSOR, SPLIT_GAP_SPEED, SPLIT_SPACE_JOIN, SPLIT_FN_WIDTH, SPLIT_REACH_COLUMN,
-                    FN_ROW_HEIGHT + LANDSCAPE_SUFFIX, TOOLBAR_HEIGHT + LANDSCAPE_SUFFIX, TOOLBAR_FOLLOW_BLOCKS + LANDSCAPE_SUFFIX,
+                    FN_ROW_HEIGHT + LANDSCAPE_SUFFIX, NUMBER_ROW_HEIGHT + LANDSCAPE_SUFFIX, TOOLBAR_HEIGHT + LANDSCAPE_SUFFIX, TOOLBAR_FOLLOW_BLOCKS + LANDSCAPE_SUFFIX,
                     FN_FOLLOW_BLOCKS + LANDSCAPE_SUFFIX), keys(LANDSCAPE_SPLIT + "_", "balanced_", "swipe_gap_landscape_", "swipe_gap_large_", LANDSCAPE_PAD_PREFIX,
                             SPLIT_REACH_COLUMN + "_",
                             // 폴더블 내부 화면(세로·가로)이 따로 정하는 값 (실험실의 다른 large_ 값은 넣지 않는다).
                             LARGE_PREFIX + "pad_", LARGE_PREFIX + "size_", LARGE_PREFIX + "split_",
                             LARGE_PREFIX + KEYBOARD_HEIGHT + "_", LARGE_PREFIX + KEY_TEXT_SIZE + "_",
-                            LARGE_PREFIX + FN_ROW_HEIGHT + "_", LARGE_PREFIX + TOOLBAR_HEIGHT + "_",
+                            LARGE_PREFIX + FN_ROW_HEIGHT + "_", LARGE_PREFIX + NUMBER_ROW_HEIGHT + "_", LARGE_PREFIX + TOOLBAR_HEIGHT + "_",
                             LARGE_PREFIX + TOOLBAR_FOLLOW_BLOCKS + "_", LARGE_PREFIX + FN_FOLLOW_BLOCKS + "_",
                             LARGE_PREFIX + SPLIT_SPACE_JOIN + "_", LARGE_PREFIX + SPLIT_FN_WIDTH + "_",
                             LARGE_PREFIX + SPLIT_REACH_COLUMN + "_", LARGE_PREFIX + SPLIT_GAP_CURSOR + "_",
@@ -1021,6 +1023,7 @@ public final class Prefs {
         own.put(KEYBOARD_HEIGHT, heightKey());
         own.put(TOOLBAR_HEIGHT, toolbarHeightKey());
         own.put(FN_ROW_HEIGHT, fnRowHeightKey());
+        own.put(NUMBER_ROW_HEIGHT, numberRowHeightKey());
         own.put(PORTRAIT_SPLIT, splitKey());
         own.put(BALANCED_LAYOUT, balancedLayoutKey());
         own.put(ENGLISH_BALANCED, englishBalancedKey());
@@ -1173,9 +1176,11 @@ public final class Prefs {
     public int soundVolume() { return sp.getInt(SOUND_VOLUME, 50); }
     public boolean keyPreview() { return sp.getBoolean(KEY_PREVIEW, true); }
     public boolean numberRow() { return sp.getBoolean(NUMBER_ROW, false); }
-    /** 숫자 줄 높이: 일반 키 높이의 % (50~100, 기본 80). */
+    /** 숫자 줄 높이: 일반 키 높이의 % (50~100, 기본 80). 세로·가로·폴더블 내부 화면 세로·가로가 따로 정한다. */
     public int numberRowHeight() {
-        return clamp(sp.getInt(NUMBER_ROW_HEIGHT, NUMBER_ROW_HEIGHT_DEFAULT), NUMBER_ROW_HEIGHT_MIN, NUMBER_ROW_HEIGHT_MAX);
+        int v = clamp(sp.getInt(NUMBER_ROW_HEIGHT, NUMBER_ROW_HEIGHT_DEFAULT), NUMBER_ROW_HEIGHT_MIN, NUMBER_ROW_HEIGHT_MAX);
+        // 가로 모드·폴더블 내부 화면 보기에서 따로 정했으면 그 값 (정하기 전에는 세로 모드 값).
+        return profileSize() ? clamp(sp.getInt(numberRowHeightKey(), v), NUMBER_ROW_HEIGHT_MIN, NUMBER_ROW_HEIGHT_MAX) : v;
     }
     /** 기능키 줄(맨 아래 줄) 높이: 일반 키 높이의 % (70~130, 기본 100). */
     public int fnRowHeight() {
@@ -1495,15 +1500,43 @@ public final class Prefs {
     public String keyChar(String label) {
         if (",".equals(label)) return sp.getString(COMMA_CHAR, ",");
         if (".".equals(label)) return sp.getString(PERIOD_CHAR, ".");
-        return label;
+        String key = symbolCharKey(label);
+        return key == null ? label : sp.getString(key, label);
     }
 
-    /** 쉼표·온점 키가 입력할 글자를 정한다. 한 글자(코드 포인트 하나)가 아니거나 원래 글자면 기본값으로 돌린다. */
+    /**
+     * 쉼표·온점 키, 기호 자판의 기호 키가 입력할 글자를 정한다. 한 글자가 아니거나 원래 글자면 기본값으로 돌린다.
+     * 쉼표·온점은 코드 포인트 하나, 기호 키는 눈에 보이는 한 글자(❤️처럼 여러 코드 포인트로 된 이모지도 된다)다.
+     */
     public void setKeyChar(String label, String c) {
-        String key = ",".equals(label) ? COMMA_CHAR : ".".equals(label) ? PERIOD_CHAR : null;
+        boolean bottom = ",".equals(label) || ".".equals(label);
+        String key = ",".equals(label) ? COMMA_CHAR : ".".equals(label) ? PERIOD_CHAR : symbolCharKey(label);
         if (key == null) return;
-        if (c == null || c.isEmpty() || c.codePointCount(0, c.length()) != 1 || c.equals(label)) sp.edit().remove(key).apply();
+        boolean ok = bottom ? isSingleCodePoint(c) : isSingleChar(c);
+        if (!ok || c.equals(label)) sp.edit().remove(key).apply();
         else sp.edit().putString(key, c).apply();
+    }
+
+    /** 기호 자판의 기호 키가 입력할 글자를 저장하는 키 (원래 기호마다, 1쪽·2쪽이 함께 쓴다). 기호 키가 아니면 null. */
+    private static String symbolCharKey(String label) {
+        if (label == null || ",".equals(label) || ".".equals(label)
+                || !com.alternative_studios.newswipe.keyboard.KeyboardLayout.GROUP_SYM.equals(
+                        com.alternative_studios.newswipe.keyboard.KeyboardLayout.groupOf(true, label))) return null;
+        return SYMBOL_CHAR_PREFIX + label;
+    }
+
+    /** 공백이 아닌 코드 포인트 하나인지. */
+    public static boolean isSingleCodePoint(String c) {
+        return c != null && !c.isEmpty() && c.codePointCount(0, c.length()) == 1 && !Character.isWhitespace(c.codePointAt(0));
+    }
+
+    /** 공백이 아닌, 눈에 보이는 한 글자(문자 경계 하나)인지. */
+    public static boolean isSingleChar(String c) {
+        if (c == null || c.isEmpty() || Character.isWhitespace(c.codePointAt(0))) return false;
+        if (isSingleCodePoint(c)) return true;
+        java.text.BreakIterator it = java.text.BreakIterator.getCharacterInstance();
+        it.setText(c);
+        return it.next() == c.length();
     }
     public boolean periodKeyHidden() { return sp.getBoolean(PERIOD_KEY_HIDDEN, false); }
     /** 길게 눌러 계속 지우기: 초당 지우는 글자 수 (5~40, 기본 20). */
@@ -1700,6 +1733,10 @@ public final class Prefs {
     }
     /** 이 프로필(가로 모드·폴더블 내부 화면 세로·가로)의 기능키 높이 설정 키. */
     public String fnRowHeightKey() { return large() ? LARGE_PREFIX + FN_ROW_HEIGHT + "_" + largeSide() : FN_ROW_HEIGHT + LANDSCAPE_SUFFIX; }
+    /** 이 프로필(가로 모드·폴더블 내부 화면 세로·가로)의 숫자 줄 높이 설정 키. */
+    public String numberRowHeightKey() {
+        return large() ? LARGE_PREFIX + NUMBER_ROW_HEIGHT + "_" + largeSide() : NUMBER_ROW_HEIGHT + LANDSCAPE_SUFFIX;
+    }
     public String textSizeKey() { return large() ? LARGE_PREFIX + KEY_TEXT_SIZE + "_" + largeSide() : KEY_TEXT_SIZE_LAND; }
 
     /** 이 프로필에서 자판을 자음(왼쪽)·모음(오른쪽)으로 나누는지. 한글 배열과 상관없이 켜고 끈 상태가 유지된다. 세로 모드는 늘 false. */

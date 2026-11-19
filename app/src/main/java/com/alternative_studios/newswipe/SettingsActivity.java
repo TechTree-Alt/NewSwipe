@@ -2011,8 +2011,9 @@ public final class SettingsActivity extends Activity {
                 // 숫자 줄을 끄면 나머지 항목은 쓸 일이 없어 감춘다.
                 LinearLayout rest = new LinearLayout(this);
                 rest.setOrientation(LinearLayout.VERTICAL);
-                rest.addView(sizeSlider(L.t("숫자 줄 높이", "Number row height"), Prefs.NUMBER_ROW_HEIGHT, prefs::numberRowHeight,
-                        Prefs.NUMBER_ROW_HEIGHT_MIN, Prefs.NUMBER_ROW_HEIGHT_MAX, 5, "%"));
+                Prefs nv = editorView();   // 숫자 줄 높이는 세로·가로·폴더블 내부 화면 세로·가로가 따로 정한다
+                rest.addView(own(sizeSlider(L.t("숫자 줄 높이", "Number row height"), editingOwn() ? nv.numberRowHeightKey() : Prefs.NUMBER_ROW_HEIGHT,
+                        nv::numberRowHeight, Prefs.NUMBER_ROW_HEIGHT_MIN, Prefs.NUMBER_ROW_HEIGHT_MAX, 5, "%")));
                 rest.addView(numberHintToggle());
                 // 여백 섹션도 숫자 줄을 켰을 때만 보인다.
                 LinearLayout padBox = new LinearLayout(this);

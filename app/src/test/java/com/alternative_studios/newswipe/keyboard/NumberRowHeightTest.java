@@ -89,6 +89,40 @@ public class NumberRowHeightTest {
         assertEquals(Prefs.NUMBER_ROW_HEIGHT_MAX, p.numberRowHeight());
     }
 
+    /** 세로·가로·폴더블 내부 화면 세로·가로가 숫자 줄 높이를 따로 정한다 (정하기 전에는 세로 모드 값). */
+    @Test
+    public void eachProfileHasItsOwnHeight() throws Exception {
+        FakeSp sp = new FakeSp();
+        sp.m.put(Prefs.NUMBER_ROW, true);
+        Prefs portrait = view(sp, Prefs.PROFILE_PORTRAIT, true);
+        Prefs land = view(sp, Prefs.PROFILE_LANDSCAPE, true);
+        Prefs largePort = view(sp, Prefs.PROFILE_LARGE_PORTRAIT, true);
+        Prefs largeLand = view(sp, Prefs.PROFILE_LARGE_LANDSCAPE, true);
+        Prefs[] others = {land, largePort, largeLand};
+        java.util.Set<String> keys = new java.util.HashSet<>();
+        for (Prefs p : others) keys.add(p.numberRowHeightKey());
+        assertEquals(3, keys.size());
+        org.junit.Assert.assertFalse(keys.contains(Prefs.NUMBER_ROW_HEIGHT));
+
+        sp.m.put(Prefs.NUMBER_ROW_HEIGHT, 60);
+        for (Prefs p : others) assertEquals(60, p.numberRowHeight());   // 정하기 전에는 세로 모드 값
+
+        sp.m.put(land.numberRowHeightKey(), 50);
+        sp.m.put(largePort.numberRowHeightKey(), 90);
+        sp.m.put(largeLand.numberRowHeightKey(), 100);
+        assertEquals(60, portrait.numberRowHeight());
+        assertEquals(50, land.numberRowHeight());
+        assertEquals(90, largePort.numberRowHeight());
+        assertEquals(100, largeLand.numberRowHeight());
+        assertEquals(0.5f, KeyboardLayout.korean(land).rows[0].height, 0.001f);
+        assertEquals(0.9f, KeyboardLayout.english(largePort).rows[0].height, 0.001f);
+        assertEquals(1f, KeyboardLayout.symbols(true, largeLand).rows[0].height, 0.001f);
+        assertEquals(0.6f, KeyboardLayout.korean(portrait).rows[0].height, 0.001f);
+
+        sp.m.put(land.numberRowHeightKey(), 10);   // 범위 밖은 맞춘다
+        assertEquals(Prefs.NUMBER_ROW_HEIGHT_MIN, land.numberRowHeight());
+    }
+
     /** 숫자 줄을 끄면 기호 자판의 첫 줄도 일반 높이다. */
     @Test
     public void symbolsWithoutNumberRowKeepFullRows() throws Exception {
