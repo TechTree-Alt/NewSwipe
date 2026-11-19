@@ -768,6 +768,8 @@ public final class KeyboardView extends View {
     private int faceColor(Key k) {
         if (k.type == Key.ENTER) {
             return theme.accent;
+        } else if (gridColors && k.gridLetterColor) {
+            return theme.key;   // 일본어 12키: ま·ら 아래 칸은 가나 키와 같은 글자 키 색
         } else if (gridColors && layout.kind != KeyboardLayout.NUMBER && (k.type == Key.SHIFT || k.type == Key.FUNCTION
                 || (k.type == Key.DELETE && !layout.flickSpace()) || k.type == Key.SYMBOL_PAGE)) {
             // 색 정렬: 글자 사이의 Shift·⌫·기호 쪽 넘김 키는 글자 키 색 (Shift 고정도 강조색 없이).

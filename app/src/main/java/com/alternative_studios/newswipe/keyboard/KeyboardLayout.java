@@ -824,6 +824,11 @@ public final class KeyboardLayout {
                 keys[i + 1] = kana[i] == null ? flickFnKey(order.charAt(3)) : flickKey(kana[i], kana[i][0].equals("、"));
             }
             keys[4] = right[r];
+            if (r == FLICK_ROWS.length - 1) {
+                // 격자 정렬: ま·ら 아래 칸(기능키, 、 키)은 위 가나 키와 같은 글자 키 색으로 그린다.
+                keys[1].gridLetterColor = true;
+                keys[3].gridLetterColor = true;
+            }
             rows.add(new Row(1f, keys));
         }
         return new KeyboardLayout(JAPANESE, 5, rows);
