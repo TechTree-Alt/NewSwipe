@@ -88,6 +88,12 @@ public final class Prefs {
     public static final String JA_FLICK = "flick", JA_QWERTY = "qwerty";
     /** 일본어 자판에서 스페이스로 반각 공백을 넣는다. 끄면(기본) Gboard처럼 일본어 입력 중에는 전각 공백(　)을 넣는다. */
     public static final String CJK_JA_HALF_SPACE = "cjk_ja_half_space";
+    /**
+     * 12키 플릭 자판의 기능키 4개를 둘 자리: 네 글자가 차례로 왼쪽 위, 왼쪽 셋째 줄, 왼쪽 아래, 아래 둘째 칸에 둘 키다.
+     * U = ↶(되돌리기), E = 이모지, S = ?123(기호), L = 🌐(언어 전환).
+     */
+    public static final String CJK_JA_FN_ORDER = "cjk_ja_fn_order";
+    public static final String JA_FN_ORDER_DEFAULT = "UESL";
     public static final String PAD_LEFT = "pad_left";                 // dp, 0~24
     public static final String PAD_RIGHT = "pad_right";               // dp, 0~24
     public static final String PAD_TOP = "pad_top";                   // dp, 0~24
@@ -2259,6 +2265,15 @@ public final class Prefs {
 
     public int jaHeight() {
         return clamp(sp.getInt(CJK_JA_HEIGHT, CJK_JA_HEIGHT_DEFAULT), CJK_JA_HEIGHT_MIN, CJK_JA_HEIGHT_MAX);
+    }
+
+    /** 12키 플릭 기능키 자리 (CJK_JA_FN_ORDER). 값이 U·E·S·L을 한 번씩 담지 않으면 기본값을 쓴다. */
+    public String jaFnOrder() { return validJaFnOrder(sp.getString(CJK_JA_FN_ORDER, JA_FN_ORDER_DEFAULT)); }
+
+    public static String validJaFnOrder(String v) {
+        if (v == null || v.length() != 4) return JA_FN_ORDER_DEFAULT;
+        for (char c : JA_FN_ORDER_DEFAULT.toCharArray()) if (v.indexOf(c) < 0) return JA_FN_ORDER_DEFAULT;
+        return v;
     }
 
     public boolean jaQwerty() { return JA_QWERTY.equals(sp.getString(CJK_JA_LAYOUT, JA_FLICK)); }

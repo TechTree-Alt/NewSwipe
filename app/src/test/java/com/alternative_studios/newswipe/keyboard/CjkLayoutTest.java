@@ -55,6 +55,13 @@ public class CjkLayoutTest {
     }
 
     @Test
+    public void fnOrderFallsBackToDefault() {
+        assertEquals("LUES", com.alternative_studios.newswipe.Prefs.validJaFnOrder("LUES"));
+        assertEquals("UESL", com.alternative_studios.newswipe.Prefs.validJaFnOrder("UUSL"));
+        assertEquals("UESL", com.alternative_studios.newswipe.Prefs.validJaFnOrder(null));
+    }
+
+    @Test
     public void qwertyVariantsUseFullWidthPunctuation() {
         KeyboardLayout zh = KeyboardLayout.chinese(null);
         assertEquals(KeyboardLayout.CHINESE, zh.kind);
