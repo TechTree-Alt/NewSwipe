@@ -157,6 +157,40 @@ public class EmojiDataTest {
     }
 
     @Test
+    public void suggestLooksAfterCursor() throws IOException {
+        EmojiData d = load();
+        // 커서 뒤의 글만 있어도 추천한다.
+        assertTrue(d.suggest("", "생일 축하해", 16).contains("🎂"));
+        assertTrue(d.suggest(null, "피자 먹자", 16).contains("🍕"));
+        // 같은 거리면 앞 단어가 뒤 단어보다 먼저 나온다.
+        List<String> s = d.suggest("피자 ", " 일본", 16);
+        assertEquals("🍕", s.get(0));
+        assertTrue(s.contains("🇯🇵"));
+        // 커서에서 가까운 단어부터 앞뒤를 번갈아 본다: 앞 1번째(피자) → 뒤 1번째(중국) → 앞 2번째(일본).
+        s = d.suggest("일본 피자 ", " 중국 미국", 16);
+        assertEquals("🍕", s.get(0));
+        assertEquals("🇨🇳", s.get(1));
+        assertEquals("🇯🇵", s.get(2));
+        assertEquals("🇺🇸", s.get(3));
+        // 커서가 단어 한가운데에 있으면 두 조각을 한 단어로 본다 ('생|일').
+        assertTrue(d.suggest("오늘 생", "일이야", 16).contains("🎂"));
+        assertTrue(d.suggest(null, null, 16).isEmpty());
+        assertTrue(d.suggest("  ", "  ", 16).isEmpty());
+    }
+
+    @Test
+    public void suggestLooksAtFirstWordsAfterCursorOnly() throws IOException {
+        EmojiData d = load();
+        // 커서 뒤 일곱 번째 단어부터는 보지 않는다.
+        String five = "그냥 ".repeat(5).trim();
+        assertTrue(d.suggest("", five + " 그냥 피자", 16).isEmpty());
+        assertTrue(d.suggest("", five + " 피자", 16).contains("🍕"));
+        // 앞뒤 단어 수는 따로 센다: 앞 12단어를 다 써도 뒤 6단어는 본다.
+        String twelve = "그냥 ".repeat(12).trim();
+        assertTrue(d.suggest(twelve, " 피자", 16).contains("🍕"));
+    }
+
+    @Test
     public void countryNamesFindFlagFirst() throws IOException {
         EmojiData d = load();
         for (String q : new String[]{"대한민국", "한국", "우리나라", "korea"}) {

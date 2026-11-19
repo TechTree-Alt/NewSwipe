@@ -4145,7 +4145,7 @@ public final class SettingsActivity extends Activity {
 
         LinearLayout emoji = section(L.t("이모지", "Emoji"));
         emoji.addView(emojiSizeRow());
-        emoji.addView(toggle(L.t("이모지 추천", "Emoji suggestions"), L.t("이모지 창을 열면 커서 앞에 쓴 글(마지막 12단어)에 맞는 이모지를 보여 줍니다.", "When you open the emoji panel, shows emoji that match the text before the cursor (last 12 words)."), Prefs.EMOJI_SUGGEST, prefs.emojiSuggest()));
+        emoji.addView(toggle(L.t("이모지 추천", "Emoji suggestions"), L.t("이모지 창을 열면 커서 앞 12단어와 뒤 6단어에 맞는 이모지를 보여 줍니다.", "When you open the emoji panel, shows emoji that match the text around the cursor (12 words before, 6 after)."), Prefs.EMOJI_SUGGEST, prefs.emojiSuggest()));
     }
 
     /** 클립보드 고급 설정의 한도를 따르는 클립보드 기록. */

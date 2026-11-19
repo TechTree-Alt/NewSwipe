@@ -188,8 +188,10 @@ public final class EmojiData {
 
     // ---------------------------------------------------------------- 추천 (이모지 창을 열 때)
 
-    /** 추천에 보는 단어 수 (커서에서 가까운 쪽부터). */
+    /** 추천에 보는 커서 앞 단어 수 (커서에서 가까운 쪽부터). */
     private static final int SUGGEST_TOKENS = 12;
+    /** 추천에 보는 커서 뒤 단어 수 (커서에서 가까운 쪽부터). */
+    private static final int SUGGEST_TOKENS_AFTER = 6;
     /** 이보다 많은 이모지에 붙은 키워드(얼굴·손 등)는 너무 흔해 추천에 쓰지 않는다. */
     private static final int GENERIC_KEYWORD = 24;
     /** 영어 단어 끝에 붙어도 같은 단어로 보는 꼬리 (cakes, partying …). */
@@ -226,27 +228,44 @@ public final class EmojiData {
      * 잠그지 않으므로 검색과 같은 한 스레드에서만 불러야 한다.
      */
     public List<String> suggest(CharSequence text, int limit) {
+        return suggest(text, null, limit);
+    }
+
+    /**
+     * 커서 앞의 글(before)과 커서 뒤의 글(after)을 함께 보고 추천한다. 앞은 마지막 {@link #SUGGEST_TOKENS}단어,
+     * 뒤는 처음 {@link #SUGGEST_TOKENS_AFTER}단어만 본다. 커서에서 가까운 단어부터 앞뒤를 번갈아 본다
+     * (앞 1번째 → 뒤 1번째 → 앞 2번째 → 뒤 2번째 …). 같은 거리면 방금 쓴 앞 단어가 먼저다. 커서가 단어 한가운데('생|일')에 있으면 두 조각을 한 단어로 붙여 본다.
+     */
+    public List<String> suggest(CharSequence before, CharSequence after, int limit) {
         List<String> out = new ArrayList<>();
-        if (text == null || limit <= 0) return out;
+        if ((before == null && after == null) || limit <= 0) return out;
+        String b = before == null ? "" : before.toString();
+        String a = after == null ? "" : after.toString();
+        String[] head = split(b);
+        String[] tail = split(a);
+        // 커서가 단어 안에 있으면 앞 글의 마지막 조각과 뒤 글의 첫 조각이 한 단어다.
+        if (head.length > 0 && tail.length > 0 && !b.isEmpty() && !a.isEmpty()
+                && !Character.isWhitespace(b.charAt(b.length() - 1)) && !Character.isWhitespace(a.charAt(0))) {
+            head[head.length - 1] = head[head.length - 1] + tail[0];
+            tail[0] = "";
+        }
         if (index == null) buildIndex();
-        String[] tokens = text.toString().trim().split("\\s+");
         List<List<Emoji>> lists = new ArrayList<>();
         List<String> keys = new ArrayList<>();
-        int used = 0;
-        for (int i = tokens.length - 1; i >= 0 && used < SUGGEST_TOKENS; i--) {
-            String token = clean(tokens[i]);
-            if (token.isEmpty()) continue;
-            used++;
-            String key = matchKeyword(token);
-            if (key == null) continue;
-            lists.add(index.get(key));
-            keys.add(key);
-            // '중국어'는 그 자체가 키워드(㊗️)라 '중국'을 건너뛴다. 한국어 단어의 앞부분이 어떤 이모지의 이름이면(🇨🇳) 함께 쓴다.
-            String shorter = shorterName(token, key);
-            if (shorter != null) {
-                lists.add(index.get(shorter));
-                keys.add(shorter);
-            }
+        List<String> near = new ArrayList<>();   // 커서 앞 단어, 커서에 가까운 순
+        for (int i = head.length - 1; i >= 0 && near.size() < SUGGEST_TOKENS; i--) {
+            String token = clean(head[i]);
+            if (!token.isEmpty()) near.add(token);
+        }
+        List<String> next = new ArrayList<>();   // 커서 뒤 단어, 커서에 가까운 순
+        for (int i = 0; i < tail.length && next.size() < SUGGEST_TOKENS_AFTER; i++) {
+            String token = clean(tail[i]);
+            if (!token.isEmpty()) next.add(token);
+        }
+        // 커서에서 가까운 단어부터: 앞 1번째, 뒤 1번째, 앞 2번째, 뒤 2번째 … 한쪽이 떨어지면 남은 쪽만 이어 본다.
+        for (int i = 0; i < Math.max(near.size(), next.size()); i++) {
+            if (i < near.size()) addToken(near.get(i), lists, keys);
+            if (i < next.size()) addToken(next.get(i), lists, keys);
         }
         Set<String> seen = new HashSet<>();
         // 단어가 바로 이름인 이모지('일본' → 🇯🇵, '피자' → 🍕)를 먼저 담는다.
@@ -268,6 +287,25 @@ public final class EmojiData {
             }
         }
         return out;
+    }
+
+    private static String[] split(String text) {
+        String t = text.trim();
+        return t.isEmpty() ? new String[0] : t.split("\\s+");
+    }
+
+    /** 단어 하나(clean을 거친, 비어 있지 않은 단어)에 맞는 키워드의 이모지 목록을 lists에 더한다. */
+    private void addToken(String token, List<List<Emoji>> lists, List<String> keys) {
+        String key = matchKeyword(token);
+        if (key == null) return;
+        lists.add(index.get(key));
+        keys.add(key);
+        // '중국어'는 그 자체가 키워드(㊗️)라 '중국'을 건너뛴다. 한국어 단어의 앞부분이 어떤 이모지의 이름이면(🇨🇳) 함께 쓴다.
+        String shorter = shorterName(token, key);
+        if (shorter != null) {
+            lists.add(index.get(shorter));
+            keys.add(shorter);
+        }
     }
 
     /**
