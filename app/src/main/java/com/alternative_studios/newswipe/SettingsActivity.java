@@ -2736,9 +2736,15 @@ public final class SettingsActivity extends Activity {
             box.addView(iconButton(L.t("사전 팩 가져오기", "Import dictionary pack"), Icons.IMPORT, v -> SettingsImport.pick(this, req)));
             return;
         }
+        // 기능키 자리 버튼은 12키 플릭 자판에만 쓰여, 12키 플릭을 골랐을 때만 보인다.
+        View fnOrder = ja ? jaFnOrderRows() : null;
+        if (fnOrder != null) fnOrder.setVisibility(prefs.jaQwerty() ? View.GONE : View.VISIBLE);
         View group = ja ? subGroup(choiceRow(new String[]{L.t("12키 플릭", "12-key flick"), L.t("로마자 (QWERTY)", "Romaji (QWERTY)")}, prefs.jaQwerty() ? 1 : 0,
-                        i -> prefs.raw().edit().putString(Prefs.CJK_JA_LAYOUT, i == 1 ? Prefs.JA_QWERTY : Prefs.JA_FLICK).apply()),
-                jaFnOrderRows(),
+                        i -> {
+                            prefs.raw().edit().putString(Prefs.CJK_JA_LAYOUT, i == 1 ? Prefs.JA_QWERTY : Prefs.JA_FLICK).apply();
+                            fnOrder.setVisibility(i == 1 ? View.GONE : View.VISIBLE);
+                        }),
+                fnOrder,
                 sizeSlider(L.t("일본어 자판 높이", "Japanese keyboard height"), Prefs.CJK_JA_HEIGHT, prefs::jaHeight, Prefs.CJK_JA_HEIGHT_MIN,
                         Prefs.CJK_JA_HEIGHT_MAX, 5, "%"),
                 note(L.t("다른 자판 높이에 대한 비율입니다.", "Relative to the other keyboards.")),
