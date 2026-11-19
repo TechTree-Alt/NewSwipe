@@ -4384,12 +4384,20 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if ((!suggestOn() && !shortcutsOn()) || windowHidden || !lettersLayout()) return;
         InputConnection ic = getCurrentInputConnection();
         if (ic == null) return;
-        String word = wordBeforeCursor(ic);
+        String head = wordBeforeCursor(ic);
         // 커서를 단어 중간으로 옮겼으면 커서 뒤의 나머지까지 합친 단어 전체로 추천한다 (고르면 단어 전체를 바꾼다).
-        suggestTail = word.isEmpty() ? "" : wordAfterCursor(ic);
-        word += suggestTail;
+        // 단어 전체로 찾은 것이 없으면 예전처럼 커서 앞부분만으로 찾고, 고르면 커서 앞부분만 바꾼다.
+        suggestTail = head.isEmpty() ? "" : wordAfterCursor(ic);
+        String word = head + suggestTail;
         // 입력 중인 단어가 정해 둔 단축어면 기존 추천은 모두 숨기고 그 문장이 추천란 전체를 채운다.
         String phrase = shortcutsOn() ? shortcuts.lookup(word) : null;
+        if (phrase == null && !suggestTail.isEmpty() && shortcutsOn()) {
+            phrase = shortcuts.lookup(head);
+            if (phrase != null) {
+                suggestTail = "";
+                word = head;
+            }
+        }
         if (phrase != null) {
             applySuggestions(word, new String[]{phrase}, true, -1, false);
             return;
@@ -4424,9 +4432,17 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
         // 자동 수정이 켜져 있으면 스페이스에서 고칠 단어를 맨 앞에 굵게 보인다 (이번에 되돌린 단어는 고치지 않으니 보이지 않는다).
         syncIgnoredWithUserWords();
-        // 단어 중간에서는 스페이스가 커서 앞부분만 고치므로 단어 전체의 수정을 굵게 미리 보이지 않는다.
-        boolean preview = autoCorrectActive() && suggestTail.isEmpty() && !correctionIgnored.contains(word)
-                && !endsWithApostrophe(word);
+        if (!suggestTail.isEmpty()) {
+            // 단어 중간에서는 스페이스가 커서 앞부분만 고치므로 단어 전체의 수정을 굵게 미리 보이지 않는다.
+            WordSuggester.Suggestions whole = suggester.suggestIfLoaded(word, prev, korean, fieldKind, false);
+            if (whole.words.length > 0) {
+                showSuggestions(word, whole);
+                return;
+            }
+            suggestTail = "";   // 단어 전체로는 찾은 것이 없다: 커서 앞부분만으로 찾는다
+            word = head;
+        }
+        boolean preview = autoCorrectActive() && !correctionIgnored.contains(word) && !endsWithApostrophe(word);
         showSuggestions(word, suggester.suggestIfLoaded(word, prev, korean, fieldKind, preview));
     }
 
