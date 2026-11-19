@@ -724,14 +724,27 @@ public final class KeyboardLayout {
     }
 
     /**
-     * 기호 자판의 글자 키(숫자 줄 제외)에 사용자가 정한 길게 누르기 문자를 적용한다.
-     * 같은 글자는 1쪽·2쪽과 쉼표·온점 키가 같은 설정을 쓴다.
+     * 기호 자판의 글자 키(숫자 줄 제외)에 사용자가 정한 누르면 입력할 글자·길게 누르기 문자·네 방향 밀기를 적용한다.
+     * 같은 글자는 1쪽·2쪽과 쉼표·온점 키가 같은 설정을 쓴다. 입력할 글자를 바꾼 키는 label이 바뀐 글자이고,
+     * 설정은 원래 기호(slot)에 저장되어 있다.
      */
     private static void applySymbolPopups(List<Row> rows, Prefs prefs) {
         if (prefs == null) return;
         for (Row row : rows) {
-            for (Key k : row.keys) {
-                if (k.type == Key.CHAR && !k.grayStyle && !isDigit(k.label)) k.popup = popupFor(prefs, true, k.label, k.popup);
+            for (int i = 0; i < row.keys.length; i++) {
+                Key k = row.keys[i];
+                if (k.type != Key.CHAR || k.grayStyle || isDigit(k.label)) continue;
+                String slot = k.label;
+                String[] popup = popupFor(prefs, true, slot, k.popup);
+                String c = prefs.keyChar(slot);
+                if (!c.equals(slot)) {
+                    k = new Key(Key.CHAR, c, c, c, null, popup, k.weight);
+                    k.slot = slot;
+                    row.keys[i] = k;
+                } else {
+                    k.popup = popup;
+                }
+                applyCustomSwipes(k, prefs, true, slot);
             }
         }
     }
@@ -762,7 +775,7 @@ public final class KeyboardLayout {
             for (Key k : l.rows[r].keys) {
                 if (k.type == Key.GAP) continue;
                 boolean editable = k.type == Key.CHAR && !k.grayStyle && !isDigit(k.label);
-                line.add(new Object[]{editable ? k.label : null, k.weight});
+                line.add(new Object[]{editable ? k.slot() : null, k.weight});
             }
             out.add(line);
         }

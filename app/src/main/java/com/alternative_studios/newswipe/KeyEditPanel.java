@@ -143,13 +143,26 @@ final class KeyEditPanel {
         return hangul() && HangulComposer.isVowel(slot().charAt(0));
     }
 
-    /** 밀어서 글자 입력을 정할 수 있는 키: 한글·영어 글자 키와 쉼표·온점 키 (숫자 줄·기호는 밀어서 입력하지 않는다). */
+    /** 밀어서 글자 입력을 정할 수 있는 키: 한글·영어 글자 키, 기호 자판의 기호 키, 쉼표·온점 키 (숫자 줄은 밀어서 입력하지 않는다). */
     private boolean swipeEditable() {
         String s = slot();
         if (",".equals(s) || ".".equals(s)) return true;
         String g = group();
         return (KeyboardLayout.GROUP_KO.equals(g) && sel.tab == KeyboardPreview.TAB_KOREAN)
-                || (KeyboardLayout.GROUP_EN.equals(g) && sel.tab == KeyboardPreview.TAB_ENGLISH);
+                || (KeyboardLayout.GROUP_EN.equals(g) && sel.tab == KeyboardPreview.TAB_ENGLISH)
+                || symbolKey();
+    }
+
+    /** 기호 자판의 기호 키인지 (쉼표·온점·숫자 제외): 누르면 입력할 글자를 바꿀 수 있다. */
+    private boolean symbolKey() {
+        String s = slot();
+        return sel.tab == KeyboardPreview.TAB_SYMBOLS && KeyboardLayout.GROUP_SYM.equals(group())
+                && !",".equals(s) && !".".equals(s);
+    }
+
+    /** 누르면 입력할 글자를 바꿀 수 있는 키: 쉼표·온점 자리의 키와 기호 자판의 기호 키. */
+    private boolean tapCharEditable() {
+        return ",".equals(slot()) || ".".equals(slot()) || symbolKey();
     }
 
     private void buildCharKey() {
@@ -166,9 +179,13 @@ final class KeyEditPanel {
         header(shown, L.t("'" + shown + "' 키", "'" + shown + "' key"), kind);
 
         // ---- 누르기 (자음·모음 연속 탭처럼 모든 글자 키에 걸리는 설정은 '글자 키' 영역에 있다)
-        if (",".equals(slot()) || ".".equals(slot())) {
+        if (tapCharEditable()) {
             LinearLayout press = section(L.t("누르기", "Tap"));
             press.addView(valueRow(L.t("입력할 글자", "Character to type"), prefs.keyChar(slot()), v -> editSlotChar(slot())));
+            if (symbolKey() && !slot().equals(prefs.keyChar(slot()))) {
+                press.addView(note(L.t("원래 기호는 '" + slot() + "'입니다. 길게 누르기·밀기 설정은 원래 기호 자리에 저장됩니다.",
+                        "The original symbol is '" + slot() + "'. Long-press and swipe settings are saved for the original symbol.")));
+            }
         }
 
         // ---- 길게 누르기 (문자 입력 · 연속 입력 · 없음)
@@ -294,13 +311,16 @@ final class KeyEditPanel {
         return SwipeCustom.swipeTitle("'" + key.label + "'", dir);
     }
 
-    /** 글자 칸 아래에 놓는 빠른 선택: 이 키에 흔히 두는 글자 (쌍자음·거센소리·겹받침·이중모음, 온점 키는 쉼표). */
+    /** 글자 칸 아래에 놓는 빠른 선택: 이 키에 흔히 두는 글자 (쌍자음·거센소리·겹받침·이중모음, 온점 키는 쉼표, 기호 키는 길게 누르기 문자). */
     private java.util.List<String> suggestions(int dir) {
         java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
         String def = SwipeCustom.defaultFor(korean, prefs.koreanNewSwipe(), slot(), dir);
         if (def != null) out.add(def);
         if (".".equals(slot())) out.add(",");
         if (",".equals(slot())) out.add(".");
+        if (symbolKey()) {   // 기호 키는 길게 눌러 고를 문자(같은 갈래의 기호)를 빠른 선택으로
+            for (String p : currentPopup()) if (Prefs.isSingleChar(p)) out.add(p);
+        }
         if (hangul()) {
             char c = slot().charAt(0);
             if (vowel()) {
@@ -454,7 +474,9 @@ final class KeyEditPanel {
         EditText input = new EditText(a);
         input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
         input.setSingleLine(true);
-        input.setFilters(new InputFilter[]{new InputFilter.LengthFilter(2)});   // 코드 포인트 하나는 최대 두 칸
+        boolean bottom = ",".equals(slot) || ".".equals(slot);
+        // 쉼표·온점은 코드 포인트 하나(최대 두 칸), 기호 키는 이모지처럼 여러 코드 포인트로 된 한 글자도 된다.
+        input.setFilters(new InputFilter[]{new InputFilter.LengthFilter(bottom ? 2 : 16)});
         input.setText(prefs.keyChar(slot));
         input.setSelection(input.getText().length());
         input.setGravity(Gravity.CENTER);
@@ -462,7 +484,8 @@ final class KeyEditPanel {
         LinearLayout box = dialogBox(L.t("이 키가 입력할 글자를 한 글자만 적어 주세요 (예: ? ! …). 길게 누르기·밀기 설정은 그대로 이어집니다.", "Enter a single character for this key to type (e.g. ? ! …). Long-press and swipe settings stay the same."));
         box.addView(input);
         AlertDialog d = AppTheme.dialogBuilder(a)
-                .setTitle(",".equals(slot) ? L.t("쉼표 자리의 키", "Key in the comma spot") : L.t("온점 자리의 키", "Key in the period spot"))
+                .setTitle(",".equals(slot) ? L.t("쉼표 자리의 키", "Key in the comma spot") : ".".equals(slot) ? L.t("온점 자리의 키", "Key in the period spot")
+                        : L.t("'" + slot + "' 자리의 키", "Key in the '" + slot + "' spot"))
                 .setView(box)
                 .setPositiveButton(L.t("저장", "Save"), null)
                 .setNeutralButton(L.t("기본값", "Default"), (dlg, w) -> {
@@ -473,7 +496,7 @@ final class KeyEditPanel {
                 .create();
         d.setOnShowListener(x -> d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             String s = input.getText().toString();
-            if (s.isEmpty() || s.codePointCount(0, s.length()) != 1 || Character.isWhitespace(s.codePointAt(0))) {
+            if (!(bottom ? Prefs.isSingleCodePoint(s) : Prefs.isSingleChar(s))) {
                 Toast.makeText(a, L.t("공백이 아닌 한 글자만 적어 주세요", "Enter a single character other than a space"), Toast.LENGTH_SHORT).show();
                 return;
             }
@@ -494,6 +517,7 @@ final class KeyEditPanel {
         // 쉼표·온점 자리의 '입력할 글자'도 이 창에 있다.
         if (",".equals(s)) prefs.raw().edit().remove(Prefs.COMMA_CHAR).apply();
         if (".".equals(s)) prefs.raw().edit().remove(Prefs.PERIOD_CHAR).apply();
+        if (symbolKey()) prefs.setKeyChar(s, s);   // 기호 키의 '입력할 글자'도
         rebuild();
     }
 

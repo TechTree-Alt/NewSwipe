@@ -105,6 +105,8 @@ public final class Prefs {
     public static final String PAD_BOTTOM = "pad_bottom";             // dp, 0~48 (가로 모드·폴더블 내부 화면은 padBottomMax)
     public static final String COMMA_CHAR = "bottom_comma_char";           // 하단 쉼표 키가 입력하는 한 글자 (기본 ",")
     public static final String PERIOD_CHAR = "bottom_period_char";         // 하단 온점 키가 입력하는 한 글자 (기본 ".")
+    /** 기호 자판의 기호 키가 입력하는 한 글자: "symbol_char_<원래 기호>" (바꾸지 않았으면 없다). */
+    public static final String SYMBOL_CHAR_PREFIX = "symbol_char_";
     public static final String SHORTCUTS_ENABLED = "shortcuts_enabled";   // 단축어 사용
     public static final String SHORTCUT_PREFIX = "shortcut_";              // 단축어 하나는 "shortcut_<줄임말>" = 문장
     public static final String PERIOD_COMMA = "period_comma";         // 쉼표 키 대신 온점 길게 누르기
@@ -930,7 +932,7 @@ public final class Prefs {
             new EditorScope("keys", L.t("키마다 정한 설정 (길게 누르기·밀기·키 창의 누르기 항목)", "Per-key settings (long press · swipe · tap options in key panels)"), keys(NUMBER_PAD_SYMBOLS,
                     DOUBLE_SPACE_PERIOD, SPACE_HIT_SHRINK, SPACE_HIT_SHRINK_PCT, SPACE_LANG_LABEL, SPACE_CURSOR_SPEED_H,
                     SPACE_CURSOR_SPEED_V, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, DELETE_REPEAT_RATE, DELETE_WORD_REPEAT_RATE,
-                    LANGUAGE_ORDER), keys("popup_", "popupkept_", "repeat_", "swipe_custom_", "swipe_final_", "swipe_vowel_",
+                    LANGUAGE_ORDER), keys("popup_", "popupkept_", "repeat_", "swipe_custom_", SYMBOL_CHAR_PREFIX, "swipe_final_", "swipe_vowel_",
                     "swipe_lp_", "swipe_fn_", "swipe_fk_", "swipe_toolbar_")),
             // 가로 모드·폴더블 내부 화면이 따로 정하는 값과 자·모음 균형 배열의 키 폭·위치: 목록의 되돌리기에는 보이지 않지만
             // (가로 키보드 사용자화의 되돌리기는 resetEditorScopeInView가 위 범위를 가로 모드의 키로 바꿔 지운다),
@@ -1495,15 +1497,43 @@ public final class Prefs {
     public String keyChar(String label) {
         if (",".equals(label)) return sp.getString(COMMA_CHAR, ",");
         if (".".equals(label)) return sp.getString(PERIOD_CHAR, ".");
-        return label;
+        String key = symbolCharKey(label);
+        return key == null ? label : sp.getString(key, label);
     }
 
-    /** 쉼표·온점 키가 입력할 글자를 정한다. 한 글자(코드 포인트 하나)가 아니거나 원래 글자면 기본값으로 돌린다. */
+    /**
+     * 쉼표·온점 키, 기호 자판의 기호 키가 입력할 글자를 정한다. 한 글자가 아니거나 원래 글자면 기본값으로 돌린다.
+     * 쉼표·온점은 코드 포인트 하나, 기호 키는 눈에 보이는 한 글자(❤️처럼 여러 코드 포인트로 된 이모지도 된다)다.
+     */
     public void setKeyChar(String label, String c) {
-        String key = ",".equals(label) ? COMMA_CHAR : ".".equals(label) ? PERIOD_CHAR : null;
+        boolean bottom = ",".equals(label) || ".".equals(label);
+        String key = ",".equals(label) ? COMMA_CHAR : ".".equals(label) ? PERIOD_CHAR : symbolCharKey(label);
         if (key == null) return;
-        if (c == null || c.isEmpty() || c.codePointCount(0, c.length()) != 1 || c.equals(label)) sp.edit().remove(key).apply();
+        boolean ok = bottom ? isSingleCodePoint(c) : isSingleChar(c);
+        if (!ok || c.equals(label)) sp.edit().remove(key).apply();
         else sp.edit().putString(key, c).apply();
+    }
+
+    /** 기호 자판의 기호 키가 입력할 글자를 저장하는 키 (원래 기호마다, 1쪽·2쪽이 함께 쓴다). 기호 키가 아니면 null. */
+    private static String symbolCharKey(String label) {
+        if (label == null || ",".equals(label) || ".".equals(label)
+                || !com.alternative_studios.newswipe.keyboard.KeyboardLayout.GROUP_SYM.equals(
+                        com.alternative_studios.newswipe.keyboard.KeyboardLayout.groupOf(true, label))) return null;
+        return SYMBOL_CHAR_PREFIX + label;
+    }
+
+    /** 공백이 아닌 코드 포인트 하나인지. */
+    public static boolean isSingleCodePoint(String c) {
+        return c != null && !c.isEmpty() && c.codePointCount(0, c.length()) == 1 && !Character.isWhitespace(c.codePointAt(0));
+    }
+
+    /** 공백이 아닌, 눈에 보이는 한 글자(문자 경계 하나)인지. */
+    public static boolean isSingleChar(String c) {
+        if (c == null || c.isEmpty() || Character.isWhitespace(c.codePointAt(0))) return false;
+        if (isSingleCodePoint(c)) return true;
+        java.text.BreakIterator it = java.text.BreakIterator.getCharacterInstance();
+        it.setText(c);
+        return it.next() == c.length();
     }
     public boolean periodKeyHidden() { return sp.getBoolean(PERIOD_KEY_HIDDEN, false); }
     /** 길게 눌러 계속 지우기: 초당 지우는 글자 수 (5~40, 기본 20). */
