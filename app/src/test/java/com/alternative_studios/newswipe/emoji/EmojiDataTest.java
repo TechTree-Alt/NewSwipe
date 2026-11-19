@@ -162,10 +162,16 @@ public class EmojiDataTest {
         // 커서 뒤의 글만 있어도 추천한다.
         assertTrue(d.suggest("", "생일 축하해", 16).contains("🎂"));
         assertTrue(d.suggest(null, "피자 먹자", 16).contains("🍕"));
-        // 앞 단어(커서에 가까운 쪽)가 뒤 단어보다 먼저 나온다.
+        // 같은 거리면 앞 단어가 뒤 단어보다 먼저 나온다.
         List<String> s = d.suggest("피자 ", " 일본", 16);
         assertEquals("🍕", s.get(0));
         assertTrue(s.contains("🇯🇵"));
+        // 커서에서 가까운 단어부터 앞뒤를 번갈아 본다: 앞 1번째(피자) → 뒤 1번째(중국) → 앞 2번째(일본).
+        s = d.suggest("일본 피자 ", " 중국 미국", 16);
+        assertEquals("🍕", s.get(0));
+        assertEquals("🇨🇳", s.get(1));
+        assertEquals("🇯🇵", s.get(2));
+        assertEquals("🇺🇸", s.get(3));
         // 커서가 단어 한가운데에 있으면 두 조각을 한 단어로 본다 ('생|일').
         assertTrue(d.suggest("오늘 생", "일이야", 16).contains("🎂"));
         assertTrue(d.suggest(null, null, 16).isEmpty());

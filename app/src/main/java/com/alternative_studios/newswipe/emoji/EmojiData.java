@@ -233,8 +233,8 @@ public final class EmojiData {
 
     /**
      * 커서 앞의 글(before)과 커서 뒤의 글(after)을 함께 보고 추천한다. 앞은 마지막 {@link #SUGGEST_TOKENS}단어,
-     * 뒤는 처음 {@link #SUGGEST_TOKENS_AFTER}단어만 본다. 방금 쓴 쪽이 더 중요하므로 앞 단어(커서에 가까운 순)를 먼저,
-     * 뒤 단어(커서에 가까운 순)를 그다음에 둔다. 커서가 단어 한가운데('생|일')에 있으면 두 조각을 한 단어로 붙여 본다.
+     * 뒤는 처음 {@link #SUGGEST_TOKENS_AFTER}단어만 본다. 커서에서 가까운 단어부터 앞뒤를 번갈아 본다
+     * (앞 1번째 → 뒤 1번째 → 앞 2번째 → 뒤 2번째 …). 같은 거리면 방금 쓴 앞 단어가 먼저다. 커서가 단어 한가운데('생|일')에 있으면 두 조각을 한 단어로 붙여 본다.
      */
     public List<String> suggest(CharSequence before, CharSequence after, int limit) {
         List<String> out = new ArrayList<>();
@@ -252,13 +252,20 @@ public final class EmojiData {
         if (index == null) buildIndex();
         List<List<Emoji>> lists = new ArrayList<>();
         List<String> keys = new ArrayList<>();
-        int used = 0;
-        for (int i = head.length - 1; i >= 0 && used < SUGGEST_TOKENS; i--) {
-            if (addToken(head[i], lists, keys)) used++;
+        List<String> near = new ArrayList<>();   // 커서 앞 단어, 커서에 가까운 순
+        for (int i = head.length - 1; i >= 0 && near.size() < SUGGEST_TOKENS; i--) {
+            String token = clean(head[i]);
+            if (!token.isEmpty()) near.add(token);
         }
-        used = 0;
-        for (int i = 0; i < tail.length && used < SUGGEST_TOKENS_AFTER; i++) {
-            if (addToken(tail[i], lists, keys)) used++;
+        List<String> next = new ArrayList<>();   // 커서 뒤 단어, 커서에 가까운 순
+        for (int i = 0; i < tail.length && next.size() < SUGGEST_TOKENS_AFTER; i++) {
+            String token = clean(tail[i]);
+            if (!token.isEmpty()) next.add(token);
+        }
+        // 커서에서 가까운 단어부터: 앞 1번째, 뒤 1번째, 앞 2번째, 뒤 2번째 … 한쪽이 떨어지면 남은 쪽만 이어 본다.
+        for (int i = 0; i < Math.max(near.size(), next.size()); i++) {
+            if (i < near.size()) addToken(near.get(i), lists, keys);
+            if (i < next.size()) addToken(next.get(i), lists, keys);
         }
         Set<String> seen = new HashSet<>();
         // 단어가 바로 이름인 이모지('일본' → 🇯🇵, '피자' → 🍕)를 먼저 담는다.
@@ -287,14 +294,10 @@ public final class EmojiData {
         return t.isEmpty() ? new String[0] : t.split("\\s+");
     }
 
-    /**
-     * 단어 하나에 맞는 키워드의 이모지 목록을 lists에 더한다. 문장 부호만 있어 빈 단어면 false (단어 수에 세지 않는다).
-     */
-    private boolean addToken(String raw, List<List<Emoji>> lists, List<String> keys) {
-        String token = clean(raw);
-        if (token.isEmpty()) return false;
+    /** 단어 하나(clean을 거친, 비어 있지 않은 단어)에 맞는 키워드의 이모지 목록을 lists에 더한다. */
+    private void addToken(String token, List<List<Emoji>> lists, List<String> keys) {
         String key = matchKeyword(token);
-        if (key == null) return true;
+        if (key == null) return;
         lists.add(index.get(key));
         keys.add(key);
         // '중국어'는 그 자체가 키워드(㊗️)라 '중국'을 건너뛴다. 한국어 단어의 앞부분이 어떤 이모지의 이름이면(🇨🇳) 함께 쓴다.
@@ -303,7 +306,6 @@ public final class EmojiData {
             lists.add(index.get(shorter));
             keys.add(shorter);
         }
-        return true;
     }
 
     /**
