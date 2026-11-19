@@ -39,11 +39,6 @@ public class CjkLayoutTest {
         assertEquals(Key.SPACE, l.rows[2].keys[4].type);
         assertEquals(Key.TO_SYMBOLS, l.rows[3].keys[0].type);
         assertEquals(Key.LANGUAGE, l.rows[3].keys[1].type);
-        // 아래 둘째 칸은 조합 중에 ゛゜小 키로 바뀐다
-        assertNotNull(l.rows[3].keys[1].markKey);
-        assertTrue(l.rows[3].keys[1].markKey.kanaMark);
-        assertEquals(Key.LANGUAGE, l.rows[3].keys[1].markKey.type);
-        assertEquals(l.rows[3].keys[1], l.rows[3].keys[1].markKey.normalKey);
         assertEquals("わ", l.rows[3].keys[2].label);
         assertEquals("、", l.rows[3].keys[3].label);
         assertEquals("。", l.rows[3].keys[3].swipeText(Key.SWIPE_LEFT));

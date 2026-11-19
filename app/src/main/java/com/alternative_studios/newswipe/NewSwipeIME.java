@@ -2860,12 +2860,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 setLayoutKind(layoutKind == KeyboardLayout.SYMBOLS ? KeyboardLayout.SYMBOLS_2 : KeyboardLayout.SYMBOLS);
                 break;
             case Key.LANGUAGE:
-                // 일본어 12키 자판에서 글자를 조합하는 동안 아래 둘째 칸에 나오는 ゛゜小 키 (Gboard처럼).
-                if (key.kanaMark) {
-                    if (languageKeyIsMark()) typeCjk("゛", false);
-                } else {
-                    toggleLanguage();
-                }
+                // 일본어 12키 자판에서 글자를 조합하는 동안에는 Gboard처럼 ゛゜小 키로 쓴다.
+                if (languageKeyIsMark()) typeCjk("゛", false);
+                else toggleLanguage();
                 break;
             case Key.EMOJI:
             case Key.EMOJI_KEY:
@@ -3701,7 +3698,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return cjkLang == null ? null : cjkComposers.get(cjkLang);
     }
 
-    /** 아래 둘째 칸이 지금 ゛゜小 키인지 (일본어 12키 자판에서 가나를 조합하는 중). */
+    /** 🌐 키가 지금 ゛゜小 키 노릇을 하는지 (일본어 12키 자판에서 가나를 조합하는 중). */
     private boolean languageKeyIsMark() {
         return jaFlick() && panel == PANEL_KEYBOARD && cjkComposing();
     }

@@ -327,7 +327,6 @@ public final class KeyboardView extends View {
     public void setLayout(KeyboardLayout l) {
         cancelAll();
         layout = l;
-        applyKanaMark();
         // 같은 한자라도 일본어·중국어 글꼴 모양이 다르다: 자판 언어에 맞춰 그린다 (글꼴은 시스템 것을 쓴다).
         // 한글·영어 자판은 처음 값(시스템 언어 목록)을 그대로 쓴다.
         if (defaultTextLocales == null) defaultTextLocales = text.getTextLocales();
@@ -831,7 +830,7 @@ public final class KeyboardView extends View {
                 Icons.draw(c, enterIcon, cx, cy, iconSize(iconSize, 24, iconMax), icon);
                 return;
             case Key.LANGUAGE:
-                if (k.kanaMark) {   // 조합 중인 일본어 12키의 아래 둘째 칸: ゛゜小 키
+                if (languageKeyMark && layout.kind == KeyboardLayout.JAPANESE) {   // 조합 중인 일본어 12키: ゛゜小 키
                     text.setColor(fg);
                     text.setTypeface(Typeface.DEFAULT);
                     text.setTextSize(Math.min(spHint * 1.4f, r.width() * 0.26f));
@@ -1468,7 +1467,7 @@ public final class KeyboardView extends View {
         if (SwipeAction.LANGUAGE_PICK.equals(action)) {
             // 🌐︎를 위로 밀었다: 켜 둔 언어를 세로로 늘어놓은 말풍선을 띄운다. 손가락을 위아래로 옮겨 고르고 떼면 바꾼다.
             if (p.key.type != Key.LANGUAGE || languagePopup == null || deferred != null
-                    || p.key.kanaMark) return;
+                    || (languageKeyMark && layout.kind == KeyboardLayout.JAPANESE)) return;
             cancelLongPress(p);
             p.mode = POPUP;
             openPopup(p, languagePopup.clone(), languagePopupSelected, true);
@@ -1606,35 +1605,14 @@ public final class KeyboardView extends View {
         }
     }
 
-    /** 일본어 12키 자판의 아래 둘째 칸을 ゛゜小 키로 바꿔 두는지 (글자를 조합하는 동안). */
+    /** 🌐︎ 키를 ゛゜小 키로 그리는지 (일본어 12키 자판에서 글자를 조합하는 동안). */
     private boolean languageKeyMark;
 
     public void setLanguageKeyMark(boolean on) {
         if (languageKeyMark != on) {
             languageKeyMark = on;
-            if (applyKanaMark()) invalidate();
+            invalidate();
         }
-    }
-
-    /**
-     * 조합 중이면 ゛゜小 자리(Key.markKey가 있는 키)에 ゛゜小 키를, 아니면 원래 키를 둔다. 자리 크기는 그대로 옮긴다.
-     * 바꾼 것이 있으면 true.
-     */
-    private boolean applyKanaMark() {
-        if (layout == null) return false;
-        boolean changed = false;
-        for (KeyboardLayout.Row row : layout.rows) {
-            for (int i = 0; i < row.keys.length; i++) {
-                Key k = row.keys[i];
-                Key want = languageKeyMark ? k.markKey : k.normalKey;
-                if (want == null) continue;
-                want.rect.set(k.rect);
-                want.weight = k.weight;
-                row.keys[i] = want;
-                changed = true;
-            }
-        }
-        return changed;
     }
 
     /** 🌐︎를 위로 밀었을 때의 언어 말풍선 (위에서 아래 차례, 둘 이상일 때만 쓴다). null이면 끈다. */

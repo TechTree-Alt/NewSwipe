@@ -788,13 +788,13 @@ public final class KeyboardLayout {
      * 12키 플릭 자판의 가나 키: {탭, 왼쪽, 위, 오른쪽, 아래}. Gboard처럼 가운데 3열에 가나를 두고 양옆에 기능키를 둔다.
      * 가나 키를 이어 탭하면 Gboard처럼 같은 키의 글자가 앞으로 돌고(あ→い→う…→ぉ), ↶ 키는 그 글자를 거꾸로 돌린다
      * (토글 중이 아니면 흐리게 보인다). ↶ 키를 밀면 괄호·가운뎃점·물결표가 들어간다.
-     * 아래 둘째 칸(기본은 🌐 키)은 글자를 조합하는 동안 Gboard처럼 그 칸에 둔 키와 상관없이 ゛゜小 키가 되어 앞 글자의 탁점·반탁점·작은 글자를 돌린다
+     * 🌐 키는 글자를 조합하는 동안 Gboard처럼 ゛゜小 키가 되어 앞 글자의 탁점·반탁점·작은 글자를 돌린다
      * (NewSwipeIME·KeyboardView가 조합 상태를 보고 바꾼다).
      * <pre>
      *  ↶   あ  か  さ  ⌫
      *  ◀   た  な  は  ▶
      *  ☺   ま  や  ら  ␣
-     *  ?123 🌐 わ  、  ↵      (조합 중: 아래 둘째 칸 → ゛゜小)
+     *  ?123 🌐 わ  、  ↵      (조합 중: 🌐 → ゛゜小)
      * </pre>
      */
     private static final String[][][] FLICK_ROWS = {
@@ -821,16 +821,7 @@ public final class KeyboardLayout {
             Key[] keys = new Key[5];
             keys[0] = left[r];
             for (int i = 0; i < kana.length; i++) {
-                if (kana[i] == null) {
-                    // 아래 둘째 칸: 가나를 조합하는 동안에는 여기 둔 키 대신 ゛゜小 키가 나온다.
-                    Key slot = flickFnKey(order.charAt(3));
-                    slot.markKey = fn(Key.LANGUAGE, "", 1f);
-                    slot.markKey.kanaMark = true;
-                    slot.markKey.normalKey = slot;
-                    keys[i + 1] = slot;
-                } else {
-                    keys[i + 1] = flickKey(kana[i], kana[i][0].equals("、"));
-                }
+                keys[i + 1] = kana[i] == null ? flickFnKey(order.charAt(3)) : flickKey(kana[i], kana[i][0].equals("、"));
             }
             keys[4] = right[r];
             rows.add(new Row(1f, keys));
