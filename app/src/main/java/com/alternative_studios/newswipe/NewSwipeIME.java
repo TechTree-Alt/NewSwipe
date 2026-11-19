@@ -2751,11 +2751,13 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
      * 들어갈 만큼만 읽는다 (한국어 한 단어는 띄어쓰기를 더해 대개 4~5글자, 영어는 6~7글자).
      */
     private static final int EMOJI_SUGGEST_CONTEXT = 160;
+    /** 이모지 추천에 넘기는 커서 뒤 글의 길이. 뒤는 처음 6단어만 보므로(EmojiData.SUGGEST_TOKENS_AFTER) 앞의 절반만 읽는다. */
+    private static final int EMOJI_SUGGEST_CONTEXT_AFTER = 80;
     /** 이모지 추천을 맡길 때마다 올리는 번호 (화면 스레드에서만 쓴다). 창을 다시 열면 이전 추천을 버린다. */
     private int emojiSuggestSeq;
 
     /**
-     * 이모지 창을 열 때 커서 앞의 글에 맞는 이모지를 골라 최근 탭 맨 위에 보여 준다.
+     * 이모지 창을 열 때 커서 앞뒤의 글에 맞는 이모지를 골라 최근 탭 맨 위에 보여 준다.
      * 키워드를 훑는 일은 검색과 같은 스레드에서 한다 (EmojiData는 한 스레드에서만 쓴다). 비밀번호 입력란에서는 글을 읽지 않는다.
      */
     private void suggestEmoji() {
@@ -2764,20 +2766,31 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         InputConnection ic = getCurrentInputConnection();
         if (target == null || ic == null || !shortcutAllowed || !prefs.emojiSuggest()) return;
         CharSequence before = ic.getTextBeforeCursor(EMOJI_SUGGEST_CONTEXT, 0);
-        if (before == null || before.length() == 0) return;
-        String read = before.toString();
+        CharSequence after = ic.getTextAfterCursor(EMOJI_SUGGEST_CONTEXT_AFTER, 0);
+        boolean noBefore = before == null || before.length() == 0;
+        boolean noAfter = after == null || after.length() == 0;
+        if (noBefore && noAfter) return;
+        String read = noBefore ? "" : before.toString();
         if (read.length() >= EMOJI_SUGGEST_CONTEXT) {
             // 앞이 잘렸을 수 있다. 잘린 첫 단어('…생일'이 아니라 '…일')로 엉뚱하게 맞추지 않도록 버린다.
             int space = 0;
             while (space < read.length() && !Character.isWhitespace(read.charAt(space))) space++;
             read = read.substring(space);
         }
+        String readAfter = noAfter ? "" : after.toString();
+        if (readAfter.length() >= EMOJI_SUGGEST_CONTEXT_AFTER) {
+            // 뒤가 잘렸을 수 있다. 잘린 마지막 단어('생일…'이 아니라 '생…')는 버린다.
+            int space = readAfter.length();
+            while (space > 0 && !Character.isWhitespace(readAfter.charAt(space - 1))) space--;
+            readAfter = readAfter.substring(0, space);
+        }
         final String text = read;
+        final String textAfter = readAfter;
         emojiRepo.load(d -> {
             if (seq != emojiSuggestSeq || target != emojiPanel || panel != PANEL_EMOJI) return;
             try {
                 searchIo.execute(() -> {
-                    List<String> found = d.suggest(text, 16);
+                    List<String> found = d.suggest(text, textAfter, 16);
                     if (found.isEmpty()) return;
                     main.post(() -> {
                         if (seq == emojiSuggestSeq && target == emojiPanel && panel == PANEL_EMOJI) {
