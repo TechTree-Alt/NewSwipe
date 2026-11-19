@@ -235,6 +235,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private String suggestWord = "";
     /** 커서가 단어 중간에 있어 추천에 함께 넣은 커서 뒤의 나머지 부분 (추천을 고르면 이 부분까지 바꾼다). 없으면 빈 문자열. */
     private String suggestTail = "";
+    /** 지금 추천란의 추천이 단어 전체로 찾은 것인지 ([단어]처럼 괄호를 씌워 커서 앞만 보고 찾은 추천과 구분한다). */
+    private boolean wholeWordShown;
     private boolean domainField;   // 이메일 주소·인터넷 주소 입력란: 온점 키를 길게 누르면 .com 등이 나온다
     private boolean passwordField;   // 비밀번호 입력란: 복사한 내용 칩의 미리보기를 가린다
     /** 이메일 입력란 등에서 영어로 시작했다 (설정에는 저장하지 않는다). 그런 칸이 아닌 곳으로 가면 한글로 돌아간다. */
@@ -1337,6 +1339,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private LinearLayout buildSuggestBar() {
         suggestions = new String[0];   // 새 막대는 비어 있다 (예전 막대의 내용과 비교하지 않도록)
         shortcutShown = false;
+        wholeWordShown = false;
         suggestWord = "";
         LinearLayout bar = new LinearLayout(this);
         bar.setGravity(Gravity.CENTER_VERTICAL);
@@ -4540,8 +4543,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private void applySuggestions(String word, String[] found, boolean shortcut, int correction, boolean prediction) {
         suggestWord = word;
         predictionShown = prediction && found.length > 0;
-        if (shortcut == shortcutShown && correction == correctionShown
+        boolean whole = !suggestTail.isEmpty() && found.length > 0;
+        if (shortcut == shortcutShown && correction == correctionShown && whole == wholeWordShown
                 && java.util.Arrays.equals(found, suggestions)) return;   // 그대로면 다시 그리지 않는다
+        wholeWordShown = whole;
         boolean wasShowing = suggestions.length > 0;
         boolean heldSlot = shortcutHoldsSlot();
         suggestions = found;
@@ -4554,7 +4559,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         boolean slotChanged = heldSlot != shortcutHoldsSlot();
         for (int i = 0; i < suggestViews.length; i++) {
             TextView t = suggestViews[i];
-            CharSequence text = i < found.length ? found[i] : "";
+            CharSequence text = i >= found.length ? "" : whole ? "[" + found[i] + "]" : found[i];
             if (!TextUtils.equals(t.getText(), text)) t.setText(text);
             Typeface face = i == correction ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT;
             if (t.getTypeface() != face) t.setTypeface(face);
@@ -4574,6 +4579,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         suggestTail = "";
         predictionShown = false;
         if (suggestions.length == 0) return;
+        wholeWordShown = false;
         suggestions = new String[0];
         correctionShown = -1;
         boolean heldSlot = shortcutShown;
