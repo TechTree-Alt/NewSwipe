@@ -58,9 +58,6 @@ public final class Icons {
     // 텍스트 편집 창. 방향이 있는 아이콘은 위쪽을 향한 모양 하나를 그려 돌린다 (오른쪽 = 90도, 시계 방향).
     public static final int TEXT_EDIT = 47;       // 텍스트 편집 (I자 커서 양옆의 꺾쇠)
     public static final int CHEVRON_LEFT = 48, CHEVRON_RIGHT = 49, CHEVRON_DOWN = 50;
-    public static final int CHEVRON_UP_LEFT = 51, CHEVRON_UP_RIGHT = 52, CHEVRON_DOWN_LEFT = 53, CHEVRON_DOWN_RIGHT = 54;
-    /** 끝으로 이동: 막대를 향한 꺾쇠 (|<, >|, 위·아래). */
-    public static final int EDGE_LEFT = 55, EDGE_RIGHT = 56, EDGE_UP = 57, EDGE_DOWN = 58;
     /** 단어 단위 이동: 겹친 꺾쇠 («, »). */
     public static final int WORD_LEFT = 59, WORD_RIGHT = 60;
     /** 커서 뒤 글자 지우기 (⌫를 좌우로 뒤집은 ⌦). */
@@ -69,7 +66,7 @@ public final class Icons {
     public static final int REDO = 62;
     /** 탭 (막대를 향한 화살표 →|). */
     public static final int TAB = 63;
-    /** 위쪽을 향한 겹친 꺾쇠·끝 막대 (돌리기 전의 모양). 밖에서 쓰지 않는다. */
+    /** 위쪽을 향한 겹친 꺾쇠 (돌리기 전의 모양). 밖에서 쓰지 않는다. */
     private static final int WORD_UP = 1001;
 
     private static final Path path = new Path();
@@ -88,13 +85,6 @@ public final class Icons {
             case CHEVRON_RIGHT: base = CHEVRON_UP; deg = 90; break;
             case CHEVRON_DOWN: base = CHEVRON_UP; deg = 180; break;
             case CHEVRON_LEFT: base = CHEVRON_UP; deg = 270; break;
-            case CHEVRON_UP_RIGHT: base = CHEVRON_UP; deg = 45; break;
-            case CHEVRON_DOWN_RIGHT: base = CHEVRON_UP; deg = 135; break;
-            case CHEVRON_DOWN_LEFT: base = CHEVRON_UP; deg = 225; break;
-            case CHEVRON_UP_LEFT: base = CHEVRON_UP; deg = 315; break;
-            case EDGE_RIGHT: base = EDGE_UP; deg = 90; break;
-            case EDGE_DOWN: base = EDGE_UP; deg = 180; break;
-            case EDGE_LEFT: base = EDGE_UP; deg = 270; break;
             case WORD_RIGHT: base = WORD_UP; deg = 90; break;
             case WORD_LEFT: base = WORD_UP; deg = 270; break;
             case FORWARD_DELETE:
@@ -563,14 +553,6 @@ public final class Icons {
                 path.moveTo(6, 14.5f);
                 path.lineTo(12, 8.5f);
                 path.lineTo(18, 14.5f);
-                c.drawPath(path, p);
-                break;
-            case EDGE_UP:
-                // 위쪽 끝의 막대와 그쪽을 향한 꺾쇠
-                c.drawLine(6.5f, 6, 17.5f, 6, p);
-                path.moveTo(7, 16.5f);
-                path.lineTo(12, 11.5f);
-                path.lineTo(17, 16.5f);
                 c.drawPath(path, p);
                 break;
             case WORD_UP:

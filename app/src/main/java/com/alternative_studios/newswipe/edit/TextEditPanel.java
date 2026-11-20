@@ -24,11 +24,10 @@ import com.alternative_studios.newswipe.ui.Ui;
  * 텍스트 편집 창. 클립보드 창처럼 자판과 도구 막대 자리를 덮는다.
  * <pre>
  *   [←] 텍스트 편집                    [↶] [↷]
- *   [  ↖  ][            ↑            ][  ↗  ]
+ *   [  ⌦  ][            ↑            ][  ⌫  ]
  *   [               ][ 선택 ][               ]
  *   [       ←       ][      ][       →       ]
- *   [  ↙  ][            ↓            ][  ↘  ]
- *   [  ⌦  ][   단어«   ][   단어»   ][  ⌫  ]
+ *   [ 단어« ][            ↓            ][ 단어» ]
  *   [잘라내기 ][  복사  ][ 붙여넣기 ][ 전체 선택 ]
  *   [  Tab  ][      띄어쓰기       ][  엔터  ]
  * </pre>
@@ -55,7 +54,6 @@ public final class TextEditPanel extends LinearLayout {
     }
 
     public static final int MOVE_LEFT = 1, MOVE_RIGHT = 2, MOVE_UP = 3, MOVE_DOWN = 4,
-            MOVE_UP_LEFT = 5, MOVE_UP_RIGHT = 6, MOVE_DOWN_LEFT = 7, MOVE_DOWN_RIGHT = 8,
             LINE_START = 9, LINE_END = 10, TEXT_START = 11, TEXT_END = 12, WORD_LEFT = 13, WORD_RIGHT = 14,
             SELECT = 15, CUT = 16, COPY = 17, PASTE = 18, SELECT_ALL = 19,
             BACKSPACE = 20, FORWARD_DELETE = 21, UNDO = 22, REDO = 23,
@@ -65,8 +63,8 @@ public final class TextEditPanel extends LinearLayout {
             OPEN_CLIPBOARD = 25,
             ENTER = 26, SPACE = 27, TAB = 28;
 
-    /** 격자의 칸 수: 가로 20칸(방향 버튼 다섯 줄은 4칸씩, 편집 버튼 줄은 5칸씩), 세로 6줄. */
-    private static final int COLS = 20, ROWS = 7;
+    /** 격자의 칸 수: 가로 20칸(모서리 버튼은 4칸, 편집 버튼 줄은 5칸씩), 세로 6줄 (커서 이동 4줄, 편집, Tab·띄어쓰기·엔터). */
+    private static final int COLS = 20, ROWS = 6;
 
     private final KeyboardTheme theme;
     private final Listener listener;
@@ -116,37 +114,32 @@ public final class TextEditPanel extends LinearLayout {
         addView(header, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, topBarHeight));
 
         pad = new Pad(context);
-        // 커서 이동: 상하좌우가 남는 자리를 모두 쓰고, 대각선은 네 모서리, 선택은 가운데.
+        // 커서 이동: 상하좌우가 남는 자리를 모두 쓰고 선택은 가운데. 위쪽 모서리는 지우기, 아래쪽 모서리는 단어 단위 이동.
         // 상하좌우는 그 방향으로 밀면 그쪽 끝으로 간다.
-        add(Icons.CHEVRON_UP_LEFT, null, L.t("왼쪽 위로", "Up and left"), MOVE_UP_LEFT, false, true, 0, 0, 4, 1);
+        add(Icons.FORWARD_DELETE, null, L.t("커서 뒤 글자 지우기", "Delete forward"), FORWARD_DELETE, true, true, 0, 0, 4, 1);
         add(Icons.CHEVRON_UP, null, L.t("위로 (위로 밀면 글 맨 앞으로)", "Up (swipe up: start of text)"), MOVE_UP, false, true, 4, 0, 12, 1)
                 .setSwipe(0, -1, TEXT_START);
-        add(Icons.CHEVRON_UP_RIGHT, null, L.t("오른쪽 위로", "Up and right"), MOVE_UP_RIGHT, false, true, 16, 0, 4, 1);
+        add(Icons.DELETE, null, L.t("커서 앞 글자 지우기", "Delete"), BACKSPACE, true, true, 16, 0, 4, 1);
         add(Icons.CHEVRON_LEFT, null, L.t("왼쪽으로 (왼쪽으로 밀면 줄 맨 앞으로)", "Left (swipe left: line start)"), MOVE_LEFT, false, true, 0, 1, 8, 2)
                 .setSwipe(-1, 0, LINE_START);
         select = add(0, L.t("선택", "Select"), L.t("선택 모드", "Selection mode"), SELECT, false, false, 8, 1, 4, 2);
         select.drag = true;
         add(Icons.CHEVRON_RIGHT, null, L.t("오른쪽으로 (오른쪽으로 밀면 줄 맨 뒤로)", "Right (swipe right: line end)"), MOVE_RIGHT, false, true, 12, 1, 8, 2)
                 .setSwipe(1, 0, LINE_END);
-        add(Icons.CHEVRON_DOWN_LEFT, null, L.t("왼쪽 아래로", "Down and left"), MOVE_DOWN_LEFT, false, true, 0, 3, 4, 1);
+        add(Icons.WORD_LEFT, null, L.t("단어 앞으로", "Word left"), WORD_LEFT, true, true, 0, 3, 4, 1);
         add(Icons.CHEVRON_DOWN, null, L.t("아래로 (아래로 밀면 글 맨 뒤로)", "Down (swipe down: end of text)"), MOVE_DOWN, false, true, 4, 3, 12, 1)
                 .setSwipe(0, 1, TEXT_END);
-        add(Icons.CHEVRON_DOWN_RIGHT, null, L.t("오른쪽 아래로", "Down and right"), MOVE_DOWN_RIGHT, false, true, 16, 3, 4, 1);
-        // 지우기(양 끝)와 단어 단위 이동(가운데)
-        add(Icons.FORWARD_DELETE, null, L.t("뒤 글자 지우기", "Delete forward"), FORWARD_DELETE, true, true, 0, 4, 4, 1);
-        add(Icons.WORD_LEFT, null, L.t("단어 왼쪽으로", "Word left"), WORD_LEFT, true, true, 4, 4, 6, 1);
-        add(Icons.WORD_RIGHT, null, L.t("단어 오른쪽으로", "Word right"), WORD_RIGHT, true, true, 10, 4, 6, 1);
-        add(Icons.DELETE, null, L.t("지우기", "Delete"), BACKSPACE, true, true, 16, 4, 4, 1);
-        // 맨 아래 줄: 선택 편집 칩과 같은 네 가지
-        cut = add(Icons.CUT, L.t("잘라내기", "Cut"), null, CUT, true, false, 0, 5, 5, 1);
-        copy = add(Icons.COPY, L.t("복사", "Copy"), null, COPY, true, false, 5, 5, 5, 1);
-        PadKey paste = add(Icons.PASTE, L.t("붙여넣기", "Paste"), null, PASTE, true, false, 10, 5, 5, 1);
+        add(Icons.WORD_RIGHT, null, L.t("단어 뒤로", "Word right"), WORD_RIGHT, true, true, 16, 3, 4, 1);
+        // 선택 편집 칩과 같은 네 가지
+        cut = add(Icons.CUT, L.t("잘라내기", "Cut"), null, CUT, true, false, 0, 4, 5, 1);
+        copy = add(Icons.COPY, L.t("복사", "Copy"), null, COPY, true, false, 5, 4, 5, 1);
+        PadKey paste = add(Icons.PASTE, L.t("붙여넣기", "Paste"), null, PASTE, true, false, 10, 4, 5, 1);
         paste.setLongAction(OPEN_CLIPBOARD);
-        add(Icons.SELECT_ALL, L.t("전체 선택", "Select all"), null, SELECT_ALL, true, false, 15, 5, 5, 1);
-        // 가장 아래 줄: 자판 맨 아래 줄처럼 가운데에 넓은 띄어쓰기
-        add(Icons.TAB, "Tab", L.t("탭", "Tab"), TAB, true, false, 0, 6, 4, 1);
-        add(0, L.t("띄어쓰기", "Space"), null, SPACE, false, false, 4, 6, 12, 1);
-        enter = add(Icons.ENTER, null, L.t("엔터", "Enter"), ENTER, true, false, 16, 6, 4, 1);
+        add(Icons.SELECT_ALL, L.t("전체 선택", "Select all"), null, SELECT_ALL, true, false, 15, 4, 5, 1);
+        // 맨 아래 줄: 자판 맨 아래 줄처럼 가운데에 넓은 띄어쓰기
+        add(Icons.TAB, "Tab", L.t("탭", "Tab"), TAB, true, false, 0, 5, 4, 1);
+        add(0, L.t("띄어쓰기", "Space"), null, SPACE, false, false, 4, 5, 12, 1);
+        enter = add(Icons.ENTER, null, L.t("엔터", "Enter"), ENTER, true, false, 16, 5, 4, 1);
         addView(pad, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
         restyle();
     }
@@ -318,11 +311,8 @@ public final class TextEditPanel extends LinearLayout {
 
     // ---------------------------------------------------------------- 버튼
 
-    /**
-     * 처음 누른 뒤 되풀이를 시작하기까지와, 되풀이 간격 (ms). 대각선은 위아래로 보낸 방향 키를 앱이 처리한 뒤에야
-     * 다음 좌우 칸을 정할 수 있어 (키보드 서비스의 ARROW_SETTLE_MS) 더 느리게 되풀이한다.
-     */
-    private static final long REPEAT_START_MS = 400, REPEAT_MS = 50, DIAGONAL_REPEAT_MS = 120;
+    /** 처음 누른 뒤 되풀이를 시작하기까지와, 되풀이 간격 (ms). */
+    private static final long REPEAT_START_MS = 400, REPEAT_MS = 50;
 
     /** 격자의 버튼 하나: 아이콘이나 이름(둘 다 있으면 나란히, 좁으면 아이콘만)을 가운데에 그린다. */
     @SuppressLint("ClickableViewAccessibility")
@@ -372,7 +362,7 @@ public final class TextEditPanel extends LinearLayout {
             this.action = action;
             this.function = function;
             this.repeat = repeat;
-            interval = action >= MOVE_UP_LEFT && action <= MOVE_DOWN_RIGHT ? DIAGONAL_REPEAT_MS : REPEAT_MS;
+            interval = REPEAT_MS;
             iconSize = Ui.dp(c, 20);
             gap = Ui.dp(c, 6);
             padH = Ui.dp(c, 6);

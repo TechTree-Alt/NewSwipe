@@ -6309,10 +6309,6 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             case TextEditPanel.MOVE_RIGHT: editMove(1, 0); break;
             case TextEditPanel.MOVE_UP: editMove(0, -1); break;
             case TextEditPanel.MOVE_DOWN: editMove(0, 1); break;
-            case TextEditPanel.MOVE_UP_LEFT: editMove(-1, -1); break;
-            case TextEditPanel.MOVE_UP_RIGHT: editMove(1, -1); break;
-            case TextEditPanel.MOVE_DOWN_LEFT: editMove(-1, 1); break;
-            case TextEditPanel.MOVE_DOWN_RIGHT: editMove(1, 1); break;
             case TextEditPanel.LINE_START:
             case TextEditPanel.LINE_END:
                 if (beginEdit()) {
@@ -6372,8 +6368,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     /**
-     * 텍스트 편집 창의 방향 버튼: 가로 dx, 세로 dy칸 옮긴다 (대각선은 둘 다). 선택 모드면 선택 영역의 움직이는 끝을 옮긴다.
-     * 대각선은 좌우를 먼저 옮긴다: 좌우는 커서 위치를 바로 정하지만, 위아래는 방향 키를 보내 앱이 처리할 때까지 커서 위치를 모른다.
+     * 텍스트 편집 창의 방향 버튼과 '선택' 밀기: 가로 dx, 세로 dy칸 옮긴다 (밀기는 둘 다일 수 있다). 선택 모드면 선택 영역의
+     * 움직이는 끝을 옮긴다. 둘 다면 좌우를 먼저 옮긴다: 좌우는 커서 위치를 바로 정하지만, 위아래는 방향 키를 보내 앱이 처리할
+     * 때까지 커서 위치를 모른다.
      */
     private boolean editMove(int dx, int dy) {
         boolean moved = false;
