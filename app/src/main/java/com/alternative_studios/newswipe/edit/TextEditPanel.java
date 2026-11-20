@@ -24,10 +24,10 @@ import com.alternative_studios.newswipe.ui.Ui;
  * 텍스트 편집 창. 클립보드 창처럼 자판과 도구 막대 자리를 덮는다.
  * <pre>
  *   [←] 텍스트 편집                    [↶] [↷]
- *   [  ⌦  ][            ↑            ][  ⌫  ]
+ *   [ 단어« ][            ↑            ][ 단어» ]
  *   [               ][ 선택 ][               ]
  *   [       ←       ][      ][       →       ]
- *   [ 단어« ][            ↓            ][ 단어» ]
+ *   [  ⌦  ][            ↓            ][  ⌫  ]
  *   [잘라내기 ][  복사  ][ 붙여넣기 ][ 전체 선택 ]
  *   [  Tab  ][      띄어쓰기       ][  엔터  ]
  * </pre>
@@ -114,22 +114,22 @@ public final class TextEditPanel extends LinearLayout {
         addView(header, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, topBarHeight));
 
         pad = new Pad(context);
-        // 커서 이동: 상하좌우가 남는 자리를 모두 쓰고 선택은 가운데. 위쪽 모서리는 지우기, 아래쪽 모서리는 단어 단위 이동.
+        // 커서 이동: 상하좌우가 남는 자리를 모두 쓰고 선택은 가운데. 위쪽 모서리는 단어 단위 이동, 아래쪽 모서리는 지우기.
         // 상하좌우는 그 방향으로 밀면 그쪽 끝으로 간다.
-        add(Icons.FORWARD_DELETE, null, L.t("커서 뒤 글자 지우기", "Delete forward"), FORWARD_DELETE, true, true, 0, 0, 4, 1);
+        add(Icons.WORD_LEFT, null, L.t("단어 앞으로", "Word left"), WORD_LEFT, true, true, 0, 0, 4, 1);
         add(Icons.CHEVRON_UP, null, L.t("위로 (위로 밀면 글 맨 앞으로)", "Up (swipe up: start of text)"), MOVE_UP, false, true, 4, 0, 12, 1)
                 .setSwipe(0, -1, TEXT_START);
-        add(Icons.DELETE, null, L.t("커서 앞 글자 지우기", "Delete"), BACKSPACE, true, true, 16, 0, 4, 1);
+        add(Icons.WORD_RIGHT, null, L.t("단어 뒤로", "Word right"), WORD_RIGHT, true, true, 16, 0, 4, 1);
         add(Icons.CHEVRON_LEFT, null, L.t("왼쪽으로 (왼쪽으로 밀면 줄 맨 앞으로)", "Left (swipe left: line start)"), MOVE_LEFT, false, true, 0, 1, 8, 2)
                 .setSwipe(-1, 0, LINE_START);
         select = add(0, L.t("선택", "Select"), L.t("선택 모드", "Selection mode"), SELECT, false, false, 8, 1, 4, 2);
         select.drag = true;
         add(Icons.CHEVRON_RIGHT, null, L.t("오른쪽으로 (오른쪽으로 밀면 줄 맨 뒤로)", "Right (swipe right: line end)"), MOVE_RIGHT, false, true, 12, 1, 8, 2)
                 .setSwipe(1, 0, LINE_END);
-        add(Icons.WORD_LEFT, null, L.t("단어 앞으로", "Word left"), WORD_LEFT, true, true, 0, 3, 4, 1);
+        add(Icons.FORWARD_DELETE, null, L.t("커서 뒤 글자 지우기", "Delete forward"), FORWARD_DELETE, true, true, 0, 3, 4, 1);
         add(Icons.CHEVRON_DOWN, null, L.t("아래로 (아래로 밀면 글 맨 뒤로)", "Down (swipe down: end of text)"), MOVE_DOWN, false, true, 4, 3, 12, 1)
                 .setSwipe(0, 1, TEXT_END);
-        add(Icons.WORD_RIGHT, null, L.t("단어 뒤로", "Word right"), WORD_RIGHT, true, true, 16, 3, 4, 1);
+        add(Icons.DELETE, null, L.t("커서 앞 글자 지우기", "Delete"), BACKSPACE, true, true, 16, 3, 4, 1);
         // 선택 편집 칩과 같은 네 가지
         cut = add(Icons.CUT, L.t("잘라내기", "Cut"), null, CUT, true, false, 0, 4, 5, 1);
         copy = add(Icons.COPY, L.t("복사", "Copy"), null, COPY, true, false, 5, 4, 5, 1);
