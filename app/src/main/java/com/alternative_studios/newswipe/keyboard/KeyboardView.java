@@ -874,7 +874,7 @@ public final class KeyboardView extends View {
                 break;
         }
         String label = displayLabel(k);
-        // 일본어 12키의 ↶ 키는 토글 중(같은 키를 이어 탭한 뒤)에만 쓸 수 있어 그 밖에는 흐리게 보인다.
+        // 일본어 12키의 ↶ 키는 돌릴 앞 글자가 있을 때만 쓸 수 있어 그 밖에는 흐리게 보인다.
         boolean dim = !toggleBackEnabled && layout.kind == KeyboardLayout.JAPANESE && k.flick
                 && com.alternative_studios.newswipe.cjk.CjkComposer.TOGGLE_BACK.equals(k.label);
         text.setColor(dim ? theme.hint : fg);
@@ -1597,7 +1597,7 @@ public final class KeyboardView extends View {
         }
     }
 
-    /** 일본어 12키의 ↶ 키를 쓸 수 있는지 (같은 키를 이어 탭해 글자를 돌리는 중). 아니면 흐리게 그린다. */
+    /** 일본어 12키의 ↶ 키를 쓸 수 있는지 (돌릴 앞 글자가 있다). 아니면 흐리게 그린다. */
     private boolean toggleBackEnabled;
 
     public void setToggleBackEnabled(boolean on) {

@@ -45,25 +45,29 @@ public final class Kana {
         return n == null ? 0 : n;
     }
 
-    // ---------------------------------------------------------------- 토글 입력 (같은 키 연속 탭, ↶ 키)
+    // ---------------------------------------------------------------- ↶ 키 (같은 키 글자 거꾸로 돌리기)
 
     /**
-     * 12키 자판의 토글 차례 (Gboard와 같다): 같은 키를 이어 탭하면 앞으로, ↶ 키를 누르면 거꾸로 돈다.
-     * 각 차례의 첫 글자가 그 키의 글자다 (예: あ 키는 あ→い→う→え→お→ぁ→ぃ→ぅ→ぇ→ぉ→あ).
+     * 12키 자판의 키마다 도는 차례 (각 차례의 첫 글자가 그 키의 글자다). ↶ 키는 앞 글자를 이 차례에서 거꾸로 돌린다
+     * (예: あ→ぉ→ぇ…, う→い→あ). 같은 키를 이어 탭하면 글자가 돌지 않고 그 글자가 연속으로 들어간다 (ああ).
      */
     private static final String[] TOGGLES = {
             "あいうえおぁぃぅぇぉ", "かきくけこ", "さしすせそ", "たちつてとっ", "なにぬねの", "はひふへほ",
             "まみむめも", "やゆよゃゅょ", "らりるれろ", "わをんゎー", "、。？！…",
     };
-    private static final Map<Character, String> TOGGLE_OF = new HashMap<>();
+    private static final Map<Character, Character> TOGGLE_PREV = new HashMap<>();
 
     static {
-        for (String t : TOGGLES) TOGGLE_OF.put(t.charAt(0), t);
+        for (String t : TOGGLES) {
+            int n = t.length();
+            for (int i = 0; i < n; i++) TOGGLE_PREV.put(t.charAt(i), t.charAt((i + n - 1) % n));
+        }
     }
 
-    /** 키 글자 c(あ·か…)를 탭했을 때 도는 토글 차례. 토글 키가 아니면 null. */
-    public static String toggleCycle(char c) {
-        return TOGGLE_OF.get(c);
+    /** ↶ 키를 눌렀을 때 c가 바뀔 같은 키 차례의 앞 글자. 바뀌지 않으면 0. */
+    public static char toggleBack(char c) {
+        Character p = TOGGLE_PREV.get(c);
+        return p == null ? 0 : p;
     }
 
     // ---------------------------------------------------------------- 로마자
