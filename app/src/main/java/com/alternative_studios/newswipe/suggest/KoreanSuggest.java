@@ -227,8 +227,13 @@ final class KoreanSuggest {
             }
             String w = null;
             if (KoreanMorph.hangulSyllables(r.word) == r.word.length()) {
-                if (corrector.accepts(r.word)) w = r.word;
-                else w = corrector.correct(r.word, prev, field, user, usage);
+                if (corrector.accepts(r.word)) {
+                    w = r.word;
+                } else {
+                    w = corrector.correct(r.word, prev, field, user, usage);
+                    // 사전에 없는 활용형(환장하겠네)은 고칠 것이 없어 null이 온다: 낱말로 그럴듯하면 되살린 말 그대로 쓴다
+                    if (w == null && corrector.wordLike(r.word)) w = r.word;
+                }
             }
             if (w == null || w.equals(found)) continue;
             if (found != null) return null;   // 같은 비용으로 맞는 말이 둘
@@ -571,7 +576,9 @@ final class KoreanSuggest {
         for (BrokenVowel.Repair r : repairs) {
             List<String> l = new ArrayList<>();
             boolean whole = KoreanMorph.hangulSyllables(r.word) == r.word.length();
-            if (whole && (dict.contains(r.word) || user != null && user.isKnownIfLoaded(r.word, true))) l.add(r.word);
+            // 되살린 말이 그대로 맞는 말이면 앞에 둔다 (사전에 없는 활용형 환장하겠네도: 추천은 친 말 자신을 빼므로 따로 넣는다)
+            if (whole && (corrector.accepts(r.word) || corrector.wordLike(r.word)
+                    || user != null && user.isKnownIfLoaded(r.word, true))) l.add(r.word);
             for (String w : suggestPlain(r.word, prev, field, user, usage, null, max).words) if (!l.contains(w)) l.add(w);
             if (!l.isEmpty()) lists.add(l);
         }

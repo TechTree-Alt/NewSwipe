@@ -21,7 +21,7 @@ public class BrokenVowelTest {
         dict = KoreanSuggestTest.buildDict(new String[][]{
                 {"괜찮아요", "220"}, {"괜찮아", "230"}, {"괜찮은", "200"}, {"괜히", "150"}, {"관심", "200"}, {"관심을", "160"},
                 {"관련", "190"}, {"왜", "240"}, {"뭘", "180"}, {"됐어", "180"}, {"훨씬", "170"}, {"괴로워", "120"},
-                {"우리", "200"}, {"아니", "200"},
+                {"우리", "200"}, {"아니", "200"}, {"환장하다", "120"}, {"환장하겠다", "110"}, {"환장했다", "110"},
         });
         dict.warmUpChosung();
     }
@@ -74,6 +74,9 @@ public class BrokenVowelTest {
         assertEquals(Arrays.toString(s), "관심", s[0]);
         s = m.suggest("고ㅔㄴ찮아요", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 5).words;
         assertEquals(Arrays.toString(s), "괜찮아요", s[0]);
+        // 사전에 없는 활용형이어도 되살린 말 자신이 보인다 (친 말을 빼는 추천에서 빠지지 않게)
+        s = m.suggest("호ㅓㄴ장하겠네", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 5).words;
+        assertEquals(Arrays.toString(s), "환장하겠네", s[0]);
         // 친 중간에도 (고ㅔ → 괘…)
         s = m.suggest("고ㅔ", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 5).words;
         assertTrue(Arrays.toString(s), Arrays.asList(s).contains("괜찮아"));
@@ -88,6 +91,9 @@ public class BrokenVowelTest {
         assertEquals("괜히", m.correct("고ㅔㄴ히", null, KoreanSuggest.FIELD_NORMAL, null, null));
         assertEquals("됐어", m.correct("도ㅓㅆ어", null, KoreanSuggest.FIELD_NORMAL, null, null));
         assertEquals("왜", m.correct("오ㅔ", null, KoreanSuggest.FIELD_NORMAL, null, null));
+        // 사전에 없는 활용형도 낱말로 그럴듯하면 되살린 말 그대로 (환장하겠다는 사전에 있고 환장하겠네는 없다)
+        assertEquals("환장하겠다", m.correct("호ㅓㄴ장하겠다", null, KoreanSuggest.FIELD_NORMAL, null, null));
+        assertEquals("환장하겠네", m.correct("호ㅓㄴ장하겠네", null, KoreanSuggest.FIELD_NORMAL, null, null));
         // 아직 치는 중인 앞부분은 고치지 않는다
         assertNull(m.correct("고ㅔㄴ", null, KoreanSuggest.FIELD_NORMAL, null, null));
         assertNull(m.correct("우ㅜㅜ", null, KoreanSuggest.FIELD_NORMAL, null, null));

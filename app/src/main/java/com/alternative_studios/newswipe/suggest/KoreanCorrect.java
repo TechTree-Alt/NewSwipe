@@ -700,13 +700,24 @@ final class KoreanCorrect {
 
     /**
      * 자동 수정이 고치지 않고 둘 맞는 말인지: 사전 단어, 사전 단어 + 조사, 맞는 말 목록에 있는 말 ({@link KoreanSuggest}가
-     * 깨진 겹모음을 되살린 말을 받아들일 때 쓴다).
+     * 깨진 겹모음을 되살린 말을 받아들일 때 쓴다). 사전에 없는 활용형은 {@link #wordLike}로 따로 본다.
      */
     boolean accepts(String w) {
         if (w.isEmpty()) return false;
         if (dict.contains(w) || withParticle(w)) return true;
         KnownWords k = known;
         return k != null && k.contains(w);
+    }
+
+    /**
+     * 사전에 없어도 다 친 낱말로 그럴듯한지: 용언 어간 + 어미(환장하겠네), 명사 + 조사·서술격. plausible과 달리 사전 단어의
+     * 앞부분이라는 것만으로는 보지 않는다 (괜찮처럼 치다 만 말을 맞는 말로 받아들이지 않게).
+     */
+    boolean wordLike(String word) {
+        if (word.length() < 2) return false;
+        String[] sp = WordSuggester.splitParticle(word);
+        if (sp != null && dict.contains(sp[0]) && morph.nounLike(sp[0])) return true;
+        return verbForm(word);
     }
 
     /** 사전에 없는 word가 한국어 낱말로 그럴듯한지 (사전 단어의 앞부분, 용언 어간 + 어미, 명사 + 조사·서술격). */
