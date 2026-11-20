@@ -1004,12 +1004,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
             @Override
             public boolean hasLongPress() {
-                return panel == PANEL_KEYBOARD && !SwipeAction.NONE.equals(toolbarLongPressAction());
+                return panel == PANEL_KEYBOARD && !SwipeAction.NONE.equals(toolbarLongPressAction(ToolbarSwipes.BAR));
             }
 
             @Override
             public boolean onLongPress(float x, float y) {
-                return onToolbarLongPress(x, y);
+                return onToolbarLongPress(ToolbarSwipes.BAR, x, y);
             }
 
             @Override
@@ -1152,7 +1152,24 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                     } else {
                         onKeyFunction(null, action);
                     }
-                }, drag);
+                }, drag, new SwipeVertical.Hold() {
+                    // 길게 누르기: 정한 기능이 있을 때만 기다린다 (기능키와 같은 시간). 없으면 버튼은 예전처럼 누르기만 받는다.
+                    @Override
+                    public int delayMs() {
+                        return panel == PANEL_KEYBOARD && !SwipeAction.NONE.equals(toolbarLongPressAction(slot))
+                                ? prefs.deletePressMs() : 0;
+                    }
+
+                    @Override
+                    public boolean fire(float x, float y) {
+                        return onToolbarLongPress(slot, x, y);
+                    }
+
+                    @Override
+                    public void move(float x, float y) {
+                        moveToolbarSelect(x, y);
+                    }
+                });
     }
 
     /** 도구 막대(칸 BAR)나 버튼에서 끌어 쓰는 '커서 자유 이동': 어느 칸의 방향 설정을 따르는지와 기준점. */
@@ -1191,21 +1208,21 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
     }
 
-    /** 도구 막대 빈 공간을 길게 누를 때 실행할 기능 (ToolbarSwipes.LONG_PRESS). */
-    private String toolbarLongPressAction() {
-        return ToolbarSwipes.LONG_PRESS.get(prefs, 0, ToolbarSwipes.LONG);
+    /** 도구 막대 빈 공간(칸 BAR)이나 버튼을 길게 누를 때 실행할 기능 (ToolbarSwipes.LONG_PRESS). */
+    private String toolbarLongPressAction(int slot) {
+        return ToolbarSwipes.LONG_PRESS.get(prefs, slot, ToolbarSwipes.LONG);
     }
 
     /** '밀어서 선택'으로 도구 막대를 길게 누른 뒤 미는 중의 기준점. */
     private float toolSelectX, toolSelectY;
 
     /**
-     * 도구 막대 빈 공간을 길게 눌렀다: 정한 기능을 실행한다. '밀어서 선택'이면 스페이스바처럼 손을 떼지 않고 밀어
+     * 도구 막대 빈 공간이나 버튼을 길게 눌렀다: 정한 기능을 실행한다. '밀어서 선택'이면 스페이스바처럼 손을 떼지 않고 밀어
      * 고르도록 true를 돌려준다 (밀지 않고 떼면 아무것도 하지 않는다).
      */
-    private boolean onToolbarLongPress(float x, float y) {
+    private boolean onToolbarLongPress(int slot, float x, float y) {
         if (panel != PANEL_KEYBOARD) return false;
-        String action = toolbarLongPressAction();
+        String action = toolbarLongPressAction(slot);
         if (SwipeAction.NONE.equals(action)) return false;
         feedback.onToolbar();
         if (SwipeAction.SPACE_SELECT.equals(action)) {

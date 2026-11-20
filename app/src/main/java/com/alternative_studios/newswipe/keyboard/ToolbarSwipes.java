@@ -21,8 +21,11 @@ public final class ToolbarSwipes {
         return new String[]{L.t("도구 막대", "Toolbar"), L.t("클립보드", "Clipboard"), L.t("이모지", "Emoji"), L.t("음성 입력", "Voice input"), L.t("실행 취소", "Undo"), L.t("설정", "Settings"), L.t("키보드 숨기기", "Hide keyboard"),
             L.t("한 손 모드", "One-handed mode"), L.t("떠 있는 키보드", "Floating keyboard"), L.t("텍스트 편집", "Text editing")};
     }
-    public static final SwipeSpec SPEC = new SwipeSpec("toolbar",
-            new String[]{"bar", "clipboard", "emoji", "voice", "undo", "settings", "hide", "onehand", "float", "textedit"}) {
+    /** 칸 이름 (도구 막대 자체와 버튼 ID). 밀기와 길게 누르기가 같은 이름을 쓴다. */
+    private static final String[] SLOT_NAMES =
+            {"bar", "clipboard", "emoji", "voice", "undo", "settings", "hide", "onehand", "float", "textedit"};
+
+    public static final SwipeSpec SPEC = new SwipeSpec("toolbar", SLOT_NAMES) {
         @Override
         public String defaultAction(int slot, int dir) {
             if (slot == BAR && dir == Key.SWIPE_LEFT) return SwipeAction.LINE_START;
@@ -101,11 +104,10 @@ public final class ToolbarSwipes {
     public static final int LONG = Key.SWIPE_DOWN;
 
     /**
-     * 도구 막대의 빈 공간을 길게 누를 때 실행할 기능 (스페이스바 길게 누르기처럼). 칸은 도구 막대 하나뿐이고,
-     * 저장 키는 도구 막대 밀기와 같은 묶음의 "swipe_toolbar_bar_long"이라 도구 막대 설정 되돌리기가 함께 지운다.
-     * 처음에는 없음이다.
+     * 도구 막대의 빈 공간과 도구 막대 버튼을 길게 누를 때 실행할 기능 (스페이스바 길게 누르기처럼). 칸은 밀기({@link #SPEC})와
+     * 같고, 저장 키는 같은 묶음의 "swipe_toolbar_칸_long"이라 도구 막대·버튼 설정 되돌리기가 함께 지운다. 처음에는 모두 없음이다.
      */
-    public static final SwipeSpec LONG_PRESS = new SwipeSpec("toolbar", new String[]{"bar"}) {
+    public static final SwipeSpec LONG_PRESS = new SwipeSpec("toolbar", SLOT_NAMES) {
         @Override
         public String defaultAction(int slot, int dir) {
             return SwipeAction.NONE;
@@ -131,17 +133,23 @@ public final class ToolbarSwipes {
 
         @Override
         public String note() {
-            return L.t("도구 막대의 빈 공간을 길게 누를 때 실행할 기능을 고릅니다.", "Choose what happens when you long press an empty part of the toolbar.");
+            return L.t("도구 막대의 빈 공간이나 도구 막대 버튼을 길게 누를 때 실행할 기능을 고릅니다.", "Choose what happens when you long press an empty part of the toolbar or a toolbar button.");
+        }
+
+        /** 켠 버튼의 칸만 보인다 (밀기와 같다). */
+        @Override
+        public boolean shown(Prefs prefs, int slot) {
+            return SPEC.shown(prefs, slot);
         }
 
         @Override
         public String cardTitle(int slot) {
-            return L.t("도구 막대", "Toolbar");
+            return SPEC.cardTitle(slot);
         }
 
         @Override
         public String cardHint(int slot) {
-            return L.t("빈 공간을 길게 누를 때", "Long press on empty space");
+            return slot == BAR ? L.t("빈 공간을 길게 누를 때", "Long press on empty space") : L.t("길게 누를 때", "Long press");
         }
 
         @Override
@@ -164,7 +172,8 @@ public final class ToolbarSwipes {
 
         @Override
         public String dialogTitle(int slot, int dir) {
-            return L.t("도구 막대 빈 공간 길게 누르기", "Long press empty toolbar space");
+            return slot == BAR ? L.t("도구 막대 빈 공간 길게 누르기", "Long press empty toolbar space")
+                    : L.t("'" + SPEC.cardTitle(slot) + "' 길게 누르기", "Long press '" + SPEC.cardTitle(slot) + "'");
         }
     };
 
