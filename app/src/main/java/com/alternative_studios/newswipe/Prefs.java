@@ -198,6 +198,7 @@ public final class Prefs {
     public static final String FLOAT_KEYBOARD = "float_keyboard";
     /** 도구 막대의 떠 있는 키보드 버튼 (기본 감춤). */
     public static final String TOOL_FLOAT = "tool_float";
+    public static final String TOOL_TEXT_EDIT = "tool_text_edit";   // 도구 막대의 텍스트 편집 버튼
     /** 떠 있는 키보드의 자리: 손잡이로 옮길 때마다 저장한다. 프로필(세로·가로·폴더블 내부 화면)마다 따로 둔다. */
     public static final String FLOAT_POS_PREFIX = "float_pos_";
     /** 가로 자리: 좌우 빈 곳 가운데 왼쪽에 둔 몫 (‰, 0 = 왼쪽 끝, 1000 = 오른쪽 끝). */
@@ -875,7 +876,7 @@ public final class Prefs {
             DUBEOLSIK_SHIFT_HIDDEN, KOREAN_SHIFT_FN, BOTTOM_EMOJI_KEY, BOTTOM_CLIPBOARD_KEY, BOTTOM_CURSOR_KEY, BOTTOM_VOICE_KEY};
     /** 도구 막대 버튼 사용자화 화면의 값. */
     private static final String[] TOOL_BUTTON_VALUES = {TOOL_ORDER, TOOL_CLIPBOARD, TOOL_EMOJI, VOICE_KEY, TOOL_UNDO,
-            TOOL_SETTINGS, TOOL_ONE_HAND, TOOL_FLOAT, TOOL_HIDE};
+            TOOL_SETTINGS, TOOL_ONE_HAND, TOOL_FLOAT, TOOL_TEXT_EDIT, TOOL_HIDE};
 
     /** 키보드 사용자화의 한 설정 범위: 목록의 되돌리기에 보이는 이름(null이면 보이지 않음)과 그 범위의 값 키·키 앞부분. */
     private static final class EditorScope {
@@ -2093,13 +2094,15 @@ public final class Prefs {
             case com.alternative_studios.newswipe.keyboard.ToolbarButtons.SETTINGS: return TOOL_SETTINGS;
             case com.alternative_studios.newswipe.keyboard.ToolbarButtons.ONE_HAND: return TOOL_ONE_HAND;
             case com.alternative_studios.newswipe.keyboard.ToolbarButtons.FLOAT: return TOOL_FLOAT;
+            case com.alternative_studios.newswipe.keyboard.ToolbarButtons.TEXT_EDIT: return TOOL_TEXT_EDIT;
             default: return TOOL_HIDE;
         }
     }
 
     public boolean toolShown(String id) {
-        // 떠 있는 키보드 버튼은 나중에 생겨, 켜야 보인다.
-        return sp.getBoolean(toolShownKey(id), !com.alternative_studios.newswipe.keyboard.ToolbarButtons.FLOAT.equals(id));
+        // 떠 있는 키보드·텍스트 편집 버튼은 나중에 생겨, 켜야 보인다.
+        return sp.getBoolean(toolShownKey(id), !com.alternative_studios.newswipe.keyboard.ToolbarButtons.FLOAT.equals(id)
+                && !com.alternative_studios.newswipe.keyboard.ToolbarButtons.TEXT_EDIT.equals(id));
     }
 
     public void setToolShown(String id, boolean shown) { sp.edit().putBoolean(toolShownKey(id), shown).apply(); }

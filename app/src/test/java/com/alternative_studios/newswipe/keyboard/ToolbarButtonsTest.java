@@ -14,7 +14,7 @@ public class ToolbarButtonsTest {
 
     @Test
     public void roundTripsBothSides() {
-        String[] left = {"settings", "clipboard"};
+        String[] left = {"settings", "clipboard", "textedit"};
         String[] right = {"hide", "emoji", "voice", "undo", "onehand", "float"};
         String[][] o = ToolbarButtons.order(ToolbarButtons.join(left, right));
         assertArrayEquals(left, o[0]);
@@ -31,7 +31,7 @@ public class ToolbarButtonsTest {
     @Test
     public void dropsUnknownAndDuplicatesAndAddsMissingToDefaultSide() {
         String[][] o = ToolbarButtons.order("emoji,bogus,emoji|clipboard,emoji");
-        assertArrayEquals(new String[]{"emoji", "voice", "undo"}, o[0]);
+        assertArrayEquals(new String[]{"emoji", "voice", "undo", "textedit"}, o[0]);
         assertArrayEquals(new String[]{"clipboard", "onehand", "float", "settings", "hide"}, o[1]);
     }
 
@@ -39,7 +39,15 @@ public class ToolbarButtonsTest {
     public void oneHandButtonIsAddedToSavedOrders() {
         // 한 손 모드 버튼이 생기기 전에 저장한 배치에는 오른쪽 끝에 붙는다.
         String[][] o = ToolbarButtons.order("clipboard,emoji,voice,undo|settings,hide");
-        assertArrayEquals(new String[]{"clipboard", "emoji", "voice", "undo"}, o[0]);
+        assertArrayEquals(new String[]{"clipboard", "emoji", "voice", "undo", "textedit"}, o[0]);
         assertArrayEquals(new String[]{"settings", "hide", "onehand", "float"}, o[1]);
+    }
+
+    @Test
+    public void textEditButtonIsAddedToEndOfLeftSide() {
+        // 텍스트 편집 버튼이 생기기 전에 저장한 배치에는 왼쪽 끝에 붙는다 (기본으로 꺼져 있어 켜야 보인다).
+        String[][] o = ToolbarButtons.order("undo,clipboard|emoji,voice,onehand,float,settings,hide");
+        assertArrayEquals(new String[]{"undo", "clipboard", "textedit"}, o[0]);
+        assertArrayEquals(new String[]{"emoji", "voice", "onehand", "float", "settings", "hide"}, o[1]);
     }
 }

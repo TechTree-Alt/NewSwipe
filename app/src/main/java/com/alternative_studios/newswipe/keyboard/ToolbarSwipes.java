@@ -16,13 +16,13 @@ public final class ToolbarSwipes {
     /** 도구 막대 자체. 네 방향을 모두 쓴다. */
     public static final int BAR = 0;
     /** 도구 막대의 버튼들. 위·아래만 쓴다. */
-    public static final int CLIPBOARD = 1, EMOJI = 2, VOICE = 3, UNDO = 4, SETTINGS = 5, HIDE = 6, ONE_HAND = 7, FLOAT = 8;
+    public static final int CLIPBOARD = 1, EMOJI = 2, VOICE = 3, UNDO = 4, SETTINGS = 5, HIDE = 6, ONE_HAND = 7, FLOAT = 8, TEXT_EDIT = 9;
     private static String[] labels() {
         return new String[]{L.t("도구 막대", "Toolbar"), L.t("클립보드", "Clipboard"), L.t("이모지", "Emoji"), L.t("음성 입력", "Voice input"), L.t("실행 취소", "Undo"), L.t("설정", "Settings"), L.t("키보드 숨기기", "Hide keyboard"),
-            L.t("한 손 모드", "One-handed mode"), L.t("떠 있는 키보드", "Floating keyboard")};
+            L.t("한 손 모드", "One-handed mode"), L.t("떠 있는 키보드", "Floating keyboard"), L.t("텍스트 편집", "Text editing")};
     }
     public static final SwipeSpec SPEC = new SwipeSpec("toolbar",
-            new String[]{"bar", "clipboard", "emoji", "voice", "undo", "settings", "hide", "onehand", "float"}) {
+            new String[]{"bar", "clipboard", "emoji", "voice", "undo", "settings", "hide", "onehand", "float", "textedit"}) {
         @Override
         public String defaultAction(int slot, int dir) {
             if (slot == BAR && dir == Key.SWIPE_LEFT) return SwipeAction.LINE_START;

@@ -42,6 +42,7 @@ import com.alternative_studios.newswipe.clipboard.ClipImageProvider;
 import com.alternative_studios.newswipe.clipboard.ClipImages;
 import com.alternative_studios.newswipe.clipboard.ClipboardHistory;
 import com.alternative_studios.newswipe.clipboard.ClipboardPanel;
+import com.alternative_studios.newswipe.edit.TextEditPanel;
 import com.alternative_studios.newswipe.cjk.Candidate;
 import com.alternative_studios.newswipe.cjk.CjkComposer;
 import com.alternative_studios.newswipe.cjk.CjkPack;
@@ -82,12 +83,13 @@ import java.util.concurrent.Executors;
 
 /** NewSwipe 키보드 서비스. */
 public final class NewSwipeIME extends InputMethodService implements KeyboardView.Listener,
-        EmojiPanel.Listener, ClipboardPanel.Listener, ClipboardManager.OnPrimaryClipChangedListener {
+        EmojiPanel.Listener, ClipboardPanel.Listener, TextEditPanel.Listener, ClipboardManager.OnPrimaryClipChangedListener {
 
     private static final int PANEL_KEYBOARD = 0;
     private static final int PANEL_EMOJI = 1;
     private static final int PANEL_CLIPBOARD = 2;
     private static final int PANEL_SEARCH = 3;
+    private static final int PANEL_TEXT_EDIT = 4;
     private static final String SENSITIVE_EXTRA = "android.content.extra.IS_SENSITIVE";
 
     private Prefs prefs;
@@ -118,7 +120,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private FrameLayout topSlot;
     private SwipeStrip toolbar;
     private IconButton clipboardButton, emojiButton, settingsButton, hideButton;
-    private IconButton voiceButton, undoButton, oneHandButton, floatButton;
+    private IconButton voiceButton, undoButton, oneHandButton, floatButton, textEditButton;
     /**
      * 한 손 모드 배치: body(가로) = [column(도구 막대·검색 결과·자판) | sideStrip(반대편 빈 곳)], 그 아래 liftSpace.
      * 한 손 모드가 꺼져 있으면 column만 꽉 차게 들어가고 sideStrip은 숨긴다. liftSpace는 가로 모드·폴더블 내부 화면의
@@ -169,6 +171,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private KeyboardView keyboard;
     private EmojiPanel emojiPanel;
     private ClipboardPanel clipPanel;
+    private TextEditPanel textEditPanel;
     private int toolbarHeight, keyboardHeight;
     /** keyboardHeight 중 키 줄이 차지하는 부분 (여백 제외). 일본어 자판 높이는 이 부분만 비율대로 바꾼다. */
     private int keyRowsHeight;
@@ -437,6 +440,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         searchWaiting = false;
         releaseEmoji();
         releaseClipboard();
+        releaseTextEdit();
         pruneClipboard();
         suggester.release();
         warmingKo = warmingEn = false;
@@ -483,6 +487,14 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             clipPanel.dismissDialog();
             if (content != null) content.removeView(clipPanel);
             clipPanel = null;
+        }
+    }
+
+    private void releaseTextEdit() {
+        if (textEditPanel != null) {
+            textEditPanel.cancelRepeat();
+            if (content != null) content.removeView(textEditPanel);
+            textEditPanel = null;
         }
     }
 
@@ -652,6 +664,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         theme = KeyboardTheme.of(this);
         emojiPanel = null;
         clipPanel = null;
+        textEditPanel = null;
         messageView = null;
         panel = PANEL_KEYBOARD;
         toolbarHeight = toolbarHeightPx();
@@ -999,6 +1012,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         bar.addView(voiceButton);
         undoButton = toolButton(Icons.UNDO, L.t("실행 취소", "Undo"), v -> undo());
         bar.addView(undoButton);
+        textEditButton = toolButton(Icons.TEXT_EDIT, L.t("텍스트 편집", "Text editing"), v -> toggleTextEdit());
+        bar.addView(textEditButton);
         toolSpacer = new View(this);
         bar.addView(toolSpacer, new LinearLayout.LayoutParams(0, 1, 1f));
         // 방금 복사한 내용 칩은 빈 공간 자리에 뜬다 (도구 버튼은 그대로 둔다).
@@ -1037,6 +1052,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         attachToolSwipe(hideButton, ToolbarSwipes.HIDE);
         attachToolSwipe(oneHandButton, ToolbarSwipes.ONE_HAND);
         attachToolSwipe(floatButton, ToolbarSwipes.FLOAT);
+        attachToolSwipe(textEditButton, ToolbarSwipes.TEXT_EDIT);
         // 기능이 있는 방향은 버튼이 처리하고, 없는 방향은 도구 막대를 그 방향으로 민 것으로 본다.
         // 자동 완성 칩 줄은 좌우로 밀어 스크롤하므로, 그 줄 위의 좌우 밀기는 도구 막대가 가로채지 않는다.
         bar.setSwipeOwner((v, dir) -> v == autofillBar || v == candidateBar
@@ -1054,6 +1070,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             case ToolbarButtons.SETTINGS: return settingsButton;
             case ToolbarButtons.ONE_HAND: return oneHandButton;
             case ToolbarButtons.FLOAT: return floatButton;
+            case ToolbarButtons.TEXT_EDIT: return textEditButton;
             default: return hideButton;
         }
     }
@@ -1169,6 +1186,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (v == hideButton) return ToolbarSwipes.HIDE;
         if (v == oneHandButton) return ToolbarSwipes.ONE_HAND;
         if (v == floatButton) return ToolbarSwipes.FLOAT;
+        if (v == textEditButton) return ToolbarSwipes.TEXT_EDIT;
         return -1;
     }
 
@@ -2283,6 +2301,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         keyboardTouching = false;   // 손을 떼는 이벤트 없이 끝났을 수 있다
         if (emojiPanel != null) emojiPanel.dismissTones();
         if (clipPanel != null) clipPanel.dismissDialog();
+        if (textEditPanel != null) textEditPanel.cancelRepeat();
         dismissForgetDialog();
         if (cfgLearn) runIo(() -> {   // 바뀐 것이 있을 때만 쓴다
             userWords.save();
@@ -2370,6 +2389,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         selStart = newSelStart;
         selEnd = newSelEnd;
         if (panel == PANEL_SEARCH) return;
+        if (textEditPanel != null && panel == PANEL_TEXT_EDIT) textEditPanel.setHasSelection(hasSelection());
         // 글자를 선택하거나 선택을 풀면 선택 편집 칩을 띄우거나 감춘다.
         if (hadSelection != (newSelStart >= 0 && newSelEnd >= 0 && newSelStart != newSelEnd)) onAutofillChipsChanged();
         // 사용자가 커서를 옮기면 조합 중인 글자를 확정하고 조합을 끝낸다.
@@ -2570,9 +2590,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             searchComposing = "";
         }
         if (p != PANEL_KEYBOARD && p != PANEL_SEARCH) commitComposing();
+        if (p != PANEL_TEXT_EDIT) editSelecting = false;   // 선택 모드는 텍스트 편집 창 안에서만 쓴다
         panel = p;
         if (root == null) return;
-        boolean full = p == PANEL_EMOJI || p == PANEL_CLIPBOARD;
+        boolean full = fullPanel(p);
         placeTopSlot();
         topSlot.setVisibility(full || (p == PANEL_KEYBOARD && toolbarGone()) ? View.GONE : View.VISIBLE);
         refreshToolbarVisibility();
@@ -2587,6 +2608,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             emojiPanel.dismissTones();
         }
         if (clipPanel != null) clipPanel.setVisibility(p == PANEL_CLIPBOARD ? View.VISIBLE : View.GONE);
+        if (textEditPanel != null) {
+            textEditPanel.setVisibility(p == PANEL_TEXT_EDIT ? View.VISIBLE : View.GONE);
+            if (p != PANEL_TEXT_EDIT) textEditPanel.cancelRepeat();
+        }
 
         if (p == PANEL_EMOJI) {
             ensureEmojiPanel();
@@ -2598,6 +2623,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             ensureClipPanel();
             clipPanel.setVisibility(View.VISIBLE);
             refreshClipboard();
+        } else if (p == PANEL_TEXT_EDIT) {
+            ensureTextEditPanel();
+            textEditPanel.setVisibility(View.VISIBLE);
+            // 이미 글자를 선택해 두었으면 선택 모드로 연다: 이동 버튼이 그 선택을 넓히거나 줄인다.
+            setEditSelecting(hasSelection());
+            textEditPanel.setHasSelection(hasSelection());
         } else if (p == PANEL_SEARCH) {
             // 이모지 이름은 한글·영어로만 찾으므로 일본어·중국어에서는 검색창에만 영어 자판을 쓴다.
             if (cjkLang != null) setLayoutKind(KeyboardLayout.ENGLISH);
@@ -2666,7 +2697,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     private void updatePanelSizes() {
         if (content == null) return;
-        boolean full = panel == PANEL_EMOJI || panel == PANEL_CLIPBOARD;
+        boolean full = fullPanel(panel);
         // 외장 키보드로 도구 막대만 보일 때는 자판 자리를 비운다. 이모지·클립보드 창은 그때도 원래 크기로 연다.
         boolean barOnly = toolbarOnlyNow();
         keyboard.setVisibility(full || barOnly ? View.GONE : View.VISIBLE);
@@ -2702,6 +2733,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
         if (emojiPanel != null) setHeight(emojiPanel, keyboardHeight + barSlotHeight());
         if (clipPanel != null) setHeight(clipPanel, keyboardHeight + barSlotHeight());
+        if (textEditPanel != null) setHeight(textEditPanel, keyboardHeight + barSlotHeight());
         // 자판 위에 도구 막대가 있으면 키 미리보기가 그 위까지 올라갈 수 있다 (아래에 두었거나 껐으면 자판 안에서 멈춘다).
         keyboard.setOverflowTop(panel == PANEL_SEARCH ? toolbarHeight + resultStripHeight()
                 : toolbarGone() || prefs.toolbarBottom() ? 0 : barSlotHeight());
@@ -2716,7 +2748,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     /** 이모지·클립보드 패널을 만들 때 쓴 맨 위 줄 높이 (도구 막대 높이). 높이 설정이 바뀌면 패널을 다시 만든다. */
-    private int emojiPanelTop, clipPanelTop;
+    private int emojiPanelTop, clipPanelTop, textEditPanelTop;
 
     /**
      * 도구 막대 높이가 바뀌었으면, 예전 높이로 만든 이모지·클립보드 패널을 버린다 (다음에 열 때 새 높이로 만든다).
@@ -2730,6 +2762,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             emojiPanel = null;
         }
         if (clipPanel != null && clipPanelTop != toolbarHeight && panel != PANEL_CLIPBOARD) releaseClipboard();
+        if (textEditPanel != null && textEditPanelTop != toolbarHeight && panel != PANEL_TEXT_EDIT) releaseTextEdit();
     }
 
     /**
@@ -2742,6 +2775,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         int t = Ui.dp(this, padPrefs().padTopDp()), b = Ui.dp(this, padPrefs().padBottomDp());
         if (emojiPanel != null) emojiPanel.setInsets(l, r, l + halfGap, t, r + halfGap, b);
         if (clipPanel != null) clipPanel.setInsets(l, r, l + halfGap, t, r + halfGap, b);
+        if (textEditPanel != null) {
+            textEditPanel.setKeyStyle(Ui.dp(this, prefs.keyRadiusDp()), Ui.dp(this, prefs.keyGapXDp()),
+                    Ui.dp(this, prefs.keyGapYDp()));
+            textEditPanel.setInsets(l, r, l + halfGap, t, r + halfGap, b);
+        }
     }
 
     private void ensureEmojiPanel() {
@@ -2819,6 +2857,21 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 // 서비스가 끝나는 중
             }
         });
+    }
+
+    /** 자판과 도구 막대 자리를 모두 덮는 창(이모지·클립보드·텍스트 편집)인지. */
+    private static boolean fullPanel(int p) {
+        return p == PANEL_EMOJI || p == PANEL_CLIPBOARD || p == PANEL_TEXT_EDIT;
+    }
+
+    private void ensureTextEditPanel() {
+        if (textEditPanel != null) return;
+        // 맨 위 줄(뒤로 가기·제목·실행 취소·다시 실행)은 도구 막대 자리라 도구 막대 높이를 따른다.
+        textEditPanelTop = toolbarHeight;
+        textEditPanel = new TextEditPanel(this, theme, toolbarHeight, this);
+        applyPanelInsets();
+        content.addView(textEditPanel, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                keyboardHeight + barSlotHeight()));
     }
 
     private void ensureClipPanel() {
@@ -5260,7 +5313,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private static final List<String> SEARCH_SAFE = java.util.Arrays.asList(SwipeAction.NONE, SwipeAction.IME_PICKER,
             SwipeAction.LANGUAGE, SwipeAction.HIDE_KEYBOARD, SwipeAction.SETTINGS, SwipeAction.DELETE_WORD,
             SwipeAction.DELETE_LINE_START, SwipeAction.SPACE, SwipeAction.BACKSPACE,
-            SwipeAction.EMOJI_OPEN, SwipeAction.CLIPBOARD_OPEN, SwipeAction.ONE_HAND_LEFT, SwipeAction.ONE_HAND_RIGHT, SwipeAction.FLOAT_KEYBOARD);
+            SwipeAction.EMOJI_OPEN, SwipeAction.CLIPBOARD_OPEN, SwipeAction.TEXT_EDIT_OPEN, SwipeAction.ONE_HAND_LEFT, SwipeAction.ONE_HAND_RIGHT, SwipeAction.FLOAT_KEYBOARD);
 
     /** 추천 단어 줄이 떠 있는지 (자판을 위로 밀어 추천 단어를 입력할 수 있을 때). */
     @Override
@@ -5294,6 +5347,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 break;
             case SwipeAction.EMOJI_OPEN:
                 showPanel(PANEL_EMOJI);
+                break;
+            case SwipeAction.TEXT_EDIT_OPEN:
+                toggleTextEdit();
                 break;
             case SwipeAction.EMOJI_LATEST:
                 insertLastEmoji();
@@ -5453,6 +5509,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         boolean hadSelection = selStart >= 0 && selEnd >= 0 && selStart != selEnd;
         selStart = selEnd = pos;
         if (hadSelection) onAutofillChipsChanged();
+        if (hadSelection && textEditPanel != null && panel == PANEL_TEXT_EDIT) textEditPanel.setHasSelection(false);
     }
 
     /** 입력란의 메뉴 동작(모두 선택, 복사, 잘라내기, 붙여넣기)을 실행한다. */
@@ -6061,6 +6118,213 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     @Override
     public void onClipBack() {
         showPanel(PANEL_KEYBOARD);
+    }
+
+    // ---------------------------------------------------------------- 텍스트 편집 창
+
+    /** 텍스트 편집 창의 선택 모드: 켜져 있으면 이동 버튼이 커서 대신 선택 영역의 움직이는 끝을 옮긴다. */
+    private boolean editSelecting;
+
+    /** 텍스트 편집 창을 연다. 이미 열려 있으면 닫고 자판으로 돌아간다. */
+    private void toggleTextEdit() {
+        showPanel(panel == PANEL_TEXT_EDIT ? PANEL_KEYBOARD : PANEL_TEXT_EDIT);
+    }
+
+    /** 입력란에 선택한 글자가 있는지 (입력란이 알려 준 위치로). */
+    private boolean hasSelection() {
+        return selStart >= 0 && selEnd >= 0 && selStart != selEnd;
+    }
+
+    /** 선택 모드를 켜거나 끈다. 켤 때의 커서(선택 영역이 있으면 그 시작점)가 움직이지 않는 끝이 된다. 꺼도 선택은 남는다. */
+    private void setEditSelecting(boolean on) {
+        if (on && !editSelecting) {
+            commitComposing();
+            selectAnchor = selStart;
+        }
+        editSelecting = on;
+        if (textEditPanel != null) textEditPanel.setSelecting(on);
+    }
+
+    @Override
+    public void onEditBack() {
+        showPanel(PANEL_KEYBOARD);
+    }
+
+    @Override
+    public void onEditPress(boolean repeat) {
+        if (repeat) {
+            feedback.onRepeat();
+        } else {
+            feedback.onKey(null);
+            forgetCursorEdges();   // 버튼을 새로 눌렀다: 그사이 커서가 어디로 갔는지 모르므로 새로 센다
+        }
+    }
+
+    @Override
+    public void onEditAction(int action) {
+        if (panel != PANEL_TEXT_EDIT) return;
+        switch (action) {
+            case TextEditPanel.SELECT:
+                setEditSelecting(!editSelecting);
+                break;
+            case TextEditPanel.MOVE_LEFT: editMove(-1, 0); break;
+            case TextEditPanel.MOVE_RIGHT: editMove(1, 0); break;
+            case TextEditPanel.MOVE_UP: editMove(0, -1); break;
+            case TextEditPanel.MOVE_DOWN: editMove(0, 1); break;
+            case TextEditPanel.MOVE_UP_LEFT: editMove(-1, -1); break;
+            case TextEditPanel.MOVE_UP_RIGHT: editMove(1, -1); break;
+            case TextEditPanel.MOVE_DOWN_LEFT: editMove(-1, 1); break;
+            case TextEditPanel.MOVE_DOWN_RIGHT: editMove(1, 1); break;
+            case TextEditPanel.LINE_START:
+            case TextEditPanel.LINE_END:
+                if (beginEdit()) {
+                    boolean end = action == TextEditPanel.LINE_END;
+                    if (editSelecting) extendSelection(end ? KeyEvent.KEYCODE_MOVE_END : KeyEvent.KEYCODE_MOVE_HOME, !end, false);
+                    else moveCursorToLineEdge(end);
+                    endEdit();
+                }
+                break;
+            case TextEditPanel.TEXT_START:
+            case TextEditPanel.TEXT_END:
+                if (beginEdit()) {
+                    sendCtrlKey(action == TextEditPanel.TEXT_END ? KeyEvent.KEYCODE_MOVE_END : KeyEvent.KEYCODE_MOVE_HOME,
+                            editSelecting);
+                    endEdit();
+                }
+                break;
+            case TextEditPanel.WORD_LEFT:
+            case TextEditPanel.WORD_RIGHT:
+                editWord(action == TextEditPanel.WORD_RIGHT);
+                break;
+            case TextEditPanel.CUT:
+                contextAction(android.R.id.cut);
+                setEditSelecting(false);
+                break;
+            case TextEditPanel.COPY:
+                copySelection(false);
+                break;
+            case TextEditPanel.PASTE:
+                contextAction(android.R.id.paste);
+                setEditSelecting(false);
+                break;
+            case TextEditPanel.SELECT_ALL:
+                contextAction(android.R.id.selectAll);
+                // 글 전체를 고른 채 선택 모드로: 이동 버튼은 맨 뒤 끝을 옮긴다.
+                setEditSelecting(true);
+                selectAnchor = 0;
+                break;
+            case TextEditPanel.BACKSPACE: {
+                boolean had = hasSelection();
+                if (beginEdit()) handleDelete();
+                if (had) setEditSelecting(false);
+                break;
+            }
+            case TextEditPanel.FORWARD_DELETE:
+                deleteForward();
+                break;
+            case TextEditPanel.UNDO:
+                undo();
+                break;
+            case TextEditPanel.REDO:
+                redo();
+                break;
+            default:
+                break;
+        }
+    }
+
+    /**
+     * 텍스트 편집 창의 방향 버튼: 가로 dx, 세로 dy칸 옮긴다 (대각선은 둘 다). 선택 모드면 선택 영역의 움직이는 끝을 옮긴다.
+     * 대각선은 좌우를 먼저 옮긴다: 좌우는 커서 위치를 바로 정하지만, 위아래는 방향 키를 보내 앱이 처리할 때까지 커서 위치를 모른다.
+     */
+    private void editMove(int dx, int dy) {
+        if (editSelecting) {
+            if (dx != 0) editExtend(dx < 0 ? KeyEvent.KEYCODE_DPAD_LEFT : KeyEvent.KEYCODE_DPAD_RIGHT, dx < 0);
+            if (dy != 0 && multiLineField()) editExtend(dy < 0 ? KeyEvent.KEYCODE_DPAD_UP : KeyEvent.KEYCODE_DPAD_DOWN, dy < 0);
+        } else {
+            if (dx != 0) moveCursor(dx);
+            if (dy != 0) moveCursorVertical(dy);
+        }
+    }
+
+    /** 선택 영역의 움직이는 끝을 Shift+방향 키로 옮긴다. 글의 맨 앞·맨 뒤면 보내지 않는다 (포커스가 넘어가지 않게). */
+    private void editExtend(int keyCode, boolean backward) {
+        InputConnection ic = getCurrentInputConnection();
+        if (ic == null) return;
+        // 그사이 입력란을 눌러 선택을 바꿨다: 지금 선택의 시작점을 움직이지 않는 끝으로 삼는다.
+        if (selectAnchor != selStart && selectAnchor != selEnd) selectAnchor = selStart;
+        if (!selectionCanMove(ic, backward)) return;
+        extendSelection(keyCode, backward, false);
+    }
+
+    /**
+     * 단어 단위로 옮긴다. 선택 모드면 선택 영역의 움직이는 끝을 다음 단어 경계로 옮긴다: 앱마다 Ctrl+Shift+←/→ 지원이
+     * 달라서 경계를 직접 찾아 선택 영역을 정하고, 글이나 위치를 알려 주지 않는 입력란에서만 그 키를 보낸다.
+     */
+    private void editWord(boolean right) {
+        if (!beginEdit()) return;
+        if (!editSelecting) {
+            moveCursorByWord(right);
+            endEdit();
+            return;
+        }
+        InputConnection ic = getCurrentInputConnection();
+        if (selStart < 0 || selEnd < 0) {
+            sendCtrlKey(right ? KeyEvent.KEYCODE_DPAD_RIGHT : KeyEvent.KEYCODE_DPAD_LEFT, true);
+            endEdit();
+            return;
+        }
+        if (selectAnchor != selStart && selectAnchor != selEnd) selectAnchor = selStart;
+        int anchor = selectAnchor;
+        int focus = anchor == selStart ? selEnd : selStart;
+        int lo = Math.min(selStart, selEnd), hi = Math.max(selStart, selEnd);
+        // 움직이는 끝에서 그쪽 방향의 글: 선택 영역 바깥쪽이면 커서 앞뒤 글, 안쪽으로 줄어드는 쪽이면 선택한 글이 앞에(뒤에) 붙는다.
+        CharSequence around;
+        if (right) {
+            CharSequence after = ic.getTextAfterCursor(256, 0);
+            if (focus == hi) {
+                around = after;
+            } else {
+                CharSequence sel = ic.getSelectedText(0);
+                around = sel == null ? null : TextUtils.concat(sel, after == null ? "" : after);
+            }
+        } else {
+            CharSequence before = ic.getTextBeforeCursor(256, 0);
+            if (focus == lo) {
+                around = before;
+            } else {
+                CharSequence sel = ic.getSelectedText(0);
+                around = sel == null ? null : TextUtils.concat(before == null ? "" : before, sel);
+            }
+        }
+        if (around == null) {
+            sendCtrlKey(right ? KeyEvent.KEYCODE_DPAD_RIGHT : KeyEvent.KEYCODE_DPAD_LEFT, true);
+            endEdit();
+            return;
+        }
+        int n = com.alternative_studios.newswipe.suggest.WordBoundary.distance(around, right);
+        int to = right ? focus + n : Math.max(0, focus - n);
+        ic.setSelection(anchor, to);
+        // 입력란이 알려 주기 전에 이어서 눌러도 이어서 움직이도록 바로 기억해 둔다.
+        selStart = anchor;
+        selEnd = to;
+        if (textEditPanel != null) textEditPanel.setHasSelection(anchor != to);
+        endEdit();
+    }
+
+    /** 커서 뒤 글자 하나(선택한 글자가 있으면 그것)를 지운다. */
+    private void deleteForward() {
+        if (!beginEdit()) return;
+        InputConnection ic = getCurrentInputConnection();
+        CharSequence sel = ic.getSelectedText(0);
+        if (sel != null && sel.length() > 0) {
+            ic.commitText("", 1);
+            setEditSelecting(false);
+        } else if (!textField() || !ic.deleteSurroundingTextInCodePoints(0, 1)) {
+            // 터미널 등 글을 알려 주지 않는 입력란이나, 글자 지우기를 받지 않는 입력란: Delete 키를 보낸다.
+            sendDownUpKeyEvents(KeyEvent.KEYCODE_FORWARD_DEL);
+        }
+        endEdit();
     }
 
     @Override
