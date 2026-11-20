@@ -78,8 +78,11 @@ public final class TextEditPanel extends LinearLayout {
     /** '선택'을 밀 때 한 칸 옮기는 거리 (px, 스페이스바 커서 이동과 같다)와 길게 누르기 시간 (ms). */
     private float stepX, stepY;
     private int longPressMs = 350;
-    /** 지우기 버튼(⌫·⌦)을 누르고 있을 때 지우는 간격 (ms, 자판 지우기 키의 '지우는 속도'와 같다). */
-    private long deleteRepeatMs = REPEAT_MS;
+    /**
+     * 지우기 버튼(⌫·⌦)을 누른 뒤 되풀이를 시작하기까지의 시간과 지우는 간격 (ms). 자판 지우기 키의 길게 누르기 시간·
+     * '지우는 속도'와 같다.
+     */
+    private long deleteStartMs = REPEAT_START_MS, deleteRepeatMs = REPEAT_MS;
     /** 상하좌우 버튼을 이만큼(px) 밀면 그쪽 끝으로 간다 (기능키 밀기 거리와 같다). */
     private float swipePx;
 
@@ -232,8 +235,9 @@ public final class TextEditPanel extends LinearLayout {
     }
 
     /** '선택'을 밀 때 한 칸 옮기는 거리 (px)와 길게 누르기 시간 (ms). */
-    /** 지우기 버튼을 누르고 있을 때 지우는 간격 (ms). */
-    public void setDeleteRepeatMs(long ms) {
+    /** 지우기 버튼을 누른 뒤 되풀이를 시작하기까지의 시간과, 누르고 있을 때 지우는 간격 (ms). */
+    public void setDeleteRepeat(long startMs, long ms) {
+        deleteStartMs = Math.max(1, startMs);
         deleteRepeatMs = Math.max(1, ms);
     }
 
@@ -384,6 +388,11 @@ public final class TextEditPanel extends LinearLayout {
             setOnClickListener(v -> fire());
         }
 
+        /** 처음 누른 뒤 되풀이를 시작하기까지 (ms): 지우기 버튼은 자판 지우기 키의 길게 누르기 시간, 나머지는 REPEAT_START_MS. */
+        private long startDelay() {
+            return action == BACKSPACE || action == FORWARD_DELETE ? deleteStartMs : REPEAT_START_MS;
+        }
+
         /** 되풀이 간격 (ms): 지우기 버튼은 자판의 지우는 속도를 따르고, 나머지는 REPEAT_MS. */
         private long interval() {
             return action == BACKSPACE || action == FORWARD_DELETE ? deleteRepeatMs : REPEAT_MS;
@@ -471,7 +480,7 @@ public final class TextEditPanel extends LinearLayout {
                     setPressed(true);
                     held = true;
                     fire();
-                    postDelayed(again, REPEAT_START_MS);
+                    postDelayed(again, startDelay());
                     return true;
                 case MotionEvent.ACTION_MOVE:
                     // 손가락이 버튼 밖으로 나가면 되풀이를 멈춘다.
