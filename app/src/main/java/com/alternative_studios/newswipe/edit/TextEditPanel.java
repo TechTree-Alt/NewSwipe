@@ -75,7 +75,7 @@ public final class TextEditPanel extends LinearLayout {
     private final TextView title;
     private float radius;
     private boolean selecting;
-    private int selectedCount;
+    private int selectedCount, selectedSpaces = -1;
     /** '선택'을 밀 때 한 칸 옮기는 거리 (px, 스페이스바 커서 이동과 같다)와 길게 누르기 시간 (ms). */
     private float stepX, stepY;
     private int longPressMs = 350;
@@ -100,7 +100,10 @@ public final class TextEditPanel extends LinearLayout {
         title.setTextColor(theme.text);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
         title.setSingleLine(true);
-        LayoutParams titleLp = new LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        title.setGravity(Gravity.CENTER_VERTICAL);
+        // 선택한 글자 수가 길어지면(괄호 포함) 한 줄에 들어가도록 글자를 줄인다.
+        title.setAutoSizeTextTypeUniformWithConfiguration(10, 16, 1, TypedValue.COMPLEX_UNIT_SP);
+        LayoutParams titleLp = new LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
         titleLp.leftMargin = Ui.dp(context, 10);
         header.addView(title, titleLp);
         header.addView(headerButton(context, Icons.UNDO, L.t("실행 취소", "Undo"), topBarHeight,
@@ -195,18 +198,30 @@ public final class TextEditPanel extends LinearLayout {
                 : L.t("선택 모드 켜기", "Turn on selection mode"));
     }
 
-    /** 선택한 글자 수. 0이 아니면 맨 위 줄 제목 자리에 보이고, 0이면 잘라내기·복사를 흐리게 보인다. */
-    public void setSelectedCount(int count) {
-        if (selectedCount == count) return;
+    /**
+     * 선택한 글자 수와 그 가운데 띄어쓰기·줄바꿈(공백 글자) 수. 글자 수가 0이 아니면 맨 위 줄 제목 자리에 보이고,
+     * 0이면 잘라내기·복사를 흐리게 보인다. 공백 수를 모르면(아주 길게 골라 글을 읽지 않았을 때) -1이고 괄호는 뺀다.
+     */
+    public void setSelectedCount(int count, int spaces) {
+        if (selectedCount == count && selectedSpaces == spaces) return;
         selectedCount = count;
+        selectedSpaces = spaces;
         cut.setDim(count == 0);
         copy.setDim(count == 0);
         title.setText(titleText());
     }
 
-    private String titleText() {
-        return selectedCount > 0 ? L.t(selectedCount + "자 선택됨", selectedCount + " selected")
-                : L.t("텍스트 편집", "Text editing");
+    private CharSequence titleText() {
+        if (selectedCount <= 0) return L.t("텍스트 편집", "Text editing");
+        String main = L.t(selectedCount + "자 선택됨", selectedCount + " selected");
+        if (selectedSpaces < 0) return main;
+        // 괄호 부분은 작고 옅게: 제목 줄이 좁으면 글자 크기가 함께 줄어든다 (자동 크기).
+        String extra = L.t(" (띄어쓰기·줄바꿈 " + selectedSpaces + "자 포함)",
+                " (incl. " + selectedSpaces + (selectedSpaces == 1 ? " space or line break)" : " spaces and line breaks)"));
+        android.text.SpannableString s = new android.text.SpannableString(main + extra);
+        s.setSpan(new android.text.style.RelativeSizeSpan(0.8f), main.length(), s.length(), 0);
+        s.setSpan(new android.text.style.ForegroundColorSpan(theme.hint), main.length(), s.length(), 0);
+        return s;
     }
 
     /** 엔터 버튼의 아이콘 (입력란에 따라 줄바꿈·보내기·검색 등, 자판의 엔터 키와 같다). */

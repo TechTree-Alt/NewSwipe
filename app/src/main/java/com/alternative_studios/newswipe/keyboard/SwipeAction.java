@@ -88,7 +88,7 @@ public final class SwipeAction {
             {EMOJI_OPEN, L.t("이모지 열기", "Open emoji"), L.t("이모지", "Emoji")},
             {EMOJI_LATEST, L.t("가장 최근 사용한 이모지 붙여넣기", "Paste most recent emoji"), L.t("최근 이모지", "Recent emoji")},
             {EMOJI_PINNED, L.t("첫 번째 고정 이모지 붙여넣기", "Paste first pinned emoji"), L.t("고정 이모지", "Pinned emoji")},
-            {TEXT_EDIT_OPEN, L.t("텍스트 편집 창 열기·닫기", "Open or close text editing"), L.t("텍스트 편집", "Text editing")},
+            {TEXT_EDIT_OPEN, L.t("텍스트 편집 창 열기", "Open text editing"), L.t("텍스트 편집", "Text editing")},
             {IME_PICKER, L.t("입력 방법 전환 창 열기", "Open input method picker"), L.t("입력기 선택", "Switch keyboard")},
             {LANGUAGE, L.t("언어 전환", "Switch language"), L.t("언어 전환", "Switch language")},
             {LANGUAGE_PICK, L.t("언어 고르기 (말풍선에서 골라 바꾸기)", "Pick language (choose from a popup)"), L.t("언어 고르기", "Pick language")},

@@ -1001,6 +1001,21 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             public void onDragMove(float x, float y) {
                 moveToolbarDrag(x, y);
             }
+
+            @Override
+            public boolean hasLongPress() {
+                return panel == PANEL_KEYBOARD && !SwipeAction.NONE.equals(toolbarLongPressAction());
+            }
+
+            @Override
+            public boolean onLongPress(float x, float y) {
+                return onToolbarLongPress(x, y);
+            }
+
+            @Override
+            public void onLongDrag(float x, float y) {
+                moveToolbarSelect(x, y);
+            }
         });
         bar.setGravity(Gravity.CENTER_VERTICAL);
         // 좌우 여백은 applySettings에서 자판의 좌우 여백과 같게 맞춘다.
@@ -1173,6 +1188,48 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             onCursorMoveVertical(dir);
             toolDragY += dir * stepY;
             dv = y - toolDragY;
+        }
+    }
+
+    /** 도구 막대 빈 공간을 길게 누를 때 실행할 기능 (ToolbarSwipes.LONG_PRESS). */
+    private String toolbarLongPressAction() {
+        return ToolbarSwipes.LONG_PRESS.get(prefs, 0, ToolbarSwipes.LONG);
+    }
+
+    /** '밀어서 선택'으로 도구 막대를 길게 누른 뒤 미는 중의 기준점. */
+    private float toolSelectX, toolSelectY;
+
+    /**
+     * 도구 막대 빈 공간을 길게 눌렀다: 정한 기능을 실행한다. '밀어서 선택'이면 스페이스바처럼 손을 떼지 않고 밀어
+     * 고르도록 true를 돌려준다 (밀지 않고 떼면 아무것도 하지 않는다).
+     */
+    private boolean onToolbarLongPress(float x, float y) {
+        if (panel != PANEL_KEYBOARD) return false;
+        String action = toolbarLongPressAction();
+        if (SwipeAction.NONE.equals(action)) return false;
+        feedback.onToolbar();
+        if (SwipeAction.SPACE_SELECT.equals(action)) {
+            onSelectStart();
+            toolSelectX = x;
+            toolSelectY = y;
+            return true;
+        }
+        onKeyFunction(null, action);
+        return false;
+    }
+
+    /** 도구 막대를 길게 누른 뒤 밀어서 선택: 스페이스바와 같은 거리로, 좌우는 글자·위아래는 줄 단위로 고른다. */
+    private void moveToolbarSelect(float x, float y) {
+        float stepX = keyboard.cursorStepX(), stepY = keyboard.cursorStepY();
+        while (Math.abs(x - toolSelectX) >= stepX) {
+            int dir = x > toolSelectX ? 1 : -1;
+            onSelectMove(dir);
+            toolSelectX += dir * stepX;
+        }
+        while (Math.abs(y - toolSelectY) >= stepY) {
+            int dir = y > toolSelectY ? 1 : -1;
+            onSelectMoveVertical(dir);
+            toolSelectY += dir * stepY;
         }
     }
 
@@ -1474,6 +1531,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         keyboard.setDeleteRepeatRates(prefs.deleteRepeatRate(), prefs.deleteWordRepeatRate());
         // 길게 누르기·밀기는 모두 키마다 정한 기능을 쓴다 (키보드 사용자화에서 키를 눌러 정한다).
         keyboard.setFunctionLongPressMs(prefs.deletePressMs());
+        if (toolbar != null) toolbar.setLongPressMs(prefs.deletePressMs());   // 도구 막대 길게 누르기도 기능키와 같은 시간
         keyboard.setLongPressActions(com.alternative_studios.newswipe.keyboard.LongPressActions.actions(prefs));
         keyboard.setFunctionSwipes(FunctionSwipes.load(prefs));
         keyboard.setFnKeyActions(com.alternative_studios.newswipe.keyboard.FnKeyActions.actions(prefs));
@@ -5516,7 +5574,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         boolean hadSelection = selStart >= 0 && selEnd >= 0 && selStart != selEnd;
         selStart = selEnd = pos;
         if (hadSelection) onAutofillChipsChanged();
-        if (hadSelection && textEditPanel != null && panel == PANEL_TEXT_EDIT) textEditPanel.setSelectedCount(0);
+        if (hadSelection && textEditPanel != null && panel == PANEL_TEXT_EDIT) textEditPanel.setSelectedCount(0, 0);
     }
 
     /** 입력란의 메뉴 동작(모두 선택, 복사, 잘라내기, 붙여넣기)을 실행한다. */
@@ -6161,18 +6219,28 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     /**
-     * 선택한 글자 수를 텍스트 편집 창 맨 위 줄에 보인다. 글자(코드 포인트) 단위로 세고, 아주 길게 고른 글은 입력란에서
+     * 선택한 글자 수와 그 가운데 띄어쓰기·줄바꿈 수를 텍스트 편집 창 맨 위 줄에 보인다. 글자(코드 포인트) 단위로 세고, 아주 길게 고른 글은 입력란에서
      * 읽지 않고 위치의 차이로 센다.
      */
     private void updateEditSelectionCount() {
         if (textEditPanel == null) return;
         int n = hasSelection() ? Math.abs(selEnd - selStart) : 0;
+        int spaces = n == 0 ? 0 : -1;   // 선택한 글을 읽지 못하면 공백 수는 모른다
         if (n > 0 && n <= SELECTION_COUNT_READ_MAX) {
             InputConnection ic = getCurrentInputConnection();
             CharSequence sel = ic == null ? null : ic.getSelectedText(0);
-            if (sel != null && sel.length() > 0) n = Character.codePointCount(sel, 0, sel.length());
+            if (sel != null && sel.length() > 0) {
+                n = 0;
+                spaces = 0;
+                for (int i = 0; i < sel.length(); ) {
+                    int cp = Character.codePointAt(sel, i);
+                    n++;
+                    if (Character.isWhitespace(cp) || Character.isSpaceChar(cp)) spaces++;   // 띄어쓰기·탭·줄바꿈·NBSP 등
+                    i += Character.charCount(cp);
+                }
+            }
         }
-        textEditPanel.setSelectedCount(n);
+        textEditPanel.setSelectedCount(n, spaces);
     }
 
     /** 선택한 글을 읽어 글자 수를 셀 최대 길이 (UTF-16 단위). 넘으면 위치의 차이를 쓴다. */

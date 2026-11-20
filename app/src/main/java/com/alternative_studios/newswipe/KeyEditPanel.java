@@ -776,11 +776,28 @@ final class KeyEditPanel {
         }));
         look.addView(rest, SettingsWidgets.matchWrap());
         int swipeStart = root.getChildCount();
+        buildToolbarLongPress();
         buildToolbarSwipe(ToolbarSwipes.BAR, L.t("도구 막대", "Toolbar"));   // 소제목과 카드
         dependents.add(rest);
         for (int k = swipeStart; k < root.getChildCount(); k++) dependents.add(root.getChildAt(k));
         for (View d : dependents) d.setVisibility(shown ? View.VISIBLE : View.GONE);
         // 되돌리기는 이 칸 아래(영역 창 맨 아래)에 도구 막대 영역 전체를 맡는 버튼 하나로 둔다.
+    }
+
+    /** 도구 막대 빈 공간 길게 누르기 (스페이스바 길게 누르기처럼 기능을 고른다). */
+    private void buildToolbarLongPress() {
+        LinearLayout card = section(L.t("길게 누르기", "Long press"));
+        String action = ToolbarSwipes.LONG_PRESS.get(prefs, 0, ToolbarSwipes.LONG);
+        card.addView(valueRow(L.t("빈 공간을 길게 누르면", "Long press empty space"), SwipeAction.label(action),
+                v -> pickAction(ToolbarSwipes.LONG_PRESS, 0, ToolbarSwipes.LONG,
+                        ToolbarSwipes.LONG_PRESS.dialogTitle(0, ToolbarSwipes.LONG), this::rebuild)));
+        if (SwipeAction.SPACE_SELECT.equals(action)) {
+            card.addView(note(L.t("길게 눌러 진동이 오면, 손을 떼지 않고 좌우로 밀어 글자 단위로, 위아래로 밀어 줄 단위로 글자를 선택합니다.",
+                    "Long press until it vibrates, then without lifting, swipe left or right to select by character, or up and down to select by line.")));
+        } else {
+            card.addView(note(L.t("버튼·추천 단어·칩이 없는 빈 곳을 길게 누를 때 실행합니다.",
+                    "Runs when you long press a spot with no button, suggestion or chip.")));
+        }
     }
 
     private void buildToolbarSwipe(int slot, String name) {

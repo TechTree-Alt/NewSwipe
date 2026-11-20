@@ -97,6 +97,77 @@ public final class ToolbarSwipes {
         }
     };
 
+    /** 도구 막대 길게 누르기를 저장하는 칸의 방향 자리 (방향 자리 하나를 '길게 누르기'로 빌려 쓴다). */
+    public static final int LONG = Key.SWIPE_DOWN;
+
+    /**
+     * 도구 막대의 빈 공간을 길게 누를 때 실행할 기능 (스페이스바 길게 누르기처럼). 칸은 도구 막대 하나뿐이고,
+     * 저장 키는 도구 막대 밀기와 같은 묶음의 "swipe_toolbar_bar_long"이라 도구 막대 설정 되돌리기가 함께 지운다.
+     * 처음에는 없음이다.
+     */
+    public static final SwipeSpec LONG_PRESS = new SwipeSpec("toolbar", new String[]{"bar"}) {
+        @Override
+        public String defaultAction(int slot, int dir) {
+            return SwipeAction.NONE;
+        }
+
+        /** 모르는 값과 고를 수 없는 기능(누르고 있는 동안 되풀이하는 지우기 등)은 없음으로 본다. */
+        @Override
+        public String resolve(String stored, int slot, int dir) {
+            if (stored == null) return SwipeAction.NONE;
+            for (String id : choices(slot)) if (id.equals(stored)) return stored;
+            return SwipeAction.NONE;
+        }
+
+        @Override
+        protected String dirKey(int slot, int dir) {
+            return "long";
+        }
+
+        @Override
+        public String title() {
+            return L.t("도구 막대 길게 누르기", "Toolbar long press");
+        }
+
+        @Override
+        public String note() {
+            return L.t("도구 막대의 빈 공간을 길게 누를 때 실행할 기능을 고릅니다.", "Choose what happens when you long press an empty part of the toolbar.");
+        }
+
+        @Override
+        public String cardTitle(int slot) {
+            return L.t("도구 막대", "Toolbar");
+        }
+
+        @Override
+        public String cardHint(int slot) {
+            return L.t("빈 공간을 길게 누를 때", "Long press on empty space");
+        }
+
+        @Override
+        public int[] dirs(int slot) {
+            return new int[]{LONG};
+        }
+
+        @Override
+        public String dirLabel(int dir) {
+            return L.t("길게 누르기", "Long press");
+        }
+
+        /** 스페이스바 길게 누르기와 같은 목록 ('밀어서 선택' 포함). 누르고 있는 동안 되풀이하는 지우기는 뺀다. */
+        @Override
+        public String[] choices(int slot) {
+            java.util.List<String> ids = new java.util.ArrayList<>();
+            for (String id : SwipeAction.idsForSpaceLongPress()) if (!SwipeAction.holdRepeat(id)) ids.add(id);
+            return ids.toArray(new String[0]);
+        }
+
+        @Override
+        public String dialogTitle(int slot, int dir) {
+            return L.t("도구 막대 빈 공간 길게 누르기", "Long press empty toolbar space");
+        }
+    };
+
     private final String[][] table;
 
     private ToolbarSwipes(String[][] table) {
