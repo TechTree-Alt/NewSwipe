@@ -233,6 +233,19 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** correctionIgnored를 채울 때의 학습한 단어 편집 번호. 설정에서 단어를 지우면 바뀌어 비운다. */
     private int ignoredEditVersion;
     private String suggestWord = "";
+    /** 커서가 단어 중간에 있어 추천에 함께 넣은 커서 뒤의 나머지 부분 (추천을 고르면 이 부분까지 바꾼다). 없으면 빈 문자열. */
+    private String suggestTail = "";
+    /** 지금 추천란의 추천이 단어 전체로 찾은 것인지 ([단어]처럼 괄호를 씌워 커서 앞만 보고 찾은 추천과 구분한다). */
+    private boolean wholeWordShown;
+    /**
+     * 커서 앞 단어를 지금 키로 입력하는 중인지 (글자 키나 지우기 키를 누른 뒤 커서를 옮기지 않았다).
+     * 단축어는 입력하는 중에만 찾는다: 커서를 옮겨 단축어 위에 놓았을 때는 보이지 않는다.
+     */
+    private boolean typingWord;
+    /** 마지막으로 글자 키나 지우기 키를 누른 시각 (SystemClock.uptimeMillis). */
+    private long typedAt;
+    /** 키를 누른 뒤 이 시간 안에 온 예상 밖의 커서 소식은 그 입력의 결과로 본다 (글자마다 내용을 고치는 바쁜 입력란). */
+    private static final long TYPED_SELECTION_MS = 500;
     private boolean domainField;   // 이메일 주소·인터넷 주소 입력란: 온점 키를 길게 누르면 .com 등이 나온다
     private boolean passwordField;   // 비밀번호 입력란: 복사한 내용 칩의 미리보기를 가린다
     /** 이메일 입력란 등에서 영어로 시작했다 (설정에는 저장하지 않는다). 그런 칸이 아닌 곳으로 가면 한글로 돌아간다. */
@@ -1335,6 +1348,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private LinearLayout buildSuggestBar() {
         suggestions = new String[0];   // 새 막대는 비어 있다 (예전 막대의 내용과 비교하지 않도록)
         shortcutShown = false;
+        wholeWordShown = false;
         suggestWord = "";
         LinearLayout bar = new LinearLayout(this);
         bar.setGravity(Gravity.CENTER_VERTICAL);
@@ -2233,6 +2247,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         // 시크릿 모드 등 앱이 학습하지 말라고 표시한 입력란에서는 단어를 학습하지 않는다 (추천은 그대로).
         learnAllowed = (info.imeOptions & EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) == 0;
         mirror.start(info.initialSelStart, info.initialSelEnd);
+        typingWord = false;   // 새 입력란: 아직 아무것도 입력하지 않았다
         if (initialTextFresh) seedMirror(info);
         initialTextFresh = false;
         selStart = info.initialSelStart;
@@ -2342,7 +2357,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                                   int candidatesStart, int candidatesEnd) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd);
         String mirrored = mirror.text();
-        mirror.onSelection(newSelStart, newSelEnd);   // 이모지 검색 중에도 실제 입력란의 커서 변화는 따라간다
+        // 이모지 검색 중에도 실제 입력란의 커서 변화는 따라간다
+        boolean moved = mirror.onSelection(newSelStart, newSelEnd);
+        // 키 입력의 결과가 아닌 커서 변화(사용자가 커서를 옮겼다 등)면 입력 중이 아니다: 단축어를 찾지 않는다.
+        if (moved && SystemClock.uptimeMillis() - typedAt > TYPED_SELECTION_MS) typingWord = false;
         // 메신저의 보내기 버튼처럼 앱이 입력란을 한 번에 비웠다: 스페이스 없이 끝난 마지막 단어도 학습한다.
         if (newSelStart == 0 && newSelEnd == 0 && oldSelStart > 1 && oldSelStart == oldSelEnd
                 && mirrored != null && mirror.text() == null && panel != PANEL_SEARCH) {
@@ -3260,6 +3278,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 글자 하나(또는 문자열)를 입력한다. tap = 그냥 탭했는지 (모음·자음 연속 탭 판단용). */
     private void typeText(String s, boolean tap) {
         if (s == null || s.isEmpty()) return;
+        markTyped();
         correctedTo = null;
         boolean letters = lettersLayout();
         if (cjkTyping(letters)) {
@@ -3461,6 +3480,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** @param skipSelectionCheck 연속 삭제 중이라 선택 영역 확인을 건너뛴다. */
     private void handleDelete(boolean skipSelectionCheck) {
         lastWasSpace = false;
+        markTyped();
         if (cjkComposing()) {
             cjkComposer().backspace();
             syncCjk(null);
@@ -4358,6 +4378,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         main.postDelayed(suggestRunnable, 30);
     }
 
+    /** 글자 키나 지우기 키를 눌렀다: 지금 단어를 입력하는 중이다. */
+    private void markTyped() {
+        typingWord = true;
+        typedAt = SystemClock.uptimeMillis();
+    }
+
     /** 커서 앞의 입력 중인 단어. 따라 적은 글자로 알 수 없을 때만 앱에 묻는다. */
     private String wordBeforeCursor(InputConnection ic) {
         String word = mirror.currentWord(korean);
@@ -4367,13 +4393,37 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return before == null ? "" : WordSuggester.currentWord(before, korean);
     }
 
+    /**
+     * 커서가 단어 중간에 있으면 커서 뒤에 이어지는 그 단어의 나머지 부분 ('신나게 우|치원에서'에서 '치원에서').
+     * 조합 중이거나 글자를 선택했으면 빈 문자열: 단어 가운데에 글자를 넣는 중에는 커서 앞까지만 본다.
+     */
+    private String wordAfterCursor(InputConnection ic) {
+        if (!composer.isEmpty() || hadComposing || cjkComposing() || selStart != selEnd) return "";
+        CharSequence after = ic.getTextAfterCursor(32, 0);
+        String tail = WordSuggester.wordAfterCursor(after, korean);
+        return tail.length() >= 32 ? "" : tail;   // 읽은 글자 전체가 한 단어면 더 긴 글자 덩어리라 단어로 보지 않는다
+    }
+
     private void updateSuggestions() {
         if ((!suggestOn() && !shortcutsOn()) || windowHidden || !lettersLayout()) return;
         InputConnection ic = getCurrentInputConnection();
         if (ic == null) return;
-        String word = wordBeforeCursor(ic);
+        String head = wordBeforeCursor(ic);
+        // 커서를 단어 중간으로 옮겼으면 커서 뒤의 나머지까지 합친 단어 전체로 추천한다 (고르면 단어 전체를 바꾼다).
+        // 단어 전체로 찾은 것이 없으면 예전처럼 커서 앞부분만으로 찾고, 고르면 커서 앞부분만 바꾼다.
+        suggestTail = head.isEmpty() ? "" : wordAfterCursor(ic);
+        String word = head + suggestTail;
         // 입력 중인 단어가 정해 둔 단축어면 기존 추천은 모두 숨기고 그 문장이 추천란 전체를 채운다.
-        String phrase = shortcutsOn() ? shortcuts.lookup(word) : null;
+        // 키로 입력하는 중일 때만 찾는다. 커서를 옮겨 놓은 단어로는 단축어를 찾지 않는다.
+        boolean shortcutLookup = shortcutsOn() && typingWord;
+        String phrase = shortcutLookup ? shortcuts.lookup(word) : null;
+        if (phrase == null && !suggestTail.isEmpty() && shortcutLookup) {
+            phrase = shortcuts.lookup(head);
+            if (phrase != null) {
+                suggestTail = "";
+                word = head;
+            }
+        }
         if (phrase != null) {
             applySuggestions(word, new String[]{phrase}, true, -1, false);
             return;
@@ -4408,6 +4458,16 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
         // 자동 수정이 켜져 있으면 스페이스에서 고칠 단어를 맨 앞에 굵게 보인다 (이번에 되돌린 단어는 고치지 않으니 보이지 않는다).
         syncIgnoredWithUserWords();
+        if (!suggestTail.isEmpty()) {
+            // 단어 중간에서는 스페이스가 커서 앞부분만 고치므로 단어 전체의 수정을 굵게 미리 보이지 않는다.
+            WordSuggester.Suggestions whole = suggester.suggestIfLoaded(word, prev, korean, fieldKind, false);
+            if (whole.words.length > 0) {
+                showSuggestions(word, whole);
+                return;
+            }
+            suggestTail = "";   // 단어 전체로는 찾은 것이 없다: 커서 앞부분만으로 찾는다
+            word = head;
+        }
         boolean preview = autoCorrectActive() && !correctionIgnored.contains(word) && !endsWithApostrophe(word);
         showSuggestions(word, suggester.suggestIfLoaded(word, prev, korean, fieldKind, preview));
     }
@@ -4506,8 +4566,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private void applySuggestions(String word, String[] found, boolean shortcut, int correction, boolean prediction) {
         suggestWord = word;
         predictionShown = prediction && found.length > 0;
-        if (shortcut == shortcutShown && correction == correctionShown
+        boolean whole = !suggestTail.isEmpty() && found.length > 0;
+        if (shortcut == shortcutShown && correction == correctionShown && whole == wholeWordShown
                 && java.util.Arrays.equals(found, suggestions)) return;   // 그대로면 다시 그리지 않는다
+        wholeWordShown = whole;
         boolean wasShowing = suggestions.length > 0;
         boolean heldSlot = shortcutHoldsSlot();
         suggestions = found;
@@ -4520,7 +4582,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         boolean slotChanged = heldSlot != shortcutHoldsSlot();
         for (int i = 0; i < suggestViews.length; i++) {
             TextView t = suggestViews[i];
-            CharSequence text = i < found.length ? found[i] : "";
+            CharSequence text = i >= found.length ? "" : whole ? "[" + found[i] + "]" : found[i];
             if (!TextUtils.equals(t.getText(), text)) t.setText(text);
             Typeface face = i == correction ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT;
             if (t.getTypeface() != face) t.setTypeface(face);
@@ -4537,8 +4599,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private void clearSuggestions() {
         if (main != null) main.removeCallbacks(suggestRunnable);
         suggestWord = "";
+        suggestTail = "";
         predictionShown = false;
         if (suggestions.length == 0) return;
+        wholeWordShown = false;
         suggestions = new String[0];
         correctionShown = -1;
         boolean heldSlot = shortcutShown;
@@ -4763,21 +4827,33 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (ic == null) return;
         CharSequence before = ic.getTextBeforeCursor(TextMirror.KEEP, 0);
         mirror.fill(before, TextMirror.KEEP);
-        String word = before == null ? "" : WordSuggester.currentWord(before, korean);
-        if (word.isEmpty()) {
+        String head = before == null ? "" : WordSuggester.currentWord(before, korean);
+        if (head.isEmpty()) {
             // 그사이 단어가 끝났거나 커서가 옮겨졌다. 엉뚱한 글자를 지우지 않도록 넣지 않는다.
             clearSuggestions();
             scheduleSuggest();
             return;
         }
+        // 단어 중간의 커서로 단어 전체를 추천했으면 커서 뒤의 나머지도 지운다. 그사이 그 글자가 바뀌었으면 커서 앞만 바꾼다.
+        String tail = "";
+        boolean spaceFollows = false;
+        if (!suggestTail.isEmpty()) {
+            CharSequence after = ic.getTextAfterCursor(suggestTail.length() + 1, 0);
+            if (after != null && WordSuggester.wordAfterCursor(after, korean).equals(suggestTail)) {
+                tail = suggestTail;
+                spaceFollows = after.length() > tail.length() && Character.isWhitespace(after.charAt(tail.length()));
+            }
+        }
+        String word = head + tail;
         // 설정의 '추천 단어 뒤에 공백 포함'을 따른다 (한글·영어 모두). 단축어의 문장은 늘 공백 없이 넣는다.
-        boolean withSpace = prefs.suggestSpace() && !shortcutShown;
+        // 글 중간의 단어를 바꿀 때 바로 뒤에 이미 공백이 있으면 하나 더 넣지 않는다.
+        boolean withSpace = prefs.suggestSpace() && !shortcutShown && !spaceFollows;
         String inserted = withSpace ? replacement + " " : replacement;
         ic.beginBatchEdit();
-        ic.deleteSurroundingText(word.length(), 0);
+        ic.deleteSurroundingText(head.length(), tail.length());
         ic.commitText(inserted, 1);
         ic.endBatchEdit();
-        mirror.replaceTail(word.length(), inserted);
+        mirror.replaceTail(head.length(), inserted);
         // 단축어의 문장은 학습하지 않는다
         if (!shortcutShown) {
             if (korean && cfgLearn && learnAllowed && !replacement.equals(word)) {
@@ -5092,6 +5168,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private boolean beginEdit() {
         if (getCurrentInputConnection() == null) return false;
         commitComposing();
+        typingWord = false;   // 커서 이동·붙여넣기 등은 입력이 아니다: 단축어를 찾지 않는다
         correctedTo = null;
         lastWasSpace = false;
         return true;

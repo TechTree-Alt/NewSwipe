@@ -692,6 +692,23 @@ public final class WordSuggester {
         return before.subSequence(i, before.length()).toString();
     }
 
+    /**
+     * 커서가 단어 중간에 있을 때 커서 뒤 글자에서 그 단어의 나머지 부분을 뽑는다 (currentWord와 같은 글자를 단어로 본다).
+     * 없으면 빈 문자열. 영어의 '는 앞 글자가 알파벳이고 뒤에도 알파벳이 이어질 때만 넣는다 (don|'t → 't, 닫는 따옴표는 뺀다).
+     */
+    public static String wordAfterCursor(CharSequence after, boolean korean) {
+        if (after == null) return "";
+        int i = 0, n = after.length();
+        while (i < n) {
+            char c = after.charAt(i);
+            boolean ok = korean ? (c >= '가' && c <= '힣') || (c >= 'ㄱ' && c <= 'ㅣ')
+                    : isAsciiLetter(c) || (c == '\'' && i + 1 < n && isAsciiLetter(after.charAt(i + 1)));
+            if (!ok) break;
+            i++;
+        }
+        return after.subSequence(0, i).toString();
+    }
+
     private static boolean isAsciiLetter(char c) {
         return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
     }
