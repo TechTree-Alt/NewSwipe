@@ -1,0 +1,106 @@
+package com.alternative_studios.newswipe.suggest;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+import org.junit.BeforeClass;
+import org.junit.Test;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+/** 겹모음의 둘째 모음을 옆 키로 쳐서 깨진 말(고ㅔㄴ찮아요, 고ㅓㄴ심)을 되살리는 것. */
+public class BrokenVowelTest {
+    private static WordDictionary dict;
+
+    @BeforeClass
+    public static void setUp() throws Exception {
+        dict = KoreanSuggestTest.buildDict(new String[][]{
+                {"괜찮아요", "220"}, {"괜찮아", "230"}, {"괜찮은", "200"}, {"괜히", "150"}, {"관심", "200"}, {"관심을", "160"},
+                {"관련", "190"}, {"왜", "240"}, {"뭘", "180"}, {"됐어", "180"}, {"훨씬", "170"}, {"괴로워", "120"},
+                {"우리", "200"}, {"아니", "200"},
+        });
+        dict.warmUpChosung();
+    }
+
+    private static KoreanSuggest model() {
+        return new KoreanSuggest(dict, null, new TypoModel());
+    }
+
+    private static List<String> words(String typed) {
+        List<String> out = new ArrayList<>();
+        for (BrokenVowel.Repair r : BrokenVowel.repairs(typed, new TypoModel())) out.add(r.word);
+        return out;
+    }
+
+    @Test
+    public void rebuildsCompoundVowelAndReattachesFinal() {
+        // ㅗ+ㅔ(ㅐ와 소리가 같은 옆 키) → ㅙ, 따로 남은 ㄴ은 받침으로
+        assertEquals("괜찮아요", words("고ㅔㄴ찮아요").get(0));
+        // ㅓ·ㅡ는 ㅏ의 옆 키
+        assertEquals("관심", words("고ㅓㄴ심").get(0));
+        assertEquals("관심", words("고ㅡㄴ심").get(0));
+        assertEquals("뭘", words("무ㅏㄹ").get(0));
+        assertEquals("됐어", words("도ㅔㅆ어").get(0));
+        // 대각선 키(ㅓ→ㅐ)는 바로 옆 키(ㅓ→ㅏ)보다 뒤에 온다
+        assertEquals(Arrays.asList("돴어", "됐어"), words("도ㅓㅆ어").subList(0, 2));
+        assertEquals("왜", words("오ㅔ").get(0));
+    }
+
+    @Test
+    public void compoundFinalLeftApartIsJoined() {
+        assertTrue(words("고ㅔㄴㅎ").contains("괞"));
+    }
+
+    @Test
+    public void leavesIntentionalRepeatsAlone() {
+        for (String w : new String[]{"우ㅜㅜ", "오ㅗ", "아ㅏㅏ", "ㅠㅠ", "아ㅠㅠ", "그ㅡ", "괜찮아요", "ㅋㅋ"}) {
+            assertFalse(w, BrokenVowel.has(w) && !words(w).isEmpty());
+        }
+    }
+
+    @Test
+    public void suggestsFromRebuiltWord() {
+        KoreanSuggest m = model();
+        String[] s = m.suggest("고ㅔㄴ찮", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 5).words;
+        assertTrue(Arrays.toString(s), Arrays.asList(s).contains("괜찮아요"));
+        // 되살린 말이 그대로 사전 단어면 맨 앞에 보인다
+        s = m.suggest("고ㅓㄴ심", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 5).words;
+        assertEquals(Arrays.toString(s), "관심", s[0]);
+        s = m.suggest("고ㅡㄴ심", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 5).words;
+        assertEquals(Arrays.toString(s), "관심", s[0]);
+        s = m.suggest("고ㅔㄴ찮아요", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 5).words;
+        assertEquals(Arrays.toString(s), "괜찮아요", s[0]);
+        // 친 중간에도 (고ㅔ → 괘…)
+        s = m.suggest("고ㅔ", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 5).words;
+        assertTrue(Arrays.toString(s), Arrays.asList(s).contains("괜찮아"));
+    }
+
+    @Test
+    public void autoCorrectsBrokenWord() {
+        KoreanSuggest m = model();
+        assertEquals("괜찮아요", m.correct("고ㅔㄴ찮아요", null, KoreanSuggest.FIELD_NORMAL, null, null));
+        assertEquals("관심", m.correct("고ㅓㄴ심", null, KoreanSuggest.FIELD_NORMAL, null, null));
+        assertEquals("관심", m.correct("고ㅡㄴ심", null, KoreanSuggest.FIELD_NORMAL, null, null));
+        assertEquals("괜히", m.correct("고ㅔㄴ히", null, KoreanSuggest.FIELD_NORMAL, null, null));
+        assertEquals("됐어", m.correct("도ㅓㅆ어", null, KoreanSuggest.FIELD_NORMAL, null, null));
+        assertEquals("왜", m.correct("오ㅔ", null, KoreanSuggest.FIELD_NORMAL, null, null));
+        // 아직 치는 중인 앞부분은 고치지 않는다
+        assertNull(m.correct("고ㅔㄴ", null, KoreanSuggest.FIELD_NORMAL, null, null));
+        assertNull(m.correct("우ㅜㅜ", null, KoreanSuggest.FIELD_NORMAL, null, null));
+    }
+
+    @Test
+    public void offWhenDisabled() {
+        boolean saved = KoreanSuggest.BROKEN_VOWEL;
+        KoreanSuggest.BROKEN_VOWEL = false;
+        try {
+            assertNull(model().correct("고ㅓㄴ심", null, KoreanSuggest.FIELD_NORMAL, null, null));
+        } finally {
+            KoreanSuggest.BROKEN_VOWEL = saved;
+        }
+    }
+}

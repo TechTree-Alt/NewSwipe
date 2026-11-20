@@ -68,7 +68,7 @@ Build an input system that is truly your own, one that fits you perfectly.
 
 ### ✨ Word suggestions, autocorrect & learning
 - **Suggestions that understand Korean** · Builds and suggests words based on what you type, even words that aren't in the dictionary. Supports initial-consonant search, words typed without spaces, ordering by the previous word, and next-word prediction.
-- **Smart autocorrect** · Fixes swipe mistakes (ㄷ↔ㅌ↔ㄸ), typos from hitting a neighboring key, and spellings written the way they sound (재밋네요 → 재밌네요, 됬다 → 됐다). The word that will be replaced is shown in bold on the suggestion bar in advance. If a correction was wrong, press ⌫ to undo it.
+- **Smart autocorrect** · Fixes swipe mistakes (ㄷ↔ㅌ↔ㄸ), typos from hitting a neighboring key, spellings written the way they sound (재밋네요 → 재밌네요, 됬다 → 됐다), and words broken apart when the second half of a compound vowel hit a neighboring key (고ㅔㄴ찮아요 → 괜찮아요, 고ㅓㄴ심 → 관심). The word that will be replaced is shown in bold on the suggestion bar in advance. If a correction was wrong, press ⌫ to undo it.
 - **Learns how you write** · Learns the words, names and slang you use often and shows them in the suggestions. Long press a wrong suggestion to delete it.
 - **Dictionary packs** · Import a larger Korean dictionary (zip) for better accuracy.
 
