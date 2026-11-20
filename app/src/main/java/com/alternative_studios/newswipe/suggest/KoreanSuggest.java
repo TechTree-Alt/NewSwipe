@@ -207,7 +207,40 @@ final class KoreanSuggest {
 
     /** 사전에 없는 word를 고칠 단어 ({@link KoreanCorrect#correct}). */
     String correct(String word, String prev, int field, UserDictionary user, UsageHistory usage) {
+        if (BROKEN_JAMO && BrokenJamo.has(word)) return correctBroken(word, prev, field, user, usage);
         return corrector.correct(word, prev, field, user, usage);
+    }
+
+    /** 겹모음·겹받침이 깨진 말(고ㅔㄴ찮아요 → 괜찮아요, 엊ㅅ이 → 없이)도 추천·자동 수정할지 ({@link BrokenJamo}). */
+    static boolean BROKEN_JAMO = true;
+
+    /**
+     * 겹모음·겹받침이 깨진 word의 자동 수정: 되살린 말을 싼 것부터 보아, 맞는 말이면 그것으로, 그대로는 틀린 말이면 그 말을 다시 고친
+     * 것으로 고친다. 같은 비용으로 맞는 말이 둘 이상 나오면 (어느 쪽인지 모르니) 고치지 않는다.
+     */
+    private String correctBroken(String word, String prev, int field, UserDictionary user, UsageHistory usage) {
+        String found = null;
+        float foundCost = 0;
+        for (BrokenJamo.Repair r : BrokenJamo.repairs(word, typo)) {
+            if (found != null) {
+                if (r.cost > foundCost + 1e-4f) break;
+            }
+            String w = null;
+            if (KoreanMorph.hangulSyllables(r.word) == r.word.length()) {
+                if (corrector.accepts(r.word)) {
+                    w = r.word;
+                } else {
+                    w = corrector.correct(r.word, prev, field, user, usage);
+                    // 사전에 없는 활용형(환장하겠네)은 고칠 것이 없어 null이 온다: 낱말로 그럴듯하면 되살린 말 그대로 쓴다
+                    if (w == null && corrector.wordLike(r.word)) w = r.word;
+                }
+            }
+            if (w == null || w.equals(found)) continue;
+            if (found != null) return null;   // 같은 비용으로 맞는 말이 둘
+            found = w;
+            foundCost = r.cost;
+        }
+        return found;
     }
 
     /**
@@ -454,6 +487,15 @@ final class KoreanSuggest {
      */
     Result suggest(String word, String prev, int field, UserDictionary user, UsageHistory usage, String fix, int max) {
         if (word.isEmpty()) return predict(prev, field, user, usage, max);
+        if (BROKEN_JAMO && BrokenJamo.has(word)) {
+            Result r = suggestBroken(word, prev, field, user, usage, fix, max);
+            if (r != null) return r;
+        }
+        return suggestPlain(word, prev, field, user, usage, fix, max);
+    }
+
+    /** suggest에서 깨진 겹모음을 되살리지 않고 word 그대로 찾는다. */
+    private Result suggestPlain(String word, String prev, int field, UserDictionary user, UsageHistory usage, String fix, int max) {
         Context cx = new Context(prev, field, user, usage);
         cx.state = stateOf(word);
         cx.typed = word;
@@ -519,6 +561,55 @@ final class KoreanSuggest {
             if (out.size() >= max) break;
             if (!w.equals(fix)) out.add(w);
         }
+        return new Result(out.toArray(new String[0]), fix != null ? 0 : -1, false);
+    }
+
+    /**
+     * 겹모음·겹받침이 깨진 word의 추천 ({@link BrokenJamo}): 되살린 말마다 추천을 구해, 가장 싼 것의 추천을 앞에 두고 다른 것의 첫
+     * 후보도 한 칸씩 보인다. 되살린 말이 그대로 맞는 말이면 (보통 추천에서는 친 말 자신을 빼므로) 그 말을 먼저 넣는다.
+     * 되살릴 수 없으면 null.
+     */
+    private Result suggestBroken(String word, String prev, int field, UserDictionary user, UsageHistory usage, String fix, int max) {
+        List<BrokenJamo.Repair> repairs = BrokenJamo.repairs(word, typo);
+        if (repairs.isEmpty()) return null;
+        List<List<String>> lists = new ArrayList<>();
+        for (BrokenJamo.Repair r : repairs) {
+            List<String> l = new ArrayList<>();
+            boolean whole = KoreanMorph.hangulSyllables(r.word) == r.word.length();
+            // 되살린 말이 그대로 맞는 말이면 앞에 둔다 (사전에 없는 활용형 환장하겠네도: 추천은 친 말 자신을 빼므로 따로 넣는다)
+            if (whole && (corrector.accepts(r.word) || corrector.wordLike(r.word)
+                    || user != null && user.isKnownIfLoaded(r.word, true))) l.add(r.word);
+            for (String w : suggestPlain(r.word, prev, field, user, usage, null, max).words) if (!l.contains(w)) l.add(w);
+            if (!l.isEmpty()) lists.add(l);
+        }
+        if (lists.isEmpty() && fix == null) return null;
+        java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
+        if (fix != null) out.add(fix);
+        // 다른 되살림의 첫 후보가 들어갈 자리를 남겨 두고 가장 싼 것의 추천을 채운다
+        int others = 0;
+        for (int k = 1; k < lists.size(); k++) if (!lists.get(0).contains(lists.get(k).get(0))) others++;
+        int firstQuota = Math.max(1, max - Math.min(others, Math.max(0, max - 3)));
+        if (!lists.isEmpty()) {
+            for (String w : lists.get(0)) {
+                if (out.size() >= firstQuota) break;
+                out.add(w);
+            }
+        }
+        for (int k = 1; k < lists.size() && out.size() < max; k++) out.add(lists.get(k).get(0));
+        for (List<String> l : lists) {
+            for (String w : l) {
+                if (out.size() >= max) break;
+                out.add(w);
+            }
+        }
+        // 남은 칸은 친 말 그대로 찾은 추천으로 채운다 (안ㅁ아 → 안아: 되살린 말이 아닌 쪽이 맞을 수도 있다)
+        if (out.size() < max) {
+            for (String w : suggestPlain(word, prev, field, user, usage, null, max).words) {
+                if (out.size() >= max) break;
+                out.add(w);
+            }
+        }
+        out.remove(word);
         return new Result(out.toArray(new String[0]), fix != null ? 0 : -1, false);
     }
 
