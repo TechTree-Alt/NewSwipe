@@ -67,6 +67,8 @@ public final class Icons {
     public static final int FORWARD_DELETE = 61;
     /** 다시 실행 (실행 취소를 좌우로 뒤집은 것). */
     public static final int REDO = 62;
+    /** 탭 (막대를 향한 화살표 →|). */
+    public static final int TAB = 63;
     /** 위쪽을 향한 겹친 꺾쇠·끝 막대 (돌리기 전의 모양). 밖에서 쓰지 않는다. */
     private static final int WORD_UP = 1001;
 
@@ -579,6 +581,14 @@ public final class Icons {
                 path.lineTo(12, 12);
                 path.lineTo(17, 17);
                 c.drawPath(path, p);
+                break;
+            case TAB:
+                c.drawLine(3.5f, 12, 16.5f, 12, p);
+                path.moveTo(12, 7.5f);
+                path.lineTo(16.5f, 12);
+                path.lineTo(12, 16.5f);
+                c.drawPath(path, p);
+                c.drawLine(20.5f, 6.5f, 20.5f, 17.5f, p);
                 break;
             case TEXT_EDIT:
                 // 가운데의 I자 커서와 양옆으로 옮기는 꺾쇠

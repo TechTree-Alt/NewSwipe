@@ -2285,6 +2285,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             lostComposing = null;
         }
         keyboard.setEnterIcon(enterIcon(info));
+        if (textEditPanel != null) textEditPanel.setEnterIcon(enterIcon(info));
         setShift(0);
         updateAutoCap();
         warmSuggester();   // 첫 글자부터 추천이 나오도록 미리 읽어 둔다
@@ -2389,7 +2390,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         selStart = newSelStart;
         selEnd = newSelEnd;
         if (panel == PANEL_SEARCH) return;
-        if (textEditPanel != null && panel == PANEL_TEXT_EDIT) textEditPanel.setHasSelection(hasSelection());
+        if (textEditPanel != null && panel == PANEL_TEXT_EDIT) updateEditSelectionCount();
         // 글자를 선택하거나 선택을 풀면 선택 편집 칩을 띄우거나 감춘다.
         if (hadSelection != (newSelStart >= 0 && newSelEnd >= 0 && newSelStart != newSelEnd)) onAutofillChipsChanged();
         // 사용자가 커서를 옮기면 조합 중인 글자를 확정하고 조합을 끝낸다.
@@ -2591,6 +2592,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
         if (p != PANEL_KEYBOARD && p != PANEL_SEARCH) commitComposing();
         if (p != PANEL_TEXT_EDIT) editSelecting = false;   // 선택 모드는 텍스트 편집 창 안에서만 쓴다
+        // 텍스트 편집 창에서 연 클립보드 창은 닫으면 텍스트 편집 창으로 돌아간다.
+        if (p == PANEL_CLIPBOARD && panel != PANEL_CLIPBOARD) clipReturnPanel = panel == PANEL_TEXT_EDIT ? PANEL_TEXT_EDIT : PANEL_KEYBOARD;
         panel = p;
         if (root == null) return;
         boolean full = fullPanel(p);
@@ -2628,7 +2631,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             textEditPanel.setVisibility(View.VISIBLE);
             // 이미 글자를 선택해 두었으면 선택 모드로 연다: 이동 버튼이 그 선택을 넓히거나 줄인다.
             setEditSelecting(hasSelection());
-            textEditPanel.setHasSelection(hasSelection());
+            updateEditSelectionCount();
+            // '선택'을 밀 때는 스페이스바 커서 이동과 같은 거리로 한 칸씩, 길게 누르기는 기능키와 같은 시간.
+            textEditPanel.setDragConfig(keyboard.cursorStepX(), keyboard.cursorStepY(), prefs.deletePressMs());
+            EditorInfo editInfo = getCurrentInputEditorInfo();
+            if (editInfo != null) textEditPanel.setEnterIcon(enterIcon(editInfo));
         } else if (p == PANEL_SEARCH) {
             // 이모지 이름은 한글·영어로만 찾으므로 일본어·중국어에서는 검색창에만 영어 자판을 쓴다.
             if (cjkLang != null) setLayoutKind(KeyboardLayout.ENGLISH);
@@ -5509,7 +5516,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         boolean hadSelection = selStart >= 0 && selEnd >= 0 && selStart != selEnd;
         selStart = selEnd = pos;
         if (hadSelection) onAutofillChipsChanged();
-        if (hadSelection && textEditPanel != null && panel == PANEL_TEXT_EDIT) textEditPanel.setHasSelection(false);
+        if (hadSelection && textEditPanel != null && panel == PANEL_TEXT_EDIT) textEditPanel.setSelectedCount(0);
     }
 
     /** 입력란의 메뉴 동작(모두 선택, 복사, 잘라내기, 붙여넣기)을 실행한다. */
@@ -6042,7 +6049,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /** '항목 사용 시 클립보드 닫기'가 켜져 있으면 클립보드 창을 닫고 자판으로 돌아간다. */
     private void closeClipboardAfterUse() {
-        if (prefs.clipboardCloseOnUse() && panel == PANEL_CLIPBOARD) showPanel(PANEL_KEYBOARD);
+        if (prefs.clipboardCloseOnUse() && panel == PANEL_CLIPBOARD) showPanel(clipReturnPanel);
     }
 
     @Override
@@ -6115,9 +6122,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         feedback.onToolbar();
     }
 
+    /** 클립보드 창을 닫으면 돌아갈 화면: 자판, 또는 클립보드 창을 연 텍스트 편집 창. */
+    private int clipReturnPanel = PANEL_KEYBOARD;
+
     @Override
     public void onClipBack() {
-        showPanel(PANEL_KEYBOARD);
+        showPanel(clipReturnPanel);
     }
 
     // ---------------------------------------------------------------- 텍스트 편집 창
@@ -6150,14 +6160,38 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         showPanel(PANEL_KEYBOARD);
     }
 
+    /**
+     * 선택한 글자 수를 텍스트 편집 창 맨 위 줄에 보인다. 글자(코드 포인트) 단위로 세고, 아주 길게 고른 글은 입력란에서
+     * 읽지 않고 위치의 차이로 센다.
+     */
+    private void updateEditSelectionCount() {
+        if (textEditPanel == null) return;
+        int n = hasSelection() ? Math.abs(selEnd - selStart) : 0;
+        if (n > 0 && n <= SELECTION_COUNT_READ_MAX) {
+            InputConnection ic = getCurrentInputConnection();
+            CharSequence sel = ic == null ? null : ic.getSelectedText(0);
+            if (sel != null && sel.length() > 0) n = Character.codePointCount(sel, 0, sel.length());
+        }
+        textEditPanel.setSelectedCount(n);
+    }
+
+    /** 선택한 글을 읽어 글자 수를 셀 최대 길이 (UTF-16 단위). 넘으면 위치의 차이를 쓴다. */
+    private static final int SELECTION_COUNT_READ_MAX = 5000;
+
     @Override
     public void onEditPress(boolean repeat) {
         if (repeat) {
-            feedback.onRepeat();
+            if (cursorTickDue()) cursorTick();
         } else {
             feedback.onKey(null);
             forgetCursorEdges();   // 버튼을 새로 눌렀다: 그사이 커서가 어디로 갔는지 모르므로 새로 센다
         }
+    }
+
+    @Override
+    public void onEditDrag(int dx, int dy) {
+        if (panel != PANEL_TEXT_EDIT) return;
+        if (editMove(dx, dy) && cursorTickDue()) cursorTick();
     }
 
     @Override
@@ -6167,6 +6201,23 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             case TextEditPanel.SELECT:
                 setEditSelecting(!editSelecting);
                 break;
+            case TextEditPanel.SELECT_ON:
+                feedback.onKey(null);   // 길게 눌러 선택 모드가 켜졌다
+                setEditSelecting(true);
+                break;
+            case TextEditPanel.OPEN_CLIPBOARD:
+                showPanel(PANEL_CLIPBOARD);
+                break;
+            case TextEditPanel.ENTER:
+            case TextEditPanel.SPACE:
+            case TextEditPanel.TAB: {
+                boolean had = hasSelection();   // 고른 글자는 입력한 것으로 바뀐다
+                if (action == TextEditPanel.ENTER) handleEnter();
+                else if (action == TextEditPanel.SPACE) handleSpace();
+                else typeTab();
+                if (had) setEditSelecting(false);
+                break;
+            }
             case TextEditPanel.MOVE_LEFT: editMove(-1, 0); break;
             case TextEditPanel.MOVE_RIGHT: editMove(1, 0); break;
             case TextEditPanel.MOVE_UP: editMove(0, -1); break;
@@ -6237,24 +6288,37 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
      * 텍스트 편집 창의 방향 버튼: 가로 dx, 세로 dy칸 옮긴다 (대각선은 둘 다). 선택 모드면 선택 영역의 움직이는 끝을 옮긴다.
      * 대각선은 좌우를 먼저 옮긴다: 좌우는 커서 위치를 바로 정하지만, 위아래는 방향 키를 보내 앱이 처리할 때까지 커서 위치를 모른다.
      */
-    private void editMove(int dx, int dy) {
+    private boolean editMove(int dx, int dy) {
+        boolean moved = false;
         if (editSelecting) {
-            if (dx != 0) editExtend(dx < 0 ? KeyEvent.KEYCODE_DPAD_LEFT : KeyEvent.KEYCODE_DPAD_RIGHT, dx < 0);
-            if (dy != 0 && multiLineField()) editExtend(dy < 0 ? KeyEvent.KEYCODE_DPAD_UP : KeyEvent.KEYCODE_DPAD_DOWN, dy < 0);
+            if (dx != 0) moved = editExtend(dx < 0 ? KeyEvent.KEYCODE_DPAD_LEFT : KeyEvent.KEYCODE_DPAD_RIGHT, dx < 0);
+            if (dy != 0 && multiLineField()) {
+                moved |= editExtend(dy < 0 ? KeyEvent.KEYCODE_DPAD_UP : KeyEvent.KEYCODE_DPAD_DOWN, dy < 0);
+            }
         } else {
-            if (dx != 0) moveCursor(dx);
-            if (dy != 0) moveCursorVertical(dy);
+            if (dx != 0) moved = moveCursor(dx);
+            if (dy != 0) moved |= moveCursorVertical(dy);
         }
+        return moved;
+    }
+
+    /** 탭 글자를 넣는다. 글을 알려 주지 않는 입력란(터미널 등)에는 Tab 키를 보낸다. */
+    private void typeTab() {
+        if (!beginEdit()) return;
+        if (textField()) getCurrentInputConnection().commitText("\t", 1);
+        else sendDownUpKeyEvents(KeyEvent.KEYCODE_TAB);
+        endEdit();
     }
 
     /** 선택 영역의 움직이는 끝을 Shift+방향 키로 옮긴다. 글의 맨 앞·맨 뒤면 보내지 않는다 (포커스가 넘어가지 않게). */
-    private void editExtend(int keyCode, boolean backward) {
+    private boolean editExtend(int keyCode, boolean backward) {
         InputConnection ic = getCurrentInputConnection();
-        if (ic == null) return;
+        if (ic == null) return false;
         // 그사이 입력란을 눌러 선택을 바꿨다: 지금 선택의 시작점을 움직이지 않는 끝으로 삼는다.
         if (selectAnchor != selStart && selectAnchor != selEnd) selectAnchor = selStart;
-        if (!selectionCanMove(ic, backward)) return;
+        if (!selectionCanMove(ic, backward)) return false;
         extendSelection(keyCode, backward, false);
+        return true;
     }
 
     /**
@@ -6308,7 +6372,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         // 입력란이 알려 주기 전에 이어서 눌러도 이어서 움직이도록 바로 기억해 둔다.
         selStart = anchor;
         selEnd = to;
-        if (textEditPanel != null) textEditPanel.setHasSelection(anchor != to);
+        if (textEditPanel != null) updateEditSelectionCount();
         endEdit();
     }
 

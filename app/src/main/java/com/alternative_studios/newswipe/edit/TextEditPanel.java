@@ -30,9 +30,12 @@ import com.alternative_studios.newswipe.ui.Ui;
  *   [       ][  ↙  ][  ↓  ][  ↘  ][       ]
  *   [   ⌦   ][      아래쪽 끝      ][   ⌫   ]
  *   [잘라내기 ][  복사  ][ 붙여넣기 ][ 전체 선택 ]
+ *   [  Tab  ][      띄어쓰기       ][  엔터  ]
  * </pre>
  * 가운데 '선택'을 누르면 선택 모드가 켜지고 꺼진다. 선택 모드에서는 이동 버튼이 커서 대신 선택 영역의 끝을 옮긴다.
- * 이동·지우기 버튼은 누르고 있으면 되풀이한다. 실제 동작은 키보드 서비스가 한다 ({@link Listener#onEditAction}).
+ * '선택'을 밀면 트랙패드처럼 커서가 따라 움직이고(선택 모드면 선택 영역의 끝이), 길게 누른 뒤 밀면 선택 모드를 켜고
+ * 밀어서 고른다 (스페이스바를 길게 누른 뒤 밀어서 선택하는 것과 같다). '붙여넣기'를 길게 누르면 클립보드 창을 연다.
+ * 이동·지우기 버튼은 누르고 있으면 되풀이한다. 글자를 선택하면 맨 위 줄 제목 자리에 고른 글자 수가 보인다. 실제 동작은 키보드 서비스가 한다 ({@link Listener#onEditAction}).
  */
 @SuppressLint("ViewConstructor")
 public final class TextEditPanel extends LinearLayout {
@@ -45,24 +48,37 @@ public final class TextEditPanel extends LinearLayout {
 
         /** 버튼의 동작 (아래 상수). */
         void onEditAction(int action);
+
+        /** '선택' 버튼을 밀어 커서(선택 모드면 선택 영역의 끝)를 가로 dx, 세로 dy칸 옮긴다. */
+        void onEditDrag(int dx, int dy);
     }
 
     public static final int MOVE_LEFT = 1, MOVE_RIGHT = 2, MOVE_UP = 3, MOVE_DOWN = 4,
             MOVE_UP_LEFT = 5, MOVE_UP_RIGHT = 6, MOVE_DOWN_LEFT = 7, MOVE_DOWN_RIGHT = 8,
             LINE_START = 9, LINE_END = 10, TEXT_START = 11, TEXT_END = 12, WORD_LEFT = 13, WORD_RIGHT = 14,
             SELECT = 15, CUT = 16, COPY = 17, PASTE = 18, SELECT_ALL = 19,
-            BACKSPACE = 20, FORWARD_DELETE = 21, UNDO = 22, REDO = 23;
+            BACKSPACE = 20, FORWARD_DELETE = 21, UNDO = 22, REDO = 23,
+            /** '선택'을 길게 눌렀다: 선택 모드를 켠다 (이미 켜져 있으면 그대로). */
+            SELECT_ON = 24,
+            /** '붙여넣기'를 길게 눌렀다: 클립보드 창을 연다. */
+            OPEN_CLIPBOARD = 25,
+            ENTER = 26, SPACE = 27, TAB = 28;
 
     /** 격자의 칸 수: 가로 20칸(방향 버튼 다섯 줄은 4칸씩, 편집 버튼 줄은 5칸씩), 세로 6줄. */
-    private static final int COLS = 20, ROWS = 6;
+    private static final int COLS = 20, ROWS = 7;
 
     private final KeyboardTheme theme;
     private final Listener listener;
     private final LinearLayout header;
     private final Pad pad;
-    private final PadKey select, cut, copy;
+    private final PadKey select, cut, copy, enter;
+    private final TextView title;
     private float radius;
-    private boolean selecting, hasSelection;
+    private boolean selecting;
+    private int selectedCount;
+    /** '선택'을 밀 때 한 칸 옮기는 거리 (px, 스페이스바 커서 이동과 같다)와 길게 누르기 시간 (ms). */
+    private float stepX, stepY;
+    private int longPressMs = 350;
 
     public TextEditPanel(Context context, KeyboardTheme theme, int topBarHeight, Listener listener) {
         super(context);
@@ -79,8 +95,8 @@ public final class TextEditPanel extends LinearLayout {
         IconButton back = headerButton(context, Icons.BACK, L.t("키보드로 돌아가기", "Back to keyboard"), topBarHeight,
                 v -> listener.onEditBack());
         header.addView(back, new LayoutParams(Ui.dp(context, 44), topBarHeight));
-        TextView title = new TextView(context);
-        title.setText(L.t("텍스트 편집", "Text editing"));
+        title = new TextView(context);
+        title.setText(titleText());
         title.setTextColor(theme.text);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
         title.setSingleLine(true);
@@ -109,6 +125,7 @@ public final class TextEditPanel extends LinearLayout {
         add(Icons.CHEVRON_UP_RIGHT, null, L.t("오른쪽 위로", "Up and right"), MOVE_UP_RIGHT, false, true, 12, 1, 4, 1);
         add(Icons.CHEVRON_LEFT, null, L.t("왼쪽으로", "Left"), MOVE_LEFT, false, true, 4, 2, 4, 1);
         select = add(0, L.t("선택", "Select"), L.t("선택 모드", "Selection mode"), SELECT, false, false, 8, 2, 4, 1);
+        select.drag = true;
         add(Icons.CHEVRON_RIGHT, null, L.t("오른쪽으로", "Right"), MOVE_RIGHT, false, true, 12, 2, 4, 1);
         add(Icons.CHEVRON_DOWN_LEFT, null, L.t("왼쪽 아래로", "Down and left"), MOVE_DOWN_LEFT, false, true, 4, 3, 4, 1);
         add(Icons.CHEVRON_DOWN, null, L.t("아래로", "Down"), MOVE_DOWN, false, true, 8, 3, 4, 1);
@@ -116,8 +133,13 @@ public final class TextEditPanel extends LinearLayout {
         // 맨 아래 줄: 선택 편집 칩과 같은 네 가지
         cut = add(Icons.CUT, L.t("잘라내기", "Cut"), null, CUT, true, false, 0, 5, 5, 1);
         copy = add(Icons.COPY, L.t("복사", "Copy"), null, COPY, true, false, 5, 5, 5, 1);
-        add(Icons.PASTE, L.t("붙여넣기", "Paste"), null, PASTE, true, false, 10, 5, 5, 1);
+        PadKey paste = add(Icons.PASTE, L.t("붙여넣기", "Paste"), null, PASTE, true, false, 10, 5, 5, 1);
+        paste.setLongAction(OPEN_CLIPBOARD);
         add(Icons.SELECT_ALL, L.t("전체 선택", "Select all"), null, SELECT_ALL, true, false, 15, 5, 5, 1);
+        // 가장 아래 줄: 자판 맨 아래 줄처럼 가운데에 넓은 띄어쓰기
+        add(Icons.TAB, "Tab", L.t("탭", "Tab"), TAB, true, false, 0, 6, 4, 1);
+        add(0, L.t("띄어쓰기", "Space"), null, SPACE, false, false, 4, 6, 12, 1);
+        enter = add(Icons.ENTER, null, L.t("엔터", "Enter"), ENTER, true, false, 16, 6, 4, 1);
         addView(pad, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
         restyle();
     }
@@ -173,12 +195,30 @@ public final class TextEditPanel extends LinearLayout {
                 : L.t("선택 모드 켜기", "Turn on selection mode"));
     }
 
-    /** 선택한 글자가 있는지. 없으면 잘라내기·복사를 흐리게 보인다. */
-    public void setHasSelection(boolean has) {
-        if (hasSelection == has) return;
-        hasSelection = has;
-        cut.setDim(!has);
-        copy.setDim(!has);
+    /** 선택한 글자 수. 0이 아니면 맨 위 줄 제목 자리에 보이고, 0이면 잘라내기·복사를 흐리게 보인다. */
+    public void setSelectedCount(int count) {
+        if (selectedCount == count) return;
+        selectedCount = count;
+        cut.setDim(count == 0);
+        copy.setDim(count == 0);
+        title.setText(titleText());
+    }
+
+    private String titleText() {
+        return selectedCount > 0 ? L.t(selectedCount + "자 선택됨", selectedCount + " selected")
+                : L.t("텍스트 편집", "Text editing");
+    }
+
+    /** 엔터 버튼의 아이콘 (입력란에 따라 줄바꿈·보내기·검색 등, 자판의 엔터 키와 같다). */
+    public void setEnterIcon(int icon) {
+        enter.setIcon(icon);
+    }
+
+    /** '선택'을 밀 때 한 칸 옮기는 거리 (px)와 길게 누르기 시간 (ms). */
+    public void setDragConfig(float stepX, float stepY, int longPressMs) {
+        this.stepX = Math.max(1, stepX);
+        this.stepY = Math.max(1, stepY);
+        this.longPressMs = longPressMs;
     }
 
     /** 누르고 있던 버튼의 되풀이를 멈춘다 (창을 닫을 때). */
@@ -188,8 +228,8 @@ public final class TextEditPanel extends LinearLayout {
 
     private void restyle() {
         for (int i = 0; i < pad.getChildCount(); i++) styleKey((PadKey) pad.getChildAt(i));
-        cut.setDim(!hasSelection);
-        copy.setDim(!hasSelection);
+        cut.setDim(selectedCount == 0);
+        copy.setDim(selectedCount == 0);
     }
 
     private void styleKey(PadKey k) {
@@ -266,13 +306,27 @@ public final class TextEditPanel extends LinearLayout {
     private final class PadKey extends View {
         private final Paint iconPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final TextPaint textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
-        private final int icon, action, iconSize, gap, padH;
+        private final int action, iconSize, gap, padH, slop;
+        private int icon;
         private final long interval;
+        /** 길게 누르면 실행할 동작 (0이면 없음). */
+        private int longAction;
+        /** 트랙패드처럼 밀 수 있는 버튼('선택')인지와, 미는 중의 상태. */
+        boolean drag;
+        private boolean dragging, longFired;
+        private float downX, downY, refX, refY;
         private final String label;
         final boolean function;
         private final boolean repeat;
         private boolean dim, held;
         private int color;
+
+        /** '선택'을 길게 눌렀다: 선택 모드를 켜고, 이제부터 미는 만큼 선택 영역을 넓힌다. */
+        private final Runnable longPress = () -> {
+            if (!held || dragging) return;
+            longFired = true;
+            listener.onEditAction(SELECT_ON);
+        };
 
         private final Runnable again = new Runnable() {
             @Override
@@ -295,11 +349,28 @@ public final class TextEditPanel extends LinearLayout {
             iconSize = Ui.dp(c, 20);
             gap = Ui.dp(c, 6);
             padH = Ui.dp(c, 6);
+            slop = android.view.ViewConfiguration.get(c).getScaledTouchSlop();
             textPaint.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 15, c.getResources().getDisplayMetrics()));
             setClickable(true);
             setFocusable(true);
             // 되풀이하지 않는 버튼과, 접근성 서비스가 누르는 경우: 한 번 실행한다.
             setOnClickListener(v -> fire());
+        }
+
+        void setIcon(int icon) {
+            if (this.icon == icon) return;
+            this.icon = icon;
+            invalidate();
+        }
+
+        void setLongAction(int action) {
+            longAction = action;
+            setHapticFeedbackEnabled(false);   // 진동·소리는 키보드 설정을 따른다 (onEditPress)
+            setOnLongClickListener(v -> {
+                listener.onEditPress(false);
+                listener.onEditAction(longAction);
+                return true;
+            });
         }
 
         void setColor(int color) {
@@ -326,12 +397,15 @@ public final class TextEditPanel extends LinearLayout {
 
         void stop() {
             held = false;
+            dragging = false;
             removeCallbacks(again);
+            removeCallbacks(longPress);
             setPressed(false);
         }
 
         @Override
         public boolean onTouchEvent(MotionEvent e) {
+            if (drag) return onDragTouch(e);
             if (!repeat) return super.onTouchEvent(e);
             switch (e.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
@@ -346,6 +420,64 @@ public final class TextEditPanel extends LinearLayout {
                     if (held && (e.getX() < 0 || e.getY() < 0 || e.getX() > getWidth() || e.getY() > getHeight())) stop();
                     return true;
                 case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    stop();
+                    return true;
+                default:
+                    return true;
+            }
+        }
+
+        /**
+         * '선택' 버튼: 탭하면 선택 모드를 켜고 끈다. 밀면 트랙패드처럼 커서를 옮기고, 길게 누르면 선택 모드를 켠 뒤 미는 만큼
+         * 선택한다. 칸 거리는 스페이스바 커서 이동과 같다.
+         */
+        private boolean onDragTouch(MotionEvent e) {
+            float x = e.getX(), y = e.getY();
+            switch (e.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    if (getBackground() != null) getBackground().setHotspot(x, y);
+                    setPressed(true);
+                    held = true;
+                    dragging = false;
+                    longFired = false;
+                    downX = refX = x;
+                    downY = refY = y;
+                    listener.onEditPress(false);
+                    postDelayed(longPress, longPressMs);
+                    return true;
+                case MotionEvent.ACTION_MOVE:
+                    if (!held) return true;
+                    if (!dragging && (Math.abs(x - downX) > slop || Math.abs(y - downY) > slop)) {
+                        dragging = true;
+                        removeCallbacks(longPress);
+                    }
+                    if (!dragging && !longFired) return true;
+                    // 칸 거리만큼 밀 때마다 한 칸씩 옮긴다 (남은 거리는 다음으로 넘긴다).
+                    int dx = 0, dy = 0;
+                    while (Math.abs(x - refX) >= stepX && stepX > 0) {
+                        int d = x > refX ? 1 : -1;
+                        refX += d * stepX;
+                        dx += d;
+                    }
+                    while (Math.abs(y - refY) >= stepY && stepY > 0) {
+                        int d = y > refY ? 1 : -1;
+                        refY += d * stepY;
+                        dy += d;
+                    }
+                    // 한 번에 여러 칸이면 한 칸씩 보낸다 (대각선은 좌우·위아래를 한 칸씩 짝지어).
+                    while (dx != 0 || dy != 0) {
+                        int sx = Integer.signum(dx), sy = Integer.signum(dy);
+                        listener.onEditDrag(sx, sy);
+                        dx -= sx;
+                        dy -= sy;
+                    }
+                    return true;
+                case MotionEvent.ACTION_UP:
+                    boolean tap = held && !dragging && !longFired;
+                    stop();
+                    if (tap) listener.onEditAction(action);   // 누를 때 이미 진동했다
+                    return true;
                 case MotionEvent.ACTION_CANCEL:
                     stop();
                     return true;
