@@ -79,10 +79,10 @@ public final class TextEditPanel extends LinearLayout {
     private float stepX, stepY;
     private int longPressMs = 350;
     /**
-     * 지우기 버튼(⌫·⌦)을 누른 뒤 되풀이를 시작하기까지의 시간과 지우는 간격 (ms). 자판 지우기 키의 길게 누르기 시간·
-     * '지우는 속도'와 같다.
+     * 되풀이하는 버튼(이동·단어 이동·지우기)을 누른 뒤 되풀이를 시작하기까지의 시간 (ms, 기능키 길게 누르기 시간과 같다)과,
+     * 지우기 버튼(⌫·⌦)이 지우는 간격 (ms, 자판 지우기 키의 '지우는 속도'와 같다).
      */
-    private long deleteStartMs = REPEAT_START_MS, deleteRepeatMs = REPEAT_MS;
+    private long repeatStartMs = REPEAT_START_MS, deleteRepeatMs = REPEAT_MS;
     /** 상하좌우 버튼을 이만큼(px) 밀면 그쪽 끝으로 간다 (기능키 밀기 거리와 같다). */
     private float swipePx;
 
@@ -234,17 +234,18 @@ public final class TextEditPanel extends LinearLayout {
         enter.setIcon(icon);
     }
 
-    /** '선택'을 밀 때 한 칸 옮기는 거리 (px)와 길게 누르기 시간 (ms). */
-    /** 지우기 버튼을 누른 뒤 되풀이를 시작하기까지의 시간과, 누르고 있을 때 지우는 간격 (ms). */
-    public void setDeleteRepeat(long startMs, long ms) {
-        deleteStartMs = Math.max(1, startMs);
-        deleteRepeatMs = Math.max(1, ms);
+    /** 되풀이하는 버튼을 누른 뒤 되풀이를 시작하기까지의 시간과, 지우기 버튼을 누르고 있을 때 지우는 간격 (ms). */
+    public void setRepeatTiming(long startMs, long deleteMs) {
+        repeatStartMs = Math.max(1, startMs);
+        deleteRepeatMs = Math.max(1, deleteMs);
     }
 
+    /** 상하좌우 버튼을 이만큼(px) 밀면 그쪽 끝으로 간다. */
     public void setSwipeThreshold(float px) {
         swipePx = px;
     }
 
+    /** '선택'을 밀 때 한 칸 옮기는 거리 (px)와 길게 누르기 시간 (ms). */
     public void setDragConfig(float stepX, float stepY, int longPressMs) {
         this.stepX = Math.max(1, stepX);
         this.stepY = Math.max(1, stepY);
@@ -325,8 +326,8 @@ public final class TextEditPanel extends LinearLayout {
 
     // ---------------------------------------------------------------- 버튼
 
-    /** 처음 누른 뒤 되풀이를 시작하기까지와, 되풀이 간격 (ms). */
-    private static final long REPEAT_START_MS = 400, REPEAT_MS = 50;
+    /** 처음 누른 뒤 되풀이를 시작하기까지 (설정을 받기 전의 기본값)와, 이동 버튼의 되풀이 간격 (ms). */
+    private static final long REPEAT_START_MS = 350, REPEAT_MS = 50;
 
     /** 격자의 버튼 하나: 아이콘이나 이름(둘 다 있으면 나란히, 좁으면 아이콘만)을 가운데에 그린다. */
     @SuppressLint("ClickableViewAccessibility")
@@ -386,11 +387,6 @@ public final class TextEditPanel extends LinearLayout {
             setFocusable(true);
             // 되풀이하지 않는 버튼과, 접근성 서비스가 누르는 경우: 한 번 실행한다.
             setOnClickListener(v -> fire());
-        }
-
-        /** 처음 누른 뒤 되풀이를 시작하기까지 (ms): 지우기 버튼은 자판 지우기 키의 길게 누르기 시간, 나머지는 REPEAT_START_MS. */
-        private long startDelay() {
-            return action == BACKSPACE || action == FORWARD_DELETE ? deleteStartMs : REPEAT_START_MS;
         }
 
         /** 되풀이 간격 (ms): 지우기 버튼은 자판의 지우는 속도를 따르고, 나머지는 REPEAT_MS. */
@@ -480,7 +476,7 @@ public final class TextEditPanel extends LinearLayout {
                     setPressed(true);
                     held = true;
                     fire();
-                    postDelayed(again, startDelay());
+                    postDelayed(again, repeatStartMs);
                     return true;
                 case MotionEvent.ACTION_MOVE:
                     // 손가락이 버튼 밖으로 나가면 되풀이를 멈춘다.
@@ -519,7 +515,7 @@ public final class TextEditPanel extends LinearLayout {
                     downX = x;
                     downY = y;
                     listener.onEditPress(false);
-                    postDelayed(startRepeat, REPEAT_START_MS);
+                    postDelayed(startRepeat, repeatStartMs);
                     return true;
                 case MotionEvent.ACTION_MOVE: {
                     if (!held || swiped || repeating) return true;

@@ -2726,8 +2726,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             textEditPanel.setDragConfig(keyboard.cursorStepX(), keyboard.cursorStepY(), prefs.deletePressMs());
             // 상하좌우 버튼을 밀어 끝으로 가는 거리는 기능키·도구 막대 버튼 밀기와 같다.
             textEditPanel.setSwipeThreshold(Ui.dp(this, prefs.fnSwipeThresholdDp()));
-            // ⌫·⌦를 누르고 있을 때는 자판 지우기 키처럼: 길게 누르기 시간이 지나면 '지우는 속도'(초당 글자 수)로 지운다.
-            textEditPanel.setDeleteRepeat(prefs.deletePressMs(), 1000L / Math.max(1, prefs.deleteRepeatRate()));
+            // 되풀이하는 버튼은 기능키 길게 누르기 시간이 지나면 되풀이를 시작한다. ⌫·⌦는 자판 지우기 키처럼
+            // '지우는 속도'(초당 글자 수)로 지운다.
+            textEditPanel.setRepeatTiming(prefs.deletePressMs(), 1000L / Math.max(1, prefs.deleteRepeatRate()));
             EditorInfo editInfo = getCurrentInputEditorInfo();
             if (editInfo != null) textEditPanel.setEnterIcon(enterIcon(editInfo));
         } else if (p == PANEL_SEARCH) {
