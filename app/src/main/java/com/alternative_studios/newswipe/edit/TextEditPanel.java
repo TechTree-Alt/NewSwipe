@@ -24,11 +24,11 @@ import com.alternative_studios.newswipe.ui.Ui;
  * 텍스트 편집 창. 클립보드 창처럼 자판과 도구 막대 자리를 덮는다.
  * <pre>
  *   [←] 텍스트 편집                    [↶] [↷]
+ *   [잘라내기 ][  복사  ][ 붙여넣기 ][ 전체 선택 ]
  *   [ 단어« ][            ↑            ][ 단어» ]
  *   [               ][ 선택 ][               ]
  *   [       ←       ][      ][       →       ]
  *   [  ⌦  ][            ↓            ][  ⌫  ]
- *   [잘라내기 ][  복사  ][ 붙여넣기 ][ 전체 선택 ]
  *   [  Tab  ][      띄어쓰기       ][  엔터  ]
  * </pre>
  * 가운데 '선택'을 누르면 선택 모드가 켜지고 꺼진다. 선택 모드에서는 이동 버튼이 커서 대신 선택 영역의 끝을 옮긴다.
@@ -63,7 +63,7 @@ public final class TextEditPanel extends LinearLayout {
             OPEN_CLIPBOARD = 25,
             ENTER = 26, SPACE = 27, TAB = 28;
 
-    /** 격자의 칸 수: 가로 20칸(모서리 버튼은 4칸, 편집 버튼 줄은 5칸씩), 세로 6줄 (커서 이동 4줄, 편집, Tab·띄어쓰기·엔터). */
+    /** 격자의 칸 수: 가로 20칸(모서리 버튼은 4칸, 편집 버튼 줄은 5칸씩), 세로 6줄 (편집, 커서 이동 4줄, Tab·띄어쓰기·엔터). */
     private static final int COLS = 20, ROWS = 6;
 
     private final KeyboardTheme theme;
@@ -114,28 +114,28 @@ public final class TextEditPanel extends LinearLayout {
         addView(header, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, topBarHeight));
 
         pad = new Pad(context);
+        // 맨 위 줄: 선택 편집 칩과 같은 네 가지
+        cut = add(Icons.CUT, L.t("잘라내기", "Cut"), null, CUT, true, false, 0, 0, 5, 1);
+        copy = add(Icons.COPY, L.t("복사", "Copy"), null, COPY, true, false, 5, 0, 5, 1);
+        PadKey paste = add(Icons.PASTE, L.t("붙여넣기", "Paste"), null, PASTE, true, false, 10, 0, 5, 1);
+        paste.setLongAction(OPEN_CLIPBOARD);
+        add(Icons.SELECT_ALL, L.t("전체 선택", "Select all"), null, SELECT_ALL, true, false, 15, 0, 5, 1);
         // 커서 이동: 상하좌우가 남는 자리를 모두 쓰고 선택은 가운데. 위쪽 모서리는 단어 단위 이동, 아래쪽 모서리는 지우기.
         // 상하좌우는 그 방향으로 밀면 그쪽 끝으로 간다.
-        add(Icons.WORD_LEFT, null, L.t("단어 앞으로", "Word left"), WORD_LEFT, true, true, 0, 0, 4, 1);
-        add(Icons.CHEVRON_UP, null, L.t("위로 (위로 밀면 글 맨 앞으로)", "Up (swipe up: start of text)"), MOVE_UP, false, true, 4, 0, 12, 1)
+        add(Icons.WORD_LEFT, null, L.t("단어 앞으로", "Word left"), WORD_LEFT, true, true, 0, 1, 4, 1);
+        add(Icons.CHEVRON_UP, null, L.t("위로 (위로 밀면 글 맨 앞으로)", "Up (swipe up: start of text)"), MOVE_UP, false, true, 4, 1, 12, 1)
                 .setSwipe(0, -1, TEXT_START);
-        add(Icons.WORD_RIGHT, null, L.t("단어 뒤로", "Word right"), WORD_RIGHT, true, true, 16, 0, 4, 1);
-        add(Icons.CHEVRON_LEFT, null, L.t("왼쪽으로 (왼쪽으로 밀면 줄 맨 앞으로)", "Left (swipe left: line start)"), MOVE_LEFT, false, true, 0, 1, 8, 2)
+        add(Icons.WORD_RIGHT, null, L.t("단어 뒤로", "Word right"), WORD_RIGHT, true, true, 16, 1, 4, 1);
+        add(Icons.CHEVRON_LEFT, null, L.t("왼쪽으로 (왼쪽으로 밀면 줄 맨 앞으로)", "Left (swipe left: line start)"), MOVE_LEFT, false, true, 0, 2, 8, 2)
                 .setSwipe(-1, 0, LINE_START);
-        select = add(0, L.t("선택", "Select"), L.t("선택 모드", "Selection mode"), SELECT, false, false, 8, 1, 4, 2);
+        select = add(0, L.t("선택", "Select"), L.t("선택 모드", "Selection mode"), SELECT, false, false, 8, 2, 4, 2);
         select.drag = true;
-        add(Icons.CHEVRON_RIGHT, null, L.t("오른쪽으로 (오른쪽으로 밀면 줄 맨 뒤로)", "Right (swipe right: line end)"), MOVE_RIGHT, false, true, 12, 1, 8, 2)
+        add(Icons.CHEVRON_RIGHT, null, L.t("오른쪽으로 (오른쪽으로 밀면 줄 맨 뒤로)", "Right (swipe right: line end)"), MOVE_RIGHT, false, true, 12, 2, 8, 2)
                 .setSwipe(1, 0, LINE_END);
-        add(Icons.FORWARD_DELETE, null, L.t("커서 뒤 글자 지우기", "Delete forward"), FORWARD_DELETE, true, true, 0, 3, 4, 1);
-        add(Icons.CHEVRON_DOWN, null, L.t("아래로 (아래로 밀면 글 맨 뒤로)", "Down (swipe down: end of text)"), MOVE_DOWN, false, true, 4, 3, 12, 1)
+        add(Icons.FORWARD_DELETE, null, L.t("커서 뒤 글자 지우기", "Delete forward"), FORWARD_DELETE, true, true, 0, 4, 4, 1);
+        add(Icons.CHEVRON_DOWN, null, L.t("아래로 (아래로 밀면 글 맨 뒤로)", "Down (swipe down: end of text)"), MOVE_DOWN, false, true, 4, 4, 12, 1)
                 .setSwipe(0, 1, TEXT_END);
-        add(Icons.DELETE, null, L.t("커서 앞 글자 지우기", "Delete"), BACKSPACE, true, true, 16, 3, 4, 1);
-        // 선택 편집 칩과 같은 네 가지
-        cut = add(Icons.CUT, L.t("잘라내기", "Cut"), null, CUT, true, false, 0, 4, 5, 1);
-        copy = add(Icons.COPY, L.t("복사", "Copy"), null, COPY, true, false, 5, 4, 5, 1);
-        PadKey paste = add(Icons.PASTE, L.t("붙여넣기", "Paste"), null, PASTE, true, false, 10, 4, 5, 1);
-        paste.setLongAction(OPEN_CLIPBOARD);
-        add(Icons.SELECT_ALL, L.t("전체 선택", "Select all"), null, SELECT_ALL, true, false, 15, 4, 5, 1);
+        add(Icons.DELETE, null, L.t("커서 앞 글자 지우기", "Delete"), BACKSPACE, true, true, 16, 4, 4, 1);
         // 맨 아래 줄: 자판 맨 아래 줄처럼 가운데에 넓은 띄어쓰기
         add(Icons.TAB, "Tab", L.t("탭", "Tab"), TAB, true, false, 0, 5, 4, 1);
         add(0, L.t("띄어쓰기", "Space"), null, SPACE, false, false, 4, 5, 12, 1);
