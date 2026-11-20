@@ -1208,9 +1208,20 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
     }
 
-    /** 도구 막대 빈 공간(칸 BAR)이나 버튼을 길게 누를 때 실행할 기능 (ToolbarSwipes.LONG_PRESS). */
+    /**
+     * 도구 막대 빈 공간(칸 BAR)과 버튼마다 길게 누를 때 실행할 기능 (ToolbarSwipes.LONG_PRESS). 도구 막대를 누를 때마다 묻기
+     * 때문에 설정을 적용할 때 한 번 읽어 둔다 (밀기 표 toolbarSwipes와 같다).
+     */
+    private String[] toolLongPress = new String[0];
+
+    private String[] loadToolLongPress() {
+        String[] t = new String[ToolbarSwipes.LONG_PRESS.slotCount()];
+        for (int i = 0; i < t.length; i++) t[i] = ToolbarSwipes.LONG_PRESS.get(prefs, i, ToolbarSwipes.LONG);
+        return t;
+    }
+
     private String toolbarLongPressAction(int slot) {
-        return ToolbarSwipes.LONG_PRESS.get(prefs, slot, ToolbarSwipes.LONG);
+        return slot >= 0 && slot < toolLongPress.length ? toolLongPress[slot] : SwipeAction.NONE;
     }
 
     /** '밀어서 선택'으로 도구 막대를 길게 누른 뒤 미는 중의 기준점. */
@@ -1562,6 +1573,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         keyboard.setPickSwipe(prefs.swipePickSuggestion());
         keyboard.setKeyboardSwipes(KeyboardSwipes.load(prefs));
         toolbarSwipes = ToolbarSwipes.load(prefs);
+        toolLongPress = loadToolLongPress();
         // 지우기 키를 밀어 단어를 지울 때와 같은 거리('기능키 미는 거리'의 1.5배)를 쓴다.
         if (toolbar != null) {
             toolbar.configure(!SwipeAction.NONE.equals(toolbarAction(Key.SWIPE_UP)),
@@ -2465,6 +2477,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         boolean hadSelection = selStart >= 0 && selEnd >= 0 && selStart != selEnd;
         selStart = newSelStart;
         selEnd = newSelEnd;
+        // 줄 맨 뒤로 보낸 자리에서 커서가 떠났다: 나중에 우연히 같은 자리로 와도 다시 시도하지 않게 잊는다.
+        if (lineEndAt >= 0 && focusPos() != lineEndAt) lineEndAt = -1;
         if (panel == PANEL_SEARCH) return;
         if (textEditPanel != null && panel == PANEL_TEXT_EDIT) updateEditSelectionCount();
         // 글자를 선택하거나 선택을 풀면 선택 편집 칩을 띄우거나 감춘다.
@@ -5370,14 +5384,17 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private int lineEndAt = -1, lineStartFrom = -1;
     private boolean lineEdgeExtend;
 
-    private final Runnable rememberLineEnd = () -> lineEndAt = focusPos();
+    private final Runnable rememberLineEnd = () -> lineEndAt = liveFocus(getCurrentInputConnection());
 
     private final Runnable retryLineStart = () -> {
-        int f = focusPos();
+        InputConnection ic = getCurrentInputConnection();
+        if (ic == null) return;
+        // 느린 앱은 커서가 움직였다는 소식(onUpdateSelection)이 늦게 온다: 그것만 믿고 다시 보내면 이미 줄 맨 앞에 간 커서를
+        // 윗줄로 옮겨 버리므로, 알 수 있으면 지금 커서 자리를 앱에 직접 묻는다.
+        int f = liveFocus(ic);
         if (f <= 0 || f != lineStartFrom || f != lineEndAt) return;   // Home 키로 움직였거나 그사이 커서가 바뀌었다
         lineEndAt = -1;
-        InputConnection ic = getCurrentInputConnection();
-        if (ic == null || charBeforeFocus(ic, f) != 1) return;   // 줄바꿈 바로 뒤(진짜 줄 맨 앞)거나 글을 읽을 수 없다
+        if (charBeforeFocus(ic, f) != 1) return;   // 줄바꿈 바로 뒤(진짜 줄 맨 앞)거나 글을 읽을 수 없다
         sendLineKey(KeyEvent.KEYCODE_DPAD_LEFT, lineEdgeExtend);
         sendLineKey(KeyEvent.KEYCODE_MOVE_HOME, lineEdgeExtend);
         mirror.forget();
@@ -5393,9 +5410,31 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /** 커서 자리 (선택 영역이 있으면 움직이는 끝). 모르면 -1. */
     private int focusPos() {
-        if (selStart < 0 || selEnd < 0) return -1;
-        if (selStart == selEnd) return selEnd;
-        return selectAnchor == selEnd ? selStart : selEnd;
+        return focusOf(selStart, selEnd);
+    }
+
+    private int focusOf(int start, int end) {
+        if (start < 0 || end < 0) return -1;
+        if (start == end) return end;
+        return selectAnchor == end ? start : end;
+    }
+
+    /**
+     * 앱에 지금의 커서 자리(움직이는 끝)를 직접 묻는다 (Android 12부터). 앞서 보낸 키를 앱이 처리한 뒤의 자리가 온다
+     * (입력 연결의 요청은 보낸 순서대로 처리된다). 물을 수 없으면 입력란이 알려 준 자리를 쓴다.
+     */
+    private int liveFocus(InputConnection ic) {
+        if (ic != null && Build.VERSION.SDK_INT >= 31) {
+            try {
+                SurroundingText st = ic.getSurroundingText(0, 0, 0);
+                if (st != null && st.getOffset() >= 0) {
+                    return focusOf(st.getOffset() + st.getSelectionStart(), st.getOffset() + st.getSelectionEnd());
+                }
+            } catch (RuntimeException ignored) {
+                // 이 입력란이 지원하지 않는다
+            }
+        }
+        return focusPos();
     }
 
     /** 커서(움직이는 끝) 바로 앞 글자가 줄바꿈이면 0, 다른 글자면 1, 읽을 수 없으면 -1. */
@@ -6308,6 +6347,22 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
      */
     private void updateEditSelectionCount() {
         if (textEditPanel == null) return;
+        main.removeCallbacks(countEditSelection);
+        if (!hasSelection()) {
+            textEditPanel.setSelectedCount(0, 0);   // 읽을 것이 없다: 바로 지운다
+            return;
+        }
+        // 선택한 글을 읽는 것은 앱에 묻는 일(메인 스레드에서 기다린다)이라, 선택을 밀어 넓히는 동안 바뀔 때마다 묻지 않고
+        // 움직임이 잠깐 멎었을 때 한 번 읽는다.
+        main.postDelayed(countEditSelection, EDIT_COUNT_DELAY_MS);
+    }
+
+    private static final long EDIT_COUNT_DELAY_MS = 80;
+    private final Runnable countEditSelection = () -> {
+        if (textEditPanel != null && panel == PANEL_TEXT_EDIT) countEditSelectionNow();
+    };
+
+    private void countEditSelectionNow() {
         int n = hasSelection() ? Math.abs(selEnd - selStart) : 0;
         int spaces = n == 0 ? 0 : -1;   // 선택한 글을 읽지 못하면 공백 수는 모른다
         if (n > 0 && n <= SELECTION_COUNT_READ_MAX) {
@@ -6330,8 +6385,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 선택한 글을 읽어 글자 수를 셀 최대 길이 (UTF-16 단위). 넘으면 위치의 차이를 쓴다. */
     private static final int SELECTION_COUNT_READ_MAX = 5000;
 
+    /** 텍스트 편집 창에서 지금 실행하는 동작이 누르고 있어서 되풀이하는 것인지. */
+    private boolean editPressRepeat;
+
     @Override
     public void onEditPress(boolean repeat) {
+        editPressRepeat = repeat;
         if (repeat) {
             if (cursorTickDue()) cursorTick();
         } else {
@@ -6413,7 +6472,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 break;
             case TextEditPanel.BACKSPACE: {
                 boolean had = hasSelection();
-                if (beginEdit()) handleDelete();
+                // 되풀이 중에는 매번 선택한 글자를 앱에 묻지 않는다 (첫 번에 지웠다). 자판의 연속 삭제와 같다.
+                if (beginEdit()) handleDelete(editPressRepeat && !had);
                 if (had) setEditSelecting(false);
                 break;
             }
@@ -6532,9 +6592,16 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (sel != null && sel.length() > 0) {
             ic.commitText("", 1);
             setEditSelecting(false);
-        } else if (!textField() || !ic.deleteSurroundingTextInCodePoints(0, 1)) {
-            // 터미널 등 글을 알려 주지 않는 입력란이나, 글자 지우기를 받지 않는 입력란: Delete 키를 보낸다.
-            sendDownUpKeyEvents(KeyEvent.KEYCODE_FORWARD_DEL);
+        } else {
+            // 커서 뒤 한 글자 (이모지처럼 두 칸짜리 글자면 두 칸). 글을 알려 주지 않는 입력란(터미널 등)에는 Delete 키를 보낸다.
+            CharSequence after = textField() ? ic.getTextAfterCursor(2, 0) : null;
+            if (after == null) {
+                sendDownUpKeyEvents(KeyEvent.KEYCODE_FORWARD_DEL);
+            } else if (after.length() > 0) {
+                int n = after.length() > 1 && Character.isHighSurrogate(after.charAt(0))
+                        && Character.isLowSurrogate(after.charAt(1)) ? 2 : 1;
+                ic.deleteSurroundingText(0, n);
+            }
         }
         endEdit();
     }

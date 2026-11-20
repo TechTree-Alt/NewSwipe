@@ -63,7 +63,11 @@ public final class SwipeStrip extends LinearLayout {
     private int longPressMs = 350;
     private float lastX, lastY;
     private final Runnable longPress = () -> {
-        if (!longWaiting) return;
+        // 그사이 키보드가 내려갔거나 막대가 숨었으면(손을 뗀 소식 없이) 실행하지 않는다.
+        if (!longWaiting || !isShown()) {
+            longWaiting = false;
+            return;
+        }
         longWaiting = false;
         longFired = true;
         if (listener != null) longDragging = listener.onLongPress(lastX, lastY);
@@ -181,6 +185,7 @@ public final class SwipeStrip extends LinearLayout {
                 if (!fired && accepts(dir) && Math.max(Math.abs(dx), Math.abs(dy)) >= distance) {
                     fired = true;
                     captured = true;
+                    stopLongPressWait();   // 밀기 거리가 짧으면 길게 누르기를 거두기 전에 밀기가 먼저 실행될 수 있다
                     if (listener != null && listener.isDrag(dir)) {
                         dragging = true;
                         listener.onDragStart(dir, ev.getX(), ev.getY());
@@ -217,6 +222,12 @@ public final class SwipeStrip extends LinearLayout {
             }
         }
         return null;
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        reset();   // 기다리던 길게 누르기를 거둔다 (키보드 화면을 다시 만들 때 등)
+        super.onDetachedFromWindow();
     }
 
     private void stopLongPressWait() {

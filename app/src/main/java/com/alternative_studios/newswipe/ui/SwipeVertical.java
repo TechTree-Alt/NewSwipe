@@ -68,7 +68,11 @@ public final class SwipeVertical {
         final boolean[] held = new boolean[3];
         final int slop = android.view.ViewConfiguration.get(v.getContext()).getScaledTouchSlop();
         final Runnable longPress = () -> {
-            if (!held[0]) return;
+            // 그사이 키보드가 내려갔거나 버튼이 숨었으면(손을 뗀 소식 없이) 실행하지 않는다.
+            if (!held[0] || !v.isShown()) {
+                held[0] = false;
+                return;
+            }
             held[0] = false;
             held[1] = true;
             // 버튼의 누르기를 취소하고, 이어지는 손짓을 도구 막대가 밀기로 가로채지 않게 한다.
@@ -118,6 +122,8 @@ public final class SwipeVertical {
                     else return false;
                     if (Math.max(Math.abs(dx), Math.abs(dy)) <= thresholdPx.getAsInt() || !enabled.test(dir)) return false;
                     fired[0] = true;
+                    held[0] = false;   // 밀었다: 길게 누르기는 거둔다
+                    view.removeCallbacks(longPress);
                     MotionEvent cancel = MotionEvent.obtain(ev);
                     cancel.setAction(MotionEvent.ACTION_CANCEL);
                     view.onTouchEvent(cancel);
