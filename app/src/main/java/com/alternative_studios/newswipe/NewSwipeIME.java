@@ -2295,6 +2295,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         super.onStartInput(attribute, restarting);
         initialTextFresh = true;
         hwForwarded.clear();
+        lineEndAt = -1;   // 줄 맨 뒤로 보낸 자리는 다른 입력란에서는 뜻이 없다
         // 외장 키보드를 쓰면 자판 화면이 뜨지 않아 onStartInputView가 불리지 않는다. 입력란에 맞는 언어는 여기서도 정한다.
         applyFieldLanguage(attribute, restarting);
     }
@@ -5337,7 +5338,71 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     private void moveCursorToLineEdge(boolean end) {
-        sendDownUpKeyEvents(end ? KeyEvent.KEYCODE_MOVE_END : KeyEvent.KEYCODE_MOVE_HOME);
+        moveToLineEdge(end, false);
+    }
+
+    /**
+     * 커서를(extend면 선택 영역의 움직이는 끝을) 화면에 보이는 줄의 맨 앞·맨 뒤로 보낸다 (Home·End 키).
+     *
+     * <p>자동 줄바꿈된 줄의 경계에서는 '이 줄의 맨 뒤'와 '다음 줄의 맨 앞'이 글 안에서 같은 자리다. 띄어쓰기 없이 단어
+     * 가운데에서 줄이 넘어가면(한글에서 흔하다) 일부 입력란(Compose 입력란 등)은 End 키로 커서를 바로 그 자리에 두고,
+     * 그 뒤로는 커서가 다음 줄 맨 앞에 있다고 보아 Home 키를 받아도 움직이지 않는다. 키보드는 앱의 줄 배치를 알 수 없으므로,
+     * 줄 맨 뒤로 보낸 자리에서 Home 키가 커서를 옮기지 못했으면(그 자리가 줄바꿈 바로 뒤가 아닐 때) 한 글자 왼쪽으로 옮겨
+     * 그 줄 안으로 들어간 뒤 Home 키를 다시 보낸다.
+     */
+    private void moveToLineEdge(boolean end, boolean extend) {
+        main.removeCallbacks(rememberLineEnd);
+        main.removeCallbacks(retryLineStart);
+        lineEdgeExtend = extend;
+        if (end) {
+            sendLineKey(KeyEvent.KEYCODE_MOVE_END, extend);
+            main.postDelayed(rememberLineEnd, LINE_EDGE_SETTLE_MS);
+        } else {
+            lineStartFrom = focusPos();
+            sendLineKey(KeyEvent.KEYCODE_MOVE_HOME, extend);
+            if (lineStartFrom >= 0 && lineStartFrom == lineEndAt) main.postDelayed(retryLineStart, LINE_EDGE_SETTLE_MS);
+        }
+    }
+
+    /** 줄 끝 키를 보낸 뒤 입력란이 커서 자리를 알려 올 때까지 기다리는 시간 (ms, ARROW_SETTLE_MS보다 조금 길게). */
+    private static final long LINE_EDGE_SETTLE_MS = 150;
+    /** 줄 맨 뒤로 보낸 뒤 커서(움직이는 끝)가 멈춘 자리 (모르면 -1)와, 줄 맨 앞으로 보내기 직전의 자리. */
+    private int lineEndAt = -1, lineStartFrom = -1;
+    private boolean lineEdgeExtend;
+
+    private final Runnable rememberLineEnd = () -> lineEndAt = focusPos();
+
+    private final Runnable retryLineStart = () -> {
+        int f = focusPos();
+        if (f <= 0 || f != lineStartFrom || f != lineEndAt) return;   // Home 키로 움직였거나 그사이 커서가 바뀌었다
+        lineEndAt = -1;
+        InputConnection ic = getCurrentInputConnection();
+        if (ic == null || charBeforeFocus(ic, f) != 1) return;   // 줄바꿈 바로 뒤(진짜 줄 맨 앞)거나 글을 읽을 수 없다
+        sendLineKey(KeyEvent.KEYCODE_DPAD_LEFT, lineEdgeExtend);
+        sendLineKey(KeyEvent.KEYCODE_MOVE_HOME, lineEdgeExtend);
+        mirror.forget();
+    };
+
+    private void sendLineKey(int keyCode, boolean extend) {
+        if (extend) {
+            extendSelection(keyCode, keyCode == KeyEvent.KEYCODE_MOVE_HOME || keyCode == KeyEvent.KEYCODE_DPAD_LEFT, false);
+        } else {
+            sendDownUpKeyEvents(keyCode);
+        }
+    }
+
+    /** 커서 자리 (선택 영역이 있으면 움직이는 끝). 모르면 -1. */
+    private int focusPos() {
+        if (selStart < 0 || selEnd < 0) return -1;
+        if (selStart == selEnd) return selEnd;
+        return selectAnchor == selEnd ? selStart : selEnd;
+    }
+
+    /** 커서(움직이는 끝) 바로 앞 글자가 줄바꿈이면 0, 다른 글자면 1, 읽을 수 없으면 -1. */
+    private int charBeforeFocus(InputConnection ic, int focus) {
+        CharSequence t = focus == Math.min(selStart, selEnd) ? ic.getTextBeforeCursor(1, 0) : ic.getSelectedText(0);
+        if (t == null || t.length() == 0) return -1;
+        return t.charAt(t.length() - 1) == '\n' ? 0 : 1;
     }
 
     /** 이모지 버튼을 아래로 밀었을 때: 마지막으로 쓴 이모지를 입력한다. */
@@ -6313,8 +6378,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             case TextEditPanel.LINE_END:
                 if (beginEdit()) {
                     boolean end = action == TextEditPanel.LINE_END;
-                    if (editSelecting) extendSelection(end ? KeyEvent.KEYCODE_MOVE_END : KeyEvent.KEYCODE_MOVE_HOME, !end, false);
-                    else moveCursorToLineEdge(end);
+                    moveToLineEdge(end, editSelecting);
                     endEdit();
                 }
                 break;
