@@ -78,6 +78,8 @@ public final class TextEditPanel extends LinearLayout {
     /** '선택'을 밀 때 한 칸 옮기는 거리 (px, 스페이스바 커서 이동과 같다)와 길게 누르기 시간 (ms). */
     private float stepX, stepY;
     private int longPressMs = 350;
+    /** 지우기 버튼(⌫·⌦)을 누르고 있을 때 지우는 간격 (ms, 자판 지우기 키의 '지우는 속도'와 같다). */
+    private long deleteRepeatMs = REPEAT_MS;
     /** 상하좌우 버튼을 이만큼(px) 밀면 그쪽 끝으로 간다 (기능키 밀기 거리와 같다). */
     private float swipePx;
 
@@ -119,7 +121,10 @@ public final class TextEditPanel extends LinearLayout {
         copy = add(Icons.COPY, L.t("복사", "Copy"), null, COPY, true, false, 5, 0, 5, 1);
         PadKey paste = add(Icons.PASTE, L.t("붙여넣기", "Paste"), null, PASTE, true, false, 10, 0, 5, 1);
         paste.setLongAction(OPEN_CLIPBOARD);
-        add(Icons.SELECT_ALL, L.t("전체 선택", "Select all"), null, SELECT_ALL, true, false, 15, 0, 5, 1);
+        PadKey selectAll = add(Icons.SELECT_ALL, L.t("전체 선택", "Select all"), null, SELECT_ALL, true, false, 15, 0, 5, 1);
+        // 네 버튼은 이름을 함께 보이거나 함께 감춘다: 하나라도 이름이 들어가지 않으면 모두 아이콘만 (줄이 들쭉날쭉하지 않게).
+        PadKey[] editRow = {cut, copy, paste, selectAll};
+        for (PadKey k : editRow) k.labelGroup = editRow;
         // 커서 이동: 상하좌우가 남는 자리를 모두 쓰고 선택은 가운데. 위쪽 모서리는 단어 단위 이동, 아래쪽 모서리는 지우기.
         // 상하좌우는 그 방향으로 밀면 그쪽 끝으로 간다.
         add(Icons.WORD_LEFT, null, L.t("단어 앞으로", "Word left"), WORD_LEFT, true, true, 0, 1, 4, 1);
@@ -227,6 +232,11 @@ public final class TextEditPanel extends LinearLayout {
     }
 
     /** '선택'을 밀 때 한 칸 옮기는 거리 (px)와 길게 누르기 시간 (ms). */
+    /** 지우기 버튼을 누르고 있을 때 지우는 간격 (ms). */
+    public void setDeleteRepeatMs(long ms) {
+        deleteRepeatMs = Math.max(1, ms);
+    }
+
     public void setSwipeThreshold(float px) {
         swipePx = px;
     }
@@ -321,7 +331,8 @@ public final class TextEditPanel extends LinearLayout {
         private final TextPaint textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
         private final int action, iconSize, gap, padH, slop;
         private int icon;
-        private final long interval;
+        /** 이름을 함께 보이거나 감추는 버튼들 (null이면 혼자 정한다). */
+        PadKey[] labelGroup;
         /** 길게 누르면 실행할 동작 (0이면 없음). */
         private int longAction;
         /** 트랙패드처럼 밀 수 있는 버튼('선택')인지와, 미는 중의 상태. */
@@ -351,7 +362,7 @@ public final class TextEditPanel extends LinearLayout {
                 if (!held) return;
                 listener.onEditPress(true);
                 listener.onEditAction(action);
-                postDelayed(this, interval);
+                postDelayed(this, interval());
             }
         };
 
@@ -362,7 +373,6 @@ public final class TextEditPanel extends LinearLayout {
             this.action = action;
             this.function = function;
             this.repeat = repeat;
-            interval = REPEAT_MS;
             iconSize = Ui.dp(c, 20);
             gap = Ui.dp(c, 6);
             padH = Ui.dp(c, 6);
@@ -372,6 +382,26 @@ public final class TextEditPanel extends LinearLayout {
             setFocusable(true);
             // 되풀이하지 않는 버튼과, 접근성 서비스가 누르는 경우: 한 번 실행한다.
             setOnClickListener(v -> fire());
+        }
+
+        /** 되풀이 간격 (ms): 지우기 버튼은 자판의 지우는 속도를 따르고, 나머지는 REPEAT_MS. */
+        private long interval() {
+            return action == BACKSPACE || action == FORWARD_DELETE ? deleteRepeatMs : REPEAT_MS;
+        }
+
+        /** 이 버튼의 폭에 아이콘과 이름이 다 들어가는지. */
+        private boolean labelFits() {
+            float size = Math.min(iconSize, Math.min(getWidth(), getHeight()) * 0.6f);
+            return 2 * padH + size + gap + textPaint.measureText(label) <= getWidth();
+        }
+
+        /** 이름을 보일지: 아이콘이 없으면 늘, 묶음이면 묶음의 버튼이 모두 들어갈 때만. */
+        private boolean showsLabel() {
+            if (label == null) return false;
+            if (icon == 0) return true;
+            if (labelGroup == null) return labelFits();
+            for (PadKey k : labelGroup) if (k.label != null && !k.labelFits()) return false;
+            return true;
         }
 
         void setIcon(int icon) {
@@ -461,7 +491,7 @@ public final class TextEditPanel extends LinearLayout {
             if (!held || swiped) return;
             repeating = true;
             listener.onEditAction(PadKey.this.action);
-            postDelayed(again, PadKey.this.interval);
+            postDelayed(again, interval());
         };
 
         /**
@@ -583,7 +613,7 @@ public final class TextEditPanel extends LinearLayout {
             float cx = getWidth() / 2f, cy = getHeight() / 2f;
             float size = Math.min(iconSize, Math.min(getWidth(), getHeight()) * 0.6f);
             float textW = label == null ? 0 : textPaint.measureText(label);
-            boolean text = label != null && (icon == 0 || 2 * padH + size + gap + textW <= getWidth());
+            boolean text = showsLabel();
             boolean drawIcon = icon != 0;
             float left = cx - ((drawIcon ? size : 0) + (drawIcon && text ? gap : 0) + (text ? textW : 0)) / 2f;
             if (drawIcon) {
