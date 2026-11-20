@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 겹모음의 둘째 모음을 옆 키로 잘못 쳐서 글자가 깨진 말을 되살린다. ㄱㅗ 다음에 ㅐ 대신 ㅔ를 치면 ㅗ+ㅔ는 겹모음이 아니라
+ * 겹모음·겹받침의 한쪽을 옆 키로 잘못 쳐서 글자가 깨진 말을 되살린다. ㄱㅗ 다음에 ㅐ 대신 ㅔ를 치면 ㅗ+ㅔ는 겹모음이 아니라
  * 조합기가 '고'를 끝내고 ㅔ를 따로 둔다. 그 뒤의 받침도 붙을 곳이 없어 따로 남아 '괜찮아요'가 '고ㅔㄴ찮아요'가 된다
  * (관심 → 고ㅓㄴ심·고ㅡㄴ심). 이런 말은 사전 단어와 자모 배열이 달라 추천·자동 수정이 찾지 못한다.
  *
@@ -13,10 +13,15 @@ import java.util.List;
  * 두 번 쳐 만드는 이중모음(ㅑ ㅕ ㅛ ㅠ ㅒ ㅖ)도 본다 (안너ㅜㅇ하세요 → 안녕하세요). 비용은 {@link TypoModel}의 바꾸기 비용
  * (두 모음 중 어느 쪽이 틀려도 된다)이고 합이 옆 키 하나({@link TypoModel#NEIGHBOR}) 이하인 것만 쓴다.
  *
+ * <p>겹받침도 같다: ㅇㅓ 다음에 ㅂ 대신 옆 키 ㅈ을 치면 ㅈ+ㅅ은 겹받침이 아니라 ㅅ이 따로 남아 '없이'가 '엊ㅅ이'가 된다.
+ * 받침 있는 글자 바로 뒤에 자음 자모가 하나 따로 있으면, 두 자음을 키 하나쯤 떨어진 겹받침(ㄳ ㄵ ㄶ ㄺ ㄻ ㄼ ㄽ ㄾ ㄿ ㅀ ㅄ)으로
+ * 바꿔 본다 (엊ㅅ이 → 없이, 업ㄱ이 → 없이).
+ *
  * <p>같은 모음을 되풀이한 말(우ㅜㅜ, 오ㅗ)과 모음 자모가 둘 이상 이어진 말(아ㅏㅏ)은 일부러 친 것으로 보고 건드리지 않는다.
+ * 자음도 받침과 같은 자음(만ㄴ), 자음 자모가 둘 이상 이어진 말(헐ㅋㅋ), ㅋ(헐ㅋ: 웃음)은 건드리지 않는다.
  */
-final class BrokenVowel {
-    private BrokenVowel() {
+final class BrokenJamo {
+    private BrokenJamo() {
     }
 
     private static final String JUNG = "ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ";
@@ -72,25 +77,44 @@ final class BrokenVowel {
         return c >= 'ㄱ' && c <= 'ㅎ';
     }
 
-    /** word에 겹모음이 깨진 자리가 있는지 (값싸게 먼저 본다). */
+    /** word에 겹모음·겹받침이 깨진 자리가 있는지 (값싸게 먼저 본다). */
     static boolean has(String word) {
         int n = word.length();
-        for (int i = 0; i + 1 < n; i++) if (spot(word, i)) return true;
+        for (int i = 0; i + 1 < n; i++) if (spot(word, i) != NONE) return true;
         return false;
     }
 
-    /** i번째 글자가 받침 없는 음절이고 바로 뒤에 모음 자모가 하나만 따로 있는지. */
-    private static boolean spot(String w, int i) {
+    private static final int NONE = 0, VOWEL = 1, FINAL = 2;
+
+    /**
+     * i번째 글자가 깨진 자리인지: 받침 없는 음절 뒤에 모음 자모가 하나만 따로 있으면 VOWEL, 홑받침 음절 뒤에 자음 자모가 하나만
+     * 따로 있으면 FINAL, 아니면 NONE.
+     */
+    private static int spot(String w, int i) {
         char c = w.charAt(i);
-        if (c < 0xAC00 || c > 0xD7A3 || (c - 0xAC00) % 28 != 0) return false;
-        char v = w.charAt(i + 1);
-        if (!isVowelJamo(v)) return false;
-        if (i + 2 < w.length() && isVowelJamo(w.charAt(i + 2))) return false;   // 아ㅏㅏ: 일부러 늘인 말
-        return JUNG.charAt(((c - 0xAC00) / 28) % 21) != v;                       // 우ㅜ·오ㅗ: 같은 모음 되풀이
+        if (c < 0xAC00 || c > 0xD7A3) return NONE;
+        int s = c - 0xAC00, jong = s % 28;
+        char x = w.charAt(i + 1);
+        char after = i + 2 < w.length() ? w.charAt(i + 2) : 0;
+        if (jong == 0) {
+            if (!isVowelJamo(x)) return NONE;
+            if (isVowelJamo(after)) return NONE;                                      // 아ㅏㅏ: 일부러 늘인 말
+            return JUNG.charAt((s / 28) % 21) != x ? VOWEL : NONE;                    // 우ㅜ·오ㅗ: 같은 모음 되풀이
+        }
+        if (!isConsonantJamo(x) || x == 'ㅋ' || singleFinal(jong) == 0) return NONE;   // 헐ㅋ: 웃음
+        if (isConsonantJamo(after) || isVowelJamo(after)) return NONE;               // 헐ㅋㅋ·ㅎㅎ
+        return JONG.charAt(jong) != x ? FINAL : NONE;                                 // 만ㄴ: 같은 자음 되풀이
+    }
+
+    /** 받침 번호 jong이 홑받침이면 그 자음, 겹받침이면 0. */
+    private static char singleFinal(int jong) {
+        char f = JONG.charAt(jong);
+        for (String p : FINALS) if (p.charAt(2) == f) return 0;
+        return f;
     }
 
     /**
-     * word의 깨진 겹모음을 되살린 말들 (비용이 싼 순서, 많아야 {@link #MAX_REPAIRS}개). 깨진 자리가 없거나 키 하나쯤으로
+     * word의 깨진 겹모음·겹받침을 되살린 말들 (비용이 싼 순서, 많아야 {@link #MAX_REPAIRS}개). 깨진 자리가 없거나 키 하나쯤으로
      * 설명되지 않으면 빈 목록.
      */
     static List<Repair> repairs(String word, TypoModel typo) {
@@ -108,11 +132,12 @@ final class BrokenVowel {
         return uniq;
     }
 
-    /** word[from..]를 sb 뒤에 이어 붙이며 깨진 자리마다 고칠 수 있는 겹모음을 모두 펼친다 (비용 합이 MAX_COST 이하인 것만). */
+    /** word[from..]를 sb 뒤에 이어 붙이며 깨진 자리마다 고칠 수 있는 겹모음·겹받침을 모두 펼친다 (비용 합이 MAX_COST 이하인 것만). */
     private static void expand(String w, int from, StringBuilder sb, float cost, TypoModel typo, List<Repair> out) {
         int n = w.length();
         int i = from;
-        while (i + 1 < n && !spot(w, i)) i++;
+        int kind = NONE;
+        while (i + 1 < n && (kind = spot(w, i)) == NONE) i++;
         if (i + 1 >= n) {
             if (cost > 0f) out.add(new Repair(sb + w.substring(from), cost));
             return;
@@ -120,6 +145,26 @@ final class BrokenVowel {
         int keep = sb.length();
         sb.append(w, from, i);
         int s = w.charAt(i) - 0xAC00;
+        if (kind == FINAL) {
+            // 홑받침 + 따로 남은 자음 → 겹받침
+            char a = JONG.charAt(s % 28), b = w.charAt(i + 1);
+            int base = s - s % 28;
+            boolean any = false;
+            for (String f : FINALS) {
+                float c = cost(typo, a, f.charAt(0)) + cost(typo, b, f.charAt(1));
+                if (cost + c > MAX_COST) continue;
+                sb.append((char) (0xAC00 + base + JONG.indexOf(f.charAt(2))));
+                expand(w, i + 2, sb, cost + c, typo, out);
+                sb.setLength(sb.length() - 1);
+                any = true;
+            }
+            if (!any) {
+                sb.append(w, i, i + 2);
+                expand(w, i + 2, sb, cost, typo, out);
+            }
+            sb.setLength(keep);
+            return;
+        }
         int cho = s / 588;
         char v1 = JUNG.charAt((s / 28) % 21), v2 = w.charAt(i + 1);
         // 따로 남은 받침 (하나, 또는 겹받침이 되는 둘)
@@ -158,7 +203,7 @@ final class BrokenVowel {
         sb.setLength(keep);
     }
 
-    /** 친 모음 typed를 want로 보는 비용 (바로 옆 키가 아닌 대각선 키는 조금 더). */
+    /** 친 자모 typed를 want로 보는 비용 (바로 옆 키가 아닌 대각선 키는 조금 더). */
     private static float cost(TypoModel typo, char typed, char want) {
         if (typed == want) return 0f;
         float d = typo.substituteDirect(typed, want);

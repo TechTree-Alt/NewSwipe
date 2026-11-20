@@ -12,8 +12,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-/** 겹모음의 둘째 모음을 옆 키로 쳐서 깨진 말(고ㅔㄴ찮아요, 고ㅓㄴ심)을 되살리는 것. */
-public class BrokenVowelTest {
+/** 겹모음·겹받침의 한쪽을 옆 키로 쳐서 깨진 말(고ㅔㄴ찮아요, 고ㅓㄴ심, 엊ㅅ이)을 되살리는 것. */
+public class BrokenJamoTest {
     private static WordDictionary dict;
 
     @BeforeClass
@@ -23,6 +23,7 @@ public class BrokenVowelTest {
                 {"관련", "190"}, {"왜", "240"}, {"뭘", "180"}, {"됐어", "180"}, {"훨씬", "170"}, {"괴로워", "120"},
                 {"우리", "200"}, {"아니", "200"}, {"환장하다", "120"}, {"환장하겠다", "110"}, {"환장했다", "110"},
                 {"안녕하세요", "250"}, {"안녕", "220"}, {"안녕히", "150"},
+                {"없이", "220"}, {"없다", "230"}, {"없는", "230"}, {"없고", "200"}, {"읽어", "150"}, {"헐", "150"}, {"많이", "220"},
         });
         dict.warmUpChosung();
     }
@@ -33,7 +34,7 @@ public class BrokenVowelTest {
 
     private static List<String> words(String typed) {
         List<String> out = new ArrayList<>();
-        for (BrokenVowel.Repair r : BrokenVowel.repairs(typed, new TypoModel())) out.add(r.word);
+        for (BrokenJamo.Repair r : BrokenJamo.repairs(typed, new TypoModel())) out.add(r.word);
         return out;
     }
 
@@ -61,7 +62,7 @@ public class BrokenVowelTest {
     @Test
     public void leavesIntentionalRepeatsAlone() {
         for (String w : new String[]{"우ㅜㅜ", "오ㅗ", "아ㅏㅏ", "ㅠㅠ", "아ㅠㅠ", "그ㅡ", "괜찮아요", "ㅋㅋ"}) {
-            assertFalse(w, BrokenVowel.has(w) && !words(w).isEmpty());
+            assertFalse(w, BrokenJamo.has(w) && !words(w).isEmpty());
         }
     }
 
@@ -122,7 +123,7 @@ public class BrokenVowelTest {
         // 두벌식은 ㅕ를 제 키로 친다: ㅓ 다음 ㅜ를 ㅓㅓ로 보지 않는다
         TypoModel dubeolsik = new TypoModel();
         dubeolsik.setRows(com.alternative_studios.newswipe.hangul.Dubeolsik.rows(), new float[]{0f, 0.5f, 1.5f}, false, true);
-        for (BrokenVowel.Repair r : BrokenVowel.repairs("안너ㅜㅇ하세요", dubeolsik)) assertFalse(r.word, r.word.equals("안녕하세요"));
+        for (BrokenJamo.Repair r : BrokenJamo.repairs("안너ㅜㅇ하세요", dubeolsik)) assertFalse(r.word, r.word.equals("안녕하세요"));
         // 모음 연속 탭을 끄면 보지 않는다
         boolean saved = HangulRange.doubleTapVowel;
         HangulRange.doubleTapVowel = false;
@@ -134,13 +135,40 @@ public class BrokenVowelTest {
     }
 
     @Test
+    public void rebuildsCompoundFinal() {
+        // ㅂ 대신 옆 키 ㅈ: ㅈ+ㅅ은 겹받침이 아니라 ㅅ이 따로 남는다
+        assertEquals("없이", words("엊ㅅ이").get(0));
+        assertEquals("없다", words("엊ㅅ다").get(0));
+        // 뒤 자음이 빠진 것 (ㅅ 대신 옆 키 ㄱ), ㄱ 대신 옆 키 ㄷ (ㄺ)
+        assertTrue(words("업ㄱ이").contains("없이"));
+        assertTrue(words("일ㄷ어").contains("읽어"));
+        KoreanSuggest m = model();
+        assertEquals("없이", m.correct("엊ㅅ이", null, KoreanSuggest.FIELD_NORMAL, null, null));
+        assertEquals("없다", m.correct("엊ㅅ다", null, KoreanSuggest.FIELD_NORMAL, null, null));
+        assertEquals("없이", m.correct("업ㄱ이", null, KoreanSuggest.FIELD_NORMAL, null, null));
+        assertEquals("읽어", m.correct("일ㄷ어", null, KoreanSuggest.FIELD_NORMAL, null, null));
+        // 치는 중에도 (엊ㅅ → 없…)
+        String[] s = m.suggest("엊ㅅ", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 5).words;
+        assertTrue(Arrays.toString(s), Arrays.asList(s).contains("없는"));
+    }
+
+    @Test
+    public void leavesLooseConsonantsTypedOnPurposeAlone() {
+        // 웃음(헐ㅋ, 헐ㅋㅋ), 이어진 자음(했음ㅎㅎ), 받침과 같은 자음(만ㄴ)
+        for (String w : new String[]{"헐ㅋ", "헐ㅋㅋ", "했음ㅎㅎ", "만ㄴ이", "없이"}) assertFalse(w, BrokenJamo.has(w));
+        KoreanSuggest m = model();
+        assertNull(m.correct("헐ㅋㅋ", null, KoreanSuggest.FIELD_NORMAL, null, null));
+        assertNull(m.correct("만ㄴ이", null, KoreanSuggest.FIELD_NORMAL, null, null));
+    }
+
+    @Test
     public void offWhenDisabled() {
-        boolean saved = KoreanSuggest.BROKEN_VOWEL;
-        KoreanSuggest.BROKEN_VOWEL = false;
+        boolean saved = KoreanSuggest.BROKEN_JAMO;
+        KoreanSuggest.BROKEN_JAMO = false;
         try {
             assertNull(model().correct("고ㅓㄴ심", null, KoreanSuggest.FIELD_NORMAL, null, null));
         } finally {
-            KoreanSuggest.BROKEN_VOWEL = saved;
+            KoreanSuggest.BROKEN_JAMO = saved;
         }
     }
 }
