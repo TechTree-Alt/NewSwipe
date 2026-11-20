@@ -146,7 +146,7 @@ public final class TextEditPanel extends LinearLayout {
         add(Icons.DELETE, null, L.t("커서 앞 글자 지우기", "Delete"), BACKSPACE, true, true, 16, 4, 4, 1);
         // 맨 아래 줄: 자판 맨 아래 줄처럼 가운데에 넓은 띄어쓰기
         add(Icons.TAB, "Tab", L.t("탭", "Tab"), TAB, true, false, 0, 5, 4, 1);
-        add(0, L.t("띄어쓰기", "Space"), null, SPACE, false, false, 4, 5, 12, 1);
+        add(0, L.t("띄어쓰기", "Space"), null, SPACE, true, false, 4, 5, 12, 1);   // 양옆 Tab·엔터와 같은 기능키 색
         enter = add(Icons.ENTER, null, L.t("엔터", "Enter"), ENTER, true, false, 16, 5, 4, 1);
         addView(pad, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
         restyle();
