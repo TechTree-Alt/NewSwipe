@@ -193,6 +193,11 @@ public final class TypoModel {
         }
     }
 
+    /** ㅑ·ㅕ·ㅛ·ㅠ 키가 따로 있는 자판(두벌식)으로 맞췄는지 ({@link #setRows(String[][], float[], boolean, boolean)}). */
+    public boolean iotizedKeys() {
+        return families == KEY_FAMILY_IOTIZED_KEYS;
+    }
+
     private static float offset(float[] offsets, int row) {
         return offsets == null || row >= offsets.length ? 0f : offsets[row];
     }

@@ -9,7 +9,8 @@ import java.util.List;
  * (관심 → 고ㅓㄴ심·고ㅡㄴ심). 이런 말은 사전 단어와 자모 배열이 달라 추천·자동 수정이 찾지 못한다.
  *
  * <p>받침 없는 글자 바로 뒤에 모음 자모가 하나 따로 있으면, 두 모음을 자판에서 키 하나쯤 떨어진 겹모음(ㅘ ㅙ ㅚ ㅝ ㅞ ㅟ ㅢ)으로
- * 바꿔 보고, 따로 남은 받침 자음을 그 글자에 다시 붙인다 (고ㅔㄴ찮아요 → 괜찮아요). 비용은 {@link TypoModel}의 바꾸기 비용
+ * 바꿔 보고, 따로 남은 받침 자음을 그 글자에 다시 붙인다 (고ㅔㄴ찮아요 → 괜찮아요). 단모음 자판에서 모음 연속 탭을 쓰면 같은 모음을
+ * 두 번 쳐 만드는 이중모음(ㅑ ㅕ ㅛ ㅠ ㅒ ㅖ)도 본다 (안너ㅜㅇ하세요 → 안녕하세요). 비용은 {@link TypoModel}의 바꾸기 비용
  * (두 모음 중 어느 쪽이 틀려도 된다)이고 합이 옆 키 하나({@link TypoModel#NEIGHBOR}) 이하인 것만 쓴다.
  *
  * <p>같은 모음을 되풀이한 말(우ㅜㅜ, 오ㅗ)과 모음 자모가 둘 이상 이어진 말(아ㅏㅏ)은 일부러 친 것으로 보고 건드리지 않는다.
@@ -24,6 +25,18 @@ final class BrokenVowel {
     private static final String[] COMBOS = {
             "ㅗㅏㅘ", "ㅗㅐㅙ", "ㅗㅣㅚ", "ㅜㅓㅝ", "ㅜㅔㅞ", "ㅜㅣㅟ", "ㅡㅣㅢ", "ㅘㅣㅙ", "ㅝㅣㅞ",
     };
+    /**
+     * 같은 모음을 두 번 탭해 만드는 이중모음 {앞, 뒤, 이중모음} (단모음 자판의 '모음 연속 탭', HangulComposer와 같다). 둘째 탭이
+     * 옆 키로 빠지면 (ㅓ 다음에 ㅜ) 겹모음이 되지 않아 글자가 깨진다: 안녕하세요 → 안너ㅜㅇ하세요.
+     */
+    private static final String[] DOUBLED = {"ㅏㅏㅑ", "ㅓㅓㅕ", "ㅗㅗㅛ", "ㅜㅜㅠ", "ㅐㅐㅒ", "ㅔㅔㅖ"};
+    private static final String[] COMBOS_DOUBLED;
+
+    static {
+        COMBOS_DOUBLED = java.util.Arrays.copyOf(COMBOS, COMBOS.length + DOUBLED.length);
+        System.arraycopy(DOUBLED, 0, COMBOS_DOUBLED, COMBOS.length, DOUBLED.length);
+    }
+
     /** 받침 둘이 이어 만드는 겹받침 {앞, 뒤, 겹받침}. */
     private static final String[] FINALS = {
             "ㄱㅅㄳ", "ㄴㅈㄵ", "ㄴㅎㄶ", "ㄹㄱㄺ", "ㄹㅁㄻ", "ㄹㅂㄼ", "ㄹㅅㄽ", "ㄹㅌㄾ", "ㄹㅍㄿ", "ㄹㅎㅀ", "ㅂㅅㅄ",
@@ -126,7 +139,9 @@ final class BrokenVowel {
             }
         }
         boolean any = false;
-        for (String combo : COMBOS) {
+        // 모음 연속 탭은 ㅑ·ㅕ 키가 따로 없는 자판(단모음)에서 켰을 때만 본다 (두벌식은 ㅕ를 제 키로 친다)
+        String[] combos = HangulRange.doubleTapVowel && !typo.iotizedKeys() ? COMBOS_DOUBLED : COMBOS;
+        for (String combo : combos) {
             float c = cost(typo, v1, combo.charAt(0)) + cost(typo, v2, combo.charAt(1));
             if (cost + c > MAX_COST) continue;
             int jung = JUNG.indexOf(combo.charAt(2));

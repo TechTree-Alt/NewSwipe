@@ -22,6 +22,7 @@ public class BrokenVowelTest {
                 {"괜찮아요", "220"}, {"괜찮아", "230"}, {"괜찮은", "200"}, {"괜히", "150"}, {"관심", "200"}, {"관심을", "160"},
                 {"관련", "190"}, {"왜", "240"}, {"뭘", "180"}, {"됐어", "180"}, {"훨씬", "170"}, {"괴로워", "120"},
                 {"우리", "200"}, {"아니", "200"}, {"환장하다", "120"}, {"환장하겠다", "110"}, {"환장했다", "110"},
+                {"안녕하세요", "250"}, {"안녕", "220"}, {"안녕히", "150"},
         });
         dict.warmUpChosung();
     }
@@ -46,7 +47,9 @@ public class BrokenVowelTest {
         assertEquals("뭘", words("무ㅏㄹ").get(0));
         assertEquals("됐어", words("도ㅔㅆ어").get(0));
         // 대각선 키(ㅓ→ㅐ)는 바로 옆 키(ㅓ→ㅏ)보다 뒤에 온다
-        assertEquals(Arrays.asList("돴어", "됐어"), words("도ㅓㅆ어").subList(0, 2));
+        List<String> w = words("도ㅓㅆ어");
+        assertEquals("돴어", w.get(0));
+        assertTrue(w.toString(), w.indexOf("됐어") > w.indexOf("돴어"));
         assertEquals("왜", words("오ㅔ").get(0));
     }
 
@@ -97,6 +100,37 @@ public class BrokenVowelTest {
         // 아직 치는 중인 앞부분은 고치지 않는다
         assertNull(m.correct("고ㅔㄴ", null, KoreanSuggest.FIELD_NORMAL, null, null));
         assertNull(m.correct("우ㅜㅜ", null, KoreanSuggest.FIELD_NORMAL, null, null));
+    }
+
+    @Test
+    public void doubleTappedVowelWhoseSecondTapSlipped() {
+        // 단모음 자판의 모음 연속 탭: ㅓㅓ → ㅕ인데 둘째 탭이 옆 키(ㅜ·ㅗ)로 빠졌다
+        assertEquals("안녕하세요", words("안너ㅜㅇ하세요").get(0));
+        assertTrue(words("안너ㅗㅇ하세요").contains("안녕하세요"));
+        KoreanSuggest m = model();
+        assertEquals("안녕하세요", m.correct("안너ㅜㅇ하세요", null, KoreanSuggest.FIELD_NORMAL, null, null));
+        assertEquals("안녕하세요", m.correct("안너ㅗㅇ하세요", null, KoreanSuggest.FIELD_NORMAL, null, null));
+        // 첫 탭이 빠져 겹모음이 된 말(ㅜ+ㅓ = ㅝ)은 원래 오타 모델이 같은 키 계열(ㅝ↔ㅕ)로 고친다
+        assertEquals("안녕하세요", m.correct("안눵하세요", null, KoreanSuggest.FIELD_NORMAL, null, null));
+        // 치는 중에도
+        String[] s = m.suggest("안너ㅜ", null, KoreanSuggest.FIELD_NORMAL, null, null, null, 5).words;
+        assertTrue(Arrays.toString(s), Arrays.asList(s).contains("안녕하세요"));
+    }
+
+    @Test
+    public void doubleTapOnlyOnLayoutsWithoutIotizedKeys() {
+        // 두벌식은 ㅕ를 제 키로 친다: ㅓ 다음 ㅜ를 ㅓㅓ로 보지 않는다
+        TypoModel dubeolsik = new TypoModel();
+        dubeolsik.setRows(com.alternative_studios.newswipe.hangul.Dubeolsik.rows(), new float[]{0f, 0.5f, 1.5f}, false, true);
+        for (BrokenVowel.Repair r : BrokenVowel.repairs("안너ㅜㅇ하세요", dubeolsik)) assertFalse(r.word, r.word.equals("안녕하세요"));
+        // 모음 연속 탭을 끄면 보지 않는다
+        boolean saved = HangulRange.doubleTapVowel;
+        HangulRange.doubleTapVowel = false;
+        try {
+            assertFalse(words("안너ㅜㅇ하세요").contains("안녕하세요"));
+        } finally {
+            HangulRange.doubleTapVowel = saved;
+        }
     }
 
     @Test
