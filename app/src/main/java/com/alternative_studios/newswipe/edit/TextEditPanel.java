@@ -24,15 +24,16 @@ import com.alternative_studios.newswipe.ui.Ui;
  * 텍스트 편집 창. 클립보드 창처럼 자판과 도구 막대 자리를 덮는다.
  * <pre>
  *   [←] 텍스트 편집                    [↶] [↷]
- *   [ 단어« ][       위쪽 끝       ][ 단어» ]
- *   [       ][  ↖  ][  ↑  ][  ↗  ][       ]
- *   [왼쪽 끝][  ←  ][ 선택 ][  →  ][오른쪽 끝]
- *   [       ][  ↙  ][  ↓  ][  ↘  ][       ]
- *   [   ⌦   ][      아래쪽 끝      ][   ⌫   ]
+ *   [  ↖  ][            ↑            ][  ↗  ]
+ *   [               ][ 선택 ][               ]
+ *   [       ←       ][      ][       →       ]
+ *   [  ↙  ][            ↓            ][  ↘  ]
+ *   [  ⌦  ][   단어«   ][   단어»   ][  ⌫  ]
  *   [잘라내기 ][  복사  ][ 붙여넣기 ][ 전체 선택 ]
  *   [  Tab  ][      띄어쓰기       ][  엔터  ]
  * </pre>
  * 가운데 '선택'을 누르면 선택 모드가 켜지고 꺼진다. 선택 모드에서는 이동 버튼이 커서 대신 선택 영역의 끝을 옮긴다.
+ * 상하좌우 버튼을 그 방향으로 밀면 그쪽 끝으로 간다: 왼쪽·오른쪽은 줄의 맨 앞·맨 뒤, 위·아래는 글 전체의 맨 앞·맨 뒤.
  * '선택'을 밀면 트랙패드처럼 커서가 따라 움직이고(선택 모드면 선택 영역의 끝이), 길게 누른 뒤 밀면 선택 모드를 켜고
  * 밀어서 고른다 (스페이스바를 길게 누른 뒤 밀어서 선택하는 것과 같다). '붙여넣기'를 길게 누르면 클립보드 창을 연다.
  * 이동·지우기 버튼은 누르고 있으면 되풀이한다. 글자를 선택하면 맨 위 줄 제목 자리에 고른 글자 수가 보인다. 실제 동작은 키보드 서비스가 한다 ({@link Listener#onEditAction}).
@@ -79,6 +80,8 @@ public final class TextEditPanel extends LinearLayout {
     /** '선택'을 밀 때 한 칸 옮기는 거리 (px, 스페이스바 커서 이동과 같다)와 길게 누르기 시간 (ms). */
     private float stepX, stepY;
     private int longPressMs = 350;
+    /** 상하좌우 버튼을 이만큼(px) 밀면 그쪽 끝으로 간다 (기능키 밀기 거리와 같다). */
+    private float swipePx;
 
     public TextEditPanel(Context context, KeyboardTheme theme, int topBarHeight, Listener listener) {
         super(context);
@@ -113,26 +116,27 @@ public final class TextEditPanel extends LinearLayout {
         addView(header, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, topBarHeight));
 
         pad = new Pad(context);
-        // 바깥 고리: 단어 이동(위 모서리), 끝으로 이동(네 변), 지우기(아래 모서리)
-        add(Icons.WORD_LEFT, null, L.t("단어 왼쪽으로", "Word left"), WORD_LEFT, true, true, 0, 0, 4, 1);
-        add(Icons.EDGE_UP, null, L.t("글 맨 앞으로", "To start of text"), TEXT_START, false, false, 4, 0, 12, 1);
-        add(Icons.WORD_RIGHT, null, L.t("단어 오른쪽으로", "Word right"), WORD_RIGHT, true, true, 16, 0, 4, 1);
-        add(Icons.EDGE_LEFT, null, L.t("줄 맨 앞으로", "To line start"), LINE_START, false, false, 0, 1, 4, 3);
-        add(Icons.EDGE_RIGHT, null, L.t("줄 맨 뒤로", "To line end"), LINE_END, false, false, 16, 1, 4, 3);
-        add(Icons.FORWARD_DELETE, null, L.t("뒤 글자 지우기", "Delete forward"), FORWARD_DELETE, true, true, 0, 4, 4, 1);
-        add(Icons.EDGE_DOWN, null, L.t("글 맨 뒤로", "To end of text"), TEXT_END, false, false, 4, 4, 12, 1);
-        add(Icons.DELETE, null, L.t("지우기", "Delete"), BACKSPACE, true, true, 16, 4, 4, 1);
-        // 가운데: 선택 버튼과 그 둘레의 여덟 방향
-        add(Icons.CHEVRON_UP_LEFT, null, L.t("왼쪽 위로", "Up and left"), MOVE_UP_LEFT, false, true, 4, 1, 4, 1);
-        add(Icons.CHEVRON_UP, null, L.t("위로", "Up"), MOVE_UP, false, true, 8, 1, 4, 1);
-        add(Icons.CHEVRON_UP_RIGHT, null, L.t("오른쪽 위로", "Up and right"), MOVE_UP_RIGHT, false, true, 12, 1, 4, 1);
-        add(Icons.CHEVRON_LEFT, null, L.t("왼쪽으로", "Left"), MOVE_LEFT, false, true, 4, 2, 4, 1);
-        select = add(0, L.t("선택", "Select"), L.t("선택 모드", "Selection mode"), SELECT, false, false, 8, 2, 4, 1);
+        // 커서 이동: 상하좌우가 남는 자리를 모두 쓰고, 대각선은 네 모서리, 선택은 가운데.
+        // 상하좌우는 그 방향으로 밀면 그쪽 끝으로 간다.
+        add(Icons.CHEVRON_UP_LEFT, null, L.t("왼쪽 위로", "Up and left"), MOVE_UP_LEFT, false, true, 0, 0, 4, 1);
+        add(Icons.CHEVRON_UP, null, L.t("위로 (위로 밀면 글 맨 앞으로)", "Up (swipe up: start of text)"), MOVE_UP, false, true, 4, 0, 12, 1)
+                .setSwipe(0, -1, TEXT_START);
+        add(Icons.CHEVRON_UP_RIGHT, null, L.t("오른쪽 위로", "Up and right"), MOVE_UP_RIGHT, false, true, 16, 0, 4, 1);
+        add(Icons.CHEVRON_LEFT, null, L.t("왼쪽으로 (왼쪽으로 밀면 줄 맨 앞으로)", "Left (swipe left: line start)"), MOVE_LEFT, false, true, 0, 1, 8, 2)
+                .setSwipe(-1, 0, LINE_START);
+        select = add(0, L.t("선택", "Select"), L.t("선택 모드", "Selection mode"), SELECT, false, false, 8, 1, 4, 2);
         select.drag = true;
-        add(Icons.CHEVRON_RIGHT, null, L.t("오른쪽으로", "Right"), MOVE_RIGHT, false, true, 12, 2, 4, 1);
-        add(Icons.CHEVRON_DOWN_LEFT, null, L.t("왼쪽 아래로", "Down and left"), MOVE_DOWN_LEFT, false, true, 4, 3, 4, 1);
-        add(Icons.CHEVRON_DOWN, null, L.t("아래로", "Down"), MOVE_DOWN, false, true, 8, 3, 4, 1);
-        add(Icons.CHEVRON_DOWN_RIGHT, null, L.t("오른쪽 아래로", "Down and right"), MOVE_DOWN_RIGHT, false, true, 12, 3, 4, 1);
+        add(Icons.CHEVRON_RIGHT, null, L.t("오른쪽으로 (오른쪽으로 밀면 줄 맨 뒤로)", "Right (swipe right: line end)"), MOVE_RIGHT, false, true, 12, 1, 8, 2)
+                .setSwipe(1, 0, LINE_END);
+        add(Icons.CHEVRON_DOWN_LEFT, null, L.t("왼쪽 아래로", "Down and left"), MOVE_DOWN_LEFT, false, true, 0, 3, 4, 1);
+        add(Icons.CHEVRON_DOWN, null, L.t("아래로 (아래로 밀면 글 맨 뒤로)", "Down (swipe down: end of text)"), MOVE_DOWN, false, true, 4, 3, 12, 1)
+                .setSwipe(0, 1, TEXT_END);
+        add(Icons.CHEVRON_DOWN_RIGHT, null, L.t("오른쪽 아래로", "Down and right"), MOVE_DOWN_RIGHT, false, true, 16, 3, 4, 1);
+        // 지우기(양 끝)와 단어 단위 이동(가운데)
+        add(Icons.FORWARD_DELETE, null, L.t("뒤 글자 지우기", "Delete forward"), FORWARD_DELETE, true, true, 0, 4, 4, 1);
+        add(Icons.WORD_LEFT, null, L.t("단어 왼쪽으로", "Word left"), WORD_LEFT, true, true, 4, 4, 6, 1);
+        add(Icons.WORD_RIGHT, null, L.t("단어 오른쪽으로", "Word right"), WORD_RIGHT, true, true, 10, 4, 6, 1);
+        add(Icons.DELETE, null, L.t("지우기", "Delete"), BACKSPACE, true, true, 16, 4, 4, 1);
         // 맨 아래 줄: 선택 편집 칩과 같은 네 가지
         cut = add(Icons.CUT, L.t("잘라내기", "Cut"), null, CUT, true, false, 0, 5, 5, 1);
         copy = add(Icons.COPY, L.t("복사", "Copy"), null, COPY, true, false, 5, 5, 5, 1);
@@ -230,6 +234,10 @@ public final class TextEditPanel extends LinearLayout {
     }
 
     /** '선택'을 밀 때 한 칸 옮기는 거리 (px)와 길게 누르기 시간 (ms). */
+    public void setSwipeThreshold(float px) {
+        swipePx = px;
+    }
+
     public void setDragConfig(float stepX, float stepY, int longPressMs) {
         this.stepX = Math.max(1, stepX);
         this.stepY = Math.max(1, stepY);
@@ -329,6 +337,10 @@ public final class TextEditPanel extends LinearLayout {
         /** 트랙패드처럼 밀 수 있는 버튼('선택')인지와, 미는 중의 상태. */
         boolean drag;
         private boolean dragging, longFired;
+        /** 밀면 끝으로 가는 버튼: 미는 방향(swipeX, swipeY)과 그때의 동작 (0이면 밀기 없음). */
+        private int swipeX, swipeY, swipeAction;
+        /** 밀기 버튼: 이번 누르기에서 이미 밀었는지, 되풀이를 시작했는지. */
+        private boolean swiped, repeating;
         private float downX, downY, refX, refY;
         private final String label;
         final boolean function;
@@ -378,6 +390,14 @@ public final class TextEditPanel extends LinearLayout {
             invalidate();
         }
 
+        /** 이 방향(dx, dy)으로 밀면 action을 실행한다. 그러면 누르기는 손을 뗄 때 실행한다 (밀기와 구분하려고). */
+        PadKey setSwipe(int dx, int dy, int action) {
+            swipeX = dx;
+            swipeY = dy;
+            swipeAction = action;
+            return this;
+        }
+
         void setLongAction(int action) {
             longAction = action;
             setHapticFeedbackEnabled(false);   // 진동·소리는 키보드 설정을 따른다 (onEditPress)
@@ -415,12 +435,15 @@ public final class TextEditPanel extends LinearLayout {
             dragging = false;
             removeCallbacks(again);
             removeCallbacks(longPress);
+            removeCallbacks(startRepeat);
+            repeating = false;
             setPressed(false);
         }
 
         @Override
         public boolean onTouchEvent(MotionEvent e) {
             if (drag) return onDragTouch(e);
+            if (swipeAction != 0) return onSwipeTouch(e);
             if (!repeat) return super.onTouchEvent(e);
             switch (e.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
@@ -435,6 +458,58 @@ public final class TextEditPanel extends LinearLayout {
                     if (held && (e.getX() < 0 || e.getY() < 0 || e.getX() > getWidth() || e.getY() > getHeight())) stop();
                     return true;
                 case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    stop();
+                    return true;
+                default:
+                    return true;
+            }
+        }
+
+        /** 되풀이를 시작한다 (밀기 버튼은 누를 때 바로 옮기지 않았으므로 이때 첫 칸을 옮긴다). */
+        private final Runnable startRepeat = () -> {
+            if (!held || swiped) return;
+            repeating = true;
+            listener.onEditAction(PadKey.this.action);
+            postDelayed(again, PadKey.this.interval);
+        };
+
+        /**
+         * 밀면 끝으로 가는 상하좌우 버튼: 누를 때 진동만 하고, 정한 방향으로 밀기 거리만큼 밀면 그쪽 끝으로 간다.
+         * 밀지 않고 떼면 한 칸 옮기고, 누르고 있으면 다른 이동 버튼처럼 되풀이한다 (되풀이를 시작한 뒤에는 밀기로 보지 않는다).
+         */
+        private boolean onSwipeTouch(MotionEvent e) {
+            float x = e.getX(), y = e.getY();
+            switch (e.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    if (getBackground() != null) getBackground().setHotspot(x, y);
+                    setPressed(true);
+                    held = true;
+                    swiped = false;
+                    repeating = false;
+                    downX = x;
+                    downY = y;
+                    listener.onEditPress(false);
+                    postDelayed(startRepeat, REPEAT_START_MS);
+                    return true;
+                case MotionEvent.ACTION_MOVE: {
+                    if (!held || swiped || repeating) return true;
+                    float along = swipeX != 0 ? (x - downX) * swipeX : (y - downY) * swipeY;
+                    float across = swipeX != 0 ? Math.abs(y - downY) : Math.abs(x - downX);
+                    if (along >= Math.max(swipePx, slop) && along > across) {
+                        swiped = true;
+                        removeCallbacks(startRepeat);
+                        listener.onEditPress(false);
+                        listener.onEditAction(swipeAction);
+                    }
+                    return true;
+                }
+                case MotionEvent.ACTION_UP: {
+                    boolean tap = held && !swiped && !repeating;
+                    stop();
+                    if (tap) listener.onEditAction(action);   // 누를 때 이미 진동했다
+                    return true;
+                }
                 case MotionEvent.ACTION_CANCEL:
                     stop();
                     return true;

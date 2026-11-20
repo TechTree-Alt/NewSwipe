@@ -2709,6 +2709,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             updateEditSelectionCount();
             // '선택'을 밀 때는 스페이스바 커서 이동과 같은 거리로 한 칸씩, 길게 누르기는 기능키와 같은 시간.
             textEditPanel.setDragConfig(keyboard.cursorStepX(), keyboard.cursorStepY(), prefs.deletePressMs());
+            // 상하좌우 버튼을 밀어 끝으로 가는 거리는 기능키·도구 막대 버튼 밀기와 같다.
+            textEditPanel.setSwipeThreshold(Ui.dp(this, prefs.fnSwipeThresholdDp()));
             EditorInfo editInfo = getCurrentInputEditorInfo();
             if (editInfo != null) textEditPanel.setEnterIcon(enterIcon(editInfo));
         } else if (p == PANEL_SEARCH) {
