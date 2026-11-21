@@ -1185,7 +1185,7 @@ public final class KeyboardLayout {
                     k = slotChar(",", prefs, popupFor(prefs, true, ",", COMMA_POPUP), narrowW);
                     break;
                 case BottomKeys.GLOBE:
-                    k = fn(emojiKey ? Key.EMOJI : Key.LANGUAGE, "", narrowW);
+                    k = fn(emojiKey ? symbolGlobeType(prefs) : Key.LANGUAGE, "", narrowW);
                     break;
                 case BottomKeys.PERIOD:
                     k = slotChar(".", prefs, popupFor(prefs, true, ".", periodPopup(periodComma)), narrowW);
@@ -1212,6 +1212,20 @@ public final class KeyboardLayout {
             keys.add(k);
         }
         return spaceAt;
+    }
+
+    /**
+     * 기호 자판에서 언어 전환 키 자리에 놓을 키 종류 (기능키 순서·유무 사용자화의 '기호 자판에서는 다른 키로').
+     * 기본은 이모지를 여는 키(Key.EMOJI, 길게 누르기·밀기는 언어 전환 키의 설정을 따른다)다.
+     */
+    private static int symbolGlobeType(Prefs prefs) {
+        switch (prefs == null ? BottomKeys.EMOJI : prefs.symbolGlobeKey()) {
+            case BottomKeys.CLIPBOARD: return Key.CLIPBOARD;
+            case BottomKeys.CURSOR: return Key.CURSOR_PAD;
+            case BottomKeys.VOICE: return Key.VOICE;
+            case BottomKeys.GLOBE: return Key.LANGUAGE;
+            default: return Key.EMOJI;
+        }
     }
 
     private static Key spaceKey(float weight) {

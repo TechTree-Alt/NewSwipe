@@ -273,4 +273,40 @@ public class ExtraBottomKeysTest {
         assertEquals(SwipeAction.NONE, t[LongPressActions.CURSOR][LongPressActions.DIR]);
         assertEquals(SwipeAction.IME_PICKER, t[LongPressActions.GLOBE][LongPressActions.DIR]);   // 기존 기본값 그대로
     }
+
+    @Test
+    public void symbolKeyboardGlobeSlotFollowsChoice() throws Exception {
+        FakeSp sp = new FakeSp();
+        Prefs p = view(sp, Prefs.PROFILE_PORTRAIT);
+        // 기본: 기호 자판에서는 이모지 키, 글자 자판은 언어 전환 키
+        assertEquals(BottomKeys.EMOJI, p.symbolGlobeKey());
+        assertEquals(1, count(KeyboardLayout.symbols(true, p), Key.EMOJI));
+        assertEquals(0, count(KeyboardLayout.symbols(true, p), Key.LANGUAGE));
+        assertEquals(1, count(KeyboardLayout.korean(p), Key.LANGUAGE));
+        assertFalse(LongPressActions.SPEC.shown(p, LongPressActions.CLIPBOARD));
+        // 다른 키로: 기호 자판(1·2쪽)에서만 그 키로 보인다
+        sp.m.put(Prefs.SYMBOL_GLOBE_KEY, BottomKeys.CLIPBOARD);
+        for (KeyboardLayout l : new KeyboardLayout[]{KeyboardLayout.symbols(true, p), KeyboardLayout.symbols2(true, p)}) {
+            assertEquals(1, count(l, Key.CLIPBOARD));
+            assertEquals(0, count(l, Key.EMOJI));
+            assertEquals(0, count(l, Key.LANGUAGE));
+        }
+        assertEquals(1, count(KeyboardLayout.korean(p), Key.LANGUAGE));
+        assertEquals(0, count(KeyboardLayout.korean(p), Key.CLIPBOARD));
+        // 그 키의 길게 누르기·밀기 칸이 편집 화면에 보인다
+        assertTrue(LongPressActions.SPEC.shown(p, LongPressActions.CLIPBOARD));
+        assertTrue(FunctionSwipes.SPEC.shown(p, FunctionSwipes.CLIPBOARD));
+        // 기호 자판에서도 그대로
+        sp.m.put(Prefs.SYMBOL_GLOBE_KEY, BottomKeys.GLOBE);
+        assertEquals(1, count(KeyboardLayout.symbols(true, p), Key.LANGUAGE));
+        assertEquals(0, count(KeyboardLayout.symbols(true, p), Key.EMOJI));
+        // 언어 전환 키를 끄면 기호 자판에서도 없어진다
+        sp.m.put(Prefs.SYMBOL_GLOBE_KEY, BottomKeys.VOICE);
+        sp.m.put(Prefs.LANGUAGE_KEY_HIDDEN, true);
+        assertEquals(0, count(KeyboardLayout.symbols(true, p), Key.VOICE));
+        assertFalse(LongPressActions.SPEC.shown(p, LongPressActions.VOICE));
+        // 모르는 값은 기본값
+        sp.m.put(Prefs.SYMBOL_GLOBE_KEY, "nope");
+        assertEquals(BottomKeys.EMOJI, p.symbolGlobeKey());
+    }
 }

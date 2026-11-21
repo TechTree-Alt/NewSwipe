@@ -61,7 +61,7 @@ public final class LongPressActions {
         public boolean shown(com.alternative_studios.newswipe.Prefs prefs, int slot) {
             if (prefs == null) return true;
             if (slot == GLOBE) return prefs.bottomKeyShown(BottomKeys.GLOBE);
-            if (slot >= EMOJI_KEY && slot <= VOICE) return prefs.bottomKeyShown(EXTRA_IDS[slot - EMOJI_KEY]);
+            if (slot >= EMOJI_KEY && slot <= VOICE) return prefs.bottomKeyUsed(EXTRA_IDS[slot - EMOJI_KEY]);
             return true;
         }
 

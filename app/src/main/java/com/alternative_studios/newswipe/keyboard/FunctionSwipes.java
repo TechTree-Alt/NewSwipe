@@ -73,7 +73,7 @@ public final class FunctionSwipes {
         @Override
         public boolean shown(Prefs prefs, int slot) {
             if (prefs == null || slot == MODE || slot == SPACE || slot == ENTER || slot == DELETE) return true;
-            return prefs.bottomKeyShown(BOTTOM_IDS[slot]);
+            return prefs.bottomKeyUsed(BOTTOM_IDS[slot]);
         }
 
         @Override
