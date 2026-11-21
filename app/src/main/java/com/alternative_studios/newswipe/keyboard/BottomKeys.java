@@ -60,7 +60,6 @@ public final class BottomKeys {
     /** 편집 화면에 보이는 작은 설명. 없으면 null. */
     public static String hint(String id) {
         switch (id) {
-            case GLOBE: return L.t("끄면 기호 자판에서 이 자리에 놓던 키도 함께 없어집니다.", "When off, the key in its place on the symbol keyboard is removed too.");
             case CURSOR: return L.t("상하좌우로 밀면 커서가 움직입니다.", "Swipe in any direction to move the cursor.");
             default: return null;
         }

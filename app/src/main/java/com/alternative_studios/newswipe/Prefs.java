@@ -1659,12 +1659,10 @@ public final class Prefs {
 
     /**
      * 기능키가 어느 자판에든 보이는지: 맨 아래 줄에 켰거나, 켠 언어 전환 키가 기호 자판에서 그 키로 바뀌면 보인다
-     * (길게 누르기·밀기 편집 화면에서 그 키의 칸을 보일지 정할 때 쓴다). 기본값인 이모지 키는 언어 전환 키의 길게 누르기·밀기
-     * 설정을 따르므로 이모지 키의 칸은 보이지 않는다.
+     * (길게 누르기·밀기 편집 화면에서 그 키의 칸을 보일지 정할 때 쓴다).
      */
     public boolean bottomKeyUsed(String id) {
         if (bottomKeyShown(id)) return true;
-        if (com.alternative_studios.newswipe.keyboard.BottomKeys.EMOJI.equals(id)) return false;
         return bottomKeyShown(com.alternative_studios.newswipe.keyboard.BottomKeys.GLOBE) && id.equals(symbolGlobeKey());
     }
 
