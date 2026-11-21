@@ -2892,7 +2892,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             case Key.LANGUAGE:
                 // 일본어 12키 자판에서 글자를 조합하는 동안에는 Gboard처럼 ゛゜小 키로 쓴다.
                 if (languageKeyIsMark()) typeCjk("゛");
-                else toggleLanguage();
+                else {
+                    toggleLanguage();
+                    lettersAfterSymbolLanguageKey();
+                }
                 break;
             case Key.EMOJI:
             case Key.EMOJI_KEY:
@@ -2927,7 +2930,10 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         lastWasSpace = false;
         if (key.type == Key.LANGUAGE) {   // 🌐︎를 위로 밀어 연 말풍선에서 고른 언어
             int i = java.util.Arrays.asList(SPACE_NAMES).indexOf(text);
-            if (i >= 0 && !LANGUAGE_IDS[i].equals(currentLanguage())) switchLanguage(LANGUAGE_IDS[i]);
+            if (i >= 0 && !LANGUAGE_IDS[i].equals(currentLanguage())) {
+                switchLanguage(LANGUAGE_IDS[i]);
+                lettersAfterSymbolLanguageKey();
+            }
             return;
         }
         typeText(text, false);
@@ -3596,6 +3602,16 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
                 return;
             }
         }
+    }
+
+    /**
+     * 기호 자판의 언어 전환 키('기호 자판에서도 그대로')로 언어를 바꿨으면 바뀐 언어의 글자 자판으로 간다
+     * (switchLanguage는 기호 자판에서 '가/ABC' 표시만 바꾼다).
+     */
+    private void lettersAfterSymbolLanguageKey() {
+        if (layoutKind != KeyboardLayout.SYMBOLS && layoutKind != KeyboardLayout.SYMBOLS_2) return;
+        setLayoutKind(lettersKind());
+        updateAutoCap();
     }
 
     /** 이 언어로 바꿀 수 있는지: 한국어·영어는 입력 언어에서 켰을 때, 일본어·중국어는 실험실에서 켜고 사전 팩이 있을 때. */

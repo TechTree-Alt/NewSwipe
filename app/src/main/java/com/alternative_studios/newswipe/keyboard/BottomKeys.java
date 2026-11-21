@@ -19,8 +19,11 @@ public final class BottomKeys {
     /** 기본 순서. 더할 수 있는 키는 뒤에 온다 (예전에 저장한 순서에도 뒤에 붙는다). */
     public static final String[] DEFAULT_ORDER = {MODE, COMMA, GLOBE, SPACE, PERIOD, ENTER, EMOJI, CLIPBOARD, CURSOR, VOICE};
 
-    /** 기호 자판에서 언어 전환 키 자리에 놓을 수 있는 키. 맨 앞(이모지 키)이 기본값이고, GLOBE는 '기호 자판에서도 그대로'다. */
-    public static final String[] SYMBOL_GLOBE_CHOICES = {EMOJI, CLIPBOARD, CURSOR, VOICE, GLOBE};
+    /**
+     * 기호 자판에서 언어 전환 키 자리에 놓을 수 있는 키 (선택 창에 이 차례로 보인다). 맨 앞의 GLOBE는 '기호 자판에서도 그대로'이고,
+     * 기본값은 이모지 키(EMOJI)다.
+     */
+    public static final String[] SYMBOL_GLOBE_CHOICES = {GLOBE, EMOJI, CLIPBOARD, CURSOR, VOICE};
 
     private BottomKeys() {
     }
