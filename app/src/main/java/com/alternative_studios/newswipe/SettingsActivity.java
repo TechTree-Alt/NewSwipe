@@ -477,7 +477,7 @@ public final class SettingsActivity extends Activity {
             {"clipemoji", L.t("이모지 크기", "Emoji size"), L.t("이모티콘 크기 글자 키우기 크게 이모지 창", "emoji size bigger large emoji panel")},
             {KEYBOARD, L.t("상세 배열", "Advanced layout"), L.t("자·모음 균형 배열 분리 키보드 스플릿 split 자음 모음 반반 균형 한글 자판 배열 두벌식 단모음 쿼티 qwerty 레이아웃", "balanced consonant vowel layout split keyboard halves korean layout dubeolsik danmoeum qwerty")},
             {KEYBOARD, L.t("숫자 줄 표시", "Show number row"), L.t("숫자 줄 1234567890 숫자열", "number row 1234567890 digits")},
-            {KEYBOARD, L.t("기능키 순서·유무 사용자화", "Customize function keys"), L.t("맨 아래 줄 하단 키 쉼표 지구본 온점 엔터", "bottom row keys comma globe period enter")},
+            {KEYBOARD, L.t("기능키 순서·유무 사용자화", "Customize function keys"), L.t("맨 아래 줄 하단 키 쉼표 지구본 온점 엔터 언어 전환 키 기호 자판 이모지 키", "bottom row keys comma globe period enter language switch symbol keyboard emoji key")},
             {KEYBOARD, L.t("격자 정렬", "Grid alignment"), L.t("그리드 정렬 칸", "grid align columns")},
             // 화면 모드·강조 색은 소제목뿐이라 검색 목록에 없다: 테마 화면 자체로 찾게 한다.
             {"theme", L.t("테마", "Theme"), L.t("다크 라이트 어두운 밝은 야간 화면 모드 색상 컬러 포인트 강조 색", "dark light night mode theme color accent")},

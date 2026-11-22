@@ -19,6 +19,12 @@ public final class BottomKeys {
     /** 기본 순서. 더할 수 있는 키는 뒤에 온다 (예전에 저장한 순서에도 뒤에 붙는다). */
     public static final String[] DEFAULT_ORDER = {MODE, COMMA, GLOBE, SPACE, PERIOD, ENTER, EMOJI, CLIPBOARD, CURSOR, VOICE};
 
+    /**
+     * 기호 자판에서 언어 전환 키 자리에 놓을 수 있는 키 (선택 창에 이 차례로 보인다). 맨 앞의 GLOBE는 '기호 자판에서도 그대로'이고,
+     * 기본값은 이모지 키(EMOJI)다.
+     */
+    public static final String[] SYMBOL_GLOBE_CHOICES = {GLOBE, EMOJI, CLIPBOARD, CURSOR, VOICE};
+
     private BottomKeys() {
     }
 
@@ -39,10 +45,24 @@ public final class BottomKeys {
         }
     }
 
+    /** 저장된 값(없으면 null)을 기호 자판의 언어 전환 키 자리에 놓을 키로 푼다. 모르는 값은 기본값(이모지 키)이다. */
+    public static String symbolGlobeKey(String stored) {
+        for (String id : SYMBOL_GLOBE_CHOICES) if (id.equals(stored)) return id;
+        return EMOJI;
+    }
+
+    /** '기호 자판에서는 다른 키로'의 선택지 이름. */
+    public static String symbolGlobeLabel(String id) {
+        switch (id) {
+            case EMOJI: return L.t("이모지 키 (기본값)", "Emoji key (default)");
+            case GLOBE: return L.t("기호 자판에서도 그대로", "Keep on the symbol keyboard");
+            default: return label(id);
+        }
+    }
+
     /** 편집 화면에 보이는 작은 설명. 없으면 null. */
     public static String hint(String id) {
         switch (id) {
-            case GLOBE: return L.t("기호 자판에서는 이모지 키도 함께 없어집니다.", "On the symbol keyboard, the emoji key is removed too.");
             case CURSOR: return L.t("상하좌우로 밀면 커서가 움직입니다.", "Swipe in any direction to move the cursor.");
             default: return null;
         }

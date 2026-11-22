@@ -57,7 +57,7 @@ public class NumberPadKeyTest {
         Prefs p = view(sp, Prefs.PROFILE_PORTRAIT);
         assertTrue(p.numberPadForSymbols());
         // 숫자 패드를 써도 기호 자판은 그대로다 (지구본 자리는 이모지 키)
-        for (KeyboardLayout l : symbolPages(p)) assertEquals(1, count(l, Key.EMOJI));
+        for (KeyboardLayout l : symbolPages(p)) assertEquals(1, count(l, Key.EMOJI_KEY));
     }
 
     @Test

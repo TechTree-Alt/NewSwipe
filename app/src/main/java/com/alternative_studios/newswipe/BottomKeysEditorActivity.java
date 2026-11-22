@@ -221,6 +221,51 @@ public final class BottomKeysEditorActivity extends Activity {
         return row;
     }
 
+    /** 언어 전환 키의 하위 버튼: 기호 자판에서 그 자리에 놓을 키를 고른다. 오른쪽에 지금 고른 키를 보여 준다. */
+    private View symbolGlobeButton() {
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        int h = Ui.dp(this, 14);
+        row.setPadding(h, Ui.dp(this, 12), h, Ui.dp(this, 12));
+        row.setBackground(Ui.ripple(accentColor & 0x00FFFFFF | 0x33000000,
+                Ui.round(accentColor & 0x00FFFFFF | 0x1F000000, Ui.dp(this, 12)), Ui.dp(this, 12)));
+        LinearLayout texts = new LinearLayout(this);
+        texts.setOrientation(LinearLayout.VERTICAL);
+        texts.addView(text(L.t("기호 자판에서는 다른 키로", "Different key on the symbol keyboard"), 15, accentColor));
+        TextView current = text(BottomKeys.symbolGlobeLabel(prefs.symbolGlobeKey()), 13, accentColor);
+        current.setAlpha(0.8f);
+        texts.addView(current);
+        row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        row.addView(new Chevron(this, accentColor));
+        row.setClickable(true);
+        row.setFocusable(true);
+        row.setOnClickListener(v -> {
+            String[] ids = BottomKeys.SYMBOL_GLOBE_CHOICES;
+            String[] names = new String[ids.length];
+            int checked = 0;
+            String now = prefs.symbolGlobeKey();
+            for (int i = 0; i < ids.length; i++) {
+                names[i] = BottomKeys.symbolGlobeLabel(ids[i]);
+                if (ids[i].equals(now)) checked = i;
+            }
+            AppTheme.dialogBuilder(this)
+                    .setTitle(L.t("기호 자판에서는 다른 키로", "Different key on the symbol keyboard"))
+                    .setSingleChoiceItems(names, checked, (dlg, which) -> {
+                        prefs.setSymbolGlobeKey(ids[which]);
+                        current.setText(names[which]);
+                        updatePreview();
+                        dlg.dismiss();
+                    })
+                    .setNegativeButton(L.t("취소", "Cancel"), null)
+                    .show();
+        });
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(0, Ui.dp(this, 6), Ui.dp(this, 10), Ui.dp(this, 6));
+        row.setLayoutParams(lp);
+        return row;
+    }
+
     /** 쉼표·온점 키가 입력할 한 글자를 적는 대화상자. */
     private void editChar(String slot, Runnable done) {
         android.widget.EditText input = new android.widget.EditText(this);
@@ -362,6 +407,15 @@ public final class BottomKeysEditorActivity extends Activity {
             LinearLayout edit = new LinearLayout(this);
             edit.setOrientation(LinearLayout.VERTICAL);
             edit.addView(charButton(id, nameView));
+            charGroup = subGroup(0, edit);
+            charGroup.setVisibility(prefs.bottomKeyShown(id) ? View.VISIBLE : View.GONE);
+            texts.addView(charGroup);
+        }
+        // 언어 전환 키는 켜면 하위 항목으로 기호 자판에서 그 자리에 놓을 키(기본 이모지 키)를 고르는 버튼이 나온다.
+        if (BottomKeys.GLOBE.equals(id)) {
+            LinearLayout edit = new LinearLayout(this);
+            edit.setOrientation(LinearLayout.VERTICAL);
+            edit.addView(symbolGlobeButton());
             charGroup = subGroup(0, edit);
             charGroup.setVisibility(prefs.bottomKeyShown(id) ? View.VISIBLE : View.GONE);
             texts.addView(charGroup);

@@ -306,6 +306,11 @@ public final class Prefs {
     /** 맨 아래 줄에 더할 수 있는 키를 보이는지 (기능키 순서·유무 사용자화, 기본 꺼짐). */
     public static final String BOTTOM_EMOJI_KEY = "bottom_emoji_key", BOTTOM_CLIPBOARD_KEY = "bottom_clipboard_key",
             BOTTOM_CURSOR_KEY = "bottom_cursor_key", BOTTOM_VOICE_KEY = "bottom_voice_key";
+    /**
+     * 기호 자판에서 언어 전환 키 자리에 놓을 키 (BottomKeys의 키 ID). 기본은 이모지 키(BottomKeys.EMOJI)이고,
+     * BottomKeys.GLOBE면 기호 자판에서도 언어 전환 키 그대로 둔다 (BottomKeys.SYMBOL_GLOBE_CHOICES).
+     */
+    public static final String SYMBOL_GLOBE_KEY = "symbol_globe_key";
     public static final String ENTER_KEY_HIDDEN = "enter_key_hidden";         // 글자·기호 자판 아래 줄의 엔터 키 없애기
     public static final String MODE_KEY_HIDDEN = "mode_key_hidden";           // 글자 자판·기호 자판의 기호 키(?123·가·ABC) 없애기
     public static final String LANGUAGE_KEY_HIDDEN = "language_key_hidden";   // 글자 자판의 지구본(언어 전환) 키 없애기
@@ -873,7 +878,8 @@ public final class Prefs {
     /** 기능키 순서·유무 사용자화 화면의 값. */
     private static final String[] BOTTOM_KEY_VALUES = {BOTTOM_KEY_ORDER, COMMA_CHAR, PERIOD_CHAR, MODE_KEY_HIDDEN, PERIOD_COMMA,
             LANGUAGE_KEY_HIDDEN, SPACE_KEY_HIDDEN, PERIOD_KEY_HIDDEN, ENTER_KEY_HIDDEN, DELETE_KEY_HIDDEN, KOREAN_SHIFT_HIDDEN,
-            DUBEOLSIK_SHIFT_HIDDEN, KOREAN_SHIFT_FN, BOTTOM_EMOJI_KEY, BOTTOM_CLIPBOARD_KEY, BOTTOM_CURSOR_KEY, BOTTOM_VOICE_KEY};
+            DUBEOLSIK_SHIFT_HIDDEN, KOREAN_SHIFT_FN, BOTTOM_EMOJI_KEY, BOTTOM_CLIPBOARD_KEY, BOTTOM_CURSOR_KEY, BOTTOM_VOICE_KEY,
+            SYMBOL_GLOBE_KEY};
     /** 도구 막대 버튼 사용자화 화면의 값. */
     private static final String[] TOOL_BUTTON_VALUES = {TOOL_ORDER, TOOL_CLIPBOARD, TOOL_EMOJI, VOICE_KEY, TOOL_UNDO,
             TOOL_SETTINGS, TOOL_ONE_HAND, TOOL_FLOAT, TOOL_TEXT_EDIT, TOOL_HIDE};
@@ -1640,6 +1646,25 @@ public final class Prefs {
             default: return;
         }
         sp.edit().putBoolean(key, value).apply();
+    }
+
+    /** 기호 자판에서 언어 전환 키 자리에 놓을 키 (BottomKeys의 키 ID, 기본 이모지 키). 모르는 값은 기본값으로 본다. */
+    public String symbolGlobeKey() {
+        return com.alternative_studios.newswipe.keyboard.BottomKeys.symbolGlobeKey(sp.getString(SYMBOL_GLOBE_KEY, null));
+    }
+
+    public void setSymbolGlobeKey(String id) {
+        if (com.alternative_studios.newswipe.keyboard.BottomKeys.EMOJI.equals(id)) sp.edit().remove(SYMBOL_GLOBE_KEY).apply();
+        else sp.edit().putString(SYMBOL_GLOBE_KEY, id).apply();
+    }
+
+    /**
+     * 기능키가 어느 자판에든 보이는지: 맨 아래 줄에 켰거나, 켠 언어 전환 키가 기호 자판에서 그 키로 바뀌면 보인다
+     * (길게 누르기·밀기 편집 화면에서 그 키의 칸을 보일지 정할 때 쓴다).
+     */
+    public boolean bottomKeyUsed(String id) {
+        if (bottomKeyShown(id)) return true;
+        return bottomKeyShown(com.alternative_studios.newswipe.keyboard.BottomKeys.GLOBE) && id.equals(symbolGlobeKey());
     }
 
     /** 격자 정렬. 자·모음 균형 배열에서는 기능키 폭을 나뉜 자음 키 폭에 맞춘다. */
