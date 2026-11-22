@@ -1002,7 +1002,8 @@ public final class KeyboardLayout {
     }
 
     /**
-     * 격자 정렬일 때 영어 자판의 맨 아래 글자 줄: Shift·지우기 키를 아래 줄 기능키와 같은 폭(한글 키 한 칸)으로 맞춘다.
+     * 격자 정렬일 때 쿼티 모양 자판(영어·두벌식)의 맨 아래 글자 줄: Shift·지우기 키를 아래 줄 기능키와 같은 폭으로 맞춘다.
+     * 글자 키는 일반 자판과 같은 자리다 ({@link #gridSides}).
      */
     private static Row gridBottomLetterRow(Key[] letters, int leftType, boolean delete, Prefs prefs) {
         List<Key> keys = new ArrayList<>();
@@ -1018,54 +1019,49 @@ public final class KeyboardLayout {
     }
 
     /**
-     * 양 끝 키를 한글 키 한 칸 폭으로 줄이고, 남는 폭은 양 끝 키와 가운데 키들 사이의 빈 칸으로 둔다.
-     * 그래서 양 끝 키가 아래 줄 기능키와 양 끝에서 세로로 줄을 맞춘다.
-     * 왼쪽 끝 키는 왼쪽(자음) 키 한 칸, 오른쪽 끝 키는 오른쪽(모음) 키 한 칸 폭으로 아래 줄의 양쪽 기능키와 맞춘다.
+     * 양 끝 키(Shift·기호 쪽 넘김, ⌫)를 격자 폭으로 맞춘다: 왼쪽 끝 키는 아래 줄의 스페이스바 왼쪽 기능키, 오른쪽 끝 키는
+     * 스페이스바 오른쪽 기능키와 같은 폭이라 양 끝에서 세로로 줄을 맞춘다.
+     * 쿼티 모양 자판(두벌식·영어·기호)의 글자 키는 격자 정렬로 자리가 바뀌면 안 된다 (z~m은 늘 s~k 바로 아래).
+     * 그래서 양 끝 키의 폭은 일반 자판에서의 폭(keys에 들어온 폭, 1.5칸)이 최대이고, 줄어든 만큼은 양 끝 키와
+     * 글자 키 사이의 빈 칸으로 둔다. 글자 키는 일반 자판과 같은 자리에 그대로 있다.
      * '상세 배열 격자 정렬'을 켰을 때 이 줄을 나중에 가운데에서 나눠 묶음 폭만큼 늘이거나 줄이면({@link #splitNormal}),
-     * 그만큼 미리 거꾸로 맞춰 둬서 나눈 뒤의 양 끝 키 폭이 아래 줄 기능키와 같게 한다.
+     * 그만큼 미리 거꾸로 맞춰 둬서 나눈 뒤의 양 끝 키 폭이 아래 줄 기능키와 같게 한다 (최대 폭도 같은 비율로 준다).
      * 끄면 아래 줄 기능키처럼 묶음 폭을 따라 함께 늘거나 준다.
      */
     private static Row gridSides(List<Key> keys, Prefs prefs, boolean grid) {
         if (!grid || keys.size() < 2) return new Row(1f, keys.toArray(new Key[0]));
         Key first = keys.get(0), last = keys.get(keys.size() - 1);
         List<Key> middle = keys.subList(1, keys.size() - 1);
-        float middleWidth = 0;
-        for (Key k : middle) middleWidth += k.weight;
+        float maxFirst = first.weight, maxLast = last.weight;   // 일반 자판의 폭: 글자 키를 밀지 않는 최대 폭
         float[] g = gridKeys(prefs);
         float firstW = g[0], lastW = g[1];
         if (gridDetail(prefs) && splitsRows(prefs)) {
             float[] b = blocks(prefs);
             if (b[1] > 0.001f) firstW = g[0] * BALANCED_HALF / b[1];
             if (b[3] > 0.001f) lastW = g[1] * BALANCED_HALF / b[3];
-            // 묶음이 아주 좁으면 그 폭으로는 줄에 다 들어가지 않는다: 줄을 넘지 않을 만큼만 쓴다 (글자 키는 그대로).
-            float room = SPACE_ROW_UNITS - middleWidth;
-            if (firstW + lastW > room && room > 0f) {
-                float f = room / (firstW + lastW);
-                firstW *= f;
-                lastW *= f;
-            }
         }
-        float gap = (SPACE_ROW_UNITS - firstW - lastW - middleWidth) / 2f;
+        firstW = Math.min(firstW, maxFirst);
+        lastW = Math.min(lastW, maxLast);
         first.weight = firstW;
         last.weight = lastW;
         List<Key> out = new ArrayList<>();
         out.add(first);
-        if (gap > 0) out.add(fn(Key.SPACER, "", gap));
+        if (maxFirst - firstW > 0.0001f) out.add(fn(Key.SPACER, "", maxFirst - firstW));
         out.addAll(middle);
-        if (gap > 0) out.add(fn(Key.SPACER, "", gap));
+        if (maxLast - lastW > 0.0001f) out.add(fn(Key.SPACER, "", maxLast - lastW));
         out.add(last);
         return new Row(1f, out.toArray(new Key[0]));
+    }
+
+    /** 격자 정렬의 '상세 배열 격자 정렬'을 켰는지 ({@link #gridKeys}). */
+    private static boolean gridDetail(Prefs prefs) {
+        return prefs != null && prefs.gridLayout() && prefs.gridDetail();
     }
 
     /**
      * 쿼티 모양 글자 줄·기호 자판 줄을 일반 자판처럼 만든 뒤 가운데에서 나눠 묶음 폭만큼 늘이거나 줄이는지
      * ({@link #splitNormal}: 분리 키보드, 또는 영어·두벌식·기호 자판의 자·모음 균형 배열).
      */
-    /** 격자 정렬의 '상세 배열 격자 정렬'을 켰는지 ({@link #gridKeys}). */
-    private static boolean gridDetail(Prefs prefs) {
-        return prefs != null && prefs.gridLayout() && prefs.gridDetail();
-    }
-
     private static boolean splitsRows(Prefs prefs) {
         return prefs != null && (prefs.splitView() || prefs.boardBalanced());
     }
