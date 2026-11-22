@@ -391,4 +391,69 @@ public final class NeuUi {
             return PixelFormat.TRANSLUCENT;
         }
     }
+
+    /**
+     * 체크박스·라디오 버튼의 표시 (CompoundButton·CheckedTextView에 붙인다): 안으로 들어간 홈 안에, 체크하면 강조색 체크 표시나 점.
+     * 상태(state_checked)를 따라 다시 그린다. 그림자는 홈 안쪽에만 있어 잘리지 않는다.
+     */
+    public static final class Check extends Drawable {
+        private final Context ctx;
+        private final boolean radio;
+        private final int accent;
+        private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Path mark = new Path();
+        private final RectF box = new RectF();
+        private final int size;
+        private boolean checked;
+
+        public Check(Context ctx, boolean radio, int accent) {
+            this.ctx = ctx;
+            this.radio = radio;
+            this.accent = accent;
+            this.size = Ui.dp(ctx, 32);
+            p.setStrokeCap(Paint.Cap.ROUND);
+            p.setStrokeJoin(Paint.Join.ROUND);
+        }
+
+        @Override public int getIntrinsicWidth() { return size; }
+        @Override public int getIntrinsicHeight() { return size; }
+        @Override public boolean isStateful() { return true; }
+
+        @Override
+        protected boolean onStateChange(int[] state) {
+            boolean on = false;
+            for (int s : state) if (s == android.R.attr.state_checked) on = true;
+            if (on == checked) return false;
+            checked = on;
+            invalidateSelf();
+            return true;
+        }
+
+        @Override
+        public void draw(Canvas c) {
+            android.graphics.Rect b = getBounds();
+            float dp = Ui.dp(ctx, 1), cx = b.exactCenterX(), cy = b.exactCenterY(), s = 10 * dp;
+            box.set(cx - s, cy - s, cx + s, cy + s);
+            drawInset(ctx, c, box, radio ? s : 5 * dp, surface, p);
+            if (!checked) return;
+            p.setColor(accent);
+            if (radio) {
+                p.setStyle(Paint.Style.FILL);
+                c.drawCircle(cx, cy, 4.5f * dp, p);
+                return;
+            }
+            float k = 6.5f * dp;
+            mark.reset();
+            mark.moveTo(cx - k * 0.5f, cy + k * 0.02f);
+            mark.lineTo(cx - k * 0.12f, cy + k * 0.4f);
+            mark.lineTo(cx + k * 0.55f, cy - k * 0.38f);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(2.2f * dp);
+            c.drawPath(mark, p);
+        }
+
+        @Override public void setAlpha(int alpha) { p.setAlpha(alpha); }
+        @Override public void setColorFilter(android.graphics.ColorFilter cf) { p.setColorFilter(cf); }
+        @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
+    }
 }

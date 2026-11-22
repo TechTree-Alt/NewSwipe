@@ -28,8 +28,6 @@ public final class ExpressiveChoiceButton extends TextView {
     private final float[] radii = new float[8];
     private final int accent, onAccent, text, hint;
     private int idle, overlay;
-    /** 면 색을 직접 정했는지 (키 편집 창의 키 모양 칸). Neumorphism에서도 그 색으로 면을 칠한다. */
-    private boolean idleSet;
     private final float small, pressed;
     private boolean first, last;
     private float sel;      // 0 = 고르지 않음, 1 = 고름 (스프링으로 1을 조금 넘을 수 있다)
@@ -76,7 +74,6 @@ public final class ExpressiveChoiceButton extends TextView {
 
     /** 고르지 않은 칸의 면 색과 눌렀을 때 덧칠하는 색을 직접 정한다 (기본은 글자 힌트 색을 옅게 쓴다). */
     public void setIdleColors(int idle, int overlay) {
-        idleSet = true;
         this.idle = idle;
         this.overlay = overlay;
         invalidate();
@@ -224,8 +221,7 @@ public final class ExpressiveChoiceButton extends TextView {
     }
 
     private void applyTextColor() {
-        // Neumorphism: 고른 칸은 강조색으로 칠하지 않고 안으로 들어가므로 글씨가 강조색이 된다.
-        setTextColor(blend(text, NeuUi.on ? accent : onAccent, clamp01(sel)));
+        setTextColor(blend(text, onAccent, clamp01(sel)));
     }
 
     /**
@@ -266,16 +262,19 @@ public final class ExpressiveChoiceButton extends TextView {
     }
 
     /**
-     * Neumorphism: 고르지 않은 칸은 바탕에서 솟아오르고, 고른 칸은 안으로 들어가 있다 (누르는 동안도 들어간다).
-     * 줄 양 끝의 바깥 모서리는 알약, 안쪽 모서리는 작게 둥글다.
+     * Neumorphism: 칸의 면은 바탕색과 같아 그림자만으로 솟아오른다 (따로 정한 면 색은 쓰지 않는다: 바탕과 다른 색이면 밝은 그림자와
+     * 겹쳐 흐려 보인다). 고른 칸은 강조색으로 채우고, 누르는 동안은 안으로 들어간다. 누를 수 없는 칸(키 편집 창 가운데의 키 이름)은
+     * 늘 들어간 홈으로 그려 버튼과 구별한다.
      */
     private void drawNeu(Canvas canvas) {
         float w = getWidth(), h = getHeight();
         float r = Math.min(h / 2f, Ui.dp(getContext(), 14));
         rect.set(0, 0, w, h);
-        boolean in = sel > 0.5f || press > 0.5f;
-        int face = idleSet ? (idle | 0xFF000000) : NeuUi.surface;
-        if (in) {
+        float t = clamp01(sel);
+        int face = t <= 0f ? NeuUi.surface : blend(NeuUi.surface, accent, t);
+        if (!isClickable()) {
+            NeuUi.drawInset(getContext(), canvas, rect, r, NeuUi.surface, paint);
+        } else if (press > 0.5f) {
             NeuUi.drawInset(getContext(), canvas, rect, r, face, paint);
         } else {
             NeuUi.drawRaised(getContext(), canvas, rect, r, NeuUi.SMALL);
@@ -291,7 +290,7 @@ public final class ExpressiveChoiceButton extends TextView {
                         android.text.TextUtils.TruncateAt.END);
                 subShownRoom = room;
             }
-            subPaint.setColor(blend(hint, accent, clamp01(sel)));
+            subPaint.setColor(blend(hint, withAlpha(onAccent, 0xB3), clamp01(sel)));
             canvas.drawText(subShown, 0, subShown.length(), w / 2f, h - Ui.dp(getContext(), 10), subPaint);
         }
     }

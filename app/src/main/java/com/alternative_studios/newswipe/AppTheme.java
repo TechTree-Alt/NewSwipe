@@ -205,6 +205,13 @@ public final class AppTheme {
         tint(v, accent, hint);
     }
 
+    /** 시스템 목록 칸의 표시가 라디오(한 개 고르기)인지: 목록이 한 개만 고르게 되어 있으면 라디오다. */
+    private static boolean isRadioMark(android.widget.CheckedTextView v) {
+        android.view.ViewParent p = v.getParent();
+        return p instanceof android.widget.AbsListView
+                && ((android.widget.AbsListView) p).getChoiceMode() == android.widget.AbsListView.CHOICE_MODE_SINGLE;
+    }
+
     private static void tint(android.view.View v, int accent, int hint) {
         int id = v.getId();
         if (v instanceof android.widget.TextView && (id == android.R.id.button1 || id == android.R.id.button2
@@ -213,7 +220,19 @@ public final class AppTheme {
         }
         android.content.res.ColorStateList states = new android.content.res.ColorStateList(
                 new int[][]{{android.R.attr.state_checked}, {}}, new int[]{accent, hint});
-        if (v instanceof android.widget.CheckedTextView) {
+        if (NeuUi.on && v instanceof android.widget.CheckedTextView) {
+            android.widget.CheckedTextView ct = (android.widget.CheckedTextView) v;
+            android.graphics.drawable.Drawable was = ct.getCheckMarkDrawable();
+            if (was != null && !(was instanceof NeuUi.Check)) {   // 표시가 없는 칸은 그대로, 이미 바꾼 칸은 다시 만들지 않는다
+                ct.setCheckMarkTintList(null);
+                ct.setCheckMarkDrawable(new NeuUi.Check(v.getContext(), isRadioMark(ct), accent));
+            }
+        } else if (NeuUi.on && (v instanceof android.widget.CheckBox || v instanceof android.widget.RadioButton)) {
+            // Neumorphism: 시스템 체크박스·라디오 대신 안으로 들어간 홈 + 강조색 표시
+            android.widget.CompoundButton cb = (android.widget.CompoundButton) v;
+            cb.setButtonTintList(null);
+            if (!(cb.getButtonDrawable() instanceof NeuUi.Check)) cb.setButtonDrawable(new NeuUi.Check(v.getContext(), v instanceof android.widget.RadioButton, accent));
+        } else if (v instanceof android.widget.CheckedTextView) {
             ((android.widget.CheckedTextView) v).setCheckMarkTintList(states);
         } else if (v instanceof android.widget.CompoundButton) {
             ((android.widget.CompoundButton) v).setButtonTintList(states);
