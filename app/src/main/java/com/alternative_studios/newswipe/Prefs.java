@@ -152,7 +152,7 @@ public final class Prefs {
     public static final String LAB_DUBEOLSIK = "lab_dubeolsik";
     public static final String GRID_COLORS = "grid_colors";   // 색 정렬 (테마): Shift·⌫는 글자 키 색, 스페이스바는 기능키 색
     public static final String GRID_LAYOUT = "grid_layout";                   // 아래 줄 기능키를 한글 키 폭에 맞춰 격자로 정렬
-    public static final String GRID_DETAIL = "grid_detail";                   // 격자 정렬: 균형 배열·분리 키보드에서 묶음 키 폭에 맞춘다
+    public static final String GRID_DETAIL = "grid_detail";                   // 격자 정렬의 상세 배열 폭에 맞추기: 스페이스바 오른쪽 기능키·⌫를 모음 키 폭으로
     /** 자·모음 균형 배열. 한글 배열마다 따로 저장한다: 이 이름 + "_" + 배열 값 (예: balanced_layout_danmoeum7). */
     public static final String BALANCED_LAYOUT = "balanced_layout";
     /** 가로 모드 분리 키보드: 가로 모드에서 자·모음 균형 배열로 자판을 나눈다. 한글 배열마다 따로 저장한다: 이 이름 + "_" + 배열 값. */

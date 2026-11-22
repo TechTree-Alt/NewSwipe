@@ -1023,7 +1023,7 @@ public final class KeyboardLayout {
      * 스페이스바 오른쪽 기능키와 같은 폭이라 양 끝에서 세로로 줄을 맞춘다.
      * 쿼티 모양 자판(두벌식·영어·기호)의 글자 키는 격자 정렬로 자리가 바뀌면 안 된다 (z~m은 늘 s~k 바로 아래).
      * 그래서 양 끝 키의 폭은 일반 자판에서의 폭(keys에 들어온 폭, 1.5칸)이 최대이고, 줄어든 만큼은 양 끝 키와
-     * 글자 키 사이의 빈 칸으로 둔다. 글자 키는 일반 자판과 같은 자리에 그대로 있다.
+     * 글자 키 사이의 빈 칸으로 둔다.
      * 이 줄을 나중에 가운데에서 나눠 묶음 폭만큼 늘이거나 줄이면({@link #splitNormal}), 그만큼 미리 거꾸로 맞춰 둬서
      * 나눈 뒤의 양 끝 키 폭이 아래 줄 기능키와 같게 한다 (최대 폭도 같은 비율로 준다).
      */
@@ -1050,19 +1050,6 @@ public final class KeyboardLayout {
         if (maxLast - lastW > 0.0001f) out.add(fn(Key.SPACER, "", maxLast - lastW));
         out.add(last);
         return new Row(1f, out.toArray(new Key[0]));
-    }
-
-    /** 격자 정렬의 '상세 배열 폭에 맞추기'을 켰는지 ({@link #gridKeys}). */
-    private static boolean gridDetail(Prefs prefs) {
-        return prefs != null && prefs.gridLayout() && prefs.gridDetail();
-    }
-
-    /**
-     * 쿼티 모양 글자 줄·기호 자판 줄을 일반 자판처럼 만든 뒤 가운데에서 나눠 묶음 폭만큼 늘이거나 줄이는지
-     * ({@link #splitNormal}: 분리 키보드, 또는 영어·두벌식·기호 자판의 자·모음 균형 배열).
-     */
-    private static boolean splitsRows(Prefs prefs) {
-        return prefs != null && (prefs.splitView() || prefs.boardBalanced());
     }
 
     private static Row charRow(String[] labels, String[][] popups) {
@@ -1114,21 +1101,27 @@ public final class KeyboardLayout {
      * 어느 자판에서나 아래 줄 키들의 실제 폭이 같다.
      */
     private static final float SPACE_ROW_UNITS = 10f;
+    // ---------------------------------------------------------------- 격자 정렬
+    //
+    // 격자 정렬을 켜면 기능키(스페이스바와 단모음 자판의 ⌫ 제외)의 폭을 한글 자판의 글자 키 한 칸에 맞춘다.
+    // - 기본: 모든 기능키가 자음(왼쪽) 키 한 칸. 상세 배열(균형 배열·분리 키보드)이면 나뉜 자음 키 한 칸이라
+    //   자음 폭을 바꾸면 함께 바뀐다.
+    // - '상세 배열 폭에 맞추기'를 켜면 상세 배열에서 스페이스바 오른쪽 기능키와 ⌫는 모음(오른쪽) 키 한 칸이다.
+    // - 폭은 화면에 그려지는 실제 폭이라, 분리 키보드에서도 묶음 폭·'하단 기능키 폭'으로 다시 늘이거나 줄이지 않는다.
+    // - 쿼티 모양 자판(두벌식·영어·기호)의 글자 키 자리는 바뀌지 않는다 ({@link #gridSides}).
+
     /**
-     * 격자 정렬에서 아래 줄 기능키 하나의 실제 너비 {스페이스바 왼쪽, 스페이스바 오른쪽} (줄 전체 10칸 기준).
-     * 보통은 양쪽 모두 한글 자판의 자음(왼쪽) 키 한 칸이다: 상세 배열이 없으면 글자 키 한 칸 (10 ÷ 8열,
-     * NewSwipe 단모음은 10 ÷ 7열), 자·모음 균형 배열·분리 키보드면 왼쪽(자음) 묶음의 키 한 칸이라 자음 폭을 바꾸면 함께 바뀐다.
-     * '상세 배열 폭에 맞추기'를 켜면 균형 배열·분리 키보드에서 오른쪽은 오른쪽(모음) 묶음의 키 한 칸이다.
+     * 격자 정렬에서 기능키 하나의 실제 폭 {스페이스바 왼쪽, 스페이스바 오른쪽} (줄 전체 10칸 기준).
+     * 영어·기호 자판도 한글 자판의 키 한 칸에 맞춘다: 한글 자판의 상세 배열로 잰다.
      */
     private static float[] gridKeys(Prefs prefs) {
-        // 영어·기호 자판도 한글 자판의 키 한 칸에 맞춘다: 한글 자판의 상세 배열로 잰다 (영어 자판의 상세 배열은 따로 정한다).
-        boolean detail = gridDetail(prefs);
+        boolean detail = prefs != null && prefs.gridDetail();
         if (prefs != null) prefs = prefs.koreanView();
         if (balanced(prefs) || splitView(prefs)) {
             float[] w = blockKeyWidths(prefs);
             return detail ? w : new float[]{w[0], w[0]};
         }
-        float w = SPACE_ROW_UNITS / koreanColumns(prefs);
+        float w = SPACE_ROW_UNITS / koreanColumns(prefs);   // 상세 배열이 없으면 글자 키 한 칸
         return new float[]{w, w};
     }
 
@@ -1151,8 +1144,16 @@ public final class KeyboardLayout {
     }
 
     /**
+     * 쿼티 모양 글자 줄·기호 자판 줄을 일반 자판처럼 만든 뒤 가운데에서 나눠 묶음 폭만큼 늘이거나 줄이는지
+     * ({@link #splitNormal}: 분리 키보드, 또는 영어·두벌식·기호 자판의 자·모음 균형 배열).
+     */
+    private static boolean splitsRows(Prefs prefs) {
+        return prefs != null && (prefs.splitView() || prefs.boardBalanced());
+    }
+
+    /**
      * 기능키 순서·유무 사용자화에서 정한 순서·표시 여부대로 맨 아래 줄을 만든다.
-     * 기호 키·엔터 키는 1.5칸, 나머지는 1칸이고 (격자 정렬이면 한글 키 한 칸: 균형 배열·분리 키보드는 스페이스바 왼쪽이 자음 키, 오른쪽이 모음 키 한 칸), 스페이스바는 남는 폭을 모두 쓴다.
+     * 기호 키·엔터 키는 1.5칸, 나머지는 1칸이고 (격자 정렬이면 {@link #gridKeys}), 스페이스바는 남는 폭을 모두 쓴다.
      * 스페이스바를 없앴으면 남은 키들이 같은 비율로 늘어나 줄을 채운다.
      *
      * @param emojiKey 지구본 자리에 이모지 키를 둔다 (기호 자판). 지구본 키를 없애면 이모지 키도 함께 없어진다.
@@ -1201,14 +1202,12 @@ public final class KeyboardLayout {
 
     /**
      * 맨 아래 줄의 키들을 기능키 순서·유무 사용자화의 순서·표시 여부대로 keys에 담는다 (스페이스바 제외).
-     * 기호 키·엔터 키는 1.5칸, 나머지는 1칸이다 (격자 정렬이면 한글 키 한 칸: 균형 배열·분리 키보드는 스페이스바 왼쪽이 자음 키, 오른쪽이 모음 키 한 칸).
+     * 기호 키·엔터 키는 1.5칸, 나머지는 1칸이다 (격자 정렬이면 {@link #gridKeys}의 폭).
      *
      * @return 스페이스바가 들어갈 자리 (keys 안의 번호). 스페이스바를 없앴으면 -1.
      */
     private static int bottomKeys(int modeType, String modeLabel, Prefs prefs, boolean emojiKey, List<Key> keys) {
         boolean periodComma = prefs == null || prefs.periodComma();
-        // 격자 정렬: 기능키를 한글 글자 키 한 칸 폭으로 맞춰 한글 자판이 반듯한 격자가 되게 한다 (폭은 아래에서 정한다).
-        boolean grid = prefs != null && prefs.gridLayout();
         float wideW = 1.5f, narrowW = 1f;
         String[] order = prefs == null ? BottomKeys.DEFAULT_ORDER : prefs.bottomKeyOrder();
         int spaceAt = -1, placed = 0;
@@ -1252,8 +1251,8 @@ public final class KeyboardLayout {
             }
             keys.add(k);
         }
-        if (grid) {
-            // 스페이스바 왼쪽 키는 왼쪽(자음) 키 한 칸, 오른쪽 키는 오른쪽(모음) 키 한 칸 폭이다.
+        if (prefs != null && prefs.gridLayout()) {
+            // 격자 정렬: 스페이스바 왼쪽 키와 오른쪽 키에 각각의 격자 폭을 준다.
             // 스페이스바를 없앴으면 분리 키보드처럼 앞쪽 절반(홀수 개면 한 개 더)을 왼쪽으로 친다.
             float[] g = gridKeys(prefs);
             int cut = spaceAt >= 0 ? spaceAt : (keys.size() + 1) / 2;
@@ -1442,7 +1441,7 @@ public final class KeyboardLayout {
     /**
      * 분리 키보드의 맨 아래 줄. 스페이스바를 둘로 나눠, 하단 키 순서에서 스페이스바 왼쪽에 있는 키들과 왼쪽 스페이스바는
      * 왼쪽 묶음을, 오른쪽 스페이스바와 그 오른쪽 키들은 오른쪽 묶음을 채운다. 기능키 폭은 묶음 폭에 비례하고
-     * (묶음이 절반을 꽉 채울 때 보통 폭), 스페이스바가 남는 폭을 모두 쓴다.
+     * (묶음이 절반을 꽉 채울 때 보통 폭, 격자 정렬이면 격자 폭), 스페이스바가 남는 폭을 모두 쓴다.
      * 스페이스바를 없앴으면 키들을 앞쪽 절반(홀수 개면 한 개 더)과 나머지로 나눠 각 묶음을 같은 비율로 채운다.
      * 기능키의 '묶음 좌우 따라가기'를 끄면 묶음의 자리·폭과 상관없이 두 절반을 꽉 채운다 (키보드 전체 폭, 기능키는 보통 폭).
      */
@@ -1453,11 +1452,7 @@ public final class KeyboardLayout {
         int cut = spaceAt >= 0 ? spaceAt : (keys.size() + 1) / 2;
         List<Key> left = new ArrayList<>(keys.subList(0, cut)), right = new ArrayList<>(keys.subList(cut, keys.size()));
         if (spaceAt >= 0 && prefs.splitSpaceJoin()) return joinedSpaceRow(left, right, b, prefs);
-        // 격자 정렬이면 기능키가 이미 자음·모음 키 한 칸 폭이라 묶음 폭으로 다시 늘이거나 줄이지 않는다.
-        if (!prefs.gridLayout()) {
-            for (Key k : left) k.weight *= b[1] / BALANCED_HALF;
-            for (Key k : right) k.weight *= b[3] / BALANCED_HALF;
-        }
+        scaleToBlocks(left, right, b, 1f, prefs);
         fillSpan(left, b[1], spaceAt >= 0 ? left.size() : -1);
         fillSpan(right, b[3], spaceAt >= 0 ? 0 : -1);
         dropEmptySpace(left);
@@ -1467,16 +1462,11 @@ public final class KeyboardLayout {
 
     /**
      * 스페이스바를 이은 맨 아래 줄: 왼쪽 키들은 왼쪽 묶음의 왼쪽 끝에, 오른쪽 키들은 오른쪽 묶음의 오른쪽 끝에 놓고
-     * 그 사이를 가운데를 가로지르는 스페이스바 하나가 채운다. 기능키 폭은 묶음 폭에 비례하고 '하단 기능키 폭'만큼 늘이거나 줄인다.
-     * 키들만으로 줄보다 넓어지면 같은 비율로 줄인다.
+     * 그 사이를 가운데를 가로지르는 스페이스바 하나가 채운다. 기능키 폭은 묶음 폭에 비례하고 '하단 기능키 폭'만큼 늘이거나 줄인다
+     * (격자 정렬이면 격자 폭). 키들만으로 줄보다 넓어지면 같은 비율로 줄인다.
      */
     private static Row joinedSpaceRow(List<Key> left, List<Key> right, float[] b, Prefs prefs) {
-        // 격자 정렬이면 기능키가 이미 자음·모음 키 한 칸 폭이라 묶음 폭·'하단 기능키 폭'으로 바꾸지 않는다.
-        if (!prefs.gridLayout()) {
-            float fnScale = prefs.splitFnWidth() / 100f;
-            for (Key k : left) k.weight *= b[1] / BALANCED_HALF * fnScale;
-            for (Key k : right) k.weight *= b[3] / BALANCED_HALF * fnScale;
-        }
+        scaleToBlocks(left, right, b, prefs.splitFnWidth() / 100f, prefs);
         float span = b[2] + b[3] - b[0], lw = width(left), rw = width(right);
         if (lw + rw > span) {
             float f = span / (lw + rw);
@@ -1488,6 +1478,16 @@ public final class KeyboardLayout {
         float space = Math.max(0f, span - lw - rw);
         left.add(spaceKey(space));
         return blockLine(left, b[0], lw + space, right, b[0] + lw + space, rw, fnRowHeight(prefs));
+    }
+
+    /**
+     * 분리 키보드 맨 아래 줄의 기능키 폭을 묶음 폭에 비례하게(묶음이 절반을 꽉 채울 때 보통 폭) 하고 factor만큼 더 늘이거나 줄인다.
+     * 격자 정렬이면 기능키가 이미 실제 폭({@link #gridKeys})이라 그대로 둔다.
+     */
+    private static void scaleToBlocks(List<Key> left, List<Key> right, float[] b, float factor, Prefs prefs) {
+        if (prefs.gridLayout()) return;
+        for (Key k : left) k.weight *= b[1] / BALANCED_HALF * factor;
+        for (Key k : right) k.weight *= b[3] / BALANCED_HALF * factor;
     }
 
     /** 폭이 거의 없는 스페이스바는 빼 둔다 (기능키만으로 묶음이 찬 경우). */

@@ -803,34 +803,35 @@ public class SplitBottomRowTest {
      */
     @Test
     public void gridBottomKeysMatchTheirSideKey() throws Exception {
-        for (boolean detail : new boolean[]{false, true})
-        for (boolean d7 : new boolean[]{false, true}) {
-            for (boolean join : new boolean[]{false, true}) {
-                for (int[] s : SETTINGS) {
-                    Prefs p = prefsFor(s, false);
-                    FakeSp sp = (FakeSp) p.raw();
-                    if (d7) sp.m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_D7);
-                    sp.m.put(Prefs.GRID_LAYOUT, true);
-                    sp.m.put(Prefs.GRID_DETAIL, detail);
-                    sp.m.put(p.splitSpaceJoinKey(), join);
-                    sp.m.put(p.splitFnWidthKey(), 150);   // 격자 정렬이면 '하단 기능키 폭'은 쓰지 않는다
-                    KeyboardLayout l = KeyboardLayout.korean(p);
-                    float consonant = -1f, vowel = -1f;
-                    for (Key k : l.rows[0].keys) {
-                        if ("ㅂ".equals(k.label)) consonant = k.weight;
-                        if ("ㅗ".equals(k.label)) vowel = k.weight;
+        for (boolean detail : new boolean[]{false, true}) {
+            for (boolean d7 : new boolean[]{false, true}) {
+                for (boolean join : new boolean[]{false, true}) {
+                    for (int[] s : SETTINGS) {
+                        Prefs p = prefsFor(s, false);
+                        FakeSp sp = (FakeSp) p.raw();
+                        if (d7) sp.m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_D7);
+                        sp.m.put(Prefs.GRID_LAYOUT, true);
+                        sp.m.put(Prefs.GRID_DETAIL, detail);
+                        sp.m.put(p.splitSpaceJoinKey(), join);
+                        sp.m.put(p.splitFnWidthKey(), 150);   // 격자 정렬이면 '하단 기능키 폭'은 쓰지 않는다
+                        KeyboardLayout l = KeyboardLayout.korean(p);
+                        float consonant = -1f, vowel = -1f;
+                        for (Key k : l.rows[0].keys) {
+                            if ("ㅂ".equals(k.label)) consonant = k.weight;
+                            if ("ㅗ".equals(k.label)) vowel = k.weight;
+                        }
+                        KeyboardLayout.Row bottom = l.rows[l.rows.length - 1];
+                        float sum = 0f;
+                        boolean afterSpace = false;
+                        for (Key k : bottom.keys) {
+                            sum += k.weight;
+                            if (k.type == Key.SPACE) afterSpace = true;
+                            if (k.type == Key.SPACE || k.type == Key.GAP || k.type == Key.SPACER) continue;
+                            assertEquals("detail=" + detail + (afterSpace ? " 오른쪽" : " 왼쪽") + " 기능키 (" + k.type + ")",
+                                    afterSpace && detail ? vowel : consonant, k.weight, 0.001f);
+                        }
+                        assertEquals(10f, sum, 0.001f);
                     }
-                    KeyboardLayout.Row bottom = l.rows[l.rows.length - 1];
-                    float sum = 0f;
-                    boolean afterSpace = false;
-                    for (Key k : bottom.keys) {
-                        sum += k.weight;
-                        if (k.type == Key.SPACE) afterSpace = true;
-                        if (k.type == Key.SPACE || k.type == Key.GAP || k.type == Key.SPACER) continue;
-                        assertEquals((afterSpace ? "오른쪽 기능키 = 모음 키 (" : "왼쪽 기능키 = 자음 키 (") + k.type + ")",
-                                afterSpace && detail ? vowel : consonant, k.weight, 0.001f);
-                    }
-                    assertEquals(10f, sum, 0.001f);
                 }
             }
         }
