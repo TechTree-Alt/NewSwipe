@@ -91,7 +91,7 @@ final class OneHandPreview extends FrameLayout {
 
         column = new LinearLayout(c);
         column.setOrientation(LinearLayout.VERTICAL);
-        if (prefs.toolbar()) column.addView(toolbarMock(c));
+        // 도구 막대는 refresh()가 키 높이 비율에 맞춰 만든다 (키보드와 같다).
         keys = new KeyboardView(c);
         keys.setTheme(theme);
         keys.setKeyShadow(prefs.keyShadow(), prefs.keyShadowStrength());
@@ -144,6 +144,7 @@ final class OneHandPreview extends FrameLayout {
         keys.configure(prefs.longPressMs(), prefs.swipeThresholdDp(), false,
                 Math.round(prefs.keyTextSize() * prefs.oneHandHeightForProfile() / 100f));
         keys.setLayout(l);
+        rebuildToolbar(c);
         ViewGroup.LayoutParams llp = lift.getLayoutParams();
         llp.height = Ui.dp(c, prefs.oneHandBottomForProfile());
         lift.setLayoutParams(llp);
@@ -156,23 +157,66 @@ final class OneHandPreview extends FrameLayout {
         return Ui.dp(getContext(), 54) * prefs.keyboardHeight() / 100f;
     }
 
-    private View toolbarMock(Context c) {
-        LinearLayout bar = new LinearLayout(c);
-        bar.setGravity(Gravity.CENTER_VERTICAL);
+    /** 도구 막대 모양 (누를 수 없다). 없으면 null. */
+    private LinearLayout bar;
+    /** 막대에 든 것(켜짐·버튼 순서·보이는 버튼)과 크기. 든 것이 바뀌면 다시 만들고, 크기만 바뀌면 그 자리에서 맞춘다. */
+    private String barContents, barSize;
+
+    /**
+     * 도구 막대를 키보드와 같은 크기로 다시 만든다: 한 손 모드에서는 막대(버튼) 높이를 키 높이 비율로, 버튼 폭을 자판 폭 비율로
+     * 따로 줄이고 키운다. 아이콘은 두 비율 가운데 작은 쪽 (떠 있는 키보드와 같은 규칙). 같은 크기면 그대로 둔다.
+     */
+    private void rebuildToolbar(Context c) {
+        float scale = prefs.oneHandHeightForProfile() / 100f, widthScale = prefs.oneHandWidthForProfile() / 100f;
+        int height = Math.round(Ui.dp(c, 40) * prefs.toolbarHeight() / 100f * scale);
+        float size = prefs.toolButtonSize() / 100f;
+        int width = Math.round(Ui.dp(c, 40) * size * widthScale);
+        float icon = Ui.dp(c, 22) * size * Math.min(scale, widthScale);
         String[][] order = prefs.toolOrder();
-        for (int s = 0; s < 2; s++) {
-            if (s == 1) bar.addView(new View(c), new LinearLayout.LayoutParams(0, 1, 1f));
-            for (String id : order[s]) {
-                if (!prefs.toolShown(id)) continue;
-                IconButton b = new IconButton(c, ToolbarButtons.icon(id), theme.text, theme.keyPressed, null);
-                b.setToolbarStyle(theme, Ui.dp(c, 40));
-                b.setClickable(false);
-                b.setFocusable(false);
-                bar.addView(b, new LinearLayout.LayoutParams(Ui.dp(c, 40), Ui.dp(c, 40)));
+        StringBuilder contents = new StringBuilder().append(prefs.toolbar()).append('|');
+        for (String[] side : order) {
+            for (String id : side) if (prefs.toolShown(id)) contents.append(id).append(',');
+            contents.append('|');
+        }
+        String size2 = height + "," + width + "," + icon;
+        if (!contents.toString().equals(barContents)) {
+            barContents = contents.toString();
+            barSize = null;
+            if (bar != null) column.removeView(bar);
+            bar = null;
+            if (prefs.toolbar()) {
+                LinearLayout row = new LinearLayout(c);
+                row.setGravity(Gravity.CENTER_VERTICAL);
+                for (int s = 0; s < 2; s++) {
+                    if (s == 1) row.addView(new View(c), new LinearLayout.LayoutParams(0, 1, 1f));
+                    for (String id : order[s]) {
+                        if (!prefs.toolShown(id)) continue;
+                        IconButton b = new IconButton(c, ToolbarButtons.icon(id), theme.text, theme.keyPressed, null);
+                        b.setClickable(false);
+                        b.setFocusable(false);
+                        b.setTag(id);
+                        row.addView(b, new LinearLayout.LayoutParams(width, height));
+                    }
+                }
+                column.addView(row, 0, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height));
+                bar = row;
             }
         }
-        bar.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(c, 40)));
-        return bar;
+        if (bar == null || size2.equals(barSize)) return;
+        // 크기만 바뀌었다 (손잡이로 자판 폭·키 높이를 끄는 동안 자주): 버튼을 새로 만들지 않고 크기와 칩 모양만 맞춘다.
+        barSize = size2;
+        bar.getLayoutParams().height = height;
+        for (int i = 0; i < bar.getChildCount(); i++) {
+            View v = bar.getChildAt(i);
+            if (!(v instanceof IconButton)) continue;
+            IconButton b = (IconButton) v;
+            b.setIconSize(icon);
+            b.setToolbarStyle(theme, height);
+            ViewGroup.LayoutParams lp = b.getLayoutParams();
+            lp.width = width;
+            lp.height = height;
+        }
+        bar.requestLayout();
     }
 
     private IconButton sideButton(Context c, int icon) {
@@ -189,25 +233,49 @@ final class OneHandPreview extends FrameLayout {
     // ---------------------------------------------------------------- 손잡이
 
     /**
-     * 손잡이가 붙는 윤곽선: 자판(키 부분)의 테두리를 조금 안으로 줄인 것 (미리보기 좌표). 세 손잡이가 모두 이 윤곽선의
-     * 변을 바꾼다 (오른쪽 = 자판 폭, 위 = 키 높이, 아래 = 아래쪽 여백).
+     * 손잡이가 붙는 굵은 윤곽선 (미리보기 좌표): 키보드 사용자화의 영역 윤곽선처럼 키 모양을 감싸고, 선의 안쪽 가장자리가
+     * 키에 붙는다 (키 사이 간격이 아주 좁으면 조금 안쪽으로). 세 손잡이가 모두 이 윤곽선의 변을 바꾼다
+     * (오른쪽 = 자판 폭, 위 = 키 높이, 아래 = 아래쪽 여백).
      */
     private void outlineBounds(RectF out) {
-        float top = body.getTop() + column.getTop() + keys.getTop();
-        out.set(column.getLeft(), top, column.getRight(), top + keys.getHeight());
-        float in = Ui.dp(getContext(), 2);
-        out.inset(in, in);
+        Context c = getContext();
+        float ox = body.getLeft() + column.getLeft() + keys.getLeft();
+        float oy = body.getTop() + column.getTop() + keys.getTop();
+        float gapX = Ui.dp(c, prefs.keyGapXDp()), gapY = Ui.dp(c, prefs.keyGapYDp());
+        boolean any = false;
+        KeyboardLayout l = keys.getLayout();
+        if (l != null) {
+            for (KeyboardLayout.Row row : l.rows) {
+                for (com.alternative_studios.newswipe.keyboard.Key k : row.keys) {
+                    if (k.type == com.alternative_studios.newswipe.keyboard.Key.SPACER
+                            || k.type == com.alternative_studios.newswipe.keyboard.Key.GAP || k.isHidden() || k.rect.width() <= 0) continue;
+                    float left = ox + k.rect.left + gapX / 2, top = oy + k.rect.top + gapY / 2;
+                    float right = ox + k.rect.right - gapX / 2, bottom = oy + k.rect.bottom - gapY / 2;
+                    if (!any) out.set(left, top, right, bottom);
+                    else out.union(left, top, right, bottom);
+                    any = true;
+                }
+            }
+        }
+        if (!any) out.set(ox, oy, ox + keys.getWidth(), oy + keys.getHeight());
+        out.inset(-outlineOut(gapX), -outlineOut(gapY));
+    }
+
+    /** 굵은 윤곽선 가운데가 키 모양 가장자리에서 나오는 거리 (KeyboardPreview의 굵은 윤곽선과 같은 규칙). */
+    private float outlineOut(float gapPx) {
+        Context c = getContext();
+        return Math.min(Ui.dp(c, KeyboardPreview.THICK_DP) / 2f, (gapPx - Ui.dp(c, 2)) / 2f);
     }
 
     /**
      * 손잡이의 가운데 (미리보기 좌표). 아직 배치되지 않았으면 false.
-     * 키보드 사용자화처럼 경계선 위가 아니라 윤곽선 안쪽으로 같은 간격을 두고 각 변의 가운데에 둔다.
+     * 키보드 사용자화처럼 경계선 위가 아니라 굵은 윤곽선 가운데에서 6dp 안쪽, 각 변의 가운데에 둔다.
      */
     private boolean handleCenter(Handle h, float[] out) {
         if (column.getWidth() == 0) return false;
         RectF r = new RectF();
         outlineBounds(r);
-        float in = Ui.dp(getContext(), 9);
+        float in = Ui.dp(getContext(), KeyboardPreview.HANDLE_INSET_DP);
         switch (h) {
             case WIDTH:
                 out[0] = r.right - in;
@@ -327,19 +395,18 @@ final class OneHandPreview extends FrameLayout {
         @Override
         protected void onDraw(Canvas c) {
             Context ctx = getContext();
-            // 자판의 윤곽선: 손잡이가 어느 변을 바꾸는지 보이게.
+            // 자판의 굵은 강조색 윤곽선 (키보드 사용자화의 고른 영역과 같다): 손잡이가 어느 변을 바꾸는지 보이게.
             outlineBounds(tmp);
-            stroke.setStrokeWidth(Ui.dp(ctx, 1.5f));
+            stroke.setStrokeWidth(Ui.dp(ctx, KeyboardPreview.THICK_DP));
             stroke.setColor(theme.accent);
-            stroke.setAlpha(dragging ? 200 : 110);
-            float rr = Ui.dp(ctx, 10);
+            // 모서리도 키 모서리를 따라 돈다.
+            float rr = Math.max(0f, Ui.dp(ctx, prefs.keyRadiusDp()) + outlineOut(Ui.dp(ctx, prefs.keyGapXDp())));
             c.drawRoundRect(tmp, rr, rr, stroke);
-            stroke.setAlpha(255);
             // 손잡이: 강조색 알약에 바탕색 테두리 (키 위에서도 보이게). 끄는 중인 손잡이는 더 크게.
             for (Handle h : Handle.values()) {
                 if (!handleCenter(h, point)) continue;
                 boolean on = dragging && h == active;
-                float lenHalf = Ui.dp(ctx, on ? 16 : 11), thickHalf = Ui.dp(ctx, on ? 3.5f : 2.5f);
+                float lenHalf = Ui.dp(ctx, on ? 16 : 11), thickHalf = Ui.dp(ctx, on ? 2.33f : 1.67f);   // 키보드 사용자화의 손잡이와 같은 굵기
                 if (h.vertical) tmp.set(point[0] - lenHalf, point[1] - thickHalf, point[0] + lenHalf, point[1] + thickHalf);
                 else tmp.set(point[0] - thickHalf, point[1] - lenHalf, point[0] + thickHalf, point[1] + lenHalf);
                 stroke.setStrokeWidth(Ui.dp(ctx, 2));

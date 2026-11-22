@@ -1297,15 +1297,33 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return b;
     }
 
-    /** 설정의 '도구 막대 높이'(%)를 px로. 100%가 40dp. 떠 있는 키보드에서는 키 높이 비율만큼 줄이고 키운다. */
+    /** 설정의 '도구 막대 높이'(%)를 px로. 100%가 40dp. 한 손 모드·떠 있는 키보드에서는 키 높이 비율만큼 줄이고 키운다. */
     private int toolbarHeightPx() {
         return Math.round(Ui.dp(this, 40) * padPrefs().toolbarHeight() / 100f * toolbarScale());
     }
 
-    /** 떠 있는 키보드에서 도구 막대(높이·버튼·아이콘·추천 글자)를 키 높이와 같은 비율로 맞춘다. 그 밖에는 1. */
+    /**
+     * 한 손 모드·떠 있는 키보드에서 도구 막대(높이·버튼·아이콘·추천 글자)를 키 높이와 같은 비율로 맞춘다
+     * (키 글자를 줄이는 비율과 같다). 그 밖에는 1.
+     */
     private float toolbarScale() {
-        return prefs != null && Prefs.ONE_HAND_FLOAT.equals(activeOneHand())
-                ? floatHeightPct() / 100f : 1f;
+        if (prefs == null) return 1f;
+        String side = activeOneHand();
+        if (Prefs.ONE_HAND_FLOAT.equals(side)) return floatHeightPct() / 100f;
+        if (!Prefs.ONE_HAND_OFF.equals(side)) return prefs.profileView(profile()).oneHandHeightForProfile() / 100f;
+        return 1f;
+    }
+
+    /**
+     * 한 손 모드·떠 있는 키보드에서 도구 막대 버튼의 폭을 자판 폭과 같은 비율로 맞춘다 (높이는 toolbarScale이 키 높이 비율로).
+     * 그 밖에는 1.
+     */
+    private float toolbarWidthScale() {
+        if (prefs == null) return 1f;
+        String side = activeOneHand();
+        if (Prefs.ONE_HAND_FLOAT.equals(side)) return floatWidthPct() / 100f;
+        if (!Prefs.ONE_HAND_OFF.equals(side)) return prefs.profileView(profile()).oneHandWidthForProfile() / 100f;
+        return 1f;
     }
 
     /**
@@ -1320,13 +1338,15 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         topSlot.setPadding(topSlot.getPaddingLeft(), barPadTop, topSlot.getPaddingRight(), barPadBottom);
         setHeight(topSlot, barSlotHeight());
         dropStalePanels();
-        float barScale = toolbarScale();
-        float scale = prefs.toolButtonSize() / 100f * barScale;
-        int width = Math.round(Ui.dp(this, 40) * scale);
+        // 한 손 모드·떠 있는 키보드: 버튼 높이(막대 높이)는 키 높이 비율로, 버튼 폭은 자판 폭 비율로 따로 줄고 커진다.
+        // 아이콘은 버튼 안에 들어가도록 두 비율 가운데 작은 쪽을 따른다.
+        float barScale = toolbarScale(), widthScale = toolbarWidthScale();
+        float size = prefs.toolButtonSize() / 100f;
+        int width = Math.round(Ui.dp(this, 40) * size * widthScale);
         for (TextView t : suggestViews) {
             if (t != null) t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16 * barScale);   // 같은 크기면 아무 일도 하지 않는다
         }
-        float icon = Ui.dp(this, 22) * scale;
+        float icon = Ui.dp(this, 22) * size * Math.min(barScale, widthScale);
         // 버튼마다 자동 완성 칩과 같은 모양의 칩 배경을 씌운다 (IconButton.setToolbarStyle).
         int chipH = Ui.chipHeight(this, toolbarHeight);
         for (String id : ToolbarButtons.ALL) {
@@ -1984,12 +2004,58 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return Math.max(Prefs.FLOAT_WIDTH_MIN, Math.min(Prefs.FLOAT_WIDTH_MAX, widthDp * density * 100f / screenPx));
     }
 
-    /** 카드 모서리 반지름 (dp). */
+    /** 카드 모서리 반지름의 최대값 (dp). */
     private static final int FLOAT_RADIUS_DP = 16;
+    /** 지금 카드 모서리 반지름 (px, 0이면 아직 정하지 않음: FLOAT_RADIUS_DP). */
+    private float floatRadius;
+    private boolean floatCornerWatching;
+
+    private float floatRadiusPx() {
+        return floatRadius > 0 ? floatRadius : Ui.dp(this, FLOAT_RADIUS_DP);
+    }
+
+    /**
+     * 카드 위쪽 모서리가 도구 막대 버튼(칩)을 자르지 않게 반지름을 맞춘다: 모서리 가까이의 칩마다 칩 모서리와 중심이 같은
+     * 둥근 모서리(칩 반지름 + 카드 가장자리에서 칩까지의 거리)를 넘지 않게 하고, 가장 큰 값은 FLOAT_RADIUS_DP.
+     * 배치가 바뀔 때마다(크기 조절, 버튼 순서·크기, 키 높이) 다시 잰다.
+     */
+    private void updateFloatCorner() {
+        if (!floatingApplied || column == null || column.getWidth() == 0) return;
+        float max = Ui.dp(this, FLOAT_RADIUS_DP), r = max;
+        int w = column.getWidth();
+        for (String id : ToolbarButtons.ALL) {
+            View v = toolButtonOf(id);
+            if (v == null || !v.isShown() || v.getWidth() == 0) continue;
+            float x = 0, y = 0;
+            View p = v;
+            while (p != null && p != column) {
+                x += p.getLeft() + p.getTranslationX();
+                y += p.getTop() + p.getTranslationY();
+                p = p.getParent() instanceof View ? (View) p.getParent() : null;
+            }
+            if (p == null) continue;
+            int barH = v.getHeight(), insetH = Ui.dp(this, 2);
+            int insetV = Math.max(0, (barH - Ui.chipHeight(this, barH)) / 2);
+            float left = x + insetH, right = x + v.getWidth() - insetH, top = y + insetV;
+            float chipR = Math.min(Ui.chipRadius(this), Math.min((barH - 2f * insetV) / 2f, (right - left) / 2f));
+            if (top >= max) continue;   // 모서리 아래쪽이라 잘릴 일이 없다
+            float side = Math.min(left, w - right);
+            if (side >= max) continue;   // 모서리에서 멀리 떨어져 있다
+            r = Math.min(r, chipR + Math.max(0f, Math.min(top, side)));
+        }
+        r = Math.max(0f, r);
+        if (Math.abs(r - floatRadiusPx()) < 0.5f) return;
+        floatRadius = Math.max(0.01f, r);
+        for (android.graphics.drawable.Drawable d : new android.graphics.drawable.Drawable[]{column.getBackground(), column.getForeground(), veilOutline}) {
+            if (d instanceof android.graphics.drawable.GradientDrawable) ((android.graphics.drawable.GradientDrawable) d).setCornerRadius(floatRadiusPx());
+        }
+        column.invalidateOutline();
+        column.invalidate();
+    }
 
     /** 카드 윤곽선. fill이 0이 아니면 그 색으로 카드 안을 덮는다 (크기 조절 중에 흐리게). */
     private android.graphics.drawable.GradientDrawable floatCardFront(int fill) {
-        android.graphics.drawable.GradientDrawable d = Ui.round(fill, Ui.dp(this, FLOAT_RADIUS_DP));
+        android.graphics.drawable.GradientDrawable d = Ui.round(fill, floatRadiusPx());
         d.setStroke(Math.max(1, Ui.dp(this, 1)), (theme.hint & 0x00FFFFFF) | 0x40000000);
         return d;
     }
@@ -2002,7 +2068,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private void veilFloatCard() {
         int veil = (theme.background & 0x00FFFFFF) | 0xB3000000;
         if (Build.VERSION.SDK_INT >= 31) {
-            column.setForeground(Ui.round(veil, Ui.dp(this, FLOAT_RADIUS_DP)));
+            column.setForeground(Ui.round(veil, floatRadiusPx()));
             float r = Ui.dp(this, 6);
             column.setRenderEffect(android.graphics.RenderEffect.createBlurEffect(r, r, android.graphics.Shader.TileMode.CLAMP));
             if (veilOutline == null) {
@@ -2040,9 +2106,16 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         floatTop.setVisibility(floating ? View.VISIBLE : View.GONE);
         root.setBackgroundColor(floating ? android.graphics.Color.TRANSPARENT : theme.background);
         // 바탕은 카드 모양(둥근 잘라내기)만 맡고, 윤곽선은 자판이 그린 바탕에 가리지 않게 맨 위(foreground)에 그린다.
-        column.setBackground(floating ? Ui.round(theme.background, Ui.dp(this, FLOAT_RADIUS_DP)) : null);
+        column.setBackground(floating ? Ui.round(theme.background, floatRadiusPx()) : null);
         resetFloatPreview();
         column.setClipToOutline(floating);
+        // 창 전체의 배치를 지켜본다: 키보드 화면을 다시 만들어(onCreateInputView) column이 바뀌어도 같은 창이라 계속 불린다
+        // (column의 관찰자에 달면 붙기 전 관찰자에 달리거나, 새 column에서 다시 달 길이 없다). 떠 있지 않으면 바로 돌아간다.
+        if (floating && !floatCornerWatching && getWindow() != null && getWindow().getWindow() != null) {
+            floatCornerWatching = true;
+            getWindow().getWindow().getDecorView().getViewTreeObserver().addOnGlobalLayoutListener(this::updateFloatCorner);
+        }
+        if (floating) column.post(this::updateFloatCorner);
         applyNavigationBarStyle();
         updateFloatBack();
     }
