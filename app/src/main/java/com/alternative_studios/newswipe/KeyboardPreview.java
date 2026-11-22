@@ -1352,9 +1352,12 @@ final class KeyboardPreview extends FrameLayout {
     private boolean handleCenter(Handle h, float[] out) {
         if (!handleEdge(h, out)) return false;
         if (h.knob()) return true;   // ↔ 버튼은 묶음 한가운데
-        // 모든 손잡이는 조절하는 윤곽선의 안쪽 6dp에 둔다: 미리보기 가장자리에서 잘리지 않고, 화면 가장자리의 시스템 몸짓과도
-        // 겹치지 않으며, 맞닿은 두 묶음의 경계 손잡이도 서로 떨어져 보인다.
-        float in = Ui.dp(getContext(), HANDLE_INSET_DP);
+        // 모든 손잡이는 조절하는 윤곽선의 안쪽에 둔다: 미리보기 가장자리에서 잘리지 않고, 화면 가장자리의 시스템 몸짓과도
+        // 겹치지 않으며, 맞닿은 두 묶음의 경계 손잡이도 서로 떨어져 보인다. 거리는 보이는 선의 안쪽 가장자리부터 재어,
+        // 굵은 윤곽선(고른 영역, 끄는 동안의 키보드 전체) 옆이든 얇은 윤곽선(기본 상태의 영역들) 옆이든 똑같이 떨어져 보인다.
+        boolean pad = h == Handle.PAD_TOP || h == Handle.PAD_BOTTOM || h == Handle.PAD_LEFT || h == Handle.PAD_RIGHT;
+        boolean thick = !pad || overlay.padDragging();
+        float in = Ui.dp(getContext(), HANDLE_GAP_DP + (thick ? THICK_DP : THIN_DP) / 2f);
         switch (h) {
             case PAD_LEFT:
             case B_LEFT_START:
@@ -1368,8 +1371,10 @@ final class KeyboardPreview extends FrameLayout {
         return true;
     }
 
-    /** 손잡이를 윤곽선 안쪽으로 들이는 거리. */
-    private static final float HANDLE_INSET_DP = 6f;
+    /** 손잡이 가운데가 윤곽선 안쪽 가장자리에서 떨어진 거리 (굵은 윤곽선 가운데에서 6dp와 같다). */
+    private static final float HANDLE_GAP_DP = 6f - THICK_DP / 2f;
+    /** 얇은 윤곽선 굵기 (영역마다의 윤곽선, 키 윤곽선). */
+    static final float THIN_DP = 1.25f;
 
     /** 손잡이가 조절하는 경계선 위의 점 (미리보기 좌표). 보이지 않으면 false. */
     private boolean handleEdge(Handle h, float[] out) {
@@ -1684,7 +1689,7 @@ final class KeyboardPreview extends FrameLayout {
             areaLabel.setFakeBoldText(true);
             float r = Ui.dp(ctx, prefs.keyRadiusDp()) + Ui.dp(ctx, 4);
             String suffix = L.t(" 설정", " settings");
-            stroke.setStrokeWidth(Ui.dp(ctx, 1.25f));
+            stroke.setStrokeWidth(Ui.dp(ctx, THIN_DP));
             boolean split = editorSplit(), balanced = !split && editorBalanced();
             for (int a = 0; a < AREAS; a++) {
                 if ((balanced || split) && a == AREA_LETTERS) {
@@ -1726,7 +1731,7 @@ final class KeyboardPreview extends FrameLayout {
                 float outlineAlpha = 0.55f * (1f - w);
                 if (outlineAlpha > 0.01f) {
                     int color = withAlpha(accent, outlineAlpha);
-                    Paint outline = off ? dashed(color, Ui.dp(ctx, 1.25f)) : stroke;
+                    Paint outline = off ? dashed(color, Ui.dp(ctx, THIN_DP)) : stroke;
                     outline.setColor(color);
                     c.drawRoundRect(area, rr, rr, outline);
                 }
@@ -1796,7 +1801,7 @@ final class KeyboardPreview extends FrameLayout {
         private void drawAreaKeys(Canvas c, int a, float alpha) {
             if (a < 0 || alpha < 0.01f) return;
             Context ctx = getContext();
-            stroke.setStrokeWidth(Ui.dp(ctx, 1.25f));
+            stroke.setStrokeWidth(Ui.dp(ctx, THIN_DP));
             stroke.setColor(withAlpha(theme.accent, 0.6f * alpha));
             if (a == AREA_TOOLBAR) {
                 if (bar.getParent() == null) return;
@@ -1841,11 +1846,15 @@ final class KeyboardPreview extends FrameLayout {
             c.restore();
         }
 
-        /** 여백 손잡이를 끄는 동안: 키보드 전체를 감싼 굵은 강조색 윤곽선 (여백 손잡이가 각 변에 걸쳐 있다). */
-        private void drawBoard(Canvas c, float alpha) {
-            boolean pad = dragging && (active == Handle.PAD_TOP || active == Handle.PAD_BOTTOM
+        /** 여백 손잡이를 끄는 중인지 (그동안만 키보드 전체 굵은 윤곽선이 보인다). */
+        boolean padDragging() {
+            return dragging && (active == Handle.PAD_TOP || active == Handle.PAD_BOTTOM
                     || active == Handle.PAD_LEFT || active == Handle.PAD_RIGHT);
-            if (!pad || alpha < 0.01f || !boardBounds(area)) return;
+        }
+
+        /** 여백 손잡이를 끄는 동안: 키보드 전체를 감싼 굵은 강조색 윤곽선 (여백 손잡이는 그 안쪽에 있다). */
+        private void drawBoard(Canvas c, float alpha) {
+            if (!padDragging() || alpha < 0.01f || !boardBounds(area)) return;
             Context ctx = getContext();
             stroke.setStrokeWidth(Ui.dp(ctx, THICK_DP));
             stroke.setColor(withAlpha(theme.accent, alpha));
