@@ -184,7 +184,7 @@ public final class NeuUi {
     /**
      * v의 그림자(뷰 밖으로 size만큼 번진다)가 잘리지 않게 한다. Android는 부모가 자식을 그 자식의 영역까지만 그리게 자르므로
      * (clipChildren), 바로 위 부모만 끄면 그 부모가 다시 자기 부모에게 잘려 그림자가 카드·줄 경계에서 잘린다.
-     * 그래서 위로 올라가며 부모의 자르기를 끄되, 그림자가 그 부모 안에 다 들어가면 멈춘다 (그보다 위는 자를 필요가 없다).
+     * 부모의 안쪽 여백 선에서 자르는 clipToPadding도 따로 있다. 그래서 위로 올라가며 부모의 두 자르기를 모두 끄되, 그림자가 그 부모 안에 다 들어가면 멈춘다 (그보다 위는 자를 필요가 없다).
      * 스크롤 틀은 끄지 않는다 (스크롤한 내용이 틀 밖으로 그려지면 안 된다). 배치가 바뀔 때마다 다시 본다.
      */
     public static void unclip(View v, int size) {
@@ -205,6 +205,9 @@ public final class NeuUi {
             android.view.ViewGroup g = (android.view.ViewGroup) p;
             if (scrolls(g)) return;   // 스크롤 틀은 그대로 자른다 (그 안의 목록까지는 이미 껐다)
             if (g.getClipChildren()) g.setClipChildren(false);
+            // 여백 자르기(clipToPadding)도 끈다: 자식 자르기와 따로 동작해, 켜져 있으면 부모의 안쪽 여백 선에서 그림자가 잘린다
+            // (설정 목록은 좌우 여백만 있어 카드의 좌우가, 카드는 여백이 있어 그 안의 버튼 좌우가 잘렸다).
+            if (g.getClipToPadding()) g.setClipToPadding(false);
             // 그림자가 이 부모 안에 다 들어가면 여기서 멈춘다.
             if (left >= 0 && top >= 0 && right <= g.getWidth() && bottom <= g.getHeight()) return;
             float dx = g.getLeft() + g.getTranslationX() - g.getScrollX(), dy = g.getTop() + g.getTranslationY() - g.getScrollY();
