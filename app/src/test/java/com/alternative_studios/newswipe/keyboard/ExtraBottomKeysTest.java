@@ -62,7 +62,7 @@ public class ExtraBottomKeysTest {
             assertFalse(id, p.bottomKeyShown(id));
             assertFalse(id, BottomKeys.shownByDefault(id));
         }
-        // 기호 자판의 언어 전환 키 자리만 이모지 키다 ('기호 자판에서는 다른 키로'의 기본값)
+        // 기호 자판의 언어 전환 키 자리만 이모지 키다 ('기호 자판에서는'의 기본값)
         KeyboardLayout[] boards = all(p);   // 한글·영어·기호 1쪽·기호 2쪽
         for (int b = 0; b < boards.length; b++) for (int t : TYPES) {
             assertEquals(t == Key.EMOJI_KEY && b >= 2 ? 1 : 0, count(boards[b], t));

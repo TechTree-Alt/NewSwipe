@@ -20,7 +20,7 @@ public final class BottomKeys {
     public static final String[] DEFAULT_ORDER = {MODE, COMMA, GLOBE, SPACE, PERIOD, ENTER, EMOJI, CLIPBOARD, CURSOR, VOICE};
 
     /**
-     * 기호 자판에서 언어 전환 키 자리에 놓을 수 있는 키 (선택 창에 이 차례로 보인다). 맨 앞의 GLOBE는 '기호 자판에서도 그대로'이고,
+     * 기호 자판에서 언어 전환 키 자리에 놓을 수 있는 키 (선택 창에 이 차례로 보인다). 맨 앞의 GLOBE는 '그대로'이고,
      * 기본값은 이모지 키(EMOJI)다.
      */
     public static final String[] SYMBOL_GLOBE_CHOICES = {GLOBE, EMOJI, CLIPBOARD, CURSOR, VOICE};
@@ -51,11 +51,14 @@ public final class BottomKeys {
         return EMOJI;
     }
 
-    /** '기호 자판에서는 다른 키로'의 선택지 이름. */
+    /** '기호 자판에서는'의 선택지 이름: 줄 아래에 한 줄로 들어가도록 짧게 (그대로·이모지·클립보드·커서 이동·음성 입력). */
     public static String symbolGlobeLabel(String id) {
         switch (id) {
-            case EMOJI: return L.t("이모지 키 (기본값)", "Emoji key (default)");
-            case GLOBE: return L.t("기호 자판에서도 그대로", "Keep on the symbol keyboard");
+            case GLOBE: return L.t("그대로", "Same");
+            case EMOJI: return L.t("이모지", "Emoji");
+            case CLIPBOARD: return L.t("클립보드", "Clipboard");
+            case CURSOR: return L.t("커서 이동", "Cursor");
+            case VOICE: return L.t("음성 입력", "Voice input");
             default: return label(id);
         }
     }

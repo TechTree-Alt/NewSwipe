@@ -231,7 +231,7 @@ public final class BottomKeysEditorActivity extends Activity {
                 Ui.round(accentColor & 0x00FFFFFF | 0x1F000000, Ui.dp(this, 12)), Ui.dp(this, 12)));
         LinearLayout texts = new LinearLayout(this);
         texts.setOrientation(LinearLayout.VERTICAL);
-        texts.addView(text(L.t("기호 자판에서는 다른 키로", "Different key on the symbol keyboard"), 15, accentColor));
+        texts.addView(text(L.t("기호 자판에서는", "On the symbol keyboard"), 15, accentColor));
         TextView current = text(BottomKeys.symbolGlobeLabel(prefs.symbolGlobeKey()), 13, accentColor);
         current.setAlpha(0.8f);
         texts.addView(current);
@@ -246,13 +246,14 @@ public final class BottomKeysEditorActivity extends Activity {
             String now = prefs.symbolGlobeKey();
             for (int i = 0; i < ids.length; i++) {
                 names[i] = BottomKeys.symbolGlobeLabel(ids[i]);
+                if (BottomKeys.EMOJI.equals(ids[i])) names[i] += L.t(" (기본값)", " (default)");
                 if (ids[i].equals(now)) checked = i;
             }
             AppTheme.dialogBuilder(this)
-                    .setTitle(L.t("기호 자판에서는 다른 키로", "Different key on the symbol keyboard"))
+                    .setTitle(L.t("기호 자판에서는", "On the symbol keyboard"))
                     .setSingleChoiceItems(names, checked, (dlg, which) -> {
                         prefs.setSymbolGlobeKey(ids[which]);
-                        current.setText(names[which]);
+                        current.setText(BottomKeys.symbolGlobeLabel(ids[which]));
                         updatePreview();
                         dlg.dismiss();
                     })
