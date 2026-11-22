@@ -1494,7 +1494,7 @@ public final class SettingsActivity extends Activity {
             addOrientationIntro();
             addLargeLayoutSection();
             buildLook();
-            buildPad(-1);   // 미리보기 가장자리의 여백 손잡이를 끌면 이 슬라이더도 따라 움직인다
+            buildPad(-1);
             if (!harvesting) list.addView(editorResetButton());
         } finally {
             list = saved;
@@ -1925,7 +1925,7 @@ public final class SettingsActivity extends Activity {
 
     /**
      * 여백 창: area가 -1이면 키보드 전체 둘레의 여백, 아니면 그 영역의 여백 (키보드 전체 여백 안쪽에 더한다).
-     * 키보드 전체 여백은 미리보기의 손잡이를 끌면 이 슬라이더도 같이 움직이고, 영역마다의 여백은 이 슬라이더로만 바꾼다.
+     * 키보드 전체 여백과 영역마다의 여백은 이 슬라이더로만 바꾼다.
      */
     private void buildPad(int area) {
         Prefs v = editorView();   // 키보드 여백과 도구 막대·기능키 여백은 세로·가로가 따로 정한다 (가로 모드는 정하기 전에는 세로 모드 값)
@@ -1935,10 +1935,8 @@ public final class SettingsActivity extends Activity {
             c.addView(own(sizeSlider(L.t("오른쪽 여백", "Right padding"), v.padKey(Prefs.SIDE_RIGHT), v::padRightDp, 0, 24, 1, "dp")));
             c.addView(own(sizeSlider(L.t("위쪽 여백", "Top padding"), v.padKey(Prefs.SIDE_TOP), v::padTopDp, 0, 24, 1, "dp")));
             c.addView(own(sizeSlider(L.t("아래쪽 여백", "Bottom padding"), v.padKey(Prefs.SIDE_BOTTOM), v::padBottomDp, 0, v.padBottomMax(), 1, "dp")));
-            c.addView(note(L.t("키보드 전체 둘레의 여백입니다. 아래 미리보기 가장자리의 손잡이를 끌어서도 바꿀 수 있습니다. "
-                    + "영역마다 따로 주는 여백은 미리보기에서 그 영역을 눌러 창 맨 아래의 '여백'에서 정합니다.",
-                    "Padding around the whole keyboard. You can also drag the handles on the edges of the preview below. "
-                    + "To set padding for each area, tap the area in the preview and use 'Padding' at the bottom of its panel.")));
+            c.addView(note(L.t("키보드 전체 둘레의 여백입니다. 영역마다 따로 주는 여백은 미리보기에서 그 영역을 눌러 창 맨 아래의 '여백'에서 정합니다.",
+                    "Padding around the whole keyboard. To set padding for each area, tap the area in the preview and use 'Padding' at the bottom of its panel.")));
             return;
         }
         LinearLayout c = section(L.t("여백", "Padding"));
