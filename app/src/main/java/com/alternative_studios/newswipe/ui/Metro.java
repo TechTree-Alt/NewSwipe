@@ -82,16 +82,17 @@ public final class Metro {
      * Windows Phone의 화면 전환은 거의 모두 지수 6을 쓴다 (천천히 시작해 빠르게 사라지거나, 빠르게 들어와 부드럽게 멈춘다).
      */
     public static final class Exp implements Interpolator {
-        private final double k;
+        private final double k, denominator;
         private final boolean out;
 
         public Exp(double exponent, boolean easeOut) {
             k = exponent;
             out = easeOut;
+            denominator = Math.exp(exponent) - 1;   // 프레임마다 다시 계산하지 않게
         }
 
         private double in(double t) {
-            return (Math.exp(k * t) - 1) / (Math.exp(k) - 1);
+            return (Math.exp(k * t) - 1) / denominator;
         }
 
         @Override
@@ -468,6 +469,10 @@ public final class Metro {
                 hidden = false;
                 busy = false;
                 enter(false);   // 다른 화면에서 돌아왔다
+                // 뒤로 가 있는 동안 놓아 준 옆 메뉴 내용을 돌아오는 움직임이 끝난 뒤 다시 만든다.
+                if (pivot != null && !pivot.prepared()) postDelayed(() -> {
+                    if (pivot != null && isAttachedToWindow()) pivot.prepare();
+                }, IN_MS + 400);
             }
         }
 
@@ -476,6 +481,11 @@ public final class Metro {
 
         public void setPivot(Pivot p) {
             pivot = p;
+        }
+
+        /** 피벗의 옆 메뉴 내용을 놓아 준다 (없으면 아무것도 하지 않는다). */
+        public void releasePivot() {
+            if (pivot != null) pivot.release();
         }
 
         void setBusy(boolean b) {
@@ -542,6 +552,18 @@ public final class Metro {
             return names[((index + k) % n + n) % n];
         }
 
+        /** 이름의 폭 (처음 한 번만 잰다: 미는 동안 프레임마다 다시 재지 않게). */
+        private float[] widths;
+
+        private float widthAt(int k) {
+            int n = names.length;
+            if (widths == null) {
+                widths = new float[n];
+                for (int i = 0; i < n; i++) widths[i] = paint.measureText(names[i]);
+            }
+            return widths[((index + k) % n + n) % n];
+        }
+
         @Override
         protected void onMeasure(int widthSpec, int heightSpec) {
             int h = Math.round(fm.descent - fm.ascent) + getPaddingTop() + getPaddingBottom();
@@ -551,7 +573,7 @@ public final class Metro {
         @Override
         protected void onDraw(android.graphics.Canvas c) {
             float y = getPaddingTop() - fm.ascent;
-            float wCur = paint.measureText(at(0)), wPrev = paint.measureText(at(-1));
+            float wCur = widthAt(0), wPrev = widthAt(-1);
             // 한 화면을 넘기는 동안 이름 줄은 지금 이름(앞으로 갈 때는 앞 이름)의 폭만큼만 움직인다.
             float offset = progress >= 0 ? -progress * (wCur + gap) : -progress * (wPrev + gap);
             int dim = (fg & 0x00FFFFFF) | 0x4D000000;
@@ -565,9 +587,8 @@ public final class Metro {
             for (int k = 0; k < names.length && x < getWidth(); k++) {
                 int color = k == 0 ? blendArgb(fg, dim, p) : k == 1 && progress > 0 ? blendArgb(dim, fg, p) : dim;
                 paint.setColor(color);
-                String s = at(k);
-                c.drawText(s, x, y, paint);
-                x += paint.measureText(s) + gap;
+                c.drawText(at(k), x, y, paint);
+                x += widthAt(k) + gap;
             }
         }
 
@@ -575,7 +596,7 @@ public final class Metro {
         public boolean onTouchEvent(MotionEvent e) {
             if (e.getActionMasked() == MotionEvent.ACTION_DOWN) return onPeek != null;
             if (e.getActionMasked() == MotionEvent.ACTION_UP && onPeek != null
-                    && e.getX() > paint.measureText(at(0)) + gap / 2) {
+                    && e.getX() > widthAt(0) + gap / 2) {
                 performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
                 onPeek.run();
             }
@@ -599,6 +620,9 @@ public final class Metro {
      * <p>가로로 끄는 뷰(슬라이더, 키보드 미리보기, 가로 스크롤) 위에서 시작한 손가락은 그 뷰가 쓴다. 옆 메뉴의 내용은 처음 한 번만
      * 만들어 보이지 않게 붙여 두므로, 미는 동안에는 위치만 바뀐다.
      */
+    /** 피벗이 마저 넘어가거나 돌아오는 곡선 (EaseOut 지수 5). */
+    private static final Interpolator SETTLE = new Exp(5, true);
+
     public static final class Pivot {
         public interface Host {
             /** 지금 넘길 수 있는지 (설정 창이 열려 있으면 false). */
@@ -643,6 +667,24 @@ public final class Metro {
         /** 옆 메뉴의 내용을 미리 만들어 보이지 않게 붙이고 자리를 잡아 둔다 (화면이 한가할 때 부른다). */
         public void prepare() {
             layoutHolders();
+        }
+
+        /**
+         * 옆 메뉴 내용(화면 두 개 분량의 뷰)을 놓아 준다: 앱이 뒤로 갔거나 메모리가 모자랄 때. 다시 보일 때 prepare가 다시 만든다.
+         * 넘어가는 중이면 그대로 둔다.
+         */
+        public void release() {
+            if (settle != null || dragging) return;
+            for (int i = 0; i < 2; i++) {
+                if (holders[i] != null) {
+                    page.removeView(holders[i]);
+                    holders[i] = null;
+                }
+            }
+        }
+
+        boolean prepared() {
+            return holders[0] != null || holders[1] != null;
         }
 
         private FrameLayout holder(int dir) {
@@ -837,7 +879,7 @@ public final class Metro {
             page.setBusy(true);
             settle = ValueAnimator.ofFloat(0f, 1f);
             settle.setDuration(Math.round(150 + 250 * Math.min(1f, Math.abs(to - from) / Math.max(1f, w))));
-            settle.setInterpolator(new Exp(5, true));
+            settle.setInterpolator(SETTLE);
             settle.addUpdateListener(a -> update(from + (to - from) * (float) a.getAnimatedValue()));
             // 하드웨어 층은 쓰지 않는다: translationX는 그리기를 다시 하지 않아 층이 필요 없고, 아래 미리보기(크기가 바뀌고
             // 바깥으로도 그리는 뷰)를 층에 담으면 움직이는 동안 미리보기가 사라지고 위 목록이 찌그러져 보인다.

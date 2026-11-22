@@ -201,6 +201,19 @@ public final class SettingsActivity extends Activity {
         refreshEditorPanel();   // 언어 순서·기능키 순서 화면 등에서 돌아왔을 때
     }
 
+    /**
+     * 앱이 뒤로 갔거나 메모리가 모자라면 다시 만들 수 있는 것을 놓아 준다: 피벗의 옆 메뉴 내용(돌아오면 다시 만든다)과
+     * Neumorphism 그림자 조각(다음에 그릴 때 필요한 것만 다시 굽는다).
+     */
+    @Override
+    public void onTrimMemory(int level) {
+        super.onTrimMemory(level);
+        if (level >= TRIM_MEMORY_UI_HIDDEN) {
+            if (pivotFrame != null) pivotFrame.releaseHidden();
+            NeuUi.trimCache();
+        }
+    }
+
     @Override
     protected void onDestroy() {
         if (isFinishing() && editorPreview != null) {   // 키보드 사용자화를 떠난다: 되돌리기 기록도 버린다
@@ -3435,6 +3448,7 @@ public final class SettingsActivity extends Activity {
             final int ring = hintColor;
             View sw = new View(this) {
                 private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+                private final android.graphics.RectF face = new android.graphics.RectF();   // 그릴 때마다 만들지 않게
 
                 @Override
                 protected void onDraw(android.graphics.Canvas c) {
@@ -3442,7 +3456,8 @@ public final class SettingsActivity extends Activity {
                     if (NeuUi.on) {
                         // Neumorphism: 고른 색은 안으로 들어간 홈에 앉고, 나머지는 솟아오른 동그라미
                         r = Math.min(cx, cy) - NeuUi.spread(getContext(), NeuUi.SMALL) * 0.7f;
-                        android.graphics.RectF f = new android.graphics.RectF(cx - r, cy - r, cx + r, cy + r);
+                        android.graphics.RectF f = face;
+                        f.set(cx - r, cy - r, cx + r, cy + r);
                         if (selected) {
                             NeuUi.drawInset(getContext(), c, f, r, NeuUi.surface, p);
                             r -= Ui.dp(getContext(), 4);

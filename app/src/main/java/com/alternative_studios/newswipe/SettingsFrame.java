@@ -192,6 +192,11 @@ final class SettingsFrame {
 
     /** Metro 모드의 턴스타일 틀 (Metro 모드가 아니면 null). */
     private Metro.Page page;
+
+    /** 화면이 보이지 않게 되면 피벗의 옆 메뉴 내용(화면 두 개 분량)을 놓아 준다. 돌아오면 다시 만든다. */
+    void releaseHidden() {
+        if (page != null) page.releasePivot();
+    }
     private View header;
 
     /**

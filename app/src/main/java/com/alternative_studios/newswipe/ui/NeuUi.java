@@ -112,16 +112,25 @@ public final class NeuUi {
         int r = Math.max(0, Math.round(Math.min(radius, rMax)));
         int o = Math.round(offset(ctx, size)), b = Math.round(blur(ctx, size));
         Bitmap bm = shadow(r, o, b, light, shade);
-        int pad = o + b * 2, cs = r + pad, side = bm.getWidth();
-        float[] dx = {f.left - pad, f.left - pad + cs, f.right + pad - cs, f.right + pad};
-        float[] dy = {f.top - pad, f.top - pad + cs, f.bottom + pad - cs, f.bottom + pad};
-        int[] sx = {0, cs, cs + 1, side};
+        int pad = o + b * 2;
+        drawNine(c, bm, f.left - pad, f.top - pad, f.right + pad, f.bottom + pad, r + pad);
+    }
+
+    /** 아홉 조각 붙이기에 쓰는 좌표 (그릴 때마다 배열을 새로 만들지 않게 한 번만 둔다. 메인 스레드에서만 쓴다). */
+    private static final float[] DX = new float[4], DY = new float[4];
+    private static final int[] SX = new int[4];
+
+    /** 한 변이 cs·1px·cs인 정사각형 조각 bm을 (l, t, r, b)에 아홉 조각으로 늘려 붙인다 (모서리는 그대로, 가운데 한 줄만 늘인다). */
+    private static void drawNine(Canvas c, Bitmap bm, float l, float t, float r, float b, int cs) {
+        DX[0] = l; DX[1] = l + cs; DX[2] = r - cs; DX[3] = r;
+        DY[0] = t; DY[1] = t + cs; DY[2] = b - cs; DY[3] = b;
+        SX[0] = 0; SX[1] = cs; SX[2] = cs + 1; SX[3] = bm.getWidth();
         for (int i = 0; i < 3; i++) {
-            if (dx[i + 1] <= dx[i]) continue;
+            if (DX[i + 1] <= DX[i]) continue;
             for (int j = 0; j < 3; j++) {
-                if (dy[j + 1] <= dy[j]) continue;
-                src.set(sx[i], sx[j], sx[i + 1], sx[j + 1]);
-                dst.set(dx[i], dy[j], dx[i + 1], dy[j + 1]);
+                if (DY[j + 1] <= DY[j]) continue;
+                src.set(SX[i], SX[j], SX[i + 1], SX[j + 1]);
+                dst.set(DX[i], DY[j], DX[i + 1], DY[j + 1]);
                 c.drawBitmap(bm, src, dst, bitmapPaint);
             }
         }
@@ -145,6 +154,13 @@ public final class NeuUi {
         fill.setStyle(Paint.Style.FILL);
         fill.setColor(face == surface ? well() : face);   // 바탕색 홈은 조금 어둡게 (바탕에 묻히지 않게)
         c.drawRoundRect(f, r, r, fill);
+        // 면이 조각보다 크면 구워 둔 안쪽 그림자 조각을 아홉 조각으로 붙인다 (그릴 때마다 경로를 자르고 흐림을 다시 계산하지 않는다).
+        int ri = Math.round(r), oi = Math.round(o), bi = Math.round(b), cs = ri + oi + bi * 2;
+        if (f.width() >= cs * 2 + 1 && f.height() >= cs * 2 + 1) {
+            drawNine(c, insetShadow(ri, oi, bi, light, shade), f.left, f.top, f.right, f.bottom, cs);
+            return;
+        }
+        // 작은 면(스위치 홈, 라디오 등)은 조각끼리 겹치므로 그때그때 그린다.
         if (insetBlur != b) {
             insetPaint.setMaskFilter(new BlurMaskFilter(b, BlurMaskFilter.Blur.NORMAL));
             insetPaint.setStrokeWidth(b * 2);
@@ -163,6 +179,48 @@ public final class NeuUi {
         tmp.offset(-o * 2, -o * 2);
         c.drawRoundRect(tmp, r + b, r + b, insetPaint);
         c.restore();
+    }
+
+    private static final java.util.HashMap<Long, Bitmap> INSETS = new java.util.HashMap<>();
+
+    /**
+     * 모서리 r의 안쪽 그림자 조각: 한 변이 (r + 깊이) × 2 + 1px인 정사각형 면 안쪽에, 왼쪽 위로 어두운 그림자·오른쪽 아래로 밝은
+     * 그림자를 흐리게 넣는다 (면 밖은 비어 있다). drawInset이 아홉 조각으로 늘려 붙인다.
+     */
+    private static Bitmap insetShadow(int r, int o, int b, int lightColor, int darkColor) {
+        long key = ((long) r << 40) ^ ((long) o << 32) ^ ((long) b << 24) ^ ((long) lightColor * 31 + darkColor);
+        Bitmap bm = INSETS.get(key);
+        if (bm != null) return bm;
+        int side = (r + o + b * 2) * 2 + 1;
+        bm = Bitmap.createBitmap(side, side, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(bm);
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(b * 2);
+        if (b > 0) p.setMaskFilter(new BlurMaskFilter(b, BlurMaskFilter.Blur.NORMAL));
+        Path clip = new Path();
+        clip.addRoundRect(0, 0, side, side, r, r, Path.Direction.CW);
+        c.clipPath(clip);
+        RectF q = new RectF(0, 0, side, side);
+        q.offset(o, o);
+        q.inset(-b, -b);
+        p.setColor(darkColor);
+        c.drawRoundRect(q, r + b, r + b, p);
+        q.offset(-o * 2, -o * 2);
+        p.setColor(lightColor);
+        c.drawRoundRect(q, r + b, r + b, p);
+        if (INSETS.size() > 32) INSETS.clear();
+        INSETS.put(key, bm);
+        return bm;
+    }
+
+    /**
+     * 구워 둔 그림자 조각을 놓아 준다 (메모리가 모자랄 때). 다음에 그릴 때 필요한 크기만 다시 굽는다. 화면이 아직 쓰고 있을 수 있어
+     * recycle()은 하지 않는다. 메인 스레드에서만 부른다.
+     */
+    public static void trimCache() {
+        SHADOWS.clear();
+        INSETS.clear();
     }
 
     // ---------------------------------------------------------------- 바탕 (Drawable)
