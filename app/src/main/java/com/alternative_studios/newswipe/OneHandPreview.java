@@ -201,13 +201,13 @@ final class OneHandPreview extends FrameLayout {
 
     /**
      * 손잡이의 가운데 (미리보기 좌표). 아직 배치되지 않았으면 false.
-     * 키보드 사용자화처럼 경계선 위가 아니라 윤곽선 안쪽으로 같은 간격을 두고 각 변의 가운데에 둔다.
+     * 키보드 사용자화처럼 경계선 위가 아니라 굵은 윤곽선 가운데에서 6dp 안쪽, 각 변의 가운데에 둔다.
      */
     private boolean handleCenter(Handle h, float[] out) {
         if (column.getWidth() == 0) return false;
         RectF r = new RectF();
         outlineBounds(r);
-        float in = Ui.dp(getContext(), 9);
+        float in = Ui.dp(getContext(), KeyboardPreview.HANDLE_INSET_DP);
         switch (h) {
             case WIDTH:
                 out[0] = r.right - in;
@@ -327,19 +327,17 @@ final class OneHandPreview extends FrameLayout {
         @Override
         protected void onDraw(Canvas c) {
             Context ctx = getContext();
-            // 자판의 윤곽선: 손잡이가 어느 변을 바꾸는지 보이게.
+            // 자판의 굵은 강조색 윤곽선 (키보드 사용자화의 고른 영역과 같다): 손잡이가 어느 변을 바꾸는지 보이게.
             outlineBounds(tmp);
-            stroke.setStrokeWidth(Ui.dp(ctx, 1.5f));
+            stroke.setStrokeWidth(Ui.dp(ctx, KeyboardPreview.THICK_DP));
             stroke.setColor(theme.accent);
-            stroke.setAlpha(dragging ? 200 : 110);
             float rr = Ui.dp(ctx, 10);
             c.drawRoundRect(tmp, rr, rr, stroke);
-            stroke.setAlpha(255);
             // 손잡이: 강조색 알약에 바탕색 테두리 (키 위에서도 보이게). 끄는 중인 손잡이는 더 크게.
             for (Handle h : Handle.values()) {
                 if (!handleCenter(h, point)) continue;
                 boolean on = dragging && h == active;
-                float lenHalf = Ui.dp(ctx, on ? 16 : 11), thickHalf = Ui.dp(ctx, on ? 3.5f : 2.5f);
+                float lenHalf = Ui.dp(ctx, on ? 16 : 11), thickHalf = Ui.dp(ctx, on ? 2.33f : 1.67f);   // 키보드 사용자화의 손잡이와 같은 굵기
                 if (h.vertical) tmp.set(point[0] - lenHalf, point[1] - thickHalf, point[0] + lenHalf, point[1] + thickHalf);
                 else tmp.set(point[0] - thickHalf, point[1] - lenHalf, point[0] + thickHalf, point[1] + lenHalf);
                 stroke.setStrokeWidth(Ui.dp(ctx, 2));

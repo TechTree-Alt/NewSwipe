@@ -1331,8 +1331,10 @@ final class KeyboardPreview extends FrameLayout {
         return true;
     }
 
-    /** 손잡이 가운데가 굵은 윤곽선 안쪽 가장자리에서 떨어진 거리 (윤곽선 가운데에서 6dp). */
-    private static final float HANDLE_GAP_DP = 6f - THICK_DP / 2f;
+    /** 손잡이 가운데가 굵은 윤곽선 가운데에서 떨어진 거리 (한 손 모드 미리보기도 같이 쓴다). */
+    static final float HANDLE_INSET_DP = 6f;
+    /** 손잡이 가운데가 굵은 윤곽선 안쪽 가장자리에서 떨어진 거리. */
+    private static final float HANDLE_GAP_DP = HANDLE_INSET_DP - THICK_DP / 2f;
     /** 얇은 윤곽선 굵기 (영역마다의 윤곽선, 키 윤곽선). */
     static final float THIN_DP = 1.25f;
 
