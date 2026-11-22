@@ -41,6 +41,7 @@ public final class LanguageOrderEditorActivity extends Activity {
         AppTheme colors = AppTheme.of(this);
         themeSignature = AppTheme.signature(this);
         ScrollView scroll = new ScrollView(this);
+        scroll.setVerticalScrollBarEnabled(!com.alternative_studios.newswipe.ui.Metro.on);   // Metro에는 스크롤 막대가 없다
         scroll.setBackgroundColor(colors.bg);
         scroll.setFillViewport(true);
         LinearLayout list = new LinearLayout(this);

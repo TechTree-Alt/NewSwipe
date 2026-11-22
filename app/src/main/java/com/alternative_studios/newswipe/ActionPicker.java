@@ -47,6 +47,7 @@ final class ActionPicker {
         root.setOrientation(LinearLayout.VERTICAL);
 
         ScrollView scroll = new ScrollView(c);
+        scroll.setVerticalScrollBarEnabled(!com.alternative_studios.newswipe.ui.Metro.on);   // Metro에는 스크롤 막대가 없다
         scroll.setVerticalFadingEdgeEnabled(true);
         LinearLayout list = new LinearLayout(c);
         list.setOrientation(LinearLayout.VERTICAL);

@@ -23,6 +23,7 @@ Windows Phone 7·8의 Metro UI처럼 바뀝니다. 이 문서는 무엇을 참�
 | 둥근 모서리·그림자·물결 없음 | `Ui.round()`가 모서리 0, `Ui.ripple()`이 누르는 동안 단색으로 덮는 바탕, `Ui.chipRadius()` 0. 이 세 곳을 쓰는 화면 대부분이 한꺼번에 바뀝니다 |
 | 크고 가는 글자 | `sans-serif-light`(Segoe WP Light 대신). 항목 20sp, 메뉴 24sp, 소제목 24sp 강조색 소문자 |
 | 피벗 머리글 | `SettingsFrame.buildMetroHeader()`: 작은 대문자 `NEWSWIPE` + 46sp 소문자 화면 이름, 오른쪽에 다음 메뉴 이름들이 옅게 이어지다 화면 끝에서 잘림 (`Metro.PivotHeader`) |
+| 스크롤 막대 없음 | 설정 화면·편집 화면·설정 창·대화상자의 스크롤 막대를 숨김 (키보드의 창들은 원래 없음) |
 | 카드 없음 | `SettingsWidgets.card()`가 바탕 없이, 구분선·화살표(`Chevron`) 숨김 |
 | 앱 목록 타일 | 설정 메뉴 아이콘이 강조색 네모 타일 + 흰 아이콘 (`IconView`) |
 | 강조색 고르기 | WP8 강조색 20가지를 네모 타일 4×5로 (`Metro.ACCENTS`) |

@@ -211,6 +211,7 @@ public final class AppDialog extends Dialog {
         View middle = null;
         if (b.items != null) {
             ScrollView scroll = new ScrollView(ui);
+            scroll.setVerticalScrollBarEnabled(!com.alternative_studios.newswipe.ui.Metro.on);   // Metro에는 스크롤 막대가 없다
             scroll.setVerticalFadingEdgeEnabled(true);
             rows = new LinearLayout(ui);
             rows.setOrientation(LinearLayout.VERTICAL);

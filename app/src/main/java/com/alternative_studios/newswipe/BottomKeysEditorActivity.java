@@ -51,6 +51,7 @@ public final class BottomKeysEditorActivity extends Activity {
         onAccentColor = colors.onAccent;
 
         ScrollView scroll = new ScrollView(this);
+        scroll.setVerticalScrollBarEnabled(!com.alternative_studios.newswipe.ui.Metro.on);   // Metro에는 스크롤 막대가 없다
         scroll.setBackgroundColor(bg);
         scroll.setFillViewport(true);
         list = new LinearLayout(this);

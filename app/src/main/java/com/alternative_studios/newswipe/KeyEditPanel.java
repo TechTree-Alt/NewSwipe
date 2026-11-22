@@ -419,6 +419,7 @@ final class KeyEditPanel {
         add.setOnClickListener(v -> addPopupRow(rows, "", true));
         box.addView(add);
         ScrollView scroll = new ScrollView(a);
+        scroll.setVerticalScrollBarEnabled(!com.alternative_studios.newswipe.ui.Metro.on);   // Metro에는 스크롤 막대가 없다
         scroll.addView(box);
         AppDialog d = AppTheme.dialogBuilder(a)
                 .setTitle(L.t("'" + key.label + "' 길게 누르기", "Long press '" + key.label + "'"))

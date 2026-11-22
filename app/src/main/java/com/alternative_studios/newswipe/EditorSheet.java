@@ -161,6 +161,7 @@ final class EditorSheet {
         sheet.addView(testRow, SettingsWidgets.matchWrap());
 
         scroll = new ScrollView(c);
+        scroll.setVerticalScrollBarEnabled(!com.alternative_studios.newswipe.ui.Metro.on);   // Metro에는 스크롤 막대가 없다
         scroll.setFillViewport(true);
         body = new LinearLayout(c);
         body.setOrientation(LinearLayout.VERTICAL);
