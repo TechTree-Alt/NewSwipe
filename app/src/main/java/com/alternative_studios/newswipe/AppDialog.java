@@ -121,7 +121,7 @@ public final class AppDialog extends Dialog {
             TextView m = text(b.message, 15, colors.hint);
             m.setLineSpacing(Ui.dp(ui, 3), 1f);
             m.setPadding(side, 0, side, Ui.dp(ui, 16));
-            root.addView(m);
+            addMessage(root, m);
         }
         addMiddle(root, b);
         LinearLayout bar = new LinearLayout(ui);
@@ -163,7 +163,7 @@ public final class AppDialog extends Dialog {
             TextView m = text(b.message, 17, Metro.fg);
             m.setTypeface(Metro.light());
             m.setPadding(side, 0, side, Ui.dp(ui, 14));
-            root.addView(m);
+            addMessage(root, m);
         }
         addMiddle(root, b);
         // 버튼: 같은 폭으로 나란히 (Windows Phone은 확인이 왼쪽, 취소가 오른쪽).
@@ -207,11 +207,24 @@ public final class AppDialog extends Dialog {
 
     // ---------------------------------------------------------------- 가운데 (목록·직접 만든 뷰)
 
+    /**
+     * 글을 스크롤 안에 둔다: 라이선스 원문처럼 화면보다 긴 글이면 이 부분만 줄어들어(스크롤) 아래쪽과 버튼이 잘리지 않는다.
+     * 짧은 글은 글 높이만큼만 차지한다.
+     */
+    private void addMessage(LinearLayout root, TextView m) {
+        ScrollView scroll = new ClipScroll(ui);
+        scroll.setVerticalScrollBarEnabled(!metro);   // Metro에는 스크롤 막대가 없다
+        scroll.setVerticalFadingEdgeEnabled(true);
+        scroll.addView(m);
+        root.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+    }
+
     /** 목록이나 직접 만든 뷰를 둔다. 화면보다 길면 이 부분만 줄어들어(스크롤) 버튼은 늘 보인다. */
     private void addMiddle(LinearLayout root, Builder b) {
         View middle = null;
         if (b.items != null) {
-            ScrollView scroll = new ScrollView(ui);
+            ScrollView scroll = new ClipScroll(ui);
             scroll.setVerticalScrollBarEnabled(!com.alternative_studios.newswipe.ui.Metro.on);   // Metro에는 스크롤 막대가 없다
             scroll.setVerticalFadingEdgeEnabled(true);
             rows = new LinearLayout(ui);
@@ -360,6 +373,24 @@ public final class AppDialog extends Dialog {
         public void setEnabled(boolean enabled) {
             super.setEnabled(enabled);
             setAlpha(enabled ? 1f : 0.38f);
+        }
+    }
+
+    /**
+     * 내용을 스스로 자기 영역으로 잘라 그리는 스크롤. Neumorphism에서는 버튼 그림자가 잘리지 않게 상자(Column)가 자식을 자르지
+     * 않으므로(NeuUi.unclip), 보통 ScrollView는 긴 글·목록이 영역 밖(버튼 뒤)까지 그려진다.
+     */
+    private static final class ClipScroll extends ScrollView {
+        ClipScroll(Context c) {
+            super(c);
+        }
+
+        @Override
+        protected void dispatchDraw(Canvas canvas) {
+            canvas.save();
+            canvas.clipRect(getScrollX(), getScrollY(), getScrollX() + getWidth(), getScrollY() + getHeight());
+            super.dispatchDraw(canvas);
+            canvas.restore();
         }
     }
 
