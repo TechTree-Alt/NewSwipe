@@ -328,21 +328,51 @@ public class BalancedBlocksTest {
         }
     }
 
-    /** 폭·위치를 바꿔도 맨 아래 줄(기능키·스페이스바)은 그대로다 (격자 정렬일 때도). */
+    /** 폭·위치를 바꿔도 맨 아래 줄(기능키·스페이스바)은 그대로다 (격자 정렬이 아닐 때). */
     @Test
     public void bottomRowDoesNotChangeWithTheBlocks() throws Exception {
         for (String layout : LAYOUTS) {
-            for (boolean grid : new boolean[]{false, true}) {
-                KeyboardLayout base = KeyboardLayout.korean(portrait(layout, 100, 0, 100, 0, grid));
-                KeyboardLayout.Row want = base.rows[base.rows.length - 1];
-                for (int[] v : new int[][]{{60, -40, 60, 40}, {130, 30, 60, 40}, {60, 20, 60, 40}, {60, -40, 60, -40}}) {
-                    KeyboardLayout l = KeyboardLayout.korean(portrait(layout, v[0], v[1], v[2], v[3], grid));
-                    KeyboardLayout.Row row = l.rows[l.rows.length - 1];
-                    assertEquals(want.keys.length, row.keys.length);
-                    for (int i = 0; i < row.keys.length; i++) {
-                        assertEquals(want.keys[i].type, row.keys[i].type);
-                        assertEquals(layout + " 아래 줄 키 " + i, want.keys[i].weight, row.keys[i].weight, 0.001f);
+            KeyboardLayout base = KeyboardLayout.korean(portrait(layout, 100, 0, 100, 0, false));
+            KeyboardLayout.Row want = base.rows[base.rows.length - 1];
+            for (int[] v : new int[][]{{60, -40, 60, 40}, {130, 30, 60, 40}, {60, 20, 60, 40}, {60, -40, 60, -40}}) {
+                KeyboardLayout l = KeyboardLayout.korean(portrait(layout, v[0], v[1], v[2], v[3], false));
+                KeyboardLayout.Row row = l.rows[l.rows.length - 1];
+                assertEquals(want.keys.length, row.keys.length);
+                for (int i = 0; i < row.keys.length; i++) {
+                    assertEquals(want.keys[i].type, row.keys[i].type);
+                    assertEquals(layout + " 아래 줄 키 " + i, want.keys[i].weight, row.keys[i].weight, 0.001f);
+                }
+            }
+        }
+    }
+
+    /**
+     * 격자 정렬: 맨 아래 줄 기능키는 스페이스바 왼쪽이 자음 키 한 칸이고, 오른쪽은 '상세 배열 폭에 맞추기'를 켜면
+     * 모음 키, 끄면 자음 키 한 칸 폭이다. 자음·모음 폭을 바꾸면 함께 바뀌고, 줄은 꽉 찬다.
+     */
+    @Test
+    public void gridBottomKeysFollowTheLetterKeys() throws Exception {
+        for (boolean detail : new boolean[]{false, true}) {
+            for (String layout : LAYOUTS) {
+                for (int[] v : new int[][]{{100, 0, 100, 0}, {60, -40, 60, 40}, {130, 30, 60, 40}, {60, 20, 90, 40}}) {
+                    Prefs p = portrait(layout, v[0], v[1], v[2], v[3], true);
+                    ((FakeSp) p.raw()).m.put(Prefs.GRID_DETAIL, detail);
+                    KeyboardLayout l = KeyboardLayout.korean(p);
+                    float consonant = -1f, vowel = -1f;
+                    for (Key k : l.rows[0].keys) {
+                        if ("ㅂ".equals(k.label)) consonant = k.weight;
+                        if ("ㅗ".equals(k.label)) vowel = k.weight;
                     }
+                    KeyboardLayout.Row row = l.rows[l.rows.length - 1];
+                    float total = 0f;
+                    boolean afterSpace = false;
+                    for (Key k : row.keys) {
+                        total += k.weight;
+                        if (k.type == Key.SPACE) afterSpace = true;
+                        else assertEquals(layout + " detail=" + detail + (afterSpace ? " 오른쪽" : " 왼쪽") + " 기능키",
+                                afterSpace && detail ? vowel : consonant, k.weight, 0.001f);
+                    }
+                    assertEquals(10f, total, 0.001f);
                 }
             }
         }

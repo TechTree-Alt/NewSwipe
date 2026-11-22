@@ -152,6 +152,7 @@ public final class Prefs {
     public static final String LAB_DUBEOLSIK = "lab_dubeolsik";
     public static final String GRID_COLORS = "grid_colors";   // 색 정렬 (테마): Shift·⌫는 글자 키 색, 스페이스바는 기능키 색
     public static final String GRID_LAYOUT = "grid_layout";                   // 아래 줄 기능키를 한글 키 폭에 맞춰 격자로 정렬
+    public static final String GRID_DETAIL = "grid_detail";                   // 격자 정렬의 상세 배열 폭에 맞추기: 스페이스바 오른쪽 기능키·⌫를 모음 키 폭으로
     /** 자·모음 균형 배열. 한글 배열마다 따로 저장한다: 이 이름 + "_" + 배열 값 (예: balanced_layout_danmoeum7). */
     public static final String BALANCED_LAYOUT = "balanced_layout";
     /** 가로 모드 분리 키보드: 가로 모드에서 자·모음 균형 배열로 자판을 나눈다. 한글 배열마다 따로 저장한다: 이 이름 + "_" + 배열 값. */
@@ -934,7 +935,7 @@ public final class Prefs {
             new EditorScope(SCOPE_LETTERS_EN, L.t("영어 글자 키 (상세 배열·자동 대문자·대문자 밀기·이메일 입력란·두벌식 자모 힌트)", "English letter keys (advanced layout · auto-capitalize · swipe for capitals · email fields · Dubeolsik hints)"), keys(AUTO_CAP,
                     ENGLISH_FIELDS, ENGLISH_SWIPE_UPPER, DUBEOLSIK_HINT, DUBEOLSIK_HINT_POSITION, ENGLISH_BALANCED, ENGLISH_DETAIL), NONE),
             new EditorScope(SCOPE_LETTERS_SYM, L.t("기호 글자 키 (상세 배열)", "Symbol keys (advanced layout)"), keys(SYMBOLS_DETAIL), NONE),
-            new EditorScope(AREA_SCOPES[3], L.t("기능키", "Function keys"), concat(BOTTOM_KEY_VALUES, FN_ROW_HEIGHT, GRID_LAYOUT, DELETE_PRESS_MS,
+            new EditorScope(AREA_SCOPES[3], L.t("기능키", "Function keys"), concat(BOTTOM_KEY_VALUES, FN_ROW_HEIGHT, GRID_LAYOUT, GRID_DETAIL, DELETE_PRESS_MS,
                     FN_SWIPE_THRESHOLD, PORTRAIT_PREFIX + SPLIT_SPACE_JOIN, PORTRAIT_PREFIX + SPLIT_FN_WIDTH,
                     PORTRAIT_PREFIX + FN_FOLLOW_BLOCKS),
                     keys(AREA_PAD_PREFIX + PAD_AREAS[3] + "_")),
@@ -1667,8 +1668,13 @@ public final class Prefs {
         return bottomKeyShown(com.alternative_studios.newswipe.keyboard.BottomKeys.GLOBE) && id.equals(symbolGlobeKey());
     }
 
-    /** 격자 정렬. 자·모음 균형 배열에서는 기능키 폭을 나뉜 자음 키 폭에 맞춘다. */
+    /** 격자 정렬: 기능키(스페이스바 제외) 폭을 한글 자판의 자음(왼쪽) 키 한 칸에 맞춘다. 상세 배열이면 나뉜 자음 키 폭이다. */
     public boolean gridLayout() { return sp.getBoolean(GRID_LAYOUT, false); }
+    /**
+     * 격자 정렬의 '상세 배열 폭에 맞추기': 자·모음 균형 배열·분리 키보드에서 기능키를 스페이스바 왼쪽은 자음 키,
+     * 오른쪽은 모음 키 한 칸 폭에 맞춘다. 끄면 모든 기능키가 자음 키 한 칸 폭이다.
+     */
+    public boolean gridDetail() { return sp.getBoolean(GRID_DETAIL, false); }
     /** 영어 자판의 묶음 폭·위치 키에 한글 배열 이름 대신 붙는 말. */
     public static final String ENGLISH_BLOCKS = "english";
     /** 기호 자판의 묶음 폭·위치 키에 한글 배열 이름 대신 붙는 말. */

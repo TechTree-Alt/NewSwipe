@@ -92,6 +92,78 @@ public class LayoutCombinationsTest {
         return null;
     }
 
+    /** 맨 아래 기능키 줄을 뺀 줄들의 글자 키(숨은 키 제외) 가운데 자리: "줄:글자" → x (칸). */
+    private static Map<String, Float> letterCenters(KeyboardLayout l) {
+        Map<String, Float> m = new HashMap<>();
+        for (int r = 0; r < l.rows.length - 1; r++) {
+            float total = 0f;
+            for (Key k : l.rows[r].keys) total += k.weight;
+            float x = Math.max(0f, (Math.max(l.columns, 10) - total) / 2f);   // 짧은 줄은 가운데에 놓인다
+            for (Key k : l.rows[r].keys) {
+                if (k.type == Key.CHAR && !k.isHidden()) m.put(r + ":" + k.label, x + k.weight / 2f);
+                x += k.weight;
+            }
+        }
+        return m;
+    }
+
+    /**
+     * 격자 정렬은 쿼티 모양 자판(두벌식·영어·기호)의 글자 키 자리를 바꾸지 않는다: Shift·⌫의 폭이 바뀌어도
+     * 맨 아래 글자 줄이 좌우로 밀리지 않는다 (상세 배열 폭에 맞추기을 켜도 꺼도, 묶음 폭이 달라도).
+     */
+    @Test
+    public void gridNeverMovesQwertyLetters() throws Exception {
+        String[] profiles = {Prefs.PROFILE_PORTRAIT, Prefs.PROFILE_LANDSCAPE, Prefs.PROFILE_LARGE_PORTRAIT};
+        int[] modes = {Prefs.DETAIL_NONE, Prefs.DETAIL_BALANCED, Prefs.DETAIL_SPLIT};
+        for (String profile : profiles) for (String layout : new String[]{Prefs.KOREAN_LAYOUT_DUBEOLSIK, Prefs.KOREAN_LAYOUT_8, Prefs.KOREAN_LAYOUT_D7})
+        for (int mode : modes) for (int width : new int[]{Prefs.BALANCED_WIDTH_MIN, 60, 100, 130}) for (boolean nr : new boolean[]{false, true}) {
+            KeyboardLayout[][] got = new KeyboardLayout[3][];
+            for (int g = 0; g < 3; g++) {   // 격자 정렬 끔 / 켬 / 켬 + 상세 배열 폭에 맞추기
+                FakeSp sp = new FakeSp();
+                sp.m.put(Prefs.KOREAN_LAYOUT, layout);
+                sp.m.put(Prefs.NUMBER_ROW, nr);
+                sp.m.put(Prefs.LARGE_LAYOUT, true);
+                sp.m.put(Prefs.GRID_LAYOUT, g > 0);
+                sp.m.put(Prefs.GRID_DETAIL, g == 2);
+                Prefs p = view(sp, profile);
+                for (int b = 0; b < 3; b++) p.setDetailMode(b, mode);
+                for (int b = 0; b < 3; b++) {
+                    Prefs bv = p.boardView(b);
+                    sp.m.put(bv.balancedConsonantWidthKey(), width);
+                    sp.m.put(bv.balancedVowelWidthKey(), Math.max(Prefs.BALANCED_WIDTH_MIN, 160 - width));
+                }
+                Prefs v = view(sp, profile);
+                got[g] = new KeyboardLayout[]{KeyboardLayout.english(v), KeyboardLayout.symbols(true, v), KeyboardLayout.symbols2(true, v),
+                        Prefs.KOREAN_LAYOUT_DUBEOLSIK.equals(layout) ? KeyboardLayout.korean(v) : null};
+            }
+            String[] names = {"en", "sym", "sym2", "ko"};
+            for (int i = 0; i < 4; i++) {
+                if (got[0][i] == null) continue;
+                Map<String, Float> want = letterCenters(got[0][i]);
+                for (int g = 1; g < 3; g++) {
+                    Map<String, Float> have = letterCenters(got[g][i]);
+                    assertEquals(want.keySet(), have.keySet());
+                    for (String k : want.keySet()) {
+                        assertEquals(profile + "/" + layout + " mode=" + mode + " w=" + width + " nr=" + nr + " grid=" + g + " "
+                                + names[i] + " " + k, want.get(k), have.get(k), 0.001f);
+                    }
+                }
+            }
+            // 일반 영어 자판: z~m은 s~k 바로 아래다.
+            if (mode == Prefs.DETAIL_NONE && Prefs.PROFILE_PORTRAIT.equals(profile)) {
+                for (int g = 0; g < 3; g++) {
+                    Map<String, Float> c = letterCenters(got[g][0]);
+                    int top = nr ? 1 : 0;
+                    String[] upper = {"s", "d", "f", "g", "h", "j", "k"}, lower = {"z", "x", "c", "v", "b", "n", "m"};
+                    for (int j = 0; j < 7; j++) {
+                        assertEquals(lower[j] + "는 " + upper[j] + " 아래", c.get((top + 1) + ":" + upper[j]),
+                                c.get((top + 2) + ":" + lower[j]), 0.001f);
+                    }
+                }
+            }
+        }
+    }
+
     @Test
     public void everyCombinationBuildsAWholeKeyboard() throws Exception {
         String[] profiles = {Prefs.PROFILE_PORTRAIT, Prefs.PROFILE_LANDSCAPE, Prefs.PROFILE_LARGE_PORTRAIT, Prefs.PROFILE_LARGE_LANDSCAPE};

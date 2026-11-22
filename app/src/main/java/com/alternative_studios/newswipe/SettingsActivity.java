@@ -2234,11 +2234,21 @@ public final class SettingsActivity extends Activity {
     private void addFunctionKeyLayout(LinearLayout c) {
         c.addView(button(L.t("기능키 순서·유무 사용자화", "Customize function keys"), v -> startActivity(new Intent(this, BottomKeysEditorActivity.class))));
         c.addView(note(L.t("맨 아래 줄 기능키의 순서와 유무를 바꿉니다.", "Changes the order and visibility of the function keys in the bottom row.")));
-        // 바꾸면 미리보기도 바로 다시 그린다.
+        // 바꾸면 미리보기도 바로 다시 그린다. '상세 배열 폭에 맞추기'는 격자 정렬을 켰을 때만 보인다.
+        View detail = subGroup(toggle(L.t("상세 배열 폭에 맞추기", "Match advanced layout widths"),
+                L.t("상세 배열을 쓸 때, 각 기능키의 폭을 위쪽에 있는 글자 키의 폭에 맞춥니다.",
+                        "When using an advanced layout, matches each function key's width to the letter keys above it."),
+                prefs.gridDetail(), on -> {
+                    prefs.raw().edit().putBoolean(Prefs.GRID_DETAIL, on).apply();
+                    refreshLayoutPreview();
+                }));
+        detail.setVisibility(prefs.gridLayout() ? View.VISIBLE : View.GONE);
         c.addView(toggle(L.t("격자 정렬", "Grid alignment"), gridDesc(), prefs.gridLayout(), on -> {
             prefs.raw().edit().putBoolean(Prefs.GRID_LAYOUT, on).apply();
+            Ui.setVisibleAnimated(detail, on);
             refreshLayoutPreview();
         }));
+        c.addView(detail);
     }
 
     /** 쌍자음·이중모음 입력 방식의 이름 (Prefs.INPUT_* 차례). */
@@ -3035,7 +3045,7 @@ public final class SettingsActivity extends Activity {
                 View fnWidth = subGroup(
                         own(sizeSlider(L.t("하단 기능키 폭", "Bottom function key width"), edit.splitFnWidthKey(), edit::splitFnWidthSetting, 50, 200, 5, "%")),
                         note(L.t("스페이스바·Shift·⌫를 뺀 맨 아래 줄 키(기호 키·쉼표·지구본·온점·엔터)의 폭입니다. "
-                                + "줄이거나 늘린 만큼 스페이스바가 늘거나 줄어듭니다.", "Width of the bottom row keys other than space, Shift and ⌫ (symbol key, comma, globe, period, enter). The space bar shrinks or grows to match.")));
+                                + "줄이거나 늘린 만큼 스페이스바가 늘거나 줄어듭니다. 격자 정렬을 켜면 격자 정렬의 폭을 따릅니다.", "Width of the bottom row keys other than space, Shift and ⌫ (symbol key, comma, globe, period, enter). The space bar shrinks or grows to match. With grid alignment on, they follow the grid alignment width instead.")));
                 fnWidth.setVisibility(edit.splitSpaceJoin() ? View.VISIBLE : View.GONE);
                 String joinKey = edit.splitSpaceJoinKey();
                 c.addView(own(toggle(L.t("스페이스바 잇기", "Join space bar"),
