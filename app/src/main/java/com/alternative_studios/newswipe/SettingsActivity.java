@@ -157,11 +157,6 @@ public final class SettingsActivity extends Activity {
         fullHost = frame.fullHost();
         undoButton = frame.actionButton();
         build();
-        if (pinnedBottom.getChildCount() > 0) {
-            addPreviewToggle();
-            // 화면을 다시 만들었으면(회전 등) 숨겨 두었던 미리보기를 그대로 숨긴다.
-            if (savedInstanceState != null && !savedInstanceState.getBoolean(STATE_PREVIEW_SHOWN, true)) setPreviewShown(false);
-        }
         // 검색 결과에서 들어왔으면 그 항목까지 스크롤하고 깜빡여 알려 준다.
         String highlight = getIntent().getStringExtra(EXTRA_HIGHLIGHT);
         String target = getIntent().getStringExtra(EXTRA_TARGET);
@@ -172,70 +167,10 @@ public final class SettingsActivity extends Activity {
         }
     }
 
-    private static final String STATE_PREVIEW_SHOWN = "previewShown";
-    /** 머리글부터 미리보기 위까지를 덮는 틀: 설정 창(시트)과 꺾쇠 버튼을 여기에 겹쳐 띄운다. */
+    /** 머리글부터 미리보기 위까지를 덮는 틀: 설정 창(시트)을 여기에 겹쳐 띄운다. */
     private android.widget.FrameLayout overlayHost;
     /** 화면 전체(머리글부터 미리보기까지)를 덮는 틀: 미리보기가 클 때 설정 창을 여기의 왼쪽 절반에 띄운다. */
     private android.widget.FrameLayout fullHost;
-    /** 미리보기 바로 위 가운데에 뜬 강조색 알약 버튼 (꺾쇠 + '미리보기 닫기'·'미리보기 열기'). 다른 버튼처럼 누르면 줄며 모서리가 바뀌고 진동한다. */
-    private com.alternative_studios.newswipe.ui.ExpressiveButton previewToggle;
-    /** 꺾쇠 버튼을 담은 틀 (설정 창을 왼쪽 절반에 띄운 동안 숨긴다). */
-    private View previewToggleHolder;
-    private boolean previewShown = true;
-
-    @Override
-    protected void onSaveInstanceState(Bundle out) {
-        super.onSaveInstanceState(out);
-        out.putBoolean(STATE_PREVIEW_SHOWN, previewShown);
-    }
-
-    /**
-     * 미리보기 바로 위 가운데에 강조색 플로팅 꺾쇠 버튼을 띄운다. 설정 창(시트)보다 위에 놓이도록 build() 뒤에 더한다.
-     * 목록·창의 마지막 항목이 버튼에 가리지 않게 아래 여백을 늘린다.
-     */
-    private void addPreviewToggle() {
-        AppTheme t = AppTheme.of(this);
-        int h = Ui.dp(this, 32);
-        previewToggle = new com.alternative_studios.newswipe.ui.ExpressiveButton(this, "", t.accent, t.onAccent)
-                .compact(13, Ui.dp(this, 12), Ui.dp(this, 16));
-        previewToggle.setOnClickListener(v -> setPreviewShown(!previewShown));
-        previewToggle.setElevation(Ui.dp(this, 3));   // 버튼 자체는 낮게 띄워 그림자를 작게 둔다
-        updatePreviewToggle();
-        // 설정 창(시트, 그림자 12dp)보다 위에 그려지도록, 그림자 없는 투명한 틀을 그보다 높이 두고 버튼을 그 안에 넣는다
-        // (같은 틀 안의 형제끼리는 높이 순서로 그린다). 틀은 버튼 밖의 터치를 아래로 그대로 넘긴다.
-        android.widget.FrameLayout holder = new android.widget.FrameLayout(this);
-        holder.setOutlineProvider(null);
-        holder.setElevation(Ui.dp(this, 12) + 1);
-        holder.setClipChildren(false);
-        holder.setClipToPadding(false);
-        int shadowRoom = Ui.dp(this, 8);
-        holder.setPadding(shadowRoom, shadowRoom, shadowRoom, shadowRoom);
-        holder.addView(previewToggle, new android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, h));
-        android.widget.FrameLayout.LayoutParams lp = new android.widget.FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-        lp.bottomMargin = Ui.dp(this, 10) - shadowRoom;
-        overlayHost.addView(holder, lp);
-        previewToggleHolder = holder;
-        int room = h + Ui.dp(this, 24);
-        list.setPadding(list.getPaddingLeft(), list.getPaddingTop(), list.getPaddingRight(), Math.max(list.getPaddingBottom(), room));
-        if (sheet != null) {
-            LinearLayout b = sheet.body();
-            b.setPadding(b.getPaddingLeft(), b.getPaddingTop(), b.getPaddingRight(), Math.max(b.getPaddingBottom(), room));
-        }
-    }
-
-    private void updatePreviewToggle() {
-        previewToggle.setText(previewShown ? L.t("미리보기 닫기", "Hide preview") : L.t("미리보기 열기", "Show preview"));
-        previewToggle.setLeadingIcon(previewShown ? Icons.HIDE : Icons.CHEVRON_UP);
-    }
-
-    /** 꺾쇠 버튼: 화면 아래의 미리보기(와 그 위 자판 탭·페이지 표시)를 접거나 펼친다. 꺾쇠 버튼은 그대로 남는다. */
-    private void setPreviewShown(boolean shown) {
-        previewShown = shown;
-        updatePreviewToggle();
-        Ui.setVisibleAnimated(pinnedBottom, shown);
-    }
-
     @Override
     protected void onResume() {
         super.onResume();
@@ -1699,21 +1634,12 @@ public final class SettingsActivity extends Activity {
      * 250dp보다 낮은지: 그러면 설정 창을 열 때 화면을 좌우로 나눈다 (바형 폰의 가로 키보드 등).
      */
     private boolean previewTooTall() {
-        if (fullHost == null || pinnedBottom == null || !previewShown || pinnedBottom.getVisibility() != View.VISIBLE) return false;
+        if (fullHost == null || pinnedBottom == null || pinnedBottom.getVisibility() != View.VISIBLE) return false;
         int screen = fullHost.getHeight() - fullHost.getPaddingTop() - fullHost.getPaddingBottom();
         int width = fullHost.getWidth() - fullHost.getPaddingLeft() - fullHost.getPaddingRight();
         if (screen <= 0 || width < Ui.dp(this, SPLIT_MIN_WIDTH_DP)) return false;
-        // 보통일 때 창이 보이는 높이: 미리보기 위 전부에서 그 아래쪽을 가리는 꺾쇠 버튼 자리를 뺀다.
-        return screen - pinnedBottom.getHeight() - previewToggleCover() < Ui.dp(this, SPLIT_MAX_ROOM_DP);
-    }
-
-    /** 꺾쇠 버튼이 설정 창 아래쪽을 가리는 높이 (버튼 위 끝부터 미리보기 위 끝까지). */
-    private int previewToggleCover() {
-        View holder = previewToggleHolder;
-        if (holder == null || holder.getVisibility() == View.GONE || holder.getHeight() == 0) return 0;
-        ViewGroup.LayoutParams raw = holder.getLayoutParams();
-        int margin = raw instanceof ViewGroup.MarginLayoutParams ? ((ViewGroup.MarginLayoutParams) raw).bottomMargin : 0;
-        return holder.getHeight() - holder.getPaddingTop() + margin;
+        // 보통일 때 창이 보이는 높이: 미리보기 위 전부.
+        return screen - pinnedBottom.getHeight() < Ui.dp(this, SPLIT_MAX_ROOM_DP);
     }
 
     /** 미리보기를 오른쪽 절반으로 줄이거나(on) 실제 크기로 되돌린다. 설정 창이 오르내리는 동안 함께 움직인다. */
@@ -1739,7 +1665,7 @@ public final class SettingsActivity extends Activity {
 
     /**
      * 지금 줄인 정도대로 미리보기를 오른쪽 아래 모서리를 기준으로 줄이고, 줄어서 빈 높이만큼 위의 목록에 자리를 돌려준다
-     * (음수 위 여백). 손잡이를 끄는 거리도 배율에 맞춘다. 꺾쇠 버튼은 나눈 동안 숨긴다.
+     * (음수 위 여백). 손잡이를 끄는 거리도 배율에 맞춘다.
      */
     private void applyPreviewSplit() {
         if (pinnedBottom == null) return;
@@ -1759,10 +1685,6 @@ public final class SettingsActivity extends Activity {
             }
         }
         if (editorPreview != null) editorPreview.setTouchScale(scale);
-        if (previewToggleHolder != null) {
-            previewToggleHolder.setAlpha(1f - previewSplit);
-            previewToggleHolder.setVisibility(previewSplit >= 1f ? View.INVISIBLE : View.VISIBLE);
-        }
     }
 
     /** 지금 설정 창이 보여 주는 것 (창이 닫혀 있으면 null). */
