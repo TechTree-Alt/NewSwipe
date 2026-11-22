@@ -34,6 +34,20 @@ public final class SwipeStrip extends LinearLayout {
         /** 끄는 동안 손가락 위치가 바뀔 때마다. */
         default void onDragMove(float x, float y) {
         }
+
+        /** 빈 공간 길게 누르기에 정한 기능이 있는지 (터치할 때마다 묻는다). */
+        default boolean hasLongPress() {
+            return false;
+        }
+
+        /** 빈 공간을 길게 눌렀다. true를 돌려주면 손을 뗄 때까지 손가락 위치를 {@link #onLongDrag}로 알린다. */
+        default boolean onLongPress(float x, float y) {
+            return false;
+        }
+
+        /** 길게 누른 뒤 손을 떼지 않고 미는 동안 손가락 위치가 바뀔 때마다. */
+        default void onLongDrag(float x, float y) {
+        }
     }
 
     private final int captureAt;
@@ -44,6 +58,20 @@ public final class SwipeStrip extends LinearLayout {
     private BiPredicate<View, Integer> swipeOwner = (v, dir) -> false;
     private float downX, downY;
     private boolean tracking, captured, fired, dragging;
+    /** 빈 공간 길게 누르기: 기다리는 중인지, 이미 실행했는지, 실행한 뒤 손가락을 따라가는 중인지. */
+    private boolean longWaiting, longFired, longDragging;
+    private int longPressMs = 350;
+    private float lastX, lastY;
+    private final Runnable longPress = () -> {
+        // 그사이 키보드가 내려갔거나 막대가 숨었으면(손을 뗀 소식 없이) 실행하지 않는다.
+        if (!longWaiting || !isShown()) {
+            longWaiting = false;
+            return;
+        }
+        longWaiting = false;
+        longFired = true;
+        if (listener != null) longDragging = listener.onLongPress(lastX, lastY);
+    };
     /** 이번 터치를 시작한 버튼이 Key.SWIPE_* 방향 밀기를 직접 처리하는지. */
     private final boolean[] owned = new boolean[4];
 
@@ -55,6 +83,15 @@ public final class SwipeStrip extends LinearLayout {
 
     public void setListener(Listener l) {
         listener = l;
+    }
+
+    /** 빈 공간을 이만큼(ms) 누르고 있으면 길게 누르기다. */
+    public void setLongPressMs(int ms) {
+        longPressMs = ms;
+    }
+
+    private boolean longPressOn() {
+        return listener != null && listener.hasLongPress();
     }
 
     /** 이 버튼이 이 방향(Key.SWIPE_*) 밀기를 직접 처리하는지 (터치할 때마다 묻는다). */
@@ -116,12 +153,28 @@ public final class SwipeStrip extends LinearLayout {
     @Override
     @SuppressLint("ClickableViewAccessibility")
     public boolean onTouchEvent(MotionEvent ev) {
-        if (!anyEnabled()) return false;
+        // 여기로 오는 누르기는 안쪽 버튼·추천이 받지 않은 빈 곳에서 시작한 것이다: 그때만 길게 누르기를 기다린다.
+        boolean longOn = ev.getActionMasked() == MotionEvent.ACTION_DOWN ? longPressOn() : longWaiting || longFired;
+        if (!anyEnabled() && !longOn) return false;
+        lastX = ev.getX();
+        lastY = ev.getY();
         switch (ev.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
                 start(ev);   // 안쪽 버튼이 없는 빈 곳에서 시작한 경우: 이어서 받으려면 true를 돌려줘야 한다
+                if (longOn) {
+                    longWaiting = true;
+                    postDelayed(longPress, longPressMs);
+                }
                 return true;
             case MotionEvent.ACTION_MOVE:
+                if (longFired) {
+                    // 길게 누른 뒤에는 밀기로 보지 않는다 ('밀어서 선택'이면 손가락을 따라간다).
+                    if (longDragging && listener != null) listener.onLongDrag(ev.getX(), ev.getY());
+                    return true;
+                }
+                if (longWaiting && Math.max(Math.abs(ev.getX() - downX), Math.abs(ev.getY() - downY)) > captureAt) {
+                    stopLongPressWait();   // 밀기 시작: 길게 누르기가 아니다
+                }
                 if (!tracking) return false;
                 if (dragging) {
                     if (listener != null) listener.onDragMove(ev.getX(), ev.getY());
@@ -132,6 +185,7 @@ public final class SwipeStrip extends LinearLayout {
                 if (!fired && accepts(dir) && Math.max(Math.abs(dx), Math.abs(dy)) >= distance) {
                     fired = true;
                     captured = true;
+                    stopLongPressWait();   // 밀기 거리가 짧으면 길게 누르기를 거두기 전에 밀기가 먼저 실행될 수 있다
                     if (listener != null && listener.isDrag(dir)) {
                         dragging = true;
                         listener.onDragStart(dir, ev.getX(), ev.getY());
@@ -170,7 +224,21 @@ public final class SwipeStrip extends LinearLayout {
         return null;
     }
 
+    @Override
+    protected void onDetachedFromWindow() {
+        reset();   // 기다리던 길게 누르기를 거둔다 (키보드 화면을 다시 만들 때 등)
+        super.onDetachedFromWindow();
+    }
+
+    private void stopLongPressWait() {
+        longWaiting = false;
+        removeCallbacks(longPress);
+    }
+
     private void reset() {
+        stopLongPressWait();
+        longFired = false;
+        longDragging = false;
         tracking = false;
         captured = false;
         fired = false;

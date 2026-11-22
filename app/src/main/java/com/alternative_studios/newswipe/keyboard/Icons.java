@@ -55,11 +55,49 @@ public final class Icons {
     public static final int SELECT_ALL = 44;      // 전체 선택 (점선 테두리 안의 네모)
     public static final int CHEVRON_UP = 45;      // 위 꺾쇠 (HIDE를 뒤집은 것: 접은 미리보기 펼치기)
     public static final int FLOAT = 46;           // 떠 있는 키보드 (휴대폰 화면 가운데에 뜬 작은 자판)
+    // 텍스트 편집 창. 방향이 있는 아이콘은 위쪽을 향한 모양 하나를 그려 돌린다 (오른쪽 = 90도, 시계 방향).
+    public static final int TEXT_EDIT = 47;       // 텍스트 편집 (I자 커서 양옆의 꺾쇠)
+    public static final int CHEVRON_LEFT = 48, CHEVRON_RIGHT = 49, CHEVRON_DOWN = 50;
+    /** 단어 단위 이동: 겹친 꺾쇠 («, »). */
+    public static final int WORD_LEFT = 59, WORD_RIGHT = 60;
+    /** 커서 뒤 글자 지우기 (⌫를 좌우로 뒤집은 ⌦). */
+    public static final int FORWARD_DELETE = 61;
+    /** 다시 실행 (실행 취소를 좌우로 뒤집은 것). */
+    public static final int REDO = 62;
+    /** 탭 (막대를 향한 화살표 →|). */
+    public static final int TAB = 63;
+    /** 위쪽을 향한 겹친 꺾쇠 (돌리기 전의 모양). 밖에서 쓰지 않는다. */
+    private static final int WORD_UP = 1001;
 
     private static final Path path = new Path();
     private static final RectF oval = new RectF();
 
     private Icons() {
+    }
+
+    /**
+     * 돌리거나 뒤집어 그리는 아이콘: 캔버스를 돌리고(뒤집고) 실제로 그릴 모양을 돌려준다. 나머지는 그대로.
+     * 캔버스는 24칸 좌표로 옮긴 뒤이고, draw()가 마지막에 되돌린다.
+     */
+    private static int shape(Canvas c, int icon) {
+        int base, deg;
+        switch (icon) {
+            case CHEVRON_RIGHT: base = CHEVRON_UP; deg = 90; break;
+            case CHEVRON_DOWN: base = CHEVRON_UP; deg = 180; break;
+            case CHEVRON_LEFT: base = CHEVRON_UP; deg = 270; break;
+            case WORD_RIGHT: base = WORD_UP; deg = 90; break;
+            case WORD_LEFT: base = WORD_UP; deg = 270; break;
+            case FORWARD_DELETE:
+                c.scale(-1, 1, 12, 12);
+                return DELETE;
+            case REDO:
+                c.scale(-1, 1, 12, 12);
+                return UNDO;
+            default:
+                return icon;
+        }
+        c.rotate(deg, 12, 12);
+        return base;
     }
 
     /** 톱니바퀴 아이콘의 점: 가운데(12, 12)에서 반지름 r, 위쪽(12시)에서 시계 방향으로 deg도. */
@@ -90,7 +128,7 @@ public final class Icons {
         p.setStrokeJoin(Paint.Join.ROUND);
         p.setStyle(Paint.Style.STROKE);
         path.reset();
-        switch (icon) {
+        switch (shape(c, icon)) {
             case SHIFT:
             case SHIFT_ON:
             case SHIFT_LOCK:
@@ -515,6 +553,36 @@ public final class Icons {
                 path.moveTo(6, 14.5f);
                 path.lineTo(12, 8.5f);
                 path.lineTo(18, 14.5f);
+                c.drawPath(path, p);
+                break;
+            case WORD_UP:
+                path.moveTo(7, 11);
+                path.lineTo(12, 6);
+                path.lineTo(17, 11);
+                path.moveTo(7, 17);
+                path.lineTo(12, 12);
+                path.lineTo(17, 17);
+                c.drawPath(path, p);
+                break;
+            case TAB:
+                c.drawLine(3.5f, 12, 16.5f, 12, p);
+                path.moveTo(12, 7.5f);
+                path.lineTo(16.5f, 12);
+                path.lineTo(12, 16.5f);
+                c.drawPath(path, p);
+                c.drawLine(20.5f, 6.5f, 20.5f, 17.5f, p);
+                break;
+            case TEXT_EDIT:
+                // 가운데의 I자 커서와 양옆으로 옮기는 꺾쇠
+                c.drawLine(12, 5, 12, 19, p);
+                c.drawLine(9.8f, 5, 14.2f, 5, p);
+                c.drawLine(9.8f, 19, 14.2f, 19, p);
+                path.moveTo(6.5f, 8.5f);
+                path.lineTo(3, 12);
+                path.lineTo(6.5f, 15.5f);
+                path.moveTo(17.5f, 8.5f);
+                path.lineTo(21, 12);
+                path.lineTo(17.5f, 15.5f);
                 c.drawPath(path, p);
                 break;
             default:

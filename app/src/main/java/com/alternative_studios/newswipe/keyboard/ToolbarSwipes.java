@@ -16,13 +16,16 @@ public final class ToolbarSwipes {
     /** 도구 막대 자체. 네 방향을 모두 쓴다. */
     public static final int BAR = 0;
     /** 도구 막대의 버튼들. 위·아래만 쓴다. */
-    public static final int CLIPBOARD = 1, EMOJI = 2, VOICE = 3, UNDO = 4, SETTINGS = 5, HIDE = 6, ONE_HAND = 7, FLOAT = 8;
+    public static final int CLIPBOARD = 1, EMOJI = 2, VOICE = 3, UNDO = 4, SETTINGS = 5, HIDE = 6, ONE_HAND = 7, FLOAT = 8, TEXT_EDIT = 9;
     private static String[] labels() {
         return new String[]{L.t("도구 막대", "Toolbar"), L.t("클립보드", "Clipboard"), L.t("이모지", "Emoji"), L.t("음성 입력", "Voice input"), L.t("실행 취소", "Undo"), L.t("설정", "Settings"), L.t("키보드 숨기기", "Hide keyboard"),
-            L.t("한 손 모드", "One-handed mode"), L.t("떠 있는 키보드", "Floating keyboard")};
+            L.t("한 손 모드", "One-handed mode"), L.t("떠 있는 키보드", "Floating keyboard"), L.t("텍스트 편집", "Text editing")};
     }
-    public static final SwipeSpec SPEC = new SwipeSpec("toolbar",
-            new String[]{"bar", "clipboard", "emoji", "voice", "undo", "settings", "hide", "onehand", "float"}) {
+    /** 칸 이름 (도구 막대 자체와 버튼 ID). 밀기와 길게 누르기가 같은 이름을 쓴다. */
+    private static final String[] SLOT_NAMES =
+            {"bar", "clipboard", "emoji", "voice", "undo", "settings", "hide", "onehand", "float", "textedit"};
+
+    public static final SwipeSpec SPEC = new SwipeSpec("toolbar", SLOT_NAMES) {
         @Override
         public String defaultAction(int slot, int dir) {
             if (slot == BAR && dir == Key.SWIPE_LEFT) return SwipeAction.LINE_START;
@@ -94,6 +97,83 @@ public final class ToolbarSwipes {
         @Override
         public String[] choices(int slot) {
             return SwipeAction.idsForToolbar();
+        }
+    };
+
+    /** 도구 막대 길게 누르기를 저장하는 칸의 방향 자리 (방향 자리 하나를 '길게 누르기'로 빌려 쓴다). */
+    public static final int LONG = Key.SWIPE_DOWN;
+
+    /**
+     * 도구 막대의 빈 공간과 도구 막대 버튼을 길게 누를 때 실행할 기능 (스페이스바 길게 누르기처럼). 칸은 밀기({@link #SPEC})와
+     * 같고, 저장 키는 같은 묶음의 "swipe_toolbar_칸_long"이라 도구 막대·버튼 설정 되돌리기가 함께 지운다. 처음에는 모두 없음이다.
+     */
+    public static final SwipeSpec LONG_PRESS = new SwipeSpec("toolbar", SLOT_NAMES) {
+        @Override
+        public String defaultAction(int slot, int dir) {
+            return SwipeAction.NONE;
+        }
+
+        /** 모르는 값과 고를 수 없는 기능(누르고 있는 동안 되풀이하는 지우기 등)은 없음으로 본다. */
+        @Override
+        public String resolve(String stored, int slot, int dir) {
+            if (stored == null) return SwipeAction.NONE;
+            for (String id : choices(slot)) if (id.equals(stored)) return stored;
+            return SwipeAction.NONE;
+        }
+
+        @Override
+        protected String dirKey(int slot, int dir) {
+            return "long";
+        }
+
+        @Override
+        public String title() {
+            return L.t("도구 막대 길게 누르기", "Toolbar long press");
+        }
+
+        @Override
+        public String note() {
+            return L.t("도구 막대의 빈 공간이나 도구 막대 버튼을 길게 누를 때 실행할 기능을 고릅니다.", "Choose what happens when you long press an empty part of the toolbar or a toolbar button.");
+        }
+
+        /** 켠 버튼의 칸만 보인다 (밀기와 같다). */
+        @Override
+        public boolean shown(Prefs prefs, int slot) {
+            return SPEC.shown(prefs, slot);
+        }
+
+        @Override
+        public String cardTitle(int slot) {
+            return SPEC.cardTitle(slot);
+        }
+
+        @Override
+        public String cardHint(int slot) {
+            return slot == BAR ? L.t("빈 공간을 길게 누를 때", "Long press on empty space") : L.t("길게 누를 때", "Long press");
+        }
+
+        @Override
+        public int[] dirs(int slot) {
+            return new int[]{LONG};
+        }
+
+        @Override
+        public String dirLabel(int dir) {
+            return L.t("길게 누르기", "Long press");
+        }
+
+        /** 스페이스바 길게 누르기와 같은 목록 ('밀어서 선택' 포함). 누르고 있는 동안 되풀이하는 지우기는 뺀다. */
+        @Override
+        public String[] choices(int slot) {
+            java.util.List<String> ids = new java.util.ArrayList<>();
+            for (String id : SwipeAction.idsForSpaceLongPress()) if (!SwipeAction.holdRepeat(id)) ids.add(id);
+            return ids.toArray(new String[0]);
+        }
+
+        @Override
+        public String dialogTitle(int slot, int dir) {
+            return slot == BAR ? L.t("도구 막대 빈 공간 길게 누르기", "Long press empty toolbar space")
+                    : L.t("'" + SPEC.cardTitle(slot) + "' 길게 누르기", "Long press '" + SPEC.cardTitle(slot) + "'");
         }
     };
 

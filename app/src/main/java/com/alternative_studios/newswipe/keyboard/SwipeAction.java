@@ -19,6 +19,8 @@ public final class SwipeAction {
     public static final String EMOJI_OPEN = "emoji_open";
     public static final String EMOJI_LATEST = "emoji_latest";
     public static final String EMOJI_PINNED = "emoji_pinned";
+    /** 텍스트 편집 창을 연다. 이미 열려 있으면 닫고 자판으로 돌아간다. */
+    public static final String TEXT_EDIT_OPEN = "text_edit_open";
     public static final String LINE_START = "line_start";
     public static final String LINE_END = "line_end";
     public static final String TEXT_START = "text_start";
@@ -86,6 +88,7 @@ public final class SwipeAction {
             {EMOJI_OPEN, L.t("이모지 열기", "Open emoji"), L.t("이모지", "Emoji")},
             {EMOJI_LATEST, L.t("가장 최근 사용한 이모지 붙여넣기", "Paste most recent emoji"), L.t("최근 이모지", "Recent emoji")},
             {EMOJI_PINNED, L.t("첫 번째 고정 이모지 붙여넣기", "Paste first pinned emoji"), L.t("고정 이모지", "Pinned emoji")},
+            {TEXT_EDIT_OPEN, L.t("텍스트 편집 창 열기", "Open text editing"), L.t("텍스트 편집", "Text editing")},
             {IME_PICKER, L.t("입력 방법 전환 창 열기", "Open input method picker"), L.t("입력기 선택", "Switch keyboard")},
             {LANGUAGE, L.t("언어 전환", "Switch language"), L.t("언어 전환", "Switch language")},
             {LANGUAGE_PICK, L.t("언어 고르기 (말풍선에서 골라 바꾸기)", "Pick language (choose from a popup)"), L.t("언어 고르기", "Pick language")},
@@ -135,7 +138,7 @@ public final class SwipeAction {
             {L.t("지우기·실행 취소", "Delete · Undo"), BACKSPACE, DELETE_WORD, DELETE_LINE_START, DELETE_LINE,
                     DELETE_REPEAT, DELETE_WORD_REPEAT, UNDO, REDO},
             {L.t("입력", "Input"), SPACE, ENTER, CAPS_LOCK, EMOJI_LATEST, EMOJI_PINNED, VOICE},
-            {L.t("자판·창 전환", "Keyboards & panels"), SYMBOLS, NUMBER_PAD, EMOJI_OPEN, LANGUAGE, LANGUAGE_PICK, IME_PICKER},
+            {L.t("자판·창 전환", "Keyboards & panels"), SYMBOLS, NUMBER_PAD, EMOJI_OPEN, TEXT_EDIT_OPEN, LANGUAGE, LANGUAGE_PICK, IME_PICKER},
             {L.t("키보드·설정", "Keyboard & settings"), HIDE_KEYBOARD, ONE_HAND_LEFT, ONE_HAND_RIGHT, FLOAT_KEYBOARD, SETTINGS},
     };
     }

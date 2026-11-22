@@ -728,10 +728,17 @@ final class KeyEditPanel {
         header(null, ToolbarButtons.label(id), null);
         // 버튼의 순서·유무는 도구 막대(영역)에서 바꾼다.
         int slot = toolSlot(id);
-        if (slot >= 0) buildToolbarSwipe(slot, ToolbarButtons.label(id));
-        else section(L.t("버튼", "Button")).addView(note(L.t("이 버튼은 따로 정할 것이 없습니다. 순서·유무는 도구 막대에서 바꿉니다.", "There is nothing to set for this button. Change the order and visibility in the toolbar.")));
+        if (slot >= 0) {
+            buildToolbarLongPress(slot);
+            buildToolbarSwipe(slot, ToolbarButtons.label(id));
+        } else {
+            section(L.t("버튼", "Button")).addView(note(L.t("이 버튼은 따로 정할 것이 없습니다. 순서·유무는 도구 막대에서 바꿉니다.", "There is nothing to set for this button. Change the order and visibility in the toolbar.")));
+        }
         resetRow(ToolbarButtons.label(id) + L.t(" 설정", " settings"), () -> {
-            if (slot >= 0) for (int dir : DIRS) ToolbarSwipes.SPEC.reset(prefs, slot, dir);
+            if (slot >= 0) {
+                for (int dir : DIRS) ToolbarSwipes.SPEC.reset(prefs, slot, dir);
+                ToolbarSwipes.LONG_PRESS.reset(prefs, slot, ToolbarSwipes.LONG);
+            }
             rebuild();
         });
     }
@@ -776,11 +783,30 @@ final class KeyEditPanel {
         }));
         look.addView(rest, SettingsWidgets.matchWrap());
         int swipeStart = root.getChildCount();
+        buildToolbarLongPress(ToolbarSwipes.BAR);
         buildToolbarSwipe(ToolbarSwipes.BAR, L.t("도구 막대", "Toolbar"));   // 소제목과 카드
         dependents.add(rest);
         for (int k = swipeStart; k < root.getChildCount(); k++) dependents.add(root.getChildAt(k));
         for (View d : dependents) d.setVisibility(shown ? View.VISIBLE : View.GONE);
         // 되돌리기는 이 칸 아래(영역 창 맨 아래)에 도구 막대 영역 전체를 맡는 버튼 하나로 둔다.
+    }
+
+    /** 도구 막대 빈 공간(칸 BAR)이나 버튼 길게 누르기 (스페이스바 길게 누르기처럼 기능을 고른다). */
+    private void buildToolbarLongPress(int slot) {
+        boolean bar = slot == ToolbarSwipes.BAR;
+        LinearLayout card = section(L.t("길게 누르기", "Long press"));
+        String action = ToolbarSwipes.LONG_PRESS.get(prefs, slot, ToolbarSwipes.LONG);
+        card.addView(valueRow(bar ? L.t("빈 공간을 길게 누르면", "Long press empty space") : L.t("길게 누르면", "Long press"),
+                SwipeAction.label(action),
+                v -> pickAction(ToolbarSwipes.LONG_PRESS, slot, ToolbarSwipes.LONG,
+                        ToolbarSwipes.LONG_PRESS.dialogTitle(slot, ToolbarSwipes.LONG), this::rebuild)));
+        if (SwipeAction.SPACE_SELECT.equals(action)) {
+            card.addView(note(L.t("길게 눌러 진동이 오면, 손을 떼지 않고 좌우로 밀어 글자 단위로, 위아래로 밀어 줄 단위로 글자를 선택합니다.",
+                    "Long press until it vibrates, then without lifting, swipe left or right to select by character, or up and down to select by line.")));
+        } else if (bar) {
+            card.addView(note(L.t("버튼·추천 단어·칩이 없는 빈 곳을 길게 누를 때 실행합니다.",
+                    "Runs when you long press a spot with no button, suggestion or chip.")));
+        }
     }
 
     private void buildToolbarSwipe(int slot, String name) {

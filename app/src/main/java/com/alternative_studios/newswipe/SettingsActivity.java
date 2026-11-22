@@ -521,7 +521,7 @@ public final class SettingsActivity extends Activity {
             {"feedback", L.t("키 소리", "Key sound"), L.t("클릭음 사운드 소리 켜기", "click sound audio on")},
             {"feedback", L.t("소리 크기", "Sound volume"), L.t("볼륨 클릭음", "volume click sound")},
             {KEYBOARD, L.t("도구 막대 표시", "Show toolbar"), L.t("툴바 켜기 끄기", "toolbar on off")},
-            {KEYBOARD, L.t("도구 막대 버튼 사용자화", "Customize toolbar buttons"), L.t("툴바 버튼 순서 음성 입력 마이크 클립보드 이모지 실행 취소", "toolbar buttons order voice input microphone clipboard emoji undo")},
+            {KEYBOARD, L.t("도구 막대 버튼 사용자화", "Customize toolbar buttons"), L.t("툴바 버튼 순서 음성 입력 마이크 클립보드 이모지 실행 취소 텍스트 편집 커서 선택", "toolbar buttons order voice input microphone clipboard emoji undo text editing cursor select")},
             {KEYBOARD, L.t("자판 아래에 두기", "Place below keyboard"), L.t("툴바 위치 아래 위", "toolbar position bottom top")},
             {KEYBOARD, L.t("도구 막대 높이", "Toolbar height"), L.t("툴바 높이 크기", "toolbar height size")},
             {KEYBOARD, L.t("도구 버튼 크기", "Toolbar button size"), L.t("툴바 아이콘 크기", "toolbar icon size")},

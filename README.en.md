@@ -63,6 +63,7 @@ Build an input system that is truly your own, one that fits you perfectly.
 - **Clipboard** · Saves up to 30 recently copied texts and images for 24 hours. You can pin the ones you want to keep (up to 10). Copies marked as sensitive and copies from password fields are not saved by default.
 - **Emoji** · Supports Emoji 18.0. Search in Korean or English. When you open the emoji panel, it reads the words before the cursor and suggests emoji. You can pin the emoji you use most.
 - **One-handed mode** · Shifts the keyboard to the left or right to make typing with one hand easier.
+- **Text editing** · A panel opened from the toolbar moves the cursor up, down, left, right or by word, and swipes send it to the line or text edge, and its selection mode lets you select, cut, copy and paste.
 - **Floating keyboard** · Place a floating keyboard anywhere you like for comfortable typing on large screens.
 - **Import & export settings** · Export all your settings to a file and import them back. When the file contains personal content, you can encrypt it with a password.
 
