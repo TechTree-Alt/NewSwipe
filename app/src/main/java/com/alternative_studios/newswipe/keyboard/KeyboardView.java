@@ -584,7 +584,7 @@ public final class KeyboardView extends View {
         return SwipeAction.NONE.equals(a) ? null : a;
     }
 
-    /** 이 키를 길게 누르면 실행할 기능. 없음이거나 대상이 아닌 키면 null. Fn 키는 자기 설정(Fn 키 사용자화)을 따른다. */
+    /** 이 키를 길게 누르면 실행할 기능. 없음이거나 대상이 아닌 키면 null. Fn 키는 자기 설정(FnKeyActions)을 따른다. */
     private String customLongPress(Key k) {
         if (k.type == Key.FUNCTION) return fnKeyAction(FnKeyActions.I_LONG);
         if (k.type == Key.SPACER) return gapSwipes == null ? null : gapSwipes.longPress();

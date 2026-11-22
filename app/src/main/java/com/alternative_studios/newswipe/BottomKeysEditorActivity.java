@@ -156,22 +156,16 @@ public final class BottomKeysEditorActivity extends Activity {
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         flp.topMargin = Ui.dp(this, 12);
         list.addView(fixed, flp);
-        // Shift 키를 끄면 그 자리에 Fn 키를 놓을 수 있다. Fn 키를 켜면 그 동작을 정하는 버튼이 나온다.
-        // 토글과 같은 묶음 안에 둔다 (토글을 켰을 때만 보인다). 버튼의 위아래 여백까지 함께 접히도록
-        // 여백 없는 틀로 감싸 그 틀을 펼치고 접는다. 버튼을 바로 접으면 높이가 0이 된 뒤 남은 여백이 한꺼번에 사라져 끊겨 보인다.
-        LinearLayout fnEdit = new LinearLayout(this);
-        fnEdit.setOrientation(LinearLayout.VERTICAL);
-        fnEdit.addView(fnEditButton());
+        // Shift 키를 끄면 그 자리에 Fn 키를 놓을 수 있다. Fn 키의 동작은 키보드 사용자화에서 그 키를 눌러 정한다 (KeyEditPanel).
         View fnToggle = fixedRow(L.t("Shift 키 대신 Fn 키 사용", "Use Fn key instead of Shift"),
-                L.t("한글 자판의 Shift 자리에 Fn 키를 놓습니다. NewSwipe 단모음 배열에는 Shift 자리가 없어 나타나지 않습니다.", "Puts an Fn key where Shift is on the Korean keyboard. Not shown in the NewSwipe Danmoeum layout, which has no Shift key."),
+                L.t("한글 자판의 Shift 자리에 Fn 키를 놓습니다. Fn 키의 동작은 키보드 사용자화에서 Fn 키를 눌러 정합니다. NewSwipe 단모음 배열에는 Shift 자리가 없어 나타나지 않습니다.", "Puts an Fn key where Shift is on the Korean keyboard. Set what it does by tapping the Fn key in Keyboard customization. Not shown in the NewSwipe Danmoeum layout, which has no Shift key."),
                 prefs.koreanShiftFn(), L.t("Shift 키 대신 Fn 키 사용", "Use Fn key instead of Shift"),
                 on -> {
                     prefs.raw().edit().putBoolean(Prefs.KOREAN_SHIFT_FN, on).apply();
-                    Ui.setVisibleAnimated(fnEdit, on);
                 });
         // 하위 항목은 왼쪽의 강조색 선이 들여쓰기를 대신하므로 줄 자체의 왼쪽 여백은 없앤다.
         fnToggle.setPadding(0, fnToggle.getPaddingTop(), fnToggle.getPaddingRight(), fnToggle.getPaddingBottom());
-        View fnGroup = subGroup(16, fnToggle, fnEdit);   // 카드 안 줄의 왼쪽 여백(10dp) + 설정 화면의 들여쓰기(6dp)
+        View fnGroup = subGroup(16, fnToggle);   // 카드 안 줄의 왼쪽 여백(10dp) + 설정 화면의 들여쓰기(6dp)
         // NewSwipe 단모음에는 Shift 자리가 없어, 꺼진 채 흐리게 두고 바꿀 수 없게 한다 (저장된 값은 건드리지 않는다).
         // 두벌식은 쌍자음·ㅒ·ㅖ에 Shift를 쓰므로 기본으로 보이고, 다른 배열과 따로 켜고 끈다.
         boolean noShiftSlot = prefs.koreanNewSwipe();
@@ -188,7 +182,6 @@ public final class BottomKeysEditorActivity extends Activity {
         if (noShiftSlot) setRowDisabled(shiftRow);
         fixed.addView(shiftRow);
         fnGroup.setVisibility(!noShiftSlot && prefs.koreanShiftHidden() ? View.VISIBLE : View.GONE);
-        fnEdit.setVisibility(prefs.koreanShiftFn() ? View.VISIBLE : View.GONE);
         fixed.addView(fnGroup);
         fixed.addView(fixedRow(L.t("지우기 키 (⌫)", "Delete key (⌫)"), null,
                 !prefs.deleteKeyHidden(),
@@ -361,31 +354,6 @@ public final class BottomKeysEditorActivity extends Activity {
         d.show();
     }
 
-    /** Fn 키의 탭·길게 누르기·밀기 기능을 정하는 화면으로 가는 버튼. 설정 화면의 하위 버튼과 같은 모양이다. */
-    private View fnEditButton() {
-        LinearLayout row = new LinearLayout(this);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        int h = Ui.dp(this, 14);
-        row.setPadding(h, Ui.dp(this, 12), h, Ui.dp(this, 12));
-        row.setBackground(Ui.ripple(accentColor & 0x00FFFFFF | 0x33000000,
-                Ui.round(accentColor & 0x00FFFFFF | 0x1F000000, Ui.dp(this, 12)), Ui.dp(this, 12)));
-        if (NeuUi.on) NeuUi.button(row, NeuUi.surface, Ui.dp(this, 12));   // Neumorphism: 솟아오른 버튼
-        row.addView(text(L.t("Fn 키 사용자화", "Customize Fn key"), 15, accentColor),
-                new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        row.addView(new Chevron(this, accentColor));
-        row.setClickable(true);
-        row.setFocusable(true);
-        row.setOnClickListener(v -> startActivity(SwipeActionEditorActivity.intent(this,
-                com.alternative_studios.newswipe.keyboard.FnKeyActions.SPEC)));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.setMargins(0, Ui.dp(this, 6), Ui.dp(this, 10), Ui.dp(this, 6));
-        row.setLayoutParams(lp);
-        SettingsWidgets.metroButton(row);   // Metro: 다른 버튼처럼 테두리 네모
-        return row;
-    }
-
-    /** 설정 화면과 같은 하위 항목 묶음: 왼쪽에 옅은 강조색 세로선을 두고 그 오른쪽에 항목들을 놓는다. */
     private View subGroup(int leftMarginDp, View... children) {
         LinearLayout group = new LinearLayout(this);
         group.setOrientation(LinearLayout.HORIZONTAL);

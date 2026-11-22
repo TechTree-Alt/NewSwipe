@@ -38,16 +38,6 @@ public final class FnKeyActions {
         }
 
         @Override
-        public String title() {
-            return L.t("Fn 키 사용자화", "Customize Fn key");
-        }
-
-        @Override
-        public String note() {
-            return L.t("한글 자판의 Shift 자리에 놓인 Fn 키를 누르거나 길게 누르거나 밀 때 실행할 기능을 고릅니다.", "Choose what the Fn key, placed where Shift is on the Korean keyboard, does when you tap, long press or swipe it.");
-        }
-
-        @Override
         public String cardTitle(int slot) {
             return slot == PRESS ? L.t("Fn 키 누르기", "Fn key tap") : L.t("Fn 키 밀기", "Fn key swipe");
         }

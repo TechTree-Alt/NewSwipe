@@ -199,11 +199,6 @@ final class EditorSheet {
         splitHost = host;
     }
 
-    /** 창이 화면 왼쪽 절반에 떠 있는지. */
-    boolean isSplit() {
-        return split;
-    }
-
     private static int blend(int a, int b, float t) {
         int r = Math.round(Color.red(a) + (Color.red(b) - Color.red(a)) * t);
         int g = Math.round(Color.green(a) + (Color.green(b) - Color.green(a)) * t);

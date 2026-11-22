@@ -85,16 +85,6 @@ public final class GapSwipes {
         }
 
         @Override
-        public String title() {
-            return L.t("가운데 공간 밀어서 기능 사용자화", "Customize center gap swipes");
-        }
-
-        @Override
-        public String note() {
-            return L.t("분리 키보드 가운데의 빈 공간을 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 고릅니다.", "Choose what happens when you swipe the empty center gap of the split keyboard up, down, left or right.");
-        }
-
-        @Override
         public String cardTitle(int slot) {
             return labels()[slot];
         }

@@ -194,11 +194,6 @@ final class Feedback {
         }
     }
 
-    /** 일반 키 진동: 시스템 키보드 진동이면 키보드 창으로, 아니면 정해 둔 진동으로 울린다. */
-    private void playKey() {
-        playChannel(CH_KEY);
-    }
-
     /** 시스템 기본이면 키보드 창으로 시스템 진동을, 아니면 정해 둔 진동을 울린다 (키보드 창이 없으면 정해 둔 진동). */
     private void playChannel(int channel) {
         if (style[channel] == STYLE_SYSTEM && hapticView != null && hapticView.isAttachedToWindow()) {

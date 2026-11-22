@@ -188,15 +188,6 @@ public final class Ui {
     }
 
     /**
-     * 선택 줄의 칸들이 누를 때 내는 기본 진동(누르는 순간·고르는 순간)을 끈다.
-     * 진동 설정처럼 고른 항목의 진동만 또렷하게 느껴야 하는 곳에서 쓴다.
-     */
-    public static <T extends android.view.ViewGroup> T muteHaptics(T row) {
-        for (int i = 0; i < row.getChildCount(); i++) row.getChildAt(i).setHapticFeedbackEnabled(false);
-        return row;
-    }
-
-    /**
      * 화면(액티비티 창)을 상태 표시줄·하단 바 뒤까지 그린다. Android 15부터는 시스템이 이렇게 강제하므로,
      * 그 전 버전(Android 9~14)에서도 같은 모습이 되게 맞춘다. 바는 테마에서 투명이고, 바 뒤에는 padForSystemBars로
      * 안쪽 여백을 준 root의 배경이 보인다. 앱 화면 모드(dark)가 시스템과 달라도 바 아이콘이 배경과 구분되게 아이콘 밝기를 정한다.

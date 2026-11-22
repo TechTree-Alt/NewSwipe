@@ -4,7 +4,6 @@ import com.alternative_studios.newswipe.L;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.Typeface;
 import android.graphics.Outline;
 import android.graphics.drawable.Drawable;
 import android.text.TextUtils;

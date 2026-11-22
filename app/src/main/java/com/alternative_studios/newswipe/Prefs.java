@@ -1176,7 +1176,6 @@ public final class Prefs {
     public int vibrateKeyPrimitive(String base) { return sp.getInt(base + "_primitive", 1); }
     public int vibrateKeyAmp(String base) { return sp.getInt(base + "_amp", 100); }
     public boolean vibrateGestureOn() { return sp.getBoolean(VIBRATE_GESTURE_ON, true); }
-    public int vibrateGestureLevel() { return sp.getInt(VIBRATE_GESTURE_LEVEL, 2); }
     /** 밀기·길게 누르기 진동 방식. 아직 고르지 않았으면 예전 단계에서 옮긴다 (약하게·기본·강하게 = 틱·클릭·강한 클릭). */
     public int vibrateGestureStyle() {
         return sp.getInt(VIBRATE_GESTURE_STYLE, Math.max(1, Math.min(3, sp.getInt(VIBRATE_GESTURE_LEVEL, 2))) - 1);
@@ -1658,15 +1657,6 @@ public final class Prefs {
     public void setSymbolGlobeKey(String id) {
         if (com.alternative_studios.newswipe.keyboard.BottomKeys.EMOJI.equals(id)) sp.edit().remove(SYMBOL_GLOBE_KEY).apply();
         else sp.edit().putString(SYMBOL_GLOBE_KEY, id).apply();
-    }
-
-    /**
-     * 기능키가 어느 자판에든 보이는지: 맨 아래 줄에 켰거나, 켠 언어 전환 키가 기호 자판에서 그 키로 바뀌면 보인다
-     * (길게 누르기·밀기 편집 화면에서 그 키의 칸을 보일지 정할 때 쓴다).
-     */
-    public boolean bottomKeyUsed(String id) {
-        if (bottomKeyShown(id)) return true;
-        return bottomKeyShown(com.alternative_studios.newswipe.keyboard.BottomKeys.GLOBE) && id.equals(symbolGlobeKey());
     }
 
     /** 격자 정렬: 기능키(스페이스바 제외) 폭을 한글 자판의 자음(왼쪽) 키 한 칸에 맞춘다. 상세 배열이면 나뉜 자음 키 폭이다. */

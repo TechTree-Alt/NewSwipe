@@ -24,7 +24,6 @@ import android.widget.Toast;
 
 import com.alternative_studios.newswipe.clipboard.ClipboardHistory;
 import com.alternative_studios.newswipe.keyboard.Icons;
-import com.alternative_studios.newswipe.keyboard.KeyboardSwipes;
 import com.alternative_studios.newswipe.suggest.CorrectionMemory;
 import com.alternative_studios.newswipe.suggest.DictionaryPack;
 import com.alternative_studios.newswipe.suggest.UsageHistory;
@@ -59,7 +58,6 @@ public final class SettingsActivity extends Activity {
     private Prefs prefs;
     private LinearLayout list;
     /** 스크롤 목록 위에 고정되어 스크롤해도 늘 보이는 곳 (키보드 미리보기). 담은 것이 없으면 숨긴다. */
-    private LinearLayout pinned;
     /** 스크롤 목록 아래(화면 맨 아래)에 고정되는 곳: 키보드 사용자화의 미리보기가 실제 키보드 자리에 놓인다. */
     private LinearLayout pinnedBottom;
     private ScrollView scrollView;
@@ -151,13 +149,8 @@ public final class SettingsActivity extends Activity {
         int pad = Ui.dp(this, 16);
         list.setPadding(pad, 0, pad, Ui.dp(this, 32));
         scroll.addView(list);
-        pinned = new LinearLayout(this);
-        pinned.setOrientation(LinearLayout.VERTICAL);
-        pinned.setPadding(pad, 0, pad, Ui.dp(this, 4));
-        pinned.setVisibility(View.GONE);
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
-        content.addView(pinned, matchWrap());
         // 스크롤 목록 위에 겹쳐 띄우는 층 (키보드 사용자화의 키 편집 창)을 놓을 수 있게 틀로 감싼다.
         middle = new android.widget.FrameLayout(this);
         middle.addView(scroll, new android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
@@ -2504,7 +2497,7 @@ public final class SettingsActivity extends Activity {
     /** 키보드 밀기 편집(한 손가락·두 손가락)과 위로 밀어서 추천 단어 입력. */
     private void addKeyboardSwipe(LinearLayout board) {
         board.addView(button(L.t("키보드 밀기 사용자화", "Customize keyboard swipes"), v ->
-                startActivity(SwipeActionEditorActivity.intent(this, KeyboardSwipes.SPEC))));
+                startActivity(SwipeActionEditorActivity.intent(this))));
         board.addView(note(L.t("자판을 한 손가락·두 손가락으로 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 정합니다. "
                 + "한 손가락은 그 방향에 밀어서 입력할 글자가 없을 때 쓰입니다.", "Sets what happens when you swipe the keyboard up, down, left, or right with one or two fingers. One-finger swipes apply only when there is no character to type in that direction.")));
         board.addView(toggle(L.t("위로 밀어서 추천 단어 입력", "Swipe up to pick suggestions"),
@@ -2762,15 +2755,6 @@ public final class SettingsActivity extends Activity {
         return L.t("아래 줄의 기능키를 한글 키와 같은 폭으로 해 줄을 맞춥니다. "
             + "오쏘리니어 키보드에서 영감을 받았습니다.", "Makes the function keys in the bottom row as wide as the Korean keys so the columns line up. Inspired by ortholinear keyboards.");
 
-    }
-    /** v를 스크롤 목록 위의 고정된 곳에 놓는다. 설정 검색용으로 화면을 만들 때는 그 임시 목록에 넣는다. */
-    private void pinTop(View v) {
-        if (harvesting) {
-            list.addView(v);
-            return;
-        }
-        pinned.addView(v);
-        pinned.setVisibility(View.VISIBLE);
     }
 
     /** 실험실: 아직 시험 중인 기능. */
@@ -3427,11 +3411,6 @@ public final class SettingsActivity extends Activity {
     /** 고르는 즉시 onSelect를 부르는 선택 줄 (화면을 다시 만들지 않고 그 자리에서 갱신할 때). */
     private LinearLayout choiceRowNow(String[] labels, int selected, java.util.function.IntConsumer onSelect) {
         return Ui.choiceRow(this, labels, selected, accentColor, onAccentColor, textColor, hintColor, 0, onSelect);
-    }
-
-    /** choiceRowNow에 더해, 이미 고른 칸을 다시 눌러도 onSelect를 부른다 (진동을 다시 느껴 볼 수 있게). */
-    private LinearLayout choiceRowRepeat(String[] labels, int selected, java.util.function.IntConsumer onSelect) {
-        return Ui.choiceRow(this, labels, selected, accentColor, onAccentColor, textColor, hintColor, 0, onSelect, onSelect);
     }
 
     private View swatchRow(int[] palette, int from, int to, int current) {

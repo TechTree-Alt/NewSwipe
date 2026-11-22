@@ -27,8 +27,6 @@ public final class ExpressiveButton extends TextView {
     private ValueAnimator pressAnim;
     private boolean down;
     /** 글자 앞에 그리는 아이콘 (Icons.*, 0이면 없음)과 그 크기·글자와의 간격. */
-    private int icon;
-    private float iconSize, iconGap;
 
     /**
      * @param fill 버튼 면 색 (강조색)
@@ -82,19 +80,6 @@ public final class ExpressiveButton extends TextView {
         return this;
     }
 
-    /** 글자 앞에 아이콘을 둔다 (0이면 뺀다). 아이콘 자리만큼 왼쪽 안쪽 여백이 늘어난다. */
-    public ExpressiveButton setLeadingIcon(int icon) {
-        float size = Ui.dp(getContext(), 18), gap = Ui.dp(getContext(), 6);
-        int was = this.icon == 0 ? 0 : Math.round(iconSize + iconGap);
-        int now = icon == 0 ? 0 : Math.round(size + gap);
-        this.icon = icon;
-        this.iconSize = size;
-        this.iconGap = gap;
-        if (was != now) setPadding(getPaddingLeft() - was + now, getPaddingTop(), getPaddingRight(), getPaddingBottom());
-        invalidate();
-        return this;
-    }
-
     private float radius(float h, float p) {
         if (Metro.on) return 0f;   // Metro: 모서리 없는 네모 (강조색 타일)
         float full = h / 2f;
@@ -117,12 +102,6 @@ public final class ExpressiveButton extends TextView {
             paint.setStyle(Paint.Style.FILL);
             paint.setColor(fill);
             canvas.drawRoundRect(rect, r, r, paint);
-        }
-        if (icon != 0) {
-            paint.setColor(ink);
-            float cx = sx + getPaddingLeft() - iconGap - iconSize / 2f;
-            com.alternative_studios.newswipe.keyboard.Icons.draw(canvas, icon, cx, sy + h / 2f, iconSize, paint, 2.4f);
-            paint.setStyle(Paint.Style.FILL);
         }
         super.onDraw(canvas);
     }
@@ -151,12 +130,6 @@ public final class ExpressiveButton extends TextView {
         canvas.save();
         float textScale = Metro.on ? 1f : 1f - 0.04f * Math.max(0f, p);
         canvas.scale(textScale, textScale, sx + w / 2f, sy + h / 2f);
-        if (icon != 0) {   // 글자 바로 앞 (왼쪽 안쪽 여백의 끝)
-            paint.setColor(ink);
-            float cx = sx + getPaddingLeft() - iconGap - iconSize / 2f;
-            com.alternative_studios.newswipe.keyboard.Icons.draw(canvas, icon, cx, sy + h / 2f, iconSize, paint, 2.4f);
-            paint.setStyle(Paint.Style.FILL);
-        }
         super.onDraw(canvas);
         canvas.restore();
     }
