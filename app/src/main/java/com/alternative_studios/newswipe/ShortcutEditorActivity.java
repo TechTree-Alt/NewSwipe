@@ -101,6 +101,10 @@ public final class ShortcutEditorActivity extends Activity {
         card.setBackground(Ui.round(cardColor, Ui.dp(this, 16)));
         if (NeuUi.on) NeuUi.card(card, Ui.dp(this, 16));   // Neumorphism: 솟아오른 카드
         card.setPadding(0, Ui.dp(this, 4), 0, Ui.dp(this, 4));
+        if (com.alternative_studios.newswipe.ui.Metro.on) {   // Metro에는 카드가 없다: 단축어 줄이 바탕 위에 바로 놓인다
+            card.setBackground(null);
+            card.setPadding(0, 0, 0, 0);
+        }
         LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         clp.topMargin = Ui.dp(this, 12);
@@ -159,6 +163,7 @@ public final class ShortcutEditorActivity extends Activity {
     private View divider() {
         View v = new View(this);
         v.setBackgroundColor(hintColor & 0x00FFFFFF | 0x26000000);
+        if (com.alternative_studios.newswipe.ui.Metro.on) v.setVisibility(View.GONE);   // Metro의 목록에는 구분선이 없다
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1);
         lp.leftMargin = Ui.dp(this, 16);
         lp.rightMargin = Ui.dp(this, 16);
@@ -182,6 +187,13 @@ public final class ShortcutEditorActivity extends Activity {
         p.setEllipsize(android.text.TextUtils.TruncateAt.END);
         texts.addView(p);
         row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        if (com.alternative_studios.newswipe.ui.Metro.on) {
+            // Metro: 다른 목록처럼 왼쪽 선에 맞추고, 줄임말은 강조색의 가는 큰 글자, 문장은 그 아래. 누르면 기울어진다.
+            row.setPadding(0, Ui.dp(this, 10), Ui.dp(this, 6), Ui.dp(this, 10));
+            com.alternative_studios.newswipe.ui.Metro.text(k, 22, com.alternative_studios.newswipe.ui.Metro.light(), 16);
+            com.alternative_studios.newswipe.ui.Metro.text(p, 16, com.alternative_studios.newswipe.ui.Metro.regular(), 14);
+            com.alternative_studios.newswipe.ui.Metro.tilt(row);
+        }
         IconButton trash = new IconButton(this, Icons.TRASH, hintColor, hintColor & 0x00FFFFFF | 0x33000000,
                 L.t("'" + key + "' 단축어 지우기", "Delete shortcut '" + key + "'"));
         trash.setOnClickListener(v -> AppTheme.accentBuilder(AppTheme.dialogContext(this))
