@@ -158,7 +158,8 @@ public final class ExpressiveSwitch extends View {
         float travel = w - h;
         float cx = h / 2f + travel * progress;
         rect.set(cx - size / 2f, cy - size / 2f, cx + size / 2f, cy + size / 2f);
-        NeuUi.drawRaised(getContext(), c, rect, size / 2f, NeuUi.SMALL);
+        // 라이트 모드의 흰 손잡이는 흰 그림자와 겹쳐 번져 보이므로 어두운 그림자만 둔다.
+        NeuUi.drawRaised(getContext(), c, rect, size / 2f, NeuUi.SMALL, NeuUi.dark);
         paint.setStyle(Paint.Style.FILL);
         paint.setColor(NeuUi.knob());
         c.drawCircle(cx, cy, size / 2f, paint);

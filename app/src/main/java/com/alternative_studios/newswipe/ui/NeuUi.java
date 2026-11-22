@@ -108,10 +108,18 @@ public final class NeuUi {
 
     /** 면 f(모서리 radius)의 솟아오른 그림자를 그린다. 면은 그리지 않는다 (그림자 위에 따로 칠한다). */
     public static void drawRaised(Context ctx, Canvas c, RectF f, float radius, int size) {
+        drawRaised(ctx, c, f, radius, size, true);
+    }
+
+    /**
+     * withLight가 false면 왼쪽 위의 밝은 그림자 없이 오른쪽 아래의 어두운 그림자만 그린다. 라이트 모드의 흰 면(스위치 손잡이)은
+     * 흰 그림자와 겹쳐 가장자리가 번져 보이므로 이것을 쓴다.
+     */
+    public static void drawRaised(Context ctx, Canvas c, RectF f, float radius, int size, boolean withLight) {
         float rMax = Math.min(f.width(), f.height()) / 2f;
         int r = Math.max(0, Math.round(Math.min(radius, rMax)));
         int o = Math.round(offset(ctx, size)), b = Math.round(blur(ctx, size));
-        Bitmap bm = shadow(r, o, b, light, shade);
+        Bitmap bm = shadow(r, o, b, withLight ? light : 0, shade);
         int pad = o + b * 2;
         drawNine(c, bm, f.left - pad, f.top - pad, f.right + pad, f.bottom + pad, r + pad);
     }
