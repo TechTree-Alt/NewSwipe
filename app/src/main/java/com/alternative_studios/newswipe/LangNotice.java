@@ -73,7 +73,7 @@ final class LangNotice {
         tv.setPadding(padH, padV, padH, padV);
         GradientDrawable bg = new GradientDrawable();
         bg.setColor(0xE6323232);
-        bg.setCornerRadius(dp(24));
+        bg.setCornerRadius(com.alternative_studios.newswipe.ui.Metro.on ? 0 : dp(24));
         tv.setBackground(bg);
         tv.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
 

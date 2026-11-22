@@ -16,6 +16,7 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import com.alternative_studios.newswipe.ui.Metro;
 import com.alternative_studios.newswipe.keyboard.Icons;
 import com.alternative_studios.newswipe.ui.NeuUi;
 import com.alternative_studios.newswipe.ui.ExpressiveIconButton;
@@ -85,14 +86,14 @@ final class EditorSheet {
 
         sheet = new LinearLayout(c);
         sheet.setOrientation(LinearLayout.VERTICAL);
-        float r = Ui.dp(c, 28);   // Material 3 바텀 시트의 큰 모서리
+        float r = Metro.on ? 0f : Ui.dp(c, 28);   // Material 3 바텀 시트의 큰 모서리 (Metro에는 둥근 모서리가 없다)
         GradientDrawable bg = new GradientDrawable();
         // 다크 모드에서는 그림자가 잘 보이지 않으므로 Material 3처럼 시트 바탕을 한 단계 밝게 해 층을 구분한다.
         boolean darkBg = Color.luminance(colors.bg) < 0.2f;
         bg.setColor(darkBg ? blend(colors.bg, colors.card, 0.55f) : colors.bg);
         bg.setCornerRadii(new float[]{r, r, r, r, 0, 0, 0, 0});
         sheet.setBackground(bg);
-        sheet.setElevation(Ui.dp(c, 12));
+        sheet.setElevation(Metro.on ? 0f : Ui.dp(c, 12));   // Metro에는 그림자가 없다 (뒤의 막이 층을 나눈다)
         sheet.setClickable(true);   // 시트 위의 빈 곳을 눌러도 뒤의 막(닫기)으로 넘어가지 않게
         sheet.setVisibility(View.GONE);
         // 스프링이 목표를 살짝 넘어 올라갈 때 아래가 비어 보이지 않게 시트를 틀 아래로 조금 더 길게 둔다 (넘친 부분은 잘린다).

@@ -401,7 +401,7 @@ final class OneHandPreview extends FrameLayout {
             stroke.setColor(theme.accent);
             // 모서리도 키 모서리를 따라 돈다.
             float rr = Math.max(0f, Ui.dp(ctx, prefs.keyRadiusDp()) + outlineOut(Ui.dp(ctx, prefs.keyGapXDp())));
-            c.drawRoundRect(tmp, rr, rr, stroke);
+            com.alternative_studios.newswipe.ui.Metro.roundRect(c, tmp, rr, rr, stroke);
             // 손잡이: 강조색 알약에 바탕색 테두리 (키 위에서도 보이게). 끄는 중인 손잡이는 더 크게.
             for (Handle h : Handle.values()) {
                 if (!handleCenter(h, point)) continue;
@@ -411,9 +411,9 @@ final class OneHandPreview extends FrameLayout {
                 else tmp.set(point[0] - thickHalf, point[1] - lenHalf, point[0] + thickHalf, point[1] + lenHalf);
                 stroke.setStrokeWidth(Ui.dp(ctx, 2));
                 stroke.setColor(theme.background);
-                c.drawRoundRect(tmp, thickHalf, thickHalf, stroke);
+                com.alternative_studios.newswipe.ui.Metro.roundRect(c, tmp, thickHalf, thickHalf, stroke);
                 fill.setColor(theme.accent);
-                c.drawRoundRect(tmp, thickHalf, thickHalf, fill);
+                com.alternative_studios.newswipe.ui.Metro.roundRect(c, tmp, thickHalf, thickHalf, fill);
             }
             // 끄는 동안: 무엇을 얼마로 바꾸는지 자판 가운데에 크게 보여 준다.
             if (dragging && active != null) {
@@ -428,7 +428,7 @@ final class OneHandPreview extends FrameLayout {
                 cx = Math.max(halfW, Math.min(getWidth() - halfW, cx));
                 tmp.set(cx - halfW, cy - th / 2 - padV, cx + halfW, cy + th / 2 + padV);
                 fill.setColor(theme.accent);
-                c.drawRoundRect(tmp, tmp.height() / 2, tmp.height() / 2, fill);
+                com.alternative_studios.newswipe.ui.Metro.roundRect(c, tmp, tmp.height() / 2, tmp.height() / 2, fill);
                 label.setColor(theme.onAccent);
                 c.drawText(text, cx, cy - (fm.ascent + fm.descent) / 2, label);
             }
