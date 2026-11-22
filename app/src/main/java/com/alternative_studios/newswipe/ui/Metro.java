@@ -641,9 +641,9 @@ public final class Metro {
             header.setOnPeek(() -> animateTo(1));
         }
 
-        /** 옆 메뉴의 내용을 미리 만들어 보이지 않게 붙여 둔다 (화면이 한가할 때 부른다). */
+        /** 옆 메뉴의 내용을 미리 만들어 보이지 않게 붙이고 자리를 잡아 둔다 (화면이 한가할 때 부른다). */
         public void prepare() {
-            for (int i = 0; i < 2; i++) holder(i == 0 ? -1 : 1);
+            layoutHolders();
         }
 
         private FrameLayout holder(int dir) {
@@ -656,28 +656,50 @@ public final class Metro {
                 h.addView(v, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT));
                 h.setVisibility(View.INVISIBLE);
                 h.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
-                page.addView(h, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, Math.max(1, area.getHeight())));
+                page.addView(h, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, 1));
                 holders[i] = h;
             }
             return holders[i];
         }
 
-        /** 옆 메뉴 내용을 지금 내용 자리(area)에 맞춰 둔다. */
-        private void place() {
-            int[] a = new int[2], p = new int[2];
+        /**
+         * 옆 메뉴 내용의 자리: 지금 내용의 위끝부터 움직이는 것들(목록과 아래 미리보기) 전체의 아래끝까지. 아래 미리보기 자리까지
+         * 덮어야 한다: 목록 높이에만 두면, 아래 미리보기가 있는 화면에서 밀 때 미리보기가 빠져나간 자리는 비고 옆 메뉴는
+         * 짧은 칸에 갇혀 찌그러져 보인다. 처음 붙일 때 미리 배치해 둔다 (밀기 시작한 뒤 배치하면 한 프레임 늦는다).
+         */
+        private void layoutHolders() {
+            int[] a = new int[2], p = new int[2], m = new int[2];
             area.getLocationInWindow(a);
             page.getLocationInWindow(p);
+            int top = a[1] - p[1], bottom = a[1] - p[1] + area.getHeight();
+            for (View mover : movers) {
+                if (mover == null || mover.getVisibility() != View.VISIBLE || mover.getHeight() == 0) continue;
+                mover.getLocationInWindow(m);
+                bottom = Math.max(bottom, m[1] - p[1] + mover.getHeight());
+            }
+            float w = page.getWidth();
             for (int i = 0; i < 2; i++) {
                 FrameLayout h = holder(i == 0 ? -1 : 1);
                 if (h == null) continue;
+                h.setTranslationX((i == 0 ? -w : w) + dx);   // 늘 화면 밖에서 기다린다
                 FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) h.getLayoutParams();
-                if (lp.height != area.getHeight() || lp.topMargin != a[1] - p[1]) {
-                    lp.height = Math.max(1, area.getHeight());
-                    lp.topMargin = a[1] - p[1];
+                int height = Math.max(1, bottom - top);
+                if (lp.height != height || lp.topMargin != top) {
+                    lp.height = height;
+                    lp.topMargin = top;
                     h.setLayoutParams(lp);
                 }
-                h.setVisibility(View.VISIBLE);
             }
+        }
+
+        /**
+         * 옆 메뉴 내용을 양옆 화면 밖에 둔 뒤 보이게 한다. 보이게 하기 전에 먼저 옆으로 옮겨야 한다: 미는 것을 알아챈 움직임은
+         * 가로채기(intercept)에서 쓰여 update까지 가지 않으므로, 순서가 바뀌면 옆 메뉴가 제자리에서 한 프레임 그려져 지금 화면을
+         * 덮고 번쩍인다.
+         */
+        private void place() {
+            layoutHolders();
+            for (FrameLayout h : holders) if (h != null) h.setVisibility(View.VISIBLE);
         }
 
         boolean intercept(MotionEvent e) {
@@ -811,15 +833,11 @@ public final class Metro {
             settle.setDuration(Math.round(150 + 250 * Math.min(1f, Math.abs(to - from) / Math.max(1f, w))));
             settle.setInterpolator(new Exp(5, true));
             settle.addUpdateListener(a -> update(from + (to - from) * (float) a.getAnimatedValue()));
+            // 하드웨어 층은 쓰지 않는다: translationX는 그리기를 다시 하지 않아 층이 필요 없고, 아래 미리보기(크기가 바뀌고
+            // 바깥으로도 그리는 뷰)를 층에 담으면 움직이는 동안 미리보기가 사라지고 위 목록이 찌그러져 보인다.
             settle.addListener(new AnimatorListenerAdapter() {
                 @Override
-                public void onAnimationStart(Animator animation) {
-                    for (View m : movers) if (m != null) m.setLayerType(View.LAYER_TYPE_HARDWARE, null);
-                }
-
-                @Override
                 public void onAnimationEnd(Animator animation) {
-                    for (View m : movers) if (m != null) m.setLayerType(View.LAYER_TYPE_NONE, null);
                     settle = null;
                     if (dir != 0) {
                         host.go(dir);   // 화면이 바뀌는 동안은 계속 누르기를 막는다
