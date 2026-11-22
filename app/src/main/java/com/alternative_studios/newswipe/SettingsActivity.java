@@ -3045,7 +3045,7 @@ public final class SettingsActivity extends Activity {
                 View fnWidth = subGroup(
                         own(sizeSlider(L.t("하단 기능키 폭", "Bottom function key width"), edit.splitFnWidthKey(), edit::splitFnWidthSetting, 50, 200, 5, "%")),
                         note(L.t("스페이스바·Shift·⌫를 뺀 맨 아래 줄 키(기호 키·쉼표·지구본·온점·엔터)의 폭입니다. "
-                                + "줄이거나 늘린 만큼 스페이스바가 늘거나 줄어듭니다. 상세 배열 폭에 맞추기를 켜면 자음·모음 키 한 칸 폭으로 맞춰집니다.", "Width of the bottom row keys other than space, Shift and ⌫ (symbol key, comma, globe, period, enter). The space bar shrinks or grows to match. With Match advanced layout widths on, they match one consonant or vowel key instead.")));
+                                + "줄이거나 늘린 만큼 스페이스바가 늘거나 줄어듭니다. 격자 정렬을 켜면 격자 정렬의 폭을 따릅니다.", "Width of the bottom row keys other than space, Shift and ⌫ (symbol key, comma, globe, period, enter). The space bar shrinks or grows to match. With grid alignment on, they follow the grid alignment width instead.")));
                 fnWidth.setVisibility(edit.splitSpaceJoin() ? View.VISIBLE : View.GONE);
                 String joinKey = edit.splitSpaceJoinKey();
                 c.addView(own(toggle(L.t("스페이스바 잇기", "Join space bar"),

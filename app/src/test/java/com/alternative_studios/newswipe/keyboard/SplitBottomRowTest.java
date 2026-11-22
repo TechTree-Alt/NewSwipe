@@ -477,23 +477,39 @@ public class SplitBottomRowTest {
                 KeyboardLayout.Row enBottom = en.rows[en.rows.length - 1], koBottom = ko.rows[ko.rows.length - 1];
                 float mode = widthOf(enBottom, Key.TO_SYMBOLS, true), enter = widthOf(enBottom, Key.ENTER, false);
                 KeyboardLayout.Row letters = en.rows[2];
-                assertEquals("Shift = ?123 폭", mode, widthOf(letters, Key.SHIFT, true), 0.001f);
-                assertEquals("⌫ = 엔터 폭", enter, widthOf(letters, Key.DELETE, false), 0.001f);
+                assertSideWidth("Shift = ?123 폭", mode, letters, Key.SHIFT);
+                assertSideWidth("⌫ = 엔터 폭", enter, letters, Key.DELETE);
                 // 한글 자판의 ⌫는 엔터 폭이 아니라 다른 모음 키와 같은 폭이다.
                 assertEquals("한글 ⌫ = 모음 폭", widthOf(ko.rows[1], Key.CHAR, false), widthOf(ko.rows[2], Key.DELETE, false), 0.001f);
                 for (KeyboardLayout sym : new KeyboardLayout[]{KeyboardLayout.symbols(true, p), KeyboardLayout.symbols2(true, p)}) {
                     KeyboardLayout.Row third = sym.rows[sym.rows.length - 2];
                     KeyboardLayout.Row symBottom = sym.rows[sym.rows.length - 1];
-                    assertEquals("기호 쪽 넘김 키 = 맨 아래 왼쪽 기능키 폭", widthOf(symBottom, Key.TO_LETTERS, true),
-                            widthOf(third, Key.SYMBOL_PAGE, true), 0.001f);
-                    assertEquals("기호 자판 ⌫ = 엔터 폭", widthOf(symBottom, Key.ENTER, false),
-                            widthOf(third, Key.DELETE, false), 0.001f);
+                    assertSideWidth("기호 쪽 넘김 키 = 맨 아래 왼쪽 기능키 폭", widthOf(symBottom, Key.TO_LETTERS, true),
+                            third, Key.SYMBOL_PAGE);
+                    assertSideWidth("기호 자판 ⌫ = 엔터 폭", widthOf(symBottom, Key.ENTER, false), third, Key.DELETE);
                 }
                 float total = 0f;
                 for (Key k : letters.keys) total += k.weight;
                 assertEquals(10f, total, 0.001f);
             }
         }
+    }
+
+    /**
+     * 셋째 줄 양 끝 키의 폭이 want와 같다. 다만 글자 키를 밀지 않게 일반 자판의 폭이 최대라, 묶음이 좁아 want만큼 넓힐 수
+     * 없으면 최대 폭(글자 키 바로 옆까지, 사이 빈 칸 없음)이다.
+     */
+    private static void assertSideWidth(String what, float want, KeyboardLayout.Row row, int type) {
+        for (int i = 0; i < row.keys.length; i++) {
+            if (row.keys[i].type != type) continue;
+            float w = row.keys[i].weight;
+            if (Math.abs(w - want) < 0.001f) return;
+            assertTrue(what + ": 최대 폭보다 넓지 않다", w < want);
+            Key inner = row.keys[type == Key.DELETE ? i - 1 : i + 1];
+            assertEquals(what + ": 최대 폭이면 글자 키와 붙어 있다", Key.CHAR, inner.type);
+            return;
+        }
+        throw new AssertionError(what + ": 키 없음");
     }
 
     private static Prefs portraitView(FakeSp sp) throws Exception {
@@ -782,11 +798,12 @@ public class SplitBottomRowTest {
     }
 
     /**
-     * 격자 정렬: 분리 키보드 맨 아래 줄의 기능키는 스페이스바 왼쪽이 자음 키, 오른쪽이 모음 키 한 칸 폭이다
-     * (스페이스바를 이어도).
+     * 격자 정렬: 분리 키보드 맨 아래 줄의 기능키는 스페이스바 왼쪽이 자음 키 한 칸 폭이고, 오른쪽은
+     * '상세 배열 폭에 맞추기'를 켜면 모음 키, 끄면 자음 키 한 칸 폭이다 (스페이스바를 이어도).
      */
     @Test
     public void gridBottomKeysMatchTheirSideKey() throws Exception {
+        for (boolean detail : new boolean[]{false, true})
         for (boolean d7 : new boolean[]{false, true}) {
             for (boolean join : new boolean[]{false, true}) {
                 for (int[] s : SETTINGS) {
@@ -794,7 +811,7 @@ public class SplitBottomRowTest {
                     FakeSp sp = (FakeSp) p.raw();
                     if (d7) sp.m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_D7);
                     sp.m.put(Prefs.GRID_LAYOUT, true);
-                    sp.m.put(Prefs.GRID_DETAIL, true);
+                    sp.m.put(Prefs.GRID_DETAIL, detail);
                     sp.m.put(p.splitSpaceJoinKey(), join);
                     sp.m.put(p.splitFnWidthKey(), 150);   // 격자 정렬이면 '하단 기능키 폭'은 쓰지 않는다
                     KeyboardLayout l = KeyboardLayout.korean(p);
@@ -811,7 +828,7 @@ public class SplitBottomRowTest {
                         if (k.type == Key.SPACE) afterSpace = true;
                         if (k.type == Key.SPACE || k.type == Key.GAP || k.type == Key.SPACER) continue;
                         assertEquals((afterSpace ? "오른쪽 기능키 = 모음 키 (" : "왼쪽 기능키 = 자음 키 (") + k.type + ")",
-                                afterSpace ? vowel : consonant, k.weight, 0.001f);
+                                afterSpace && detail ? vowel : consonant, k.weight, 0.001f);
                     }
                     assertEquals(10f, sum, 0.001f);
                 }

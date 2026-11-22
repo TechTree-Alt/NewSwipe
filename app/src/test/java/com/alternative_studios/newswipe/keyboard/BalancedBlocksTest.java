@@ -348,15 +348,16 @@ public class BalancedBlocksTest {
         }
     }
 
-    /** '상세 배열 폭에 맞추기'을 끄면 세로 균형 배열의 격자 정렬 기능키는 상세 배열이 없을 때와 같은 한글 키 한 칸 폭이다 (묶음 폭과 상관없이). */
+    /** '상세 배열 폭에 맞추기'를 끄면 격자 정렬의 기능키는 스페이스바 양쪽 모두 자음(왼쪽) 키 한 칸 폭이다. */
     @Test
-    public void gridWithoutDetailUsesThePlainKeyWidth() throws Exception {
+    public void gridWithoutDetailUsesTheConsonantKeyWidth() throws Exception {
         for (String layout : LAYOUTS) {
-            float plain = 10f / (Prefs.KOREAN_LAYOUT_D7.equals(layout) ? 7 : 8);
-            for (int[] v : new int[][]{{100, 0, 100, 0}, {60, -40, 60, 40}, {130, 30, 60, 40}}) {
+            for (int[] v : new int[][]{{100, 0, 100, 0}, {60, -40, 60, 40}, {130, 30, 60, 40}, {60, 20, 90, 40}}) {
                 KeyboardLayout l = KeyboardLayout.korean(portrait(layout, v[0], v[1], v[2], v[3], true));
+                float consonant = -1f;
+                for (Key k : l.rows[0].keys) if ("ㅂ".equals(k.label)) consonant = k.weight;
                 KeyboardLayout.Row row = l.rows[l.rows.length - 1];
-                for (Key k : row.keys) if (k.type != Key.SPACE) assertEquals(layout + " 기능키", plain, k.weight, 0.001f);
+                for (Key k : row.keys) if (k.type != Key.SPACE) assertEquals(layout + " 기능키 = 자음 키", consonant, k.weight, 0.001f);
             }
         }
     }
