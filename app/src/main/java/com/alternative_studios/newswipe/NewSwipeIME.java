@@ -1567,6 +1567,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         keyboard.setDubeolsikHint(prefs.dubeolsikHintShown());
         keyboard.setNumberHintHidden(prefs.numberHintHidden());
         keyboard.setRepeatChars(prefs.repeatChars());
+        keyboard.setVowelSwipeHold(prefs.swipeDownVowel());   // ㅜ↓에서 멈추면 ㅠㅠㅠ
         applySuggestLead();
         keyboard.setHitShrink(prefs.deleteHitShrink() ? prefs.deleteHitShrinkPct() / 100f : 0f,
                 prefs.spaceHitShrink() ? prefs.spaceHitShrinkPct() / 100f : 0f);
@@ -3080,6 +3081,14 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         typeText(text, false);
     }
 
+    /** 모음 키를 아래로 민 채 멈춰 ㅣ계 이중모음을 연속 입력한다 (ㅜ↓ 멈춤 → ㅠㅠㅠ). 반복 입력 진동을 쓴다. */
+    @Override
+    public void onKeySwipeRepeat(Key key, String text) {
+        feedback.onRepeat();
+        lastWasSpace = false;
+        typeText(text, false);
+    }
+
     @Override
     public void onPopupChar(Key key, String text) {
         lastWasSpace = false;
@@ -3760,7 +3769,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     /**
-     * 기호 자판에서 언어 전환 키('기호 자판에서도 그대로')나 다른 키의 '언어 전환' 동작(길게 누르기·밀기 등)으로 언어를 바꿨으면
+     * 기호 자판에서 언어 전환 키('기호 자판에서는' → '그대로')나 다른 키의 '언어 전환' 동작(길게 누르기·밀기 등)으로 언어를 바꿨으면
      * 바뀐 언어의 글자 자판으로 간다 (switchLanguage는 기호 자판에서 '가/ABC' 표시만 바꾼다).
      */
     private void lettersAfterSymbolLanguageKey() {
