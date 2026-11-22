@@ -472,14 +472,364 @@ public final class Metro {
             }
         }
 
+        /** 가로로 밀어 옆 메뉴로 넘기는 피벗 (없으면 null). */
+        private Pivot pivot;
+
+        public void setPivot(Pivot p) {
+            pivot = p;
+        }
+
+        void setBusy(boolean b) {
+            busy = b;
+        }
+
         @Override
         public boolean onInterceptTouchEvent(MotionEvent ev) {
-            return busy || super.onInterceptTouchEvent(ev);
+            if (busy) return true;
+            if (pivot != null && pivot.intercept(ev)) return true;
+            return super.onInterceptTouchEvent(ev);
         }
 
         @Override
         public boolean onTouchEvent(MotionEvent ev) {
-            return busy || super.onTouchEvent(ev);
+            if (busy) return true;
+            if (pivot != null) return pivot.touch(ev);
+            return super.onTouchEvent(ev);
+        }
+    }
+
+    // ---------------------------------------------------------------- 피벗
+
+    /**
+     * 피벗 머리글: 지금 메뉴 이름을 크고 가는 소문자로 쓰고, 그 오른쪽에 다음 메뉴들의 이름이 옅게 이어지다 화면 끝에서 잘린다.
+     * 가로로 미는 동안 이름 줄은 내용보다 느리게(한 화면을 넘길 때 이름 하나만큼) 움직이고 (패럴렉스), 옅은 색과 진한 색이 서로 바뀐다.
+     * 이름은 직접 그려 프레임마다 글자를 다시 배치하지 않는다.
+     */
+    public static final class PivotHeader extends View {
+        private final android.text.TextPaint paint = new android.text.TextPaint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        /** 고리 차례의 메뉴 이름 (소문자). index가 지금 메뉴. */
+        private final String[] names;
+        private final int index;
+        private final float gap;
+        private float progress;   // -1(앞 메뉴) ~ 0(지금) ~ 1(다음 메뉴)
+        private Runnable onPeek;
+        private final android.graphics.Paint.FontMetrics fm = new android.graphics.Paint.FontMetrics();
+
+        public PivotHeader(Context c, String[] names, int index) {
+            super(c);
+            this.names = new String[names.length];
+            for (int i = 0; i < names.length; i++) this.names[i] = lower(names[i]);
+            this.index = index;
+            paint.setTypeface(light());
+            paint.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 46, c.getResources().getDisplayMetrics()));
+            paint.getFontMetrics(fm);
+            gap = paint.measureText("  ");
+            setContentDescription(names[index]);
+        }
+
+        /** 다음 메뉴 이름을 눌렀을 때. */
+        public void setOnPeek(Runnable r) {
+            onPeek = r;
+        }
+
+        public void setProgress(float p) {
+            if (progress == p) return;
+            progress = p;
+            invalidate();
+        }
+
+        private String at(int k) {
+            int n = names.length;
+            return names[((index + k) % n + n) % n];
+        }
+
+        @Override
+        protected void onMeasure(int widthSpec, int heightSpec) {
+            int h = Math.round(fm.descent - fm.ascent) + getPaddingTop() + getPaddingBottom();
+            setMeasuredDimension(MeasureSpec.getSize(widthSpec), h);
+        }
+
+        @Override
+        protected void onDraw(android.graphics.Canvas c) {
+            float y = getPaddingTop() - fm.ascent;
+            float wCur = paint.measureText(at(0)), wPrev = paint.measureText(at(-1));
+            // 한 화면을 넘기는 동안 이름 줄은 지금 이름(앞으로 갈 때는 앞 이름)의 폭만큼만 움직인다.
+            float offset = progress >= 0 ? -progress * (wCur + gap) : -progress * (wPrev + gap);
+            int dim = (fg & 0x00FFFFFF) | 0x4D000000;
+            float p = Math.abs(progress);
+            // 앞 메뉴 (뒤로 밀 때만 보인다)
+            if (progress < 0) {
+                paint.setColor(blendArgb(dim, fg, p));
+                c.drawText(at(-1), offset - wPrev - gap, y, paint);
+            }
+            float x = offset;
+            for (int k = 0; k < names.length && x < getWidth(); k++) {
+                int color = k == 0 ? blendArgb(fg, dim, p) : k == 1 && progress > 0 ? blendArgb(dim, fg, p) : dim;
+                paint.setColor(color);
+                String s = at(k);
+                c.drawText(s, x, y, paint);
+                x += paint.measureText(s) + gap;
+            }
+        }
+
+        @Override
+        public boolean onTouchEvent(MotionEvent e) {
+            if (e.getActionMasked() == MotionEvent.ACTION_DOWN) return onPeek != null;
+            if (e.getActionMasked() == MotionEvent.ACTION_UP && onPeek != null
+                    && e.getX() > paint.measureText(at(0)) + gap / 2) {
+                performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
+                onPeek.run();
+            }
+            return true;
+        }
+
+        private static int blendArgb(int a, int b, float t) {
+            t = Math.max(0f, Math.min(1f, t));
+            int aa = a >>> 24, ar = (a >> 16) & 0xFF, ag = (a >> 8) & 0xFF, ab = a & 0xFF;
+            int ba = b >>> 24, br = (b >> 16) & 0xFF, bg = (b >> 8) & 0xFF, bb = b & 0xFF;
+            return (Math.round(aa + (ba - aa) * t) << 24) | (Math.round(ar + (br - ar) * t) << 16)
+                    | (Math.round(ag + (bg - ag) * t) << 8) | Math.round(ab + (bb - ab) * t);
+        }
+    }
+
+    /**
+     * Windows Phone 피벗처럼 가로로 밀어 설정 메뉴 사이를 오간다. 미는 동안 지금 내용(movers)은 손가락을 그대로 따라가고, 옆 메뉴의
+     * 미리 만들어 둔 내용이 옆에서 따라 들어오며, 머리글 이름 줄은 더 느리게 움직인다. 손을 떼면 3분의 1을 넘겼거나 빠르게 튕겼을 때
+     * 넘어가고(지수 곡선으로 마저 움직인 뒤 host.go), 아니면 제자리로 돌아온다.
+     *
+     * <p>가로로 끄는 뷰(슬라이더, 키보드 미리보기, 가로 스크롤) 위에서 시작한 손가락은 그 뷰가 쓴다. 옆 메뉴의 내용은 처음 한 번만
+     * 만들어 보이지 않게 붙여 두므로, 미는 동안에는 위치만 바뀐다.
+     */
+    public static final class Pivot {
+        public interface Host {
+            /** 지금 넘길 수 있는지 (설정 창이 열려 있으면 false). */
+            boolean canPivot();
+
+            /** v가 가로로 끄는 동작을 직접 쓰는지 (그 위에서 시작한 손가락은 피벗이 가져가지 않는다). */
+            boolean usesHorizontalDrag(View v);
+
+            /** dir(-1 앞, +1 다음) 쪽 메뉴의 내용 (한 번만 불린다). */
+            View preview(int dir);
+
+            /** dir 쪽 메뉴로 넘어갔다: 그 메뉴 화면을 지금 모습 그대로 이어서 연다. */
+            void go(int dir);
+        }
+
+        private final Page page;
+        private final PivotHeader header;
+        private final View area;
+        private final View[] movers;
+        private final Host host;
+        private final int slop;
+        private final float flingVelocity;
+        private final FrameLayout[] holders = new FrameLayout[2];
+        private float downX, downY, startX, dx;
+        private boolean dragging, blocked, down;
+        private android.view.VelocityTracker velocity;
+        private ValueAnimator settle;
+
+        public Pivot(Page page, PivotHeader header, View area, View[] movers, Host host) {
+            this.page = page;
+            this.header = header;
+            this.area = area;
+            this.movers = movers;
+            this.host = host;
+            android.view.ViewConfiguration vc = android.view.ViewConfiguration.get(page.getContext());
+            slop = vc.getScaledTouchSlop();
+            flingVelocity = vc.getScaledMinimumFlingVelocity() * 4f;
+            page.setPivot(this);
+            header.setOnPeek(() -> animateTo(1));
+        }
+
+        /** 옆 메뉴의 내용을 미리 만들어 보이지 않게 붙여 둔다 (화면이 한가할 때 부른다). */
+        public void prepare() {
+            for (int i = 0; i < 2; i++) holder(i == 0 ? -1 : 1);
+        }
+
+        private FrameLayout holder(int dir) {
+            int i = dir < 0 ? 0 : 1;
+            if (holders[i] == null) {
+                View v = host.preview(dir);
+                if (v == null) return null;
+                FrameLayout h = new FrameLayout(page.getContext());
+                h.setClipChildren(true);
+                h.addView(v, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT));
+                h.setVisibility(View.INVISIBLE);
+                h.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
+                page.addView(h, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, Math.max(1, area.getHeight())));
+                holders[i] = h;
+            }
+            return holders[i];
+        }
+
+        /** 옆 메뉴 내용을 지금 내용 자리(area)에 맞춰 둔다. */
+        private void place() {
+            int[] a = new int[2], p = new int[2];
+            area.getLocationInWindow(a);
+            page.getLocationInWindow(p);
+            for (int i = 0; i < 2; i++) {
+                FrameLayout h = holder(i == 0 ? -1 : 1);
+                if (h == null) continue;
+                FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) h.getLayoutParams();
+                if (lp.height != area.getHeight() || lp.topMargin != a[1] - p[1]) {
+                    lp.height = Math.max(1, area.getHeight());
+                    lp.topMargin = a[1] - p[1];
+                    h.setLayoutParams(lp);
+                }
+                h.setVisibility(View.VISIBLE);
+            }
+        }
+
+        boolean intercept(MotionEvent e) {
+            switch (e.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    begin(e);
+                    return false;
+                case MotionEvent.ACTION_MOVE:
+                    if (dragging) return true;
+                    trackVelocity(e);
+                    return maybeStart(e);
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    down = false;
+                    return dragging;
+                default:
+                    return false;
+            }
+        }
+
+        boolean touch(MotionEvent e) {
+            trackVelocity(e);
+            switch (e.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    begin(e);
+                    return true;   // 아무도 받지 않은 손가락: 미는지 지켜본다
+                case MotionEvent.ACTION_MOVE:
+                    if (!dragging && !maybeStart(e)) return true;
+                    update(e.getX() - startX);
+                    return true;
+                case MotionEvent.ACTION_UP:
+                    if (dragging) {
+                        velocity.computeCurrentVelocity(1000);
+                        release(velocity.getXVelocity());
+                    }
+                    end();
+                    return true;
+                case MotionEvent.ACTION_CANCEL:
+                    if (dragging) release(0);
+                    end();
+                    return true;
+                default:
+                    return true;
+            }
+        }
+
+        private void begin(MotionEvent e) {
+            down = true;
+            dragging = false;
+            downX = e.getX();
+            downY = e.getY();
+            if (velocity != null) velocity.recycle();
+            velocity = android.view.VelocityTracker.obtain();
+            velocity.addMovement(e);
+            blocked = settle != null || !host.canPivot() || usesDrag(page, downX, downY);
+        }
+
+        private void trackVelocity(MotionEvent e) {
+            if (velocity != null && e.getActionMasked() != MotionEvent.ACTION_DOWN) velocity.addMovement(e);
+        }
+
+        private void end() {
+            down = false;
+            dragging = false;
+            if (velocity != null) {
+                velocity.recycle();
+                velocity = null;
+            }
+        }
+
+        private boolean maybeStart(MotionEvent e) {
+            if (blocked || !down) return false;
+            float adx = Math.abs(e.getX() - downX), ady = Math.abs(e.getY() - downY);
+            if (adx > slop && adx > ady * 1.5f) {
+                dragging = true;
+                startX = e.getX() - Math.signum(e.getX() - downX) * slop * 0.5f;   // 문턱만큼 튀지 않게
+                place();
+                page.getParent().requestDisallowInterceptTouchEvent(true);
+                return true;
+            }
+            if (ady > slop) blocked = true;   // 세로 스크롤이 시작됐다
+            return false;
+        }
+
+        /** 손가락이 놓인 곳의 뷰들 가운데 가로로 끄는 동작을 직접 쓰는 것이 있는지. */
+        private boolean usesDrag(View v, float x, float y) {
+            if (v.getVisibility() != View.VISIBLE) return false;
+            if (v != page && (host.usesHorizontalDrag(v) || v.canScrollHorizontally(1) || v.canScrollHorizontally(-1))) return true;
+            if (v instanceof android.view.ViewGroup) {
+                android.view.ViewGroup g = (android.view.ViewGroup) v;
+                for (int i = g.getChildCount() - 1; i >= 0; i--) {
+                    View c = g.getChildAt(i);
+                    if (c.getVisibility() != View.VISIBLE) continue;
+                    float cx = x + g.getScrollX() - c.getLeft() - c.getTranslationX();
+                    float cy = y + g.getScrollY() - c.getTop() - c.getTranslationY();
+                    if (cx >= 0 && cy >= 0 && cx < c.getWidth() && cy < c.getHeight() && usesDrag(c, cx, cy)) return true;
+                }
+            }
+            return false;
+        }
+
+        private void update(float d) {
+            dx = d;
+            float w = page.getWidth();
+            for (View m : movers) if (m != null) m.setTranslationX(d);
+            if (holders[0] != null) holders[0].setTranslationX(d - w);
+            if (holders[1] != null) holders[1].setTranslationX(d + w);
+            header.setProgress(w > 0 ? -d / w : 0f);
+        }
+
+        private void release(float vx) {
+            float w = page.getWidth(), f = w > 0 ? -dx / w : 0f;
+            int dir = 0;
+            if (f > 1f / 3 || (vx < -flingVelocity && f > 0.05f)) dir = 1;
+            else if (f < -1f / 3 || (vx > flingVelocity && f < -0.05f)) dir = -1;
+            settleTo(dir);
+        }
+
+        /** 다음 메뉴 이름을 눌렀을 때: 민 것처럼 넘어간다. */
+        private void animateTo(int dir) {
+            if (settle != null || !host.canPivot()) return;
+            place();
+            settleTo(dir);
+        }
+
+        private void settleTo(int dir) {
+            float w = page.getWidth();
+            float from = dx, to = -dir * w;
+            page.setBusy(true);
+            settle = ValueAnimator.ofFloat(0f, 1f);
+            settle.setDuration(Math.round(150 + 250 * Math.min(1f, Math.abs(to - from) / Math.max(1f, w))));
+            settle.setInterpolator(new Exp(5, true));
+            settle.addUpdateListener(a -> update(from + (to - from) * (float) a.getAnimatedValue()));
+            settle.addListener(new AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationStart(Animator animation) {
+                    for (View m : movers) if (m != null) m.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+                }
+
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    for (View m : movers) if (m != null) m.setLayerType(View.LAYER_TYPE_NONE, null);
+                    settle = null;
+                    if (dir != 0) {
+                        host.go(dir);   // 화면이 바뀌는 동안은 계속 누르기를 막는다
+                        return;
+                    }
+                    for (FrameLayout h : holders) if (h != null) h.setVisibility(View.INVISIBLE);
+                    page.setBusy(false);
+                }
+            });
+            settle.start();
         }
     }
 

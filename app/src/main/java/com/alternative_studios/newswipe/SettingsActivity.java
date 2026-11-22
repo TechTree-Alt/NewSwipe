@@ -126,10 +126,15 @@ public final class SettingsActivity extends Activity {
                 : LEARNED.equals(sectionId) || BLOCKED.equals(sectionId)
                 ? new SettingsFrame(this, sectionName, getString(R.string.app_name)).withSearch(this::onWordSearch, L.t("단어 검색", "Search words"))
                 : new SettingsFrame(this, sectionName, getString(R.string.app_name));
-        String[] nextSection = nextSection(sectionId);
-        if (nextSection != null) {
-            // Metro UI: 피벗처럼 큰 제목 오른쪽에 다음 메뉴 이름이 비치고, 누르면 그 메뉴로 넘어간다 (이 화면은 닫는다).
-            frame.withPeek(nextSection[1], v -> openSectionInstead(nextSection[0]));
+        String[][] ring = pivotRing();
+        int ringIndex = -1;
+        for (int i = 0; i < ring.length; i++) if (ring[i][0].equals(sectionId)) ringIndex = i;
+        if (Metro.on && ringIndex >= 0) {
+            // Metro UI: 설정 메뉴들이 피벗의 칸이 된다. 머리글에 메뉴 이름이 이어지고, 가로로 밀거나 다음 이름을 누르면 옆 메뉴로 넘어간다.
+            String[] names = new String[ring.length];
+            for (int i = 0; i < ring.length; i++) names[i] = ring[i][1];
+            frame.withPivot(names, ringIndex, pivotHost(ring, ringIndex), getIntent().getBooleanExtra(EXTRA_PIVOT_ARRIVE, false));
+            pivotFrame = frame;
         }
         if (KEYBOARD.equals(sectionId)) frame.withAction(Icons.UNDO, L.t("마지막 변경 되돌리기", "Undo last change"), v -> undoLast()).keyboardOverlays();
         else if ("onehand".equals(sectionId)) frame.keyboardOverlays();   // 미리보기를 실제 키보드처럼 화면 아래에 붙인다
@@ -163,6 +168,7 @@ public final class SettingsActivity extends Activity {
         fullHost = frame.fullHost();
         undoButton = frame.actionButton();
         build();
+        startPivot();
         // 검색 결과에서 들어왔으면 그 항목까지 스크롤하고 깜빡여 알려 준다.
         String highlight = getIntent().getStringExtra(EXTRA_HIGHLIGHT);
         String target = getIntent().getStringExtra(EXTRA_TARGET);
@@ -378,27 +384,96 @@ public final class SettingsActivity extends Activity {
         return card;
     }
 
-    /** 설정 메뉴에서 id 다음에 오는 메뉴 {id, 이름} (맨 끝이면 맨 앞으로 돈다). id가 설정 메뉴가 아니면 null. */
-    private static String[] nextSection(String id) {
-        if (id == null) return null;
-        String[][] all = sections();
-        for (int i = 0; i < all.length; i++) {
-            if (all[i][0].equals(id)) return all[(i + 1) % all.length];
-        }
-        return null;
+    // ---------------------------------------------------------------- Metro 피벗
+
+    /** 옆 메뉴에서 밀어서 넘어온 화면 (들어오는 턴스타일 없이 이어서 보인다). */
+    static final String EXTRA_PIVOT_ARRIVE = "pivot_arrive";
+    /** 피벗인 화면의 틀 (아니면 null). */
+    private SettingsFrame pivotFrame;
+
+    /** 피벗으로 오가는 설정 메뉴 {id, 이름} (입력 언어는 다른 화면이라 뺀다). 끝에서 밀면 처음으로 돈다. */
+    private static String[][] pivotRing() {
+        java.util.List<String[]> out = new java.util.ArrayList<>();
+        for (String[] s : sections()) if (!LANGUAGES.equals(s[0])) out.add(s);
+        return out.toArray(new String[0][]);
     }
 
-    /** 이 화면을 닫고 그 자리에 다른 메뉴를 연다 (피벗을 옆으로 넘기듯이, 뒤로 가면 첫 화면이다). */
-    private void openSectionInstead(String id) {
-        Intent i = LANGUAGES.equals(id) ? new Intent(this, LanguageOrderEditorActivity.class)
-                : new Intent(this, SettingsActivity.class).putExtra(EXTRA_SECTION, id);
-        if (!SettingsFrame.metroForward(this, i, () -> {
-            super.startActivity(i, null);
-            Metro.finishQuietly(this);
-        })) {
-            super.startActivity(i, null);
-            finish();
+    private Metro.Pivot.Host pivotHost(String[][] ring, int index) {
+        return new Metro.Pivot.Host() {
+            @Override
+            public boolean canPivot() {
+                return !panelOpen() && !isFinishing() && !isDestroyed();
+            }
+
+            @Override
+            public boolean usesHorizontalDrag(View v) {
+                return v instanceof com.alternative_studios.newswipe.ui.ExpressiveSlider || v instanceof KeyboardPreview
+                        || v instanceof OneHandPreview;
+            }
+
+            @Override
+            public View preview(int dir) {
+                return buildPivotPreview(ring[((index + dir) % ring.length + ring.length) % ring.length][0]);
+            }
+
+            @Override
+            public void go(int dir) {
+                String id = ring[((index + dir) % ring.length + ring.length) % ring.length][0];
+                Intent i = new Intent(SettingsActivity.this, SettingsActivity.class).putExtra(EXTRA_SECTION, id)
+                        .putExtra(EXTRA_PIVOT_ARRIVE, true);
+                SettingsActivity.super.startActivity(i, null);   // 턴스타일 없이 (지금 모습 그대로 이어진다)
+                Metro.finishQuietly(SettingsActivity.this);   // 피벗은 옆으로 넘길 뿐이라 뒤로 가면 첫 화면이다
+            }
+        };
+    }
+
+    /**
+     * 피벗의 옆 메뉴 내용을 만든다. 설정 검색처럼 기억할 것을 남기지 않는 방법으로 만들되(harvesting), 실제 화면과 같은 모양이다
+     * (previewing). 화면 아래의 미리보기(키보드·한 손 모드)는 넘어간 뒤에 실제 화면이 붙인다.
+     */
+    private View buildPivotPreview(String id) {
+        LinearLayout savedList = list;
+        ExpressiveSwitch savedClipSwitch = clipImagesSwitch;
+        LinearLayout scratch = new LinearLayout(this);
+        scratch.setOrientation(LinearLayout.VERTICAL);
+        int pad = Ui.dp(this, 16);
+        scratch.setPadding(pad, 0, pad, Ui.dp(this, 32));
+        harvesting = true;
+        previewing = true;
+        list = scratch;
+        try {
+            buildScreen(id);
+            if (hasReset(id) && !KEYBOARD.equals(id)) scratch.addView(ResetDialog.button(this, sectionTitle(id), () -> { }));
+        } catch (RuntimeException ignored) {
+            // 일부만 만들어졌어도 미리보기로는 충분하다 (넘어가면 실제 화면이 다시 만든다).
+        } finally {
+            harvesting = false;
+            previewing = false;
+            list = savedList;
+            clipImagesSwitch = savedClipSwitch;
         }
+        return scratch;
+    }
+
+    /** 피벗: 화면이 자리 잡은 뒤 옆 메뉴 내용을 미리 만들어 두고, 밀어서 넘어온 화면이면 아래 미리보기를 밀어 올린다. */
+    private void startPivot() {
+        if (pivotFrame == null || pivotFrame.pivot() == null) return;
+        boolean arrived = getIntent().getBooleanExtra(EXTRA_PIVOT_ARRIVE, false);
+        if (arrived && pinnedBottom.getVisibility() == View.VISIBLE) {
+            pinnedBottom.getViewTreeObserver().addOnPreDrawListener(new android.view.ViewTreeObserver.OnPreDrawListener() {
+                @Override
+                public boolean onPreDraw() {
+                    pinnedBottom.getViewTreeObserver().removeOnPreDrawListener(this);
+                    pinnedBottom.setTranslationY(pinnedBottom.getHeight());
+                    pinnedBottom.animate().translationY(0f).setDuration(Metro.IN_MS).setInterpolator(Metro.EASE_OUT).withLayer().start();
+                    return true;
+                }
+            });
+        }
+        // 들어오는 움직임(턴스타일·깃털)이 끝난 뒤에 만든다 (만드는 동안 움직임이 끊기지 않게).
+        list.postDelayed(() -> {
+            if (!isFinishing() && !isDestroyed()) pivotFrame.pivot().prepare();
+        }, arrived ? 450 : 1100);
     }
 
     /** Metro UI: 이 앱의 다른 화면을 열 때는 지금 화면이 턴스타일로 돌아 나간 뒤에 연다. */
@@ -623,6 +698,11 @@ public final class SettingsActivity extends Activity {
     private boolean harvestRunning;
     /** 화면을 검색용으로 만드는 중인지 (무거운 미리보기를 건너뛴다). */
     private boolean harvesting;
+    /**
+     * Metro 피벗의 옆 메뉴 미리보기를 만드는 중 (harvesting과 함께 켜진다). 기억할 것은 남기지 않되, 검색을 위해 접힌 항목을 펼치지 않고
+     * 실제 화면과 똑같이 만든다 (넘어갈 때 미리보기가 실제 화면으로 바뀌어도 튀지 않게).
+     */
+    private boolean previewing;
     private final android.os.Handler uiHandler = new android.os.Handler(android.os.Looper.getMainLooper());
 
     /** 검색 목록에 넣을 화면 (개인정보 처리방침 같은 안내문과 학습한 단어는 뺀다). */
@@ -1356,7 +1436,7 @@ public final class SettingsActivity extends Activity {
      * 설정 검색 목록을 모을 때는 붙이지 않는다.
      */
     private View own(View row) {
-        if (!harvesting) SettingsWidgets.badge(row, ownBadgeText(editorProfile()), accentColor);
+        if (!harvesting || previewing) SettingsWidgets.badge(row, ownBadgeText(editorProfile()), accentColor);
         return row;
     }
 
@@ -1467,7 +1547,7 @@ public final class SettingsActivity extends Activity {
             addLargeLayoutSection();
             buildLook();
             buildPad(-1);
-            if (!harvesting) list.addView(editorResetButton());
+            if (!harvesting || previewing) list.addView(editorResetButton());
         } finally {
             list = saved;
         }
@@ -1478,7 +1558,7 @@ public final class SettingsActivity extends Activity {
      * 열면 보인다. 화면마다 따로 정하는 값과 함께 쓰는 값, '세로만' 같은 표시의 뜻을 알린다.
      */
     private void addOrientationIntro() {
-        if (harvesting) return;   // 안내문뿐이라 검색 목록에 넣지 않는다
+        if (harvesting && !previewing) return;   // 안내문뿐이라 검색 목록에 넣지 않는다
         String p = editorProfile(), name = profileShortName(p);
         boolean land = Prefs.PROFILE_LANDSCAPE.equals(p) || Prefs.PROFILE_LARGE_LANDSCAPE.equals(p);
         String other = land ? "세로" : "가로";
@@ -1520,7 +1600,7 @@ public final class SettingsActivity extends Activity {
                         if (!isFinishing() && !isDestroyed() && editorProfileChanged()) recreate();
                     }, 350);
                 }));
-        largeGroup.setVisibility(prefs.largeLayout() || harvesting ? View.VISIBLE : View.GONE);
+        largeGroup.setVisibility(prefs.largeLayout() || (harvesting && !previewing) ? View.VISIBLE : View.GONE);
         large.addView(largeGroup);   // 접혀 있을 때 검색으로 판정 기준을 찾아 들어오면 바로 위의 스위치를 깜빡인다 (controllerOf)
     }
 
@@ -2308,7 +2388,7 @@ public final class SettingsActivity extends Activity {
                         80, 500, 10, "ms"),
                 note(L.t("두 번째 누르기가 이 시간 안에 들어와야 쌍자음이 됩니다. 값을 줄이면 '학교'가 '하꾜'로 바뀌는 일이 줄고, "
                         + "대신 쌍자음을 낼 때 더 빨리 눌러야 합니다.", "The second tap must come within this time to make a double consonant. Lower values make '학교' turn into '하꾜' less often, but you need to tap faster for double consonants.")));
-        doubleTapTime.setVisibility(prefs.consonantInputMode() != Prefs.INPUT_SWIPE || harvesting ? View.VISIBLE : View.GONE);
+        doubleTapTime.setVisibility(prefs.consonantInputMode() != Prefs.INPUT_SWIPE || (harvesting && !previewing) ? View.VISIBLE : View.GONE);
         SettingsWidgets.ValueRow[] consonant = new SettingsWidgets.ValueRow[1];
         consonant[0] = widgets.valueRow(L.t("쌍자음 입력", "Double consonant input"), inputModes()[prefs.consonantInputMode()], v ->
                 pickInputMode(L.t("쌍자음 입력", "Double consonant input"), prefs.consonantInputMode(), Prefs.INPUT_SWIPE, mode -> {
@@ -3120,16 +3200,18 @@ public final class SettingsActivity extends Activity {
      * 손잡이를 끌면 슬라이더도 따라 움직인다.
      */
     private void buildOneHand() {
-        if (harvesting) {
+        if (harvesting && !previewing) {
             // 설정 검색: 항목 이름은 방향과 상관없이 같다. 지금 방향의 것만 모아도 된다.
             addOneHandSize(prefs.profileView(prefs.profileFor(this)));
             return;
         }
         String profile = prefs.profileFor(this);
         Prefs view = prefs.profileView(profile);
-        oneHandPreview = new OneHandPreview(this, view, this::syncSizeSliders);
-        pinnedBottom.addView(oneHandPreview, matchWrap());
-        pinnedBottom.setVisibility(View.VISIBLE);
+        if (!harvesting) {   // 피벗 미리보기에는 아래 미리보기를 붙이지 않는다
+            oneHandPreview = new OneHandPreview(this, view, this::syncSizeSliders);
+            pinnedBottom.addView(oneHandPreview, matchWrap());
+            pinnedBottom.setVisibility(View.VISIBLE);
+        }
         boolean land = Prefs.PROFILE_LANDSCAPE.equals(profile) || Prefs.PROFILE_LARGE_LANDSCAPE.equals(profile);
         String now = land ? "가로" : "세로", other = land ? "세로" : "가로";
         LinearLayout intro = card();
@@ -3163,7 +3245,7 @@ public final class SettingsActivity extends Activity {
 
     /** 한 손 모드 줄에 그 키보드(view의 프로필) 이름 표시를 붙인다 (설정 검색 목록을 모을 때는 붙이지 않는다). */
     private View oneHandOwn(Prefs view, View row) {
-        if (!harvesting) SettingsWidgets.badge(row, ownBadgeText(view.profile()), accentColor);
+        if (!harvesting || previewing) SettingsWidgets.badge(row, ownBadgeText(view.profile()), accentColor);
         return row;
     }
 

@@ -172,7 +172,12 @@ final class SettingsFrame {
             if (bottom != null) items.add(bottom);
             return items;
         });
-        page.playEnterOnFirstDraw();
+        if (pivotNames != null) {
+            // 피벗: 가로로 밀면 지금 내용(목록과 아래 미리보기)이 손가락을 따라가고 옆 메뉴가 들어온다.
+            pivot = new Metro.Pivot(page, pivotHeader, content, new View[]{content, bottom}, pivotHost);
+        }
+        // 옆 메뉴에서 밀어서 넘어온 화면은 이미 제자리에 보이는 것처럼 이어지므로 들어오는 턴스타일을 틀지 않는다.
+        if (!arriving) page.playEnterOnFirstDraw();
         if (android.os.Build.VERSION.SDK_INT >= 33) {
             // 뒤로 가기도 턴스타일로 나간다. 검색창·입력창·설정 창이 열려 있으면 나중에 등록한 그쪽 콜백이 먼저 불린다.
             android.window.OnBackInvokedCallback cb = () -> metroBack(activity);
@@ -228,14 +233,29 @@ final class SettingsFrame {
         return true;
     }
 
-    /** 머리글 큰 제목 오른쪽에 옅게 비치는 다음 화면 이름 (Windows Phone 피벗). Metro 모드에서만 보인다. */
-    private String peek;
-    private View.OnClickListener peekListener;
+    /** Metro 피벗: 고리 차례의 메뉴 이름과 지금 메뉴의 차례, 넘기기를 맡는 쪽. 없으면 null. */
+    private String[] pivotNames;
+    private int pivotIndex;
+    private Metro.Pivot.Host pivotHost;
+    private Metro.PivotHeader pivotHeader;
+    private Metro.Pivot pivot;
+    private boolean arriving;
 
-    SettingsFrame withPeek(String name, View.OnClickListener l) {
-        peek = name;
-        peekListener = l;
+    /**
+     * Metro UI: 이 화면을 피벗의 한 칸으로 만든다. 머리글에 메뉴 이름들이 이어지고, 가로로 밀어 옆 메뉴로 넘어간다.
+     * @param arrived 옆 메뉴에서 밀어서 넘어온 화면이면 true (들어오는 턴스타일 없이 그대로 보인다)
+     */
+    SettingsFrame withPivot(String[] names, int index, Metro.Pivot.Host host, boolean arrived) {
+        pivotNames = names;
+        pivotIndex = index;
+        pivotHost = host;
+        arriving = arrived;
         return this;
+    }
+
+    /** withPivot으로 만든 피벗 (Metro 모드가 아니거나 피벗이 아니면 null). */
+    Metro.Pivot pivot() {
+        return pivot;
     }
 
     private View wrapPlain(View content, View bottom) {
@@ -345,16 +365,15 @@ final class SettingsFrame {
         addHeaderButtons(c, top, Ui.dp(c, 44));
         header.addView(top, matchWrap());
 
+        if (pivotNames != null) {
+            pivotHeader = new Metro.PivotHeader(c, pivotNames, pivotIndex);
+            pivotHeader.setPadding(0, Ui.dp(c, 2), 0, Ui.dp(c, 8));
+            header.addView(pivotHeader, matchWrap());
+            return header;
+        }
         TextView big = new TextView(c);
         String name = Metro.lower(main ? L.t("설정", "settings") : title);
-        android.text.SpannableStringBuilder sb = new android.text.SpannableStringBuilder(name);
-        if (peek != null) {
-            int from = sb.length();
-            sb.append("  ").append(Metro.lower(peek));
-            sb.setSpan(new android.text.style.ForegroundColorSpan((colors.text & 0x00FFFFFF) | 0x4D000000), from, sb.length(),
-                    android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        }
-        big.setText(sb);
+        big.setText(name);
         big.setTextColor(colors.text);
         big.setTextSize(TypedValue.COMPLEX_UNIT_SP, 46);
         big.setTypeface(Metro.light());
@@ -362,17 +381,6 @@ final class SettingsFrame {
         big.setHorizontallyScrolling(true);   // 화면보다 길면 줄이지 않고 화면 끝에서 잘린다
         big.setIncludeFontPadding(false);
         big.setPadding(0, Ui.dp(c, 2), 0, Ui.dp(c, 8));
-        big.setContentDescription(main ? L.t("설정", "Settings") : title);
-        if (peek != null && peekListener != null) {
-            float nameWidth = big.getPaint().measureText(name + " ");
-            big.setOnTouchListener((v, e) -> {
-                if (e.getActionMasked() == android.view.MotionEvent.ACTION_UP && e.getX() > nameWidth) {
-                    v.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
-                    peekListener.onClick(v);
-                }
-                return true;
-            });
-        }
         header.addView(big, matchWrap());
         return header;
     }
