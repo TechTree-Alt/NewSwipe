@@ -63,6 +63,15 @@ public final class BottomKeys {
         }
     }
 
+    /** 선택 창에 보이는 '기호 자판에서는'의 선택지 이름 (길게: 기호 자판에서도 그대로, 이모지 키 (기본값) …). */
+    public static String symbolGlobeChoice(String id) {
+        switch (id) {
+            case EMOJI: return L.t("이모지 키 (기본값)", "Emoji key (default)");
+            case GLOBE: return L.t("기호 자판에서도 그대로", "Keep on the symbol keyboard");
+            default: return label(id);
+        }
+    }
+
     /** 편집 화면에 보이는 작은 설명. 없으면 null. */
     public static String hint(String id) {
         switch (id) {
