@@ -4199,7 +4199,7 @@ public final class SettingsActivity extends Activity {
     }
 
     private void buildApp() {
-        // 정보: 앱 이름과 버전 아래에 개인정보 처리방침·라이선스·소스 코드·문의를 둔다.
+        // 정보: 앱 이름과 버전 아래에 업데이트 확인·개인정보 처리방침·라이선스·소스 코드·문의를 둔다.
         LinearLayout about = card();
         LinearLayout head = new LinearLayout(this);   // 가로 배치는 기본으로 글자 기준선을 맞춘다
         TextView name = new TextView(this);
@@ -4209,7 +4209,7 @@ public final class SettingsActivity extends Activity {
         name.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
         head.addView(name);
         TextView version = new TextView(this);
-        version.setText(L.t("버전 ", "Version ") + versionName());
+        version.setText(versionName());
         version.setTextColor(hintColor);
         version.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         version.setTypeface(android.graphics.Typeface.MONOSPACE);
@@ -4237,6 +4237,8 @@ public final class SettingsActivity extends Activity {
         ilp.bottomMargin = Ui.dp(this, 20);
         about.addView(icon, ilp);
 
+        // 최신 앱 릴리스 페이지 (사전 팩 릴리스는 'Latest'로 표시하지 않으므로 앱 릴리스가 열린다)
+        about.addView(button(L.t("업데이트 확인하기", "Check for updates"), v -> openUrl(SOURCE_URL + "/releases/latest")));
         about.addView(button(L.t("개인정보 처리방침", "Privacy policy"), v -> openSection(PRIVACY)));
         about.addView(button(L.t("오픈소스 라이선스", "Open source licenses"), v -> openSection(LICENSES)));
         about.addView(button(L.t("소스 코드", "Source code"), v -> openUrl(SOURCE_URL)));
