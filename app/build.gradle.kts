@@ -61,6 +61,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":mozc-protocol"))
     testImplementation(libs.junit)
 }
 

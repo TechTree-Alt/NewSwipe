@@ -3954,8 +3954,17 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         final File dir = getFilesDir();
         final boolean needLearning = !cjkLearnings.containsKey(lang);
         runIo(() -> {
-            com.alternative_studios.newswipe.cjk.ConversionDictionary d = CjkPack.load(dir, lang);
-            CjkComposer c = d == null ? null : new CjkComposer(lang, d);   // 병음 음절표도 여기서 만든다
+            final CjkComposer c;
+            try {
+                c = CjkPack.loadComposer(dir, lang);
+            } catch (java.io.IOException error) {
+                main.post(() -> {
+                    cjkLoading.remove(lang);
+                    android.widget.Toast.makeText(this, "Mozc: " + error.getMessage(),
+                            android.widget.Toast.LENGTH_LONG).show();
+                });
+                return;
+            }
             com.alternative_studios.newswipe.cjk.CjkLearning learn = needLearning
                     ? new com.alternative_studios.newswipe.cjk.CjkLearning(new File(dir, "cjk_learn_" + lang + ".txt")) : null;
             main.post(() -> {

@@ -46,6 +46,12 @@ public final class CjkComposer {
         }
     }
 
+    CjkComposer(Converter japaneseConverter) {
+        lang = JA;
+        converter = japaneseConverter;
+        pinyin = null;
+    }
+
     /** 자주 고른 후보를 앞에 놓을 기록 (null이면 끈다). */
     public void setLearning(CjkLearning l) {
         if (learning != l) {

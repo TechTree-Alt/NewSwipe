@@ -2635,10 +2635,9 @@ public final class SettingsActivity extends Activity {
         int req = ja ? REQ_CJK_JA : REQ_CJK_ZH;
         String release = SOURCE_URL + "/releases?q=" + (ja ? "ja-standard" : "zh-standard") + "&expanded=true";
         if (info == null) {
-            box.addView(note((ja ? L.t("히라가나 입력(12키 플릭·로마자)과 한자·가타카나 변환을 씁니다. ", "Type hiragana (12-key flick or romaji) and convert to kanji and katakana. ")
-                    : L.t("병음으로 간체자를 입력합니다. ", "Type simplified Chinese with pinyin. "))
-                    + L.t("앱에는 변환 기능만 들어 있어, 사전 팩을 가져와야 켤 수 있습니다. 단어 추천·자동 수정·학습은 쓰지 않습니다.",
-                    "The app contains only the conversion engine, so you need to import a dictionary pack to turn it on. Word suggestions, autocorrect and learning are not used.")));
+            box.addView(note(ja ? L.t("일본어 사전 팩 ZIP을 가져오세요. Mozc 팩을 선택하면 NewSwipe 후보창에서 한자를 고를 수 있습니다.",
+                    "Import a Japanese dictionary pack ZIP. A Mozc pack provides kanji candidates directly in NewSwipe.")
+                    : L.t("병음으로 간체자를 입력합니다. 사전 팩을 가져와야 켤 수 있습니다.", "Import a dictionary pack to type simplified Chinese with pinyin.")));
             box.addView(button(L.t("사전 팩 받는 곳", "Get dictionary packs"), v -> openUrl(release)));
             box.addView(iconButton(L.t("사전 팩 가져오기", "Import dictionary pack"), Icons.IMPORT, v -> SettingsImport.pick(this, req)));
             return;
@@ -2762,6 +2761,7 @@ public final class SettingsActivity extends Activity {
             } catch (com.alternative_studios.newswipe.cjk.CjkPack.InvalidPackException e) {
                 message = L.t("가져올 수 없는 사전 팩입니다: ", "Can't import this dictionary pack: ") + e.getMessage();
             } catch (Exception e) {
+                android.util.Log.w("NewSwipePack", "Dictionary pack import failed", e);
                 message = L.t("사전 팩을 가져오지 못했습니다: ", "Couldn't import the dictionary pack: ") + e.getMessage();
             }
             String m = message;

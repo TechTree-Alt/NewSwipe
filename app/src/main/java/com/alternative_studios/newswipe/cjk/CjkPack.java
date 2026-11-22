@@ -108,7 +108,7 @@ public final class CjkPack {
     }
 
     private static Info unpackAndCheck(InputStream zip, File into, String expectLang) throws IOException {
-        boolean manifest = false, dict = false, license = false;
+        boolean manifest = false, dict = false, license = false, lib = false, data = false;
         try (ZipInputStream z = new ZipInputStream(new java.io.BufferedInputStream(zip, 16 * 1024))) {
             ZipEntry e;
             while ((e = z.getNextEntry()) != null) {
@@ -116,6 +116,8 @@ public final class CjkPack {
                 String name = e.getName();
                 long max;
                 switch (name) {   // 정해진 이름만 꺼낸다 (경로를 따라가지 않는다)
+                    case MozcConverter.LIB: max = MAX_DICT; lib = check(lib, name); break;
+                    case MozcConverter.DATA: max = MAX_DICT; data = check(data, name); break;
                     case MANIFEST: max = MAX_TEXT; manifest = check(manifest, name); break;
                     case DICT: max = MAX_DICT; dict = check(dict, name); break;
                     case LICENSE: max = MAX_TEXT; license = check(license, name); break;
@@ -131,12 +133,21 @@ public final class CjkPack {
         Properties p = readProperties(new File(into, MANIFEST));
         int format = parseInt(p.getProperty("format"));
         if (format <= 0) throw new InvalidPackException(L.t("사전 팩 형식을 알 수 없습니다", "Unknown dictionary pack format"));
-        if (format > FORMAT) throw new InvalidPackException(L.t("이 버전의 앱이 읽을 수 없는 새 형식입니다. 앱을 업데이트해 주세요", "This format is too new for this version of the app. Please update the app"));
+        if (format != FORMAT && !(format == 2 && "mozc".equals(p.getProperty("engine")))) throw new InvalidPackException(L.t("이 버전의 앱이 읽을 수 없는 새 형식입니다. 앱을 업데이트해 주세요", "This format is too new for this version of the app. Please update the app"));
         String lang = p.getProperty("lang", "");
         if (!supported(lang)) throw new InvalidPackException(L.t("일본어·중국어 사전 팩이 아닙니다", "Not a Japanese/Chinese dictionary pack"));
         if (expectLang != null && !expectLang.equals(lang)) {
             throw new InvalidPackException(L.t(languageName(lang) + " 사전 팩입니다. " + languageName(expectLang) + " 팩을 골라 주세요",
                         "This is a " + languageName(lang) + " dictionary pack. Please choose a " + languageName(expectLang) + " pack"));
+        }
+        if (lib || data || p.containsKey("engine")) {
+            if (format != 2 || !"mozc".equals(p.getProperty("engine")) || !"ja".equals(lang) || !lib || !data)
+                throw new InvalidPackException("Mozc 일본어 팩 구성이 올바르지 않습니다");
+            File library = new File(into, MozcConverter.LIB);
+            if (!MozcConverter.LIB_HASH.equals(sha256(library))
+                    || !MozcConverter.DATA_HASH.equals(sha256(new File(into, MozcConverter.DATA))))
+                throw new InvalidPackException("이 버전에서 지원하지 않는 Mozc 엔진 또는 데이터입니다");
+            if (!library.setReadOnly()) throw new IOException("Mozc library permissions");
         }
         String want = p.getProperty("sha256." + DICT, "").trim();
         if (!want.isEmpty() && !want.equalsIgnoreCase(sha256(new File(into, DICT)))) {
@@ -152,6 +163,7 @@ public final class CjkPack {
         if (CjkComposer.ZH.equals(lang) && new PinyinConverter(d).syllableCount() < 300) {
             throw new InvalidPackException(L.t("병음 음절(글자 하나의 읽기)이 너무 적습니다", "Too few pinyin syllables (readings of single characters)"));
         }
+        if (lib) MozcConverter.open(into, into.getParentFile());
         p.setProperty("words", String.valueOf(d.size()));
         try (OutputStream out = new FileOutputStream(new File(into, MANIFEST))) {
             p.store(new java.io.OutputStreamWriter(out, StandardCharsets.UTF_8), null);
@@ -163,6 +175,19 @@ public final class CjkPack {
     public static boolean isInstalled(File filesDir, String lang) {
         File dir = dir(filesDir, lang);
         return new File(dir, MANIFEST).isFile() && new File(dir, DICT).isFile();
+    }
+
+    public static boolean hasMozc(File filesDir) {
+        return new File(dir(filesDir, CjkComposer.JA), MozcConverter.LIB).isFile();
+    }
+
+    public static CjkComposer loadComposer(File filesDir, String lang) throws IOException {
+        synchronized (LOCK) {
+            if (CjkComposer.JA.equals(lang) && hasMozc(filesDir))
+                return new CjkComposer(MozcConverter.open(dir(filesDir, lang), filesDir));
+            ConversionDictionary dict = load(filesDir, lang);
+            return dict == null ? null : new CjkComposer(lang, dict);
+        }
     }
 
     /** 설치된 팩의 정보. 없으면 null. 화면 스레드에서 불러도 된다 (사전은 읽지 않는다). */

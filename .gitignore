@@ -17,3 +17,4 @@ __pycache__/
 *.pkl
 # 평가용 공개 말뭉치 (dict/eval/fetch_public_sets.sh로 받는다)
 /dict/eval/data/
+/mozc-protocol/build/

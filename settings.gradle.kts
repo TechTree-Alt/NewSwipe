@@ -22,3 +22,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "NewSwipe"
 include(":app")
+include(":mozc-protocol")

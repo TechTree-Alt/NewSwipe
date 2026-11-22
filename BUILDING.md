@@ -15,7 +15,7 @@ NewSwipe를 직접 빌드하고 서명하는 방법입니다. 사용법은 [READ
 
 36부터는 키보드 창이 하단 바 뒤까지 그려지는 것을 끌 수 없어서, 일부 기기(비보 등)에서 하단 바 아이콘 색이 맞는지 직접 확인해야 합니다. 비교해 볼 때만 `./gradlew assembleRelease -Pnewswipe.targetSdk=35`처럼 낮춰 빌드할 수 있습니다. 그렇게 만든 파일은 Play에 올리지 마세요. 자세한 이유는 `app/build.gradle.kts`의 주석을 보세요.
 
-앱은 AndroidX 등 외부 라이브러리를 쓰지 않습니다. 의존성은 단위 테스트용 JUnit뿐입니다.
+일본어 Mozc 연동에는 `mozc-protocol` 모듈에서 생성한 메시지와 Protobuf Lite를 씁니다. 단위 테스트에는 JUnit을 씁니다.
 
 ## 빌드 명령
 

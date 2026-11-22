@@ -277,6 +277,37 @@ public class ConverterTest {
         }
     }
 
+    @Test
+    public void incompleteOrUnknownMozcCannotReplaceInstalledPack() throws IOException {
+        java.io.File dir = java.nio.file.Files.createTempDirectory("mozc-import").toFile();
+        byte[] dict = CjkTestData.bytes(CjkTestData.JA);
+        try {
+            CjkPack.install(new ByteArrayInputStream(zip("ja", dict)), dir, CjkComposer.JA);
+            for (boolean includeData : new boolean[]{false, true}) {
+                java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+                try (java.util.zip.ZipOutputStream out = new java.util.zip.ZipOutputStream(bytes)) {
+                    out.putNextEntry(new java.util.zip.ZipEntry("manifest.properties"));
+                    out.write("format=2\nlang=ja\nengine=mozc\n".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                    out.putNextEntry(new java.util.zip.ZipEntry("convert.bin"));
+                    out.write(dict);
+                    out.putNextEntry(new java.util.zip.ZipEntry("libmozc.so"));
+                    out.write(1);
+                    if (includeData) {
+                        out.putNextEntry(new java.util.zip.ZipEntry("mozc.data"));
+                        out.write(2);
+                    }
+                }
+                org.junit.Assert.assertThrows(CjkPack.InvalidPackException.class, () ->
+                        CjkPack.install(new ByteArrayInputStream(bytes.toByteArray()), dir, CjkComposer.JA));
+                org.junit.Assert.assertFalse(CjkPack.hasMozc(dir));
+                assertEquals(CjkTestData.JA.length, CjkPack.load(dir, CjkComposer.JA).size());
+            }
+        } finally {
+            CjkPack.remove(dir, CjkComposer.JA);
+            java.nio.file.Files.delete(dir.toPath());
+        }
+    }
+
     private static byte[] zip(String lang, byte[] dict) throws IOException {
         java.io.ByteArrayOutputStream b = new java.io.ByteArrayOutputStream();
         try (java.util.zip.ZipOutputStream z = new java.util.zip.ZipOutputStream(b)) {
