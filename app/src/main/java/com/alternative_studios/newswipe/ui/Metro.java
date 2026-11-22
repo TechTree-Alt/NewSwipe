@@ -409,16 +409,65 @@ public final class Metro {
             items = s;
         }
 
-        /** 처음 그려지기 직전에 들어오는 턴스타일을 튼다 (화면 내용은 그 전에 다 만들어진다). */
+        /**
+         * 처음 그려지기 직전에 들어오는 턴스타일을 튼다 (화면 내용은 그 전에 다 만들어진다).
+         * 키보드의 도구 막대에서 설정을 열면 처음 그릴 때 키보드가 아직 떠 있어 창이 키보드 높이만큼 줄어 있다. 그대로 틀면 그 아래의
+         * 항목은 보이지 않는 것으로 쳐서 빠지고, 키보드가 내려간 뒤 움직이지 않고 그냥 나타난다. 그래서 키보드가 내려가 창이 다 펴질
+         * 때까지 화면을 감춰 두었다가 튼다 (오래 걸리면 ENTER_IME_WAIT_MS 뒤에 그냥 튼다).
+         */
         public void playEnterOnFirstDraw() {
             getViewTreeObserver().addOnPreDrawListener(new android.view.ViewTreeObserver.OnPreDrawListener() {
                 @Override
                 public boolean onPreDraw() {
                     getViewTreeObserver().removeOnPreDrawListener(this);
-                    enter(true);
+                    if (imeCovering()) {
+                        enterAfterIme();
+                    } else {
+                        enter(true);
+                    }
                     return true;
                 }
             });
+        }
+
+        private static final long ENTER_IME_WAIT_MS = 600;
+
+        /** 키보드(입력기)가 이 창을 덮어 창이 줄어 있는지. */
+        private boolean imeCovering() {
+            android.view.WindowInsets in = getRootWindowInsets();
+            if (in == null) return false;
+            if (android.os.Build.VERSION.SDK_INT >= 30) {
+                return in.getInsets(android.view.WindowInsets.Type.ime()).bottom > 0;
+            }
+            // Android 9~10: 시스템 창 여백이 하단 바보다 훨씬 크면 키보드가 덮고 있다.
+            return in.getSystemWindowInsetBottom() - in.getStableInsetBottom() > Math.round(80 * getResources().getDisplayMetrics().density);
+        }
+
+        private void enterAfterIme() {
+            content.setAlpha(0f);
+            busy = true;
+            final boolean[] done = {false};
+            final View.OnLayoutChangeListener[] holder = new View.OnLayoutChangeListener[1];
+            Runnable go = () -> {
+                if (done[0]) return;
+                done[0] = true;
+                removeOnLayoutChangeListener(holder[0]);
+                // 새 크기로 다 배치된 다음 프레임에 튼다 (항목들의 자리가 정해진 뒤).
+                getViewTreeObserver().addOnPreDrawListener(new android.view.ViewTreeObserver.OnPreDrawListener() {
+                    @Override
+                    public boolean onPreDraw() {
+                        getViewTreeObserver().removeOnPreDrawListener(this);
+                        enter(true);
+                        return true;
+                    }
+                });
+                invalidate();
+            };
+            holder[0] = (v, l, t, r, b, ol, ot, or, ob) -> {
+                if (!imeCovering()) go.run();
+            };
+            addOnLayoutChangeListener(holder[0]);
+            postDelayed(go, ENTER_IME_WAIT_MS);
         }
 
         private void enter(boolean forward) {
