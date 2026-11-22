@@ -1452,8 +1452,15 @@ public final class SettingsActivity extends Activity {
                         if (keep) showSelection(editorPreview.selection());
                         else closeKeyPanel();
                     });
-            editorTabs.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-            editorPreview.setTabsView(editorTabs);
+            // 탭 띠: 불투명한 바탕으로 그 뒤(흐려진 미리보기)를 가리고, 탭 사이·옆을 눌러도 미리보기로 넘어가지 않는다.
+            LinearLayout tabs = new LinearLayout(this);
+            tabs.setOrientation(LinearLayout.VERTICAL);
+            int tabPad = Ui.dp(this, 16);
+            tabs.setPadding(tabPad, Ui.dp(this, 2), tabPad, Ui.dp(this, 6));
+            tabs.setBackgroundColor(AppTheme.of(this).bg);
+            tabs.setClickable(true);
+            tabs.addView(editorTabs);
+            editorPreview.setTabsView(tabs);
             pinnedBottom.addView(editorPreview, matchWrap());
             pinnedBottom.setVisibility(View.VISIBLE);
 

@@ -540,15 +540,16 @@ final class KeyboardPreview extends FrameLayout {
 
     /** 한글·영어·기호 자판 탭 (설정 화면이 만들어 준다). 글자 키를 가운데로 끌어온 동안만 미리보기 안쪽 위에 떠 있다. */
     private View tabsView;
-    private static final int TABS_TOP_DP = 6, TABS_GAP_DP = 6, TABS_SIDE_DP = 10;
+    /** 자판 탭 띠 아래로 글자 키까지 두는 틈. */
+    private static final int TABS_GAP_DP = 6;
 
-    /** 자판 탭을 미리보기 안쪽 위에 놓는다 (처음에는 숨겨 둔다). */
+    /**
+     * 자판 탭 띠를 미리보기 안쪽 맨 위에 가로 끝까지 놓는다 (처음에는 숨겨 둔다). 띠는 불투명한 바탕을 가져
+     * 그 뒤의 흐려진 미리보기를 가린다.
+     */
     void setTabsView(View v) {
         tabsView = v;
-        Context c = getContext();
-        LayoutParams lp = new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, android.view.Gravity.TOP);
-        lp.setMargins(Ui.dp(c, TABS_SIDE_DP), Ui.dp(c, TABS_TOP_DP), Ui.dp(c, TABS_SIDE_DP), 0);
-        v.setLayoutParams(lp);
+        v.setLayoutParams(new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, android.view.Gravity.TOP));
         v.setAlpha(0f);
         v.setVisibility(GONE);
         addView(v);
@@ -559,7 +560,7 @@ final class KeyboardPreview extends FrameLayout {
     private float tabsReserve() {
         if (tabsView == null) return 0f;
         Context c = getContext();
-        return Ui.dp(c, TABS_TOP_DP + TABS_GAP_DP) + tabsView.getMeasuredHeight();
+        return Ui.dp(c, TABS_GAP_DP) + tabsView.getMeasuredHeight();
     }
 
     /** 자판 탭을 글자 키를 끌어온 만큼 보이게 한다 (위에서 살짝 내려오며 또렷해진다). */
@@ -1341,18 +1342,25 @@ final class KeyboardPreview extends FrameLayout {
     /** 손잡이의 가운데 (미리보기 좌표). 보이지 않으면 false. */
     private boolean handleCenter(Handle h, float[] out) {
         if (!handleEdge(h, out)) return false;
-        // 여백·높이 손잡이는 윤곽선 위에 걸쳐 있다. 묶음의 왼쪽·오른쪽 경계 손잡이는 윤곽선 안쪽에 둔다
-        // (맞닿은 두 묶음의 경계 손잡이가 서로 떨어져 보이고, 화면 가장자리의 시스템 몸짓과도 겹치지 않는다).
-        float in = Ui.dp(getContext(), 9);
+        if (h.knob()) return true;   // ↔ 버튼은 묶음 한가운데
+        // 모든 손잡이는 조절하는 윤곽선의 안쪽 6dp에 둔다: 미리보기 가장자리에서 잘리지 않고, 화면 가장자리의 시스템 몸짓과도
+        // 겹치지 않으며, 맞닿은 두 묶음의 경계 손잡이도 서로 떨어져 보인다.
+        float in = Ui.dp(getContext(), HANDLE_INSET_DP);
         switch (h) {
+            case PAD_LEFT:
             case B_LEFT_START:
             case B_RIGHT_START: out[0] += in; break;
+            case PAD_RIGHT:
             case B_LEFT_END:
             case B_RIGHT_END: out[0] -= in; break;
-            default: break;
+            case PAD_BOTTOM: out[1] -= in; break;
+            default: out[1] += in; break;   // 위 가장자리의 손잡이 (높이·위쪽 여백)
         }
         return true;
     }
+
+    /** 손잡이를 윤곽선 안쪽으로 들이는 거리. */
+    private static final float HANDLE_INSET_DP = 6f;
 
     /** 손잡이가 조절하는 경계선 위의 점 (미리보기 좌표). 보이지 않으면 false. */
     private boolean handleEdge(Handle h, float[] out) {
@@ -1861,7 +1869,7 @@ final class KeyboardPreview extends FrameLayout {
         /** 손잡이 h의 막대 자리 (point가 가운데). */
         private void handleRect(Handle h, float[] p, boolean on, RectF out) {
             Context ctx = getContext();
-            float lenHalf = Ui.dp(ctx, on ? 16 : 11), thickHalf = Ui.dp(ctx, on ? 3.5f : 2.5f);
+            float lenHalf = Ui.dp(ctx, on ? 16 : 11), thickHalf = Ui.dp(ctx, on ? 2.33f : 1.67f);   // 굵기는 예전의 2/3
             if (h.vertical) out.set(p[0] - lenHalf, p[1] - thickHalf, p[0] + lenHalf, p[1] + thickHalf);
             else out.set(p[0] - thickHalf, p[1] - lenHalf, p[0] + thickHalf, p[1] + lenHalf);
         }
