@@ -1614,7 +1614,7 @@ final class KeyboardPreview extends FrameLayout {
             stroke.setStyle(Paint.Style.STROKE);
             label.setTextAlign(Paint.Align.CENTER);
             label.setTextSize(Ui.dp(c, 14));
-            label.setFakeBoldText(true);
+            label.setFakeBoldText(!com.alternative_studios.newswipe.ui.Metro.on);   // Metro에는 굵은 글자가 없다
             setContentDescription(L.t("키보드 미리보기. 영역을 누르면 그 영역이 가운데로 오고 설정 창이 열립니다. 그다음 그 영역의 키나 버튼을 "
                     + "누르면 그 설정 창이 열립니다.",
                     "Keyboard preview. Tap an area to bring it to the center and open its settings, then tap a key or button in it "
@@ -1633,7 +1633,7 @@ final class KeyboardPreview extends FrameLayout {
             int accent = theme.accent;
             areaLabel.setTextSize(Ui.dp(ctx, 11));
             areaLabel.setTextAlign(Paint.Align.CENTER);
-            areaLabel.setFakeBoldText(true);
+            areaLabel.setFakeBoldText(!com.alternative_studios.newswipe.ui.Metro.on);   // Metro에는 굵은 글자가 없다
             // 모서리도 키 모서리를 따라 돈다 (선이 키에서 나온 거리만큼 더 둥글게).
             float r = Math.max(0f, Ui.dp(ctx, prefs.keyRadiusDp()) + outlinePadX(ctx));
             String suffix = L.t(" 설정", " settings");

@@ -135,7 +135,7 @@ final class EditorSheet {
         title = new TextView(c);
         title.setTextColor(colors.text);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
-        title.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        title.setTypeface(Metro.on ? Metro.semibold() : android.graphics.Typeface.DEFAULT_BOLD);   // Metro에는 굵은 글자가 없다
         title.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
         title.setSingleLine(true);
         title.setEllipsize(android.text.TextUtils.TruncateAt.END);

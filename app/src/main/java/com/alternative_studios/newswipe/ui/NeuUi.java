@@ -190,7 +190,12 @@ public final class NeuUi {
     public static void unclip(View v, int size) {
         if (!on) return;
         float pad = spread(v.getContext(), size);
+        // 같은 뷰에 거듭 불려도(기능 고르기 창의 칩은 스크롤할 때마다 모양을 다시 입는다) 리스너는 하나만 붙인다.
+        // 거듭 붙이면 스크롤할수록 리스너가 쌓이고 배치가 바뀔 때마다 그만큼 다시 계산한다.
+        Object old = v.getTag(com.alternative_studios.newswipe.R.id.neu_unclip);
+        if (old instanceof View.OnLayoutChangeListener) v.removeOnLayoutChangeListener((View.OnLayoutChangeListener) old);
         View.OnLayoutChangeListener l = (view, a, b, c, d, e, f, g, h) -> unclipChain(view, pad);
+        v.setTag(com.alternative_studios.newswipe.R.id.neu_unclip, l);
         v.addOnLayoutChangeListener(l);
         if (v.isLaidOut()) unclipChain(v, pad);
     }

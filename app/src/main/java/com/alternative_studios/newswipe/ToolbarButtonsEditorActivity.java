@@ -260,7 +260,7 @@ public final class ToolbarButtonsEditorActivity extends Activity {
                 dragFrom = dragTo = dragRows.indexOf(row);
                 dragDownY = ev.getRawY();
                 keyList.getParent().requestDisallowInterceptTouchEvent(true);   // 끄는 동안 화면이 스크롤되지 않게
-                row.animate().translationZ(Ui.dp(this, 8)).setDuration(120).start();
+                row.animate().translationZ(com.alternative_studios.newswipe.ui.Metro.on ? 0 : Ui.dp(this, 8)).setDuration(120).start();   // Metro에는 그림자가 없다
                 row.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
                 return true;
             case android.view.MotionEvent.ACTION_MOVE: {

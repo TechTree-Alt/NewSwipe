@@ -4349,6 +4349,7 @@ public final class SettingsActivity extends Activity {
         name.setTextColor(textColor);
         name.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
         name.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        if (Metro.on) Metro.text(name, 30, Metro.light(), 22);   // Metro: 굵기 대신 크고 가는 글자
         head.addView(name);
         TextView version = new TextView(this);
         version.setText(versionName());
@@ -4430,7 +4431,24 @@ public final class SettingsActivity extends Activity {
             // Metro: 모서리 없는 무지개 타일. 다른 Metro 버튼처럼 굵지 않은 글자이고, 누르는 동안 강조색으로 채워진다.
             android.graphics.drawable.StateListDrawable bg = new android.graphics.drawable.StateListDrawable();
             bg.addState(new int[]{android.R.attr.state_pressed}, Ui.round(accentColor, 0));
-            bg.addState(new int[0], rainbow);
+            // Metro는 그라데이션을 쓰지 않는다 (디지털답게, 꾸밈 없이): 무지개를 단색 띠 여섯 개로 나눠 칠한다.
+            bg.addState(new int[0], new android.graphics.drawable.Drawable() {
+                private final android.graphics.Paint p = new android.graphics.Paint();
+
+                @Override
+                public void draw(android.graphics.Canvas c) {
+                    android.graphics.Rect b = getBounds();
+                    float w = b.width() / (float) RAINBOW.length;
+                    for (int i = 0; i < RAINBOW.length; i++) {
+                        p.setColor(RAINBOW[i]);
+                        c.drawRect(b.left + w * i, b.top, i == RAINBOW.length - 1 ? b.right : b.left + w * (i + 1), b.bottom, p);
+                    }
+                }
+
+                @Override public void setAlpha(int alpha) { }
+                @Override public void setColorFilter(android.graphics.ColorFilter cf) { }
+                @Override public int getOpacity() { return android.graphics.PixelFormat.OPAQUE; }
+            });
             row.setBackground(bg);
             t.setTypeface(Metro.regular());
             t.setTextColor(new android.content.res.ColorStateList(new int[][]{{android.R.attr.state_pressed}, {}},

@@ -531,13 +531,7 @@ public final class AppDialog extends Dialog {
         });
         anim.addListener(new AnimatorListenerAdapter() {
             @Override
-            public void onAnimationStart(Animator animation) {
-                box.setLayerType(View.LAYER_TYPE_HARDWARE, null);
-            }
-
-            @Override
             public void onAnimationEnd(Animator animation) {
-                box.setLayerType(View.LAYER_TYPE_NONE, null);
                 if (!leaving) {
                     box.setAlpha(1f);
                     box.setRotationX(0f);
@@ -572,16 +566,15 @@ public final class AppDialog extends Dialog {
             private boolean done;
 
             @Override
-            public void onAnimationStart(Animator animation) {
-                box.setLayerType(View.LAYER_TYPE_HARDWARE, null);
-            }
-
-            @Override
             public void onAnimationEnd(Animator animation) {
                 if (done) return;
                 done = true;
-                box.setLayerType(View.LAYER_TYPE_NONE, null);
-                AppDialog.super.dismiss();
+                // 움직이는 동안 화면이 닫혔으면 창이 이미 없어 dismiss가 IllegalArgumentException을 낸다 (앱이 죽지 않게).
+                try {
+                    AppDialog.super.dismiss();
+                } catch (IllegalArgumentException ignored) {
+                    // 창이 이미 화면과 함께 사라졌다
+                }
             }
 
             @Override

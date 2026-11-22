@@ -386,7 +386,7 @@ final class OneHandPreview extends FrameLayout {
             stroke.setStyle(Paint.Style.STROKE);
             label.setTextAlign(Paint.Align.CENTER);
             label.setTextSize(Ui.dp(c, 14));
-            label.setFakeBoldText(true);
+            label.setFakeBoldText(!com.alternative_studios.newswipe.ui.Metro.on);   // Metro에는 굵은 글자가 없다
             setContentDescription(L.t("한 손 모드 미리보기. 자판 오른쪽 가장자리의 손잡이를 좌우로 끌면 자판 폭이, "
                     + "위 가장자리의 손잡이를 위·아래로 끌면 키 높이가, 아래 가장자리의 손잡이를 위·아래로 끌면 아래쪽 여백이 바뀝니다. "
                     + "아래 목록의 슬라이더로도 바꿀 수 있습니다.", "One-handed mode preview. Drag the handle on the right edge of the keyboard left or right to change the keyboard width, the handle on the top edge up or down to change the key height, and the handle on the bottom edge up or down to change the bottom padding. You can also use the sliders in the list below."));

@@ -84,18 +84,12 @@ public final class SpringMotion {
             private boolean cancelled;
 
             @Override
-            public void onAnimationStart(Animator animation) {
-                v.setLayerType(View.LAYER_TYPE_HARDWARE, null);
-            }
-
-            @Override
             public void onAnimationCancel(Animator animation) {
                 cancelled = true;
             }
 
             @Override
             public void onAnimationEnd(Animator animation) {
-                v.setLayerType(View.LAYER_TYPE_NONE, null);
                 if (cancelled) return;
                 v.setTranslationY(target);
                 if (onEnd != null) onEnd.run();

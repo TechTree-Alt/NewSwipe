@@ -577,7 +577,7 @@ public final class BottomKeysEditorActivity extends Activity {
                 dragDownY = ev.getRawY();
                 keyList.getParent().requestDisallowInterceptTouchEvent(true);   // 끄는 동안 화면이 스크롤되지 않게
                 // 크기는 그대로 두고 그림자만 띄워, 끌어 올린 줄의 좌우가 카드 밖으로 넘치지 않게 한다.
-                row.animate().translationZ(Ui.dp(this, 8)).setDuration(120).start();
+                row.animate().translationZ(com.alternative_studios.newswipe.ui.Metro.on ? 0 : Ui.dp(this, 8)).setDuration(120).start();   // Metro에는 그림자가 없다
                 row.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
                 return true;
             case android.view.MotionEvent.ACTION_MOVE: {

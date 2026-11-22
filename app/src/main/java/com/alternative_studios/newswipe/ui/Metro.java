@@ -317,11 +317,8 @@ public final class Metro {
         a.addListener(new AnimatorListenerAdapter() {
             private boolean canceled;
 
-            @Override
-            public void onAnimationStart(Animator animation) {
-                v.setLayerType(View.LAYER_TYPE_HARDWARE, null);
-            }
-
+            // 하드웨어 층은 쓰지 않는다: 회전은 그리기를 다시 하지 않는 속성이고 불투명도도 0/1로만 바뀌어 층이 필요 없다.
+            // 깃털 효과는 항목 십수 개가 함께 돌아, 층을 쓰면 화면 전환마다 GPU 메모리를 십수 MB씩 잠깐 쓴다.
             @Override
             public void onAnimationCancel(Animator animation) {
                 canceled = true;
@@ -329,7 +326,6 @@ public final class Metro {
 
             @Override
             public void onAnimationEnd(Animator animation) {
-                v.setLayerType(View.LAYER_TYPE_NONE, null);
                 if (!out || canceled) {
                     v.setRotationY(canceled && out ? 0f : to);
                     v.setAlpha(1f);
@@ -358,7 +354,7 @@ public final class Metro {
         v.setPivotY(v.getHeight() / 2f);
         camera(v);
         v.setRotationX(-30f);
-        v.animate().rotationX(0f).setDuration(IN_MS).setInterpolator(EASE_OUT).withLayer()
+        v.animate().rotationX(0f).setDuration(IN_MS).setInterpolator(EASE_OUT)   // 회전만 하므로 층 없이
                 .withEndAction(v::resetPivot).start();
     }
 

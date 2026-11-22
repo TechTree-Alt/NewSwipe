@@ -411,7 +411,7 @@ public final class EmojiPanel extends LinearLayout {
         Context c = getContext();
         LinearLayout row = new LinearLayout(c);
         row.setBackground(Ui.round(theme.popup, Ui.dp(c, 10)));
-        row.setElevation(Ui.dp(c, 6));
+        row.setElevation(com.alternative_studios.newswipe.ui.Metro.on ? 0 : Ui.dp(c, 6));   // Metro에는 그림자가 없다
         row.setPadding(Ui.dp(c, 4), Ui.dp(c, 4), Ui.dp(c, 4), Ui.dp(c, 4));
         List<String> all = new ArrayList<>();
         all.add(e.value);
