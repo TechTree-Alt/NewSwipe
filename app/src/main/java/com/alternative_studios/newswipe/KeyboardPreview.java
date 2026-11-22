@@ -361,7 +361,7 @@ final class KeyboardPreview extends FrameLayout {
         if (l == null || !(prefs.splitView() || prefs.balancedLayout())) return false;
         boolean split = prefs.splitView();
         Context c = getContext();
-        float pad = Ui.dp(c, 3), bx = boundaryX();
+        float pad = outlinePadX(c), bx = boundaryX();
         float gx = Ui.dp(c, prefs.keyGapXDp()) / 2f, gy = Ui.dp(c, prefs.keyGapYDp()) / 2f;
         // 분리 키보드의 두 묶음에는 숫자 줄(1~5, 6~0)도 들어간다. 세로 모드의 균형 배열은 숫자 줄을 뺀 글자 키만 감싼다.
         int first = numberRowShown ? 1 : 0, last = l.rows.length - 2;
@@ -1181,6 +1181,15 @@ final class KeyboardPreview extends FrameLayout {
         return Math.min(Ui.dp(c, 3), gy - Ui.dp(c, 1));
     }
 
+    /**
+     * 영역 윤곽선이 키 모양 왼쪽·오른쪽 가장자리에서 나오는 여유: 영역 윤곽선과 키 윤곽선 사이가 위·아래와 똑같게 맞춘다
+     * (위·아래 여유에서 위아래 키 윤곽선 여유를 빼고, 좌우 키 윤곽선 여유를 더한다). 좌우만 멀리 떨어져 보이지 않게.
+     */
+    private float outlinePadX(Context c) {
+        float between = outlinePadY(c) - keyOutlineOut(Ui.dp(c, prefs.keyGapYDp()));
+        return keyOutlineOut(Ui.dp(c, prefs.keyGapXDp())) + between;
+    }
+
     /** 키 층 윤곽선 사이에 늘 남기는 틈. */
     private static final float KEY_OUTLINE_GAP_DP = 2f;
     /** 키 층 윤곽선이 키 모양 가장자리에서 나오는 여유 (틈이 넉넉할 때). */
@@ -1228,14 +1237,14 @@ final class KeyboardPreview extends FrameLayout {
 
     boolean areaBounds(int area, RectF out) {
         Context c = getContext();
-        float pad = Ui.dp(c, 3);
+        float pad = outlinePadX(c);
         if (area == AREA_TOOLBAR) {
             if (bar.getParent() == null) return areaOff(AREA_TOOLBAR) && offStripBounds(placeholder, out);
             // 도구 막대의 좌우는 버튼 자리(막대의 좌우 여백 안쪽)를 따라간다: 자판의 키 윤곽선과 같은 선.
             // 키 윤곽선은 키 모양 가장자리(자리에서 키 좌우 간격의 절반 안쪽)에서 pad만큼 나온다: 도구 막대도 같은 규칙.
             float gx = Ui.dp(c, prefs.keyGapXDp()) / 2f;
-            float inL = Math.max(pad, bar.getPaddingLeft() + gx - pad);
-            float inR = Math.max(pad, bar.getPaddingRight() + gx - pad);
+            float inL = Math.max(0f, bar.getPaddingLeft() + gx - pad);
+            float inR = Math.max(0f, bar.getPaddingRight() + gx - pad);
             // 위·아래는 키 영역과 같은 규칙: 줄 가장자리에서 키 상하 간격의 절반만큼 들어갔다가 윤곽선 여유만큼 나온다.
             // 위아래 여유는 outlinePadY: 간격이 좁아도 도구 막대와 숫자 줄 윤곽선 사이가 다른 영역들처럼 일정하게 띈다.
             float gy = Ui.dp(c, prefs.keyGapYDp()) / 2f, vPad = outlinePadY(c);
