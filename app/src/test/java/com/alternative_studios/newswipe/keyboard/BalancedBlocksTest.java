@@ -348,15 +348,30 @@ public class BalancedBlocksTest {
         }
     }
 
+    /** '상세 배열 격자 정렬'을 끄면 세로 균형 배열의 격자 정렬 기능키는 상세 배열이 없을 때와 같은 한글 키 한 칸 폭이다 (묶음 폭과 상관없이). */
+    @Test
+    public void gridWithoutDetailUsesThePlainKeyWidth() throws Exception {
+        for (String layout : LAYOUTS) {
+            float plain = 10f / (Prefs.KOREAN_LAYOUT_D7.equals(layout) ? 7 : 8);
+            for (int[] v : new int[][]{{100, 0, 100, 0}, {60, -40, 60, 40}, {130, 30, 60, 40}}) {
+                KeyboardLayout l = KeyboardLayout.korean(portrait(layout, v[0], v[1], v[2], v[3], true));
+                KeyboardLayout.Row row = l.rows[l.rows.length - 1];
+                for (Key k : row.keys) if (k.type != Key.SPACE) assertEquals(layout + " 기능키", plain, k.weight, 0.001f);
+            }
+        }
+    }
+
     /**
-     * 격자 정렬: 맨 아래 줄 기능키는 스페이스바 왼쪽이 자음 키 한 칸, 오른쪽이 모음 키 한 칸 폭이라
+     * 격자 정렬('상세 배열 격자 정렬' 켬): 맨 아래 줄 기능키는 스페이스바 왼쪽이 자음 키 한 칸, 오른쪽이 모음 키 한 칸 폭이라
      * 자음·모음 폭을 바꾸면 함께 바뀐다. 줄은 꽉 찬다.
      */
     @Test
     public void gridBottomKeysFollowTheConsonantKey() throws Exception {
         for (String layout : LAYOUTS) {
             for (int[] v : new int[][]{{100, 0, 100, 0}, {60, -40, 60, 40}, {130, 30, 60, 40}, {60, 20, 90, 40}}) {
-                KeyboardLayout l = KeyboardLayout.korean(portrait(layout, v[0], v[1], v[2], v[3], true));
+                Prefs p = portrait(layout, v[0], v[1], v[2], v[3], true);
+                ((FakeSp) p.raw()).m.put(Prefs.GRID_DETAIL, true);
+                KeyboardLayout l = KeyboardLayout.korean(p);
                 float consonant = -1f, vowel = -1f;
                 for (Key k : l.rows[0].keys) {
                     if ("ㅂ".equals(k.label)) consonant = k.weight;

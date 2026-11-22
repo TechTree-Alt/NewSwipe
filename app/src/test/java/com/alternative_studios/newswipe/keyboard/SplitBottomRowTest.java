@@ -765,6 +765,7 @@ public class SplitBottomRowTest {
                 FakeSp sp = (FakeSp) p.raw();
                 if (d7) sp.m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_D7);
                 sp.m.put(Prefs.GRID_LAYOUT, true);
+                sp.m.put(Prefs.GRID_DETAIL, true);
                 sp.m.put(p.splitReachColumnKey(), true);
                 KeyboardLayout l = KeyboardLayout.korean(p);
                 float consonant = -1f, vowel = -1f;   // 왼쪽·오른쪽 묶음의 4열 키 한 칸
@@ -793,6 +794,7 @@ public class SplitBottomRowTest {
                     FakeSp sp = (FakeSp) p.raw();
                     if (d7) sp.m.put(Prefs.KOREAN_LAYOUT, Prefs.KOREAN_LAYOUT_D7);
                     sp.m.put(Prefs.GRID_LAYOUT, true);
+                    sp.m.put(Prefs.GRID_DETAIL, true);
                     sp.m.put(p.splitSpaceJoinKey(), join);
                     sp.m.put(p.splitFnWidthKey(), 150);   // 격자 정렬이면 '하단 기능키 폭'은 쓰지 않는다
                     KeyboardLayout l = KeyboardLayout.korean(p);

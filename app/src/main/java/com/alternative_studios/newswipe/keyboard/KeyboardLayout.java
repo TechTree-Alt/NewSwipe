@@ -1021,8 +1021,9 @@ public final class KeyboardLayout {
      * 양 끝 키를 한글 키 한 칸 폭으로 줄이고, 남는 폭은 양 끝 키와 가운데 키들 사이의 빈 칸으로 둔다.
      * 그래서 양 끝 키가 아래 줄 기능키와 양 끝에서 세로로 줄을 맞춘다.
      * 왼쪽 끝 키는 왼쪽(자음) 키 한 칸, 오른쪽 끝 키는 오른쪽(모음) 키 한 칸 폭으로 아래 줄의 양쪽 기능키와 맞춘다.
-     * 이 줄을 나중에 가운데에서 나눠 묶음 폭만큼 늘이거나 줄이면({@link #splitNormal}), 그만큼 미리 거꾸로 맞춰 둬서
-     * 나눈 뒤의 양 끝 키 폭이 아래 줄 기능키와 같게 한다.
+     * '상세 배열 격자 정렬'을 켰을 때 이 줄을 나중에 가운데에서 나눠 묶음 폭만큼 늘이거나 줄이면({@link #splitNormal}),
+     * 그만큼 미리 거꾸로 맞춰 둬서 나눈 뒤의 양 끝 키 폭이 아래 줄 기능키와 같게 한다.
+     * 끄면 아래 줄 기능키처럼 묶음 폭을 따라 함께 늘거나 준다.
      */
     private static Row gridSides(List<Key> keys, Prefs prefs, boolean grid) {
         if (!grid || keys.size() < 2) return new Row(1f, keys.toArray(new Key[0]));
@@ -1032,7 +1033,7 @@ public final class KeyboardLayout {
         for (Key k : middle) middleWidth += k.weight;
         float[] g = gridKeys(prefs);
         float firstW = g[0], lastW = g[1];
-        if (splitsRows(prefs)) {
+        if (gridDetail(prefs) && splitsRows(prefs)) {
             float[] b = blocks(prefs);
             if (b[1] > 0.001f) firstW = g[0] * BALANCED_HALF / b[1];
             if (b[3] > 0.001f) lastW = g[1] * BALANCED_HALF / b[3];
@@ -1060,6 +1061,11 @@ public final class KeyboardLayout {
      * 쿼티 모양 글자 줄·기호 자판 줄을 일반 자판처럼 만든 뒤 가운데에서 나눠 묶음 폭만큼 늘이거나 줄이는지
      * ({@link #splitNormal}: 분리 키보드, 또는 영어·두벌식·기호 자판의 자·모음 균형 배열).
      */
+    /** 격자 정렬의 '상세 배열 격자 정렬'을 켰는지 ({@link #gridKeys}). */
+    private static boolean gridDetail(Prefs prefs) {
+        return prefs != null && prefs.gridLayout() && prefs.gridDetail();
+    }
+
     private static boolean splitsRows(Prefs prefs) {
         return prefs != null && (prefs.splitView() || prefs.boardBalanced());
     }
@@ -1115,14 +1121,14 @@ public final class KeyboardLayout {
     private static final float SPACE_ROW_UNITS = 10f;
     /**
      * 격자 정렬에서 아래 줄 기능키 하나의 실제 너비 {스페이스바 왼쪽, 스페이스바 오른쪽} (줄 전체 10칸 기준).
-     * 보통은 둘 다 한글 자판의 글자 키 한 칸 (10 ÷ 8열, NewSwipe 단모음은 10 ÷ 7열)이다.
-     * 자·모음 균형 배열이나 분리 키보드면 왼쪽은 왼쪽(자음) 묶음의 키 한 칸, 오른쪽은 오른쪽(모음) 묶음의 키 한 칸이라
-     * 자음·모음 폭을 바꾸면 기능키 폭도 함께 바뀐다.
+     * 보통은 둘 다 한글 자판의 글자 키 한 칸 (10 ÷ 8열, NewSwipe 단모음은 10 ÷ 7열)으로, 자·모음 균형 배열이나
+     * 분리 키보드에서도 상세 배열이 없을 때와 같은 폭이다. '상세 배열 격자 정렬'을 켜면 균형 배열·분리 키보드에서
+     * 왼쪽은 왼쪽(자음) 묶음의 키 한 칸, 오른쪽은 오른쪽(모음) 묶음의 키 한 칸이라 자음·모음 폭을 바꾸면 기능키 폭도 함께 바뀐다.
      */
     private static float[] gridKeys(Prefs prefs) {
         // 영어·기호 자판도 한글 자판의 키 한 칸에 맞춘다: 한글 자판의 상세 배열로 잰다 (영어 자판의 상세 배열은 따로 정한다).
         if (prefs != null) prefs = prefs.koreanView();
-        if (balanced(prefs) || splitView(prefs)) return blockKeyWidths(prefs);
+        if (gridDetail(prefs) && (balanced(prefs) || splitView(prefs))) return blockKeyWidths(prefs);
         float w = SPACE_ROW_UNITS / koreanColumns(prefs);
         return new float[]{w, w};
     }
@@ -1448,8 +1454,8 @@ public final class KeyboardLayout {
         int cut = spaceAt >= 0 ? spaceAt : (keys.size() + 1) / 2;
         List<Key> left = new ArrayList<>(keys.subList(0, cut)), right = new ArrayList<>(keys.subList(cut, keys.size()));
         if (spaceAt >= 0 && prefs.splitSpaceJoin()) return joinedSpaceRow(left, right, b, prefs);
-        // 격자 정렬이면 기능키가 이미 자음·모음 키 한 칸 폭이라 묶음 폭으로 다시 늘이거나 줄이지 않는다.
-        if (!prefs.gridLayout()) {
+        // 상세 배열 격자 정렬이면 기능키가 이미 자음·모음 키 한 칸 폭이라 묶음 폭으로 다시 늘이거나 줄이지 않는다.
+        if (!gridDetail(prefs)) {
             for (Key k : left) k.weight *= b[1] / BALANCED_HALF;
             for (Key k : right) k.weight *= b[3] / BALANCED_HALF;
         }
@@ -1466,8 +1472,8 @@ public final class KeyboardLayout {
      * 키들만으로 줄보다 넓어지면 같은 비율로 줄인다.
      */
     private static Row joinedSpaceRow(List<Key> left, List<Key> right, float[] b, Prefs prefs) {
-        // 격자 정렬이면 기능키가 이미 자음·모음 키 한 칸 폭이라 묶음 폭·'하단 기능키 폭'으로 바꾸지 않는다.
-        if (!prefs.gridLayout()) {
+        // 상세 배열 격자 정렬이면 기능키가 이미 자음·모음 키 한 칸 폭이라 묶음 폭·'하단 기능키 폭'으로 바꾸지 않는다.
+        if (!gridDetail(prefs)) {
             float fnScale = prefs.splitFnWidth() / 100f;
             for (Key k : left) k.weight *= b[1] / BALANCED_HALF * fnScale;
             for (Key k : right) k.weight *= b[3] / BALANCED_HALF * fnScale;

@@ -342,6 +342,7 @@ public class DubeolsikLayoutTest {
     public void gridKeepsTheBottomRowOnTheGrid() throws Exception {
         FakeSp sp = dubeolsik(true);
         sp.m.put(Prefs.GRID_LAYOUT, true);
+        sp.m.put(Prefs.GRID_DETAIL, true);
         KeyboardLayout l = KeyboardLayout.korean(portrait(sp));
         KeyboardLayout.Row bottom = l.rows[l.rows.length - 1];
         assertEquals(10f, total(bottom), 1e-3f);
