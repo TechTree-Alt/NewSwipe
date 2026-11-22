@@ -16,6 +16,7 @@ import com.alternative_studios.newswipe.keyboard.BottomKeys;
 import com.alternative_studios.newswipe.keyboard.KeyboardLayout;
 import com.alternative_studios.newswipe.keyboard.KeyboardTheme;
 import com.alternative_studios.newswipe.keyboard.KeyboardView;
+import com.alternative_studios.newswipe.ui.Metro;
 import com.alternative_studios.newswipe.ui.NeuUi;
 import com.alternative_studios.newswipe.ui.Chevron;
 import com.alternative_studios.newswipe.ui.ExpressiveSwitch;
@@ -84,6 +85,7 @@ public final class BottomKeysEditorActivity extends Activity {
                 + BottomKeys.MAX_SHOWN + "개까지 켤 수 있습니다.", "Drag ≡ on the right to reorder. Up to " + BottomKeys.MAX_SHOWN
                 + " keys can be on in the bottom row, including the space bar."), 13, hintColor);
         note.setPadding(Ui.dp(this, 4), 0, 0, Ui.dp(this, 4));
+        if (com.alternative_studios.newswipe.ui.Metro.on) note.setPadding(0, 0, 0, Ui.dp(this, 4));   // Metro: 다른 줄과 같은 왼쪽 선
         list.addView(note);
 
         // 미리보기: 실제 키보드 뷰에 아래 두 줄(Shift·⌫ 줄과 맨 아래 줄)만 넣어 그린다. 눌러도 반응하지 않는다.
@@ -129,6 +131,10 @@ public final class BottomKeysEditorActivity extends Activity {
         keys.setClipChildren(false);
         keys.setClipToPadding(false);
         list.setClipChildren(false);
+        if (Metro.on) {   // Metro에는 카드가 없다: 줄이 바탕 위에 바로 놓인다 (입력 언어 화면과 같다)
+            keys.setBackground(null);
+            keys.setPadding(0, 0, 0, 0);
+        }
         LinearLayout.LayoutParams klp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         klp.topMargin = Ui.dp(this, 12);
@@ -142,6 +148,10 @@ public final class BottomKeysEditorActivity extends Activity {
         fixed.setBackground(Ui.round(card, Ui.dp(this, 16)));
         if (NeuUi.on) NeuUi.card(fixed, Ui.dp(this, 16));   // Neumorphism: 솟아오른 카드
         fixed.setPadding(Ui.dp(this, 6), Ui.dp(this, 4), Ui.dp(this, 6), Ui.dp(this, 4));
+        if (Metro.on) {
+            fixed.setBackground(null);
+            fixed.setPadding(0, 0, 0, 0);
+        }
         LinearLayout.LayoutParams flp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         flp.topMargin = Ui.dp(this, 12);
@@ -223,6 +233,7 @@ public final class BottomKeysEditorActivity extends Activity {
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         lp.setMargins(0, Ui.dp(this, 6), Ui.dp(this, 10), Ui.dp(this, 6));
         row.setLayoutParams(lp);
+        SettingsWidgets.metroButton(row);   // Metro: 다른 버튼처럼 테두리 네모
         return row;
     }
 
@@ -307,6 +318,7 @@ public final class BottomKeysEditorActivity extends Activity {
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         lp.setMargins(0, Ui.dp(this, 6), Ui.dp(this, 10), Ui.dp(this, 6));
         row.setLayoutParams(lp);
+        SettingsWidgets.metroButton(row);   // Metro: 다른 버튼처럼 테두리 네모
         return row;
     }
 
@@ -369,6 +381,7 @@ public final class BottomKeysEditorActivity extends Activity {
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         lp.setMargins(0, Ui.dp(this, 6), Ui.dp(this, 10), Ui.dp(this, 6));
         row.setLayoutParams(lp);
+        SettingsWidgets.metroButton(row);   // Metro: 다른 버튼처럼 테두리 네모
         return row;
     }
 
@@ -416,8 +429,11 @@ public final class BottomKeysEditorActivity extends Activity {
         row.setPadding(Ui.dp(this, 10), Ui.dp(this, 8), Ui.dp(this, 10), Ui.dp(this, 8));
         LinearLayout texts = new LinearLayout(this);
         texts.setOrientation(LinearLayout.VERTICAL);
-        texts.addView(text(label, 16, textColor));
-        if (hint != null) texts.addView(text(hint, 12, hintColor));
+        TextView name = text(label, 16, textColor);
+        texts.addView(name);
+        TextView hintView = hint == null ? null : text(hint, 12, hintColor);
+        if (hintView != null) texts.addView(hintView);
+        metroRow(row, name, hintView);
         row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         ExpressiveSwitch sw = new ExpressiveSwitch(this, accentColor, onAccentColor, hintColor, card);
         sw.setCheckedImmediately(shown);
@@ -445,7 +461,9 @@ public final class BottomKeysEditorActivity extends Activity {
         TextView nameView = text(rowName(id), 16, textColor);
         texts.addView(nameView);
         String hint = BottomKeys.hint(id);
-        if (hint != null) texts.addView(text(hint, 12, hintColor));
+        TextView hintView = hint == null ? null : text(hint, 12, hintColor);
+        if (hintView != null) texts.addView(hintView);
+        metroRow(row, nameView, hintView);
         // 쉼표·온점 키는 켜면 하위 항목으로 다른 글자로 바꾸는 버튼이 나온다 (설정 화면의 하위 항목과 같은 모양).
         View charGroup = null;
         if (BottomKeys.COMMA.equals(id) || BottomKeys.PERIOD.equals(id)) {
@@ -676,4 +694,13 @@ public final class BottomKeysEditorActivity extends Activity {
     public void onBackPressed() {
         if (!SettingsFrame.consumeBack(this) && !SettingsFrame.metroBack(this)) super.onBackPressed();
     }
+    /** Metro: 줄을 다른 설정 줄처럼 (크고 가는 이름, 카드 없이 바탕색, 왼쪽 선 맞춤). 끌어 올려도 아래 줄이 비치지 않게 바탕을 칠한다. */
+    private void metroRow(LinearLayout row, TextView name, TextView hint) {
+        if (!Metro.on) return;
+        row.setPadding(0, row.getPaddingTop(), row.getPaddingRight(), row.getPaddingBottom());
+        row.setBackground(Ui.round(bg, 0));
+        Metro.text(name, 20, Metro.light(), 16);
+        if (hint != null) Metro.text(hint, 14, Metro.regular(), 12);
+    }
+
 }

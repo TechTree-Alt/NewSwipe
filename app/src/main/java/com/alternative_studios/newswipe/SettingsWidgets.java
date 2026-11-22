@@ -306,6 +306,35 @@ final class SettingsWidgets {
         return new ValueRow(row, v);
     }
 
+    /**
+     * Metro: 직접 만든 실행 버튼 줄을 다른 Metro 버튼처럼 바꾼다 (글자 색 테두리의 네모, 누르는 동안 강조색으로 채워지고 글자는 그 위의 색).
+     * Metro 모드가 아니면 아무것도 하지 않는다.
+     */
+    static void metroButton(View row) {
+        if (!Metro.on) return;
+        Context c = row.getContext();
+        AppTheme t = AppTheme.of(c);
+        android.graphics.drawable.GradientDrawable idle = Ui.round(0, 0);
+        idle.setStroke(Ui.dp(c, 2), t.text);
+        android.graphics.drawable.StateListDrawable bg = new android.graphics.drawable.StateListDrawable();
+        bg.addState(new int[]{android.R.attr.state_pressed}, Ui.round(t.accent, 0));
+        bg.addState(new int[0], idle);
+        row.setBackground(bg);
+        metroInk(row, new android.content.res.ColorStateList(new int[][]{{android.R.attr.state_pressed}, {}},
+                new int[]{t.onAccent, t.text}), true);
+        Metro.tilt(row);
+    }
+
+    private static void metroInk(View v, android.content.res.ColorStateList ink, boolean root) {
+        if (!root) v.setDuplicateParentStateEnabled(true);
+        if (v instanceof TextView) {
+            ((TextView) v).setTextColor(ink);
+        } else if (v instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) metroInk(g.getChildAt(i), ink, false);
+        }
+    }
+
     /** 위 설정의 하위 설정들을 묶는다: 왼쪽 들여쓰기와 세로 안내선으로 위계를 보여 준다. */
     View subGroup(View... children) {
         LinearLayout group = new LinearLayout(c);

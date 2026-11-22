@@ -83,6 +83,7 @@ public final class ShortcutEditorActivity extends Activity {
                 + "문장을 눌러 입력하면 줄임말이 그 문장으로 바뀝니다.", "Type a shortcut to see its phrase in the suggestions (e.g. 'ㅈㄱㅈ' → '지금 가는 중'). Shortcuts can only use Korean (including single consonants and vowels) or English letters, and English is not case-sensitive. Tap the phrase to replace the shortcut with it."), 13, hintColor);
         note.setLineSpacing(Ui.dp(this, 3), 1f);
         note.setPadding(Ui.dp(this, 4), 0, 0, Ui.dp(this, 8));
+        if (com.alternative_studios.newswipe.ui.Metro.on) note.setPadding(0, 0, 0, Ui.dp(this, 8));   // Metro: 다른 줄과 같은 왼쪽 선
         list.addView(note);
 
         list.addView(actionRow(L.t("단축어 추가", "Add text shortcut"), v -> edit(null)));
@@ -115,6 +116,7 @@ public final class ShortcutEditorActivity extends Activity {
         clear.setBackground(Ui.ripple(accentColor & 0x00FFFFFF | 0x33000000,
                 Ui.round(accentColor & 0x00FFFFFF | 0x1F000000, Ui.dp(this, 12)), Ui.dp(this, 12)));
         if (NeuUi.on) NeuUi.button(clear, NeuUi.surface, Ui.dp(this, 12));   // Neumorphism: 솟아오른 버튼
+        SettingsWidgets.metroButton(clear);
         clear.setOnClickListener(v -> AppTheme.accentBuilder(AppTheme.dialogContext(this))
                 .setTitle(L.t("단축어 모두 지우기", "Delete all text shortcuts"))
                 .setMessage(L.t("정해 둔 단축어 " + all.size() + "개를 모두 지웁니다. 되돌릴 수 없습니다.",
@@ -149,6 +151,7 @@ public final class ShortcutEditorActivity extends Activity {
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         lp.topMargin = Ui.dp(this, 6);
         row.setLayoutParams(lp);
+        SettingsWidgets.metroButton(row);   // Metro: 다른 버튼처럼 테두리 네모
         return row;
     }
 
