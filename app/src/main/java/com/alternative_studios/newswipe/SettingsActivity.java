@@ -120,6 +120,8 @@ public final class SettingsActivity extends Activity {
         String sectionName = sectionId == null ? null : sectionTitle(sectionId);
         // 키보드 사용자화는 지금 화면의 키보드를 편집하므로 제목에 그 키보드의 이름을 붙인다.
         if (KEYBOARD.equals(sectionId)) sectionName = editorTitle(editorProfileId);
+        // Metro UI: 메뉴에 들어갔을 때 위에 크게 뜨는 제목은 짧게 (메인 화면의 메뉴 이름은 그대로).
+        if (Metro.on && sectionId != null && shortTitle(sectionId) != null) sectionName = shortTitle(sectionId);
         SettingsFrame frame = sectionName == null
                 ? new SettingsFrame(this, getString(R.string.app_name), L.t("밀어서 입력하고 조작하는 한국어 입력 시스템", "Swipe to type and control, in Korean and English"))
                         .withSearch(this::onSearchQuery)
@@ -232,8 +234,11 @@ public final class SettingsActivity extends Activity {
      * 밀어서 글자 입력·밀어서 기능·도구 막대 메뉴를 합쳤다). 목록의 기본값으로 되돌리기는 설정 범위(Prefs.editorResetChoices)로 고른다.
      */
     private static final String KEYBOARD = "keyboard";
-    /** 입력 언어 화면 (LanguageOrderEditorActivity). 메뉴와 검색에서 설정 화면 대신 그 화면을 연다. */
-    private static final String LANGUAGES = "languages";
+    /**
+     * 입력 언어 화면. 보통은 메뉴와 검색에서 설정 화면 대신 LanguageOrderEditorActivity를 열고, Metro UI에서는 다른 메뉴처럼
+     * 이 화면의 피벗 한 칸으로 연다 (내용은 둘 다 LanguageOrderEditor가 만든다).
+     */
+    static final String LANGUAGES = "languages";
 
     /** 하위 메뉴 정의: {id, 제목, 설명}. */
     private static String[][] sections() {
@@ -291,6 +296,7 @@ public final class SettingsActivity extends Activity {
     private void buildScreen(String id) {
         switch (id) {
             case KEYBOARD: buildKeyboardEditor(); break;
+            case LANGUAGES: new LanguageOrderEditor(this, list).render(); break;
             case "onehand": buildOneHand(); break;
             case "theme": buildTheme(); break;
             case "words": buildWords(); break;
@@ -309,7 +315,8 @@ public final class SettingsActivity extends Activity {
 
     /** 기본값으로 되돌릴 설정이 있는 메뉴인지 (설정 메뉴. 정보·가져오기 및 내보내기·학습한 단어 등은 제외). */
     private static boolean hasReset(String id) {
-        for (String[] sec : sections()) if (sec[0].equals(id) && !"backup".equals(id)) return true;
+        // 입력 언어는 화면 안에 '언어 순서' 되돌리기가 따로 있다.
+        for (String[] sec : sections()) if (sec[0].equals(id) && !"backup".equals(id) && !LANGUAGES.equals(id)) return true;
         return false;
     }
 
@@ -391,11 +398,32 @@ public final class SettingsActivity extends Activity {
     /** 피벗인 화면의 틀 (아니면 null). */
     private SettingsFrame pivotFrame;
 
-    /** 피벗으로 오가는 설정 메뉴 {id, 이름} (입력 언어는 다른 화면이라 뺀다). 끝에서 밀면 처음으로 돈다. */
+    /** 피벗으로 오가는 설정 메뉴 {id, 머리글에 쓰는 짧은 이름}. 끝에서 밀면 처음으로 돈다. */
     private static String[][] pivotRing() {
-        java.util.List<String[]> out = new java.util.ArrayList<>();
-        for (String[] s : sections()) if (!LANGUAGES.equals(s[0])) out.add(s);
-        return out.toArray(new String[0][]);
+        String[][] all = sections();
+        String[][] out = new String[all.length][];
+        for (int i = 0; i < all.length; i++) out[i] = new String[]{all[i][0], shortTitle(all[i][0])};
+        return out;
+    }
+
+    /**
+     * Metro UI에서 메뉴에 들어갔을 때 위에 크게 뜨는 짧은 제목 (피벗 머리글에 이어지는 이름도 이것이다).
+     * 메인 화면의 메뉴 이름은 그대로 둔다. 짧은 이름이 따로 없는 화면은 null.
+     */
+    static String shortTitle(String id) {
+        switch (id) {
+            case LANGUAGES: return L.t("언어", "languages");
+            case KEYBOARD: return L.t("사용자화", "customize");
+            case "theme": return L.t("테마", "theme");
+            case "feedback": return L.t("소리", "sound");
+            case "words": return L.t("추천", "suggestions");
+            case "clipemoji": return L.t("클립보드", "clipboard");
+            case "onehand": return L.t("한 손", "one-handed");
+            case "backup": return L.t("백업", "backup");
+            case "lab": return L.t("실험실", "labs");
+            case "app": return L.t("정보", "about");
+            default: return null;
+        }
     }
 
     private Metro.Pivot.Host pivotHost(String[][] ring, int index) {
@@ -485,7 +513,7 @@ public final class SettingsActivity extends Activity {
 
     private void openSection(String id) {
         if (LANGUAGES.equals(id)) {
-            startActivity(new Intent(this, LanguageOrderEditorActivity.class));
+            startActivity(LanguageOrderEditorActivity.intent(this));
             return;
         }
         startActivity(new Intent(this, SettingsActivity.class).putExtra(EXTRA_SECTION, id));
@@ -526,9 +554,9 @@ public final class SettingsActivity extends Activity {
             {KEYBOARD, L.t("기능키 순서·유무 사용자화", "Customize function keys"), L.t("맨 아래 줄 하단 키 쉼표 지구본 온점 엔터 언어 전환 키 기호 자판 이모지 키", "bottom row keys comma globe period enter language switch symbol keyboard emoji key")},
             {KEYBOARD, L.t("격자 정렬", "Grid alignment"), L.t("그리드 정렬 칸", "grid align columns")},
             // 화면 모드·강조 색은 소제목뿐이라 검색 목록에 없다: 테마 화면 자체로 찾게 한다.
-            {"theme", L.t("테마", "Theme"), L.t("다크 라이트 어두운 밝은 야간 화면 모드 색상 컬러 포인트 강조 색", "dark light night mode theme color accent")},
+            {"theme", L.t("테마", "Theme"), L.t("다크 라이트 어두운 밝은 야간 화면 모드 색상 컬러 포인트 강조 색 디자인 모드 뉴모피즘 Neumorphism 메트로 Metro 윈도우 폰 윈도우폰 타일 루미아",
+                    "dark light night mode theme color accent design mode neumorphism metro windows phone wp7 wp8 tiles lumia")},
             {"theme", L.t("색 정렬", "Color alignment"), L.t("키 색", "Key colors")},
-            {"theme", "Metro UI", L.t("메트로 윈도우 폰 윈도우폰 타일 루미아 디자인 windows phone", "metro windows phone wp7 wp8 tiles lumia design")},
             {KEYBOARD, L.t("문자 길게 누르기 시간", "Character long-press delay"), L.t("롱프레스 길게 누르기 시간 지연 특수문자 반복 입력 연타 연속 입력", "long press delay time special characters repeat")},
             {KEYBOARD, L.t("기능키 길게 누르기 시간", "Function key long-press delay"), L.t("롱프레스 시간 길게 눌러 지우기 이모지 입력기 선택", "long press delay hold delete emoji keyboard picker")},
             {KEYBOARD, L.t("쌍자음 인식 시간", "Double consonant tap window"), L.t("연속 탭 연속 누르기 된소리 ㄲ ㅆ 시간", "double tap repeat ㄲ ㅆ time")},
@@ -2216,8 +2244,8 @@ public final class SettingsActivity extends Activity {
         if (prefs.neumorphism() || prefs.metro()) {
             // Neumorphism·Metro 디자인이 키 그림자 대신 쓰이므로, 저장된 값은 그대로 두고 꺼진 모양으로 흐리게 막아 둔다.
             View row = toggle(L.t("키 그림자", "Key shadow"), prefs.metro()
-                    ? L.t("Metro UI 사용 중에는 사용할 수 없습니다.", "Not available while Metro UI is on.")
-                    : L.t("Neumorphism 디자인 사용 중에는 사용할 수 없습니다.", "Not available while Neumorphism design is on."), false, on -> { });
+                    ? L.t("Metro 모드에서는 사용할 수 없습니다.", "Not available in Metro mode.")
+                    : L.t("Neumorphism 모드에서는 사용할 수 없습니다.", "Not available in Neumorphism mode."), false, on -> { });
             disableToggle(row);
             look.addView(row);
         } else {
@@ -3317,41 +3345,56 @@ public final class SettingsActivity extends Activity {
                 L.t("Shift 키와 ⌫를 글자 키 색으로, 스페이스바는 다른 기능키 색으로 바꿉니다.", "Gives Shift and ⌫ the letter key color, and the space bar the other function key color."),
                 Prefs.GRID_COLORS, prefs.gridColors()));
 
-        if (SHOW_NEUMORPHISM) {
-            LinearLayout neu = section("Neumorphism");
-            if (prefs.metro()) {
-                // Metro UI가 Neumorphism 대신 쓰이므로, 저장된 값은 그대로 두고 꺼진 모양으로 흐리게 막아 둔다.
-                View row = toggle(L.t("Neumorphism 디자인", "Neumorphism design"),
-                        L.t("Metro UI 사용 중에는 사용할 수 없습니다.", "Not available while Metro UI is on."), false, on -> { });
-                disableToggle(row);
-                neu.addView(row);
-            } else {
-                neu.addView(toggle(L.t("Neumorphism 디자인", "Neumorphism design"),
-                        L.t("키와 도구 막대·클립보드·이모지 창의 버튼이 바탕에서 부드럽게 솟아오르고, 누르면 안으로 쑥 들어가는 모양으로 그립니다. "
-                                + "켜면 키 그림자 대신 쓰입니다.", "Draws keys and the buttons on the toolbar, clipboard and emoji panels as if they rise softly from the background and sink in when pressed. Replaces key shadows when on."),
-                        Prefs.NEUMORPHISM, prefs.neumorphism()));
-            }
-        }
-
-        // 맨 아래: Metro UI (실험적). 켜고 끄면 화면 전체의 모양이 바뀌므로 이 화면을 새 모양으로 다시 만든다.
-        LinearLayout metro = section("Metro UI");
-        metro.addView(toggle(L.t("Metro UI", "Metro UI"),
-                L.t("앱 전체의 디자인과 애니메이션을 Windows Phone 7·8의 Metro UI처럼 바꿉니다. 각진 타일과 큰 글자, "
-                        + "턴스타일 화면 전환과 누른 자리로 기울어지는 틸트 효과를 씁니다. 켜면 Neumorphism 디자인, 키 그림자, 키 곡률 대신 쓰입니다.",
-                        "Makes the whole app look and move like the Metro UI of Windows Phone 7 and 8: square tiles, big type, "
-                                + "turnstile page transitions and the tilt effect. Replaces Neumorphism, key shadows and key corner radius when on."),
-                prefs.metro(), on -> {
-                    prefs.raw().edit().putBoolean(Prefs.METRO, on).apply();
-                    // 스위치가 바뀌는 모습이 보인 뒤에 다시 만든다.
-                    list.postDelayed(() -> {
-                        if (!isFinishing() && !isDestroyed()) recreate();
-                    }, 250);
-                }));
-        metro.addView(note(L.t("실험적인 기능입니다. 일부 화면은 아직 원래 모양으로 보일 수 있습니다.",
-                "Experimental. Some screens may still look the same as before.")));
+        buildDesignMode();
     }
 
-    /** Neumorphism 디자인 토글을 테마 화면에 보일지 (잠시 숨겨야 할 때 false로). 숨겨도 기능과 저장된 값은 그대로다. */
+    /** 디자인 모드: 기본, Neumorphism, Metro. 값은 예전처럼 두 스위치(NEUMORPHISM, METRO)에 저장하되 하나만 켜진다. */
+    private static final int MODE_DEFAULT = 0, MODE_NEU = 1, MODE_METRO = 2;
+
+    /**
+     * 테마 화면 맨 아래의 '모드': 앱 전체의 디자인을 고른다. 고르면 화면 전체의 모양이 바뀌므로 이 화면을 새 모양으로 다시 만든다.
+     * 고른 모드의 설명이 아래에 보인다.
+     */
+    private void buildDesignMode() {
+        LinearLayout box = section(L.t("모드", "Mode"));
+        java.util.List<String> labels = new java.util.ArrayList<>();
+        java.util.List<Integer> modes = new java.util.ArrayList<>();
+        labels.add(L.t("기본", "Default"));
+        modes.add(MODE_DEFAULT);
+        if (SHOW_NEUMORPHISM || prefs.neumorphism()) {
+            labels.add("Neumorphism");
+            modes.add(MODE_NEU);
+        }
+        labels.add("Metro");
+        modes.add(MODE_METRO);
+        int current = prefs.metro() ? MODE_METRO : prefs.neumorphism() ? MODE_NEU : MODE_DEFAULT;
+        box.addView(choiceRow(labels.toArray(new String[0]), Math.max(0, modes.indexOf(current)), i -> {
+            int mode = modes.get(i);
+            prefs.raw().edit().putBoolean(Prefs.NEUMORPHISM, mode == MODE_NEU).putBoolean(Prefs.METRO, mode == MODE_METRO).apply();
+            recreate();
+        }));
+        String desc;
+        if (current == MODE_NEU) {
+            desc = L.t("키와 도구 막대·클립보드·이모지 창의 버튼이 바탕에서 부드럽게 솟아오르고, 누르면 안으로 쑥 들어가는 모양으로 그립니다. "
+                    + "키 그림자 대신 쓰입니다.", "Draws keys and the buttons on the toolbar, clipboard and emoji panels as if they rise softly "
+                    + "from the background and sink in when pressed. Replaces key shadows.");
+        } else if (current == MODE_METRO) {
+            desc = L.t("앱 전체의 디자인과 애니메이션을 Windows Phone 7·8의 Metro UI처럼 바꿉니다. 각진 타일과 큰 글자, 턴스타일 화면 전환과 "
+                    + "누른 자리로 기울어지는 틸트 효과를 쓰고, 설정 메뉴 사이를 가로로 밀어 오갑니다. 키 그림자와 키 곡률 대신 쓰입니다. 실험적인 기능입니다.",
+                    "Makes the whole app look and move like the Metro UI of Windows Phone 7 and 8: square tiles, big type, turnstile page "
+                            + "transitions and the tilt effect, and you swipe sideways between settings menus. Replaces key shadows and key corner "
+                            + "radius. Experimental.");
+        } else {
+            desc = L.t("Material 3 Expressive에서 영감을 받은 NewSwipe의 기본 디자인입니다.",
+                    "NewSwipe's default design, inspired by Material 3 Expressive.");
+        }
+        box.addView(note(desc));
+    }
+
+    /**
+     * 모드 고르기에 Neumorphism을 보일지 (잠시 숨겨야 할 때 false로). 숨겨도 기능과 저장된 값은 그대로이고, 이미 Neumorphism을 쓰고
+     * 있으면 보인다.
+     */
     private static final boolean SHOW_NEUMORPHISM = true;
 
     private static int indexOf(String[] values, String v) {

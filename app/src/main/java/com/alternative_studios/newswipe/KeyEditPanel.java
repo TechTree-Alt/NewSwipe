@@ -572,7 +572,7 @@ final class KeyEditPanel {
                     prefs.numberPadForSymbols(), on -> put(Prefs.NUMBER_PAD_SYMBOLS, on)));
         } else if (key.type == Key.LANGUAGE) {
             LinearLayout press = section(L.t("누르기", "Tap"));
-            press.addView(button(L.t("입력 언어", "Input languages"), v -> open(new Intent(a, LanguageOrderEditorActivity.class))));
+            press.addView(button(L.t("입력 언어", "Input languages"), v -> open(LanguageOrderEditorActivity.intent(a))));
             press.addView(note(L.t("🌐︎로 바꿀 언어를 켜고 끄며, '언어 고르기' 말풍선의 차례를 정합니다.", "Turns on the languages 🌐︎ switches between and sets their order in the 'Pick language' popup.")));
         } else if (key.type == Key.SPACE) {
             buildSpacePress();
