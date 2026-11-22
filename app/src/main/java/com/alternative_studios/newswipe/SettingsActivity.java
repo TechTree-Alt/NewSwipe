@@ -2366,7 +2366,9 @@ public final class SettingsActivity extends Activity {
                 }));
         input.addView(vowel[0].view);
         input.addView(note(L.t("아래로 밀기는 자음·모음 키를 아래로 밀어(ㄱ→ㄲ, ㅏ→ㅑ), 두 번 연속으로 누르기는 같은 키를 두 번 눌러(ㄱㄱ→ㄲ, ㅏㅏ→ㅑ) "
-                + "입력합니다.", "Swipe down: swipe a consonant or vowel key down (ㄱ→ㄲ, ㅏ→ㅑ). Double tap: tap the same key twice (ㄱㄱ→ㄲ, ㅏㅏ→ㅑ).")));
+                + "입력합니다. 이중모음을 아래로 밀어 입력할 때 모음 키를 민 채 손가락을 멈추고 있으면 그 이중모음이 계속 입력됩니다(ㅜ↓ → ㅠㅠㅠ).",
+                "Swipe down: swipe a consonant or vowel key down (ㄱ→ㄲ, ㅏ→ㅑ). Double tap: tap the same key twice (ㄱㄱ→ㄲ, ㅏㅏ→ㅑ). "
+                + "Swipe a vowel key down and hold still to keep typing its Y-vowel (ㅜ↓ → ㅠㅠㅠ).")));
     }
 
     /** 쌍자음·이중모음 입력 방식을 고르는 창 (아래로 밀기·두 번 연속으로 누르기·둘 다). */

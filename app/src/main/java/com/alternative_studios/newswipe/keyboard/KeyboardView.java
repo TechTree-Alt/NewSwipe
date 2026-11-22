@@ -11,6 +11,7 @@ import android.util.TypedValue;
 import android.view.MotionEvent;
 import android.view.View;
 
+import com.alternative_studios.newswipe.hangul.HangulComposer;
 import com.alternative_studios.newswipe.ui.Neu;
 
 import java.util.ArrayList;
@@ -48,6 +49,14 @@ public final class KeyboardView extends View {
          * 탭이 아니므로 쌍자음·이중모음의 연속 탭 판단에 들어가지 않는다.
          */
         void onKeyRepeat(Key key);
+
+        /**
+         * 모음 키를 아래로 민 채 손가락을 멈추고 있는 동안 그 ㅣ계 이중모음(text)을 반복해서 입력한다 (ㅜ↓ 멈춤 → ㅠㅠㅠ).
+         * 처음 한 글자도 여기로 온다 (손을 떼도 onKeySwipe는 따로 오지 않는다).
+         */
+        default void onKeySwipeRepeat(Key key, String text) {
+            onKeySwipe(key, text);
+        }
 
         /** 키를 밀거나 길게 눌러 정해 둔 기능(SwipeAction ID)을 실행하라는 요청. */
         void onKeyFunction(Key key, String actionId);
@@ -111,6 +120,8 @@ public final class KeyboardView extends View {
     private static final int SELECT = 11;
     /** 문자 키를 위로 밀고 있는 중 (손을 떼면 밀기 시작한 자리의 추천 단어를 입력한다). */
     private static final int PICK_SWIPE = 12;
+    /** 모음 키를 아래로 민 채 멈춰 ㅣ계 이중모음을 연속 입력하는 중 (손을 뗄 때까지 계속 입력한다). */
+    private static final int SWIPE_REPEAT = 13;
 
     private static final class Pointer {
         int id;
@@ -137,6 +148,8 @@ public final class KeyboardView extends View {
         boolean selectMoved;
         /** 이번 터치에서 커서 이동을 시작했다고 이미 알렸는지. */
         boolean cursorStarted;
+        /** 아래로 민 모음 키에서 손가락이 멈추기 시작한 자리 (이 자리에서 멈춰 있으면 ㅣ계 이중모음을 연속 입력한다). */
+        float holdX, holdY;
     }
 
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -228,6 +241,73 @@ public final class KeyboardView extends View {
             handler.postDelayed(this, 60);
         }
     };
+
+    /** 모음 키를 아래로 민 채 멈추면 ㅣ계 이중모음을 연속 입력할지 ('이중모음 입력'이 '아래로 밀기'나 '둘 다'). */
+    private boolean vowelSwipeHold;
+    /** 아래로 민 채 멈추기를 지켜보는(또는 연속 입력 중인) 손가락. */
+    private Pointer swipeHoldPointer;
+    /** 손가락이 이만큼 안에서만 움직이면 멈춘 것으로 본다 (미는 거리에 대한 비율). */
+    private static final float SWIPE_HOLD_SLOP = 0.3f;
+    private final Runnable swipeHoldRunnable = new Runnable() {
+        @Override
+        public void run() {
+            Pointer p = swipeHoldPointer;
+            if (p == null || !pointers.contains(p) || !swipeHoldAllowed(p)) return;
+            p.mode = SWIPE_REPEAT;
+            markChord();
+            swipeRepeatRunnable.run();
+            invalidate();
+        }
+    };
+    private final Runnable swipeRepeatRunnable = new Runnable() {
+        @Override
+        public void run() {
+            Pointer p = swipeHoldPointer;
+            if (p == null || p.mode != SWIPE_REPEAT || !pointers.contains(p) || listener == null) return;
+            String t = p.key.swipeText(p.swipeDir);
+            if (t == null) return;
+            listener.onKeySwipeRepeat(p.key, t);
+            handler.postDelayed(this, 60);
+        }
+    };
+
+    public void setVowelSwipeHold(boolean on) {
+        vowelSwipeHold = on;
+        if (!on) cancelSwipeHold();
+    }
+
+    /** 이 손가락이 한글 모음 키를 아래로 밀어 ㅣ계 이중모음(ㅜ→ㅠ, ㅗ→ㅛ …)을 고른 상태인지. */
+    private boolean swipeHoldAllowed(Pointer p) {
+        if (!vowelSwipeHold || p.mode != SWIPED || p.swipeDir != Key.SWIPE_DOWN || p.key.type != Key.CHAR
+                || deferred != null || layout == null || layout.kind != KeyboardLayout.KOREAN) return false;
+        String label = p.key.label;
+        return label != null && label.length() == 1 && HangulComposer.isVowel(label.charAt(0))
+                && VowelSwipes.isIotized(p.key.swipeText(Key.SWIPE_DOWN));
+    }
+
+    /**
+     * 손가락이 움직였다: 모음을 아래로 민 상태면 멈춘 자리에서 '문자 길게 누르기 시간'을 다시 잰다.
+     * 그 시간 동안 멈춰 있으면 ㅣ계 이중모음 연속 입력을 시작한다.
+     */
+    private void updateSwipeHold(Pointer p, float x, float y) {
+        if (!swipeHoldAllowed(p)) {
+            if (swipeHoldPointer == p) cancelSwipeHold();
+            return;
+        }
+        if (swipeHoldPointer != p || Math.hypot(x - p.holdX, y - p.holdY) > swipeThreshold * SWIPE_HOLD_SLOP) {
+            handler.removeCallbacks(swipeHoldRunnable);
+            swipeHoldPointer = p;
+            p.holdX = x;
+            p.holdY = y;
+            handler.postDelayed(swipeHoldRunnable, longPressMs);
+        }
+    }
+
+    private void cancelSwipeHold() {
+        handler.removeCallbacks(swipeHoldRunnable);
+        handler.removeCallbacks(swipeRepeatRunnable);
+        swipeHoldPointer = null;
+    }
 
     public void setRepeatChars(java.util.Set<String> chars) {
         repeatChars = chars;
@@ -712,8 +792,8 @@ public final class KeyboardView extends View {
         if (showPreview) {
             for (int i = 0; i < pointers.size(); i++) {
                 Pointer p = pointers.get(i);
-                if (p.key.type == Key.CHAR && (p.mode == NORMAL || p.mode == SWIPED)) {
-                    String swiped = p.mode == SWIPED ? p.key.swipeText(p.swipeDir) : null;
+                if (p.key.type == Key.CHAR && (p.mode == NORMAL || p.mode == SWIPED || p.mode == SWIPE_REPEAT)) {
+                    String swiped = p.mode == SWIPED || p.mode == SWIPE_REPEAT ? p.key.swipeText(p.swipeDir) : null;
                     drawPreview(c, p.key, swiped != null ? swiped : displayLabel(p.key));
                 }
             }
@@ -1190,6 +1270,7 @@ public final class KeyboardView extends View {
             cancelLongPress(p);
             if (p.mode == REPEAT) handler.removeCallbacks(repeatRunnable);
             if (p.mode == CHAR_REPEAT) stopCharRepeat();
+            if (p == swipeHoldPointer) cancelSwipeHold();
             if (p == popupPointer) closePopup();
             p.mode = CONSUMED;
         }
@@ -1294,6 +1375,7 @@ public final class KeyboardView extends View {
                     } else {
                         p.mode = NORMAL;
                     }
+                    updateSwipeHold(p, x, y);
                 }
                 break;
             case CURSOR: {
@@ -1379,7 +1461,9 @@ public final class KeyboardView extends View {
 
     private void release(Pointer p) {
         cancelLongPress(p);
-        if (listener == null) return;
+        boolean swipeRepeating = p.mode == SWIPE_REPEAT;
+        if (p == swipeHoldPointer) cancelSwipeHold();
+        if (listener == null || swipeRepeating) return;   // 연속 입력은 손을 떼면 끝난다 (더 입력하지 않는다)
         switch (p.mode) {
             case NORMAL:
                 if (p.key.type == Key.FUNCTION) {
@@ -1706,6 +1790,7 @@ public final class KeyboardView extends View {
         handler.removeCallbacks(longPressRunnable);
         handler.removeCallbacks(repeatRunnable);
         stopCharRepeat();
+        cancelSwipeHold();
         longPressTarget = null;
         pointers.clear();
         deferred = second = null;

@@ -1567,6 +1567,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         keyboard.setDubeolsikHint(prefs.dubeolsikHintShown());
         keyboard.setNumberHintHidden(prefs.numberHintHidden());
         keyboard.setRepeatChars(prefs.repeatChars());
+        keyboard.setVowelSwipeHold(prefs.swipeDownVowel());   // ㅜ↓에서 멈추면 ㅠㅠㅠ
         applySuggestLead();
         keyboard.setHitShrink(prefs.deleteHitShrink() ? prefs.deleteHitShrinkPct() / 100f : 0f,
                 prefs.spaceHitShrink() ? prefs.spaceHitShrinkPct() / 100f : 0f);
@@ -3076,6 +3077,14 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     @Override
     public void onKeySwipe(Key key, String text) {
+        lastWasSpace = false;
+        typeText(text, false);
+    }
+
+    /** 모음 키를 아래로 민 채 멈춰 ㅣ계 이중모음을 연속 입력한다 (ㅜ↓ 멈춤 → ㅠㅠㅠ). 반복 입력 진동을 쓴다. */
+    @Override
+    public void onKeySwipeRepeat(Key key, String text) {
+        feedback.onRepeat();
         lastWasSpace = false;
         typeText(text, false);
     }
