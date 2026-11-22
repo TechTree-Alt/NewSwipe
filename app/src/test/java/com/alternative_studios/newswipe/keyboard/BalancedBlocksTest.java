@@ -348,19 +348,28 @@ public class BalancedBlocksTest {
         }
     }
 
-    /** 격자 정렬: 맨 아래 줄 기능키는 늘 왼쪽(자음) 키 한 칸 폭이라 자음 폭을 바꾸면 함께 바뀐다. 줄은 꽉 찬다. */
+    /**
+     * 격자 정렬: 맨 아래 줄 기능키는 스페이스바 왼쪽이 자음 키 한 칸, 오른쪽이 모음 키 한 칸 폭이라
+     * 자음·모음 폭을 바꾸면 함께 바뀐다. 줄은 꽉 찬다.
+     */
     @Test
     public void gridBottomKeysFollowTheConsonantKey() throws Exception {
         for (String layout : LAYOUTS) {
             for (int[] v : new int[][]{{100, 0, 100, 0}, {60, -40, 60, 40}, {130, 30, 60, 40}, {60, 20, 90, 40}}) {
                 KeyboardLayout l = KeyboardLayout.korean(portrait(layout, v[0], v[1], v[2], v[3], true));
-                float consonant = -1f;
-                for (Key k : l.rows[0].keys) if ("ㅂ".equals(k.label)) consonant = k.weight;
+                float consonant = -1f, vowel = -1f;
+                for (Key k : l.rows[0].keys) {
+                    if ("ㅂ".equals(k.label)) consonant = k.weight;
+                    if ("ㅗ".equals(k.label)) vowel = k.weight;
+                }
                 KeyboardLayout.Row row = l.rows[l.rows.length - 1];
                 float total = 0f;
+                boolean afterSpace = false;
                 for (Key k : row.keys) {
                     total += k.weight;
-                    if (k.type != Key.SPACE) assertEquals(layout + " 기능키 = 자음 키", consonant, k.weight, 0.001f);
+                    if (k.type == Key.SPACE) afterSpace = true;
+                    else assertEquals(layout + (afterSpace ? " 오른쪽 기능키 = 모음 키" : " 왼쪽 기능키 = 자음 키"),
+                            afterSpace ? vowel : consonant, k.weight, 0.001f);
                 }
                 assertEquals(10f, total, 0.001f);
             }

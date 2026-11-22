@@ -767,20 +767,25 @@ public class SplitBottomRowTest {
                 sp.m.put(Prefs.GRID_LAYOUT, true);
                 sp.m.put(p.splitReachColumnKey(), true);
                 KeyboardLayout l = KeyboardLayout.korean(p);
-                float consonant = -1f;   // 왼쪽 묶음의 4열 키 한 칸
-                for (Key k : l.rows[0].keys) if ("ㅂ".equals(k.label)) consonant = k.weight;
+                float consonant = -1f, vowel = -1f;   // 왼쪽·오른쪽 묶음의 4열 키 한 칸
+                for (Key k : l.rows[0].keys) {
+                    if ("ㅂ".equals(k.label)) consonant = k.weight;
+                    if ("ㅗ".equals(k.label)) vowel = k.weight;
+                }
                 KeyboardLayout.Row bottom = l.rows[l.rows.length - 1];
                 assertEquals("기호 키 = 4열 자음 키", consonant, widthOf(bottom, Key.TO_SYMBOLS, true), 0.001f);
-                // 오른쪽 묶음의 기능키도 왼쪽(자음) 키 한 칸 폭이다 (모음 묶음 폭과 상관없이).
-                assertEquals("엔터 키 = 4열 자음 키", consonant, widthOf(bottom, Key.ENTER, false), 0.001f);
+                assertEquals("엔터 키 = 오른쪽 묶음의 4열 키", vowel, widthOf(bottom, Key.ENTER, false), 0.001f);
                 if (!d7) assertEquals("Shift 자리 = 4열 자음 키", consonant, l.rows[2].keys[firstKey(l.rows[2])].weight, 0.001f);
             }
         }
     }
 
-    /** 격자 정렬: 분리 키보드 맨 아래 줄의 기능키는 양쪽 모두 왼쪽(자음) 키 한 칸 폭이다 (스페이스바를 이어도). */
+    /**
+     * 격자 정렬: 분리 키보드 맨 아래 줄의 기능키는 스페이스바 왼쪽이 자음 키, 오른쪽이 모음 키 한 칸 폭이다
+     * (스페이스바를 이어도).
+     */
     @Test
-    public void gridBottomKeysMatchOneConsonantKeyOnBothSides() throws Exception {
+    public void gridBottomKeysMatchTheirSideKey() throws Exception {
         for (boolean d7 : new boolean[]{false, true}) {
             for (boolean join : new boolean[]{false, true}) {
                 for (int[] s : SETTINGS) {
@@ -791,14 +796,20 @@ public class SplitBottomRowTest {
                     sp.m.put(p.splitSpaceJoinKey(), join);
                     sp.m.put(p.splitFnWidthKey(), 150);   // 격자 정렬이면 '하단 기능키 폭'은 쓰지 않는다
                     KeyboardLayout l = KeyboardLayout.korean(p);
-                    float consonant = -1f;
-                    for (Key k : l.rows[0].keys) if ("ㅂ".equals(k.label)) consonant = k.weight;
+                    float consonant = -1f, vowel = -1f;
+                    for (Key k : l.rows[0].keys) {
+                        if ("ㅂ".equals(k.label)) consonant = k.weight;
+                        if ("ㅗ".equals(k.label)) vowel = k.weight;
+                    }
                     KeyboardLayout.Row bottom = l.rows[l.rows.length - 1];
                     float sum = 0f;
+                    boolean afterSpace = false;
                     for (Key k : bottom.keys) {
                         sum += k.weight;
+                        if (k.type == Key.SPACE) afterSpace = true;
                         if (k.type == Key.SPACE || k.type == Key.GAP || k.type == Key.SPACER) continue;
-                        assertEquals("기능키 = 자음 키 (" + k.type + ")", consonant, k.weight, 0.001f);
+                        assertEquals((afterSpace ? "오른쪽 기능키 = 모음 키 (" : "왼쪽 기능키 = 자음 키 (") + k.type + ")",
+                                afterSpace ? vowel : consonant, k.weight, 0.001f);
                     }
                     assertEquals(10f, sum, 0.001f);
                 }
