@@ -1837,9 +1837,10 @@ final class KeyboardPreview extends FrameLayout {
             c.translate(0, shift);
             drawAreas(c, dim);
             drawOffStrips(c);
+            drawScrim(c, shift, dim);
+            // 키 윤곽선은 흐림 위에 그린다: 영역 윤곽선보다 조금 밖으로 나오는 위·아래 줄 키의 테두리가 흐림에 덮이지 않게.
             if (fromArea != focusArea) drawAreaKeys(c, fromArea, focusWeight(fromArea));
             drawAreaKeys(c, focusArea, focusWeight(focusArea));
-            drawScrim(c, shift, dim);
             if (fromArea != focusArea) drawSelected(c, fromArea, focusWeight(fromArea) * fromOutline);
             drawSelected(c, focusArea, focusWeight(focusArea) * areaOutline);
             // 고른 키·도구 막대 버튼: 강조색 굵은 테두리.
