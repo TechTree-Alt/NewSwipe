@@ -250,7 +250,7 @@ public final class BottomKeysEditorActivity extends Activity {
                 if (ids[i].equals(now)) checked = i;
             }
             AppTheme.dialogBuilder(this)
-                    .setTitle(L.t("기호 자판에서는", "On the symbol keyboard"))
+                    .setTitle(L.t("기호 자판에서는 다른 키로 바꾸기", "Change the key on the symbol keyboard"))
                     .setSingleChoiceItems(names, checked, (dlg, which) -> {
                         prefs.setSymbolGlobeKey(ids[which]);
                         current.setText(BottomKeys.symbolGlobeLabel(ids[which]));
