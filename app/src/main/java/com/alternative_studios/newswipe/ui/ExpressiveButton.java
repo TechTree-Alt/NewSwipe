@@ -50,7 +50,7 @@ public final class ExpressiveButton extends TextView {
         if (Metro.on) setTypeface(Metro.regular());
         setClickable(true);
         setFocusable(true);
-        if (NeuUi.on) Neu.unclipParents(this);   // 솟아오른 그림자가 잘리지 않게
+        if (NeuUi.on) NeuUi.unclip(this, NeuUi.SMALL);   // 솟아오른 그림자가 잘리지 않게
         // 그림자(elevation)를 줄 때 그림자도 눌린 모양을 따라가게 한다.
         setOutlineProvider(new android.view.ViewOutlineProvider() {
             @Override

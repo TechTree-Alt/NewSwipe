@@ -48,7 +48,7 @@ public final class ExpressiveIconButton extends View {
         setContentDescription(description);
         setClickable(true);
         setFocusable(true);
-        if (NeuUi.on) Neu.unclipParents(this);   // 솟아오른 그림자가 잘리지 않게
+        if (NeuUi.on) NeuUi.unclip(this, NeuUi.SMALL);   // 솟아오른 그림자가 잘리지 않게
     }
 
     /** 켜짐 상태: 옅은 바탕에 강조색 아이콘. */

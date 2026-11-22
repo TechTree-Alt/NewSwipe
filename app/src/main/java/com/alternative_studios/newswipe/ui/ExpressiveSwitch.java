@@ -47,7 +47,7 @@ public final class ExpressiveSwitch extends View {
         border = Ui.dp(context, 2);
         setClickable(true);
         setFocusable(true);
-        if (NeuUi.on) Neu.unclipParents(this);   // 끝에 선 손잡이의 그림자가 잘리지 않게
+        if (NeuUi.on) NeuUi.unclip(this, NeuUi.SMALL);   // 끝에 선 손잡이의 그림자가 잘리지 않게
     }
 
     /** 애니메이션 없이 값만 바꾼다 (초기 상태용). */

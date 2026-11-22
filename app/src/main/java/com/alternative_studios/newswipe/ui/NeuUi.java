@@ -167,16 +167,58 @@ public final class NeuUi {
 
     // ---------------------------------------------------------------- 바탕 (Drawable)
 
-    /** 솟아오른 카드 바탕 (누르지 않는 면). 그림자가 뷰 밖으로 번지므로 부모의 자식 자르기를 끈다. */
+    /** 솟아오른 카드 바탕 (누르지 않는 면). 그림자가 뷰 밖으로 번지므로 그림자가 잘리지 않게 부모들의 자르기를 끈다. */
     public static void card(View v, float radiusPx) {
         v.setBackground(new Face(v.getContext(), surface, radiusPx, LARGE, false, false));
-        Neu.unclipParents(v);
+        unclip(v, LARGE);
     }
 
     /** 누르는 버튼 바탕: 평소에는 솟아오르고 누르는 동안 들어간다. fill은 면 색 (보통 바탕색, 강조 버튼은 강조색). */
     public static void button(View v, int fill, float radiusPx) {
         v.setBackground(new Face(v.getContext(), fill, radiusPx, SMALL, true, false));
-        Neu.unclipParents(v);
+        unclip(v, SMALL);
+    }
+
+    // ---------------------------------------------------------------- 그림자가 잘리지 않게
+
+    /**
+     * v의 그림자(뷰 밖으로 size만큼 번진다)가 잘리지 않게 한다. Android는 부모가 자식을 그 자식의 영역까지만 그리게 자르므로
+     * (clipChildren), 바로 위 부모만 끄면 그 부모가 다시 자기 부모에게 잘려 그림자가 카드·줄 경계에서 잘린다.
+     * 그래서 위로 올라가며 부모의 자르기를 끄되, 그림자가 그 부모 안에 다 들어가면 멈춘다 (그보다 위는 자를 필요가 없다).
+     * 스크롤 틀은 끄지 않는다 (스크롤한 내용이 틀 밖으로 그려지면 안 된다). 배치가 바뀔 때마다 다시 본다.
+     */
+    public static void unclip(View v, int size) {
+        if (!on) return;
+        float pad = spread(v.getContext(), size);
+        View.OnLayoutChangeListener l = (view, a, b, c, d, e, f, g, h) -> unclipChain(view, pad);
+        v.addOnLayoutChangeListener(l);
+        if (v.isLaidOut()) unclipChain(v, pad);
+    }
+
+    private static void unclipChain(View v, float pad) {
+        float left = v.getLeft() + v.getTranslationX() - pad, top = v.getTop() + v.getTranslationY() - pad;
+        float right = v.getRight() + v.getTranslationX() + pad, bottom = v.getBottom() + v.getTranslationY() + pad;
+        View node = v;
+        for (int depth = 0; depth < 12; depth++) {
+            android.view.ViewParent p = node.getParent();
+            if (!(p instanceof android.view.ViewGroup)) return;
+            android.view.ViewGroup g = (android.view.ViewGroup) p;
+            if (scrolls(g)) return;   // 스크롤 틀은 그대로 자른다 (그 안의 목록까지는 이미 껐다)
+            if (g.getClipChildren()) g.setClipChildren(false);
+            // 그림자가 이 부모 안에 다 들어가면 여기서 멈춘다.
+            if (left >= 0 && top >= 0 && right <= g.getWidth() && bottom <= g.getHeight()) return;
+            float dx = g.getLeft() + g.getTranslationX() - g.getScrollX(), dy = g.getTop() + g.getTranslationY() - g.getScrollY();
+            left += dx;
+            right += dx;
+            top += dy;
+            bottom += dy;
+            node = g;
+        }
+    }
+
+    private static boolean scrolls(View v) {
+        return v instanceof android.widget.ScrollView || v instanceof android.widget.HorizontalScrollView
+                || v instanceof android.widget.AbsListView;
     }
 
     /** 늘 안으로 들어가 있는 바탕 (입력란, 아이콘 홈). */

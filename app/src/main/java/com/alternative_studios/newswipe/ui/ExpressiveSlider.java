@@ -43,7 +43,7 @@ public final class ExpressiveSlider extends View {
         touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
         setClickable(true);
         setFocusable(true);
-        if (NeuUi.on) Neu.unclipParents(this);   // 손잡이 그림자가 잘리지 않게
+        if (NeuUi.on) NeuUi.unclip(this, NeuUi.SMALL);   // 손잡이 그림자가 잘리지 않게
     }
 
     public void setMax(int max) {

@@ -317,12 +317,17 @@ public final class Ui {
         // Metro: Windows Phone처럼 빠르게 펼쳐져 부드럽게 멈춘다 (ExponentialEase EaseOut).
         a.setDuration(Metro.on ? 250 : 200);
         a.setInterpolator(Metro.on ? Metro.EASE_OUT : new android.view.animation.PathInterpolator(0.2f, 0f, 0f, 1f));
+        // 펼치고 접는 동안은 이 뷰 자신을 지금 높이로 자른다: Neumorphism에서는 그림자 때문에 부모들의 자르기를 꺼 두어,
+        // 자르지 않으면 접히는 내용이 아래 줄 위로 삐져나온다.
+        final android.graphics.Rect clip = new android.graphics.Rect();
         a.addUpdateListener(anim -> {
             float f = (float) anim.getAnimatedValue();
             android.view.ViewGroup.LayoutParams l = v.getLayoutParams();
             l.height = Math.round(from + (to - from) * f);
             v.setLayoutParams(l);
             v.setAlpha(fromAlpha + (toAlpha - fromAlpha) * f);
+            clip.set(0, 0, Math.max(v.getWidth(), 1), l.height);
+            v.setClipBounds(clip);
         });
         a.addListener(new android.animation.AnimatorListenerAdapter() {
             private boolean canceled;
@@ -336,6 +341,7 @@ public final class Ui {
             public void onAnimationEnd(android.animation.Animator animation) {
                 if (canceled) return;
                 RUNNING.remove(v);
+                v.setClipBounds(null);
                 android.view.ViewGroup.LayoutParams l = v.getLayoutParams();
                 l.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT;
                 v.setLayoutParams(l);

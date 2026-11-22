@@ -70,6 +70,7 @@ public final class ExpressiveChoiceButton extends TextView {
         setFocusable(true);
         sel = selected ? 1f : 0f;
         setSelected(selected);
+        if (NeuUi.on) NeuUi.unclip(this, NeuUi.SMALL);   // 칸의 그림자가 줄·카드 경계에서 잘리지 않게
         applyTextColor();
     }
 
