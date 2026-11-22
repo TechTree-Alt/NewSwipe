@@ -1,7 +1,6 @@
 package com.alternative_studios.newswipe;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Context;
 import android.os.Bundle;
 import android.text.InputFilter;
@@ -216,13 +215,13 @@ public final class ShortcutEditorActivity extends Activity {
         box.setPadding(pad, Ui.dp(this, 8), pad, 0);
         box.addView(keyInput);
         box.addView(phraseInput);
-        AlertDialog.Builder b = AppTheme.dialogBuilder(this)
+        AppDialog.Builder b = AppTheme.dialogBuilder(this)
                 .setTitle(adding ? L.t("단축어 추가", "Add text shortcut") : L.t("단축어 고치기", "Edit text shortcut"))
                 .setView(box)
                 .setPositiveButton(L.t("저장", "Save"), null)
                 .setNegativeButton(L.t("취소", "Cancel"), null);
-        AlertDialog d = b.create();
-        d.setOnShowListener(x -> d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+        AppDialog d = b.create();
+        d.setOnShowListener(x -> d.getButton(AppDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             String newKey = keyInput.getText().toString().trim();
             String phrase = phraseInput.getText().toString();
             String error = Shortcuts.validate(newKey, phrase);

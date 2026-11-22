@@ -6,6 +6,7 @@ import android.graphics.Color;
 import android.os.Build;
 
 import com.alternative_studios.newswipe.ui.Metro;
+import com.alternative_studios.newswipe.ui.Ui;
 
 /**
  * 화면 모드(시스템/라이트/다크)와 강조 색(시스템/지정)을 풀어서 실제 색으로 돌려준다.
@@ -173,43 +174,22 @@ public final class AppTheme {
                 : android.R.style.Theme_DeviceDefault_Light_Dialog_Alert);
     }
 
-    /** 앱의 강조 색을 따르는 대화상자 빌더 (activity에서 쓴다). 시스템 강조 색 대신 설정의 강조 색이 쓰인다. */
-    public static android.app.AlertDialog.Builder dialogBuilder(Context activity) {
+    /**
+     * 앱의 대화상자 빌더 (activity에서 쓴다). 시스템 AlertDialog 대신 앱이 직접 그리는 {@link AppDialog}라서 설정의 강조 색을 따르고,
+     * Metro UI 모드에서는 Windows Phone의 메시지 상자 모양이 된다. 쓰는 법은 AlertDialog.Builder와 같다.
+     */
+    public static AppDialog.Builder dialogBuilder(Context activity) {
         return accentBuilder(dialogContext(activity));
     }
 
     /** 이미 {@link #dialogContext}로 감싼 컨텍스트로 만드는 {@link #dialogBuilder}. */
-    public static android.app.AlertDialog.Builder accentBuilder(Context themed) {
-        return new AccentBuilder(themed);
+    public static AppDialog.Builder accentBuilder(Context themed) {
+        return new AppDialog.Builder(themed);
     }
 
-    /**
-     * 시스템 대화상자는 기기의 강조 색을 쓰므로, 설정에서 강조 색을 직접 골랐으면 키보드·설정 화면과 색이 달라 보인다.
-     * 대화상자가 뜰 때 버튼 글자, 라디오·체크 표시, 입력란의 밑줄과 커서를 앱의 강조 색으로 칠한다.
-     */
-    private static final class AccentBuilder extends android.app.AlertDialog.Builder {
-        private final int accent, hint;
-
-        AccentBuilder(Context themed) {
-            super(themed);
-            AppTheme t = AppTheme.of(themed);
-            accent = t.accent;
-            hint = t.hint;
-        }
-
-        @Override
-        public android.app.AlertDialog create() {
-            android.app.AlertDialog d = super.create();
-            if (d.getWindow() != null) {
-                d.getWindow().getDecorView().addOnAttachStateChangeListener(new android.view.View.OnAttachStateChangeListener() {
-                    @Override public void onViewAttachedToWindow(android.view.View v) {
-                        v.post(() -> tint(v, accent, hint));   // 내용이 다 붙은 뒤에 칠한다
-                    }
-                    @Override public void onViewDetachedFromWindow(android.view.View v) { }
-                });
-            }
-            return d;
-        }
+    /** 대화상자 안의 입력란 밑줄·커서, 라디오·체크 표시를 앱의 강조 색으로 칠한다 (AppDialog가 뜰 때 부른다). */
+    static void tintViews(android.view.View v, int accent, int hint) {
+        tint(v, accent, hint);
     }
 
     private static void tint(android.view.View v, int accent, int hint) {
@@ -227,6 +207,22 @@ public final class AppTheme {
         } else if (v instanceof android.widget.EditText) {
             android.widget.EditText e = (android.widget.EditText) v;
             e.setBackgroundTintList(android.content.res.ColorStateList.valueOf(accent));
+            if (Metro.on && !(e.getBackground() instanceof android.graphics.drawable.GradientDrawable)) {
+                // Windows Phone의 TextBox: 평소에는 옅은 회색 네모, 입력 중에는 흰 바탕에 강조색 테두리, 글자는 늘 검정.
+                // 부른 쪽이 직접 칠한 바탕(GradientDrawable)은 그대로 둔다.
+                android.content.Context c = e.getContext();
+                android.graphics.drawable.GradientDrawable idle = Ui.round(0xFFBFBFBF, 0);
+                android.graphics.drawable.GradientDrawable focus = Ui.round(0xFFFFFFFF, 0);
+                focus.setStroke(Ui.dp(c, 2), accent);
+                android.graphics.drawable.StateListDrawable bg = new android.graphics.drawable.StateListDrawable();
+                bg.addState(new int[]{android.R.attr.state_focused}, focus);
+                bg.addState(new int[0], idle);
+                e.setBackgroundTintList(null);
+                e.setBackground(bg);
+                e.setTextColor(0xFF000000);
+                e.setHintTextColor(0xFF666666);
+                e.setPadding(Ui.dp(c, 10), Ui.dp(c, 9), Ui.dp(c, 10), Ui.dp(c, 9));
+            }
             e.setHighlightColor((accent & 0x00FFFFFF) | 0x55000000);
             if (Build.VERSION.SDK_INT >= 29) {
                 android.graphics.drawable.Drawable cursor = e.getTextCursorDrawable();

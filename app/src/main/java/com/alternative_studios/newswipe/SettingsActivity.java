@@ -2093,14 +2093,14 @@ public final class SettingsActivity extends Activity {
             String[] names = new String[groups.length];
             boolean[] checked = new boolean[names.length];
             for (int i = 0; i < names.length; i++) names[i] = groups[i][1];
-            android.app.AlertDialog[] dialog = new android.app.AlertDialog[1];
+            AppDialog[] dialog = new AppDialog[1];
             dialog[0] = AppTheme.dialogBuilder(this)
                     .setTitle(L.t("기본값으로 되돌릴 설정", "Settings to reset"))
                     .setMultiChoiceItems(names, checked, (d, which, on) -> {
                         checked[which] = on;
                         boolean any = false;
                         for (boolean c : checked) any |= c;
-                        dialog[0].getButton(android.app.AlertDialog.BUTTON_POSITIVE).setEnabled(any);
+                        dialog[0].getButton(AppDialog.BUTTON_POSITIVE).setEnabled(any);
                     })
                     .setPositiveButton(L.t("되돌리기", "Reset"), (d, w) -> {
                         // 세로·가로가 따로 정하는 값은 지금 편집하는 방향의 값만 되돌린다.
@@ -2111,7 +2111,7 @@ public final class SettingsActivity extends Activity {
                     })
                     .setNegativeButton(L.t("취소", "Cancel"), null)
                     .show();
-            dialog[0].getButton(android.app.AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+            dialog[0].getButton(AppDialog.BUTTON_POSITIVE).setEnabled(false);
         });
         return b;
     }
@@ -2216,7 +2216,7 @@ public final class SettingsActivity extends Activity {
     private void pickDubeolsikHintPosition(java.util.function.IntConsumer onPick) {
         int current = prefs.dubeolsikHintPosition();
         int blocked = prefs.popupHintHidden() ? -1 : prefs.popupHintPosition();
-        android.app.AlertDialog[] dialog = new android.app.AlertDialog[1];
+        AppDialog[] dialog = new AppDialog[1];
         HintPositionPicker picker = new HintPositionPicker(this,
                 com.alternative_studios.newswipe.keyboard.KeyboardTheme.of(this), accentColor, onAccentColor,
                 "r", "ㄱ", L.t("두벌식 자모 힌트 위치", "Dubeolsik hint position"), current, blocked, "4", p -> {
@@ -2246,7 +2246,7 @@ public final class SettingsActivity extends Activity {
     /** 글자 키 힌트의 자리를 고르는 창: 키 그림에서 여덟 곳 가운데 하나를 누르면 바로 정하고 닫는다. */
     private void pickHintPosition(java.util.function.IntConsumer onPick) {
         int current = prefs.popupHintPosition();
-        android.app.AlertDialog[] dialog = new android.app.AlertDialog[1];
+        AppDialog[] dialog = new AppDialog[1];
         HintPositionPicker picker = new HintPositionPicker(this,
                 com.alternative_studios.newswipe.keyboard.KeyboardTheme.of(this), accentColor, onAccentColor, current, p -> {
                     if (dialog[0] != null) dialog[0].dismiss();
@@ -2872,7 +2872,7 @@ public final class SettingsActivity extends Activity {
         message.setTextColor(textColor);
         int pad = Ui.dp(this, 24);
         message.setPadding(pad, Ui.dp(this, 8), pad, 0);
-        android.app.AlertDialog dialog = AppTheme.accentBuilder(dc)
+        AppDialog dialog = AppTheme.accentBuilder(dc)
                 .setTitle(L.t("한·영 키 직접 지정", "Assign switch key"))
                 .setView(message)
                 .setNeutralButton(L.t("지정 해제", "Unassign"), (d, w) -> saveHardwareLangKey(valueView, 0, 0))
@@ -3908,7 +3908,7 @@ public final class SettingsActivity extends Activity {
                 .setTitle(title)
                 .setSingleChoiceItems(labels, current, (d, which) -> {
                     chosen[0] = which;
-                    preview.accept(((android.app.AlertDialog) d).getListView(), which);
+                    preview.accept(((AppDialog) d).getListView(), which);
                 })
                 .setPositiveButton(L.t("확인", "OK"), (d, w) -> {
                     if (chosen[0] != current) onPick.accept(chosen[0]);
@@ -4589,14 +4589,14 @@ public final class SettingsActivity extends Activity {
         error.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         error.setVisibility(View.GONE);
         box.addView(error);
-        android.app.AlertDialog dialog = AppTheme.accentBuilder(dc)
+        AppDialog dialog = AppTheme.accentBuilder(dc)
                 .setTitle(L.t("백업 파일 암호화", "Encrypt backup file"))
                 .setView(box)
                 .setPositiveButton(L.t("암호화하여 내보내기", "Encrypt and export"), null)
                 .setNeutralButton(L.t("암호 없이", "No password"), (d, w) -> startExport(withWords, withEmoji, withClipboard, null))
                 .setNegativeButton(L.t("취소", "Cancel"), null)
                 .create();
-        dialog.setOnShowListener(d -> dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+        dialog.setOnShowListener(d -> dialog.getButton(AppDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             String problem = BackupCrypto.checkPassword(pw1.getText());
             if (problem == null && !pw1.getText().toString().equals(pw2.getText().toString())) {
                 problem = L.t("두 비밀번호가 다릅니다", "Passwords don't match");

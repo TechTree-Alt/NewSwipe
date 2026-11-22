@@ -169,6 +169,10 @@ public final class Metro {
      * 지나치게 커지지 않는다). View.setCameraDistance(d)는 d를 densityDpi로 나눈 '인치'로 카메라를 두고, 그 인치는 72단위라서
      * 화면 px 거리 D를 주려면 D × densityDpi / 72를 넘겨야 한다.
      */
+    public static void perspective(View v) {
+        camera(v);
+    }
+
     private static void camera(View v) {
         android.util.DisplayMetrics m = v.getResources().getDisplayMetrics();
         float px = Math.max(m.widthPixels, 1) * 2.2f;

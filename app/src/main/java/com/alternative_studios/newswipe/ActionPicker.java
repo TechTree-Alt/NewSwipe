@@ -1,6 +1,5 @@
 package com.alternative_studios.newswipe;
 
-import android.app.AlertDialog;
 import android.content.Context;
 import android.graphics.Typeface;
 import android.text.TextUtils;
@@ -37,11 +36,11 @@ final class ActionPicker {
      * @param onPick  기능을 고르면 그 ID로 부른다 (창은 저절로 닫힌다)
      * @param onReset '기본값'을 누르면 부른다
      */
-    static AlertDialog show(Context activity, CharSequence title, String[] ids, String current,
+    static AppDialog show(Context activity, CharSequence title, String[] ids, String current,
                             Consumer<String> onPick, Runnable onReset) {
         Context c = AppTheme.dialogContext(activity);
         AppTheme colors = AppTheme.of(activity);
-        AlertDialog[] dialog = new AlertDialog[1];
+        AppDialog[] dialog = new AppDialog[1];
         List<String> allowed = Arrays.asList(ids);
 
         LinearLayout root = new LinearLayout(c);

@@ -320,7 +320,7 @@ public final class BottomKeysEditorActivity extends Activity {
         box.setPadding(pad, Ui.dp(this, 8), pad, 0);
         box.addView(text(L.t("이 키가 입력할 글자를 한 글자만 적어 주세요 (예: ? ! …). 길게 누르기·밀기 설정은 그대로 이어집니다.", "Enter a single character for this key to type (e.g. ? ! …). Long-press and swipe settings stay the same."), 13, hintColor));
         box.addView(input);
-        android.app.AlertDialog d = AppTheme.dialogBuilder(this)
+        AppDialog d = AppTheme.dialogBuilder(this)
                 .setTitle(slot.equals(",") ? L.t("쉼표 키 다른 키로 설정", "Change comma key") : L.t("온점 키 다른 키로 설정", "Change period key"))
                 .setView(box)
                 .setPositiveButton(L.t("저장", "Save"), null)
@@ -330,7 +330,7 @@ public final class BottomKeysEditorActivity extends Activity {
                 })
                 .setNegativeButton(L.t("취소", "Cancel"), null)
                 .create();
-        d.setOnShowListener(x -> d.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+        d.setOnShowListener(x -> d.getButton(AppDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             String s = input.getText().toString();
             if (s.isEmpty() || s.codePointCount(0, s.length()) != 1 || Character.isWhitespace(s.codePointAt(0))) {
                 Toast.makeText(this, L.t("공백이 아닌 한 글자만 적어 주세요", "Enter a single character other than a space"), Toast.LENGTH_SHORT).show();

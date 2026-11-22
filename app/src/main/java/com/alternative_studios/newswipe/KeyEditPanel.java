@@ -1,7 +1,6 @@
 package com.alternative_studios.newswipe;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Intent;
 import android.text.InputFilter;
 import android.text.InputType;
@@ -386,7 +385,7 @@ final class KeyEditPanel {
             hs.addView(chips);
             box.addView(hs);
         }
-        AlertDialog d = AppTheme.dialogBuilder(a)
+        AppDialog d = AppTheme.dialogBuilder(a)
                 .setTitle(dialogTitle(dir))
                 .setView(box)
                 .setPositiveButton(L.t("저장", "Save"), (dlg, w) -> {
@@ -421,7 +420,7 @@ final class KeyEditPanel {
         box.addView(add);
         ScrollView scroll = new ScrollView(a);
         scroll.addView(box);
-        AlertDialog d = AppTheme.dialogBuilder(a)
+        AppDialog d = AppTheme.dialogBuilder(a)
                 .setTitle(L.t("'" + key.label + "' 길게 누르기", "Long press '" + key.label + "'"))
                 .setView(scroll)
                 .setPositiveButton(L.t("저장", "Save"), (dlg, w) -> {
@@ -483,7 +482,7 @@ final class KeyEditPanel {
         input.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
         LinearLayout box = dialogBox(L.t("이 키가 입력할 글자를 한 글자만 적어 주세요 (예: ? ! …). 길게 누르기·밀기 설정은 그대로 이어집니다.", "Enter a single character for this key to type (e.g. ? ! …). Long-press and swipe settings stay the same."));
         box.addView(input);
-        AlertDialog d = AppTheme.dialogBuilder(a)
+        AppDialog d = AppTheme.dialogBuilder(a)
                 .setTitle(",".equals(slot) ? L.t("쉼표 자리의 키", "Key in the comma spot") : ".".equals(slot) ? L.t("온점 자리의 키", "Key in the period spot")
                         : L.t("'" + slot + "' 자리의 키", "Key in the '" + slot + "' spot"))
                 .setView(box)
@@ -494,7 +493,7 @@ final class KeyEditPanel {
                 })
                 .setNegativeButton(L.t("취소", "Cancel"), null)
                 .create();
-        d.setOnShowListener(x -> d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+        d.setOnShowListener(x -> d.getButton(AppDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             String s = input.getText().toString();
             if (!(bottom ? Prefs.isSingleCodePoint(s) : Prefs.isSingleChar(s))) {
                 Toast.makeText(a, L.t("공백이 아닌 한 글자만 적어 주세요", "Enter a single character other than a space"), Toast.LENGTH_SHORT).show();
@@ -871,7 +870,7 @@ final class KeyEditPanel {
         return box;
     }
 
-    private void showKeyboardFor(AlertDialog d, EditText input) {
+    private void showKeyboardFor(AppDialog d, EditText input) {
         android.view.Window window = d.getWindow();
         if (window == null) return;
         window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM);
