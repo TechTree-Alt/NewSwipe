@@ -4417,11 +4417,25 @@ public final class SettingsActivity extends Activity {
                 android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
                 RAINBOW);
         float r = Ui.dp(this, 12);
-        rainbow.setCornerRadius(r);
+        rainbow.setCornerRadius(Metro.on ? 0 : r);   // Metro에는 둥근 모서리가 없다
         row.setBackground(Ui.ripple(0x33000000, rainbow, r));
         TextView t = (TextView) ((ViewGroup) row).getChildAt(0);
         t.setTextColor(ink);
         t.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        // 무지개는 살리되, 바탕을 덮어써 지워지는 모드별 버튼 모양은 되살린다.
+        if (NeuUi.on) {
+            // Neumorphism: 무지개 면이 다른 버튼처럼 솟아오르고, 누르는 동안 안으로 들어간다.
+            NeuUi.button(row, RAINBOW, Ui.dp(this, 14));
+        } else if (Metro.on) {
+            // Metro: 모서리 없는 무지개 타일. 다른 Metro 버튼처럼 굵지 않은 글자이고, 누르는 동안 강조색으로 채워진다.
+            android.graphics.drawable.StateListDrawable bg = new android.graphics.drawable.StateListDrawable();
+            bg.addState(new int[]{android.R.attr.state_pressed}, Ui.round(accentColor, 0));
+            bg.addState(new int[0], rainbow);
+            row.setBackground(bg);
+            t.setTypeface(Metro.regular());
+            t.setTextColor(new android.content.res.ColorStateList(new int[][]{{android.R.attr.state_pressed}, {}},
+                    new int[]{onAccentColor, ink}));
+        }
         return row;
     }
 

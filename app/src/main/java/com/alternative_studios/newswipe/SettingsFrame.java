@@ -166,11 +166,13 @@ final class SettingsFrame {
         page.setContent(root);
         page.setFeatherItems(() -> {
             java.util.List<View> items = new java.util.ArrayList<>();
+            // 아래 미리보기(키보드·한 손 모드)는 맨 앞 차례로 머리글과 함께 바로 들어온다. 목록 끝에 두면 위의 줄들이 다 들어올
+            // 때까지(수백 ms) 보이지 않다가 늦게 나타난다 (다른 화면에서 돌아올 때 특히 눈에 띈다).
+            if (bottom != null) items.add(bottom);
             if (header != null) collectFeather(header, items);
             if (searchBar != null) collectFeather(searchBar, items);
             if (testBar != null) collectFeather(testBar, items);
             collectFeather(content, items);
-            if (bottom != null) items.add(bottom);
             return items;
         });
         if (pivotNames != null) {

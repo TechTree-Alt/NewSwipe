@@ -224,6 +224,14 @@ public final class NeuUi {
                 || v instanceof android.widget.AbsListView;
     }
 
+    /** 면을 그라데이션(왼쪽 → 오른쪽)으로 칠하는 누르는 버튼 바탕 (명예의 전당 버튼의 무지개 등). */
+    public static void button(View v, int[] gradient, float radiusPx) {
+        Face f = new Face(v.getContext(), gradient[0], radiusPx, SMALL, true, false);
+        f.gradient = gradient;
+        v.setBackground(f);
+        unclip(v, SMALL);
+    }
+
     /** 늘 안으로 들어가 있는 바탕 (입력란, 아이콘 홈). */
     public static void sunken(View v, float radiusPx) {
         v.setBackground(new Face(v.getContext(), surface, radiusPx, SMALL, false, true));
@@ -238,6 +246,22 @@ public final class NeuUi {
         private final float radius;
         private final boolean pressable, sunken;
         private boolean pressed;
+        /** 면을 칠할 그라데이션 색들 (없으면 한 가지 색). */
+        int[] gradient;
+        private android.graphics.LinearGradient shader;
+        private float shaderW = -1;
+
+        private void paintFace(Canvas c, float r) {
+            if (shaderW != face.width()) {
+                shader = new android.graphics.LinearGradient(face.left, 0, face.right, 0, gradient, null,
+                        android.graphics.Shader.TileMode.CLAMP);
+                shaderW = face.width();
+            }
+            fill.setColor(0xFF000000);
+            fill.setShader(shader);
+            c.drawRoundRect(face, r, r, fill);
+            fill.setShader(null);
+        }
 
         Face(Context ctx, int color, float radius, int size, boolean pressable, boolean sunken) {
             this.ctx = ctx;
@@ -254,7 +278,12 @@ public final class NeuUi {
             face.set(b);
             if (face.width() <= 0 || face.height() <= 0) return;
             float r = Math.min(radius, Math.min(face.width(), face.height()) / 2f);
-            if (sunken || pressed) {
+            if (gradient != null) {
+                // 그라데이션 면: 솟아오르거나, 누르는 동안은 면 위에 안쪽 그림자만 얹는다 (투명한 면으로).
+                if (!pressed) drawRaised(ctx, c, face, r, size);
+                paintFace(c, r);
+                if (pressed) drawInset(ctx, c, face, r, 0x00000000, fill);
+            } else if (sunken || pressed) {
                 drawInset(ctx, c, face, r, pressed && color != surface ? Neu.blend(color, 0xFF000000, 0.08f) : color, fill);
             } else {
                 drawRaised(ctx, c, face, r, size);
