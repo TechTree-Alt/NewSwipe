@@ -511,7 +511,7 @@ final class KeyboardPreview extends FrameLayout {
             out.union(r);
             return true;
         }
-        return padBounds(area, out);
+        return areaBounds(area, out);
     }
 
     /**
@@ -1225,16 +1225,6 @@ final class KeyboardPreview extends FrameLayout {
                 b.getRight() - chipGap / 2f + ox, bar.getTop() + b.getBottom() - inset);
     }
 
-    /** 영역 층의 영역 윤곽선: 영역에 그 영역의 위·아래 여백을 더한 자리 (여백의 바깥 가장자리). */
-    boolean padBounds(int area, RectF out) {
-        if (!areaBounds(area, out)) return false;
-        if (areaOff(area)) return true;   // 꺼 둔 영역의 빈 칸: 여백 없이 빈 칸 자리 그대로
-        Context c = getContext();
-        out.top -= Ui.dp(c, prefs.areaPadDp(area, Prefs.SIDE_TOP));
-        out.bottom += Ui.dp(c, prefs.areaPadDp(area, Prefs.SIDE_BOTTOM));
-        return true;
-    }
-
     boolean areaBounds(int area, RectF out) {
         Context c = getContext();
         float pad = outlinePadX(c);
@@ -1335,7 +1325,7 @@ final class KeyboardPreview extends FrameLayout {
 
     /**
      * 높이 손잡이 h가 붙는 윤곽선 (그 위 가장자리에 손잡이를 둔다): 영역 층에서 그리는 영역 윤곽선과 같다
-     * (영역과 그 위·아래 여백, 두 묶음으로 나뉜 글자 키는 두 묶음을 합친 것). 가로 모드·폴더블 내부 화면은 고른 영역·묶음의 윤곽선.
+     * (영역의 키를 감싼 자리, 두 묶음으로 나뉜 글자 키는 두 묶음을 합친 것). 가로 모드·폴더블 내부 화면은 고른 영역·묶음의 윤곽선.
      */
     private boolean heightEdgeBounds(Handle h, RectF out) {
         int a = h == Handle.TOOLBAR ? AREA_TOOLBAR : h == Handle.NUMBER_ROW ? AREA_NUMBER : h == Handle.FN_ROW ? AREA_FUNCTION : AREA_LETTERS;
@@ -1345,7 +1335,7 @@ final class KeyboardPreview extends FrameLayout {
             out.union(r);
             return true;
         }
-        return padBounds(a, out);
+        return areaBounds(a, out);
     }
 
     /** 손잡이의 가운데 (미리보기 좌표). 보이지 않으면 false. */
@@ -1720,7 +1710,7 @@ final class KeyboardPreview extends FrameLayout {
                     }
                     continue;
                 }
-                if (!padBounds(a, area)) continue;   // 영역과 그 위·아래 여백까지
+                if (!areaBounds(a, area)) continue;   // 영역의 키를 감싼 자리 (영역의 위·아래 여백은 넣지 않는다)
                 // 맨 위·맨 아래 윤곽선이 미리보기 가장자리에서 잘리지 않게 테두리 굵기의 절반만큼은 안쪽에 둔다 (기본 상태일 때).
                 float edge = Ui.dp(ctx, 1.5f);
                 area.top = Math.max(area.top, edge);
@@ -1772,7 +1762,7 @@ final class KeyboardPreview extends FrameLayout {
 
         /** 꺼 둔 영역의 테두리 자리: 다른 영역 윤곽선과 같은 규칙 (미리보기 가장자리에서 잘리지 않게). */
         private boolean offBounds(int a, RectF out) {
-            if (!padBounds(a, out)) return false;
+            if (!areaBounds(a, out)) return false;
             float edge = Ui.dp(getContext(), 1.5f);
             out.top = Math.max(out.top, edge);
             out.bottom = Math.min(out.bottom, getHeight() - edge);
