@@ -8,6 +8,7 @@ import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.alternative_studios.newswipe.ui.NeuUi;
 import com.alternative_studios.newswipe.ui.Chevron;
 import com.alternative_studios.newswipe.ui.ExpressiveSlider;
 import com.alternative_studios.newswipe.ui.ExpressiveSwitch;
@@ -138,6 +139,7 @@ final class SettingsWidgets {
         box.setBackground(Ui.round(card, Ui.dp(c, 16)));
         int p = Ui.dp(c, 16);
         box.setPadding(p, Ui.dp(c, 8), p, Ui.dp(c, 8));
+        if (NeuUi.on) NeuUi.card(box, Ui.dp(c, 20));   // Neumorphism: 바탕에서 부드럽게 솟아오른 카드
         if (Metro.on) {
             // Metro에는 카드가 없다: 항목이 검정·흰 바탕 위에 바로 놓인다.
             box.setBackground(null);
@@ -355,6 +357,10 @@ final class SettingsWidgets {
             t.setDuplicateParentStateEnabled(true);
             row.setPadding(h, Ui.dp(c, 14), h, Ui.dp(c, 14));
         }
+        if (NeuUi.on) {
+            // Neumorphism: 솟아오른 버튼, 누르는 동안 안으로 들어간다. 그림자 자리만큼 위아래를 띄운다.
+            NeuUi.button(row, NeuUi.surface, Ui.dp(c, 14));
+        }
         mark(t, row);
         row.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         row.addView(trailing);
@@ -363,8 +369,8 @@ final class SettingsWidgets {
         row.setOnClickListener(l);
         Metro.tilt(row);
         LinearLayout.LayoutParams lp = matchWrap();
-        lp.topMargin = Ui.dp(c, 6);
-        lp.bottomMargin = Ui.dp(c, 6);
+        lp.topMargin = Ui.dp(c, NeuUi.on ? 10 : 6);
+        lp.bottomMargin = Ui.dp(c, NeuUi.on ? 10 : 6);
         row.setLayoutParams(lp);
         return row;
     }

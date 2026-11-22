@@ -17,6 +17,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import com.alternative_studios.newswipe.keyboard.Icons;
+import com.alternative_studios.newswipe.ui.NeuUi;
 import com.alternative_studios.newswipe.ui.ExpressiveIconButton;
 import com.alternative_studios.newswipe.ui.IconButton;
 import com.alternative_studios.newswipe.ui.SpringMotion;
@@ -156,6 +157,7 @@ final class EditorSheet {
         testInput.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
         testInput.setMaxLines(3);
         testInput.setBackground(Ui.round(colors.card, Ui.dp(c, 12)));
+        if (NeuUi.on) NeuUi.sunken(testInput, Ui.dp(c, 12));   // Neumorphism: 안으로 들어간 입력란
         testInput.setPadding(Ui.dp(c, 14), Ui.dp(c, 10), Ui.dp(c, 14), Ui.dp(c, 10));
         testRow.addView(testInput, SettingsWidgets.matchWrap());
         sheet.addView(testRow, SettingsWidgets.matchWrap());

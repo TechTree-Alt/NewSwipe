@@ -30,6 +30,7 @@ import com.alternative_studios.newswipe.keyboard.SwipeSpec;
 import com.alternative_studios.newswipe.keyboard.ToolbarButtons;
 import com.alternative_studios.newswipe.keyboard.ToolbarSwipes;
 import com.alternative_studios.newswipe.keyboard.VowelSwipes;
+import com.alternative_studios.newswipe.ui.NeuUi;
 import com.alternative_studios.newswipe.ui.ExpressiveChoiceButton;
 import com.alternative_studios.newswipe.ui.IconButton;
 import com.alternative_studios.newswipe.ui.Ui;
@@ -371,6 +372,7 @@ final class KeyEditPanel {
                 chip.setPadding(Ui.dp(a, 10), Ui.dp(a, 6), Ui.dp(a, 10), Ui.dp(a, 6));
                 chip.setBackground(Ui.ripple(accentColor & 0x00FFFFFF | 0x33000000,
                         Ui.round(accentColor & 0x00FFFFFF | 0x1F000000, Ui.dp(a, 10)), Ui.dp(a, 10)));
+                if (NeuUi.on) NeuUi.button(chip, NeuUi.surface, Ui.dp(a, 10));   // Neumorphism: 솟아오른 버튼
                 chip.setOnClickListener(v -> {
                     input.setText(pick);
                     input.setSelection(input.getText().length());

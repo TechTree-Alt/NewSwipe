@@ -43,6 +43,7 @@ public final class ExpressiveSlider extends View {
         touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
         setClickable(true);
         setFocusable(true);
+        if (NeuUi.on) Neu.unclipParents(this);   // 손잡이 그림자가 잘리지 않게
     }
 
     public void setMax(int max) {
@@ -65,12 +66,17 @@ public final class ExpressiveSlider extends View {
         setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), Math.max(Math.round(handleH), Ui.dp(getContext(), 40)));
     }
 
+    /** 홈의 양끝: Neumorphism은 끝에 선 손잡이(반지름 11dp)와 그 그림자가 뷰 밖으로 잘리지 않게 더 띄운다. */
+    private float edge() {
+        return NeuUi.on ? Ui.dp(getContext(), 20) : side;
+    }
+
     private float trackLeft() {
-        return side;
+        return edge();
     }
 
     private float trackRight() {
-        return getWidth() - side;
+        return getWidth() - edge();
     }
 
     private float handleX() {
@@ -98,10 +104,37 @@ public final class ExpressiveSlider extends View {
         c.drawRect(l, cy - hh / 2f, l + hw, cy + hh / 2f, paint);
     }
 
+    /**
+     * Neumorphism: 안으로 들어간 홈, 그 안의 왼쪽을 강조색으로 채우고, 지금 값 자리에 솟아오른 바탕색 손잡이(가운데 강조색 점).
+     */
+    private void drawNeu(Canvas c) {
+        float dp = Ui.dp(getContext(), 1);
+        float cy = getHeight() / 2f;
+        float th = 12 * dp, knob = (pressed ? 24 : 22) * dp;
+        float left = trackLeft(), right = trackRight(), hx = handleX();
+        rect.set(left - th / 2f, cy - th / 2f, right + th / 2f, cy + th / 2f);
+        NeuUi.drawInset(getContext(), c, rect, th / 2f, NeuUi.surface, paint);
+        float in = 3 * dp;
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor(accent);
+        rect.set(left - th / 2f + in, cy - th / 2f + in, Math.max(hx, left - th / 2f + in + (th - 2 * in)), cy + th / 2f - in);
+        c.drawRoundRect(rect, rect.height() / 2f, rect.height() / 2f, paint);
+        rect.set(hx - knob / 2f, cy - knob / 2f, hx + knob / 2f, cy + knob / 2f);
+        NeuUi.drawRaised(getContext(), c, rect, knob / 2f, NeuUi.SMALL);
+        paint.setColor(NeuUi.knob());
+        c.drawCircle(hx, cy, knob / 2f, paint);
+        paint.setColor(accent);
+        c.drawCircle(hx, cy, 3.5f * dp, paint);
+    }
+
     @Override
     protected void onDraw(Canvas c) {
         if (Metro.on) {
             drawMetro(c);
+            return;
+        }
+        if (NeuUi.on) {
+            drawNeu(c);
             return;
         }
         float cy = getHeight() / 2f;

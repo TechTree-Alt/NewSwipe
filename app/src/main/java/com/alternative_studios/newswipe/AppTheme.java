@@ -6,6 +6,7 @@ import android.graphics.Color;
 import android.os.Build;
 
 import com.alternative_studios.newswipe.ui.Metro;
+import com.alternative_studios.newswipe.ui.NeuUi;
 import com.alternative_studios.newswipe.ui.Ui;
 
 /**
@@ -18,6 +19,8 @@ public final class AppTheme {
     public final boolean dark;
     /** Metro UI 모드 (실험적): 순수한 검정·흰색 바탕, 크롬 색 입력란, 옅은 회색 글자 (ui.Metro). */
     public final boolean metro;
+    /** Neumorphism 모드 (Metro가 아닐 때만): 바탕과 카드가 같은 색이고, 그림자로 솟아오르거나 들어간 모양을 그린다 (ui.NeuUi). */
+    public final boolean neu;
     public final int bg, card, text, hint, accent, onAccent;
     /**
      * 키보드의 강조색 키에 쓰는 색. 설정 화면의 {@link #accent}는 바탕에 묻히지 않게 보정될 수 있지만,
@@ -25,9 +28,10 @@ public final class AppTheme {
      */
     public final int keyAccent, keyOnAccent;
 
-    private AppTheme(boolean dark, boolean metro, int accent, int onAccent, int keyAccent, int keyOnAccent) {
+    private AppTheme(boolean dark, boolean metro, boolean neu, int accent, int onAccent, int keyAccent, int keyOnAccent) {
         this.dark = dark;
         this.metro = metro;
+        this.neu = neu;
         this.accent = accent;
         this.onAccent = onAccent;
         this.keyAccent = keyAccent;
@@ -37,6 +41,13 @@ public final class AppTheme {
             card = dark ? Metro.DARK_CHROME : Metro.LIGHT_CHROME;
             text = dark ? Metro.DARK_FG : Metro.LIGHT_FG;
             hint = Metro.SUBTLE;
+            return;
+        }
+        if (neu) {
+            // 바탕과 면이 같은 색 (면은 그림자로 드러난다). 글자는 보통 모드와 같다.
+            bg = card = dark ? NeuUi.DARK_SURFACE : NeuUi.LIGHT_SURFACE;
+            text = dark ? 0xFFECECEF : 0xFF1D1E21;
+            hint = dark ? 0xFF9A9CA3 : 0xFF656A73;
             return;
         }
         bg = dark ? 0xFF121316 : 0xFFF4F5F8;
@@ -54,8 +65,10 @@ public final class AppTheme {
         int onShown = metro ? metroInk(shown, onAccent(context, prefs, dark, shown)) : onAccent(context, prefs, dark, shown);
         // 설정 화면과 키보드가 함께 쓰는 Metro 상태·색 (Ui.round 등 Context 없이 부르는 곳이 읽는다).
         Metro.set(metro, dark, shown, onShown);
+        boolean neu = !metro && prefs.neumorphism();
+        NeuUi.set(neu, dark);
         int onKey = onAccent(context, prefs, dark, key);
-        return new AppTheme(dark, metro, shown, onShown, key, metro ? metroInk(key, onKey) : onKey);
+        return new AppTheme(dark, metro, neu, shown, onShown, key, metro ? metroInk(key, onKey) : onKey);
     }
 
     /**
@@ -251,7 +264,7 @@ public final class AppTheme {
     /** 활동이 시작할 때 기준 설정이 바뀌었는지 비교하는 값. */
     public static String signature(Context context) {
         Prefs p = new Prefs(context);
-        return p.themeMode() + "/" + p.accentMode() + "/" + p.accentColor() + "/" + p.metro();
+        return p.themeMode() + "/" + p.accentMode() + "/" + p.accentColor() + "/" + p.metro() + "/" + p.neumorphism();
     }
 
     /** 활동의 리소스(night 값)도 고른 화면 모드를 따르도록 기준 설정을 덮어쓴다. attachBaseContext에서 쓴다. */

@@ -24,6 +24,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import com.alternative_studios.newswipe.ui.Metro;
+import com.alternative_studios.newswipe.ui.NeuUi;
 import com.alternative_studios.newswipe.ui.Ui;
 
 /**
@@ -107,7 +108,7 @@ public final class AppDialog extends Dialog {
     private View buildNormal(Builder b) {
         Column root = new Column(ui, Ui.dp(ui, 48));
         root.setOrientation(LinearLayout.VERTICAL);
-        int surface = colors.dark ? 0xFF26272C : 0xFFFFFFFF;
+        int surface = colors.neu ? NeuUi.surface : colors.dark ? 0xFF26272C : 0xFFFFFFFF;
         root.setBackground(Ui.round(surface, Ui.dp(ui, 28)));
         root.setPadding(0, Ui.dp(ui, 24), 0, Ui.dp(ui, 16));
         int side = Ui.dp(ui, 24);
@@ -332,6 +333,12 @@ public final class AppDialog extends Dialog {
             b.setBackground(Ui.ripple((colors.accent & 0x00FFFFFF) | 0x29000000, null, Ui.dp(ui, 20)));
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, Ui.dp(ui, 40));
             lp.leftMargin = Ui.dp(ui, 4);
+            if (colors.neu) {
+                // Neumorphism: 솟아오른 알약 버튼, 누르는 동안 들어간다. 그림자 자리만큼 띄운다.
+                NeuUi.button(b, NeuUi.surface, Ui.dp(ui, 20));
+                lp.leftMargin = Ui.dp(ui, 12);
+                lp.topMargin = lp.bottomMargin = Ui.dp(ui, 6);
+            }
             bar.addView(b, lp);
         }
         b.setOnClickListener(v -> {
@@ -383,6 +390,7 @@ public final class AppDialog extends Dialog {
         private final boolean box, square;
         private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Path check = new Path();
+        private final android.graphics.RectF tmp = new android.graphics.RectF();
         boolean checked;
 
         Mark(Context c, boolean box, boolean metroLook) {
@@ -405,6 +413,27 @@ public final class AppDialog extends Dialog {
             int on = square ? Metro.fg : colors.accent, off = square ? Metro.fg : colors.hint;
             p.setStrokeCap(Paint.Cap.ROUND);
             p.setStrokeJoin(Paint.Join.ROUND);
+            if (NeuUi.on) {   // Neumorphism: 안으로 들어간 홈에 강조색 점·체크
+                float s = 10 * dp;
+                tmp.set(cx - s, cy - s, cx + s, cy + s);
+                NeuUi.drawInset(getContext(), c, tmp, box ? 5 * dp : s, NeuUi.surface, p);
+                if (!checked) return;
+                p.setStyle(Paint.Style.FILL);
+                p.setColor(colors.accent);
+                if (!box) {
+                    c.drawCircle(cx, cy, 4.5f * dp, p);
+                    return;
+                }
+                float k = 6.5f * dp;
+                check.reset();
+                check.moveTo(cx - k * 0.5f, cy + k * 0.02f);
+                check.lineTo(cx - k * 0.12f, cy + k * 0.4f);
+                check.lineTo(cx + k * 0.55f, cy - k * 0.38f);
+                p.setStyle(Paint.Style.STROKE);
+                p.setStrokeWidth(2.2f * dp);
+                c.drawPath(check, p);
+                return;
+            }
             if (!box) {   // 라디오
                 float r = 9 * dp;
                 p.setStyle(Paint.Style.STROKE);

@@ -32,6 +32,7 @@ import android.widget.TextView;
 
 import com.alternative_studios.newswipe.keyboard.Icons;
 import com.alternative_studios.newswipe.keyboard.KeyboardTheme;
+import com.alternative_studios.newswipe.ui.NeuUi;
 import com.alternative_studios.newswipe.ui.ExpressiveButton;
 import com.alternative_studios.newswipe.ui.OnboardingArt;
 import com.alternative_studios.newswipe.ui.Spring;
@@ -442,6 +443,7 @@ public final class OnboardingActivity extends Activity {
             row.setGravity(Gravity.CENTER_VERTICAL);
             row.setBackground(Ui.ripple((colors.accent & 0x00FFFFFF) | 0x33000000, Ui.round(colors.card, Ui.dp(c, 24)),
                     Ui.dp(c, 24)));
+            if (NeuUi.on) NeuUi.button(row, NeuUi.surface, Ui.dp(c, 24));
             row.setPadding(Ui.dp(c, 20), Ui.dp(c, 18), Ui.dp(c, 16), Ui.dp(c, 18));
             LinearLayout texts = new LinearLayout(c);
             texts.setOrientation(LinearLayout.VERTICAL);
@@ -530,6 +532,7 @@ public final class OnboardingActivity extends Activity {
             card.setOrientation(LinearLayout.VERTICAL);
             card.setGravity(Gravity.CENTER_HORIZONTAL);
             card.setBackground(Ui.round(colors.card, Ui.dp(c, 28)));
+            if (NeuUi.on) NeuUi.card(card, Ui.dp(c, 28));   // Neumorphism: 솟아오른 카드
             int p = Ui.dp(c, 20);
             card.setPadding(p, Ui.dp(c, 20), p, p);
 
@@ -554,6 +557,7 @@ public final class OnboardingActivity extends Activity {
             input.setSingleLine(true);
             input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
             input.setBackground(Ui.round(colors.bg, Ui.dp(c, 16)));
+            if (NeuUi.on) NeuUi.sunken(input, Ui.dp(c, 16));   // Neumorphism: 안으로 들어간 입력란
             input.setPadding(Ui.dp(c, 16), Ui.dp(c, 14), Ui.dp(c, 16), Ui.dp(c, 14));
             tintCursor(input);
             input.addTextChangedListener(new TextWatcher() {

@@ -25,6 +25,7 @@ public final class IconView extends View {
         boxSize = Ui.dp(context, boxDp);
         iconSize = Ui.dp(context, iconDp);
         setBackground(Ui.round(Ui.tint(color), Ui.dp(context, 12)));
+        if (NeuUi.on) NeuUi.sunken(this, Ui.dp(context, 12));   // Neumorphism: 안으로 들어간 홈에 강조색 아이콘
         if (Metro.on) {
             // Windows Phone 8의 앱 목록처럼 강조색 네모 타일에 흰 아이콘.
             setBackground(Ui.round(color, 0));

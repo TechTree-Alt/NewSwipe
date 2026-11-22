@@ -50,6 +50,7 @@ public final class ExpressiveButton extends TextView {
         if (Metro.on) setTypeface(Metro.regular());
         setClickable(true);
         setFocusable(true);
+        if (NeuUi.on) Neu.unclipParents(this);   // 솟아오른 그림자가 잘리지 않게
         // 그림자(elevation)를 줄 때 그림자도 눌린 모양을 따라가게 한다.
         setOutlineProvider(new android.view.ViewOutlineProvider() {
             @Override
@@ -100,8 +101,38 @@ public final class ExpressiveButton extends TextView {
         return Math.max(0f, Math.min(full, full + (pressedRadius - full) * p));
     }
 
+    /**
+     * Neumorphism: 강조색 면이 바탕에서 솟아오르고, 누르는 동안 안으로 들어간다 (알약 모양 그대로).
+     */
+    private void drawNeu(Canvas canvas) {
+        float sx = getScrollX(), sy = getScrollY();
+        float w = getWidth(), h = getHeight();
+        rect.set(sx, sy, sx + w, sy + h);
+        float r = h / 2f;
+        if (press > 0.5f) {
+            com.alternative_studios.newswipe.ui.NeuUi.drawInset(getContext(), canvas, rect, r,
+                    Neu.blend(fill, 0xFF000000, 0.08f), paint);
+        } else {
+            com.alternative_studios.newswipe.ui.NeuUi.drawRaised(getContext(), canvas, rect, r, com.alternative_studios.newswipe.ui.NeuUi.SMALL);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(fill);
+            canvas.drawRoundRect(rect, r, r, paint);
+        }
+        if (icon != 0) {
+            paint.setColor(ink);
+            float cx = sx + getPaddingLeft() - iconGap - iconSize / 2f;
+            com.alternative_studios.newswipe.keyboard.Icons.draw(canvas, icon, cx, sy + h / 2f, iconSize, paint, 2.4f);
+            paint.setStyle(Paint.Style.FILL);
+        }
+        super.onDraw(canvas);
+    }
+
     @Override
     protected void onDraw(Canvas canvas) {
+        if (com.alternative_studios.newswipe.ui.NeuUi.on) {
+            drawNeu(canvas);
+            return;
+        }
         // 캔버스는 TextView의 스크롤만큼 옮겨져 있다. 면·아이콘은 그만큼 더해 뷰 자리에 그린다 (글자는 super.onDraw가 맞춰 그린다).
         float sx = getScrollX(), sy = getScrollY();
         float w = getWidth(), h = getHeight();

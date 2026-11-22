@@ -48,6 +48,7 @@ public final class ExpressiveIconButton extends View {
         setContentDescription(description);
         setClickable(true);
         setFocusable(true);
+        if (NeuUi.on) Neu.unclipParents(this);   // 솟아오른 그림자가 잘리지 않게
     }
 
     /** 켜짐 상태: 옅은 바탕에 강조색 아이콘. */
@@ -100,10 +101,37 @@ public final class ExpressiveIconButton extends View {
         Icons.draw(canvas, icon, w / 2f, h / 2f, Math.min(Math.min(w, h) * 0.46f, Ui.dp(getContext(), 22)), paint);
     }
 
+    /**
+     * Neumorphism: 바탕색 동그라미가 솟아오르고 강조색 아이콘. 켜짐(setActive)과 누르는 동안은 안으로 들어간다.
+     * 강조색 면을 쓰지 않으므로 바탕과 같은 색에서 그림자로만 드러난다.
+     */
+    private void drawNeu(Canvas canvas) {
+        float w = getWidth(), h = getHeight();
+        float d = Math.min(w, h) - 2 * NeuUi.spread(getContext(), NeuUi.SMALL) * 0.5f;
+        float cx = w / 2f, cy = h / 2f;
+        rect.set(cx - d / 2f, cy - d / 2f, cx + d / 2f, cy + d / 2f);
+        boolean in = active || press > 0.5f;
+        if (in) {
+            NeuUi.drawInset(getContext(), canvas, rect, d / 2f, NeuUi.surface, paint);
+        } else {
+            NeuUi.drawRaised(getContext(), canvas, rect, d / 2f, NeuUi.SMALL);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(NeuUi.surface);
+            canvas.drawCircle(cx, cy, d / 2f, paint);
+        }
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor(accent);
+        Icons.draw(canvas, icon, cx, cy, Math.min(d * 0.5f, Ui.dp(getContext(), 22)), paint);
+    }
+
     @Override
     protected void onDraw(Canvas canvas) {
         if (Metro.on) {
             drawMetro(canvas);
+            return;
+        }
+        if (NeuUi.on) {
+            drawNeu(canvas);
             return;
         }
         float w = getWidth(), h = getHeight();

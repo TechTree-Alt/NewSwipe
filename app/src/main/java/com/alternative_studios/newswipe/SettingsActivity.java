@@ -29,6 +29,7 @@ import com.alternative_studios.newswipe.suggest.CorrectionMemory;
 import com.alternative_studios.newswipe.suggest.DictionaryPack;
 import com.alternative_studios.newswipe.suggest.UsageHistory;
 import com.alternative_studios.newswipe.suggest.UserDictionary;
+import com.alternative_studios.newswipe.ui.NeuUi;
 import com.alternative_studios.newswipe.ui.Chevron;
 import com.alternative_studios.newswipe.ui.ExpressiveSwitch;
 import com.alternative_studios.newswipe.ui.IconView;
@@ -378,6 +379,7 @@ public final class SettingsActivity extends Activity {
         searchResults = menuCard(new LinearLayout(this));
         searchResults.setOrientation(LinearLayout.VERTICAL);
         searchResults.setBackground(Metro.on ? null : Ui.round(cardColor, Ui.dp(this, 16)));
+        if (NeuUi.on) NeuUi.card(searchResults, Ui.dp(this, 20));
         searchResults.setVisibility(View.GONE);
         LinearLayout.LayoutParams rlp = matchWrap();
         rlp.topMargin = Ui.dp(this, 8);
@@ -388,7 +390,8 @@ public final class SettingsActivity extends Activity {
     private static LinearLayout menuCard(LinearLayout card) {
         card.setPadding(0, 0, 0, 0);
         card.setOutlineProvider(android.view.ViewOutlineProvider.BACKGROUND);
-        card.setClipToOutline(true);
+        // Neumorphism 카드의 그림자는 카드 밖에 그려지므로 테두리로 자르지 않는다 (자르면 그림자가 사라진다).
+        card.setClipToOutline(!NeuUi.on);
         return card;
     }
 
@@ -3376,9 +3379,10 @@ public final class SettingsActivity extends Activity {
         }));
         String desc;
         if (current == MODE_NEU) {
-            desc = L.t("키와 도구 막대·클립보드·이모지 창의 버튼이 바탕에서 부드럽게 솟아오르고, 누르면 안으로 쑥 들어가는 모양으로 그립니다. "
-                    + "키 그림자 대신 쓰입니다.", "Draws keys and the buttons on the toolbar, clipboard and emoji panels as if they rise softly "
-                    + "from the background and sink in when pressed. Replaces key shadows.");
+            desc = L.t("키보드와 설정 화면의 키·버튼·카드가 바탕에서 부드럽게 솟아오르고, 누르거나 고르면 안으로 쑥 들어가는 모양으로 그립니다. "
+                    + "스위치·슬라이더·입력란은 바탕에 파인 홈처럼 보입니다. 키 그림자 대신 쓰입니다.",
+                    "Keys, buttons and cards on the keyboard and in settings rise softly from the background and sink in when pressed or "
+                    + "selected. Switches, sliders and text fields look carved into the background. Replaces key shadows.");
         } else if (current == MODE_METRO) {
             desc = L.t("앱 전체의 디자인과 애니메이션을 Windows Phone 7·8의 Metro UI처럼 바꿉니다. 각진 타일과 큰 글자, 턴스타일 화면 전환과 "
                     + "누른 자리로 기울어지는 틸트 효과를 쓰고, 설정 메뉴 사이를 가로로 밀어 오갑니다. 키 그림자와 키 곡률 대신 쓰입니다. 실험적인 기능입니다.",
@@ -3435,6 +3439,17 @@ public final class SettingsActivity extends Activity {
                 @Override
                 protected void onDraw(android.graphics.Canvas c) {
                     float cx = getWidth() / 2f, cy = getHeight() / 2f, r = Math.min(cx, cy) - Ui.dp(getContext(), 3);
+                    if (NeuUi.on) {
+                        // Neumorphism: 고른 색은 안으로 들어간 홈에 앉고, 나머지는 솟아오른 동그라미
+                        r = Math.min(cx, cy) - NeuUi.spread(getContext(), NeuUi.SMALL) * 0.7f;
+                        android.graphics.RectF f = new android.graphics.RectF(cx - r, cy - r, cx + r, cy + r);
+                        if (selected) {
+                            NeuUi.drawInset(getContext(), c, f, r, NeuUi.surface, p);
+                            r -= Ui.dp(getContext(), 4);
+                        } else {
+                            NeuUi.drawRaised(getContext(), c, f, r, NeuUi.SMALL);
+                        }
+                    }
                     p.setStyle(android.graphics.Paint.Style.FILL);
                     p.setColor(color);
                     if (square) c.drawRect(cx - r, cy - r, cx + r, cy + r, p);
@@ -3457,7 +3472,8 @@ public final class SettingsActivity extends Activity {
                         path.lineTo(cx - r * 0.1f, cy + r * 0.3f);
                         path.lineTo(cx + r * 0.4f, cy - r * 0.28f);
                         c.drawPath(path, p);
-                    } else if (!square && Math.abs(color - cardColor) < 0x101010) {
+                    } else if (!square && (NeuUi.on ? AppTheme.contrast(color | 0xFF000000, cardColor) < 1.6
+                            : Math.abs(color - cardColor) < 0x101010)) {   // 바탕에 묻히는 색은 옅은 테두리로
                         p.setStyle(android.graphics.Paint.Style.STROKE);
                         p.setStrokeWidth(Ui.dp(getContext(), 1));
                         p.setColor(ring);

@@ -13,6 +13,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.alternative_studios.newswipe.keyboard.Icons;
+import com.alternative_studios.newswipe.ui.NeuUi;
 import com.alternative_studios.newswipe.ui.ExpressiveIconButton;
 import com.alternative_studios.newswipe.ui.Metro;
 import com.alternative_studios.newswipe.ui.Ui;
@@ -426,6 +427,7 @@ final class SettingsFrame {
         searchInput.setInputType(InputType.TYPE_CLASS_TEXT);
         searchInput.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);
         searchInput.setBackground(Ui.round(colors.card, Ui.dp(c, 12)));
+        if (NeuUi.on) NeuUi.sunken(searchInput, Ui.dp(c, 12));   // Neumorphism: 안으로 들어간 입력란
         searchInput.setPadding(Ui.dp(c, 14), Ui.dp(c, 10), Ui.dp(c, 14), Ui.dp(c, 10));
         searchInput.addTextChangedListener(new android.text.TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int a, int b, int n) { }
@@ -485,6 +487,7 @@ final class SettingsFrame {
         testInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
         testInput.setMaxLines(3);
         testInput.setBackground(Ui.round(colors.card, Ui.dp(c, 12)));
+        if (NeuUi.on) NeuUi.sunken(testInput, Ui.dp(c, 12));   // Neumorphism: 안으로 들어간 입력란
         testInput.setPadding(Ui.dp(c, 14), Ui.dp(c, 10), Ui.dp(c, 14), Ui.dp(c, 10));
         testBar.addView(testInput, matchWrap());
         updateTestButton();

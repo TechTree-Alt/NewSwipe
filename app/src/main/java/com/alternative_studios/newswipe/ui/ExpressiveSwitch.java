@@ -47,6 +47,7 @@ public final class ExpressiveSwitch extends View {
         border = Ui.dp(context, 2);
         setClickable(true);
         setFocusable(true);
+        if (NeuUi.on) Neu.unclipParents(this);   // 끝에 선 손잡이의 그림자가 잘리지 않게
     }
 
     /** 애니메이션 없이 값만 바꾼다 (초기 상태용). */
@@ -143,10 +144,34 @@ public final class ExpressiveSwitch extends View {
         c.drawRect(thumbL, cy - thumbH / 2f, thumbL + thumbW, cy + thumbH / 2f, paint);
     }
 
+    /**
+     * Neumorphism: 안으로 들어간 홈(켜지면 강조색이 차오른다)과, 그 안에서 솟아오른 바탕색 손잡이. 누르는 동안 손잡이가 조금 커진다.
+     */
+    private void drawNeu(Canvas c) {
+        float dp = Ui.dp(getContext(), 1);
+        float cy = getHeight() / 2f;
+        float t = Math.max(0f, Math.min(1f, progress));
+        rect.set(0, cy - h / 2f, w, cy + h / 2f);
+        int groove = t <= 0f ? NeuUi.surface : blend(NeuUi.well(), accent, 0.9f * t);
+        NeuUi.drawInset(getContext(), c, rect, h / 2f, groove, paint);
+        float size = h - 8 * dp + 3 * dp * press;
+        float travel = w - h;
+        float cx = h / 2f + travel * progress;
+        rect.set(cx - size / 2f, cy - size / 2f, cx + size / 2f, cy + size / 2f);
+        NeuUi.drawRaised(getContext(), c, rect, size / 2f, NeuUi.SMALL);
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor(NeuUi.knob());
+        c.drawCircle(cx, cy, size / 2f, paint);
+    }
+
     @Override
     protected void onDraw(Canvas c) {
         if (Metro.on) {
             drawMetro(c);
+            return;
+        }
+        if (NeuUi.on) {
+            drawNeu(c);
             return;
         }
         float cy = getHeight() / 2f;

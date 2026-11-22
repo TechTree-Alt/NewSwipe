@@ -13,6 +13,7 @@ import android.widget.TextView;
 
 import com.alternative_studios.newswipe.keyboard.KeyboardTheme;
 import com.alternative_studios.newswipe.keyboard.ToolbarButtons;
+import com.alternative_studios.newswipe.ui.NeuUi;
 import com.alternative_studios.newswipe.ui.ExpressiveSwitch;
 import com.alternative_studios.newswipe.ui.IconButton;
 import com.alternative_studios.newswipe.ui.Ui;
@@ -102,6 +103,7 @@ public final class ToolbarButtonsEditorActivity extends Activity {
         keyList = keys;
         keys.setOrientation(LinearLayout.VERTICAL);
         keys.setBackground(Ui.round(card, Ui.dp(this, 16)));
+        if (NeuUi.on) NeuUi.card(keys, Ui.dp(this, 16));   // Neumorphism: 솟아오른 카드
         // 줄을 카드 안쪽으로 조금 들여 놓아, 끌어 올린 줄의 둥근 모서리와 그림자가 카드 가장자리에서 잘리지 않게 한다.
         int inset = Ui.dp(this, 6);
         keys.setPadding(inset, Ui.dp(this, 4), inset, Ui.dp(this, 4));

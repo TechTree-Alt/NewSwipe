@@ -128,8 +128,8 @@ public final class Ui {
         android.widget.LinearLayout row = new android.widget.LinearLayout(c);
         android.widget.LinearLayout.LayoutParams rlp = new android.widget.LinearLayout.LayoutParams(
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
-        rlp.topMargin = dp(c, 6);
-        rlp.bottomMargin = dp(c, 4);
+        rlp.topMargin = dp(c, NeuUi.on ? 10 : 6);   // Neumorphism: 칸의 그림자 자리
+        rlp.bottomMargin = dp(c, NeuUi.on ? 10 : 4);
         row.setLayoutParams(rlp);
         row.setBaselineAligned(false);   // 칸마다 글자 줄 수가 달라도 위아래로 어긋나지 않게
         row.setClipChildren(false);   // 눌렀을 때 옆 칸 쪽으로 늘어난 모양이 잘리지 않게
@@ -171,7 +171,8 @@ public final class Ui {
             android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(
                     0, android.view.ViewGroup.LayoutParams.MATCH_PARENT, 1f);   // 한 칸이 두 줄이어도 높이를 맞춘다
             // Metro: 타일처럼 칸 사이를 조금 더 띄운다.
-            lp.setMargins(dp(c, Metro.on ? 2 : 1), 0, dp(c, Metro.on ? 2 : 1), 0);
+            int gap = NeuUi.on ? 5 : Metro.on ? 2 : 1;   // Neumorphism은 칸마다 그림자가 있어 더 띄운다
+            lp.setMargins(dp(c, gap), 0, dp(c, gap), 0);
             row.addView(t, lp);
         }
         for (int i = 0; i < cells.length; i++) {

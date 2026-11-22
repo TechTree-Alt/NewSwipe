@@ -17,6 +17,7 @@ import android.widget.Toast;
 
 import com.alternative_studios.newswipe.keyboard.Icons;
 import com.alternative_studios.newswipe.suggest.Shortcuts;
+import com.alternative_studios.newswipe.ui.NeuUi;
 import com.alternative_studios.newswipe.ui.Chevron;
 import com.alternative_studios.newswipe.ui.IconButton;
 import com.alternative_studios.newswipe.ui.Ui;
@@ -97,6 +98,7 @@ public final class ShortcutEditorActivity extends Activity {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setBackground(Ui.round(cardColor, Ui.dp(this, 16)));
+        if (NeuUi.on) NeuUi.card(card, Ui.dp(this, 16));   // Neumorphism: 솟아오른 카드
         card.setPadding(0, Ui.dp(this, 4), 0, Ui.dp(this, 4));
         LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -112,6 +114,7 @@ public final class ShortcutEditorActivity extends Activity {
         clear.setPadding(0, Ui.dp(this, 14), 0, Ui.dp(this, 14));
         clear.setBackground(Ui.ripple(accentColor & 0x00FFFFFF | 0x33000000,
                 Ui.round(accentColor & 0x00FFFFFF | 0x1F000000, Ui.dp(this, 12)), Ui.dp(this, 12)));
+        if (NeuUi.on) NeuUi.button(clear, NeuUi.surface, Ui.dp(this, 12));   // Neumorphism: 솟아오른 버튼
         clear.setOnClickListener(v -> AppTheme.accentBuilder(AppTheme.dialogContext(this))
                 .setTitle(L.t("단축어 모두 지우기", "Delete all text shortcuts"))
                 .setMessage(L.t("정해 둔 단축어 " + all.size() + "개를 모두 지웁니다. 되돌릴 수 없습니다.",
@@ -136,6 +139,7 @@ public final class ShortcutEditorActivity extends Activity {
         row.setPadding(h, Ui.dp(this, 12), h, Ui.dp(this, 12));
         row.setBackground(Ui.ripple(accentColor & 0x00FFFFFF | 0x33000000,
                 Ui.round(accentColor & 0x00FFFFFF | 0x1F000000, Ui.dp(this, 12)), Ui.dp(this, 12)));
+        if (NeuUi.on) NeuUi.button(row, NeuUi.surface, Ui.dp(this, 12));   // Neumorphism: 솟아오른 버튼
         row.addView(text(label, 15, accentColor), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         row.addView(new Chevron(this, accentColor));
         row.setClickable(true);

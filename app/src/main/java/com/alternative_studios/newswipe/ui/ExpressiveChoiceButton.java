@@ -28,6 +28,8 @@ public final class ExpressiveChoiceButton extends TextView {
     private final float[] radii = new float[8];
     private final int accent, onAccent, text, hint;
     private int idle, overlay;
+    /** 면 색을 직접 정했는지 (키 편집 창의 키 모양 칸). Neumorphism에서도 그 색으로 면을 칠한다. */
+    private boolean idleSet;
     private final float small, pressed;
     private boolean first, last;
     private float sel;      // 0 = 고르지 않음, 1 = 고름 (스프링으로 1을 조금 넘을 수 있다)
@@ -73,6 +75,7 @@ public final class ExpressiveChoiceButton extends TextView {
 
     /** 고르지 않은 칸의 면 색과 눌렀을 때 덧칠하는 색을 직접 정한다 (기본은 글자 힌트 색을 옅게 쓴다). */
     public void setIdleColors(int idle, int overlay) {
+        idleSet = true;
         this.idle = idle;
         this.overlay = overlay;
         invalidate();
@@ -81,7 +84,11 @@ public final class ExpressiveChoiceButton extends TextView {
     /** 이름 글자 크기 (sp). */
     public void setLabelSize(float sp) {
         setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
+        baseSize = -1f;
     }
+
+    /** 칸에 맞춰 줄이기 전의 글자 크기 (px). */
+    private float baseSize = -1f;
 
     /** 줄 안에서의 자리: 줄 양 끝 칸은 바깥 모서리가 알약이다. 한 칸씩 떨어진 칸은 둘 다 false. */
     public void setPosition(boolean first, boolean last) {
@@ -126,7 +133,15 @@ public final class ExpressiveChoiceButton extends TextView {
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         int w = MeasureSpec.getSize(widthMeasureSpec);
         if (MeasureSpec.getMode(widthMeasureSpec) != MeasureSpec.UNSPECIFIED && w > 0) {
-            String want = wrap(label, w - getPaddingLeft() - getPaddingRight());
+            int room = w - getPaddingLeft() - getPaddingRight();
+            // 띄어쓰기가 없는 긴 낱말(예: Neumorphism)은 글자 중간에서 줄이 바뀌지 않게 칸에 맞춰 글자를 줄인다 (70%까지).
+            if (baseSize < 0) baseSize = getTextSize();
+            if (getTextSize() != baseSize) getPaint().setTextSize(baseSize);
+            String want = wrap(label, room);
+            float widest = 0;
+            for (String line : want.split("\n")) widest = Math.max(widest, getPaint().measureText(line));
+            float size = widest > room && room > 0 ? Math.max(baseSize * 0.7f, baseSize * room / widest) : baseSize;
+            if (Math.abs(getTextSize() - size) > 0.5f || getPaint().getTextSize() != size) setTextSize(TypedValue.COMPLEX_UNIT_PX, size);
             if (!want.contentEquals(getText())) setText(want);
         }
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
@@ -152,7 +167,7 @@ public final class ExpressiveChoiceButton extends TextView {
      * 늘었다가 제자리로 돌아온다 (목표를 넘으면 살짝 줄었다 돌아온다). 해제되는 칸은 모양과 색만 바뀐다. 늘어난 폭은 옆 칸 쪽으로 나누고 옆 칸은 그만큼 줄어든다.
      */
     private void updateStretch() {
-        if (Metro.on) {   // Metro: 칸은 늘어나지 않는다 (색만 바뀌고, 누르면 기울어진다)
+        if (Metro.on || NeuUi.on) {   // Metro: 칸은 늘어나지 않는다 (색만 바뀌고, 누르면 기울어진다)
             extL = extR = 0f;
             invalidate();
             return;
@@ -208,7 +223,8 @@ public final class ExpressiveChoiceButton extends TextView {
     }
 
     private void applyTextColor() {
-        setTextColor(blend(text, onAccent, clamp01(sel)));
+        // Neumorphism: 고른 칸은 강조색으로 칠하지 않고 안으로 들어가므로 글씨가 강조색이 된다.
+        setTextColor(blend(text, NeuUi.on ? accent : onAccent, clamp01(sel)));
     }
 
     /**
@@ -248,10 +264,45 @@ public final class ExpressiveChoiceButton extends TextView {
         }
     }
 
+    /**
+     * Neumorphism: 고르지 않은 칸은 바탕에서 솟아오르고, 고른 칸은 안으로 들어가 있다 (누르는 동안도 들어간다).
+     * 줄 양 끝의 바깥 모서리는 알약, 안쪽 모서리는 작게 둥글다.
+     */
+    private void drawNeu(Canvas canvas) {
+        float w = getWidth(), h = getHeight();
+        float r = Math.min(h / 2f, Ui.dp(getContext(), 14));
+        rect.set(0, 0, w, h);
+        boolean in = sel > 0.5f || press > 0.5f;
+        int face = idleSet ? (idle | 0xFF000000) : NeuUi.surface;
+        if (in) {
+            NeuUi.drawInset(getContext(), canvas, rect, r, face, paint);
+        } else {
+            NeuUi.drawRaised(getContext(), canvas, rect, r, NeuUi.SMALL);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(face);
+            canvas.drawRoundRect(rect, r, r, paint);
+        }
+        super.onDraw(canvas);
+        if (sub != null) {
+            float room = w - 2 * Ui.dp(getContext(), 6);
+            if (subShown == null || subShownRoom != room) {
+                subShown = android.text.TextUtils.ellipsize(sub, subPaint, Math.max(room, 1f),
+                        android.text.TextUtils.TruncateAt.END);
+                subShownRoom = room;
+            }
+            subPaint.setColor(blend(hint, accent, clamp01(sel)));
+            canvas.drawText(subShown, 0, subShown.length(), w / 2f, h - Ui.dp(getContext(), 10), subPaint);
+        }
+    }
+
     @Override
     protected void onDraw(Canvas canvas) {
         if (Metro.on) {
             drawMetro(canvas);
+            return;
+        }
+        if (NeuUi.on) {
+            drawNeu(canvas);
             return;
         }
         float w = getWidth(), h = getHeight();

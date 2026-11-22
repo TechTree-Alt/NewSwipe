@@ -12,6 +12,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.alternative_studios.newswipe.cjk.CjkPack;
+import com.alternative_studios.newswipe.ui.NeuUi;
 import com.alternative_studios.newswipe.ui.ExpressiveSwitch;
 import com.alternative_studios.newswipe.ui.Metro;
 import com.alternative_studios.newswipe.ui.Ui;
@@ -89,6 +90,7 @@ final class LanguageOrderEditor {
         langList = langs;
         langs.setOrientation(LinearLayout.VERTICAL);
         langs.setBackground(Ui.round(card, Ui.dp(a, 16)));
+        if (NeuUi.on) NeuUi.card(langs, Ui.dp(a, 16));   // Neumorphism: 솟아오른 카드
         int inset = Ui.dp(a, 6);
         langs.setPadding(inset, Ui.dp(a, 4), inset, Ui.dp(a, 4));
         if (Metro.on) {   // Metro에는 카드가 없다: 언어 줄이 바탕 위에 바로 놓인다

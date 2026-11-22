@@ -8,6 +8,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.alternative_studios.newswipe.suggest.WordSuggester;
+import com.alternative_studios.newswipe.ui.NeuUi;
 import com.alternative_studios.newswipe.ui.Ui;
 
 /** 설정 화면 맨 아래의 '기본값으로 되돌리기'. 확인을 거친 뒤에만 되돌린다. */
@@ -36,6 +37,7 @@ final class ResetDialog {
         reset.setPadding(0, Ui.dp(activity, 14), 0, Ui.dp(activity, 14));
         reset.setBackground(Ui.ripple(accent & 0x00FFFFFF | 0x33000000,
                 Ui.round(accent & 0x00FFFFFF | 0x1F000000, Ui.dp(activity, 12)), Ui.dp(activity, 12)));
+        if (NeuUi.on) NeuUi.button(reset, NeuUi.surface, Ui.dp(activity, 14));   // Neumorphism: 솟아오른 버튼
         if (com.alternative_studios.newswipe.ui.Metro.on) {
             // Metro: 다른 버튼처럼 글자 색 테두리의 네모, 누르면 강조색으로 채워진다.
             AppTheme t = AppTheme.of(activity);
