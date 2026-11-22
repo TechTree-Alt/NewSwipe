@@ -699,7 +699,7 @@ public final class SettingsActivity extends Activity {
     private static final String[] HARVEST_CHAR_SLOTS = {",", "."};
 
     /**
-     * 키보드 사용자화의 영역 창·키보드 전체 설정 창·키 창·도구 막대 버튼 창을 보이지 않는 곳에 만들어 항목 이름을 모은다
+     * 키보드 사용자화의 영역 창·키 창·도구 막대 버튼 창을 보이지 않는 곳에 만들어 항목 이름을 모은다
      * (목록에는 없는 설정들). 창마다 그 창 자체("… 설정")도 넣어, 창 이름으로 찾아 그 창을 바로 열 수 있게 한다.
      * 메인 화면처럼 키보드 사용자화가 아닌 화면에서도 모으므로, 창이 쓰는 칸(키 편집 칸·안내 칸)은 여기서 임시로 만든다.
      */
@@ -741,7 +741,6 @@ public final class SettingsActivity extends Activity {
                     buildArea(area);
                 });
             }
-            harvestPart(EDITOR_PART + "b:0:" + L.t("키보드 전체 설정", "Whole keyboard settings"), L.t("키보드 전체 설정", "Whole keyboard settings"), out, scratch -> buildBoard());
             com.alternative_studios.newswipe.keyboard.KeyboardLayout l =
                     com.alternative_studios.newswipe.keyboard.KeyboardLayout.korean(prefs);
             for (int type : HARVEST_KEYS) {
@@ -864,16 +863,14 @@ public final class SettingsActivity extends Activity {
         KeyboardPreview.Selection sel;
         String kind = parts[1], arg = parts[2];
         if ("c".equals(kind) || "o".equals(kind)) {
-            // 글자 키(쉼표·온점 자리)와 도구 막대 버튼은 한글 자판의 키 설정 페이지에서 고른다.
+            // 글자 키(쉼표·온점 자리)와 도구 막대 버튼은 한글 자판에서 고른다 (그 영역이 가운데로 온다).
             showEditorTab(KeyboardPreview.TAB_KOREAN);
-            editorPreview.setLayer(KeyboardPreview.LAYER_KEY);
             if ("c".equals(kind)) {
                 com.alternative_studios.newswipe.keyboard.Key k = charKey(editorPreview.layout(), arg);
                 if (k == null) return;
                 sel = KeyboardPreview.Selection.key(k, KeyboardPreview.TAB_KOREAN);
             } else {
                 if (!prefs.toolbar() || !prefs.toolShown(arg)) {   // 도구 막대나 그 버튼을 감춰 두면 도구 막대 창을 연다
-                    editorPreview.setLayer(KeyboardPreview.LAYER_AREA);
                     sel = KeyboardPreview.Selection.area(KeyboardPreview.AREA_TOOLBAR);
                 } else {
                     sel = KeyboardPreview.Selection.tool(arg);
@@ -887,22 +884,20 @@ public final class SettingsActivity extends Activity {
                 return;
             }
             if ("a".equals(kind)) {
-                editorPreview.setLayer(KeyboardPreview.LAYER_AREA);
                 sel = KeyboardPreview.Selection.area(n);
             } else if ("t".equals(kind)) {   // 글자 키 창: 그 자판으로 바꿔 연다 (탭 버튼도 맞춘다)
                 if (n < 0 || n >= KeyboardPreview.tabNames().length) return;
                 showEditorTab(n);
-                editorPreview.setLayer(KeyboardPreview.LAYER_AREA);
                 sel = KeyboardPreview.Selection.area(KeyboardPreview.AREA_LETTERS);
-            } else if ("b".equals(kind)) {
-                editorPreview.setLayer(KeyboardPreview.LAYER_BOARD);
-                sel = KeyboardPreview.Selection.board();
-            } else {
+            } else if ("k".equals(kind)) {
                 showEditorTab(KeyboardPreview.TAB_KOREAN);
                 com.alternative_studios.newswipe.keyboard.Key k = firstKey(editorPreview.layout(), n);
                 if (k == null) return;
-                editorPreview.setLayer(KeyboardPreview.LAYER_KEY);
                 sel = KeyboardPreview.Selection.key(k, KeyboardPreview.TAB_KOREAN);
+            } else {
+                // 예전의 '키보드 전체 설정' 창 등: 그 항목은 이제 목록에 있다.
+                highlightItem(scrollView, label);
+                return;
             }
         }
         onPreviewTap(sel);
@@ -1400,7 +1395,7 @@ public final class SettingsActivity extends Activity {
     private KeyEditPanel keyPanel;
     /** 모든 설정 목록. */
     private LinearLayout overviewBox;
-    /** 설정 창: 목록 위에 겹쳐 아래에서 올라오는 시트 (영역·키·키보드 전체 설정). */
+    /** 설정 창: 목록 위에 겹쳐 아래에서 올라오는 시트 (영역·키·도구 막대 버튼 설정). */
     private EditorSheet sheet;
     /** 편집 칸을 연 동안 설정이 바뀌어, 닫을 때 모든 설정 목록을 다시 만들어야 하는지. */
     private boolean overviewStale;
@@ -1413,8 +1408,9 @@ public final class SettingsActivity extends Activity {
 
 
     /**
-     * 키보드 사용자화: 화면 아래에 실제 키보드와 같은 미리보기를 붙이고(키보드·영역·키 세 페이지), 위쪽 목록에는 어느 영역·키
-     * 창에도 없는 키보드 전체 설정을 둔다. 미리보기에서 영역이나 키를 누르면 목록 위로 그 설정 창(시트)이 올라온다.
+     * 키보드 사용자화: 화면 아래에 실제 키보드와 같은 미리보기를 붙이고, 위쪽 목록에는 어느 영역·키 창에도 없는
+     * 키보드 전체 설정(키 모양·키보드 여백 등)을 둔다. 미리보기에서 영역을 누르면 그 영역이 미리보기 가운데로 오고 목록 위로
+     * 그 설정 창(시트)이 올라오며, 이어서 그 영역의 키·버튼을 누르면 그 키·버튼의 창으로 바뀐다.
      */
     private void buildKeyboardEditor() {
         if (!harvesting) {
@@ -1427,13 +1423,6 @@ public final class SettingsActivity extends Activity {
                 @Override
                 public void onSizeChanged(String prefKey) {
                     syncSizeSliders(prefKey);
-                }
-
-                @Override
-                public void onLayerChanged(int layer) {
-                    closeKeyPanel();   // 다른 층으로 넘기면 고른 것이 풀린다
-                    pageDots.setPage(layer);
-                    pageDots.announce(layer);
                 }
             });
             keyPanel = new KeyEditPanel(this, editorView(), new KeyEditPanel.Host() {
@@ -1462,19 +1451,15 @@ public final class SettingsActivity extends Activity {
             tabs.setBackgroundColor(AppTheme.of(this).bg);
             tabs.addView(editorTabs = Ui.choiceRow(this, KeyboardPreview.tabNames(), 0, accentColor, onAccentColor,
                     textColor, hintColor, 0, i -> {
-                        // 영역·키보드 전체의 창은 다른 자판에서도 연 채로 둔다 (글자 키 창은 그 자판의 항목으로 바뀐다).
+                        // 영역 창은 다른 자판에서도 연 채로 둔다 (글자 키 창은 그 자판의 항목으로 바뀐다).
                         // 키는 자판마다 달라 창을 닫는다.
                         KeyboardPreview.Selection s = editorPreview.selection();
-                        boolean keep = panelOpen() && s != null
-                                && (s.kind == KeyboardPreview.SEL_AREA || s.kind == KeyboardPreview.SEL_BOARD);
+                        boolean keep = panelOpen() && s != null && s.kind == KeyboardPreview.SEL_AREA;
                         if (!keep) closeKeyPanel();
                         editorPreview.setTab(i);
                         if (keep) showSelection(editorPreview.selection());
                     }));
             pinnedBottom.addView(tabs, matchWrap());
-            pageDots = new PageDots(this, pageNames(), pageDescs(), AppTheme.of(this), editorPreview::setLayer);
-            pageDots.setPage(editorPreview.layer());
-            pinnedBottom.addView(pageDots, matchWrap());
             pinnedBottom.addView(editorPreview, matchWrap());
             pinnedBottom.setVisibility(View.VISIBLE);
 
@@ -1498,16 +1483,17 @@ public final class SettingsActivity extends Activity {
         fillOverview(box);
     }
 
-    /** 키보드 사용자화의 기본 목록을 box에 만든다 (세로·가로 안내, 폴더블 내부 화면 별도 키보드). */
+    /** 키보드 사용자화의 기본 목록을 box에 만든다 (세로·가로 안내, 폴더블 설정, 키 모양, 키보드 여백). */
     private void fillOverview(LinearLayout box) {
         LinearLayout saved = list;
         list = box;
         try {
             // 여기에는 키보드 전체에 걸리고 어느 영역·키 창에도 없는 것만 둔다. 나머지는 미리보기에서 영역이나 키를 눌러 바꾼다.
-            // 키 모양·분리 키보드는 '키보드 전체 설정' 창(미리보기의 키보드 층)에 있다.
             // 숫자 줄은 꺼 두어도 미리보기에 점선 빈 칸이 남아, 그것을 눌러 다시 켠다.
             addOrientationIntro();
             addLargeLayoutSection();
+            buildLook();
+            buildPad(-1);   // 미리보기 가장자리의 여백 손잡이를 끌면 이 슬라이더도 따라 움직인다
             if (!harvesting) list.addView(editorResetButton());
         } finally {
             list = saved;
@@ -1778,13 +1764,19 @@ public final class SettingsActivity extends Activity {
         }
     }
 
-    /** 미리보기에서 키·버튼·도구 막대를 눌렀다: 그것을 편집하는 창을 연다. 빈 곳이면 닫는다. */
+    /** 지금 설정 창이 보여 주는 것 (창이 닫혀 있으면 null). */
+    private KeyboardPreview.Selection shownSelection;
+
+    /**
+     * 미리보기에서 영역·키·버튼을 눌렀다: 그것을 편집하는 창을 연다 (미리보기는 그것이 속한 영역을 가운데로 가져온다).
+     * 빈 곳이면 닫는다.
+     */
     private void onPreviewTap(KeyboardPreview.Selection s) {
         if (s == null) {
             closeKeyPanel();
             return;
         }
-        if (panelOpen() && s.same(editorPreview.selection())) return;
+        if (panelOpen() && s.same(shownSelection)) return;
         editorPreview.select(s);
         KeyboardPreview.Selection now = editorPreview.selection();
         if (now == null) return;   // 지금 자판에 없는 키
@@ -1810,20 +1802,19 @@ public final class SettingsActivity extends Activity {
             closeKeyPanel();
             return;
         }
+        shownSelection = s;
         areaNoteBox.removeAllViews();   // 영역 창이 다시 채울 때만 안내가 있다
         areaNoteBox.setVisibility(View.GONE);
         boolean area = s.kind == KeyboardPreview.SEL_AREA;
         int areaId = area ? s.area() : -1;
-        // 키보드 층(키보드 전체)은 여백 슬라이더 창.
-        boolean board = s.kind == KeyboardPreview.SEL_BOARD;
-        if (board) {
-            keyPanel.view().setVisibility(View.GONE);
-            fillAreaBox(() -> {
-                buildBoard();
-                addAreaReset(-1);
-            });
-            sheet.setTitle(L.t("키보드 전체 설정", "Whole keyboard settings"));
-            return;
+        // 키·버튼 창은 헤더의 ←(와 뒤로 가기)로 그 키·버튼이 있는 영역의 창으로 돌아간다.
+        int parentArea = area ? -1 : editorPreview.focusArea();
+        if (parentArea >= 0) {
+            String parentName = KeyboardPreview.areaName(parentArea, editorPreview.tab()) + L.t(" 설정", " settings");
+            sheet.setBack(() -> onPreviewTap(KeyboardPreview.Selection.area(parentArea)),
+                    L.t(parentName + "으로 돌아가기", "Back to " + parentName));
+        } else {
+            sheet.setBack(null, null);
         }
         boolean panel = !area || areaId == KeyboardPreview.AREA_TOOLBAR;
         if (panel) keyPanel.show(area ? KeyboardPreview.Selection.toolbar() : s, editorPreview.selectedKey());
@@ -1894,15 +1885,14 @@ public final class SettingsActivity extends Activity {
         toolbarSpaceNote = t;
     }
 
-    /** 영역·키보드 전체 설정 창 맨 아래의 '기본값으로 되돌리기' (그 창이 담당하는 값만). area -1은 키보드 전체 여백. */
+    /** 영역 설정 창 맨 아래의 '기본값으로 되돌리기' (그 창이 담당하는 값만). */
     private void addAreaReset(int area) {
-        String name = area < 0 ? L.t("키보드 전체 설정", "Whole keyboard settings") : KeyboardPreview.areaName(area, letterTab) + L.t(" 설정", " settings");
+        String name = KeyboardPreview.areaName(area, letterTab) + L.t(" 설정", " settings");
         int tab = letterTab;
         list.addView(ResetDialog.button(this, name, () -> {
             // 세로·가로가 따로 정하는 값은 지금 편집하는 방향의 값만 되돌린다.
             Prefs v = editorView();
-            v.resetEditorScopeInView(area < 0 ? Prefs.SCOPE_BOARD
-                    : area == KeyboardPreview.AREA_MIDDLE ? Prefs.SCOPE_MIDDLE : Prefs.AREA_SCOPES[area]);
+            v.resetEditorScopeInView(area == KeyboardPreview.AREA_MIDDLE ? Prefs.SCOPE_MIDDLE : Prefs.AREA_SCOPES[area]);
             // 글자 키 창은 세 자판이 함께 쓰는 값과 그 자판에만 있는 값을 되돌린다.
             if (area == KeyboardPreview.AREA_LETTERS && tab == KeyboardPreview.TAB_KOREAN) {
                 v.resetEditorScopeInView(Prefs.SCOPE_LETTERS_KO);
@@ -1932,12 +1922,6 @@ public final class SettingsActivity extends Activity {
         }
     }
 
-    /** 키보드 전체 설정 창: 키 모양, 맨 아래에 키보드 여백. */
-    private void buildBoard() {
-        buildLook();
-        buildPad(-1);
-    }
-
     /**
      * 여백 창: area가 -1이면 키보드 전체 둘레의 여백, 아니면 그 영역의 여백 (키보드 전체 여백 안쪽에 더한다).
      * 키보드 전체 여백은 미리보기의 손잡이를 끌면 이 슬라이더도 같이 움직이고, 영역마다의 여백은 이 슬라이더로만 바꾼다.
@@ -1950,8 +1934,10 @@ public final class SettingsActivity extends Activity {
             c.addView(own(sizeSlider(L.t("오른쪽 여백", "Right padding"), v.padKey(Prefs.SIDE_RIGHT), v::padRightDp, 0, 24, 1, "dp")));
             c.addView(own(sizeSlider(L.t("위쪽 여백", "Top padding"), v.padKey(Prefs.SIDE_TOP), v::padTopDp, 0, 24, 1, "dp")));
             c.addView(own(sizeSlider(L.t("아래쪽 여백", "Bottom padding"), v.padKey(Prefs.SIDE_BOTTOM), v::padBottomDp, 0, v.padBottomMax(), 1, "dp")));
-            c.addView(note(L.t("키보드 전체 둘레의 여백입니다. 영역마다 따로 주는 여백은 '영역 설정' 페이지에서 그 영역을 눌러 "
-                    + "창 맨 아래의 '여백'에서 정합니다.", "Padding around the whole keyboard. To set padding for each area, tap the area on the 'Areas' page and use 'Padding' at the bottom of its panel.")));
+            c.addView(note(L.t("키보드 전체 둘레의 여백입니다. 아래 미리보기 가장자리의 손잡이를 끌어서도 바꿀 수 있습니다. "
+                    + "영역마다 따로 주는 여백은 미리보기에서 그 영역을 눌러 창 맨 아래의 '여백'에서 정합니다.",
+                    "Padding around the whole keyboard. You can also drag the handles on the edges of the preview below. "
+                    + "To set padding for each area, tap the area in the preview and use 'Padding' at the bottom of its panel.")));
             return;
         }
         LinearLayout c = section(L.t("여백", "Padding"));
@@ -1967,13 +1953,13 @@ public final class SettingsActivity extends Activity {
         return own(sizeSlider(label, key, () -> v.areaPadDp(area, side), 0, Prefs.AREA_PAD_MAX, 1, "dp"));
     }
 
-    /** 영역 설정 창의 분리된 안내 칸: 하나하나의 설정은 키 설정 페이지에 있다. pick은 조사가 붙은 말 ("키를", "버튼을"). */
+    /** 영역 설정 창의 분리된 안내 칸: 하나하나의 설정은 미리보기에서 그 키·버튼을 눌러 바꾼다. pick은 조사가 붙은 말 ("키를", "버튼을"). */
     private void addKeyPageNote(String what, String pick) {
         // 설정 창 맨 위(areaNoteBox)에 둔다.
         areaNoteBox.removeAllViews();
-        areaNoteBox.addView(note(L.t(what + " 하나하나의 설정은 아래쪽 미리보기의 오른쪽 '키 설정' 페이지에서 원하는 " + pick
-                + " 선택해 바꿀 수 있습니다.", "To change each of the " + what.toLowerCase(java.util.Locale.ROOT)
-                + " one by one, select it on the 'Keys' page on the right of the preview below.")));
+        areaNoteBox.addView(note(L.t(what + " 하나하나의 설정은 아래쪽 미리보기에서 원하는 " + pick
+                + " 눌러 바꿀 수 있습니다.", "To change each of the " + what.toLowerCase(java.util.Locale.ROOT)
+                + " one by one, tap it in the preview below.")));
         areaNoteBox.setVisibility(View.VISIBLE);
     }
 
@@ -2098,21 +2084,13 @@ public final class SettingsActivity extends Activity {
     /** 글자 키 창을 만들 자판 (KeyboardPreview.TAB_*): 창을 열 때 미리보기의 탭, 설정 검색 목록을 만들 때는 자판마다. */
     private int letterTab = KeyboardPreview.TAB_KOREAN;
 
-    /** 미리보기 위의 페이지 표시 (키보드 · 영역 · 키). */
-    private PageDots pageDots;
-    /** 미리보기 페이지 이름 (KeyboardPreview.LAYER_* 차례). */
-    private static String[] pageNames() {
-        return new String[]{L.t("키보드 전체 설정", "Whole keyboard settings"), L.t("영역 설정", "Areas"), L.t("키 설정", "Keys")};
-    }
-    /** 미리보기 페이지 설명 (PAGE_NAMES와 같은 차례). */
-    private static String[] pageDescs() {
-        return new String[]{L.t("전체적인 모양을 설정합니다.", "Set the overall look."), L.t("각 영역의 모습과 기능을 설정합니다", "Set the look and actions of each area"),
-            L.t("각 키의 기능과 동작을 설정합니다", "Set the actions of each key")};
-    }
-
-    /** 편집 창을 내려 닫고 목록으로 돌아간다 (창에서 바꾼 값이 있으면 다 내려간 뒤 목록을 다시 만든다). */
+    /**
+     * 편집 창을 내려 닫고 목록으로 돌아간다 (창에서 바꾼 값이 있으면 다 내려간 뒤 목록을 다시 만든다).
+     * 미리보기는 가운데로 가져왔던 영역을 제자리로 돌리고 흐림을 걷는다.
+     */
     private void closeKeyPanel() {
         if (editorPreview != null) editorPreview.select(null);
+        shownSelection = null;
         if (!panelOpen()) return;
         setPanelBack(false);
         setPreviewSplit(false);   // 창이 내려가는 동안 미리보기도 실제 크기로 돌아간다
@@ -2130,11 +2108,17 @@ public final class SettingsActivity extends Activity {
         scrollView.post(() -> scrollView.scrollTo(0, y));
     }
 
+    /** 뒤로 가기: 키·버튼 창이면 그 영역의 창으로 돌아가고, 영역 창이면 창을 닫는다. */
+    private void sheetBack() {
+        if (panelOpen()) sheet.back();
+        else closeKeyPanel();
+    }
+
     private void setPanelBack(boolean on) {
         if (Build.VERSION.SDK_INT < 33) return;
         android.window.OnBackInvokedDispatcher dispatcher = getOnBackInvokedDispatcher();
         if (on && panelBackCallback == null) {
-            android.window.OnBackInvokedCallback cb = this::closeKeyPanel;
+            android.window.OnBackInvokedCallback cb = this::sheetBack;
             panelBackCallback = cb;
             dispatcher.registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, cb);
         } else if (!on && panelBackCallback != null) {
@@ -4907,7 +4891,7 @@ public final class SettingsActivity extends Activity {
     public void onBackPressed() {
         if (SettingsFrame.consumeBack(this)) return;
         if (panelOpen()) {
-            closeKeyPanel();
+            sheetBack();
             return;
         }
         super.onBackPressed();

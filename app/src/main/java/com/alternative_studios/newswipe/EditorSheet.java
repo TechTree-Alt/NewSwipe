@@ -24,6 +24,7 @@ import com.alternative_studios.newswipe.ui.Ui;
 
 /**
  * 키보드 사용자화의 설정 창: 설정 목록 위에 겹친 시트. 위쪽 모서리가 둥글고 그림자가 지며, 헤더의 X로 닫는다.
+ * 영역 창에서 그 영역의 키 창으로 들어가면 X 자리에 ←가 나와 영역 창으로 돌아간다 (setBack).
  * 뒤의 목록은 어두운 막으로 가려(누르면 닫힌다) 지금 보는 것이 목록 위에 뜬 창이라는 것을 알 수 있게 한다.
  * 미리보기(화면 아래)는 가리지 않아 창을 연 채 다른 키를 눌러 바로 바꿀 수 있다. 바꾼 값은 그때그때 저장된다(창은 보여 주기만).
  */
@@ -52,6 +53,11 @@ final class EditorSheet {
     private final int overshoot;
     /** 뒤의 목록이 조금 보이게 창 위에 두는 틈. */
     private final int topGap;
+    /** 헤더 왼쪽 버튼: 보통은 X(닫기), 앞 단계가 있으면 ←(돌아가기). */
+    private final IconButton leading;
+    private final Runnable onCloseRequest;
+    /** 앞 단계로 돌아가기 (없으면 null: 왼쪽 버튼은 X). */
+    private Runnable back;
 
     /**
      * @param parent         창과 막을 겹쳐 놓을 틀 (설정 목록이 든 곳)
@@ -65,6 +71,7 @@ final class EditorSheet {
     EditorSheet(Context context, FrameLayout parent, Runnable onCloseRequest, View.OnClickListener onUndo) {
         this.c = context;
         this.parent = parent;
+        this.onCloseRequest = onCloseRequest;
         AppTheme colors = AppTheme.of(context);
         scrim = new View(c);
         scrim.setBackgroundColor(0x66000000);
@@ -98,7 +105,8 @@ final class EditorSheet {
         header.setPadding(hp, Ui.dp(c, 12), hp, Ui.dp(c, 4));
         int press = (colors.text & 0x00FFFFFF) | 0x33000000;
         IconButton cancel = new IconButton(c, Icons.CLOSE, colors.text, press, L.t("설정 창 닫기", "Close settings"));
-        cancel.setOnClickListener(v -> onCloseRequest.run());
+        cancel.setOnClickListener(v -> back());
+        leading = cancel;
         int size = Ui.dp(c, 44);
         header.addView(cancel, new FrameLayout.LayoutParams(size, size, Gravity.START | Gravity.CENTER_VERTICAL));
         // 오른쪽: 머리글과 같은 되돌리기·키보드 열기 버튼 (창이 머리글을 덮으므로 여기서도 쓸 수 있게).
@@ -251,6 +259,38 @@ final class EditorSheet {
 
     void setTitle(CharSequence t) {
         title.setText(t);
+    }
+
+    /**
+     * 앞 단계를 정한다: back이 있으면 헤더 왼쪽 버튼이 ←가 되어 누르면(뒤로 가기도) back을 부르고, null이면 X로 창을 닫는다.
+     * 버튼 모양이 바뀔 때는 잠깐 줄었다가 돌아오며 바뀐다.
+     *
+     * @param description ←의 화면 읽기 설명 (예: "글자 키 설정으로 돌아가기")
+     */
+    void setBack(Runnable back, String description) {
+        boolean wasBack = this.back != null;
+        this.back = back;
+        leading.setContentDescription(back != null ? description : L.t("설정 창 닫기", "Close settings"));
+        if (wasBack == (back != null)) return;
+        int icon = back != null ? Icons.BACK : Icons.CLOSE;
+        if (!isOpen()) {
+            leading.setIcon(icon);
+            return;
+        }
+        leading.animate().cancel();
+        leading.animate().scaleX(0.6f).scaleY(0.6f).alpha(0f).setDuration(90)
+                .setInterpolator(new PathInterpolator(0.3f, 0f, 0.8f, 0.15f))
+                .withEndAction(() -> {
+                    leading.setIcon(icon);
+                    leading.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(160)
+                            .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f)).start();
+                }).start();
+    }
+
+    /** 헤더 왼쪽 버튼·뒤로 가기: 앞 단계가 있으면 그리로 돌아가고, 없으면 닫기를 요청한다. */
+    void back() {
+        if (back != null) back.run();
+        else onCloseRequest.run();
     }
 
     /** 열려 있는지 (닫히는 중이면 아니다). */

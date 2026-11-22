@@ -914,8 +914,8 @@ public final class Prefs {
     private static EditorScope[] editorScopes() {
 
         return new EditorScope[]{
-            // 키보드 전체 설정 창의 값: 여백, 키 모양.
-            new EditorScope(SCOPE_BOARD, L.t("키보드 전체 설정 (여백·키 모양)", "Whole keyboard settings (padding · key look)"), keys(PAD_LEFT, PAD_RIGHT, PAD_TOP,
+            // 키보드 사용자화 목록의 키 모양·키보드 여백.
+            new EditorScope(SCOPE_BOARD, L.t("키 모양·키보드 여백", "Key look · keyboard padding"), keys(PAD_LEFT, PAD_RIGHT, PAD_TOP,
                     PAD_BOTTOM, KEY_TEXT_SIZE, KEY_RADIUS, KEY_GAP_X, KEY_GAP_Y, KEY_SHADOW,
                     KEY_SHADOW_STRENGTH, KEY_PREVIEW), NONE),
             new EditorScope(AREA_SCOPES[0], L.t("도구 막대", "Toolbar"), concat(TOOL_BUTTON_VALUES, TOOLBAR, TOOLBAR_BOTTOM, TOOLBAR_HEIGHT,
