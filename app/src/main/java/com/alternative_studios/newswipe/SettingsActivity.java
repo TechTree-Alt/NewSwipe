@@ -415,11 +415,11 @@ public final class SettingsActivity extends Activity {
             case LANGUAGES: return L.t("언어", "languages");
             case KEYBOARD: return L.t("사용자화", "customize");
             case "theme": return L.t("테마", "theme");
-            case "feedback": return L.t("소리", "sound");
+            case "feedback": return L.t("소리 & 진동", "sound");
             case "words": return L.t("추천", "suggestions");
             case "clipemoji": return L.t("클립보드", "clipboard");
-            case "onehand": return L.t("한 손", "one-handed");
-            case "backup": return L.t("백업", "backup");
+            case "onehand": return L.t("한 손 모드", "one-handed");
+            case "backup": return L.t("백업 & 복원", "backup");
             case "lab": return L.t("실험실", "labs");
             case "app": return L.t("정보", "about");
             default: return null;

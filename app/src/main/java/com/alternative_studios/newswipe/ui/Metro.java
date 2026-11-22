@@ -656,7 +656,14 @@ public final class Metro {
                 if (v == null) return null;
                 FrameLayout h = new FrameLayout(page.getContext());
                 h.setClipChildren(true);
-                h.addView(v, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT));
+                // 실제 화면처럼 스크롤 틀 안에 넣는다: 스크롤 틀은 내용을 높이 제한 없이 재므로 줄마다 제 높이를 갖는다.
+                // 높이가 정해진 칸에 바로 넣으면 세로 줄은 아래로 갈수록 '남은 높이'만 받아, 화면 아래쪽 줄이 찌그러지거나
+                // (남은 높이가 없으면) 아예 안 보이다가 넘어가서 실제 화면이 뜨면 풀린다.
+                android.widget.ScrollView scroll = new android.widget.ScrollView(page.getContext());
+                scroll.setVerticalScrollBarEnabled(false);
+                scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
+                scroll.addView(v, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT));
+                h.addView(scroll, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
                 h.setVisibility(View.INVISIBLE);
                 h.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
                 page.addView(h, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, 1));
