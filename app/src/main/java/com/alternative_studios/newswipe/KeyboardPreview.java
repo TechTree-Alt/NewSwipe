@@ -436,6 +436,12 @@ final class KeyboardPreview extends FrameLayout {
     private final RectF holeFrom = new RectF();
     private boolean holeFromValid;
     private android.animation.ValueAnimator focusAnim;
+    /**
+     * 고른 영역의 굵은 윤곽선 진하기 (0~1): 영역 자체를 고르면 1, 그 안의 키·버튼을 고르면 0으로 짧게 흐려진다.
+     * 옮겨 가는 동안 떠나는 영역의 윤곽선은 fromOutline에서 함께 흐려진다.
+     */
+    private float areaOutline, fromOutline;
+    private android.animation.ValueAnimator outlineAnim;
     /** 흐린 곳을 덮는 바탕색의 진하기. */
     private static final float SCRIM = 0.62f;
 
@@ -534,13 +540,13 @@ final class KeyboardPreview extends FrameLayout {
 
     /** 한글·영어·기호 자판 탭 (설정 화면이 만들어 준다). 글자 키를 가운데로 끌어온 동안만 미리보기 안쪽 위에 떠 있다. */
     private View tabsView;
-    private static final int TABS_HEIGHT_DP = 36, TABS_TOP_DP = 6, TABS_GAP_DP = 6, TABS_SIDE_DP = 10;
+    private static final int TABS_TOP_DP = 6, TABS_GAP_DP = 6, TABS_SIDE_DP = 10;
 
     /** 자판 탭을 미리보기 안쪽 위에 놓는다 (처음에는 숨겨 둔다). */
     void setTabsView(View v) {
         tabsView = v;
         Context c = getContext();
-        LayoutParams lp = new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(c, TABS_HEIGHT_DP), android.view.Gravity.TOP);
+        LayoutParams lp = new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, android.view.Gravity.TOP);
         lp.setMargins(Ui.dp(c, TABS_SIDE_DP), Ui.dp(c, TABS_TOP_DP), Ui.dp(c, TABS_SIDE_DP), 0);
         v.setLayoutParams(lp);
         v.setAlpha(0f);
@@ -553,7 +559,7 @@ final class KeyboardPreview extends FrameLayout {
     private float tabsReserve() {
         if (tabsView == null) return 0f;
         Context c = getContext();
-        return Ui.dp(c, TABS_TOP_DP + TABS_HEIGHT_DP + TABS_GAP_DP);
+        return Ui.dp(c, TABS_TOP_DP + TABS_GAP_DP) + tabsView.getMeasuredHeight();
     }
 
     /** 자판 탭을 글자 키를 끌어온 만큼 보이게 한다 (위에서 살짝 내려오며 또렷해진다). */
@@ -608,10 +614,12 @@ final class KeyboardPreview extends FrameLayout {
      */
     private void updateFocus() {
         int target = focusAreaOf(selection);
+        animateOutline(selection != null && selection.kind == SEL_AREA && target >= 0);
         if (target == focusArea) {
             applyFocus();
             return;
         }
+        fromOutline = areaOutline;
         shiftFrom = column.getTranslationY();
         dimFrom = dimNow();
         holeFromValid = holeNow(holeFrom);
@@ -644,6 +652,25 @@ final class KeyboardPreview extends FrameLayout {
         });
         focusAnim = a;
         a.start();
+    }
+
+    /** 굵은 영역 윤곽선을 보이거나(영역을 골랐다) 흐려 없앤다(키·버튼을 골랐다). */
+    private void animateOutline(boolean on) {
+        float target = on ? 1f : 0f;
+        if (outlineAnim != null && outlineAnim.isRunning()) {
+            if (((Float) outlineAnim.getAnimatedValue()) == target) return;
+        } else if (areaOutline == target) {
+            return;
+        }
+        if (outlineAnim != null) outlineAnim.cancel();
+        outlineAnim = android.animation.ValueAnimator.ofFloat(areaOutline, target);
+        outlineAnim.setDuration(160);
+        outlineAnim.setInterpolator(new android.view.animation.PathInterpolator(0.2f, 0f, 0f, 1f));
+        outlineAnim.addUpdateListener(a -> {
+            areaOutline = (float) a.getAnimatedValue();
+            overlay.invalidate();
+        });
+        outlineAnim.start();
     }
 
     /** 지금 진행대로 자판을 내리고(translationY) 덮개를 다시 그린다. 덮개는 같은 거리만큼 내려 그린다. */
@@ -693,9 +720,10 @@ final class KeyboardPreview extends FrameLayout {
         measureChild(column, widthMeasureSpec, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
         int w = column.getMeasuredWidth(), h = column.getMeasuredHeight();
         overlay.measure(MeasureSpec.makeMeasureSpec(w, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(h, MeasureSpec.EXACTLY));
-        if (tabsView != null && tabsView.getVisibility() != GONE) {
+        // 자판 탭은 제 높이대로 (숨겨 둔 동안에도 재어 두어, 글자 키를 고를 때 그 아래 자리를 미리 안다).
+        if (tabsView != null) {
             measureChildWithMargins(tabsView, MeasureSpec.makeMeasureSpec(w, MeasureSpec.EXACTLY), 0,
-                    MeasureSpec.makeMeasureSpec(h, MeasureSpec.EXACTLY), 0);
+                    MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED), 0);
         }
         setMeasuredDimension(w, h);
     }
@@ -1120,30 +1148,8 @@ final class KeyboardPreview extends FrameLayout {
         return out.height() > 0;
     }
 
-    /** 굵은 윤곽선이 미리보기 가장자리에서 떨어지는 거리: 윤곽선에 걸친 손잡이(와 그 테두리)가 잘리지 않을 만큼. */
-    private static final float OUTLINE_MARGIN_DP = 5f;
-    /** 굵은 윤곽선 굵기 (기본 상태의 키보드 전체, 고른 영역). */
+    /** 굵은 윤곽선 굵기 (여백 손잡이를 끄는 동안의 키보드 전체, 고른 영역). */
     static final float THICK_DP = 2.5f;
-
-    /** 윤곽선의 좌우가 미리보기 가장자리에 너무 붙지 않게 안으로 들인다. */
-    private void clampX(RectF r) {
-        float m = Ui.dp(getContext(), OUTLINE_MARGIN_DP);
-        r.left = Math.max(r.left, m);
-        r.right = Math.min(r.right, getWidth() - m);
-    }
-
-    /**
-     * 기본 상태의 키보드 전체 굵은 윤곽선 (자판 좌표): boardBounds를 미리보기 가장자리에서 OUTLINE_MARGIN_DP만큼은 들인 자리.
-     * 상·하·좌·우 여백 손잡이가 이 윤곽선의 각 변 가운데에 걸쳐 있다.
-     */
-    boolean boardOutline(RectF out) {
-        if (!boardBounds(out)) return false;
-        float m = Ui.dp(getContext(), OUTLINE_MARGIN_DP);
-        clampX(out);
-        out.top = Math.max(out.top, m);
-        out.bottom = Math.min(out.bottom, getHeight() - m);
-        return out.width() > 0 && out.height() > 0;
-    }
 
     /**
      * 고른 영역의 굵은 윤곽선 (자판 좌표). 두 묶음으로 나뉜 글자 키는 묶음마다 하나씩 (높이·경계 손잡이가 묶음마다 걸쳐 있다).
@@ -1153,18 +1159,15 @@ final class KeyboardPreview extends FrameLayout {
         if (area == AREA_LETTERS && splitLetters()) {
             int n = 0;
             if (blockBounds(true, a)) {
-                clampX(a);
                 n++;
             }
             RectF second = n == 0 ? a : b;
             if (blockBounds(false, second)) {
-                clampX(second);
                 n++;
             }
             return n;
         }
         if (!focusBounds(area, a)) return 0;
-        clampX(a);
         return 1;
     }
 
@@ -1338,12 +1341,16 @@ final class KeyboardPreview extends FrameLayout {
     /** 손잡이의 가운데 (미리보기 좌표). 보이지 않으면 false. */
     private boolean handleCenter(Handle h, float[] out) {
         if (!handleEdge(h, out)) return false;
-        if (h != Handle.B_LEFT_END && h != Handle.B_RIGHT_START) return true;   // 손잡이는 윤곽선 위에 걸쳐 있다
-        // 맞닿은 두 묶음의 안쪽 경계 손잡이는 서로 겹치지 않게 조금씩 벌린다.
-        RectF l = new RectF(), r = new RectF();
-        if (!blockBounds(true, l) || !blockBounds(false, r)) return true;
-        float need = Ui.dp(getContext(), 14), gap = r.left - l.right;
-        if (gap < need) out[0] += (h == Handle.B_LEFT_END ? -1 : 1) * (need - gap) / 2f;
+        // 여백·높이 손잡이는 윤곽선 위에 걸쳐 있다. 묶음의 왼쪽·오른쪽 경계 손잡이는 윤곽선 안쪽에 둔다
+        // (맞닿은 두 묶음의 경계 손잡이가 서로 떨어져 보이고, 화면 가장자리의 시스템 몸짓과도 겹치지 않는다).
+        float in = Ui.dp(getContext(), 9);
+        switch (h) {
+            case B_LEFT_START:
+            case B_RIGHT_START: out[0] += in; break;
+            case B_LEFT_END:
+            case B_RIGHT_END: out[0] -= in; break;
+            default: break;
+        }
         return true;
     }
 
@@ -1361,13 +1368,11 @@ final class KeyboardPreview extends FrameLayout {
                 // 글자 키가 두 묶음으로 나뉘어 있으면 각 묶음 위 가장자리 가운데 (HEIGHT는 왼쪽, HEIGHT_RIGHT는 오른쪽 묶음).
                 if ((h == Handle.HEIGHT || h == Handle.HEIGHT_RIGHT) && splitLetters()) {
                     if (!blockBounds(h == Handle.HEIGHT, r)) return false;
-                    clampX(r);
                     out[0] = r.centerX();
                     out[1] = Math.max(r.top, 0);
                     return true;
                 }
                 if (!heightEdgeBounds(h, r)) return false;
-                clampX(r);
                 out[0] = r.centerX();
                 out[1] = Math.max(r.top, 0);
                 // 글자 키는 자판 가로 가운데에: 두 묶음의 폭·위치가 달라 윤곽선이 한쪽으로 치우쳐도 줄 전체의 가운데에 둔다.
@@ -1381,7 +1386,7 @@ final class KeyboardPreview extends FrameLayout {
             case PAD_BOTTOM: {
                 // 키보드 전체 윤곽선의 각 변 가운데 (손잡이는 윤곽선과 늘 같은 간격을 둔다).
                 RectF r = new RectF();
-                if (!boardOutline(r)) return false;
+                if (!boardBounds(r)) return false;
                 out[0] = h == Handle.PAD_LEFT ? r.left : h == Handle.PAD_RIGHT ? r.right : r.centerX();
                 out[1] = h == Handle.PAD_TOP ? r.top : h == Handle.PAD_BOTTOM ? r.bottom : r.centerY();
                 return true;
@@ -1393,7 +1398,6 @@ final class KeyboardPreview extends FrameLayout {
                 // 묶음 윤곽선의 왼쪽·오른쪽 가장자리, 세로 가운데.
                 RectF r = new RectF();
                 if (!blockBounds(h.leftBlock(), r)) return false;
-                clampX(r);
                 out[0] = h == Handle.B_LEFT_START || h == Handle.B_RIGHT_START ? r.left : r.right;
                 out[1] = r.centerY();
                 return true;
@@ -1654,17 +1658,9 @@ final class KeyboardPreview extends FrameLayout {
         /**
          * 영역마다 얇은 둥근 윤곽선과 가운데의 '눌러서 … 설정' 이름표. 가운데로 끌어온 영역은 굵은 윤곽선(drawSelected)과
          * 키 윤곽선을 그리므로 끌어온 만큼(focusWeight) 흐려 없앤다. 이름표는 흐림이 짙어질수록(dim) 함께 사라진다.
-         * 얇은 윤곽선은 키보드 전체 굵은 윤곽선 안쪽만 그린다 (가장자리에 붙은 영역 윤곽선이 굵은 윤곽선 밖에 겹쳐 보이지 않게).
          */
         private void drawAreas(Canvas c, float dim) {
             Context ctx = getContext();
-            c.save();
-            if (boardOutline(outlineB)) c.clipRect(outlineB);
-            drawAreasInside(c, dim, ctx);
-            c.restore();
-        }
-
-        private void drawAreasInside(Canvas c, float dim, Context ctx) {
             int accent = theme.accent;
             areaLabel.setTextSize(Ui.dp(ctx, 11));
             areaLabel.setTextAlign(Paint.Align.CENTER);
@@ -1828,9 +1824,11 @@ final class KeyboardPreview extends FrameLayout {
             c.restore();
         }
 
-        /** 기본 상태: 키보드 전체를 감싼 굵은 강조색 윤곽선 (흐림이 걷힌 만큼). 여백 손잡이가 각 변에 걸쳐 있다. */
+        /** 여백 손잡이를 끄는 동안: 키보드 전체를 감싼 굵은 강조색 윤곽선 (여백 손잡이가 각 변에 걸쳐 있다). */
         private void drawBoard(Canvas c, float alpha) {
-            if (alpha < 0.01f || !boardOutline(area)) return;
+            boolean pad = dragging && (active == Handle.PAD_TOP || active == Handle.PAD_BOTTOM
+                    || active == Handle.PAD_LEFT || active == Handle.PAD_RIGHT);
+            if (!pad || alpha < 0.01f || !boardBounds(area)) return;
             Context ctx = getContext();
             stroke.setStrokeWidth(Ui.dp(ctx, THICK_DP));
             stroke.setColor(withAlpha(theme.accent, alpha));
@@ -1888,8 +1886,8 @@ final class KeyboardPreview extends FrameLayout {
             if (fromArea != focusArea) drawAreaKeys(c, fromArea, focusWeight(fromArea));
             drawAreaKeys(c, focusArea, focusWeight(focusArea));
             drawScrim(c, shift, dim);
-            if (fromArea != focusArea) drawSelected(c, fromArea, focusWeight(fromArea));
-            drawSelected(c, focusArea, focusWeight(focusArea));
+            if (fromArea != focusArea) drawSelected(c, fromArea, focusWeight(fromArea) * fromOutline);
+            drawSelected(c, focusArea, focusWeight(focusArea) * areaOutline);
             // 고른 키·도구 막대 버튼: 강조색 굵은 테두리.
             RectF sel = selectionBounds();
             if (sel != null) {
