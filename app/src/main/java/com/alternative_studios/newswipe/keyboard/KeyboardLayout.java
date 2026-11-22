@@ -1020,6 +1020,8 @@ public final class KeyboardLayout {
     /**
      * 양 끝 키를 한글 키 한 칸 폭으로 줄이고, 남는 폭은 양 끝 키와 가운데 키들 사이의 빈 칸으로 둔다.
      * 그래서 양 끝 키가 아래 줄 기능키와 양 끝에서 세로로 줄을 맞춘다.
+     * 이 줄을 나중에 가운데에서 나눠 묶음 폭만큼 늘이거나 줄이면({@link #splitNormal}), 그만큼 미리 거꾸로 맞춰 둬서
+     * 나눈 뒤의 양 끝 키 폭이 아래 줄 기능키와 같게(왼쪽 키 한 칸) 한다.
      */
     private static Row gridSides(List<Key> keys, Prefs prefs, boolean grid) {
         if (!grid || keys.size() < 2) return new Row(1f, keys.toArray(new Key[0]));
@@ -1028,9 +1030,22 @@ public final class KeyboardLayout {
         float middleWidth = 0;
         for (Key k : middle) middleWidth += k.weight;
         float gridKey = gridKey(prefs);
-        float gap = (SPACE_ROW_UNITS - 2 * gridKey - middleWidth) / 2f;
-        first.weight = gridKey;
-        last.weight = gridKey;
+        float firstW = gridKey, lastW = gridKey;
+        if (splitsRows(prefs)) {
+            float[] b = blocks(prefs);
+            if (b[1] > 0.001f) firstW = gridKey * BALANCED_HALF / b[1];
+            if (b[3] > 0.001f) lastW = gridKey * BALANCED_HALF / b[3];
+            // 묶음이 아주 좁으면 그 폭으로는 줄에 다 들어가지 않는다: 줄을 넘지 않을 만큼만 쓴다 (글자 키는 그대로).
+            float room = SPACE_ROW_UNITS - middleWidth;
+            if (firstW + lastW > room && room > 0f) {
+                float f = room / (firstW + lastW);
+                firstW *= f;
+                lastW *= f;
+            }
+        }
+        float gap = (SPACE_ROW_UNITS - firstW - lastW - middleWidth) / 2f;
+        first.weight = firstW;
+        last.weight = lastW;
         List<Key> out = new ArrayList<>();
         out.add(first);
         if (gap > 0) out.add(fn(Key.SPACER, "", gap));
@@ -1038,6 +1053,14 @@ public final class KeyboardLayout {
         if (gap > 0) out.add(fn(Key.SPACER, "", gap));
         out.add(last);
         return new Row(1f, out.toArray(new Key[0]));
+    }
+
+    /**
+     * 쿼티 모양 글자 줄·기호 자판 줄을 일반 자판처럼 만든 뒤 가운데에서 나눠 묶음 폭만큼 늘이거나 줄이는지
+     * ({@link #splitNormal}: 분리 키보드, 또는 영어·두벌식·기호 자판의 자·모음 균형 배열).
+     */
+    private static boolean splitsRows(Prefs prefs) {
+        return prefs != null && (prefs.splitView() || prefs.boardBalanced());
     }
 
     private static Row charRow(String[] labels, String[][] popups) {
@@ -1090,23 +1113,26 @@ public final class KeyboardLayout {
      */
     private static final float SPACE_ROW_UNITS = 10f;
     /**
-     * 격자 정렬에서 아래 줄 기능키 하나의 너비: 한글 자판의 글자 키 한 칸 (10 ÷ 8열, NewSwipe 단모음은 10 ÷ 7열).
-     * 자·모음 균형 배열이면 반으로 나눴을 때의 자음 키 한 칸. 자·모음 경계 위치나 자음 폭을 바꿔도
-     * 아래 줄 키의 폭은 바뀌지 않는다.
+     * 격자 정렬에서 아래 줄 기능키 하나의 실제 너비 (줄 전체 10칸 기준): 한글 자판의 글자 키 한 칸
+     * (10 ÷ 8열, NewSwipe 단모음은 10 ÷ 7열). 자·모음 균형 배열이나 분리 키보드면 왼쪽(자음) 묶음의 키 한 칸으로,
+     * 자음 폭을 바꾸면 기능키 폭도 함께 바뀐다. 오른쪽 묶음의 기능키도 이 폭이다.
      */
     private static float gridKey(Prefs prefs) {
         // 영어·기호 자판도 한글 자판의 키 한 칸에 맞춘다: 한글 자판의 상세 배열로 잰다 (영어 자판의 상세 배열은 따로 정한다).
         if (prefs != null) prefs = prefs.koreanView();
-        // 자·모음 균형 배열: 왼쪽 절반을 나눠 가진 자음 키 한 칸 (5열이면 1칸, 4열이면 1.25칸).
-        // 8열 단모음의 좌·우 균형 배열은 자음이 4열이 되므로 그 폭을 따른다.
-        // 두벌식은 일반 자판의 줄을 그대로 가운데에서 잘라 나누므로 키 한 칸이 일반 두벌식과 같다 (10열).
-        if (balanced(prefs) && dubeolsik(prefs)) return SPACE_ROW_UNITS / koreanColumns(prefs);
-        if (balanced(prefs)) {
-            int columns = balancedConsonants(prefs);
-            if (!newSwipe(prefs) && splitView(prefs) && prefs.splitReachColumn()) columns--;
-            return BALANCED_HALF / columns;
-        }
+        if (balanced(prefs) || splitView(prefs)) return leftKeyWidth(prefs);
         return SPACE_ROW_UNITS / koreanColumns(prefs);
+    }
+
+    /** 자·모음 균형 배열·분리 키보드 한글 자판에서 왼쪽(자음) 묶음 키 한 칸의 실제 폭 (줄 전체 10칸 기준). */
+    private static float leftKeyWidth(Prefs prefs) {
+        float[] b = blocks(prefs);
+        // 두벌식은 일반 자판의 줄(10열)을 그대로 가운데에서 잘라 왼쪽 절반을 묶음 폭만큼 늘이거나 줄인다 ({@link #splitNormal}).
+        if (dubeolsik(prefs)) return SPACE_ROW_UNITS / koreanColumns(prefs) * b[1] / BALANCED_HALF;
+        // 단모음: 자음 키들이 왼쪽 묶음을 꽉 채운다 (8열은 5열, NewSwipe는 4열, 8열의 좌·우 균형 배열은 4열).
+        int columns = balancedConsonants(prefs);
+        if (!newSwipe(prefs) && splitView(prefs) && prefs.splitReachColumn()) columns--;
+        return b[1] / columns;
     }
 
     /**
@@ -1405,8 +1431,11 @@ public final class KeyboardLayout {
         int cut = spaceAt >= 0 ? spaceAt : (keys.size() + 1) / 2;
         List<Key> left = new ArrayList<>(keys.subList(0, cut)), right = new ArrayList<>(keys.subList(cut, keys.size()));
         if (spaceAt >= 0 && prefs.splitSpaceJoin()) return joinedSpaceRow(left, right, b, prefs);
-        for (Key k : left) k.weight *= b[1] / BALANCED_HALF;
-        for (Key k : right) k.weight *= b[3] / BALANCED_HALF;
+        // 격자 정렬이면 기능키가 이미 왼쪽 키 한 칸 폭이라 묶음 폭으로 다시 늘이거나 줄이지 않는다.
+        if (!prefs.gridLayout()) {
+            for (Key k : left) k.weight *= b[1] / BALANCED_HALF;
+            for (Key k : right) k.weight *= b[3] / BALANCED_HALF;
+        }
         fillSpan(left, b[1], spaceAt >= 0 ? left.size() : -1);
         fillSpan(right, b[3], spaceAt >= 0 ? 0 : -1);
         dropEmptySpace(left);
@@ -1420,9 +1449,12 @@ public final class KeyboardLayout {
      * 키들만으로 줄보다 넓어지면 같은 비율로 줄인다.
      */
     private static Row joinedSpaceRow(List<Key> left, List<Key> right, float[] b, Prefs prefs) {
-        float fnScale = prefs.splitFnWidth() / 100f;
-        for (Key k : left) k.weight *= b[1] / BALANCED_HALF * fnScale;
-        for (Key k : right) k.weight *= b[3] / BALANCED_HALF * fnScale;
+        // 격자 정렬이면 기능키가 이미 왼쪽 키 한 칸 폭이라 묶음 폭·'하단 기능키 폭'으로 바꾸지 않는다.
+        if (!prefs.gridLayout()) {
+            float fnScale = prefs.splitFnWidth() / 100f;
+            for (Key k : left) k.weight *= b[1] / BALANCED_HALF * fnScale;
+            for (Key k : right) k.weight *= b[3] / BALANCED_HALF * fnScale;
+        }
         float span = b[2] + b[3] - b[0], lw = width(left), rw = width(right);
         if (lw + rw > span) {
             float f = span / (lw + rw);

@@ -345,8 +345,8 @@ public class DubeolsikLayoutTest {
         KeyboardLayout l = KeyboardLayout.korean(portrait(sp));
         KeyboardLayout.Row bottom = l.rows[l.rows.length - 1];
         assertEquals(10f, total(bottom), 1e-3f);
-        // 기능키 한 칸 = 일반 두벌식 키 한 칸 (일반 자판의 줄을 가운데에서 자르므로 10열)
-        assertEquals(1f, bottom.keys[0].weight, 1e-3f);
+        // 기능키 한 칸 = 왼쪽(자음) 키 한 칸 (일반 자판의 줄을 가운데에서 잘라 자음 폭만큼 줄인다)
+        assertEquals(key(l, "ㅂ").weight, bottom.keys[0].weight, 1e-3f);
         sp.m.put(portrait(sp).balancedConsonantWidthKey(), 100);
         KeyboardLayout full = KeyboardLayout.korean(portrait(sp));
         assertEquals(key(full, "ㅂ").weight, full.rows[full.rows.length - 1].keys[0].weight, 1e-3f);

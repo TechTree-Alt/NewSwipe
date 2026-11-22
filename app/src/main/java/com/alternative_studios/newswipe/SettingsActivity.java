@@ -2579,8 +2579,8 @@ public final class SettingsActivity extends Activity {
 
     private static String gridDesc() {
 
-        return L.t("아래 줄의 기능키를 한글 키와 같은 폭으로 해 줄을 맞춥니다. "
-            + "오쏘리니어 키보드에서 영감을 받았습니다.", "Makes the function keys in the bottom row as wide as the Korean keys so the columns line up. Inspired by ortholinear keyboards.");
+        return L.t("아래 줄의 기능키를 한글 키와 같은 폭으로 해 줄을 맞춥니다. 자·모음 균형 배열·분리 키보드에서는 왼쪽(자음) 키 한 칸 폭입니다. "
+            + "오쏘리니어 키보드에서 영감을 받았습니다.", "Makes the function keys in the bottom row as wide as the Korean keys so the columns line up. With the balanced or split layout, they match one left-side (consonant) key. Inspired by ortholinear keyboards.");
 
     }
     /** v를 스크롤 목록 위의 고정된 곳에 놓는다. 설정 검색용으로 화면을 만들 때는 그 임시 목록에 넣는다. */
@@ -3035,7 +3035,7 @@ public final class SettingsActivity extends Activity {
                 View fnWidth = subGroup(
                         own(sizeSlider(L.t("하단 기능키 폭", "Bottom function key width"), edit.splitFnWidthKey(), edit::splitFnWidthSetting, 50, 200, 5, "%")),
                         note(L.t("스페이스바·Shift·⌫를 뺀 맨 아래 줄 키(기호 키·쉼표·지구본·온점·엔터)의 폭입니다. "
-                                + "줄이거나 늘린 만큼 스페이스바가 늘거나 줄어듭니다.", "Width of the bottom row keys other than space, Shift and ⌫ (symbol key, comma, globe, period, enter). The space bar shrinks or grows to match.")));
+                                + "줄이거나 늘린 만큼 스페이스바가 늘거나 줄어듭니다. 격자 정렬을 켜면 왼쪽 키 한 칸 폭으로 맞춰집니다.", "Width of the bottom row keys other than space, Shift and ⌫ (symbol key, comma, globe, period, enter). The space bar shrinks or grows to match. With grid alignment on, they match one left-side key instead.")));
                 fnWidth.setVisibility(edit.splitSpaceJoin() ? View.VISIBLE : View.GONE);
                 String joinKey = edit.splitSpaceJoinKey();
                 c.addView(own(toggle(L.t("스페이스바 잇기", "Join space bar"),

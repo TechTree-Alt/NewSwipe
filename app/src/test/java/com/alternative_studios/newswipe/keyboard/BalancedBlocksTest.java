@@ -328,11 +328,11 @@ public class BalancedBlocksTest {
         }
     }
 
-    /** 폭·위치를 바꿔도 맨 아래 줄(기능키·스페이스바)은 그대로다 (격자 정렬일 때도). */
+    /** 폭·위치를 바꿔도 맨 아래 줄(기능키·스페이스바)은 그대로다 (격자 정렬이 아닐 때). */
     @Test
     public void bottomRowDoesNotChangeWithTheBlocks() throws Exception {
         for (String layout : LAYOUTS) {
-            for (boolean grid : new boolean[]{false, true}) {
+            for (boolean grid : new boolean[]{false}) {
                 KeyboardLayout base = KeyboardLayout.korean(portrait(layout, 100, 0, 100, 0, grid));
                 KeyboardLayout.Row want = base.rows[base.rows.length - 1];
                 for (int[] v : new int[][]{{60, -40, 60, 40}, {130, 30, 60, 40}, {60, 20, 60, 40}, {60, -40, 60, -40}}) {
@@ -344,6 +344,25 @@ public class BalancedBlocksTest {
                         assertEquals(layout + " 아래 줄 키 " + i, want.keys[i].weight, row.keys[i].weight, 0.001f);
                     }
                 }
+            }
+        }
+    }
+
+    /** 격자 정렬: 맨 아래 줄 기능키는 늘 왼쪽(자음) 키 한 칸 폭이라 자음 폭을 바꾸면 함께 바뀐다. 줄은 꽉 찬다. */
+    @Test
+    public void gridBottomKeysFollowTheConsonantKey() throws Exception {
+        for (String layout : LAYOUTS) {
+            for (int[] v : new int[][]{{100, 0, 100, 0}, {60, -40, 60, 40}, {130, 30, 60, 40}, {60, 20, 90, 40}}) {
+                KeyboardLayout l = KeyboardLayout.korean(portrait(layout, v[0], v[1], v[2], v[3], true));
+                float consonant = -1f;
+                for (Key k : l.rows[0].keys) if ("ㅂ".equals(k.label)) consonant = k.weight;
+                KeyboardLayout.Row row = l.rows[l.rows.length - 1];
+                float total = 0f;
+                for (Key k : row.keys) {
+                    total += k.weight;
+                    if (k.type != Key.SPACE) assertEquals(layout + " 기능키 = 자음 키", consonant, k.weight, 0.001f);
+                }
+                assertEquals(10f, total, 0.001f);
             }
         }
     }
