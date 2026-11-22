@@ -120,7 +120,8 @@ public final class ExpressiveSlider extends View {
         rect.set(left - th / 2f + in, cy - th / 2f + in, Math.max(hx, left - th / 2f + in + (th - 2 * in)), cy + th / 2f - in);
         c.drawRoundRect(rect, rect.height() / 2f, rect.height() / 2f, paint);
         rect.set(hx - knob / 2f, cy - knob / 2f, hx + knob / 2f, cy + knob / 2f);
-        NeuUi.drawRaised(getContext(), c, rect, knob / 2f, NeuUi.SMALL);
+        // 라이트 모드의 흰 손잡이는 흰 그림자와 겹쳐 번져 보이므로 어두운 그림자만 둔다 (스위치와 같다).
+        NeuUi.drawRaised(getContext(), c, rect, knob / 2f, NeuUi.SMALL, NeuUi.dark);
         paint.setColor(NeuUi.knob());
         c.drawCircle(hx, cy, knob / 2f, paint);
         paint.setColor(accent);
