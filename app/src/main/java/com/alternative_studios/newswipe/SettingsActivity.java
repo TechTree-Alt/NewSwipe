@@ -2579,8 +2579,8 @@ public final class SettingsActivity extends Activity {
 
     private static String gridDesc() {
 
-        return L.t("아래 줄의 기능키를 한글 키와 같은 폭으로 해 줄을 맞춥니다. 자·모음 균형 배열·분리 키보드에서는 스페이스바 왼쪽은 자음 키, 오른쪽은 모음 키 한 칸 폭입니다. "
-            + "오쏘리니어 키보드에서 영감을 받았습니다.", "Makes the function keys in the bottom row as wide as the Korean keys so the columns line up. With the balanced or split layout, keys left of the space bar match one consonant key and keys right of it match one vowel key. Inspired by ortholinear keyboards.");
+        return L.t("아래 줄의 기능키를 한글 키와 같은 폭으로 해 줄을 맞춥니다. "
+            + "오쏘리니어 키보드에서 영감을 받았습니다.", "Makes the function keys in the bottom row as wide as the Korean keys so the columns line up. Inspired by ortholinear keyboards.");
 
     }
     /** v를 스크롤 목록 위의 고정된 곳에 놓는다. 설정 검색용으로 화면을 만들 때는 그 임시 목록에 넣는다. */
