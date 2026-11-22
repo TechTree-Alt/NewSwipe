@@ -1024,7 +1024,7 @@ public final class KeyboardLayout {
      * 쿼티 모양 자판(두벌식·영어·기호)의 글자 키는 격자 정렬로 자리가 바뀌면 안 된다 (z~m은 늘 s~k 바로 아래).
      * 그래서 양 끝 키의 폭은 일반 자판에서의 폭(keys에 들어온 폭, 1.5칸)이 최대이고, 줄어든 만큼은 양 끝 키와
      * 글자 키 사이의 빈 칸으로 둔다. 글자 키는 일반 자판과 같은 자리에 그대로 있다.
-     * '상세 배열 격자 정렬'을 켰을 때 이 줄을 나중에 가운데에서 나눠 묶음 폭만큼 늘이거나 줄이면({@link #splitNormal}),
+     * '상세 배열 폭에 맞추기'을 켰을 때 이 줄을 나중에 가운데에서 나눠 묶음 폭만큼 늘이거나 줄이면({@link #splitNormal}),
      * 그만큼 미리 거꾸로 맞춰 둬서 나눈 뒤의 양 끝 키 폭이 아래 줄 기능키와 같게 한다 (최대 폭도 같은 비율로 준다).
      * 끄면 아래 줄 기능키처럼 묶음 폭을 따라 함께 늘거나 준다.
      */
@@ -1053,7 +1053,7 @@ public final class KeyboardLayout {
         return new Row(1f, out.toArray(new Key[0]));
     }
 
-    /** 격자 정렬의 '상세 배열 격자 정렬'을 켰는지 ({@link #gridKeys}). */
+    /** 격자 정렬의 '상세 배열 폭에 맞추기'을 켰는지 ({@link #gridKeys}). */
     private static boolean gridDetail(Prefs prefs) {
         return prefs != null && prefs.gridLayout() && prefs.gridDetail();
     }
@@ -1118,7 +1118,7 @@ public final class KeyboardLayout {
     /**
      * 격자 정렬에서 아래 줄 기능키 하나의 실제 너비 {스페이스바 왼쪽, 스페이스바 오른쪽} (줄 전체 10칸 기준).
      * 보통은 둘 다 한글 자판의 글자 키 한 칸 (10 ÷ 8열, NewSwipe 단모음은 10 ÷ 7열)으로, 자·모음 균형 배열이나
-     * 분리 키보드에서도 상세 배열이 없을 때와 같은 폭이다. '상세 배열 격자 정렬'을 켜면 균형 배열·분리 키보드에서
+     * 분리 키보드에서도 상세 배열이 없을 때와 같은 폭이다. '상세 배열 폭에 맞추기'을 켜면 균형 배열·분리 키보드에서
      * 왼쪽은 왼쪽(자음) 묶음의 키 한 칸, 오른쪽은 오른쪽(모음) 묶음의 키 한 칸이라 자음·모음 폭을 바꾸면 기능키 폭도 함께 바뀐다.
      */
     private static float[] gridKeys(Prefs prefs) {
@@ -1450,7 +1450,7 @@ public final class KeyboardLayout {
         int cut = spaceAt >= 0 ? spaceAt : (keys.size() + 1) / 2;
         List<Key> left = new ArrayList<>(keys.subList(0, cut)), right = new ArrayList<>(keys.subList(cut, keys.size()));
         if (spaceAt >= 0 && prefs.splitSpaceJoin()) return joinedSpaceRow(left, right, b, prefs);
-        // 상세 배열 격자 정렬이면 기능키가 이미 자음·모음 키 한 칸 폭이라 묶음 폭으로 다시 늘이거나 줄이지 않는다.
+        // 상세 배열 폭에 맞추기이면 기능키가 이미 자음·모음 키 한 칸 폭이라 묶음 폭으로 다시 늘이거나 줄이지 않는다.
         if (!gridDetail(prefs)) {
             for (Key k : left) k.weight *= b[1] / BALANCED_HALF;
             for (Key k : right) k.weight *= b[3] / BALANCED_HALF;
@@ -1468,7 +1468,7 @@ public final class KeyboardLayout {
      * 키들만으로 줄보다 넓어지면 같은 비율로 줄인다.
      */
     private static Row joinedSpaceRow(List<Key> left, List<Key> right, float[] b, Prefs prefs) {
-        // 상세 배열 격자 정렬이면 기능키가 이미 자음·모음 키 한 칸 폭이라 묶음 폭·'하단 기능키 폭'으로 바꾸지 않는다.
+        // 상세 배열 폭에 맞추기이면 기능키가 이미 자음·모음 키 한 칸 폭이라 묶음 폭·'하단 기능키 폭'으로 바꾸지 않는다.
         if (!gridDetail(prefs)) {
             float fnScale = prefs.splitFnWidth() / 100f;
             for (Key k : left) k.weight *= b[1] / BALANCED_HALF * fnScale;

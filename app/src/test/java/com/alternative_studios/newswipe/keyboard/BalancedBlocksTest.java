@@ -348,7 +348,7 @@ public class BalancedBlocksTest {
         }
     }
 
-    /** '상세 배열 격자 정렬'을 끄면 세로 균형 배열의 격자 정렬 기능키는 상세 배열이 없을 때와 같은 한글 키 한 칸 폭이다 (묶음 폭과 상관없이). */
+    /** '상세 배열 폭에 맞추기'을 끄면 세로 균형 배열의 격자 정렬 기능키는 상세 배열이 없을 때와 같은 한글 키 한 칸 폭이다 (묶음 폭과 상관없이). */
     @Test
     public void gridWithoutDetailUsesThePlainKeyWidth() throws Exception {
         for (String layout : LAYOUTS) {
@@ -362,7 +362,7 @@ public class BalancedBlocksTest {
     }
 
     /**
-     * 격자 정렬('상세 배열 격자 정렬' 켬): 맨 아래 줄 기능키는 스페이스바 왼쪽이 자음 키 한 칸, 오른쪽이 모음 키 한 칸 폭이라
+     * 격자 정렬('상세 배열 폭에 맞추기' 켬): 맨 아래 줄 기능키는 스페이스바 왼쪽이 자음 키 한 칸, 오른쪽이 모음 키 한 칸 폭이라
      * 자음·모음 폭을 바꾸면 함께 바뀐다. 줄은 꽉 찬다.
      */
     @Test

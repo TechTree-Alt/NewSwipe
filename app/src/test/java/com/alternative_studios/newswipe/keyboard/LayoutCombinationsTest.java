@@ -109,7 +109,7 @@ public class LayoutCombinationsTest {
 
     /**
      * 격자 정렬은 쿼티 모양 자판(두벌식·영어·기호)의 글자 키 자리를 바꾸지 않는다: Shift·⌫의 폭이 바뀌어도
-     * 맨 아래 글자 줄이 좌우로 밀리지 않는다 (상세 배열 격자 정렬을 켜도 꺼도, 묶음 폭이 달라도).
+     * 맨 아래 글자 줄이 좌우로 밀리지 않는다 (상세 배열 폭에 맞추기을 켜도 꺼도, 묶음 폭이 달라도).
      */
     @Test
     public void gridNeverMovesQwertyLetters() throws Exception {
@@ -118,7 +118,7 @@ public class LayoutCombinationsTest {
         for (String profile : profiles) for (String layout : new String[]{Prefs.KOREAN_LAYOUT_DUBEOLSIK, Prefs.KOREAN_LAYOUT_8, Prefs.KOREAN_LAYOUT_D7})
         for (int mode : modes) for (int width : new int[]{Prefs.BALANCED_WIDTH_MIN, 60, 100, 130}) for (boolean nr : new boolean[]{false, true}) {
             KeyboardLayout[][] got = new KeyboardLayout[3][];
-            for (int g = 0; g < 3; g++) {   // 격자 정렬 끔 / 켬 / 켬 + 상세 배열 격자 정렬
+            for (int g = 0; g < 3; g++) {   // 격자 정렬 끔 / 켬 / 켬 + 상세 배열 폭에 맞추기
                 FakeSp sp = new FakeSp();
                 sp.m.put(Prefs.KOREAN_LAYOUT, layout);
                 sp.m.put(Prefs.NUMBER_ROW, nr);

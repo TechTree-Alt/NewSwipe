@@ -1671,7 +1671,7 @@ public final class Prefs {
     /** 격자 정렬. 자·모음 균형 배열에서는 기능키 폭을 나뉜 자음 키 폭에 맞춘다. */
     public boolean gridLayout() { return sp.getBoolean(GRID_LAYOUT, false); }
     /**
-     * 격자 정렬의 '상세 배열 격자 정렬': 자·모음 균형 배열·분리 키보드에서 기능키를 스페이스바 왼쪽은 자음 키,
+     * 격자 정렬의 '상세 배열 폭에 맞추기': 자·모음 균형 배열·분리 키보드에서 기능키를 스페이스바 왼쪽은 자음 키,
      * 오른쪽은 모음 키 한 칸 폭에 맞춘다. 끄면 상세 배열이 없을 때와 같은 한글 키 한 칸 폭이다.
      */
     public boolean gridDetail() { return sp.getBoolean(GRID_DETAIL, false); }
