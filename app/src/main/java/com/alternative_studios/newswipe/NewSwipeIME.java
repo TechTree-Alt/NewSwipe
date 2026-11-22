@@ -1297,15 +1297,21 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return b;
     }
 
-    /** 설정의 '도구 막대 높이'(%)를 px로. 100%가 40dp. 떠 있는 키보드에서는 키 높이 비율만큼 줄이고 키운다. */
+    /** 설정의 '도구 막대 높이'(%)를 px로. 100%가 40dp. 한 손 모드·떠 있는 키보드에서는 키 높이 비율만큼 줄이고 키운다. */
     private int toolbarHeightPx() {
         return Math.round(Ui.dp(this, 40) * padPrefs().toolbarHeight() / 100f * toolbarScale());
     }
 
-    /** 떠 있는 키보드에서 도구 막대(높이·버튼·아이콘·추천 글자)를 키 높이와 같은 비율로 맞춘다. 그 밖에는 1. */
+    /**
+     * 한 손 모드·떠 있는 키보드에서 도구 막대(높이·버튼·아이콘·추천 글자)를 키 높이와 같은 비율로 맞춘다
+     * (키 글자를 줄이는 비율과 같다). 그 밖에는 1.
+     */
     private float toolbarScale() {
-        return prefs != null && Prefs.ONE_HAND_FLOAT.equals(activeOneHand())
-                ? floatHeightPct() / 100f : 1f;
+        if (prefs == null) return 1f;
+        String side = activeOneHand();
+        if (Prefs.ONE_HAND_FLOAT.equals(side)) return floatHeightPct() / 100f;
+        if (!Prefs.ONE_HAND_OFF.equals(side)) return prefs.profileView(profile()).oneHandHeightForProfile() / 100f;
+        return 1f;
     }
 
     /**
