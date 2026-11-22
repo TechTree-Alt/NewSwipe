@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Metro UI: 글자 크기를 바꾼 글자에 원래(설정 검색이 기대하는) 글자 크기(px)를 남겨 둔다 (ui.Metro.searchPx). -->
+    <item name="metro_search_px" type="id" />
+</resources>

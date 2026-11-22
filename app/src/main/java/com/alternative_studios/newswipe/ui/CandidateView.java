@@ -238,7 +238,7 @@ public final class CandidateView extends View {
         if (grid) c.drawColor(theme.background);
         float right = getWidth() - expandW;
         text.getFontMetrics(fm);
-        float radius = Ui.dp(getContext(), 8), inset = Ui.dp(getContext(), 3);
+        float radius = theme.metro ? 0 : Ui.dp(getContext(), 8), inset = Ui.dp(getContext(), 3);
         c.save();
         c.clipRect(0, 0, grid ? getWidth() : right, getHeight());
         for (int i = 0; i < cx.length; i++) {

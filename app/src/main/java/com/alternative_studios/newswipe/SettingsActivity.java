@@ -33,6 +33,7 @@ import com.alternative_studios.newswipe.ui.Chevron;
 import com.alternative_studios.newswipe.ui.ExpressiveSwitch;
 import com.alternative_studios.newswipe.ui.IconView;
 import com.alternative_studios.newswipe.ui.IconButton;
+import com.alternative_studios.newswipe.ui.Metro;
 import com.alternative_studios.newswipe.ui.Ui;
 
 import java.io.File;
@@ -125,6 +126,11 @@ public final class SettingsActivity extends Activity {
                 : LEARNED.equals(sectionId) || BLOCKED.equals(sectionId)
                 ? new SettingsFrame(this, sectionName, getString(R.string.app_name)).withSearch(this::onWordSearch, L.t("단어 검색", "Search words"))
                 : new SettingsFrame(this, sectionName, getString(R.string.app_name));
+        String[] nextSection = nextSection(sectionId);
+        if (nextSection != null) {
+            // Metro UI: 피벗처럼 큰 제목 오른쪽에 다음 메뉴 이름이 비치고, 누르면 그 메뉴로 넘어간다 (이 화면은 닫는다).
+            frame.withPeek(nextSection[1], v -> openSectionInstead(nextSection[0]));
+        }
         if (KEYBOARD.equals(sectionId)) frame.withAction(Icons.UNDO, L.t("마지막 변경 되돌리기", "Undo last change"), v -> undoLast()).keyboardOverlays();
         else if ("onehand".equals(sectionId)) frame.keyboardOverlays();   // 미리보기를 실제 키보드처럼 화면 아래에 붙인다
         ScrollView scroll = new ScrollView(this);
@@ -357,7 +363,7 @@ public final class SettingsActivity extends Activity {
         list.addView(mainWrap, matchWrap());
         searchResults = menuCard(new LinearLayout(this));
         searchResults.setOrientation(LinearLayout.VERTICAL);
-        searchResults.setBackground(Ui.round(cardColor, Ui.dp(this, 16)));
+        searchResults.setBackground(Metro.on ? null : Ui.round(cardColor, Ui.dp(this, 16)));
         searchResults.setVisibility(View.GONE);
         LinearLayout.LayoutParams rlp = matchWrap();
         rlp.topMargin = Ui.dp(this, 8);
@@ -370,6 +376,36 @@ public final class SettingsActivity extends Activity {
         card.setOutlineProvider(android.view.ViewOutlineProvider.BACKGROUND);
         card.setClipToOutline(true);
         return card;
+    }
+
+    /** 설정 메뉴에서 id 다음에 오는 메뉴 {id, 이름} (맨 끝이면 맨 앞으로 돈다). id가 설정 메뉴가 아니면 null. */
+    private static String[] nextSection(String id) {
+        if (id == null) return null;
+        String[][] all = sections();
+        for (int i = 0; i < all.length; i++) {
+            if (all[i][0].equals(id)) return all[(i + 1) % all.length];
+        }
+        return null;
+    }
+
+    /** 이 화면을 닫고 그 자리에 다른 메뉴를 연다 (피벗을 옆으로 넘기듯이, 뒤로 가면 첫 화면이다). */
+    private void openSectionInstead(String id) {
+        Intent i = LANGUAGES.equals(id) ? new Intent(this, LanguageOrderEditorActivity.class)
+                : new Intent(this, SettingsActivity.class).putExtra(EXTRA_SECTION, id);
+        if (!SettingsFrame.metroForward(this, i, () -> {
+            super.startActivity(i, null);
+            Metro.finishQuietly(this);
+        })) {
+            super.startActivity(i, null);
+            finish();
+        }
+    }
+
+    /** Metro UI: 이 앱의 다른 화면을 열 때는 지금 화면이 턴스타일로 돌아 나간 뒤에 연다. */
+    @Override
+    public void startActivity(Intent intent, Bundle options) {
+        if (Metro.on && SettingsFrame.metroForward(this, intent, () -> super.startActivity(intent, options))) return;
+        super.startActivity(intent, options);
     }
 
     private void openSection(String id) {
@@ -417,6 +453,7 @@ public final class SettingsActivity extends Activity {
             // 화면 모드·강조 색은 소제목뿐이라 검색 목록에 없다: 테마 화면 자체로 찾게 한다.
             {"theme", L.t("테마", "Theme"), L.t("다크 라이트 어두운 밝은 야간 화면 모드 색상 컬러 포인트 강조 색", "dark light night mode theme color accent")},
             {"theme", L.t("색 정렬", "Color alignment"), L.t("키 색", "Key colors")},
+            {"theme", "Metro UI", L.t("메트로 윈도우 폰 윈도우폰 타일 루미아 디자인 windows phone", "metro windows phone wp7 wp8 tiles lumia design")},
             {KEYBOARD, L.t("문자 길게 누르기 시간", "Character long-press delay"), L.t("롱프레스 길게 누르기 시간 지연 특수문자 반복 입력 연타 연속 입력", "long press delay time special characters repeat")},
             {KEYBOARD, L.t("기능키 길게 누르기 시간", "Function key long-press delay"), L.t("롱프레스 시간 길게 눌러 지우기 이모지 입력기 선택", "long press delay hold delete emoji keyboard picker")},
             {KEYBOARD, L.t("쌍자음 인식 시간", "Double consonant tap window"), L.t("연속 탭 연속 누르기 된소리 ㄲ ㅆ 시간", "double tap repeat ㄲ ㅆ time")},
@@ -880,7 +917,7 @@ public final class SettingsActivity extends Activity {
             TextView t = (TextView) v;
             String text = t.getText().toString().trim();
             if (!text.isEmpty()) {
-                float px = t.getTextSize();
+                float px = Metro.searchPx(t);   // Metro 모드에서 크기를 바꾼 글자는 원래 크기로 본다
                 boolean label = px >= spPx(15) - 0.5f && px <= spPx(18) + 0.5f;
                 boolean heading = !label && Math.abs(px - spPx(14)) < 0.5f && t.getCurrentTextColor() == accentColor;
                 if (heading) {
@@ -1106,7 +1143,7 @@ public final class SettingsActivity extends Activity {
         if (v instanceof TextView) {
             TextView t = (TextView) v;
             if (t.getText().toString().trim().isEmpty()) return 0;
-            float px = t.getTextSize();
+            float px = Metro.searchPx(t);
             boolean label = px >= spPx(15) - 0.5f && px <= spPx(18) + 0.5f;
             boolean heading = !label && Math.abs(px - spPx(14)) < 0.5f && t.getCurrentTextColor() == accentColor;
             return label || heading ? 1 : 0;
@@ -2086,13 +2123,21 @@ public final class SettingsActivity extends Activity {
         Prefs v = editorView();
         look.addView(own(slider(L.t("키 글자 크기", "Key text size"), editingOwn() ? v.textSizeKey() : Prefs.KEY_TEXT_SIZE, v.keyTextSize(),
                 editingOwn() ? Prefs.PROFILE_HEIGHT_MIN : 70, 140, 5, "%")));
-        look.addView(slider(L.t("키 곡률", "Key corner radius"), Prefs.KEY_RADIUS, prefs.keyRadiusDp(), 0, 24, 1, "dp"));
+        View radiusRow = slider(L.t("키 곡률", "Key corner radius"), Prefs.KEY_RADIUS, prefs.keyRadiusDp(), 0, 24, 1, "dp");
+        if (prefs.metro()) {
+            // Metro UI는 키 모서리가 늘 각져 있다. 저장된 값은 그대로 두고 흐리게 막아 둔다.
+            setEnabledDeep(radiusRow, false);
+            radiusRow.setAlpha(0.38f);
+        }
+        look.addView(radiusRow);
         look.addView(slider(L.t("키 사이 좌우 간격", "Horizontal key gap"), Prefs.KEY_GAP_X, prefs.keyGapXDp(), 0, 12, 1, "dp"));
         look.addView(slider(L.t("키 사이 상하 간격", "Vertical key gap"), Prefs.KEY_GAP_Y, prefs.keyGapYDp(), 0, 20, 1, "dp"));
         View shadowStrength = subGroup(slider(L.t("그림자 세기", "Shadow strength"), Prefs.KEY_SHADOW_STRENGTH, prefs.keyShadowStrength(), 10, 100, 5, "%"));
-        if (prefs.neumorphism()) {
-            // Neumorphism 디자인이 키 그림자 대신 쓰이므로, 저장된 값은 그대로 두고 꺼진 모양으로 흐리게 막아 둔다.
-            View row = toggle(L.t("키 그림자", "Key shadow"), L.t("Neumorphism 디자인 사용 중에는 사용할 수 없습니다.", "Not available while Neumorphism design is on."), false, on -> { });
+        if (prefs.neumorphism() || prefs.metro()) {
+            // Neumorphism·Metro 디자인이 키 그림자 대신 쓰이므로, 저장된 값은 그대로 두고 꺼진 모양으로 흐리게 막아 둔다.
+            View row = toggle(L.t("키 그림자", "Key shadow"), prefs.metro()
+                    ? L.t("Metro UI 사용 중에는 사용할 수 없습니다.", "Not available while Metro UI is on.")
+                    : L.t("Neumorphism 디자인 사용 중에는 사용할 수 없습니다.", "Not available while Neumorphism design is on."), false, on -> { });
             disableToggle(row);
             look.addView(row);
         } else {
@@ -3168,8 +3213,13 @@ public final class SettingsActivity extends Activity {
         }
         if (Prefs.ACCENT_CUSTOM.equals(prefs.accentMode()) || Build.VERSION.SDK_INT < 31) {
             int current = prefs.accentColor();
-            accent.addView(swatchRow(0, 6, current));
-            accent.addView(swatchRow(6, 12, current));
+            if (prefs.metro()) {
+                // Metro UI: Windows Phone 8의 강조색 20가지를 네모 타일로 (다섯 개씩 네 줄).
+                for (int r = 0; r < 4; r++) accent.addView(swatchRow(Metro.ACCENTS, r * 5, r * 5 + 5, current));
+            } else {
+                accent.addView(swatchRow(PALETTE, 0, 6, current));
+                accent.addView(swatchRow(PALETTE, 6, 12, current));
+            }
             View hex = button(L.t("색 코드 직접 입력 (", "Enter color code (") + String.format("#%06X", current & 0xFFFFFF) + ")",
                     v -> askAccentHex(current));
             ((LinearLayout.LayoutParams) hex.getLayoutParams()).topMargin = Ui.dp(this, 16);   // 색 동그라미와 띄운다
@@ -3187,11 +3237,36 @@ public final class SettingsActivity extends Activity {
 
         if (SHOW_NEUMORPHISM) {
             LinearLayout neu = section("Neumorphism");
-            neu.addView(toggle(L.t("Neumorphism 디자인", "Neumorphism design"),
-                    L.t("키와 도구 막대·클립보드·이모지 창의 버튼이 바탕에서 부드럽게 솟아오르고, 누르면 안으로 쑥 들어가는 모양으로 그립니다. "
-                            + "켜면 키 그림자 대신 쓰입니다.", "Draws keys and the buttons on the toolbar, clipboard and emoji panels as if they rise softly from the background and sink in when pressed. Replaces key shadows when on."),
-                    Prefs.NEUMORPHISM, prefs.neumorphism()));
+            if (prefs.metro()) {
+                // Metro UI가 Neumorphism 대신 쓰이므로, 저장된 값은 그대로 두고 꺼진 모양으로 흐리게 막아 둔다.
+                View row = toggle(L.t("Neumorphism 디자인", "Neumorphism design"),
+                        L.t("Metro UI 사용 중에는 사용할 수 없습니다.", "Not available while Metro UI is on."), false, on -> { });
+                disableToggle(row);
+                neu.addView(row);
+            } else {
+                neu.addView(toggle(L.t("Neumorphism 디자인", "Neumorphism design"),
+                        L.t("키와 도구 막대·클립보드·이모지 창의 버튼이 바탕에서 부드럽게 솟아오르고, 누르면 안으로 쑥 들어가는 모양으로 그립니다. "
+                                + "켜면 키 그림자 대신 쓰입니다.", "Draws keys and the buttons on the toolbar, clipboard and emoji panels as if they rise softly from the background and sink in when pressed. Replaces key shadows when on."),
+                        Prefs.NEUMORPHISM, prefs.neumorphism()));
+            }
         }
+
+        // 맨 아래: Metro UI (실험적). 켜고 끄면 화면 전체의 모양이 바뀌므로 이 화면을 새 모양으로 다시 만든다.
+        LinearLayout metro = section("Metro UI");
+        metro.addView(toggle(L.t("Metro UI", "Metro UI"),
+                L.t("앱 전체의 디자인과 애니메이션을 Windows Phone 7·8의 Metro UI처럼 바꿉니다. 각진 타일과 큰 글자, "
+                        + "턴스타일 화면 전환과 누른 자리로 기울어지는 틸트 효과를 씁니다. 켜면 Neumorphism 디자인, 키 그림자, 키 곡률 대신 쓰입니다.",
+                        "Makes the whole app look and move like the Metro UI of Windows Phone 7 and 8: square tiles, big type, "
+                                + "turnstile page transitions and the tilt effect. Replaces Neumorphism, key shadows and key corner radius when on."),
+                prefs.metro(), on -> {
+                    prefs.raw().edit().putBoolean(Prefs.METRO, on).apply();
+                    // 스위치가 바뀌는 모습이 보인 뒤에 다시 만든다.
+                    list.postDelayed(() -> {
+                        if (!isFinishing() && !isDestroyed()) recreate();
+                    }, 250);
+                }));
+        metro.addView(note(L.t("실험적인 기능입니다. 일부 화면은 아직 원래 모양으로 보일 수 있습니다.",
+                "Experimental. Some screens may still look the same as before.")));
     }
 
     /** Neumorphism 디자인 토글을 테마 화면에 보일지 (잠시 숨겨야 할 때 false로). 숨겨도 기능과 저장된 값은 그대로다. */
@@ -3216,14 +3291,15 @@ public final class SettingsActivity extends Activity {
         return Ui.choiceRow(this, labels, selected, accentColor, onAccentColor, textColor, hintColor, 0, onSelect, onSelect);
     }
 
-    private View swatchRow(int from, int to, int current) {
+    private View swatchRow(int[] palette, int from, int to, int current) {
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams rlp = matchWrap();
         rlp.topMargin = Ui.dp(this, 6);
         row.setLayoutParams(rlp);
         for (int i = from; i < to; i++) {
-            final int color = PALETTE[i];
+            final int color = palette[i];
+            final boolean square = Metro.on;
             final boolean selected = (color & 0xFFFFFF) == (current & 0xFFFFFF);
             final int mark = Color.luminance(color) > 0.5 ? 0xFF1D1E21 : 0xFFFFFFFF;
             final int ring = hintColor;
@@ -3235,7 +3311,15 @@ public final class SettingsActivity extends Activity {
                     float cx = getWidth() / 2f, cy = getHeight() / 2f, r = Math.min(cx, cy) - Ui.dp(getContext(), 3);
                     p.setStyle(android.graphics.Paint.Style.FILL);
                     p.setColor(color);
-                    c.drawCircle(cx, cy, r, p);
+                    if (square) c.drawRect(cx - r, cy - r, cx + r, cy + r, p);
+                    else c.drawCircle(cx, cy, r, p);
+                    if (selected && square) {   // Metro: 고른 타일은 글자 색 테두리
+                        p.setStyle(android.graphics.Paint.Style.STROKE);
+                        p.setStrokeWidth(Ui.dp(getContext(), 3));
+                        p.setColor(textColor);
+                        float in = Ui.dp(getContext(), 1.5f);
+                        c.drawRect(cx - r + in, cy - r + in, cx + r - in, cy + r - in, p);
+                    }
                     if (selected) {
                         p.setStyle(android.graphics.Paint.Style.STROKE);
                         p.setStrokeWidth(Ui.dp(getContext(), 2));
@@ -3247,7 +3331,7 @@ public final class SettingsActivity extends Activity {
                         path.lineTo(cx - r * 0.1f, cy + r * 0.3f);
                         path.lineTo(cx + r * 0.4f, cy - r * 0.28f);
                         c.drawPath(path, p);
-                    } else if (Math.abs(color - cardColor) < 0x101010) {
+                    } else if (!square && Math.abs(color - cardColor) < 0x101010) {
                         p.setStyle(android.graphics.Paint.Style.STROKE);
                         p.setStrokeWidth(Ui.dp(getContext(), 1));
                         p.setColor(ring);
@@ -3261,7 +3345,8 @@ public final class SettingsActivity extends Activity {
                 prefs.raw().edit().putInt(Prefs.ACCENT_COLOR, color).apply();
                 recreate();
             });
-            row.addView(sw, new LinearLayout.LayoutParams(0, Ui.dp(this, 48), 1f));
+            Metro.tilt(sw);
+            row.addView(sw, new LinearLayout.LayoutParams(0, Ui.dp(this, square ? 64 : 48), 1f));
         }
         return row;
     }
@@ -4601,6 +4686,7 @@ public final class SettingsActivity extends Activity {
     private View divider() {
         View v = new View(this);
         v.setBackgroundColor(hintColor & 0x00FFFFFF | 0x26000000);
+        if (Metro.on) v.setVisibility(View.GONE);   // Metro의 목록에는 구분선이 없다
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1);
         lp.leftMargin = Ui.dp(this, 16);
         lp.rightMargin = Ui.dp(this, 16);
@@ -4632,7 +4718,7 @@ public final class SettingsActivity extends Activity {
         LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         ilp.rightMargin = Ui.dp(this, 14);
-        row.addView(new IconView(this, icon, accentColor, 40, 22), ilp);
+        row.addView(new IconView(this, icon, accentColor, Metro.on ? 48 : 40, 22), ilp);
         LinearLayout texts = new LinearLayout(this);
         texts.setOrientation(LinearLayout.VERTICAL);
         TextView t = new TextView(this);
@@ -4645,6 +4731,15 @@ public final class SettingsActivity extends Activity {
         d.setTextColor(hintColor);
         d.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         texts.addView(d);
+        if (Metro.on) {
+            // Windows Phone 설정 목록: 크고 가는 이름 아래 옅은 설명, 카드·구분선·화살표 없이 화면 왼쪽 선에 맞춘다.
+            Metro.text(t, 24, Metro.light(), 16);
+            Metro.text(d, 14, Metro.regular(), 13);
+            t.setSingleLine(true);
+            t.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            row.setPadding(0, Ui.dp(this, 10), 0, Ui.dp(this, 10));
+            Metro.tilt(row);
+        }
         row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         row.addView(new Chevron(this, hintColor));
         row.setClickable(true);
@@ -4825,6 +4920,7 @@ public final class SettingsActivity extends Activity {
             sheetBack();
             return;
         }
+        if (SettingsFrame.metroBack(this)) return;   // Metro UI: 턴스타일로 나간다
         super.onBackPressed();
     }
 }

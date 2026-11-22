@@ -56,7 +56,7 @@ Build an input system that is truly your own, one that fits you perfectly.
 - **Customize keyboard** · In a preview that looks just like the real keyboard, drag the handles to change height, padding and key gaps, and change each key's tap, long press and swipe actions all in one place.
 - **Keyboard look** · Change the look of the keyboard in many ways, from key height, text size and padding to the layout itself.
 - **Custom actions** · Choose what happens when you tap, long press, or swipe up, down, left or right on any key or area, from a wide range of actions and features.
-- **Theme** · Choose light or dark mode, an accent color, and Neumorphism design.
+- **Theme** · Choose light or dark mode, an accent color, Neumorphism design, and an experimental Windows Phone–style Metro UI mode.
 
 ### 🧰 Convenience
 - **Toolbar** · Put buttons for handy features above (or below) the keyboard. Freely set the order, position and visibility of each button.

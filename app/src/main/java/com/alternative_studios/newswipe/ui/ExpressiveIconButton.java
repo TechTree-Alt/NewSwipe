@@ -66,8 +66,46 @@ public final class ExpressiveIconButton extends View {
         invalidate();
     }
 
+    /**
+     * Metro UI 모드: Windows Phone 앱 바의 동그란 버튼. 평소에는 글자 색의 가는 동그라미 안에 글자 색 아이콘,
+     * 누르는 동안은 동그라미가 글자 색으로 채워지고 아이콘이 바탕색이 된다. 켜짐은 강조색으로 채운다.
+     */
+    private void drawMetro(Canvas canvas) {
+        float w = getWidth(), h = getHeight();
+        float dp = Ui.dp(getContext(), 1);
+        float r = Math.min(w, h) / 2f - 2 * dp;
+        float p = Math.max(0f, Math.min(1f, press));
+        boolean down = p > 0.5f;
+        paint.setStyle(Paint.Style.FILL);
+        int ink;
+        if (down) {
+            paint.setColor(Metro.fg);
+            canvas.drawCircle(w / 2f, h / 2f, r, paint);
+            ink = Metro.bg;
+        } else if (active) {
+            paint.setColor(accent);
+            canvas.drawCircle(w / 2f, h / 2f, r, paint);
+            ink = onAccent;
+        } else {
+            ink = Metro.fg;
+        }
+        if (!down && !active) {
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(2 * dp);
+            paint.setColor(Metro.fg);
+            canvas.drawCircle(w / 2f, h / 2f, r - dp, paint);
+            paint.setStyle(Paint.Style.FILL);
+        }
+        paint.setColor(ink);
+        Icons.draw(canvas, icon, w / 2f, h / 2f, Math.min(Math.min(w, h) * 0.46f, Ui.dp(getContext(), 22)), paint);
+    }
+
     @Override
     protected void onDraw(Canvas canvas) {
+        if (Metro.on) {
+            drawMetro(canvas);
+            return;
+        }
         float w = getWidth(), h = getHeight();
         float full = Math.min(w, h) / 2f;
         float p = Math.max(-0.3f, Math.min(1f, press));

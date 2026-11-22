@@ -17,10 +17,11 @@ public final class Ui {
                 c.getResources().getDisplayMetrics()));
     }
 
+    /** 둥근 네모 바탕. Metro 모드에서는 모서리가 없는 네모다 (Windows Phone에는 둥근 모서리가 없다). */
     public static GradientDrawable round(int color, float radiusPx) {
         GradientDrawable g = new GradientDrawable();
         g.setColor(color);
-        g.setCornerRadius(radiusPx);
+        g.setCornerRadius(Metro.on ? 0f : radiusPx);
         return g;
     }
 
@@ -71,13 +72,32 @@ public final class Ui {
 
     /** 도구 막대 칩의 모서리 반지름 (px). */
     public static float chipRadius(Context c) {
-        return dp(c, 16);
+        return Metro.on ? 0f : dp(c, 16);
     }
 
-    /** 눌렀을 때 물결 효과가 있는 배경. content가 null이면 투명 배경. */
+    /**
+     * 눌렀을 때 물결 효과가 있는 배경. content가 null이면 투명 배경.
+     * Metro 모드에서는 물결 대신 누르는 동안 네모 바탕 전체를 pressColor로 덮는다 (Windows Phone의 눌림은 단색으로 바로 바뀐다).
+     */
     public static Drawable ripple(int pressColor, Drawable content, float radiusPx) {
+        if (Metro.on) return metroPressed(pressColor, content);
         GradientDrawable mask = round(0xFFFFFFFF, radiusPx);
         return new RippleDrawable(ColorStateList.valueOf(pressColor), content, mask);
+    }
+
+    /** 누르는 동안 content 위에 pressColor를 덮는 바탕 (content가 null이면 평소에는 투명하다). */
+    public static Drawable metroPressed(int pressColor, Drawable content) {
+        android.graphics.drawable.StateListDrawable s = new android.graphics.drawable.StateListDrawable();
+        Drawable over = new android.graphics.drawable.ColorDrawable(pressColor);
+        Drawable normal = content != null ? content : new android.graphics.drawable.ColorDrawable(0);
+        Drawable pressed = content != null
+                ? new android.graphics.drawable.LayerDrawable(new Drawable[]{content.getConstantState() != null
+                        ? content.getConstantState().newDrawable().mutate() : content, over})
+                : over;
+        s.addState(new int[]{android.R.attr.state_pressed}, pressed);
+        s.addState(new int[0], normal);
+        s.setExitFadeDuration(100);
+        return s;
     }
 
     /**
@@ -150,7 +170,8 @@ public final class Ui {
             });
             android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(
                     0, android.view.ViewGroup.LayoutParams.MATCH_PARENT, 1f);   // 한 칸이 두 줄이어도 높이를 맞춘다
-            lp.setMargins(dp(c, 1), 0, dp(c, 1), 0);
+            // Metro: 타일처럼 칸 사이를 조금 더 띄운다.
+            lp.setMargins(dp(c, Metro.on ? 2 : 1), 0, dp(c, Metro.on ? 2 : 1), 0);
             row.addView(t, lp);
         }
         for (int i = 0; i < cells.length; i++) {
@@ -292,8 +313,9 @@ public final class Ui {
         }
         final float toAlpha = show ? 1f : 0f;
         final android.animation.ValueAnimator a = android.animation.ValueAnimator.ofFloat(0f, 1f);
-        a.setDuration(200);
-        a.setInterpolator(new android.view.animation.PathInterpolator(0.2f, 0f, 0f, 1f));
+        // Metro: Windows Phone처럼 빠르게 펼쳐져 부드럽게 멈춘다 (ExponentialEase EaseOut).
+        a.setDuration(Metro.on ? 250 : 200);
+        a.setInterpolator(Metro.on ? Metro.EASE_OUT : new android.view.animation.PathInterpolator(0.2f, 0f, 0f, 1f));
         a.addUpdateListener(anim -> {
             float f = (float) anim.getAnimatedValue();
             android.view.ViewGroup.LayoutParams l = v.getLayoutParams();

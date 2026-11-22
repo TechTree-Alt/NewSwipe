@@ -47,6 +47,7 @@ public final class ExpressiveButton extends TextView {
         setMinHeight(Ui.dp(c, 64));
         setMinWidth(Ui.dp(c, 168));
         setPadding(Ui.dp(c, 36), Ui.dp(c, 18), Ui.dp(c, 36), Ui.dp(c, 18));
+        if (Metro.on) setTypeface(Metro.regular());
         setClickable(true);
         setFocusable(true);
         // 그림자(elevation)를 줄 때 그림자도 눌린 모양을 따라가게 한다.
@@ -94,6 +95,7 @@ public final class ExpressiveButton extends TextView {
     }
 
     private float radius(float h, float p) {
+        if (Metro.on) return 0f;   // Metro: 모서리 없는 네모 (강조색 타일)
         float full = h / 2f;
         return Math.max(0f, Math.min(full, full + (pressedRadius - full) * p));
     }
@@ -106,7 +108,8 @@ public final class ExpressiveButton extends TextView {
         float p = Math.max(-0.3f, Math.min(1f, press));
         float radius = radius(h, p);
         // 누르면 모양이 가운데로 살짝 줄어든다 (놓을 때는 스프링으로 원래 크기를 조금 넘었다 돌아온다).
-        float inset = Math.min(w, h) * 0.04f * p;
+        // Metro에서는 모양은 그대로 두고 뷰 전체가 기울어진다 (틸트).
+        float inset = Metro.on ? 0f : Math.min(w, h) * 0.04f * p;
         rect.set(sx + inset, sy + inset, sx + w - inset, sy + h - inset);
         paint.setColor(fill);
         canvas.drawRoundRect(rect, radius, radius, paint);
@@ -115,7 +118,7 @@ public final class ExpressiveButton extends TextView {
             canvas.drawRoundRect(rect, radius, radius, paint);
         }
         canvas.save();
-        float textScale = 1f - 0.04f * Math.max(0f, p);
+        float textScale = Metro.on ? 1f : 1f - 0.04f * Math.max(0f, p);
         canvas.scale(textScale, textScale, sx + w / 2f, sy + h / 2f);
         if (icon != 0) {   // 글자 바로 앞 (왼쪽 안쪽 여백의 끝)
             paint.setColor(ink);
@@ -130,8 +133,8 @@ public final class ExpressiveButton extends TextView {
     private void animatePress(boolean toDown) {
         if (pressAnim != null) pressAnim.cancel();
         pressAnim = ValueAnimator.ofFloat(press, toDown ? 1f : 0f);
-        pressAnim.setDuration(toDown ? PRESS_IN_MS : PRESS_OUT_MS);
-        pressAnim.setInterpolator(toDown ? new DecelerateInterpolator() : Spring.BOUNCY);
+        pressAnim.setDuration(toDown ? PRESS_IN_MS : Metro.on ? 100 : PRESS_OUT_MS);
+        pressAnim.setInterpolator(toDown ? new DecelerateInterpolator() : Metro.on ? Metro.LOG : Spring.BOUNCY);
         pressAnim.addUpdateListener(a -> {
             press = (float) a.getAnimatedValue();
             invalidate();
@@ -143,6 +146,7 @@ public final class ExpressiveButton extends TextView {
     @Override
     public boolean onTouchEvent(MotionEvent e) {
         if (!isEnabled() || !isClickable()) return super.onTouchEvent(e);
+        Metro.onTiltTouch(this, e);
         switch (e.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
                 down = true;

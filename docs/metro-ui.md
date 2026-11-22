@@ -1,0 +1,70 @@
+# Metro UI 모드 (실험적)
+
+설정 › 테마 맨 아래의 **Metro UI** 토글을 켜면 앱 전체(설정 화면과 키보드)의 모양과 움직임이
+Windows Phone 7·8의 Metro UI처럼 바뀝니다. 이 문서는 무엇을 참고했고 어떻게 구현했는지 정리합니다.
+
+## 참고 자료
+
+- **Windows Phone Toolkit** (Microsoft, Ms-PL, `github.com/microsoftarchive/WindowsPhoneToolkit`):
+  움직임의 숫자는 이 소스에서 그대로 옮겼습니다. 코드는 가져오지 않았습니다.
+  - `Transitions/Storyboards/Turnstile*.xaml`: 턴스타일 화면 전환
+  - `Effects/TurnstileFeatherEffect.cs`: 목록이 깃털처럼 차례로 들어오는 효과
+  - `Effects/TiltEffect.cs`: 누른 자리로 기울어지는 틸트
+  - `Transitions/Storyboards/SwivelFullScreenIn.xaml`, `SlideUpFadeIn.xaml`
+  - `Microsoft.Phone.Controls.Toolkit.WP8/Themes/Generic.xaml`: ToggleSwitch 템플릿
+- Windows Phone 8의 강조색 20가지와 테마 색 (PhoneBackground·Foreground·Chrome·Subtle)
+- 첨부 이미지: Windows Phone 설정 화면(피벗 머리글), Windows 10 Mobile 키보드(다크)
+
+## 디자인 원칙과 구현
+
+| 원칙 | 구현 |
+|---|---|
+| 순수한 검정·흰색 바탕, 강조색 | `AppTheme`: 바탕 `#000000`/`#FFFFFF`, 글자 `#FFFFFF`/`#212121`(검정 87%), 크롬 `#1F1F1F`/`#DDDDDD`, 옅은 글자 `#999999`. 강조색 위 글자는 흰색 (아주 밝은 색 제외) |
+| 둥근 모서리·그림자·물결 없음 | `Ui.round()`가 모서리 0, `Ui.ripple()`이 누르는 동안 단색으로 덮는 바탕, `Ui.chipRadius()` 0. 이 세 곳을 쓰는 화면 대부분이 한꺼번에 바뀝니다 |
+| 크고 가는 글자 | `sans-serif-light`(Segoe WP Light 대신). 항목 20sp, 메뉴 24sp, 소제목 24sp 강조색 소문자 |
+| 피벗 머리글 | `SettingsFrame.buildMetroHeader()`: 작은 대문자 `NEWSWIPE` + 46sp 소문자 화면 이름, 오른쪽에 다음 메뉴 이름이 옅게 비치고 화면 끝에서 잘림. 누르면 그 메뉴로 넘어감 |
+| 카드 없음 | `SettingsWidgets.card()`가 바탕 없이, 구분선·화살표(`Chevron`) 숨김 |
+| 앱 목록 타일 | 설정 메뉴 아이콘이 강조색 네모 타일 + 흰 아이콘 (`IconView`) |
+| 강조색 고르기 | WP8 강조색 20가지를 네모 타일 4×5로 (`Metro.ACCENTS`) |
+| ToggleSwitch | 툴킷 템플릿 비율: 테두리 있는 네모 트랙 안을 강조색으로 채우고, 트랙보다 조금 긴 글자 색 손잡이. 120ms 지수 15 EaseOut |
+| 버튼 | 글자 색 2dp 테두리의 네모, 누르면 강조색으로 채워짐 |
+| 앱 바 버튼 | 머리글의 동그란 버튼이 가는 동그라미 테두리 아이콘, 누르면 채워짐 |
+
+### 움직임
+
+| 효과 | 값 | 쓰는 곳 |
+|---|---|---|
+| 턴스타일 (들어오기) | -80° → 0°, 350ms, ExponentialEase EaseOut 지수 6, 축은 왼쪽 가장자리 | 화면이 열릴 때·돌아올 때 (50° → 0°) |
+| 턴스타일 (나가기) | 0° → 50°, 250ms, EaseIn 지수 6 / 뒤로: 0° → -80° | 다른 화면을 열 때 / 뒤로 갈 때 |
+| 깃털 | 축이 화면 폭 20%만큼 왼쪽 바깥, 항목마다 40ms(돌아올 때 50ms) 늦게 | 머리글·목록 줄 (화면에 보이는 것 최대 16개) |
+| 틸트 | 최대 0.3 rad, 가운데 25px 들어감(약 2.5%), 떼고 200ms 뒤 100ms 로그 곡선 | 메뉴 줄, 값 줄, 버튼, 선택 칸, 색 타일 |
+| 스위블 | RotationX -30° → 0°, 350ms, EaseOut 6 | 키보드의 이모지·클립보드·텍스트 편집 창이 열릴 때 |
+| 슬라이드 | 350ms, EaseOut 6 (스프링 대신) | 키 편집 창(시트), 펼치고 접기 |
+
+- 시스템 화면 전환은 끄고(`Metro.noSystemTransition`) 턴스타일을 직접 그립니다. 화면 전체를 `Metro.Page`가 감싸
+  전환하는 동안 누르기를 막고, 다른 화면에서 돌아와 다시 보일 때 돌아오는 턴스타일을 틉니다.
+- 뒤로 가기: Android 13 이상은 `OnBackInvokedCallback`, 12 이하는 각 화면의 `onBackPressed`가
+  `SettingsFrame.metroBack()`을 부릅니다. 검색창·입력창·키 편집 창이 열려 있으면 그쪽이 먼저 닫힙니다.
+  Metro 모드에서는 시스템의 예측형 뒤로 가기 미리보기 대신 턴스타일이 보입니다.
+- 원근: 카메라를 화면 폭의 2.2배 거리에 둡니다. `View.setCameraDistance`는 72단위 인치를 쓰므로
+  px 거리 × densityDpi / 72를 넘깁니다.
+
+### 키보드
+
+- 모서리 없는 네모 키, 그림자 없음 (키 곡률·키 그림자 설정은 흐리게 막힘. 저장된 값은 그대로).
+- 다크: 바탕 `#1F1F1F`, 글자 키 `#333333`, 기능키(Shift·⌫·?123·엔터) `#525252`, 힌트 `#A0A0A0`.
+  라이트: 바탕 `#D9D9D9`, 글자 키 흰색, 기능키 `#B8B8B8`.
+- 누른 키는 강조색으로 빛나고, 누름 미리보기는 같은 폭의 강조색 네모가 키 위에 붙어 솟아오른 듯 보입니다.
+- 길게 누르기 팝업은 글자 색 2dp 테두리의 네모. 키 글자는 굵게 쓰지 않습니다.
+- 도구 막대 버튼은 칩 바탕 없이 아이콘만, 누르면 강조색.
+
+## 설정 검색
+
+설정 검색은 글자 크기로 항목 이름(15~18sp)과 소제목(14sp 강조색)을 가려냅니다. Metro 모드에서 크기를 바꾼 글자는
+`Metro.text()`가 원래 크기를 글자의 태그(`R.id.metro_search_px`)에 남기고, 검색은 `Metro.searchPx()`로 그 크기를 봅니다.
+
+## 아직 원래 모양인 곳
+
+- 첫 시작 가이드의 그림과 움직임, 시스템 대화상자(AlertDialog), 토스트
+- 설정 화면 안에서 따로 만든 일부 조각 (공통 조각을 쓰지 않는 곳은 색과 모서리만 바뀜)
+- 플로팅 키보드의 손잡이 등 작은 장식

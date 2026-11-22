@@ -847,7 +847,7 @@ public final class KeyboardView extends View {
     /** 키 면의 색 (눌리지 않았을 때). 강조색이면 글자는 onAccent, 아니면 글자 색이다. */
     private int faceColor(Key k) {
         if (k.type == Key.ENTER) {
-            return theme.accent;
+            return theme.metro ? theme.functionKey : theme.accent;   // Windows Phone의 엔터 키는 다른 기능키와 같은 회색
         } else if (gridColors && k.gridLetterColor) {
             return theme.key;   // 일본어 12키: ま·ら 아래 칸은 가나 키와 같은 글자 키 색
         } else if (gridColors && layout.kind != KeyboardLayout.NUMBER && (k.type == Key.SHIFT || k.type == Key.FUNCTION
@@ -887,6 +887,14 @@ public final class KeyboardView extends View {
             } else {
                 Neu.drawFace(c, r, radius, bg, theme, fill);
             }
+        } else if (theme.metro) {
+            // Windows Phone 키보드: 모서리 없는 네모 키, 그림자 없음. 누른 키는 강조색으로 빛나고 글자는 그 위의 색이 된다.
+            if (pressed) {
+                bg = theme.accent;
+                fg = theme.onAccent;
+            }
+            fill.setColor(bg);
+            c.drawRect(r, fill);
         } else {
             if (pressed) bg = k.type == Key.ENTER ? blend(theme.accent, theme.text, 0.25f) : theme.keyPressed;
             if (keyShadow && !pressed) drawShadow(c, r);
@@ -960,7 +968,7 @@ public final class KeyboardView extends View {
         text.setColor(dim ? theme.hint : fg);
         // 기능 키(?123, ABC, 가 등)의 글자는 글자 수와 상관없이 같은 크기로 그린다.
         boolean longLabel = !label.isEmpty() && k.type != Key.CHAR;
-        text.setTypeface(longLabel ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
+        text.setTypeface(longLabel && !theme.metro ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);   // Metro에는 굵은 글자가 없다
         text.setTextSize(longLabel ? spLabel : layout.kind == KeyboardLayout.NUMBER ? spNumber : spChar);
         drawCentered(c, label, cx, cy);
 
@@ -1064,7 +1072,30 @@ public final class KeyboardView extends View {
         c.drawText(s, cx, cy - (fm.ascent + fm.descent) / 2f, text);
     }
 
+    /**
+     * Metro: 누른 키가 위로 솟아오른 듯한 강조색 네모. 키 면과 같은 폭으로 키 윗변에 붙어 누른 키(강조색)와 한 덩어리로 보인다.
+     */
+    private void drawMetroPreview(Canvas c, Key k, String label) {
+        float faceW = k.rect.width() - gapX, faceH = k.rect.height() - gapY;
+        float w = Math.max(faceW, dp(44));
+        float h = faceH * 1.15f;
+        float left = Math.max(0, Math.min(getWidth() - w, k.rect.centerX() - w / 2));
+        float bottom = k.rect.top + gapY / 2;
+        float top = Math.max(-overflowTop, bottom - h);
+        tmp.set(left, top, left + w, bottom + (w == faceW ? gapY / 2 + 1 : 0));   // 같은 폭이면 키 사이 틈까지 메워 이어 붙인다
+        fill.setColor(theme.accent);
+        c.drawRect(tmp, fill);
+        text.setColor(theme.onAccent);
+        text.setTypeface(Typeface.DEFAULT);
+        text.setTextSize(spPreview);
+        drawCentered(c, label, tmp.centerX(), (top + bottom) / 2f);
+    }
+
     private void drawPreview(Canvas c, Key k, String label) {
+        if (theme.metro) {
+            drawMetroPreview(c, k, label);
+            return;
+        }
         float w = Math.max(k.rect.width() * 1.05f, dp(46));
         float h = k.rect.height() * 1.15f;
         float left = Math.max(0, Math.min(getWidth() - w, k.rect.centerX() - w / 2));
@@ -1085,12 +1116,14 @@ public final class KeyboardView extends View {
     private void drawPopup(Canvas c) {
         int rows = (popupItems.length + popupCols - 1) / popupCols;
         tmp.set(popupLeft, popupTop, popupLeft + popupCols * popupCellW, popupTop + rows * popupCellH);
+        // Metro: 모서리 없는 네모에 글자 색의 굵은 테두리 (Windows Phone의 팝업).
+        float border = theme.metro ? dp(2) : dp(1), rad = theme.metro ? 0 : radius;
         fill.setColor(theme.divider);
-        tmp.inset(-dp(1), -dp(1));
-        c.drawRoundRect(tmp, radius, radius, fill);
-        tmp.inset(dp(1), dp(1));
+        tmp.inset(-border, -border);
+        c.drawRoundRect(tmp, rad, rad, fill);
+        tmp.inset(border, border);
         fill.setColor(theme.popup);
-        c.drawRoundRect(tmp, radius, radius, fill);
+        c.drawRoundRect(tmp, rad, rad, fill);
         text.setTypeface(Typeface.DEFAULT);
         text.setTextSize(spChar * popupTextScale);
         for (int i = 0; i < popupItems.length; i++) {
@@ -1099,7 +1132,7 @@ public final class KeyboardView extends View {
             tmp.set(l + dp(2), t + dp(2), l + popupCellW - dp(2), t + popupCellH - dp(2));
             if (i == popupSelected) {
                 fill.setColor(theme.popupSelected);
-                c.drawRoundRect(tmp, radius, radius, fill);
+                c.drawRoundRect(tmp, rad, rad, fill);
                 text.setColor(theme.onAccent);
             } else {
                 text.setColor(theme.text);

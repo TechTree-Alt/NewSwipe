@@ -78,8 +78,32 @@ public final class ExpressiveSlider extends View {
         return trackLeft() + usable * progress / max;
     }
 
+    /**
+     * Metro UI 모드: Windows Phone 8의 슬라이더. 두툼한 네모 막대의 왼쪽을 강조색으로 채우고, 나머지는 글자 색을 옅게 깔며,
+     * 지금 값 자리에 글자 색의 가는 네모 손잡이를 세운다.
+     */
+    private void drawMetro(Canvas c) {
+        float dp = Ui.dp(getContext(), 1);
+        float cy = getHeight() / 2f;
+        float th = 10 * dp, hw = 6 * dp, hh = 22 * dp;
+        float hx = handleX();
+        float left = trackLeft(), right = trackRight();
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor((Metro.fg & 0x00FFFFFF) | 0x33000000);
+        c.drawRect(left, cy - th / 2f, right, cy + th / 2f, paint);
+        paint.setColor(accent);
+        c.drawRect(left, cy - th / 2f, hx, cy + th / 2f, paint);
+        paint.setColor(Metro.fg);
+        float l = Math.max(left - hw / 2f, Math.min(right - hw / 2f, hx - hw / 2f));
+        c.drawRect(l, cy - hh / 2f, l + hw, cy + hh / 2f, paint);
+    }
+
     @Override
     protected void onDraw(Canvas c) {
+        if (Metro.on) {
+            drawMetro(c);
+            return;
+        }
         float cy = getHeight() / 2f;
         float top = cy - trackH / 2f, bottom = cy + trackH / 2f;
         float hx = handleX();
@@ -130,6 +154,7 @@ public final class ExpressiveSlider extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent e) {
+        if (!isEnabled()) return false;   // 흐리게 막아 둔 슬라이더 (예: Metro UI의 키 곡률)
         switch (e.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
                 pressed = true;

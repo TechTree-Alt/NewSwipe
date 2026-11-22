@@ -5,6 +5,8 @@ import android.content.res.Configuration;
 import android.graphics.Color;
 import android.os.Build;
 
+import com.alternative_studios.newswipe.ui.Metro;
+
 /**
  * 화면 모드(시스템/라이트/다크)와 강조 색(시스템/지정)을 풀어서 실제 색으로 돌려준다.
  * 설정 화면과 키보드가 같은 규칙을 쓴다.
@@ -13,6 +15,8 @@ public final class AppTheme {
     public static final int DEFAULT_ACCENT = 0xFF2F62E8;
 
     public final boolean dark;
+    /** Metro UI 모드 (실험적): 순수한 검정·흰색 바탕, 크롬 색 입력란, 옅은 회색 글자 (ui.Metro). */
+    public final boolean metro;
     public final int bg, card, text, hint, accent, onAccent;
     /**
      * 키보드의 강조색 키에 쓰는 색. 설정 화면의 {@link #accent}는 바탕에 묻히지 않게 보정될 수 있지만,
@@ -20,12 +24,20 @@ public final class AppTheme {
      */
     public final int keyAccent, keyOnAccent;
 
-    private AppTheme(boolean dark, int accent, int onAccent, int keyAccent, int keyOnAccent) {
+    private AppTheme(boolean dark, boolean metro, int accent, int onAccent, int keyAccent, int keyOnAccent) {
         this.dark = dark;
+        this.metro = metro;
         this.accent = accent;
         this.onAccent = onAccent;
         this.keyAccent = keyAccent;
         this.keyOnAccent = keyOnAccent;
+        if (metro) {
+            bg = dark ? Metro.DARK_BG : Metro.LIGHT_BG;
+            card = dark ? Metro.DARK_CHROME : Metro.LIGHT_CHROME;
+            text = dark ? Metro.DARK_FG : Metro.LIGHT_FG;
+            hint = Metro.SUBTLE;
+            return;
+        }
         bg = dark ? 0xFF121316 : 0xFFF4F5F8;
         card = dark ? 0xFF1E1F23 : 0xFFFFFFFF;
         text = dark ? 0xFFECECEF : 0xFF1D1E21;
@@ -35,9 +47,22 @@ public final class AppTheme {
     public static AppTheme of(Context context) {
         Prefs prefs = new Prefs(context);
         boolean dark = isDark(context, prefs);
+        boolean metro = prefs.metro();
         int key = keyAccent(context, prefs, dark);
         int shown = accent(context, prefs, dark);
-        return new AppTheme(dark, shown, onAccent(context, prefs, dark, shown), key, onAccent(context, prefs, dark, key));
+        int onShown = metro ? metroInk(shown, onAccent(context, prefs, dark, shown)) : onAccent(context, prefs, dark, shown);
+        // 설정 화면과 키보드가 함께 쓰는 Metro 상태·색 (Ui.round 등 Context 없이 부르는 곳이 읽는다).
+        Metro.set(metro, dark, shown, onShown);
+        int onKey = onAccent(context, prefs, dark, key);
+        return new AppTheme(dark, metro, shown, onShown, key, metro ? metroInk(key, onKey) : onKey);
+    }
+
+    /**
+     * Metro: Windows Phone은 강조색 타일 위의 글자를 늘 흰색으로 썼다. 노랑·연두처럼 아주 밝은 색(상대 휘도 0.5 이상)만
+     * 원래 고른 짙은 글자를 둔다.
+     */
+    private static int metroInk(int accent, int fallback) {
+        return luminance(accent) < 0.5 ? 0xFFFFFFFF : fallback;
     }
 
     /** 설정 화면의 강조 색이 시인성 때문에 고른 색(키보드에 쓰는 색)과 다르게 보정되었는지. */
@@ -230,7 +255,7 @@ public final class AppTheme {
     /** 활동이 시작할 때 기준 설정이 바뀌었는지 비교하는 값. */
     public static String signature(Context context) {
         Prefs p = new Prefs(context);
-        return p.themeMode() + "/" + p.accentMode() + "/" + p.accentColor();
+        return p.themeMode() + "/" + p.accentMode() + "/" + p.accentColor() + "/" + p.metro();
     }
 
     /** 활동의 리소스(night 값)도 고른 화면 모드를 따르도록 기준 설정을 덮어쓴다. attachBaseContext에서 쓴다. */

@@ -63,6 +63,7 @@ public final class ExpressiveChoiceButton extends TextView {
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         setTypeface(android.graphics.Typeface.DEFAULT_BOLD);   // 나열 버튼의 글자는 늘 굵게
         setPadding(Ui.dp(c, 6), Ui.dp(c, 12), Ui.dp(c, 6), Ui.dp(c, 12));
+        if (Metro.on) setTypeface(Metro.regular());   // Metro에는 굵은 글자가 거의 없다
         setClickable(true);
         setFocusable(true);
         sel = selected ? 1f : 0f;
@@ -151,6 +152,11 @@ public final class ExpressiveChoiceButton extends TextView {
      * 늘었다가 제자리로 돌아온다 (목표를 넘으면 살짝 줄었다 돌아온다). 해제되는 칸은 모양과 색만 바뀐다. 늘어난 폭은 옆 칸 쪽으로 나누고 옆 칸은 그만큼 줄어든다.
      */
     private void updateStretch() {
+        if (Metro.on) {   // Metro: 칸은 늘어나지 않는다 (색만 바뀌고, 누르면 기울어진다)
+            extL = extR = 0f;
+            invalidate();
+            return;
+        }
         float s = 0.05f * press + (selecting ? 0.09f * 4f * sel * (1f - sel) : 0f);
         float d = getWidth() * s;
         if (prev != null && next != null) {
@@ -179,8 +185,8 @@ public final class ExpressiveChoiceButton extends TextView {
             return;
         }
         selAnim = ValueAnimator.ofFloat(sel, to);
-        selAnim.setDuration(SELECT_MS);
-        selAnim.setInterpolator(Spring.BOUNCY);
+        selAnim.setDuration(Metro.on ? 150 : SELECT_MS);
+        selAnim.setInterpolator(Metro.on ? Metro.EASE_OUT : Spring.BOUNCY);
         selAnim.addUpdateListener(a -> {
             sel = (float) a.getAnimatedValue();
             applyTextColor();
@@ -205,8 +211,49 @@ public final class ExpressiveChoiceButton extends TextView {
         setTextColor(blend(text, onAccent, clamp01(sel)));
     }
 
+    /**
+     * Metro UI 모드: 모서리 없는 네모 칸. 고르지 않은 칸은 글자 색 테두리만, 고른 칸은 강조색으로 채운다
+     * (Windows Phone의 버튼·강조색 타일). 누르는 동안은 글자 색을 옅게 덮는다.
+     */
+    private void drawMetro(Canvas canvas) {
+        float w = getWidth(), h = getHeight();
+        float t = clamp01(sel);
+        float stroke = Ui.dp(getContext(), 2);
+        paint.setStyle(Paint.Style.FILL);
+        if (t < 1f) {
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(stroke);
+            paint.setColor(withAlpha(text, Math.round(0x99 * (1f - t))));
+            canvas.drawRect(stroke / 2f, stroke / 2f, w - stroke / 2f, h - stroke / 2f, paint);
+            paint.setStyle(Paint.Style.FILL);
+        }
+        if (t > 0f) {
+            paint.setColor(withAlpha(accent, Math.round(255 * t)));
+            canvas.drawRect(0, 0, w, h, paint);
+        }
+        if (press > 0.01f) {
+            paint.setColor(withAlpha(text, Math.round(0x33 * clamp01(press))));
+            canvas.drawRect(0, 0, w, h, paint);
+        }
+        super.onDraw(canvas);
+        if (sub != null) {
+            float room = w - 2 * Ui.dp(getContext(), 6);
+            if (subShown == null || subShownRoom != room) {
+                subShown = android.text.TextUtils.ellipsize(sub, subPaint, Math.max(room, 1f),
+                        android.text.TextUtils.TruncateAt.END);
+                subShownRoom = room;
+            }
+            subPaint.setColor(blend(hint, withAlpha(onAccent, 0xB3), t));
+            canvas.drawText(subShown, 0, subShown.length(), w / 2f, h - Ui.dp(getContext(), 10), subPaint);
+        }
+    }
+
     @Override
     protected void onDraw(Canvas canvas) {
+        if (Metro.on) {
+            drawMetro(canvas);
+            return;
+        }
         float w = getWidth(), h = getHeight();
         float full = h / 2f;
         float t = clamp01(sel);
@@ -266,6 +313,7 @@ public final class ExpressiveChoiceButton extends TextView {
     @Override
     public boolean onTouchEvent(MotionEvent e) {
         if (!isEnabled() || !isClickable()) return super.onTouchEvent(e);
+        Metro.onTiltTouch(this, e);
         switch (e.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
                 down = true;

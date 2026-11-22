@@ -14,6 +14,7 @@ import android.widget.TextView;
 
 import com.alternative_studios.newswipe.keyboard.Icons;
 import com.alternative_studios.newswipe.ui.ExpressiveIconButton;
+import com.alternative_studios.newswipe.ui.Metro;
 import com.alternative_studios.newswipe.ui.Ui;
 
 /**
@@ -156,13 +157,96 @@ final class SettingsFrame {
      * 머리글·입력 창·content는 overlayHost 틀 안에 들어가, 그 위에 겹쳐 띄우는 창은 머리글까지 덮고 bottom은 가리지 않는다.
      */
     View wrap(View content, View bottom) {
+        View root = wrapPlain(content, bottom);
+        if (!Metro.on) return root;
+        // Metro UI: 화면 전체를 턴스타일 틀로 감싼다. 시스템 전환 효과 대신 들어올 때 머리글·목록이 깃털처럼 돌아 들어온다.
+        Metro.noSystemTransition(activity);
+        page = new Metro.Page(activity);
+        page.setContent(root);
+        page.setFeatherItems(() -> {
+            java.util.List<View> items = new java.util.ArrayList<>();
+            if (header != null) collectFeather(header, items);
+            if (searchBar != null) collectFeather(searchBar, items);
+            if (testBar != null) collectFeather(testBar, items);
+            collectFeather(content, items);
+            if (bottom != null) items.add(bottom);
+            return items;
+        });
+        page.playEnterOnFirstDraw();
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            // 뒤로 가기도 턴스타일로 나간다. 검색창·입력창·설정 창이 열려 있으면 나중에 등록한 그쪽 콜백이 먼저 불린다.
+            android.window.OnBackInvokedCallback cb = () -> metroBack(activity);
+            activity.getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                    android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, cb);
+        }
+        return page;
+    }
+
+    /** Metro 모드의 턴스타일 틀 (Metro 모드가 아니면 null). */
+    private Metro.Page page;
+    private View header;
+
+    /**
+     * 깃털처럼 돌아 들어올 항목을 위에서 아래 차례로 모은다: 세로로 쌓는 틀(카드·목록)은 속으로 들어가 줄마다 따로 돌고,
+     * 그 밖의 뷰(줄, 버튼, 미리보기)는 통째로 돈다.
+     */
+    private static void collectFeather(View v, java.util.List<View> out) {
+        if (v.getVisibility() != View.VISIBLE) return;
+        boolean container = v instanceof android.widget.ScrollView
+                || (v instanceof LinearLayout && ((LinearLayout) v).getOrientation() == LinearLayout.VERTICAL && !v.isClickable())
+                || (v.getClass() == android.widget.FrameLayout.class && !v.isClickable());
+        if (container && ((ViewGroup) v).getChildCount() > 0) {
+            ViewGroup g = (ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) collectFeather(g.getChildAt(i), out);
+        } else {
+            out.add(v);
+        }
+    }
+
+    /**
+     * Metro 모드의 뒤로 가기: 화면이 턴스타일로 돌아 나간 뒤 닫힌다. 처리했으면 true (Metro 모드가 아니거나 틀이 없으면 false:
+     * 평소대로 닫는다). Android 12 이하에서는 화면의 onBackPressed가 super.onBackPressed() 대신 이것을 부른다.
+     */
+    static boolean metroBack(Activity activity) {
+        java.lang.ref.WeakReference<SettingsFrame> ref = FRAMES.get(activity);
+        SettingsFrame frame = ref == null ? null : ref.get();
+        if (frame == null || frame.page == null) return false;
+        frame.page.back(() -> Metro.finishQuietly(activity));
+        return true;
+    }
+
+    /**
+     * Metro 모드에서 이 앱의 다른 화면을 열 때: 지금 화면이 턴스타일로 돌아 나간 뒤 start를 부른다. 처리했으면 true
+     * (아니면 부른 쪽이 바로 연다). 다른 앱의 화면(시스템 설정, 브라우저)은 그 앱의 전환 효과를 쓰므로 여기서 다루지 않는다.
+     */
+    static boolean metroForward(Activity activity, android.content.Intent intent, Runnable start) {
+        java.lang.ref.WeakReference<SettingsFrame> ref = FRAMES.get(activity);
+        SettingsFrame frame = ref == null ? null : ref.get();
+        if (frame == null || frame.page == null || intent.getComponent() == null
+                || !activity.getPackageName().equals(intent.getComponent().getPackageName())) return false;
+        frame.page.forward(start);
+        return true;
+    }
+
+    /** 머리글 큰 제목 오른쪽에 옅게 비치는 다음 화면 이름 (Windows Phone 피벗). Metro 모드에서만 보인다. */
+    private String peek;
+    private View.OnClickListener peekListener;
+
+    SettingsFrame withPeek(String name, View.OnClickListener l) {
+        peek = name;
+        peekListener = l;
+        return this;
+    }
+
+    private View wrapPlain(View content, View bottom) {
         Ui.edgeToEdge(activity.getWindow(), colors.dark);
         LinearLayout root = new LinearLayout(activity);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(colors.bg);
         LinearLayout upper = new LinearLayout(activity);
         upper.setOrientation(LinearLayout.VERTICAL);
-        upper.addView(buildHeader(), matchWrap());
+        header = Metro.on ? buildMetroHeader() : buildHeader();
+        upper.addView(header, matchWrap());
         if (onSearch != null) {
             buildSearchBar();
             upper.addView(searchBar, matchWrap());
@@ -233,6 +317,83 @@ final class SettingsFrame {
         testButton = circleButton(c, Icons.MENU_KEYBOARD, L.t("키보드 열기", "Open keyboard"), v -> toggleTestKeyboard());
         header.addView(testButton, new LinearLayout.LayoutParams(size, size));
         return header;
+    }
+
+    /**
+     * Metro UI의 머리글 (Windows Phone 피벗): 첫 줄에 작은 대문자 앱 이름과 오른쪽의 동그란 앱 바 버튼, 그 아래에 화면 이름을
+     * 크고 가는 소문자로 쓰고, 그 오른쪽에 다음 화면 이름이 옅게 비치다 화면 끝에서 잘린다.
+     */
+    private View buildMetroHeader() {
+        Context c = activity;
+        LinearLayout header = new LinearLayout(c);
+        header.setOrientation(LinearLayout.VERTICAL);
+        int pad = Ui.dp(c, 16);
+        header.setPadding(pad, Ui.dp(c, 8), pad, Ui.dp(c, 4));
+        header.setClipChildren(true);
+
+        boolean main = title.equals(activity.getString(R.string.app_name));
+        LinearLayout top = new LinearLayout(c);
+        top.setGravity(Gravity.CENTER_VERTICAL);
+        TextView small = new TextView(c);
+        small.setText(Metro.upper(main ? title : subtitle));
+        small.setTextColor(colors.text);
+        small.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        small.setTypeface(Metro.semibold());
+        small.setSingleLine(true);
+        small.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        top.addView(small, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        addHeaderButtons(c, top, Ui.dp(c, 44));
+        header.addView(top, matchWrap());
+
+        TextView big = new TextView(c);
+        String name = Metro.lower(main ? L.t("설정", "settings") : title);
+        android.text.SpannableStringBuilder sb = new android.text.SpannableStringBuilder(name);
+        if (peek != null) {
+            int from = sb.length();
+            sb.append("  ").append(Metro.lower(peek));
+            sb.setSpan(new android.text.style.ForegroundColorSpan((colors.text & 0x00FFFFFF) | 0x4D000000), from, sb.length(),
+                    android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        big.setText(sb);
+        big.setTextColor(colors.text);
+        big.setTextSize(TypedValue.COMPLEX_UNIT_SP, 46);
+        big.setTypeface(Metro.light());
+        big.setSingleLine(true);
+        big.setHorizontallyScrolling(true);   // 화면보다 길면 줄이지 않고 화면 끝에서 잘린다
+        big.setIncludeFontPadding(false);
+        big.setPadding(0, Ui.dp(c, 2), 0, Ui.dp(c, 8));
+        big.setContentDescription(main ? L.t("설정", "Settings") : title);
+        if (peek != null && peekListener != null) {
+            float nameWidth = big.getPaint().measureText(name + " ");
+            big.setOnTouchListener((v, e) -> {
+                if (e.getActionMasked() == android.view.MotionEvent.ACTION_UP && e.getX() > nameWidth) {
+                    v.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
+                    peekListener.onClick(v);
+                }
+                return true;
+            });
+        }
+        header.addView(big, matchWrap());
+        return header;
+    }
+
+    /** 머리글 오른쪽 버튼들: 검색, 또는 (더한 버튼과) 키보드 열기. */
+    private void addHeaderButtons(Context c, LinearLayout header, int size) {
+        if (onSearch != null) {
+            testButton = null;
+            searchButton = circleButton(c, Icons.SEARCH, searchName, v -> toggleSearch());
+            header.addView(searchButton, new LinearLayout.LayoutParams(size, size));
+            return;
+        }
+        if (actionListener != null) {
+            actionButton = circleButton(c, actionIcon, actionDescription, actionListener);
+            actionButton.setActive(true);
+            LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(size, size);
+            alp.rightMargin = Ui.dp(c, 8);
+            header.addView(actionButton, alp);
+        }
+        testButton = circleButton(c, Icons.MENU_KEYBOARD, L.t("키보드 열기", "Open keyboard"), v -> toggleTestKeyboard());
+        header.addView(testButton, new LinearLayout.LayoutParams(size, size));
     }
 
     /** 강조색 동그라미 안에 아이콘 하나를 둔 버튼 (누르면 모양이 바뀌고 진동이 울린다). */

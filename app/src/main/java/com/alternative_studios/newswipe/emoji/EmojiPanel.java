@@ -599,7 +599,7 @@ public final class EmojiPanel extends LinearLayout {
                 protected void dispatchDraw(Canvas canvas) {
                     if (adapter.columns > 0 && getFirstVisiblePosition() == 0 && getChildCount() > 0) {
                         View first = getChildAt(0);
-                        float inset = Ui.dp(context, 2), r = Ui.dp(context, 12);
+                        float inset = Ui.dp(context, 2), r = Ui.chipRadius(context) == 0 ? 0 : Ui.dp(context, 12);
                         canvas.drawRoundRect(getPaddingLeft(), first.getTop() + inset,
                                 getWidth() - getPaddingRight(), first.getBottom() - inset, r, r, suggestPaint);
                     }

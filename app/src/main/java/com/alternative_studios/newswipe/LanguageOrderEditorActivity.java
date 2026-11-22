@@ -352,6 +352,6 @@ public final class LanguageOrderEditorActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        if (!SettingsFrame.consumeBack(this)) super.onBackPressed();
+        if (!SettingsFrame.consumeBack(this) && !SettingsFrame.metroBack(this)) super.onBackPressed();
     }
 }
