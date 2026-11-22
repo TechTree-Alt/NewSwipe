@@ -1443,23 +1443,17 @@ public final class SettingsActivity extends Activity {
                 }
 
             });
-            // 미리보기 바로 위: 어느 자판을 보며 편집할지.
-            LinearLayout tabs = new LinearLayout(this);
-            tabs.setOrientation(LinearLayout.VERTICAL);
-            int pad = Ui.dp(this, 16);
-            tabs.setPadding(pad, Ui.dp(this, 2), pad, Ui.dp(this, 6));
-            tabs.setBackgroundColor(AppTheme.of(this).bg);
-            tabs.addView(editorTabs = Ui.choiceRow(this, KeyboardPreview.tabNames(), 0, accentColor, onAccentColor,
+            // 어느 자판을 보며 편집할지: 글자 키를 가운데로 끌어온 동안만 미리보기 안쪽 위에 뜬다 (KeyboardPreview.setTabsView).
+            editorTabs = Ui.choiceRow(this, KeyboardPreview.tabNames(), 0, accentColor, onAccentColor,
                     textColor, hintColor, 0, i -> {
-                        // 영역 창은 다른 자판에서도 연 채로 둔다 (글자 키 창은 그 자판의 항목으로 바뀐다).
-                        // 키는 자판마다 달라 창을 닫는다.
-                        KeyboardPreview.Selection s = editorPreview.selection();
-                        boolean keep = panelOpen() && s != null && s.kind == KeyboardPreview.SEL_AREA;
-                        if (!keep) closeKeyPanel();
+                        // 탭을 바꿔도 글자 키에 머문다: 키를 골랐으면 그 자판의 글자 키 영역 창으로 바뀐다 (글자 키 창은 그 자판의 항목으로).
+                        boolean keep = panelOpen();
                         editorPreview.setTab(i);
                         if (keep) showSelection(editorPreview.selection());
-                    }));
-            pinnedBottom.addView(tabs, matchWrap());
+                        else closeKeyPanel();
+                    });
+            editorTabs.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            editorPreview.setTabsView(editorTabs);
             pinnedBottom.addView(editorPreview, matchWrap());
             pinnedBottom.setVisibility(View.VISIBLE);
 
@@ -2079,7 +2073,7 @@ public final class SettingsActivity extends Activity {
         }
     }
 
-    /** 미리보기 위의 한글·영어·기호 탭 버튼 줄. */
+    /** 한글·영어·기호 자판 탭 버튼 줄 (글자 키를 고른 동안 미리보기 안쪽 위에 뜬다). */
     private LinearLayout editorTabs;
     /** 글자 키 창을 만들 자판 (KeyboardPreview.TAB_*): 창을 열 때 미리보기의 탭, 설정 검색 목록을 만들 때는 자판마다. */
     private int letterTab = KeyboardPreview.TAB_KOREAN;
