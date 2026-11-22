@@ -1315,6 +1315,18 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     /**
+     * 한 손 모드·떠 있는 키보드에서 도구 막대 버튼의 폭을 자판 폭과 같은 비율로 맞춘다 (높이는 toolbarScale이 키 높이 비율로).
+     * 그 밖에는 1.
+     */
+    private float toolbarWidthScale() {
+        if (prefs == null) return 1f;
+        String side = activeOneHand();
+        if (Prefs.ONE_HAND_FLOAT.equals(side)) return floatWidthPct() / 100f;
+        if (!Prefs.ONE_HAND_OFF.equals(side)) return prefs.profileView(profile()).oneHandWidthForProfile() / 100f;
+        return 1f;
+    }
+
+    /**
      * 도구 막대 높이와 도구 버튼 크기를 설정값으로 맞춘다. 둘은 따로 정한다: 막대 높이는 줄의 높이(터치 영역)만,
      * 버튼 크기는 버튼의 폭과 아이콘 크기를 바꾼다 (기본 폭 40dp, 아이콘 22dp). 아이콘은 막대보다 커지지 않는다 (IconButton이 70%로 제한).
      */
@@ -1326,13 +1338,15 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         topSlot.setPadding(topSlot.getPaddingLeft(), barPadTop, topSlot.getPaddingRight(), barPadBottom);
         setHeight(topSlot, barSlotHeight());
         dropStalePanels();
-        float barScale = toolbarScale();
-        float scale = prefs.toolButtonSize() / 100f * barScale;
-        int width = Math.round(Ui.dp(this, 40) * scale);
+        // 한 손 모드·떠 있는 키보드: 버튼 높이(막대 높이)는 키 높이 비율로, 버튼 폭은 자판 폭 비율로 따로 줄고 커진다.
+        // 아이콘은 버튼 안에 들어가도록 두 비율 가운데 작은 쪽을 따른다.
+        float barScale = toolbarScale(), widthScale = toolbarWidthScale();
+        float size = prefs.toolButtonSize() / 100f;
+        int width = Math.round(Ui.dp(this, 40) * size * widthScale);
         for (TextView t : suggestViews) {
             if (t != null) t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16 * barScale);   // 같은 크기면 아무 일도 하지 않는다
         }
-        float icon = Ui.dp(this, 22) * scale;
+        float icon = Ui.dp(this, 22) * size * Math.min(barScale, widthScale);
         // 버튼마다 자동 완성 칩과 같은 모양의 칩 배경을 씌운다 (IconButton.setToolbarStyle).
         int chipH = Ui.chipHeight(this, toolbarHeight);
         for (String id : ToolbarButtons.ALL) {

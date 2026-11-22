@@ -162,14 +162,14 @@ final class OneHandPreview extends FrameLayout {
     private String barSignature;
 
     /**
-     * 도구 막대를 키보드와 같은 크기로 다시 만든다: 한 손 모드에서는 막대 높이·버튼·아이콘을 키 높이와 같은 비율로 줄이고 키운다
-     * (떠 있는 키보드와 같은 규칙). 같은 크기면 그대로 둔다.
+     * 도구 막대를 키보드와 같은 크기로 다시 만든다: 한 손 모드에서는 막대(버튼) 높이를 키 높이 비율로, 버튼 폭을 자판 폭 비율로
+     * 따로 줄이고 키운다. 아이콘은 두 비율 가운데 작은 쪽 (떠 있는 키보드와 같은 규칙). 같은 크기면 그대로 둔다.
      */
     private void rebuildToolbar(Context c) {
-        float scale = prefs.oneHandHeightForProfile() / 100f;
+        float scale = prefs.oneHandHeightForProfile() / 100f, widthScale = prefs.oneHandWidthForProfile() / 100f;
         int height = Math.round(Ui.dp(c, 40) * prefs.toolbarHeight() / 100f * scale);
-        float size = prefs.toolButtonSize() / 100f * scale;
-        int width = Math.round(Ui.dp(c, 40) * size);
+        float size = prefs.toolButtonSize() / 100f;
+        int width = Math.round(Ui.dp(c, 40) * size * widthScale);
         String sig = prefs.toolbar() + "," + height + "," + width;
         if (sig.equals(barSignature)) return;
         barSignature = sig;
@@ -184,7 +184,7 @@ final class OneHandPreview extends FrameLayout {
             for (String id : order[s]) {
                 if (!prefs.toolShown(id)) continue;
                 IconButton b = new IconButton(c, ToolbarButtons.icon(id), theme.text, theme.keyPressed, null);
-                b.setIconSize(Ui.dp(c, 22) * size);
+                b.setIconSize(Ui.dp(c, 22) * size * Math.min(scale, widthScale));
                 b.setToolbarStyle(theme, height);
                 b.setClickable(false);
                 b.setFocusable(false);
