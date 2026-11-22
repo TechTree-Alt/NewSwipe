@@ -232,29 +232,43 @@ public final class BottomKeysEditorActivity extends Activity {
         TextView title = text(L.t("기호 자판에서는", "On the symbol keyboard"), 15, accentColor);
         TextView current = text(BottomKeys.symbolGlobeLabel(prefs.symbolGlobeKey()), 15, accentColor);
         int gap = Ui.dp(this, 12), valuePad = Ui.dp(this, 8);
-        // 쉼표·온점 키의 '다른 키로 설정'처럼 이름과 지금 고른 키를 한 줄에 놓고, 자리가 모자라면 이름 아래에 작게 놓는다.
+        // 쉼표·온점 키의 '다른 키로 설정'처럼 이름과 지금 고른 키를 한 줄에 놓는다. 자리가 모자라면 고른 키의 글씨를
+        // 최소 크기까지 줄여 한 줄에 맞추고, 그래도 안 되면 이름 아래에 작게 놓는다.
         LinearLayout texts = new LinearLayout(this) {
             @Override
             protected void onMeasure(int widthSpec, int heightSpec) {
-                // 한 줄일 때의 크기(15sp)로 잰다. 글자 크기를 바꿔 가며 재면 레이아웃을 다시 요청해 끝없이 돈다.
-                android.text.TextPaint big = new android.text.TextPaint(title.getPaint());
-                float need = big.measureText(title.getText().toString()) + gap
-                        + big.measureText(current.getText().toString()) + valuePad;
-                boolean oneLine = MeasureSpec.getMode(widthSpec) == MeasureSpec.UNSPECIFIED
-                        || need <= MeasureSpec.getSize(widthSpec);
+                android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+                float full = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 15, dm);
+                float min = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 11, dm);
+                // 15sp로 잰 너비에서 비례로 크기를 구한다. 글자 크기를 바꿔 가며 재면 레이아웃을 다시 요청해 끝없이 돈다.
+                android.text.TextPaint paint = new android.text.TextPaint(title.getPaint());
+                paint.setTextSize(full);
+                float titleW = paint.measureText(title.getText().toString());
+                float valueW = paint.measureText(current.getText().toString());
+                float size = full;
+                boolean oneLine = true;
+                if (MeasureSpec.getMode(widthSpec) != MeasureSpec.UNSPECIFIED && valueW > 0) {
+                    float room = MeasureSpec.getSize(widthSpec) - titleW - gap - valuePad - Ui.dp(getContext(), 2);
+                    if (room < valueW) {
+                        size = (float) Math.floor(full * room / valueW * 2) / 2;   // 0.5px 단위로 내려 같은 너비에서 늘 같은 값
+                        if (size < min) {
+                            oneLine = false;
+                            size = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 13, dm);
+                        }
+                    }
+                }
                 int o = oneLine ? HORIZONTAL : VERTICAL;
                 if (getOrientation() != o) setOrientation(o);
                 LinearLayout.LayoutParams tp = (LinearLayout.LayoutParams) title.getLayoutParams();
                 tp.width = oneLine ? 0 : ViewGroup.LayoutParams.WRAP_CONTENT;
                 tp.weight = oneLine ? 1f : 0f;
-                float size = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, oneLine ? 15 : 13,
-                        getResources().getDisplayMetrics());
                 if (current.getTextSize() != size) current.setTextSize(TypedValue.COMPLEX_UNIT_PX, size);
                 current.setAlpha(oneLine ? 1f : 0.8f);
                 current.setPadding(0, 0, oneLine ? valuePad : 0, 0);
                 super.onMeasure(widthSpec, heightSpec);
             }
         };
+        current.setMaxLines(1);   // onMeasure 안에서 부르면 레이아웃을 다시 요청한다
         texts.setGravity(Gravity.CENTER_VERTICAL);
         texts.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         texts.addView(current, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
