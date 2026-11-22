@@ -289,7 +289,7 @@ public final class Metro {
     public static final long IN_MS = 350, OUT_MS = 250, FORWARD_IN_STEP = 40, BACKWARD_IN_STEP = 50;
     /** 깃털 효과의 회전축: 화면 왼쪽 가장자리에서 화면 폭의 20%만큼 더 왼쪽. */
     private static final float FEATHER_CENTER = -0.2f;
-    /** 깃털로 들어오는 항목 수의 한도 (그 뒤는 화면 밖이라 보이지 않는다). */
+    /** 깃털 차례의 한도: 이보다 뒤의 항목은 마지막 차례와 함께 들어온다 (들어오는 시간이 너무 길어지지 않게). */
     private static final int FEATHER_MAX = 16;
 
     /**
@@ -371,17 +371,20 @@ public final class Metro {
     public static void featherIn(View page, java.util.List<View> items, boolean forward) {
         int[] pl = new int[2], il = new int[2];
         page.getLocationInWindow(pl);
-        int top = pl[1], bottom = pl[1] + page.getHeight();
         float pageW = page.getWidth();
+        android.graphics.Rect seen = new android.graphics.Rect();
         int n = 0;
         for (View item : items) {
             if (item.getVisibility() != View.VISIBLE || item.getWidth() == 0 || item.getHeight() == 0) continue;
+            // 실제로 보이는 것만: 스크롤 목록 밖으로 잘린 줄(아래 미리보기 뒤에 가려진 줄 등)은 세지 않는다.
+            // 세면 한도가 그런 줄로 차서, 맨 끝의 아래 미리보기가 움직이지 않고 그냥 나타난다.
+            if (!item.getGlobalVisibleRect(seen)) continue;
             item.getLocationInWindow(il);
-            if (il[1] >= bottom || il[1] + item.getHeight() <= top) continue;   // 화면 밖
-            if (n >= FEATHER_MAX) break;
             float pivot = -(il[0] - pl[0]) + FEATHER_CENTER * pageW;
+            // 한도를 넘은 항목도 빼지 않고 마지막 차례와 함께 들어온다 (아래 미리보기처럼 끝에 있는 것이 그냥 생기지 않게).
+            int order = Math.min(n, FEATHER_MAX - 1);
             turn(item, pivot, forward ? FORWARD_IN : BACKWARD_IN, 0f, IN_MS,
-                    n * (forward ? FORWARD_IN_STEP : BACKWARD_IN_STEP), false, null);
+                    order * (forward ? FORWARD_IN_STEP : BACKWARD_IN_STEP), false, null);
             n++;
         }
     }
