@@ -1343,11 +1343,11 @@ final class KeyboardPreview extends FrameLayout {
         if (!handleEdge(h, out)) return false;
         if (h.knob()) return true;   // ↔ 버튼은 묶음 한가운데
         // 모든 손잡이는 조절하는 윤곽선의 안쪽에 둔다: 미리보기 가장자리에서 잘리지 않고, 화면 가장자리의 시스템 몸짓과도
-        // 겹치지 않으며, 맞닿은 두 묶음의 경계 손잡이도 서로 떨어져 보인다. 거리는 보이는 선의 안쪽 가장자리부터 잰다:
-        // 높이·묶음 경계 손잡이는 고른 영역의 굵은 윤곽선, 여백 손잡이는 기본 상태의 얇은 영역 윤곽선 기준이다.
-        // 여백 손잡이는 끄는 동안 굵은 윤곽선이 나타나도 자리를 그대로 둔다 (손가락 아래에서 움직이지 않게).
+        // 겹치지 않으며, 맞닿은 두 묶음의 경계 손잡이도 서로 떨어져 보인다. 거리는 보이는 선의 안쪽 가장자리부터 재어,
+        // 굵은 윤곽선(고른 영역, 끄는 동안의 키보드 전체) 옆이든 얇은 윤곽선(기본 상태의 영역들) 옆이든 똑같이 떨어져 보인다.
         boolean pad = h == Handle.PAD_TOP || h == Handle.PAD_BOTTOM || h == Handle.PAD_LEFT || h == Handle.PAD_RIGHT;
-        float in = Ui.dp(getContext(), HANDLE_GAP_DP + (pad ? THIN_DP : THICK_DP) / 2f);
+        boolean thick = !pad || overlay.padDragging();
+        float in = Ui.dp(getContext(), HANDLE_GAP_DP + (thick ? THICK_DP : THIN_DP) / 2f);
         switch (h) {
             case PAD_LEFT:
             case B_LEFT_START:
