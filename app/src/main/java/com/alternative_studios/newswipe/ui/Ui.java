@@ -26,10 +26,13 @@ public final class Ui {
 
     /**
      * 도구 막대에 놓는 칩(자동 완성 칩, 도구 버튼, 방금 복사한 내용 칩, 선택 편집 칩)의 높이 (px).
-     * 도구 막대 높이에서 위아래 4dp씩 남긴다 (기본 막대 40dp면 32dp). 막대가 아주 낮아도 24dp보다 작아지지 않는다.
+     * 도구 막대 높이에서 위아래 4dp씩 남긴다 (기본 막대 40dp면 32dp). 막대가 낮으면 24dp까지는 위아래 여백을 줄여 지키되,
+     * 위아래 2dp씩은 늘 남긴다 (칩이 막대보다 커져 잘리지 않게).
      */
     public static int chipHeight(Context c, int barHeight) {
-        return Math.max(dp(c, 24), barHeight - dp(c, 8));
+        // 막대가 아주 낮아도(한 손 모드·떠 있는 키보드에서 키 높이를 크게 줄였을 때) 칩이 막대보다 커져 위아래가 잘리지 않게,
+        // 위아래로 늘 2dp씩은 남긴다 (Neumorphism 그림자 자리).
+        return Math.max(0, Math.max(barHeight - dp(c, 8), Math.min(dp(c, 24), barHeight - dp(c, 4))));
     }
 
     /** 색을 옅게 깐 바탕색: 설정 메뉴 아이콘의 바탕처럼 같은 색을 반투명(약 12%)으로 쓴다. */

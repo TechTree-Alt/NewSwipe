@@ -2004,12 +2004,58 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         return Math.max(Prefs.FLOAT_WIDTH_MIN, Math.min(Prefs.FLOAT_WIDTH_MAX, widthDp * density * 100f / screenPx));
     }
 
-    /** 카드 모서리 반지름 (dp). */
+    /** 카드 모서리 반지름의 최대값 (dp). */
     private static final int FLOAT_RADIUS_DP = 16;
+    /** 지금 카드 모서리 반지름 (px, 0이면 아직 정하지 않음: FLOAT_RADIUS_DP). */
+    private float floatRadius;
+    private boolean floatCornerWatching;
+
+    private float floatRadiusPx() {
+        return floatRadius > 0 ? floatRadius : Ui.dp(this, FLOAT_RADIUS_DP);
+    }
+
+    /**
+     * 카드 위쪽 모서리가 도구 막대 버튼(칩)을 자르지 않게 반지름을 맞춘다: 모서리 가까이의 칩마다 칩 모서리와 중심이 같은
+     * 둥근 모서리(칩 반지름 + 카드 가장자리에서 칩까지의 거리)를 넘지 않게 하고, 가장 큰 값은 FLOAT_RADIUS_DP.
+     * 배치가 바뀔 때마다(크기 조절, 버튼 순서·크기, 키 높이) 다시 잰다.
+     */
+    private void updateFloatCorner() {
+        if (!floatingApplied || column == null || column.getWidth() == 0) return;
+        float max = Ui.dp(this, FLOAT_RADIUS_DP), r = max;
+        int w = column.getWidth();
+        for (String id : ToolbarButtons.ALL) {
+            View v = toolButtonOf(id);
+            if (v == null || !v.isShown() || v.getWidth() == 0) continue;
+            float x = 0, y = 0;
+            View p = v;
+            while (p != null && p != column) {
+                x += p.getLeft() + p.getTranslationX();
+                y += p.getTop() + p.getTranslationY();
+                p = p.getParent() instanceof View ? (View) p.getParent() : null;
+            }
+            if (p == null) continue;
+            int barH = v.getHeight(), insetH = Ui.dp(this, 2);
+            int insetV = Math.max(0, (barH - Ui.chipHeight(this, barH)) / 2);
+            float left = x + insetH, right = x + v.getWidth() - insetH, top = y + insetV;
+            float chipR = Math.min(Ui.chipRadius(this), Math.min((barH - 2f * insetV) / 2f, (right - left) / 2f));
+            if (top >= max) continue;   // 모서리 아래쪽이라 잘릴 일이 없다
+            float side = Math.min(left, w - right);
+            if (side >= max) continue;   // 모서리에서 멀리 떨어져 있다
+            r = Math.min(r, chipR + Math.max(0f, Math.min(top, side)));
+        }
+        r = Math.max(0f, r);
+        if (Math.abs(r - floatRadiusPx()) < 0.5f) return;
+        floatRadius = Math.max(0.01f, r);
+        for (android.graphics.drawable.Drawable d : new android.graphics.drawable.Drawable[]{column.getBackground(), column.getForeground(), veilOutline}) {
+            if (d instanceof android.graphics.drawable.GradientDrawable) ((android.graphics.drawable.GradientDrawable) d).setCornerRadius(floatRadiusPx());
+        }
+        column.invalidateOutline();
+        column.invalidate();
+    }
 
     /** 카드 윤곽선. fill이 0이 아니면 그 색으로 카드 안을 덮는다 (크기 조절 중에 흐리게). */
     private android.graphics.drawable.GradientDrawable floatCardFront(int fill) {
-        android.graphics.drawable.GradientDrawable d = Ui.round(fill, Ui.dp(this, FLOAT_RADIUS_DP));
+        android.graphics.drawable.GradientDrawable d = Ui.round(fill, floatRadiusPx());
         d.setStroke(Math.max(1, Ui.dp(this, 1)), (theme.hint & 0x00FFFFFF) | 0x40000000);
         return d;
     }
@@ -2022,7 +2068,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private void veilFloatCard() {
         int veil = (theme.background & 0x00FFFFFF) | 0xB3000000;
         if (Build.VERSION.SDK_INT >= 31) {
-            column.setForeground(Ui.round(veil, Ui.dp(this, FLOAT_RADIUS_DP)));
+            column.setForeground(Ui.round(veil, floatRadiusPx()));
             float r = Ui.dp(this, 6);
             column.setRenderEffect(android.graphics.RenderEffect.createBlurEffect(r, r, android.graphics.Shader.TileMode.CLAMP));
             if (veilOutline == null) {
@@ -2060,9 +2106,14 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         floatTop.setVisibility(floating ? View.VISIBLE : View.GONE);
         root.setBackgroundColor(floating ? android.graphics.Color.TRANSPARENT : theme.background);
         // 바탕은 카드 모양(둥근 잘라내기)만 맡고, 윤곽선은 자판이 그린 바탕에 가리지 않게 맨 위(foreground)에 그린다.
-        column.setBackground(floating ? Ui.round(theme.background, Ui.dp(this, FLOAT_RADIUS_DP)) : null);
+        column.setBackground(floating ? Ui.round(theme.background, floatRadiusPx()) : null);
         resetFloatPreview();
         column.setClipToOutline(floating);
+        if (floating && !floatCornerWatching) {
+            floatCornerWatching = true;
+            column.getViewTreeObserver().addOnGlobalLayoutListener(this::updateFloatCorner);
+        }
+        if (floating) column.post(this::updateFloatCorner);
         applyNavigationBarStyle();
         updateFloatBack();
     }
