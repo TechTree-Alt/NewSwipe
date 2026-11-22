@@ -1136,21 +1136,35 @@ final class KeyboardPreview extends FrameLayout {
     }
 
     /**
-     * 영역 윤곽선이 키 모양 위·아래 가장자리에서 나오는 여유. 보통은 3dp지만, 키 상하 간격이 좁으면
-     * 위아래로 맞닿은 두 영역의 윤곽선 사이가 늘 2dp(간격 8dp일 때와 같은 틈)로 남도록 줄인다 (간격이 아주 좁으면 키 안쪽으로 든다).
+     * 굵기 strokeDp인 영역 윤곽선의 가운데가 키 모양 가장자리에서 나오는 거리: 선의 안쪽 가장자리가 키 모양에 딱 붙는 자리
+     * (굵기의 절반). 키 사이 간격(gapPx)이 좁으면 이웃 영역의 윤곽선과 늘 2dp는 띄도록 줄인다 (아주 좁으면 키 안쪽으로 든다).
+     * 키 색이 바탕과 비슷한 기능키에서도 선과 키 사이에 바탕이 비쳐 떨어져 보이지 않는다.
      */
-    private float outlinePadY(Context c) {
-        float gy = Ui.dp(c, prefs.keyGapYDp()) / 2f;
-        return Math.min(Ui.dp(c, 3), gy - Ui.dp(c, 1));
+    private float outlineOut(float strokeDp, float gapPx) {
+        Context c = getContext();
+        return Math.min(Ui.dp(c, strokeDp) / 2f, (gapPx - Ui.dp(c, 2)) / 2f);
     }
 
-    /**
-     * 영역 윤곽선이 키 모양 왼쪽·오른쪽 가장자리에서 나오는 여유: 영역 윤곽선과 키 윤곽선 사이가 위·아래와 똑같게 맞춘다
-     * (위·아래 여유에서 위아래 키 윤곽선 여유를 빼고, 좌우 키 윤곽선 여유를 더한다). 좌우만 멀리 떨어져 보이지 않게.
-     */
+    /** 얇은 영역 윤곽선이 키 모양 위·아래 가장자리에서 나오는 거리 (영역 자리를 잴 때의 기준). */
+    private float outlinePadY(Context c) {
+        return outlineOut(THIN_DP, Ui.dp(c, prefs.keyGapYDp()));
+    }
+
+    /** 얇은 영역 윤곽선이 키 모양 왼쪽·오른쪽 가장자리에서 나오는 거리. */
     private float outlinePadX(Context c) {
-        float between = outlinePadY(c) - keyOutlineOut(Ui.dp(c, prefs.keyGapYDp()));
-        return keyOutlineOut(Ui.dp(c, prefs.keyGapXDp())) + between;
+        return outlineOut(THIN_DP, Ui.dp(c, prefs.keyGapXDp()));
+    }
+
+    /** 굵은 윤곽선은 영역 자리(얇은 윤곽선 기준)에서 좌우로 이만큼 더 나온다 (선의 안쪽 가장자리가 키에 붙게). */
+    private float thickExtraX() {
+        Context c = getContext();
+        return outlineOut(THICK_DP, Ui.dp(c, prefs.keyGapXDp())) - outlinePadX(c);
+    }
+
+    /** 굵은 윤곽선이 위아래로 더 나오는 거리. */
+    private float thickExtraY() {
+        Context c = getContext();
+        return outlineOut(THICK_DP, Ui.dp(c, prefs.keyGapYDp())) - outlinePadY(c);
     }
 
     /** 키 층 윤곽선 사이에 늘 남기는 틈. */
@@ -1199,7 +1213,7 @@ final class KeyboardPreview extends FrameLayout {
             float inL = Math.max(0f, bar.getPaddingLeft() + gx - pad);
             float inR = Math.max(0f, bar.getPaddingRight() + gx - pad);
             // 위·아래는 키 영역과 같은 규칙: 줄 가장자리에서 키 상하 간격의 절반만큼 들어갔다가 윤곽선 여유만큼 나온다.
-            // 위아래 여유는 outlinePadY: 간격이 좁아도 도구 막대와 숫자 줄 윤곽선 사이가 다른 영역들처럼 일정하게 띈다.
+            // 위아래 여유는 outlinePadY: 선이 칩에 붙고, 간격이 좁아도 도구 막대와 숫자 줄 윤곽선 사이가 다른 영역들처럼 띈다.
             float gy = Ui.dp(c, prefs.keyGapYDp()) / 2f, vPad = outlinePadY(c);
             out.set(bar.getLeft() + inL, bar.getTop() + gy - vPad, bar.getRight() - inR, bar.getBottom() - gy + vPad);
             return true;
@@ -1304,14 +1318,15 @@ final class KeyboardPreview extends FrameLayout {
         if (!handleEdge(h, out)) return false;
         if (h.knob()) return true;   // ↔ 버튼은 묶음 한가운데
         // 모든 손잡이는 조절하는 윤곽선의 안쪽에 둔다: 미리보기 가장자리에서 잘리지 않고, 화면 가장자리의 시스템 몸짓과도
-        // 겹치지 않으며, 맞닿은 두 묶음의 경계 손잡이도 서로 떨어져 보인다. 거리는 고른 영역의 굵은 윤곽선 가운데에서 6dp.
+        // 겹치지 않으며, 맞닿은 두 묶음의 경계 손잡이도 서로 떨어져 보인다. 거리는 고른 영역의 굵은 윤곽선 가운데에서 6dp
+        // (굵은 윤곽선은 영역 자리에서 thickExtra만큼 더 나와 있다).
         float in = Ui.dp(getContext(), HANDLE_GAP_DP + THICK_DP / 2f);
         switch (h) {
             case B_LEFT_START:
-            case B_RIGHT_START: out[0] += in; break;
+            case B_RIGHT_START: out[0] += in - thickExtraX(); break;
             case B_LEFT_END:
-            case B_RIGHT_END: out[0] -= in; break;
-            default: out[1] += in; break;   // 위 가장자리의 높이 손잡이
+            case B_RIGHT_END: out[0] -= in - thickExtraX(); break;
+            default: out[1] += in - thickExtraY(); break;   // 위 가장자리의 높이 손잡이
         }
         return true;
     }
@@ -1613,7 +1628,8 @@ final class KeyboardPreview extends FrameLayout {
             areaLabel.setTextSize(Ui.dp(ctx, 11));
             areaLabel.setTextAlign(Paint.Align.CENTER);
             areaLabel.setFakeBoldText(true);
-            float r = Ui.dp(ctx, prefs.keyRadiusDp()) + Ui.dp(ctx, 4);
+            // 모서리도 키 모서리를 따라 돈다 (선이 키에서 나온 거리만큼 더 둥글게).
+            float r = Math.max(0f, Ui.dp(ctx, prefs.keyRadiusDp()) + outlinePadX(ctx));
             String suffix = L.t(" 설정", " settings");
             stroke.setStrokeWidth(Ui.dp(ctx, THIN_DP));
             boolean split = editorSplit(), balanced = !split && editorBalanced();
@@ -1777,7 +1793,11 @@ final class KeyboardPreview extends FrameLayout {
             if (a < 0 || alpha < 0.01f) return;
             Context ctx = getContext();
             int n = selectedOutlines(a, area, outlineB);
-            float r = Ui.dp(ctx, prefs.keyRadiusDp()) + Ui.dp(ctx, 4);
+            // 굵은 선도 안쪽 가장자리가 키에 붙도록 영역 자리에서 조금 더 내어 그린다.
+            float ex = thickExtraX(), ey = thickExtraY();
+            area.inset(-ex, -ey);
+            outlineB.inset(-ex, -ey);
+            float r = Math.max(0f, Ui.dp(ctx, prefs.keyRadiusDp()) + outlineOut(THICK_DP, Ui.dp(ctx, prefs.keyGapXDp())));
             int color = withAlpha(theme.accent, alpha);
             Paint p = areaOff(a) ? dashed(color, Ui.dp(ctx, THICK_DP)) : stroke;
             p.setColor(color);
