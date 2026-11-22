@@ -560,7 +560,10 @@ final class KeyboardPreview extends FrameLayout {
         tabsView.setAlpha(a);
         tabsView.setTranslationY(-(1f - a) * Ui.dp(getContext(), 8));
         int vis = a > 0.01f ? VISIBLE : GONE;
-        if (tabsView.getVisibility() != vis) tabsView.setVisibility(vis);
+        if (tabsView.getVisibility() == vis) return;
+        // 배치 중(크기가 바뀐 column의 알림)에 보이기를 바꾸면 그 배치 안에서 다시 배치를 청하게 되므로 다음 차례로 미룬다.
+        if (isInLayout()) post(this::applyTabs);
+        else tabsView.setVisibility(vis);
     }
 
     private static float lerp(float a, float b, float t) {

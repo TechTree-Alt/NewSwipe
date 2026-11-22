@@ -2109,9 +2109,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         column.setBackground(floating ? Ui.round(theme.background, floatRadiusPx()) : null);
         resetFloatPreview();
         column.setClipToOutline(floating);
-        if (floating && !floatCornerWatching) {
+        // 창 전체의 배치를 지켜본다: 키보드 화면을 다시 만들어(onCreateInputView) column이 바뀌어도 같은 창이라 계속 불린다
+        // (column의 관찰자에 달면 붙기 전 관찰자에 달리거나, 새 column에서 다시 달 길이 없다). 떠 있지 않으면 바로 돌아간다.
+        if (floating && !floatCornerWatching && getWindow() != null && getWindow().getWindow() != null) {
             floatCornerWatching = true;
-            column.getViewTreeObserver().addOnGlobalLayoutListener(this::updateFloatCorner);
+            getWindow().getWindow().getDecorView().getViewTreeObserver().addOnGlobalLayoutListener(this::updateFloatCorner);
         }
         if (floating) column.post(this::updateFloatCorner);
         applyNavigationBarStyle();

@@ -158,8 +158,9 @@ final class OneHandPreview extends FrameLayout {
     }
 
     /** 도구 막대 모양 (누를 수 없다). 없으면 null. */
-    private View bar;
-    private String barSignature;
+    private LinearLayout bar;
+    /** 막대에 든 것(켜짐·버튼 순서·보이는 버튼)과 크기. 든 것이 바뀌면 다시 만들고, 크기만 바뀌면 그 자리에서 맞춘다. */
+    private String barContents, barSize;
 
     /**
      * 도구 막대를 키보드와 같은 크기로 다시 만든다: 한 손 모드에서는 막대(버튼) 높이를 키 높이 비율로, 버튼 폭을 자판 폭 비율로
@@ -170,29 +171,52 @@ final class OneHandPreview extends FrameLayout {
         int height = Math.round(Ui.dp(c, 40) * prefs.toolbarHeight() / 100f * scale);
         float size = prefs.toolButtonSize() / 100f;
         int width = Math.round(Ui.dp(c, 40) * size * widthScale);
-        String sig = prefs.toolbar() + "," + height + "," + width;
-        if (sig.equals(barSignature)) return;
-        barSignature = sig;
-        if (bar != null) column.removeView(bar);
-        bar = null;
-        if (!prefs.toolbar()) return;
-        LinearLayout row = new LinearLayout(c);
-        row.setGravity(Gravity.CENTER_VERTICAL);
+        float icon = Ui.dp(c, 22) * size * Math.min(scale, widthScale);
         String[][] order = prefs.toolOrder();
-        for (int s = 0; s < 2; s++) {
-            if (s == 1) row.addView(new View(c), new LinearLayout.LayoutParams(0, 1, 1f));
-            for (String id : order[s]) {
-                if (!prefs.toolShown(id)) continue;
-                IconButton b = new IconButton(c, ToolbarButtons.icon(id), theme.text, theme.keyPressed, null);
-                b.setIconSize(Ui.dp(c, 22) * size * Math.min(scale, widthScale));
-                b.setToolbarStyle(theme, height);
-                b.setClickable(false);
-                b.setFocusable(false);
-                row.addView(b, new LinearLayout.LayoutParams(width, height));
+        StringBuilder contents = new StringBuilder().append(prefs.toolbar()).append('|');
+        for (String[] side : order) {
+            for (String id : side) if (prefs.toolShown(id)) contents.append(id).append(',');
+            contents.append('|');
+        }
+        String size2 = height + "," + width + "," + icon;
+        if (!contents.toString().equals(barContents)) {
+            barContents = contents.toString();
+            barSize = null;
+            if (bar != null) column.removeView(bar);
+            bar = null;
+            if (prefs.toolbar()) {
+                LinearLayout row = new LinearLayout(c);
+                row.setGravity(Gravity.CENTER_VERTICAL);
+                for (int s = 0; s < 2; s++) {
+                    if (s == 1) row.addView(new View(c), new LinearLayout.LayoutParams(0, 1, 1f));
+                    for (String id : order[s]) {
+                        if (!prefs.toolShown(id)) continue;
+                        IconButton b = new IconButton(c, ToolbarButtons.icon(id), theme.text, theme.keyPressed, null);
+                        b.setClickable(false);
+                        b.setFocusable(false);
+                        b.setTag(id);
+                        row.addView(b, new LinearLayout.LayoutParams(width, height));
+                    }
+                }
+                column.addView(row, 0, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height));
+                bar = row;
             }
         }
-        column.addView(row, 0, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height));
-        bar = row;
+        if (bar == null || size2.equals(barSize)) return;
+        // 크기만 바뀌었다 (손잡이로 자판 폭·키 높이를 끄는 동안 자주): 버튼을 새로 만들지 않고 크기와 칩 모양만 맞춘다.
+        barSize = size2;
+        bar.getLayoutParams().height = height;
+        for (int i = 0; i < bar.getChildCount(); i++) {
+            View v = bar.getChildAt(i);
+            if (!(v instanceof IconButton)) continue;
+            IconButton b = (IconButton) v;
+            b.setIconSize(icon);
+            b.setToolbarStyle(theme, height);
+            ViewGroup.LayoutParams lp = b.getLayoutParams();
+            lp.width = width;
+            lp.height = height;
+        }
+        bar.requestLayout();
     }
 
     private IconButton sideButton(Context c, int icon) {

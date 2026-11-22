@@ -273,11 +273,14 @@ final class EditorSheet {
         leading.setContentDescription(back != null ? description : L.t("설정 창 닫기", "Close settings"));
         if (wasBack == (back != null)) return;
         int icon = back != null ? Icons.BACK : Icons.CLOSE;
+        leading.animate().cancel();   // 바뀌는 중이던 움직임은 끝맺지 않고 멈춘다 (끝에 옛 아이콘을 넣지 않게)
         if (!isOpen()) {
             leading.setIcon(icon);
+            leading.setScaleX(1f);
+            leading.setScaleY(1f);
+            leading.setAlpha(1f);
             return;
         }
-        leading.animate().cancel();
         leading.animate().scaleX(0.6f).scaleY(0.6f).alpha(0f).setDuration(90)
                 .setInterpolator(new PathInterpolator(0.3f, 0f, 0.8f, 0.15f))
                 .withEndAction(() -> {
