@@ -679,6 +679,38 @@ public final class KeyboardView extends View {
             }
             y += rh;
         }
+        layoutJoysticks(w);
+    }
+
+    /** 조이스틱 모드 커서 이동 키의 보이는 반지름 (px). 누르는 범위는 이보다 조금 넓다 ({@link #JOYSTICK_HIT}). */
+    private float joyRadius;
+    public static final float JOYSTICK_HIT = 1.35f;
+
+    /**
+     * 조이스틱(폭 없는 커서 이동 키)을 앞뒤 두 키의 경계 위쪽, 윗줄과 만나는 곳에 놓는다. 줄에서 폭이 0인 자리(경계)가
+     * 가로 위치이고, 그 줄의 위쪽 가장자리가 세로 위치다. rect는 누르는 범위(원을 감싼 정사각형)로 바꾼다.
+     */
+    private void layoutJoysticks(int w) {
+        joyRadius = Math.min(rowUnitPx * 0.3f, dp(17));
+        float hit = joyRadius * JOYSTICK_HIT;
+        for (KeyboardLayout.Row row : layout.rows) {
+            for (Key k : row.keys) {
+                if (!k.isJoystick()) continue;
+                float cx = Math.max(joyRadius, Math.min(w - joyRadius, k.rect.left));
+                float cy = k.rect.top;
+                k.rect.set(cx - hit, cy - hit, cx + hit, cy + hit);
+            }
+        }
+    }
+
+    /** (x, y)를 덮는 조이스틱. 없으면 null. 조이스틱은 키들 위에 얹혀 있어 다른 키보다 먼저 본다. */
+    private Key joystickAt(float x, float y) {
+        for (KeyboardLayout.Row row : layout.rows) {
+            for (Key k : row.keys) {
+                if (k.isJoystick() && Math.hypot(x - k.rect.centerX(), y - k.rect.centerY()) <= k.rect.width() / 2f) return k;
+            }
+        }
+        return null;
     }
 
     /** 색 정렬: Shift·⌫는 글자 키 색, 스페이스바는 기능키 색, Shift 고정은 강조색 없이. */
@@ -700,6 +732,8 @@ public final class KeyboardView extends View {
 
     private Key keyAt(float x, float y) {
         if (layout == null) return null;
+        Key joy = joystickAt(x, y);
+        if (joy != null) return joy;
         int ri = layout.rows.length - 1;
         for (int i = 0; i < layout.rows.length; i++) {
             KeyboardLayout.Row row = layout.rows[i];
@@ -748,7 +782,7 @@ public final class KeyboardView extends View {
         Key prev = null;
         for (Key other : row.keys) {
             if (other == k) return prev;
-            if (other.type != Key.SPACER && other.type != Key.GAP) prev = other;
+            if (other.type != Key.SPACER && other.type != Key.GAP && !other.isJoystick()) prev = other;
         }
         return null;
     }
@@ -758,7 +792,7 @@ public final class KeyboardView extends View {
         Key best = null;
         float bestDist = Float.MAX_VALUE;
         for (Key k : target.keys) {
-            if (k.type == Key.GAP) continue;   // 빈틈은 건너뛰어 양옆 중 가까운 키로 간다
+            if (k.type == Key.GAP || k.isJoystick()) continue;   // 빈틈은 건너뛰어 양옆 중 가까운 키로 간다 (조이스틱은 따로 본다)
             if (x >= k.rect.left && x < k.rect.right) return k;
             float d = Math.min(Math.abs(x - k.rect.left), Math.abs(x - k.rect.right));
             if (d < bestDist) {
@@ -781,12 +815,16 @@ public final class KeyboardView extends View {
             // 그림자를 먼저 모두 깔고 키 면을 그 위에 그려, 이웃 키의 그림자가 키 면을 덮지 않게 한다.
             for (KeyboardLayout.Row row : layout.rows) {
                 for (Key k : row.keys) {
-                    if (k.type != Key.SPACER && k.type != Key.GAP && !k.hidden && !isPressed(k)) drawNeuRaised(c, k);
+                    if (k.type != Key.SPACER && k.type != Key.GAP && !k.hidden && !k.joystick && !isPressed(k)) drawNeuRaised(c, k);
                 }
             }
         }
         for (KeyboardLayout.Row row : layout.rows) {
-            for (Key k : row.keys) if (k.type != Key.SPACER && k.type != Key.GAP && !k.hidden) drawKey(c, k);
+            for (Key k : row.keys) if (k.type != Key.SPACER && k.type != Key.GAP && !k.hidden && !k.joystick) drawKey(c, k);
+        }
+        // 조이스틱은 키들 위에 얹는다.
+        for (KeyboardLayout.Row row : layout.rows) {
+            for (Key k : row.keys) if (k.joystick) drawJoystick(c, k);
         }
         // 미리보기 말풍선
         if (showPreview) {
@@ -806,6 +844,55 @@ public final class KeyboardView extends View {
             if (pointers.get(i).key == k) return true;
         }
         return false;
+    }
+
+    private Pointer pointerOn(Key k) {
+        for (int i = 0; i < pointers.size(); i++) {
+            if (pointers.get(i).key == k) return pointers.get(i);
+        }
+        return null;
+    }
+
+    /**
+     * 조이스틱 모드의 커서 이동 키: 키 사이를 배경색 원으로 파내고 그 안에 기능키 색의 동그란 면과 강조색 점을 그린다.
+     * 누르고 밀면 점이 미는 쪽으로 따라간다. Neumorphism·Metro 모드에서는 그 모드의 키 모양을 따른다.
+     */
+    private void drawJoystick(Canvas c, Key k) {
+        float cx = k.rect.centerX(), cy = k.rect.centerY(), r = joyRadius;
+        Pointer p = pointerOn(k);
+        boolean pressed = p != null;
+        // 이웃 키들을 파낸 자리 (키 사이 간격만큼).
+        fill.setColor(theme.background);
+        c.drawCircle(cx, cy, r + Math.max(gapX, gapY) * 0.6f + dp(1), fill);
+        RectF face = tmp;
+        face.set(cx - r, cy - r, cx + r, cy + r);
+        if (theme.neu) {
+            if (pressed) {
+                Neu.drawInset(c, face, r, neuOffset(), neuBlur(), theme.keyPressed, Neu.pressedLight(theme, theme.functionKey),
+                        Neu.pressedDark(theme, theme.functionKey), fill);
+            } else {
+                Neu.drawFace(c, face, r, theme.functionKey, theme, fill);
+            }
+        } else if (theme.metro) {
+            // Metro: 다른 키처럼 그림자 없이, 누르면 강조색으로 빛나고 점은 그 위의 색이 된다.
+            fill.setColor(pressed ? theme.accent : theme.functionKey);
+            c.drawCircle(cx, cy, r, fill);
+        } else {
+            fill.setColor(pressed ? theme.keyPressed : theme.functionKey);
+            c.drawCircle(cx, cy, r, fill);
+        }
+        float dotX = cx, dotY = cy;
+        if (pressed) {
+            float dx = p.lastX - p.downX, dy = p.lastY - p.downY, d = (float) Math.hypot(dx, dy), max = r * 0.5f;
+            if (d > max) {
+                dx *= max / d;
+                dy *= max / d;
+            }
+            dotX += dx;
+            dotY += dy;
+        }
+        fill.setColor(theme.metro && pressed ? theme.onAccent : theme.accent);
+        c.drawCircle(dotX, dotY, Math.max(dp(3), r * 0.3f), fill);
     }
 
     /** Shift를 켜면 로마자를 대문자로 보이는 자판 (영어, 중국어 병음, 일본어 로마자). */
@@ -1324,6 +1411,7 @@ public final class KeyboardView extends View {
     private void move(Pointer p, float x, float y) {
         p.lastX = x;
         p.lastY = y;
+        if (p.key.joystick) invalidate();   // 조이스틱의 점이 손가락을 따라간다
         float dx = x - p.downX, dy = y - p.downY;
         switch (p.mode) {
             case NORMAL:

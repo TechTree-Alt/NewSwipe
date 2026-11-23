@@ -76,6 +76,11 @@ public final class Key {
     boolean gridLetterColor;
     /** 길게 눌러 연속 입력으로 정해 둔 글자여도 연속 입력을 쓰지 않는다 (이메일·인터넷 주소 입력란의 온점 키). */
     boolean noRepeat;
+    /**
+     * 조이스틱 모드의 커서 이동 키: 줄에서 폭을 차지하지 않고(weight 0), 자판 뷰가 앞뒤 두 키의 경계 위쪽(윗줄과 만나는 곳)에
+     * 동그랗게 그린다. rect는 배치 뒤 누르는 범위(원을 감싼 정사각형)다.
+     */
+    boolean joystick;
 
     /** 그리지 않는 키인지 (분리 키보드의 빈 자리에 둔 g, v). */
     /** 분리 키보드의 가운데 빈 자리인지 (두 묶음을 가르는 곳). */
@@ -86,6 +91,11 @@ public final class Key {
     /** 자·모음 균형 배열의 오른쪽(모음) 쪽 키인지. */
     public boolean isRightBlock() {
         return rightBlock;
+    }
+
+    /** 키 사이에 끼워 넣은 동그란 조이스틱(커서 이동 키)인지. */
+    public boolean isJoystick() {
+        return joystick;
     }
 
     public boolean isHidden() {

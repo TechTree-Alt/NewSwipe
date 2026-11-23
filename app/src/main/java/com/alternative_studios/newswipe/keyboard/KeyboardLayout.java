@@ -1241,6 +1241,11 @@ public final class KeyboardLayout {
                     break;
                 case BottomKeys.CURSOR:
                     k = fn(Key.CURSOR_PAD, "", narrowW);
+                    if (prefs != null && prefs.cursorJoystick()) {
+                        // 조이스틱 모드: 폭 없이 앞뒤 키 사이에 끼운다 (자판 뷰가 경계 위에 동그랗게 그린다).
+                        k.weight = 0f;
+                        k.joystick = true;
+                    }
                     break;
                 case BottomKeys.VOICE:
                     k = fn(Key.VOICE, "", narrowW);
@@ -1255,10 +1260,27 @@ public final class KeyboardLayout {
             // 격자 정렬: 스페이스바 왼쪽 키와 오른쪽 키에 각각의 격자 폭을 준다.
             // 스페이스바를 없앴으면 분리 키보드처럼 앞쪽 절반(홀수 개면 한 개 더)을 왼쪽으로 친다.
             float[] g = gridKeys(prefs);
-            int cut = spaceAt >= 0 ? spaceAt : (keys.size() + 1) / 2;
-            for (int i = 0; i < keys.size(); i++) keys.get(i).weight = i < cut ? g[0] : g[1];
+            int cut = spaceAt >= 0 ? spaceAt : halfCut(keys);
+            for (int i = 0; i < keys.size(); i++) {
+                if (!keys.get(i).joystick) keys.get(i).weight = i < cut ? g[0] : g[1];
+            }
         }
         return spaceAt;
+    }
+
+    /**
+     * 스페이스바가 없는 맨 아래 줄을 두 쪽으로 나눌 자리: 앞쪽 절반(홀수 개면 한 개 더)의 키 다음.
+     * 폭이 없는 조이스틱은 세지 않는다.
+     */
+    private static int halfCut(List<Key> keys) {
+        int real = 0;
+        for (Key k : keys) if (!k.joystick) real++;
+        int want = (real + 1) / 2, seen = 0;
+        for (int i = 0; i < keys.size(); i++) {
+            if (seen == want) return i;
+            if (!keys.get(i).joystick) seen++;
+        }
+        return keys.size();
     }
 
     /**
@@ -1449,7 +1471,7 @@ public final class KeyboardLayout {
         float[] b = prefs.fnFollowBlocks() ? blocks(prefs) : new float[]{0f, BALANCED_HALF, BALANCED_HALF, BALANCED_HALF};
         List<Key> keys = new ArrayList<>();
         int spaceAt = bottomKeys(modeType, modeLabel, prefs, emojiKey, keys);
-        int cut = spaceAt >= 0 ? spaceAt : (keys.size() + 1) / 2;
+        int cut = spaceAt >= 0 ? spaceAt : halfCut(keys);
         List<Key> left = new ArrayList<>(keys.subList(0, cut)), right = new ArrayList<>(keys.subList(cut, keys.size()));
         if (spaceAt >= 0 && prefs.splitSpaceJoin()) return joinedSpaceRow(left, right, b, prefs);
         scaleToBlocks(left, right, b, 1f, prefs);

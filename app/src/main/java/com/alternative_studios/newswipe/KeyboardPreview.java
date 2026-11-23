@@ -1074,9 +1074,15 @@ final class KeyboardPreview extends FrameLayout {
         KeyboardLayout l = keys.getLayout();
         Key best = null;
         float bestDist = Ui.dp(getContext(), 16);
+        // 키 사이에 끼운 조이스틱(커서 이동 키)은 이웃 키들 위에 얹혀 있어 먼저 본다.
         for (int r = range[0]; r <= range[1]; r++) {
             for (Key k : l.rows[r].keys) {
-                if (k.type == Key.SPACER || k.type == Key.GAP || isHidden(k)) continue;
+                if (k.isJoystick() && Math.hypot(x - k.rect.centerX(), y - k.rect.centerY()) <= k.rect.width() / 2f) return k;
+            }
+        }
+        for (int r = range[0]; r <= range[1]; r++) {
+            for (Key k : l.rows[r].keys) {
+                if (k.type == Key.SPACER || k.type == Key.GAP || isHidden(k) || k.isJoystick()) continue;
                 RectF kr = k.rect;
                 float dx = x < kr.left ? kr.left - x : x > kr.right ? x - kr.right : 0;
                 float dy = y < kr.top ? kr.top - y : y > kr.bottom ? y - kr.bottom : 0;
@@ -1188,6 +1194,13 @@ final class KeyboardPreview extends FrameLayout {
     /** 키 k의 키 층 윤곽선 (미리보기 좌표). 상하·좌우 모두 이웃 키 윤곽선과 2dp 띈다. */
     void keyOutline(Key k, RectF out) {
         Context c = getContext();
+        if (k.isJoystick()) {
+            // 조이스틱: rect는 누르는 범위(보이는 원보다 넓다)라 보이는 원 둘레에 맞춘 정사각형으로.
+            float cx = k.rect.centerX(), cy = keys.getTop() + k.rect.centerY();
+            float rad = k.rect.width() / 2f / KeyboardView.JOYSTICK_HIT + Ui.dp(c, 2.5f);
+            out.set(cx - rad, cy - rad, cx + rad, cy + rad);
+            return;
+        }
         float gapX = Ui.dp(c, prefs.keyGapXDp()), gapY = Ui.dp(c, prefs.keyGapYDp());
         float gx = gapX / 2f, gy = gapY / 2f, ox = keyOutlineOut(gapX), oy = keyOutlineOut(gapY);
         out.set(k.rect.left + gx - ox, keys.getTop() + k.rect.top + gy - oy,
@@ -1246,7 +1259,7 @@ final class KeyboardPreview extends FrameLayout {
         boolean any = false;
         for (int r = first; r <= last; r++) {
             for (Key k : l.rows[r].keys) {
-                if (k.type == Key.SPACER || k.type == Key.GAP || isHidden(k)) continue;
+                if (k.type == Key.SPACER || k.type == Key.GAP || isHidden(k) || k.isJoystick()) continue;   // 조이스틱은 영역 윤곽에 넣지 않는다
                 float left = k.rect.left + gx, top = keys.getTop() + k.rect.top + gy;
                 float right = k.rect.right - gx, bottom = keys.getTop() + k.rect.bottom - gy;
                 if (!any) out.set(left, top, right, bottom);
@@ -1769,6 +1782,10 @@ final class KeyboardPreview extends FrameLayout {
                 for (Key k : l.rows[r].keys) {
                     if (!selectable(k)) continue;
                     keyOutline(k, area);
+                    if (k.isJoystick()) {   // 동그란 조이스틱은 Metro에서도 원으로
+                        c.drawOval(area, stroke);
+                        continue;
+                    }
                     float rr = Math.min(kr, Math.min(area.width(), area.height()) / 2f);
                     Metro.roundRect(c, area, rr, rr, stroke);
                 }
@@ -1856,7 +1873,8 @@ final class KeyboardPreview extends FrameLayout {
                 stroke.setStrokeWidth(Ui.dp(ctx, 2.5f));
                 stroke.setColor(accent);
                 if (selection.kind == SEL_TOOL_BUTTON) r = sel.height() / 2f;
-                Metro.roundRect(c, sel, r, r, stroke);
+                if (selection.kind == SEL_KEY && selectedKey != null && selectedKey.isJoystick()) c.drawOval(sel, stroke);   // 동그란 조이스틱
+                else Metro.roundRect(c, sel, r, r, stroke);
             }
             // 손잡이: 강조색 알약에 바탕색 테두리 (키 위에서도 보이게). 끄는 중인 손잡이는 더 크게.
             for (Handle h : Handle.values()) {

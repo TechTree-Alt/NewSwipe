@@ -378,6 +378,18 @@ public final class BottomKeysEditorActivity extends Activity {
         return group;
     }
 
+    /** 커서 이동 키의 하위 항목 '조이스틱 모드': 맨 아래 줄에 자리를 차지하지 않고 순서상 앞뒤 두 키 사이 위에 동그랗게 끼운다. */
+    private View joystickRow() {
+        View row = fixedRow(L.t("조이스틱 모드", "Joystick mode"),
+                L.t("커서 이동 키를 동그란 조이스틱으로 바꿔, 이 목록에서 앞뒤에 있는 두 키 사이 위(윗줄과 만나는 곳)에 끼워 넣습니다. "
+                        + "자리를 차지하지 않고, 누른 채 밀면 커서가 움직입니다. 순서를 바꿔 끼울 자리를 정합니다.",
+                        "Turns the cursor key into a round joystick tucked between the two keys before and after it in this list, "
+                        + "where they meet the row above. It takes no room; hold and drag to move the cursor. Reorder to choose where it sits."),
+                prefs.cursorJoystick(), L.t("조이스틱 모드", "Joystick mode"), prefs::setCursorJoystick);
+        row.setPadding(0, row.getPaddingTop(), 0, row.getPaddingBottom());
+        return row;
+    }
+
     /** fixedRow로 만든 줄을 쓸 수 없는 상태로: 글자를 흐리게 하고 스위치를 끈다. */
     private static void setRowDisabled(View row) {
         ViewGroup g = (ViewGroup) row;
@@ -448,6 +460,12 @@ public final class BottomKeysEditorActivity extends Activity {
             edit.setOrientation(LinearLayout.VERTICAL);
             edit.addView(symbolGlobeButton());
             charGroup = subGroup(0, edit);
+            charGroup.setVisibility(prefs.bottomKeyShown(id) ? View.VISIBLE : View.GONE);
+            texts.addView(charGroup);
+        }
+        // 커서 이동 키는 켜면 하위 항목으로 조이스틱 모드 스위치가 나온다: 켜면 키 사이에 끼운 동그란 조이스틱이 된다.
+        if (BottomKeys.CURSOR.equals(id)) {
+            charGroup = subGroup(0, joystickRow());
             charGroup.setVisibility(prefs.bottomKeyShown(id) ? View.VISIBLE : View.GONE);
             texts.addView(charGroup);
         }
