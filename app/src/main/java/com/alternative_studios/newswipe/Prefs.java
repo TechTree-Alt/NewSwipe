@@ -309,7 +309,7 @@ public final class Prefs {
             BOTTOM_CURSOR_KEY = "bottom_cursor_key", BOTTOM_VOICE_KEY = "bottom_voice_key";
     /**
      * 커서 이동 키의 모드 (BottomKeys.CURSOR_MODE_*): 키 · 조이스틱 · 작은 조이스틱. 조이스틱은 맨 아래 줄에 자리를 차지하지 않고,
-     * 순서상 앞뒤 두 키 사이 위에 동그랗게 끼워 넣는다.
+     * 순서상 앞뒤 두 키 사이 위에 동그랗게 끼워 넣는다. Metro 모드에서만 쓴다.
      */
     public static final String CURSOR_KEY_MODE = "cursor_key_mode";
     /**
@@ -1654,8 +1654,12 @@ public final class Prefs {
         sp.edit().putBoolean(key, value).apply();
     }
 
-    /** 커서 이동 키의 모드 (BottomKeys.CURSOR_MODE_*, 기본 키). 모르는 값은 기본값으로 본다. */
+    /**
+     * 커서 이동 키의 모드 (BottomKeys.CURSOR_MODE_*, 기본 키). 조이스틱은 Metro 모드에서만 쓴다: 다른 모드에서는 고른 값과
+     * 상관없이 키다 (고른 값은 남겨 두어 Metro로 돌아오면 다시 쓴다). 모르는 값은 기본값으로 본다.
+     */
     public String cursorKeyMode() {
+        if (!metro()) return com.alternative_studios.newswipe.keyboard.BottomKeys.CURSOR_MODE_KEY;
         return com.alternative_studios.newswipe.keyboard.BottomKeys.cursorMode(sp.getString(CURSOR_KEY_MODE, null));
     }
 

@@ -422,7 +422,6 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             releaseEmoji();
             if (!isInputViewShown()) {
                 Neu.trimCache();   // 그림자 비트맵은 다시 그릴 때 필요한 것만 굽는다
-                if (keyboard != null) keyboard.trimShadows();   // 조이스틱에 파인 키의 그림자도
                 releaseCjk();
                 suggester.release();
                 warmingKo = warmingEn = false;
@@ -450,7 +449,6 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         runIo(this::releaseLearned);
         correctionIgnored.clear();
         Neu.trimCache();   // Neumorphism 그림자 비트맵: 다시 올라오면 필요한 크기만 다시 굽는다
-        if (keyboard != null) keyboard.trimShadows();   // 조이스틱에 파인 키의 그림자도
     };
 
     /** 기한이 지난 클립보드 항목과 그 이미지 파일을 지우고 기록을 메모리에서 내린다. */

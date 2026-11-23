@@ -1246,7 +1246,7 @@ final class KeyboardPreview extends FrameLayout {
     private final android.graphics.Path shapePath = new android.graphics.Path(), circlePath = new android.graphics.Path();
 
     /**
-     * 윤곽선 o(둥근 네모, 모서리 rr, Metro면 네모)를 조이스틱에 맞춰 그린다.
+     * 윤곽선 o를 조이스틱(Metro 모드에서만 있다)에 맞춰 그린다. 조이스틱이 없으면 보통처럼(모서리 rr) 그린다.
      * <ul>
      *   <li>wrap: 조이스틱을 감싼다 (기능키 영역의 윤곽선). 선의 가운데가 조이스틱 면에서 out만큼 나온 원과 합친다.
      *       나뉜 윤곽선(분리 키보드)은 조이스틱이 걸친 쪽만.</li>
@@ -1272,8 +1272,7 @@ final class KeyboardPreview extends FrameLayout {
             if (!started) {
                 started = true;
                 shapePath.rewind();
-                if (Metro.on) shapePath.addRect(o, android.graphics.Path.Direction.CW);
-                else shapePath.addRoundRect(o, rr, rr, android.graphics.Path.Direction.CW);
+                shapePath.addRect(o, android.graphics.Path.Direction.CW);   // 조이스틱은 Metro 모드에서만 있다: 모서리 없는 네모
             }
             circlePath.rewind();
             circlePath.addCircle(cx, cy, rad, android.graphics.Path.Direction.CW);
