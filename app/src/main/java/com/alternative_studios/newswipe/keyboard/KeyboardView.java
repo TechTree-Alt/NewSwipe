@@ -893,7 +893,11 @@ public final class KeyboardView extends View {
                 Neu.drawInset(c, face, r, neuOffset(), neuBlur(), theme.keyPressed, Neu.pressedLight(theme, theme.functionKey),
                         Neu.pressedDark(theme, theme.functionKey), fill);
             } else {
-                Neu.drawFace(c, face, r, theme.functionKey, theme, fill);
+                // 다른 키처럼 솟아오른 그림자를 먼저 깔고 면을 그린다 (그림자 비트맵은 크기마다 한 번만 굽는다).
+                int fc = theme.functionKey;
+                Neu.drawRaised(c, face.left, face.top, face.right, face.bottom, r, neuOffset(), Neu.shadowBlur(theme, fc, neuBlur()),
+                        Neu.raisedLight(theme, fc, face.width(), face.height()), Neu.darkShadow(theme, fc));
+                Neu.drawFace(c, face, r, fc, theme, fill);
             }
         } else if (theme.metro) {
             // Metro: 다른 키처럼 그림자 없이, 누르면 강조색으로 빛나고 점은 그 위의 색이 된다.
