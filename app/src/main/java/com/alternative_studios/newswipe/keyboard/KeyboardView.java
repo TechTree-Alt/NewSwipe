@@ -3,6 +3,7 @@ package com.alternative_studios.newswipe.keyboard;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.os.Handler;
@@ -158,6 +159,8 @@ public final class KeyboardView extends View {
     private final Paint text = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint icon = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF tmp = new RectF();
+    /** 키 면에서 오려 낼 조이스틱 자리 (그릴 때마다 다시 채워 쓴다). */
+    private final Path joyHoles = new Path();
     private final Paint.FontMetrics fm = new Paint.FontMetrics();
 
     private Listener listener;
@@ -827,9 +830,23 @@ public final class KeyboardView extends View {
                 }
             }
         }
+        // 조이스틱이 있으면 키 면에서 조이스틱 자리를 둥글게 오려 낸다. 바탕색으로 덮어 파내면 그 자리에 깔린 이웃 키의
+        // 그림자(Neumorphism)까지 지워지므로, 그림자는 그대로 두고 면만 오린다.
+        joyHoles.rewind();
+        for (KeyboardLayout.Row row : layout.rows) {
+            for (Key k : row.keys) {
+                if (k.joystick) joyHoles.addCircle(k.rect.centerX(), k.rect.centerY(), joystickHoleRadius(k), Path.Direction.CW);
+            }
+        }
+        boolean holes = !joyHoles.isEmpty();
+        if (holes) {
+            c.save();
+            c.clipOutPath(joyHoles);
+        }
         for (KeyboardLayout.Row row : layout.rows) {
             for (Key k : row.keys) if (k.type != Key.SPACER && k.type != Key.GAP && !k.hidden && !k.joystick) drawKey(c, k);
         }
+        if (holes) c.restore();
         // 조이스틱은 키들 위에 얹는다.
         for (KeyboardLayout.Row row : layout.rows) {
             for (Key k : row.keys) if (k.joystick) drawJoystick(c, k);
@@ -883,9 +900,7 @@ public final class KeyboardView extends View {
         float cx = k.rect.centerX(), cy = k.rect.centerY(), r = joystickRadius(k);
         Pointer p = pointerOn(k);
         boolean pressed = p != null;
-        // 이웃 키들을 파낸 자리 (키 사이 간격만큼).
-        fill.setColor(theme.background);
-        c.drawCircle(cx, cy, joystickHoleRadius(k), fill);
+        // 이웃 키들을 파낸 자리는 onDraw가 키 면을 그릴 때 오려 둔다 (그 자리의 그림자는 남는다).
         RectF face = tmp;
         face.set(cx - r, cy - r, cx + r, cy + r);
         if (theme.neu) {
