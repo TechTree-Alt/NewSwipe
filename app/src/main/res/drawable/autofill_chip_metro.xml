@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Metro UI 모드의 자동 완성 칩 배경: 모서리 없는 네모. 색은 코드에서 칠한다 (평소 투명, 누르는 동안 강조색). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#FFFFFFFF" />
+</shape>

@@ -57,12 +57,21 @@ public final class Ui {
         b.setPadding(dp(c, 14), 0, dp(c, 14), 0);
         float r = chipRadius(c);
         b.setBackground(ripple(tint(textColor), round(fill, r), r));
+        if (Metro.on) b.setTypeface(Metro.regular());
         android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(
                 android.view.ViewGroup.LayoutParams.WRAP_CONTENT, chipHeight(c, barHeight));
         lp.leftMargin = dp(c, 2);
         lp.rightMargin = dp(c, 2);
         b.setLayoutParams(lp);
         return b;
+    }
+
+    /**
+     * Metro UI: 칩 버튼의 바탕을 없앤다 (도구 막대 버튼처럼 글자만, 누르는 동안 pressColor로 채운다).
+     * 강조색으로 칠한 확인 버튼처럼 눈에 띄어야 하는 버튼에는 쓰지 않는다. Metro가 아니면 아무것도 하지 않는다.
+     */
+    public static void metroBare(android.view.View chip, int pressColor) {
+        if (Metro.on) chip.setBackground(metroPressed(pressColor, null));
     }
 
     /** 삭제처럼 되돌릴 수 없는 동작에 쓰는 붉은색 (어두운 테마에서는 배경에 묻히지 않게 밝게). */

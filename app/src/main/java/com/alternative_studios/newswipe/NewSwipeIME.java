@@ -1413,6 +1413,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         slot.setVisibility(View.GONE);
         clipChip = new ClipChip(this, theme.text, theme.hint, theme.key, theme.keyPressed);
         Neu.apply(clipChip, theme, theme.key, Ui.chipRadius(this));
+        if (theme.metro) clipChip.setPressedInk(theme.onAccent);   // 누르는 동안 강조색 바탕 위의 글자 색
         clipChip.setOnClickListener(v -> {
             feedback.onToolbar();
             pasteClipChip();
@@ -1457,6 +1458,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private EditChip editChip(int icon, String label, View.OnClickListener l) {
         EditChip t = new EditChip(this, icon, label, theme.text, theme.key, theme.keyPressed);
         Neu.apply(t, theme, theme.key, Ui.chipRadius(this));
+        if (theme.metro) t.setPressedInk(theme.onAccent);
         t.setOnClickListener(v -> {
             feedback.onToolbar();
             l.onClick(v);
@@ -5240,6 +5242,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private TextView forgetButton(String label, int color, int fill, View.OnClickListener l) {
         TextView b = Ui.chipButton(this, label, color, fill, toolbarHeightPx());
         Neu.apply(b, theme, fill, Ui.chipRadius(this));
+        if (fill != theme.accent) Ui.metroBare(b, theme.keyPressed);   // Metro: 취소는 바탕 없이 글자만 (확인은 강조색 그대로)
         b.setOnClickListener(l);
         return b;
     }
