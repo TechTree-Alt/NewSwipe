@@ -684,7 +684,7 @@ public final class KeyboardView extends View {
 
     /** 조이스틱 모드 커서 이동 키의 보이는 반지름 (px). 누르는 범위는 이보다 조금 넓다 ({@link #JOYSTICK_HIT}). */
     private float joyRadius;
-    public static final float JOYSTICK_HIT = 1.35f;
+    public static final float JOYSTICK_HIT = 1.2f;
 
     /**
      * 조이스틱(폭 없는 커서 이동 키)을 앞뒤 두 키의 경계 위쪽, 윗줄과 만나는 곳에 놓는다. 줄에서 폭이 0인 자리(경계)가
