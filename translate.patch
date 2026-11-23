@@ -1,0 +1,582 @@
+diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
+index ba7d2d1..dfe4779 100644
+--- a/app/src/main/AndroidManifest.xml
++++ b/app/src/main/AndroidManifest.xml
+@@ -1,8 +1,10 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+ 
+-    <!-- 키 진동. 이 앱이 요청하는 유일한 권한이다 (설치 시 자동 허용되는 일반 권한). -->
++    <!-- 키 진동 (설치 시 자동 허용되는 일반 권한). -->
+     <uses-permission android:name="android.permission.VIBRATE" />
++    <!-- 번역 버튼: 사용자가 번역 버튼을 눌렀을 때만 그 글을 Google Cloud Translation API로 보낸다. -->
++    <uses-permission android:name="android.permission.INTERNET" />
+ 
+     <!-- 음성 입력 버튼이 기기에 설치된 음성 입력기(예: Google 음성 입력)를 찾을 수 있게 한다. -->
+     <queries>
+diff --git a/app/src/main/assets/guide/en/privacy.txt b/app/src/main/assets/guide/en/privacy.txt
+index 5c8ebb4..a1647d6 100644
+--- a/app/src/main/assets/guide/en/privacy.txt
++++ b/app/src/main/assets/guide/en/privacy.txt
+@@ -1,4 +1,4 @@
+-NewSwipe does not collect personal information or send it off your device. The app has no internet permission at all, so what you type technically cannot be sent anywhere. The only permission this app requests is vibration, for key vibration.
++NewSwipe does not collect personal information, and it sends nothing off your device except when you turn on the translate button and tap it. The app requests two permissions: vibration, for key vibration, and internet, for the translate button. The internet is used only when you tap the translate button, and that button is off by default.
+ 
+ ## Information stored on your device
+ For keyboard features, the information below is kept in on-device storage that only this app can read. It is deleted when you uninstall the app.
+@@ -23,6 +23,9 @@ On password and email fields, word suggestions, autocorrect and word learning ar
+ ## Backup files
+ Files created with 'Import & export settings' are saved only where you choose. If you include learned words, emoji and clipboard history (text only, no images), the file contains personal content, so you can encrypt the whole file with a password when exporting (AES-256-GCM, with the key derived from the password by PBKDF2). If you forget the password, the file can't be opened. Be careful when sharing a file exported without a password.
+ 
++## Translate (optional)
++You can use it by turning on the 'Translate button' in toolbar button customization and entering your own Google Cloud Translation API key in settings. When you tap the translate button, the text in the field at that moment (or the selected text, if you selected some) is sent to the Google Cloud Translation API, and the translation replaces it in place. Google Cloud's privacy policy and terms apply to the text that is sent. Nothing is translated in password fields. If you don't tap the translate button, no text is sent. The API key is stored only in this device's app storage and is not included in settings export files.
++
+ ## Voice input
+ The voice input button on the toolbar switches to another voice input app installed on your device (e.g. Google voice typing). While you use voice input, that app's privacy policy applies.
+ 
+diff --git a/app/src/main/assets/guide/privacy.txt b/app/src/main/assets/guide/privacy.txt
+index 41c76c0..211c125 100644
+--- a/app/src/main/assets/guide/privacy.txt
++++ b/app/src/main/assets/guide/privacy.txt
+@@ -1,4 +1,4 @@
+-NewSwipe는 개인정보를 수집하거나 기기 밖으로 보내지 않습니다. 앱에 인터넷 권한이 아예 없어서, 입력한 내용은 기술적으로도 외부로 전송될 수 없습니다. 이 앱이 요청하는 권한은 키 진동을 위한 진동 권한 하나뿐입니다.
++NewSwipe는 개인정보를 수집하지 않으며, 번역 버튼을 직접 켜서 누를 때를 빼고는 어떤 내용도 기기 밖으로 보내지 않습니다. 이 앱이 요청하는 권한은 키 진동을 위한 진동 권한과, 번역 버튼을 위한 인터넷 권한입니다. 인터넷은 번역 버튼을 눌렀을 때만 쓰며, 번역 버튼은 처음에 꺼져 있습니다.
+ 
+ ## 기기에 저장하는 정보
+ 키보드 기능을 위해 아래 정보를 이 앱만 읽을 수 있는 기기 안의 저장 공간에 둡니다. 앱을 지우면 함께 지워집니다.
+@@ -23,6 +23,9 @@ NewSwipe는 개인정보를 수집하거나 기기 밖으로 보내지 않습니
+ ## 백업 파일
+ '설정 가져오기 및 내보내기'로 만든 파일은 사용자가 고른 위치에만 저장됩니다. 학습한 단어·이모지·클립보드 기록(텍스트만, 이미지는 제외)을 함께 담으면 개인적인 내용이 들어가므로, 내보낼 때 비밀번호로 파일 전체를 암호화할 수 있습니다 (AES-256-GCM, 비밀번호에서 PBKDF2로 키를 만듦). 비밀번호를 잊으면 파일을 열 수 없고, 암호 없이 내보낸 파일은 공유할 때 주의하세요.
+ 
++## 번역 (선택 기능)
++도구 막대 버튼 사용자화에서 '번역 버튼'을 켜고 설정에 본인의 Google Cloud Translation API 키를 넣으면 쓸 수 있습니다. 번역 버튼을 누르면 그 순간 입력란의 글(글을 선택했다면 선택한 글)이 Google Cloud Translation API로 전송되고, 번역 결과가 그 자리에 들어갑니다. 전송된 글에는 Google Cloud의 개인정보 처리방침과 약관이 적용됩니다. 비밀번호 입력란에서는 번역하지 않습니다. 번역 버튼을 누르지 않으면 어떤 글도 전송되지 않습니다. API 키는 이 기기의 앱 저장소에만 저장되며 설정 내보내기 파일에는 담기지 않습니다.
++
+ ## 음성 입력
+ 도구 막대의 음성 입력 버튼은 기기에 설치된 다른 음성 입력기(예: Google 음성 입력)로 전환합니다. 음성 입력 중에는 그 음성 입력기의 개인정보 처리방침이 적용됩니다.
+ 
+diff --git a/app/src/main/java/com/alternative_studios/newswipe/NewSwipeIME.java b/app/src/main/java/com/alternative_studios/newswipe/NewSwipeIME.java
+index 61f71df..1435d38 100644
+--- a/app/src/main/java/com/alternative_studios/newswipe/NewSwipeIME.java
++++ b/app/src/main/java/com/alternative_studios/newswipe/NewSwipeIME.java
+@@ -118,7 +118,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
+     private FrameLayout topSlot;
+     private SwipeStrip toolbar;
+     private IconButton clipboardButton, emojiButton, settingsButton, hideButton;
+-    private IconButton voiceButton, undoButton, oneHandButton;
++    private IconButton voiceButton, undoButton, oneHandButton, translateButton;
+     /**
+      * 한 손 모드 배치: body(가로) = [column(도구 막대·검색 결과·자판) | sideStrip(반대편 빈 곳)], 그 아래 liftSpace.
+      * 한 손 모드가 꺼져 있으면 column만 꽉 차게 들어가고 sideStrip은 숨긴다. liftSpace는 가로 모드·폴더블 내부 화면의
+@@ -877,6 +877,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
+         bar.addView(voiceButton);
+         undoButton = toolButton(Icons.UNDO, L.t("실행 취소", "Undo"), v -> undo());
+         bar.addView(undoButton);
++        translateButton = toolButton(Icons.TRANSLATE, L.t("번역", "Translate"), v -> translateField());
++        bar.addView(translateButton);
+         toolSpacer = new View(this);
+         bar.addView(toolSpacer, new LinearLayout.LayoutParams(0, 1, 1f));
+         // 방금 복사한 내용 칩은 빈 공간 자리에 뜬다 (도구 버튼은 그대로 둔다).
+@@ -926,6 +928,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
+             case ToolbarButtons.EMOJI: return emojiButton;
+             case ToolbarButtons.VOICE: return voiceButton;
+             case ToolbarButtons.UNDO: return undoButton;
++            case ToolbarButtons.TRANSLATE: return translateButton;
+             case ToolbarButtons.SETTINGS: return settingsButton;
+             case ToolbarButtons.ONE_HAND: return oneHandButton;
+             default: return hideButton;
+@@ -4739,6 +4742,114 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
+         }
+     }
+ 
++    // ---------------------------------------------------------------- 번역 (Google Cloud Translation)
++
++    private int translateSeq;   // 번역 요청 번호. 새 요청이나 입력란 변경 시 늦게 온 응답을 버린다
++
++    /**
++     * 번역 버튼: 선택한 글이 있으면 그 글을, 없으면 입력란 전체를 목표 언어로 번역해 그 자리에 바꿔 넣는다.
++     * 글이 이미 목표 언어이면(자동 감지) 보조 언어로 다시 번역한다 (기본: 영어 ↔ 한국어).
++     * 누른 순간의 글만 전송하며, 결과가 올 때까지 입력란이 그대로일 때만 바꾼다. 실행 취소 버튼으로 되돌릴 수 있다.
++     */
++    private void translateField() {
++        InputConnection ic = getCurrentInputConnection();
++        if (ic == null) return;
++        if (passwordField) {
++            Toast.makeText(this, L.t("비밀번호 입력란에서는 번역할 수 없습니다", "Can't translate in a password field"), Toast.LENGTH_SHORT).show();
++            return;
++        }
++        String key = prefs.translateApiKey();
++        if (key == null || key.trim().isEmpty()) {
++            askOnBar(L.t("번역하려면 API 키가 필요합니다. 설정을 열까요?", "Translation needs an API key. Open settings?"), this::openSettings);
++            return;
++        }
++        commitComposing();
++        CharSequence selected = ic.getSelectedText(0);
++        String before = "", after = "", original;
++        boolean selection = selected != null && selected.length() > 0;
++        if (selection) {
++            original = selected.toString();
++        } else {
++            CharSequence b = ic.getTextBeforeCursor(Translator.MAX_CHARS + 1, 0);
++            CharSequence a = ic.getTextAfterCursor(Translator.MAX_CHARS + 1, 0);
++            before = b == null ? "" : b.toString();
++            after = a == null ? "" : a.toString();
++            original = before + after;
++        }
++        if (original.trim().isEmpty()) {
++            Toast.makeText(this, L.t("번역할 글이 없습니다", "Nothing to translate"), Toast.LENGTH_SHORT).show();
++            return;
++        }
++        if (original.length() > Translator.MAX_CHARS) {
++            Toast.makeText(this, L.t("글이 너무 깁니다 (" + Translator.MAX_CHARS + "자까지). 일부를 선택해 번역해 보세요",
++                    "Text is too long (up to " + Translator.MAX_CHARS + " characters). Select part of it to translate."),
++                    Toast.LENGTH_LONG).show();
++            return;
++        }
++        final String target = prefs.translateTarget(), alt = prefs.translateAlt();
++        final int seq = ++translateSeq;
++        final String sentText = original;
++        final int beforeLen = before.length(), afterLen = after.length();
++        Toast.makeText(this, L.t("번역 중…", "Translating…"), Toast.LENGTH_SHORT).show();
++        Thread t = new Thread(() -> {
++            String error = null;
++            Translator.Result result = null;
++            try {
++                result = Translator.translate(key, sentText, null, target);
++                // 이미 목표 언어로 쓴 글이면 보조 언어로 다시 번역한다.
++                if (result.detected != null && sameLanguage(result.detected, target) && !sameLanguage(target, alt)) {
++                    result = Translator.translate(key, sentText, result.detected, alt);
++                }
++            } catch (Translator.TranslateException e) {
++                error = e.getMessage();
++            }
++            final Translator.Result r = result;
++            final String err = error;
++            main.post(() -> applyTranslation(seq, sentText, selection, beforeLen, afterLen, r, err));
++        }, "translate");
++        t.setDaemon(true);
++        t.start();
++    }
++
++    private static boolean sameLanguage(String a, String b) {
++        String x = a.toLowerCase(java.util.Locale.ROOT), y = b.toLowerCase(java.util.Locale.ROOT);
++        if (x.equals(y)) return true;
++        int i = x.indexOf('-'), j = y.indexOf('-');
++        return (i < 0 ? x : x.substring(0, i)).equals(j < 0 ? y : y.substring(0, j))
++                && (i < 0 || j < 0);   // zh-CN과 zh-TW처럼 둘 다 지역이 붙어 서로 다르면 다른 언어로 본다
++    }
++
++    /** 번역 결과를 입력란에 넣는다. 그사이 입력란의 글이 바뀌었으면 넣지 않는다. */
++    private void applyTranslation(int seq, String sent, boolean selection, int beforeLen, int afterLen,
++            Translator.Result result, String error) {
++        if (seq != translateSeq) return;
++        if (error != null) {
++            Toast.makeText(this, error, Toast.LENGTH_LONG).show();
++            return;
++        }
++        InputConnection ic = getCurrentInputConnection();
++        if (ic == null || result == null || result.text.isEmpty()) return;
++        commitComposing();
++        String now;
++        if (selection) {
++            CharSequence sel = ic.getSelectedText(0);
++            now = sel == null ? "" : sel.toString();
++        } else {
++            CharSequence b = ic.getTextBeforeCursor(Translator.MAX_CHARS + 1, 0);
++            CharSequence a = ic.getTextAfterCursor(Translator.MAX_CHARS + 1, 0);
++            now = (b == null ? "" : b.toString()) + (a == null ? "" : a.toString());
++        }
++        if (!now.equals(sent)) {
++            Toast.makeText(this, L.t("번역하는 동안 글이 바뀌어 적용하지 않았습니다", "The text changed while translating, so the result was not applied"), Toast.LENGTH_SHORT).show();
++            return;
++        }
++        ic.beginBatchEdit();
++        if (!selection) ic.deleteSurroundingText(beforeLen, afterLen);
++        ic.commitText(result.text, 1);
++        ic.endBatchEdit();
++        endEdit();
++    }
++
+     private void startVoiceInput() {
+         InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+         if (imm != null) {
+diff --git a/app/src/main/java/com/alternative_studios/newswipe/Prefs.java b/app/src/main/java/com/alternative_studios/newswipe/Prefs.java
+index 27a13f9..2f7cf06 100644
+--- a/app/src/main/java/com/alternative_studios/newswipe/Prefs.java
++++ b/app/src/main/java/com/alternative_studios/newswipe/Prefs.java
+@@ -269,6 +269,10 @@ public final class Prefs {
+     public static final String TOOL_ORDER = "tool_order";   // 도구 막대 버튼 순서와 붙는 쪽 (ToolbarButtons)
+     public static final String TOOL_UNDO = "tool_undo";   // 도구 막대의 실행 취소 버튼
+     public static final String TOOL_ONE_HAND = "tool_one_hand";   // 도구 막대의 한 손 모드 버튼
++    public static final String TOOL_TRANSLATE = "tool_translate"; // 도구 막대의 번역 버튼 (기본 꺼짐)
++    public static final String TRANSLATE_API_KEY = "translate_api_key";   // Google Cloud Translation API 키 (설정 백업에서 제외)
++    public static final String TRANSLATE_TARGET = "translate_target";     // 번역할 언어 (기본 en)
++    public static final String TRANSLATE_ALT = "translate_alt";           // 글이 이미 목표 언어일 때 번역할 언어 (기본 ko)
+ 
+     /** 한 손 모드 상태: "off" | "left" | "right". 키보드에서 켜고 끄는 상태라 설정 내보내기에서는 뺀다. */
+     public static final String ONE_HAND = "one_hand";
+@@ -535,7 +539,7 @@ public final class Prefs {
+             DUBEOLSIK_SHIFT_HIDDEN, KOREAN_SHIFT_FN, BOTTOM_EMOJI_KEY, BOTTOM_CLIPBOARD_KEY, BOTTOM_CURSOR_KEY, BOTTOM_VOICE_KEY};
+     /** 도구 막대 버튼 사용자화 화면의 값. */
+     private static final String[] TOOL_BUTTON_VALUES = {TOOL_ORDER, TOOL_CLIPBOARD, TOOL_EMOJI, VOICE_KEY, TOOL_UNDO,
+-            TOOL_SETTINGS, TOOL_ONE_HAND, TOOL_HIDE};
++            TOOL_SETTINGS, TOOL_ONE_HAND, TOOL_HIDE, TOOL_TRANSLATE};
+ 
+     /** 키보드 사용자화의 한 설정 범위: 목록의 되돌리기에 보이는 이름(null이면 보이지 않음)과 그 범위의 값 키·키 앞부분. */
+     private static final class EditorScope {
+@@ -572,7 +576,7 @@ public final class Prefs {
+                     PAD_BOTTOM, KEY_TEXT_SIZE, KEY_RADIUS, KEY_GAP_X, KEY_GAP_Y, KEY_SHADOW,
+                     KEY_SHADOW_STRENGTH, KEY_PREVIEW), NONE),
+             new EditorScope(AREA_SCOPES[0], L.t("도구 막대", "Toolbar"), concat(TOOL_BUTTON_VALUES, TOOLBAR, TOOLBAR_BOTTOM, TOOLBAR_HEIGHT,
+-                    TOOL_BUTTON_SIZE, PORTRAIT_PREFIX + TOOLBAR_FOLLOW_BLOCKS), keys(AREA_PAD_PREFIX + PAD_AREAS[0] + "_", "swipe_toolbar_bar_")),
++                    TOOL_BUTTON_SIZE, TRANSLATE_TARGET, TRANSLATE_ALT, PORTRAIT_PREFIX + TOOLBAR_FOLLOW_BLOCKS), keys(AREA_PAD_PREFIX + PAD_AREAS[0] + "_", "swipe_toolbar_bar_")),
+             new EditorScope(AREA_SCOPES[1], L.t("숫자 줄", "Number row"), keys(NUMBER_ROW, NUMBER_ROW_HEIGHT, NUMBER_HINT_HIDDEN),
+                     keys(AREA_PAD_PREFIX + PAD_AREAS[1] + "_")),
+             // 글자 키: 세 자판이 함께 쓰는 값(높이·길게 누르기·밀기·여백)과 한글·영어 글자 키에만 있는 값.
+@@ -1610,11 +1614,20 @@ public final class Prefs {
+             case com.alternative_studios.newswipe.keyboard.ToolbarButtons.UNDO: return TOOL_UNDO;
+             case com.alternative_studios.newswipe.keyboard.ToolbarButtons.SETTINGS: return TOOL_SETTINGS;
+             case com.alternative_studios.newswipe.keyboard.ToolbarButtons.ONE_HAND: return TOOL_ONE_HAND;
++            case com.alternative_studios.newswipe.keyboard.ToolbarButtons.TRANSLATE: return TOOL_TRANSLATE;
+             default: return TOOL_HIDE;
+         }
+     }
+ 
+-    public boolean toolShown(String id) { return sp.getBoolean(toolShownKey(id), true); }
++    /** 번역 버튼은 인터넷으로 글을 보내는 기능이라 직접 켜기 전에는 숨긴다. */
++    public boolean toolShown(String id) {
++        boolean def = !com.alternative_studios.newswipe.keyboard.ToolbarButtons.TRANSLATE.equals(id);
++        return sp.getBoolean(toolShownKey(id), def);
++    }
++
++    public String translateApiKey() { return sp.getString(TRANSLATE_API_KEY, ""); }
++    public String translateTarget() { return sp.getString(TRANSLATE_TARGET, "en"); }
++    public String translateAlt() { return sp.getString(TRANSLATE_ALT, "ko"); }
+ 
+     public void setToolShown(String id, boolean shown) { sp.edit().putBoolean(toolShownKey(id), shown).apply(); }
+ 
+diff --git a/app/src/main/java/com/alternative_studios/newswipe/SettingsActivity.java b/app/src/main/java/com/alternative_studios/newswipe/SettingsActivity.java
+index de00c06..0ef52f4 100644
+--- a/app/src/main/java/com/alternative_studios/newswipe/SettingsActivity.java
++++ b/app/src/main/java/com/alternative_studios/newswipe/SettingsActivity.java
+@@ -3522,6 +3522,49 @@ public final class SettingsActivity extends Activity {
+         return row;
+     }
+ 
++    private void askTranslateKey() {
++        EditText input = new EditText(this);
++        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
++                | InputType.TYPE_TEXT_VARIATION_PASSWORD);
++        input.setHint("AIza...");
++        int pad = Ui.dp(this, 20);
++        LinearLayout box = new LinearLayout(this);
++        box.setPadding(pad, Ui.dp(this, 8), pad, 0);
++        box.addView(input, matchWrap());
++        AppTheme.dialogBuilder(this)
++                .setTitle(L.t("Google Cloud Translation API 키", "Google Cloud Translation API key"))
++                .setMessage(L.t("Cloud 콘솔에서 만든 API 키를 붙여 넣으세요. 키는 'Cloud Translation API만 허용'으로 제한해 두세요. "
++                        + "비워 두고 저장하면 키를 지웁니다.",
++                        "Paste the API key you created in the Cloud console. Restrict the key to the Cloud Translation API only. "
++                        + "Save it empty to remove the key."))
++                .setView(box)
++                .setPositiveButton(L.t("저장", "Save"), (d, w) -> {
++                    prefs.raw().edit().putString(Prefs.TRANSLATE_API_KEY, input.getText().toString().trim()).apply();
++                    d.dismiss();
++                    recreate();
++                })
++                .setNegativeButton(L.t("취소", "Cancel"), null)
++                .show();
++    }
++
++    private void askTranslateLanguage(String title, String key, String current) {
++        String[] names = new String[Translator.LANGUAGES.length];
++        int checked = -1;
++        for (int i = 0; i < names.length; i++) {
++            names[i] = Translator.name(Translator.LANGUAGES[i]);
++            if (Translator.LANGUAGES[i][0].equalsIgnoreCase(current)) checked = i;
++        }
++        AppTheme.dialogBuilder(this)
++                .setTitle(title)
++                .setSingleChoiceItems(names, checked, (d, which) -> {
++                    prefs.raw().edit().putString(key, Translator.LANGUAGES[which][0]).apply();
++                    d.dismiss();
++                    recreate();
++                })
++                .setNegativeButton(L.t("취소", "Cancel"), null)
++                .show();
++    }
++
+     private void askAccentHex(int current) {
+         EditText input = new EditText(this);
+         input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+@@ -3611,7 +3654,8 @@ public final class SettingsActivity extends Activity {
+         }
+ 
+         LinearLayout about = section(L.t("개인 정보", "Privacy"));
+-        about.addView(note(L.t("모든 처리는 기기 안에서만 하며 인터넷을 쓰지 않습니다. 비밀번호·이메일 입력란에서는 학습을 하지 않습니다.", "Everything is processed on your device, without the internet. Nothing is learned on password or email fields.")));
++        about.addView(note(L.t("단어 추천과 학습은 기기 안에서만 처리하며 인터넷을 쓰지 않습니다 (번역 버튼은 따로 쓸 때만 인터넷을 씁니다). 비밀번호·이메일 입력란에서는 학습을 하지 않습니다.",
++                "Word suggestions and learning are processed on your device, without the internet (only the translate button uses the internet, and only when you use it). Nothing is learned on password or email fields.")));
+ 
+         buildDictionaryPack();
+     }
+@@ -4252,6 +4296,28 @@ public final class SettingsActivity extends Activity {
+     }
+ 
+     private void buildTools() {
++        LinearLayout translate = section(L.t("번역", "Translate"));
++        translate.addView(note(L.t("Google Cloud Translation API로 입력란의 글을 번역합니다. 도구 막대 버튼 사용자화에서 '번역 버튼'을 켜면 "
++                + "도구 막대에 나타납니다. 번역 버튼을 누른 순간의 글만 Google로 전송되며, 그 밖의 입력은 전송하지 않습니다.",
++                "Translates the text in the field with the Google Cloud Translation API. Turn on the 'Translate button' in toolbar button customization "
++                + "to show it on the toolbar. Only the text at the moment you tap the button is sent to Google; nothing else you type is sent.")));
++        String savedKey = prefs.translateApiKey();
++        String keyState = savedKey == null || savedKey.isEmpty() ? L.t("입력 안 됨", "not set")
++                : L.t("입력됨 (…", "set (…") + savedKey.substring(Math.max(0, savedKey.length() - 4)) + ")";
++        translate.addView(button(L.t("API 키 · ", "API key · ") + keyState, v -> askTranslateKey()));
++        translate.addView(button(L.t("번역할 언어 · ", "Translate into · ") + Translator.languageName(prefs.translateTarget()),
++                v -> askTranslateLanguage(L.t("번역할 언어", "Translate into"), Prefs.TRANSLATE_TARGET, prefs.translateTarget())));
++        translate.addView(button(L.t("이미 그 언어일 때 번역할 언어 · ", "If already in that language, translate into · ") + Translator.languageName(prefs.translateAlt()),
++                v -> askTranslateLanguage(L.t("이미 그 언어일 때 번역할 언어", "If already in that language, translate into"), Prefs.TRANSLATE_ALT, prefs.translateAlt())));
++        translate.addView(note(L.t("글이 '번역할 언어'로 쓰여 있으면(자동 감지) 두 번째 언어로 번역합니다. 이때는 같은 글을 두 번 보내 "
++                + "글자 수가 두 배로 셉니다. Google Cloud Translation은 월 50만 자까지 무료이며 결제 계정 등록이 필요합니다. "
++                + "한 번에 " + Translator.MAX_CHARS + "자까지 번역하며, Cloud 콘솔에서 일일 할당량을 걸어 두면 안전합니다. "
++                + "API 키는 이 기기의 앱 저장소에만 저장되고 설정 내보내기에는 담기지 않습니다.",
++                "If the text is already in the 'Translate into' language (auto-detected), it is translated into the second language instead. "
++                + "In that case the same text is sent twice, so it counts double. Google Cloud Translation is free up to 500,000 characters a month and needs a billing account. "
++                + "Up to " + Translator.MAX_CHARS + " characters are translated at a time; setting a daily quota in the Cloud console keeps costs safe. "
++                + "The API key is stored only in this device's app storage and is not included in settings exports.")));
++
+         LinearLayout clip = section(L.t("클립보드", "Clipboard"));
+         View clipImagesToggle = toggle(L.t("이미지 저장", "Save images"), clipImagesDesc(),
+                 prefs.clipboardImages(), this::onClipImagesChanged);
+diff --git a/app/src/main/java/com/alternative_studios/newswipe/SettingsBackup.java b/app/src/main/java/com/alternative_studios/newswipe/SettingsBackup.java
+index dfed2a5..38143a1 100644
+--- a/app/src/main/java/com/alternative_studios/newswipe/SettingsBackup.java
++++ b/app/src/main/java/com/alternative_studios/newswipe/SettingsBackup.java
+@@ -41,7 +41,8 @@ public final class SettingsBackup {
+ 
+     private static boolean excluded(String key) {
+         return Prefs.RECENT_EMOJI.equals(key) || Prefs.PINNED_EMOJI.equals(key) || Prefs.LANGUAGE.equals(key)
+-                || Prefs.ONE_HAND.equals(key) || Prefs.ONBOARDING_DONE.equals(key);
++                || Prefs.ONE_HAND.equals(key) || Prefs.ONBOARDING_DONE.equals(key)
++                || Prefs.TRANSLATE_API_KEY.equals(key);   // API 키는 백업 파일에 담지 않는다
+     }
+ 
+     private static ComponentName launcherAlias(Context context) {
+diff --git a/app/src/main/java/com/alternative_studios/newswipe/Translator.java b/app/src/main/java/com/alternative_studios/newswipe/Translator.java
+new file mode 100644
+index 0000000..dd95fe5
+--- /dev/null
++++ b/app/src/main/java/com/alternative_studios/newswipe/Translator.java
+@@ -0,0 +1,130 @@
++package com.alternative_studios.newswipe;
++
++import org.json.JSONArray;
++import org.json.JSONObject;
++
++import java.io.ByteArrayOutputStream;
++import java.io.InputStream;
++import java.io.OutputStream;
++import java.net.HttpURLConnection;
++import java.net.URL;
++import java.nio.charset.StandardCharsets;
++
++/**
++ * Google Cloud Translation API(Basic, v2) 클라이언트. 외부 라이브러리 없이 HttpURLConnection만 쓴다.
++ * 반드시 백그라운드 스레드에서 부른다. API 키는 사용자가 설정에 직접 넣은 값이며 앱에 들어 있지 않다.
++ * 무료 구간(월 50만 자)을 지키려고 한 번에 보내는 글자 수를 MAX_CHARS로 막는다.
++ */
++public final class Translator {
++    /** 한 번에 보낼 수 있는 최대 글자 수 (v2 권장 한도). */
++    public static final int MAX_CHARS = 5000;
++    private static final String ENDPOINT = "https://translation.googleapis.com/language/translate/v2";
++
++    /** 번역 결과. detected는 원문 언어 코드(자동 감지). */
++    public static final class Result {
++        public final String text, detected;
++
++        Result(String text, String detected) {
++            this.text = text;
++            this.detected = detected;
++        }
++    }
++
++    /** 사용자에게 그대로 보여 줘도 되는 오류. */
++    public static final class TranslateException extends Exception {
++        public TranslateException(String message) {
++            super(message);
++        }
++    }
++
++    /** 지원 언어 (코드, 한국어 이름, 영어 이름). 설정의 목표 언어 선택에 쓴다. 보여 줄 때는 {@link #name}으로 고른다. */
++    public static final String[][] LANGUAGES = {
++            {"en", "영어", "English"}, {"ko", "한국어", "Korean"}, {"ja", "일본어", "Japanese"},
++            {"zh-CN", "중국어(간체)", "Chinese (Simplified)"}, {"zh-TW", "중국어(번체)", "Chinese (Traditional)"},
++            {"es", "스페인어", "Spanish"}, {"fr", "프랑스어", "French"}, {"de", "독일어", "German"},
++            {"ru", "러시아어", "Russian"}, {"vi", "베트남어", "Vietnamese"}, {"th", "태국어", "Thai"},
++            {"id", "인도네시아어", "Indonesian"}, {"it", "이탈리아어", "Italian"}, {"pt", "포르투갈어", "Portuguese"},
++            {"ar", "아랍어", "Arabic"},
++    };
++
++    private Translator() {
++    }
++
++    /** 앱 언어에 맞는 언어 이름. */
++    public static String name(String[] language) {
++        return L.t(language[1], language[2]);
++    }
++
++    public static String languageName(String code) {
++        for (String[] l : LANGUAGES) if (l[0].equalsIgnoreCase(code)) return name(l);
++        return code;
++    }
++
++    /** source는 null이면 자동 감지. */
++    public static Result translate(String apiKey, String text, String source, String target) throws TranslateException {
++        if (apiKey == null || apiKey.trim().isEmpty()) throw new TranslateException(L.t("설정에서 API 키를 입력해 주세요", "Enter your API key in settings"));
++        HttpURLConnection conn = null;
++        try {
++            JSONObject body = new JSONObject();
++            body.put("q", text);
++            body.put("target", target);
++            body.put("format", "text");
++            if (source != null) body.put("source", source);
++            URL url = new URL(ENDPOINT + "?key=" + java.net.URLEncoder.encode(apiKey.trim(), "UTF-8"));
++            conn = (HttpURLConnection) url.openConnection();
++            conn.setRequestMethod("POST");
++            conn.setConnectTimeout(8000);
++            conn.setReadTimeout(12000);
++            conn.setDoOutput(true);
++            conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
++            byte[] bytes = body.toString().getBytes(StandardCharsets.UTF_8);
++            try (OutputStream os = conn.getOutputStream()) {
++                os.write(bytes);
++            }
++            int code = conn.getResponseCode();
++            String resp = readAll(code >= 400 ? conn.getErrorStream() : conn.getInputStream());
++            if (code >= 400) throw new TranslateException(errorMessage(code, resp));
++            JSONObject first = new JSONObject(resp).getJSONObject("data").getJSONArray("translations").getJSONObject(0);
++            String out = unescapeHtml(first.getString("translatedText"));
++            return new Result(out, first.optString("detectedSourceLanguage", null));
++        } catch (TranslateException e) {
++            throw e;
++        } catch (java.io.IOException e) {
++            throw new TranslateException(L.t("인터넷 연결을 확인해 주세요", "Check your internet connection"));
++        } catch (Exception e) {
++            throw new TranslateException(L.t("번역 결과를 읽지 못했습니다", "Couldn't read the translation result"));
++        } finally {
++            if (conn != null) conn.disconnect();
++        }
++    }
++
++    private static String errorMessage(int code, String resp) {
++        String reason = "";
++        try {
++            reason = new JSONObject(resp).getJSONObject("error").optString("message", "");
++        } catch (Exception ignored) {
++        }
++        if (code == 400 && reason.toLowerCase(java.util.Locale.ROOT).contains("api key")) return L.t("API 키가 올바르지 않습니다", "The API key is not valid");
++        if (code == 403) return L.t("API 키 권한 또는 결제 설정을 확인해 주세요 (Cloud Translation API 사용 설정)", "Check the API key's permissions and billing (enable the Cloud Translation API)");
++        if (code == 429) return L.t("요청 한도를 넘었습니다. 잠시 후 다시 시도해 주세요", "Request limit exceeded. Try again in a moment");
++        return L.t("번역에 실패했습니다 (" + code + ")", "Translation failed (" + code + ")");
++    }
++
++    private static String readAll(InputStream in) throws java.io.IOException {
++        if (in == null) return "";
++        try (InputStream is = in) {
++            ByteArrayOutputStream out = new ByteArrayOutputStream();
++            byte[] buf = new byte[4096];
++            int n;
++            while ((n = is.read(buf)) > 0) out.write(buf, 0, n);
++            return out.toString("UTF-8");
++        }
++    }
++
++    /** format=text여도 일부 응답에 HTML 엔티티가 섞이는 경우를 대비해 흔한 것만 푼다. */
++    static String unescapeHtml(String s) {
++        if (s.indexOf('&') < 0) return s;
++        return s.replace("&#39;", "'").replace("&quot;", "\"").replace("&lt;", "<").replace("&gt;", ">")
++                .replace("&amp;", "&");
++    }
++}
+diff --git a/app/src/main/java/com/alternative_studios/newswipe/keyboard/Icons.java b/app/src/main/java/com/alternative_studios/newswipe/keyboard/Icons.java
+index d20d600..31ea9b8 100644
+--- a/app/src/main/java/com/alternative_studios/newswipe/keyboard/Icons.java
++++ b/app/src/main/java/com/alternative_studios/newswipe/keyboard/Icons.java
+@@ -54,6 +54,7 @@ public final class Icons {
+     public static final int PASTE = 43;           // 붙여넣기 (아래 화살표가 든 클립보드)
+     public static final int SELECT_ALL = 44;      // 전체 선택 (점선 테두리 안의 네모)
+     public static final int CHEVRON_UP = 45;      // 위 꺾쇠 (HIDE를 뒤집은 것: 접은 미리보기 펼치기)
++    public static final int TRANSLATE = 9046;       // 번역 (Gboard 번역 아이콘처럼 文과 A)
+ 
+     private static final Path path = new Path();
+     private static final RectF oval = new RectF();
+@@ -186,6 +187,26 @@ public final class Icons {
+                 c.drawArc(oval, 0, 180, false, p);
+                 c.drawLine(12, 17.5f, 12, 21, p);
+                 break;
++            case TRANSLATE:
++                // 왼쪽 위: 文 모양 (가로줄, 세로줄, 두 갈래 획)
++                c.drawLine(3, 6, 12, 6, p);
++                c.drawLine(7.5f, 4, 7.5f, 6, p);
++                path.moveTo(5, 10);
++                path.lineTo(10, 10);
++                path.moveTo(10.5f, 6);
++                path.cubicTo(10, 10, 7.5f, 13, 4, 14.5f);
++                path.moveTo(5.5f, 8.5f);
++                path.cubicTo(7, 11, 9, 13, 11.5f, 14);
++                c.drawPath(path, p);
++                // 오른쪽 아래: A
++                path.reset();
++                path.moveTo(12.5f, 20.5f);
++                path.lineTo(16.5f, 10);
++                path.lineTo(20.5f, 20.5f);
++                path.moveTo(14, 16.5f);
++                path.lineTo(19, 16.5f);
++                c.drawPath(path, p);
++                break;
+             case SETTINGS: {
+                 // 톱니바퀴: 톱니 8개를 한 붓으로 잇고(톱니 끝·골은 원호), 가운데에 구멍.
+                 float outer = 9.6f, inner = 7.4f, halfTop = 10f, halfBase = 15f;
+diff --git a/app/src/main/java/com/alternative_studios/newswipe/keyboard/ToolbarButtons.java b/app/src/main/java/com/alternative_studios/newswipe/keyboard/ToolbarButtons.java
+index 54a3111..5c0b8a8 100644
+--- a/app/src/main/java/com/alternative_studios/newswipe/keyboard/ToolbarButtons.java
++++ b/app/src/main/java/com/alternative_studios/newswipe/keyboard/ToolbarButtons.java
+@@ -11,11 +11,11 @@ import java.util.List;
+  */
+ public final class ToolbarButtons {
+     public static final String CLIPBOARD = "clipboard", EMOJI = "emoji", VOICE = "voice", UNDO = "undo",
+-            SETTINGS = "settings", HIDE = "hide", ONE_HAND = "onehand";
++            SETTINGS = "settings", HIDE = "hide", ONE_HAND = "onehand", TRANSLATE = "translate";
+     /** 기본 배치. */
+-    public static final String[] DEFAULT_LEFT = {CLIPBOARD, EMOJI, VOICE, UNDO};
++    public static final String[] DEFAULT_LEFT = {CLIPBOARD, EMOJI, VOICE, UNDO, TRANSLATE};
+     public static final String[] DEFAULT_RIGHT = {ONE_HAND, SETTINGS, HIDE};
+-    public static final String[] ALL = {CLIPBOARD, EMOJI, VOICE, UNDO, ONE_HAND, SETTINGS, HIDE};
++    public static final String[] ALL = {CLIPBOARD, EMOJI, VOICE, UNDO, TRANSLATE, ONE_HAND, SETTINGS, HIDE};
+ 
+     private ToolbarButtons() {
+     }
+@@ -29,6 +29,7 @@ public final class ToolbarButtons {
+             case UNDO: return L.t("실행 취소 버튼", "Undo button");
+             case SETTINGS: return L.t("설정 버튼", "Settings button");
+             case HIDE: return L.t("키보드 숨기기 버튼", "Hide keyboard button");
++            case TRANSLATE: return L.t("번역 버튼", "Translate button");
+             case ONE_HAND: return L.t("한 손 모드 버튼", "One-handed mode button");
+             default: return id;
+         }
+@@ -38,6 +39,8 @@ public final class ToolbarButtons {
+     public static String hint(String id) {
+         switch (id) {
+             case VOICE: return L.t("기기의 음성 입력(예: Google 음성 입력)을 사용합니다.", "Uses your device's voice input (e.g. Google voice typing).");
++            case TRANSLATE: return L.t("입력란의 글(선택했다면 선택한 글)을 Google 번역으로 바꿔 줍니다. 설정에서 API 키를 입력해야 하며, 누른 순간의 글만 인터넷으로 전송됩니다.",
++                    "Replaces the text in the field (or the selected text) with a Google translation. Needs an API key in settings; only the text at the moment you tap is sent over the internet.");
+             case UNDO: return L.t("입력란에 Ctrl+Z를 보냅니다. 앱이 지원하면 방금 한 입력이나 지우기를 되돌립니다.", "Sends Ctrl+Z to the field. If the app supports it, undoes what you just typed or deleted.");
+             case HIDE: return L.t("외장 키보드를 연결해 도구 막대만 보일 때는 뒤집혀 '키보드 보이기' 버튼이 됩니다. 누르면 자판 전체가 보입니다.", "When a physical keyboard is connected and only the toolbar is shown, it flips into a 'Show keyboard' button. Tap it to show the whole keyboard.");
+             case ONE_HAND: return L.t("누르면 한 손 모드를 켜고 끕니다. 왼쪽·오른쪽으로 밀면 그쪽으로 쏠린 한 손 모드가 됩니다.", "Tap to turn one-handed mode on or off. Swipe left or right to shift it to that side.");
+@@ -53,6 +56,7 @@ public final class ToolbarButtons {
+             case UNDO: return Icons.UNDO;
+             case SETTINGS: return Icons.SETTINGS;
+             case ONE_HAND: return Icons.ONE_HAND;
++            case TRANSLATE: return Icons.TRANSLATE;
+             default: return Icons.HIDE;
+         }
+     }
