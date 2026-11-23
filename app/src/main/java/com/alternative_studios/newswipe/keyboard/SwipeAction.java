@@ -195,7 +195,7 @@ public final class SwipeAction {
         return ids.toArray(new String[0]);
     }
 
-    /** 스페이스바 길게 누르기에서 고를 수 있는 ID들: 기능키와 같은 목록에 '밀어서 선택'을 '없음' 바로 다음에 더한다. */
+    /** 스페이스바·커서 이동 키 길게 누르기에서 고를 수 있는 ID들: 기능키와 같은 목록에 '밀어서 선택'을 '없음' 바로 다음에 더한다. */
     public static String[] idsForSpaceLongPress() {
         java.util.List<String> ids = new java.util.ArrayList<>(java.util.Arrays.asList(idsForLongPress()));
         ids.add(1, SPACE_SELECT);

@@ -54,7 +54,7 @@ public final class LongPressActions {
         public String resolve(String stored, int slot, int dir) {
             if (stored == null || !SwipeAction.isKnown(stored)) return defaultAction(slot, dir);
             if (SwipeAction.CURSOR_MOVE.equals(stored) || SwipeAction.FREE_CURSOR.equals(stored)) return SwipeAction.NONE;
-            if (SwipeAction.SPACE_SELECT.equals(stored) && slot != SPACE) return SwipeAction.NONE;   // 스페이스바 전용
+            if (SwipeAction.SPACE_SELECT.equals(stored) && !selectable(slot)) return SwipeAction.NONE;   // 스페이스바·커서 이동 키 전용
             return stored;
         }
 
@@ -80,7 +80,7 @@ public final class LongPressActions {
 
         @Override
         public String[] choices(int slot) {
-            return slot == SPACE ? SwipeAction.idsForSpaceLongPress() : SwipeAction.idsForLongPress();
+            return selectable(slot) ? SwipeAction.idsForSpaceLongPress() : SwipeAction.idsForLongPress();
         }
 
         @Override
@@ -90,6 +90,14 @@ public final class LongPressActions {
     };
 
     private LongPressActions() {
+    }
+
+    /**
+     * '길게 누른 뒤 밀어서 글자 선택'을 고를 수 있는 칸: 스페이스바와 커서 이동 키(조이스틱 포함). 둘 다 밀어서 커서를 옮기는 키라
+     * 길게 누른 뒤 밀면 같은 손짓으로 선택 영역을 넓힌다.
+     */
+    static boolean selectable(int slot) {
+        return slot == SPACE || slot == CURSOR;
     }
 
     /** 키 종류에 해당하는 칸. 길게 누르기 사용자화의 대상이 아닌 키면 -1. */
