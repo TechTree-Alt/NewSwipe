@@ -2284,12 +2284,12 @@ public final class SettingsActivity extends Activity {
                     updateDubeolsikRow();
                     refreshLayoutPreview();
                 }));
-        View keyColor = toggle(L.t("글자 키 색과 동일하게", "Same color as key text"), L.t("힌트를 흐린 색 대신 키 글자와 같은 색으로 표시합니다.", "Draws hints in the same color as the key text instead of a faded color."),
+        View keyColor = toggle(L.t("글자 키 색과 동일하게", "Same color as key text"), L.t("힌트(두벌식 자모 힌트 포함)를 흐린 색 대신 키 글자와 같은 색으로 표시합니다.", "Draws hints (including Dubeolsik hints) in the same color as the key text instead of a faded color."),
                 prefs.popupHintKeyColor(), on -> {
                     prefs.raw().edit().putBoolean(Prefs.POPUP_HINT_KEY_COLOR, on).apply();
                     refreshLayoutPreview();
                 });
-        View large = toggle(L.t("더 크게", "Larger"), L.t("힌트 글자를 더 크게 표시합니다.", "Draws hint characters larger."),
+        View large = toggle(L.t("더 크게", "Larger"), L.t("힌트 글자(두벌식 자모 힌트 포함)를 더 크게 표시합니다.", "Draws hint characters (including Dubeolsik hints) larger."),
                 prefs.popupHintLarge(), on -> {
                     prefs.raw().edit().putBoolean(Prefs.POPUP_HINT_LARGE, on).apply();
                     refreshLayoutPreview();
