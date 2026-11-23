@@ -261,8 +261,13 @@ public class LegacySwipeSettingsTest {
         LegacySwipeSettings.migrateIfNeeded(p);
         assertEquals(SwipeAction.SPACE_SELECT, LongPressActions.SPEC.get(p, LongPressActions.SPACE, LongPressActions.DIR));
         assertEquals(SwipeAction.NONE, LongPressActions.SPEC.get(p, LongPressActions.ENTER, LongPressActions.DIR));
-        // 스페이스바 전용 기능은 다른 키에서 쓰지 않는다
+        // 스페이스바·커서 이동 키 전용 기능은 다른 키에서 쓰지 않는다
         LongPressActions.SPEC.set(p, LongPressActions.ENTER, LongPressActions.DIR, SwipeAction.SPACE_SELECT);
         assertEquals(SwipeAction.NONE, LongPressActions.SPEC.get(p, LongPressActions.ENTER, LongPressActions.DIR));
+        // 커서 이동 키(조이스틱 포함)는 고를 수 있다
+        LongPressActions.SPEC.set(p, LongPressActions.CURSOR, LongPressActions.DIR, SwipeAction.SPACE_SELECT);
+        assertEquals(SwipeAction.SPACE_SELECT, LongPressActions.SPEC.get(p, LongPressActions.CURSOR, LongPressActions.DIR));
+        assertTrue(java.util.Arrays.asList(LongPressActions.SPEC.choices(LongPressActions.CURSOR)).contains(SwipeAction.SPACE_SELECT));
+        assertFalse(java.util.Arrays.asList(LongPressActions.SPEC.choices(LongPressActions.ENTER)).contains(SwipeAction.SPACE_SELECT));
     }
 }

@@ -645,8 +645,11 @@ final class KeyEditPanel {
             card.addView(subGroup(slider(L.t("지우는 속도", "Delete speed"), Prefs.DELETE_WORD_REPEAT_RATE, prefs.deleteWordRepeatRate(),
                     Prefs.DELETE_WORD_REPEAT_RATE_MIN, Prefs.DELETE_WORD_REPEAT_RATE_MAX, 1, L.t("단어/초", "words/s"))));
         } else if (SwipeAction.SPACE_SELECT.equals(action)) {
+            boolean space = key != null && key.type == Key.SPACE;   // 커서 이동 키는 밀지 않고 떼면 아무것도 하지 않는다
             card.addView(note(L.t("길게 눌러 진동이 오면, 손을 떼지 않고 좌우로 밀어 글자 단위로, 위아래로 밀어 줄 단위로 글자를 "
-                    + "선택합니다. 밀지 않고 떼면 띄어쓰기가 입력됩니다.", "Long press until it vibrates, then without lifting, swipe left or right to select by character, or up and down to select by line. Lift without swiping to type a space.")));
+                    + "선택합니다." + (space ? " 밀지 않고 떼면 띄어쓰기가 입력됩니다." : ""),
+                    "Long press until it vibrates, then without lifting, swipe left or right to select by character, or up and down to select by line."
+                    + (space ? " Lift without swiping to type a space." : ""))));
         }
     }
 
