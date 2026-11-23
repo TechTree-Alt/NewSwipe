@@ -243,6 +243,38 @@ public final class Neu {
         c.drawBitmap(bm, null, rect, bitmapPaint);
     }
 
+    /**
+     * 네모가 아닌 모양 shape(면의 왼쪽 위가 (0, 0), 크기 w×h)의 솟아오른 그림자를 구워 돌려준다. 캐시하지 않으므로 부르는 쪽이
+     * 들고 있다가 {@link #drawShadowBitmap}으로 그린다 (조이스틱에 둥글게 파인 키처럼 모양이 키마다 다른 것).
+     */
+    public static Bitmap bakeShadow(Path shape, int w, int h, float offset, float blur, int light, int dark) {
+        float s = SCALE, o = offset * s, bl = blur * s, pad = spread(offset, blur) * s;
+        Bitmap bm = Bitmap.createBitmap((int) Math.ceil(w * s + pad * 2), (int) Math.ceil(h * s + pad * 2),
+                Bitmap.Config.ARGB_8888);
+        Canvas bc = new Canvas(bm);
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        if (bl > 0) p.setMaskFilter(new BlurMaskFilter(bl, BlurMaskFilter.Blur.NORMAL));
+        // 흐림 반지름이 캔버스 배율을 따르는지에 기대지 않도록, 캔버스 대신 모양을 줄여 옮긴다 (shadow()와 같은 크기의 흐림).
+        Path scaled = new Path();
+        android.graphics.Matrix m = new android.graphics.Matrix();
+        m.setScale(s, s);
+        m.postTranslate(pad - o, pad - o);
+        shape.transform(m, scaled);
+        p.setColor(light);   // 빛은 왼쪽 위에서: 왼쪽 위로 밝은 그림자, 오른쪽 아래로 어두운 그림자
+        bc.drawPath(scaled, p);
+        scaled.offset(o * 2, o * 2);
+        p.setColor(dark);
+        bc.drawPath(scaled, p);
+        return bm;
+    }
+
+    /** {@link #bakeShadow}로 구운 그림자를 (l, t, r, b) 면 둘레에 그린다. */
+    public static void drawShadowBitmap(Canvas c, Bitmap bm, float l, float t, float r, float b, float offset, float blur) {
+        float pad = spread(offset, blur);
+        rect.set(l - pad, t - pad, r + pad, b + pad);
+        c.drawBitmap(bm, null, rect, bitmapPaint);
+    }
+
     private static Bitmap shadow(int w, int h, float radius, float offset, float blur, int light, int dark) {
         int rq = Math.round(radius * 4), oq = Math.round(offset * 16) << 16 | Math.round(blur * 16);
         for (int i = 0; i < CACHE; i++) {
