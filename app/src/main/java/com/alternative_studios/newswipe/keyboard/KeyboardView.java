@@ -919,6 +919,7 @@ public final class KeyboardView extends View {
             fill.setColor(pressed ? theme.accent : theme.functionKey);
             c.drawCircle(cx, cy, r, fill);
         } else {
+            if (keyShadow && !pressed) drawCircleShadow(c, cx, cy, r);   // '키 그림자'를 켜면 다른 키처럼 아래에 그림자
             fill.setColor(pressed ? theme.keyPressed : theme.functionKey);
             c.drawCircle(cx, cy, r, fill);
         }
@@ -960,6 +961,21 @@ public final class KeyboardView extends View {
         c.clipRect(r.left - blur, r.centerY(), r.right + blur, r.bottom + dy + blur);
         // 옆으로 번진 부분이 키 가장자리 밖으로 보이지 않도록 좌우를 살짝 줄여 그린다.
         c.drawRoundRect(r.left + dp(0.8f), r.top + dy, r.right - dp(0.8f), r.bottom + dy, radius, radius, shadowPaint);
+        c.restore();
+    }
+
+    /** 조이스틱 아래쪽에만 보이는 그림자: {@link #drawShadow}와 같은 붓·세기·거리로, 둥근 면에 맞춰 그린다. */
+    private void drawCircleShadow(Canvas c, float cx, float cy, float r) {
+        if (shadowPaint == null) {
+            shadowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            shadowPaint.setMaskFilter(new android.graphics.BlurMaskFilter(dp(1.6f), android.graphics.BlurMaskFilter.Blur.NORMAL));
+        }
+        int max = theme.dark ? 190 : 130;
+        shadowPaint.setColor((Math.round(max * keyShadowStrength / 100f) << 24));
+        float dy = dp(1.3f), blur = dp(3);
+        c.save();
+        c.clipRect(cx - r - blur, cy, cx + r + blur, cy + r + dy + blur);   // 아래쪽 절반만 (위·옆으로 번지지 않게)
+        c.drawCircle(cx, cy + dy, r - dp(0.4f), shadowPaint);
         c.restore();
     }
 
