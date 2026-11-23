@@ -194,6 +194,8 @@ public final class KeyboardView extends View {
     private boolean hintLarge;
     /** 영어 글자 키에 그리는 두벌식 자모 힌트의 자리 (Prefs.HINT_POS_*). -1이면 그리지 않는다. */
     private int dubeolsikHintPosition = -1;
+    /** 두벌식 자모 힌트를 키 글자 색으로·더 크게 그리는지 (글자 키 힌트와 따로). */
+    private boolean dubeolsikKeyColor, dubeolsikLarge;
     /** 숫자 키(1~0)의 힌트만 숨긴다. */
     private boolean numberHintHidden;
     /** 키를 길게 눌러 문자를 입력하는 기능. 끄면 팝업도, 키 위의 작은 글자도 없다. */
@@ -677,7 +679,7 @@ public final class KeyboardView extends View {
     }
 
     /**
-     * 글자 키 힌트의 모양. 영어 글자 키의 두벌식 자모 힌트에도 똑같이 쓴다.
+     * 글자 키 힌트의 모양.
      * @param keyColor 흐린 힌트 색 대신 그 키의 글자 색으로 그린다.
      * @param large 보통보다 크게 그린다.
      */
@@ -685,6 +687,19 @@ public final class KeyboardView extends View {
         if (hintKeyColor != keyColor || hintLarge != large) {
             hintKeyColor = keyColor;
             hintLarge = large;
+            invalidate();
+        }
+    }
+
+    /**
+     * 두벌식 자모 힌트의 모양 (글자 키 힌트의 setPopupHintStyle과 따로).
+     * @param keyColor 흐린 힌트 색 대신 그 키의 글자 색으로 그린다.
+     * @param large 보통보다 크게 그린다.
+     */
+    public void setDubeolsikHintStyle(boolean keyColor, boolean large) {
+        if (dubeolsikKeyColor != keyColor || dubeolsikLarge != large) {
+            dubeolsikKeyColor = keyColor;
+            dubeolsikLarge = large;
             invalidate();
         }
     }
@@ -1371,10 +1386,9 @@ public final class KeyboardView extends View {
         }
         String jamo = dubeolsikHint(k);
         if (jamo != null) {
-            // 글자 키 힌트의 '글자 키 색과 동일하게'·'더 크게'를 두벌식 자모 힌트에도 똑같이 쓴다.
-            text.setColor(hintKeyColor ? fg : theme.hint);
+            text.setColor(dubeolsikKeyColor ? fg : theme.hint);
             text.setTypeface(Typeface.DEFAULT);
-            text.setTextSize(hintLarge ? Math.min(spHint * 1.35f, r.width() * 0.3f) : spHint);
+            text.setTextSize(dubeolsikLarge ? Math.min(spHint * 1.35f, r.width() * 0.3f) : spHint);
             int pos = dubeolsikHintPosition;
             if (showHints && pos == hintPosition) pos = (pos + 4) % 8;   // 길게 누르기 힌트와 겹치지 않게
             drawHintAt(c, jamo, pos, r, cx, cy);

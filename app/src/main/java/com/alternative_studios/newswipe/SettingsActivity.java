@@ -549,8 +549,8 @@ public final class SettingsActivity extends Activity {
             {KEYBOARD, L.t("기능키 높이", "Function key height"), L.t("맨 아래 줄 스페이스바 줄 높이 크기", "bottom row space bar row height size")},
             {KEYBOARD, L.t("키 누름 미리보기", "Key press popup"), L.t("말풍선 팝업 확대", "popup bubble enlarge preview")},
             {KEYBOARD, L.t("글자 키 힌트 표시", "Show letter key hints"), L.t("힌트 숨기기 없애기 보이기 길게 눌러 입력할 문자", "hint hide show long press characters")},
-            {KEYBOARD, L.t("글자 키 색과 동일하게", "Same color as key text"), L.t("글자 키 힌트 색 진하게 글자 색", "letter key hint color darker text color")},
-            {KEYBOARD, L.t("더 크게", "Larger"), L.t("글자 키 힌트 크기 크게 키우기", "letter key hint size bigger larger")},
+            {KEYBOARD, L.t("글자 키 색과 동일하게", "Same color as key text"), L.t("글자 키 힌트 두벌식 자모 힌트 색 진하게 글자 색", "letter key hint dubeolsik hint color darker text color")},
+            {KEYBOARD, L.t("더 크게", "Larger"), L.t("글자 키 힌트 두벌식 자모 힌트 크기 크게 키우기", "letter key hint dubeolsik hint size bigger larger")},
             {KEYBOARD, L.t("힌트 위치", "Hint position"), L.t("글자 키 힌트 자리 왼쪽 위 오른쪽 위 가운데 아래 중간", "letter key hint position top left top right center bottom middle")},
             {KEYBOARD, L.t("숫자 키 힌트 없애기", "Hide number key hints"), L.t("힌트 숨기기", "hint hide")},
             {KEYBOARD, L.t("스페이스바에 언어 이름 보이기", "Show language name on space bar"), L.t("스페이스 띄어쓰기 언어 표시 한국어 영어 일본어 중국어", "space label language korean english japanese chinese")},
@@ -2284,12 +2284,12 @@ public final class SettingsActivity extends Activity {
                     updateDubeolsikRow();
                     refreshLayoutPreview();
                 }));
-        View keyColor = toggle(L.t("글자 키 색과 동일하게", "Same color as key text"), L.t("힌트(두벌식 자모 힌트 포함)를 흐린 색 대신 키 글자와 같은 색으로 표시합니다.", "Draws hints (including Dubeolsik hints) in the same color as the key text instead of a faded color."),
+        View keyColor = toggle(L.t("글자 키 색과 동일하게", "Same color as key text"), L.t("힌트를 흐린 색 대신 키 글자와 같은 색으로 표시합니다.", "Draws hints in the same color as the key text instead of a faded color."),
                 prefs.popupHintKeyColor(), on -> {
                     prefs.raw().edit().putBoolean(Prefs.POPUP_HINT_KEY_COLOR, on).apply();
                     refreshLayoutPreview();
                 });
-        View large = toggle(L.t("더 크게", "Larger"), L.t("힌트 글자(두벌식 자모 힌트 포함)를 더 크게 표시합니다.", "Draws hint characters (including Dubeolsik hints) larger."),
+        View large = toggle(L.t("더 크게", "Larger"), L.t("힌트 글자를 더 크게 표시합니다.", "Draws hint characters larger."),
                 prefs.popupHintLarge(), on -> {
                     prefs.raw().edit().putBoolean(Prefs.POPUP_HINT_LARGE, on).apply();
                     refreshLayoutPreview();
@@ -2316,7 +2316,7 @@ public final class SettingsActivity extends Activity {
         if (dubeolsikRow != null) dubeolsikRow.set(Prefs.hintPositionNames()[prefs.dubeolsikHintPosition()]);
     }
 
-    /** '두벌식 자모 힌트 표시' 스위치와, 켜져 있을 때만 보이는 '힌트 위치' 줄 (영어 글자 키 창). */
+    /** '두벌식 자모 힌트 표시' 스위치와, 켜져 있을 때만 보이는 '힌트 위치'·'글자 키 색과 동일하게'·'더 크게' 줄 (영어 글자 키 창). */
     private View dubeolsikHintToggle() {
         SettingsWidgets.ValueRow[] pos = new SettingsWidgets.ValueRow[1];
         pos[0] = widgets.valueRow(L.t("힌트 위치", "Hint position"), Prefs.hintPositionNames()[prefs.dubeolsikHintPosition()], v ->
@@ -2326,7 +2326,17 @@ public final class SettingsActivity extends Activity {
                     refreshLayoutPreview();
                 }));
         dubeolsikRow = pos[0];
-        View position = subGroup(pos[0].view);
+        View keyColor = toggle(L.t("글자 키 색과 동일하게", "Same color as key text"), L.t("두벌식 자모 힌트를 흐린 색 대신 키 글자와 같은 색으로 표시합니다.", "Draws Dubeolsik hints in the same color as the key text instead of a faded color."),
+                prefs.dubeolsikHintKeyColor(), on -> {
+                    prefs.raw().edit().putBoolean(Prefs.DUBEOLSIK_HINT_KEY_COLOR, on).apply();
+                    refreshLayoutPreview();
+                });
+        View large = toggle(L.t("더 크게", "Larger"), L.t("두벌식 자모 힌트를 더 크게 표시합니다.", "Draws Dubeolsik hints larger."),
+                prefs.dubeolsikHintLarge(), on -> {
+                    prefs.raw().edit().putBoolean(Prefs.DUBEOLSIK_HINT_LARGE, on).apply();
+                    refreshLayoutPreview();
+                });
+        View position = subGroup(pos[0].view, keyColor, large);
         boolean shown = prefs.dubeolsikHint();
         position.setVisibility(shown ? View.VISIBLE : View.GONE);
         LinearLayout box = new LinearLayout(this);

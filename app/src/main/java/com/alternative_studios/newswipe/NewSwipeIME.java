@@ -1593,6 +1593,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         keyboard.setPopupHints(!prefs.popupHintHidden(), prefs.popupHintPosition());
         keyboard.setPopupHintStyle(prefs.popupHintKeyColor(), prefs.popupHintLarge());
         keyboard.setDubeolsikHint(prefs.dubeolsikHintShown());
+        keyboard.setDubeolsikHintStyle(prefs.dubeolsikHintKeyColor(), prefs.dubeolsikHintLarge());
         keyboard.setNumberHintHidden(prefs.numberHintHidden());
         keyboard.setRepeatChars(prefs.repeatChars());
         keyboard.setVowelSwipeHold(prefs.swipeDownVowel());   // ㅜ↓에서 멈추면 ㅠㅠㅠ

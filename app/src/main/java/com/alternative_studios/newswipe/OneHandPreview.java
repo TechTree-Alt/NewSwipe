@@ -100,6 +100,7 @@ final class OneHandPreview extends FrameLayout {
         keys.setPopupHints(!prefs.popupHintHidden(), prefs.popupHintPosition());
         keys.setPopupHintStyle(prefs.popupHintKeyColor(), prefs.popupHintLarge());
         keys.setDubeolsikHint(prefs.dubeolsikHintShown());
+        keys.setDubeolsikHintStyle(prefs.dubeolsikHintKeyColor(), prefs.dubeolsikHintLarge());
         keys.setNumberHintHidden(prefs.numberHintHidden());
         keys.setKeyGaps(Ui.dp(c, prefs.keyGapXDp()), Ui.dp(c, prefs.keyGapYDp()));
         keys.setInsets(0, 0, 0, 0);   // 한 손 모드는 키보드 전체 여백을 쓰지 않는다

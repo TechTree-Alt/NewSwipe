@@ -98,6 +98,7 @@ public final class BottomKeysEditorActivity extends Activity {
         preview.setPopupHints(!prefs.popupHintHidden(), prefs.popupHintPosition());
         preview.setPopupHintStyle(prefs.popupHintKeyColor(), prefs.popupHintLarge());
         preview.setDubeolsikHint(prefs.dubeolsikHintShown());
+        preview.setDubeolsikHintStyle(prefs.dubeolsikHintKeyColor(), prefs.dubeolsikHintLarge());
         preview.setNumberHintHidden(prefs.numberHintHidden());
         // 키보드와 같은 좌우 여백과 한 줄 높이(키보드 높이 설정 반영)를 쓴다.
         int p = Ui.dp(this, 4);
