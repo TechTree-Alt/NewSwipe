@@ -457,9 +457,11 @@ final class InlineAutofill {
         int h = Ui.dp(context, 14);
         // 누르면 배경이 눌린 키 색으로 바뀌도록 색 상태 목록으로 칠한다. 칩은 서비스가 그리는 화면이지만 배경 그림은
         // 이 목록으로 칠해져 오고, 칩 화면이 눌리면 그 상태(pressed)에 맞는 색이 된다.
+        // Metro: 도구 막대 버튼처럼 바탕 없는 네모, 누르는 동안 강조색(keyPressed)으로 채운다.
         ColorStateList fill = new ColorStateList(
-                new int[][]{{android.R.attr.state_pressed}, {}}, new int[]{theme.keyPressed, theme.key});
-        Icon background = Icon.createWithResource(context, R.drawable.autofill_chip).setTintList(fill);
+                new int[][]{{android.R.attr.state_pressed}, {}}, new int[]{theme.keyPressed, theme.metro ? 0 : theme.key});
+        Icon background = Icon.createWithResource(context, theme.metro ? R.drawable.autofill_chip_metro
+                : R.drawable.autofill_chip).setTintList(fill);
         Bundle v1 = new Bundle();
         v1.putBoolean("style_v1", true);
         v1.putBundle("chip_style", viewStyle(background, new int[]{h, 0, h, 0}));

@@ -48,6 +48,7 @@ public final class ExpressiveIconButton extends View {
         setContentDescription(description);
         setClickable(true);
         setFocusable(true);
+        if (NeuUi.on) NeuUi.unclip(this, NeuUi.SMALL);   // 솟아오른 그림자가 잘리지 않게
     }
 
     /** 켜짐 상태: 옅은 바탕에 강조색 아이콘. */
@@ -66,8 +67,73 @@ public final class ExpressiveIconButton extends View {
         invalidate();
     }
 
+    /**
+     * Metro UI 모드: Windows Phone 앱 바의 동그란 버튼. 평소에는 글자 색의 가는 동그라미 안에 글자 색 아이콘,
+     * 누르는 동안은 동그라미가 글자 색으로 채워지고 아이콘이 바탕색이 된다. 켜짐은 강조색으로 채운다.
+     */
+    private void drawMetro(Canvas canvas) {
+        float w = getWidth(), h = getHeight();
+        float dp = Ui.dp(getContext(), 1);
+        float r = Math.min(w, h) / 2f - 2 * dp;
+        float p = Math.max(0f, Math.min(1f, press));
+        boolean down = p > 0.5f;
+        paint.setStyle(Paint.Style.FILL);
+        int ink;
+        if (down) {
+            paint.setColor(Metro.fg);
+            canvas.drawCircle(w / 2f, h / 2f, r, paint);
+            ink = Metro.bg;
+        } else if (active) {
+            paint.setColor(accent);
+            canvas.drawCircle(w / 2f, h / 2f, r, paint);
+            ink = onAccent;
+        } else {
+            ink = Metro.fg;
+        }
+        if (!down && !active) {
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(2 * dp);
+            paint.setColor(Metro.fg);
+            canvas.drawCircle(w / 2f, h / 2f, r - dp, paint);
+            paint.setStyle(Paint.Style.FILL);
+        }
+        paint.setColor(ink);
+        Icons.draw(canvas, icon, w / 2f, h / 2f, Math.min(Math.min(w, h) * 0.46f, Ui.dp(getContext(), 22)), paint);
+    }
+
+    /**
+     * Neumorphism: 바탕색 동그라미가 솟아오르고 강조색 아이콘. 켜짐(setActive)과 누르는 동안은 안으로 들어간다.
+     * 강조색 면을 쓰지 않으므로 바탕과 같은 색에서 그림자로만 드러난다.
+     */
+    private void drawNeu(Canvas canvas) {
+        float w = getWidth(), h = getHeight();
+        float d = Math.min(w, h) - 2 * NeuUi.spread(getContext(), NeuUi.SMALL) * 0.5f;
+        float cx = w / 2f, cy = h / 2f;
+        rect.set(cx - d / 2f, cy - d / 2f, cx + d / 2f, cy + d / 2f);
+        boolean in = active || press > 0.5f;
+        if (in) {
+            NeuUi.drawInset(getContext(), canvas, rect, d / 2f, NeuUi.surface, paint);
+        } else {
+            NeuUi.drawRaised(getContext(), canvas, rect, d / 2f, NeuUi.SMALL);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(NeuUi.surface);
+            canvas.drawCircle(cx, cy, d / 2f, paint);
+        }
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor(accent);
+        Icons.draw(canvas, icon, cx, cy, Math.min(d * 0.5f, Ui.dp(getContext(), 22)), paint);
+    }
+
     @Override
     protected void onDraw(Canvas canvas) {
+        if (Metro.on) {
+            drawMetro(canvas);
+            return;
+        }
+        if (NeuUi.on) {
+            drawNeu(canvas);
+            return;
+        }
         float w = getWidth(), h = getHeight();
         float full = Math.min(w, h) / 2f;
         float p = Math.max(-0.3f, Math.min(1f, press));

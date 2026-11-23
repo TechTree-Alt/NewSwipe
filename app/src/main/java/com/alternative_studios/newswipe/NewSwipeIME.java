@@ -65,6 +65,7 @@ import com.alternative_studios.newswipe.ui.CandidateView;
 import com.alternative_studios.newswipe.ui.ClipChip;
 import com.alternative_studios.newswipe.ui.EditChip;
 import com.alternative_studios.newswipe.ui.IconButton;
+import com.alternative_studios.newswipe.ui.Metro;
 import com.alternative_studios.newswipe.ui.Neu;
 import com.alternative_studios.newswipe.ui.SwipeVertical;
 import com.alternative_studios.newswipe.ui.SwipeStrip;
@@ -1412,6 +1413,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         slot.setVisibility(View.GONE);
         clipChip = new ClipChip(this, theme.text, theme.hint, theme.key, theme.keyPressed);
         Neu.apply(clipChip, theme, theme.key, Ui.chipRadius(this));
+        if (theme.metro) clipChip.setPressedInk(theme.onAccent);   // 누르는 동안 강조색 바탕 위의 글자 색
         clipChip.setOnClickListener(v -> {
             feedback.onToolbar();
             pasteClipChip();
@@ -1456,6 +1458,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private EditChip editChip(int icon, String label, View.OnClickListener l) {
         EditChip t = new EditChip(this, icon, label, theme.text, theme.key, theme.keyPressed);
         Neu.apply(t, theme, theme.key, Ui.chipRadius(this));
+        if (theme.metro) t.setPressedInk(theme.onAccent);
         t.setOnClickListener(v -> {
             feedback.onToolbar();
             l.onClick(v);
@@ -2748,6 +2751,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     private void showPanel(int p) {
+        final int was = panel;
         dismissForgetDialog();   // 삭제 확인 줄이 다른 화면(검색창 등) 위에 남지 않게
         if (p != PANEL_SEARCH && panel == PANEL_SEARCH) {
             composer.reset();
@@ -2817,6 +2821,12 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             if (ei != null) keyboard.setEnterIcon(enterIcon(ei));
         }
         updatePanelSizes();
+        if (theme.metro && was != p) {
+            // Metro UI: 새로 연 창이 스위블(가로축으로 젖혀졌다 서는 움직임)로 들어온다.
+            View shown = p == PANEL_EMOJI ? emojiPanel : p == PANEL_CLIPBOARD ? clipPanel
+                    : p == PANEL_TEXT_EDIT ? textEditPanel : p == PANEL_KEYBOARD && was != PANEL_SEARCH ? keyboard : null;
+            if (shown != null) Metro.swivelIn(shown);
+        }
     }
 
     /** 도구 막대를 끈 상태로 자판을 보여 주는 중인지. 검색 패널은 도구 막대 자리에 검색창이 있어 해당하지 않는다. */
@@ -5232,6 +5242,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private TextView forgetButton(String label, int color, int fill, View.OnClickListener l) {
         TextView b = Ui.chipButton(this, label, color, fill, toolbarHeightPx());
         Neu.apply(b, theme, fill, Ui.chipRadius(this));
+        if (fill != theme.accent) Ui.metroBare(b, theme.keyPressed);   // Metro: 취소는 바탕 없이 글자만 (확인은 강조색 그대로)
         b.setOnClickListener(l);
         return b;
     }

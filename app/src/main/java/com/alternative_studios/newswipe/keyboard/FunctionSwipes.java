@@ -13,7 +13,7 @@ import java.util.function.BiFunction;
  */
 public final class FunctionSwipes {
     public static final int MODE = 0, GLOBE = 1, SPACE = 2, ENTER = 3, DELETE = 4;
-    /** 기능키 순서·유무 사용자화에서 더할 수 있는 키 (켰을 때만 편집 화면에 보인다). */
+    /** 기능키 순서·유무 사용자화에서 더할 수 있는 키. */
     public static final int EMOJI_KEY = 5, CLIPBOARD = 6, CURSOR = 7, VOICE = 8;
     /** 편집 화면에 보이는 이름 (이름과 키 모양). */
     private static String[] labels() {
@@ -34,10 +34,6 @@ public final class FunctionSwipes {
             L.t("음성 입력", "Voice input"),
     };
     }
-    /** 칸마다 맨 아래 줄 키의 ID (BottomKeys). 지우기 키는 맨 아래 줄 키가 아니라 null. 편집 화면에 보일지 정할 때 쓴다. */
-    private static final String[] BOTTOM_IDS = {BottomKeys.MODE, BottomKeys.GLOBE, BottomKeys.SPACE, BottomKeys.ENTER, null,
-            BottomKeys.EMOJI, BottomKeys.CLIPBOARD, BottomKeys.CURSOR, BottomKeys.VOICE};
-
     /** 처음부터 '커서 자유 이동'이 기본인 칸: 스페이스바와 커서 이동 키. */
     static boolean cursorSlot(int slot) {
         return slot == SPACE || slot == CURSOR;
@@ -64,26 +60,6 @@ public final class FunctionSwipes {
             }
             if (SwipeAction.globeUpOnly(stored) && (slot != GLOBE || dir != Key.SWIPE_UP)) return SwipeAction.NONE;
             return stored;
-        }
-
-        /**
-         * 켠 기능키의 칸만 편집 화면에 보인다 (기능키 순서·유무 사용자화에서 끈 키는 감춘다). 기호 키·스페이스바·엔터 키·⌫는
-         * 맨 아래 줄에서 꺼도 숫자 패드(숫자 입력란 등)에 늘 있어 그 설정이 쓰이므로 늘 보인다.
-         */
-        @Override
-        public boolean shown(Prefs prefs, int slot) {
-            if (prefs == null || slot == MODE || slot == SPACE || slot == ENTER || slot == DELETE) return true;
-            return prefs.bottomKeyUsed(BOTTOM_IDS[slot]);
-        }
-
-        @Override
-        public String title() {
-            return L.t("기능키 밀어서 기능 사용자화", "Customize function key swipes");
-        }
-
-        @Override
-        public String note() {
-            return L.t("기능키를 각 방향으로 밀 때 실행할 기능을 고릅니다.", "Choose what happens when you swipe a function key in each direction.");
         }
 
         @Override

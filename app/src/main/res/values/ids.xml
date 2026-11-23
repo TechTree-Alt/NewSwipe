@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Metro UI: 글자 크기를 바꾼 글자에 원래(설정 검색이 기대하는) 글자 크기(px)를 남겨 둔다 (ui.Metro.searchPx). -->
+    <item name="metro_search_px" type="id" />
+    <!-- Neumorphism: 그림자가 잘리지 않게 부모의 자르기를 끄는 리스너를 이미 붙였는지 (같은 뷰에 거듭 붙지 않게, ui.NeuUi.unclip). -->
+    <item name="neu_unclip" type="id" />
+</resources>

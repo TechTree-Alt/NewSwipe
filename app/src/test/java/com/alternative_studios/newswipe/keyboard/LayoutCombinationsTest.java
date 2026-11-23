@@ -1,16 +1,10 @@
 package com.alternative_studios.newswipe.keyboard;
 
-import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 
 import android.content.SharedPreferences;
 
 import com.alternative_studios.newswipe.Prefs;
-import com.alternative_studios.newswipe.hangul.HangulComposer;
 
 import org.junit.Test;
 

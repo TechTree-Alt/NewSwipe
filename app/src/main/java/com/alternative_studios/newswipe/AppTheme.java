@@ -5,6 +5,10 @@ import android.content.res.Configuration;
 import android.graphics.Color;
 import android.os.Build;
 
+import com.alternative_studios.newswipe.ui.Metro;
+import com.alternative_studios.newswipe.ui.NeuUi;
+import com.alternative_studios.newswipe.ui.Ui;
+
 /**
  * 화면 모드(시스템/라이트/다크)와 강조 색(시스템/지정)을 풀어서 실제 색으로 돌려준다.
  * 설정 화면과 키보드가 같은 규칙을 쓴다.
@@ -13,6 +17,10 @@ public final class AppTheme {
     public static final int DEFAULT_ACCENT = 0xFF2F62E8;
 
     public final boolean dark;
+    /** Metro UI 모드 (실험적): 순수한 검정·흰색 바탕, 크롬 색 입력란, 옅은 회색 글자 (ui.Metro). */
+    public final boolean metro;
+    /** Neumorphism 모드 (Metro가 아닐 때만): 바탕과 카드가 같은 색이고, 그림자로 솟아오르거나 들어간 모양을 그린다 (ui.NeuUi). */
+    public final boolean neu;
     public final int bg, card, text, hint, accent, onAccent;
     /**
      * 키보드의 강조색 키에 쓰는 색. 설정 화면의 {@link #accent}는 바탕에 묻히지 않게 보정될 수 있지만,
@@ -20,12 +28,28 @@ public final class AppTheme {
      */
     public final int keyAccent, keyOnAccent;
 
-    private AppTheme(boolean dark, int accent, int onAccent, int keyAccent, int keyOnAccent) {
+    private AppTheme(boolean dark, boolean metro, boolean neu, int accent, int onAccent, int keyAccent, int keyOnAccent) {
         this.dark = dark;
+        this.metro = metro;
+        this.neu = neu;
         this.accent = accent;
         this.onAccent = onAccent;
         this.keyAccent = keyAccent;
         this.keyOnAccent = keyOnAccent;
+        if (metro) {
+            bg = dark ? Metro.DARK_BG : Metro.LIGHT_BG;
+            card = dark ? Metro.DARK_CHROME : Metro.LIGHT_CHROME;
+            text = dark ? Metro.DARK_FG : Metro.LIGHT_FG;
+            hint = Metro.SUBTLE;
+            return;
+        }
+        if (neu) {
+            // 바탕과 면이 같은 색 (면은 그림자로 드러난다). 글자는 보통 모드와 같다.
+            bg = card = dark ? NeuUi.DARK_SURFACE : NeuUi.LIGHT_SURFACE;
+            text = dark ? 0xFFECECEF : 0xFF1D1E21;
+            hint = dark ? 0xFF9A9CA3 : 0xFF656A73;
+            return;
+        }
         bg = dark ? 0xFF121316 : 0xFFF4F5F8;
         card = dark ? 0xFF1E1F23 : 0xFFFFFFFF;
         text = dark ? 0xFFECECEF : 0xFF1D1E21;
@@ -35,9 +59,24 @@ public final class AppTheme {
     public static AppTheme of(Context context) {
         Prefs prefs = new Prefs(context);
         boolean dark = isDark(context, prefs);
+        boolean metro = prefs.metro();
         int key = keyAccent(context, prefs, dark);
         int shown = accent(context, prefs, dark);
-        return new AppTheme(dark, shown, onAccent(context, prefs, dark, shown), key, onAccent(context, prefs, dark, key));
+        int onShown = metro ? metroInk(shown, onAccent(context, prefs, dark, shown)) : onAccent(context, prefs, dark, shown);
+        // 설정 화면과 키보드가 함께 쓰는 Metro 상태·색 (Ui.round 등 Context 없이 부르는 곳이 읽는다).
+        Metro.set(metro, dark, shown, onShown);
+        boolean neu = !metro && prefs.neumorphism();
+        NeuUi.set(neu, dark);
+        int onKey = onAccent(context, prefs, dark, key);
+        return new AppTheme(dark, metro, neu, shown, onShown, key, metro ? metroInk(key, onKey) : onKey);
+    }
+
+    /**
+     * Metro: Windows Phone은 강조색 타일 위의 글자를 늘 흰색으로 썼다. 노랑·연두처럼 아주 밝은 색(상대 휘도 0.5 이상)만
+     * 원래 고른 짙은 글자를 둔다.
+     */
+    private static int metroInk(int accent, int fallback) {
+        return luminance(accent) < 0.5 ? 0xFFFFFFFF : fallback;
     }
 
     /** 설정 화면의 강조 색이 시인성 때문에 고른 색(키보드에 쓰는 색)과 다르게 보정되었는지. */
@@ -148,43 +187,29 @@ public final class AppTheme {
                 : android.R.style.Theme_DeviceDefault_Light_Dialog_Alert);
     }
 
-    /** 앱의 강조 색을 따르는 대화상자 빌더 (activity에서 쓴다). 시스템 강조 색 대신 설정의 강조 색이 쓰인다. */
-    public static android.app.AlertDialog.Builder dialogBuilder(Context activity) {
+    /**
+     * 앱의 대화상자 빌더 (activity에서 쓴다). 시스템 AlertDialog 대신 앱이 직접 그리는 {@link AppDialog}라서 설정의 강조 색을 따르고,
+     * Metro UI 모드에서는 Windows Phone의 메시지 상자 모양이 된다. 쓰는 법은 AlertDialog.Builder와 같다.
+     */
+    public static AppDialog.Builder dialogBuilder(Context activity) {
         return accentBuilder(dialogContext(activity));
     }
 
     /** 이미 {@link #dialogContext}로 감싼 컨텍스트로 만드는 {@link #dialogBuilder}. */
-    public static android.app.AlertDialog.Builder accentBuilder(Context themed) {
-        return new AccentBuilder(themed);
+    public static AppDialog.Builder accentBuilder(Context themed) {
+        return new AppDialog.Builder(themed);
     }
 
-    /**
-     * 시스템 대화상자는 기기의 강조 색을 쓰므로, 설정에서 강조 색을 직접 골랐으면 키보드·설정 화면과 색이 달라 보인다.
-     * 대화상자가 뜰 때 버튼 글자, 라디오·체크 표시, 입력란의 밑줄과 커서를 앱의 강조 색으로 칠한다.
-     */
-    private static final class AccentBuilder extends android.app.AlertDialog.Builder {
-        private final int accent, hint;
+    /** 대화상자 안의 입력란 밑줄·커서, 라디오·체크 표시를 앱의 강조 색으로 칠한다 (AppDialog가 뜰 때 부른다). */
+    static void tintViews(android.view.View v, int accent, int hint) {
+        tint(v, accent, hint);
+    }
 
-        AccentBuilder(Context themed) {
-            super(themed);
-            AppTheme t = AppTheme.of(themed);
-            accent = t.accent;
-            hint = t.hint;
-        }
-
-        @Override
-        public android.app.AlertDialog create() {
-            android.app.AlertDialog d = super.create();
-            if (d.getWindow() != null) {
-                d.getWindow().getDecorView().addOnAttachStateChangeListener(new android.view.View.OnAttachStateChangeListener() {
-                    @Override public void onViewAttachedToWindow(android.view.View v) {
-                        v.post(() -> tint(v, accent, hint));   // 내용이 다 붙은 뒤에 칠한다
-                    }
-                    @Override public void onViewDetachedFromWindow(android.view.View v) { }
-                });
-            }
-            return d;
-        }
+    /** 시스템 목록 칸의 표시가 라디오(한 개 고르기)인지: 목록이 한 개만 고르게 되어 있으면 라디오다. */
+    private static boolean isRadioMark(android.widget.CheckedTextView v) {
+        android.view.ViewParent p = v.getParent();
+        return p instanceof android.widget.AbsListView
+                && ((android.widget.AbsListView) p).getChoiceMode() == android.widget.AbsListView.CHOICE_MODE_SINGLE;
     }
 
     private static void tint(android.view.View v, int accent, int hint) {
@@ -195,13 +220,41 @@ public final class AppTheme {
         }
         android.content.res.ColorStateList states = new android.content.res.ColorStateList(
                 new int[][]{{android.R.attr.state_checked}, {}}, new int[]{accent, hint});
-        if (v instanceof android.widget.CheckedTextView) {
+        if (NeuUi.on && v instanceof android.widget.CheckedTextView) {
+            android.widget.CheckedTextView ct = (android.widget.CheckedTextView) v;
+            android.graphics.drawable.Drawable was = ct.getCheckMarkDrawable();
+            if (was != null && !(was instanceof NeuUi.Check)) {   // 표시가 없는 칸은 그대로, 이미 바꾼 칸은 다시 만들지 않는다
+                ct.setCheckMarkTintList(null);
+                ct.setCheckMarkDrawable(new NeuUi.Check(v.getContext(), isRadioMark(ct), accent));
+            }
+        } else if (NeuUi.on && (v instanceof android.widget.CheckBox || v instanceof android.widget.RadioButton)) {
+            // Neumorphism: 시스템 체크박스·라디오 대신 안으로 들어간 홈 + 강조색 표시
+            android.widget.CompoundButton cb = (android.widget.CompoundButton) v;
+            cb.setButtonTintList(null);
+            if (!(cb.getButtonDrawable() instanceof NeuUi.Check)) cb.setButtonDrawable(new NeuUi.Check(v.getContext(), v instanceof android.widget.RadioButton, accent));
+        } else if (v instanceof android.widget.CheckedTextView) {
             ((android.widget.CheckedTextView) v).setCheckMarkTintList(states);
         } else if (v instanceof android.widget.CompoundButton) {
             ((android.widget.CompoundButton) v).setButtonTintList(states);
         } else if (v instanceof android.widget.EditText) {
             android.widget.EditText e = (android.widget.EditText) v;
             e.setBackgroundTintList(android.content.res.ColorStateList.valueOf(accent));
+            if (Metro.on && !(e.getBackground() instanceof android.graphics.drawable.GradientDrawable)) {
+                // Windows Phone의 TextBox: 평소에는 옅은 회색 네모, 입력 중에는 흰 바탕에 강조색 테두리, 글자는 늘 검정.
+                // 부른 쪽이 직접 칠한 바탕(GradientDrawable)은 그대로 둔다.
+                android.content.Context c = e.getContext();
+                android.graphics.drawable.GradientDrawable idle = Ui.round(0xFFBFBFBF, 0);
+                android.graphics.drawable.GradientDrawable focus = Ui.round(0xFFFFFFFF, 0);
+                focus.setStroke(Ui.dp(c, 2), accent);
+                android.graphics.drawable.StateListDrawable bg = new android.graphics.drawable.StateListDrawable();
+                bg.addState(new int[]{android.R.attr.state_focused}, focus);
+                bg.addState(new int[0], idle);
+                e.setBackgroundTintList(null);
+                e.setBackground(bg);
+                e.setTextColor(0xFF000000);
+                e.setHintTextColor(0xFF666666);
+                e.setPadding(Ui.dp(c, 10), Ui.dp(c, 9), Ui.dp(c, 10), Ui.dp(c, 9));
+            }
             e.setHighlightColor((accent & 0x00FFFFFF) | 0x55000000);
             if (Build.VERSION.SDK_INT >= 29) {
                 android.graphics.drawable.Drawable cursor = e.getTextCursorDrawable();
@@ -230,7 +283,7 @@ public final class AppTheme {
     /** 활동이 시작할 때 기준 설정이 바뀌었는지 비교하는 값. */
     public static String signature(Context context) {
         Prefs p = new Prefs(context);
-        return p.themeMode() + "/" + p.accentMode() + "/" + p.accentColor();
+        return p.themeMode() + "/" + p.accentMode() + "/" + p.accentColor() + "/" + p.metro() + "/" + p.neumorphism();
     }
 
     /** 활동의 리소스(night 값)도 고른 화면 모드를 따르도록 기준 설정을 덮어쓴다. attachBaseContext에서 쓴다. */

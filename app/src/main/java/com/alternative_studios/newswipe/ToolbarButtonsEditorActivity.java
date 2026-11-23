@@ -13,6 +13,8 @@ import android.widget.TextView;
 
 import com.alternative_studios.newswipe.keyboard.KeyboardTheme;
 import com.alternative_studios.newswipe.keyboard.ToolbarButtons;
+import com.alternative_studios.newswipe.ui.Metro;
+import com.alternative_studios.newswipe.ui.NeuUi;
 import com.alternative_studios.newswipe.ui.ExpressiveSwitch;
 import com.alternative_studios.newswipe.ui.IconButton;
 import com.alternative_studios.newswipe.ui.Ui;
@@ -54,6 +56,7 @@ public final class ToolbarButtonsEditorActivity extends Activity {
         onAccentColor = colors.onAccent;
 
         ScrollView scroll = new ScrollView(this);
+        scroll.setVerticalScrollBarEnabled(!com.alternative_studios.newswipe.ui.Metro.on);   // Metro에는 스크롤 막대가 없다
         scroll.setBackgroundColor(bg);
         scroll.setFillViewport(true);
         list = new LinearLayout(this);
@@ -83,6 +86,7 @@ public final class ToolbarButtonsEditorActivity extends Activity {
         list.removeAllViews();
         TextView note = text(L.t("버튼을 켜고 끄거나, 오른쪽의 ≡를 잡고 끌어 순서를 바꿉니다.", "Turn buttons on or off, or drag ≡ on the right to reorder."), 13, hintColor);
         note.setPadding(Ui.dp(this, 4), 0, 0, Ui.dp(this, 4));
+        if (com.alternative_studios.newswipe.ui.Metro.on) note.setPadding(0, 0, 0, Ui.dp(this, 4));   // Metro: 다른 줄과 같은 왼쪽 선
         list.addView(note);
 
         // 미리보기: 키보드 색으로 그린 도구 막대. 눌러도 반응하지 않는다.
@@ -101,12 +105,17 @@ public final class ToolbarButtonsEditorActivity extends Activity {
         keyList = keys;
         keys.setOrientation(LinearLayout.VERTICAL);
         keys.setBackground(Ui.round(card, Ui.dp(this, 16)));
+        if (NeuUi.on) NeuUi.card(keys, Ui.dp(this, 16));   // Neumorphism: 솟아오른 카드
         // 줄을 카드 안쪽으로 조금 들여 놓아, 끌어 올린 줄의 둥근 모서리와 그림자가 카드 가장자리에서 잘리지 않게 한다.
         int inset = Ui.dp(this, 6);
         keys.setPadding(inset, Ui.dp(this, 4), inset, Ui.dp(this, 4));
         keys.setClipChildren(false);
         keys.setClipToPadding(false);
         list.setClipChildren(false);
+        if (Metro.on) {   // Metro에는 카드가 없다: 줄이 바탕 위에 바로 놓인다 (입력 언어 화면과 같다)
+            keys.setBackground(null);
+            keys.setPadding(0, 0, 0, 0);
+        }
         LinearLayout.LayoutParams klp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         klp.topMargin = Ui.dp(this, 12);
@@ -142,6 +151,14 @@ public final class ToolbarButtonsEditorActivity extends Activity {
         t.setPadding(Ui.dp(this, 10), Ui.dp(this, divided ? 10 : 8), Ui.dp(this, 10), Ui.dp(this, 4));
         box.addView(t);
         box.setBackgroundColor(card);   // 끌던 줄이 지나갈 때 아래 줄이 비치지 않게
+        if (Metro.on) {
+            // Metro: 구분선·띠 없이 다른 소제목처럼 강조색의 가는 소문자
+            if (divided) box.removeViewAt(0);
+            box.setBackgroundColor(bg);
+            t.setText(Metro.lower(label));
+            Metro.text(t, 22, Metro.light(), 13);
+            t.setPadding(0, Ui.dp(this, divided ? 18 : 6), 0, Ui.dp(this, 2));
+        }
         return box;
     }
 
@@ -154,9 +171,12 @@ public final class ToolbarButtonsEditorActivity extends Activity {
         row.setBackground(Ui.round(card, Ui.dp(this, 12)));   // 끌어 올렸을 때 아래 줄이 비치지 않게
         LinearLayout texts = new LinearLayout(this);
         texts.setOrientation(LinearLayout.VERTICAL);
-        texts.addView(text(ToolbarButtons.label(id), 16, textColor));
+        TextView name = text(ToolbarButtons.label(id), 16, textColor);
+        texts.addView(name);
         String hint = ToolbarButtons.hint(id);
-        if (hint != null) texts.addView(text(hint, 12, hintColor));
+        TextView hintView = hint == null ? null : text(hint, 12, hintColor);
+        if (hintView != null) texts.addView(hintView);
+        metroRow(row, name, hintView);
         row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
         ExpressiveSwitch sw = new ExpressiveSwitch(this, accentColor, onAccentColor, hintColor, card);
@@ -240,7 +260,7 @@ public final class ToolbarButtonsEditorActivity extends Activity {
                 dragFrom = dragTo = dragRows.indexOf(row);
                 dragDownY = ev.getRawY();
                 keyList.getParent().requestDisallowInterceptTouchEvent(true);   // 끄는 동안 화면이 스크롤되지 않게
-                row.animate().translationZ(Ui.dp(this, 8)).setDuration(120).start();
+                row.animate().translationZ(com.alternative_studios.newswipe.ui.Metro.on ? 0 : Ui.dp(this, 8)).setDuration(120).start();   // Metro에는 그림자가 없다
                 row.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
                 return true;
             case android.view.MotionEvent.ACTION_MOVE: {
@@ -364,6 +384,15 @@ public final class ToolbarButtonsEditorActivity extends Activity {
     /** 뒤로 가기: 검색창이나 키보드 시험 입력창이 열려 있으면 그것부터 닫고, 그다음에 이전 화면으로 간다 (Android 12 이하). */
     @Override
     public void onBackPressed() {
-        if (!SettingsFrame.consumeBack(this)) super.onBackPressed();
+        if (!SettingsFrame.consumeBack(this) && !SettingsFrame.metroBack(this)) super.onBackPressed();
     }
+    /** Metro: 줄을 다른 설정 줄처럼 (크고 가는 이름, 카드 없이 바탕색, 왼쪽 선 맞춤). 끌어 올려도 아래 줄이 비치지 않게 바탕을 칠한다. */
+    private void metroRow(LinearLayout row, TextView name, TextView hint) {
+        if (!Metro.on) return;
+        row.setPadding(0, row.getPaddingTop(), row.getPaddingRight(), row.getPaddingBottom());
+        row.setBackground(Ui.round(bg, 0));
+        Metro.text(name, 20, Metro.light(), 16);
+        if (hint != null) Metro.text(hint, 14, Metro.regular(), 12);
+    }
+
 }

@@ -46,16 +46,6 @@ public final class KeyboardSwipes {
         }
 
         @Override
-        public String title() {
-            return L.t("키보드 밀기 사용자화", "Customize keyboard swipes");
-        }
-
-        @Override
-        public String note() {
-            return L.t("자판을 한 손가락·두 손가락으로 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 고릅니다.", "Choose what happens when you swipe the keyboard up, down, left or right with one or two fingers.");
-        }
-
-        @Override
         public String cardTitle(int slot) {
             return labels()[slot];
         }

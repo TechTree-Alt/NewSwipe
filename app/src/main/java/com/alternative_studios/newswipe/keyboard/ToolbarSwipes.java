@@ -43,16 +43,6 @@ public final class ToolbarSwipes {
             return SwipeAction.NONE;
         }
 
-        /**
-         * 켠 버튼의 칸만 편집 화면에 보인다 ('도구 막대 버튼 사용자화'에서 끈 버튼, 도구 막대를 꺼서 버튼이 보이지 않을 때는 감춘다).
-         * 도구 막대 자체는 꺼도 추천 단어가 뜰 때 보여 밀 수 있으므로 늘 보인다. 칸 이름이 버튼 ID다 (ToolbarButtons).
-         */
-        @Override
-        public boolean shown(Prefs prefs, int slot) {
-            if (prefs == null || slot == BAR) return true;
-            return prefs.toolShown(slotName(slot)) && (prefs.toolbar() || prefs.hwToolbar());
-        }
-
         /** 모르는 값과 '문자 키를 트랙패드처럼' 쓰는 커서 자유 이동(문자 키 전용)은 기본값으로 본다. */
         @Override
         public String resolve(String stored, int slot, int dir) {
@@ -61,17 +51,6 @@ public final class ToolbarSwipes {
                 return defaultAction(slot, dir);
             }
             return stored;
-        }
-
-        @Override
-        public String title() {
-            return L.t("도구 막대 밀어서 기능 사용자화", "Customize toolbar swipes");
-        }
-
-        @Override
-        public String note() {
-            return L.t("도구 막대를 밀거나 도구 막대의 버튼을 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 고릅니다. "
-                    + "'없음'으로 둔 방향으로 밀면 도구 막대를 그 방향으로 민 것으로 봅니다.", "Choose what happens when you swipe the toolbar, or swipe a toolbar button up, down, left or right. Swiping a button in a direction set to 'None' counts as swiping the toolbar that way.");
         }
 
         @Override
@@ -124,22 +103,6 @@ public final class ToolbarSwipes {
         @Override
         protected String dirKey(int slot, int dir) {
             return "long";
-        }
-
-        @Override
-        public String title() {
-            return L.t("도구 막대 길게 누르기", "Toolbar long press");
-        }
-
-        @Override
-        public String note() {
-            return L.t("도구 막대의 빈 공간이나 도구 막대 버튼을 길게 누를 때 실행할 기능을 고릅니다.", "Choose what happens when you long press an empty part of the toolbar or a toolbar button.");
-        }
-
-        /** 켠 버튼의 칸만 보인다 (밀기와 같다). */
-        @Override
-        public boolean shown(Prefs prefs, int slot) {
-            return SPEC.shown(prefs, slot);
         }
 
         @Override

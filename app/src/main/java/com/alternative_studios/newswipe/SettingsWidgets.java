@@ -8,9 +8,11 @@ import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.alternative_studios.newswipe.ui.NeuUi;
 import com.alternative_studios.newswipe.ui.Chevron;
 import com.alternative_studios.newswipe.ui.ExpressiveSlider;
 import com.alternative_studios.newswipe.ui.ExpressiveSwitch;
+import com.alternative_studios.newswipe.ui.Metro;
 import com.alternative_studios.newswipe.ui.Ui;
 
 import java.util.function.Consumer;
@@ -20,6 +22,8 @@ import java.util.function.IntConsumer;
  * 설정 화면의 공통 조각: 소제목과 카드, 스위치 줄, 슬라이더, 하위 묶음, 설명, 버튼.
  * 설정 화면(SettingsActivity)과 키보드 사용자화의 키 창(KeyEditPanel)이 같은 모양을 쓰도록 한곳에서 만든다.
  * 글자 크기(항목 16sp, 소제목 14sp 강조색, 설명 13sp)는 설정 검색이 화면 글자를 모을 때 기대하는 값이라 바꾸지 않는다.
+ * Metro UI 모드에서는 글자를 크고 가늘게 바꾸되 원래 크기를 글자에 남겨 검색이 그대로 찾는다 (Metro.text).
+ * 카드는 바탕 없이 사라지고, 소제목은 강조색 소문자, 버튼은 테두리만 있는 네모가 된다.
  */
 final class SettingsWidgets {
     /** 항목 이름 글자와 그 항목 전체 줄을 알려 받는다 (설정 검색 결과로 들어왔을 때 그 줄을 깜빡이려고). 없으면 null. */
@@ -106,6 +110,7 @@ final class SettingsWidgets {
     /** 설명 글 (작고 옅은 글자). */
     TextView note(String s) {
         TextView t = text(s, 13, hint);
+        if (Metro.on) Metro.text(t, 14, Metro.regular(), 13);
         t.setLineSpacing(Ui.dp(c, 3), 1f);
         t.setPadding(0, Ui.dp(c, 6), 0, Ui.dp(c, 6));
         return t;
@@ -115,6 +120,12 @@ final class SettingsWidgets {
     LinearLayout section(LinearLayout parent, String name) {
         TextView h = text(name, 14, accent);
         h.setPadding(Ui.dp(c, 4), Ui.dp(c, 20), 0, Ui.dp(c, 8));
+        if (Metro.on) {
+            // Windows Phone의 묶음 머리글: 강조색의 크고 가는 소문자. 카드가 없으므로 줄과 같은 왼쪽 선에 맞춘다.
+            h.setText(Metro.lower(name));
+            Metro.text(h, 24, Metro.light(), 14);
+            h.setPadding(0, Ui.dp(c, 24), 0, Ui.dp(c, 2));
+        }
         parent.addView(h);
         LinearLayout box = card(parent);
         ((LinearLayout.LayoutParams) box.getLayoutParams()).topMargin = 0;
@@ -128,6 +139,12 @@ final class SettingsWidgets {
         box.setBackground(Ui.round(card, Ui.dp(c, 16)));
         int p = Ui.dp(c, 16);
         box.setPadding(p, Ui.dp(c, 8), p, Ui.dp(c, 8));
+        if (NeuUi.on) NeuUi.card(box, Ui.dp(c, 20));   // Neumorphism: 바탕에서 부드럽게 솟아오른 카드
+        if (Metro.on) {
+            // Metro에는 카드가 없다: 항목이 검정·흰 바탕 위에 바로 놓인다.
+            box.setBackground(null);
+            box.setPadding(0, 0, 0, Ui.dp(c, 4));
+        }
         LinearLayout.LayoutParams lp = matchWrap();
         lp.topMargin = Ui.dp(c, 8);
         parent.addView(box, lp);
@@ -142,9 +159,14 @@ final class SettingsWidgets {
         LinearLayout texts = new LinearLayout(c);
         texts.setOrientation(LinearLayout.VERTICAL);
         TextView t = text(label, 16, text);
+        if (Metro.on) Metro.text(t, 20, Metro.light(), 16);
         mark(t, row);
         texts.addView(t);
-        if (desc != null) texts.addView(text(desc, 13, hint));
+        if (desc != null) {
+            TextView d = text(desc, 13, hint);
+            if (Metro.on) Metro.text(d, 14, Metro.regular(), 13);
+            texts.addView(d);
+        }
         row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         ExpressiveSwitch sw = new ExpressiveSwitch(c, accent, onAccent, hint, card);
         sw.setCheckedImmediately(value);
@@ -238,9 +260,11 @@ final class SettingsWidgets {
         box.setPadding(0, Ui.dp(c, 8), 0, Ui.dp(c, 4));
         LinearLayout top = new LinearLayout(c);
         TextView t = text(label, 16, text);
+        if (Metro.on) Metro.text(t, 20, Metro.light(), 16);
         mark(t, box);
         top.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         TextView v = text(value + unit, 14, hint);
+        if (Metro.on) Metro.text(v, 18, Metro.light(), 14);
         top.addView(v);
         box.addView(top);
         ExpressiveSlider bar = new ExpressiveSlider(c, accent);
@@ -261,9 +285,11 @@ final class SettingsWidgets {
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(0, Ui.dp(c, 12), 0, Ui.dp(c, 12));
         TextView t = text(label, 16, text);
+        if (Metro.on) Metro.text(t, 20, Metro.light(), 16);
         mark(t, row);
         row.addView(t, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         TextView v = text(value, 16, accent);
+        if (Metro.on) Metro.text(v, 18, Metro.light(), 16);
         v.setGravity(Gravity.END);
         v.setMaxLines(2);
         v.setEllipsize(android.text.TextUtils.TruncateAt.END);
@@ -276,7 +302,37 @@ final class SettingsWidgets {
         row.setClickable(true);
         row.setFocusable(true);
         row.setOnClickListener(l);
+        Metro.tilt(row);
         return new ValueRow(row, v);
+    }
+
+    /**
+     * Metro: 직접 만든 실행 버튼 줄을 다른 Metro 버튼처럼 바꾼다 (글자 색 테두리의 네모, 누르는 동안 강조색으로 채워지고 글자는 그 위의 색).
+     * Metro 모드가 아니면 아무것도 하지 않는다.
+     */
+    static void metroButton(View row) {
+        if (!Metro.on) return;
+        Context c = row.getContext();
+        AppTheme t = AppTheme.of(c);
+        android.graphics.drawable.GradientDrawable idle = Ui.round(0, 0);
+        idle.setStroke(Ui.dp(c, 2), t.text);
+        android.graphics.drawable.StateListDrawable bg = new android.graphics.drawable.StateListDrawable();
+        bg.addState(new int[]{android.R.attr.state_pressed}, Ui.round(t.accent, 0));
+        bg.addState(new int[0], idle);
+        row.setBackground(bg);
+        metroInk(row, new android.content.res.ColorStateList(new int[][]{{android.R.attr.state_pressed}, {}},
+                new int[]{t.onAccent, t.text}), true);
+        Metro.tilt(row);
+    }
+
+    private static void metroInk(View v, android.content.res.ColorStateList ink, boolean root) {
+        if (!root) v.setDuplicateParentStateEnabled(true);
+        if (v instanceof TextView) {
+            ((TextView) v).setTextColor(ink);
+        } else if (v instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) metroInk(g.getChildAt(i), ink, false);
+        }
     }
 
     /** 위 설정의 하위 설정들을 묶는다: 왼쪽 들여쓰기와 세로 안내선으로 위계를 보여 준다. */
@@ -314,15 +370,36 @@ final class SettingsWidgets {
         int tint = (accent & 0x00FFFFFF) | 0x1F000000;
         row.setBackground(Ui.ripple(accent & 0x00FFFFFF | 0x33000000, Ui.round(tint, Ui.dp(c, 12)), Ui.dp(c, 12)));
         TextView t = text(label, 15, accent);
+        if (Metro.on) {
+            // Windows Phone의 버튼: 글자 색 테두리만 있는 네모. 누르는 동안 강조색으로 채워지고 글자는 그 위의 색이 된다.
+            android.graphics.drawable.GradientDrawable idle = Ui.round(0, 0);
+            idle.setStroke(Ui.dp(c, 2), text);
+            android.graphics.drawable.GradientDrawable down = Ui.round(accent, 0);
+            down.setStroke(Ui.dp(c, 2), accent);
+            android.graphics.drawable.StateListDrawable bg = new android.graphics.drawable.StateListDrawable();
+            bg.addState(new int[]{android.R.attr.state_pressed}, down);
+            bg.addState(new int[0], idle);
+            row.setBackground(bg);
+            Metro.text(t, 18, Metro.regular(), 15);
+            t.setTextColor(new android.content.res.ColorStateList(
+                    new int[][]{{android.R.attr.state_pressed}, {}}, new int[]{onAccent, text}));
+            t.setDuplicateParentStateEnabled(true);
+            row.setPadding(h, Ui.dp(c, 14), h, Ui.dp(c, 14));
+        }
+        if (NeuUi.on) {
+            // Neumorphism: 솟아오른 버튼, 누르는 동안 안으로 들어간다. 그림자 자리만큼 위아래를 띄운다.
+            NeuUi.button(row, NeuUi.surface, Ui.dp(c, 14));
+        }
         mark(t, row);
         row.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         row.addView(trailing);
         row.setClickable(true);
         row.setFocusable(true);
         row.setOnClickListener(l);
+        Metro.tilt(row);
         LinearLayout.LayoutParams lp = matchWrap();
-        lp.topMargin = Ui.dp(c, 6);
-        lp.bottomMargin = Ui.dp(c, 6);
+        lp.topMargin = Ui.dp(c, NeuUi.on ? 10 : 6);
+        lp.bottomMargin = Ui.dp(c, NeuUi.on ? 10 : 6);
         row.setLayoutParams(lp);
         return row;
     }

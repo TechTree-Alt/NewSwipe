@@ -43,6 +43,7 @@ public final class ExpressiveSlider extends View {
         touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
         setClickable(true);
         setFocusable(true);
+        if (NeuUi.on) NeuUi.unclip(this, NeuUi.SMALL);   // 손잡이 그림자가 잘리지 않게
     }
 
     public void setMax(int max) {
@@ -65,12 +66,17 @@ public final class ExpressiveSlider extends View {
         setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), Math.max(Math.round(handleH), Ui.dp(getContext(), 40)));
     }
 
+    /** 홈의 양끝: Neumorphism은 끝에 선 손잡이(반지름 11dp)와 그 그림자가 뷰 밖으로 잘리지 않게 더 띄운다. */
+    private float edge() {
+        return NeuUi.on ? Ui.dp(getContext(), 20) : side;
+    }
+
     private float trackLeft() {
-        return side;
+        return edge();
     }
 
     private float trackRight() {
-        return getWidth() - side;
+        return getWidth() - edge();
     }
 
     private float handleX() {
@@ -78,8 +84,60 @@ public final class ExpressiveSlider extends View {
         return trackLeft() + usable * progress / max;
     }
 
+    /**
+     * Metro UI 모드: Windows Phone 8의 슬라이더. 두툼한 네모 막대의 왼쪽을 강조색으로 채우고, 나머지는 글자 색을 옅게 깔며,
+     * 지금 값 자리에 글자 색의 가는 네모 손잡이를 세운다.
+     */
+    private void drawMetro(Canvas c) {
+        float dp = Ui.dp(getContext(), 1);
+        float cy = getHeight() / 2f;
+        float th = 10 * dp, hw = 6 * dp, hh = 22 * dp;
+        float hx = handleX();
+        float left = trackLeft(), right = trackRight();
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor((Metro.fg & 0x00FFFFFF) | 0x33000000);
+        c.drawRect(left, cy - th / 2f, right, cy + th / 2f, paint);
+        paint.setColor(accent);
+        c.drawRect(left, cy - th / 2f, hx, cy + th / 2f, paint);
+        paint.setColor(Metro.fg);
+        float l = Math.max(left - hw / 2f, Math.min(right - hw / 2f, hx - hw / 2f));
+        c.drawRect(l, cy - hh / 2f, l + hw, cy + hh / 2f, paint);
+    }
+
+    /**
+     * Neumorphism: 안으로 들어간 홈, 그 안의 왼쪽을 강조색으로 채우고, 지금 값 자리에 솟아오른 바탕색 손잡이(가운데 강조색 점).
+     */
+    private void drawNeu(Canvas c) {
+        float dp = Ui.dp(getContext(), 1);
+        float cy = getHeight() / 2f;
+        float th = 12 * dp, knob = (pressed ? 24 : 22) * dp;
+        float left = trackLeft(), right = trackRight(), hx = handleX();
+        rect.set(left - th / 2f, cy - th / 2f, right + th / 2f, cy + th / 2f);
+        NeuUi.drawInset(getContext(), c, rect, th / 2f, NeuUi.surface, paint);
+        float in = 3 * dp;
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor(accent);
+        rect.set(left - th / 2f + in, cy - th / 2f + in, Math.max(hx, left - th / 2f + in + (th - 2 * in)), cy + th / 2f - in);
+        c.drawRoundRect(rect, rect.height() / 2f, rect.height() / 2f, paint);
+        rect.set(hx - knob / 2f, cy - knob / 2f, hx + knob / 2f, cy + knob / 2f);
+        // 라이트 모드의 흰 손잡이는 흰 그림자와 겹쳐 번져 보이므로 어두운 그림자만 둔다 (스위치와 같다).
+        NeuUi.drawRaised(getContext(), c, rect, knob / 2f, NeuUi.SMALL, NeuUi.dark);
+        paint.setColor(NeuUi.knob());
+        c.drawCircle(hx, cy, knob / 2f, paint);
+        paint.setColor(accent);
+        c.drawCircle(hx, cy, 3.5f * dp, paint);
+    }
+
     @Override
     protected void onDraw(Canvas c) {
+        if (Metro.on) {
+            drawMetro(c);
+            return;
+        }
+        if (NeuUi.on) {
+            drawNeu(c);
+            return;
+        }
         float cy = getHeight() / 2f;
         float top = cy - trackH / 2f, bottom = cy + trackH / 2f;
         float hx = handleX();
@@ -130,6 +188,7 @@ public final class ExpressiveSlider extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent e) {
+        if (!isEnabled()) return false;   // 흐리게 막아 둔 슬라이더 (예: Metro UI의 키 곡률)
         switch (e.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
                 pressed = true;

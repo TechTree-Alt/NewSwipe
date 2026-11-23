@@ -16,7 +16,9 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import com.alternative_studios.newswipe.ui.Metro;
 import com.alternative_studios.newswipe.keyboard.Icons;
+import com.alternative_studios.newswipe.ui.NeuUi;
 import com.alternative_studios.newswipe.ui.ExpressiveIconButton;
 import com.alternative_studios.newswipe.ui.IconButton;
 import com.alternative_studios.newswipe.ui.SpringMotion;
@@ -84,14 +86,14 @@ final class EditorSheet {
 
         sheet = new LinearLayout(c);
         sheet.setOrientation(LinearLayout.VERTICAL);
-        float r = Ui.dp(c, 28);   // Material 3 바텀 시트의 큰 모서리
+        float r = Metro.on ? 0f : Ui.dp(c, 28);   // Material 3 바텀 시트의 큰 모서리 (Metro에는 둥근 모서리가 없다)
         GradientDrawable bg = new GradientDrawable();
         // 다크 모드에서는 그림자가 잘 보이지 않으므로 Material 3처럼 시트 바탕을 한 단계 밝게 해 층을 구분한다.
         boolean darkBg = Color.luminance(colors.bg) < 0.2f;
         bg.setColor(darkBg ? blend(colors.bg, colors.card, 0.55f) : colors.bg);
         bg.setCornerRadii(new float[]{r, r, r, r, 0, 0, 0, 0});
         sheet.setBackground(bg);
-        sheet.setElevation(Ui.dp(c, 12));
+        sheet.setElevation(Metro.on ? 0f : Ui.dp(c, 12));   // Metro에는 그림자가 없다 (뒤의 막이 층을 나눈다)
         sheet.setClickable(true);   // 시트 위의 빈 곳을 눌러도 뒤의 막(닫기)으로 넘어가지 않게
         sheet.setVisibility(View.GONE);
         // 스프링이 목표를 살짝 넘어 올라갈 때 아래가 비어 보이지 않게 시트를 틀 아래로 조금 더 길게 둔다 (넘친 부분은 잘린다).
@@ -133,7 +135,7 @@ final class EditorSheet {
         title = new TextView(c);
         title.setTextColor(colors.text);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
-        title.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        title.setTypeface(Metro.on ? Metro.semibold() : android.graphics.Typeface.DEFAULT_BOLD);   // Metro에는 굵은 글자가 없다
         title.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
         title.setSingleLine(true);
         title.setEllipsize(android.text.TextUtils.TruncateAt.END);
@@ -156,11 +158,13 @@ final class EditorSheet {
         testInput.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
         testInput.setMaxLines(3);
         testInput.setBackground(Ui.round(colors.card, Ui.dp(c, 12)));
+        if (NeuUi.on) NeuUi.sunken(testInput, Ui.dp(c, 12));   // Neumorphism: 안으로 들어간 입력란
         testInput.setPadding(Ui.dp(c, 14), Ui.dp(c, 10), Ui.dp(c, 14), Ui.dp(c, 10));
         testRow.addView(testInput, SettingsWidgets.matchWrap());
         sheet.addView(testRow, SettingsWidgets.matchWrap());
 
         scroll = new ScrollView(c);
+        scroll.setVerticalScrollBarEnabled(!com.alternative_studios.newswipe.ui.Metro.on);   // Metro에는 스크롤 막대가 없다
         scroll.setFillViewport(true);
         body = new LinearLayout(c);
         body.setOrientation(LinearLayout.VERTICAL);
@@ -193,11 +197,6 @@ final class EditorSheet {
     /** 창을 화면 왼쪽 절반에 띄울 수 있게 화면 전체를 덮는 틀을 준다 (open(true)에 쓴다). */
     void setSplitHost(FrameLayout host) {
         splitHost = host;
-    }
-
-    /** 창이 화면 왼쪽 절반에 떠 있는지. */
-    boolean isSplit() {
-        return split;
     }
 
     private static int blend(int a, int b, float t) {

@@ -4,7 +4,6 @@ import com.alternative_studios.newswipe.L;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.Typeface;
 import android.graphics.Outline;
 import android.graphics.drawable.Drawable;
 import android.text.TextUtils;
@@ -144,6 +143,7 @@ public final class ClipboardPanel extends LinearLayout {
         confirmRow.addView(ask, new LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         TextView cancel = Ui.chipButton(context, L.t("취소", "Cancel"), theme.text, theme.functionKey, topBarHeight);
         Neu.apply(cancel, theme, theme.functionKey, Ui.chipRadius(context));
+        Ui.metroBare(cancel, theme.keyPressed);   // Metro: 바탕 없이 글자만 (지우기는 강조색 그대로)
         cancel.setOnClickListener(v -> {
             listener.onClipChipPress();
             dismissDialog();

@@ -22,6 +22,7 @@ public final class Chevron extends View {
         boxW = Ui.dp(context, 24);
         boxH = Ui.dp(context, 24);
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
+        if (Metro.on) setVisibility(GONE);   // Windows Phone의 목록에는 화살표가 없다
     }
 
     @Override

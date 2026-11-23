@@ -319,6 +319,7 @@ public final class Prefs {
     public static final String KEY_SHADOW = "key_shadow";
     public static final String KEY_SHADOW_STRENGTH = "key_shadow_strength";   // %, 10~100
     public static final String NEUMORPHISM = "neumorphism";   // 키·버튼을 바탕에서 솟아오른 모양으로 그리고, 누르면 안으로 들어가게
+    public static final String METRO = "metro_ui";   // 앱 전체를 Windows Phone의 Metro UI처럼 (실험적, Neumorphism 대신 쓰인다)
     public static final String TOOLBAR = "toolbar";
     public static final String TOOLBAR_BOTTOM = "toolbar_bottom";   // 도구 막대를 자판 아래에 둔다
     public static final String TOOLBAR_HEIGHT = "toolbar_height";   // %, 70~150 (100 = 40dp)
@@ -848,7 +849,7 @@ public final class Prefs {
     /** 메뉴별로 키 앞부분이 같은 값들 (배열·방향·칸마다 따로 저장하는 값). */
     private static final java.util.Map<String, String[]> MENU_PREFIXES = new java.util.HashMap<>();
     static {
-        MENU_KEYS.put("theme", keys(THEME_MODE, ACCENT_MODE, ACCENT_COLOR, GRID_COLORS, NEUMORPHISM));
+        MENU_KEYS.put("theme", keys(THEME_MODE, ACCENT_MODE, ACCENT_COLOR, GRID_COLORS, NEUMORPHISM, METRO));
         MENU_KEYS.put("feedback", keys(VIBRATE, VIBRATE_MS, VIBRATE_STYLE, VIBRATE_AMP, VIBRATE_PRIMITIVE, VIBRATE_PER_KEY,
                 VIBRATE_DELETE, VIBRATE_SPACE, VIBRATE_ENTER, VIBRATE_SHIFT, VIBRATE_SYMBOL, VIBRATE_LANGUAGE, VIBRATE_TOOLBAR,
                 VIBRATE_GESTURE_ON, VIBRATE_GESTURE_LEVEL, VIBRATE_GESTURE_STYLE, VIBRATE_GESTURE_PRIMITIVE, VIBRATE_GESTURE_AMP,
@@ -1175,7 +1176,6 @@ public final class Prefs {
     public int vibrateKeyPrimitive(String base) { return sp.getInt(base + "_primitive", 1); }
     public int vibrateKeyAmp(String base) { return sp.getInt(base + "_amp", 100); }
     public boolean vibrateGestureOn() { return sp.getBoolean(VIBRATE_GESTURE_ON, true); }
-    public int vibrateGestureLevel() { return sp.getInt(VIBRATE_GESTURE_LEVEL, 2); }
     /** 밀기·길게 누르기 진동 방식. 아직 고르지 않았으면 예전 단계에서 옮긴다 (약하게·기본·강하게 = 틱·클릭·강한 클릭). */
     public int vibrateGestureStyle() {
         return sp.getInt(VIBRATE_GESTURE_STYLE, Math.max(1, Math.min(3, sp.getInt(VIBRATE_GESTURE_LEVEL, 2))) - 1);
@@ -1659,15 +1659,6 @@ public final class Prefs {
         else sp.edit().putString(SYMBOL_GLOBE_KEY, id).apply();
     }
 
-    /**
-     * 기능키가 어느 자판에든 보이는지: 맨 아래 줄에 켰거나, 켠 언어 전환 키가 기호 자판에서 그 키로 바뀌면 보인다
-     * (길게 누르기·밀기 편집 화면에서 그 키의 칸을 보일지 정할 때 쓴다).
-     */
-    public boolean bottomKeyUsed(String id) {
-        if (bottomKeyShown(id)) return true;
-        return bottomKeyShown(com.alternative_studios.newswipe.keyboard.BottomKeys.GLOBE) && id.equals(symbolGlobeKey());
-    }
-
     /** 격자 정렬: 기능키(스페이스바 제외) 폭을 한글 자판의 자음(왼쪽) 키 한 칸에 맞춘다. 상세 배열이면 나뉜 자음 키 폭이다. */
     public boolean gridLayout() { return sp.getBoolean(GRID_LAYOUT, false); }
     /**
@@ -2088,6 +2079,8 @@ public final class Prefs {
     public int keyRadiusDp() { return clamp(sp.getInt(KEY_RADIUS, 7), 0, 24); }
     public int keyShadowStrength() { return sp.getInt(KEY_SHADOW_STRENGTH, 50); }
     public boolean neumorphism() { return sp.getBoolean(NEUMORPHISM, false); }
+    /** Metro UI 모드 (실험적). 켜져 있으면 Neumorphism·키 그림자·키 곡률은 쓰이지 않는다. */
+    public boolean metro() { return sp.getBoolean(METRO, false); }
     public boolean suggestWords() { return sp.getBoolean(SUGGEST_WORDS, false); }
     /** 이모지 창을 열 때 커서 앞의 글에 맞는 이모지를 최근 탭 맨 위에 추천하는지. */
     public boolean emojiSuggest() { return sp.getBoolean(EMOJI_SUGGEST, true); }

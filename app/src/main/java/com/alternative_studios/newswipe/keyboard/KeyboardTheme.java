@@ -24,8 +24,13 @@ public final class KeyboardTheme {
      * 그쪽으로 섞으면 오히려 어두워지므로 흰색이다.
      */
     public final int lift;
-    /** Neumorphism 모드: 키·버튼이 바탕에서 솟아오르고 누르면 안으로 들어간다 (ui.Neu). */
+    /** Neumorphism 모드: 키·버튼이 바탕에서 솟아오르고 누르면 안으로 들어간다 (ui.Neu). Metro 모드에서는 늘 꺼져 있다. */
     public final boolean neu;
+    /**
+     * Metro UI 모드 (실험적): Windows Phone 키보드처럼 모서리 없는 네모 키, 짙은 회색 글자 키와 더 밝은 회색 기능키,
+     * 누른 키는 강조색으로 빛난다 (keyPressed가 강조색이다).
+     */
+    public final boolean metro;
     /**
      * 글자 키(라이트 모드는 흰색)·기능키(회색) 면 그라데이션을 맞추는 값 (% 단위, 인덱스는 T_*).
      * 모드마다 고정이다 ({@link #LIGHT_TUNE}, {@link #DARK_TUNE}).
@@ -66,9 +71,11 @@ public final class KeyboardTheme {
     /** 강조색 키 면의 그림자. */
     public final int neuLightAccent, neuDarkAccent;
 
-    private KeyboardTheme(boolean dark, int accentColor, int onAccentColor, boolean neu, int[] tune, int[] shadows) {
+    private KeyboardTheme(boolean dark, int accentColor, int onAccentColor, boolean neu, boolean metro, int[] tune,
+                          int[] shadows) {
         this.dark = dark;
-        this.neu = neu;
+        this.neu = neu && !metro;
+        this.metro = metro;
         neuTune = tune;
         neuShadow = shadows;
         neuEdgeDp = EDGE_DP;
@@ -83,7 +90,29 @@ public final class KeyboardTheme {
         neuPressedAccent = alpha(shadows[6]) | 0xFFFFFF;
         neuPressedAccentDark = alpha(shadows[7]);   // 눌린 강조색 면의 안쪽 그림자는 모드와 상관없이 검은색
         neuDarkAccent = alpha(shadows[5]) | lo;
-        if (dark) {
+        if (metro && dark) {
+            // Windows Phone 키보드 (다크): 크롬 색 바탕, 짙은 회색 글자 키, 밝은 회색 기능키(Shift·⌫·&123·엔터).
+            background = 0xFF1F1F1F;
+            key = 0xFF333333;
+            keyPressed = accentColor;
+            functionKey = 0xFF525252;
+            text = 0xFFFFFFFF;
+            hint = 0xFFA0A0A0;
+            popup = 0xFF2B2B2B;
+            divider = 0xFFFFFFFF;   // 말풍선 테두리
+            lift = 0xFFFFFFFF;
+        } else if (metro) {
+            // 라이트: 옅은 회색 바탕, 흰 글자 키, 회색 기능키, 검정 글자.
+            background = 0xFFD9D9D9;
+            key = 0xFFFFFFFF;
+            keyPressed = accentColor;
+            functionKey = 0xFFB8B8B8;
+            text = 0xFF000000;
+            hint = 0xFF707070;
+            popup = 0xFFFFFFFF;
+            divider = 0xFF000000;
+            lift = 0xFFD9D9D9;
+        } else if (dark) {
             background = 0xFF1B1C1F;
             key = 0xFF3A3B40;
             keyPressed = 0xFF55575D;
@@ -116,18 +145,19 @@ public final class KeyboardTheme {
 
     private static KeyboardTheme cached;
 
-    /** 설정(화면 모드, 강조 색, Neumorphism 모드)이 바뀌지 않았다면 같은 객체를 돌려준다. */
+    /** 설정(화면 모드, 강조 색, Neumorphism·Metro 모드)이 바뀌지 않았다면 같은 객체를 돌려준다. */
     public static synchronized KeyboardTheme of(Context context) {
         AppTheme t = AppTheme.of(context);
         Prefs prefs = new Prefs(context);
         boolean neu = prefs.neumorphism();
+        boolean metro = t.metro;
         int[] tune = t.dark ? DARK_TUNE : LIGHT_TUNE;
         int[] shadows = t.dark ? DARK_SHADOW : LIGHT_SHADOW;
         // 키보드의 강조색 키는 설정 화면용으로 보정한 색이 아니라 고른 색 그대로 쓴다.
         if (cached == null || cached.dark != t.dark || cached.accent != t.keyAccent || cached.onAccent != t.keyOnAccent
-                || cached.neu != neu || !java.util.Arrays.equals(cached.neuTune, tune)
+                || cached.neu != (neu && !metro) || cached.metro != metro || !java.util.Arrays.equals(cached.neuTune, tune)
                 || !java.util.Arrays.equals(cached.neuShadow, shadows)) {
-            cached = new KeyboardTheme(t.dark, t.keyAccent, t.keyOnAccent, neu, tune, shadows);
+            cached = new KeyboardTheme(t.dark, t.keyAccent, t.keyOnAccent, neu, metro, tune, shadows);
         }
         return cached;
     }

@@ -153,30 +153,8 @@ public class ExtraBottomKeysTest {
     }
 
     @Test
-    public void editorShowsOnlyKeysThatAreOn() throws Exception {
-        FakeSp sp = new FakeSp();
-        Prefs p = view(sp, Prefs.PROFILE_PORTRAIT);
-        SwipeSpec spec = FunctionSwipes.SPEC;
-        // 처음: 원래 다섯 키와, 기호 자판의 언어 전환 키 자리에 있는 이모지 키
-        for (int slot = 0; slot < spec.slotCount(); slot++) {
-            assertEquals(slot + "", slot <= FunctionSwipes.DELETE || slot == FunctionSwipes.EMOJI_KEY, spec.shown(p, slot));
-        }
-        sp.m.put(Prefs.BOTTOM_CURSOR_KEY, true);
-        sp.m.put(Prefs.BOTTOM_VOICE_KEY, true);
-        sp.m.put(Prefs.LANGUAGE_KEY_HIDDEN, true);
-        sp.m.put(Prefs.DELETE_KEY_HIDDEN, true);
-        assertTrue(spec.shown(p, FunctionSwipes.CURSOR));
-        assertTrue(spec.shown(p, FunctionSwipes.VOICE));
-        assertFalse(spec.shown(p, FunctionSwipes.EMOJI_KEY));
-        assertFalse(spec.shown(p, FunctionSwipes.CLIPBOARD));
-        assertFalse(spec.shown(p, FunctionSwipes.GLOBE));    // 끈 언어 전환 키도 감춘다
-        // 기호 키·스페이스바·엔터·⌫는 꺼도 숫자 패드에 늘 있어 보인다
-        sp.m.put(Prefs.MODE_KEY_HIDDEN, true);
-        sp.m.put(Prefs.SPACE_KEY_HIDDEN, true);
-        sp.m.put(Prefs.ENTER_KEY_HIDDEN, true);
-        for (int slot : new int[]{FunctionSwipes.MODE, FunctionSwipes.SPACE, FunctionSwipes.ENTER, FunctionSwipes.DELETE}) {
-            assertTrue(slot + "", spec.shown(p, slot));
-        }
+    public void numberPadAlwaysHasTheFunctionKeys() throws Exception {
+        // 기호 키·스페이스바·엔터·⌫는 맨 아래 줄에서 꺼도 숫자 패드에 늘 있다 (그래서 그 키의 설정은 늘 쓰인다).
         KeyboardLayout pad = KeyboardLayout.numberPad(KeyboardLayout.NUMBER_PAD_SYMBOLS_LABEL, "가");
         for (int type : new int[]{Key.TO_LETTERS, Key.TO_SYMBOLS, Key.SPACE, Key.ENTER, Key.DELETE}) {
             assertEquals(1, count(pad, type));
@@ -205,66 +183,21 @@ public class ExtraBottomKeysTest {
     }
 
     @Test
-    public void longPressEditorHidesOnlyTheGlobeKeyWhenOff() throws Exception {
+    public void englishKeepsShiftWhenKoreanShiftIsOff() throws Exception {
         FakeSp sp = new FakeSp();
-        Prefs p = view(sp, Prefs.PROFILE_PORTRAIT);
-        SwipeSpec spec = LongPressActions.SPEC;
-        // 처음: 원래 다섯 키와 스페이스바, 기호 자판의 언어 전환 키 자리에 있는 이모지 키 (더한 키는 꺼져 있다)
-        for (int slot = 0; slot < spec.slotCount(); slot++) {
-            assertEquals(slot + "", slot <= LongPressActions.DELETE || slot == LongPressActions.SPACE
-                    || slot == LongPressActions.EMOJI_KEY, spec.shown(p, slot));
-        }
-        sp.m.put(Prefs.BOTTOM_CLIPBOARD_KEY, true);
-        sp.m.put(Prefs.BOTTOM_CURSOR_KEY, true);
-        assertTrue(spec.shown(p, LongPressActions.CLIPBOARD));
-        assertTrue(spec.shown(p, LongPressActions.CURSOR));
-        assertTrue(spec.shown(p, LongPressActions.EMOJI_KEY));    // 기호 자판의 언어 전환 키 자리
-        assertFalse(spec.shown(p, LongPressActions.VOICE));
-        sp.m.put(Prefs.LANGUAGE_KEY_HIDDEN, true);
-        assertFalse(spec.shown(p, LongPressActions.EMOJI_KEY));   // 언어 전환 키를 끄면 그 자리도 없어진다
-        sp.m.put(Prefs.MODE_KEY_HIDDEN, true);
-        sp.m.put(Prefs.ENTER_KEY_HIDDEN, true);
-        sp.m.put(Prefs.DELETE_KEY_HIDDEN, true);
         sp.m.put(Prefs.KOREAN_SHIFT_HIDDEN, true);
-        assertFalse(spec.shown(p, LongPressActions.GLOBE));
-        // Shift는 영어 자판에, 기호 키·엔터·⌫는 숫자 패드에 늘 있다
-        for (int slot : new int[]{LongPressActions.SHIFT, LongPressActions.MODE, LongPressActions.ENTER,
-                LongPressActions.DELETE}) {
-            assertTrue(slot + "", spec.shown(p, slot));
-        }
-        assertEquals(1, count(KeyboardLayout.english(p), Key.SHIFT));
+        assertEquals(1, count(KeyboardLayout.english(view(sp, Prefs.PROFILE_PORTRAIT)), Key.SHIFT));
     }
 
     @Test
-    public void toolbarEditorShowsOnlyButtonsThatAreOn() throws Exception {
-        FakeSp sp = new FakeSp();
-        Prefs p = view(sp, Prefs.PROFILE_PORTRAIT);
+    public void toolbarSlotNamesAreButtonIds() {
         SwipeSpec spec = ToolbarSwipes.SPEC;
+        // 칸 이름이 도구 막대 버튼 ID와 같다 (막대 자체 제외)
         for (int slot = 0; slot < spec.slotCount(); slot++) {
-            // 떠 있는 키보드·텍스트 편집 버튼은 나중에 생겨 처음에는 감춰 둔다.
-            assertEquals(slot + "", slot != ToolbarSwipes.FLOAT && slot != ToolbarSwipes.TEXT_EDIT, spec.shown(p, slot));
-            // 칸 이름이 도구 막대 버튼 ID와 같다 (막대 자체 제외)
             if (slot != ToolbarSwipes.BAR) {
                 assertTrue(java.util.Arrays.asList(ToolbarButtons.ALL).contains(spec.slotName(slot)));
             }
         }
-        sp.m.put(Prefs.TOOL_FLOAT, true);
-        assertTrue(spec.shown(p, ToolbarSwipes.FLOAT));
-        sp.m.put(Prefs.TOOL_TEXT_EDIT, true);
-        assertTrue(spec.shown(p, ToolbarSwipes.TEXT_EDIT));
-        sp.m.put(Prefs.TOOL_CLIPBOARD, false);
-        sp.m.put(Prefs.VOICE_KEY, false);
-        assertFalse(spec.shown(p, ToolbarSwipes.CLIPBOARD));
-        assertFalse(spec.shown(p, ToolbarSwipes.VOICE));
-        assertTrue(spec.shown(p, ToolbarSwipes.EMOJI));
-        assertTrue(spec.shown(p, ToolbarSwipes.BAR));
-        // 도구 막대를 끄면 버튼은 모두 감추고 막대 자체만 남긴다 (외장 키보드의 '도구 막대 보이기'를 켰으면 버튼도 보인다)
-        sp.m.put(Prefs.TOOLBAR, false);
-        for (int slot = 1; slot < spec.slotCount(); slot++) assertFalse(slot + "", spec.shown(p, slot));
-        assertTrue(spec.shown(p, ToolbarSwipes.BAR));
-        sp.m.put(Prefs.HW_TOOLBAR, true);
-        assertTrue(spec.shown(p, ToolbarSwipes.EMOJI));
-        assertFalse(spec.shown(p, ToolbarSwipes.CLIPBOARD));
     }
 
     @Test
@@ -297,9 +230,6 @@ public class ExtraBottomKeysTest {
         assertEquals(0, count(KeyboardLayout.symbols(true, p), Key.LANGUAGE));
         assertEquals(1, count(KeyboardLayout.korean(p), Key.LANGUAGE));
         assertEquals(0, count(KeyboardLayout.korean(p), Key.EMOJI_KEY));
-        assertTrue(LongPressActions.SPEC.shown(p, LongPressActions.EMOJI_KEY));
-        assertTrue(FunctionSwipes.SPEC.shown(p, FunctionSwipes.EMOJI_KEY));
-        assertFalse(LongPressActions.SPEC.shown(p, LongPressActions.CLIPBOARD));
         // 다른 키로: 기호 자판(1·2쪽)에서만 그 키로 보인다
         sp.m.put(Prefs.SYMBOL_GLOBE_KEY, BottomKeys.CLIPBOARD);
         for (KeyboardLayout l : new KeyboardLayout[]{KeyboardLayout.symbols(true, p), KeyboardLayout.symbols2(true, p)}) {
@@ -309,9 +239,6 @@ public class ExtraBottomKeysTest {
         }
         assertEquals(1, count(KeyboardLayout.korean(p), Key.LANGUAGE));
         assertEquals(0, count(KeyboardLayout.korean(p), Key.CLIPBOARD));
-        // 그 키의 길게 누르기·밀기 칸이 편집 화면에 보인다
-        assertTrue(LongPressActions.SPEC.shown(p, LongPressActions.CLIPBOARD));
-        assertTrue(FunctionSwipes.SPEC.shown(p, FunctionSwipes.CLIPBOARD));
         // 기호 자판에서도 그대로
         sp.m.put(Prefs.SYMBOL_GLOBE_KEY, BottomKeys.GLOBE);
         assertEquals(1, count(KeyboardLayout.symbols(true, p), Key.LANGUAGE));
@@ -320,7 +247,6 @@ public class ExtraBottomKeysTest {
         sp.m.put(Prefs.SYMBOL_GLOBE_KEY, BottomKeys.VOICE);
         sp.m.put(Prefs.LANGUAGE_KEY_HIDDEN, true);
         assertEquals(0, count(KeyboardLayout.symbols(true, p), Key.VOICE));
-        assertFalse(LongPressActions.SPEC.shown(p, LongPressActions.VOICE));
         // 모르는 값은 기본값
         sp.m.put(Prefs.SYMBOL_GLOBE_KEY, "nope");
         assertEquals(BottomKeys.EMOJI, p.symbolGlobeKey());

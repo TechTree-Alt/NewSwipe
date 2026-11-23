@@ -11,7 +11,7 @@ import com.alternative_studios.newswipe.L;
  */
 public final class LongPressActions {
     public static final int SHIFT = 0, MODE = 1, GLOBE = 2, ENTER = 3, DELETE = 4;
-    /** 기능키 순서·유무 사용자화에서 더할 수 있는 키 (켰을 때만 편집 화면에 보인다, 처음에는 없음). */
+    /** 기능키 순서·유무 사용자화에서 더할 수 있는 키 (처음에는 없음). */
     public static final int EMOJI_KEY = 5, CLIPBOARD = 6, CURSOR = 7, VOICE = 8;
     /** 스페이스바. 처음에는 '밀어서 선택'이다. */
     public static final int SPACE = 9;
@@ -36,9 +36,6 @@ public final class LongPressActions {
             L.t("띄어쓰기", "Space"),
     };
     }
-    /** 더할 수 있는 키 칸의 맨 아래 줄 키 ID (BottomKeys). 편집 화면에 보일지 정할 때 쓴다. */
-    private static final String[] EXTRA_IDS = {BottomKeys.EMOJI, BottomKeys.CLIPBOARD, BottomKeys.CURSOR, BottomKeys.VOICE};
-
     public static final SwipeSpec SPEC = new SwipeSpec("lp", new String[]{"shift", "mode", "globe", "enter", "delete",
             "emoji", "clipboard", "cursor", "voice", "space"}) {
         @Override
@@ -52,19 +49,6 @@ public final class LongPressActions {
             }
         }
 
-        /**
-         * 켠 키의 칸만 편집 화면에 보인다: 언어 전환 키와 더한 키(이모지·클립보드·커서 이동·음성 입력)는 '기능키 순서·유무
-         * 사용자화'에서 끄면 감춘다. Shift 키는 영어 자판에, 기호 키·엔터 키·⌫는 숫자 패드(숫자 입력란 등)에 늘 있어 그 설정이
-         * 쓰이므로 늘 보인다.
-         */
-        @Override
-        public boolean shown(com.alternative_studios.newswipe.Prefs prefs, int slot) {
-            if (prefs == null) return true;
-            if (slot == GLOBE) return prefs.bottomKeyShown(BottomKeys.GLOBE);
-            if (slot >= EMOJI_KEY && slot <= VOICE) return prefs.bottomKeyUsed(EXTRA_IDS[slot - EMOJI_KEY]);
-            return true;
-        }
-
         /** 모르는 값은 기본값으로, 밀어야 하는 '커서 자유 이동'은 없음으로 본다. */
         @Override
         public String resolve(String stored, int slot, int dir) {
@@ -72,16 +56,6 @@ public final class LongPressActions {
             if (SwipeAction.CURSOR_MOVE.equals(stored) || SwipeAction.FREE_CURSOR.equals(stored)) return SwipeAction.NONE;
             if (SwipeAction.SPACE_SELECT.equals(stored) && slot != SPACE) return SwipeAction.NONE;   // 스페이스바 전용
             return stored;
-        }
-
-        @Override
-        public String title() {
-            return L.t("기능키 길게 누르기 기능 사용자화", "Customize function key long press");
-        }
-
-        @Override
-        public String note() {
-            return L.t("기능키를 길게 누를 때 실행할 기능을 고릅니다.", "Choose what happens when you long press a function key.");
         }
 
         @Override

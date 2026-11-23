@@ -11,46 +11,35 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-import com.alternative_studios.newswipe.keyboard.FunctionSwipes;
 import com.alternative_studios.newswipe.keyboard.KeyboardSwipes;
 import com.alternative_studios.newswipe.keyboard.KeyboardTheme;
 import com.alternative_studios.newswipe.keyboard.SwipeAction;
 import com.alternative_studios.newswipe.keyboard.SwipeSpec;
-import com.alternative_studios.newswipe.keyboard.ToolbarSwipes;
 import com.alternative_studios.newswipe.ui.ExpressiveChoiceButton;
 import com.alternative_studios.newswipe.ui.Ui;
 
 /**
- * 밀어서 기능 편집 화면 (키보드 밀기, Fn 키). 같은 화면을 쓰고, 무엇을 편집할지는
- * {@link #EXTRA_GROUP}으로 받은 배치({@link SwipeSpec})가 정한다. 칸(키·버튼·손가락 수)마다 카드 하나에 방향별 칸을 놓고,
- * 칸을 누르면 고를 수 있는 기능 목록이 나온다.
+ * 키보드 밀기 편집 화면: 자판을 한 손가락·두 손가락으로 네 방향으로 밀 때 실행할 기능을 정한다 ({@link KeyboardSwipes}).
+ * 손가락 수마다 카드 하나에 방향별 칸을 놓고, 칸을 누르면 고를 수 있는 기능 목록이 나온다.
+ * (기능키·도구 막대 버튼·Fn 키의 밀기와 길게 누르기는 키보드 사용자화에서 그 키를 눌러 정한다: KeyEditPanel.)
  */
 public final class SwipeActionEditorActivity extends Activity {
 
-    /** 편집할 배치의 묶음 이름 (SwipeSpec.group). */
-    static final String EXTRA_GROUP = "group";
-
     private Prefs prefs;
-    private SwipeSpec spec;
+    private final SwipeSpec spec = KeyboardSwipes.SPEC;
+    private static String title() {
+        return L.t("키보드 밀기 사용자화", "Customize keyboard swipes");
+    }
     private LinearLayout list;
     private KeyboardTheme keyboardTheme;
     private String themeSignature;
-    private int textColor, hintColor;
+    private int hintColor;
     /** 칸마다 지난번에 그린 '기능이 정해졌는지': 바뀐 칸만 모양이 스프링으로 바뀌게 한다. */
     private final java.util.Map<String, Boolean> shown = new java.util.HashMap<>();
 
-    /** 이 배치를 편집하는 화면을 연다. */
-    static Intent intent(Context context, SwipeSpec spec) {
-        return new Intent(context, SwipeActionEditorActivity.class).putExtra(EXTRA_GROUP, spec.group);
-    }
-
-    private static SwipeSpec specOf(String group) {
-        for (SwipeSpec s : new SwipeSpec[]{FunctionSwipes.SPEC, ToolbarSwipes.SPEC, KeyboardSwipes.SPEC,
-                com.alternative_studios.newswipe.keyboard.LongPressActions.SPEC,
-                com.alternative_studios.newswipe.keyboard.FnKeyActions.SPEC}) {
-            if (s.group.equals(group)) return s;
-        }
-        return FunctionSwipes.SPEC;
+    /** 키보드 밀기 편집 화면을 연다. */
+    static Intent intent(Context context) {
+        return new Intent(context, SwipeActionEditorActivity.class);
     }
 
     @Override
@@ -62,14 +51,13 @@ public final class SwipeActionEditorActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         prefs = new Prefs(this);
-        spec = specOf(getIntent().getStringExtra(EXTRA_GROUP));
         keyboardTheme = KeyboardTheme.of(this);
         AppTheme colors = AppTheme.of(this);
         themeSignature = AppTheme.signature(this);
-        textColor = colors.text;
         hintColor = colors.hint;
 
         ScrollView scroll = new ScrollView(this);
+        scroll.setVerticalScrollBarEnabled(!com.alternative_studios.newswipe.ui.Metro.on);   // Metro에는 스크롤 막대가 없다
         scroll.setBackgroundColor(colors.bg);
         scroll.setFillViewport(true);
         list = new LinearLayout(this);
@@ -77,7 +65,7 @@ public final class SwipeActionEditorActivity extends Activity {
         int pad = Ui.dp(this, 16);
         list.setPadding(pad, 0, pad, Ui.dp(this, 32));
         scroll.addView(list);
-        setContentView(new SettingsFrame(this, spec.title(), getString(R.string.app_name)).wrap(scroll));
+        setContentView(new SettingsFrame(this, title(), getString(R.string.app_name)).wrap(scroll));
         render();
     }
 
@@ -97,13 +85,13 @@ public final class SwipeActionEditorActivity extends Activity {
 
     private void render() {
         list.removeAllViews();
-        TextView note = text(spec.note(), 13, hintColor);
+        TextView note = text(L.t("자판을 한 손가락·두 손가락으로 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 고릅니다.", "Choose what happens when you swipe the keyboard up, down, left or right with one or two fingers."), 13, hintColor);
         note.setPadding(Ui.dp(this, 4), 0, 0, Ui.dp(this, 4));
         list.addView(note);
         for (int slot = 0; slot < spec.slotCount(); slot++) {
-            if (spec.shown(prefs, slot)) list.addView(slotCard(slot));   // 끈 기능키는 감춘다
+            list.addView(slotCard(slot));
         }
-        list.addView(ResetDialog.button(this, spec.title(), () -> {
+        list.addView(ResetDialog.button(this, title(), () -> {
             prefs.resetSwipeActions(spec.group);
             render();
         }));
@@ -186,6 +174,6 @@ public final class SwipeActionEditorActivity extends Activity {
     /** 뒤로 가기: 검색창이나 키보드 시험 입력창이 열려 있으면 그것부터 닫고, 그다음에 이전 화면으로 간다 (Android 12 이하). */
     @Override
     public void onBackPressed() {
-        if (!SettingsFrame.consumeBack(this)) super.onBackPressed();
+        if (!SettingsFrame.consumeBack(this) && !SettingsFrame.metroBack(this)) super.onBackPressed();
     }
 }

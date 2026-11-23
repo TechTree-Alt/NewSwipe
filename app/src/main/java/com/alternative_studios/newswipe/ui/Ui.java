@@ -17,10 +17,11 @@ public final class Ui {
                 c.getResources().getDisplayMetrics()));
     }
 
+    /** 둥근 네모 바탕. Metro 모드에서는 모서리가 없는 네모다 (Windows Phone에는 둥근 모서리가 없다). */
     public static GradientDrawable round(int color, float radiusPx) {
         GradientDrawable g = new GradientDrawable();
         g.setColor(color);
-        g.setCornerRadius(radiusPx);
+        g.setCornerRadius(Metro.on ? 0f : radiusPx);
         return g;
     }
 
@@ -56,12 +57,21 @@ public final class Ui {
         b.setPadding(dp(c, 14), 0, dp(c, 14), 0);
         float r = chipRadius(c);
         b.setBackground(ripple(tint(textColor), round(fill, r), r));
+        if (Metro.on) b.setTypeface(Metro.regular());
         android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(
                 android.view.ViewGroup.LayoutParams.WRAP_CONTENT, chipHeight(c, barHeight));
         lp.leftMargin = dp(c, 2);
         lp.rightMargin = dp(c, 2);
         b.setLayoutParams(lp);
         return b;
+    }
+
+    /**
+     * Metro UI: 칩 버튼의 바탕을 없앤다 (도구 막대 버튼처럼 글자만, 누르는 동안 pressColor로 채운다).
+     * 강조색으로 칠한 확인 버튼처럼 눈에 띄어야 하는 버튼에는 쓰지 않는다. Metro가 아니면 아무것도 하지 않는다.
+     */
+    public static void metroBare(android.view.View chip, int pressColor) {
+        if (Metro.on) chip.setBackground(metroPressed(pressColor, null));
     }
 
     /** 삭제처럼 되돌릴 수 없는 동작에 쓰는 붉은색 (어두운 테마에서는 배경에 묻히지 않게 밝게). */
@@ -71,13 +81,32 @@ public final class Ui {
 
     /** 도구 막대 칩의 모서리 반지름 (px). */
     public static float chipRadius(Context c) {
-        return dp(c, 16);
+        return Metro.on ? 0f : dp(c, 16);
     }
 
-    /** 눌렀을 때 물결 효과가 있는 배경. content가 null이면 투명 배경. */
+    /**
+     * 눌렀을 때 물결 효과가 있는 배경. content가 null이면 투명 배경.
+     * Metro 모드에서는 물결 대신 누르는 동안 네모 바탕 전체를 pressColor로 덮는다 (Windows Phone의 눌림은 단색으로 바로 바뀐다).
+     */
     public static Drawable ripple(int pressColor, Drawable content, float radiusPx) {
+        if (Metro.on) return metroPressed(pressColor, content);
         GradientDrawable mask = round(0xFFFFFFFF, radiusPx);
         return new RippleDrawable(ColorStateList.valueOf(pressColor), content, mask);
+    }
+
+    /** 누르는 동안 content 위에 pressColor를 덮는 바탕 (content가 null이면 평소에는 투명하다). */
+    public static Drawable metroPressed(int pressColor, Drawable content) {
+        android.graphics.drawable.StateListDrawable s = new android.graphics.drawable.StateListDrawable();
+        Drawable over = new android.graphics.drawable.ColorDrawable(pressColor);
+        Drawable normal = content != null ? content : new android.graphics.drawable.ColorDrawable(0);
+        Drawable pressed = content != null
+                ? new android.graphics.drawable.LayerDrawable(new Drawable[]{content.getConstantState() != null
+                        ? content.getConstantState().newDrawable().mutate() : content, over})
+                : over;
+        s.addState(new int[]{android.R.attr.state_pressed}, pressed);
+        s.addState(new int[0], normal);
+        s.setExitFadeDuration(100);
+        return s;
     }
 
     /**
@@ -108,8 +137,8 @@ public final class Ui {
         android.widget.LinearLayout row = new android.widget.LinearLayout(c);
         android.widget.LinearLayout.LayoutParams rlp = new android.widget.LinearLayout.LayoutParams(
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
-        rlp.topMargin = dp(c, 6);
-        rlp.bottomMargin = dp(c, 4);
+        rlp.topMargin = dp(c, NeuUi.on ? 10 : 6);   // Neumorphism: 칸의 그림자 자리
+        rlp.bottomMargin = dp(c, NeuUi.on ? 10 : 4);
         row.setLayoutParams(rlp);
         row.setBaselineAligned(false);   // 칸마다 글자 줄 수가 달라도 위아래로 어긋나지 않게
         row.setClipChildren(false);   // 눌렀을 때 옆 칸 쪽으로 늘어난 모양이 잘리지 않게
@@ -150,7 +179,9 @@ public final class Ui {
             });
             android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(
                     0, android.view.ViewGroup.LayoutParams.MATCH_PARENT, 1f);   // 한 칸이 두 줄이어도 높이를 맞춘다
-            lp.setMargins(dp(c, 1), 0, dp(c, 1), 0);
+            // Metro: 타일처럼 칸 사이를 조금 더 띄운다.
+            int gap = NeuUi.on ? 5 : Metro.on ? 2 : 1;   // Neumorphism은 칸마다 그림자가 있어 더 띄운다
+            lp.setMargins(dp(c, gap), 0, dp(c, gap), 0);
             row.addView(t, lp);
         }
         for (int i = 0; i < cells.length; i++) {
@@ -162,15 +193,6 @@ public final class Ui {
                 if (send[0] != null) row.removeCallbacks(send[0]);   // 화면이 닫혔으면 알리지 않는다
             }
         });
-        return row;
-    }
-
-    /**
-     * 선택 줄의 칸들이 누를 때 내는 기본 진동(누르는 순간·고르는 순간)을 끈다.
-     * 진동 설정처럼 고른 항목의 진동만 또렷하게 느껴야 하는 곳에서 쓴다.
-     */
-    public static <T extends android.view.ViewGroup> T muteHaptics(T row) {
-        for (int i = 0; i < row.getChildCount(); i++) row.getChildAt(i).setHapticFeedbackEnabled(false);
         return row;
     }
 
@@ -292,14 +314,20 @@ public final class Ui {
         }
         final float toAlpha = show ? 1f : 0f;
         final android.animation.ValueAnimator a = android.animation.ValueAnimator.ofFloat(0f, 1f);
-        a.setDuration(200);
-        a.setInterpolator(new android.view.animation.PathInterpolator(0.2f, 0f, 0f, 1f));
+        // Metro: Windows Phone처럼 빠르게 펼쳐져 부드럽게 멈춘다 (ExponentialEase EaseOut).
+        a.setDuration(Metro.on ? 250 : 200);
+        a.setInterpolator(Metro.on ? Metro.EASE_OUT : new android.view.animation.PathInterpolator(0.2f, 0f, 0f, 1f));
+        // 펼치고 접는 동안은 이 뷰 자신을 지금 높이로 자른다: Neumorphism에서는 그림자 때문에 부모들의 자르기를 꺼 두어,
+        // 자르지 않으면 접히는 내용이 아래 줄 위로 삐져나온다.
+        final android.graphics.Rect clip = new android.graphics.Rect();
         a.addUpdateListener(anim -> {
             float f = (float) anim.getAnimatedValue();
             android.view.ViewGroup.LayoutParams l = v.getLayoutParams();
             l.height = Math.round(from + (to - from) * f);
             v.setLayoutParams(l);
             v.setAlpha(fromAlpha + (toAlpha - fromAlpha) * f);
+            clip.set(0, 0, Math.max(v.getWidth(), 1), l.height);
+            v.setClipBounds(clip);
         });
         a.addListener(new android.animation.AnimatorListenerAdapter() {
             private boolean canceled;
@@ -313,6 +341,7 @@ public final class Ui {
             public void onAnimationEnd(android.animation.Animator animation) {
                 if (canceled) return;
                 RUNNING.remove(v);
+                v.setClipBounds(null);
                 android.view.ViewGroup.LayoutParams l = v.getLayoutParams();
                 l.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT;
                 v.setLayoutParams(l);

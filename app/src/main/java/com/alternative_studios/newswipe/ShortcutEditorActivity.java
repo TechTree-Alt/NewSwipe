@@ -1,7 +1,6 @@
 package com.alternative_studios.newswipe;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Context;
 import android.os.Bundle;
 import android.text.InputFilter;
@@ -18,6 +17,7 @@ import android.widget.Toast;
 
 import com.alternative_studios.newswipe.keyboard.Icons;
 import com.alternative_studios.newswipe.suggest.Shortcuts;
+import com.alternative_studios.newswipe.ui.NeuUi;
 import com.alternative_studios.newswipe.ui.Chevron;
 import com.alternative_studios.newswipe.ui.IconButton;
 import com.alternative_studios.newswipe.ui.Ui;
@@ -50,6 +50,7 @@ public final class ShortcutEditorActivity extends Activity {
         accentColor = colors.accent;
 
         ScrollView scroll = new ScrollView(this);
+        scroll.setVerticalScrollBarEnabled(!com.alternative_studios.newswipe.ui.Metro.on);   // Metro에는 스크롤 막대가 없다
         scroll.setBackgroundColor(bg);
         scroll.setFillViewport(true);
         list = new LinearLayout(this);
@@ -82,6 +83,7 @@ public final class ShortcutEditorActivity extends Activity {
                 + "문장을 눌러 입력하면 줄임말이 그 문장으로 바뀝니다.", "Type a shortcut to see its phrase in the suggestions (e.g. 'ㅈㄱㅈ' → '지금 가는 중'). Shortcuts can only use Korean (including single consonants and vowels) or English letters, and English is not case-sensitive. Tap the phrase to replace the shortcut with it."), 13, hintColor);
         note.setLineSpacing(Ui.dp(this, 3), 1f);
         note.setPadding(Ui.dp(this, 4), 0, 0, Ui.dp(this, 8));
+        if (com.alternative_studios.newswipe.ui.Metro.on) note.setPadding(0, 0, 0, Ui.dp(this, 8));   // Metro: 다른 줄과 같은 왼쪽 선
         list.addView(note);
 
         list.addView(actionRow(L.t("단축어 추가", "Add text shortcut"), v -> edit(null)));
@@ -97,7 +99,12 @@ public final class ShortcutEditorActivity extends Activity {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setBackground(Ui.round(cardColor, Ui.dp(this, 16)));
+        if (NeuUi.on) NeuUi.card(card, Ui.dp(this, 16));   // Neumorphism: 솟아오른 카드
         card.setPadding(0, Ui.dp(this, 4), 0, Ui.dp(this, 4));
+        if (com.alternative_studios.newswipe.ui.Metro.on) {   // Metro에는 카드가 없다: 단축어 줄이 바탕 위에 바로 놓인다
+            card.setBackground(null);
+            card.setPadding(0, 0, 0, 0);
+        }
         LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         clp.topMargin = Ui.dp(this, 12);
@@ -112,6 +119,8 @@ public final class ShortcutEditorActivity extends Activity {
         clear.setPadding(0, Ui.dp(this, 14), 0, Ui.dp(this, 14));
         clear.setBackground(Ui.ripple(accentColor & 0x00FFFFFF | 0x33000000,
                 Ui.round(accentColor & 0x00FFFFFF | 0x1F000000, Ui.dp(this, 12)), Ui.dp(this, 12)));
+        if (NeuUi.on) NeuUi.button(clear, NeuUi.surface, Ui.dp(this, 12));   // Neumorphism: 솟아오른 버튼
+        SettingsWidgets.metroButton(clear);
         clear.setOnClickListener(v -> AppTheme.accentBuilder(AppTheme.dialogContext(this))
                 .setTitle(L.t("단축어 모두 지우기", "Delete all text shortcuts"))
                 .setMessage(L.t("정해 둔 단축어 " + all.size() + "개를 모두 지웁니다. 되돌릴 수 없습니다.",
@@ -136,6 +145,7 @@ public final class ShortcutEditorActivity extends Activity {
         row.setPadding(h, Ui.dp(this, 12), h, Ui.dp(this, 12));
         row.setBackground(Ui.ripple(accentColor & 0x00FFFFFF | 0x33000000,
                 Ui.round(accentColor & 0x00FFFFFF | 0x1F000000, Ui.dp(this, 12)), Ui.dp(this, 12)));
+        if (NeuUi.on) NeuUi.button(row, NeuUi.surface, Ui.dp(this, 12));   // Neumorphism: 솟아오른 버튼
         row.addView(text(label, 15, accentColor), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         row.addView(new Chevron(this, accentColor));
         row.setClickable(true);
@@ -145,6 +155,7 @@ public final class ShortcutEditorActivity extends Activity {
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         lp.topMargin = Ui.dp(this, 6);
         row.setLayoutParams(lp);
+        SettingsWidgets.metroButton(row);   // Metro: 다른 버튼처럼 테두리 네모
         return row;
     }
 
@@ -152,6 +163,7 @@ public final class ShortcutEditorActivity extends Activity {
     private View divider() {
         View v = new View(this);
         v.setBackgroundColor(hintColor & 0x00FFFFFF | 0x26000000);
+        if (com.alternative_studios.newswipe.ui.Metro.on) v.setVisibility(View.GONE);   // Metro의 목록에는 구분선이 없다
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1);
         lp.leftMargin = Ui.dp(this, 16);
         lp.rightMargin = Ui.dp(this, 16);
@@ -175,6 +187,13 @@ public final class ShortcutEditorActivity extends Activity {
         p.setEllipsize(android.text.TextUtils.TruncateAt.END);
         texts.addView(p);
         row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        if (com.alternative_studios.newswipe.ui.Metro.on) {
+            // Metro: 다른 목록처럼 왼쪽 선에 맞추고, 줄임말은 강조색의 가는 큰 글자, 문장은 그 아래. 누르면 기울어진다.
+            row.setPadding(0, Ui.dp(this, 10), Ui.dp(this, 6), Ui.dp(this, 10));
+            com.alternative_studios.newswipe.ui.Metro.text(k, 22, com.alternative_studios.newswipe.ui.Metro.light(), 16);
+            com.alternative_studios.newswipe.ui.Metro.text(p, 16, com.alternative_studios.newswipe.ui.Metro.regular(), 14);
+            com.alternative_studios.newswipe.ui.Metro.tilt(row);
+        }
         IconButton trash = new IconButton(this, Icons.TRASH, hintColor, hintColor & 0x00FFFFFF | 0x33000000,
                 L.t("'" + key + "' 단축어 지우기", "Delete shortcut '" + key + "'"));
         trash.setOnClickListener(v -> AppTheme.accentBuilder(AppTheme.dialogContext(this))
@@ -216,13 +235,13 @@ public final class ShortcutEditorActivity extends Activity {
         box.setPadding(pad, Ui.dp(this, 8), pad, 0);
         box.addView(keyInput);
         box.addView(phraseInput);
-        AlertDialog.Builder b = AppTheme.dialogBuilder(this)
+        AppDialog.Builder b = AppTheme.dialogBuilder(this)
                 .setTitle(adding ? L.t("단축어 추가", "Add text shortcut") : L.t("단축어 고치기", "Edit text shortcut"))
                 .setView(box)
                 .setPositiveButton(L.t("저장", "Save"), null)
                 .setNegativeButton(L.t("취소", "Cancel"), null);
-        AlertDialog d = b.create();
-        d.setOnShowListener(x -> d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+        AppDialog d = b.create();
+        d.setOnShowListener(x -> d.getButton(AppDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             String newKey = keyInput.getText().toString().trim();
             String phrase = phraseInput.getText().toString();
             String error = Shortcuts.validate(newKey, phrase);
@@ -247,6 +266,6 @@ public final class ShortcutEditorActivity extends Activity {
     /** 뒤로 가기: 검색창이나 키보드 시험 입력창이 열려 있으면 그것부터 닫고, 그다음에 이전 화면으로 간다 (Android 12 이하). */
     @Override
     public void onBackPressed() {
-        if (!SettingsFrame.consumeBack(this)) super.onBackPressed();
+        if (!SettingsFrame.consumeBack(this) && !SettingsFrame.metroBack(this)) super.onBackPressed();
     }
 }

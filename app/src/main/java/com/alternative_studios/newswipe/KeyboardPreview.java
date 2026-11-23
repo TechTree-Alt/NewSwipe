@@ -19,6 +19,7 @@ import com.alternative_studios.newswipe.keyboard.KeyboardTheme;
 import com.alternative_studios.newswipe.keyboard.KeyboardView;
 import com.alternative_studios.newswipe.keyboard.ToolbarButtons;
 import com.alternative_studios.newswipe.ui.IconButton;
+import com.alternative_studios.newswipe.ui.Metro;
 import com.alternative_studios.newswipe.ui.Ui;
 
 /**
@@ -1613,7 +1614,7 @@ final class KeyboardPreview extends FrameLayout {
             stroke.setStyle(Paint.Style.STROKE);
             label.setTextAlign(Paint.Align.CENTER);
             label.setTextSize(Ui.dp(c, 14));
-            label.setFakeBoldText(true);
+            label.setFakeBoldText(!com.alternative_studios.newswipe.ui.Metro.on);   // Metro에는 굵은 글자가 없다
             setContentDescription(L.t("키보드 미리보기. 영역을 누르면 그 영역이 가운데로 오고 설정 창이 열립니다. 그다음 그 영역의 키나 버튼을 "
                     + "누르면 그 설정 창이 열립니다.",
                     "Keyboard preview. Tap an area to bring it to the center and open its settings, then tap a key or button in it "
@@ -1632,7 +1633,7 @@ final class KeyboardPreview extends FrameLayout {
             int accent = theme.accent;
             areaLabel.setTextSize(Ui.dp(ctx, 11));
             areaLabel.setTextAlign(Paint.Align.CENTER);
-            areaLabel.setFakeBoldText(true);
+            areaLabel.setFakeBoldText(!com.alternative_studios.newswipe.ui.Metro.on);   // Metro에는 굵은 글자가 없다
             // 모서리도 키 모서리를 따라 돈다 (선이 키에서 나온 거리만큼 더 둥글게).
             float r = Math.max(0f, Ui.dp(ctx, prefs.keyRadiusDp()) + outlinePadX(ctx));
             String suffix = L.t(" 설정", " settings");
@@ -1654,7 +1655,7 @@ final class KeyboardPreview extends FrameLayout {
                         float outlineAlpha = drag ? 1f : 0.55f * (1f - w);
                         if (outlineAlpha > 0.01f) {
                             stroke.setColor(withAlpha(accent, outlineAlpha));
-                            c.drawRoundRect(area, rr, rr, stroke);
+                            Metro.roundRect(c, area, rr, rr, stroke);
                         }
                         float pillAlpha = (1f - dim) * (1f - w);
                         if (pillAlpha < 0.01f) continue;
@@ -1680,7 +1681,7 @@ final class KeyboardPreview extends FrameLayout {
                     int color = withAlpha(accent, outlineAlpha);
                     Paint outline = off ? dashed(color, Ui.dp(ctx, THIN_DP)) : stroke;
                     outline.setColor(color);
-                    c.drawRoundRect(area, rr, rr, outline);
+                    Metro.roundRect(c, area, rr, rr, outline);
                 }
                 float pillAlpha = (1f - dim) * (1f - w);
                 if (!off && pillAlpha > 0.01f) drawPill(c, L.t("눌러서 ", "Tap for ") + areaName(a, tab) + suffix, area, pillAlpha);
@@ -1696,7 +1697,7 @@ final class KeyboardPreview extends FrameLayout {
             float ph = Ui.dp(ctx, 8), pv = Ui.dp(ctx, 3);
             tmp.set(cx - tw / 2 - ph, cy - th / 2 - pv, cx + tw / 2 + ph, cy + th / 2 + pv);
             fill.setColor(withAlpha(theme.accent, alpha));
-            c.drawRoundRect(tmp, tmp.height() / 2, tmp.height() / 2, fill);
+            Metro.roundRect(c, tmp, tmp.height() / 2, tmp.height() / 2, fill);
             areaLabel.setColor(withAlpha(theme.onAccent, alpha));
             c.drawText(name, tmp.centerX(), tmp.centerY() - (fm.ascent + fm.descent) / 2, areaLabel);
         }
@@ -1756,7 +1757,7 @@ final class KeyboardPreview extends FrameLayout {
                     View b = bar.getChildAt(i);
                     if (!(b.getTag() instanceof String)) continue;
                     toolOutline(b, area);
-                    c.drawRoundRect(area, area.height() / 2, area.height() / 2, stroke);
+                    Metro.roundRect(c, area, area.height() / 2, area.height() / 2, stroke);
                 }
                 return;
             }
@@ -1769,7 +1770,7 @@ final class KeyboardPreview extends FrameLayout {
                     if (!selectable(k)) continue;
                     keyOutline(k, area);
                     float rr = Math.min(kr, Math.min(area.width(), area.height()) / 2f);
-                    c.drawRoundRect(area, rr, rr, stroke);
+                    Metro.roundRect(c, area, rr, rr, stroke);
                 }
             }
         }
@@ -1810,7 +1811,7 @@ final class KeyboardPreview extends FrameLayout {
             for (int i = 0; i < n; i++) {
                 RectF o = i == 0 ? area : outlineB;
                 float rr = Math.min(r, Math.min(o.width(), o.height()) / 2f);
-                c.drawRoundRect(o, rr, rr, p);
+                Metro.roundRect(c, o, rr, rr, p);
             }
         }
 
@@ -1855,7 +1856,7 @@ final class KeyboardPreview extends FrameLayout {
                 stroke.setStrokeWidth(Ui.dp(ctx, 2.5f));
                 stroke.setColor(accent);
                 if (selection.kind == SEL_TOOL_BUTTON) r = sel.height() / 2f;
-                c.drawRoundRect(sel, r, r, stroke);
+                Metro.roundRect(c, sel, r, r, stroke);
             }
             // 손잡이: 강조색 알약에 바탕색 테두리 (키 위에서도 보이게). 끄는 중인 손잡이는 더 크게.
             for (Handle h : Handle.values()) {
@@ -1871,9 +1872,9 @@ final class KeyboardPreview extends FrameLayout {
                 float thickHalf = Math.min(tmp.width(), tmp.height()) / 2f;
                 stroke.setStrokeWidth(Ui.dp(ctx, 2));
                 stroke.setColor(withAlpha(theme.background, a));
-                c.drawRoundRect(tmp, thickHalf, thickHalf, stroke);
+                Metro.roundRect(c, tmp, thickHalf, thickHalf, stroke);
                 fill.setColor(withAlpha(accent, a));
-                c.drawRoundRect(tmp, thickHalf, thickHalf, fill);
+                Metro.roundRect(c, tmp, thickHalf, thickHalf, fill);
             }
             c.restore();
             // 끄는 동안: 무엇을 얼마로 바꾸는지, 고른 영역 위에 남는 자리(자판 탭 아래부터 영역 윤곽선 위까지)의 가운데에 보여 준다.
@@ -1890,7 +1891,7 @@ final class KeyboardPreview extends FrameLayout {
                 float cy = Math.max((top + areaTop) / 2f, top + th / 2 + padV + Ui.dp(ctx, 2));
                 tmp.set(cx - tw / 2 - padH, cy - th / 2 - padV, cx + tw / 2 + padH, cy + th / 2 + padV);
                 fill.setColor(accent);
-                c.drawRoundRect(tmp, tmp.height() / 2, tmp.height() / 2, fill);
+                Metro.roundRect(c, tmp, tmp.height() / 2, tmp.height() / 2, fill);
                 label.setColor(theme.onAccent);
                 c.drawText(text, cx, cy - (fm.ascent + fm.descent) / 2, label);
             }

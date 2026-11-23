@@ -1,6 +1,5 @@
 package com.alternative_studios.newswipe;
 
-import android.app.AlertDialog;
 import android.content.Context;
 import android.graphics.Typeface;
 import android.text.TextUtils;
@@ -14,6 +13,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import com.alternative_studios.newswipe.keyboard.SwipeAction;
+import com.alternative_studios.newswipe.ui.NeuUi;
 import com.alternative_studios.newswipe.ui.Ui;
 
 import java.util.ArrayList;
@@ -37,17 +37,18 @@ final class ActionPicker {
      * @param onPick  기능을 고르면 그 ID로 부른다 (창은 저절로 닫힌다)
      * @param onReset '기본값'을 누르면 부른다
      */
-    static AlertDialog show(Context activity, CharSequence title, String[] ids, String current,
+    static AppDialog show(Context activity, CharSequence title, String[] ids, String current,
                             Consumer<String> onPick, Runnable onReset) {
         Context c = AppTheme.dialogContext(activity);
         AppTheme colors = AppTheme.of(activity);
-        AlertDialog[] dialog = new AlertDialog[1];
+        AppDialog[] dialog = new AppDialog[1];
         List<String> allowed = Arrays.asList(ids);
 
         LinearLayout root = new LinearLayout(c);
         root.setOrientation(LinearLayout.VERTICAL);
 
         ScrollView scroll = new ScrollView(c);
+        scroll.setVerticalScrollBarEnabled(!com.alternative_studios.newswipe.ui.Metro.on);   // Metro에는 스크롤 막대가 없다
         scroll.setVerticalFadingEdgeEnabled(true);
         LinearLayout list = new LinearLayout(c);
         list.setOrientation(LinearLayout.VERTICAL);
@@ -212,6 +213,7 @@ final class ActionPicker {
         float r = Ui.dp(c, 14);
         int press = Ui.tint(colors.text);
         row.setBackground(Ui.ripple(press, selected ? Ui.round(Ui.tint(colors.accent), r) : null, r));
+        if (NeuUi.on && selected) NeuUi.sunken(row, r);   // Neumorphism: 고른 줄은 안으로 들어가 있다
         row.setTag(id);
         row.setOnClickListener(onClick);
         row.setSelected(selected);
@@ -220,13 +222,14 @@ final class ActionPicker {
         label.setText(pickerLabel(id));
         label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
         label.setTextColor(selected ? colors.accent : colors.text);
-        if (selected) label.setTypeface(Typeface.DEFAULT_BOLD);
+        if (selected && !com.alternative_studios.newswipe.ui.Metro.on) label.setTypeface(Typeface.DEFAULT_BOLD);   // Metro: 고른 줄은 굵기 대신 강조색만
+        com.alternative_studios.newswipe.ui.Metro.tilt(row);   // Metro: 목록 줄은 누르면 기울어진다
         row.addView(label, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         if (selected) {
             TextView check = new TextView(c);
             check.setText("✓");
             check.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
-            check.setTypeface(Typeface.DEFAULT_BOLD);
+            check.setTypeface(com.alternative_studios.newswipe.ui.Metro.on ? Typeface.DEFAULT : Typeface.DEFAULT_BOLD);
             check.setTextColor(colors.accent);
             check.setPadding(Ui.dp(c, 8), 0, 0, 0);
             check.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
@@ -245,7 +248,7 @@ final class ActionPicker {
         t.setEllipsize(TextUtils.TruncateAt.END);
         t.setPadding(Ui.dp(c, 14), 0, Ui.dp(c, 14), 0);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, Ui.dp(c, 32));
-        lp.rightMargin = Ui.dp(c, 6);
+        lp.rightMargin = Ui.dp(c, NeuUi.on ? 10 : 6);   // Neumorphism: 그림자 자리
         t.setLayoutParams(lp);
         return t;
     }
@@ -255,8 +258,14 @@ final class ActionPicker {
         float r = Ui.chipRadius(c);
         int fill = on ? colors.accent : Ui.tint(colors.text);
         chip.setTextColor(on ? colors.onAccent : colors.text);
-        chip.setTypeface(on ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
+        chip.setTypeface(on && !com.alternative_studios.newswipe.ui.Metro.on ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
         chip.setBackground(Ui.ripple(Ui.tint(on ? colors.onAccent : colors.text), Ui.round(fill, r), r));
+        if (NeuUi.on) {
+            // Neumorphism: 갈래 칩은 솟아오르고, 지금 갈래는 안으로 들어가 강조색 글씨
+            if (on) NeuUi.sunken(chip, r);
+            else NeuUi.button(chip, NeuUi.surface, r);
+            chip.setTextColor(on ? colors.accent : colors.text);
+        }
         chip.setSelected(on);
     }
 }

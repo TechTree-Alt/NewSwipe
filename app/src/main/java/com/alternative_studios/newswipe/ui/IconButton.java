@@ -40,6 +40,12 @@ public final class IconButton extends View {
         // 도구 버튼 아이콘은 자판 기능키 아이콘보다 조금 크게 그려서, 같은 굵기(1.9)로는 더 굵어 보인다.
         stroke = CHIP_STROKE;
         invalidate();
+        if (Metro.on) {
+            // Metro: 둥근 칩 대신 네모, 물결 대신 누르는 동안 단색으로 덮는다.
+            setBackground(new InsetDrawable(Ui.metroPressed(pressed, fill == 0 ? null : Ui.round(fill, 0)),
+                    insetH, insetV, insetH, insetV));
+            return;
+        }
         InsetDrawable content = new InsetDrawable(Ui.round(fill, radius), insetH, insetV, insetH, insetV);
         InsetDrawable mask = new InsetDrawable(Ui.round(0xFFFFFFFF, radius), insetH, insetV, insetH, insetV);
         setBackground(new RippleDrawable(ColorStateList.valueOf(pressed), content, mask));
@@ -59,6 +65,12 @@ public final class IconButton extends View {
         setColor(iconColor);
         int insetV = Math.max(0, (barHeight - Ui.chipHeight(c, barHeight)) / 2);
         // 눌린 키 색은 밝은 테마의 기능키 색과 거의 같아서, 누를 때는 아이콘 색을 옅게 덮어 눌린 것이 보이게 한다.
+        if (theme.metro) {
+            // Windows Phone 키보드의 위쪽 줄처럼 바탕 없는 아이콘 (고정 핀처럼 따로 칠한 칩만 바탕을 남긴다).
+            // 누르는 동안은 키처럼 강조색으로 빛난다.
+            setChip(fill == theme.functionKey ? 0 : fill, theme.keyPressed, Ui.dp(c, 2), insetV, 0);
+            return;
+        }
         setChip(fill, Ui.tint(iconColor), Ui.dp(c, 2), insetV, Ui.chipRadius(c));
         Neu.apply(this, theme, fill, Ui.chipRadius(c), Ui.dp(c, 2), insetV);
     }

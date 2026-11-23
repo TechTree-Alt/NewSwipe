@@ -27,8 +27,6 @@ public final class ExpressiveButton extends TextView {
     private ValueAnimator pressAnim;
     private boolean down;
     /** 글자 앞에 그리는 아이콘 (Icons.*, 0이면 없음)과 그 크기·글자와의 간격. */
-    private int icon;
-    private float iconSize, iconGap;
 
     /**
      * @param fill 버튼 면 색 (강조색)
@@ -47,8 +45,10 @@ public final class ExpressiveButton extends TextView {
         setMinHeight(Ui.dp(c, 64));
         setMinWidth(Ui.dp(c, 168));
         setPadding(Ui.dp(c, 36), Ui.dp(c, 18), Ui.dp(c, 36), Ui.dp(c, 18));
+        if (Metro.on) setTypeface(Metro.regular());
         setClickable(true);
         setFocusable(true);
+        if (NeuUi.on) NeuUi.unclip(this, NeuUi.SMALL);   // 솟아오른 그림자가 잘리지 않게
         // 그림자(elevation)를 줄 때 그림자도 눌린 모양을 따라가게 한다.
         setOutlineProvider(new android.view.ViewOutlineProvider() {
             @Override
@@ -80,33 +80,46 @@ public final class ExpressiveButton extends TextView {
         return this;
     }
 
-    /** 글자 앞에 아이콘을 둔다 (0이면 뺀다). 아이콘 자리만큼 왼쪽 안쪽 여백이 늘어난다. */
-    public ExpressiveButton setLeadingIcon(int icon) {
-        float size = Ui.dp(getContext(), 18), gap = Ui.dp(getContext(), 6);
-        int was = this.icon == 0 ? 0 : Math.round(iconSize + iconGap);
-        int now = icon == 0 ? 0 : Math.round(size + gap);
-        this.icon = icon;
-        this.iconSize = size;
-        this.iconGap = gap;
-        if (was != now) setPadding(getPaddingLeft() - was + now, getPaddingTop(), getPaddingRight(), getPaddingBottom());
-        invalidate();
-        return this;
-    }
-
     private float radius(float h, float p) {
+        if (Metro.on) return 0f;   // Metro: 모서리 없는 네모 (강조색 타일)
         float full = h / 2f;
         return Math.max(0f, Math.min(full, full + (pressedRadius - full) * p));
     }
 
+    /**
+     * Neumorphism: 강조색 면이 바탕에서 솟아오르고, 누르는 동안 안으로 들어간다 (알약 모양 그대로).
+     */
+    private void drawNeu(Canvas canvas) {
+        float sx = getScrollX(), sy = getScrollY();
+        float w = getWidth(), h = getHeight();
+        rect.set(sx, sy, sx + w, sy + h);
+        float r = h / 2f;
+        if (press > 0.5f) {
+            com.alternative_studios.newswipe.ui.NeuUi.drawInset(getContext(), canvas, rect, r,
+                    Neu.blend(fill, 0xFF000000, 0.08f), paint);
+        } else {
+            com.alternative_studios.newswipe.ui.NeuUi.drawRaised(getContext(), canvas, rect, r, com.alternative_studios.newswipe.ui.NeuUi.SMALL);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(fill);
+            canvas.drawRoundRect(rect, r, r, paint);
+        }
+        super.onDraw(canvas);
+    }
+
     @Override
     protected void onDraw(Canvas canvas) {
+        if (com.alternative_studios.newswipe.ui.NeuUi.on) {
+            drawNeu(canvas);
+            return;
+        }
         // 캔버스는 TextView의 스크롤만큼 옮겨져 있다. 면·아이콘은 그만큼 더해 뷰 자리에 그린다 (글자는 super.onDraw가 맞춰 그린다).
         float sx = getScrollX(), sy = getScrollY();
         float w = getWidth(), h = getHeight();
         float p = Math.max(-0.3f, Math.min(1f, press));
         float radius = radius(h, p);
         // 누르면 모양이 가운데로 살짝 줄어든다 (놓을 때는 스프링으로 원래 크기를 조금 넘었다 돌아온다).
-        float inset = Math.min(w, h) * 0.04f * p;
+        // Metro에서는 모양은 그대로 두고 뷰 전체가 기울어진다 (틸트).
+        float inset = Metro.on ? 0f : Math.min(w, h) * 0.04f * p;
         rect.set(sx + inset, sy + inset, sx + w - inset, sy + h - inset);
         paint.setColor(fill);
         canvas.drawRoundRect(rect, radius, radius, paint);
@@ -115,14 +128,8 @@ public final class ExpressiveButton extends TextView {
             canvas.drawRoundRect(rect, radius, radius, paint);
         }
         canvas.save();
-        float textScale = 1f - 0.04f * Math.max(0f, p);
+        float textScale = Metro.on ? 1f : 1f - 0.04f * Math.max(0f, p);
         canvas.scale(textScale, textScale, sx + w / 2f, sy + h / 2f);
-        if (icon != 0) {   // 글자 바로 앞 (왼쪽 안쪽 여백의 끝)
-            paint.setColor(ink);
-            float cx = sx + getPaddingLeft() - iconGap - iconSize / 2f;
-            com.alternative_studios.newswipe.keyboard.Icons.draw(canvas, icon, cx, sy + h / 2f, iconSize, paint, 2.4f);
-            paint.setStyle(Paint.Style.FILL);
-        }
         super.onDraw(canvas);
         canvas.restore();
     }
@@ -130,8 +137,8 @@ public final class ExpressiveButton extends TextView {
     private void animatePress(boolean toDown) {
         if (pressAnim != null) pressAnim.cancel();
         pressAnim = ValueAnimator.ofFloat(press, toDown ? 1f : 0f);
-        pressAnim.setDuration(toDown ? PRESS_IN_MS : PRESS_OUT_MS);
-        pressAnim.setInterpolator(toDown ? new DecelerateInterpolator() : Spring.BOUNCY);
+        pressAnim.setDuration(toDown ? PRESS_IN_MS : Metro.on ? 100 : PRESS_OUT_MS);
+        pressAnim.setInterpolator(toDown ? new DecelerateInterpolator() : Metro.on ? Metro.LOG : Spring.BOUNCY);
         pressAnim.addUpdateListener(a -> {
             press = (float) a.getAnimatedValue();
             invalidate();
@@ -143,6 +150,7 @@ public final class ExpressiveButton extends TextView {
     @Override
     public boolean onTouchEvent(MotionEvent e) {
         if (!isEnabled() || !isClickable()) return super.onTouchEvent(e);
+        Metro.onTiltTouch(this, e);
         switch (e.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
                 down = true;

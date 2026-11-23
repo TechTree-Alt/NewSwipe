@@ -21,6 +21,11 @@ public final class ClipChip extends View {
     private final Paint iconPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final TextPaint textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     private final int padH, iconSize, gap, minHeight, inset;
+    /**
+     * 클립보드 아이콘 그림 안쪽 왼쪽의 빈 곳 (24칸 중 판의 왼쪽 선이 x=5, 선 굵기 절반을 빼면 약 4칸. 글 끝에도 글자 자체의 작은 빈 곳이 있어 3칸만 당긴다). 글과 함께 보일 때 아이콘을
+     * 이만큼 왼쪽으로 당겨, 눈에 보이는 왼쪽 여백이 글 뒤의 오른쪽 여백(padH)과 같게 한다.
+     */
+    private final int iconBlank;
     private String label = "";
     /** 지금 폭에 맞게 줄인 글 (그릴 자리가 없으면 빈 글). */
     private CharSequence fitted = "";
@@ -34,12 +39,42 @@ public final class ClipChip extends View {
         padH = Ui.dp(c, 12);
         iconSize = Ui.dp(c, 18);
         gap = Ui.dp(c, 6);
+        iconBlank = Math.round(iconSize * 3f / 24f);
         minHeight = Ui.dp(c, 24);
         inset = Ui.dp(c, 4);   // Ui.chipHeight와 같게: 막대에서 위아래 4dp씩 남긴다
         float r = Ui.chipRadius(c);
-        setBackground(Ui.ripple(pressed, Ui.round(fill, r), r));
+        if (Metro.on) {
+            // Metro: 도구 막대 버튼처럼 바탕 없이 글자·아이콘만, 누르는 동안 강조색으로 채운다 (pressed는 Metro에서 강조색).
+            setBackground(Ui.metroPressed(pressed, null));
+            textPaint.setTypeface(Metro.regular());
+        } else {
+            setBackground(Ui.ripple(pressed, Ui.round(fill, r), r));
+        }
         setClickable(true);
         setFocusable(true);
+        textColorNormal = textColor;
+        iconColorNormal = iconColor;
+    }
+
+    private int textColorNormal, iconColorNormal;
+
+    private int pressedInk;
+
+    /** 누르는 동안(Metro: 강조색 바탕) 아이콘·글자 색. 정하지 않으면 평소 색 그대로다. */
+    public void setPressedInk(int color) {
+        pressedInk = color;
+        invalidate();
+    }
+
+    @Override
+    protected void drawableStateChanged() {
+        super.drawableStateChanged();
+        if (pressedInk != 0) invalidate();
+    }
+
+    /** 지금 상태의 색: Metro에서 누르는 동안은 강조색 위의 글자 색. */
+    private int inkNow(int normal) {
+        return Metro.on && pressedInk != 0 && isPressed() ? pressedInk : normal;
     }
 
     /** 미리보기 글을 바꾼다 (한 줄로 보인다). */
@@ -53,7 +88,8 @@ public final class ClipChip extends View {
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        int want = padH + iconSize + (label.isEmpty() ? 0 : gap + (int) Math.ceil(textPaint.measureText(label))) + padH;
+        int want = label.isEmpty() ? padH + iconSize + padH
+                : padH - iconBlank + iconSize + gap + (int) Math.ceil(textPaint.measureText(label)) + padH;
         int w = resolveSize(want, widthMeasureSpec);
         // 도구 막대 높이에서 위아래로 조금씩 남긴다 (막대가 아주 낮으면 남기지 않는다).
         int specH = MeasureSpec.getSize(heightMeasureSpec);
@@ -75,7 +111,7 @@ public final class ClipChip extends View {
     }
 
     private void refit(int w) {
-        float avail = w - 2 * padH - iconSize - gap;
+        float avail = w - 2 * padH + iconBlank - iconSize - gap;
         if (label.isEmpty()) {
             fitted = "";
         } else if (textPaint.measureText(label) <= avail + 0.5f) {
@@ -93,12 +129,14 @@ public final class ClipChip extends View {
         float cy = getHeight() / 2f;
         boolean text = fitted.length() > 0;
         // 글이 없으면 아이콘을 가운데에 둔다.
-        float iconX = text ? padH + iconSize / 2f : getWidth() / 2f;
+        float iconX = text ? padH - iconBlank + iconSize / 2f : getWidth() / 2f;
+        iconPaint.setColor(inkNow(iconColorNormal));
+        textPaint.setColor(inkNow(textColorNormal));
         Icons.draw(canvas, Icons.CLIPBOARD, iconX, cy, iconSize, iconPaint);
         if (text) {
             Paint.FontMetrics fm = textPaint.getFontMetrics();
             float baseline = cy - (fm.ascent + fm.descent) / 2f;
-            canvas.drawText(fitted, 0, fitted.length(), padH + iconSize + gap, baseline, textPaint);
+            canvas.drawText(fitted, 0, fitted.length(), padH - iconBlank + iconSize + gap, baseline, textPaint);
         }
     }
 

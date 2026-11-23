@@ -27,6 +27,7 @@ public final class SpringMotion {
      * 정확히 target에 둔다. 돌려준 애니메이터를 cancel()하면 그 자리에서 멈춘다.
      */
     public static ValueAnimator translateY(View v, float target, float stiffness, float dampingRatio, Runnable onEnd) {
+        if (Metro.on) return metroSlide(v, target, onEnd);
         final float x0 = v.getTranslationY() - target;
         final double w0 = Math.sqrt(stiffness);
         final double z = Math.min(0.999, dampingRatio);
@@ -60,6 +61,35 @@ public final class SpringMotion {
             @Override
             public void onAnimationEnd(Animator animation) {
                 v.setLayerType(View.LAYER_TYPE_NONE, null);
+                if (cancelled) return;
+                v.setTranslationY(target);
+                if (onEnd != null) onEnd.run();
+            }
+        });
+        va.start();
+        return va;
+    }
+
+    /**
+     * Metro UI 모드: 스프링 대신 Windows Phone의 SlideUpFadeIn처럼 350ms 동안 빠르게 미끄러져 부드럽게 멈춘다
+     * (ExponentialEase EaseOut 지수 6, 되튀지 않는다).
+     */
+    private static ValueAnimator metroSlide(View v, float target, Runnable onEnd) {
+        final float from = v.getTranslationY();
+        ValueAnimator va = ValueAnimator.ofFloat(0f, 1f);
+        va.setDuration(Math.abs(from - target) < 1 ? 1 : 350);
+        va.setInterpolator(Metro.EASE_OUT);
+        va.addUpdateListener(a -> v.setTranslationY(from + (target - from) * (float) a.getAnimatedValue()));
+        va.addListener(new AnimatorListenerAdapter() {
+            private boolean cancelled;
+
+            @Override
+            public void onAnimationCancel(Animator animation) {
+                cancelled = true;
+            }
+
+            @Override
+            public void onAnimationEnd(Animator animation) {
                 if (cancelled) return;
                 v.setTranslationY(target);
                 if (onEnd != null) onEnd.run();

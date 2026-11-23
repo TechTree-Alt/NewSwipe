@@ -92,9 +92,10 @@ final class HintPositionPicker extends View {
     @Override
     protected void onDraw(Canvas c) {
         fill.setColor(theme.background);
-        c.drawRoundRect(key.left - dp(8), key.top - dp(8), key.right + dp(8), key.bottom + dp(8), dp(20), dp(20), fill);
+        float outer = com.alternative_studios.newswipe.ui.Metro.on ? 0 : dp(20), inner = com.alternative_studios.newswipe.ui.Metro.on ? 0 : dp(14);
+        c.drawRoundRect(key.left - dp(8), key.top - dp(8), key.right + dp(8), key.bottom + dp(8), outer, outer, fill);
         fill.setColor(theme.key);
-        c.drawRoundRect(key, dp(14), dp(14), fill);
+        c.drawRoundRect(key, inner, inner, fill);
 
         text.setColor(theme.text);
         text.setTextSize(dp(40));
