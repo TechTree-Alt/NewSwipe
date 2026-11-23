@@ -306,6 +306,8 @@ public final class Prefs {
      * 처음 닿은 자리에서 멀수록 빠르다). 키 모드·조이스틱 모드 어느 쪽이든 쓴다.
      */
     public static final String CURSOR_STICK = "cursor_stick";
+    /** 커서 이동 키 터치패드 방식의 커서 이동 속도 (%, 100 = 기본, 좌우·상하): 스페이스바·글자 키와 따로 정한다. */
+    public static final String CURSOR_KEY_SPEED_H = "cursor_key_speed_h", CURSOR_KEY_SPEED_V = "cursor_key_speed_v";
     /** 조이스틱 방식의 민감도 (%, 50~300, 기본 100): 클수록 조금만 밀어도 빨라진다. */
     public static final String CURSOR_STICK_SENSITIVITY = "cursor_stick_sensitivity";
     public static final int CURSOR_STICK_SENSITIVITY_MIN = 50, CURSOR_STICK_SENSITIVITY_MAX = 300;
@@ -959,7 +961,7 @@ public final class Prefs {
             new EditorScope("large", L.t("폴더블 내부 화면 별도 키보드·판정 기준", "Separate inner screen keyboard · threshold"), keys(LARGE_LAYOUT, LARGE_SCREEN_DP), NONE),
             new EditorScope("keys", L.t("키마다 정한 설정 (길게 누르기·밀기·키 창의 누르기 항목)", "Per-key settings (long press · swipe · tap options in key panels)"), keys(NUMBER_PAD_SYMBOLS,
                     DOUBLE_SPACE_PERIOD, SPACE_HIT_SHRINK, SPACE_HIT_SHRINK_PCT, SPACE_LANG_LABEL, SPACE_CURSOR_SPEED_H,
-                    SPACE_CURSOR_SPEED_V, CURSOR_STICK, CURSOR_STICK_SENSITIVITY, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, DELETE_REPEAT_RATE, DELETE_WORD_REPEAT_RATE,
+                    SPACE_CURSOR_SPEED_V, CURSOR_STICK, CURSOR_STICK_SENSITIVITY, CURSOR_KEY_SPEED_H, CURSOR_KEY_SPEED_V, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, DELETE_REPEAT_RATE, DELETE_WORD_REPEAT_RATE,
                     LANGUAGE_ORDER), keys("popup_", "popupkept_", "repeat_", "swipe_custom_", SYMBOL_CHAR_PREFIX, "swipe_final_", "swipe_vowel_",
                     "swipe_lp_", "swipe_fn_", "swipe_fk_", "swipe_toolbar_")),
             // 가로 모드·폴더블 내부 화면이 따로 정하는 값과 자·모음 균형 배열의 키 폭·위치: 목록의 되돌리기에는 보이지 않지만
@@ -1610,6 +1612,8 @@ public final class Prefs {
     }
     public int spaceCursorSpeedH() { return sp.getInt(SPACE_CURSOR_SPEED_H, 100); }
     public int spaceCursorSpeedV() { return sp.getInt(SPACE_CURSOR_SPEED_V, 100); }
+    public int cursorKeySpeedH() { return sp.getInt(CURSOR_KEY_SPEED_H, 100); }
+    public int cursorKeySpeedV() { return sp.getInt(CURSOR_KEY_SPEED_V, 100); }
     /** 커서 이동 키가 조이스틱 방식으로 커서를 옮기는지 (기본 터치패드). */
     public boolean cursorStick() { return sp.getBoolean(CURSOR_STICK, false); }
     public int cursorStickSensitivity() {

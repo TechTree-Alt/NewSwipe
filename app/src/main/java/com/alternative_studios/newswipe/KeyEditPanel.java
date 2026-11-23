@@ -619,7 +619,7 @@ final class KeyEditPanel {
                 return new String[]{Prefs.DOUBLE_SPACE_PERIOD, Prefs.SPACE_HIT_SHRINK, Prefs.SPACE_HIT_SHRINK_PCT,
                         Prefs.SPACE_LANG_LABEL, Prefs.SPACE_CURSOR_SPEED_H, Prefs.SPACE_CURSOR_SPEED_V};
             case Key.CURSOR_PAD:
-                return new String[]{Prefs.SPACE_CURSOR_SPEED_H, Prefs.SPACE_CURSOR_SPEED_V, Prefs.CURSOR_STICK,
+                return new String[]{Prefs.CURSOR_KEY_SPEED_H, Prefs.CURSOR_KEY_SPEED_V, Prefs.CURSOR_STICK,
                         Prefs.CURSOR_STICK_SENSITIVITY};
             case Key.DELETE:
                 return new String[]{Prefs.DELETE_HIT_SHRINK, Prefs.DELETE_HIT_SHRINK_PCT};
@@ -671,7 +671,7 @@ final class KeyEditPanel {
             card.addView(note(L.t("'커서 자유 이동'을 정한 방향으로 밀면 커서가 움직입니다 (좌우는 글자, 위아래는 줄 단위).", "Swipe in a direction set to 'Free cursor' to move the cursor (by character left and right, by line up and down).")));
             card.addView(slider(L.t("커서 이동 속도 좌우", "Cursor speed (horizontal)"), Prefs.SPACE_CURSOR_SPEED_H, prefs.spaceCursorSpeedH(), 50, 300, 10, "%"));
             card.addView(slider(L.t("커서 이동 속도 상하", "Cursor speed (vertical)"), Prefs.SPACE_CURSOR_SPEED_V, prefs.spaceCursorSpeedV(), 50, 300, 10, "%"));
-            card.addView(note(L.t("스페이스바·커서 키·글자 키 트랙패드가 같은 속도를 씁니다. 값이 클수록 조금만 밀어도 커서가 빠르게 움직입니다.", "The space bar, cursor key, and letter key trackpad share this speed. Higher values move the cursor faster with shorter swipes.")));
+            card.addView(note(L.t("스페이스바·글자 키 트랙패드가 같은 속도를 씁니다. 값이 클수록 조금만 밀어도 커서가 빠르게 움직입니다.", "The space bar and letter key trackpad share this speed. Higher values move the cursor faster with shorter swipes.")));
         }
     }
 
@@ -696,18 +696,16 @@ final class KeyEditPanel {
     private void fillCursorMoveStyle(LinearLayout body) {
         body.removeAllViews();
         if (prefs.cursorStick()) {
-            body.addView(note(L.t("민 쪽으로 커서가 계속 움직입니다. 처음 누른 자리에서 멀리 밀수록 빨라지고, 가까이 되돌리면 멈춥니다. "
-                    + "길게 누른 뒤 밀어서 글자를 선택할 때도 같습니다.",
-                    "The cursor keeps moving the way you push. Push farther from where you first touched to go faster; come back near it to stop. "
-                    + "Selecting text with long press and swipe works the same way.")));
+            body.addView(note(L.t("민 쪽으로 커서가 계속 움직입니다. 처음 누른 자리에서 멀리 밀수록 빨라집니다.",
+                    "The cursor keeps moving the way you push. The farther you push from where you first touched, the faster it goes.")));
             body.addView(slider(L.t("민감도", "Sensitivity"), Prefs.CURSOR_STICK_SENSITIVITY, prefs.cursorStickSensitivity(),
                     Prefs.CURSOR_STICK_SENSITIVITY_MIN, Prefs.CURSOR_STICK_SENSITIVITY_MAX, 10, "%"));
             body.addView(note(L.t("값이 클수록 조금만 밀어도 빨라집니다.", "Higher values speed up with a shorter push.")));
         } else {
-            body.addView(note(L.t("밀어 간 거리만큼 커서가 움직입니다.", "The cursor moves as far as you swipe.")));
-            body.addView(slider(L.t("커서 이동 속도 좌우", "Cursor speed (horizontal)"), Prefs.SPACE_CURSOR_SPEED_H, prefs.spaceCursorSpeedH(), 50, 300, 10, "%"));
-            body.addView(slider(L.t("커서 이동 속도 상하", "Cursor speed (vertical)"), Prefs.SPACE_CURSOR_SPEED_V, prefs.spaceCursorSpeedV(), 50, 300, 10, "%"));
-            body.addView(note(L.t("스페이스바·커서 키·글자 키 트랙패드가 같은 속도를 씁니다. 값이 클수록 조금만 밀어도 커서가 빠르게 움직입니다.", "The space bar, cursor key, and letter key trackpad share this speed. Higher values move the cursor faster with shorter swipes.")));
+            body.addView(note(L.t("손가락을 민 만큼 커서가 움직입니다.", "The cursor moves as much as you slide your finger.")));
+            body.addView(slider(L.t("커서 이동 속도 좌우", "Cursor speed (horizontal)"), Prefs.CURSOR_KEY_SPEED_H, prefs.cursorKeySpeedH(), 50, 300, 10, "%"));
+            body.addView(slider(L.t("커서 이동 속도 상하", "Cursor speed (vertical)"), Prefs.CURSOR_KEY_SPEED_V, prefs.cursorKeySpeedV(), 50, 300, 10, "%"));
+            body.addView(note(L.t("이 키만의 속도입니다. 값이 클수록 조금만 밀어도 커서가 빠르게 움직입니다.", "Speed for this key only. Higher values move the cursor faster with shorter swipes.")));
         }
     }
 
