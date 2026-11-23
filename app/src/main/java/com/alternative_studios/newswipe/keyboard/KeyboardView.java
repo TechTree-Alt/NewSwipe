@@ -993,6 +993,20 @@ public final class KeyboardView extends View {
         return false;
     }
 
+    /** Neumorphism: 조이스틱에 파인 긴 흰색 면(스페이스바 등)은 파인 가장자리 안쪽에도 변 띠를 붙인다 (Neu.drawNotchEdgeShade). */
+    private void drawNotchEdgeShades(Canvas c, RectF face, int color) {
+        if (color != theme.key) return;
+        for (KeyboardLayout.Row row : layout.rows) {
+            for (Key j : row.keys) {
+                if (!j.joystick) continue;
+                float cx = j.rect.centerX(), cy = j.rect.centerY(), hr = joystickHoleRadius(j);
+                float nx = Math.max(face.left, Math.min(cx, face.right)), ny = Math.max(face.top, Math.min(cy, face.bottom));
+                if (Math.hypot(nx - cx, ny - cy) >= hr) continue;
+                Neu.drawNotchEdgeShade(c, face, radius, color, theme, cx, cy, hr, fill);
+            }
+        }
+    }
+
     /** {@link #drawShadow}와 같은 그림자를, 조이스틱 자리만큼 둥글게 파인 키 모양 그대로 그린다. */
     private void drawNotchedShadow(Canvas c, RectF r) {
         if (shadowPaint == null) {
@@ -1081,6 +1095,7 @@ public final class KeyboardView extends View {
                 cy += dp(1);
             } else {
                 Neu.drawFace(c, r, radius, bg, theme, fill);
+                drawNotchEdgeShades(c, r, bg);
             }
         } else if (theme.metro) {
             // Windows Phone 키보드: 모서리 없는 네모 키, 그림자 없음. 누른 키는 강조색으로 빛나고 글자는 그 위의 색이 된다.
