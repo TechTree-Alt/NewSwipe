@@ -682,21 +682,29 @@ public final class KeyboardView extends View {
         layoutJoysticks(w);
     }
 
-    /** 조이스틱 모드 커서 이동 키의 보이는 반지름 (px). 누르는 범위는 이보다 조금 넓다 ({@link #JOYSTICK_HIT}). */
-    private float joyRadius;
+    /** 조이스틱의 누르는 범위: 보이는 원 반지름의 몇 배인지. */
     public static final float JOYSTICK_HIT = 1.2f;
+
+    /** 조이스틱의 보이는 반지름 (px). 배치 뒤의 rect(누르는 범위)에서 구한다. */
+    public static float joystickRadius(Key k) {
+        return k.rect.width() / 2f / JOYSTICK_HIT;
+    }
+
+    /** 조이스틱이 이웃 키들을 파낸 원의 반지름 (px): 보이는 원에 키 사이 간격만큼 더한다. */
+    public float joystickHoleRadius(Key k) {
+        return joystickRadius(k) + Math.max(gapX, gapY) * 0.6f + dp(1);
+    }
 
     /**
      * 조이스틱(폭 없는 커서 이동 키)을 앞뒤 두 키의 경계 위쪽, 윗줄과 만나는 곳에 놓는다. 줄에서 폭이 0인 자리(경계)가
      * 가로 위치이고, 그 줄의 위쪽 가장자리가 세로 위치다. rect는 누르는 범위(원을 감싼 정사각형)로 바꾼다.
      */
     private void layoutJoysticks(int w) {
-        joyRadius = Math.min(rowUnitPx * 0.2f, dp(17));
-        float hit = joyRadius * JOYSTICK_HIT;
         for (KeyboardLayout.Row row : layout.rows) {
             for (Key k : row.keys) {
                 if (!k.isJoystick()) continue;
-                float cx = Math.max(joyRadius, Math.min(w - joyRadius, k.rect.left));
+                float r = rowUnitPx * k.joystickRadius(), hit = r * JOYSTICK_HIT;   // 반지름은 줄 높이에 대한 비율 (모드마다)
+                float cx = Math.max(r, Math.min(w - r, k.rect.left));
                 float cy = k.rect.top;
                 k.rect.set(cx - hit, cy - hit, cx + hit, cy + hit);
             }
@@ -858,12 +866,12 @@ public final class KeyboardView extends View {
      * 누르고 밀면 점이 미는 쪽으로 따라간다. Neumorphism·Metro 모드에서는 그 모드의 키 모양을 따른다.
      */
     private void drawJoystick(Canvas c, Key k) {
-        float cx = k.rect.centerX(), cy = k.rect.centerY(), r = joyRadius;
+        float cx = k.rect.centerX(), cy = k.rect.centerY(), r = joystickRadius(k);
         Pointer p = pointerOn(k);
         boolean pressed = p != null;
         // 이웃 키들을 파낸 자리 (키 사이 간격만큼).
         fill.setColor(theme.background);
-        c.drawCircle(cx, cy, r + Math.max(gapX, gapY) * 0.6f + dp(1), fill);
+        c.drawCircle(cx, cy, joystickHoleRadius(k), fill);
         RectF face = tmp;
         face.set(cx - r, cy - r, cx + r, cy + r);
         if (theme.neu) {

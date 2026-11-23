@@ -81,6 +81,8 @@ public final class Key {
      * 동그랗게 그린다. rect는 배치 뒤 누르는 범위(원을 감싼 정사각형)다.
      */
     boolean joystick;
+    /** 조이스틱의 반지름: 줄 높이에 대한 비율 (조이스틱일 때만). */
+    float joystickRadius;
 
     /** 그리지 않는 키인지 (분리 키보드의 빈 자리에 둔 g, v). */
     /** 분리 키보드의 가운데 빈 자리인지 (두 묶음을 가르는 곳). */
@@ -91,6 +93,11 @@ public final class Key {
     /** 자·모음 균형 배열의 오른쪽(모음) 쪽 키인지. */
     public boolean isRightBlock() {
         return rightBlock;
+    }
+
+    /** 조이스틱의 반지름 (줄 높이에 대한 비율). */
+    public float joystickRadius() {
+        return joystickRadius;
     }
 
     /** 키 사이에 끼워 넣은 동그란 조이스틱(커서 이동 키)인지. */

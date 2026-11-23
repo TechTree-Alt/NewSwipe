@@ -1241,10 +1241,12 @@ public final class KeyboardLayout {
                     break;
                 case BottomKeys.CURSOR:
                     k = fn(Key.CURSOR_PAD, "", narrowW);
-                    if (prefs != null && prefs.cursorJoystick()) {
+                    float joy = prefs == null ? 0f : BottomKeys.joystickRadius(prefs.cursorKeyMode());
+                    if (joy > 0f) {
                         // 조이스틱 모드: 폭 없이 앞뒤 키 사이에 끼운다 (자판 뷰가 경계 위에 동그랗게 그린다).
                         k.weight = 0f;
                         k.joystick = true;
+                        k.joystickRadius = joy;
                     }
                     break;
                 case BottomKeys.VOICE:

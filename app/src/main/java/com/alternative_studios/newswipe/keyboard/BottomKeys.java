@@ -25,7 +25,35 @@ public final class BottomKeys {
      */
     public static final String[] SYMBOL_GLOBE_CHOICES = {GLOBE, EMOJI, CLIPBOARD, CURSOR, VOICE};
 
+    /** 커서 이동 키의 모드: 맨 아래 줄의 키 (기본), 키 사이에 끼운 조이스틱, 작은 조이스틱. 선택 창에 이 차례로 보인다. */
+    public static final String CURSOR_MODE_KEY = "key", CURSOR_MODE_JOYSTICK = "joystick", CURSOR_MODE_SMALL = "small_joystick";
+    public static final String[] CURSOR_MODES = {CURSOR_MODE_KEY, CURSOR_MODE_JOYSTICK, CURSOR_MODE_SMALL};
+
     private BottomKeys() {
+    }
+
+    /** 저장된 값(없으면 null)을 커서 이동 키 모드로 푼다. 모르는 값은 기본값(키)이다. */
+    public static String cursorMode(String stored) {
+        for (String m : CURSOR_MODES) if (m.equals(stored)) return m;
+        return CURSOR_MODE_KEY;
+    }
+
+    /** 커서 이동 키 모드의 이름 (키 · 조이스틱 · 작은 조이스틱). */
+    public static String cursorModeLabel(String mode) {
+        switch (mode) {
+            case CURSOR_MODE_JOYSTICK: return L.t("조이스틱", "Joystick");
+            case CURSOR_MODE_SMALL: return L.t("작은 조이스틱", "Small joystick");
+            default: return L.t("키", "Key");
+        }
+    }
+
+    /** 조이스틱 반지름 (줄 높이에 대한 비율). 키 모드면 0. */
+    public static float joystickRadius(String mode) {
+        switch (mode) {
+            case CURSOR_MODE_JOYSTICK: return 0.25f;
+            case CURSOR_MODE_SMALL: return 0.2f;
+            default: return 0f;
+        }
     }
 
     /** 하단 키 편집 화면에 보이는 이름 (이름과 키 모양). */

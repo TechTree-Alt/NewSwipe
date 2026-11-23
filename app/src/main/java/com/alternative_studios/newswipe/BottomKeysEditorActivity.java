@@ -232,6 +232,32 @@ public final class BottomKeysEditorActivity extends Activity {
 
     /** 언어 전환 키의 하위 버튼: 기호 자판에서 그 자리에 놓을 키를 고른다. 오른쪽에 지금 고른 키를 보여 준다. */
     private View symbolGlobeButton() {
+        String[] ids = BottomKeys.SYMBOL_GLOBE_CHOICES;
+        String[] names = new String[ids.length], shortNames = new String[ids.length];
+        for (int i = 0; i < ids.length; i++) {
+            names[i] = BottomKeys.symbolGlobeChoice(ids[i]);
+            shortNames[i] = BottomKeys.symbolGlobeLabel(ids[i]);
+        }
+        return choiceButton(L.t("기호 자판에서는", "On the symbol keyboard"),
+                L.t("기호 자판에서는 다른 키로 바꾸기", "Change the key on the symbol keyboard"), ids, names, shortNames,
+                prefs::symbolGlobeKey, prefs::setSymbolGlobeKey);
+    }
+
+    /** 커서 이동 키의 하위 항목 '모드': 키 · 조이스틱 · 작은 조이스틱 (조이스틱은 순서상 앞뒤 두 키 사이 위에 동그랗게 끼운다). */
+    private View cursorModeButton() {
+        String[] ids = BottomKeys.CURSOR_MODES;
+        String[] names = new String[ids.length];
+        for (int i = 0; i < ids.length; i++) names[i] = BottomKeys.cursorModeLabel(ids[i]);
+        return choiceButton(L.t("모드", "Mode"), L.t("커서 이동 키 모드", "Cursor key mode"), ids, names, names,
+                prefs::cursorKeyMode, prefs::setCursorKeyMode);
+    }
+
+    /**
+     * 이름과 지금 고른 값을 한 줄에 보이고, 누르면 고르는 창이 뜨는 하위 항목 버튼 ('기호 자판에서는', 커서 이동 키 '모드').
+     * names는 고르는 창에, shortNames는 버튼에 보이는 이름이다.
+     */
+    private View choiceButton(String titleText, String dialogTitle, String[] ids, String[] names, String[] shortNames,
+                              java.util.function.Supplier<String> now, java.util.function.Consumer<String> pick) {
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
         int h = Ui.dp(this, 14);
@@ -239,8 +265,8 @@ public final class BottomKeysEditorActivity extends Activity {
         row.setBackground(Ui.ripple(accentColor & 0x00FFFFFF | 0x33000000,
                 Ui.round(accentColor & 0x00FFFFFF | 0x1F000000, Ui.dp(this, 12)), Ui.dp(this, 12)));
         if (NeuUi.on) NeuUi.button(row, NeuUi.surface, Ui.dp(this, 12));   // Neumorphism: 솟아오른 버튼
-        TextView title = text(L.t("기호 자판에서는", "On the symbol keyboard"), 15, accentColor);
-        TextView current = text(BottomKeys.symbolGlobeLabel(prefs.symbolGlobeKey()), 15, accentColor);
+        TextView title = text(titleText, 15, accentColor);
+        TextView current = text(shortNames[Math.max(0, java.util.Arrays.asList(ids).indexOf(now.get()))], 15, accentColor);
         int gap = Ui.dp(this, 12), valuePad = Ui.dp(this, 8);
         // 쉼표·온점 키의 '다른 키로 설정'처럼 이름과 지금 고른 키를 한 줄에 놓는다. 자리가 모자라면 고른 키의 글씨를
         // 최소 크기까지 줄여 한 줄에 맞추고, 그래도 안 되면 이름 아래에 작게 놓는다.
@@ -288,19 +314,12 @@ public final class BottomKeysEditorActivity extends Activity {
         row.setClickable(true);
         row.setFocusable(true);
         row.setOnClickListener(v -> {
-            String[] ids = BottomKeys.SYMBOL_GLOBE_CHOICES;
-            String[] names = new String[ids.length];
-            int checked = 0;
-            String now = prefs.symbolGlobeKey();
-            for (int i = 0; i < ids.length; i++) {
-                names[i] = BottomKeys.symbolGlobeChoice(ids[i]);
-                if (ids[i].equals(now)) checked = i;
-            }
+            int checked = Math.max(0, java.util.Arrays.asList(ids).indexOf(now.get()));
             AppTheme.dialogBuilder(this)
-                    .setTitle(L.t("기호 자판에서는 다른 키로 바꾸기", "Change the key on the symbol keyboard"))
+                    .setTitle(dialogTitle)
                     .setSingleChoiceItems(names, checked, (dlg, which) -> {
-                        prefs.setSymbolGlobeKey(ids[which]);
-                        current.setText(BottomKeys.symbolGlobeLabel(ids[which]));
+                        pick.accept(ids[which]);
+                        current.setText(shortNames[which]);
                         updatePreview();
                         dlg.dismiss();
                     })
@@ -378,14 +397,6 @@ public final class BottomKeysEditorActivity extends Activity {
         return group;
     }
 
-    /** 커서 이동 키의 하위 항목 '조이스틱 모드': 맨 아래 줄에 자리를 차지하지 않고 순서상 앞뒤 두 키 사이 위에 동그랗게 끼운다. */
-    private View joystickRow() {
-        View row = fixedRow(L.t("조이스틱 모드", "Joystick mode"), null,
-                prefs.cursorJoystick(), L.t("조이스틱 모드", "Joystick mode"), prefs::setCursorJoystick);
-        row.setPadding(0, row.getPaddingTop(), 0, row.getPaddingBottom());
-        return row;
-    }
-
     /** fixedRow로 만든 줄을 쓸 수 없는 상태로: 글자를 흐리게 하고 스위치를 끈다. */
     private static void setRowDisabled(View row) {
         ViewGroup g = (ViewGroup) row;
@@ -459,9 +470,12 @@ public final class BottomKeysEditorActivity extends Activity {
             charGroup.setVisibility(prefs.bottomKeyShown(id) ? View.VISIBLE : View.GONE);
             texts.addView(charGroup);
         }
-        // 커서 이동 키는 켜면 하위 항목으로 조이스틱 모드 스위치가 나온다: 켜면 키 사이에 끼운 동그란 조이스틱이 된다.
+        // 커서 이동 키는 켜면 하위 항목으로 모드(키 · 조이스틱 · 작은 조이스틱)를 고르는 버튼이 나온다.
         if (BottomKeys.CURSOR.equals(id)) {
-            charGroup = subGroup(0, joystickRow());
+            LinearLayout edit = new LinearLayout(this);
+            edit.setOrientation(LinearLayout.VERTICAL);
+            edit.addView(cursorModeButton());
+            charGroup = subGroup(0, edit);
             charGroup.setVisibility(prefs.bottomKeyShown(id) ? View.VISIBLE : View.GONE);
             texts.addView(charGroup);
         }

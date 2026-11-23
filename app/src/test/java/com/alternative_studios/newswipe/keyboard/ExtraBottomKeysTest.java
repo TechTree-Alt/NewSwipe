@@ -111,11 +111,12 @@ public class ExtraBottomKeysTest {
 
     @Test
     public void joystickTakesNoRoomAndSitsBetweenItsNeighbors() throws Exception {
+        for (String mode : new String[]{BottomKeys.CURSOR_MODE_JOYSTICK, BottomKeys.CURSOR_MODE_SMALL})
         for (boolean split : new boolean[]{false, true}) {
             for (boolean grid : new boolean[]{false, true}) {
                 FakeSp sp = new FakeSp();
                 sp.m.put(Prefs.BOTTOM_CURSOR_KEY, true);
-                sp.m.put(Prefs.CURSOR_JOYSTICK, true);
+                sp.m.put(Prefs.CURSOR_KEY_MODE, mode);
                 sp.m.put(Prefs.LANDSCAPE_SPLIT, split);
                 sp.m.put(Prefs.GRID_LAYOUT, grid);
                 // 커서 이동 키를 기호 키와 지구본 키 사이에 둔다.
@@ -132,6 +133,7 @@ public class ExtraBottomKeysTest {
                             at = i;
                             assertTrue(k.isJoystick());
                             assertEquals(0f, k.weight, 0f);
+                            assertEquals(BottomKeys.CURSOR_MODE_SMALL.equals(mode) ? 0.2f : 0.25f, k.joystickRadius(), 0f);
                         }
                     }
                     assertTrue(at > 0);
