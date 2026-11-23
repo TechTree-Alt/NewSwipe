@@ -188,6 +188,10 @@ public final class KeyboardView extends View {
     private boolean showHints = true;
     /** 글자 키 힌트의 자리 (Prefs.HINT_POS_*: 왼쪽 위부터 시계 방향, 기본 오른쪽 위). */
     private int hintPosition = 2;
+    /** 글자 키 힌트를 키 글자 색으로 그리는지 (아니면 흐린 힌트 색). */
+    private boolean hintKeyColor;
+    /** 글자 키 힌트를 더 크게 그리는지. */
+    private boolean hintLarge;
     /** 영어 글자 키에 그리는 두벌식 자모 힌트의 자리 (Prefs.HINT_POS_*). -1이면 그리지 않는다. */
     private int dubeolsikHintPosition = -1;
     /** 숫자 키(1~0)의 힌트만 숨긴다. */
@@ -668,6 +672,19 @@ public final class KeyboardView extends View {
         if (showHints != on || hintPosition != position) {
             showHints = on;
             hintPosition = position;
+            invalidate();
+        }
+    }
+
+    /**
+     * 글자 키 힌트의 모양.
+     * @param keyColor 흐린 힌트 색 대신 그 키의 글자 색으로 그린다.
+     * @param large 보통보다 크게 그린다.
+     */
+    public void setPopupHintStyle(boolean keyColor, boolean large) {
+        if (hintKeyColor != keyColor || hintLarge != large) {
+            hintKeyColor = keyColor;
+            hintLarge = large;
             invalidate();
         }
     }
@@ -1345,11 +1362,12 @@ public final class KeyboardView extends View {
         if (hint != null && layout.kind != KeyboardLayout.NUMBER && !isRepeatChar(k)
                 && !(!showHints && isLetterKey(k))
                 && !(numberHintHidden && KeyboardLayout.isDigit(k.label))) {
-            text.setColor(theme.hint);
+            boolean letter = isLetterKey(k);
+            text.setColor(letter && hintKeyColor ? fg : theme.hint);
             text.setTypeface(Typeface.DEFAULT);
-            text.setTextSize(spHint);
+            text.setTextSize(letter && hintLarge ? Math.min(spHint * 1.35f, r.width() * 0.3f) : spHint);
             text.getFontMetrics(fm);
-            drawHintAt(c, hint, isLetterKey(k) ? hintPosition : 2, r, cx, cy);
+            drawHintAt(c, hint, letter ? hintPosition : 2, r, cx, cy);
         }
         String jamo = dubeolsikHint(k);
         if (jamo != null) {

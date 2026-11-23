@@ -277,6 +277,10 @@ public final class Prefs {
     public static final String POPUP_HINT_HIDDEN = "popup_hint_hidden";       // 글자 키(한글·영어)의 힌트 없애기 (설정 화면에는 '글자 키 힌트 표시'로 뒤집어 보인다)
     /** 글자 키 힌트의 자리: 키의 왼쪽 위부터 시계 방향으로 여덟 곳 (HINT_POS_*). */
     public static final String POPUP_HINT_POSITION = "popup_hint_position";
+    /** 글자 키 힌트를 흐린 힌트 색 대신 그 키의 글자 색으로 그린다. */
+    public static final String POPUP_HINT_KEY_COLOR = "popup_hint_key_color";
+    /** 글자 키 힌트를 더 크게 그린다. */
+    public static final String POPUP_HINT_LARGE = "popup_hint_large";
     public static final int HINT_POS_TOP_LEFT = 0, HINT_POS_TOP = 1, HINT_POS_TOP_RIGHT = 2, HINT_POS_RIGHT = 3,
             HINT_POS_BOTTOM_RIGHT = 4, HINT_POS_BOTTOM = 5, HINT_POS_BOTTOM_LEFT = 6, HINT_POS_LEFT = 7;
     /** 힌트 자리의 이름 (HINT_POS_* 차례). */
@@ -944,7 +948,7 @@ public final class Prefs {
                     keys(AREA_PAD_PREFIX + PAD_AREAS[1] + "_")),
             // 글자 키: 세 자판이 함께 쓰는 값(높이·길게 누르기·밀기·여백)과 한글·영어 글자 키에만 있는 값.
             new EditorScope(AREA_SCOPES[2], L.t("글자 키 공통 (높이·길게 누르기·밀기·여백)", "Letter keys, common (height · long press · swipe · padding)"), keys(KEYBOARD_HEIGHT, LONG_PRESS_MS,
-                    POPUP_HINT_HIDDEN, POPUP_HINT_POSITION, SWIPE_THRESHOLD, SWIPE_PICK_SUGGESTION, PORTRAIT_PREFIX + SPLIT_REACH_COLUMN),
+                    POPUP_HINT_HIDDEN, POPUP_HINT_POSITION, POPUP_HINT_KEY_COLOR, POPUP_HINT_LARGE, SWIPE_THRESHOLD, SWIPE_PICK_SUGGESTION, PORTRAIT_PREFIX + SPLIT_REACH_COLUMN),
                     keys(AREA_PAD_PREFIX + PAD_AREAS[2] + "_", "swipe_kb_", PORTRAIT_PREFIX + "balanced_",
                             PORTRAIT_PREFIX + SPLIT_REACH_COLUMN + "_")),
             new EditorScope(SCOPE_LETTERS_KO, L.t("한글 글자 키 (자판 배열·상세 배열·쌍자음·이중모음 입력)", "Korean letter keys (layout · advanced layout · double consonant and Y-vowel input)"), keys(KOREAN_LAYOUT,
@@ -1586,6 +1590,8 @@ public final class Prefs {
     public boolean popupHintHidden() { return sp.getBoolean(POPUP_HINT_HIDDEN, false); }
     /** 글자 키 힌트의 자리 (HINT_POS_*, 기본 오른쪽 위). */
     public int popupHintPosition() { return clamp(sp.getInt(POPUP_HINT_POSITION, HINT_POS_TOP_RIGHT), 0, 7); }
+    public boolean popupHintKeyColor() { return sp.getBoolean(POPUP_HINT_KEY_COLOR, false); }
+    public boolean popupHintLarge() { return sp.getBoolean(POPUP_HINT_LARGE, false); }
     public boolean dubeolsikHint() { return sp.getBoolean(DUBEOLSIK_HINT, false); }
     /** 저장된 두벌식 자모 힌트 자리 (길게 누르기 힌트와 겹치는지 따지지 않은 값). */
     public int dubeolsikHintPositionRaw() { return clamp(sp.getInt(DUBEOLSIK_HINT_POSITION, HINT_POS_BOTTOM_LEFT), 0, 7); }
