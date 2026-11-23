@@ -854,6 +854,20 @@ public final class KeyboardView extends View {
         return false;
     }
 
+    /** 조이스틱 점이 가운데에서 옮겨 간 거리 (joyDot이 채운다). */
+    private float dotDx, dotDy;
+
+    /** 손가락이 (dx, dy) 움직였을 때 조이스틱 점의 자리: 손가락을 따라가되 반지름 r의 절반까지만. */
+    private void joyDot(float dx, float dy, float r) {
+        float d = (float) Math.hypot(dx, dy), max = r * 0.5f;
+        if (d > max) {
+            dx *= max / d;
+            dy *= max / d;
+        }
+        dotDx = dx;
+        dotDy = dy;
+    }
+
     private Pointer pointerOn(Key k) {
         for (int i = 0; i < pointers.size(); i++) {
             if (pointers.get(i).key == k) return pointers.get(i);
@@ -891,13 +905,9 @@ public final class KeyboardView extends View {
         }
         float dotX = cx, dotY = cy;
         if (pressed) {
-            float dx = p.lastX - p.downX, dy = p.lastY - p.downY, d = (float) Math.hypot(dx, dy), max = r * 0.5f;
-            if (d > max) {
-                dx *= max / d;
-                dy *= max / d;
-            }
-            dotX += dx;
-            dotY += dy;
+            joyDot(p.lastX - p.downX, p.lastY - p.downY, r);
+            dotX += dotDx;
+            dotY += dotDy;
         }
         fill.setColor(theme.metro && pressed ? theme.onAccent : theme.accent);
         c.drawCircle(dotX, dotY, Math.max(dp(3), r * 0.3f), fill);
@@ -1417,9 +1427,17 @@ public final class KeyboardView extends View {
     }
 
     private void move(Pointer p, float x, float y) {
+        if (p.key.joystick) {
+            // 조이스틱의 점이 손가락을 따라간다. 점이 끝까지 간 뒤에는 움직이지 않으므로, 점이 실제로 옮겨 갈 때만 다시 그린다
+            // (커서를 미는 동안 터치 이벤트마다 자판 전체를 다시 그리지 않게).
+            float r = joystickRadius(p.key);
+            joyDot(p.lastX - p.downX, p.lastY - p.downY, r);
+            float ox = dotDx, oy = dotDy;
+            joyDot(x - p.downX, y - p.downY, r);
+            if (Math.abs(dotDx - ox) >= 0.5f || Math.abs(dotDy - oy) >= 0.5f) invalidate();
+        }
         p.lastX = x;
         p.lastY = y;
-        if (p.key.joystick) invalidate();   // 조이스틱의 점이 손가락을 따라간다
         float dx = x - p.downX, dy = y - p.downY;
         switch (p.mode) {
             case NORMAL:
