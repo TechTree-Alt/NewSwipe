@@ -539,7 +539,7 @@ public final class KeyboardView extends View {
         @Override
         public void run() {
             Pointer p = stickPointer;
-            if (p == null || p.mode != CURSOR || !pointers.contains(p)) {
+            if (p == null || (p.mode != CURSOR && p.mode != SELECT) || !pointers.contains(p)) {
                 stickPointer = null;
                 return;
             }
@@ -552,16 +552,34 @@ public final class KeyboardView extends View {
         stickPointer = null;
     }
 
-    /** 이 손가락이 조이스틱 방식으로 커서를 옮기는지: 커서 이동 키에서 시작한 커서 이동이고 조이스틱 방식을 골랐다. */
+    /**
+     * 이 손가락이 조이스틱 방식으로 움직이는지 (조이스틱 방식을 골랐을 때): 커서 이동 키에서 시작한 커서 이동,
+     * 또는 커서 이동 키를 길게 누른 뒤 밀어서 글자 선택.
+     */
     private boolean usesStick(Pointer p) {
-        return cursorStick && !p.gap && !p.freeCursor && p.cursorSlot == FunctionSwipes.CURSOR;
+        if (!cursorStick) return false;
+        if (p.mode == SELECT) return p.key.type == Key.CURSOR_PAD;
+        return !p.gap && !p.freeCursor && p.cursorSlot == FunctionSwipes.CURSOR;
     }
 
-    /** 처음 자리에서 민 만큼 커서를 한 칸(한 줄) 옮기고 다음까지 기다릴 시간(ms)을 돌려준다. 멈춰 있으면 옮기지 않는다. */
+    /** 조이스틱 방식의 반복을 이 손가락으로 시작한다 (이미 이 손가락이면 그대로). */
+    private void startStick(Pointer p) {
+        if (stickPointer == p) return;
+        handler.removeCallbacks(stickRunnable);
+        stickPointer = p;
+        handler.post(stickRunnable);
+    }
+
+    /**
+     * 처음 자리에서 민 만큼 커서(선택 중이면 선택 영역의 끝)를 한 칸(한 줄) 옮기고 다음까지 기다릴 시간(ms)을 돌려준다.
+     * 멈춰 있으면 옮기지 않는다. 처음 자리는 커서 이동이면 누른 자리, 선택이면 선택을 시작한(진동이 온) 자리다.
+     */
     private long stickStep(Pointer p) {
-        boolean curH = fnSwipes != null && fnSwipes.cursorH(p.cursorSlot);
-        boolean curV = fnSwipes != null && fnSwipes.cursorV(p.cursorSlot);
-        float dx = p.lastX - p.downX, dy = p.lastY - p.downY;
+        boolean select = p.mode == SELECT;
+        // 선택은 좌우·위아래 모두, 커서 이동은 그 키에 '커서 자유 이동'을 정한 축만.
+        boolean curH = select || (fnSwipes != null && fnSwipes.cursorH(p.cursorSlot));
+        boolean curV = select || (fnSwipes != null && fnSwipes.cursorV(p.cursorSlot));
+        float dx = p.lastX - (select ? p.cursorAnchorX : p.downX), dy = p.lastY - (select ? p.cursorAnchorY : p.downY);
         boolean horizontal = curH && (!curV || Math.abs(dx) >= Math.abs(dy));
         if (!horizontal && !curV) return STICK_IDLE_MS;
         float d = Math.abs(horizontal ? dx : dy);
@@ -571,12 +589,18 @@ public final class KeyboardView extends View {
         float t = Math.min(1f, (d - dead) * stickSensitivity / dp(60));
         float max = horizontal ? STICK_MAX_RATE_H : STICK_MAX_RATE_V;
         float rate = STICK_MIN_RATE + (max - STICK_MIN_RATE) * t * t;   // 처음에는 천천히, 멀리 밀수록 빠르게
-        if (listener != null) {
+        int dir = (horizontal ? dx : dy) > 0 ? 1 : -1;
+        if (select) {
+            p.selectMoved = true;
+            if (listener != null) {
+                if (horizontal) listener.onSelectMove(dir);
+                else listener.onSelectMoveVertical(dir);
+            }
+        } else if (listener != null) {
             if (!p.cursorStarted) {
                 p.cursorStarted = true;
                 listener.onCursorStart();
             }
-            int dir = (horizontal ? dx : dy) > 0 ? 1 : -1;
             if (horizontal) listener.onCursorMove(dir);
             else listener.onCursorMoveVertical(dir);
         }
@@ -1777,11 +1801,7 @@ public final class KeyboardView extends View {
             case CURSOR: {
                 if (usesStick(p)) {
                     // 조이스틱 방식: 거리만큼 옮기지 않고, 반복이 손가락 자리(lastX·lastY)를 보고 계속 옮긴다.
-                    if (stickPointer != p) {
-                        handler.removeCallbacks(stickRunnable);
-                        stickPointer = p;
-                        handler.post(stickRunnable);
-                    }
+                    startStick(p);
                     break;
                 }
                 // 기능키는 그 키에 '커서 자유 이동'을 정한 축만 움직인다.
@@ -1815,6 +1835,11 @@ public final class KeyboardView extends View {
                 break;
             }
             case SELECT: {
+                if (usesStick(p)) {
+                    // 커서 이동 키의 조이스틱 방식: 선택 영역의 끝도 민 쪽으로 계속 옮긴다 (선택을 시작한 자리가 가운데).
+                    startStick(p);
+                    break;
+                }
                 // 스페이스바 커서 이동과 같은 속도로, 좌우는 글자 단위·위아래는 줄 단위로 선택 영역의 끝을 옮긴다.
                 float stepX = cursorStep / cursorSpeedH;
                 float stepY = cursorStepY / cursorSpeedV;

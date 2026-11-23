@@ -568,6 +568,9 @@ final class KeyEditPanel {
             return;
         }
 
+        // ---- 커서 이동 방식 (커서 이동 키: 밀기·길게 눌러 선택이 함께 따른다)
+        if (key.type == Key.CURSOR_PAD) buildCursorMoveStyle();
+
         // ---- 누르기 (기능키의 순서·유무와 격자 정렬은 '기능키' 영역에 있다)
         if (key.type == Key.TO_SYMBOLS || key.type == Key.TO_LETTERS) {
             section(L.t("누르기", "Tap")).addView(toggle(L.t("기호 자판 대신 숫자 패드 사용", "Use number pad instead of symbols"),
@@ -662,7 +665,8 @@ final class KeyEditPanel {
             card.addView(note(L.t("위쪽에 '언어 고르기'를 정하면 위로 밀었을 때 켜 둔 언어가 말풍선으로 올라옵니다. "
                     + "손을 떼지 않고 위아래로 옮겨 고릅니다.", "Set 'Pick language' for up, then swipe up to show your languages in a popup. Without lifting, move up or down to pick one.")));
         } else if (key.type == Key.CURSOR_PAD) {
-            buildCursorMoveStyle(card);
+            // 커서 이동 방식과 그 설정은 맨 위 '커서 이동 방식' 칸에 있다.
+            card.addView(note(L.t("'커서 자유 이동'을 정한 방향으로 밀면 커서가 움직입니다 (좌우는 글자, 위아래는 줄 단위).", "Swipe in a direction set to 'Free cursor' to move the cursor (by character left and right, by line up and down).")));
         } else if (key.type == Key.SPACE || usesFreeCursor(slot)) {
             card.addView(note(L.t("'커서 자유 이동'을 정한 방향으로 밀면 커서가 움직입니다 (좌우는 글자, 위아래는 줄 단위).", "Swipe in a direction set to 'Free cursor' to move the cursor (by character left and right, by line up and down).")));
             card.addView(slider(L.t("커서 이동 속도 좌우", "Cursor speed (horizontal)"), Prefs.SPACE_CURSOR_SPEED_H, prefs.spaceCursorSpeedH(), 50, 300, 10, "%"));
@@ -672,14 +676,12 @@ final class KeyEditPanel {
     }
 
     /**
-     * 커서 이동 키: 커서 이동 방식(터치패드 · 조이스틱)과 그 방식의 설정. 터치패드는 밀어 간 거리만큼 움직이고 속도는 스페이스바와
-     * 함께 쓴다. 조이스틱은 민 쪽으로 계속 움직이고, 처음 닿은 자리에서 멀수록 빠르며 그 민감도를 정한다. 키 모드와 상관없다.
+     * 커서 이동 키 창의 맨 위 칸: 커서 이동 방식(터치패드 · 조이스틱)과 그 방식의 설정. 밀어서 커서 이동과 '길게 누른 뒤 밀어서
+     * 글자 선택'이 함께 따른다. 터치패드는 밀어 간 거리만큼 움직이고 속도는 스페이스바와 함께 쓴다. 조이스틱은 민 쪽으로 계속
+     * 움직이고, 처음 닿은 자리에서 멀수록 빠르며 그 민감도를 정한다. 키 모드와 상관없다.
      */
-    private void buildCursorMoveStyle(LinearLayout card) {
-        card.addView(note(L.t("'커서 자유 이동'을 정한 방향으로 밀면 커서가 움직입니다 (좌우는 글자, 위아래는 줄 단위).", "Swipe in a direction set to 'Free cursor' to move the cursor (by character left and right, by line up and down).")));
-        TextView title = text(L.t("커서 이동 방식", "Cursor movement"), 15, textColor);
-        title.setPadding(0, Ui.dp(a, 10), 0, Ui.dp(a, 6));
-        card.addView(title);
+    private void buildCursorMoveStyle() {
+        LinearLayout card = section(L.t("커서 이동 방식", "Cursor movement"));
         LinearLayout body = new LinearLayout(a);
         body.setOrientation(LinearLayout.VERTICAL);
         card.addView(Ui.choiceRow(a, new String[]{L.t("터치패드", "Touchpad"), L.t("조이스틱", "Joystick")}, prefs.cursorStick() ? 1 : 0,
@@ -694,8 +696,10 @@ final class KeyEditPanel {
     private void fillCursorMoveStyle(LinearLayout body) {
         body.removeAllViews();
         if (prefs.cursorStick()) {
-            body.addView(note(L.t("민 쪽으로 커서가 계속 움직입니다. 처음 누른 자리에서 멀리 밀수록 빨라지고, 가까이 되돌리면 멈춥니다.",
-                    "The cursor keeps moving the way you push. Push farther from where you first touched to go faster; come back near it to stop.")));
+            body.addView(note(L.t("민 쪽으로 커서가 계속 움직입니다. 처음 누른 자리에서 멀리 밀수록 빨라지고, 가까이 되돌리면 멈춥니다. "
+                    + "길게 누른 뒤 밀어서 글자를 선택할 때도 같습니다.",
+                    "The cursor keeps moving the way you push. Push farther from where you first touched to go faster; come back near it to stop. "
+                    + "Selecting text with long press and swipe works the same way.")));
             body.addView(slider(L.t("민감도", "Sensitivity"), Prefs.CURSOR_STICK_SENSITIVITY, prefs.cursorStickSensitivity(),
                     Prefs.CURSOR_STICK_SENSITIVITY_MIN, Prefs.CURSOR_STICK_SENSITIVITY_MAX, 10, "%"));
             body.addView(note(L.t("값이 클수록 조금만 밀어도 빨라집니다.", "Higher values speed up with a shorter push.")));
