@@ -151,6 +151,67 @@ public final class Neu {
         fill.setShader(null);
     }
 
+    /** 파인 가장자리 띠의 셰이더 캐시 (조이스틱 자리 하나에 하나: 보통 한두 개). */
+    private static final int NOTCH_CACHE = 4;
+    private static final Shader[] notchShaders = new Shader[NOTCH_CACHE];
+    private static final int[] notchKeys = new int[NOTCH_CACHE * 5];
+    private static int nextNotch;
+
+    /**
+     * 흰색(글자 키 색) 긴 면이 원 (cx, cy, holeR)에 둥글게 파였을 때, 파인 가장자리 안쪽에도 긴 면의 변 띠
+     * ({@link #drawEdgeShade})와 같은 띠를 붙인다. 면을 그린 뒤 같은 자리(r, radius)에 부른다. 파인 자리는 부르는 쪽이 오려 둔다.
+     * 띠의 진하기는 가장자리가 향하는 쪽을 따른다: 윗변·왼쪽 변처럼 위나 왼쪽을 향하면 진하고, 아래·오른쪽을 향하면 없다 (그 사이는 부드럽게).
+     * 그 밖의 면(짧은 면, 회색·강조색 면)에는 아무것도 하지 않는다.
+     */
+    public static void drawNotchEdgeShade(Canvas c, RectF r, float radius, int face, KeyboardTheme t,
+                                          float cx, float cy, float holeR, Paint fill) {
+        if (face != t.key || !isLong(r.width(), r.height())) return;
+        int color = blend(t.background, face, t.tune(KeyboardTheme.T_KEY_START));   // drawFace의 긴 흰색 면과 같은 색
+        int edgeDp = !t.dark ? LIGHT_WHITE_EDGE_DP : t.neuEdgeDp;
+        int px = Math.round(edgeDp * android.content.res.Resources.getSystem().getDisplayMetrics().density);
+        if (px <= 0 || holeR <= 0) return;
+        int qx = Math.round(cx * 4), qy = Math.round(cy * 4), qr = Math.round(holeR * 4);
+        int i = 0;
+        while (i < NOTCH_CACHE && !(notchShaders[i] != null && notchKeys[i * 5] == qx && notchKeys[i * 5 + 1] == qy
+                && notchKeys[i * 5 + 2] == qr && notchKeys[i * 5 + 3] == px && notchKeys[i * 5 + 4] == color)) i++;
+        if (i == NOTCH_CACHE) {
+            i = nextNotch;
+            nextNotch = (nextNotch + 1) % NOTCH_CACHE;
+            // 원 둘레에서 바깥(면 안쪽)으로 px만큼 옅어지는 띠: drawEdgeShade와 같은 다섯 단계.
+            float outer = holeR + px, inner = holeR / outer;
+            int[] colors = new int[6];
+            float[] pos = new float[6];
+            colors[0] = (Math.round(EDGE_ALPHA * 255) << 24) | (color & 0xFFFFFF);
+            pos[0] = 0f;
+            for (int k = 0; k < 5; k++) {
+                float f = k / 4f, a = EDGE_ALPHA * (1 - f) * (1 - f);
+                colors[k + 1] = (Math.round(a * 255) << 24) | (color & 0xFFFFFF);
+                pos[k + 1] = inner + (1 - inner) * f;
+            }
+            Shader band = new android.graphics.RadialGradient(cx, cy, outer, colors, pos, Shader.TileMode.CLAMP);
+            // 가장자리가 향하는 쪽: 원 중심에서 본 각도 θ의 점에서 면의 바깥쪽(원 중심 쪽)은 -(cosθ, sinθ)이다.
+            // 위(0, -1)·왼쪽(-1, 0)을 향하는 정도 max(0, cosθ, sinθ)를 진하기로 한다 (θ는 화면에서 시계 방향).
+            int steps = 32;
+            int[] weights = new int[steps + 1];
+            for (int k = 0; k <= steps; k++) {
+                double th = 2 * Math.PI * k / steps;
+                float w = (float) Math.max(0, Math.max(Math.cos(th), Math.sin(th)));
+                weights[k] = Math.round(w * 255) << 24;
+            }
+            Shader facing = new android.graphics.SweepGradient(cx, cy, weights, null);
+            notchShaders[i] = new android.graphics.ComposeShader(band, facing, android.graphics.PorterDuff.Mode.DST_IN);
+            notchKeys[i * 5] = qx;
+            notchKeys[i * 5 + 1] = qy;
+            notchKeys[i * 5 + 2] = qr;
+            notchKeys[i * 5 + 3] = px;
+            notchKeys[i * 5 + 4] = color;
+        }
+        fill.setColor(0xFF000000);
+        fill.setShader(notchShaders[i]);
+        c.drawRoundRect(r, radius, radius, fill);
+        fill.setShader(null);
+    }
+
     /**
      * w×h 면의 왼쪽 위(dark)에서 오른쪽 아래(lit)로 가는 그라데이션. 대각선의 end 지점에서 lit이 되고 그 뒤는 lit이다.
      * 크기·색마다 한 번만 만든다.
@@ -243,6 +304,38 @@ public final class Neu {
         c.drawBitmap(bm, null, rect, bitmapPaint);
     }
 
+    /**
+     * 네모가 아닌 모양 shape(면의 왼쪽 위가 (0, 0), 크기 w×h)의 솟아오른 그림자를 구워 돌려준다. 캐시하지 않으므로 부르는 쪽이
+     * 들고 있다가 {@link #drawShadowBitmap}으로 그린다 (조이스틱에 둥글게 파인 키처럼 모양이 키마다 다른 것).
+     */
+    public static Bitmap bakeShadow(Path shape, int w, int h, float offset, float blur, int light, int dark) {
+        float s = SCALE, o = offset * s, bl = blur * s, pad = spread(offset, blur) * s;
+        Bitmap bm = Bitmap.createBitmap((int) Math.ceil(w * s + pad * 2), (int) Math.ceil(h * s + pad * 2),
+                Bitmap.Config.ARGB_8888);
+        Canvas bc = new Canvas(bm);
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        if (bl > 0) p.setMaskFilter(new BlurMaskFilter(bl, BlurMaskFilter.Blur.NORMAL));
+        // 흐림 반지름이 캔버스 배율을 따르는지에 기대지 않도록, 캔버스 대신 모양을 줄여 옮긴다 (shadow()와 같은 크기의 흐림).
+        Path scaled = new Path();
+        android.graphics.Matrix m = new android.graphics.Matrix();
+        m.setScale(s, s);
+        m.postTranslate(pad - o, pad - o);
+        shape.transform(m, scaled);
+        p.setColor(light);   // 빛은 왼쪽 위에서: 왼쪽 위로 밝은 그림자, 오른쪽 아래로 어두운 그림자
+        bc.drawPath(scaled, p);
+        scaled.offset(o * 2, o * 2);
+        p.setColor(dark);
+        bc.drawPath(scaled, p);
+        return bm;
+    }
+
+    /** {@link #bakeShadow}로 구운 그림자를 (l, t, r, b) 면 둘레에 그린다. */
+    public static void drawShadowBitmap(Canvas c, Bitmap bm, float l, float t, float r, float b, float offset, float blur) {
+        float pad = spread(offset, blur);
+        rect.set(l - pad, t - pad, r + pad, b + pad);
+        c.drawBitmap(bm, null, rect, bitmapPaint);
+    }
+
     private static Bitmap shadow(int w, int h, float radius, float offset, float blur, int light, int dark) {
         int rq = Math.round(radius * 4), oq = Math.round(offset * 16) << 16 | Math.round(blur * 16);
         for (int i = 0; i < CACHE; i++) {
@@ -293,6 +386,9 @@ public final class Neu {
         java.util.Arrays.fill(edgeColors, 0);
         java.util.Arrays.fill(edgePxs, 0);
         nextEdge = 0;
+        java.util.Arrays.fill(notchShaders, null);
+        java.util.Arrays.fill(notchKeys, 0);
+        nextNotch = 0;
     }
 
     /** 눌린 면: face로 칠하고 테두리 안쪽에 그림자를 넣어 오목하게 들어간 모양을 만든다. */

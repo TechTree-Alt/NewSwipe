@@ -1,8 +1,10 @@
 package com.alternative_studios.newswipe.keyboard;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.os.Handler;
@@ -158,6 +160,8 @@ public final class KeyboardView extends View {
     private final Paint text = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint icon = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF tmp = new RectF();
+    /** 키 면에서 오려 낼 조이스틱 자리 (그릴 때마다 다시 채워 쓴다). */
+    private final Path joyHoles = new Path();
     private final Paint.FontMetrics fm = new Paint.FontMetrics();
 
     private Listener listener;
@@ -357,6 +361,7 @@ public final class KeyboardView extends View {
         if (gapX == x && gapY == y) return;
         gapX = x;
         gapY = y;
+        joyGeomDirty = true;   // 조이스틱이 파낸 자리는 키 간격을 따른다
         invalidate();
     }
 
@@ -407,6 +412,7 @@ public final class KeyboardView extends View {
     public void setLayout(KeyboardLayout l) {
         cancelAll();
         layout = l;
+        joyGeomDirty = true;   // 키가 새로 만들어졌다: 예전 키의 파인 모양·그림자는 놓아 준다
         // 같은 한자라도 일본어·중국어 글꼴 모양이 다르다: 자판 언어에 맞춰 그린다 (글꼴은 시스템 것을 쓴다).
         // 한글·영어 자판은 처음 값(시스템 언어 목록)을 그대로 쓴다.
         if (defaultTextLocales == null) defaultTextLocales = text.getTextLocales();
@@ -475,6 +481,7 @@ public final class KeyboardView extends View {
     public void setKeyRadius(float px) {
         if (radius != px) {
             radius = px;
+            joyGeomDirty = true;   // 파인 키 모양은 모서리 곡률을 따른다
             invalidate();
         }
     }
@@ -679,6 +686,47 @@ public final class KeyboardView extends View {
             }
             y += rh;
         }
+        layoutJoysticks(w);
+        joyGeomDirty = true;
+    }
+
+    /** 조이스틱의 누르는 범위: 보이는 원 반지름의 몇 배인지. */
+    public static final float JOYSTICK_HIT = 1.2f;
+
+    /** 조이스틱의 보이는 반지름 (px). 배치 뒤의 rect(누르는 범위)에서 구한다. */
+    public static float joystickRadius(Key k) {
+        return k.rect.width() / 2f / JOYSTICK_HIT;
+    }
+
+    /** 조이스틱이 이웃 키들을 파낸 원의 반지름 (px): 보이는 원에 키 사이 간격만큼 더한다. */
+    public float joystickHoleRadius(Key k) {
+        return joystickRadius(k) + Math.max(gapX, gapY) * 0.6f + dp(1);
+    }
+
+    /**
+     * 조이스틱(폭 없는 커서 이동 키)을 앞뒤 두 키의 경계 위쪽, 윗줄과 만나는 곳에 놓는다. 줄에서 폭이 0인 자리(경계)가
+     * 가로 위치이고, 그 줄의 위쪽 가장자리가 세로 위치다. rect는 누르는 범위(원을 감싼 정사각형)로 바꾼다.
+     */
+    private void layoutJoysticks(int w) {
+        for (KeyboardLayout.Row row : layout.rows) {
+            for (Key k : row.keys) {
+                if (!k.isJoystick()) continue;
+                float r = rowUnitPx * k.joystickRadius(), hit = r * JOYSTICK_HIT;   // 반지름은 줄 높이에 대한 비율 (모드마다)
+                float cx = Math.max(r, Math.min(w - r, k.rect.left));
+                float cy = k.rect.top;
+                k.rect.set(cx - hit, cy - hit, cx + hit, cy + hit);
+            }
+        }
+    }
+
+    /** (x, y)를 덮는 조이스틱. 없으면 null. 조이스틱은 키들 위에 얹혀 있어 다른 키보다 먼저 본다. */
+    private Key joystickAt(float x, float y) {
+        ensureJoyGeom();   // 조이스틱이 없으면 바로 끝난다
+        for (int i = 0; i < joys.size(); i++) {
+            Key k = joys.get(i);
+            if (Math.hypot(x - k.rect.centerX(), y - k.rect.centerY()) <= k.rect.width() / 2f) return k;
+        }
+        return null;
     }
 
     /** 색 정렬: Shift·⌫는 글자 키 색, 스페이스바는 기능키 색, Shift 고정은 강조색 없이. */
@@ -700,6 +748,8 @@ public final class KeyboardView extends View {
 
     private Key keyAt(float x, float y) {
         if (layout == null) return null;
+        Key joy = joystickAt(x, y);
+        if (joy != null) return joy;
         int ri = layout.rows.length - 1;
         for (int i = 0; i < layout.rows.length; i++) {
             KeyboardLayout.Row row = layout.rows[i];
@@ -748,7 +798,7 @@ public final class KeyboardView extends View {
         Key prev = null;
         for (Key other : row.keys) {
             if (other == k) return prev;
-            if (other.type != Key.SPACER && other.type != Key.GAP) prev = other;
+            if (other.type != Key.SPACER && other.type != Key.GAP && !other.isJoystick()) prev = other;
         }
         return null;
     }
@@ -758,7 +808,7 @@ public final class KeyboardView extends View {
         Key best = null;
         float bestDist = Float.MAX_VALUE;
         for (Key k : target.keys) {
-            if (k.type == Key.GAP) continue;   // 빈틈은 건너뛰어 양옆 중 가까운 키로 간다
+            if (k.type == Key.GAP || k.isJoystick()) continue;   // 빈틈은 건너뛰어 양옆 중 가까운 키로 간다 (조이스틱은 따로 본다)
             if (x >= k.rect.left && x < k.rect.right) return k;
             float d = Math.min(Math.abs(x - k.rect.left), Math.abs(x - k.rect.right));
             if (d < bestDist) {
@@ -774,20 +824,39 @@ public final class KeyboardView extends View {
     @Override
     protected void onDraw(Canvas c) {
         if (layout == null) return;
+        ensureJoyGeom();
         // 미리보기가 위로 넘어가려고 클리핑을 껐으므로, drawColor를 쓰면 위쪽 툴바까지 덮어 버린다.
         fill.setColor(theme.background);
         c.drawRect(0, 0, getWidth(), getHeight(), fill);
         if (theme.neu) {
-            // 그림자를 먼저 모두 깔고 키 면을 그 위에 그려, 이웃 키의 그림자가 키 면을 덮지 않게 한다.
+            // 그림자를 먼저 모두 깔고 키 면을 그 위에 그려, 이웃 키의 그림자가 키 면을 덮지 않게 한다 (조이스틱의 그림자도).
             for (KeyboardLayout.Row row : layout.rows) {
                 for (Key k : row.keys) {
                     if (k.type != Key.SPACER && k.type != Key.GAP && !k.hidden && !isPressed(k)) drawNeuRaised(c, k);
                 }
             }
         }
-        for (KeyboardLayout.Row row : layout.rows) {
-            for (Key k : row.keys) if (k.type != Key.SPACER && k.type != Key.GAP && !k.hidden) drawKey(c, k);
+        // 조이스틱이 있으면 키 면에서 조이스틱 자리를 둥글게 오려 낸다. 바탕색으로 덮어 파내면 그 자리에 깔린 이웃 키의
+        // 그림자(Neumorphism)까지 지워지므로, 그림자는 그대로 두고 면만 오린다. 조이스틱이 없으면 아무것도 하지 않는다.
+        boolean holes = !joys.isEmpty();
+        if (holes && keyShadow && !theme.neu && !theme.metro) {
+            // 기본 모드의 키 그림자: 조이스틱에 파인 키는 파인 모양 그대로 그림자를 드리운다 (면을 오리기 전에 그려, 파인 가장자리
+            // 아래 조이스틱 둘레에도 그림자가 보이게). 네모 그림자는 drawKey가 그리지 않는다.
+            for (int i = 0; i < notchList.size(); i++) {
+                Notch n = notchList.get(i);
+                if (!isPressed(n.key)) drawNotchedShadow(c, n);
+            }
         }
+        if (holes) {
+            c.save();
+            c.clipOutPath(joyHoles);
+        }
+        for (KeyboardLayout.Row row : layout.rows) {
+            for (Key k : row.keys) if (k.type != Key.SPACER && k.type != Key.GAP && !k.hidden && !k.joystick) drawKey(c, k);
+        }
+        if (holes) c.restore();
+        // 조이스틱은 키들 위에 얹는다.
+        for (int i = 0; i < joys.size(); i++) drawJoystick(c, joys.get(i));
         // 미리보기 말풍선
         if (showPreview) {
             for (int i = 0; i < pointers.size(); i++) {
@@ -806,6 +875,65 @@ public final class KeyboardView extends View {
             if (pointers.get(i).key == k) return true;
         }
         return false;
+    }
+
+    /** 조이스틱 점이 가운데에서 옮겨 간 거리 (joyDot이 채운다). */
+    private float dotDx, dotDy;
+
+    /** 손가락이 (dx, dy) 움직였을 때 조이스틱 점의 자리: 손가락을 따라가되 반지름 r의 절반까지만. */
+    private void joyDot(float dx, float dy, float r) {
+        float d = (float) Math.hypot(dx, dy), max = r * 0.5f;
+        if (d > max) {
+            dx *= max / d;
+            dy *= max / d;
+        }
+        dotDx = dx;
+        dotDy = dy;
+    }
+
+    private Pointer pointerOn(Key k) {
+        for (int i = 0; i < pointers.size(); i++) {
+            if (pointers.get(i).key == k) return pointers.get(i);
+        }
+        return null;
+    }
+
+    /**
+     * 조이스틱 모드의 커서 이동 키: 키 사이를 배경색 원으로 파내고 그 안에 기능키 색의 동그란 면과 강조색 점을 그린다.
+     * 누르고 밀면 점이 미는 쪽으로 따라간다. Neumorphism·Metro 모드에서는 그 모드의 키 모양을 따른다.
+     */
+    private void drawJoystick(Canvas c, Key k) {
+        float cx = k.rect.centerX(), cy = k.rect.centerY(), r = joystickRadius(k);
+        Pointer p = pointerOn(k);
+        boolean pressed = p != null;
+        // 이웃 키들을 파낸 자리는 onDraw가 키 면을 그릴 때 오려 둔다 (그 자리의 그림자는 남는다).
+        RectF face = tmp;
+        face.set(cx - r, cy - r, cx + r, cy + r);
+        if (theme.neu) {
+            if (pressed) {
+                Neu.drawInset(c, face, r, neuOffset(), neuBlur(), theme.keyPressed, Neu.pressedLight(theme, theme.functionKey),
+                        Neu.pressedDark(theme, theme.functionKey), fill);
+            } else {
+                // 솟아오른 그림자는 onDraw가 다른 키 그림자와 함께 먼저 깔아 두었다 (이웃 키 면을 덮지 않게).
+                Neu.drawFace(c, face, r, theme.functionKey, theme, fill);
+            }
+        } else if (theme.metro) {
+            // Metro: 다른 키처럼 그림자 없이, 누르면 강조색으로 빛나고 점은 그 위의 색이 된다.
+            fill.setColor(pressed ? theme.accent : theme.functionKey);
+            c.drawCircle(cx, cy, r, fill);
+        } else {
+            if (keyShadow && !pressed) drawCircleShadow(c, cx, cy, r);   // '키 그림자'를 켜면 다른 키처럼 아래에 그림자
+            fill.setColor(pressed ? theme.keyPressed : theme.functionKey);
+            c.drawCircle(cx, cy, r, fill);
+        }
+        float dotX = cx, dotY = cy;
+        if (pressed) {
+            joyDot(p.lastX - p.downX, p.lastY - p.downY, r);
+            dotX += dotDx;
+            dotY += dotDy;
+        }
+        fill.setColor(theme.metro && pressed ? theme.onAccent : theme.accent);
+        c.drawCircle(dotX, dotY, Math.max(dp(3), r * 0.3f), fill);
     }
 
     /** Shift를 켜면 로마자를 대문자로 보이는 자판 (영어, 중국어 병음, 일본어 로마자). */
@@ -836,6 +964,129 @@ public final class KeyboardView extends View {
         c.clipRect(r.left - blur, r.centerY(), r.right + blur, r.bottom + dy + blur);
         // 옆으로 번진 부분이 키 가장자리 밖으로 보이지 않도록 좌우를 살짝 줄여 그린다.
         c.drawRoundRect(r.left + dp(0.8f), r.top + dy, r.right - dp(0.8f), r.bottom + dy, radius, radius, shadowPaint);
+        c.restore();
+    }
+
+    // ---------------------------------------------------------------- 조이스틱에 파인 키 (그림자·면)
+    //
+    // 조이스틱 자리와 파인 키는 배치·키 간격·곡률·화면 밀도가 바뀔 때만 다시 센다 (joyGeomDirty). 그릴 때는 센 것만 쓰고,
+    // 조이스틱이 없으면 joys가 비어 있어 아무 일도 하지 않는다. 파인 모양(Path)과 Neumorphism 그림자 비트맵은 쓸 때 한 번 만든다.
+
+    /** 조이스틱에 파인 키 하나: 면 자리, 파낸 조이스틱들, 쓸 때 만들어 두는 모양·그림자. */
+    private static final class Notch {
+        final Key key;
+        final RectF face = new RectF();
+        final java.util.ArrayList<Key> holes = new java.util.ArrayList<>(1);
+        /** 기본 모드 그림자 모양: 뷰 좌표, 좌우를 조금 줄이고 그림자 거리만큼 내린 (네모 - 원). */
+        Path flatShadow;
+        /** Neumorphism 그림자: 구운 비트맵과 그때의 색·흐림 값. */
+        Bitmap neuShadow;
+        int neuSig;
+
+        Notch(Key key) {
+            this.key = key;
+        }
+    }
+
+    private boolean joyGeomDirty = true;
+    private final java.util.ArrayList<Key> joys = new java.util.ArrayList<>();
+    private final java.util.ArrayList<Notch> notchList = new java.util.ArrayList<>();
+    private final java.util.IdentityHashMap<Key, Notch> notches = new java.util.IdentityHashMap<>();
+
+    /** 바뀐 것이 있으면 조이스틱 자리·오려 낼 모양·파인 키를 다시 센다 (그리기 전에 부른다). */
+    private void ensureJoyGeom() {
+        if (!joyGeomDirty) return;
+        joyGeomDirty = false;
+        joys.clear();
+        notchList.clear();
+        notches.clear();
+        joyHoles.rewind();
+        if (layout == null) return;
+        for (KeyboardLayout.Row row : layout.rows) {
+            for (Key k : row.keys) {
+                if (!k.joystick) continue;
+                joys.add(k);
+                joyHoles.addCircle(k.rect.centerX(), k.rect.centerY(), joystickHoleRadius(k), Path.Direction.CW);
+            }
+        }
+        if (joys.isEmpty()) return;
+        for (KeyboardLayout.Row row : layout.rows) {
+            for (Key k : row.keys) {
+                if (k.type == Key.SPACER || k.type == Key.GAP || k.hidden || k.joystick) continue;
+                Notch n = null;
+                for (int i = 0; i < joys.size(); i++) {
+                    Key j = joys.get(i);
+                    float l = k.rect.left + gapX / 2, t = k.rect.top + gapY / 2, r = k.rect.right - gapX / 2, b = k.rect.bottom - gapY / 2;
+                    float cx = j.rect.centerX(), cy = j.rect.centerY();
+                    float nx = Math.max(l, Math.min(cx, r)), ny = Math.max(t, Math.min(cy, b));
+                    if (Math.hypot(nx - cx, ny - cy) >= joystickHoleRadius(j)) continue;
+                    if (n == null) {
+                        n = new Notch(k);
+                        n.face.set(l, t, r, b);
+                    }
+                    n.holes.add(j);
+                }
+                if (n != null) {
+                    notchList.add(n);
+                    notches.put(k, n);
+                }
+            }
+        }
+    }
+
+    /** 파인 키의 (네모 - 원) 모양. dx, dy만큼 옮긴 좌표로, 좌우를 inset만큼 줄여서. */
+    private Path notchShape(Notch n, float dx, float dy, float inset) {
+        RectF f = n.face;
+        Path shape = new Path();
+        shape.addRoundRect(f.left + inset + dx, f.top + dy, f.right - inset + dx, f.bottom + dy, radius, radius, Path.Direction.CW);
+        Path hole = new Path();
+        for (int i = 0; i < n.holes.size(); i++) {
+            Key j = n.holes.get(i);
+            hole.rewind();
+            hole.addCircle(j.rect.centerX() + dx, j.rect.centerY() + dy, joystickHoleRadius(j), Path.Direction.CW);
+            shape.op(hole, Path.Op.DIFFERENCE);
+        }
+        return shape;
+    }
+
+    /** Neumorphism: 조이스틱에 파인 긴 흰색 면(스페이스바 등)은 파인 가장자리 안쪽에도 변 띠를 붙인다 (Neu.drawNotchEdgeShade). */
+    private void drawNotchEdgeShades(Canvas c, Notch n, int color) {
+        if (n == null || color != theme.key) return;
+        for (int i = 0; i < n.holes.size(); i++) {
+            Key j = n.holes.get(i);
+            Neu.drawNotchEdgeShade(c, n.face, radius, color, theme, j.rect.centerX(), j.rect.centerY(), joystickHoleRadius(j), fill);
+        }
+    }
+
+    /** 기본 모드: {@link #drawShadow}와 같은 그림자를, 조이스틱 자리만큼 둥글게 파인 키 모양 그대로 그린다. */
+    private void drawNotchedShadow(Canvas c, Notch n) {
+        if (shadowPaint == null) {
+            shadowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            shadowPaint.setMaskFilter(new android.graphics.BlurMaskFilter(dp(1.6f), android.graphics.BlurMaskFilter.Blur.NORMAL));
+        }
+        int max = theme.dark ? 190 : 130;
+        shadowPaint.setColor((Math.round(max * keyShadowStrength / 100f) << 24));
+        float dy = dp(1.3f), blur = dp(3);
+        if (n.flatShadow == null) n.flatShadow = notchShape(n, 0, dy, dp(0.8f));
+        RectF r = n.face;
+        c.save();
+        c.clipRect(r.left - blur, r.centerY(), r.right + blur, r.bottom + dy + blur);
+        c.drawPath(n.flatShadow, shadowPaint);
+        c.restore();
+    }
+
+    /** 조이스틱 아래쪽에만 보이는 그림자: {@link #drawShadow}와 같은 붓·세기·거리로, 둥근 면에 맞춰 그린다. */
+    private void drawCircleShadow(Canvas c, float cx, float cy, float r) {
+        if (shadowPaint == null) {
+            shadowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            shadowPaint.setMaskFilter(new android.graphics.BlurMaskFilter(dp(1.6f), android.graphics.BlurMaskFilter.Blur.NORMAL));
+        }
+        int max = theme.dark ? 190 : 130;
+        shadowPaint.setColor((Math.round(max * keyShadowStrength / 100f) << 24));
+        float dy = dp(1.3f), blur = dp(3);
+        c.save();
+        c.clipRect(cx - r - blur, cy, cx + r + blur, cy + r + dy + blur);   // 아래쪽 절반만 (위·옆으로 번지지 않게)
+        c.drawCircle(cx, cy + dy, r - dp(0.4f), shadowPaint);
         c.restore();
     }
 
@@ -886,6 +1137,7 @@ public final class KeyboardView extends View {
                 cy += dp(1);
             } else {
                 Neu.drawFace(c, r, radius, bg, theme, fill);
+                if (!notches.isEmpty()) drawNotchEdgeShades(c, notches.get(k), bg);
             }
         } else if (theme.metro) {
             // Windows Phone 키보드: 모서리 없는 네모 키, 그림자 없음. 누른 키는 강조색으로 빛나고 글자는 그 위의 색이 된다.
@@ -897,7 +1149,7 @@ public final class KeyboardView extends View {
             c.drawRect(r, fill);
         } else {
             if (pressed) bg = k.type == Key.ENTER ? blend(theme.accent, theme.text, 0.25f) : theme.keyPressed;
-            if (keyShadow && !pressed) drawShadow(c, r);
+            if (keyShadow && !pressed && (notches.isEmpty() || !notches.containsKey(k))) drawShadow(c, r);   // 파인 키는 onDraw가 파인 모양으로
             fill.setColor(bg);
             c.drawRoundRect(r, radius, radius, fill);
         }
@@ -1030,10 +1282,42 @@ public final class KeyboardView extends View {
 
     /** 솟아오른 키의 그림자 (키 면은 drawKey가 그 위에 그린다). 그림자는 Neu가 크기마다 한 번만 구워 둔 비트맵이다. */
     private void drawNeuRaised(Canvas c, Key k) {
+        if (k.joystick) {
+            float r = joystickRadius(k), cx = k.rect.centerX(), cy = k.rect.centerY();
+            int fc = theme.functionKey;
+            Neu.drawRaised(c, cx - r, cy - r, cx + r, cy + r, r, neuOffset(), Neu.shadowBlur(theme, fc, neuBlur()),
+                    Neu.raisedLight(theme, fc, r * 2, r * 2), Neu.darkShadow(theme, fc));
+            return;
+        }
         int face = faceColor(k);
+        if (!notches.isEmpty()) {
+            Notch n = notches.get(k);
+            if (n != null) {
+                drawNotchedRaised(c, n, face);
+                return;
+            }
+        }
         Neu.drawRaised(c, k.rect.left + gapX / 2, k.rect.top + gapY / 2, k.rect.right - gapX / 2,
                 k.rect.bottom - gapY / 2, radius, neuOffset(), Neu.shadowBlur(theme, face, neuBlur()),
                 Neu.raisedLight(theme, face, k.rect.width() - gapX, k.rect.height() - gapY), Neu.darkShadow(theme, face));
+    }
+
+    /**
+     * Neumorphism: 조이스틱에 파인 키의 그림자. 네모 그림자를 그대로 쓰면 오려 낸 자리에 없는 모서리·변의 그림자가 조이스틱 둘레에
+     * 남으므로, (네모 - 원) 모양의 그림자를 키마다 한 번 구워 둔다. 색·흐림 값(neuSig)이 바뀌면 다시 굽는다.
+     */
+    private void drawNotchedRaised(Canvas c, Notch n, int face) {
+        RectF f = n.face;
+        int w = Math.round(f.width()), h = Math.round(f.height());
+        if (w <= 0 || h <= 0) return;
+        float offset = neuOffset(), blur = Neu.shadowBlur(theme, face, neuBlur());
+        int light = Neu.raisedLight(theme, face, f.width(), f.height()), dark = Neu.darkShadow(theme, face);
+        int sig = ((Math.round(offset * 16) * 31 + Math.round(blur * 16)) * 31 + light) * 31 + dark;
+        if (n.neuShadow == null || n.neuSig != sig) {
+            n.neuShadow = Neu.bakeShadow(notchShape(n, -f.left, -f.top, 0f), w, h, offset, blur, light, dark);
+            n.neuSig = sig;
+        }
+        Neu.drawShadowBitmap(c, n.neuShadow, f.left, f.top, f.right, f.bottom, offset, blur);
     }
 
     /** 12키 플릭 키: 밀면 들어갈 글자를 키의 네 가장자리에 작게 그린다 (왼쪽·위·오른쪽·아래). */
@@ -1322,6 +1606,15 @@ public final class KeyboardView extends View {
     }
 
     private void move(Pointer p, float x, float y) {
+        if (p.key.joystick) {
+            // 조이스틱의 점이 손가락을 따라간다. 점이 끝까지 간 뒤에는 움직이지 않으므로, 점이 실제로 옮겨 갈 때만 다시 그린다
+            // (커서를 미는 동안 터치 이벤트마다 자판 전체를 다시 그리지 않게).
+            float r = joystickRadius(p.key);
+            joyDot(p.lastX - p.downX, p.lastY - p.downY, r);
+            float ox = dotDx, oy = dotDy;
+            joyDot(x - p.downX, y - p.downY, r);
+            if (Math.abs(dotDx - ox) >= 0.5f || Math.abs(dotDy - oy) >= 0.5f) invalidate();
+        }
         p.lastX = x;
         p.lastY = y;
         float dx = x - p.downX, dy = y - p.downY;
@@ -1835,6 +2128,12 @@ public final class KeyboardView extends View {
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
         cancelAll();
+        trimShadows();
+    }
+
+    /** 구워 둔 파인 키 그림자를 놓아 준다 (다음에 그릴 때 다시 굽는다). Neu.trimCache와 함께 부른다. */
+    public void trimShadows() {
+        for (int i = 0; i < notchList.size(); i++) notchList.get(i).neuShadow = null;
     }
 
     // ---------------------------------------------------------------- 단위
@@ -1850,6 +2149,7 @@ public final class KeyboardView extends View {
     protected void onConfigurationChanged(android.content.res.Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         density = getResources().getDisplayMetrics().density;
+        joyGeomDirty = true;
         updateTextSizes();
     }
 

@@ -110,6 +110,52 @@ public class ExtraBottomKeysTest {
     }
 
     @Test
+    public void joystickTakesNoRoomAndSitsBetweenItsNeighbors() throws Exception {
+        for (String mode : new String[]{BottomKeys.CURSOR_MODE_JOYSTICK, BottomKeys.CURSOR_MODE_SMALL})
+        for (boolean split : new boolean[]{false, true}) {
+            for (boolean grid : new boolean[]{false, true}) {
+                FakeSp sp = new FakeSp();
+                sp.m.put(Prefs.BOTTOM_CURSOR_KEY, true);
+                sp.m.put(Prefs.CURSOR_KEY_MODE, mode);
+                sp.m.put(Prefs.LANDSCAPE_SPLIT, split);
+                sp.m.put(Prefs.GRID_LAYOUT, grid);
+                // 커서 이동 키를 기호 키와 지구본 키 사이에 둔다.
+                sp.m.put(Prefs.BOTTOM_KEY_ORDER, "mode,cursor,globe,space,period,enter");
+                Prefs p = view(sp, split ? Prefs.PROFILE_LANDSCAPE : Prefs.PROFILE_PORTRAIT);
+                for (KeyboardLayout l : all(p)) {
+                    KeyboardLayout.Row bottom = l.rows[l.rows.length - 1];
+                    float width = 0f;
+                    int at = -1;
+                    for (int i = 0; i < bottom.keys.length; i++) {
+                        Key k = bottom.keys[i];
+                        width += k.weight;
+                        if (k.type == Key.CURSOR_PAD) {
+                            at = i;
+                            assertTrue(k.isJoystick());
+                            assertEquals(0f, k.weight, 0f);
+                            assertEquals(BottomKeys.CURSOR_MODE_SMALL.equals(mode) ? 0.2f : 0.25f, k.joystickRadius(), 0f);
+                        }
+                    }
+                    assertTrue(at > 0);
+                    int before = bottom.keys[at - 1].type, after = bottom.keys[at + 1].type;
+                    assertTrue(before == Key.TO_SYMBOLS || before == Key.TO_LETTERS);
+                    assertTrue(after == Key.LANGUAGE || after == Key.EMOJI_KEY);
+                    assertEquals(10f, width, 1e-3f);
+                }
+            }
+        }
+        // 끄면 보통 키 (한 칸)
+        FakeSp sp = new FakeSp();
+        sp.m.put(Prefs.BOTTOM_CURSOR_KEY, true);
+        for (Key k : KeyboardLayout.english(view(sp, Prefs.PROFILE_PORTRAIT)).rows[3].keys) {
+            if (k.type == Key.CURSOR_PAD) {
+                assertFalse(k.isJoystick());
+                assertTrue(k.weight > 0f);
+            }
+        }
+    }
+
+    @Test
     public void extraKeysHaveTheirOwnFunctionSwipeSlots() {
         int[] slots = {FunctionSwipes.EMOJI_KEY, FunctionSwipes.CLIPBOARD, FunctionSwipes.CURSOR, FunctionSwipes.VOICE};
         int[] lp = {LongPressActions.EMOJI_KEY, LongPressActions.CLIPBOARD, LongPressActions.CURSOR, LongPressActions.VOICE};

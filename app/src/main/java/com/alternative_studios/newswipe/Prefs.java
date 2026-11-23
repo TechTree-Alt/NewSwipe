@@ -308,6 +308,11 @@ public final class Prefs {
     public static final String BOTTOM_EMOJI_KEY = "bottom_emoji_key", BOTTOM_CLIPBOARD_KEY = "bottom_clipboard_key",
             BOTTOM_CURSOR_KEY = "bottom_cursor_key", BOTTOM_VOICE_KEY = "bottom_voice_key";
     /**
+     * 커서 이동 키의 모드 (BottomKeys.CURSOR_MODE_*): 키 · 조이스틱 · 작은 조이스틱. 조이스틱은 맨 아래 줄에 자리를 차지하지 않고,
+     * 순서상 앞뒤 두 키 사이 위에 동그랗게 끼워 넣는다.
+     */
+    public static final String CURSOR_KEY_MODE = "cursor_key_mode";
+    /**
      * 기호 자판에서 언어 전환 키 자리에 놓을 키 (BottomKeys의 키 ID). 기본은 이모지 키(BottomKeys.EMOJI)이고,
      * BottomKeys.GLOBE면 기호 자판에서도 언어 전환 키 그대로 둔다 (BottomKeys.SYMBOL_GLOBE_CHOICES).
      */
@@ -881,7 +886,7 @@ public final class Prefs {
     private static final String[] BOTTOM_KEY_VALUES = {BOTTOM_KEY_ORDER, COMMA_CHAR, PERIOD_CHAR, MODE_KEY_HIDDEN, PERIOD_COMMA,
             LANGUAGE_KEY_HIDDEN, SPACE_KEY_HIDDEN, PERIOD_KEY_HIDDEN, ENTER_KEY_HIDDEN, DELETE_KEY_HIDDEN, KOREAN_SHIFT_HIDDEN,
             DUBEOLSIK_SHIFT_HIDDEN, KOREAN_SHIFT_FN, BOTTOM_EMOJI_KEY, BOTTOM_CLIPBOARD_KEY, BOTTOM_CURSOR_KEY, BOTTOM_VOICE_KEY,
-            SYMBOL_GLOBE_KEY};
+            SYMBOL_GLOBE_KEY, CURSOR_KEY_MODE};
     /** 도구 막대 버튼 사용자화 화면의 값. */
     private static final String[] TOOL_BUTTON_VALUES = {TOOL_ORDER, TOOL_CLIPBOARD, TOOL_EMOJI, VOICE_KEY, TOOL_UNDO,
             TOOL_SETTINGS, TOOL_ONE_HAND, TOOL_FLOAT, TOOL_TEXT_EDIT, TOOL_HIDE};
@@ -1647,6 +1652,16 @@ public final class Prefs {
             default: return;
         }
         sp.edit().putBoolean(key, value).apply();
+    }
+
+    /** 커서 이동 키의 모드 (BottomKeys.CURSOR_MODE_*, 기본 키). 모르는 값은 기본값으로 본다. */
+    public String cursorKeyMode() {
+        return com.alternative_studios.newswipe.keyboard.BottomKeys.cursorMode(sp.getString(CURSOR_KEY_MODE, null));
+    }
+
+    public void setCursorKeyMode(String mode) {
+        if (com.alternative_studios.newswipe.keyboard.BottomKeys.CURSOR_MODE_KEY.equals(mode)) sp.edit().remove(CURSOR_KEY_MODE).apply();
+        else sp.edit().putString(CURSOR_KEY_MODE, mode).apply();
     }
 
     /** 기호 자판에서 언어 전환 키 자리에 놓을 키 (BottomKeys의 키 ID, 기본 이모지 키). 모르는 값은 기본값으로 본다. */

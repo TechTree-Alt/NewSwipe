@@ -1031,6 +1031,15 @@ final class KeyboardPreview extends FrameLayout {
      * (키가 아닌 곳이면 그 영역 자체를), 그 밖이면 누른 곳의 영역을 고른다. 영역 밖의 빈 곳이면 고른 것을 푼다.
      */
     private void tapAt(float x, float y) {
+        // 조이스틱은 기능키 영역의 키지만 윗줄(글자 키)에 걸쳐 있다: 글자 키를 끌어온 때가 아니면 기능키 영역 쪽으로 친다.
+        if (focusArea != AREA_LETTERS) {
+            for (Key joy : joysticks()) {
+                if (Math.hypot(x - joy.rect.centerX(), y - keys.getTop() - joy.rect.centerY()) > joy.rect.width() / 2f) continue;
+                listener.onTap(focusArea == AREA_FUNCTION
+                        ? new Selection(SEL_KEY, joy.type, joy.slot(), occurrenceOf(joy), null, tab) : Selection.area(AREA_FUNCTION));
+                return;
+            }
+        }
         RectF hole = new RectF();
         if (focusArea >= 0 && focusHole(focusArea, hole) && hole.contains(x, y)) {
             listener.onTap(pickInFocus(x, y));
@@ -1074,9 +1083,15 @@ final class KeyboardPreview extends FrameLayout {
         KeyboardLayout l = keys.getLayout();
         Key best = null;
         float bestDist = Ui.dp(getContext(), 16);
+        // 키 사이에 끼운 조이스틱(커서 이동 키)은 이웃 키들 위에 얹혀 있어 먼저 본다.
         for (int r = range[0]; r <= range[1]; r++) {
             for (Key k : l.rows[r].keys) {
-                if (k.type == Key.SPACER || k.type == Key.GAP || isHidden(k)) continue;
+                if (k.isJoystick() && Math.hypot(x - k.rect.centerX(), y - k.rect.centerY()) <= k.rect.width() / 2f) return k;
+            }
+        }
+        for (int r = range[0]; r <= range[1]; r++) {
+            for (Key k : l.rows[r].keys) {
+                if (k.type == Key.SPACER || k.type == Key.GAP || isHidden(k) || k.isJoystick()) continue;
                 RectF kr = k.rect;
                 float dx = x < kr.left ? kr.left - x : x > kr.right ? x - kr.right : 0;
                 float dy = y < kr.top ? kr.top - y : y > kr.bottom ? y - kr.bottom : 0;
@@ -1188,6 +1203,13 @@ final class KeyboardPreview extends FrameLayout {
     /** 키 k의 키 층 윤곽선 (미리보기 좌표). 상하·좌우 모두 이웃 키 윤곽선과 2dp 띈다. */
     void keyOutline(Key k, RectF out) {
         Context c = getContext();
+        if (k.isJoystick()) {
+            // 조이스틱: rect는 누르는 범위(보이는 원보다 넓다)라 보이는 원 둘레에 맞춘 정사각형으로.
+            float cx = k.rect.centerX(), cy = keys.getTop() + k.rect.centerY();
+            float rad = KeyboardView.joystickRadius(k) + Math.max(Ui.dp(c, 1f), keyOutlineOut(Ui.dp(c, prefs.keyGapXDp())));
+            out.set(cx - rad, cy - rad, cx + rad, cy + rad);
+            return;
+        }
         float gapX = Ui.dp(c, prefs.keyGapXDp()), gapY = Ui.dp(c, prefs.keyGapYDp());
         float gx = gapX / 2f, gy = gapY / 2f, ox = keyOutlineOut(gapX), oy = keyOutlineOut(gapY);
         out.set(k.rect.left + gx - ox, keys.getTop() + k.rect.top + gy - oy,
@@ -1204,6 +1226,78 @@ final class KeyboardPreview extends FrameLayout {
         float inset = Math.max(0, (b.getHeight() - Ui.chipHeight(c, b.getHeight())) / 2f) - oy;
         out.set(b.getLeft() + chipGap / 2f - ox, bar.getTop() + b.getTop() + inset,
                 b.getRight() - chipGap / 2f + ox, bar.getTop() + b.getBottom() - inset);
+    }
+
+    /** 지금 자판의 조이스틱(키 사이에 끼운 커서 이동 키)들. 자판이 바뀔 때만 다시 모은다 (그릴 때마다 만들지 않게). */
+    private final java.util.ArrayList<Key> joyList = new java.util.ArrayList<>();
+    private KeyboardLayout joyListLayout;
+
+    private java.util.List<Key> joysticks() {
+        KeyboardLayout l = keys.getLayout();
+        if (l != joyListLayout) {
+            joyListLayout = l;
+            joyList.clear();
+            if (l != null) for (KeyboardLayout.Row row : l.rows) for (Key k : row.keys) if (k.isJoystick()) joyList.add(k);
+        }
+        return joyList;
+    }
+
+    /** 조이스틱 둘레를 따라 그리는 윤곽선 모양 (그릴 때마다 새로 만들지 않고 다시 쓴다). 메인 스레드에서만 쓴다. */
+    private final android.graphics.Path shapePath = new android.graphics.Path(), circlePath = new android.graphics.Path();
+
+    /**
+     * 윤곽선 o(둥근 네모, 모서리 rr, Metro면 네모)를 조이스틱에 맞춰 그린다.
+     * <ul>
+     *   <li>wrap: 조이스틱을 감싼다 (기능키 영역의 윤곽선). 선의 가운데가 조이스틱 면에서 out만큼 나온 원과 합친다.
+     *       나뉜 윤곽선(분리 키보드)은 조이스틱이 걸친 쪽만.</li>
+     *   <li>아니면 조이스틱 자리를 파낸다 (글자 키 영역·이웃 키의 윤곽선). 키 모양이 조이스틱 둘레에서 둥글게 파여 있으므로,
+     *       선도 파인 가장자리에서 out만큼 조이스틱 쪽으로 나온 원을 따라 파인다. 조이스틱 윤곽선과는 늘 2dp 띈다.</li>
+     * </ul>
+     * 조이스틱이 없거나 걸치지 않으면 보통처럼 그린다.
+     */
+    private void drawJoystickAware(Canvas c, RectF o, float rr, Paint p, boolean wrap, float out) {
+        java.util.List<Key> joys = joysticks();
+        boolean started = false;
+        for (int i = 0; i < joys.size(); i++) {
+            Key joy = joys.get(i);
+            float cx = joy.rect.centerX(), cy = keys.getTop() + joy.rect.centerY(), rad;
+            if (wrap) {
+                if (cx < o.left || cx > o.right) continue;
+                rad = KeyboardView.joystickRadius(joy) + out;
+            } else {
+                rad = joystickNotch(joy, out, p.getStrokeWidth());
+                float nx = Math.max(o.left, Math.min(cx, o.right)), ny = Math.max(o.top, Math.min(cy, o.bottom));
+                if (Math.hypot(nx - cx, ny - cy) >= rad) continue;   // 이 윤곽선에는 닿지 않는다
+            }
+            if (!started) {
+                started = true;
+                shapePath.rewind();
+                if (Metro.on) shapePath.addRect(o, android.graphics.Path.Direction.CW);
+                else shapePath.addRoundRect(o, rr, rr, android.graphics.Path.Direction.CW);
+            }
+            circlePath.rewind();
+            circlePath.addCircle(cx, cy, rad, android.graphics.Path.Direction.CW);
+            shapePath.op(circlePath, wrap ? android.graphics.Path.Op.UNION : android.graphics.Path.Op.DIFFERENCE);
+        }
+        if (started) c.drawPath(shapePath, p);
+        else Metro.roundRect(c, o, rr, rr, p);
+    }
+
+    /**
+     * 조이스틱 자리를 파낸 원의 반지름 (윤곽선의 가운데 자리): 이웃 키를 파낸 가장자리에서 out만큼 조이스틱 쪽.
+     * 조이스틱 윤곽선과 늘 2dp(굵은 선이면 굵기만큼 더)는 띈다.
+     */
+    private float joystickNotch(Key joy, float out, float strokeWidth) {
+        Context c = getContext();
+        float joyOutline = KeyboardView.joystickRadius(joy) + Math.max(Ui.dp(c, 1f), keyOutlineOut(Ui.dp(c, prefs.keyGapXDp())));
+        float apart = joyOutline + Ui.dp(c, THIN_DP) / 2f + Ui.dp(c, KEY_OUTLINE_GAP_DP) + strokeWidth / 2f;
+        return Math.max(apart, keys.joystickHoleRadius(joy) - Math.max(0f, out));
+    }
+
+    /** 키 윤곽선 o를 그린다: 조이스틱은 원으로 (Metro에서도), 이웃 키는 조이스틱 자리를 파내고. */
+    private void drawKeyShape(Canvas c, Key k, RectF o, float rr, Paint p) {
+        if (k.isJoystick()) c.drawOval(o, p);
+        else drawJoystickAware(c, o, rr, p, false, keyOutlineOut(Ui.dp(getContext(), prefs.keyGapXDp())));
     }
 
     boolean areaBounds(int area, RectF out) {
@@ -1246,7 +1340,7 @@ final class KeyboardPreview extends FrameLayout {
         boolean any = false;
         for (int r = first; r <= last; r++) {
             for (Key k : l.rows[r].keys) {
-                if (k.type == Key.SPACER || k.type == Key.GAP || isHidden(k)) continue;
+                if (k.type == Key.SPACER || k.type == Key.GAP || isHidden(k) || k.isJoystick()) continue;   // 조이스틱은 영역 윤곽에 넣지 않는다
                 float left = k.rect.left + gx, top = keys.getTop() + k.rect.top + gy;
                 float right = k.rect.right - gx, bottom = keys.getTop() + k.rect.bottom - gy;
                 if (!any) out.set(left, top, right, bottom);
@@ -1655,7 +1749,7 @@ final class KeyboardPreview extends FrameLayout {
                         float outlineAlpha = drag ? 1f : 0.55f * (1f - w);
                         if (outlineAlpha > 0.01f) {
                             stroke.setColor(withAlpha(accent, outlineAlpha));
-                            Metro.roundRect(c, area, rr, rr, stroke);
+                            drawJoystickAware(c, area, rr, stroke, false, outlinePadX(ctx));   // 조이스틱 자리는 파낸다
                         }
                         float pillAlpha = (1f - dim) * (1f - w);
                         if (pillAlpha < 0.01f) continue;
@@ -1681,7 +1775,10 @@ final class KeyboardPreview extends FrameLayout {
                     int color = withAlpha(accent, outlineAlpha);
                     Paint outline = off ? dashed(color, Ui.dp(ctx, THIN_DP)) : stroke;
                     outline.setColor(color);
-                    Metro.roundRect(c, area, rr, rr, outline);
+                    // 기능키 영역은 조이스틱을 감싸고, 다른 영역은 조이스틱 자리를 파낸다.
+                    boolean wrap = a == AREA_FUNCTION;
+                    drawJoystickAware(c, area, rr, outline, wrap,
+                            wrap ? Math.max(outlinePadX(ctx), Ui.dp(ctx, THIN_DP) / 2f) : outlinePadX(ctx));
                 }
                 float pillAlpha = (1f - dim) * (1f - w);
                 if (!off && pillAlpha > 0.01f) drawPill(c, L.t("눌러서 ", "Tap for ") + areaName(a, tab) + suffix, area, pillAlpha);
@@ -1769,8 +1866,7 @@ final class KeyboardPreview extends FrameLayout {
                 for (Key k : l.rows[r].keys) {
                     if (!selectable(k)) continue;
                     keyOutline(k, area);
-                    float rr = Math.min(kr, Math.min(area.width(), area.height()) / 2f);
-                    Metro.roundRect(c, area, rr, rr, stroke);
+                    drawKeyShape(c, k, area, Math.min(kr, Math.min(area.width(), area.height()) / 2f), stroke);
                 }
             }
         }
@@ -1787,6 +1883,13 @@ final class KeyboardPreview extends FrameLayout {
                 float rr = focusArea == AREA_MIDDLE || fromArea == AREA_MIDDLE
                         ? Math.min(Ui.dp(getContext(), prefs.keyRadiusDp()) + Ui.dp(getContext(), 4), Math.min(tmp.width(), tmp.height()) / 2f) : 0f;
                 holePath.addRoundRect(tmp, rr, rr, android.graphics.Path.Direction.CW);
+                if (focusArea == AREA_FUNCTION) {   // 기능키 영역의 조이스틱은 윗줄에 걸쳐 있어도 흐리지 않는다
+                    for (Key joy : joysticks()) {
+                        holePath.addCircle(joy.rect.centerX(), keys.getTop() + joy.rect.centerY(), keys.joystickHoleRadius(joy),
+                                android.graphics.Path.Direction.CW);
+                    }
+                    holePath.setFillType(android.graphics.Path.FillType.WINDING);
+                }
                 c.clipOutPath(holePath);
             }
             fill.setColor(withAlpha(theme.background, SCRIM * dim));
@@ -1808,10 +1911,12 @@ final class KeyboardPreview extends FrameLayout {
             Paint p = areaOff(a) ? dashed(color, Ui.dp(ctx, THICK_DP)) : stroke;
             p.setColor(color);
             p.setStrokeWidth(Ui.dp(ctx, THICK_DP));
+            // 기능키 영역은 조이스틱을 감싸고 (선의 안쪽 가장자리가 조이스틱 면에 붙는다), 다른 영역은 조이스틱 자리를 파낸다.
+            float out = a == AREA_FUNCTION ? Ui.dp(ctx, THICK_DP) / 2f : outlineOut(THICK_DP, Ui.dp(ctx, prefs.keyGapXDp()));
             for (int i = 0; i < n; i++) {
                 RectF o = i == 0 ? area : outlineB;
                 float rr = Math.min(r, Math.min(o.width(), o.height()) / 2f);
-                Metro.roundRect(c, o, rr, rr, p);
+                drawJoystickAware(c, o, rr, p, a == AREA_FUNCTION, out);
             }
         }
 
@@ -1856,7 +1961,8 @@ final class KeyboardPreview extends FrameLayout {
                 stroke.setStrokeWidth(Ui.dp(ctx, 2.5f));
                 stroke.setColor(accent);
                 if (selection.kind == SEL_TOOL_BUTTON) r = sel.height() / 2f;
-                Metro.roundRect(c, sel, r, r, stroke);
+                if (selection.kind == SEL_KEY && selectedKey != null) drawKeyShape(c, selectedKey, sel, r, stroke);
+                else Metro.roundRect(c, sel, r, r, stroke);
             }
             // 손잡이: 강조색 알약에 바탕색 테두리 (키 위에서도 보이게). 끄는 중인 손잡이는 더 크게.
             for (Handle h : Handle.values()) {
