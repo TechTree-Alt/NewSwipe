@@ -616,7 +616,8 @@ final class KeyEditPanel {
                 return new String[]{Prefs.DOUBLE_SPACE_PERIOD, Prefs.SPACE_HIT_SHRINK, Prefs.SPACE_HIT_SHRINK_PCT,
                         Prefs.SPACE_LANG_LABEL, Prefs.SPACE_CURSOR_SPEED_H, Prefs.SPACE_CURSOR_SPEED_V};
             case Key.CURSOR_PAD:
-                return new String[]{Prefs.SPACE_CURSOR_SPEED_H, Prefs.SPACE_CURSOR_SPEED_V};
+                return new String[]{Prefs.SPACE_CURSOR_SPEED_H, Prefs.SPACE_CURSOR_SPEED_V, Prefs.CURSOR_STICK,
+                        Prefs.CURSOR_STICK_SENSITIVITY};
             case Key.DELETE:
                 return new String[]{Prefs.DELETE_HIT_SHRINK, Prefs.DELETE_HIT_SHRINK_PCT};
             default:
@@ -660,11 +661,49 @@ final class KeyEditPanel {
         if (key.type == Key.LANGUAGE) {
             card.addView(note(L.t("위쪽에 '언어 고르기'를 정하면 위로 밀었을 때 켜 둔 언어가 말풍선으로 올라옵니다. "
                     + "손을 떼지 않고 위아래로 옮겨 고릅니다.", "Set 'Pick language' for up, then swipe up to show your languages in a popup. Without lifting, move up or down to pick one.")));
-        } else if (key.type == Key.SPACE || key.type == Key.CURSOR_PAD || usesFreeCursor(slot)) {
+        } else if (key.type == Key.CURSOR_PAD) {
+            buildCursorMoveStyle(card);
+        } else if (key.type == Key.SPACE || usesFreeCursor(slot)) {
             card.addView(note(L.t("'커서 자유 이동'을 정한 방향으로 밀면 커서가 움직입니다 (좌우는 글자, 위아래는 줄 단위).", "Swipe in a direction set to 'Free cursor' to move the cursor (by character left and right, by line up and down).")));
             card.addView(slider(L.t("커서 이동 속도 좌우", "Cursor speed (horizontal)"), Prefs.SPACE_CURSOR_SPEED_H, prefs.spaceCursorSpeedH(), 50, 300, 10, "%"));
             card.addView(slider(L.t("커서 이동 속도 상하", "Cursor speed (vertical)"), Prefs.SPACE_CURSOR_SPEED_V, prefs.spaceCursorSpeedV(), 50, 300, 10, "%"));
             card.addView(note(L.t("스페이스바·커서 키·글자 키 트랙패드가 같은 속도를 씁니다. 값이 클수록 조금만 밀어도 커서가 빠르게 움직입니다.", "The space bar, cursor key, and letter key trackpad share this speed. Higher values move the cursor faster with shorter swipes.")));
+        }
+    }
+
+    /**
+     * 커서 이동 키: 커서 이동 방식(터치패드 · 조이스틱)과 그 방식의 설정. 터치패드는 밀어 간 거리만큼 움직이고 속도는 스페이스바와
+     * 함께 쓴다. 조이스틱은 민 쪽으로 계속 움직이고, 처음 닿은 자리에서 멀수록 빠르며 그 민감도를 정한다. 키 모드와 상관없다.
+     */
+    private void buildCursorMoveStyle(LinearLayout card) {
+        card.addView(note(L.t("'커서 자유 이동'을 정한 방향으로 밀면 커서가 움직입니다 (좌우는 글자, 위아래는 줄 단위).", "Swipe in a direction set to 'Free cursor' to move the cursor (by character left and right, by line up and down).")));
+        TextView title = text(L.t("커서 이동 방식", "Cursor movement"), 15, textColor);
+        title.setPadding(0, Ui.dp(a, 10), 0, Ui.dp(a, 6));
+        card.addView(title);
+        LinearLayout body = new LinearLayout(a);
+        body.setOrientation(LinearLayout.VERTICAL);
+        card.addView(Ui.choiceRow(a, new String[]{L.t("터치패드", "Touchpad"), L.t("조이스틱", "Joystick")}, prefs.cursorStick() ? 1 : 0,
+                accentColor, onAccentColor, textColor, hintColor, 0, i -> {
+                    put(Prefs.CURSOR_STICK, i == 1);
+                    fillCursorMoveStyle(body);
+                }));
+        card.addView(body);
+        fillCursorMoveStyle(body);
+    }
+
+    private void fillCursorMoveStyle(LinearLayout body) {
+        body.removeAllViews();
+        if (prefs.cursorStick()) {
+            body.addView(note(L.t("민 쪽으로 커서가 계속 움직입니다. 처음 누른 자리에서 멀리 밀수록 빨라지고, 가까이 되돌리면 멈춥니다.",
+                    "The cursor keeps moving the way you push. Push farther from where you first touched to go faster; come back near it to stop.")));
+            body.addView(slider(L.t("민감도", "Sensitivity"), Prefs.CURSOR_STICK_SENSITIVITY, prefs.cursorStickSensitivity(),
+                    Prefs.CURSOR_STICK_SENSITIVITY_MIN, Prefs.CURSOR_STICK_SENSITIVITY_MAX, 10, "%"));
+            body.addView(note(L.t("값이 클수록 조금만 밀어도 빨라집니다.", "Higher values speed up with a shorter push.")));
+        } else {
+            body.addView(note(L.t("밀어 간 거리만큼 커서가 움직입니다.", "The cursor moves as far as you swipe.")));
+            body.addView(slider(L.t("커서 이동 속도 좌우", "Cursor speed (horizontal)"), Prefs.SPACE_CURSOR_SPEED_H, prefs.spaceCursorSpeedH(), 50, 300, 10, "%"));
+            body.addView(slider(L.t("커서 이동 속도 상하", "Cursor speed (vertical)"), Prefs.SPACE_CURSOR_SPEED_V, prefs.spaceCursorSpeedV(), 50, 300, 10, "%"));
+            body.addView(note(L.t("스페이스바·커서 키·글자 키 트랙패드가 같은 속도를 씁니다. 값이 클수록 조금만 밀어도 커서가 빠르게 움직입니다.", "The space bar, cursor key, and letter key trackpad share this speed. Higher values move the cursor faster with shorter swipes.")));
         }
     }
 

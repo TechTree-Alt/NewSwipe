@@ -1581,6 +1581,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         keyboard.setFunctionSwipeThreshold(prefs.fnSwipeThresholdDp());
         keyboard.setGapSwipes(sizePrefs.gapSwipes(), sizePrefs.splitGapSpeed());
         keyboard.setCursorSpeed(prefs.spaceCursorSpeedH(), prefs.spaceCursorSpeedV());   // 글자 키 트랙패드도 같은 속도
+        keyboard.setCursorStick(prefs.cursorStick(), prefs.cursorStickSensitivity());   // 커서 이동 키: 터치패드·조이스틱 방식
         keyboard.setDeleteRepeatRates(prefs.deleteRepeatRate(), prefs.deleteWordRepeatRate());
         // 길게 누르기·밀기는 모두 키마다 정한 기능을 쓴다 (키보드 사용자화에서 키를 눌러 정한다).
         keyboard.setFunctionLongPressMs(prefs.deletePressMs());

@@ -301,6 +301,14 @@ public final class Prefs {
     public static final int PROFILE_HEIGHT_MIN = 30;
     public static final String SPACE_CURSOR_SPEED_H = "space_cursor_speed_h";
     public static final String SPACE_CURSOR_SPEED_V = "space_cursor_speed_v";
+    /**
+     * 커서 이동 키를 밀 때의 커서 이동 방식: 터치패드(밀어 간 거리만큼 움직인다, 기본)·조이스틱(민 쪽으로 계속 움직이고,
+     * 처음 닿은 자리에서 멀수록 빠르다). 키 모드·조이스틱 모드 어느 쪽이든 쓴다.
+     */
+    public static final String CURSOR_STICK = "cursor_stick";
+    /** 조이스틱 방식의 민감도 (%, 50~300, 기본 100): 클수록 조금만 밀어도 빨라진다. */
+    public static final String CURSOR_STICK_SENSITIVITY = "cursor_stick_sensitivity";
+    public static final int CURSOR_STICK_SENSITIVITY_MIN = 50, CURSOR_STICK_SENSITIVITY_MAX = 300;
     public static final String DELETE_KEY_HIDDEN = "delete_key_hidden";       // 글자·기호 자판의 ⌫ 없애기 (빈칸으로 남김)
     public static final String SPACE_KEY_HIDDEN = "space_key_hidden";         // 스페이스바 없애기 (기능키 순서·유무 사용자화)
     public static final String BOTTOM_KEY_ORDER = "bottom_key_order";         // 맨 아래 줄 기능키 순서 (BottomKeys)
@@ -951,7 +959,7 @@ public final class Prefs {
             new EditorScope("large", L.t("폴더블 내부 화면 별도 키보드·판정 기준", "Separate inner screen keyboard · threshold"), keys(LARGE_LAYOUT, LARGE_SCREEN_DP), NONE),
             new EditorScope("keys", L.t("키마다 정한 설정 (길게 누르기·밀기·키 창의 누르기 항목)", "Per-key settings (long press · swipe · tap options in key panels)"), keys(NUMBER_PAD_SYMBOLS,
                     DOUBLE_SPACE_PERIOD, SPACE_HIT_SHRINK, SPACE_HIT_SHRINK_PCT, SPACE_LANG_LABEL, SPACE_CURSOR_SPEED_H,
-                    SPACE_CURSOR_SPEED_V, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, DELETE_REPEAT_RATE, DELETE_WORD_REPEAT_RATE,
+                    SPACE_CURSOR_SPEED_V, CURSOR_STICK, CURSOR_STICK_SENSITIVITY, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, DELETE_REPEAT_RATE, DELETE_WORD_REPEAT_RATE,
                     LANGUAGE_ORDER), keys("popup_", "popupkept_", "repeat_", "swipe_custom_", SYMBOL_CHAR_PREFIX, "swipe_final_", "swipe_vowel_",
                     "swipe_lp_", "swipe_fn_", "swipe_fk_", "swipe_toolbar_")),
             // 가로 모드·폴더블 내부 화면이 따로 정하는 값과 자·모음 균형 배열의 키 폭·위치: 목록의 되돌리기에는 보이지 않지만
@@ -1602,6 +1610,11 @@ public final class Prefs {
     }
     public int spaceCursorSpeedH() { return sp.getInt(SPACE_CURSOR_SPEED_H, 100); }
     public int spaceCursorSpeedV() { return sp.getInt(SPACE_CURSOR_SPEED_V, 100); }
+    /** 커서 이동 키가 조이스틱 방식으로 커서를 옮기는지 (기본 터치패드). */
+    public boolean cursorStick() { return sp.getBoolean(CURSOR_STICK, false); }
+    public int cursorStickSensitivity() {
+        return clamp(sp.getInt(CURSOR_STICK_SENSITIVITY, 100), CURSOR_STICK_SENSITIVITY_MIN, CURSOR_STICK_SENSITIVITY_MAX);
+    }
     public boolean deleteKeyHidden() { return sp.getBoolean(DELETE_KEY_HIDDEN, false); }
     public boolean spaceKeyHidden() { return sp.getBoolean(SPACE_KEY_HIDDEN, false); }
 

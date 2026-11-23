@@ -513,6 +513,76 @@ public final class KeyboardView extends View {
         cursorSpeedV = Math.max(10, v) / 100f;
     }
 
+    // ---------------------------------------------------------------- 커서 이동 키의 조이스틱 방식
+    //
+    // 커서 이동 키를 밀어 커서 이동이 시작되면, 손가락이 처음 닿은 자리에서 민 쪽(좌우·위아래 중 더 많이 민 축)으로
+    // 커서를 일정한 간격으로 계속 옮긴다. 간격은 처음 자리에서 멀수록 짧아지고(빨라지고), 민감도가 클수록 조금만 밀어도 빨라진다.
+    // 처음 자리 가까이로 돌아오면 멈춘다. 손을 떼거나 취소하면 반복을 바로 멈춘다.
+
+    private boolean cursorStick;
+    private float stickSensitivity = 1f;
+    /** 조이스틱 방식으로 커서를 옮기고 있는 손가락 (없으면 null). */
+    private Pointer stickPointer;
+    /** 한 칸(한 줄)씩 옮기는 빠르기의 범위 (칸/초). 줄은 글자보다 크게 움직이므로 더 느리게. */
+    private static final float STICK_MIN_RATE = 3f, STICK_MAX_RATE_H = 30f, STICK_MAX_RATE_V = 10f;
+    /** 멈춰 있는 동안 손가락을 다시 볼 간격 (ms). */
+    private static final long STICK_IDLE_MS = 40;
+
+    /** @param sensitivityPct 50~300 (100 = 기본) */
+    public void setCursorStick(boolean stick, int sensitivityPct) {
+        cursorStick = stick;
+        stickSensitivity = Math.max(10, sensitivityPct) / 100f;
+        if (!stick) stopStick();
+    }
+
+    private final Runnable stickRunnable = new Runnable() {
+        @Override
+        public void run() {
+            Pointer p = stickPointer;
+            if (p == null || p.mode != CURSOR || !pointers.contains(p)) {
+                stickPointer = null;
+                return;
+            }
+            handler.postDelayed(this, stickStep(p));
+        }
+    };
+
+    private void stopStick() {
+        handler.removeCallbacks(stickRunnable);
+        stickPointer = null;
+    }
+
+    /** 이 손가락이 조이스틱 방식으로 커서를 옮기는지: 커서 이동 키에서 시작한 커서 이동이고 조이스틱 방식을 골랐다. */
+    private boolean usesStick(Pointer p) {
+        return cursorStick && !p.gap && !p.freeCursor && p.cursorSlot == FunctionSwipes.CURSOR;
+    }
+
+    /** 처음 자리에서 민 만큼 커서를 한 칸(한 줄) 옮기고 다음까지 기다릴 시간(ms)을 돌려준다. 멈춰 있으면 옮기지 않는다. */
+    private long stickStep(Pointer p) {
+        boolean curH = fnSwipes != null && fnSwipes.cursorH(p.cursorSlot);
+        boolean curV = fnSwipes != null && fnSwipes.cursorV(p.cursorSlot);
+        float dx = p.lastX - p.downX, dy = p.lastY - p.downY;
+        boolean horizontal = curH && (!curV || Math.abs(dx) >= Math.abs(dy));
+        if (!horizontal && !curV) return STICK_IDLE_MS;
+        float d = Math.abs(horizontal ? dx : dy);
+        float dead = fnSwipeThreshold * 0.5f;   // 처음 자리 가까이로 돌아오면 멈춘다
+        if (d <= dead) return STICK_IDLE_MS;
+        // 처음 자리에서 멀수록 빠르다: 민감도 100%면 '멈춤 거리'에서 약 60dp 더 밀었을 때 가장 빠르다.
+        float t = Math.min(1f, (d - dead) * stickSensitivity / dp(60));
+        float max = horizontal ? STICK_MAX_RATE_H : STICK_MAX_RATE_V;
+        float rate = STICK_MIN_RATE + (max - STICK_MIN_RATE) * t * t;   // 처음에는 천천히, 멀리 밀수록 빠르게
+        if (listener != null) {
+            if (!p.cursorStarted) {
+                p.cursorStarted = true;
+                listener.onCursorStart();
+            }
+            int dir = (horizontal ? dx : dy) > 0 ? 1 : -1;
+            if (horizontal) listener.onCursorMove(dir);
+            else listener.onCursorMoveVertical(dir);
+        }
+        return Math.max(16, Math.round(1000f / rate));
+    }
+
     /** 커서 이동 한 칸·한 줄에 필요한 손가락 거리 (px, 속도 반영). 도구 막대의 커서 자유 이동도 같은 거리를 쓴다. */
     public float cursorStepX() {
         return cursorStep / cursorSpeedH;
@@ -1705,6 +1775,15 @@ public final class KeyboardView extends View {
                 }
                 break;
             case CURSOR: {
+                if (usesStick(p)) {
+                    // 조이스틱 방식: 거리만큼 옮기지 않고, 반복이 손가락 자리(lastX·lastY)를 보고 계속 옮긴다.
+                    if (stickPointer != p) {
+                        handler.removeCallbacks(stickRunnable);
+                        stickPointer = p;
+                        handler.post(stickRunnable);
+                    }
+                    break;
+                }
                 // 기능키는 그 키에 '커서 자유 이동'을 정한 축만 움직인다.
                 // 분리 키보드 가운데 빈 공간도 '커서 자유 이동'을 정한 축만 움직이고 속도는 따로 정한다.
                 boolean curH = p.gap ? gapSwipes != null && gapSwipes.cursorH() : p.freeCursor ? p.freeH
@@ -1787,6 +1866,7 @@ public final class KeyboardView extends View {
 
     private void release(Pointer p) {
         cancelLongPress(p);
+        if (p == stickPointer) stopStick();   // 조이스틱 방식의 반복은 손을 떼면 바로 멈춘다
         boolean swipeRepeating = p.mode == SWIPE_REPEAT;
         if (p == swipeHoldPointer) cancelSwipeHold();
         if (listener == null || swipeRepeating) return;   // 연속 입력은 손을 떼면 끝난다 (더 입력하지 않는다)
@@ -2114,6 +2194,7 @@ public final class KeyboardView extends View {
 
     public void cancelAll() {
         handler.removeCallbacks(longPressRunnable);
+        stopStick();
         handler.removeCallbacks(repeatRunnable);
         stopCharRepeat();
         cancelSwipeHold();
