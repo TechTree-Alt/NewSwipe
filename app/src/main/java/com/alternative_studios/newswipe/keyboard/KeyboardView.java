@@ -691,7 +691,7 @@ public final class KeyboardView extends View {
      * 가로 위치이고, 그 줄의 위쪽 가장자리가 세로 위치다. rect는 누르는 범위(원을 감싼 정사각형)로 바꾼다.
      */
     private void layoutJoysticks(int w) {
-        joyRadius = Math.min(rowUnitPx * 0.3f, dp(17));
+        joyRadius = Math.min(rowUnitPx * 0.2f, dp(17));
         float hit = joyRadius * JOYSTICK_HIT;
         for (KeyboardLayout.Row row : layout.rows) {
             for (Key k : row.keys) {
