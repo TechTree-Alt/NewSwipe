@@ -1614,8 +1614,14 @@ public final class Prefs {
     public int spaceCursorSpeedV() { return sp.getInt(SPACE_CURSOR_SPEED_V, 100); }
     public int cursorKeySpeedH() { return sp.getInt(CURSOR_KEY_SPEED_H, 100); }
     public int cursorKeySpeedV() { return sp.getInt(CURSOR_KEY_SPEED_V, 100); }
-    /** 커서 이동 키가 조이스틱 방식으로 커서를 옮기는지 (기본 터치패드). */
-    public boolean cursorStick() { return sp.getBoolean(CURSOR_STICK, false); }
+    /**
+     * 커서 이동 키가 조이스틱 방식으로 커서를 옮기는지. 직접 고르지 않았으면 커서 이동 키 모드를 따른다:
+     * 조이스틱·작은 조이스틱이면 조이스틱 방식, 키면 터치패드 방식. 직접 고른 뒤에는 모드를 바꿔도 고른 대로다.
+     */
+    public boolean cursorStick() {
+        if (sp.contains(CURSOR_STICK)) return sp.getBoolean(CURSOR_STICK, false);
+        return !com.alternative_studios.newswipe.keyboard.BottomKeys.CURSOR_MODE_KEY.equals(cursorKeyMode());
+    }
     public int cursorStickSensitivity() {
         return clamp(sp.getInt(CURSOR_STICK_SENSITIVITY, 100), CURSOR_STICK_SENSITIVITY_MIN, CURSOR_STICK_SENSITIVITY_MAX);
     }

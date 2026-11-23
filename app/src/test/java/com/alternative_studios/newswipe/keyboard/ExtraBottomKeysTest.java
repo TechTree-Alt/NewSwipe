@@ -156,6 +156,20 @@ public class ExtraBottomKeysTest {
     }
 
     @Test
+    public void cursorMoveStyleDefaultsToTheKeyMode() throws Exception {
+        // 직접 고르지 않았으면 키 모드는 터치패드, 조이스틱·작은 조이스틱은 조이스틱 방식
+        for (String mode : BottomKeys.CURSOR_MODES) {
+            FakeSp sp = new FakeSp();
+            sp.m.put(Prefs.CURSOR_KEY_MODE, mode);
+            assertEquals(mode, !BottomKeys.CURSOR_MODE_KEY.equals(mode), view(sp, Prefs.PROFILE_PORTRAIT).cursorStick());
+            // 직접 고른 값이 우선
+            sp.m.put(Prefs.CURSOR_STICK, BottomKeys.CURSOR_MODE_KEY.equals(mode));
+            assertEquals(mode, BottomKeys.CURSOR_MODE_KEY.equals(mode), view(sp, Prefs.PROFILE_PORTRAIT).cursorStick());
+        }
+        assertFalse(view(new FakeSp(), Prefs.PROFILE_PORTRAIT).cursorStick());
+    }
+
+    @Test
     public void extraKeysHaveTheirOwnFunctionSwipeSlots() {
         int[] slots = {FunctionSwipes.EMOJI_KEY, FunctionSwipes.CLIPBOARD, FunctionSwipes.CURSOR, FunctionSwipes.VOICE};
         int[] lp = {LongPressActions.EMOJI_KEY, LongPressActions.CLIPBOARD, LongPressActions.CURSOR, LongPressActions.VOICE};
