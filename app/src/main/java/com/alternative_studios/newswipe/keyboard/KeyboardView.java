@@ -534,6 +534,8 @@ public final class KeyboardView extends View {
 
     private boolean cursorStick;
     private float stickSensitivity = 1f;
+    /** 데드존 (px): 처음 자리에서 이 거리 안이면 손가락이 움직이지 않은 것으로 본다. */
+    private float stickDeadzone;
     /** 조이스틱 방식으로 커서를 옮기고 있는 손가락 (없으면 null). */
     private Pointer stickPointer;
     /** 한 칸(한 줄)씩 옮기는 빠르기의 범위 (칸/초). 줄은 글자보다 크게 움직이므로 더 느리게. */
@@ -541,10 +543,14 @@ public final class KeyboardView extends View {
     /** 멈춰 있는 동안 손가락을 다시 볼 간격 (ms). */
     private static final long STICK_IDLE_MS = 40;
 
-    /** @param sensitivityPct 50~300 (100 = 기본) */
-    public void setCursorStick(boolean stick, int sensitivityPct) {
+    /**
+     * @param sensitivityPct 50~300 (100 = 기본)
+     * @param deadzoneDp     처음 자리에서 이 거리(dp) 안이면 멈춘다
+     */
+    public void setCursorStick(boolean stick, int sensitivityPct, int deadzoneDp) {
         cursorStick = stick;
         stickSensitivity = Math.max(10, sensitivityPct) / 100f;
+        stickDeadzone = dp(Math.max(0, deadzoneDp));
         if (!stick) stopStick();
     }
 
@@ -596,9 +602,9 @@ public final class KeyboardView extends View {
         boolean horizontal = curH && (!curV || Math.abs(dx) >= Math.abs(dy));
         if (!horizontal && !curV) return STICK_IDLE_MS;
         float d = Math.abs(horizontal ? dx : dy);
-        float dead = fnSwipeThreshold * 0.5f;   // 처음 자리 가까이로 돌아오면 멈춘다
+        float dead = stickDeadzone;   // 데드존: 처음 자리 가까이로 돌아오면 멈춘다
         if (d <= dead) return STICK_IDLE_MS;
-        // 처음 자리에서 멀수록 빠르다: 민감도 100%면 '멈춤 거리'에서 약 60dp 더 밀었을 때 가장 빠르다.
+        // 처음 자리에서 멀수록 빠르다: 민감도 100%면 데드존 밖으로 약 60dp 더 밀었을 때 가장 빠르다.
         float t = Math.min(1f, (d - dead) * stickSensitivity / dp(60));
         float max = horizontal ? STICK_MAX_RATE_H : STICK_MAX_RATE_V;
         float rate = STICK_MIN_RATE + (max - STICK_MIN_RATE) * t * t;   // 처음에는 천천히, 멀리 밀수록 빠르게

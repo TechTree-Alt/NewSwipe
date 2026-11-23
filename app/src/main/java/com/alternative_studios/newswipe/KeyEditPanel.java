@@ -620,7 +620,7 @@ final class KeyEditPanel {
                         Prefs.SPACE_LANG_LABEL, Prefs.SPACE_CURSOR_SPEED_H, Prefs.SPACE_CURSOR_SPEED_V};
             case Key.CURSOR_PAD:
                 return new String[]{Prefs.CURSOR_KEY_SPEED_H, Prefs.CURSOR_KEY_SPEED_V, Prefs.CURSOR_STICK,
-                        Prefs.CURSOR_STICK_SENSITIVITY};
+                        Prefs.CURSOR_STICK_SENSITIVITY, Prefs.CURSOR_STICK_DEADZONE};
             case Key.DELETE:
                 return new String[]{Prefs.DELETE_HIT_SHRINK, Prefs.DELETE_HIT_SHRINK_PCT};
             default:
@@ -701,6 +701,10 @@ final class KeyEditPanel {
             body.addView(slider(L.t("민감도", "Sensitivity"), Prefs.CURSOR_STICK_SENSITIVITY, prefs.cursorStickSensitivity(),
                     Prefs.CURSOR_STICK_SENSITIVITY_MIN, Prefs.CURSOR_STICK_SENSITIVITY_MAX, 10, "%"));
             body.addView(note(L.t("값이 클수록 조금만 밀어도 빨라집니다.", "Higher values speed up with a shorter push.")));
+            body.addView(slider(L.t("데드존", "Dead zone"), Prefs.CURSOR_STICK_DEADZONE, prefs.cursorStickDeadzoneDp(),
+                    Prefs.CURSOR_STICK_DEADZONE_MIN, Prefs.CURSOR_STICK_DEADZONE_MAX, 2, "dp"));
+            body.addView(note(L.t("처음 누른 자리에서 이 거리 안에서는 손가락이 움직이지 않은 것으로 보고 커서를 멈춥니다.",
+                    "Within this distance from where you first touched, your finger counts as not moving and the cursor stops.")));
         } else {
             body.addView(note(L.t("손가락을 민 만큼 커서가 움직입니다.", "The cursor moves as much as you slide your finger.")));
             body.addView(slider(L.t("커서 이동 속도 좌우", "Cursor speed (horizontal)"), Prefs.CURSOR_KEY_SPEED_H, prefs.cursorKeySpeedH(), 50, 300, 10, "%"));
