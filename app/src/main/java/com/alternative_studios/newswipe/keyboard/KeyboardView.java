@@ -842,6 +842,18 @@ public final class KeyboardView extends View {
             }
         }
         boolean holes = !joyHoles.isEmpty();
+        if (holes && keyShadow && !theme.neu && !theme.metro) {
+            // 기본 모드의 키 그림자: 조이스틱에 파인 키는 파인 모양 그대로 그림자를 드리운다 (면을 오리기 전에 그려, 파인 가장자리
+            // 아래 조이스틱 둘레에도 그림자가 보이게). 네모 그림자는 drawKey가 그리지 않는다.
+            for (KeyboardLayout.Row row : layout.rows) {
+                for (Key k : row.keys) {
+                    if (k.type == Key.SPACER || k.type == Key.GAP || k.hidden || k.joystick || isPressed(k)) continue;
+                    RectF face = shadowFace;
+                    face.set(k.rect.left + gapX / 2, k.rect.top + gapY / 2, k.rect.right - gapX / 2, k.rect.bottom - gapY / 2);
+                    if (touchesJoystick(face)) drawNotchedShadow(c, face);
+                }
+            }
+        }
         if (holes) {
             c.save();
             c.clipOutPath(joyHoles);
@@ -964,6 +976,49 @@ public final class KeyboardView extends View {
         c.restore();
     }
 
+    private final RectF shadowFace = new RectF();
+    /** 조이스틱에 파인 키의 그림자 모양 (그릴 때마다 다시 채워 쓴다). */
+    private final Path notchShadow = new Path(), notchCircle = new Path();
+
+    /** 키 면 face가 조이스틱이 파낸 자리에 걸치는지. */
+    private boolean touchesJoystick(RectF face) {
+        for (KeyboardLayout.Row row : layout.rows) {
+            for (Key j : row.keys) {
+                if (!j.joystick) continue;
+                float cx = j.rect.centerX(), cy = j.rect.centerY();
+                float nx = Math.max(face.left, Math.min(cx, face.right)), ny = Math.max(face.top, Math.min(cy, face.bottom));
+                if (Math.hypot(nx - cx, ny - cy) < joystickHoleRadius(j)) return true;
+            }
+        }
+        return false;
+    }
+
+    /** {@link #drawShadow}와 같은 그림자를, 조이스틱 자리만큼 둥글게 파인 키 모양 그대로 그린다. */
+    private void drawNotchedShadow(Canvas c, RectF r) {
+        if (shadowPaint == null) {
+            shadowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            shadowPaint.setMaskFilter(new android.graphics.BlurMaskFilter(dp(1.6f), android.graphics.BlurMaskFilter.Blur.NORMAL));
+        }
+        int max = theme.dark ? 190 : 130;
+        shadowPaint.setColor((Math.round(max * keyShadowStrength / 100f) << 24));
+        float dy = dp(1.3f), blur = dp(3);
+        notchShadow.rewind();
+        notchShadow.addRoundRect(r.left + dp(0.8f), r.top, r.right - dp(0.8f), r.bottom, radius, radius, Path.Direction.CW);
+        for (KeyboardLayout.Row row : layout.rows) {
+            for (Key j : row.keys) {
+                if (!j.joystick) continue;
+                notchCircle.rewind();
+                notchCircle.addCircle(j.rect.centerX(), j.rect.centerY(), joystickHoleRadius(j), Path.Direction.CW);
+                notchShadow.op(notchCircle, Path.Op.DIFFERENCE);
+            }
+        }
+        notchShadow.offset(0, dy);
+        c.save();
+        c.clipRect(r.left - blur, r.centerY(), r.right + blur, r.bottom + dy + blur);
+        c.drawPath(notchShadow, shadowPaint);
+        c.restore();
+    }
+
     /** 조이스틱 아래쪽에만 보이는 그림자: {@link #drawShadow}와 같은 붓·세기·거리로, 둥근 면에 맞춰 그린다. */
     private void drawCircleShadow(Canvas c, float cx, float cy, float r) {
         if (shadowPaint == null) {
@@ -1037,7 +1092,7 @@ public final class KeyboardView extends View {
             c.drawRect(r, fill);
         } else {
             if (pressed) bg = k.type == Key.ENTER ? blend(theme.accent, theme.text, 0.25f) : theme.keyPressed;
-            if (keyShadow && !pressed) drawShadow(c, r);
+            if (keyShadow && !pressed && !touchesJoystick(r)) drawShadow(c, r);   // 조이스틱에 파인 키는 onDraw가 파인 모양으로
             fill.setColor(bg);
             c.drawRoundRect(r, radius, radius, fill);
         }
