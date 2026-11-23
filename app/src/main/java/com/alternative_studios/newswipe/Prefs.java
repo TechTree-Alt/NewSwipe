@@ -277,6 +277,10 @@ public final class Prefs {
     public static final String POPUP_HINT_HIDDEN = "popup_hint_hidden";       // 글자 키(한글·영어)의 힌트 없애기 (설정 화면에는 '글자 키 힌트 표시'로 뒤집어 보인다)
     /** 글자 키 힌트의 자리: 키의 왼쪽 위부터 시계 방향으로 여덟 곳 (HINT_POS_*). */
     public static final String POPUP_HINT_POSITION = "popup_hint_position";
+    /** 글자 키 힌트를 흐린 힌트 색 대신 그 키의 글자 색으로 그린다. */
+    public static final String POPUP_HINT_KEY_COLOR = "popup_hint_key_color";
+    /** 글자 키 힌트를 더 크게 그린다. */
+    public static final String POPUP_HINT_LARGE = "popup_hint_large";
     public static final int HINT_POS_TOP_LEFT = 0, HINT_POS_TOP = 1, HINT_POS_TOP_RIGHT = 2, HINT_POS_RIGHT = 3,
             HINT_POS_BOTTOM_RIGHT = 4, HINT_POS_BOTTOM = 5, HINT_POS_BOTTOM_LEFT = 6, HINT_POS_LEFT = 7;
     /** 힌트 자리의 이름 (HINT_POS_* 차례). */
@@ -286,6 +290,10 @@ public final class Prefs {
     }
     /** 영어 글자 키에 두벌식 자판의 같은 자리 자모(q → ㅂ)를 작게 표시한다 (기본 꺼짐). */
     public static final String DUBEOLSIK_HINT = "dubeolsik_hint";
+    /** 두벌식 자모 힌트를 흐린 힌트 색 대신 그 키의 글자 색으로 그린다 (글자 키 힌트의 같은 설정과 따로). */
+    public static final String DUBEOLSIK_HINT_KEY_COLOR = "dubeolsik_hint_key_color";
+    /** 두벌식 자모 힌트를 더 크게 그린다 (글자 키 힌트의 같은 설정과 따로). */
+    public static final String DUBEOLSIK_HINT_LARGE = "dubeolsik_hint_large";
     /** 두벌식 자모 힌트의 자리 (HINT_POS_*, 기본 왼쪽 아래). 길게 눌러 입력할 문자 힌트와 같은 자리에는 두지 않는다. */
     public static final String DUBEOLSIK_HINT_POSITION = "dubeolsik_hint_position";
     // 커서 이동 속도 (%, 100 = 기본). 스페이스바·문자 키, 좌우·상하 따로.
@@ -944,7 +952,7 @@ public final class Prefs {
                     keys(AREA_PAD_PREFIX + PAD_AREAS[1] + "_")),
             // 글자 키: 세 자판이 함께 쓰는 값(높이·길게 누르기·밀기·여백)과 한글·영어 글자 키에만 있는 값.
             new EditorScope(AREA_SCOPES[2], L.t("글자 키 공통 (높이·길게 누르기·밀기·여백)", "Letter keys, common (height · long press · swipe · padding)"), keys(KEYBOARD_HEIGHT, LONG_PRESS_MS,
-                    POPUP_HINT_HIDDEN, POPUP_HINT_POSITION, SWIPE_THRESHOLD, SWIPE_PICK_SUGGESTION, PORTRAIT_PREFIX + SPLIT_REACH_COLUMN),
+                    POPUP_HINT_HIDDEN, POPUP_HINT_POSITION, POPUP_HINT_KEY_COLOR, POPUP_HINT_LARGE, SWIPE_THRESHOLD, SWIPE_PICK_SUGGESTION, PORTRAIT_PREFIX + SPLIT_REACH_COLUMN),
                     keys(AREA_PAD_PREFIX + PAD_AREAS[2] + "_", "swipe_kb_", PORTRAIT_PREFIX + "balanced_",
                             PORTRAIT_PREFIX + SPLIT_REACH_COLUMN + "_")),
             new EditorScope(SCOPE_LETTERS_KO, L.t("한글 글자 키 (자판 배열·상세 배열·쌍자음·이중모음 입력)", "Korean letter keys (layout · advanced layout · double consonant and Y-vowel input)"), keys(KOREAN_LAYOUT,
@@ -952,7 +960,7 @@ public final class Prefs {
                     PORTRAIT_SPLIT),
                     keys(BALANCED_LAYOUT)),
             new EditorScope(SCOPE_LETTERS_EN, L.t("영어 글자 키 (상세 배열·자동 대문자·대문자 밀기·이메일 입력란·두벌식 자모 힌트)", "English letter keys (advanced layout · auto-capitalize · swipe for capitals · email fields · Dubeolsik hints)"), keys(AUTO_CAP,
-                    ENGLISH_FIELDS, ENGLISH_SWIPE_UPPER, DUBEOLSIK_HINT, DUBEOLSIK_HINT_POSITION, ENGLISH_BALANCED, ENGLISH_DETAIL), NONE),
+                    ENGLISH_FIELDS, ENGLISH_SWIPE_UPPER, DUBEOLSIK_HINT, DUBEOLSIK_HINT_POSITION, DUBEOLSIK_HINT_KEY_COLOR, DUBEOLSIK_HINT_LARGE, ENGLISH_BALANCED, ENGLISH_DETAIL), NONE),
             new EditorScope(SCOPE_LETTERS_SYM, L.t("기호 글자 키 (상세 배열)", "Symbol keys (advanced layout)"), keys(SYMBOLS_DETAIL), NONE),
             new EditorScope(AREA_SCOPES[3], L.t("기능키", "Function keys"), concat(BOTTOM_KEY_VALUES, FN_ROW_HEIGHT, GRID_LAYOUT, GRID_DETAIL, DELETE_PRESS_MS,
                     FN_SWIPE_THRESHOLD, PORTRAIT_PREFIX + SPLIT_SPACE_JOIN, PORTRAIT_PREFIX + SPLIT_FN_WIDTH,
@@ -1586,7 +1594,11 @@ public final class Prefs {
     public boolean popupHintHidden() { return sp.getBoolean(POPUP_HINT_HIDDEN, false); }
     /** 글자 키 힌트의 자리 (HINT_POS_*, 기본 오른쪽 위). */
     public int popupHintPosition() { return clamp(sp.getInt(POPUP_HINT_POSITION, HINT_POS_TOP_RIGHT), 0, 7); }
+    public boolean popupHintKeyColor() { return sp.getBoolean(POPUP_HINT_KEY_COLOR, false); }
+    public boolean popupHintLarge() { return sp.getBoolean(POPUP_HINT_LARGE, false); }
     public boolean dubeolsikHint() { return sp.getBoolean(DUBEOLSIK_HINT, false); }
+    public boolean dubeolsikHintKeyColor() { return sp.getBoolean(DUBEOLSIK_HINT_KEY_COLOR, false); }
+    public boolean dubeolsikHintLarge() { return sp.getBoolean(DUBEOLSIK_HINT_LARGE, false); }
     /** 저장된 두벌식 자모 힌트 자리 (길게 누르기 힌트와 겹치는지 따지지 않은 값). */
     public int dubeolsikHintPositionRaw() { return clamp(sp.getInt(DUBEOLSIK_HINT_POSITION, HINT_POS_BOTTOM_LEFT), 0, 7); }
     /**

@@ -778,7 +778,9 @@ final class KeyboardPreview extends FrameLayout {
         keys.setKeyRadius(Ui.dp(c, prefs.keyRadiusDp()));
         keys.setGridColors(prefs.gridColors());
         keys.setPopupHints(!prefs.popupHintHidden(), prefs.popupHintPosition());
+        keys.setPopupHintStyle(prefs.popupHintKeyColor(), prefs.popupHintLarge());
         keys.setDubeolsikHint(prefs.dubeolsikHintShown());
+        keys.setDubeolsikHintStyle(prefs.dubeolsikHintKeyColor(), prefs.dubeolsikHintLarge());
         keys.setNumberHintHidden(prefs.numberHintHidden());
         keys.setRepeatChars(prefs.repeatChars());
         keys.setKeyGaps(Ui.dp(c, prefs.keyGapXDp()), Ui.dp(c, prefs.keyGapYDp()));
