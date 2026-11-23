@@ -117,7 +117,6 @@ public class ExtraBottomKeysTest {
                 FakeSp sp = new FakeSp();
                 sp.m.put(Prefs.BOTTOM_CURSOR_KEY, true);
                 sp.m.put(Prefs.CURSOR_KEY_MODE, mode);
-                sp.m.put(Prefs.METRO, true);   // 조이스틱은 Metro 모드에서만
                 sp.m.put(Prefs.LANDSCAPE_SPLIT, split);
                 sp.m.put(Prefs.GRID_LAYOUT, grid);
                 // 커서 이동 키를 기호 키와 지구본 키 사이에 둔다.
@@ -145,17 +144,13 @@ public class ExtraBottomKeysTest {
                 }
             }
         }
-        // 키 모드이거나, 조이스틱을 골랐어도 Metro 모드가 아니면 보통 키 (한 칸)
-        for (boolean metroOn : new boolean[]{true, false}) {
-            FakeSp sp = new FakeSp();
-            sp.m.put(Prefs.BOTTOM_CURSOR_KEY, true);
-            sp.m.put(Prefs.METRO, metroOn);
-            if (!metroOn) sp.m.put(Prefs.CURSOR_KEY_MODE, BottomKeys.CURSOR_MODE_JOYSTICK);
-            for (Key k : KeyboardLayout.english(view(sp, Prefs.PROFILE_PORTRAIT)).rows[3].keys) {
-                if (k.type == Key.CURSOR_PAD) {
-                    assertFalse(k.isJoystick());
-                    assertTrue(k.weight > 0f);
-                }
+        // 끄면 보통 키 (한 칸)
+        FakeSp sp = new FakeSp();
+        sp.m.put(Prefs.BOTTOM_CURSOR_KEY, true);
+        for (Key k : KeyboardLayout.english(view(sp, Prefs.PROFILE_PORTRAIT)).rows[3].keys) {
+            if (k.type == Key.CURSOR_PAD) {
+                assertFalse(k.isJoystick());
+                assertTrue(k.weight > 0f);
             }
         }
     }

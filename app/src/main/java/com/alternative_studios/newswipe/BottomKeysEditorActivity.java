@@ -243,7 +243,7 @@ public final class BottomKeysEditorActivity extends Activity {
                 prefs::symbolGlobeKey, prefs::setSymbolGlobeKey);
     }
 
-    /** 커서 이동 키의 하위 항목 '모드' (Metro 모드에서만): 키 · 조이스틱 · 작은 조이스틱 (조이스틱은 순서상 앞뒤 두 키 사이 위에 동그랗게 끼운다). */
+    /** 커서 이동 키의 하위 항목 '모드': 키 · 조이스틱 · 작은 조이스틱 (조이스틱은 순서상 앞뒤 두 키 사이 위에 동그랗게 끼운다). */
     private View cursorModeButton() {
         String[] ids = BottomKeys.CURSOR_MODES;
         String[] names = new String[ids.length];
@@ -470,8 +470,8 @@ public final class BottomKeysEditorActivity extends Activity {
             charGroup.setVisibility(prefs.bottomKeyShown(id) ? View.VISIBLE : View.GONE);
             texts.addView(charGroup);
         }
-        // 커서 이동 키는 켜면 하위 항목으로 모드(키 · 조이스틱 · 작은 조이스틱)를 고르는 버튼이 나온다 (Metro 모드에서만).
-        if (BottomKeys.CURSOR.equals(id) && Metro.on) {
+        // 커서 이동 키는 켜면 하위 항목으로 모드(키 · 조이스틱 · 작은 조이스틱)를 고르는 버튼이 나온다.
+        if (BottomKeys.CURSOR.equals(id)) {
             LinearLayout edit = new LinearLayout(this);
             edit.setOrientation(LinearLayout.VERTICAL);
             edit.addView(cursorModeButton());
