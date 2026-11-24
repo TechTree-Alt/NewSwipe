@@ -3,6 +3,7 @@ package com.alternative_studios.newswipe;
 import android.content.Context;
 import android.media.AudioManager;
 import android.os.Build;
+import android.os.SystemClock;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.VibratorManager;
@@ -42,6 +43,8 @@ final class Feedback {
     /** Metro 모드면 시스템 키음 대신 Windows Phone 키보드 같은 키음을 낸다. */
     private boolean metro;
     private final MetroSound metroSound;
+    /** 마지막으로 말풍선을 연 때 (uptimeMillis). */
+    private long popupAt;
     private float volume;
     /** 곳(CH_*)마다 진동 방식·primitive·세기 %. */
     private final int[] style = new int[CHANNELS], primitive = new int[CHANNELS], amp = new int[CHANNELS];
@@ -236,9 +239,22 @@ final class Feedback {
         }
     }
 
-    /** 밀기·길게 누르기가 끝났을 때의 진동 (설정에서 켠 경우만, 키 진동과 따로 켜고 끈다). */
+    /** 밀기·길게 누르기가 끝났을 때의 진동 (설정에서 켠 경우만, 키 진동과 따로 켜고 끈다). 키음은 내지 않는다. */
     void onGesture() {
         if (gesture) playChannel(CH_GESTURE);
+    }
+
+    /**
+     * 밀기·길게 누르기가 끝났을 때: 진동과 함께 그 키의 키음을 한 번 더 내서 인식됐음을 알린다 (진동을 켠 경우만).
+     * 말풍선이 막 열렸으면 Metro 모드는 말풍선 소리를 이미 냈으므로 키음을 겹치지 않는다.
+     *
+     * @param key 밀었거나 길게 누른 키 (모르면 null = 글자 키 소리)
+     */
+    void onGesture(Key key) {
+        if (!gesture) return;
+        playChannel(CH_GESTURE);
+        if (metro && SystemClock.uptimeMillis() - popupAt < 100) return;
+        playClickSound(key == null ? Key.CHAR : key.type);
     }
 
     /** 도구 막대 버튼을 눌렀거나 도구 막대를 밀었을 때의 진동 (키 종류별 설정을 켰으면 그 단계). */
@@ -246,7 +262,7 @@ final class Feedback {
         if (vibrate) {
             playChannel(perKey ? CH_TOOLBAR : CH_KEY);
         }
-        playClickSound(null);
+        playClickSound(Key.CHAR);
     }
 
     /** 키를 누르고 있어 글자가 반복 입력되거나 연속으로 지워질 때, 한 글자마다 울리는 진동 (키 진동과 따로 고른다). */
@@ -254,14 +270,25 @@ final class Feedback {
         if (repeat) playChannel(CH_REPEAT);
     }
 
+    /**
+     * 반복 입력·연속 지우기의 한 글자: 반복 입력 진동(켠 경우)과 그 키의 키음 (키음을 켠 경우, 진동 설정과 따로).
+     *
+     * @param type 누르고 있는 키의 종류 (Key.CHAR, Key.DELETE 등)
+     */
+    void onRepeat(int type) {
+        onRepeat();
+        playClickSound(type);
+    }
+
     /** 길게 눌러 악센트(이어 쓸 글자) 말풍선을 열었을 때. Metro 모드에서만 소리가 난다. */
     void onPopup() {
+        popupAt = SystemClock.uptimeMillis();
         if (sound && metro && volume > 0) metroSound.play(MetroSound.ACCENT, volume);
     }
 
     void onKey(Key key) {
         if (vibrate) playChannel(perKey && key != null ? channelOf(key.type) : CH_KEY);
-        playClickSound(key);
+        playClickSound(key == null ? Key.CHAR : key.type);
     }
 
     /** 키 종류별 진동에서 그 키가 따르는 곳 (CH_*). 따로 정하지 않는 키는 일반 키. */
@@ -277,10 +304,11 @@ final class Feedback {
         }
     }
 
-    private void playClickSound(Key key) {
+    /** @param type 키 종류 (Key.CHAR 등). 따로 정한 소리가 없는 키는 글자 키 또는 기능 키 소리. */
+    private void playClickSound(int type) {
         if (sound && metro && volume > 0) {
             int kind;
-            switch (key == null ? Key.CHAR : key.type) {
+            switch (type) {
                 case Key.CHAR: kind = MetroSound.KEY; break;
                 case Key.DELETE: kind = MetroSound.DELETE; break;
                 default: kind = MetroSound.FUNCTION; break;   // 스페이스·엔터·Shift·기호 등 (Windows Phone처럼 같은 소리)
@@ -290,7 +318,7 @@ final class Feedback {
         }
         if (sound && audio != null && volume > 0) {
             int fx;
-            switch (key == null ? Key.CHAR : key.type) {
+            switch (type) {
                 case Key.DELETE:
                     fx = AudioManager.FX_KEYPRESS_DELETE;
                     break;

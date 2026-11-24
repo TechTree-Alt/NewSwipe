@@ -86,6 +86,11 @@ public final class KeyboardView extends View {
         default void onGesture() {
         }
 
+        /** {@link #onGesture()}와 같되 밀었거나 길게 누른 키를 함께 알린다 (그 키의 키음을 한 번 더 내는 데 쓴다). */
+        default void onGesture(Key key) {
+            onGesture();
+        }
+
         /** 길게 눌러 악센트·언어 말풍선을 열었다 (Metro 모드 키음용). */
         default void onPopupOpen() {
         }
@@ -1962,7 +1967,7 @@ public final class KeyboardView extends View {
                 } else if (p.key.type == Key.SPACER) {
                     String tap = gapSwipes == null ? null : gapSwipes.tap();
                     if (tap != null) {
-                        listener.onGesture();
+                        listener.onGesture(p.key);
                         listener.onKeyFunction(p.key, tap);
                     }
                 } else if (p.key.type != Key.SHIFT) {
@@ -1973,7 +1978,7 @@ public final class KeyboardView extends View {
             case SWIPED:
                 String swiped = p.key.swipeText(p.swipeDir);
                 if (swiped != null) {
-                    listener.onGesture();
+                    listener.onGesture(p.key);
                     listener.onKeySwipe(p.key, swiped);
                 }
                 markChord();
@@ -1987,13 +1992,13 @@ public final class KeyboardView extends View {
                 break;
             case FN_SWIPE:
                 if (p.fnAction != null) {
-                    listener.onGesture();
+                    listener.onGesture(p.key);
                     listener.onKeyFunction(p.key, p.fnAction);
                 }
                 markChord();
                 break;
             case PICK_SWIPE:
-                listener.onGesture();
+                listener.onGesture(p.key);
                 listener.onPickSuggestion(p.pickSlot);
                 markChord();
                 break;
@@ -2010,7 +2015,7 @@ public final class KeyboardView extends View {
                         // 가운데 공간은 띄어쓰기 대신 정해 둔 누르기 기능을 실행한다.
                         String tap = gapSwipes == null ? null : gapSwipes.tap();
                         if (tap != null) {
-                            listener.onGesture();
+                            listener.onGesture(p.key);
                             listener.onKeyFunction(p.key, tap);
                         }
                     } else {
@@ -2047,7 +2052,7 @@ public final class KeyboardView extends View {
             p.mode = POPUP;
             openPopup(p, languagePopup.clone(), languagePopupSelected, true);
             popupMoved = true;   // 이미 밀고 있으므로 손가락 위치대로 바로 고른다
-            if (listener != null) listener.onGesture();
+            if (listener != null) listener.onGesture(p.key);
             return;
         }
         if (SwipeAction.CURSOR_MOVE.equals(action)) {
@@ -2127,13 +2132,13 @@ public final class KeyboardView extends View {
                 p.cursorAnchorX = p.lastX;
                 p.cursorAnchorY = p.lastY;
                 if (listener != null) {
-                    listener.onGesture();
+                    listener.onGesture(p.key);
                     listener.onSelectStart();
                 }
             } else {
                 p.mode = CONSUMED;
                 if (listener != null) {
-                    listener.onGesture();
+                    listener.onGesture(k);
                     listener.onKeyFunction(k, custom);
                 }
             }
@@ -2149,7 +2154,7 @@ public final class KeyboardView extends View {
         } else if (k.popup != null) {
             p.mode = POPUP;
             openPopup(p);
-            if (listener != null) listener.onGesture();
+            if (listener != null) listener.onGesture(p.key);
         }
         invalidate();
     }

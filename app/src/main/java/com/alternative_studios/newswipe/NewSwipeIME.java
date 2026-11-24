@@ -3087,8 +3087,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     /** 밀기·길게 누르기가 인식됐다 (KeyboardView가 알려 준다). Fn 키 탭처럼 기능을 실행하는 탭은 여기로 오지 않는다. */
     @Override
-    public void onGesture() {
-        feedback.onGesture();
+    public void onGesture(Key key) {
+        feedback.onGesture(key);
     }
 
     @Override
@@ -3098,7 +3098,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
     @Override
     public void onKeyRepeat(Key key) {
-        feedback.onRepeat();
+        feedback.onRepeat(key.type);
         lastWasSpace = false;
         // 탭이 아니라 길게 눌러 입력하는 것이라 연속 탭(쌍자음·이중모음) 판단에서 빠진다.
         typeText(shiftState != 0 && lettersLayout() ? key.shifted : key.output, false);
@@ -3179,7 +3179,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 모음 키를 아래로 민 채 멈춰 ㅣ계 이중모음을 연속 입력한다 (ㅜ↓ 멈춤 → ㅠㅠㅠ). 반복 입력 진동을 쓴다. */
     @Override
     public void onKeySwipeRepeat(Key key, String text) {
-        feedback.onRepeat();
+        feedback.onRepeat(key.type);
         lastWasSpace = false;
         typeText(text, false);
     }
@@ -3212,7 +3212,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     @Override
     public void onDeleteRepeat(boolean word) {
         // 더 지울 것이 없어 커서가 멈췄으면 진동하지 않는다 (지우기 자체는 예전처럼 보낸다).
-        if (!nothingToDelete()) feedback.onRepeat();
+        if (!nothingToDelete()) feedback.onRepeat(Key.DELETE);
         if (word) {
             onDeleteWord();
             return;
