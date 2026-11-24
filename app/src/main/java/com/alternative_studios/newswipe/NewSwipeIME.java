@@ -411,6 +411,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         io.shutdown();
         searchSeq++;   // 지금 돌고 있는 검색이 끝나서 보내는 결과도 버린다
         searchIo.shutdownNow();   // 남은 검색은 보여 줄 곳이 없다
+        if (feedback != null) feedback.release();
         super.onDestroy();
     }
 

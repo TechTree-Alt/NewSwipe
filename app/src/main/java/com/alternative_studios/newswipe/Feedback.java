@@ -39,6 +39,9 @@ final class Feedback {
     /** 시스템 진동을 울릴 뷰 (키보드 창). 없으면 클릭으로 대신한다. */
     private View hapticView;
     private boolean vibrate, sound, perKey, gesture, repeat;
+    /** Metro 모드면 시스템 키음 대신 Windows Phone 키보드 같은 키음을 낸다. */
+    private boolean metro;
+    private final MetroSound metroSound;
     private float volume;
     /** 곳(CH_*)마다 진동 방식·primitive·세기 %. */
     private final int[] style = new int[CHANNELS], primitive = new int[CHANNELS], amp = new int[CHANNELS];
@@ -50,6 +53,7 @@ final class Feedback {
     @SuppressWarnings("deprecation")
     Feedback(Context context) {
         audio = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+        metroSound = new MetroSound(context);
         Vibrator v;
         if (Build.VERSION.SDK_INT >= 31) {
             VibratorManager vm = (VibratorManager) context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
@@ -96,6 +100,14 @@ final class Feedback {
         }
         sound = prefs.sound();
         volume = prefs.soundVolume() / 100f;
+        metro = prefs.metro();
+        if (metro && sound) metroSound.prepare();
+        else metroSound.release();
+    }
+
+    /** 키보드 서비스가 끝날 때 키음 자원을 놓는다. */
+    void release() {
+        metroSound.release();
     }
 
     private void set(int channel, int s, int p, int a) {
@@ -261,6 +273,17 @@ final class Feedback {
     }
 
     private void playClickSound(Key key) {
+        if (sound && metro && volume > 0) {
+            int kind;
+            switch (key == null ? Key.CHAR : key.type) {
+                case Key.DELETE: kind = MetroSound.DELETE; break;
+                case Key.SPACE: kind = MetroSound.SPACE; break;
+                case Key.ENTER: kind = MetroSound.ENTER; break;
+                default: kind = MetroSound.STANDARD; break;
+            }
+            metroSound.play(kind, volume);
+            return;
+        }
         if (sound && audio != null && volume > 0) {
             int fx;
             switch (key == null ? Key.CHAR : key.type) {
