@@ -86,6 +86,10 @@ public final class KeyboardView extends View {
         default void onGesture() {
         }
 
+        /** 길게 눌러 악센트·언어 말풍선을 열었다 (Metro 모드 키음용). */
+        default void onPopupOpen() {
+        }
+
         /** 스페이스바를 길게 눌러 선택 모드를 시작했다 (이제부터 밀면 선택 영역을 넓히거나 좁힌다). */
         default void onSelectStart() {
         }
@@ -2211,6 +2215,7 @@ public final class KeyboardView extends View {
         }
         popupItems = items;
         popupPointer = p;
+        if (listener != null) listener.onPopupOpen();
         popupCellW = Math.max(dp(40), Math.min(p.key.rect.width(), dp(52)));
         popupCellH = Math.min(p.key.rect.height(), dp(54));
         // 여러 글자로 된 항목(.com, .co.kr 등)은 칸을 조금 넓히고, 그래도 넘치면 글자를 줄여 칸 안에 넣는다.

@@ -3092,6 +3092,11 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     }
 
     @Override
+    public void onPopupOpen() {
+        feedback.onPopup();
+    }
+
+    @Override
     public void onKeyRepeat(Key key) {
         feedback.onRepeat();
         lastWasSpace = false;

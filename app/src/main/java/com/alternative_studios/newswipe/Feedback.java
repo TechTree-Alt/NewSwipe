@@ -254,6 +254,11 @@ final class Feedback {
         if (repeat) playChannel(CH_REPEAT);
     }
 
+    /** 길게 눌러 악센트(이어 쓸 글자) 말풍선을 열었을 때. Metro 모드에서만 소리가 난다. */
+    void onPopup() {
+        if (sound && metro && volume > 0) metroSound.play(MetroSound.ACCENT, volume);
+    }
+
     void onKey(Key key) {
         if (vibrate) playChannel(perKey && key != null ? channelOf(key.type) : CH_KEY);
         playClickSound(key);
@@ -276,10 +281,9 @@ final class Feedback {
         if (sound && metro && volume > 0) {
             int kind;
             switch (key == null ? Key.CHAR : key.type) {
+                case Key.CHAR: kind = MetroSound.KEY; break;
                 case Key.DELETE: kind = MetroSound.DELETE; break;
-                case Key.SPACE: kind = MetroSound.SPACE; break;
-                case Key.ENTER: kind = MetroSound.ENTER; break;
-                default: kind = MetroSound.STANDARD; break;
+                default: kind = MetroSound.FUNCTION; break;   // 스페이스·엔터·Shift·기호 등 (Windows Phone처럼 같은 소리)
             }
             metroSound.play(kind, volume);
             return;
