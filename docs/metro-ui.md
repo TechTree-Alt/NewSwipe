@@ -94,6 +94,13 @@ Metro에서는 내용을 만드는 `LanguageOrderEditor`를 설정 화면이 그
   ListView 대신 줄을 바로 쌓습니다. 그림자·흐림을 쓰지 않고, Metro의 스위블만 하드웨어 층으로 그립니다.
 - AlertDialog처럼 입력란이 없는 창은 키보드를 가져가지 않습니다(FLAG_ALT_FOCUSABLE_IM): 열려 있던 키보드가 그대로 남습니다.
 
+## 드롭다운 (ListPicker)
+
+설정에서 항목이 6개 이하인 고르기(쌍자음·이중모음 입력, 상세 배열, 진동, 키 소리 등)는 대화상자 대신 `DropdownMenu`로 고릅니다.
+보통 모드에서는 줄 아래에 뜨는 Material 3 메뉴지만, Metro에서는 Windows Phone Toolkit의 ListPicker처럼 떠 있는 창 없이
+그 줄 바로 아래에서 아래 내용을 밀어내며 펼쳐집니다(350ms, EaseOut 지수 6). 흰 바탕(PhoneTextBoxEditBackground)에 강조색 2dp 테두리의 네모,
+항목은 20sp 가는 글자, 고른 항목은 표시 없이 강조색 글자, 누르면 틸트. 줄을 다시 누르거나 항목을 고르면 접힙니다.
+
 ## 설정 검색
 
 설정 검색은 글자 크기로 항목 이름(15~18sp)과 소제목(14sp 강조색)을 가려냅니다. Metro 모드에서 크기를 바꾼 글자는

@@ -2453,7 +2453,7 @@ public final class SettingsActivity extends Activity {
         doubleTapTime.setVisibility(prefs.consonantInputMode() != Prefs.INPUT_SWIPE || (harvesting && !previewing) ? View.VISIBLE : View.GONE);
         SettingsWidgets.ValueRow[] consonant = new SettingsWidgets.ValueRow[1];
         consonant[0] = widgets.valueRow(L.t("쌍자음 입력", "Double consonant input"), inputModes()[prefs.consonantInputMode()], v ->
-                pickInputMode(L.t("쌍자음 입력", "Double consonant input"), prefs.consonantInputMode(), Prefs.INPUT_SWIPE, mode -> {
+                pickInputMode(v,  prefs.consonantInputMode(), Prefs.INPUT_SWIPE, mode -> {
                     prefs.setConsonantInputMode(mode);
                     consonant[0].set(inputModes()[mode]);
                     Ui.setVisibleAnimated(doubleTapTime, mode != Prefs.INPUT_SWIPE);
@@ -2462,7 +2462,7 @@ public final class SettingsActivity extends Activity {
         input.addView(doubleTapTime);
         SettingsWidgets.ValueRow[] vowel = new SettingsWidgets.ValueRow[1];
         vowel[0] = widgets.valueRow(L.t("이중모음 입력", "Y-vowel input"), inputModes()[prefs.vowelInputMode()], v ->
-                pickInputMode(L.t("이중모음 입력", "Y-vowel input"), prefs.vowelInputMode(), Prefs.INPUT_BOTH, mode -> {
+                pickInputMode(v,  prefs.vowelInputMode(), Prefs.INPUT_BOTH, mode -> {
                     prefs.setVowelInputMode(mode);
                     vowel[0].set(inputModes()[mode]);
                 }));
@@ -2473,19 +2473,9 @@ public final class SettingsActivity extends Activity {
                 + "Swipe a vowel key down and hold still to keep typing its Y-vowel (ㅜ↓ → ㅠㅠㅠ).")));
     }
 
-    /** 쌍자음·이중모음 입력 방식을 고르는 창 (아래로 밀기·두 번 연속으로 누르기·둘 다). */
-    private void pickInputMode(String title, int current, int defaultMode, java.util.function.IntConsumer onPick) {
-        AppTheme.dialogBuilder(this)   // 다른 고르기 창(길게 누르기·밀기 기능)과 같은 모양: 목록, 기본값, 취소
-                .setTitle(title)
-                .setSingleChoiceItems(inputModes(), current, (d, which) -> {
-                    d.dismiss();
-                    if (which != current) onPick.accept(which);
-                })
-                .setNeutralButton(L.t("기본값", "Default"), (d, w) -> {
-                    if (current != defaultMode) onPick.accept(defaultMode);
-                })
-                .setNegativeButton(L.t("취소", "Cancel"), null)
-                .show();
+    /** 쌍자음·이중모음 입력 방식을 고르는 드롭다운 (아래로 밀기·두 번 연속으로 누르기·둘 다). 기본값에는 '기본'이 붙는다. */
+    private void pickInputMode(View anchor, int current, int defaultMode, java.util.function.IntConsumer onPick) {
+        DropdownMenu.of(anchor, inputModes(), current).defaultIndex(defaultMode).show(onPick);
     }
 
     /** 영어 글자 키의 입력 동작: 자동 대문자, 아래로 밀어 대문자, 이메일 입력란. */
@@ -2617,7 +2607,7 @@ public final class SettingsActivity extends Activity {
         detailNoteBox.setVisibility(detailLayout() == Prefs.DETAIL_NONE ? View.GONE : View.VISIBLE);
         SettingsWidgets.ValueRow[] detail = new SettingsWidgets.ValueRow[1];
         detail[0] = widgets.valueRow(L.t("상세 배열", "Advanced layout"), detailName(detailLayout()), v ->
-                pickDetailLayout(mode -> {
+                pickDetailLayout(v, mode -> {
                     editorView().setDetailMode(board, mode);   // 상세 배열은 자판·키보드마다 따로
                     detail[0].set(detailName(mode));
                     showDetailNote(detailNoteBox, detailNote, mode, board);
@@ -2740,8 +2730,8 @@ public final class SettingsActivity extends Activity {
         return editorView().detailModeOf(letterBoard());
     }
 
-    /** 상세 배열을 고르는 창. 다른 고르기 창과 같은 모양: 목록, 기본값(한글 자판은 사용 안 함, 영어·기호 자판은 따라가기), 취소. */
-    private void pickDetailLayout(java.util.function.IntConsumer onPick) {
+    /** 상세 배열을 고르는 드롭다운. 기본값(한글 자판은 사용 안 함, 영어·기호 자판은 따라가기)에는 '기본'이 붙는다. */
+    private void pickDetailLayout(View anchor, java.util.function.IntConsumer onPick) {
         int[] modes = detailModes(letterBoard());
         String[] names = new String[modes.length];
         int current = detailLayout(), checked = 0;
@@ -2749,18 +2739,7 @@ public final class SettingsActivity extends Activity {
             names[i] = detailName(modes[i]);
             if (modes[i] == current) checked = i;
         }
-        int def = modes[0];
-        AppTheme.dialogBuilder(this)
-                .setTitle(L.t("상세 배열", "Advanced layout"))
-                .setSingleChoiceItems(names, checked, (d, which) -> {
-                    d.dismiss();
-                    if (modes[which] != current) onPick.accept(modes[which]);
-                })
-                .setNeutralButton(L.t("기본값", "Default"), (d, w) -> {
-                    if (current != def) onPick.accept(def);
-                })
-                .setNegativeButton(L.t("취소", "Cancel"), null)
-                .show();
+        DropdownMenu.of(anchor, names, checked).defaultIndex(0).show(i -> onPick.accept(modes[i]));
     }
 
     /** 고른 한글 배열의 설명. */
@@ -2906,10 +2885,9 @@ public final class SettingsActivity extends Activity {
             values[i].setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
             box.addView(button(L.t("기능키 자리: ", "Function key: ") + slots[i], values[i], v -> {
                 String order = prefs.jaFnOrder();
-                AppTheme.dialogBuilder(this)
-                        .setTitle(slots[slot])
-                        .setSingleChoiceItems(names, codes.indexOf(order.charAt(slot)), (d, which) -> {
-                            d.dismiss();
+                DropdownMenu.of(v, names, codes.indexOf(order.charAt(slot)))
+                        .defaultIndex(codes.indexOf(Prefs.JA_FN_ORDER_DEFAULT.charAt(slot)))
+                        .show(which -> {
                             char[] o = order.toCharArray();
                             int from = order.indexOf(codes.charAt(which));
                             char t = o[slot];
@@ -2917,13 +2895,7 @@ public final class SettingsActivity extends Activity {
                             o[from] = t;
                             prefs.raw().edit().putString(Prefs.CJK_JA_FN_ORDER, new String(o)).apply();
                             refresh.run();
-                        })
-                        .setNeutralButton(L.t("기본값", "Default"), (d, w) -> {
-                            prefs.raw().edit().putString(Prefs.CJK_JA_FN_ORDER, Prefs.JA_FN_ORDER_DEFAULT).apply();
-                            refresh.run();
-                        })
-                        .setNegativeButton(L.t("취소", "Cancel"), null)
-                        .show();
+                        });
             }));
         }
         refresh.run();
@@ -4058,29 +4030,15 @@ public final class SettingsActivity extends Activity {
     }
 
     /**
-     * 진동을 고르는 창 (길게 누르기·밀기 기능을 고르는 창처럼 목록, 기본값, 취소). 항목을 누르면 그 진동을 바로 울려 주고
-     * 창은 닫히지 않아 여러 개를 느껴 보고 비교할 수 있다. '확인'을 눌러야 저장한다.
+     * 진동을 고르는 드롭다운 (기본값에는 '기본'이 붙는다). 항목을 누르면 바로 그 진동으로 바꾸고 울려 주며, 목록은 닫히지 않아
+     * 여러 개를 느껴 보고 비교할 수 있다. 바깥을 누르면 닫힌다.
      *
-     * @param preview 항목을 눌렀을 때 그 진동을 울린다 (목록 뷰, 목록 차례)
-     * @param onPick  '확인'·'기본값'으로 바뀐 목록 차례를 알려 준다
+     * @param preview 항목을 눌렀을 때 그 진동을 울린다 (누른 항목 뷰, 목록 차례)
+     * @param onPick  바뀐 목록 차례를 알려 준다
      */
-    private void pickVibration(String title, String[] labels, int current, int defaultIndex,
+    private void pickVibration(View anchor, String[] labels, int current, int defaultIndex,
                                java.util.function.ObjIntConsumer<View> preview, java.util.function.IntConsumer onPick) {
-        int[] chosen = {current};
-        AppTheme.dialogBuilder(this)
-                .setTitle(title)
-                .setSingleChoiceItems(labels, current, (d, which) -> {
-                    chosen[0] = which;
-                    preview.accept(((AppDialog) d).getListView(), which);
-                })
-                .setPositiveButton(L.t("확인", "OK"), (d, w) -> {
-                    if (chosen[0] != current) onPick.accept(chosen[0]);
-                })
-                .setNeutralButton(L.t("기본값", "Default"), (d, w) -> {
-                    if (current != defaultIndex) onPick.accept(defaultIndex);
-                })
-                .setNegativeButton(L.t("취소", "Cancel"), null)
-                .show();
+        DropdownMenu.of(anchor, labels, current).defaultIndex(defaultIndex).preview(preview).show(onPick);
     }
 
     /**
@@ -4120,7 +4078,7 @@ public final class SettingsActivity extends Activity {
             int[] nowPrim = {prim == Feedback.PRIMITIVE_TICK ? Feedback.PRIMITIVE_TICK : Feedback.PRIMITIVE_CLICK};
             String primTitle = L.t("진동 종류", "Vibration kind");
             primRow[0] = widgets.valueRow(primTitle, primitiveLabels()[nowPrim[0]], v ->
-                    pickVibration(primTitle, primitiveLabels(), nowPrim[0], defaultPrim,
+                    pickVibration(v, primitiveLabels(), nowPrim[0], defaultPrim,
                             (view, i) -> vibePreview().previewPrimitive(channel, i), i -> {
                                 nowPrim[0] = i;
                                 prefs.raw().edit().putInt(primKey, i).apply();
@@ -4171,7 +4129,7 @@ public final class SettingsActivity extends Activity {
         row[0] = widgets.valueRow(title, styleLabel(style0), v -> {
             int style = current.getAsInt(), now = 0;
             for (int i = 0; i < order.length; i++) if (order[i] == style) now = i;
-            pickVibration(title, labels, now, defaultIdx,
+            pickVibration(v, labels, now, defaultIdx,
                     (view, i) -> {
                         if (order[i] != STYLE_NONE) vibePreview().previewStyle(channel, order[i], view);
                     }, i -> {
@@ -4246,7 +4204,7 @@ public final class SettingsActivity extends Activity {
         followNote.setVisibility(style0 == Prefs.SOUND_STYLE_FOLLOW ? View.VISIBLE : View.GONE);
         SettingsWidgets.ValueRow[] row = new SettingsWidgets.ValueRow[1];
         String title = L.t("키 소리", "Key sound");
-        row[0] = widgets.valueRow(title, soundStyleLabels()[style0], v -> pickSoundStyle(title, picked -> {
+        row[0] = widgets.valueRow(title, soundStyleLabels()[style0], v -> pickSoundStyle(v, picked -> {
             prefs.raw().edit().putInt(Prefs.SOUND_STYLE, picked).apply();
             row[0].set(soundStyleLabels()[picked]);
             Ui.setVisibleAnimated(followNote, picked == Prefs.SOUND_STYLE_FOLLOW);
@@ -4291,24 +4249,14 @@ public final class SettingsActivity extends Activity {
                 L.t("NewSwipe (기본)", "NewSwipe (default)"), "Metro", "Neumorphism"};
     }
 
-    /** 키 소리 종류를 고르는 창. 항목을 누르면 그 소리를 들려주고, 확인을 누르면 저장한다. */
-    private void pickSoundStyle(String title, java.util.function.IntConsumer onPick) {
-        int current = prefs.soundStyle();
-        int[] chosen = {current};
+    /** 키 소리 종류를 고르는 드롭다운. 항목을 누르면 바로 그 소리로 바꾸고 들려주며, 목록은 닫히지 않아 비교해 볼 수 있다. */
+    private void pickSoundStyle(View anchor, java.util.function.IntConsumer onPick) {
         Feedback preview = vibePreview();
         preview.prepareSynthSounds();
-        AppTheme.dialogBuilder(this)
-                .setTitle(title)
-                .setSingleChoiceItems(soundStyleLabels(), current, (d, which) -> {
-                    chosen[0] = which;
-                    preview.previewSound(which, prefs.metro(), prefs.neumorphism(), prefs.soundVolume());
-                })
-                .setPositiveButton(L.t("확인", "OK"), (d, w) -> {
-                    if (chosen[0] != current) onPick.accept(chosen[0]);
-                })
-                .setNegativeButton(L.t("취소", "Cancel"), null)
-                .setOnDismissListener(d -> preview.release())   // 다 들었으면 읽어 둔 소리를 놓는다
-                .show();
+        DropdownMenu.of(anchor, soundStyleLabels(), prefs.soundStyle())
+                .preview((view, which) -> preview.previewSound(which, prefs.metro(), prefs.neumorphism(), prefs.soundVolume()))
+                .onDismiss(preview::release)   // 다 들었으면 읽어 둔 소리를 놓는다
+                .show(onPick);
     }
 
     private void buildTools() {

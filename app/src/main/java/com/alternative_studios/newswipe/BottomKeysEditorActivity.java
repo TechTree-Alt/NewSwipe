@@ -241,7 +241,7 @@ public final class BottomKeysEditorActivity extends Activity {
             shortNames[i] = BottomKeys.symbolGlobeLabel(ids[i]);
         }
         return choiceButton(L.t("기호 자판에서는", "On the symbol keyboard"),
-                L.t("기호 자판에서는 다른 키로 바꾸기", "Change the key on the symbol keyboard"), ids, names, shortNames,
+                BottomKeys.symbolGlobeKey(null), ids, names, shortNames,
                 prefs::symbolGlobeKey, prefs::setSymbolGlobeKey);
     }
 
@@ -250,15 +250,15 @@ public final class BottomKeysEditorActivity extends Activity {
         String[] ids = BottomKeys.CURSOR_MODES;
         String[] names = new String[ids.length];
         for (int i = 0; i < ids.length; i++) names[i] = BottomKeys.cursorModeLabel(ids[i]);
-        return choiceButton(L.t("모드", "Mode"), L.t("커서 이동 키 모드", "Cursor key mode"), ids, names, names,
+        return choiceButton(L.t("모드", "Mode"), BottomKeys.cursorMode(null), ids, names, names,
                 prefs::cursorKeyMode, prefs::setCursorKeyMode);
     }
 
     /**
-     * 이름과 지금 고른 값을 한 줄에 보이고, 누르면 고르는 창이 뜨는 하위 항목 버튼 ('기호 자판에서는', 커서 이동 키 '모드').
-     * names는 고르는 창에, shortNames는 버튼에 보이는 이름이다.
+     * 이름과 지금 고른 값을 한 줄에 보이고, 누르면 버튼 아래에 드롭다운이 펼쳐지는 하위 항목 버튼 ('기호 자판에서는', 커서 이동 키 '모드').
+     * names는 드롭다운에, shortNames는 버튼에 보이는 이름이다. defaultId에는 '기본'이 붙는다.
      */
-    private View choiceButton(String titleText, String dialogTitle, String[] ids, String[] names, String[] shortNames,
+    private View choiceButton(String titleText, String defaultId, String[] ids, String[] names, String[] shortNames,
                               java.util.function.Supplier<String> now, java.util.function.Consumer<String> pick) {
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
@@ -317,16 +317,12 @@ public final class BottomKeysEditorActivity extends Activity {
         row.setFocusable(true);
         row.setOnClickListener(v -> {
             int checked = Math.max(0, java.util.Arrays.asList(ids).indexOf(now.get()));
-            AppTheme.dialogBuilder(this)
-                    .setTitle(dialogTitle)
-                    .setSingleChoiceItems(names, checked, (dlg, which) -> {
-                        pick.accept(ids[which]);
-                        current.setText(shortNames[which]);
-                        updatePreview();
-                        dlg.dismiss();
-                    })
-                    .setNegativeButton(L.t("취소", "Cancel"), null)
-                    .show();
+            // 항목이 몇 개뿐이라 대화상자 대신 버튼 아래에 펼친다.
+            DropdownMenu.of(v, names, checked).defaultIndex(java.util.Arrays.asList(ids).indexOf(defaultId)).show(which -> {
+                pick.accept(ids[which]);
+                current.setText(shortNames[which]);
+                updatePreview();
+            });
         });
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
