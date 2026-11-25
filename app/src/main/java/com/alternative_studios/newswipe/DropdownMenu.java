@@ -169,7 +169,8 @@ final class DropdownMenu {
         if (i == defaultIndex) {
             String tag = L.t("기본", "Default");
             // 기본값 표시는 항목 이름 아래 줄에 작게 (옆에 붙이면 목록이 쓸데없이 넓어진다).
-            SpannableString s = new SpannableString(items[i] + "\n" + tag);
+            // Metro는 폭을 꽉 채워 그 자리에서 펼치므로 Windows Phone 목록처럼 이름 오른쪽에 둔다.
+            SpannableString s = new SpannableString(items[i] + (Metro.on ? "   " : "\n") + tag);
             int start = s.length() - tag.length();
             s.setSpan(new RelativeSizeSpan(0.78f), start, s.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             s.setSpan(new ForegroundColorSpan(Metro.on ? 0xFF8A8A8A : t.hint), start, s.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
