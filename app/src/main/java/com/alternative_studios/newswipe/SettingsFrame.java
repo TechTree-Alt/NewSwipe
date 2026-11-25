@@ -298,6 +298,8 @@ final class SettingsFrame {
         upper.setOrientation(LinearLayout.VERTICAL);
         header = Metro.on ? buildMetroHeader() : buildHeader();
         upper.addView(header, matchWrap());
+        // Metro: 검색·키보드 버튼은 앱 바에 있으므로, 그 버튼을 쓰는 검색창·입력창보다 먼저 만든다 (붙이는 자리는 아래).
+        if (Metro.on) appBar = buildAppBar(activity);
         if (onSearch != null) {
             buildSearchBar();
             upper.addView(searchBar, matchWrap());
@@ -310,11 +312,8 @@ final class SettingsFrame {
         overlayHost.addView(upper, new android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
         root.addView(overlayHost, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
-        if (Metro.on) {
-            // Windows Phone 앱 바: 화면 내용 아래, 미리보기(키보드처럼 화면 맨 아래에 붙는 것)가 있으면 그 위.
-            appBar = buildAppBar(activity);
-            root.addView(appBar, matchWrap());
-        }
+        // Windows Phone 앱 바: 화면 내용 아래, 미리보기(키보드처럼 화면 맨 아래에 붙는 것)가 있으면 그 위.
+        if (appBar != null) root.addView(appBar, matchWrap());
         if (bottom == null) {
             Ui.padForSystemBars(root, !keyboardOverlays);
             return root;
@@ -552,6 +551,7 @@ final class SettingsFrame {
 
     private void updateTestButton() {
         // 열려 있으면 옅은 바탕에 강조색 아이콘, 닫혀 있으면 강조색 바탕에 흰 아이콘.
+        if (testButton == null) return;
         testButton.setActive(testBarWanted);
         testButton.setContentDescription(testBarWanted ? L.t("키보드 닫기", "Close keyboard") : L.t("키보드 열기", "Open keyboard"));
     }
