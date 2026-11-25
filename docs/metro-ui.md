@@ -106,7 +106,7 @@ Metro에서는 내용을 만드는 `LanguageOrderEditor`를 설정 화면이 그
 
 Windows Phone Toolkit의 템플릿(MenuItem, ListPickerItem, ContextMenu, ToggleSwitch 등)에는 Pressed 상태가 없고, 누르면 틸트로만 반응합니다.
 그래서 Metro 모드에서는 목록 줄·값 줄·메뉴·아이콘 버튼·도구 막대 칩에 눌림 색을 칠하지 않고 틸트만 씁니다 (`Ui.ripple`·`Ui.metroPressed`가 바탕만 돌려줌).
-테두리 네모 버튼(Button)은 시스템 Button 템플릿처럼 누르는 동안 강조색으로 채워지고, 키보드의 키도 누르면 강조색으로 빛납니다.
+테두리 네모 버튼(Button)과 체크 상자·라디오(WP8의 PhoneRadioCheckBoxPressedBrush = 강조색)는 누르는 동안 강조색으로 채워지고, 키보드의 키도 누르면 강조색으로 빛납니다.
 
 ## 설정 검색
 

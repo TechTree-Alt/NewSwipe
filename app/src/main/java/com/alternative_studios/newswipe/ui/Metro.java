@@ -979,8 +979,8 @@ public final class Metro {
      *     라디오의 점은 16×16px 동그라미.</li>
      * <li>색 (WP 7.1 이후 ThemeResources): 상자 PhoneRadioCheckBoxBrush 다크 #FF000000·라이트 #BFFFFFFF, 테두리
      *     PhoneRadioCheckBoxBorderBrush 다크 #FFFFFFFF·라이트 #FF000000, 체크 PhoneRadioCheckBoxCheckBrush 다크 #FFFFFFFF·라이트 #DE000000.</li>
+     * <li>누르는 동안(Pressed): 상자 바탕이 PhoneRadioCheckBoxPressedBrush, WP8에서는 강조색으로 채워진다. 테두리와 체크는 그대로.</li>
      * </ul>
-     * 눌림 색은 쓰지 않는다 (틸트로 반응한다).
      */
     public static final class Check extends android.graphics.drawable.Drawable {
         private final boolean radio;
@@ -988,7 +988,7 @@ public final class Metro {
         private final float stroke;
         private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
         private final android.graphics.Path mark = new android.graphics.Path();
-        private boolean checked;
+        private boolean checked, pressed;
 
         public Check(Context c, boolean radio) {
             this.radio = radio;
@@ -999,14 +999,14 @@ public final class Metro {
 
         /**
          * 가운데 (cx, cy)에 한 변(지름) 2×half인 상자·동그라미와, 켜졌으면 체크·점을 그린다. Drawable을 붙일 수 없는 곳(대화상자 목록의
-         * 표시)도 쓴다. stroke는 테두리 굵기(px).
+         * 표시)도 쓴다. stroke는 테두리 굵기(px), pressed는 누르는 동안(상자를 강조색으로 채운다).
          */
         public static void paint(android.graphics.Canvas c, float cx, float cy, float half, float stroke, boolean radio,
-                                 boolean checked, android.graphics.Paint p, android.graphics.Path mark) {
+                                 boolean checked, boolean pressed, android.graphics.Paint p, android.graphics.Path mark) {
             // 상자: 바탕을 칠하고 그 안쪽에 테두리 (XAML의 Border처럼 테두리가 상자 안에 들어간다).
             float in = half - stroke / 2f;
             p.setStyle(android.graphics.Paint.Style.FILL);
-            p.setColor(dark ? 0xFF000000 : 0xBFFFFFFF);
+            p.setColor(pressed ? accent : dark ? 0xFF000000 : 0xBFFFFFFF);
             if (radio) c.drawCircle(cx, cy, half, p);
             else c.drawRect(cx - half, cy - half, cx + half, cy + half, p);
             p.setStyle(android.graphics.Paint.Style.STROKE);
@@ -1041,10 +1041,14 @@ public final class Metro {
 
         @Override
         protected boolean onStateChange(int[] state) {
-            boolean on = false;
-            for (int s : state) if (s == android.R.attr.state_checked) on = true;
-            if (on == checked) return false;
+            boolean on = false, down = false;
+            for (int s : state) {
+                if (s == android.R.attr.state_checked) on = true;
+                if (s == android.R.attr.state_pressed) down = true;
+            }
+            if (on == checked && down == pressed) return false;
             checked = on;
+            pressed = down;
             invalidateSelf();
             return true;
         }
@@ -1052,7 +1056,7 @@ public final class Metro {
         @Override
         public void draw(android.graphics.Canvas c) {
             android.graphics.Rect b = getBounds();
-            paint(c, b.exactCenterX(), b.exactCenterY(), box / 2f, stroke, radio, checked, p, mark);
+            paint(c, b.exactCenterX(), b.exactCenterY(), box / 2f, stroke, radio, checked, pressed, p, mark);
         }
 
         @Override public void setAlpha(int alpha) { p.setAlpha(alpha); }

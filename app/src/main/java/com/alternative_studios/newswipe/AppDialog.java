@@ -415,7 +415,7 @@ public final class AppDialog extends Dialog {
     }
 
     /**
-     * 라디오·체크 표시. 보통은 강조색 동그라미·둥근 네모, Metro는 Windows Phone의 체크 상자 (Metro.Check와 같은 모양).
+     * 라디오·체크 표시. 보통은 강조색 동그라미·둥근 네모, Metro는 Windows Phone의 체크 상자 (Metro.Check와 같은 모양, 누르는 동안 강조색).
      */
     private final class Mark extends View {
         private final boolean box, square;
@@ -429,6 +429,13 @@ public final class AppDialog extends Dialog {
             this.box = box;
             this.square = metroLook;
             setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
+            if (metroLook) setDuplicateParentStateEnabled(true);   // 줄을 누르는 동안 상자를 강조색으로 채운다
+        }
+
+        @Override
+        protected void drawableStateChanged() {
+            super.drawableStateChanged();
+            if (square) invalidate();
         }
 
         void setChecked(boolean on) {
@@ -443,7 +450,7 @@ public final class AppDialog extends Dialog {
             float w = getWidth(), h = getHeight(), cx = w / 2f, cy = h / 2f;
             int on = colors.accent, off = colors.hint;
             if (square) {   // Windows Phone 체크 상자·라디오: 꽉 찬 상자에 표시
-                Metro.Check.paint(c, cx, cy, Math.min(w, h) / 2f, 2.25f * dp, !box, checked, p, check);
+                Metro.Check.paint(c, cx, cy, Math.min(w, h) / 2f, 2.25f * dp, !box, checked, isPressed(), p, check);
                 return;
             }
             p.setStrokeCap(Paint.Cap.ROUND);
