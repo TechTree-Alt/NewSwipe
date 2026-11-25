@@ -1218,10 +1218,12 @@ public final class Prefs {
     /**
      * 키 소리 종류 (SOUND_STYLE_*). 아직 고르지 않았으면 예전 '키 소리' 스위치에서 옮긴다:
      * 켜 두었으면 예전처럼 모드를 따라가고 (Metro 모드에서 Metro 소리), 꺼 두었으면 없음.
+     * 스위치를 한 번도 건드리지 않았으면 (새 사용자) 모드 따라가기.
      */
     public int soundStyle() {
-        int s = sp.getInt(SOUND_STYLE, sp.getBoolean(SOUND, false) ? SOUND_STYLE_FOLLOW : SOUND_STYLE_NONE);
-        return s >= SOUND_STYLE_NONE && s <= SOUND_STYLE_METRO ? s : SOUND_STYLE_NONE;
+        int fallback = !sp.contains(SOUND) || sp.getBoolean(SOUND, false) ? SOUND_STYLE_FOLLOW : SOUND_STYLE_NONE;
+        int s = sp.getInt(SOUND_STYLE, fallback);
+        return s >= SOUND_STYLE_NONE && s <= SOUND_STYLE_METRO ? s : fallback;
     }
     public int soundVolume() { return sp.getInt(SOUND_VOLUME, 50); }
     public boolean keyPreview() { return sp.getBoolean(KEY_PREVIEW, true); }

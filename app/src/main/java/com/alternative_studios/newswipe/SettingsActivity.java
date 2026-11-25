@@ -3382,6 +3382,9 @@ public final class SettingsActivity extends Activity {
      */
     private void buildDesignMode() {
         LinearLayout box = section(L.t("모드", "Mode"));
+        // '키 소리'의 '모드' 링크로 들어오면 머리글만이 아니라 고르기와 설명을 함께 깜빡인다.
+        int at = list.indexOfChild(box);
+        if (at > 0 && list.getChildAt(at - 1) instanceof TextView) markItem((TextView) list.getChildAt(at - 1), box);
         java.util.List<String> labels = new java.util.ArrayList<>();
         java.util.List<Integer> modes = new java.util.ArrayList<>();
         labels.add(L.t("기본", "Default"));
@@ -4235,18 +4238,51 @@ public final class SettingsActivity extends Activity {
             vib.addView(v);
         }
         LinearLayout snd = section(L.t("소리", "Sound"));
-        View soundVolume = subGroup(slider(L.t("소리 크기", "Sound volume"), Prefs.SOUND_VOLUME, prefs.soundVolume(), 0, 100, 5, "%"));
+        TextView followNote = soundFollowNote();
+        View soundVolume = subGroup(followNote,
+                slider(L.t("소리 크기", "Sound volume"), Prefs.SOUND_VOLUME, prefs.soundVolume(), 0, 100, 5, "%"));
         int style0 = prefs.soundStyle();
         soundVolume.setVisibility(style0 != Prefs.SOUND_STYLE_NONE ? View.VISIBLE : View.GONE);
+        followNote.setVisibility(style0 == Prefs.SOUND_STYLE_FOLLOW ? View.VISIBLE : View.GONE);
         SettingsWidgets.ValueRow[] row = new SettingsWidgets.ValueRow[1];
         String title = L.t("키 소리", "Key sound");
         row[0] = widgets.valueRow(title, soundStyleLabels()[style0], v -> pickSoundStyle(title, picked -> {
             prefs.raw().edit().putInt(Prefs.SOUND_STYLE, picked).apply();
             row[0].set(soundStyleLabels()[picked]);
+            Ui.setVisibleAnimated(followNote, picked == Prefs.SOUND_STYLE_FOLLOW);
             Ui.setVisibleAnimated(soundVolume, picked != Prefs.SOUND_STYLE_NONE);
         }));
         snd.addView(row[0].view);
         snd.addView(soundVolume);
+    }
+
+    /**
+     * '모드 따라가기'의 안내. 강조색 '모드'를 누르면 테마 화면을 열어 '모드' 고르기를 깜빡인다
+     * (Metro 모드의 묶음 머리글은 소문자로 보이므로 그 글자로 찾는다).
+     */
+    private TextView soundFollowNote() {
+        String link = L.t("모드", "Mode");
+        String text = L.t("테마 › " + link + "에서 선택한 모드에 맞는 소리가 나옵니다.",
+                "Plays the sound that matches the mode chosen in Theme › " + link + ".");
+        android.text.SpannableString span = new android.text.SpannableString(text);
+        int start = text.indexOf("› ") + 2;
+        span.setSpan(new android.text.style.ClickableSpan() {
+            @Override
+            public void onClick(View widget) {
+                openSection("theme", Metro.on ? Metro.lower(link) : link);
+            }
+
+            @Override
+            public void updateDrawState(android.text.TextPaint ds) {
+                ds.setColor(accentColor);
+                ds.setUnderlineText(false);
+            }
+        }, start, start + link.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        TextView t = note("");
+        t.setText(span);
+        t.setMovementMethod(android.text.method.LinkMovementMethod.getInstance());
+        t.setHighlightColor(android.graphics.Color.TRANSPARENT);
+        return t;
     }
 
     /** 키 소리 종류의 이름 (Prefs.SOUND_STYLE_* 차례). */
