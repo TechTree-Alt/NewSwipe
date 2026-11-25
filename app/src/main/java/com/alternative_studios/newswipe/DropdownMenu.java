@@ -384,7 +384,9 @@ final class DropdownMenu {
             box.setScaleX(0.96f);
             box.setScaleY(0.96f);
             box.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(220)
-                    .setInterpolator(new DecelerateInterpolator(2f)).withLayer().start();
+                    // 층(withLayer) 없이: 층은 상자 경계에서 잘려 상자 밖으로 번지는 그림자가 움직임이 끝난 뒤에야 나타난다.
+                    // 그림자는 구워 둔 조각이라 층 없이 그려도 가볍다.
+                    .setInterpolator(new DecelerateInterpolator(2f)).start();
             return;
         }
         // Material 메뉴: 값 자리 모서리에서 살짝 작은 크기(80%)로 커지며 나타난다. 하나의 감속 곡선으로 짧게.
@@ -420,9 +422,10 @@ final class DropdownMenu {
         }
         // Material 메뉴는 닫힐 때 제자리에서 흐려지기만 한다. Neumorphism은 살짝 가라앉으며 흐려진다.
         float s = NeuUi.on ? 0.97f : 1f;
-        box.animate().alpha(0f).scaleY(s).scaleX(s)
-                .setDuration(NeuUi.on ? 140 : 100).setInterpolator(new PathInterpolator(0.3f, 0f, 1f, 1f))
-                .withLayer().setListener(new AnimatorListenerAdapter() {
+        android.view.ViewPropertyAnimator out = box.animate().alpha(0f).scaleY(s).scaleX(s)
+                .setDuration(NeuUi.on ? 140 : 100).setInterpolator(new PathInterpolator(0.3f, 0f, 1f, 1f));
+        if (!NeuUi.on) out.withLayer();   // Neumorphism은 그림자가 잘리지 않게 층 없이
+        out.setListener(new AnimatorListenerAdapter() {
                     @Override
                     public void onAnimationEnd(Animator animation) {
                         box.animate().setListener(null);

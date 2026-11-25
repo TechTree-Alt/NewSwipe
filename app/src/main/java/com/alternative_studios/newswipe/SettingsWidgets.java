@@ -307,6 +307,15 @@ final class SettingsWidgets {
     }
 
     /**
+     * 누르면 드롭다운이 펼쳐지는 값 줄. 펼쳐지는 목록이 누른 줄을 덮어 반응이 되므로 줄에는 눌림 물결을 그리지 않는다.
+     */
+    ValueRow dropdownRow(String label, String value, View.OnClickListener l) {
+        ValueRow r = valueRow(label, value, l);
+        r.view.setBackground(null);
+        return r;
+    }
+
+    /**
      * Metro: 직접 만든 실행 버튼 줄을 다른 Metro 버튼처럼 바꾼다 (글자 색 테두리의 네모, 누르는 동안 강조색으로 채워지고 글자는 그 위의 색).
      * Metro 모드가 아니면 아무것도 하지 않는다.
      */

@@ -2452,7 +2452,7 @@ public final class SettingsActivity extends Activity {
                         + "대신 쌍자음을 낼 때 더 빨리 눌러야 합니다.", "The second tap must come within this time to make a double consonant. Lower values make '학교' turn into '하꾜' less often, but you need to tap faster for double consonants.")));
         doubleTapTime.setVisibility(prefs.consonantInputMode() != Prefs.INPUT_SWIPE || (harvesting && !previewing) ? View.VISIBLE : View.GONE);
         SettingsWidgets.ValueRow[] consonant = new SettingsWidgets.ValueRow[1];
-        consonant[0] = widgets.valueRow(L.t("쌍자음 입력", "Double consonant input"), inputModes()[prefs.consonantInputMode()], v ->
+        consonant[0] = widgets.dropdownRow(L.t("쌍자음 입력", "Double consonant input"), inputModes()[prefs.consonantInputMode()], v ->
                 pickInputMode(v,  prefs.consonantInputMode(), Prefs.INPUT_SWIPE, mode -> {
                     prefs.setConsonantInputMode(mode);
                     consonant[0].set(inputModes()[mode]);
@@ -2461,7 +2461,7 @@ public final class SettingsActivity extends Activity {
         input.addView(consonant[0].view);
         input.addView(doubleTapTime);
         SettingsWidgets.ValueRow[] vowel = new SettingsWidgets.ValueRow[1];
-        vowel[0] = widgets.valueRow(L.t("이중모음 입력", "Y-vowel input"), inputModes()[prefs.vowelInputMode()], v ->
+        vowel[0] = widgets.dropdownRow(L.t("이중모음 입력", "Y-vowel input"), inputModes()[prefs.vowelInputMode()], v ->
                 pickInputMode(v,  prefs.vowelInputMode(), Prefs.INPUT_BOTH, mode -> {
                     prefs.setVowelInputMode(mode);
                     vowel[0].set(inputModes()[mode]);
@@ -2606,7 +2606,7 @@ public final class SettingsActivity extends Activity {
         View detailNoteBox = fold(detailNote);
         detailNoteBox.setVisibility(detailLayout() == Prefs.DETAIL_NONE ? View.GONE : View.VISIBLE);
         SettingsWidgets.ValueRow[] detail = new SettingsWidgets.ValueRow[1];
-        detail[0] = widgets.valueRow(L.t("상세 배열", "Advanced layout"), detailName(detailLayout()), v ->
+        detail[0] = widgets.dropdownRow(L.t("상세 배열", "Advanced layout"), detailName(detailLayout()), v ->
                 pickDetailLayout(v, mode -> {
                     editorView().setDetailMode(board, mode);   // 상세 배열은 자판·키보드마다 따로
                     detail[0].set(detailName(mode));
@@ -4077,7 +4077,7 @@ public final class SettingsActivity extends Activity {
             SettingsWidgets.ValueRow[] primRow = new SettingsWidgets.ValueRow[1];
             int[] nowPrim = {prim == Feedback.PRIMITIVE_TICK ? Feedback.PRIMITIVE_TICK : Feedback.PRIMITIVE_CLICK};
             String primTitle = L.t("진동 종류", "Vibration kind");
-            primRow[0] = widgets.valueRow(primTitle, primitiveLabels()[nowPrim[0]], v ->
+            primRow[0] = widgets.dropdownRow(primTitle, primitiveLabels()[nowPrim[0]], v ->
                     pickVibration(v, primitiveLabels(), nowPrim[0], defaultPrim,
                             (view, i) -> vibePreview().previewPrimitive(channel, i), i -> {
                                 nowPrim[0] = i;
@@ -4126,7 +4126,7 @@ public final class SettingsActivity extends Activity {
                 && (extra.length > 0 || st == Feedback.STYLE_SYSTEM || (st == Feedback.STYLE_CUSTOM && customGroup != null));
         options.setVisibility(hasOptions.test(style0) ? View.VISIBLE : View.GONE);
         SettingsWidgets.ValueRow[] row = new SettingsWidgets.ValueRow[1];
-        row[0] = widgets.valueRow(title, styleLabel(style0), v -> {
+        row[0] = widgets.dropdownRow(title, styleLabel(style0), v -> {
             int style = current.getAsInt(), now = 0;
             for (int i = 0; i < order.length; i++) if (order[i] == style) now = i;
             pickVibration(v, labels, now, defaultIdx,
@@ -4207,7 +4207,7 @@ public final class SettingsActivity extends Activity {
         followNote.setVisibility(style0 == Prefs.SOUND_STYLE_FOLLOW ? View.VISIBLE : View.GONE);
         SettingsWidgets.ValueRow[] row = new SettingsWidgets.ValueRow[1];
         String title = L.t("키 소리", "Key sound");
-        row[0] = widgets.valueRow(title, soundStyleLabels()[style0], v -> pickSoundStyle(v, picked -> {
+        row[0] = widgets.dropdownRow(title, soundStyleLabels()[style0], v -> pickSoundStyle(v, picked -> {
             prefs.raw().edit().putInt(Prefs.SOUND_STYLE, picked).apply();
             row[0].set(soundStyleLabels()[picked]);
             Ui.setVisibleAnimated(followNote, picked == Prefs.SOUND_STYLE_FOLLOW);
