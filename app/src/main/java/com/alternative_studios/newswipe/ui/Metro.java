@@ -972,59 +972,65 @@ public final class Metro {
     // ---------------------------------------------------------------- 체크 상자·라디오
 
     /**
-     * Windows Phone의 CheckBox·RadioButton 표시 (CompoundButton·CheckedTextView에 붙인다). 시스템 템플릿의 구조를 따른다:
-     * 32px(→ 24dp) 상자 CheckBackground는 바탕과 테두리가 모두 PhoneRadioCheckBoxBrush라 꽉 찬 네모이고, 켜지면 그 안에
-     * PhoneRadioCheckBoxCheckBrush로 칠한 체크(CheckMark, 24×18px)가 놓인다. 라디오는 같은 색의 꽉 찬 동그라미 안에 점.
-     * 색: 다크는 흰색 75% 상자에 검은 표시, 라이트는 검정 75% 상자에 흰 표시. 눌림 색은 없다 (틸트로 반응한다).
+     * Windows Phone의 CheckBox·RadioButton 표시 (CompoundButton·CheckedTextView에 붙인다). WP SDK의 기본 템플릿을 따른다:
+     * <ul>
+     * <li>상자 CheckBackground: 32×32px(→ 24dp), 테두리 PhoneBorderThickness 3px(→ 2.25dp). 라디오는 같은 크기의 동그라미.</li>
+     * <li>체크 CheckMark: Path "M0,119 L31,92 L119,185 L267,0 L300,24 L122,250 z"를 24×18px로 늘려(Stretch=Fill) 가운데에 칠한다.
+     *     라디오의 점은 16×16px 동그라미.</li>
+     * <li>색 (WP 7.1 이후 ThemeResources): 상자 PhoneRadioCheckBoxBrush 다크 #FF000000·라이트 #BFFFFFFF, 테두리
+     *     PhoneRadioCheckBoxBorderBrush 다크 #FFFFFFFF·라이트 #FF000000, 체크 PhoneRadioCheckBoxCheckBrush 다크 #FFFFFFFF·라이트 #DE000000.</li>
+     * </ul>
+     * 눌림 색은 쓰지 않는다 (틸트로 반응한다).
      */
     public static final class Check extends android.graphics.drawable.Drawable {
         private final boolean radio;
         private final int size, box;
+        private final float stroke;
         private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
         private final android.graphics.Path mark = new android.graphics.Path();
         private boolean checked;
 
         public Check(Context c, boolean radio) {
             this.radio = radio;
-            this.size = Ui.dp(c, 28);
+            this.size = Ui.dp(c, 24);
             this.box = Ui.dp(c, 24);
-        }
-
-        /** 표시 색 (상자 안의 체크·점). */
-        private static int ink() {
-            return dark ? 0xFF000000 : 0xFFFFFFFF;
-        }
-
-        /** 상자 색 (PhoneRadioCheckBoxBrush). */
-        private static int fill() {
-            return dark ? 0xBFFFFFFF : 0xBF000000;
+            this.stroke = Ui.dp(c, 2.25f);
         }
 
         /**
-         * 가운데 (cx, cy)에 한 변(지름) 2×half인 상자와, 켜졌으면 표시를 그린다. Drawable을 붙일 수 없는 곳(대화상자 목록의 표시)도 쓴다.
+         * 가운데 (cx, cy)에 한 변(지름) 2×half인 상자·동그라미와, 켜졌으면 체크·점을 그린다. Drawable을 붙일 수 없는 곳(대화상자 목록의
+         * 표시)도 쓴다. stroke는 테두리 굵기(px).
          */
-        public static void paint(android.graphics.Canvas c, float cx, float cy, float half, boolean radio, boolean checked,
-                                 android.graphics.Paint p, android.graphics.Path mark) {
+        public static void paint(android.graphics.Canvas c, float cx, float cy, float half, float stroke, boolean radio,
+                                 boolean checked, android.graphics.Paint p, android.graphics.Path mark) {
+            // 상자: 바탕을 칠하고 그 안쪽에 테두리 (XAML의 Border처럼 테두리가 상자 안에 들어간다).
+            float in = half - stroke / 2f;
             p.setStyle(android.graphics.Paint.Style.FILL);
-            p.setColor(fill());
+            p.setColor(dark ? 0xFF000000 : 0xBFFFFFFF);
             if (radio) c.drawCircle(cx, cy, half, p);
             else c.drawRect(cx - half, cy - half, cx + half, cy + half, p);
+            p.setStyle(android.graphics.Paint.Style.STROKE);
+            p.setStrokeWidth(stroke);
+            p.setColor(dark ? 0xFFFFFFFF : 0xFF000000);
+            if (radio) c.drawCircle(cx, cy, in, p);
+            else c.drawRect(cx - in, cy - in, cx + in, cy + in, p);
             if (!checked) return;
-            p.setColor(ink());
+            p.setStyle(android.graphics.Paint.Style.FILL);
+            p.setColor(dark ? 0xFFFFFFFF : 0xDE000000);
             if (radio) {
-                c.drawCircle(cx, cy, half * 0.375f, p);   // 12px 점 / 32px 동그라미
+                c.drawCircle(cx, cy, half * 0.5f, p);   // 16px 점 / 32px 동그라미
                 return;
             }
-            // CheckMark의 Data "M0,123 L39,93 L124,164 L256,18 L295,49 L124,240 z" (x 0~295, y 18~240)를 24×18px에 맞춘다.
+            // CheckMark (x 0~300, y 0~250)를 24×18px(= 상자의 3/4 × 9/16)에 늘려 가운데에.
             float w = half * 2 * 0.75f, h = half * 2 * 0.5625f, l = cx - w / 2f, t = cy - h / 2f;
-            float sx = w / 295f, sy = h / 222f;
+            float sx = w / 300f, sy = h / 250f;
             mark.reset();
-            mark.moveTo(l, t + (123 - 18) * sy);
-            mark.lineTo(l + 39 * sx, t + (93 - 18) * sy);
-            mark.lineTo(l + 124 * sx, t + (164 - 18) * sy);
-            mark.lineTo(l + 256 * sx, t);
-            mark.lineTo(l + 295 * sx, t + (49 - 18) * sy);
-            mark.lineTo(l + 124 * sx, t + (240 - 18) * sy);
+            mark.moveTo(l, t + 119 * sy);
+            mark.lineTo(l + 31 * sx, t + 92 * sy);
+            mark.lineTo(l + 119 * sx, t + 185 * sy);
+            mark.lineTo(l + 267 * sx, t);
+            mark.lineTo(l + 300 * sx, t + 24 * sy);
+            mark.lineTo(l + 122 * sx, t + 250 * sy);
             mark.close();
             c.drawPath(mark, p);
         }
@@ -1046,7 +1052,7 @@ public final class Metro {
         @Override
         public void draw(android.graphics.Canvas c) {
             android.graphics.Rect b = getBounds();
-            paint(c, b.exactCenterX(), b.exactCenterY(), box / 2f, radio, checked, p, mark);
+            paint(c, b.exactCenterX(), b.exactCenterY(), box / 2f, stroke, radio, checked, p, mark);
         }
 
         @Override public void setAlpha(int alpha) { p.setAlpha(alpha); }

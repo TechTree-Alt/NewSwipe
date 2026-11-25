@@ -443,7 +443,7 @@ public final class AppDialog extends Dialog {
             float w = getWidth(), h = getHeight(), cx = w / 2f, cy = h / 2f;
             int on = colors.accent, off = colors.hint;
             if (square) {   // Windows Phone 체크 상자·라디오: 꽉 찬 상자에 표시
-                Metro.Check.paint(c, cx, cy, Math.min(w, h) / 2f, !box, checked, p, check);
+                Metro.Check.paint(c, cx, cy, Math.min(w, h) / 2f, 2.25f * dp, !box, checked, p, check);
                 return;
             }
             p.setStrokeCap(Paint.Cap.ROUND);
