@@ -372,27 +372,7 @@ public final class BottomKeysEditorActivity extends Activity {
     }
 
     private View subGroup(int leftMarginDp, View... children) {
-        LinearLayout group = new LinearLayout(this);
-        group.setOrientation(LinearLayout.HORIZONTAL);
-        LinearLayout.LayoutParams glp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        glp.leftMargin = Ui.dp(this, leftMarginDp);
-        group.setLayoutParams(glp);
-
-        View bar = new View(this);
-        bar.setBackground(Ui.round((accentColor & 0x00FFFFFF) | 0x66000000, Ui.dp(this, 2)));
-        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(Ui.dp(this, 3),
-                ViewGroup.LayoutParams.MATCH_PARENT);
-        blp.topMargin = Ui.dp(this, 6);
-        blp.bottomMargin = Ui.dp(this, 6);
-        group.addView(bar, blp);
-
-        LinearLayout column = new LinearLayout(this);
-        column.setOrientation(LinearLayout.VERTICAL);
-        column.setPadding(Ui.dp(this, 14), 0, 0, 0);
-        for (View child : children) column.addView(child);
-        group.addView(column, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        return group;
+        return SettingsWidgets.subGroup(this, accentColor, leftMarginDp, children);
     }
 
     /** fixedRow로 만든 줄을 쓸 수 없는 상태로: 글자를 흐리게 하고 스위치를 끈다. */

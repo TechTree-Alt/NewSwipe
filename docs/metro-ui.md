@@ -25,6 +25,7 @@ Windows Phone 7·8의 Metro UI처럼 바뀝니다. 이 문서는 무엇을 참�
 | 피벗 머리글 | `SettingsFrame.buildMetroHeader()`: 작은 대문자 `NEWSWIPE` + 46sp 소문자 화면 이름, 오른쪽에 다음 메뉴 이름들이 옅게 이어지다 화면 끝에서 잘림 (`Metro.PivotHeader`) |
 | 스크롤 막대 없음 | 설정 화면·편집 화면·설정 창·대화상자의 스크롤 막대를 숨김 (키보드의 창들은 원래 없음) |
 | 카드 없음 | `SettingsWidgets.card()`가 바탕 없이, 구분선·화살표(`Chevron`) 숨김 |
+| 하위 설정 묶음 | Toolkit ExpanderView의 Line처럼: 옅은 회색(PhoneSubtleBrush) 2dp 직선이 묶음 높이를 꽉 채우고, 22dp 들여 놓은 선 오른쪽 12dp에 항목 (`SettingsWidgets.subGroup`) |
 | 앱 목록 타일 | 설정 메뉴 아이콘이 강조색 네모 타일 + 흰 아이콘 (`IconView`) |
 | 강조색 고르기 | WP8 강조색 20가지를 네모 타일 4×5로 (`Metro.ACCENTS`) |
 | ToggleSwitch | 툴킷 템플릿 비율: 테두리 있는 네모 트랙 안을 강조색으로 채우고, 트랙보다 조금 긴 글자 색 손잡이. 120ms 지수 15 EaseOut |

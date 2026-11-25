@@ -346,20 +346,36 @@ final class SettingsWidgets {
 
     /** 위 설정의 하위 설정들을 묶는다: 왼쪽 들여쓰기와 세로 안내선으로 위계를 보여 준다. */
     View subGroup(View... children) {
+        // Metro: ExpanderView처럼 조금 더 들여 놓는다.
+        return subGroup(c, accent, Metro.on ? 22 : 6, children);
+    }
+
+    /**
+     * 하위 설정 묶음 (설정 화면과 편집 화면이 같이 쓴다): leftMarginDp만큼 들인 세로 안내선과 그 오른쪽의 항목들.
+     * 보통은 옅은 강조색의 둥근 선(3dp)이 위아래를 조금 띄워 놓인다. Metro는 Windows Phone Toolkit의 ExpanderView처럼
+     * 옅은 회색(PhoneSubtleBrush)의 가는 직선(StrokeThickness 3px → 2dp)이 묶음 높이를 꽉 채운다.
+     */
+    static View subGroup(Context c, int accent, int leftMarginDp, View... children) {
         LinearLayout group = new LinearLayout(c);
         group.setOrientation(LinearLayout.HORIZONTAL);
         LinearLayout.LayoutParams glp = matchWrap();
-        glp.leftMargin = Ui.dp(c, 6);
+        glp.leftMargin = Ui.dp(c, leftMarginDp);
         group.setLayoutParams(glp);
         View line = new View(c);
-        line.setBackground(Ui.round((accent & 0x00FFFFFF) | 0x66000000, Ui.dp(c, 2)));
-        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(Ui.dp(c, 3), ViewGroup.LayoutParams.MATCH_PARENT);
-        blp.topMargin = Ui.dp(c, 6);
-        blp.bottomMargin = Ui.dp(c, 6);
+        LinearLayout.LayoutParams blp;
+        if (Metro.on) {
+            line.setBackgroundColor(Metro.SUBTLE);
+            blp = new LinearLayout.LayoutParams(Ui.dp(c, 2), ViewGroup.LayoutParams.MATCH_PARENT);
+        } else {
+            line.setBackground(Ui.round((accent & 0x00FFFFFF) | 0x66000000, Ui.dp(c, 2)));
+            blp = new LinearLayout.LayoutParams(Ui.dp(c, 3), ViewGroup.LayoutParams.MATCH_PARENT);
+            blp.topMargin = Ui.dp(c, 6);
+            blp.bottomMargin = Ui.dp(c, 6);
+        }
         group.addView(line, blp);
         LinearLayout column = new LinearLayout(c);
         column.setOrientation(LinearLayout.VERTICAL);
-        column.setPadding(Ui.dp(c, 14), 0, 0, 0);
+        column.setPadding(Ui.dp(c, Metro.on ? 12 : 14), 0, 0, 0);
         for (View child : children) column.addView(child);
         group.addView(column, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         return group;
