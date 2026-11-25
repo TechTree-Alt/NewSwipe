@@ -4038,7 +4038,7 @@ public final class SettingsActivity extends Activity {
      */
     private void pickVibration(View anchor, String[] labels, int current, int defaultIndex,
                                java.util.function.ObjIntConsumer<View> preview, java.util.function.IntConsumer onPick) {
-        DropdownMenu.of(anchor, labels, current).defaultIndex(defaultIndex).preview(preview).show(onPick);
+        DropdownMenu.of(anchor, labels, current).defaultIndex(defaultIndex).preview(preview).keepOpen().show(onPick);
     }
 
     /**
@@ -4253,13 +4253,20 @@ public final class SettingsActivity extends Activity {
                 L.t("NewSwipe (기본)", "NewSwipe (default)"), "Metro", "Neumorphism"};
     }
 
-    /** 키 소리 종류를 고르는 드롭다운. 항목을 누르면 바로 그 소리로 바꾸고 들려주며, 목록은 닫히지 않아 비교해 볼 수 있다. */
+    /** 미리 들려준 키음을 놓는 작업 (소리가 끝까지 나도록 목록이 닫히고 조금 뒤에 부른다). */
+    private final Runnable releaseSoundPreview = () -> {
+        if (vibePreview != null) vibePreview.release();
+    };
+
+    /** 키 소리 종류를 고르는 드롭다운. 항목을 누르면 그 소리를 들려주고 바로 고른 뒤 닫힌다. */
     private void pickSoundStyle(View anchor, java.util.function.IntConsumer onPick) {
         Feedback preview = vibePreview();
+        anchor.removeCallbacks(releaseSoundPreview);   // 놓기 전에 다시 열었으면 놓지 않는다
         preview.prepareSynthSounds();
         DropdownMenu.of(anchor, soundStyleLabels(), prefs.soundStyle())
                 .preview((view, which) -> preview.previewSound(which, prefs.metro(), prefs.neumorphism(), prefs.soundVolume()))
-                .onDismiss(preview::release)   // 다 들었으면 읽어 둔 소리를 놓는다
+                // 다 들었으면 읽어 둔 소리를 놓는다 (닫히자마자 놓으면 방금 고른 소리가 끊긴다).
+                .onDismiss(() -> anchor.postDelayed(releaseSoundPreview, 1500))
                 .show(onPick);
     }
 

@@ -37,7 +37,7 @@ import java.util.function.IntConsumer;
 import java.util.function.ObjIntConsumer;
 
 /**
- * 항목이 몇 개뿐인 고르기(최대 {@link #MAX_ITEMS}개)를 대화상자 대신 누른 줄 바로 아래에 펼치는 드롭다운 목록.
+ * 항목이 몇 개뿐인 고르기(최대 {@link #MAX_ITEMS}개)를 대화상자 대신 누른 줄 위에 펼치는 드롭다운 목록 (맨 윗 항목이 누른 줄을 덮는다).
  *
  * <ul>
  * <li>기본: Material 3 메뉴. 카드보다 한 단계 높은 면의 둥근 상자(16dp)가 그림자로 떠 있고, 누른 줄의 오른쪽 끝(지금 값
@@ -75,7 +75,11 @@ final class DropdownMenu {
     private View menu;
     /** Metro: 그 자리에 끼워 넣은 목록 (팝업이 아닐 때). */
     private View inline;
-    private boolean above, closing;
+    private boolean closing;
+    /** 펼쳐지는 기준점의 세로 위치 (상자 안, 누른 줄의 가운데). */
+    private float pivotY;
+    /** 미리 듣기를 하면서도 목록을 열어 둔다 (여러 개를 비교). */
+    private boolean keepOpen;
     /** 누른 줄의 화살표 (펼친 동안 아래로 돌린다). 없으면 null. */
     private View chevron;
     private final View.OnAttachStateChangeListener detach = new View.OnAttachStateChangeListener() {
@@ -108,12 +112,18 @@ final class DropdownMenu {
         return this;
     }
 
-    /**
-     * 항목을 누를 때마다 미리 들려주거나 울려 준다 (소리·진동). 이것을 주면 항목을 눌러도 목록이 닫히지 않아 여러 개를 비교할 수 있고,
-     * 누른 항목은 바로 고른 값이 된다. 바깥을 누르거나(Metro는 줄을 다시 누르면) 닫힌다.
-     */
+    /** 항목을 누를 때마다 미리 들려주거나 울려 준다 (소리·진동). 같은 항목을 다시 눌러도 울린다. */
     DropdownMenu preview(ObjIntConsumer<View> p) {
         preview = p;
+        return this;
+    }
+
+    /**
+     * 항목을 눌러도 목록을 닫지 않는다 (누른 항목은 바로 고른 값이 된다). 미리 울려 보며 여러 개를 비교할 때 쓴다.
+     * 바깥을 누르거나(Metro는 줄을 다시 누르면) 닫힌다.
+     */
+    DropdownMenu keepOpen() {
+        keepOpen = true;
         return this;
     }
 
@@ -259,12 +269,13 @@ final class DropdownMenu {
             if (old >= 0) style(old);
             style(i);
         }
-        if (preview != null) {
-            // 미리 듣기: 목록을 열어 둔 채 바로 고르고 울린다.
+        if (keepOpen) {
+            // 목록을 열어 둔 채 바로 고르고 울린다.
             if (changed) onPick.accept(i);
-            preview.accept(rows[i], i);
+            if (preview != null) preview.accept(rows[i], i);
             return;
         }
+        if (preview != null) preview.accept(rows[i], i);
         close();
         if (changed) onPick.accept(i);
     }
@@ -333,24 +344,28 @@ final class DropdownMenu {
         box.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
                 View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
         int maxW = Math.min(dp(320), frame.width() - margin * 2);
-        int w = Math.max(Math.min(dp(180), maxW), Math.min(box.getMeasuredWidth(), maxW));
+        // 잰 너비 그대로면 반올림 오차로 가장 긴 항목이 한 줄에 겨우 못 들어가 두 줄로 꺾일 수 있어 조금 여유를 둔다.
+        int w = Math.max(Math.min(dp(180), maxW), Math.min(box.getMeasuredWidth() + dp(4), maxW));
         box.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
         int h = box.getMeasuredHeight();
 
-        // 자리: 누른 줄의 오른쪽 끝(지금 값)에 맞춰 바로 아래. 아래가 모자라면 위로 펼친다.
+        // 자리: 누른 줄의 오른쪽 끝(지금 값)에 맞추고, 맨 윗 항목이 누른 줄을 덮도록 (두 줄의 세로 가운데를 맞춘다).
+        // 화면 아래가 모자라면 그만큼 위로 올린다.
         int[] loc = new int[2];
         anchor.getLocationInWindow(loc);
         int[] win = new int[2];
         anchor.getRootView().getLocationOnScreen(win);
-        int top = loc[1] + win[1], bottom = top + anchor.getHeight();
+        int top = loc[1] + win[1];
+        int center = top + anchor.getHeight() / 2;
         int right = loc[0] + win[0] + anchor.getWidth() - anchor.getPaddingRight() + dp(Metro.on ? 0 : 4);
-        int gap = dp(Metro.on ? 0 : 2);
-        above = bottom + gap + h > frame.bottom - margin && top - gap - h >= frame.top + margin;
-        int y = above ? top - gap - h : Math.min(bottom + gap, Math.max(frame.top + margin, frame.bottom - margin - h));
+        int y = center - box.getPaddingTop() - rows[0].getMeasuredHeight() / 2;
+        y = Math.max(frame.top + margin, Math.min(y, frame.bottom - margin - h));
         int x = Math.max(frame.left + margin, Math.min(right - w, frame.right - margin - w));
+        pivotY = Math.max(0, Math.min(h, center - y));   // 누른 줄 자리에서 펼쳐진다
 
-        popup = new PopupWindow(root, w + pad * 2, h + pad * 2, true);
+        // 높이는 창이 직접 재게 한다 (글자 줄 수가 예상과 달라도 아래가 잘리지 않게).
+        popup = new PopupWindow(root, w + pad * 2, ViewGroup.LayoutParams.WRAP_CONTENT, true);
         popup.setBackgroundDrawable(new ColorDrawable(0));
         popup.setOutsideTouchable(true);
         popup.setAnimationStyle(0);   // 창 움직임은 직접 그린다
@@ -379,7 +394,7 @@ final class DropdownMenu {
             return;
         }
         box.setPivotX(w);
-        box.setPivotY(above ? h : 0);
+        box.setPivotY(pivotY);
         box.setAlpha(0f);
         if (NeuUi.on) {
             box.setScaleX(0.96f);
