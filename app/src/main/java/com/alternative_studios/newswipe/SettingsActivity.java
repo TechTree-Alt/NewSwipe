@@ -4196,9 +4196,12 @@ public final class SettingsActivity extends Activity {
             vib.addView(v);
         }
         LinearLayout snd = section(L.t("소리", "Sound"));
-        TextView followNote = soundFollowNote();
-        View soundVolume = subGroup(followNote,
-                slider(L.t("소리 크기", "Sound volume"), Prefs.SOUND_VOLUME, prefs.soundVolume(), 0, 100, 5, "%"));
+        // '모드 따라가기'의 설명은 하위 항목이 아니라 키 소리 줄 바로 밑의 설명이고, 그 아래에 소리 크기가 이어진다.
+        // 글에 위아래 여백이 있어 여백 없는 틀(fold)로 감싸 그 틀을 펼치고 접는다.
+        TextView followNoteText = soundFollowNote();
+        followNoteText.setPadding(0, 0, 0, followNoteText.getPaddingBottom());   // 키 소리 줄에 붙인다
+        View followNote = fold(followNoteText);
+        View soundVolume = fold(slider(L.t("소리 크기", "Sound volume"), Prefs.SOUND_VOLUME, prefs.soundVolume(), 0, 100, 5, "%"));
         int style0 = prefs.soundStyle();
         soundVolume.setVisibility(style0 != Prefs.SOUND_STYLE_NONE ? View.VISIBLE : View.GONE);
         followNote.setVisibility(style0 == Prefs.SOUND_STYLE_FOLLOW ? View.VISIBLE : View.GONE);
@@ -4211,6 +4214,7 @@ public final class SettingsActivity extends Activity {
             Ui.setVisibleAnimated(soundVolume, picked != Prefs.SOUND_STYLE_NONE);
         }));
         snd.addView(row[0].view);
+        snd.addView(followNote);
         snd.addView(soundVolume);
     }
 

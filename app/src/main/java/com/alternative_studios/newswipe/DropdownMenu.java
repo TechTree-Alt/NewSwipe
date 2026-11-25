@@ -31,7 +31,6 @@ import android.widget.TextView;
 
 import com.alternative_studios.newswipe.ui.Metro;
 import com.alternative_studios.newswipe.ui.NeuUi;
-import com.alternative_studios.newswipe.ui.Spring;
 import com.alternative_studios.newswipe.ui.Ui;
 
 import java.util.function.IntConsumer;
@@ -41,13 +40,16 @@ import java.util.function.ObjIntConsumer;
  * 항목이 몇 개뿐인 고르기(최대 {@link #MAX_ITEMS}개)를 대화상자 대신 누른 줄 바로 아래에 펼치는 드롭다운 목록.
  *
  * <ul>
- * <li>기본: Material 3 Expressive 메뉴. 카드보다 한 단계 높은 면의 둥근 상자(16dp)가 그림자로 떠 있고, 누른 줄의 오른쪽 끝(지금 값
- *     자리)에 맞춰 위에서 아래로 스프링으로 펼쳐진다. 고른 항목은 옅은 강조색 알약에 강조색 글자와 체크 표시.</li>
+ * <li>기본: Material 3 메뉴. 카드보다 한 단계 높은 면의 둥근 상자(16dp)가 그림자로 떠 있고, 누른 줄의 오른쪽 끝(지금 값
+ *     자리)에 맞춰 Material의 표준 움직임(살짝 작은 크기에서 커지며 나타남, 150ms 감속 곡선)으로 펼쳐진다.
+ *     고른 항목은 옅은 강조색 알약에 강조색 글자와 체크 표시.</li>
  * <li>Neumorphism: 바탕과 같은 색의 상자가 큰 그림자로 솟아오른다. 고른 항목은 안으로 들어간 홈, 누르는 동안의 항목도 들어간다.
  *     부드럽게 떠오르며(크기 96% → 100%, 감속) 나타난다.</li>
  * <li>Metro: Windows Phone Toolkit의 ListPicker처럼 떠 있는 창 없이 그 자리에서 아래 내용을 밀어내며 펼쳐진다(ExponentialEase
  *     EaseOut). 흰 바탕에 강조색 테두리의 네모, 고른 항목은 표시 없이 강조색 글자, 누르면 틸트.</li>
  * </ul>
+ *
+ * <p>기본·Neumorphism에서는 누른 줄의 화살표(›)가 펼치는 동안 아래(⌄)로 돌고, 닫히면 돌아온다.
  *
  * <p>가볍게: XML·ListView·어댑터 없이 항목마다 TextView 하나(기본값 표시는 같은 글자에 붙인 작은 글씨)로 만들고, 움직이는 동안만 하드웨어 층으로 그린다.
  * 열 때마다 새로 만들고 닫으면 모두 놓는다. 한 번에 하나만 열린다.
@@ -74,6 +76,8 @@ final class DropdownMenu {
     /** Metro: 그 자리에 끼워 넣은 목록 (팝업이 아닐 때). */
     private View inline;
     private boolean above, closing;
+    /** 누른 줄의 화살표 (펼친 동안 아래로 돌린다). 없으면 null. */
+    private View chevron;
     private final View.OnAttachStateChangeListener detach = new View.OnAttachStateChangeListener() {
         @Override
         public void onViewAttachedToWindow(View v) {
@@ -129,6 +133,8 @@ final class DropdownMenu {
         }
         current = new java.lang.ref.WeakReference<>(this);
         anchor.addOnAttachStateChangeListener(detach);
+        chevron = findChevron(anchor);
+        turnChevron(true);
         if (Metro.on && anchor.getParent() instanceof LinearLayout
                 && ((LinearLayout) anchor.getParent()).getOrientation() == LinearLayout.VERTICAL) {
             showInline((LinearLayout) anchor.getParent());
@@ -136,6 +142,30 @@ final class DropdownMenu {
             showPopup();
         }
     }
+
+    private static View findChevron(View v) {
+        if (v instanceof com.alternative_studios.newswipe.ui.Chevron) return v.getVisibility() == View.VISIBLE ? v : null;
+        if (v instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) v;
+            for (int i = g.getChildCount() - 1; i >= 0; i--) {   // 화살표는 줄의 끝에 있다
+                View found = findChevron(g.getChildAt(i));
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    /** 화살표를 아래(펼침)로, 또는 제자리(접힘)로 돌린다. 오른쪽에서 왼쪽으로 쓰는 언어는 화살표가 뒤집혀 있어 반대로 돈다. */
+    private void turnChevron(boolean open) {
+        if (chevron == null || Metro.on) return;
+        float down = chevron.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL ? -90f : 90f;
+        chevron.animate().cancel();
+        chevron.animate().rotation(open ? down : 0f).setDuration(open ? 200 : 150)
+                .setInterpolator(STANDARD).start();
+    }
+
+    /** Material의 표준 곡선 (FastOutSlowIn). */
+    private static final PathInterpolator STANDARD = new PathInterpolator(0.4f, 0f, 0.2f, 1f);
 
     private int dp(float v) {
         return Ui.dp(c, v);
@@ -342,7 +372,7 @@ final class DropdownMenu {
         enter(box, w, h);
     }
 
-    /** 펼치는 움직임: 기본은 위(위로 펼치면 아래)에서 스프링으로, Neumorphism은 부드럽게 떠오르고, Metro는 스위블. */
+    /** 펼치는 움직임: 기본은 Material 메뉴처럼 모서리에서 커지며, Neumorphism은 부드럽게 떠오르고, Metro는 스위블. */
     private void enter(View box, int w, int h) {
         if (Metro.on) {
             Metro.swivelIn(box);
@@ -358,13 +388,11 @@ final class DropdownMenu {
                     .setInterpolator(new DecelerateInterpolator(2f)).withLayer().start();
             return;
         }
-        box.setScaleX(0.9f);
-        box.setScaleY(0.55f);
-        box.animate().scaleX(1f).scaleY(1f).setDuration(420).setInterpolator(Spring.SOFT).withLayer().start();
-        // 투명도는 따로 짧게 (스프링으로 넘치면 깜빡인다).
-        android.animation.ObjectAnimator fade = android.animation.ObjectAnimator.ofFloat(box, View.ALPHA, 0f, 1f);
-        fade.setDuration(110);
-        fade.start();
+        // Material 메뉴: 값 자리 모서리에서 살짝 작은 크기(80%)로 커지며 나타난다. 하나의 감속 곡선으로 짧게.
+        box.setScaleX(0.8f);
+        box.setScaleY(0.8f);
+        box.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(150)
+                .setInterpolator(new DecelerateInterpolator(1.5f)).withLayer().start();
     }
 
     // ---------------------------------------------------------------- 닫기
@@ -373,6 +401,7 @@ final class DropdownMenu {
     void close() {
         if (closing) return;
         closing = true;
+        turnChevron(false);
         if (inline != null) {
             View frame = inline;
             Ui.setVisibleAnimated(frame, false, () -> {
@@ -391,8 +420,10 @@ final class DropdownMenu {
             box.animate().alpha(0f).setDuration(100).withEndAction(this::dismissPopup).start();
             return;
         }
-        box.animate().alpha(0f).scaleY(NeuUi.on ? 0.97f : 0.92f).scaleX(NeuUi.on ? 0.97f : 0.98f)
-                .setDuration(NeuUi.on ? 140 : 120).setInterpolator(new PathInterpolator(0.3f, 0f, 1f, 1f))
+        // Material 메뉴는 닫힐 때 제자리에서 흐려지기만 한다. Neumorphism은 살짝 가라앉으며 흐려진다.
+        float s = NeuUi.on ? 0.97f : 1f;
+        box.animate().alpha(0f).scaleY(s).scaleX(s)
+                .setDuration(NeuUi.on ? 140 : 100).setInterpolator(new PathInterpolator(0.3f, 0f, 1f, 1f))
                 .withLayer().setListener(new AnimatorListenerAdapter() {
                     @Override
                     public void onAnimationEnd(Animator animation) {
@@ -416,6 +447,10 @@ final class DropdownMenu {
     /** 움직임 없이 바로 닫는다. */
     private void closeNow() {
         closing = true;
+        if (chevron != null) {
+            chevron.animate().cancel();
+            chevron.setRotation(0f);
+        }
         if (menu != null) menu.animate().cancel();
         if (inline != null && inline.getParent() instanceof ViewGroup) ((ViewGroup) inline.getParent()).removeView(inline);
         dismissPopup();
@@ -427,6 +462,7 @@ final class DropdownMenu {
         if (finished) return;
         finished = true;
         closing = true;
+        turnChevron(false);   // 뒤로 가기 등으로 창이 바로 닫혀도 화살표는 돌아온다
         anchor.removeOnAttachStateChangeListener(detach);
         if (current != null && current.get() == this) current = null;
         if (onDismiss != null) onDismiss.run();
