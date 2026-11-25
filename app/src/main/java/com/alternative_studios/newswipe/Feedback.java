@@ -101,11 +101,30 @@ final class Feedback {
             String base = Prefs.VIBRATE_KEYS[i];
             set(CH_DELETE + i, prefs.vibrateKeyStyle(base), prefs.vibrateKeyPrimitive(base), prefs.vibrateKeyAmp(base));
         }
-        sound = prefs.sound();
+        int soundStyle = prefs.soundStyle();
+        sound = soundStyle != Prefs.SOUND_STYLE_NONE;
         volume = prefs.soundVolume() / 100f;
-        metro = prefs.metro();
+        metro = usesMetro(soundStyle, prefs.metro());
         if (metro && sound) metroSound.prepare();
         else metroSound.release();
+    }
+
+    /** 키 소리 종류(Prefs.SOUND_STYLE_*)가 Metro 소리를 쓰는가. 모드 따라가기는 Metro 모드에서만. */
+    static boolean usesMetro(int soundStyle, boolean metroMode) {
+        return soundStyle == Prefs.SOUND_STYLE_METRO || (soundStyle == Prefs.SOUND_STYLE_FOLLOW && metroMode);
+    }
+
+    /** 설정 화면의 고르기 창: 키 소리 종류 soundStyle의 글자 키 소리를 지금 소리 크기로 들려준다. */
+    void previewSound(int soundStyle, boolean metroMode, int volumePct) {
+        if (soundStyle == Prefs.SOUND_STYLE_NONE || volumePct <= 0) return;
+        float v = volumePct / 100f;
+        if (usesMetro(soundStyle, metroMode)) metroSound.play(MetroSound.KEY, v);
+        else if (audio != null) audio.playSoundEffect(AudioManager.FX_KEYPRESS_STANDARD, v);
+    }
+
+    /** Metro 소리를 미리 만들어 읽어 둔다 (설정 화면에서 처음 들려줄 때 늦지 않게). */
+    void prepareMetroSound() {
+        metroSound.prepare();
     }
 
     /** 키보드 서비스가 끝날 때 키음 자원을 놓는다. */

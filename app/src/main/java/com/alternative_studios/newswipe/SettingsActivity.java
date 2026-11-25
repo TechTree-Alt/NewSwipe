@@ -213,6 +213,7 @@ public final class SettingsActivity extends Activity {
             EditorUndo.clearAll();
         }
         if (editorPrefListener != null) prefs.raw().unregisterOnSharedPreferenceChangeListener(editorPrefListener);
+        if (vibePreview != null) vibePreview.release();   // 키 소리 미리 듣기에 읽어 둔 소리를 놓는다
         super.onDestroy();
     }
 
@@ -605,7 +606,8 @@ public final class SettingsActivity extends Activity {
             {"feedback", L.t("진동 강도", "Vibration strength"), L.t("햅틱 세기 진폭", "haptics strength amplitude")},
             {"feedback", L.t("키 종류별로 다르게", "Different for each key type"), L.t("진동 지우기 스페이스 엔터 Shift 기호 언어 전환 도구 막대 키 햅틱", "vibration delete space enter shift symbols language switch toolbar keys haptics")},
             {"feedback", L.t("밀기·길게 누르기 진동", "Swipe and long-press vibration"), L.t("햅틱 스와이프 롱프레스 틱 클릭", "haptics swipe long press tick click")},
-            {"feedback", L.t("키 소리", "Key sound"), L.t("클릭음 사운드 소리 켜기", "click sound audio on")},
+            {"feedback", L.t("키 소리", "Key sound"), L.t("클릭음 사운드 소리 켜기 종류 없음 모드 따라가기 NewSwipe Metro 윈도우 폰",
+                    "click sound audio on type none follow mode NewSwipe Metro Windows Phone")},
             {"feedback", L.t("소리 크기", "Sound volume"), L.t("볼륨 클릭음", "volume click sound")},
             {KEYBOARD, L.t("도구 막대 표시", "Show toolbar"), L.t("툴바 켜기 끄기", "toolbar on off")},
             {KEYBOARD, L.t("도구 막대 버튼 사용자화", "Customize toolbar buttons"), L.t("툴바 버튼 순서 음성 입력 마이크 클립보드 이모지 실행 취소 텍스트 편집 커서 선택", "toolbar buttons order voice input microphone clipboard emoji undo text editing cursor select")},
@@ -4234,8 +4236,42 @@ public final class SettingsActivity extends Activity {
         }
         LinearLayout snd = section(L.t("소리", "Sound"));
         View soundVolume = subGroup(slider(L.t("소리 크기", "Sound volume"), Prefs.SOUND_VOLUME, prefs.soundVolume(), 0, 100, 5, "%"));
-        snd.addView(toggle(L.t("키 소리", "Key sound"), null, Prefs.SOUND, prefs.sound(), soundVolume));
+        int style0 = prefs.soundStyle();
+        soundVolume.setVisibility(style0 != Prefs.SOUND_STYLE_NONE ? View.VISIBLE : View.GONE);
+        SettingsWidgets.ValueRow[] row = new SettingsWidgets.ValueRow[1];
+        String title = L.t("키 소리", "Key sound");
+        row[0] = widgets.valueRow(title, soundStyleLabels()[style0], v -> pickSoundStyle(title, picked -> {
+            prefs.raw().edit().putInt(Prefs.SOUND_STYLE, picked).apply();
+            row[0].set(soundStyleLabels()[picked]);
+            Ui.setVisibleAnimated(soundVolume, picked != Prefs.SOUND_STYLE_NONE);
+        }));
+        snd.addView(row[0].view);
         snd.addView(soundVolume);
+    }
+
+    /** 키 소리 종류의 이름 (Prefs.SOUND_STYLE_* 차례). */
+    private static String[] soundStyleLabels() {
+        return new String[]{L.t("없음", "None"), L.t("모드 따라가기", "Follow design mode"),
+                L.t("NewSwipe (기본)", "NewSwipe (default)"), "Metro"};
+    }
+
+    /** 키 소리 종류를 고르는 창. 항목을 누르면 그 소리를 들려주고, 확인을 누르면 저장한다. */
+    private void pickSoundStyle(String title, java.util.function.IntConsumer onPick) {
+        int current = prefs.soundStyle();
+        int[] chosen = {current};
+        Feedback preview = vibePreview();
+        preview.prepareMetroSound();
+        AppTheme.dialogBuilder(this)
+                .setTitle(title)
+                .setSingleChoiceItems(soundStyleLabels(), current, (d, which) -> {
+                    chosen[0] = which;
+                    preview.previewSound(which, prefs.metro(), prefs.soundVolume());
+                })
+                .setPositiveButton(L.t("확인", "OK"), (d, w) -> {
+                    if (chosen[0] != current) onPick.accept(chosen[0]);
+                })
+                .setNegativeButton(L.t("취소", "Cancel"), null)
+                .show();
     }
 
     private void buildTools() {
