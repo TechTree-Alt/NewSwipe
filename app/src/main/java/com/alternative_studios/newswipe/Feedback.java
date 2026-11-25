@@ -53,8 +53,18 @@ final class Feedback {
     /** 일반 키 사용자 설정(primitive를 못 쓰는 기기)의 길이 ms. */
     private int customMs;
 
-    @SuppressWarnings("deprecation")
+    /** 설정을 적용할 때 고른 키음을 바로 읽어 둘지 (키보드는 그렇다. 설정 화면은 소리를 들려줄 때만 읽는다). */
+    private final boolean eagerSounds;
+
+    /** 키보드용: 고른 키음을 미리 읽어 둔다. */
     Feedback(Context context) {
+        this(context, true);
+    }
+
+    /** @param eagerSounds 설정을 적용할 때 고른 키음을 바로 읽어 둘지 (false면 진동만 미리 느껴 볼 때 소리를 읽지 않는다) */
+    @SuppressWarnings("deprecation")
+    Feedback(Context context, boolean eagerSounds) {
+        this.eagerSounds = eagerSounds;
         audio = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         metroSound = new SynthSound(context, SynthSound.SET_METRO);
         neuSound = new SynthSound(context, SynthSound.SET_NEU);
@@ -107,8 +117,8 @@ final class Feedback {
         volume = prefs.soundVolume() / 100f;
         synth = sound ? synthFor(soundStyle, prefs.metro(), prefs.neumorphism()) : null;
         for (SynthSound s : new SynthSound[]{metroSound, neuSound}) {
-            if (s == synth) s.prepare();
-            else s.release();
+            if (s != synth) s.release();
+            else if (eagerSounds) s.prepare();
         }
     }
 

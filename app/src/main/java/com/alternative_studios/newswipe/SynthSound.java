@@ -109,35 +109,53 @@ final class SynthSound {
 
     private final Context context;
     private final int set;
-    private SoundPool pool;
-    private final int[] ids = new int[COUNT];
-    private final boolean[] loaded = new boolean[COUNT];
+    /** 읽어 둔 소리들. 놓았거나 아직 만들지 않았으면 null. 메인 스레드에서만 바꾼다. */
+    private volatile SoundPool pool;
+    /** 소리마다 pool의 표본 id (0 = 아직 없음). 소리 파일은 백그라운드에서 만들고 읽으므로 스레드 사이에서 함께 쓴다. */
+    private final java.util.concurrent.atomic.AtomicIntegerArray ids = new java.util.concurrent.atomic.AtomicIntegerArray(COUNT);
+    /** 다 읽힌 표본 id (pool이 메인 스레드로 알려 준다). */
+    private final android.util.SparseBooleanArray ready = new android.util.SparseBooleanArray();
 
     SynthSound(Context context, int set) {
         this.context = context.getApplicationContext();
         this.set = set;
     }
 
-    /** 소리를 만들고 읽어 둔다 (이미 읽었으면 아무것도 하지 않는다). */
+    /**
+     * 소리를 만들고 읽어 둔다 (이미 시작했으면 아무것도 하지 않는다). 메인 스레드에서 부른다.
+     * 파일을 만들고 읽는 일은 백그라운드 스레드에서 하므로 키보드를 여는 데 걸리는 시간이 늘지 않는다
+     * (처음 한 번만 합성해 캐시에 쓰고, 그 뒤로는 읽기만 한다).
+     */
     void prepare() {
         if (pool != null) return;
-        pool = new SoundPool.Builder()
+        SoundPool p = new SoundPool.Builder()
                 .setMaxStreams(4)
                 .setAudioAttributes(new AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                         .build())
                 .build();
-        pool.setOnLoadCompleteListener((p, sampleId, status) -> {
-            for (int i = 0; i < COUNT; i++) {
-                if (ids[i] == sampleId) loaded[i] = status == 0;
-            }
+        pool = p;
+        p.setOnLoadCompleteListener((sp, sampleId, status) -> {
+            if (sp == pool && status == 0) ready.put(sampleId, true);
         });
+        Thread t = new Thread(() -> load(p), "NewSwipe-sound");
+        t.setPriority(Thread.MIN_PRIORITY);
+        t.start();
+    }
+
+    /** 백그라운드: 캐시의 소리 파일을 (없으면 만들어) p에 읽는다. 그사이 놓았으면 그만둔다. */
+    private void load(SoundPool p) {
         File dir = new File(context.getCacheDir(), set == SET_NEU ? "neu_sound" : "metro_sound");
         File[] old = dir.listFiles();
-        if (old != null) {   // 예전 판의 파일은 지운다
+        if (old != null) {
+            // 예전 판의 파일과 쓰다 만 임시 파일은 지운다. 임시 파일은 다른 곳(키보드·설정 화면)에서 지금 쓰고 있을 수 있어
+            // 1분이 지난 것만 지운다.
+            long stale = System.currentTimeMillis() - 60_000;
             for (File f : old) {
-                if (!f.getName().endsWith("_v" + VERSION + ".wav")) //noinspection ResultOfMethodCallIgnored
+                String name = f.getName();
+                boolean tmp = name.endsWith(".tmp");
+                if (tmp ? f.lastModified() < stale : !name.endsWith("_v" + VERSION + ".wav")) //noinspection ResultOfMethodCallIgnored
                     f.delete();
             }
         }
@@ -147,29 +165,34 @@ final class SynthSound {
             File f = new File(dir, "key" + i + "_v" + VERSION + ".wav");
             try {
                 if (!f.isFile() || f.length() == 0) writeWav(f, set == SET_NEU ? NeuSound.synth(i) : synth(i));
-                ids[i] = pool.load(f.getPath(), 1);
-            } catch (IOException | RuntimeException e) {
-                ids[i] = 0;
+                synchronized (this) {   // release()와 겹치지 않게: 놓은 pool에는 읽지 않는다
+                    if (pool != p) return;
+                    ids.set(i, p.load(f.getPath(), 1));
+                }
+            } catch (IOException | RuntimeException ignored) {
+                // 이 소리만 빠진다 (id는 0으로 남는다). 다음에 다시 읽을 때 또 만들어 본다.
             }
         }
     }
 
     void play(int kind, float volume) {
         if (pool == null) prepare();
-        if (kind < 0 || kind >= COUNT || !loaded[kind] || volume <= 0) return;
+        if (kind < 0 || kind >= COUNT || volume <= 0) return;
+        int id = ids.get(kind);
+        if (id == 0 || !ready.get(id)) return;   // 아직 읽는 중
         float v = Math.min(1f, volume);
-        pool.play(ids[kind], v, v, 1, 0, 1f);
+        pool.play(id, v, v, 1, 0, 1f);
     }
 
     void release() {
-        if (pool != null) {
-            pool.release();
+        SoundPool p;
+        synchronized (this) {
+            p = pool;
             pool = null;
+            for (int i = 0; i < COUNT; i++) ids.set(i, 0);
         }
-        for (int i = 0; i < COUNT; i++) {
-            ids[i] = 0;
-            loaded[i] = false;
-        }
+        ready.clear();
+        if (p != null) p.release();
     }
 
     /** Metro 벌의 kind(KEY 등) 소리의 16비트 표본. */
@@ -210,10 +233,15 @@ final class SynthSound {
                 .putInt(RATE).putInt(RATE * 2).putShort((short) 2).putShort((short) 16);
         b.put(new byte[]{'d', 'a', 't', 'a'}).putInt(dataLen);
         for (short s : pcm) b.putShort(s);
-        File tmp = new File(f.getPath() + ".tmp");
+        // 놓았다 다시 읽는 사이 앞의 스레드가 아직 쓰고 있을 수 있어 임시 파일 이름을 매번 다르게 한다.
+        File tmp = new File(f.getPath() + "." + System.nanoTime() + ".tmp");
         try (FileOutputStream o = new FileOutputStream(tmp)) {
             o.write(b.array());
         }
-        if (!tmp.renameTo(f)) throw new IOException("rename failed");
+        if (!tmp.renameTo(f)) {
+            //noinspection ResultOfMethodCallIgnored
+            tmp.delete();
+            throw new IOException("rename failed");
+        }
     }
 }

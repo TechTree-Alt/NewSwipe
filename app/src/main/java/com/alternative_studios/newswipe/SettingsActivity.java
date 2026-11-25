@@ -4017,7 +4017,7 @@ public final class SettingsActivity extends Activity {
     private Feedback vibePreview;
 
     private Feedback vibePreview() {
-        if (vibePreview == null) vibePreview = new Feedback(this);
+        if (vibePreview == null) vibePreview = new Feedback(this, false);   // 키음은 키 소리 고르기 창에서만 읽는다
         vibePreview.configure(prefs);
         return vibePreview;
     }
@@ -4307,6 +4307,7 @@ public final class SettingsActivity extends Activity {
                     if (chosen[0] != current) onPick.accept(chosen[0]);
                 })
                 .setNegativeButton(L.t("취소", "Cancel"), null)
+                .setOnDismissListener(d -> preview.release())   // 다 들었으면 읽어 둔 소리를 놓는다
                 .show();
     }
 
