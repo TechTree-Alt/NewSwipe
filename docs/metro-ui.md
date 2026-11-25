@@ -89,7 +89,7 @@ Metro에서는 내용을 만드는 `LanguageOrderEditor`를 설정 화면이 그
 - 보통: 가운데의 둥근 카드(28dp), 강조색 글자 버튼, 강조색 라디오·체크. 열리고 닫히는 움직임은 시스템 대화상자 그대로입니다.
 - Metro: Windows Phone Toolkit의 CustomMessageBox처럼 화면 맨 위에 폭을 꽉 채운 크롬 색 상자(상태 표시줄 뒤까지), 나머지 화면은
   바탕색 60% 막(라이트 모드는 흰 막), 같은 폭의 테두리 버튼(확인이 왼쪽, 소문자), 한 개 고르기는 표시 없이 고른 글자가 강조색,
-  여러 개 고르기는 WP 체크 상자, 입력란은 WP TextBox(회색 네모, 입력 중에는 흰 바탕에 강조색 테두리).
+  여러 개 고르기와 직접 만든 뷰 안의 체크박스·라디오는 WP 체크 상자(`Metro.Check`: 바탕·테두리가 모두 PhoneRadioCheckBoxBrush인 24dp 꽉 찬 네모, 켜지면 PhoneRadioCheckBoxCheckBrush 체크. 다크는 흰색 75% 상자에 검은 체크, 라이트는 반대), 입력란은 WP TextBox(회색 네모, 입력 중에는 흰 바탕에 강조색 테두리).
   SwivelBackwardIn(처음 200ms 숨었다가 -30° → 0°, 150ms)으로 들어오고 SwivelBackwardOut(0° → 60°, 250ms)으로 나갑니다.
 - 성능: XML을 부풀리지 않고 뷰 몇 개를 코드로 만듭니다 (시스템 AlertDialog는 레이아웃 XML을 부풀립니다). 목록은 수십 개 이하라
   ListView 대신 줄을 바로 쌓습니다. 그림자·흐림을 쓰지 않고, Metro의 스위블만 하드웨어 층으로 그립니다.

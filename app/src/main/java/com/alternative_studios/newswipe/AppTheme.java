@@ -232,6 +232,19 @@ public final class AppTheme {
             android.widget.CompoundButton cb = (android.widget.CompoundButton) v;
             cb.setButtonTintList(null);
             if (!(cb.getButtonDrawable() instanceof NeuUi.Check)) cb.setButtonDrawable(new NeuUi.Check(v.getContext(), v instanceof android.widget.RadioButton, accent));
+        } else if (Metro.on && v instanceof android.widget.CheckedTextView) {
+            android.widget.CheckedTextView ct = (android.widget.CheckedTextView) v;
+            android.graphics.drawable.Drawable was = ct.getCheckMarkDrawable();
+            if (was != null && !(was instanceof Metro.Check)) {
+                ct.setCheckMarkTintList(null);
+                ct.setCheckMarkDrawable(new Metro.Check(v.getContext(), isRadioMark(ct)));
+            }
+        } else if (Metro.on && (v instanceof android.widget.CheckBox || v instanceof android.widget.RadioButton)) {
+            // Metro: 시스템 체크박스·라디오 대신 Windows Phone의 꽉 찬 상자·동그라미
+            android.widget.CompoundButton cb = (android.widget.CompoundButton) v;
+            cb.setButtonTintList(null);
+            if (!(cb.getButtonDrawable() instanceof Metro.Check)) cb.setButtonDrawable(new Metro.Check(v.getContext(), v instanceof android.widget.RadioButton));
+            Metro.tilt(cb);
         } else if (v instanceof android.widget.CheckedTextView) {
             ((android.widget.CheckedTextView) v).setCheckMarkTintList(states);
         } else if (v instanceof android.widget.CompoundButton) {

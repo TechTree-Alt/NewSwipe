@@ -415,7 +415,7 @@ public final class AppDialog extends Dialog {
     }
 
     /**
-     * 라디오·체크 표시. 보통은 강조색 동그라미·둥근 네모, Metro는 Windows Phone의 체크 상자(글자 색 테두리의 네모와 체크).
+     * 라디오·체크 표시. 보통은 강조색 동그라미·둥근 네모, Metro는 Windows Phone의 체크 상자 (Metro.Check와 같은 모양).
      */
     private final class Mark extends View {
         private final boolean box, square;
@@ -441,7 +441,11 @@ public final class AppDialog extends Dialog {
         protected void onDraw(Canvas c) {
             float dp = Ui.dp(getContext(), 1);
             float w = getWidth(), h = getHeight(), cx = w / 2f, cy = h / 2f;
-            int on = square ? Metro.fg : colors.accent, off = square ? Metro.fg : colors.hint;
+            int on = colors.accent, off = colors.hint;
+            if (square) {   // Windows Phone 체크 상자·라디오: 꽉 찬 상자에 표시
+                Metro.Check.paint(c, cx, cy, Math.min(w, h) / 2f, !box, checked, p, check);
+                return;
+            }
             p.setStrokeCap(Paint.Cap.ROUND);
             p.setStrokeJoin(Paint.Join.ROUND);
             if (NeuUi.on) {   // Neumorphism: 안으로 들어간 홈에 강조색 점·체크
@@ -479,22 +483,16 @@ public final class AppDialog extends Dialog {
             }
             float s = 9 * dp;
             p.setStrokeWidth(2 * dp);
-            if (square) {   // Windows Phone 체크 상자: 테두리는 그대로, 켜지면 안에 체크
-                p.setStyle(Paint.Style.STROKE);
-                p.setColor(off);
-                c.drawRect(cx - s, cy - s, cx + s, cy + s, p);
-            } else {
-                p.setStyle(checked ? Paint.Style.FILL : Paint.Style.STROKE);
-                p.setColor(checked ? on : off);
-                c.drawRoundRect(cx - s, cy - s, cx + s, cy + s, 3 * dp, 3 * dp, p);
-            }
+            p.setStyle(checked ? Paint.Style.FILL : Paint.Style.STROKE);
+            p.setColor(checked ? on : off);
+            c.drawRoundRect(cx - s, cy - s, cx + s, cy + s, 3 * dp, 3 * dp, p);
             if (checked) {
                 check.reset();
                 check.moveTo(cx - s * 0.5f, cy + s * 0.02f);
                 check.lineTo(cx - s * 0.12f, cy + s * 0.4f);
                 check.lineTo(cx + s * 0.55f, cy - s * 0.38f);
                 p.setStyle(Paint.Style.STROKE);
-                p.setColor(square ? on : colors.onAccent);
+                p.setColor(colors.onAccent);
                 c.drawPath(check, p);
             }
         }
