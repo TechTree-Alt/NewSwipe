@@ -315,7 +315,8 @@ final class DropdownMenu {
             box.setClipToOutline(true);
         }
         // 그림자 자리: 상자 둘레를 비워 둬야 창 경계에서 그림자가 잘리지 않는다.
-        int pad = Metro.on ? 0 : NeuUi.on ? (int) Math.ceil(NeuUi.spread(c, NeuUi.LARGE)) : dp(12);
+        // 기본 모드의 높이(6dp) 그림자는 아래로 더 번지므로 넉넉히 둔다 (틀을 흐리게 할 때 그림자가 틀 경계에서 잘리지 않게).
+        int pad = Metro.on ? 0 : NeuUi.on ? (int) Math.ceil(NeuUi.spread(c, NeuUi.LARGE)) : dp(16);
         FrameLayout root = new FrameLayout(c);
         root.setPadding(pad, pad, pad, pad);
         root.setClipToPadding(false);
@@ -377,28 +378,21 @@ final class DropdownMenu {
             Metro.swivelIn(box);
             return;
         }
-        if (NeuUi.on) {
-            // 상자가 아니라 그림자 자리까지 담은 틀(상자의 부모)을 움직인다. 투명도가 1보다 작은 뷰는 자기 경계로 잘린
-            // 화면 밖 버퍼에 그려지므로, 상자를 흐리게 하면 상자 밖으로 번지는 그림자가 움직이는 내내 잘렸다가 끝나야 나타난다.
-            View frame = animTarget();
-            int pad = frame.getPaddingLeft();
-            frame.setPivotX(pad + w);
-            frame.setPivotY(pad + pivotY);
-            frame.setAlpha(0f);
-            frame.setScaleX(0.96f);
-            frame.setScaleY(0.96f);
-            frame.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(220)
-                    .setInterpolator(new DecelerateInterpolator(2f)).withLayer().start();   // 틀 경계 안에 그림자가 다 들어간다
-            return;
-        }
-        box.setPivotX(w);
-        box.setPivotY(pivotY);
-        box.setAlpha(0f);
-        // Material 메뉴: 값 자리 모서리에서 살짝 작은 크기(80%)로 커지며 나타난다. 하나의 감속 곡선으로 짧게.
-        box.setScaleX(0.8f);
-        box.setScaleY(0.8f);
-        box.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(150)
-                .setInterpolator(new DecelerateInterpolator(1.5f)).withLayer().start();
+        // 상자가 아니라 그림자 자리까지 담은 틀(상자의 부모)을 움직인다. 투명도가 1보다 작은 뷰는 자기 경계로 잘린
+        // 화면 밖 버퍼에 그려지므로, 상자를 흐리게 하면 상자 밖의 그림자(Neumorphism의 그림자, 기본 모드의 높이 그림자)가
+        // 잘리거나 따로 놀았다. 틀을 흐리게 하면 상자와 그림자가 한 장처럼 함께 나타나고 사라진다.
+        View frame = animTarget();
+        int pad = frame.getPaddingLeft();
+        frame.setPivotX(pad + w);
+        frame.setPivotY(pad + pivotY);
+        frame.setAlpha(0f);
+        // 기본: Material 메뉴처럼 값 자리 모서리에서 80% 크기로 커지며 짧게. Neumorphism: 96%에서 부드럽게 떠오른다.
+        float from = NeuUi.on ? 0.96f : 0.8f;
+        frame.setScaleX(from);
+        frame.setScaleY(from);
+        frame.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(NeuUi.on ? 220 : 150)
+                .setInterpolator(new DecelerateInterpolator(NeuUi.on ? 2f : 1.5f))
+                .withLayer().start();   // 틀 경계 안에 그림자가 다 들어간다
     }
 
     // ---------------------------------------------------------------- 닫기
@@ -425,12 +419,12 @@ final class DropdownMenu {
             box.animate().alpha(0f).setDuration(100).withEndAction(this::dismissPopup).start();
             return;
         }
-        // Material 메뉴는 닫힐 때 제자리에서 흐려지기만 한다. Neumorphism은 살짝 가라앉으며 흐려진다.
-        float s = NeuUi.on ? 0.97f : 1f;
-        android.view.ViewPropertyAnimator out = box.animate().alpha(0f).scaleY(s).scaleX(s)
-                .setDuration(NeuUi.on ? 140 : 100).setInterpolator(new PathInterpolator(0.3f, 0f, 1f, 1f));
-        out.withLayer();
-        out.setListener(new AnimatorListenerAdapter() {
+        // Material 메뉴는 닫힐 때 제자리에서 그림자와 함께 고르게 흐려지기만 한다 (100ms, 일정한 빠르기).
+        // Neumorphism은 살짝 가라앉으며 흐려진다.
+        float sc = NeuUi.on ? 0.97f : 1f;
+        box.animate().alpha(0f).scaleY(sc).scaleX(sc).setDuration(NeuUi.on ? 140 : 100)
+                .setInterpolator(NeuUi.on ? new PathInterpolator(0.3f, 0f, 1f, 1f) : new android.view.animation.LinearInterpolator())
+                .withLayer().setListener(new AnimatorListenerAdapter() {
                     @Override
                     public void onAnimationEnd(Animator animation) {
                         box.animate().setListener(null);
@@ -439,9 +433,9 @@ final class DropdownMenu {
                 }).start();
     }
 
-    /** 펼치고 접을 때 움직이는 뷰: Neumorphism은 그림자 자리까지 담은 틀, 나머지는 상자. */
+    /** 펼치고 접을 때 움직이는 뷰: 그림자 자리까지 담은 틀 (Metro는 그림자가 없어 상자). */
     private View animTarget() {
-        return NeuUi.on && menu.getParent() instanceof View ? (View) menu.getParent() : menu;
+        return !Metro.on && menu.getParent() instanceof View ? (View) menu.getParent() : menu;
     }
 
     private void dismissPopup() {
