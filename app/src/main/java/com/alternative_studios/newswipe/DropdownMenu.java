@@ -46,7 +46,7 @@ import java.util.function.ObjIntConsumer;
  * <li>Neumorphism: 바탕과 같은 색의 상자가 큰 그림자로 솟아오른다. 고른 항목은 안으로 들어간 홈, 누르는 동안의 항목도 들어간다.
  *     부드럽게 떠오르며(크기 96% → 100%, 감속) 나타나고 살짝 가라앉으며 사라진다.</li>
  * <li>Metro: Windows Phone Toolkit의 ListPicker처럼 떠 있는 창 없이 그 자리에서 아래 내용을 밀어내며 펼쳐진다(ExponentialEase
- *     EaseOut). 흰 바탕에 강조색 테두리의 네모, 고른 항목은 표시 없이 강조색 글자, 기본값은 이름 오른쪽에 작은 '기본', 누르면 틸트.</li>
+ *     EaseOut). 화면 바탕색에 강조색 테두리의 네모, 고른 항목은 표시 없이 강조색 글자, 기본값은 이름 오른쪽에 작은 '기본', 누르면 틸트.</li>
  * </ul>
  *
  * <p>떠 있는 목록은 상자가 아니라 그림자 자리까지 담은 틀을 움직인다. 투명도가 1보다 작은 뷰는 자기 경계로 잘린 버퍼에 그려지므로,
@@ -172,7 +172,7 @@ final class DropdownMenu {
             SpannableString s = new SpannableString(items[i] + (Metro.on ? "   " : "\n") + tag);
             int start = s.length() - tag.length();
             s.setSpan(new RelativeSizeSpan(0.78f), start, s.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            s.setSpan(new ForegroundColorSpan(Metro.on ? 0xFF8A8A8A : t.hint), start, s.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            s.setSpan(new ForegroundColorSpan(t.hint), start, s.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             v.setText(s);
         } else {
             v.setText(items[i]);
@@ -207,8 +207,8 @@ final class DropdownMenu {
         boolean on = i == selected;
         v.setSelected(on);   // 접근성: '선택됨'으로 읽힌다
         if (Metro.on) {
-            // ListPicker: 흰 상자 위의 검은 글자, 고른 항목은 강조색 (표시 없이).
-            v.setTextColor(on ? t.accent : 0xDE000000);
+            // ListPicker: 고른 항목은 표시 없이 강조색 글자.
+            v.setTextColor(on ? t.accent : t.text);
             return;
         }
         v.setTextColor(on ? t.accent : t.text);
@@ -269,11 +269,7 @@ final class DropdownMenu {
 
     private void showInline(LinearLayout parent) {
         LinearLayout box = list();
-        // 펼친 ListPicker: 흰 바탕(PhoneTextBoxEditBackground)에 강조색 테두리의 네모.
-        GradientDrawable bg = Ui.round(0xFFFFFFFF, 0);
-        bg.setStroke(dp(2), t.accent);
-        box.setBackground(bg);
-        box.setPadding(dp(2), dp(6), dp(2), dp(6));
+        metroBox(box);
         // 펼치고 접는 동안 높이를 바꾸므로 여백 없는 틀로 감싼다 (Ui.setVisibleAnimated가 틀의 높이를 움직인다).
         LinearLayout frame = new LinearLayout(c);
         frame.setOrientation(LinearLayout.VERTICAL);
@@ -290,6 +286,17 @@ final class DropdownMenu {
         Ui.setVisibleAnimated(frame, true);
     }
 
+    /**
+     * Metro 목록 상자: 화면 바탕색에 강조색 테두리의 네모. (Toolkit의 펼친 ListPicker는 흰 입력란 바탕이지만, 다크 화면에서
+     * 흰 상자가 튀어 화면 바탕색으로 둔다.)
+     */
+    private void metroBox(LinearLayout box) {
+        GradientDrawable bg = Ui.round(t.bg, 0);
+        bg.setStroke(dp(2), t.accent);
+        box.setBackground(bg);
+        box.setPadding(dp(2), dp(6), dp(2), dp(6));
+    }
+
     // ---------------------------------------------------------------- 기본·Neumorphism: 떠 있는 목록
 
     private void showPopup() {
@@ -297,10 +304,7 @@ final class DropdownMenu {
         int radius;
         if (Metro.on) {
             // 끼워 넣을 수 없는 자리(세로 줄이 아닌 부모)의 Metro: 같은 ListPicker 모양으로 띄운다.
-            GradientDrawable bg = Ui.round(0xFFFFFFFF, 0);
-            bg.setStroke(dp(2), t.accent);
-            box.setBackground(bg);
-            box.setPadding(dp(2), dp(6), dp(2), dp(6));
+            metroBox(box);
             radius = 0;
         } else if (NeuUi.on) {
             radius = dp(22);
