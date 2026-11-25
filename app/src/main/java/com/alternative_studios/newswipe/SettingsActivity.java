@@ -254,7 +254,7 @@ public final class SettingsActivity extends Activity {
         return new String[][]{
             {LANGUAGES, L.t("입력 언어", "Input languages"), L.t("한국어·영어, 언어 전환 순서", "Korean, English, switching order")},
             {KEYBOARD, L.t("키보드 사용자화", "Customize keyboard"), L.t("자판 배열, 모양, 입력, 길게 누르기, 밀기", "Layout, look, input, long press, swipe")},
-            {"theme", L.t("테마", "Theme"), L.t("모드, 화면 색, 강조 색", "Mode, light/dark, accent color")},
+            {"theme", L.t("테마", "Theme"), L.t("모드, 라이트/다크 모드, 강조 색", "Mode, light/dark mode, accent color")},
             {"feedback", L.t("소리 및 진동", "Sound & vibration"), L.t("키를 누를 때의 진동과 소리", "Vibration and sound when you press keys")},
             {"words", L.t("추천, 학습 및 완성", "Suggestions, learning & autofill"), L.t("단어 추천, 학습, 단축어, 자동 완성", "Word suggestions, learning, text shortcuts, autofill")},
             {"clipemoji", L.t("클립보드 및 이모지", "Clipboard & emoji"), L.t("클립보드 기록, 편집 버튼, 이모지 크기·추천", "Clipboard history, edit buttons, emoji size and suggestions")},
@@ -566,8 +566,8 @@ public final class SettingsActivity extends Activity {
             {KEYBOARD, L.t("숫자 줄 표시", "Show number row"), L.t("숫자 줄 1234567890 숫자열", "number row 1234567890 digits")},
             {KEYBOARD, L.t("기능키 순서·유무 사용자화", "Customize function keys"), L.t("맨 아래 줄 하단 키 쉼표 지구본 온점 엔터 언어 전환 키 기호 자판 이모지 키", "bottom row keys comma globe period enter language switch symbol keyboard emoji key")},
             {KEYBOARD, L.t("격자 정렬", "Grid alignment"), L.t("그리드 정렬 칸", "grid align columns")},
-            // 모드·화면 색·강조 색은 소제목뿐이라 검색 목록에 없다: 테마 화면 자체로 찾게 한다.
-            {"theme", L.t("테마", "Theme"), L.t("다크 라이트 어두운 밝은 야간 화면 모드 화면 색 색상 컬러 포인트 강조 색 디자인 모드 뉴모피즘 Neumorphism 메트로 Metro 윈도우 폰 윈도우폰 타일 루미아",
+            // 모드·라이트/다크 모드·강조 색은 소제목뿐이라 검색 목록에 없다: 테마 화면 자체로 찾게 한다.
+            {"theme", L.t("테마", "Theme"), L.t("다크 라이트 어두운 밝은 야간 화면 모드 라이트/다크 모드 색상 컬러 포인트 강조 색 디자인 모드 뉴모피즘 Neumorphism 메트로 Metro 윈도우 폰 윈도우폰 타일 루미아",
                     "dark light night mode theme color accent design mode neumorphism metro windows phone wp7 wp8 tiles lumia")},
             {"theme", L.t("색 정렬", "Color alignment"), L.t("키 색", "Key colors")},
             {KEYBOARD, L.t("문자 길게 누르기 시간", "Character long-press delay"), L.t("롱프레스 길게 누르기 시간 지연 특수문자 반복 입력 연타 연속 입력", "long press delay time special characters repeat")},
@@ -3301,7 +3301,7 @@ public final class SettingsActivity extends Activity {
     private void buildTheme() {
         buildDesignMode();   // 화면 전체의 모양을 정하므로 맨 위에
 
-        LinearLayout mode = section(L.t("화면 색", "Display color"));
+        LinearLayout mode = section(L.t("라이트/다크 모드", "Light/dark mode"));
         String[] modeValues = {Prefs.THEME_SYSTEM, Prefs.THEME_LIGHT, Prefs.THEME_DARK};
         mode.addView(choiceRow(new String[]{L.t("시스템", "System"), L.t("라이트", "Light"), L.t("다크", "Dark")}, indexOf(modeValues, prefs.themeMode()), i -> {
             prefs.raw().edit().putString(Prefs.THEME_MODE, modeValues[i]).apply();
