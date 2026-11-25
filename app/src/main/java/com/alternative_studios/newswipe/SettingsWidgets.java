@@ -116,6 +116,14 @@ final class SettingsWidgets {
         return t;
     }
 
+    /** section()이 만든 소제목임을 알리는 태그 (Metro는 이것으로 목록을 섹션 페이지로 나눠 피벗에 담는다). */
+    private static final Object SECTION_HEADER = new Object();
+
+    /** section()이 만든 소제목인지. */
+    static boolean isSectionHeader(View v) {
+        return v.getTag() == SECTION_HEADER;
+    }
+
     /** parent에 소제목과 빈 카드를 더하고 카드를 돌려준다. */
     LinearLayout section(LinearLayout parent, String name) {
         TextView h = text(name, 14, accent);
@@ -126,6 +134,7 @@ final class SettingsWidgets {
             Metro.text(h, 24, Metro.light(), 14);
             h.setPadding(0, Ui.dp(c, 24), 0, Ui.dp(c, 2));
         }
+        h.setTag(SECTION_HEADER);
         parent.addView(h);
         LinearLayout box = card(parent);
         ((LinearLayout.LayoutParams) box.getLayoutParams()).topMargin = 0;
@@ -151,20 +160,62 @@ final class SettingsWidgets {
         return box;
     }
 
+    /** toggle()로 만든 줄의 설명 글임을 알리는 태그 (줄 모양이 모드마다 달라 위치 대신 이것으로 찾는다). */
+    private static final Object DESC = new Object();
+
+    /**
+     * Metro UI의 토글 줄: Windows Phone Toolkit의 ToggleSwitch 템플릿처럼 위에 옅은 머리글(PhoneFontSizeNormal 20px → 15sp,
+     * PhoneSubtleBrush), 그 아래 왼쪽에 '켬'/'끔'(PhoneFontSizeLarge 32px → 24sp, Light), 오른쪽에 스위치. 설명은 WP 설정 화면처럼
+     * 그 아래에 옅은 글(PhoneTextSubtleStyle)로 붙는다. 줄 어디를 눌러도 스위치가 바뀐다.
+     */
+    private View metroToggle(String label, String desc, boolean value, Consumer<Boolean> onChange) {
+        LinearLayout row = new LinearLayout(c);
+        row.setOrientation(LinearLayout.VERTICAL);
+        row.setPadding(0, Ui.dp(c, 6), 0, Ui.dp(c, 14));
+        TextView t = text(label, 16, hint);
+        Metro.text(t, 15, Metro.regular(), 16);   // 검색은 원래 크기(16sp)로 항목 이름을 찾는다
+        mark(t, row);
+        row.addView(t);
+        LinearLayout line = new LinearLayout(c);
+        line.setGravity(Gravity.CENTER_VERTICAL);
+        TextView state = new TextView(c);
+        state.setTextColor(text);
+        state.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
+        state.setTypeface(Metro.light());
+        state.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);   // 스위치가 상태를 읽어 준다
+        line.addView(state, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        ExpressiveSwitch sw = new ExpressiveSwitch(c, accent, onAccent, hint, card);
+        sw.setCheckedImmediately(value);
+        sw.setStateLabel(state);
+        sw.setOnCheckedChangeListener(onChange::accept);
+        line.addView(sw, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        row.addView(line, matchWrap());
+        if (desc != null) {
+            TextView d = text(desc, 13, hint);
+            Metro.text(d, 15, Metro.regular(), 13);
+            d.setTag(DESC);
+            d.setPadding(0, Ui.dp(c, 2), 0, 0);
+            row.addView(d);
+        }
+        row.setOnClickListener(v -> sw.performClick());
+        Metro.tilt(row);
+        return row;
+    }
+
     /** 이름·설명과 오른쪽 스위치. 줄 어디를 눌러도 스위치가 바뀐다. */
     View toggle(String label, String desc, boolean value, Consumer<Boolean> onChange) {
+        if (Metro.on) return metroToggle(label, desc, value, onChange);
         LinearLayout row = new LinearLayout(c);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(0, Ui.dp(c, 8), 0, Ui.dp(c, 8));
         LinearLayout texts = new LinearLayout(c);
         texts.setOrientation(LinearLayout.VERTICAL);
         TextView t = text(label, 16, text);
-        if (Metro.on) Metro.text(t, 20, Metro.light(), 16);
         mark(t, row);
         texts.addView(t);
         if (desc != null) {
             TextView d = text(desc, 13, hint);
-            if (Metro.on) Metro.text(d, 15, Metro.regular(), 13);
+            d.setTag(DESC);
             texts.addView(d);
         }
         row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
@@ -239,14 +290,37 @@ final class SettingsWidgets {
 
     /** toggle()로 만든 줄의 설명 글. 설명 없이 만들었으면 null. */
     static TextView descOf(View toggleRow) {
-        ViewGroup texts = (ViewGroup) ((ViewGroup) toggleRow).getChildAt(0);
-        return texts.getChildCount() > 1 ? (TextView) texts.getChildAt(1) : null;
+        return toggleRow.findViewWithTag(DESC);
     }
 
-    /** toggle()로 만든 줄의 스위치 (줄의 맨 오른쪽). */
+    /** toggle()로 만든 줄의 스위치. */
     static ExpressiveSwitch switchOf(View toggleRow) {
-        ViewGroup row = (ViewGroup) toggleRow;
-        return (ExpressiveSwitch) row.getChildAt(row.getChildCount() - 1);
+        if (toggleRow instanceof ExpressiveSwitch) return (ExpressiveSwitch) toggleRow;
+        if (toggleRow instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) toggleRow;
+            for (int i = 0; i < g.getChildCount(); i++) {
+                ExpressiveSwitch s = switchOf(g.getChildAt(i));
+                if (s != null) return s;
+            }
+        }
+        return null;
+    }
+
+    /** toggle()로 만든 줄을 쓸 수 없게 흐린다: 글자(이름·켬/끔·설명)는 옅게, 스위치는 스스로 흐려진다. */
+    static void dimToggle(View toggleRow) {
+        toggleRow.setEnabled(false);
+        toggleRow.setClickable(false);
+        ExpressiveSwitch sw = switchOf(toggleRow);
+        if (sw != null) sw.setEnabled(false);
+        dimTexts(toggleRow);
+    }
+
+    private static void dimTexts(View v) {
+        if (v instanceof TextView) v.setAlpha(0.38f);
+        else if (v instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) dimTexts(g.getChildAt(i));
+        }
     }
 
     /**
@@ -260,11 +334,18 @@ final class SettingsWidgets {
         box.setPadding(0, Ui.dp(c, 8), 0, Ui.dp(c, 4));
         LinearLayout top = new LinearLayout(c);
         TextView t = text(label, 16, text);
-        if (Metro.on) Metro.text(t, 20, Metro.light(), 16);
+        // Metro: 토글·값 줄처럼 위에 옅은 머리글 (PhoneFontSizeNormal, PhoneSubtleBrush), 지금 값은 오른쪽에 글자 색으로.
+        if (Metro.on) {
+            t.setTextColor(hint);
+            Metro.text(t, 15, Metro.regular(), 16);
+        }
         mark(t, box);
         top.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         TextView v = text(value + unit, 14, hint);
-        if (Metro.on) Metro.text(v, 18, Metro.light(), 14);
+        if (Metro.on) {
+            v.setTextColor(text);
+            Metro.text(v, 15, Metro.regular(), 14);
+        }
         top.addView(v);
         box.addView(top);
         ExpressiveSlider bar = new ExpressiveSlider(c, accent);
@@ -281,15 +362,14 @@ final class SettingsWidgets {
 
     /** 이름과 지금 값을 보여 주는 누를 수 있는 줄 (누르면 값을 고르는 창이 뜬다). */
     ValueRow valueRow(String label, String value, View.OnClickListener l) {
+        if (Metro.on) return metroPicker(label, value, l);
         LinearLayout row = new LinearLayout(c);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(0, Ui.dp(c, 12), 0, Ui.dp(c, 12));
         TextView t = text(label, 16, text);
-        if (Metro.on) Metro.text(t, 20, Metro.light(), 16);
         mark(t, row);
         row.addView(t, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         TextView v = text(value, 16, accent);
-        if (Metro.on) Metro.text(v, 18, Metro.light(), 16);
         v.setGravity(Gravity.END);
         v.setMaxLines(2);
         v.setEllipsize(android.text.TextUtils.TruncateAt.END);
@@ -299,6 +379,41 @@ final class SettingsWidgets {
         row.addView(v, vlp);
         row.addView(new Chevron(c, accent));
         row.setBackground(Ui.ripple(hint & 0x00FFFFFF | 0x33000000, null, Ui.dp(c, 8)));
+        row.setClickable(true);
+        row.setFocusable(true);
+        row.setOnClickListener(l);
+        return new ValueRow(row, v);
+    }
+
+    /**
+     * Metro UI의 값 줄: Windows Phone Toolkit의 ListPicker 템플릿처럼 위에 옅은 머리글(PhoneFontSizeNormal 20px → 15sp,
+     * PhoneSubtleBrush, 아래 8px 여백), 그 아래 글자 색 3px 테두리의 네모 안에 지금 값(PhoneFontSizeMediumLarge 25.333px → 19sp).
+     * 누르면 고르기가 열린다 (드롭다운이면 이 네모 자리에서 목록이 펼쳐진다: DropdownMenu.PICKER_BOX).
+     */
+    private ValueRow metroPicker(String label, String value, View.OnClickListener l) {
+        LinearLayout row = new LinearLayout(c);
+        row.setOrientation(LinearLayout.VERTICAL);
+        row.setPadding(0, Ui.dp(c, 6), 0, Ui.dp(c, 12));
+        TextView t = text(label, 16, hint);
+        Metro.text(t, 15, Metro.regular(), 16);   // 검색은 원래 크기(16sp)로 항목 이름을 찾는다
+        mark(t, row);
+        row.addView(t);
+        LinearLayout box = new LinearLayout(c);
+        box.setGravity(Gravity.CENTER_VERTICAL);
+        android.graphics.drawable.GradientDrawable border = Ui.round(0, 0);
+        border.setStroke(Ui.dp(c, Metro.BORDER_DP), text);
+        box.setBackground(border);
+        box.setMinimumHeight(Ui.dp(c, 40));
+        box.setPadding(Ui.dp(c, 9), Ui.dp(c, 6), Ui.dp(c, 9), Ui.dp(c, 6));
+        box.setTag(DropdownMenu.PICKER_BOX);
+        TextView v = text(value, 16, text);
+        Metro.text(v, 19, Metro.regular(), 16);
+        v.setSingleLine(true);
+        v.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        box.addView(v, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        LinearLayout.LayoutParams blp = matchWrap();
+        blp.topMargin = Ui.dp(c, 6);
+        row.addView(box, blp);
         row.setClickable(true);
         row.setFocusable(true);
         row.setOnClickListener(l);

@@ -57,6 +57,10 @@ import java.util.function.ObjIntConsumer;
  */
 final class DropdownMenu {
     private static java.lang.ref.WeakReference<DropdownMenu> current;
+    /** Metro: 이 태그가 붙은 네모(값 줄의 ListPicker 상자)가 있으면 그 자리에서 목록이 펼쳐진다. */
+    static final Object PICKER_BOX = new Object();
+    /** 목록이 펼쳐진 동안 숨긴 네모 (없으면 null). */
+    private View replaced;
 
     private final View anchor;
     private final Context c;
@@ -139,9 +143,15 @@ final class DropdownMenu {
         }
         current = new java.lang.ref.WeakReference<>(this);
         anchor.addOnAttachStateChangeListener(detach);
-        if (Metro.on && anchor.getParent() instanceof LinearLayout
+        // Metro: ListPicker 모양의 값 줄이면 그 네모 자리에서 목록이 펼쳐진다 (네모가 목록으로 바뀐다).
+        View box = Metro.on ? anchor.findViewWithTag(PICKER_BOX) : null;
+        if (box != null && box.getParent() instanceof LinearLayout
+                && ((LinearLayout) box.getParent()).getOrientation() == LinearLayout.VERTICAL) {
+            replaced = box;
+            showInline((LinearLayout) box.getParent(), box);
+        } else if (Metro.on && anchor.getParent() instanceof LinearLayout
                 && ((LinearLayout) anchor.getParent()).getOrientation() == LinearLayout.VERTICAL) {
-            showInline((LinearLayout) anchor.getParent());
+            showInline((LinearLayout) anchor.getParent(), anchor);
         } else {
             showPopup();
         }
@@ -267,7 +277,7 @@ final class DropdownMenu {
 
     // ---------------------------------------------------------------- Metro: 그 자리에서 펼치기 (ListPicker)
 
-    private void showInline(LinearLayout parent) {
+    private void showInline(LinearLayout parent, View after) {
         LinearLayout box = list();
         // 펼친 ListPicker: 흰 바탕(PhoneTextBoxEditBackground)에 강조색 테두리의 네모.
         GradientDrawable bg = Ui.round(0xFFFFFFFF, 0);
@@ -280,12 +290,16 @@ final class DropdownMenu {
         frame.setClipChildren(true);
         LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
-        blp.topMargin = dp(2);
-        blp.bottomMargin = dp(10);
+        blp.topMargin = replaced != null ? 0 : dp(2);
+        blp.bottomMargin = replaced != null ? 0 : dp(10);
         frame.addView(box, blp);
         frame.setVisibility(View.GONE);
-        parent.addView(frame, parent.indexOfChild(anchor) + 1,
-                new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        LinearLayout.LayoutParams flp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        if (replaced != null && replaced.getLayoutParams() instanceof LinearLayout.LayoutParams) {
+            flp.topMargin = ((LinearLayout.LayoutParams) replaced.getLayoutParams()).topMargin;
+            replaced.setVisibility(View.GONE);   // 네모가 목록으로 바뀐다
+        }
+        parent.addView(frame, parent.indexOfChild(after) + 1, flp);
         inline = frame;
         Ui.setVisibleAnimated(frame, true);
     }
@@ -399,6 +413,7 @@ final class DropdownMenu {
             View frame = inline;
             Ui.setVisibleAnimated(frame, false, () -> {
                 if (frame.getParent() instanceof ViewGroup) ((ViewGroup) frame.getParent()).removeView(frame);
+                if (replaced != null) replaced.setVisibility(View.VISIBLE);
                 finish();
             });
             return;
@@ -441,6 +456,7 @@ final class DropdownMenu {
         closing = true;
         if (menu != null) animTarget().animate().cancel();
         if (inline != null && inline.getParent() instanceof ViewGroup) ((ViewGroup) inline.getParent()).removeView(inline);
+        if (replaced != null) replaced.setVisibility(View.VISIBLE);
         dismissPopup();
     }
 

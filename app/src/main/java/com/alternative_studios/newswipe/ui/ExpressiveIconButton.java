@@ -69,7 +69,7 @@ public final class ExpressiveIconButton extends View {
 
     /**
      * Metro UI 모드: Windows Phone 앱 바의 동그란 버튼. 평소에는 글자 색의 가는 동그라미 안에 글자 색 아이콘,
-     * 누르는 동안은 동그라미가 글자 색으로 채워지고 아이콘이 바탕색이 된다. 켜짐은 강조색으로 채운다.
+     * 누르는 동안(WP8)과 켜짐은 동그라미를 강조색으로 채우고 아이콘은 강조색 위의 색이 된다.
      */
     private void drawMetro(Canvas canvas) {
         float w = getWidth(), h = getHeight();
@@ -79,10 +79,10 @@ public final class ExpressiveIconButton extends View {
         boolean down = p > 0.5f;
         paint.setStyle(Paint.Style.FILL);
         int ink;
-        if (down) {
-            paint.setColor(Metro.fg);
+        if (down) {   // WP8: 누르는 동안 동그라미가 강조색으로 찬다 (WP7은 글자 색)
+            paint.setColor(accent);
             canvas.drawCircle(w / 2f, h / 2f, r, paint);
-            ink = Metro.bg;
+            ink = onAccent;
         } else if (active) {
             paint.setColor(accent);
             canvas.drawCircle(w / 2f, h / 2f, r, paint);
