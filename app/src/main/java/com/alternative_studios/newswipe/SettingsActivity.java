@@ -3375,16 +3375,11 @@ public final class SettingsActivity extends Activity {
         }));
         String desc;
         if (current == MODE_NEU) {
-            desc = L.t("키보드와 설정 화면의 키·버튼·카드가 바탕에서 부드럽게 솟아오르고, 누르거나 고르면 안으로 쑥 들어가는 모양으로 그립니다. "
-                    + "스위치·슬라이더·입력란은 바탕에 파인 홈처럼 보입니다. 키 그림자 대신 쓰입니다.",
-                    "Keys, buttons and cards on the keyboard and in settings rise softly from the background and sink in when pressed or "
-                    + "selected. Switches, sliders and text fields look carved into the background. Replaces key shadows.");
+            desc = L.t("빛의 표현으로 입체감을 살린 인터페이스입니다. 키를 누르는 감각이 좋아집니다.",
+                    "An interface that brings out depth through light. Pressing keys feels better.");
         } else if (current == MODE_METRO) {
-            desc = L.t("앱 전체의 디자인과 애니메이션을 Windows Phone 7·8의 Metro UI처럼 바꿉니다. 각진 타일과 큰 글자, 턴스타일 화면 전환과 "
-                    + "누른 자리로 기울어지는 틸트 효과를 쓰고, 설정 메뉴 사이를 가로로 밀어 오갑니다. 키 그림자와 키 곡률 대신 쓰입니다. 실험적인 기능입니다.",
-                    "Makes the whole app look and move like the Metro UI of Windows Phone 7 and 8: square tiles, big type, turnstile page "
-                            + "transitions and the tilt effect, and you swipe sideways between settings menus. Replaces key shadows and key corner "
-                            + "radius. Experimental.");
+            desc = L.t("Windows Phone의 디자인을 아름답게 계승한 인터페이스입니다.",
+                    "An interface that beautifully carries on the design of Windows Phone.");
         } else {
             desc = L.t("Material 3 Expressive에서 영감을 받은 NewSwipe의 기본 디자인입니다.",
                     "NewSwipe's default design, inspired by Material 3 Expressive.");
