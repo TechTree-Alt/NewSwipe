@@ -44,17 +44,38 @@ public final class ClipChip extends View {
         inset = Ui.dp(c, 4);   // Ui.chipHeight와 같게: 막대에서 위아래 4dp씩 남긴다
         float r = Ui.chipRadius(c);
         if (Metro.on) {
-            // Metro: 도구 막대 버튼처럼 바탕 없이 글자·아이콘만. Windows Phone에는 눌림 색이 없으므로 누르면 틸트로 반응한다.
-            setBackground(null);
-            Metro.tilt(this);
+            // Metro: 도구 막대 버튼처럼 바탕 없이 글자·아이콘만, 누르는 동안 강조색으로 채운다 (pressed는 Metro에서 강조색).
+            setBackground(Ui.metroPressed(pressed, null));
             textPaint.setTypeface(Metro.regular());
         } else {
             setBackground(Ui.ripple(pressed, Ui.round(fill, r), r));
         }
         setClickable(true);
         setFocusable(true);
+        textColorNormal = textColor;
+        iconColorNormal = iconColor;
     }
 
+    private int textColorNormal, iconColorNormal;
+
+    private int pressedInk;
+
+    /** 누르는 동안(Metro: 강조색 바탕) 아이콘·글자 색. 정하지 않으면 평소 색 그대로다. */
+    public void setPressedInk(int color) {
+        pressedInk = color;
+        invalidate();
+    }
+
+    @Override
+    protected void drawableStateChanged() {
+        super.drawableStateChanged();
+        if (pressedInk != 0) invalidate();
+    }
+
+    /** 지금 상태의 색: Metro에서 누르는 동안은 강조색 위의 글자 색. */
+    private int inkNow(int normal) {
+        return Metro.on && pressedInk != 0 && isPressed() ? pressedInk : normal;
+    }
 
     /** 미리보기 글을 바꾼다 (한 줄로 보인다). */
     public void setLabel(String s) {
@@ -109,6 +130,8 @@ public final class ClipChip extends View {
         boolean text = fitted.length() > 0;
         // 글이 없으면 아이콘을 가운데에 둔다.
         float iconX = text ? padH - iconBlank + iconSize / 2f : getWidth() / 2f;
+        iconPaint.setColor(inkNow(iconColorNormal));
+        textPaint.setColor(inkNow(textColorNormal));
         Icons.draw(canvas, Icons.CLIPBOARD, iconX, cy, iconSize, iconPaint);
         if (text) {
             Paint.FontMetrics fm = textPaint.getFontMetrics();

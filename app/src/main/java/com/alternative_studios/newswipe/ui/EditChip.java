@@ -34,9 +34,8 @@ public final class EditChip extends View {
         gap = Ui.dp(c, 4);
         float r = Ui.chipRadius(c);
         if (Metro.on) {
-            // Metro: 도구 막대 버튼처럼 바탕 없이 글자·아이콘만. Windows Phone에는 눌림 색이 없으므로 누르면 틸트로 반응한다.
-            setBackground(null);
-            Metro.tilt(this);
+            // Metro: 도구 막대 버튼처럼 바탕 없이 글자·아이콘만, 누르는 동안 강조색으로 채운다 (pressed는 Metro에서 강조색).
+            setBackground(Ui.metroPressed(pressed, null));
             textPaint.setTypeface(Metro.regular());
         } else {
             setBackground(Ui.ripple(pressed, Ui.round(fill, r), r));
@@ -44,8 +43,29 @@ public final class EditChip extends View {
         setContentDescription(label);
         setClickable(true);
         setFocusable(true);
+        colorNormal = color;
     }
 
+    private int colorNormal;
+
+    private int pressedInk;
+
+    /** 누르는 동안(Metro: 강조색 바탕) 아이콘·글자 색. 정하지 않으면 평소 색 그대로다. */
+    public void setPressedInk(int color) {
+        pressedInk = color;
+        invalidate();
+    }
+
+    @Override
+    protected void drawableStateChanged() {
+        super.drawableStateChanged();
+        if (pressedInk != 0) invalidate();
+    }
+
+    /** 지금 상태의 색: Metro에서 누르는 동안은 강조색 위의 글자 색. */
+    private int inkNow(int normal) {
+        return Metro.on && pressedInk != 0 && isPressed() ? pressedInk : normal;
+    }
 
     /** 이 칩의 폭에 아이콘과 이름이 다 들어가는지. */
     private boolean fits() {
@@ -70,6 +90,8 @@ public final class EditChip extends View {
         boolean text = rowFits();
         // 아이콘과 이름을 한 덩어리로 칩 가운데에 둔다. 이름이 들어가지 않으면 아이콘만 가운데에.
         float left = (getWidth() - (text ? iconSize + gap + textW : iconSize)) / 2f;
+        iconPaint.setColor(inkNow(colorNormal));
+        textPaint.setColor(inkNow(colorNormal));
         Icons.draw(canvas, icon, left + iconSize / 2f, cy, iconSize, iconPaint);
         if (text) {
             Paint.FontMetrics fm = textPaint.getFontMetrics();

@@ -133,7 +133,7 @@ final class InlineAutofill {
     private PageChevron arrow(KeyboardTheme theme, int dir, String description) {
         PageChevron b = new PageChevron(context, theme.hint, dir < 0);
         b.setContentDescription(description);
-        b.setBackground(Ui.ripple(theme.keyPressed, null, Ui.dp(context, 14)));
+        b.setBackground(Ui.keyPress(theme.keyPressed, null, Ui.dp(context, 14)));
         b.setVisibility(View.GONE);
         b.setOnClickListener(v -> {
             host.onAutofillChipClicked();
@@ -457,9 +457,9 @@ final class InlineAutofill {
         int h = Ui.dp(context, 14);
         // 누르면 배경이 눌린 키 색으로 바뀌도록 색 상태 목록으로 칠한다. 칩은 서비스가 그리는 화면이지만 배경 그림은
         // 이 목록으로 칠해져 오고, 칩 화면이 눌리면 그 상태(pressed)에 맞는 색이 된다.
-        // Metro: 도구 막대 버튼처럼 바탕 없는 네모. Windows Phone에는 눌림 색이 없으므로 누르는 동안에도 칠하지 않는다.
+        // Metro: 도구 막대 버튼처럼 바탕 없는 네모, 누르는 동안 강조색(keyPressed)으로 채운다.
         ColorStateList fill = new ColorStateList(
-                new int[][]{{android.R.attr.state_pressed}, {}}, new int[]{theme.metro ? 0 : theme.keyPressed, theme.metro ? 0 : theme.key});
+                new int[][]{{android.R.attr.state_pressed}, {}}, new int[]{theme.keyPressed, theme.metro ? 0 : theme.key});
         Icon background = Icon.createWithResource(context, theme.metro ? R.drawable.autofill_chip_metro
                 : R.drawable.autofill_chip).setTintList(fill);
         Bundle v1 = new Bundle();

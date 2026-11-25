@@ -1416,6 +1416,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         slot.setVisibility(View.GONE);
         clipChip = new ClipChip(this, theme.text, theme.hint, theme.key, theme.keyPressed);
         Neu.apply(clipChip, theme, theme.key, Ui.chipRadius(this));
+        if (theme.metro) clipChip.setPressedInk(theme.onAccent);   // 누르는 동안 강조색 바탕 위의 글자 색
         clipChip.setOnClickListener(v -> {
             feedback.onToolbar();
             pasteClipChip();
@@ -1460,6 +1461,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private EditChip editChip(int icon, String label, View.OnClickListener l) {
         EditChip t = new EditChip(this, icon, label, theme.text, theme.key, theme.keyPressed);
         Neu.apply(t, theme, theme.key, Ui.chipRadius(this));
+        if (theme.metro) t.setPressedInk(theme.onAccent);
         t.setOnClickListener(v -> {
             feedback.onToolbar();
             l.onClick(v);
@@ -1489,7 +1491,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
             t.setTextColor(theme.text);
             t.setPadding(Ui.dp(this, 6), 0, Ui.dp(this, 6), 0);
-            t.setBackground(Ui.ripple(theme.keyPressed, null, 0));
+            t.setBackground(Ui.keyPress(theme.keyPressed, null, 0));
             t.setOnClickListener(v -> {
                 feedback.onKey(null);
                 applySuggestion(index);
@@ -1701,7 +1703,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private IconButton sideButton(int icon, String desc, View.OnClickListener l) {
         IconButton b = new IconButton(this, icon, theme.hint, theme.keyPressed, desc);
         int r = Ui.dp(this, 12);
-        b.setBackground(Ui.ripple(theme.keyPressed, Ui.round(theme.functionKey, r), r));
+        b.setBackground(Ui.keyPress(theme.keyPressed, Ui.round(theme.functionKey, r), r));
         b.setOnClickListener(v -> {
             feedback.onKey(null);
             l.onClick(v);
@@ -5252,7 +5254,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private TextView forgetButton(String label, int color, int fill, View.OnClickListener l) {
         TextView b = Ui.chipButton(this, label, color, fill, toolbarHeightPx());
         Neu.apply(b, theme, fill, Ui.chipRadius(this));
-        if (fill != theme.accent) Ui.metroBare(b);   // Metro: 취소는 바탕 없이 글자만 (확인은 강조색 그대로)
+        if (fill != theme.accent) Ui.metroBare(b, theme.keyPressed);   // Metro: 취소는 바탕 없이 글자만 (확인은 강조색 그대로)
         b.setOnClickListener(l);
         return b;
     }
@@ -6207,7 +6209,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             TextView t = new TextView(this);
             t.setTextSize(TypedValue.COMPLEX_UNIT_SP, EmojiPanel.textSp(prefs.emojiSize()));
             t.setGravity(Gravity.CENTER);
-            t.setBackground(Ui.ripple(theme.keyPressed, null, Ui.dp(this, 10)));
+            t.setBackground(Ui.keyPress(theme.keyPressed, null, Ui.dp(this, 10)));
             t.setOnClickListener(v -> {
                 feedback.onKey(null);
                 onEmoji(((TextView) v).getText().toString());

@@ -56,7 +56,7 @@ public final class Ui {
         b.setSingleLine(true);
         b.setPadding(dp(c, 14), 0, dp(c, 14), 0);
         float r = chipRadius(c);
-        b.setBackground(ripple(tint(textColor), round(fill, r), r));
+        b.setBackground(keyPress(tint(textColor), round(fill, r), r));
         if (Metro.on) b.setTypeface(Metro.regular());
         android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(
                 android.view.ViewGroup.LayoutParams.WRAP_CONTENT, chipHeight(c, barHeight));
@@ -67,13 +67,11 @@ public final class Ui {
     }
 
     /**
-     * Metro UI: 칩 버튼의 바탕을 없앤다 (도구 막대 버튼처럼 글자만). 누르면 색 대신 틸트로 반응한다.
+     * Metro UI: 칩 버튼의 바탕을 없앤다 (도구 막대 버튼처럼 글자만, 누르는 동안 pressColor로 채운다).
      * 강조색으로 칠한 확인 버튼처럼 눈에 띄어야 하는 버튼에는 쓰지 않는다. Metro가 아니면 아무것도 하지 않는다.
      */
-    public static void metroBare(android.view.View chip) {
-        if (!Metro.on) return;
-        chip.setBackground(null);
-        Metro.tilt(chip);   // 눌림 색 대신 틸트
+    public static void metroBare(android.view.View chip, int pressColor) {
+        if (Metro.on) chip.setBackground(metroPressed(pressColor, null));
     }
 
     /** 삭제처럼 되돌릴 수 없는 동작에 쓰는 붉은색 (어두운 테마에서는 배경에 묻히지 않게 밝게). */
@@ -95,6 +93,30 @@ public final class Ui {
         if (Metro.on) return content;
         GradientDrawable mask = round(0xFFFFFFFF, radiusPx);
         return new RippleDrawable(ColorStateList.valueOf(pressColor), content, mask);
+    }
+
+    /**
+     * 키보드(키·도구 막대·이모지·클립보드 창 등)의 누르는 바탕. 보통은 {@link #ripple}과 같고, Metro에서는 누르는 동안 네모 바탕 전체를
+     * pressColor(Metro 키보드에서는 강조색)로 바로 덮는다: WP8의 키보드와 앱 바 버튼은 누르는 동안 강조색으로 채워진다.
+     */
+    public static Drawable keyPress(int pressColor, Drawable content, float radiusPx) {
+        if (Metro.on) return metroPressed(pressColor, content);
+        return ripple(pressColor, content, radiusPx);
+    }
+
+    /** 누르는 동안 content 위에 pressColor를 덮는 바탕 (content가 null이면 평소에는 투명하다). */
+    public static Drawable metroPressed(int pressColor, Drawable content) {
+        android.graphics.drawable.StateListDrawable s = new android.graphics.drawable.StateListDrawable();
+        Drawable over = new android.graphics.drawable.ColorDrawable(pressColor);
+        Drawable normal = content != null ? content : new android.graphics.drawable.ColorDrawable(0);
+        Drawable pressed = content != null
+                ? new android.graphics.drawable.LayerDrawable(new Drawable[]{content.getConstantState() != null
+                        ? content.getConstantState().newDrawable().mutate() : content, over})
+                : over;
+        s.addState(new int[]{android.R.attr.state_pressed}, pressed);
+        s.addState(new int[0], normal);
+        s.setExitFadeDuration(100);
+        return s;
     }
 
     /**

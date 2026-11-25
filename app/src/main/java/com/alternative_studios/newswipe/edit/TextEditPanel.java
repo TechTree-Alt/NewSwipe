@@ -266,7 +266,7 @@ public final class TextEditPanel extends LinearLayout {
     private void styleKey(PadKey k) {
         boolean on = k == select && selecting;
         int fill = on ? theme.accent : k.function ? theme.functionKey : theme.key;
-        k.setBackground(Ui.ripple(on ? Ui.tint(theme.onAccent) : theme.keyPressed, Ui.round(fill, radius), radius));
+        k.setBackground(Ui.keyPress(on ? Ui.tint(theme.onAccent) : theme.keyPressed, Ui.round(fill, radius), radius));
         Neu.apply(k, theme, fill, radius);
         k.setColor(on ? theme.onAccent : theme.text);
     }

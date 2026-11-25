@@ -105,7 +105,7 @@ final class EditorSheet {
         FrameLayout header = new FrameLayout(c);
         int hp = Ui.dp(c, 12);
         header.setPadding(hp, Ui.dp(c, 12), hp, Ui.dp(c, 4));
-        int press = (colors.text & 0x00FFFFFF) | 0x33000000;
+        int press = Metro.on ? colors.accent : (colors.text & 0x00FFFFFF) | 0x33000000;   // Metro: 앱 바 버튼처럼 강조색
         IconButton cancel = new IconButton(c, Icons.CLOSE, colors.text, press, L.t("설정 창 닫기", "Close settings"));
         cancel.setOnClickListener(v -> back());
         leading = cancel;
