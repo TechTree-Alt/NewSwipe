@@ -39,7 +39,14 @@ public final class Prefs {
     public static final String VIBRATE_REPEAT_STYLE = "vibrate_repeat_style";   // 키 진동과 같은 방식 값 (기본 틱)
     public static final String VIBRATE_REPEAT_PRIMITIVE = "vibrate_repeat_primitive"; // 사용자 설정의 primitive: 0 틱 (기본), 1 클릭
     public static final String VIBRATE_REPEAT_AMP = "vibrate_repeat_amp";       // 사용자 설정의 세기 %, 10~100
-    public static final String SOUND = "sound";
+    public static final String SOUND = "sound";   // 예전 '키 소리' 스위치. 이제 SOUND_STYLE을 고르지 않았을 때만 읽는다
+    public static final String SOUND_STYLE = "sound_style";           // 키 소리 종류 (SOUND_STYLE_*)
+    /**
+     * 키 소리 종류: 없음, 디자인 모드 따라가기 (Metro·Neumorphism 모드면 그 소리, 기본 모드면 NewSwipe), NewSwipe (시스템 키음),
+     * Metro (Windows Phone 키음), Neumorphism (부드럽게 눌리는 키음).
+     */
+    public static final int SOUND_STYLE_NONE = 0, SOUND_STYLE_FOLLOW = 1, SOUND_STYLE_NEWSWIPE = 2, SOUND_STYLE_METRO = 3,
+            SOUND_STYLE_NEU = 4;
     public static final String SOUND_VOLUME = "sound_volume";         // %, 0~100
     public static final String KEY_PREVIEW = "key_preview";
     public static final String NUMBER_ROW = "number_row";
@@ -879,7 +886,7 @@ public final class Prefs {
         MENU_KEYS.put("feedback", keys(VIBRATE, VIBRATE_MS, VIBRATE_STYLE, VIBRATE_AMP, VIBRATE_PRIMITIVE, VIBRATE_PER_KEY,
                 VIBRATE_DELETE, VIBRATE_SPACE, VIBRATE_ENTER, VIBRATE_SHIFT, VIBRATE_SYMBOL, VIBRATE_LANGUAGE, VIBRATE_TOOLBAR,
                 VIBRATE_GESTURE_ON, VIBRATE_GESTURE_LEVEL, VIBRATE_GESTURE_STYLE, VIBRATE_GESTURE_PRIMITIVE, VIBRATE_GESTURE_AMP,
-                VIBRATE_REPEAT_ON, VIBRATE_REPEAT_STYLE, VIBRATE_REPEAT_PRIMITIVE, VIBRATE_REPEAT_AMP, SOUND, SOUND_VOLUME));
+                VIBRATE_REPEAT_ON, VIBRATE_REPEAT_STYLE, VIBRATE_REPEAT_PRIMITIVE, VIBRATE_REPEAT_AMP, SOUND, SOUND_STYLE, SOUND_VOLUME));
         MENU_PREFIXES.put("feedback", vibrateKeyPrefixes());
         // 클립보드 및 이모지: 메인 화면의 따로 된 메뉴.
         MENU_KEYS.put("clipemoji", keys(CLIPBOARD_HISTORY, CLIPBOARD_IMAGES, CLIPBOARD_SENSITIVE, CLIPBOARD_CLOSE_ON_USE, CLIPBOARD_SPLIT_PINNED, CLIPBOARD_CHIP,
@@ -1212,7 +1219,16 @@ public final class Prefs {
     public int vibrateRepeatStyle() { return sp.getInt(VIBRATE_REPEAT_STYLE, 0); }
     public int vibrateRepeatPrimitive() { return sp.getInt(VIBRATE_REPEAT_PRIMITIVE, 0); }
     public int vibrateRepeatAmp() { return sp.getInt(VIBRATE_REPEAT_AMP, 100); }
-    public boolean sound() { return sp.getBoolean(SOUND, false); }
+    /**
+     * 키 소리 종류 (SOUND_STYLE_*). 아직 고르지 않았으면 예전 '키 소리' 스위치에서 옮긴다:
+     * 켜 두었으면 예전처럼 모드를 따라가고 (Metro 모드에서 Metro 소리), 꺼 두었으면 없음.
+     * 스위치를 한 번도 건드리지 않았으면 (새 사용자) 모드 따라가기.
+     */
+    public int soundStyle() {
+        int fallback = !sp.contains(SOUND) || sp.getBoolean(SOUND, false) ? SOUND_STYLE_FOLLOW : SOUND_STYLE_NONE;
+        int s = sp.getInt(SOUND_STYLE, fallback);
+        return s >= SOUND_STYLE_NONE && s <= SOUND_STYLE_NEU ? s : fallback;
+    }
     public int soundVolume() { return sp.getInt(SOUND_VOLUME, 50); }
     public boolean keyPreview() { return sp.getBoolean(KEY_PREVIEW, true); }
     public boolean numberRow() { return sp.getBoolean(NUMBER_ROW, false); }
