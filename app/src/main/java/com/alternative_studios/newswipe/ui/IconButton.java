@@ -30,6 +30,7 @@ public final class IconButton extends View {
         setFocusable(true);
         setContentDescription(description);
         setBackground(Ui.ripple(pressColor, null, Ui.dp(context, 20)));
+        Metro.tilt(this);   // Metro: 눌림 색 대신 틸트
     }
 
     /**
@@ -41,7 +42,7 @@ public final class IconButton extends View {
         stroke = CHIP_STROKE;
         invalidate();
         if (Metro.on) {
-            // Metro: 둥근 칩 대신 네모, 물결 대신 누르는 동안 단색으로 덮는다.
+            // Metro: 둥근 칩 대신 네모, 눌림 색 없이 (틸트로 반응한다).
             setBackground(new InsetDrawable(Ui.metroPressed(pressed, fill == 0 ? null : Ui.round(fill, 0)),
                     insetH, insetV, insetH, insetV));
             return;

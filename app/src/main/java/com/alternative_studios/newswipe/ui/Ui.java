@@ -67,11 +67,13 @@ public final class Ui {
     }
 
     /**
-     * Metro UI: 칩 버튼의 바탕을 없앤다 (도구 막대 버튼처럼 글자만, 누르는 동안 pressColor로 채운다).
+     * Metro UI: 칩 버튼의 바탕을 없앤다 (도구 막대 버튼처럼 글자만). 누르면 색 대신 틸트로 반응한다 (pressColor는 쓰지 않는다).
      * 강조색으로 칠한 확인 버튼처럼 눈에 띄어야 하는 버튼에는 쓰지 않는다. Metro가 아니면 아무것도 하지 않는다.
      */
     public static void metroBare(android.view.View chip, int pressColor) {
-        if (Metro.on) chip.setBackground(metroPressed(pressColor, null));
+        if (!Metro.on) return;
+        chip.setBackground(null);
+        Metro.tilt(chip);   // 눌림 색 대신 틸트
     }
 
     /** 삭제처럼 되돌릴 수 없는 동작에 쓰는 붉은색 (어두운 테마에서는 배경에 묻히지 않게 밝게). */
@@ -86,7 +88,8 @@ public final class Ui {
 
     /**
      * 눌렀을 때 물결 효과가 있는 배경. content가 null이면 투명 배경.
-     * Metro 모드에서는 물결 대신 누르는 동안 네모 바탕 전체를 pressColor로 덮는다 (Windows Phone의 눌림은 단색으로 바로 바뀐다).
+     * Metro 모드에서는 눌림 색이 없다: Windows Phone(Toolkit의 목록·메뉴 항목 템플릿)에는 Pressed 상태가 없고 누르면 틸트로만
+     * 반응하므로 content만 돌려준다. 틸트는 각 뷰가 Metro.tilt로 건다.
      */
     public static Drawable ripple(int pressColor, Drawable content, float radiusPx) {
         if (Metro.on) return metroPressed(pressColor, content);
@@ -94,19 +97,9 @@ public final class Ui {
         return new RippleDrawable(ColorStateList.valueOf(pressColor), content, mask);
     }
 
-    /** 누르는 동안 content 위에 pressColor를 덮는 바탕 (content가 null이면 평소에는 투명하다). */
+    /** Metro의 누르는 바탕: 눌림 색 없이 content 그대로 (content가 null이면 투명). pressColor는 쓰지 않는다. */
     public static Drawable metroPressed(int pressColor, Drawable content) {
-        android.graphics.drawable.StateListDrawable s = new android.graphics.drawable.StateListDrawable();
-        Drawable over = new android.graphics.drawable.ColorDrawable(pressColor);
-        Drawable normal = content != null ? content : new android.graphics.drawable.ColorDrawable(0);
-        Drawable pressed = content != null
-                ? new android.graphics.drawable.LayerDrawable(new Drawable[]{content.getConstantState() != null
-                        ? content.getConstantState().newDrawable().mutate() : content, over})
-                : over;
-        s.addState(new int[]{android.R.attr.state_pressed}, pressed);
-        s.addState(new int[0], normal);
-        s.setExitFadeDuration(100);
-        return s;
+        return content != null ? content : new android.graphics.drawable.ColorDrawable(0);
     }
 
     /**
