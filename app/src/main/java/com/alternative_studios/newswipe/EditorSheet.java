@@ -164,7 +164,7 @@ final class EditorSheet {
         sheet.addView(testRow, SettingsWidgets.matchWrap());
 
         scroll = new ScrollView(c);
-        scroll.setVerticalScrollBarEnabled(!com.alternative_studios.newswipe.ui.Metro.on);   // Metro에는 스크롤 막대가 없다
+        com.alternative_studios.newswipe.ui.Metro.scrollIndicator(scroll);   // Metro: WP8처럼 끄는 동안만 보이는 가는 표시
         scroll.setFillViewport(true);
         body = new LinearLayout(c);
         body.setOrientation(LinearLayout.VERTICAL);

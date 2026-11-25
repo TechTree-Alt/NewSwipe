@@ -260,7 +260,8 @@ public final class AppTheme {
                 // Windows Phone의 TextBox: 평소에는 옅은 회색 네모, 입력 중에는 흰 바탕에 강조색 테두리, 글자는 늘 검정.
                 // 부른 쪽이 직접 칠한 바탕(GradientDrawable)은 그대로 둔다.
                 android.content.Context c = e.getContext();
-                android.graphics.drawable.GradientDrawable idle = Ui.round(0xFFBFBFBF, 0);
+                // PhoneTextBoxBrush: 다크 #BFFFFFFF(검정 위 → #BFBFBF), 라이트 #26000000(흰 위 → #D9D9D9).
+                android.graphics.drawable.GradientDrawable idle = Ui.round(Metro.dark ? 0xFFBFBFBF : 0xFFD9D9D9, 0);
                 android.graphics.drawable.GradientDrawable focus = Ui.round(0xFFFFFFFF, 0);
                 focus.setStroke(Ui.dp(c, 2), accent);
                 android.graphics.drawable.StateListDrawable bg = new android.graphics.drawable.StateListDrawable();
@@ -268,7 +269,7 @@ public final class AppTheme {
                 bg.addState(new int[0], idle);
                 e.setBackgroundTintList(null);
                 e.setBackground(bg);
-                e.setTextColor(0xFF000000);
+                e.setTextColor(Metro.dark ? 0xFF000000 : 0xDE000000);   // PhoneTextBoxForegroundBrush
                 e.setHintTextColor(0xFF666666);
                 e.setPadding(Ui.dp(c, 10), Ui.dp(c, 9), Ui.dp(c, 10), Ui.dp(c, 9));
             }

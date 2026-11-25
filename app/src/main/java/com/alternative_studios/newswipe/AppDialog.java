@@ -213,7 +213,7 @@ public final class AppDialog extends Dialog {
      */
     private void addMessage(LinearLayout root, TextView m) {
         ScrollView scroll = new ClipScroll(ui);
-        scroll.setVerticalScrollBarEnabled(!metro);   // Metro에는 스크롤 막대가 없다
+        Metro.scrollIndicator(scroll);   // Metro: WP8처럼 끄는 동안만 보이는 가는 표시
         scroll.setVerticalFadingEdgeEnabled(true);
         scroll.addView(m);
         root.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
@@ -225,7 +225,7 @@ public final class AppDialog extends Dialog {
         View middle = null;
         if (b.items != null) {
             ScrollView scroll = new ClipScroll(ui);
-            scroll.setVerticalScrollBarEnabled(!com.alternative_studios.newswipe.ui.Metro.on);   // Metro에는 스크롤 막대가 없다
+            com.alternative_studios.newswipe.ui.Metro.scrollIndicator(scroll);   // Metro: WP8처럼 끄는 동안만 보이는 가는 표시
             scroll.setVerticalFadingEdgeEnabled(true);
             rows = new LinearLayout(ui);
             rows.setOrientation(LinearLayout.VERTICAL);
@@ -320,11 +320,11 @@ public final class AppDialog extends Dialog {
         b.setSingleLine(true);
         b.setEllipsize(android.text.TextUtils.TruncateAt.END);
         if (metro) {
-            // Windows Phone의 버튼: 글자 색 테두리, 누르면 강조색으로 채워진다.
-            b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
-            b.setTypeface(Metro.regular());
+            // Windows Phone의 버튼: 글자 색 3px 테두리, SemiBold 글자, 누르면 강조색으로 채워진다.
+            b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 19);
+            b.setTypeface(Metro.semibold());
             android.graphics.drawable.GradientDrawable idle = Ui.round(0, 0);
-            idle.setStroke(Ui.dp(ui, 2), Metro.fg);
+            idle.setStroke(Ui.dp(ui, Metro.BORDER_DP), Metro.fg);
             android.graphics.drawable.GradientDrawable down = Ui.round(colors.accent, 0);
             android.graphics.drawable.StateListDrawable bg = new android.graphics.drawable.StateListDrawable();
             bg.addState(new int[]{android.R.attr.state_pressed}, down);

@@ -969,6 +969,35 @@ public final class Metro {
         if (android.os.Build.VERSION.SDK_INT < 34) a.overridePendingTransition(0, 0);
     }
 
+    // ---------------------------------------------------------------- 버튼·스크롤 표시
+
+    /** 버튼 테두리 굵기 (dp): PhoneBorderThickness 3px. */
+    public static final float BORDER_DP = 2.25f;
+
+    /**
+     * 버튼 글자: WP SDK의 PhoneButtonBase처럼 PhoneFontFamilySemiBold, PhoneFontSizeMediumLarge(25.333px → 19sp).
+     * logicalSp는 설정 검색이 보는 원래 크기 ({@link #text} 참고).
+     */
+    public static void buttonText(TextView t, float logicalSp) {
+        text(t, 19, semibold(), logicalSp);
+    }
+
+    /**
+     * 스크롤 틀의 세로 스크롤 표시. Metro: WP8의 ScrollViewer처럼 끄는 동안만 나타났다가 손을 떼고 곧 사라지는 가는 네모 표시
+     * (누를 수는 없다). 보통 모드: 시스템 스크롤 막대 그대로.
+     */
+    public static void scrollIndicator(View scroll) {
+        scroll.setVerticalScrollBarEnabled(true);
+        if (!on) return;
+        scroll.setScrollbarFadingEnabled(true);
+        scroll.setScrollBarDefaultDelayBeforeFade(1000);   // 제스처가 끝나고 1초 뒤에 사라진다
+        if (android.os.Build.VERSION.SDK_INT >= 29) {
+            scroll.setVerticalScrollbarThumbDrawable(new android.graphics.drawable.ColorDrawable(SUBTLE));
+            scroll.setVerticalScrollbarTrackDrawable(null);
+            scroll.setScrollBarSize(Ui.dp(scroll.getContext(), 3));
+        }
+    }
+
     // ---------------------------------------------------------------- 체크 상자·라디오
 
     /**

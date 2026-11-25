@@ -42,7 +42,8 @@ final class ResetDialog {
             // Metro: 다른 버튼처럼 글자 색 테두리의 네모, 누르면 강조색으로 채워진다.
             AppTheme t = AppTheme.of(activity);
             android.graphics.drawable.GradientDrawable idle = Ui.round(0, 0);
-            idle.setStroke(Ui.dp(activity, 2), t.text);
+            idle.setStroke(Ui.dp(activity, com.alternative_studios.newswipe.ui.Metro.BORDER_DP), t.text);
+            com.alternative_studios.newswipe.ui.Metro.buttonText(reset, 15);
             android.graphics.drawable.GradientDrawable down = Ui.round(t.accent, 0);
             android.graphics.drawable.StateListDrawable bg = new android.graphics.drawable.StateListDrawable();
             bg.addState(new int[]{android.R.attr.state_pressed}, down);

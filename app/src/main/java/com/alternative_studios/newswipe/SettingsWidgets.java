@@ -107,10 +107,10 @@ final class SettingsWidgets {
         return t;
     }
 
-    /** 설명 글 (작고 옅은 글자). */
+    /** 설명 글 (작고 옅은 글자). Metro: PhoneTextSubtleStyle (PhoneFontSizeNormal 20px → 15sp, PhoneSubtleBrush). */
     TextView note(String s) {
         TextView t = text(s, 13, hint);
-        if (Metro.on) Metro.text(t, 14, Metro.regular(), 13);
+        if (Metro.on) Metro.text(t, 15, Metro.regular(), 13);
         t.setLineSpacing(Ui.dp(c, 3), 1f);
         t.setPadding(0, Ui.dp(c, 6), 0, Ui.dp(c, 6));
         return t;
@@ -164,7 +164,7 @@ final class SettingsWidgets {
         texts.addView(t);
         if (desc != null) {
             TextView d = text(desc, 13, hint);
-            if (Metro.on) Metro.text(d, 14, Metro.regular(), 13);
+            if (Metro.on) Metro.text(d, 15, Metro.regular(), 13);
             texts.addView(d);
         }
         row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
@@ -324,7 +324,7 @@ final class SettingsWidgets {
         Context c = row.getContext();
         AppTheme t = AppTheme.of(c);
         android.graphics.drawable.GradientDrawable idle = Ui.round(0, 0);
-        idle.setStroke(Ui.dp(c, 2), t.text);
+        idle.setStroke(Ui.dp(c, Metro.BORDER_DP), t.text);
         android.graphics.drawable.StateListDrawable bg = new android.graphics.drawable.StateListDrawable();
         bg.addState(new int[]{android.R.attr.state_pressed}, Ui.round(t.accent, 0));
         bg.addState(new int[0], idle);
@@ -398,14 +398,14 @@ final class SettingsWidgets {
         if (Metro.on) {
             // Windows Phone의 버튼: 글자 색 테두리만 있는 네모. 누르는 동안 강조색으로 채워지고 글자는 그 위의 색이 된다.
             android.graphics.drawable.GradientDrawable idle = Ui.round(0, 0);
-            idle.setStroke(Ui.dp(c, 2), text);
+            idle.setStroke(Ui.dp(c, Metro.BORDER_DP), text);
             android.graphics.drawable.GradientDrawable down = Ui.round(accent, 0);
             down.setStroke(Ui.dp(c, 2), accent);
             android.graphics.drawable.StateListDrawable bg = new android.graphics.drawable.StateListDrawable();
             bg.addState(new int[]{android.R.attr.state_pressed}, down);
             bg.addState(new int[0], idle);
             row.setBackground(bg);
-            Metro.text(t, 18, Metro.regular(), 15);
+            Metro.buttonText(t, 15);
             t.setTextColor(new android.content.res.ColorStateList(
                     new int[][]{{android.R.attr.state_pressed}, {}}, new int[]{onAccent, text}));
             t.setDuplicateParentStateEnabled(true);

@@ -886,7 +886,7 @@ public final class OnboardingActivity extends Activity {
     /** 작은 화면이나 키보드가 올라왔을 때도 다 볼 수 있게 스크롤로 감싼다. 내용이 짧으면 화면을 꽉 채운다 (빈 칸이 늘어난다). */
     private ScrollView wrapScroll(View content) {
         ScrollView scroll = new ScrollView(this);
-        scroll.setVerticalScrollBarEnabled(!com.alternative_studios.newswipe.ui.Metro.on);   // Metro에는 스크롤 막대가 없다
+        com.alternative_studios.newswipe.ui.Metro.scrollIndicator(scroll);   // Metro: WP8처럼 끄는 동안만 보이는 가는 표시
         scroll.setFillViewport(true);
         scroll.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
         scroll.addView(content, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,

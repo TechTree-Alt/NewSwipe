@@ -421,7 +421,7 @@ final class KeyEditPanel {
         add.setOnClickListener(v -> addPopupRow(rows, "", true));
         box.addView(add);
         ScrollView scroll = new ScrollView(a);
-        scroll.setVerticalScrollBarEnabled(!com.alternative_studios.newswipe.ui.Metro.on);   // Metro에는 스크롤 막대가 없다
+        com.alternative_studios.newswipe.ui.Metro.scrollIndicator(scroll);   // Metro: WP8처럼 끄는 동안만 보이는 가는 표시
         scroll.addView(box);
         AppDialog d = AppTheme.dialogBuilder(a)
                 .setTitle(L.t("'" + key.label + "' 길게 누르기", "Long press '" + key.label + "'"))

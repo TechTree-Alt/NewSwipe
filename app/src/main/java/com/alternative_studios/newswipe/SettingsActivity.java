@@ -140,7 +140,7 @@ public final class SettingsActivity extends Activity {
         if (KEYBOARD.equals(sectionId)) frame.withAction(Icons.UNDO, L.t("마지막 변경 되돌리기", "Undo last change"), v -> undoLast()).keyboardOverlays();
         else if ("onehand".equals(sectionId)) frame.keyboardOverlays();   // 미리보기를 실제 키보드처럼 화면 아래에 붙인다
         ScrollView scroll = new ScrollView(this);
-        scroll.setVerticalScrollBarEnabled(!com.alternative_studios.newswipe.ui.Metro.on);   // Metro에는 스크롤 막대가 없다
+        com.alternative_studios.newswipe.ui.Metro.scrollIndicator(scroll);   // Metro: WP8처럼 끄는 동안만 보이는 가는 표시
         scrollView = scroll;
         scroll.setFillViewport(true);
         scroll.setId(0x5E771001);   // 화면 모드를 바꿔 다시 만들 때 스크롤 위치를 복원한다
@@ -4471,7 +4471,7 @@ public final class SettingsActivity extends Activity {
             // Neumorphism: 무지개 면이 다른 버튼처럼 솟아오르고, 누르는 동안 안으로 들어간다.
             NeuUi.button(row, RAINBOW, Ui.dp(this, 14));
         } else if (Metro.on) {
-            // Metro: 모서리 없는 무지개 타일. 다른 Metro 버튼처럼 굵지 않은 글자이고, 누르는 동안 강조색으로 채워진다.
+            // Metro: 모서리 없는 무지개 타일. 다른 Metro 버튼처럼 SemiBold 글자이고, 누르는 동안 강조색으로 채워진다.
             android.graphics.drawable.StateListDrawable bg = new android.graphics.drawable.StateListDrawable();
             bg.addState(new int[]{android.R.attr.state_pressed}, Ui.round(accentColor, 0));
             // Metro는 그라데이션을 쓰지 않는다 (디지털답게, 꾸밈 없이): 무지개를 단색 띠 여섯 개로 나눠 칠한다.
@@ -4493,7 +4493,7 @@ public final class SettingsActivity extends Activity {
                 @Override public int getOpacity() { return android.graphics.PixelFormat.OPAQUE; }
             });
             row.setBackground(bg);
-            t.setTypeface(Metro.regular());
+            t.setTypeface(Metro.semibold());
             t.setTextColor(new android.content.res.ColorStateList(new int[][]{{android.R.attr.state_pressed}, {}},
                     new int[]{onAccentColor, ink}));
         }
