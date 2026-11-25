@@ -53,16 +53,8 @@ public final class ClipChip extends View {
         }
         setClickable(true);
         setFocusable(true);
-        textColorNormal = textColor;
-        iconColorNormal = iconColor;
     }
 
-    private int textColorNormal, iconColorNormal;
-
-    /** 지금 상태의 색 (Metro도 누르는 동안 색을 바꾸지 않는다: 눌림은 틸트로 보인다). */
-    private int inkNow(int normal) {
-        return normal;
-    }
 
     /** 미리보기 글을 바꾼다 (한 줄로 보인다). */
     public void setLabel(String s) {
@@ -117,8 +109,6 @@ public final class ClipChip extends View {
         boolean text = fitted.length() > 0;
         // 글이 없으면 아이콘을 가운데에 둔다.
         float iconX = text ? padH - iconBlank + iconSize / 2f : getWidth() / 2f;
-        iconPaint.setColor(inkNow(iconColorNormal));
-        textPaint.setColor(inkNow(textColorNormal));
         Icons.draw(canvas, Icons.CLIPBOARD, iconX, cy, iconSize, iconPaint);
         if (text) {
             Paint.FontMetrics fm = textPaint.getFontMetrics();

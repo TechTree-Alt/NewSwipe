@@ -43,8 +43,7 @@ public final class IconButton extends View {
         invalidate();
         if (Metro.on) {
             // Metro: 둥근 칩 대신 네모, 눌림 색 없이 (틸트로 반응한다).
-            setBackground(new InsetDrawable(Ui.metroPressed(pressed, fill == 0 ? null : Ui.round(fill, 0)),
-                    insetH, insetV, insetH, insetV));
+            setBackground(fill == 0 ? null : new InsetDrawable(Ui.round(fill, 0), insetH, insetV, insetH, insetV));
             return;
         }
         InsetDrawable content = new InsetDrawable(Ui.round(fill, radius), insetH, insetV, insetH, insetV);

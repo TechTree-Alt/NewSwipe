@@ -1,7 +1,5 @@
 package com.alternative_studios.newswipe;
 
-import android.animation.Animator;
-import android.animation.AnimatorListenerAdapter;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.ColorFilter;
@@ -23,6 +21,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
+import android.view.animation.LinearInterpolator;
 import android.view.animation.PathInterpolator;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
@@ -30,6 +29,7 @@ import android.widget.PopupWindow;
 import android.widget.TextView;
 
 import com.alternative_studios.newswipe.ui.Metro;
+import com.alternative_studios.newswipe.ui.Neu;
 import com.alternative_studios.newswipe.ui.NeuUi;
 import com.alternative_studios.newswipe.ui.Ui;
 
@@ -37,25 +37,25 @@ import java.util.function.IntConsumer;
 import java.util.function.ObjIntConsumer;
 
 /**
- * 항목이 몇 개뿐인 고르기(최대 {@link #MAX_ITEMS}개)를 대화상자 대신 누른 줄 위에 펼치는 드롭다운 목록 (맨 윗 항목이 누른 줄을 덮는다).
+ * 항목이 몇 개뿐인 고르기(6개 이하)를 대화상자 대신 누른 줄 위에 펼치는 드롭다운 목록 (맨 윗 항목이 누른 줄을 덮는다).
  *
  * <ul>
  * <li>기본: Material 3 메뉴. 카드보다 한 단계 높은 면의 둥근 상자(16dp)가 그림자로 떠 있고, 누른 줄의 오른쪽 끝(지금 값
- *     자리)에 맞춰 Material의 표준 움직임(살짝 작은 크기에서 커지며 나타남, 150ms 감속 곡선)으로 펼쳐진다.
- *     고른 항목은 옅은 강조색 알약에 강조색 글자와 체크 표시.</li>
+ *     자리)에 맞춰 80% 크기에서 커지며 나타나고(150ms 감속) 제자리에서 흐려지며 사라진다(100ms).
+ *     고른 항목은 옅은 강조색 알약에 강조색 글자와 체크 표시, 기본값은 이름 아래 줄에 작은 '기본'.</li>
  * <li>Neumorphism: 바탕과 같은 색의 상자가 큰 그림자로 솟아오른다. 고른 항목은 안으로 들어간 홈, 누르는 동안의 항목도 들어간다.
- *     부드럽게 떠오르며(크기 96% → 100%, 감속) 나타난다.</li>
+ *     부드럽게 떠오르며(크기 96% → 100%, 감속) 나타나고 살짝 가라앉으며 사라진다.</li>
  * <li>Metro: Windows Phone Toolkit의 ListPicker처럼 떠 있는 창 없이 그 자리에서 아래 내용을 밀어내며 펼쳐진다(ExponentialEase
- *     EaseOut). 흰 바탕에 강조색 테두리의 네모, 고른 항목은 표시 없이 강조색 글자, 누르면 틸트.</li>
+ *     EaseOut). 흰 바탕에 강조색 테두리의 네모, 고른 항목은 표시 없이 강조색 글자, 기본값은 이름 오른쪽에 작은 '기본', 누르면 틸트.</li>
  * </ul>
+ *
+ * <p>떠 있는 목록은 상자가 아니라 그림자 자리까지 담은 틀을 움직인다. 투명도가 1보다 작은 뷰는 자기 경계로 잘린 버퍼에 그려지므로,
+ * 상자를 움직이면 상자 밖으로 번지는 그림자가 움직이는 동안 잘리거나 상자와 따로 흐려진다.
  *
  * <p>가볍게: XML·ListView·어댑터 없이 항목마다 TextView 하나(기본값 표시는 같은 글자에 붙인 작은 글씨)로 만들고, 움직이는 동안만 하드웨어 층으로 그린다.
  * 열 때마다 새로 만들고 닫으면 모두 놓는다. 한 번에 하나만 열린다.
  */
 final class DropdownMenu {
-    /** 이보다 항목이 많으면 드롭다운 대신 대화상자로 고른다. */
-    static final int MAX_ITEMS = 6;
-
     private static java.lang.ref.WeakReference<DropdownMenu> current;
 
     private final View anchor;
@@ -97,7 +97,7 @@ final class DropdownMenu {
         this.selected = selected;
     }
 
-    /** anchor(누른 줄) 아래에 items를 펼칠 준비를 한다. selected는 지금 고른 차례 (없으면 -1). */
+    /** anchor(누른 줄)에 items를 펼칠 준비를 한다. selected는 지금 고른 차례 (없으면 -1). */
     static DropdownMenu of(View anchor, String[] items, int selected) {
         return new DropdownMenu(anchor, items, selected);
     }
@@ -147,7 +147,6 @@ final class DropdownMenu {
         }
     }
 
-
     /** 모든 항목이 한 줄에 들어가는 상자 너비: 가장 긴 글자 + 줄의 안쪽 여백·체크 자리 + 상자 여백 (반올림 오차로 꺾이지 않게 조금 더). */
     private int naturalWidth(LinearLayout box) {
         float max = 0;
@@ -193,8 +192,8 @@ final class DropdownMenu {
             int h = dp(NeuUi.on ? 16 : 12);
             v.setPadding(h, dp(8), h, dp(8));
             v.setCompoundDrawablePadding(dp(12));
-            // 체크는 끝(오른쪽, 오른쪽에서 왼쪽으로 쓰는 언어는 왼쪽)에 둔다. 상대 위치(setCompoundDrawablesRelative)로 붙이면
-            // 화면에 붙기 전까지 자리가 정해지지 않아, 펼치기 전에 잰 너비에 체크 자리가 빠져 항목이 두 줄로 꺾였다.
+            // 체크는 끝(오른쪽, 오른쪽에서 왼쪽으로 쓰는 언어는 왼쪽)에 둔다. 상대 위치(setCompoundDrawablesRelative)는
+            // 화면에 붙기 전까지 자리가 정해지지 않아 펼치기 전에 재는 너비(naturalWidth)에 들어가지 않으므로 실제 방향으로 붙인다.
             CheckMark check = new CheckMark(dp(20), t.accent);
             if (anchor.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL) v.setCompoundDrawables(check, null, null, null);
             else v.setCompoundDrawables(null, null, check, null);
@@ -309,13 +308,12 @@ final class DropdownMenu {
         } else {
             // M3 메뉴: 카드보다 한 단계 높은 면 (글자색을 조금 섞는다), 그림자로 뜬다.
             radius = dp(16);
-            box.setBackground(Ui.round(blend(t.card, t.text, t.dark ? 0.07f : 0.025f), radius));
+            box.setBackground(Ui.round(Neu.blend(t.card, t.text, t.dark ? 0.07f : 0.025f), radius));
             box.setPadding(dp(4), dp(4), dp(4), dp(4));
             box.setElevation(dp(6));
             box.setClipToOutline(true);
         }
-        // 그림자 자리: 상자 둘레를 비워 둬야 창 경계에서 그림자가 잘리지 않는다.
-        // 기본 모드의 높이(6dp) 그림자는 아래로 더 번지므로 넉넉히 둔다 (틀을 흐리게 할 때 그림자가 틀 경계에서 잘리지 않게).
+        // 그림자 자리: 상자 둘레를 비워 둬야 창·틀 경계에서 그림자가 잘리지 않는다 (기본 모드의 높이 그림자는 아래로 더 번진다).
         int pad = Metro.on ? 0 : NeuUi.on ? (int) Math.ceil(NeuUi.spread(c, NeuUi.LARGE)) : dp(16);
         FrameLayout root = new FrameLayout(c);
         root.setPadding(pad, pad, pad, pad);
@@ -329,7 +327,6 @@ final class DropdownMenu {
         anchor.getWindowVisibleDisplayFrame(frame);
         int margin = dp(16);
         int maxW = frame.width() - margin * 2;
-        // 항목이 웬만하면 한 줄에 들어가도록, 가장 긴 항목의 글자 너비를 직접 잰다 (화면 폭을 넘을 때만 꺾인다).
         int w = Math.max(Math.min(dp(180), maxW), Math.min(naturalWidth(box), maxW));
         box.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
@@ -369,18 +366,15 @@ final class DropdownMenu {
         popup.setOnDismissListener(this::finish);
         menu = box;
         popup.showAtLocation(anchor.getRootView(), Gravity.TOP | Gravity.START, x - win[0] - pad, y - win[1] - pad);
-        enter(box, w, h);
+        enter(w);
     }
 
     /** 펼치는 움직임: 기본은 Material 메뉴처럼 모서리에서 커지며, Neumorphism은 부드럽게 떠오르고, Metro는 스위블. */
-    private void enter(View box, int w, int h) {
+    private void enter(int w) {
         if (Metro.on) {
-            Metro.swivelIn(box);
+            Metro.swivelIn(menu);
             return;
         }
-        // 상자가 아니라 그림자 자리까지 담은 틀(상자의 부모)을 움직인다. 투명도가 1보다 작은 뷰는 자기 경계로 잘린
-        // 화면 밖 버퍼에 그려지므로, 상자를 흐리게 하면 상자 밖의 그림자(Neumorphism의 그림자, 기본 모드의 높이 그림자)가
-        // 잘리거나 따로 놀았다. 틀을 흐리게 하면 상자와 그림자가 한 장처럼 함께 나타나고 사라진다.
         View frame = animTarget();
         int pad = frame.getPaddingLeft();
         frame.setPivotX(pad + w);
@@ -413,24 +407,17 @@ final class DropdownMenu {
             finish();
             return;
         }
-        View box = animTarget();
-        box.animate().cancel();
+        View v = animTarget();
+        v.animate().cancel();
         if (Metro.on) {
-            box.animate().alpha(0f).setDuration(100).withEndAction(this::dismissPopup).start();
+            v.animate().alpha(0f).setDuration(100).withEndAction(this::dismissPopup).start();
             return;
         }
-        // Material 메뉴는 닫힐 때 제자리에서 그림자와 함께 고르게 흐려지기만 한다 (100ms, 일정한 빠르기).
-        // Neumorphism은 살짝 가라앉으며 흐려진다.
-        float sc = NeuUi.on ? 0.97f : 1f;
-        box.animate().alpha(0f).scaleY(sc).scaleX(sc).setDuration(NeuUi.on ? 140 : 100)
-                .setInterpolator(NeuUi.on ? new PathInterpolator(0.3f, 0f, 1f, 1f) : new android.view.animation.LinearInterpolator())
-                .withLayer().setListener(new AnimatorListenerAdapter() {
-                    @Override
-                    public void onAnimationEnd(Animator animation) {
-                        box.animate().setListener(null);
-                        dismissPopup();
-                    }
-                }).start();
+        // 기본: Material 메뉴처럼 제자리에서 일정한 빠르기로 흐려지기만 한다. Neumorphism: 살짝 가라앉으며 흐려진다.
+        float scale = NeuUi.on ? 0.97f : 1f;
+        v.animate().alpha(0f).scaleX(scale).scaleY(scale).setDuration(NeuUi.on ? 140 : 100)
+                .setInterpolator(NeuUi.on ? new PathInterpolator(0.3f, 0f, 1f, 1f) : new LinearInterpolator())
+                .withLayer().withEndAction(this::dismissPopup).start();
     }
 
     /** 펼치고 접을 때 움직이는 뷰: 그림자 자리까지 담은 틀 (Metro는 그림자가 없어 상자). */
@@ -466,13 +453,6 @@ final class DropdownMenu {
         anchor.removeOnAttachStateChangeListener(detach);
         if (current != null && current.get() == this) current = null;
         if (onDismiss != null) onDismiss.run();
-    }
-
-    private static int blend(int a, int b, float f) {
-        int ar = (a >> 16) & 0xFF, ag = (a >> 8) & 0xFF, ab = a & 0xFF;
-        int br = (b >> 16) & 0xFF, bg = (b >> 8) & 0xFF, bb = b & 0xFF;
-        return 0xFF000000 | (Math.round(ar + (br - ar) * f) << 16) | (Math.round(ag + (bg - ag) * f) << 8)
-                | Math.round(ab + (bb - ab) * f);
     }
 
     /** 고른 항목 끝의 체크 표시 (고르지 않은 항목은 같은 자리를 비워 둬 글자 줄이 가지런하다). */

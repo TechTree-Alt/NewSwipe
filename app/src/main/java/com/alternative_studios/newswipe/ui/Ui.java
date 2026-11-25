@@ -67,10 +67,10 @@ public final class Ui {
     }
 
     /**
-     * Metro UI: 칩 버튼의 바탕을 없앤다 (도구 막대 버튼처럼 글자만). 누르면 색 대신 틸트로 반응한다 (pressColor는 쓰지 않는다).
+     * Metro UI: 칩 버튼의 바탕을 없앤다 (도구 막대 버튼처럼 글자만). 누르면 색 대신 틸트로 반응한다.
      * 강조색으로 칠한 확인 버튼처럼 눈에 띄어야 하는 버튼에는 쓰지 않는다. Metro가 아니면 아무것도 하지 않는다.
      */
-    public static void metroBare(android.view.View chip, int pressColor) {
+    public static void metroBare(android.view.View chip) {
         if (!Metro.on) return;
         chip.setBackground(null);
         Metro.tilt(chip);   // 눌림 색 대신 틸트
@@ -92,14 +92,9 @@ public final class Ui {
      * 반응하므로 content만 돌려준다. 틸트는 각 뷰가 Metro.tilt로 건다.
      */
     public static Drawable ripple(int pressColor, Drawable content, float radiusPx) {
-        if (Metro.on) return metroPressed(pressColor, content);
+        if (Metro.on) return content;
         GradientDrawable mask = round(0xFFFFFFFF, radiusPx);
         return new RippleDrawable(ColorStateList.valueOf(pressColor), content, mask);
-    }
-
-    /** Metro의 누르는 바탕: 눌림 색 없이 content 그대로 (content가 null이면 투명). pressColor는 쓰지 않는다. */
-    public static Drawable metroPressed(int pressColor, Drawable content) {
-        return content != null ? content : new android.graphics.drawable.ColorDrawable(0);
     }
 
     /**

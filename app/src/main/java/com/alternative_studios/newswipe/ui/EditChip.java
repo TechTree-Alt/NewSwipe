@@ -44,15 +44,8 @@ public final class EditChip extends View {
         setContentDescription(label);
         setClickable(true);
         setFocusable(true);
-        colorNormal = color;
     }
 
-    private int colorNormal;
-
-    /** 지금 상태의 색 (Metro도 누르는 동안 색을 바꾸지 않는다: 눌림은 틸트로 보인다). */
-    private int inkNow(int normal) {
-        return normal;
-    }
 
     /** 이 칩의 폭에 아이콘과 이름이 다 들어가는지. */
     private boolean fits() {
@@ -77,8 +70,6 @@ public final class EditChip extends View {
         boolean text = rowFits();
         // 아이콘과 이름을 한 덩어리로 칩 가운데에 둔다. 이름이 들어가지 않으면 아이콘만 가운데에.
         float left = (getWidth() - (text ? iconSize + gap + textW : iconSize)) / 2f;
-        iconPaint.setColor(inkNow(colorNormal));
-        textPaint.setColor(inkNow(colorNormal));
         Icons.draw(canvas, icon, left + iconSize / 2f, cy, iconSize, iconPaint);
         if (text) {
             Paint.FontMetrics fm = textPaint.getFontMetrics();

@@ -2453,7 +2453,7 @@ public final class SettingsActivity extends Activity {
         doubleTapTime.setVisibility(prefs.consonantInputMode() != Prefs.INPUT_SWIPE || (harvesting && !previewing) ? View.VISIBLE : View.GONE);
         SettingsWidgets.ValueRow[] consonant = new SettingsWidgets.ValueRow[1];
         consonant[0] = widgets.dropdownRow(L.t("쌍자음 입력", "Double consonant input"), inputModes()[prefs.consonantInputMode()], v ->
-                pickInputMode(v,  prefs.consonantInputMode(), Prefs.INPUT_SWIPE, mode -> {
+                pickInputMode(v, prefs.consonantInputMode(), Prefs.INPUT_SWIPE, mode -> {
                     prefs.setConsonantInputMode(mode);
                     consonant[0].set(inputModes()[mode]);
                     Ui.setVisibleAnimated(doubleTapTime, mode != Prefs.INPUT_SWIPE);
@@ -2462,7 +2462,7 @@ public final class SettingsActivity extends Activity {
         input.addView(doubleTapTime);
         SettingsWidgets.ValueRow[] vowel = new SettingsWidgets.ValueRow[1];
         vowel[0] = widgets.dropdownRow(L.t("이중모음 입력", "Y-vowel input"), inputModes()[prefs.vowelInputMode()], v ->
-                pickInputMode(v,  prefs.vowelInputMode(), Prefs.INPUT_BOTH, mode -> {
+                pickInputMode(v, prefs.vowelInputMode(), Prefs.INPUT_BOTH, mode -> {
                     prefs.setVowelInputMode(mode);
                     vowel[0].set(inputModes()[mode]);
                 }));

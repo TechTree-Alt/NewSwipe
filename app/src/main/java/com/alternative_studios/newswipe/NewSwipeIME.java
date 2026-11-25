@@ -5252,7 +5252,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private TextView forgetButton(String label, int color, int fill, View.OnClickListener l) {
         TextView b = Ui.chipButton(this, label, color, fill, toolbarHeightPx());
         Neu.apply(b, theme, fill, Ui.chipRadius(this));
-        if (fill != theme.accent) Ui.metroBare(b, theme.keyPressed);   // Metro: 취소는 바탕 없이 글자만 (확인은 강조색 그대로)
+        if (fill != theme.accent) Ui.metroBare(b);   // Metro: 취소는 바탕 없이 글자만 (확인은 강조색 그대로)
         b.setOnClickListener(l);
         return b;
     }
