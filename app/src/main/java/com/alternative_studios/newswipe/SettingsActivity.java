@@ -4250,7 +4250,7 @@ public final class SettingsActivity extends Activity {
     /** 키 소리 종류의 이름 (Prefs.SOUND_STYLE_* 차례). */
     private static String[] soundStyleLabels() {
         return new String[]{L.t("없음", "None"), L.t("모드 따라가기", "Follow design mode"),
-                L.t("NewSwipe (기본)", "NewSwipe (default)"), "Metro", "Neumorphism"};
+                "NewSwipe", "Metro", "Neumorphism"};
     }
 
     /** 미리 들려준 키음을 놓는 작업 (소리가 끝까지 나도록 목록이 닫히고 조금 뒤에 부른다). */
@@ -4263,7 +4263,7 @@ public final class SettingsActivity extends Activity {
         Feedback preview = vibePreview();
         anchor.removeCallbacks(releaseSoundPreview);   // 놓기 전에 다시 열었으면 놓지 않는다
         preview.prepareSynthSounds();
-        DropdownMenu.of(anchor, soundStyleLabels(), prefs.soundStyle())
+        DropdownMenu.of(anchor, soundStyleLabels(), prefs.soundStyle()).defaultIndex(Prefs.SOUND_STYLE_FOLLOW)
                 .preview((view, which) -> preview.previewSound(which, prefs.metro(), prefs.neumorphism(), prefs.soundVolume()))
                 // 다 들었으면 읽어 둔 소리를 놓는다 (닫히자마자 놓으면 방금 고른 소리가 끊긴다).
                 .onDismiss(() -> anchor.postDelayed(releaseSoundPreview, 1500))

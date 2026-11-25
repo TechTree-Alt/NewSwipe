@@ -49,8 +49,6 @@ import java.util.function.ObjIntConsumer;
  *     EaseOut). 흰 바탕에 강조색 테두리의 네모, 고른 항목은 표시 없이 강조색 글자, 누르면 틸트.</li>
  * </ul>
  *
- * <p>기본·Neumorphism에서는 누른 줄의 화살표(›)가 펼치는 동안 아래(⌄)로 돌고, 닫히면 돌아온다.
- *
  * <p>가볍게: XML·ListView·어댑터 없이 항목마다 TextView 하나(기본값 표시는 같은 글자에 붙인 작은 글씨)로 만들고, 움직이는 동안만 하드웨어 층으로 그린다.
  * 열 때마다 새로 만들고 닫으면 모두 놓는다. 한 번에 하나만 열린다.
  */
@@ -80,8 +78,6 @@ final class DropdownMenu {
     private float pivotY;
     /** 미리 듣기를 하면서도 목록을 열어 둔다 (여러 개를 비교). */
     private boolean keepOpen;
-    /** 누른 줄의 화살표 (펼친 동안 아래로 돌린다). 없으면 null. */
-    private View chevron;
     private final View.OnAttachStateChangeListener detach = new View.OnAttachStateChangeListener() {
         @Override
         public void onViewAttachedToWindow(View v) {
@@ -143,8 +139,6 @@ final class DropdownMenu {
         }
         current = new java.lang.ref.WeakReference<>(this);
         anchor.addOnAttachStateChangeListener(detach);
-        chevron = findChevron(anchor);
-        turnChevron(true);
         if (Metro.on && anchor.getParent() instanceof LinearLayout
                 && ((LinearLayout) anchor.getParent()).getOrientation() == LinearLayout.VERTICAL) {
             showInline((LinearLayout) anchor.getParent());
@@ -153,29 +147,16 @@ final class DropdownMenu {
         }
     }
 
-    private static View findChevron(View v) {
-        if (v instanceof com.alternative_studios.newswipe.ui.Chevron) return v.getVisibility() == View.VISIBLE ? v : null;
-        if (v instanceof ViewGroup) {
-            ViewGroup g = (ViewGroup) v;
-            for (int i = g.getChildCount() - 1; i >= 0; i--) {   // 화살표는 줄의 끝에 있다
-                View found = findChevron(g.getChildAt(i));
-                if (found != null) return found;
-            }
+
+    /** 모든 항목이 한 줄에 들어가는 상자 너비: 가장 긴 글자 + 줄의 안쪽 여백·체크 자리 + 상자 여백 (반올림 오차로 꺾이지 않게 조금 더). */
+    private int naturalWidth(LinearLayout box) {
+        float max = 0;
+        for (TextView r : rows) {
+            float text = android.text.Layout.getDesiredWidth(r.getText(), r.getPaint());
+            max = Math.max(max, text + r.getCompoundPaddingLeft() + r.getCompoundPaddingRight());
         }
-        return null;
+        return (int) Math.ceil(max) + box.getPaddingLeft() + box.getPaddingRight() + dp(2);
     }
-
-    /** 화살표를 아래(펼침)로, 또는 제자리(접힘)로 돌린다. 오른쪽에서 왼쪽으로 쓰는 언어는 화살표가 뒤집혀 있어 반대로 돈다. */
-    private void turnChevron(boolean open) {
-        if (chevron == null || Metro.on) return;
-        float down = chevron.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL ? -90f : 90f;
-        chevron.animate().cancel();
-        chevron.animate().rotation(open ? down : 0f).setDuration(open ? 200 : 150)
-                .setInterpolator(STANDARD).start();
-    }
-
-    /** Material의 표준 곡선 (FastOutSlowIn). */
-    private static final PathInterpolator STANDARD = new PathInterpolator(0.4f, 0f, 0.2f, 1f);
 
     private int dp(float v) {
         return Ui.dp(c, v);
@@ -341,11 +322,9 @@ final class DropdownMenu {
         Rect frame = new Rect();
         anchor.getWindowVisibleDisplayFrame(frame);
         int margin = dp(16);
-        box.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
-                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
-        int maxW = Math.min(dp(320), frame.width() - margin * 2);
-        // 잰 너비 그대로면 반올림 오차로 가장 긴 항목이 한 줄에 겨우 못 들어가 두 줄로 꺾일 수 있어 조금 여유를 둔다.
-        int w = Math.max(Math.min(dp(180), maxW), Math.min(box.getMeasuredWidth() + dp(4), maxW));
+        int maxW = frame.width() - margin * 2;
+        // 항목이 웬만하면 한 줄에 들어가도록, 가장 긴 항목의 글자 너비를 직접 잰다 (화면 폭을 넘을 때만 꺾인다).
+        int w = Math.max(Math.min(dp(180), maxW), Math.min(naturalWidth(box), maxW));
         box.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
         int h = box.getMeasuredHeight();
@@ -416,7 +395,6 @@ final class DropdownMenu {
     void close() {
         if (closing) return;
         closing = true;
-        turnChevron(false);
         if (inline != null) {
             View frame = inline;
             Ui.setVisibleAnimated(frame, false, () -> {
@@ -462,10 +440,6 @@ final class DropdownMenu {
     /** 움직임 없이 바로 닫는다. */
     private void closeNow() {
         closing = true;
-        if (chevron != null) {
-            chevron.animate().cancel();
-            chevron.setRotation(0f);
-        }
         if (menu != null) menu.animate().cancel();
         if (inline != null && inline.getParent() instanceof ViewGroup) ((ViewGroup) inline.getParent()).removeView(inline);
         dismissPopup();
@@ -477,7 +451,6 @@ final class DropdownMenu {
         if (finished) return;
         finished = true;
         closing = true;
-        turnChevron(false);   // 뒤로 가기 등으로 창이 바로 닫혀도 화살표는 돌아온다
         anchor.removeOnAttachStateChangeListener(detach);
         if (current != null && current.get() == this) current = null;
         if (onDismiss != null) onDismiss.run();
