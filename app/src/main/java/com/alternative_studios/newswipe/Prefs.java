@@ -41,8 +41,12 @@ public final class Prefs {
     public static final String VIBRATE_REPEAT_AMP = "vibrate_repeat_amp";       // 사용자 설정의 세기 %, 10~100
     public static final String SOUND = "sound";   // 예전 '키 소리' 스위치. 이제 SOUND_STYLE을 고르지 않았을 때만 읽는다
     public static final String SOUND_STYLE = "sound_style";           // 키 소리 종류 (SOUND_STYLE_*)
-    /** 키 소리 종류: 없음, 디자인 모드 따라가기 (Metro 모드면 Metro, 아니면 NewSwipe), NewSwipe (시스템 키음), Metro (Windows Phone 키음). */
-    public static final int SOUND_STYLE_NONE = 0, SOUND_STYLE_FOLLOW = 1, SOUND_STYLE_NEWSWIPE = 2, SOUND_STYLE_METRO = 3;
+    /**
+     * 키 소리 종류: 없음, 디자인 모드 따라가기 (Metro·Neumorphism 모드면 그 소리, 기본 모드면 NewSwipe), NewSwipe (시스템 키음),
+     * Metro (Windows Phone 키음), Neumorphism (부드럽게 눌리는 키음).
+     */
+    public static final int SOUND_STYLE_NONE = 0, SOUND_STYLE_FOLLOW = 1, SOUND_STYLE_NEWSWIPE = 2, SOUND_STYLE_METRO = 3,
+            SOUND_STYLE_NEU = 4;
     public static final String SOUND_VOLUME = "sound_volume";         // %, 0~100
     public static final String KEY_PREVIEW = "key_preview";
     public static final String NUMBER_ROW = "number_row";
@@ -1223,7 +1227,7 @@ public final class Prefs {
     public int soundStyle() {
         int fallback = !sp.contains(SOUND) || sp.getBoolean(SOUND, false) ? SOUND_STYLE_FOLLOW : SOUND_STYLE_NONE;
         int s = sp.getInt(SOUND_STYLE, fallback);
-        return s >= SOUND_STYLE_NONE && s <= SOUND_STYLE_METRO ? s : fallback;
+        return s >= SOUND_STYLE_NONE && s <= SOUND_STYLE_NEU ? s : fallback;
     }
     public int soundVolume() { return sp.getInt(SOUND_VOLUME, 50); }
     public boolean keyPreview() { return sp.getBoolean(KEY_PREVIEW, true); }

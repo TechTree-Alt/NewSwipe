@@ -11,18 +11,23 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 /**
- * Metro 모드의 키음: Windows Phone 7 키보드 소리를 본뜬 소리.
- * 녹음 파일을 앱에 넣지 않고, 원래 소리를 분석해 얻은 감쇠 사인파(주파수·감쇠·세기·위상) 몇 개를 더해 처음 쓸 때 만든다.
- * 그래서 앱 용량은 표 몇 개(1 KB 남짓)만 늘어난다.
+ * 직접 만드는 키음 한 벌 (Metro 또는 Neumorphism). 녹음 파일을 앱에 넣지 않고 처음 쓸 때 만들어 캐시에 둔다.
+ * <ul>
+ *   <li>Metro: Windows Phone 7 키보드 소리를 본뜬 소리. 원래 소리를 분석해 얻은 감쇠 사인파(주파수·감쇠·세기·위상) 몇 개를 더한다.
+ *       그래서 앱 용량은 표 몇 개(1 KB 남짓)만 늘어난다.</li>
+ *   <li>Neumorphism: 말랑한 버튼을 눌러 바닥에 닿는 느낌의 부드러운 소리 ({@link NeuSound}).</li>
+ * </ul>
  * 시스템 키음과 같은 시스템 소리 볼륨을 따르므로 무음·진동 모드에서는 울리지 않는다.
  */
-final class MetroSound {
+final class SynthSound {
+    /** 소리 벌. */
+    static final int SET_METRO = 0, SET_NEU = 1;
     /** 글자 키 / 기능 키(Shift·엔터·기호·스페이스 등) / 지우기 / 길게 눌러 여는 악센트 말풍선. */
     static final int KEY = 0, FUNCTION = 1, DELETE = 2, ACCENT = 3;
     private static final int COUNT = 4;
     private static final int RATE = 44100;
     /** 소리를 바꾸면 올려서 예전에 만들어 둔 파일을 다시 만든다. */
-    private static final int VERSION = 2;
+    private static final int VERSION = 3;
 
     /*
      * 소리마다 감쇠 사인파의 표: {주파수 Hz, 감쇠 1/s, 세기, 위상}의 반복.
@@ -103,12 +108,14 @@ final class MetroSound {
     };
 
     private final Context context;
+    private final int set;
     private SoundPool pool;
     private final int[] ids = new int[COUNT];
     private final boolean[] loaded = new boolean[COUNT];
 
-    MetroSound(Context context) {
+    SynthSound(Context context, int set) {
         this.context = context.getApplicationContext();
+        this.set = set;
     }
 
     /** 소리를 만들고 읽어 둔다 (이미 읽었으면 아무것도 하지 않는다). */
@@ -126,7 +133,7 @@ final class MetroSound {
                 if (ids[i] == sampleId) loaded[i] = status == 0;
             }
         });
-        File dir = new File(context.getCacheDir(), "metro_sound");
+        File dir = new File(context.getCacheDir(), set == SET_NEU ? "neu_sound" : "metro_sound");
         File[] old = dir.listFiles();
         if (old != null) {   // 예전 판의 파일은 지운다
             for (File f : old) {
@@ -139,7 +146,7 @@ final class MetroSound {
         for (int i = 0; i < COUNT; i++) {
             File f = new File(dir, "key" + i + "_v" + VERSION + ".wav");
             try {
-                if (!f.isFile() || f.length() == 0) writeWav(f, synth(i));
+                if (!f.isFile() || f.length() == 0) writeWav(f, set == SET_NEU ? NeuSound.synth(i) : synth(i));
                 ids[i] = pool.load(f.getPath(), 1);
             } catch (IOException | RuntimeException e) {
                 ids[i] = 0;
@@ -165,7 +172,7 @@ final class MetroSound {
         }
     }
 
-    /** kind(KEY 등) 소리의 16비트 표본. */
+    /** Metro 벌의 kind(KEY 등) 소리의 16비트 표본. */
     static short[] synth(int kind) {
         Object[][] parts = PARTS[kind];
         Object[] last = parts[parts.length - 1];

@@ -40,9 +40,9 @@ final class Feedback {
     /** 시스템 진동을 울릴 뷰 (키보드 창). 없으면 클릭으로 대신한다. */
     private View hapticView;
     private boolean vibrate, sound, perKey, gesture, repeat;
-    /** Metro 모드면 시스템 키음 대신 Windows Phone 키보드 같은 키음을 낸다. */
-    private boolean metro;
-    private final MetroSound metroSound;
+    /** 직접 만든 키음을 쓸 때 그 벌 (Metro·Neumorphism). 시스템 키음이면 null. */
+    private SynthSound synth;
+    private final SynthSound metroSound, neuSound;
     /** 마지막으로 말풍선을 연 때 (uptimeMillis). */
     private long popupAt;
     private float volume;
@@ -56,7 +56,8 @@ final class Feedback {
     @SuppressWarnings("deprecation")
     Feedback(Context context) {
         audio = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-        metroSound = new MetroSound(context);
+        metroSound = new SynthSound(context, SynthSound.SET_METRO);
+        neuSound = new SynthSound(context, SynthSound.SET_NEU);
         Vibrator v;
         if (Build.VERSION.SDK_INT >= 31) {
             VibratorManager vm = (VibratorManager) context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
@@ -104,32 +105,45 @@ final class Feedback {
         int soundStyle = prefs.soundStyle();
         sound = soundStyle != Prefs.SOUND_STYLE_NONE;
         volume = prefs.soundVolume() / 100f;
-        metro = usesMetro(soundStyle, prefs.metro());
-        if (metro && sound) metroSound.prepare();
-        else metroSound.release();
+        synth = sound ? synthFor(soundStyle, prefs.metro(), prefs.neumorphism()) : null;
+        for (SynthSound s : new SynthSound[]{metroSound, neuSound}) {
+            if (s == synth) s.prepare();
+            else s.release();
+        }
     }
 
-    /** 키 소리 종류(Prefs.SOUND_STYLE_*)가 Metro 소리를 쓰는가. 모드 따라가기는 Metro 모드에서만. */
-    static boolean usesMetro(int soundStyle, boolean metroMode) {
-        return soundStyle == Prefs.SOUND_STYLE_METRO || (soundStyle == Prefs.SOUND_STYLE_FOLLOW && metroMode);
+    /**
+     * 키 소리 종류(Prefs.SOUND_STYLE_*)가 쓰는 직접 만든 키음 벌. 시스템 키음(NewSwipe)이거나 없음이면 null.
+     * 모드 따라가기는 Metro 모드면 Metro, Neumorphism 모드면 Neumorphism, 기본 모드면 NewSwipe.
+     */
+    private SynthSound synthFor(int soundStyle, boolean metroMode, boolean neuMode) {
+        switch (soundStyle) {
+            case Prefs.SOUND_STYLE_METRO: return metroSound;
+            case Prefs.SOUND_STYLE_NEU: return neuSound;
+            case Prefs.SOUND_STYLE_FOLLOW: return metroMode ? metroSound : neuMode ? neuSound : null;
+            default: return null;
+        }
     }
 
     /** 설정 화면의 고르기 창: 키 소리 종류 soundStyle의 글자 키 소리를 지금 소리 크기로 들려준다. */
-    void previewSound(int soundStyle, boolean metroMode, int volumePct) {
+    void previewSound(int soundStyle, boolean metroMode, boolean neuMode, int volumePct) {
         if (soundStyle == Prefs.SOUND_STYLE_NONE || volumePct <= 0) return;
         float v = volumePct / 100f;
-        if (usesMetro(soundStyle, metroMode)) metroSound.play(MetroSound.KEY, v);
+        SynthSound s = synthFor(soundStyle, metroMode, neuMode);
+        if (s != null) s.play(SynthSound.KEY, v);
         else if (audio != null) audio.playSoundEffect(AudioManager.FX_KEYPRESS_STANDARD, v);
     }
 
-    /** Metro 소리를 미리 만들어 읽어 둔다 (설정 화면에서 처음 들려줄 때 늦지 않게). */
-    void prepareMetroSound() {
+    /** 직접 만드는 소리를 미리 만들어 읽어 둔다 (설정 화면에서 처음 들려줄 때 늦지 않게). */
+    void prepareSynthSounds() {
         metroSound.prepare();
+        neuSound.prepare();
     }
 
     /** 키보드 서비스가 끝날 때 키음 자원을 놓는다. */
     void release() {
         metroSound.release();
+        neuSound.release();
     }
 
     private void set(int channel, int s, int p, int a) {
@@ -265,14 +279,14 @@ final class Feedback {
 
     /**
      * 밀기·길게 누르기가 끝났을 때: 진동과 함께 그 키의 키음을 한 번 더 내서 인식됐음을 알린다 (진동을 켠 경우만).
-     * 말풍선이 막 열렸으면 Metro 모드는 말풍선 소리를 이미 냈으므로 키음을 겹치지 않는다.
+     * 말풍선이 막 열렸으면 직접 만든 키음(Metro·Neumorphism)은 말풍선 소리를 이미 냈으므로 키음을 겹치지 않는다.
      *
      * @param key 밀었거나 길게 누른 키 (모르면 null = 글자 키 소리)
      */
     void onGesture(Key key) {
         if (!gesture) return;
         playChannel(CH_GESTURE);
-        if (metro && SystemClock.uptimeMillis() - popupAt < 100) return;
+        if (synth != null && SystemClock.uptimeMillis() - popupAt < 100) return;
         playClickSound(key == null ? Key.CHAR : key.type);
     }
 
@@ -299,10 +313,10 @@ final class Feedback {
         playClickSound(type);
     }
 
-    /** 길게 눌러 악센트(이어 쓸 글자) 말풍선을 열었을 때. Metro 모드에서만 소리가 난다. */
+    /** 길게 눌러 악센트(이어 쓸 글자) 말풍선을 열었을 때. 직접 만든 키음(Metro·Neumorphism)일 때만 소리가 난다. */
     void onPopup() {
         popupAt = SystemClock.uptimeMillis();
-        if (sound && metro && volume > 0) metroSound.play(MetroSound.ACCENT, volume);
+        if (sound && synth != null && volume > 0) synth.play(SynthSound.ACCENT, volume);
     }
 
     void onKey(Key key) {
@@ -325,14 +339,14 @@ final class Feedback {
 
     /** @param type 키 종류 (Key.CHAR 등). 따로 정한 소리가 없는 키는 글자 키 또는 기능 키 소리. */
     private void playClickSound(int type) {
-        if (sound && metro && volume > 0) {
+        if (sound && synth != null && volume > 0) {
             int kind;
             switch (type) {
-                case Key.CHAR: kind = MetroSound.KEY; break;
-                case Key.DELETE: kind = MetroSound.DELETE; break;
-                default: kind = MetroSound.FUNCTION; break;   // 스페이스·엔터·Shift·기호 등 (Windows Phone처럼 같은 소리)
+                case Key.CHAR: kind = SynthSound.KEY; break;
+                case Key.DELETE: kind = SynthSound.DELETE; break;
+                default: kind = SynthSound.FUNCTION; break;   // 스페이스·엔터·Shift·기호 등 (Windows Phone처럼 같은 소리)
             }
-            metroSound.play(kind, volume);
+            synth.play(kind, volume);
             return;
         }
         if (sound && audio != null && volume > 0) {
