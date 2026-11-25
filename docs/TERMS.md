@@ -68,7 +68,7 @@ Android 13 이상에서는 시스템 설정 › 앱 › NewSwipe › 언어에�
 |---|---|
 | 입력 언어 | Input languages |
 | 키보드 사용자화 · ○○ 사용자화 | Customize keyboard · Customize ○○ |
-| 테마 · 화면 모드 · 강조 색 | Theme · Display mode · Accent color |
+| 테마 · 모드 · 화면 색 · 강조 색 | Theme · Mode · Display color · Accent color |
 | 소리 및 진동 | Sound & vibration |
 | 추천, 학습 및 완성 | Suggestions, learning & autofill |
 | 클립보드 및 이모지 · 클립보드 기록 · 고정 | Clipboard & emoji · clipboard history · pin |
