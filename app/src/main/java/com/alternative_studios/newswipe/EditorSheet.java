@@ -112,11 +112,13 @@ final class EditorSheet {
         int size = Ui.dp(c, 44);
         header.addView(cancel, new FrameLayout.LayoutParams(size, size, Gravity.START | Gravity.CENTER_VERTICAL));
         // 오른쪽: 머리글과 같은 되돌리기·키보드 열기 버튼 (창이 머리글을 덮으므로 여기서도 쓸 수 있게).
+        // Metro: 두 버튼은 창에 가려지지 않는 화면 아래 앱 바에 있으므로 여기에는 두지 않는다
+        // (앱 바의 키보드 버튼은 창이 열려 있는 동안 이 창의 입력 시험 창을 연다: toggleTestInput).
         LinearLayout actions = new LinearLayout(c);
         actions.setGravity(Gravity.CENTER_VERTICAL);
         int gap = Ui.dp(c, 8);
         int actionsWidth = 0;
-        if (onUndo != null) {
+        if (onUndo != null && !Metro.on) {
             undoButton = new ExpressiveIconButton(c, Icons.UNDO, colors.accent, colors.onAccent, L.t("마지막 변경 되돌리기", "Undo last change"));
             undoButton.setActive(true);   // 옅은 바탕: 키보드 열기와 구분되는 보조 버튼
             undoButton.setOnClickListener(onUndo);
@@ -125,10 +127,12 @@ final class EditorSheet {
             actions.addView(undoButton, ulp);
             actionsWidth += size + gap;
         }
-        keyboardButton = new ExpressiveIconButton(c, Icons.MENU_KEYBOARD, colors.accent, colors.onAccent, L.t("키보드 열기", "Open keyboard"));
-        keyboardButton.setOnClickListener(v -> toggleTestInput());
-        actions.addView(keyboardButton, new LinearLayout.LayoutParams(size, size));
-        actionsWidth += size;
+        if (!Metro.on) {
+            keyboardButton = new ExpressiveIconButton(c, Icons.MENU_KEYBOARD, colors.accent, colors.onAccent, L.t("키보드 열기", "Open keyboard"));
+            keyboardButton.setOnClickListener(v -> toggleTestInput());
+            actions.addView(keyboardButton, new LinearLayout.LayoutParams(size, size));
+            actionsWidth += size;
+        }
         header.addView(actions, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.END | Gravity.CENTER_VERTICAL));
         // 가운데(X와 오른쪽 버튼들 사이): 고른 것의 이름. 오른쪽 버튼이 더 넓어 왼쪽에 붙여 자리를 넉넉히 쓴다.
@@ -220,7 +224,7 @@ final class EditorSheet {
         return sheet;
     }
 
-    /** 헤더의 되돌리기 버튼 (onUndo 없이 만들었으면 null). 되돌릴 것이 있는지에 따라 부르는 쪽이 켜고 끈다. */
+    /** 헤더의 되돌리기 버튼 (onUndo 없이 만들었거나 Metro면 null). 되돌릴 것이 있는지에 따라 부르는 쪽이 켜고 끈다. */
     View undoButton() {
         return undoButton;
     }
@@ -233,8 +237,10 @@ final class EditorSheet {
     private void setTestInput(boolean on) {
         if (testWanted == on) return;
         testWanted = on;
-        keyboardButton.setActive(on);   // 열려 있으면 옅은 바탕에 강조색 아이콘
-        keyboardButton.setContentDescription(on ? L.t("키보드 닫기", "Close keyboard") : L.t("키보드 열기", "Open keyboard"));
+        if (keyboardButton != null) {
+            keyboardButton.setActive(on);   // 열려 있으면 옅은 바탕에 강조색 아이콘
+            keyboardButton.setContentDescription(on ? L.t("키보드 닫기", "Close keyboard") : L.t("키보드 열기", "Open keyboard"));
+        }
         android.view.inputmethod.InputMethodManager imm =
                 (android.view.inputmethod.InputMethodManager) c.getSystemService(Context.INPUT_METHOD_SERVICE);
         if (!on) {

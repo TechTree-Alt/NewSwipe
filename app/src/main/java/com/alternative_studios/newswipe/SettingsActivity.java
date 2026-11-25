@@ -128,6 +128,12 @@ public final class SettingsActivity extends Activity {
                 ? new SettingsFrame(this, sectionName, getString(R.string.app_name)).withSearch(this::onWordSearch, L.t("단어 검색", "Search words"))
                 : new SettingsFrame(this, sectionName, getString(R.string.app_name));
         metroFrame = frame;
+        // Metro: 설정 창(시트)은 머리글을 덮으므로, 창이 열려 있는 동안 앱 바의 키보드 버튼은 창의 입력 시험 창을 연다.
+        frame.setKeyboardOverride(() -> {
+            if (sheet == null || !sheet.isOpen()) return false;
+            sheet.toggleTestInput();
+            return true;
+        });
         pivotStart = savedInstanceState == null ? 0 : savedInstanceState.getInt(STATE_PIVOT, 0);
         if (KEYBOARD.equals(sectionId)) frame.withAction(Icons.UNDO, L.t("마지막 변경 되돌리기", "Undo last change"), L.t("되돌리기", "undo"), v -> undoLast()).keyboardOverlays();
         // Metro: '기본값으로 되돌리기'는 목록 맨 아래 버튼 대신 앱 바 메뉴 항목 (자주 쓰지 않는 동작).
@@ -448,25 +454,64 @@ public final class SettingsActivity extends Activity {
         boolean menu = "app".equals(id);
         for (String[] sec : sections()) if (sec[0].equals(id)) menu = true;
         if (!menu) return;
-        java.util.List<View> kids = new java.util.ArrayList<>();
-        int headers = 0;
+        // 목록을 섹션 조각으로 나눈다: {이름(소제목 글자), 소제목, 그 아래 뷰들}. 첫 소제목 앞의 내용은 lead.
+        java.util.List<View> lead = new java.util.ArrayList<>();
+        java.util.List<Object[]> segs = new java.util.ArrayList<>();
+        java.util.List<View> cur = lead;
         for (int i = 0; i < list.getChildCount(); i++) {
             View v = list.getChildAt(i);
-            kids.add(v);
-            if (SettingsWidgets.isSectionHeader(v)) headers++;
+            if (SettingsWidgets.isSectionHeader(v)) {
+                cur = new java.util.ArrayList<>();
+                segs.add(new Object[]{String.valueOf(((TextView) v).getText()), v, cur});
+            } else {
+                cur.add(v);
+            }
         }
-        if (headers == 0) return;
-        if (headers == 1) {
-            for (View v : kids) if (SettingsWidgets.isSectionHeader(v)) list.removeView(v);
+        if (segs.isEmpty()) return;
+        list.removeAllViews();
+        // 계획대로 섹션을 페이지로 묶는다 (계획이 없으면 섹션마다 한 페이지). 계획에 없는 섹션은 끝에 제 페이지로, 뺄 섹션은 버린다.
+        java.util.List<String> titles = new java.util.ArrayList<>();
+        java.util.List<java.util.List<Object[]>> groups = new java.util.ArrayList<>();
+        java.util.Set<Object[]> used = new java.util.HashSet<>();
+        String[][] plan = pivotPlan(id);
+        if (plan != null) {
+            for (String[] row : plan) {
+                java.util.List<Object[]> g = new java.util.ArrayList<>();
+                for (int k = 1; k < row.length; k++) {
+                    for (Object[] seg : segs) {
+                        if (!used.contains(seg) && seg[0].equals(Metro.lower(row[k]))) {
+                            g.add(seg);
+                            used.add(seg);
+                        }
+                    }
+                }
+                if (!g.isEmpty()) {
+                    titles.add(Metro.lower(row[0]));
+                    groups.add(g);
+                }
+            }
+        }
+        java.util.List<String> dropped = new java.util.ArrayList<>();
+        for (String d : pivotDropped(id)) dropped.add(Metro.lower(d));
+        for (Object[] seg : segs) {
+            if (used.contains(seg) || dropped.contains((String) seg[0])) continue;
+            titles.add((String) seg[0]);
+            java.util.List<Object[]> g = new java.util.ArrayList<>();
+            g.add(seg);
+            groups.add(g);
+        }
+        int n = groups.size();
+        if (n <= 1) {
+            // 페이지가 하나뿐이면 피벗 없이 한 목록으로 (화면 제목으로 충분하다).
+            fillPivotPage(list, lead, n == 0 ? new java.util.ArrayList<>() : groups.get(0), n == 0 ? "" : titles.get(0));
             return;
         }
-        pivotNames = new String[headers];
-        pivotPages = new LinearLayout[headers];
-        pivotScrolls = new ScrollView[headers];
-        list.removeAllViews();
+        pivotNames = titles.toArray(new String[0]);
+        pivotPages = new LinearLayout[n];
+        pivotScrolls = new ScrollView[n];
         android.widget.FrameLayout pager = new android.widget.FrameLayout(this);
-        int pad = Ui.dp(this, 16), page = -1;
-        for (int i = 0; i < headers; i++) {
+        int pad = Ui.dp(this, 16);
+        for (int i = 0; i < n; i++) {
             LinearLayout p = new LinearLayout(this);
             p.setOrientation(LinearLayout.VERTICAL);
             p.setPadding(pad, 0, pad, Ui.dp(this, 32));
@@ -479,25 +524,12 @@ public final class SettingsActivity extends Activity {
                     ViewGroup.LayoutParams.MATCH_PARENT));
             pivotPages[i] = p;
             pivotScrolls[i] = sv;
-        }
-        for (View v : kids) {
-            if (SettingsWidgets.isSectionHeader(v)) {
-                page++;
-                pivotNames[page] = String.valueOf(((TextView) v).getText());
-                continue;
-            }
-            pivotPages[Math.max(0, page)].addView(v);
-        }
-        // 소제목 바로 아래 카드는 소제목에 붙어 있었다 (위 여백 0): 페이지 맨 위에서는 머리글과 띄운다.
-        for (LinearLayout p : pivotPages) {
-            if (p.getChildCount() > 0 && p.getChildAt(0).getLayoutParams() instanceof LinearLayout.LayoutParams) {
-                ((LinearLayout.LayoutParams) p.getChildAt(0).getLayoutParams()).topMargin = Ui.dp(this, 4);
-            }
+            fillPivotPage(p, i == 0 ? lead : java.util.Collections.emptyList(), groups.get(i), titles.get(i));
         }
         middle.removeView(scrollView);
         middle.addView(pager, 0, new android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
-        int start = Math.max(0, Math.min(headers - 1, pivotStart));
+        int start = Math.max(0, Math.min(n - 1, pivotStart));
         list = pivotPages[start];
         scrollView = pivotScrolls[start];
         sectionPivot = metroFrame.installPivot(pivotNames, pivotScrolls, start, new Metro.Pivot.Host() {
@@ -518,6 +550,67 @@ public final class SettingsActivity extends Activity {
                 scrollView = pivotScrolls[index];
             }
         });
+    }
+
+    /**
+     * 피벗 페이지 하나를 채운다: lead(첫 소제목 앞의 내용), 그리고 묶은 섹션들의 내용. 여러 섹션을 한 페이지에 묶었으면 페이지 이름과
+     * 다른 섹션의 소제목은 남겨 어디부터 무엇인지 보이게 한다 (페이지 이름과 같은 소제목은 머리글이 대신한다).
+     */
+    private void fillPivotPage(LinearLayout page, java.util.List<View> lead, java.util.List<Object[]> group, String title) {
+        for (View v : lead) page.addView(v);
+        for (Object[] seg : group) {
+            if (group.size() > 1 && !seg[0].equals(title)) page.addView((View) seg[1]);
+            @SuppressWarnings("unchecked")
+            java.util.List<View> views = (java.util.List<View>) seg[2];
+            for (View v : views) page.addView(v);
+        }
+        // 맨 위의 뷰는 머리글과 조금만 띄운다 (소제목 아래 카드는 위 여백이 0, 소제목은 위로 크게 띄워 두었다).
+        if (page.getChildCount() > 0) {
+            View first = page.getChildAt(0);
+            if (SettingsWidgets.isSectionHeader(first)) {
+                first.setPadding(first.getPaddingLeft(), Ui.dp(this, 4), first.getPaddingRight(), first.getPaddingBottom());
+            } else if (first.getLayoutParams() instanceof LinearLayout.LayoutParams) {
+                ((LinearLayout.LayoutParams) first.getLayoutParams()).topMargin = Ui.dp(this, 4);
+            }
+        }
+    }
+
+    /**
+     * Metro 피벗의 페이지 계획 {페이지 이름, 묶을 섹션 이름…} (차례대로). 피벗은 네 페이지 이하가 권장이라 섹션이 많은 메뉴는 묶는다.
+     * null이면 섹션마다 한 페이지.
+     */
+    private static String[][] pivotPlan(String id) {
+        switch (id) {
+            case "theme":
+                return new String[][]{
+                        {L.t("모드", "Mode"), L.t("모드", "Mode"), L.t("라이트/다크 모드", "Light/dark mode")},
+                        {L.t("강조 색", "Accent color"), L.t("강조 색", "Accent color")},
+                        {L.t("키 색", "Key colors"), L.t("키 색", "Key colors")},
+                };
+            case "words":
+                return new String[][]{
+                        {L.t("추천 및 수정", "Suggestions & correction"), L.t("단어 추천", "Word suggestions"),
+                                L.t("자동 수정", "Autocorrect"), L.t("한국어 사전", "Korean dictionary")},
+                        {L.t("단어 학습", "Word learning"), L.t("입력한 단어 학습", "Learn typed words")},
+                        {L.t("단축어", "Text shortcuts"), L.t("단축어", "Text shortcuts")},
+                        {L.t("자동 완성", "Autofill"), L.t("자동 완성", "Autofill")},
+                };
+            case "lab":
+                return new String[][]{
+                        {L.t("밀기 방향 판정", "Swipe direction"), L.t("밀기 방향 판정", "Swipe direction")},
+                        {L.t("외국어 자판", "Other languages"), L.t("일본어 자판", "Japanese keyboard"), L.t("중국어 자판", "Chinese keyboard")},
+                        {L.t("외장 키보드", "Physical keyboard"), L.t("외장 키보드", "Physical keyboard")},
+                        {L.t("떠 있는 키보드", "Floating keyboard"), L.t("떠 있는 키보드", "Floating keyboard")},
+                };
+            default:
+                return null;
+        }
+    }
+
+    /** Metro 피벗에서 뺄 섹션 (안내문뿐인 섹션). */
+    private static String[] pivotDropped(String id) {
+        if ("words".equals(id)) return new String[]{L.t("개인 정보", "Privacy")};
+        return new String[0];
     }
 
     /**

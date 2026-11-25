@@ -1,5 +1,7 @@
 package com.alternative_studios.newswipe;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.ColorFilter;
@@ -284,7 +286,7 @@ final class DropdownMenu {
         bg.setStroke(dp(2), t.accent);
         box.setBackground(bg);
         box.setPadding(dp(2), dp(6), dp(2), dp(6));
-        // 펼치고 접는 동안 높이를 바꾸므로 여백 없는 틀로 감싼다 (Ui.setVisibleAnimated가 틀의 높이를 움직인다).
+        // 펼치고 접는 동안 높이를 바꾸므로 여백 없는 틀로 감싼다 (틀의 높이를 움직이고 그 밖은 자른다).
         LinearLayout frame = new LinearLayout(c);
         frame.setOrientation(LinearLayout.VERTICAL);
         frame.setClipChildren(true);
@@ -293,15 +295,98 @@ final class DropdownMenu {
         blp.topMargin = replaced != null ? 0 : dp(2);
         blp.bottomMargin = replaced != null ? 0 : dp(10);
         frame.addView(box, blp);
-        frame.setVisibility(View.GONE);
-        LinearLayout.LayoutParams flp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        inlineList = box;
+        // 접힌 높이: 네모가 목록으로 바뀌면 그 네모의 높이에서 시작해 그 높이로 돌아온다 (아니면 0).
+        collapsed = replaced != null ? replaced.getHeight() : 0;
+        LinearLayout.LayoutParams flp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, collapsed);
         if (replaced != null && replaced.getLayoutParams() instanceof LinearLayout.LayoutParams) {
             flp.topMargin = ((LinearLayout.LayoutParams) replaced.getLayoutParams()).topMargin;
-            replaced.setVisibility(View.GONE);   // 네모가 목록으로 바뀐다
+            replaced.setVisibility(View.GONE);   // 같은 높이의 목록 틀이 그 자리를 이어받는다
         }
         parent.addView(frame, parent.indexOfChild(after) + 1, flp);
         inline = frame;
-        Ui.setVisibleAnimated(frame, true);
+        // 다 펼친 높이를 미리 잰다.
+        int w = parent.getWidth() - parent.getPaddingLeft() - parent.getPaddingRight();
+        frame.measure(View.MeasureSpec.makeMeasureSpec(Math.max(1, w), View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+        expanded = frame.getMeasuredHeight();
+        // 틀이 낮은 동안 목록이 그 높이로 눌리지 않게 목록의 높이를 잰 값으로 고정한다 (틀 밖은 잘려 보이지 않는다).
+        blp.height = box.getMeasuredHeight();
+        box.setLayoutParams(blp);
+        animateInline(true, null);
+    }
+
+    /** Metro 펼친 목록의 틀 높이: 접혔을 때(네모 높이 또는 0)와 다 펼쳤을 때. */
+    private int collapsed, expanded;
+    private LinearLayout inlineList;
+    private android.animation.ValueAnimator inlineAnim;
+
+    /**
+     * 고른 항목이 접힌 네모 자리(가운데)에 오도록 목록을 위로 올릴 거리. ListPicker처럼 네모가 고른 항목에서 위아래로 펼쳐지고,
+     * 접힐 때는 고른 항목으로 오므라든다. 네모 없이 펼치면 0.
+     */
+    private float selectedOffset() {
+        if (replaced == null || selected < 0 || inlineList == null) return 0f;
+        int y = inlineList.getPaddingTop();
+        for (int i = 0; i < selected; i++) {
+            y += rowHeight(rows[i]);
+        }
+        int h = rowHeight(rows[selected]);
+        return Math.max(0f, y - (collapsed - h) / 2f);
+    }
+
+    private static int rowHeight(View v) {
+        int h = v.getHeight() > 0 ? v.getHeight() : v.getMeasuredHeight();
+        if (v.getLayoutParams() instanceof LinearLayout.LayoutParams) h += ((LinearLayout.LayoutParams) v.getLayoutParams()).topMargin;
+        return h;
+    }
+
+    /**
+     * Metro 목록을 펼치거나 접는다: 틀의 높이를 움직이면서(그 밖은 자른다) 목록을 고른 항목 쪽으로 미끄러뜨린다. 항목은 사라지지 않고
+     * 틀에 가려지기만 하므로, 접히는 내내 보이다가 마지막에 같은 높이의 네모와 바로 바뀐다.
+     */
+    private void animateInline(boolean open, Runnable onEnd) {
+        View frame = inline;
+        if (inlineAnim != null) inlineAnim.cancel();
+        int fromH = frame.getHeight() > 0 ? frame.getHeight() : (open ? collapsed : expanded);
+        int toH = open ? expanded : collapsed;
+        float off = selectedOffset();
+        float fromT = inlineList.getTranslationY(), toT = open ? 0f : -off;
+        if (open) fromT = -off;
+        inlineList.setTranslationY(fromT);
+        float ft = fromT;
+        inlineAnim = android.animation.ValueAnimator.ofFloat(0f, 1f);
+        // 펼칠 때는 빠르게 펼쳐져 부드럽게 멈추고(EaseOut), 접을 때는 처음부터 끝까지 고르게 오므라든다.
+        inlineAnim.setDuration(open ? 300 : 220);
+        inlineAnim.setInterpolator(open ? Metro.EASE_OUT : new PathInterpolator(0.4f, 0f, 0.2f, 1f));
+        inlineAnim.addUpdateListener(a -> {
+            float f = (float) a.getAnimatedValue();
+            ViewGroup.LayoutParams lp = frame.getLayoutParams();
+            lp.height = Math.round(fromH + (toH - fromH) * f);
+            frame.setLayoutParams(lp);
+            inlineList.setTranslationY(ft + (toT - ft) * f);
+        });
+        inlineAnim.addListener(new AnimatorListenerAdapter() {
+            private boolean canceled;
+
+            @Override
+            public void onAnimationCancel(Animator animation) {
+                canceled = true;
+            }
+
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                if (canceled) return;
+                inlineAnim = null;
+                if (open) {
+                    ViewGroup.LayoutParams lp = frame.getLayoutParams();
+                    lp.height = ViewGroup.LayoutParams.WRAP_CONTENT;   // 펼친 뒤에는 내용 그대로
+                    frame.setLayoutParams(lp);
+                }
+                if (onEnd != null) onEnd.run();
+            }
+        });
+        inlineAnim.start();
     }
 
     // ---------------------------------------------------------------- 기본·Neumorphism: 떠 있는 목록
@@ -411,9 +496,10 @@ final class DropdownMenu {
         closing = true;
         if (inline != null) {
             View frame = inline;
-            Ui.setVisibleAnimated(frame, false, () -> {
-                if (frame.getParent() instanceof ViewGroup) ((ViewGroup) frame.getParent()).removeView(frame);
+            animateInline(false, () -> {
+                // 같은 높이의 네모와 한 번에 바꾼다 (같은 배치에서 바뀌어 튀지 않는다).
                 if (replaced != null) replaced.setVisibility(View.VISIBLE);
+                if (frame.getParent() instanceof ViewGroup) ((ViewGroup) frame.getParent()).removeView(frame);
                 finish();
             });
             return;
@@ -455,6 +541,7 @@ final class DropdownMenu {
     private void closeNow() {
         closing = true;
         if (menu != null) animTarget().animate().cancel();
+        if (inlineAnim != null) inlineAnim.cancel();
         if (inline != null && inline.getParent() instanceof ViewGroup) ((ViewGroup) inline.getParent()).removeView(inline);
         if (replaced != null) replaced.setVisibility(View.VISIBLE);
         dismissPopup();

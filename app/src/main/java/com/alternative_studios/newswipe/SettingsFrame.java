@@ -130,6 +130,15 @@ final class SettingsFrame {
         return this;
     }
 
+    /**
+     * 앱 바의 키보드 버튼을 먼저 받아 볼 쪽 (처리했으면 true). 머리글을 덮는 설정 창이 열려 있으면 그 창의 입력 시험 창을 연다.
+     */
+    private java.util.function.BooleanSupplier keyboardOverride;
+
+    void setKeyboardOverride(java.util.function.BooleanSupplier handler) {
+        keyboardOverride = handler;
+    }
+
     /** Metro 모드의 앱 바 (Metro가 아니면 null). */
     private Metro.AppBar appBar;
     /** 앱 바를 펼친 동안 화면 위에 깔아 바깥을 누르면 접히게 하는 막. */
@@ -441,6 +450,7 @@ final class SettingsFrame {
             }
             testButton = circleButton(c, Icons.MENU_KEYBOARD, L.t("키보드 열기", "Open keyboard"), v -> {
                 bar.setOpen(false);
+                if (keyboardOverride != null && keyboardOverride.getAsBoolean()) return;
                 toggleTestKeyboard();
             });
             bar.addButton(testButton, L.t("키보드", "keyboard"));
