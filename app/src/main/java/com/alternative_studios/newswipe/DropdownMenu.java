@@ -168,7 +168,8 @@ final class DropdownMenu {
         TextView v = new TextView(c);
         if (i == defaultIndex) {
             String tag = L.t("기본", "Default");
-            SpannableString s = new SpannableString(items[i] + "   " + tag);
+            // 기본값 표시는 항목 이름 아래 줄에 작게 (옆에 붙이면 목록이 쓸데없이 넓어진다).
+            SpannableString s = new SpannableString(items[i] + "\n" + tag);
             int start = s.length() - tag.length();
             s.setSpan(new RelativeSizeSpan(0.78f), start, s.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             s.setSpan(new ForegroundColorSpan(Metro.on ? 0xFF8A8A8A : t.hint), start, s.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -191,7 +192,11 @@ final class DropdownMenu {
             int h = dp(NeuUi.on ? 16 : 12);
             v.setPadding(h, dp(8), h, dp(8));
             v.setCompoundDrawablePadding(dp(12));
-            v.setCompoundDrawablesRelative(null, null, new CheckMark(dp(20), t.accent), null);
+            // 체크는 끝(오른쪽, 오른쪽에서 왼쪽으로 쓰는 언어는 왼쪽)에 둔다. 상대 위치(setCompoundDrawablesRelative)로 붙이면
+            // 화면에 붙기 전까지 자리가 정해지지 않아, 펼치기 전에 잰 너비에 체크 자리가 빠져 항목이 두 줄로 꺾였다.
+            CheckMark check = new CheckMark(dp(20), t.accent);
+            if (anchor.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL) v.setCompoundDrawables(check, null, null, null);
+            else v.setCompoundDrawables(null, null, check, null);
         }
         return v;
     }
@@ -207,8 +212,7 @@ final class DropdownMenu {
             return;
         }
         v.setTextColor(on ? t.accent : t.text);
-        Drawable[] d = v.getCompoundDrawablesRelative();
-        if (d[2] instanceof CheckMark) ((CheckMark) d[2]).set(on);
+        for (Drawable d : v.getCompoundDrawables()) if (d instanceof CheckMark) ((CheckMark) d).set(on);
         float r = dp(NeuUi.on ? 14 : 12);
         if (NeuUi.on) {
             // 고른 줄은 들어간 홈 (고른 기능 줄과 같다), 나머지는 누르는 동안만 들어간다.
@@ -318,7 +322,7 @@ final class DropdownMenu {
         root.addView(box, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         if (NeuUi.on) NeuUi.card(box, radius);
 
-        // 너비: 항목이 다 보이는 만큼 (최소 180dp, 최대 화면 폭 - 32dp와 320dp 중 작은 것).
+        // 너비: 항목이 다 보이는 만큼 (최소 180dp, 최대 화면 폭 - 32dp).
         Rect frame = new Rect();
         anchor.getWindowVisibleDisplayFrame(frame);
         int margin = dp(16);
