@@ -554,7 +554,7 @@ public final class SettingsActivity extends Activity {
 
     /**
      * 피벗 페이지 하나를 채운다: lead(첫 소제목 앞의 내용), 그리고 묶은 섹션들의 내용. 여러 섹션을 한 페이지에 묶었을 때 섹션 소제목은
-     * 페이지 이름과 같거나 바로 아래 첫 설정과 이름이 같으면 빼고, 아니면 옅은 머리글로 바꿔 남긴다.
+     * 페이지 이름과 같거나 바로 아래 첫 설정과 이름이 같으면 빼고, 아니면 묶음 머리글로 남긴다.
      */
     private void fillPivotPage(LinearLayout page, java.util.List<View> lead, java.util.List<Object[]> group, String title) {
         for (View v : lead) page.addView(v);
@@ -563,12 +563,8 @@ public final class SettingsActivity extends Activity {
             java.util.List<View> views = (java.util.List<View>) seg[2];
             if (group.size() > 1 && !seg[0].equals(title) && !startsWithLabel(views, (String) seg[0])) {
                 // 바로 아래 첫 설정이 같은 이름이면 소제목은 되풀이일 뿐이라 뺀다. 아니면(안내·버튼뿐인 '한국어 사전' 등)
-                // 강조색 소제목 대신 토글 머리글('색 정렬')과 같은 옅은 머리글로 남겨 그 아래가 무엇인지 알린다.
-                TextView h = (TextView) seg[1];
-                h.setTextColor(hintColor);
-                Metro.text(h, 15, Metro.regular(), 14);
-                h.setPadding(0, Ui.dp(this, 4), 0, Ui.dp(this, 2));
-                page.addView(h);
+                // 묶음 머리글(PhoneTextGroupHeaderStyle)로 남겨 그 아래가 무엇인지 알린다.
+                page.addView((View) seg[1]);
             }
             for (View v : views) page.addView(v);
         }
@@ -1185,7 +1181,7 @@ public final class SettingsActivity extends Activity {
             if (!text.isEmpty()) {
                 float px = Metro.searchPx(t);   // Metro 모드에서 크기를 바꾼 글자는 원래 크기로 본다
                 boolean label = px >= spPx(15) - 0.5f && px <= spPx(18) + 0.5f;
-                boolean heading = !label && Math.abs(px - spPx(14)) < 0.5f && t.getCurrentTextColor() == accentColor;
+                boolean heading = !label && Math.abs(px - spPx(14)) < 0.5f && (t.getCurrentTextColor() == accentColor || SettingsWidgets.isSectionHeader(t));
                 if (heading) {
                     // 섹션 이름(소제목)은 검색에 넣지 않는다. 그 아래 항목들이 각자 검색된다.
                     last[0] = null;
@@ -1419,7 +1415,7 @@ public final class SettingsActivity extends Activity {
             if (t.getText().toString().trim().isEmpty()) return 0;
             float px = Metro.searchPx(t);
             boolean label = px >= spPx(15) - 0.5f && px <= spPx(18) + 0.5f;
-            boolean heading = !label && Math.abs(px - spPx(14)) < 0.5f && t.getCurrentTextColor() == accentColor;
+            boolean heading = !label && Math.abs(px - spPx(14)) < 0.5f && (t.getCurrentTextColor() == accentColor || SettingsWidgets.isSectionHeader(t));
             return label || heading ? 1 : 0;
         }
         int n = 0;

@@ -129,10 +129,13 @@ final class SettingsWidgets {
         TextView h = text(name, 14, accent);
         h.setPadding(Ui.dp(c, 4), Ui.dp(c, 20), 0, Ui.dp(c, 8));
         if (Metro.on) {
-            // Windows Phone의 묶음 머리글: 강조색의 크고 가는 소문자. 카드가 없으므로 줄과 같은 왼쪽 선에 맞춘다.
+            // Windows Phone의 묶음 머리글 PhoneTextGroupHeaderStyle: PhoneFontFamilySemiLight, PhoneFontSizeLarge(32px → 24sp),
+            // PhoneSubtleBrush (설정 › about의 'phone information'처럼 옅은 회색 소문자). 카드가 없으므로 줄과 같은 왼쪽 선에 맞춘다.
+            // 위 항목이 아래에 항목 사이 여백을 품고 있어 위는 조금만 띄운다.
             h.setText(Metro.lower(name));
+            h.setTextColor(hint);
             Metro.text(h, 24, Metro.light(), 14);
-            h.setPadding(0, Ui.dp(c, 24), 0, Ui.dp(c, 2));
+            h.setPadding(0, Ui.dp(c, 12), 0, Ui.dp(c, 2));
         }
         h.setTag(SECTION_HEADER);
         parent.addView(h);
