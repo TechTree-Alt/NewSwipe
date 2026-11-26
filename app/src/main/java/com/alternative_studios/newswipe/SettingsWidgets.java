@@ -175,21 +175,52 @@ final class SettingsWidgets {
 
     /** Metro 토글 아래 여백 (dp): ToggleSwitch 템플릿 Margin 아래 42px. 일반 항목 사이의 거리로도 쓴다. */
     static final int METRO_TOGGLE_GAP_DP = 31;
-    /** 이 뷰가 아래에 항목 사이 여백을 이미 품고 있음을 알리는 태그 키 (Metro 토글 줄). */
+    /** 하위 묶음 안의 마지막 줄과 묶음 위 줄이 세로선과 남기는 거리 (dp). */
+    private static final int METRO_LINE_GAP_DP = 6;
+    /**
+     * Metro에서 항목 사이 여백을 아래에 품은 줄의 표시 (태그 키). 값이 GAP_PADDING이면 그 여백이 아래 안쪽 여백(토글·값 줄·슬라이더),
+     * GAP_MARGIN이면 아래 바깥 여백(버튼)이다.
+     */
     private static final int R_GAP_END = com.alternative_studios.newswipe.R.id.metro_gap_end;
+    private static final Integer GAP_PADDING = 1, GAP_MARGIN = 2;
 
-    /** v의 마지막 보이는 줄이 아래 여백을 품은 Metro 토글인지 (하위 묶음 뒤에 여백을 더할지 정할 때). */
-    private static boolean endsWithGap(View v) {
-        if (v.getTag(R_GAP_END) != null) return true;
+    /** Metro: 줄 v의 아래에 항목 사이 여백을 둔다 (다음 항목과 METRO_TOGGLE_GAP_DP쯤 떨어지게). */
+    private void gapBelow(View v, boolean margin, int dp) {
+        v.setTag(R_GAP_END, margin ? GAP_MARGIN : GAP_PADDING);
+        setTrailing(v, Ui.dp(c, dp));
+    }
+
+    private static void setTrailing(View v, int px) {
+        if (GAP_MARGIN.equals(v.getTag(R_GAP_END))) {
+            if (v.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
+                ((ViewGroup.MarginLayoutParams) v.getLayoutParams()).bottomMargin = px;
+                v.requestLayout();
+            }
+        } else {
+            v.setPadding(v.getPaddingLeft(), v.getPaddingTop(), v.getPaddingRight(), px);
+        }
+    }
+
+    private static int trailing(View v) {
+        if (GAP_MARGIN.equals(v.getTag(R_GAP_END))) {
+            return v.getLayoutParams() instanceof ViewGroup.MarginLayoutParams
+                    ? ((ViewGroup.MarginLayoutParams) v.getLayoutParams()).bottomMargin : 0;
+        }
+        return v.getPaddingBottom();
+    }
+
+    /** v(또는 그 안의 마지막 보이는 줄)가 아래 여백을 품은 줄이면 그 줄, 아니면 null. */
+    private static View gapRow(View v) {
+        if (v.getTag(R_GAP_END) != null) return v;
         if (v instanceof LinearLayout && ((LinearLayout) v).getOrientation() == LinearLayout.VERTICAL && !v.isClickable()) {
             ViewGroup g = (ViewGroup) v;
             for (int i = g.getChildCount() - 1; i >= 0; i--) {
                 View ch = g.getChildAt(i);
                 if (ch.getVisibility() == View.GONE) continue;
-                return endsWithGap(ch);
+                return gapRow(ch);
             }
         }
-        return false;
+        return null;
     }
 
     /** toggle()로 만든 줄의 설명 글임을 알리는 태그 (줄 모양이 모드마다 달라 위치 대신 이것으로 찾는다). */
@@ -204,8 +235,8 @@ final class SettingsWidgets {
         LinearLayout row = new LinearLayout(c);
         row.setOrientation(LinearLayout.VERTICAL);
         // Toolkit ToggleSwitch 템플릿의 바깥 여백 (위 5px, 아래 42px): 아래 여백이 토글과 토글 사이를 뚜렷이 나눈다.
-        row.setPadding(0, Ui.dp(c, 4), 0, Ui.dp(c, METRO_TOGGLE_GAP_DP));
-        row.setTag(R_GAP_END, Boolean.TRUE);
+        row.setPadding(0, Ui.dp(c, 4), 0, 0);
+        gapBelow(row, false, METRO_TOGGLE_GAP_DP);
         TextView t = text(label, 16, hint);
         Metro.text(t, 15, Metro.regular(), 16);   // 검색은 원래 크기(16sp)로 항목 이름을 찾는다
         mark(t, row);
@@ -366,6 +397,10 @@ final class SettingsWidgets {
         LinearLayout box = new LinearLayout(c);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(0, Ui.dp(c, 8), 0, Ui.dp(c, 4));
+        if (Metro.on) {
+            box.setPadding(0, Ui.dp(c, 4), 0, 0);
+            gapBelow(box, false, METRO_TOGGLE_GAP_DP - 9);   // 막대 아래에서 다음 항목까지 일반 항목 사이만큼
+        }
         LinearLayout top = new LinearLayout(c);
         TextView t = text(label, 16, text);
         // Metro: 토글·값 줄처럼 위에 옅은 머리글 (PhoneFontSizeNormal, PhoneSubtleBrush), 지금 값은 오른쪽에 글자 색으로.
@@ -427,8 +462,9 @@ final class SettingsWidgets {
     private ValueRow metroPicker(String label, String value, View.OnClickListener l) {
         LinearLayout row = new LinearLayout(c);
         row.setOrientation(LinearLayout.VERTICAL);
-        // ListPicker 템플릿의 바깥 여백 PhoneTouchTargetOverhang (12px → 9dp, 위아래).
-        row.setPadding(0, Ui.dp(c, 9), 0, Ui.dp(c, 9));
+        // 위는 ListPicker 템플릿의 바깥 여백 PhoneTouchTargetOverhang (12px → 9dp), 아래는 다음 항목과 일반 항목 사이만큼.
+        row.setPadding(0, Ui.dp(c, 9), 0, 0);
+        gapBelow(row, false, METRO_TOGGLE_GAP_DP - 9);
         TextView t = text(label, 16, hint);
         Metro.text(t, 15, Metro.regular(), 16);   // 검색은 원래 크기(16sp)로 항목 이름을 찾는다
         mark(t, row);
@@ -528,10 +564,40 @@ final class SettingsWidgets {
         column.setPadding(Ui.dp(c, Metro.on ? 12 : 14), 0, 0, 0);
         for (View child : children) column.addView(child);
         group.addView(column, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        // Metro: 묶음 뒤의 항목과는 일반 항목 사이만큼 띄운다. 마지막 줄이 토글이면 그 아래 여백이 이미 그만큼이다
-        // (버튼·설명·슬라이더로 끝나면 그 자체 여백이 작아 다음 항목에 붙어 보였다).
-        if (Metro.on && children.length > 0 && !endsWithGap(children[children.length - 1])) {
-            glp.bottomMargin = Ui.dp(c, METRO_TOGGLE_GAP_DP - 6);   // 마지막 줄 자체의 아래 여백(약 6dp)을 뺀다
+        if (Metro.on && children.length > 0) {
+            // Toolkit ExpanderView처럼 세로선은 하위 항목의 내용만큼만: 위 줄 바로 아래에서 시작해 마지막 하위 항목의 글에서 끝난다.
+            // 마지막 하위 항목이 품은 항목 사이 여백은 선 밖(묶음 아래)으로 옮겨 다음 항목과의 거리는 그대로 둔다.
+            int line6 = Ui.dp(c, METRO_LINE_GAP_DP);
+            View last = gapRow(children[children.length - 1]);
+            if (last != null) setTrailing(last, line6);
+            glp.bottomMargin = Ui.dp(c, METRO_TOGGLE_GAP_DP) - line6;
+            int[] shown = {0, glp.bottomMargin};   // 펼치고 접을 때 이 여백도 함께 움직인다 (Ui.setVisibleAnimated)
+            group.setTag(com.alternative_studios.newswipe.R.id.shown_margins, shown);
+            // 위 줄이 아래에 품은 항목 사이 여백은 묶음이 보일 때만 거슬러 올라가 덮는다 (음수 위 여백: 묶음을 숨기면 쓰이지 않아
+            // 위 줄과 그다음 항목 사이는 원래 거리 그대로다). 위 줄은 화면에 붙은 뒤에야 알 수 있다.
+            group.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+                @Override
+                public void onViewAttachedToWindow(View v) {
+                    if (!(v.getParent() instanceof ViewGroup)) return;
+                    ViewGroup parent = (ViewGroup) v.getParent();
+                    View prev = null;
+                    for (int i = parent.indexOfChild(v) - 1; i >= 0 && prev == null; i--) {
+                        View p = parent.getChildAt(i);
+                        if (p.getVisibility() != View.GONE) prev = p;
+                    }
+                    View above = prev == null ? null : gapRow(prev);
+                    int top = above == null ? 0 : -Math.max(0, trailing(above) - line6);
+                    shown[0] = top;
+                    if (glp.topMargin != top) {
+                        glp.topMargin = top;
+                        v.setLayoutParams(glp);
+                    }
+                }
+
+                @Override
+                public void onViewDetachedFromWindow(View v) {
+                }
+            });
         }
         return group;
     }
@@ -581,6 +647,11 @@ final class SettingsWidgets {
         lp.topMargin = Ui.dp(c, NeuUi.on ? 10 : 6);
         lp.bottomMargin = Ui.dp(c, NeuUi.on ? 10 : 6);
         row.setLayoutParams(lp);
+        if (Metro.on) {
+            // 위는 Button 템플릿의 바깥 여백 PhoneTouchTargetOverhang(12px → 9dp), 아래는 다음 항목과 일반 항목 사이만큼.
+            lp.topMargin = Ui.dp(c, 9);
+            gapBelow(row, true, METRO_TOGGLE_GAP_DP - 9);
+        }
         return row;
     }
 }

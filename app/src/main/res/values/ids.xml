@@ -6,4 +6,6 @@
     <item name="neu_unclip" type="id" />
     <!-- Metro UI: 아래에 항목 사이 여백을 이미 품은 줄(토글) 표시 (하위 묶음 뒤에 여백을 더할지 정한다, SettingsWidgets.subGroup). -->
     <item name="metro_gap_end" type="id" />
+    <!-- 보일 때의 위·아래 바깥 여백(px, int[2]): 펼치고 접을 때 높이와 함께 0에서/으로 움직인다 (ui.Ui.setVisibleAnimated). -->
+    <item name="shown_margins" type="id" />
 </resources>

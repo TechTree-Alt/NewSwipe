@@ -25,11 +25,11 @@ Windows Phone 7·8의 Metro UI처럼 바뀝니다. 이 문서는 무엇을 참�
 | 머리글 | `SettingsFrame.buildMetroHeader()`: 작은 대문자 `NEWSWIPE` + 46sp 소문자 화면 이름 (WP 페이지 제목). 섹션이 둘 이상인 메뉴는 피벗 머리글이 된다 (아래 '피벗') |
 | 스크롤 표시 | WP8 ScrollViewer처럼 끄는 동안만 나타났다가 손을 떼고 1초 뒤 사라지는 가는(3dp) 옅은 회색 네모, 누를 수 없음 (`Metro.scrollIndicator`, 네모 모양은 Android 10 이상) |
 | 카드 없음 | `SettingsWidgets.card()`가 바탕 없이, 구분선·화살표(`Chevron`) 숨김. 섹션 소제목은 피벗의 이름이 되어 목록에서 빠진다 |
-| 하위 설정 묶음 | Toolkit ExpanderView의 Line처럼: 옅은 회색(PhoneSubtleBrush) 2dp 직선이 묶음 높이를 꽉 채우고, 22dp 들여 놓은 선 오른쪽 12dp에 항목 (`SettingsWidgets.subGroup`) |
+| 하위 설정 묶음 | Toolkit ExpanderView의 Line처럼: 옅은 회색(PhoneSubtleBrush) 2dp 직선이 하위 항목의 내용만큼만 이어진다. 위 줄의 설명 바로 아래(6dp)에서 시작해 마지막 하위 항목의 글 아래(6dp)에서 끝나고, 항목 사이 여백은 선 밖으로 옮긴다 (보일 때만 쓰는 여백이라 펼치고 접을 때 높이와 함께 움직인다). 22dp 들여 놓은 선 오른쪽 12dp에 항목 (`SettingsWidgets.subGroup`) |
 | 앱 목록 타일 | 설정 메뉴 아이콘이 강조색 네모 타일 + 흰 아이콘 (`IconView`) |
 | 강조색 고르기 | WP8 강조색 20가지를 네모 타일 4×5로 (`Metro.ACCENTS`) |
 | ToggleSwitch | 툴킷 템플릿 비율: 테두리 있는 네모 트랙 안을 강조색으로 채우고, 트랙보다 조금 긴 글자 색 손잡이. 120ms 지수 15 EaseOut |
-| 토글 줄 | Toolkit ToggleSwitch 템플릿처럼 위에 옅은 머리글(설정 이름), 그 아래 왼쪽에 '켬'/'끔'(24sp Light), 오른쪽에 스위치. 설명은 WP 설정 화면처럼 그 아래 옅은 글. 템플릿의 바깥 여백(위 5px, 아래 42px → 31dp)을 그대로 두어 토글과 토글 사이가 뚜렷이 나뉜다. 하위 묶음이 토글이 아닌 줄로 끝나면 묶음 아래에 같은 거리를 더한다 (`SettingsWidgets.metroToggle`) |
+| 토글 줄 | Toolkit ToggleSwitch 템플릿처럼 위에 옅은 머리글(설정 이름), 그 아래 왼쪽에 '켬'/'끔'(24sp Light), 오른쪽에 스위치. 설명은 WP 설정 화면처럼 그 아래 옅은 글. 템플릿의 바깥 여백(위 5px, 아래 42px → 31dp)을 그대로 두어 토글과 토글 사이가 뚜렷이 나뉜다. 값 줄·슬라이더·버튼도 아래에 같은 항목 사이 여백을 둔다 (위는 PhoneTouchTargetOverhang 12px → 9dp) (`SettingsWidgets.metroToggle`, `gapBelow`) |
 | 값 줄 | Toolkit ListPicker 템플릿처럼 위에 옅은 머리글, 그 아래 글자 색 3px 테두리 네모 안에 지금 값(19sp). 드롭다운은 그 네모 자리에서 목록으로 펼쳐진다: 네모 높이에서 고른 항목을 중심으로 위아래로 펼쳐지고(300ms EaseOut), 접힐 때는 고른 항목으로 고르게 오므라들어(220ms) 같은 높이의 네모와 바뀐다 (`metroPicker`, `DropdownMenu.PICKER_BOX`) |
 | 슬라이더 줄 | 위에 옅은 머리글과 오른쪽의 지금 값, 그 아래 막대 |
 | 버튼 | SDK PhoneButtonBase처럼 글자 색 3px(→ 2.25dp) 테두리의 네모, SemiBold 19sp(PhoneFontSizeMediumLarge) 글자, 누르면 강조색으로 채워짐 (WP8) |

@@ -302,6 +302,18 @@ public final class Ui {
         }
         final int from = visible ? v.getHeight() : 0;
         final float fromAlpha = visible ? v.getAlpha() : 0f;
+        // 보일 때만 쓰는 위·아래 바깥 여백(하위 묶음이 위 줄 쪽으로 당겨 붙는 음수 여백 등)도 숨은 상태의 0에서/으로 함께 움직인다.
+        // 함께 움직이지 않으면 펼치기 시작이나 접기 끝에 여백만큼 아래 줄들이 한 번에 튄다.
+        final Object shownTag = v.getTag(com.alternative_studios.newswipe.R.id.shown_margins);
+        final int[] shown = shownTag instanceof int[] && lp instanceof android.view.ViewGroup.MarginLayoutParams ? (int[]) shownTag : null;
+        final int fromTop, fromBottom;
+        if (shown != null) {
+            android.view.ViewGroup.MarginLayoutParams m = (android.view.ViewGroup.MarginLayoutParams) lp;
+            fromTop = visible ? m.topMargin : 0;
+            fromBottom = visible ? m.bottomMargin : 0;
+        } else {
+            fromTop = fromBottom = 0;
+        }
         final int to;
         if (show) {
             android.view.View pv = (android.view.View) parent;
@@ -316,6 +328,10 @@ public final class Ui {
                     android.view.View.MeasureSpec.makeMeasureSpec(0, android.view.View.MeasureSpec.UNSPECIFIED));
             to = v.getMeasuredHeight();
             lp.height = from;
+            if (shown != null) {   // 숨어 있던 뷰는 여백도 0에서 시작한다
+                ((android.view.ViewGroup.MarginLayoutParams) lp).topMargin = fromTop;
+                ((android.view.ViewGroup.MarginLayoutParams) lp).bottomMargin = fromBottom;
+            }
             v.setAlpha(fromAlpha);
             v.setVisibility(android.view.View.VISIBLE);
             v.setLayoutParams(lp);
@@ -334,6 +350,11 @@ public final class Ui {
             float f = (float) anim.getAnimatedValue();
             android.view.ViewGroup.LayoutParams l = v.getLayoutParams();
             l.height = Math.round(from + (to - from) * f);
+            if (shown != null) {
+                android.view.ViewGroup.MarginLayoutParams m = (android.view.ViewGroup.MarginLayoutParams) l;
+                m.topMargin = Math.round(fromTop + ((show ? shown[0] : 0) - fromTop) * f);
+                m.bottomMargin = Math.round(fromBottom + ((show ? shown[1] : 0) - fromBottom) * f);
+            }
             v.setLayoutParams(l);
             v.setAlpha(fromAlpha + (toAlpha - fromAlpha) * f);
             clip.set(0, 0, Math.max(v.getWidth(), 1), l.height);
@@ -354,6 +375,11 @@ public final class Ui {
                 v.setClipBounds(null);
                 android.view.ViewGroup.LayoutParams l = v.getLayoutParams();
                 l.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT;
+                if (shown != null) {
+                    // 숨기면 여백은 쓰이지 않으므로 보일 때의 값으로 돌려 둔다 (다음에 바로 보일 때 그대로).
+                    ((android.view.ViewGroup.MarginLayoutParams) l).topMargin = shown[0];
+                    ((android.view.ViewGroup.MarginLayoutParams) l).bottomMargin = shown[1];
+                }
                 v.setLayoutParams(l);
                 v.setAlpha(1f);
                 if (!show) v.setVisibility(android.view.View.GONE);
