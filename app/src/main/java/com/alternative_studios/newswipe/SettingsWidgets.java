@@ -110,7 +110,10 @@ final class SettingsWidgets {
     /** 설명 글 (작고 옅은 글자). Metro: PhoneTextSubtleStyle (PhoneFontSizeNormal 20px → 15sp, PhoneSubtleBrush). */
     TextView note(String s) {
         TextView t = text(s, 13, hint);
-        if (Metro.on) Metro.text(t, 15, Metro.regular(), 13);
+        if (Metro.on) {
+            Metro.text(t, 15, Metro.regular(), 13);
+            t.setTag(com.alternative_studios.newswipe.R.id.metro_note, Boolean.TRUE);
+        }
         t.setLineSpacing(Ui.dp(c, 3), 1f);
         t.setPadding(0, Ui.dp(c, 6), 0, Ui.dp(c, 6));
         return t;
@@ -722,9 +725,15 @@ final class SettingsWidgets {
                         if (parent.getChildAt(i).getVisibility() != View.GONE) next = parent.getChildAt(i);
                     }
                     boolean button = next != null && next.getTag(com.alternative_studios.newswipe.R.id.metro_button) != null;
-                    int px = button ? stacked : apart;
+                    boolean note = next != null && next.getTag(com.alternative_studios.newswipe.R.id.metro_note) != null;
+                    // 바로 아래 설명 글은 이 버튼의 설명이다: 토글의 설명처럼 버튼에 붙이고, 항목 사이 여백은 설명 아래로 옮긴다.
+                    int px = button ? stacked : note ? 0 : apart;
                     ((int[]) v.getTag(R_GAP_END))[1] = px;
                     setTrailing(v, px);
+                    if (note) {
+                        next.setTag(R_GAP_END, new int[]{GAP_PADDING, apart});
+                        setTrailing(next, apart);
+                    }
                 }
 
                 @Override

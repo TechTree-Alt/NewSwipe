@@ -10,4 +10,6 @@
     <item name="shown_margins" type="id" />
     <!-- Metro UI: SettingsWidgets.button으로 만든 버튼 (버튼이 이어지면 그 사이를 좁게 둔다). -->
     <item name="metro_button" type="id" />
+    <!-- Metro UI: SettingsWidgets.note로 만든 설명 글 (버튼 바로 아래면 그 버튼의 설명으로 붙인다). -->
+    <item name="metro_note" type="id" />
 </resources>
