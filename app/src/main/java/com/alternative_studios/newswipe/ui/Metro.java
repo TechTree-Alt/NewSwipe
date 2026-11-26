@@ -633,8 +633,9 @@ public final class Metro {
                 paint.setColor(blendArgb(dim, fg, p));
                 c.drawText(at(-1), offset - wPrev - gap, y, paint);
             }
+            // 고리처럼 돌아가며 화면 끝까지 이어 그린다 (WP 피벗처럼 섹션이 둘뿐이어도 오른쪽이 비지 않고, 넘기는 동안 다음 이름이 이미 보인다).
             float x = offset;
-            for (int k = 0; k < names.length && x < getWidth(); k++) {
+            for (int k = 0; x < getWidth() && k < 64; k++) {
                 int color = k == 0 ? blendArgb(fg, dim, p) : k == 1 && progress > 0 ? blendArgb(dim, fg, p) : dim;
                 paint.setColor(color);
                 c.drawText(at(k), x, y, paint);
@@ -649,7 +650,7 @@ public final class Metro {
                 // 누른 자리의 이름 (지금 이름은 0): Windows Phone 피벗처럼 머리글의 이름을 누르면 그 섹션으로 간다.
                 float x = widthAt(0) + gap / 2;
                 if (e.getX() <= x) return true;   // 지금 이름을 눌렀다
-                for (int k = 1; k < names.length; k++) {
+                for (int k = 1; k < 64; k++) {
                     if (e.getX() < x + widthAt(k) + gap) {
                         performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
                         onTap.accept(k);

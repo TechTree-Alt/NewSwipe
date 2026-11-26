@@ -160,6 +160,19 @@ final class SettingsWidgets {
         return box;
     }
 
+    /**
+     * Metro UI: box 안에 컨트롤의 머리글을 더한다 (토글·값 줄의 머리글과 같은 모양: PhoneFontSizeNormal 20px → 15sp, PhoneSubtleBrush).
+     * 선택 버튼 줄처럼 자기 이름이 없는 컨트롤 위에 둔다. 검색으로 들어오면 box 전체를 깜빡인다.
+     */
+    TextView fieldHeader(LinearLayout box, String label) {
+        TextView t = text(label, 16, hint);
+        Metro.text(t, 15, Metro.regular(), 16);   // 검색은 원래 크기(16sp)로 항목 이름을 찾는다
+        t.setPadding(0, Ui.dp(c, 6), 0, Ui.dp(c, 6));
+        mark(t, box);
+        box.addView(t);
+        return t;
+    }
+
     /** toggle()로 만든 줄의 설명 글임을 알리는 태그 (줄 모양이 모드마다 달라 위치 대신 이것으로 찾는다). */
     private static final Object DESC = new Object();
 

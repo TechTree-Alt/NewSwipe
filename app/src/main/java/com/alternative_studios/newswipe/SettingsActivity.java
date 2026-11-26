@@ -583,7 +583,7 @@ public final class SettingsActivity extends Activity {
         switch (id) {
             case "theme":
                 return new String[][]{
-                        {L.t("모드", "Mode"), L.t("모드", "Mode"), L.t("라이트/다크 모드", "Light/dark mode")},
+                        {L.t("모드", "Mode"), L.t("모드", "Mode")},   // 라이트/다크 모드는 Metro에서 소제목 없이 이 페이지에 붙는다
                         {L.t("강조 색", "Accent color"), L.t("강조 색", "Accent color")},
                         {L.t("키 색", "Key colors"), L.t("키 색", "Key colors")},
                 };
@@ -3423,7 +3423,14 @@ public final class SettingsActivity extends Activity {
     private void buildTheme() {
         buildDesignMode();   // 화면 전체의 모양을 정하므로 맨 위에
 
-        LinearLayout mode = section(L.t("라이트/다크 모드", "Light/dark mode"));
+        // Metro: 라이트/다크 모드는 '모드' 페이지에 붙는 한 컨트롤이라 소제목 대신 '색 정렬'처럼 옅은 머리글을 단다.
+        LinearLayout mode;
+        if (Metro.on) {
+            mode = card();
+            widgets.fieldHeader(mode, L.t("라이트/다크 모드", "Light/dark mode"));
+        } else {
+            mode = section(L.t("라이트/다크 모드", "Light/dark mode"));
+        }
         String[] modeValues = {Prefs.THEME_SYSTEM, Prefs.THEME_LIGHT, Prefs.THEME_DARK};
         mode.addView(choiceRow(new String[]{L.t("시스템", "System"), L.t("라이트", "Light"), L.t("다크", "Dark")}, indexOf(modeValues, prefs.themeMode()), i -> {
             prefs.raw().edit().putString(Prefs.THEME_MODE, modeValues[i]).apply();
@@ -3479,6 +3486,7 @@ public final class SettingsActivity extends Activity {
         // '키 소리'의 '모드' 링크로 들어오면 머리글만이 아니라 고르기와 설명을 함께 깜빡인다.
         int at = list.indexOfChild(box);
         if (at > 0 && list.getChildAt(at - 1) instanceof TextView) markItem((TextView) list.getChildAt(at - 1), box);
+        if (Metro.on) widgets.fieldHeader(box, L.t("모드", "Mode"));   // 소제목은 피벗 이름이 되므로 버튼 위에 옅은 머리글
         java.util.List<String> labels = new java.util.ArrayList<>();
         java.util.List<Integer> modes = new java.util.ArrayList<>();
         labels.add(L.t("기본", "Default"));
@@ -4148,14 +4156,16 @@ public final class SettingsActivity extends Activity {
 
     /**
      * 진동을 고르는 드롭다운 (기본값에는 '기본'이 붙는다). 항목을 누르면 바로 그 진동으로 바꾸고 울려 주며, 목록은 닫히지 않아
-     * 여러 개를 느껴 보고 비교할 수 있다. 바깥을 누르면 닫힌다.
+     * 여러 개를 느껴 보고 비교할 수 있다. 바깥을 누르면 닫힌다. Metro에서는 울려 주고 바로 닫힌다.
      *
      * @param preview 항목을 눌렀을 때 그 진동을 울린다 (누른 항목 뷰, 목록 차례)
      * @param onPick  바뀐 목록 차례를 알려 준다
      */
     private void pickVibration(View anchor, String[] labels, int current, int defaultIndex,
                                java.util.function.ObjIntConsumer<View> preview, java.util.function.IntConsumer onPick) {
-        DropdownMenu.of(anchor, labels, current).defaultIndex(defaultIndex).preview(preview).keepOpen().show(onPick);
+        DropdownMenu m = DropdownMenu.of(anchor, labels, current).defaultIndex(defaultIndex).preview(preview);
+        if (!Metro.on) m.keepOpen();   // Metro: 키 소리처럼 고르면 울려 주고 바로 닫힌다
+        m.show(onPick);
     }
 
     /**
