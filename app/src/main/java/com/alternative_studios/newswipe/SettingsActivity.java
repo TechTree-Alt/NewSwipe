@@ -553,15 +553,23 @@ public final class SettingsActivity extends Activity {
     }
 
     /**
-     * 피벗 페이지 하나를 채운다: lead(첫 소제목 앞의 내용), 그리고 묶은 섹션들의 내용. 여러 섹션을 한 페이지에 묶었으면 페이지 이름과
-     * 다른 섹션의 소제목은 남겨 어디부터 무엇인지 보이게 한다 (페이지 이름과 같은 소제목은 머리글이 대신한다).
+     * 피벗 페이지 하나를 채운다: lead(첫 소제목 앞의 내용), 그리고 묶은 섹션들의 내용. 여러 섹션을 한 페이지에 묶었을 때 섹션 소제목은
+     * 페이지 이름과 같거나 바로 아래 첫 설정과 이름이 같으면 빼고, 아니면 옅은 머리글로 바꿔 남긴다.
      */
     private void fillPivotPage(LinearLayout page, java.util.List<View> lead, java.util.List<Object[]> group, String title) {
         for (View v : lead) page.addView(v);
         for (Object[] seg : group) {
-            if (group.size() > 1 && !seg[0].equals(title)) page.addView((View) seg[1]);
             @SuppressWarnings("unchecked")
             java.util.List<View> views = (java.util.List<View>) seg[2];
+            if (group.size() > 1 && !seg[0].equals(title) && !startsWithLabel(views, (String) seg[0])) {
+                // 바로 아래 첫 설정이 같은 이름이면 소제목은 되풀이일 뿐이라 뺀다. 아니면(안내·버튼뿐인 '한국어 사전' 등)
+                // 강조색 소제목 대신 토글 머리글('색 정렬')과 같은 옅은 머리글로 남겨 그 아래가 무엇인지 알린다.
+                TextView h = (TextView) seg[1];
+                h.setTextColor(hintColor);
+                Metro.text(h, 15, Metro.regular(), 14);
+                h.setPadding(0, Ui.dp(this, 4), 0, Ui.dp(this, 2));
+                page.addView(h);
+            }
             for (View v : views) page.addView(v);
         }
         // 맨 위의 뷰는 머리글과 조금만 띄운다 (소제목 아래 카드는 위 여백이 0, 소제목은 위로 크게 띄워 두었다).
@@ -573,6 +581,28 @@ public final class SettingsActivity extends Activity {
                 ((LinearLayout.LayoutParams) first.getLayoutParams()).topMargin = Ui.dp(this, 4);
             }
         }
+    }
+
+    /** views에서 처음 만나는 글자가 name인지 (대소문자 무시): 소제목과 바로 아래 설정의 이름이 같은지. */
+    private static boolean startsWithLabel(java.util.List<View> views, String name) {
+        for (View v : views) {
+            TextView t = firstLabel(v);
+            if (t != null) return t.getText().toString().trim().equalsIgnoreCase(name.trim());
+        }
+        return false;
+    }
+
+    private static TextView firstLabel(View v) {
+        if (v.getVisibility() == View.GONE || SettingsWidgets.isBadge(v)) return null;
+        if (v instanceof TextView) return (TextView) v;
+        if (v instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) {
+                TextView t = firstLabel(g.getChildAt(i));
+                if (t != null) return t;
+            }
+        }
+        return null;
     }
 
     /**
