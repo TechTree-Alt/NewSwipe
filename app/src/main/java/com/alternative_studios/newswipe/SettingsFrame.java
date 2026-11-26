@@ -281,13 +281,17 @@ final class SettingsFrame {
      */
     Metro.Pivot installPivot(String[] names, View[] pages, int index, Metro.Pivot.Host host) {
         if (page == null || metroBig == null) return null;
+        // Pivot 템플릿: 제목은 PivotTitleStyle(SemiBold 22.667px), Margin 24,17,0,-7. 머리글 이름은 PivotHeaderItem Padding 21
+        // (제목보다 3px 왼쪽), 내용은 PivotItemMargin 12,28,12,0만큼 아래에서 시작한다.
         metroSmall.setText(Metro.upper(title));
+        metroSmall.setTextSize(TypedValue.COMPLEX_UNIT_SP, Metro.sp(Metro.FONT_MEDIUM));
+        metroSmall.setTypeface(Metro.semibold());
         Metro.PivotHeader names2 = new Metro.PivotHeader(activity, names, index);
-        names2.setPadding(0, Ui.dp(activity, 2), 0, Ui.dp(activity, 8));
         ViewGroup parent = (ViewGroup) metroBig.getParent();
         int at = parent.indexOfChild(metroBig);
+        ViewGroup.LayoutParams lp = metroBig.getLayoutParams();
         parent.removeViewAt(at);
-        parent.addView(names2, at, matchWrap());
+        parent.addView(names2, at, lp);
         metroBig = null;
         pivot = new Metro.Pivot(page, names2, pages, index, host);
         return pivot;
@@ -384,45 +388,42 @@ final class SettingsFrame {
     }
 
     /**
-     * Metro UI의 머리글 (Windows Phone 페이지 제목): 첫 줄에 작은 대문자 앱 이름, 그 아래에 화면 이름을 크고 가는 소문자로 쓴다
-     * (화면보다 길면 끝에서 잘린다). 섹션 피벗을 놓으면(installPivot) 첫 줄은 메뉴 이름, 큰 제목 자리는 섹션 이름 줄이 된다.
+     * Metro UI의 머리글: Windows Phone 8 SDK의 페이지 템플릿(TitlePanel). 첫 줄에 작은 대문자 앱 이름(ApplicationTitle,
+     * PhoneTextNormalStyle 20px), 그 아래에 화면 이름을 크고 가는 소문자(PageTitle, PhoneTextTitle1Style SemiLight 72px, 위로 7px 당김)로
+     * 쓰고 화면보다 길면 끝에서 잘린다. 아래로 28px 띄워 내용이 시작한다. 섹션 피벗을 놓으면({@link #installPivot}) Pivot 템플릿이 된다.
      * 버튼은 화면 아래의 앱 바에 있다.
      */
     private View buildMetroHeader() {
         Context c = activity;
         LinearLayout header = new LinearLayout(c);
         header.setOrientation(LinearLayout.VERTICAL);
-        int pad = Ui.dp(c, 16);
-        header.setPadding(pad, Ui.dp(c, 8), pad, Ui.dp(c, 4));
+        int pad = Ui.dp(c, 16);   // 목록과 같은 왼쪽 선 (WP: TitlePanel 12px + 글 12px)
+        header.setPadding(pad, Metro.px(c, 17), pad, Metro.px(c, 28));
         header.setClipChildren(true);
 
         boolean main = title.equals(activity.getString(R.string.app_name));
-        LinearLayout top = new LinearLayout(c);
-        top.setGravity(Gravity.CENTER_VERTICAL);
         TextView small = new TextView(c);
         small.setText(Metro.upper(main ? title : subtitle));
         small.setTextColor(colors.text);
-        small.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        small.setTypeface(Metro.semibold());
+        small.setTextSize(TypedValue.COMPLEX_UNIT_SP, Metro.sp(Metro.FONT_NORMAL));
+        small.setTypeface(Metro.regular());
         small.setSingleLine(true);
         small.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        top.addView(small, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        // 버튼은 머리글이 아니라 화면 아래의 앱 바에 둔다 (buildAppBar).
-        top.setMinimumHeight(Ui.dp(c, 32));
-        header.addView(top, matchWrap());
+        header.addView(small, matchWrap());
         metroSmall = small;
 
         TextView big = new TextView(c);
-        String name = Metro.lower(main ? L.t("설정", "settings") : title);
-        big.setText(name);
+        big.setText(Metro.lower(main ? L.t("설정", "settings") : title));
         big.setTextColor(colors.text);
-        big.setTextSize(TypedValue.COMPLEX_UNIT_SP, 46);
+        big.setTextSize(TypedValue.COMPLEX_UNIT_SP, Metro.sp(Metro.FONT_EXTRA_EXTRA_LARGE));
         big.setTypeface(Metro.light());
         big.setSingleLine(true);
         big.setHorizontallyScrolling(true);   // 화면보다 길면 줄이지 않고 화면 끝에서 잘린다
-        big.setIncludeFontPadding(false);
-        big.setPadding(0, Ui.dp(c, 2), 0, Ui.dp(c, 8));
-        header.addView(big, matchWrap());
+        // 글꼴의 위아래 끝까지 담는 줄 높이(includeFontPadding)는 Silverlight TextBlock의 줄 높이와 거의 같다.
+        LinearLayout.LayoutParams blp = matchWrap();
+        blp.leftMargin = -Metro.px(c, 3);   // PageTitle Margin 9 (ApplicationTitle은 12)
+        blp.topMargin = -Metro.px(c, 7);
+        header.addView(big, blp);
         metroBig = big;
         return header;
     }
@@ -495,6 +496,7 @@ final class SettingsFrame {
         searchInput.setBackground(Ui.round(colors.card, Ui.dp(c, 12)));
         if (NeuUi.on) NeuUi.sunken(searchInput, Ui.dp(c, 12));   // Neumorphism: 안으로 들어간 입력란
         searchInput.setPadding(Ui.dp(c, 14), Ui.dp(c, 10), Ui.dp(c, 14), Ui.dp(c, 10));
+        if (Metro.on) Metro.textBox(searchInput);
         searchInput.addTextChangedListener(new android.text.TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int a, int b, int n) { }
             @Override public void onTextChanged(CharSequence s, int a, int b, int n) { }
@@ -555,6 +557,7 @@ final class SettingsFrame {
         testInput.setBackground(Ui.round(colors.card, Ui.dp(c, 12)));
         if (NeuUi.on) NeuUi.sunken(testInput, Ui.dp(c, 12));   // Neumorphism: 안으로 들어간 입력란
         testInput.setPadding(Ui.dp(c, 14), Ui.dp(c, 10), Ui.dp(c, 14), Ui.dp(c, 10));
+        if (Metro.on) Metro.textBox(testInput);
         testBar.addView(testInput, matchWrap());
         updateTestButton();
     }

@@ -240,13 +240,13 @@ public final class AppTheme {
                 ct.setCheckMarkDrawable(new Metro.Check(v.getContext(), isRadioMark(ct)));
             }
         } else if (Metro.on && (v instanceof android.widget.CheckBox || v instanceof android.widget.RadioButton)) {
-            // Metro: 시스템 체크박스·라디오 대신 Windows Phone의 꽉 찬 상자·동그라미
+            // Metro: 시스템 체크박스·라디오 대신 Windows Phone의 테두리 상자·동그라미
             android.widget.CompoundButton cb = (android.widget.CompoundButton) v;
             cb.setButtonTintList(null);
             if (!(cb.getButtonDrawable() instanceof Metro.Check)) cb.setButtonDrawable(new Metro.Check(v.getContext(), v instanceof android.widget.RadioButton));
             cb.setBackground(null);   // 시스템 물결 없이 틸트로만 반응한다
-            // 상자와 글 사이: 템플릿의 ContentContainer Margin 12px(→ 9dp). CompoundButton은 상자를 맨 앞에 두고 글을 안쪽 여백 뒤에 쓴다.
-            int gap = Ui.dp(v.getContext(), 9);
+            // 상자와 글 사이: 템플릿의 ContentContainer Margin 12px. CompoundButton은 상자를 맨 앞에 두고 글을 안쪽 여백 뒤에 쓴다.
+            int gap = Metro.px(v.getContext(), 12);
             if (cb.getPaddingStart() < gap) cb.setPaddingRelative(gap, cb.getPaddingTop(), cb.getPaddingEnd(), cb.getPaddingBottom());
             Metro.tilt(cb);
         } else if (v instanceof android.widget.CheckedTextView) {
@@ -255,31 +255,18 @@ public final class AppTheme {
             ((android.widget.CompoundButton) v).setButtonTintList(states);
         } else if (v instanceof android.widget.EditText) {
             android.widget.EditText e = (android.widget.EditText) v;
-            e.setBackgroundTintList(android.content.res.ColorStateList.valueOf(accent));
             if (Metro.on && !(e.getBackground() instanceof android.graphics.drawable.GradientDrawable)) {
-                // Windows Phone의 TextBox: 평소에는 옅은 회색 네모, 입력 중에는 흰 바탕에 강조색 테두리, 글자는 늘 검정.
-                // 부른 쪽이 직접 칠한 바탕(GradientDrawable)은 그대로 둔다.
-                android.content.Context c = e.getContext();
-                // PhoneTextBoxBrush: 다크 #BFFFFFFF(검정 위 → #BFBFBF), 라이트 #26000000(흰 위 → #D9D9D9).
-                android.graphics.drawable.GradientDrawable idle = Ui.round(Metro.dark ? 0xFFBFBFBF : 0xFFD9D9D9, 0);
-                android.graphics.drawable.GradientDrawable focus = Ui.round(0xFFFFFFFF, 0);
-                focus.setStroke(Ui.dp(c, 2), accent);
-                android.graphics.drawable.StateListDrawable bg = new android.graphics.drawable.StateListDrawable();
-                bg.addState(new int[]{android.R.attr.state_focused}, focus);
-                bg.addState(new int[0], idle);
-                e.setBackgroundTintList(null);
-                e.setBackground(bg);
-                e.setTextColor(Metro.dark ? 0xFF000000 : 0xDE000000);   // PhoneTextBoxForegroundBrush
-                e.setHintTextColor(0xFF666666);
-                e.setPadding(Ui.dp(c, 10), Ui.dp(c, 9), Ui.dp(c, 10), Ui.dp(c, 9));
-            }
-            e.setHighlightColor((accent & 0x00FFFFFF) | 0x55000000);
-            if (Build.VERSION.SDK_INT >= 29) {
-                android.graphics.drawable.Drawable cursor = e.getTextCursorDrawable();
-                if (cursor != null) {
-                    cursor = cursor.mutate();
-                    cursor.setTint(accent);
-                    e.setTextCursorDrawable(cursor);
+                Metro.textBox(e);   // Windows Phone의 TextBox (부른 쪽이 직접 칠한 바탕은 그대로 둔다)
+            } else {
+                e.setBackgroundTintList(android.content.res.ColorStateList.valueOf(accent));
+                e.setHighlightColor((accent & 0x00FFFFFF) | 0x55000000);
+                if (Build.VERSION.SDK_INT >= 29) {
+                    android.graphics.drawable.Drawable cursor = e.getTextCursorDrawable();
+                    if (cursor != null) {
+                        cursor = cursor.mutate();
+                        cursor.setTint(accent);
+                        e.setTextCursorDrawable(cursor);
+                    }
                 }
             }
         }

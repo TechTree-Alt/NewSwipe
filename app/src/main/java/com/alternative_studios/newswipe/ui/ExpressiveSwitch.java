@@ -14,9 +14,9 @@ import android.view.animation.OvershootInterpolator;
  * Material 3 Expressive 스타일 스위치. 52×32dp 알약형 트랙, 꺼짐은 작은 손잡이와 테두리,
  * 켜짐은 큰 손잡이 안에 체크 표시가 들어간다. 누르는 동안 손잡이가 커진다.
  *
- * <p>Metro UI 모드에서는 Windows Phone의 ToggleSwitch를 그린다 (Windows Phone Toolkit의 템플릿 비율: 트랙 89×34에 3px 글자 색
- * 테두리와 4px 바탕색 틈, 그 안을 손잡이 왼쪽까지 강조색으로 채우고, 손잡이는 트랙보다 위아래로 조금 긴 20×38의 글자 색 막대이며
- * 양옆을 바탕색 4px로 띄운다). 상태가 바뀔 때는 아주 짧게(지수 15의 EaseOut) 움직인다.
+ * <p>Metro UI 모드에서는 Windows Phone Toolkit의 ToggleSwitch 템플릿을 그린다: 트랙 89×34px에 3px 글자 색 테두리와 4px 바탕색 틈,
+ * 그 안을 손잡이 왼쪽까지 강조색으로 채우고, 손잡이는 트랙보다 위아래로 2px씩 긴 20×38px의 글자 색 막대이며 양옆을 바탕색 4px로
+ * 띄운다 (px는 {@link Metro#px}로 옮긴다). 상태가 바뀔 때는 템플릿의 VisualTransition처럼 50ms 만에 옮겨 간다.
  */
 public final class ExpressiveSwitch extends View {
 
@@ -42,8 +42,8 @@ public final class ExpressiveSwitch extends View {
         this.onAccent = onAccent;
         this.outline = outline;
         this.surface = surface;
-        w = Ui.dp(context, Metro.on ? 60 : 52);
-        h = Ui.dp(context, Metro.on ? 23 : 32);
+        w = Metro.on ? Metro.px(context, 89) : Ui.dp(context, 52);
+        h = Metro.on ? Metro.px(context, 34) : Ui.dp(context, 32);
         border = Ui.dp(context, 2);
         setClickable(true);
         setFocusable(true);
@@ -105,7 +105,7 @@ public final class ExpressiveSwitch extends View {
     private void animateProgress(float to) {
         if (progressAnim != null) progressAnim.cancel();
         progressAnim = ValueAnimator.ofFloat(progress, to);
-        progressAnim.setDuration(Metro.on ? 120 : 260);
+        progressAnim.setDuration(Metro.on ? 50 : 260);
         progressAnim.setInterpolator(Metro.on ? METRO_EASE : new OvershootInterpolator(1.4f));
         progressAnim.addUpdateListener(a -> {
             progress = (float) a.getAnimatedValue();
@@ -133,13 +133,14 @@ public final class ExpressiveSwitch extends View {
         setMeasuredDimension(Math.round(w), Math.max(Math.round(h), Ui.dp(getContext(), 40)));
     }
 
-    /** Windows Phone의 ToggleSwitch (트랙 60×23dp, 손잡이 13×27dp). */
+    /** Windows Phone의 ToggleSwitch (트랙 89×34px, 손잡이 20×38px). */
     private void drawMetro(Canvas c) {
-        float dp = Ui.dp(getContext(), 1);
+        Context ctx = getContext();
         float cy = getHeight() / 2f;
         float top = cy - h / 2f, bottom = cy + h / 2f;
         float t = Math.max(0f, Math.min(1f, progress));
-        float stroke = 2 * dp, gap = 2.5f * dp, thumbW = 13 * dp, thumbH = h + 4 * dp, thumbGap = 3 * dp;
+        float stroke = Metro.px(ctx, 3), gap = Metro.px(ctx, 4), thumbW = Metro.px(ctx, 20), thumbH = Metro.px(ctx, 38),
+                thumbGap = Metro.px(ctx, 4);
         paint.setStyle(Paint.Style.FILL);
         // 테두리 (글자 색)
         paint.setColor(Metro.fg);
@@ -246,6 +247,7 @@ public final class ExpressiveSwitch extends View {
     @Override
     public boolean onTouchEvent(MotionEvent e) {
         if (!isEnabled()) return false;
+        Metro.onTiltTouch(this, e);   // Metro: 누른 쪽으로 기운다 (WP의 ToggleSwitchButton은 ButtonBase라 틸트 대상이다)
         switch (e.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
                 pressed = true;

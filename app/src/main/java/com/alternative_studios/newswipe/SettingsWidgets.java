@@ -111,7 +111,7 @@ final class SettingsWidgets {
     TextView note(String s) {
         TextView t = text(s, 13, hint);
         if (Metro.on) {
-            Metro.text(t, 15, Metro.regular(), 13);
+            Metro.text(t, Metro.sp(Metro.FONT_NORMAL), Metro.regular(), 13);
             t.setTag(com.alternative_studios.newswipe.R.id.metro_note, Boolean.TRUE);
         }
         t.setLineSpacing(Ui.dp(c, 3), 1f);
@@ -137,7 +137,7 @@ final class SettingsWidgets {
             // 위 항목이 아래에 항목 사이 여백을 품고 있어 위는 조금만 띄운다.
             h.setText(Metro.lower(name));
             h.setTextColor(hint);
-            Metro.text(h, 24, Metro.light(), 14);
+            Metro.text(h, Metro.sp(Metro.FONT_LARGE), Metro.light(), 14);
             h.setPadding(0, Ui.dp(c, 12), 0, Ui.dp(c, 2));
         }
         h.setTag(SECTION_HEADER);
@@ -172,7 +172,7 @@ final class SettingsWidgets {
      */
     TextView fieldHeader(LinearLayout box, String label) {
         TextView t = text(label, 16, hint);
-        Metro.text(t, 15, Metro.regular(), 16);   // 검색은 원래 크기(16sp)로 항목 이름을 찾는다
+        Metro.text(t, Metro.sp(Metro.FONT_NORMAL), Metro.regular(), 16);   // 검색은 원래 크기(16sp)로 항목 이름을 찾는다
         t.setPadding(0, Ui.dp(c, 6), 0, Ui.dp(c, 6));
         mark(t, box);
         box.addView(t);
@@ -249,14 +249,14 @@ final class SettingsWidgets {
         row.setPadding(0, Ui.dp(c, 4), 0, 0);
         gapBelow(row, false, METRO_TOGGLE_GAP_DP);
         TextView t = text(label, 16, hint);
-        Metro.text(t, 15, Metro.regular(), 16);   // 검색은 원래 크기(16sp)로 항목 이름을 찾는다
+        Metro.text(t, Metro.sp(Metro.FONT_NORMAL), Metro.regular(), 16);   // 검색은 원래 크기(16sp)로 항목 이름을 찾는다
         mark(t, row);
         row.addView(t);
         LinearLayout line = new LinearLayout(c);
         line.setGravity(Gravity.CENTER_VERTICAL);
         TextView state = new TextView(c);
         state.setTextColor(text);
-        state.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
+        state.setTextSize(TypedValue.COMPLEX_UNIT_SP, Metro.sp(Metro.FONT_LARGE));
         state.setTypeface(Metro.light());
         state.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);   // 스위치가 상태를 읽어 준다
         line.addView(state, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
@@ -268,13 +268,13 @@ final class SettingsWidgets {
         row.addView(line, matchWrap());
         if (desc != null) {
             TextView d = text(desc, 13, hint);
-            Metro.text(d, 15, Metro.regular(), 13);
+            Metro.text(d, Metro.sp(Metro.FONT_NORMAL), Metro.regular(), 13);
             d.setTag(DESC);
             d.setPadding(0, Ui.dp(c, 2), 0, 0);
             row.addView(d);
         }
         row.setOnClickListener(v -> sw.performClick());
-        Metro.tilt(row);
+        Metro.tilt(row, sw);   // WP는 스위치(ToggleSwitchButton)만 틸트한다
         return row;
     }
 
@@ -417,14 +417,14 @@ final class SettingsWidgets {
         // Metro: 토글·값 줄처럼 위에 옅은 머리글 (PhoneFontSizeNormal, PhoneSubtleBrush), 지금 값은 오른쪽에 글자 색으로.
         if (Metro.on) {
             t.setTextColor(hint);
-            Metro.text(t, 15, Metro.regular(), 16);
+            Metro.text(t, Metro.sp(Metro.FONT_NORMAL), Metro.regular(), 16);
         }
         mark(t, box);
         top.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         TextView v = text(value + unit, 14, hint);
         if (Metro.on) {
             v.setTextColor(text);
-            Metro.text(v, 15, Metro.regular(), 14);
+            Metro.text(v, Metro.sp(Metro.FONT_NORMAL), Metro.regular(), 14);
         }
         top.addView(v);
         box.addView(top);
@@ -477,7 +477,7 @@ final class SettingsWidgets {
         row.setPadding(0, Ui.dp(c, 9), 0, 0);
         gapBelow(row, false, METRO_TOGGLE_GAP_DP - 9);
         TextView t = text(label, 16, hint);
-        Metro.text(t, 15, Metro.regular(), 16);   // 검색은 원래 크기(16sp)로 항목 이름을 찾는다
+        Metro.text(t, Metro.sp(Metro.FONT_NORMAL), Metro.regular(), 16);   // 검색은 원래 크기(16sp)로 항목 이름을 찾는다
         mark(t, row);
         row.addView(t);
         LinearLayout box = new LinearLayout(c);
@@ -485,16 +485,16 @@ final class SettingsWidgets {
         android.graphics.drawable.GradientDrawable border = Ui.round(0, 0);
         border.setStroke(Ui.dp(c, Metro.BORDER_DP), text);
         box.setBackground(border);
-        box.setMinimumHeight(Ui.dp(c, 40));
-        box.setPadding(Ui.dp(c, 9), Ui.dp(c, 6), Ui.dp(c, 9), Ui.dp(c, 6));
+        // 테두리 3px + ListPickerItem의 Padding 8,10px: 펼친 목록의 한 줄과 같은 자리에 글자가 온다 (DropdownMenu).
+        box.setPadding(Metro.px(c, 11), Metro.px(c, 13), Metro.px(c, 11), Metro.px(c, 13));
         box.setTag(DropdownMenu.PICKER_BOX);
         TextView v = text(value, 16, text);
-        Metro.text(v, 19, Metro.regular(), 16);
+        Metro.text(v, Metro.sp(Metro.FONT_MEDIUM_LARGE), Metro.regular(), 16);
         v.setSingleLine(true);
         v.setEllipsize(android.text.TextUtils.TruncateAt.END);
         box.addView(v, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         LinearLayout.LayoutParams blp = matchWrap();
-        blp.topMargin = Ui.dp(c, 6);
+        blp.topMargin = Metro.px(c, 8);   // 머리글 아래 8px
         row.addView(box, blp);
         row.setClickable(true);
         row.setFocusable(true);
@@ -518,16 +518,8 @@ final class SettingsWidgets {
      */
     static void metroButton(View row) {
         if (!Metro.on) return;
-        Context c = row.getContext();
-        AppTheme t = AppTheme.of(c);
-        android.graphics.drawable.GradientDrawable idle = Ui.round(0, 0);
-        idle.setStroke(Ui.dp(c, Metro.BORDER_DP), t.text);
-        android.graphics.drawable.StateListDrawable bg = new android.graphics.drawable.StateListDrawable();
-        bg.addState(new int[]{android.R.attr.state_pressed}, Ui.round(t.accent, 0));
-        bg.addState(new int[0], idle);
-        row.setBackground(bg);
-        metroInk(row, new android.content.res.ColorStateList(new int[][]{{android.R.attr.state_pressed}, {}},
-                new int[]{t.onAccent, t.text}), true);
+        row.setBackground(Metro.buttonBackground(row.getContext()));
+        metroInk(row, Metro.buttonInk(), true);
         Metro.tilt(row);
     }
 
@@ -550,7 +542,7 @@ final class SettingsWidgets {
     /**
      * 하위 설정 묶음 (설정 화면과 편집 화면이 같이 쓴다): leftMarginDp만큼 들인 세로 안내선과 그 오른쪽의 항목들.
      * 보통은 옅은 강조색의 둥근 선(3dp)이 위아래를 조금 띄워 놓인다. Metro는 Windows Phone Toolkit의 ExpanderView처럼
-     * 옅은 회색(PhoneSubtleBrush)의 가는 직선(StrokeThickness 3px → 2dp)이 묶음 높이를 꽉 채운다.
+     * 옅은 회색(PhoneSubtleBrush)의 가는 직선(StrokeThickness 3px)이 하위 항목의 내용만큼 이어진다.
      */
     static View subGroup(Context c, int accent, int leftMarginDp, View... children) {
         LinearLayout group = new LinearLayout(c);
@@ -561,8 +553,8 @@ final class SettingsWidgets {
         View line = new View(c);
         LinearLayout.LayoutParams blp;
         if (Metro.on) {
-            line.setBackgroundColor(Metro.SUBTLE);
-            blp = new LinearLayout.LayoutParams(Ui.dp(c, 2), ViewGroup.LayoutParams.MATCH_PARENT);
+            line.setBackgroundColor(Metro.subtle);
+            blp = new LinearLayout.LayoutParams(Ui.dp(c, Metro.BORDER_DP), ViewGroup.LayoutParams.MATCH_PARENT);
         } else {
             line.setBackground(Ui.round((accent & 0x00FFFFFF) | 0x66000000, Ui.dp(c, 2)));
             blp = new LinearLayout.LayoutParams(Ui.dp(c, 3), ViewGroup.LayoutParams.MATCH_PARENT);
@@ -663,21 +655,13 @@ final class SettingsWidgets {
         row.setBackground(Ui.ripple(accent & 0x00FFFFFF | 0x33000000, Ui.round(tint, Ui.dp(c, 12)), Ui.dp(c, 12)));
         TextView t = text(label, 15, accent);
         if (Metro.on) {
-            // Windows Phone의 버튼: 글자 색 테두리만 있는 네모. 누르는 동안 강조색으로 채워지고 글자는 그 위의 색이 된다.
-            android.graphics.drawable.GradientDrawable idle = Ui.round(0, 0);
-            idle.setStroke(Ui.dp(c, Metro.BORDER_DP), text);
-            android.graphics.drawable.GradientDrawable down = Ui.round(accent, 0);
-            down.setStroke(Ui.dp(c, 2), accent);
-            android.graphics.drawable.StateListDrawable bg = new android.graphics.drawable.StateListDrawable();
-            bg.addState(new int[]{android.R.attr.state_pressed}, down);
-            bg.addState(new int[0], idle);
-            row.setBackground(bg);
+            // Windows Phone의 버튼 (PhoneButtonBase): 글자 색 테두리만 있는 네모, 글 너비만큼 (설정 › about의 'more info').
+            // 누르는 동안 강조색으로 채워지고 글자는 그 위의 색이 된다.
+            row.setBackground(Metro.buttonBackground(c));
             Metro.buttonText(t, 15);
-            t.setTextColor(new android.content.res.ColorStateList(
-                    new int[][]{{android.R.attr.state_pressed}, {}}, new int[]{onAccent, text}));
+            t.setTextColor(Metro.buttonInk());
             t.setDuplicateParentStateEnabled(true);
-            // Button 템플릿(PhoneButtonBase)의 Padding 10,3,10,5px + 테두리 3px: 글 둘레가 좁은 네모 (설정 › about의 'more info').
-            row.setPadding(Ui.dp(c, 10), Ui.dp(c, 5), Ui.dp(c, 10), Ui.dp(c, 6));
+            Metro.buttonPadding(row);
         }
         if (NeuUi.on) {
             // Neumorphism: 솟아오른 버튼, 누르는 동안 안으로 들어간다. 그림자 자리만큼 위아래를 띄운다.

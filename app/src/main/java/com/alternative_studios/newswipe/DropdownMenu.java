@@ -190,16 +190,17 @@ final class DropdownMenu {
             v.setText(items[i]);
         }
         v.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
-        v.setMinHeight(dp(Metro.on ? 52 : 48));
         v.setClickable(true);
         v.setFocusable(true);
         v.setOnClickListener(x -> pick(i));
         if (Metro.on) {
-            v.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
-            v.setTypeface(Metro.light());
-            v.setPadding(dp(12), dp(4), dp(12), dp(4));
+            // ListPickerItem: PhoneFontSizeMediumLarge, Padding 8,10px (값 줄의 접힌 네모와 같은 높이·글자 자리).
+            v.setTextSize(TypedValue.COMPLEX_UNIT_SP, Metro.sp(Metro.FONT_MEDIUM_LARGE));
+            v.setTypeface(Metro.regular());
+            v.setPadding(Metro.px(c, 8), Metro.px(c, 10), Metro.px(c, 8), Metro.px(c, 10));
             Metro.tilt(v);
         } else {
+            v.setMinHeight(dp(48));
             v.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
             int h = dp(NeuUi.on ? 16 : 12);
             v.setPadding(h, dp(8), h, dp(8));
@@ -219,8 +220,8 @@ final class DropdownMenu {
         boolean on = i == selected;
         v.setSelected(on);   // 접근성: '선택됨'으로 읽힌다
         if (Metro.on) {
-            // ListPicker: 흰 상자 위의 검은 글자, 고른 항목은 강조색 (표시 없이).
-            v.setTextColor(on ? t.accent : 0xDE000000);
+            // 펼친 ListPicker: 흰 상자 위의 PhoneTextBoxForeground 글자(다크 검정, 라이트 검정 87%), 고른 항목은 강조색 (표시 없이).
+            v.setTextColor(on ? t.accent : Metro.dark ? 0xFF000000 : 0xDE000000);
             return;
         }
         v.setTextColor(on ? t.accent : t.text);
@@ -281,11 +282,8 @@ final class DropdownMenu {
 
     private void showInline(LinearLayout parent, View after) {
         LinearLayout box = list();
-        // 펼친 ListPicker: 흰 바탕(PhoneTextBoxEditBackground)에 강조색 테두리의 네모.
-        GradientDrawable bg = Ui.round(0xFFFFFFFF, 0);
-        bg.setStroke(dp(2), t.accent);
-        box.setBackground(bg);
-        box.setPadding(dp(2), dp(6), dp(2), dp(6));
+        box.setBackground(pickerBackground());
+        box.setPadding(border(), border(), border(), border());
         // 펼치고 접는 동안 높이를 바꾸므로 여백 없는 틀로 감싼다 (틀의 높이를 움직이고 그 밖은 자른다).
         LinearLayout frame = new LinearLayout(c);
         frame.setOrientation(LinearLayout.VERTICAL);
@@ -314,6 +312,17 @@ final class DropdownMenu {
         blp.height = box.getMeasuredHeight();
         box.setLayoutParams(blp);
         animateInline(true, null);
+    }
+
+    /** 펼친 ListPicker(Highlighted)의 바탕: PhoneTextBoxEditBackground(흰색)에 PhoneTextBoxEditBorder(강조색) 3px 테두리. */
+    private GradientDrawable pickerBackground() {
+        GradientDrawable bg = Ui.round(0xFFFFFFFF, 0);
+        bg.setStroke(border(), t.accent);
+        return bg;
+    }
+
+    private int border() {
+        return Ui.dp(c, Metro.BORDER_DP);
     }
 
     /** Metro 펼친 목록의 틀 높이: 접혔을 때(네모 높이 또는 0)와 다 펼쳤을 때. */
@@ -396,10 +405,8 @@ final class DropdownMenu {
         int radius;
         if (Metro.on) {
             // 끼워 넣을 수 없는 자리(세로 줄이 아닌 부모)의 Metro: 같은 ListPicker 모양으로 띄운다.
-            GradientDrawable bg = Ui.round(0xFFFFFFFF, 0);
-            bg.setStroke(dp(2), t.accent);
-            box.setBackground(bg);
-            box.setPadding(dp(2), dp(6), dp(2), dp(6));
+            box.setBackground(pickerBackground());
+            box.setPadding(border(), border(), border(), border());
             radius = 0;
         } else if (NeuUi.on) {
             radius = dp(22);

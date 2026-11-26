@@ -5109,7 +5109,7 @@ public final class SettingsActivity extends Activity {
         if (Metro.on) {
             // Windows Phone 설정 목록: 크고 가는 이름 아래 옅은 설명, 카드·구분선·화살표 없이 화면 왼쪽 선에 맞춘다.
             Metro.text(t, 24, Metro.light(), 16);
-            Metro.text(d, 14, Metro.regular(), 13);
+            Metro.text(d, Metro.sp(Metro.FONT_NORMAL), Metro.regular(), 13);   // PhoneTextSubtleStyle
             t.setSingleLine(true);
             t.setEllipsize(android.text.TextUtils.TruncateAt.END);
             row.setPadding(0, Ui.dp(this, 10), 0, Ui.dp(this, 10));

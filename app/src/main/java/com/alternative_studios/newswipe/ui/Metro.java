@@ -19,20 +19,23 @@ import com.alternative_studios.newswipe.L;
 import com.alternative_studios.newswipe.R;
 
 /**
- * Metro UI 모드 (실험적): Windows Phone 7·8의 디자인 언어를 흉내 낸다.
+ * Metro UI 모드 (실험적): Windows Phone 8의 디자인 언어를 흉내 낸다.
  *
  * <ul>
- *   <li>색: 순수한 검정(다크)·흰색(라이트) 바탕, 강조색 타일, 크롬(#1F1F1F·#DDDDDD), 옅은 글자(#999999).</li>
- *   <li>모양: 모서리가 없는 네모, 그림자·그라데이션 없음 ({@link Ui#round}·{@link Ui#ripple}이 이 모드에서 네모·단색 눌림이 된다).</li>
- *   <li>글자: 크고 가는 글자(Segoe WP 대신 sans-serif-light), 작은 대문자 앱 이름 + 큰 소문자 제목 (피벗 머리글).</li>
- *   <li>움직임: 턴스타일 화면 전환, 깃털처럼 줄줄이 들어오는 목록, 누른 자리로 기울어지는 틸트.</li>
+ *   <li>색: WP8 SDK의 ThemeResources.xaml (Dark/Light) 값 그대로. 순수한 검정·흰색 바탕, 크롬 #1F1F1F·#DDDDDD, 옅은 글자
+ *       (PhoneSubtleColor), 흐린 글자(PhoneDisabledColor), 강조색.</li>
+ *   <li>모양: 모서리 없는 네모, 그림자·그라데이션 없음 ({@link Ui#round}·{@link Ui#ripple}이 이 모드에서 네모·눌림 없음이 된다).</li>
+ *   <li>글자: SDK의 글꼴 크기(PhoneFontSize*)를 {@link #sp}로 옮긴다. Segoe WP 대신 sans-serif(-light, -medium).</li>
+ *   <li>움직임: 턴스타일 화면 전환, 깃털처럼 줄줄이 들어오는 목록, 누른 자리로 기울어지는 틸트, 스위블.</li>
  * </ul>
+ *
+ * <p>크기: WP8 화면은 480px 폭이고 Android 폰은 대개 360dp 폭이라, SDK의 px 값에 0.75를 곱해 dp(글자는 sp)로 쓴다 ({@link #px}).
  *
  * <p>움직임의 값은 Microsoft가 공개한 Windows Phone Toolkit(Ms-PL) 소스의 값을 그대로 옮겼다:
  * Transitions/Storyboards/Turnstile*.xaml (들어올 때 -80°→0° 350ms ExponentialEase EaseOut 지수 6, 나갈 때 0°→50° 250ms
  * EaseIn 지수 6, 돌아갈 때 0°→-80°, 다시 들어올 때 50°→0°, 회전축은 화면 왼쪽 가장자리), Effects/TurnstileFeatherEffect.cs
  * (깃털: 회전축이 화면 폭의 20% 바깥 왼쪽, 항목마다 40ms씩 늦게), Effects/TiltEffect.cs (최대 0.3 rad, 가운데를 누르면 25px
- * 들어감, 떼고 200ms 뒤 100ms 동안 로그 곡선으로 돌아옴), ToggleSwitch 템플릿 (Generic.xaml).
+ * 들어감, 떼고 200ms 뒤 100ms 동안 로그 곡선으로 돌아옴), Swivel*.xaml.
  *
  * <p>{@link #on}과 색은 {@code AppTheme.of}가 부를 때마다 설정값에 맞춰진다 (설정 화면과 키보드가 같은 프로세스다). 메인 스레드에서만 쓴다.
  */
@@ -42,17 +45,22 @@ public final class Metro {
 
     /** Metro UI 모드가 켜져 있는지. */
     public static volatile boolean on;
-    /** 지금 화면 모드의 Metro 색: 글자(전경), 바탕, 크롬(앱 바·입력란), 옅은 글자, 강조색과 그 위의 글자. */
-    public static int fg = 0xFFFFFFFF, bg = 0xFF000000, chrome = 0xFF1F1F1F, subtle = 0xFF999999, accent = 0xFF1BA1E2,
-            onAccent = 0xFFFFFFFF;
+    /**
+     * 지금 화면 모드의 Metro 색 (ThemeResources.xaml): 글자 PhoneForeground, 바탕 PhoneBackground, 크롬 PhoneChrome(앱 바·메시지 상자),
+     * 옅은 글자 PhoneSubtle, 흐린 글자 PhoneDisabled(스크롤 표시), 강조색과 그 위의 글자. 반투명 색은 바탕 위에 얹은 불투명 색으로 둔다.
+     */
+    public static int fg = 0xFFFFFFFF, bg = 0xFF000000, chrome = 0xFF1F1F1F, subtle = 0xFF999999, disabled = 0xFF666666,
+            accent = 0xFF1BA1E2, onAccent = 0xFFFFFFFF;
     public static boolean dark = true;
 
     /** PhoneBackgroundColor·PhoneForegroundColor·PhoneChromeColor (다크). */
     public static final int DARK_BG = 0xFF000000, DARK_FG = 0xFFFFFFFF, DARK_CHROME = 0xFF1F1F1F;
-    /** 라이트: 바탕 흰색, 글자는 검정 87%(#DE000000을 흰 바탕에 얹은 색), 크롬 #DDDDDD. */
+    /** 라이트: 바탕 흰색, 글자는 #DE000000(검정 87%)을 흰 바탕에 얹은 색, 크롬 #DDDDDD. */
     public static final int LIGHT_BG = 0xFFFFFFFF, LIGHT_FG = 0xFF212121, LIGHT_CHROME = 0xFFDDDDDD;
-    /** PhoneSubtleColor: 다크의 흰색 60%, 라이트의 검정 40%가 각 바탕 위에서 모두 #999999가 된다. */
+    /** PhoneSubtleColor: 다크의 #99FFFFFF, 라이트의 #66000000이 각 바탕 위에서 모두 #999999가 된다. */
     public static final int SUBTLE = 0xFF999999;
+    /** PhoneDisabledColor: 다크 #66FFFFFF(검정 위 #666666), 라이트 #4D000000(흰 위 #B3B3B3). */
+    public static final int DARK_DISABLED = 0xFF666666, LIGHT_DISABLED = 0xFFB3B3B3;
 
     /**
      * Windows Phone 8의 강조색 20가지 (테마 설정 화면의 순서). lime, green, emerald, teal, cyan, cobalt, indigo, violet,
@@ -73,6 +81,7 @@ public final class Metro {
         bg = isDark ? DARK_BG : LIGHT_BG;
         chrome = isDark ? DARK_CHROME : LIGHT_CHROME;
         subtle = SUBTLE;
+        disabled = isDark ? DARK_DISABLED : LIGHT_DISABLED;
         accent = accentColor;
         onAccent = onAccentColor;
     }
@@ -110,17 +119,34 @@ public final class Metro {
     /** 틸트가 돌아올 때의 곡선: ln(t + 1) / ln 2 (TiltEffect.LogarithmicEase). */
     public static final Interpolator LOG = t -> (float) (Math.log(t + 1) / Math.log(2));
 
-    // ---------------------------------------------------------------- 글자
+    // ---------------------------------------------------------------- 크기·글자
+
+    /** WP 화면(480px 폭)의 px를 Android dp로 옮기는 비율 (360dp 폭 기준). */
+    public static final float PX = 0.75f;
+
+    /** WP의 px 값을 이 기기의 px로 (480px 폭 화면 기준 값 → dp → px). */
+    public static int px(Context c, float wpPx) {
+        return Ui.dp(c, wpPx * PX);
+    }
+
+    /** WP의 글꼴 크기(px)를 sp로. */
+    public static float sp(float wpPx) {
+        return wpPx * PX;
+    }
+
+    /** SDK의 글꼴 크기 (ThemeResources.xaml의 PhoneFontSize*, px). */
+    public static final float FONT_SMALL = 18.667f, FONT_NORMAL = 20f, FONT_MEDIUM = 22.667f, FONT_MEDIUM_LARGE = 25.333f,
+            FONT_LARGE = 32f, FONT_EXTRA_LARGE = 42.667f, FONT_EXTRA_EXTRA_LARGE = 72f;
 
     private static Typeface light, semibold, regular;
 
-    /** Segoe WP Light 대신 쓰는 가는 글꼴 (큰 제목·항목 이름). */
+    /** Segoe WP Light·SemiLight 대신 쓰는 가는 글꼴 (큰 제목·항목 이름, 묶음 머리글). */
     public static Typeface light() {
         if (light == null) light = Typeface.create("sans-serif-light", Typeface.NORMAL);
         return light;
     }
 
-    /** Segoe WP Semibold 대신 (작은 대문자 앱 이름). */
+    /** Segoe WP Semibold 대신 (피벗 제목, 버튼, 메시지 상자 제목). */
     public static Typeface semibold() {
         if (semibold == null) semibold = Typeface.create("sans-serif-medium", Typeface.NORMAL);
         return semibold;
@@ -173,10 +199,6 @@ public final class Metro {
      * 화면 px 거리 D를 주려면 D × densityDpi / 72를 넘겨야 한다.
      */
     public static void perspective(View v) {
-        camera(v);
-    }
-
-    private static void camera(View v) {
         android.util.DisplayMetrics m = v.getResources().getDisplayMetrics();
         float px = Math.max(m.widthPixels, 1) * 2.2f;
         v.setCameraDistance(px * m.densityDpi / 72f);
@@ -204,28 +226,46 @@ public final class Metro {
         if (on) v.setOnTouchListener(TILT);
     }
 
+    /**
+     * v(줄)를 누르면 그 안의 target만 곧게 들어간다 (토글 줄: Windows Phone은 ToggleSwitch의 스위치만 틸트한다). target을 직접 누르면
+     * target이 스스로 {@link #onTiltTouch}로 누른 쪽으로 기운다.
+     */
+    public static void tilt(View v, View target) {
+        if (on) v.setOnTouchListener((row, e) -> {
+            tiltTouch(row, target, e);
+            return false;
+        });
+    }
+
     /** 커스텀 뷰가 자기 onTouchEvent에서 직접 부른다 (OnTouchListener를 쓸 수 없을 때). */
     public static void onTiltTouch(View v, MotionEvent e) {
+        tiltTouch(v, v, e);
+    }
+
+    /** touched를 누르는 동안 target을 기울인다 (둘이 다르면 기울지 않고 곧게 들어간다). */
+    private static void tiltTouch(View touched, View target, MotionEvent e) {
         if (!on) return;
+        boolean self = touched == target;
         switch (e.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
-                if (!v.isEnabled() || !v.isClickable()) return;
-                applyTilt(v, e.getX(), e.getY());
+                if (!touched.isEnabled() || !touched.isClickable()) return;
+                applyTilt(target, self ? e.getX() : target.getWidth() / 2f, self ? e.getY() : target.getHeight() / 2f);
                 break;
             case MotionEvent.ACTION_MOVE:
-                if (TILTED.get(v) == null) return;
-                float slop = android.view.ViewConfiguration.get(v.getContext()).getScaledTouchSlop();
-                if (e.getX() < -slop || e.getY() < -slop || e.getX() > v.getWidth() + slop || e.getY() > v.getHeight() + slop) {
-                    releaseTilt(v, false);   // 손가락이 벗어났다 (스크롤 등)
-                } else {
-                    applyTilt(v, e.getX(), e.getY());
+                if (TILTED.get(target) == null) return;
+                float slop = android.view.ViewConfiguration.get(touched.getContext()).getScaledTouchSlop();
+                if (e.getX() < -slop || e.getY() < -slop || e.getX() > touched.getWidth() + slop
+                        || e.getY() > touched.getHeight() + slop) {
+                    releaseTilt(target, false);   // 손가락이 벗어났다 (스크롤 등)
+                } else if (self) {
+                    applyTilt(target, e.getX(), e.getY());
                 }
                 break;
             case MotionEvent.ACTION_UP:
-                releaseTilt(v, true);
+                releaseTilt(target, true);
                 break;
             case MotionEvent.ACTION_CANCEL:
-                releaseTilt(v, false);
+                releaseTilt(target, false);
                 break;
             default:
                 break;
@@ -250,7 +290,7 @@ public final class Metro {
         double scale = 1 - (1 - mag) * MAX_DEPRESSION / 1000.0;
         if (TILTED.get(v) == null) {
             TILTED.put(v, Boolean.TRUE);
-            camera(v);
+            perspective(v);
             v.setPivotX(w / 2f);
             v.setPivotY(h / 2f);
         }
@@ -304,7 +344,7 @@ public final class Metro {
                                      Runnable onEnd) {
         v.setPivotX(pivotX);
         v.setPivotY(v.getHeight() / 2f);
-        camera(v);
+        perspective(v);
         v.setRotationY(from);
         if (!out) v.setAlpha(0f);
         ValueAnimator a = ValueAnimator.ofFloat(0f, 1f);
@@ -355,7 +395,7 @@ public final class Metro {
         v.animate().cancel();
         v.setPivotX(v.getWidth() / 2f);
         v.setPivotY(v.getHeight() / 2f);
-        camera(v);
+        perspective(v);
         v.setRotationX(-30f);
         v.animate().rotationX(0f).setDuration(IN_MS).setInterpolator(EASE_OUT)   // 회전만 하므로 층 없이
                 .withEndAction(v::resetPivot).start();
@@ -552,9 +592,12 @@ public final class Metro {
     // ---------------------------------------------------------------- 피벗
 
     /**
-     * 피벗 머리글: 지금 메뉴 이름을 크고 가는 소문자로 쓰고, 그 오른쪽에 다음 메뉴들의 이름이 옅게 이어지다 화면 끝에서 잘린다.
+     * 피벗 머리글: 지금 섹션 이름을 크고 가는 소문자로 쓰고, 그 오른쪽에 다음 섹션들의 이름이 옅게 이어지다 화면 끝에서 잘린다.
      * 가로로 미는 동안 이름 줄은 내용보다 느리게(한 화면을 넘길 때 이름 하나만큼) 움직이고 (패럴렉스), 옅은 색과 진한 색이 서로 바뀐다.
      * 이름은 직접 그려 프레임마다 글자를 다시 배치하지 않는다.
+     *
+     * <p>Microsoft.Phone의 Pivot 템플릿: PivotHeaderItem은 PhoneFontFamilySemiLight, PivotHeaderFontSize 72px, Padding 21,0,1,0
+     * (이름 사이 22px), 고르지 않은 이름은 PhonePivotUnselectedItemOpacity (다크 0.4, 라이트 0.23144).
      */
     public static final class PivotHeader extends View {
         private final android.text.TextPaint paint = new android.text.TextPaint(android.graphics.Paint.ANTI_ALIAS_FLAG);
@@ -572,9 +615,10 @@ public final class Metro {
             for (int i = 0; i < names.length; i++) this.names[i] = lower(names[i]);
             this.index = index;
             paint.setTypeface(light());
-            paint.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 46, c.getResources().getDisplayMetrics()));
+            paint.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp(FONT_EXTRA_EXTRA_LARGE),
+                    c.getResources().getDisplayMetrics()));
             paint.getFontMetrics(fm);
-            gap = paint.measureText("  ");
+            gap = px(c, 22);
             setContentDescription(names[index]);
         }
 
@@ -614,19 +658,21 @@ public final class Metro {
             return widths[((index + k) % n + n) % n];
         }
 
+        /** 글자 줄의 높이는 글꼴의 위아래 끝(top·bottom)까지: Silverlight TextBlock의 줄 높이(글자 크기의 약 1.33배)와 같다. */
         @Override
         protected void onMeasure(int widthSpec, int heightSpec) {
-            int h = Math.round(fm.descent - fm.ascent) + getPaddingTop() + getPaddingBottom();
+            int h = Math.round(fm.bottom - fm.top) + getPaddingTop() + getPaddingBottom();
             setMeasuredDimension(MeasureSpec.getSize(widthSpec), h);
         }
 
         @Override
         protected void onDraw(android.graphics.Canvas c) {
-            float y = getPaddingTop() - fm.ascent;
+            float y = getPaddingTop() - fm.top;
             float wCur = widthAt(0), wPrev = widthAt(-1);
             // 한 화면을 넘기는 동안 이름 줄은 지금 이름(앞으로 갈 때는 앞 이름)의 폭만큼만 움직인다.
             float offset = progress >= 0 ? -progress * (wCur + gap) : -progress * (wPrev + gap);
-            int dim = (fg & 0x00FFFFFF) | 0x4D000000;
+            // 고르지 않은 이름: 다크는 흰색 40%, 라이트는 검정 87%(#DE000000)의 23.144% (= 검정 20%).
+            int dim = dark ? 0x66FFFFFF : 0x33000000;
             float p = Math.abs(progress);
             // 앞 메뉴 (뒤로 밀 때만 보인다)
             if (progress < 0) {
@@ -1056,59 +1102,114 @@ public final class Metro {
 
     // ---------------------------------------------------------------- 버튼·스크롤 표시
 
-    /** 버튼 테두리 굵기 (dp): PhoneBorderThickness 3px. */
-    public static final float BORDER_DP = 2.25f;
+    /** 테두리 굵기 (dp): PhoneBorderThickness 3px. */
+    public static final float BORDER_DP = 3 * PX;
 
     /**
-     * 버튼 글자: WP SDK의 PhoneButtonBase처럼 PhoneFontFamilySemiBold, PhoneFontSizeMediumLarge(25.333px → 19sp).
+     * 버튼 글자: SDK의 PhoneButtonBase처럼 PhoneFontFamilySemiBold, PhoneFontSizeMedium (22.667px → 17sp).
      * logicalSp는 설정 검색이 보는 원래 크기 ({@link #text} 참고).
      */
     public static void buttonText(TextView t, float logicalSp) {
-        text(t, 19, semibold(), logicalSp);
+        text(t, sp(FONT_MEDIUM), semibold(), logicalSp);
     }
 
     /**
-     * 스크롤 틀의 세로 스크롤 표시. Metro: WP8의 ScrollViewer처럼 끄는 동안만 나타났다가 손을 떼고 곧 사라지는 가는 네모 표시
-     * (누를 수는 없다). 보통 모드: 시스템 스크롤 막대 그대로.
+     * Button 템플릿(PhoneButtonBase)의 바탕: 평소에는 글자 색 3px 테두리의 빈 네모, 누르는 동안 강조색으로 채운다(WP8),
+     * 꺼지면 테두리가 PhoneDisabled. 버튼마다 새로 만든다 (상태를 나눠 갖지 않게).
+     */
+    public static android.graphics.drawable.Drawable buttonBackground(Context c) {
+        int stroke = Ui.dp(c, BORDER_DP);
+        android.graphics.drawable.GradientDrawable idle = Ui.round(0, 0), off = Ui.round(0, 0);
+        idle.setStroke(stroke, fg);
+        off.setStroke(stroke, disabled);
+        android.graphics.drawable.StateListDrawable s = new android.graphics.drawable.StateListDrawable();
+        s.addState(new int[]{-android.R.attr.state_enabled}, off);
+        s.addState(new int[]{android.R.attr.state_pressed}, Ui.round(accent, 0));
+        s.addState(new int[0], idle);
+        return s;
+    }
+
+    /** 버튼 글자 색: 평소 글자 색, 누르는 동안 강조색 위의 색(PhoneButtonBasePressedForeground), 꺼지면 PhoneDisabled. */
+    public static android.content.res.ColorStateList buttonInk() {
+        return new android.content.res.ColorStateList(
+                new int[][]{{-android.R.attr.state_enabled}, {android.R.attr.state_pressed}, {}},
+                new int[]{disabled, onAccent, fg});
+    }
+
+    /** 버튼의 안쪽 여백: 테두리 3px + Padding 10,5,10,6px. */
+    public static void buttonPadding(View v) {
+        Context c = v.getContext();
+        v.setPadding(px(c, 13), px(c, 8), px(c, 13), px(c, 9));
+    }
+
+    /**
+     * 스크롤 틀의 세로 스크롤 표시. Metro: WP8의 ScrollViewer처럼 끄는 동안만 나타났다가 손을 떼고 곧 사라지는 5px(→ 4dp) 폭의
+     * PhoneDisabled 네모 (누를 수는 없다). 보통 모드: 시스템 스크롤 막대 그대로.
      */
     public static void scrollIndicator(View scroll) {
         scroll.setVerticalScrollBarEnabled(true);
         if (!on) return;
         scroll.setScrollbarFadingEnabled(true);
-        scroll.setScrollBarDefaultDelayBeforeFade(1000);   // 제스처가 끝나고 1초 뒤에 사라진다
+        scroll.setScrollBarDefaultDelayBeforeFade(500);   // ScrollStates의 VisualTransition 0.5초
         if (android.os.Build.VERSION.SDK_INT >= 29) {
-            scroll.setVerticalScrollbarThumbDrawable(new android.graphics.drawable.ColorDrawable(SUBTLE));
+            scroll.setVerticalScrollbarThumbDrawable(new android.graphics.drawable.ColorDrawable(disabled));
             scroll.setVerticalScrollbarTrackDrawable(null);
-            scroll.setScrollBarSize(Ui.dp(scroll.getContext(), 3));
+            scroll.setScrollBarSize(px(scroll.getContext(), 5));
+        }
+    }
+
+    /**
+     * Windows Phone의 TextBox (WP8 SDK 템플릿): 평소에는 PhoneTextBoxBrush 네모(다크 #BFFFFFFF → #BFBFBF, 라이트 #26000000 → #D9D9D9),
+     * 입력 중에는 PhoneTextBoxEditBackground(다크 흰색, 라이트 투명 = 흰 바탕)에 강조색 3px 테두리(PhoneTextBoxEditBorder).
+     * 글자 PhoneTextBoxForeground(다크 검정, 라이트 검정 87%), PhoneFontSizeMediumLarge, 안쪽 여백은 테두리 3px + 1,2px + 2px.
+     */
+    public static void textBox(android.widget.EditText e) {
+        Context c = e.getContext();
+        android.graphics.drawable.GradientDrawable idle = Ui.round(dark ? 0xFFBFBFBF : 0xFFD9D9D9, 0);
+        android.graphics.drawable.GradientDrawable focus = Ui.round(0xFFFFFFFF, 0);
+        focus.setStroke(Ui.dp(c, BORDER_DP), accent);
+        android.graphics.drawable.StateListDrawable bg = new android.graphics.drawable.StateListDrawable();
+        bg.addState(new int[]{android.R.attr.state_focused}, focus);
+        bg.addState(new int[0], idle);
+        e.setBackgroundTintList(null);
+        e.setBackground(bg);
+        e.setTextColor(dark ? 0xFF000000 : 0xDE000000);
+        e.setHintTextColor(0xFF666666);
+        e.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp(FONT_MEDIUM_LARGE));
+        e.setPadding(px(c, 6), px(c, 7), px(c, 6), px(c, 7));
+        e.setHighlightColor((accent & 0x00FFFFFF) | 0x66000000);   // 고른 글자 바탕 SelectionBackground = 강조색
+        if (android.os.Build.VERSION.SDK_INT >= 29 && e.getTextCursorDrawable() != null) {
+            android.graphics.drawable.Drawable caret = e.getTextCursorDrawable().mutate();
+            caret.setTint(dark ? 0xFF000000 : 0xDE000000);   // PhoneTextCaretBrush
+            e.setTextCursorDrawable(caret);
         }
     }
 
     // ---------------------------------------------------------------- 체크 상자·라디오
 
     /**
-     * Windows Phone의 CheckBox·RadioButton 표시 (CompoundButton·CheckedTextView에 붙인다). WP SDK의 기본 템플릿을 따른다:
+     * Windows Phone 8의 CheckBox·RadioButton 표시 (CompoundButton·CheckedTextView에 붙인다). WP8 SDK의 기본 템플릿을 따른다:
      * <ul>
-     * <li>상자 CheckBackground: 32×32px(→ 24dp), 테두리 PhoneBorderThickness 3px(→ 2.25dp). 라디오는 같은 크기의 동그라미.</li>
-     * <li>체크 CheckMark: Path "M0,119 L31,92 L119,185 L267,0 L300,24 L122,250 z"를 24×18px로 늘려(Stretch=Fill) 가운데에 칠한다.
+     * <li>상자 CheckBackground: 32×32px(→ 24dp), 테두리 PhoneBorderThickness 3px. 라디오는 같은 크기의 동그라미.</li>
+     * <li>체크 CheckMark: Path "M0,123 L39,93 L124,164 L256,18 L295,49 L124,240 z"를 23×21px로 늘려(Stretch=Fill) 가운데에.
      *     라디오의 점은 16×16px 동그라미.</li>
-     * <li>색 (WP 7.1 이후 ThemeResources): 상자 PhoneRadioCheckBoxBrush 다크 #FF000000·라이트 #BFFFFFFF, 테두리
-     *     PhoneRadioCheckBoxBorderBrush 다크 #FFFFFFFF·라이트 #FF000000, 체크 PhoneRadioCheckBoxCheckBrush 다크 #FFFFFFFF·라이트 #DE000000.</li>
-     * <li>누르는 동안(Pressed): 상자 바탕이 PhoneRadioCheckBoxPressedBrush, WP8에서는 강조색으로 채워진다. 테두리와 체크는 그대로.</li>
+     * <li>색 (WP8 ThemeResources): 상자 PhoneRadioCheckBoxBrush 투명, 테두리와 체크는 글자 색(PhoneForeground).</li>
+     * <li>누르는 동안: 상자를 PhoneRadioCheckBoxPressedBrush(강조색)로 채우고 체크·점은 PhoneButtonBasePressedForeground(흰색).</li>
+     * <li>꺼지면 테두리와 체크가 PhoneDisabled.</li>
      * </ul>
      */
     public static final class Check extends android.graphics.drawable.Drawable {
         private final boolean radio;
-        private final int size, box;
+        private final int size;
         private final float stroke;
         private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
         private final android.graphics.Path mark = new android.graphics.Path();
-        private boolean checked, pressed;
+        private boolean checked, pressed, enabled = true;
 
         public Check(Context c, boolean radio) {
             this.radio = radio;
-            this.size = Ui.dp(c, 24);
-            this.box = Ui.dp(c, 24);
-            this.stroke = Ui.dp(c, 2.25f);
+            this.size = px(c, 32);
+            this.stroke = Ui.dp(c, BORDER_DP);
         }
 
         /**
@@ -1116,35 +1217,39 @@ public final class Metro {
          * 표시)도 쓴다. stroke는 테두리 굵기(px), pressed는 누르는 동안(상자를 강조색으로 채운다).
          */
         public static void paint(android.graphics.Canvas c, float cx, float cy, float half, float stroke, boolean radio,
-                                 boolean checked, boolean pressed, android.graphics.Paint p, android.graphics.Path mark) {
-            // 상자: 바탕을 칠하고 그 안쪽에 테두리 (XAML의 Border처럼 테두리가 상자 안에 들어간다).
+                                 boolean checked, boolean pressed, boolean enabled, android.graphics.Paint p,
+                                 android.graphics.Path mark) {
+            int ink = enabled ? fg : disabled;
+            if (pressed) {
+                p.setStyle(android.graphics.Paint.Style.FILL);
+                p.setColor(accent);
+                if (radio) c.drawCircle(cx, cy, half, p);
+                else c.drawRect(cx - half, cy - half, cx + half, cy + half, p);
+            }
+            // 테두리는 상자 안쪽에 (XAML의 Border·Ellipse Stroke처럼).
             float in = half - stroke / 2f;
-            p.setStyle(android.graphics.Paint.Style.FILL);
-            p.setColor(pressed ? accent : dark ? 0xFF000000 : 0xBFFFFFFF);
-            if (radio) c.drawCircle(cx, cy, half, p);
-            else c.drawRect(cx - half, cy - half, cx + half, cy + half, p);
             p.setStyle(android.graphics.Paint.Style.STROKE);
             p.setStrokeWidth(stroke);
-            p.setColor(dark ? 0xFFFFFFFF : 0xFF000000);
+            p.setColor(ink);
             if (radio) c.drawCircle(cx, cy, in, p);
             else c.drawRect(cx - in, cy - in, cx + in, cy + in, p);
             if (!checked) return;
             p.setStyle(android.graphics.Paint.Style.FILL);
-            p.setColor(dark ? 0xFFFFFFFF : 0xDE000000);
+            p.setColor(pressed ? onAccent : ink);
             if (radio) {
                 c.drawCircle(cx, cy, half * 0.5f, p);   // 16px 점 / 32px 동그라미
                 return;
             }
-            // CheckMark (x 0~300, y 0~250)를 24×18px(= 상자의 3/4 × 9/16)에 늘려 가운데에.
-            float w = half * 2 * 0.75f, h = half * 2 * 0.5625f, l = cx - w / 2f, t = cy - h / 2f;
-            float sx = w / 300f, sy = h / 250f;
+            // CheckMark (x 0~295, y 18~240)를 23×21px(상자 32px 기준)에 늘려 가운데에.
+            float w = half * 2 * 23f / 32f, h = half * 2 * 21f / 32f, l = cx - w / 2f, t = cy - h / 2f;
+            float sx = w / 295f, sy = h / 222f;
             mark.reset();
-            mark.moveTo(l, t + 119 * sy);
-            mark.lineTo(l + 31 * sx, t + 92 * sy);
-            mark.lineTo(l + 119 * sx, t + 185 * sy);
-            mark.lineTo(l + 267 * sx, t);
-            mark.lineTo(l + 300 * sx, t + 24 * sy);
-            mark.lineTo(l + 122 * sx, t + 250 * sy);
+            mark.moveTo(l, t + (123 - 18) * sy);
+            mark.lineTo(l + 39 * sx, t + (93 - 18) * sy);
+            mark.lineTo(l + 124 * sx, t + (164 - 18) * sy);
+            mark.lineTo(l + 256 * sx, t);
+            mark.lineTo(l + 295 * sx, t + (49 - 18) * sy);
+            mark.lineTo(l + 124 * sx, t + (240 - 18) * sy);
             mark.close();
             c.drawPath(mark, p);
         }
@@ -1155,14 +1260,16 @@ public final class Metro {
 
         @Override
         protected boolean onStateChange(int[] state) {
-            boolean on = false, down = false;
+            boolean on = false, down = false, usable = false;
             for (int s : state) {
                 if (s == android.R.attr.state_checked) on = true;
                 if (s == android.R.attr.state_pressed) down = true;
+                if (s == android.R.attr.state_enabled) usable = true;
             }
-            if (on == checked && down == pressed) return false;
+            if (on == checked && down == pressed && usable == enabled) return false;
             checked = on;
-            pressed = down;
+            pressed = down && usable;
+            enabled = usable;
             invalidateSelf();
             return true;
         }
@@ -1170,7 +1277,7 @@ public final class Metro {
         @Override
         public void draw(android.graphics.Canvas c) {
             android.graphics.Rect b = getBounds();
-            paint(c, b.exactCenterX(), b.exactCenterY(), box / 2f, stroke, radio, checked, pressed, p, mark);
+            paint(c, b.exactCenterX(), b.exactCenterY(), size / 2f, stroke, radio, checked, pressed, enabled, p, mark);
         }
 
         @Override public void setAlpha(int alpha) { p.setAlpha(alpha); }

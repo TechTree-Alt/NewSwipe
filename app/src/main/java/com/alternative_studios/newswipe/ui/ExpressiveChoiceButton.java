@@ -63,7 +63,7 @@ public final class ExpressiveChoiceButton extends TextView {
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         setTypeface(android.graphics.Typeface.DEFAULT_BOLD);   // 나열 버튼의 글자는 늘 굵게
         setPadding(Ui.dp(c, 6), Ui.dp(c, 12), Ui.dp(c, 6), Ui.dp(c, 12));
-        if (Metro.on) setTypeface(Metro.regular());   // Metro에는 굵은 글자가 거의 없다
+        if (Metro.on) setTypeface(Metro.semibold());   // PhoneButtonBase: PhoneFontFamilySemiBold
         setClickable(true);
         setFocusable(true);
         sel = selected ? 1f : 0f;
@@ -225,29 +225,23 @@ public final class ExpressiveChoiceButton extends TextView {
     }
 
     /**
-     * Metro UI 모드: 모서리 없는 네모 칸. 고르지 않은 칸은 글자 색 테두리만, 고른 칸은 강조색으로 채운다
-     * (Windows Phone의 버튼·강조색 타일). 누르는 동안은 글자 색을 옅게 덮는다.
+     * Metro UI 모드: WP8 SDK의 ToggleButton 템플릿. 글자 색 3px 테두리의 네모, 고른 칸(Checked)은 테두리 안을 강조색으로 채우고 글자는
+     * 그 위의 색. 템플릿에 누름(Pressed) 상태가 없어 누르면 틸트로만 반응한다.
      */
     private void drawMetro(Canvas canvas) {
         float w = getWidth(), h = getHeight();
         float t = clamp01(sel);
-        float stroke = Ui.dp(getContext(), 2);
+        float stroke = Ui.dp(getContext(), Metro.BORDER_DP);
         paint.setStyle(Paint.Style.FILL);
-        if (t < 1f) {
-            paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(stroke);
-            paint.setColor(withAlpha(text, Math.round(0x99 * (1f - t))));
-            canvas.drawRect(stroke / 2f, stroke / 2f, w - stroke / 2f, h - stroke / 2f, paint);
-            paint.setStyle(Paint.Style.FILL);
-        }
         if (t > 0f) {
             paint.setColor(withAlpha(accent, Math.round(255 * t)));
             canvas.drawRect(0, 0, w, h, paint);
         }
-        if (press > 0.01f) {
-            paint.setColor(withAlpha(text, Math.round(0x33 * clamp01(press))));
-            canvas.drawRect(0, 0, w, h, paint);
-        }
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(stroke);
+        paint.setColor(isEnabled() ? text : withAlpha(text, 0x66));
+        canvas.drawRect(stroke / 2f, stroke / 2f, w - stroke / 2f, h - stroke / 2f, paint);
+        paint.setStyle(Paint.Style.FILL);
         super.onDraw(canvas);
         if (sub != null) {
             float room = w - 2 * Ui.dp(getContext(), 6);
