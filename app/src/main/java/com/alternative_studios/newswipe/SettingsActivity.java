@@ -5107,11 +5107,15 @@ public final class SettingsActivity extends Activity {
         d.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         texts.addView(d);
         if (Metro.on) {
-            // Windows Phone 설정 목록: 크고 가는 이름 아래 옅은 설명, 카드·구분선·화살표 없이 화면 왼쪽 선에 맞춘다.
-            Metro.text(t, 24, Metro.light(), 16);
+            // Windows Phone 설정 목록: 크고 가는 이름(PhoneTextExtraLargeStyle 42.667px) 아래 옅은 설명(PhoneTextSubtleStyle),
+            // 카드·구분선·화살표 없이 화면 왼쪽 선에 맞춘다. 왼쪽의 강조색 타일은 앱 목록처럼 둔다.
+            Metro.text(t, Metro.sp(Metro.FONT_EXTRA_LARGE), Metro.light(), 16);
             Metro.text(d, Metro.sp(Metro.FONT_NORMAL), Metro.regular(), 13);   // PhoneTextSubtleStyle
             t.setSingleLine(true);
             t.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            // 목록 항목 템플릿처럼 이름과 설명을 위로 6px씩 당겨 큰 글자의 줄 높이 여백을 줄인다.
+            ((LinearLayout.LayoutParams) t.getLayoutParams()).topMargin = -Metro.px(this, 6);
+            ((LinearLayout.LayoutParams) d.getLayoutParams()).topMargin = -Metro.px(this, 6);
             row.setPadding(0, Ui.dp(this, 10), 0, Ui.dp(this, 10));
             Metro.tilt(row);
         }
