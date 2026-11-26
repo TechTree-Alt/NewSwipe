@@ -8,4 +8,6 @@
     <item name="metro_gap_end" type="id" />
     <!-- 보일 때의 위·아래 바깥 여백(px, int[2]): 펼치고 접을 때 높이와 함께 0에서/으로 움직인다 (ui.Ui.setVisibleAnimated). -->
     <item name="shown_margins" type="id" />
+    <!-- Metro UI: SettingsWidgets.button으로 만든 버튼 (버튼이 이어지면 그 사이를 좁게 둔다). -->
+    <item name="metro_button" type="id" />
 </resources>

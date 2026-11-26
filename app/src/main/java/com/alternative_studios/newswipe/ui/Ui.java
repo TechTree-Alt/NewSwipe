@@ -279,6 +279,11 @@ public final class Ui {
      * 뷰를 높이와 투명도 애니메이션으로 펼치거나 접는다 (하위 설정, 입력창 등).
      * 아직 화면에 배치되기 전이면 애니메이션 없이 바로 바꾼다.
      */
+    /** v가 setVisibleAnimated로 펼치거나 접히는 중인지. */
+    public static boolean isAnimating(android.view.View v) {
+        return RUNNING.containsKey(v);
+    }
+
     public static void setVisibleAnimated(final android.view.View v, final boolean show) {
         setVisibleAnimated(v, show, null);
     }
