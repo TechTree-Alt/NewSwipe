@@ -284,6 +284,19 @@ public final class Ui {
         return RUNNING.containsKey(v);
     }
 
+    /** 펼치고 접는 중인 뷰가 얼마나 펼쳐졌는지 (0 숨음 ~ 1 다 보임). */
+    private static final java.util.WeakHashMap<android.view.View, Float> SHOWN = new java.util.WeakHashMap<>();
+
+    /**
+     * v가 얼마나 보이는지: 펼치거나 접는 중이면 그 진행(0~1), 아니면 보이면 1·숨었으면 0. 이웃 줄의 여백을 이것에 맞춰 함께 움직이면
+     * 펼치기 시작이나 접기 끝에 여백이 한 번에 튀지 않는다 (Metro 하위 묶음).
+     */
+    public static float shownFraction(android.view.View v) {
+        Float f = SHOWN.get(v);
+        if (f != null) return f;
+        return v.getVisibility() == android.view.View.GONE ? 0f : 1f;
+    }
+
     public static void setVisibleAnimated(final android.view.View v, final boolean show) {
         setVisibleAnimated(v, show, null);
     }
@@ -353,6 +366,7 @@ public final class Ui {
         final android.graphics.Rect clip = new android.graphics.Rect();
         a.addUpdateListener(anim -> {
             float f = (float) anim.getAnimatedValue();
+            SHOWN.put(v, show ? f : 1f - f);
             android.view.ViewGroup.LayoutParams l = v.getLayoutParams();
             l.height = Math.round(from + (to - from) * f);
             if (shown != null) {
@@ -377,6 +391,7 @@ public final class Ui {
             public void onAnimationEnd(android.animation.Animator animation) {
                 if (canceled) return;
                 RUNNING.remove(v);
+                SHOWN.remove(v);
                 v.setClipBounds(null);
                 android.view.ViewGroup.LayoutParams l = v.getLayoutParams();
                 l.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT;

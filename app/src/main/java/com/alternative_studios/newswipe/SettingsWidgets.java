@@ -571,30 +571,7 @@ final class SettingsWidgets {
              */
             @Override
             protected void onMeasure(int widthSpec, int heightSpec) {
-                if (Metro.on) {
-                    View lastVisible = null;
-                    for (int i = getChildCount() - 1; i >= 0 && lastVisible == null; i--) {
-                        if (getChildAt(i).getVisibility() != View.GONE) lastVisible = getChildAt(i);
-                    }
-                    for (int i = 0; i < getChildCount(); i++) {
-                        View ch = getChildAt(i);
-                        boolean last = ch == lastVisible;
-                        View row = gapRow(ch);
-                        if (row != null) setTrailing(row, last ? line6 : naturalGap(row));
-                        Object m = ch.getTag(com.alternative_studios.newswipe.R.id.shown_margins);
-                        if (m instanceof int[] && ((int[]) m).length > 2) {
-                            int[] shown = (int[]) m;
-                            int want = last ? 0 : shown[2];
-                            if (shown[1] != want) {
-                                shown[1] = want;   // 펼치고 접는 움직임도 이 값을 쓴다
-                                if (ch.getVisibility() == View.VISIBLE && ch.getLayoutParams() instanceof MarginLayoutParams
-                                        && !Ui.isAnimating(ch)) {
-                                    ((MarginLayoutParams) ch.getLayoutParams()).bottomMargin = want;
-                                }
-                            }
-                        }
-                    }
-                }
+                if (Metro.on) fitTrailingGaps(this, line6);
                 super.onMeasure(widthSpec, heightSpec);
             }
         };
@@ -615,13 +592,7 @@ final class SettingsWidgets {
             group.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
                 @Override
                 public void onViewAttachedToWindow(View v) {
-                    if (!(v.getParent() instanceof ViewGroup)) return;
-                    ViewGroup parent = (ViewGroup) v.getParent();
-                    View prev = null;
-                    for (int i = parent.indexOfChild(v) - 1; i >= 0 && prev == null; i--) {
-                        View p = parent.getChildAt(i);
-                        if (p.getVisibility() != View.GONE) prev = p;
-                    }
+                    View prev = previousRow(v);
                     View above = prev == null ? null : gapRow(prev);
                     // 위 줄의 원래 여백으로 정한다 (위 줄은 이 묶음이 숨어 있는 동안 마지막 줄이라 여백이 줄어 있을 수 있다).
                     int top = above == null ? 0 : -Math.max(0, naturalGap(above) - line6);
@@ -638,6 +609,69 @@ final class SettingsWidgets {
             });
         }
         return group;
+    }
+
+    /**
+     * Metro 하위 묶음의 세로선이 마지막으로 보이는 하위 항목의 글에서 끝나도록, 마지막 줄의 항목 사이 여백은 line로 줄이고 나머지는
+     * 원래대로 둔다. 하위 항목은 켜고 끄며 보였다 숨었다 하므로 잴 때마다 맞춘다. 마지막 줄이 펼치거나 접히는 중이면 그 바로 위 줄의
+     * 여백을 진행에 맞춰 원래 여백과 line 사이에서 함께 움직인다 (접기 끝·펼치기 시작에 여백이 한 번에 튀지 않게).
+     * 맨 처음 줄이 버튼이면 위 바깥 여백을 없애 세로선이 버튼에서 시작한다.
+     */
+    private static void fitTrailingGaps(ViewGroup column, int line) {
+        View last = null, beforeLast = null, first = null;
+        for (int i = 0; i < column.getChildCount(); i++) {
+            View ch = column.getChildAt(i);
+            if (ch.getVisibility() == View.GONE) continue;
+            if (first == null) first = ch;
+            beforeLast = last;
+            last = ch;
+        }
+        float lastShown = last == null ? 1f : Ui.shownFraction(last);
+        for (int i = 0; i < column.getChildCount(); i++) {
+            View ch = column.getChildAt(i);
+            // 0이면 마지막 줄처럼 line만, 1이면 원래 여백 그대로.
+            float keep = ch == last ? 0f : ch == beforeLast ? lastShown : 1f;
+            View row = gapRow(ch);
+            if (row != null) setTrailing(row, Math.round(line + (naturalGap(row) - line) * keep));
+            Object m = ch.getTag(com.alternative_studios.newswipe.R.id.shown_margins);
+            if (m instanceof int[] && ((int[]) m).length > 2) {
+                int[] shown = (int[]) m;
+                int want = Math.round(shown[2] * keep);
+                if (shown[1] != want) {
+                    shown[1] = want;   // 펼치고 접는 움직임도 이 값을 쓴다
+                    if (ch.getVisibility() == View.VISIBLE && ch.getLayoutParams() instanceof ViewGroup.MarginLayoutParams
+                            && !Ui.isAnimating(ch)) {
+                        ((ViewGroup.MarginLayoutParams) ch.getLayoutParams()).bottomMargin = want;
+                    }
+                }
+            }
+            if (ch.getTag(com.alternative_studios.newswipe.R.id.metro_button) != null
+                    && ch.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
+                int top = ch == first ? 0 : Metro.px(ch.getContext(), 12);
+                ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) ch.getLayoutParams();
+                if (lp.topMargin != top) lp.topMargin = top;
+            }
+        }
+    }
+
+    /**
+     * v 바로 위에 보이는 항목 (같은 틀에 없으면 v를 담은 세로 틀의 위로 거슬러 올라간다: 하위 묶음이 다른 틀의 맨 앞에 있어도
+     * 위 줄을 찾는다). 하위 묶음 안의 첫 항목처럼 세로 틀 밖으로 나가야 하면 없다(null).
+     */
+    private static View previousRow(View v) {
+        View cur = v;
+        while (cur.getParent() instanceof ViewGroup) {
+            ViewGroup p = (ViewGroup) cur.getParent();
+            for (int i = p.indexOfChild(cur) - 1; i >= 0; i--) {
+                if (p.getChildAt(i).getVisibility() != View.GONE) return p.getChildAt(i);
+            }
+            if (!(p instanceof LinearLayout) || ((LinearLayout) p).getOrientation() != LinearLayout.VERTICAL
+                    || p.isClickable()) {
+                return null;
+            }
+            cur = p;
+        }
+        return null;
     }
 
     /** 눌러서 실행하는 항목: 옅은 강조색 바탕과 오른쪽 화살표. */
@@ -670,14 +704,10 @@ final class SettingsWidgets {
         mark(t, row);
         if (Metro.on) {
             // 글 너비만큼의 버튼: 오른쪽 아이콘(가져오기·내보내기 등)은 글 바로 뒤에.
+            // WP8의 Button은 글자만 담는다 (아이콘은 앱 바의 몫): 오른쪽 아이콘(가져오기·지우기 등)은 두지 않는다.
             row.addView(t, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-            if (trailing.getVisibility() != View.GONE) {
-                LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-                tlp.leftMargin = Ui.dp(c, 12);
-                row.addView(trailing, tlp);
-            } else {
-                row.addView(trailing);
-            }
+            trailing.setVisibility(View.GONE);
+            row.addView(trailing);
         } else {
             row.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
             row.addView(trailing);
@@ -691,7 +721,7 @@ final class SettingsWidgets {
         lp.bottomMargin = Ui.dp(c, NeuUi.on ? 10 : 6);
         row.setLayoutParams(lp);
         if (Metro.on) {
-            // 글 너비만큼, 바깥 여백은 Button 템플릿의 PhoneTouchTargetOverhang(12px → 9dp). 버튼이 이어지면 그 사이는 그대로 두고,
+            // 글 너비만큼, 바깥 여백은 Button 템플릿의 PhoneTouchTargetOverhang(12px → 9dp, 하위 묶음의 첫 버튼은 위 0). 버튼이 이어지면 그 사이는 그대로 두고,
             // 버튼 다음에 다른 항목이 오면 아래에 일반 항목 사이만큼 띄운다 (다음 줄은 화면에 붙은 뒤에야 알 수 있다).
             lp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
             lp.topMargin = Ui.dp(c, 9);

@@ -4579,7 +4579,7 @@ public final class SettingsActivity extends Activity {
         ilp.gravity = Gravity.CENTER_HORIZONTAL;
         ilp.topMargin = Ui.dp(this, 8);
         ilp.bottomMargin = Ui.dp(this, 20);
-        about.addView(icon, ilp);
+        if (!Metro.on) about.addView(icon, ilp);   // Metro: 꾸밈 그림 없이 글과 버튼만 (콘텐츠 우선)
 
         // 최신 앱 릴리스 페이지 (사전 팩 릴리스는 'Latest'로 표시하지 않으므로 앱 릴리스가 열린다)
         about.addView(button(L.t("업데이트 확인하기", "Check for updates"), v -> openUrl(SOURCE_URL + "/releases/latest")));
