@@ -12,8 +12,10 @@ import android.view.View;
 import android.view.animation.Interpolator;
 import android.view.animation.LinearInterpolator;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.alternative_studios.newswipe.L;
 import com.alternative_studios.newswipe.R;
 
 /**
@@ -518,23 +520,14 @@ public final class Metro {
                 hidden = false;
                 busy = false;
                 enter(false);   // 다른 화면에서 돌아왔다
-                // 뒤로 가 있는 동안 놓아 준 옆 메뉴 내용을 돌아오는 움직임이 끝난 뒤 다시 만든다.
-                if (pivot != null && !pivot.prepared()) postDelayed(() -> {
-                    if (pivot != null && isAttachedToWindow()) pivot.prepare();
-                }, IN_MS + 400);
             }
         }
 
-        /** 가로로 밀어 옆 메뉴로 넘기는 피벗 (없으면 null). */
+        /** 가로로 밀어 옆 섹션으로 넘기는 피벗 (없으면 null). */
         private Pivot pivot;
 
         public void setPivot(Pivot p) {
             pivot = p;
-        }
-
-        /** 피벗의 옆 메뉴 내용을 놓아 준다 (없으면 아무것도 하지 않는다). */
-        public void releasePivot() {
-            if (pivot != null) pivot.release();
         }
 
         void setBusy(boolean b) {
@@ -565,12 +558,12 @@ public final class Metro {
      */
     public static final class PivotHeader extends View {
         private final android.text.TextPaint paint = new android.text.TextPaint(android.graphics.Paint.ANTI_ALIAS_FLAG);
-        /** 고리 차례의 메뉴 이름 (소문자). index가 지금 메뉴. */
+        /** 고리 차례의 섹션 이름 (소문자). index가 지금 섹션. */
         private final String[] names;
-        private final int index;
+        private int index;
         private final float gap;
         private float progress;   // -1(앞 메뉴) ~ 0(지금) ~ 1(다음 메뉴)
-        private Runnable onPeek;
+        private java.util.function.IntConsumer onTap;
         private final android.graphics.Paint.FontMetrics fm = new android.graphics.Paint.FontMetrics();
 
         public PivotHeader(Context c, String[] names, int index) {
@@ -585,9 +578,17 @@ public final class Metro {
             setContentDescription(names[index]);
         }
 
-        /** 다음 메뉴 이름을 눌렀을 때. */
-        public void setOnPeek(Runnable r) {
-            onPeek = r;
+        /** 지금 이름에서 k번째 뒤의 이름(1 = 바로 다음)을 눌렀을 때. */
+        public void setOnTap(java.util.function.IntConsumer l) {
+            onTap = l;
+        }
+
+        /** 지금 섹션을 바꾼다 (이름 줄이 그 이름부터 다시 시작한다). */
+        public void setIndex(int i) {
+            index = i;
+            progress = 0f;
+            setContentDescription(names[i]);
+            invalidate();
         }
 
         public void setProgress(float p) {
@@ -632,8 +633,9 @@ public final class Metro {
                 paint.setColor(blendArgb(dim, fg, p));
                 c.drawText(at(-1), offset - wPrev - gap, y, paint);
             }
+            // 고리처럼 돌아가며 화면 끝까지 이어 그린다 (WP 피벗처럼 섹션이 둘뿐이어도 오른쪽이 비지 않고, 넘기는 동안 다음 이름이 이미 보인다).
             float x = offset;
-            for (int k = 0; k < names.length && x < getWidth(); k++) {
+            for (int k = 0; x < getWidth() && k < 64; k++) {
                 int color = k == 0 ? blendArgb(fg, dim, p) : k == 1 && progress > 0 ? blendArgb(dim, fg, p) : dim;
                 paint.setColor(color);
                 c.drawText(at(k), x, y, paint);
@@ -643,11 +645,19 @@ public final class Metro {
 
         @Override
         public boolean onTouchEvent(MotionEvent e) {
-            if (e.getActionMasked() == MotionEvent.ACTION_DOWN) return onPeek != null;
-            if (e.getActionMasked() == MotionEvent.ACTION_UP && onPeek != null
-                    && e.getX() > widthAt(0) + gap / 2) {
-                performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
-                onPeek.run();
+            if (e.getActionMasked() == MotionEvent.ACTION_DOWN) return onTap != null;
+            if (e.getActionMasked() == MotionEvent.ACTION_UP && onTap != null) {
+                // 누른 자리의 이름 (지금 이름은 0): Windows Phone 피벗처럼 머리글의 이름을 누르면 그 섹션으로 간다.
+                float x = widthAt(0) + gap / 2;
+                if (e.getX() <= x) return true;   // 지금 이름을 눌렀다
+                for (int k = 1; k < 64; k++) {
+                    if (e.getX() < x + widthAt(k) + gap) {
+                        performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
+                        onTap.accept(k);
+                        break;
+                    }
+                    x += widthAt(k) + gap;
+                }
             }
             return true;
         }
@@ -661,17 +671,16 @@ public final class Metro {
         }
     }
 
-    /**
-     * Windows Phone 피벗처럼 가로로 밀어 설정 메뉴 사이를 오간다. 미는 동안 지금 내용(movers)은 손가락을 그대로 따라가고, 옆 메뉴의
-     * 미리 만들어 둔 내용이 옆에서 따라 들어오며, 머리글 이름 줄은 더 느리게 움직인다. 손을 떼면 3분의 1을 넘겼거나 빠르게 튕겼을 때
-     * 넘어가고(지수 곡선으로 마저 움직인 뒤 host.go), 아니면 제자리로 돌아온다.
-     *
-     * <p>가로로 끄는 뷰(슬라이더, 키보드 미리보기, 가로 스크롤) 위에서 시작한 손가락은 그 뷰가 쓴다. 옆 메뉴의 내용은 처음 한 번만
-     * 만들어 보이지 않게 붙여 두므로, 미는 동안에는 위치만 바뀐다.
-     */
     /** 피벗이 마저 넘어가거나 돌아오는 곡선 (EaseOut 지수 5). */
     private static final Interpolator SETTLE = new Exp(5, true);
 
+    /**
+     * Windows Phone 피벗: 한 메뉴 안의 섹션(페이지)들을 가로로 밀어 오간다. 페이지는 모두 같은 자리에 겹쳐 두고 지금 페이지만 보인다.
+     * 미는 동안 지금 페이지는 손가락을 그대로 따라가고 민 쪽의 옆 페이지가 따라 들어오며, 머리글 이름 줄은 이름 하나만큼만 움직인다.
+     * 손을 떼면 3분의 1을 넘겼거나 빠르게 튕겼을 때 넘어가고(지수 곡선), 아니면 제자리로 돌아온다. 끝에서 밀면 처음으로 돈다.
+     *
+     * <p>가로로 끄는 뷰(슬라이더, 키보드 미리보기, 가로 스크롤) 위에서 시작한 손가락은 그 뷰가 쓴다.
+     */
     public static final class Pivot {
         public interface Host {
             /** 지금 넘길 수 있는지 (설정 창이 열려 있으면 false). */
@@ -680,123 +689,60 @@ public final class Metro {
             /** v가 가로로 끄는 동작을 직접 쓰는지 (그 위에서 시작한 손가락은 피벗이 가져가지 않는다). */
             boolean usesHorizontalDrag(View v);
 
-            /** dir(-1 앞, +1 다음) 쪽 메뉴의 내용 (한 번만 불린다). */
-            View preview(int dir);
-
-            /** dir 쪽 메뉴로 넘어갔다: 그 메뉴 화면을 지금 모습 그대로 이어서 연다. */
-            void go(int dir);
+            /** 지금 페이지가 index로 바뀌었다. */
+            void onSelected(int index);
         }
 
         private final Page page;
         private final PivotHeader header;
-        private final View area;
-        private final View[] movers;
+        private final View[] pages;
         private final Host host;
         private final int slop;
         private final float flingVelocity;
-        private final FrameLayout[] holders = new FrameLayout[2];
+        private int index;
         private float downX, downY, startX, dx;
         private boolean dragging, blocked, down;
         private android.view.VelocityTracker velocity;
         private ValueAnimator settle;
 
-        public Pivot(Page page, PivotHeader header, View area, View[] movers, Host host) {
+        public Pivot(Page page, PivotHeader header, View[] pages, int index, Host host) {
             this.page = page;
             this.header = header;
-            this.area = area;
-            this.movers = movers;
+            this.pages = pages;
             this.host = host;
+            this.index = index;
             android.view.ViewConfiguration vc = android.view.ViewConfiguration.get(page.getContext());
             slop = vc.getScaledTouchSlop();
             flingVelocity = vc.getScaledMinimumFlingVelocity() * 4f;
+            for (int i = 0; i < pages.length; i++) pages[i].setVisibility(i == index ? View.VISIBLE : View.INVISIBLE);
+            header.setIndex(index);
+            header.setOnTap(k -> {
+                if (k == 1) animateTo(1);
+                else select((this.index + k) % pages.length);
+            });
             page.setPivot(this);
-            header.setOnPeek(() -> animateTo(1));
         }
 
-        /** 옆 메뉴의 내용을 미리 만들어 보이지 않게 붙이고 자리를 잡아 둔다 (화면이 한가할 때 부른다). */
-        public void prepare() {
-            layoutHolders();
+        public int index() {
+            return index;
         }
 
-        /**
-         * 옆 메뉴 내용(화면 두 개 분량의 뷰)을 놓아 준다: 앱이 뒤로 갔거나 메모리가 모자랄 때. 다시 보일 때 prepare가 다시 만든다.
-         * 넘어가는 중이면 그대로 둔다.
-         */
-        public void release() {
-            if (settle != null || dragging) return;
-            for (int i = 0; i < 2; i++) {
-                if (holders[i] != null) {
-                    page.removeView(holders[i]);
-                    holders[i] = null;
-                }
+        /** 움직임 없이 i번째 페이지로 바꾼다 (머리글의 먼 이름을 눌렀을 때, 검색 결과로 들어왔을 때). */
+        public void select(int i) {
+            if (settle != null || i == index) return;
+            show(i);
+        }
+
+        private void show(int i) {
+            for (View p : pages) {
+                p.setTranslationX(0f);
+                p.setVisibility(View.INVISIBLE);
             }
-        }
-
-        boolean prepared() {
-            return holders[0] != null || holders[1] != null;
-        }
-
-        private FrameLayout holder(int dir) {
-            int i = dir < 0 ? 0 : 1;
-            if (holders[i] == null) {
-                View v = host.preview(dir);
-                if (v == null) return null;
-                FrameLayout h = new FrameLayout(page.getContext());
-                h.setClipChildren(true);
-                // 실제 화면처럼 스크롤 틀 안에 넣는다: 스크롤 틀은 내용을 높이 제한 없이 재므로 줄마다 제 높이를 갖는다.
-                // 높이가 정해진 칸에 바로 넣으면 세로 줄은 아래로 갈수록 '남은 높이'만 받아, 화면 아래쪽 줄이 찌그러지거나
-                // (남은 높이가 없으면) 아예 안 보이다가 넘어가서 실제 화면이 뜨면 풀린다.
-                android.widget.ScrollView scroll = new android.widget.ScrollView(page.getContext());
-                scroll.setVerticalScrollBarEnabled(false);
-                scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
-                scroll.addView(v, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT));
-                h.addView(scroll, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-                h.setVisibility(View.INVISIBLE);
-                h.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
-                page.addView(h, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, 1));
-                holders[i] = h;
-            }
-            return holders[i];
-        }
-
-        /**
-         * 옆 메뉴 내용의 자리: 지금 내용의 위끝부터 움직이는 것들(목록과 아래 미리보기) 전체의 아래끝까지. 아래 미리보기 자리까지
-         * 덮어야 한다: 목록 높이에만 두면, 아래 미리보기가 있는 화면에서 밀 때 미리보기가 빠져나간 자리는 비고 옆 메뉴는
-         * 짧은 칸에 갇혀 찌그러져 보인다. 처음 붙일 때 미리 배치해 둔다 (밀기 시작한 뒤 배치하면 한 프레임 늦는다).
-         */
-        private void layoutHolders() {
-            int[] a = new int[2], p = new int[2], m = new int[2];
-            area.getLocationInWindow(a);
-            page.getLocationInWindow(p);
-            int top = a[1] - p[1], bottom = a[1] - p[1] + area.getHeight();
-            for (View mover : movers) {
-                if (mover == null || mover.getVisibility() != View.VISIBLE || mover.getHeight() == 0) continue;
-                mover.getLocationInWindow(m);
-                bottom = Math.max(bottom, m[1] - p[1] + mover.getHeight());
-            }
-            float w = page.getWidth();
-            for (int i = 0; i < 2; i++) {
-                FrameLayout h = holder(i == 0 ? -1 : 1);
-                if (h == null) continue;
-                h.setTranslationX((i == 0 ? -w : w) + dx);   // 늘 화면 밖에서 기다린다
-                FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) h.getLayoutParams();
-                int height = Math.max(1, bottom - top);
-                if (lp.height != height || lp.topMargin != top) {
-                    lp.height = height;
-                    lp.topMargin = top;
-                    h.setLayoutParams(lp);
-                }
-            }
-        }
-
-        /**
-         * 옆 메뉴 내용을 양옆 화면 밖에 둔 뒤 보이게 한다. 보이게 하기 전에 먼저 옆으로 옮겨야 한다: 미는 것을 알아챈 움직임은
-         * 가로채기(intercept)에서 쓰여 update까지 가지 않으므로, 순서가 바뀌면 옆 메뉴가 제자리에서 한 프레임 그려져 지금 화면을
-         * 덮고 번쩍인다.
-         */
-        private void place() {
-            layoutHolders();
-            for (FrameLayout h : holders) if (h != null) h.setVisibility(View.VISIBLE);
+            pages[i].setVisibility(View.VISIBLE);
+            index = i;
+            dx = 0;
+            header.setIndex(i);
+            host.onSelected(i);
         }
 
         boolean intercept(MotionEvent e) {
@@ -873,7 +819,6 @@ public final class Metro {
             if (adx > slop && adx > ady * 1.5f) {
                 dragging = true;
                 startX = e.getX() - Math.signum(e.getX() - downX) * slop * 0.5f;   // 문턱만큼 튀지 않게
-                place();
                 page.getParent().requestDisallowInterceptTouchEvent(true);
                 return true;
             }
@@ -898,12 +843,26 @@ public final class Metro {
             return false;
         }
 
+        private int at(int k) {
+            int n = pages.length;
+            return ((index + k) % n + n) % n;
+        }
+
+        /** 지금 페이지를 d만큼 옮기고, 민 쪽의 옆 페이지를 그 옆에 붙인다 (반대쪽 옆 페이지는 숨긴다). */
         private void update(float d) {
             dx = d;
             float w = page.getWidth();
-            for (View m : movers) if (m != null) m.setTranslationX(d);
-            if (holders[0] != null) holders[0].setTranslationX(d - w);
-            if (holders[1] != null) holders[1].setTranslationX(d + w);
+            int next = at(1), prev = at(-1);
+            View in = d < 0 ? pages[next] : d > 0 ? pages[prev] : null;
+            for (int i = 0; i < pages.length; i++) {
+                if (i == index) continue;
+                if (pages[i] != in) pages[i].setVisibility(View.INVISIBLE);
+            }
+            pages[index].setTranslationX(d);
+            if (in != null && in != pages[index]) {
+                in.setTranslationX(d < 0 ? d + w : d - w);
+                in.setVisibility(View.VISIBLE);
+            }
             header.setProgress(w > 0 ? -d / w : 0f);
         }
 
@@ -915,10 +874,9 @@ public final class Metro {
             settleTo(dir);
         }
 
-        /** 다음 메뉴 이름을 눌렀을 때: 민 것처럼 넘어간다. */
+        /** 바로 다음 이름을 눌렀을 때: 민 것처럼 넘어간다. */
         private void animateTo(int dir) {
             if (settle != null || !host.canPivot()) return;
-            place();
             settleTo(dir);
         }
 
@@ -930,18 +888,13 @@ public final class Metro {
             settle.setDuration(Math.round(150 + 250 * Math.min(1f, Math.abs(to - from) / Math.max(1f, w))));
             settle.setInterpolator(SETTLE);
             settle.addUpdateListener(a -> update(from + (to - from) * (float) a.getAnimatedValue()));
-            // 하드웨어 층은 쓰지 않는다: translationX는 그리기를 다시 하지 않아 층이 필요 없고, 아래 미리보기(크기가 바뀌고
-            // 바깥으로도 그리는 뷰)를 층에 담으면 움직이는 동안 미리보기가 사라지고 위 목록이 찌그러져 보인다.
             settle.addListener(new AnimatorListenerAdapter() {
                 @Override
                 public void onAnimationEnd(Animator animation) {
                     settle = null;
-                    if (dir != 0) {
-                        host.go(dir);   // 화면이 바뀌는 동안은 계속 누르기를 막는다
-                        return;
-                    }
-                    for (FrameLayout h : holders) if (h != null) h.setVisibility(View.INVISIBLE);
                     page.setBusy(false);
+                    if (dir != 0) show(at(dir));
+                    else update(0f);
                 }
             });
             settle.start();
@@ -967,5 +920,261 @@ public final class Metro {
     public static void finishQuietly(Activity a) {
         a.finish();
         if (android.os.Build.VERSION.SDK_INT < 34) a.overridePendingTransition(0, 0);
+    }
+
+    // ---------------------------------------------------------------- 앱 바
+
+    /**
+     * Windows Phone 8의 앱 바 (공식 지침 "App bar for Windows Phone", "Essential graphics ... App bar"):
+     * <ul>
+     * <li>화면 맨 아래, 폭을 꽉 채운 높이 72px(→ 54dp)의 크롬 색 막대. 불투명이라 화면 내용은 그 위까지만 쓴다.</li>
+     * <li>자주 쓰는 동작을 아이콘 버튼으로 최대 네 개, 가운데에 모아 둔다. 버튼은 48px(→ 36dp) 동그라미 안의 아이콘(앱 바가 동그라미를 그린다).</li>
+     * <li>오른쪽의 점 세 개를 누르면(또는 막대를 위로 튕기면) 펼쳐져 버튼 아래에 짧은 이름(text hint)이, 그 아래에 메뉴 항목이 보인다.
+     *     메뉴 항목은 소문자, 다섯 개까지. 점·바깥·뒤로 가기·항목·버튼을 누르면 접힌다.</li>
+     * </ul>
+     */
+    public static final class AppBar extends LinearLayout {
+        private final LinearLayout buttons, menu;
+        private final java.util.List<TextView> hints = new java.util.ArrayList<>();
+        private final View dots;
+        private boolean open;
+        private Runnable onOpenChanged;
+        private float downY;
+
+        public AppBar(Context c) {
+            super(c);
+            setOrientation(VERTICAL);
+            setBackgroundColor(chrome);
+            setClickable(true);   // 막대를 눌러도 아래 화면으로 넘어가지 않는다
+            FrameLayout row = new FrameLayout(c);
+            buttons = new LinearLayout(c);
+            buttons.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
+            row.addView(buttons, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT));
+            dots = new View(c) {
+                private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+
+                @Override
+                protected void onDraw(android.graphics.Canvas canvas) {
+                    // 오른쪽 위의 점 세 개 (4px → 3dp 지름, 간격 8px → 6dp)
+                    p.setColor(fg);
+                    float r = Ui.dp(getContext(), 1.5f), gap = Ui.dp(getContext(), 6);
+                    float cy = Ui.dp(getContext(), 10), right = getWidth() - Ui.dp(getContext(), 18);
+                    for (int i = 0; i < 3; i++) canvas.drawCircle(right - i * gap, cy, r, p);
+                }
+            };
+            dots.setContentDescription(L.t("더 보기", "More"));
+            dots.setOnClickListener(v -> setOpen(!open));
+            row.addView(dots, new FrameLayout.LayoutParams(Ui.dp(c, 64), Ui.dp(c, 40), android.view.Gravity.END | android.view.Gravity.TOP));
+            addView(row, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
+            row.setMinimumHeight(Ui.dp(c, 54));
+            menu = new LinearLayout(c);
+            menu.setOrientation(VERTICAL);
+            menu.setPadding(0, Ui.dp(c, 4), 0, Ui.dp(c, 12));
+            menu.setVisibility(GONE);
+            addView(menu, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
+        }
+
+        /** 아이콘 버튼을 더한다 (최대 네 개). hint는 펼쳤을 때 버튼 아래에 보이는 짧은 이름. */
+        public void addButton(View button, String hint) {
+            Context c = getContext();
+            LinearLayout col = new LinearLayout(c);
+            col.setOrientation(VERTICAL);
+            col.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
+            LayoutParams blp = new LayoutParams(Ui.dp(c, 40), Ui.dp(c, 40));
+            blp.topMargin = Ui.dp(c, 7);
+            blp.bottomMargin = Ui.dp(c, 7);
+            col.addView(button, blp);
+            TextView t = new TextView(c);
+            t.setText(lower(hint));
+            t.setTextColor(fg);
+            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+            t.setTypeface(regular());
+            t.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
+            t.setSingleLine(true);
+            t.setVisibility(GONE);
+            col.addView(t, new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT));
+            hints.add(t);
+            buttons.addView(col, new LayoutParams(Ui.dp(c, 76), LayoutParams.WRAP_CONTENT));
+        }
+
+        /** 메뉴 항목을 더한다 (소문자로 보인다, 다섯 개까지 권장). 누르면 앱 바를 접고 action을 부른다. */
+        public void addMenuItem(String label, Runnable action) {
+            Context c = getContext();
+            TextView t = new TextView(c);
+            t.setText(lower(label));
+            t.setTextColor(fg);
+            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
+            t.setTypeface(regular());
+            t.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            t.setMinHeight(Ui.dp(c, 48));
+            t.setPadding(Ui.dp(c, 18), 0, Ui.dp(c, 18), 0);
+            t.setOnClickListener(v -> {
+                setOpen(false);
+                action.run();
+            });
+            tilt(t);
+            menu.addView(t, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
+        }
+
+        /** 펼쳐지거나 접힐 때 (바깥을 누르면 접히도록 부른 쪽이 막을 깔고 걷는 데 쓴다). */
+        public void setOnOpenChanged(Runnable r) {
+            onOpenChanged = r;
+        }
+
+        public boolean isOpen() {
+            return open;
+        }
+
+        /** 펼치거나 접는다: 버튼 아래의 이름과 메뉴 항목이 막대에서 밀려 올라온다. */
+        public void setOpen(boolean o) {
+            if (open == o) return;
+            open = o;
+            for (TextView t : hints) Ui.setVisibleAnimated(t, o);
+            if (menu.getChildCount() > 0) Ui.setVisibleAnimated(menu, o);
+            if (onOpenChanged != null) onOpenChanged.run();
+        }
+
+        /** 막대를 위로 튕기면 펼치고, 펼친 채 아래로 튕기면 접는다. */
+        @Override
+        public boolean onInterceptTouchEvent(MotionEvent e) {
+            if (e.getActionMasked() == MotionEvent.ACTION_DOWN) downY = e.getY();
+            if (e.getActionMasked() == MotionEvent.ACTION_MOVE) {
+                float d = e.getY() - downY, slop = android.view.ViewConfiguration.get(getContext()).getScaledTouchSlop() * 2;
+                if ((d < -slop && !open) || (d > slop && open)) {
+                    setOpen(!open);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
+        public boolean onTouchEvent(MotionEvent e) {
+            return true;
+        }
+    }
+
+    // ---------------------------------------------------------------- 버튼·스크롤 표시
+
+    /** 버튼 테두리 굵기 (dp): PhoneBorderThickness 3px. */
+    public static final float BORDER_DP = 2.25f;
+
+    /**
+     * 버튼 글자: WP SDK의 PhoneButtonBase처럼 PhoneFontFamilySemiBold, PhoneFontSizeMediumLarge(25.333px → 19sp).
+     * logicalSp는 설정 검색이 보는 원래 크기 ({@link #text} 참고).
+     */
+    public static void buttonText(TextView t, float logicalSp) {
+        text(t, 19, semibold(), logicalSp);
+    }
+
+    /**
+     * 스크롤 틀의 세로 스크롤 표시. Metro: WP8의 ScrollViewer처럼 끄는 동안만 나타났다가 손을 떼고 곧 사라지는 가는 네모 표시
+     * (누를 수는 없다). 보통 모드: 시스템 스크롤 막대 그대로.
+     */
+    public static void scrollIndicator(View scroll) {
+        scroll.setVerticalScrollBarEnabled(true);
+        if (!on) return;
+        scroll.setScrollbarFadingEnabled(true);
+        scroll.setScrollBarDefaultDelayBeforeFade(1000);   // 제스처가 끝나고 1초 뒤에 사라진다
+        if (android.os.Build.VERSION.SDK_INT >= 29) {
+            scroll.setVerticalScrollbarThumbDrawable(new android.graphics.drawable.ColorDrawable(SUBTLE));
+            scroll.setVerticalScrollbarTrackDrawable(null);
+            scroll.setScrollBarSize(Ui.dp(scroll.getContext(), 3));
+        }
+    }
+
+    // ---------------------------------------------------------------- 체크 상자·라디오
+
+    /**
+     * Windows Phone의 CheckBox·RadioButton 표시 (CompoundButton·CheckedTextView에 붙인다). WP SDK의 기본 템플릿을 따른다:
+     * <ul>
+     * <li>상자 CheckBackground: 32×32px(→ 24dp), 테두리 PhoneBorderThickness 3px(→ 2.25dp). 라디오는 같은 크기의 동그라미.</li>
+     * <li>체크 CheckMark: Path "M0,119 L31,92 L119,185 L267,0 L300,24 L122,250 z"를 24×18px로 늘려(Stretch=Fill) 가운데에 칠한다.
+     *     라디오의 점은 16×16px 동그라미.</li>
+     * <li>색 (WP 7.1 이후 ThemeResources): 상자 PhoneRadioCheckBoxBrush 다크 #FF000000·라이트 #BFFFFFFF, 테두리
+     *     PhoneRadioCheckBoxBorderBrush 다크 #FFFFFFFF·라이트 #FF000000, 체크 PhoneRadioCheckBoxCheckBrush 다크 #FFFFFFFF·라이트 #DE000000.</li>
+     * <li>누르는 동안(Pressed): 상자 바탕이 PhoneRadioCheckBoxPressedBrush, WP8에서는 강조색으로 채워진다. 테두리와 체크는 그대로.</li>
+     * </ul>
+     */
+    public static final class Check extends android.graphics.drawable.Drawable {
+        private final boolean radio;
+        private final int size, box;
+        private final float stroke;
+        private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.Path mark = new android.graphics.Path();
+        private boolean checked, pressed;
+
+        public Check(Context c, boolean radio) {
+            this.radio = radio;
+            this.size = Ui.dp(c, 24);
+            this.box = Ui.dp(c, 24);
+            this.stroke = Ui.dp(c, 2.25f);
+        }
+
+        /**
+         * 가운데 (cx, cy)에 한 변(지름) 2×half인 상자·동그라미와, 켜졌으면 체크·점을 그린다. Drawable을 붙일 수 없는 곳(대화상자 목록의
+         * 표시)도 쓴다. stroke는 테두리 굵기(px), pressed는 누르는 동안(상자를 강조색으로 채운다).
+         */
+        public static void paint(android.graphics.Canvas c, float cx, float cy, float half, float stroke, boolean radio,
+                                 boolean checked, boolean pressed, android.graphics.Paint p, android.graphics.Path mark) {
+            // 상자: 바탕을 칠하고 그 안쪽에 테두리 (XAML의 Border처럼 테두리가 상자 안에 들어간다).
+            float in = half - stroke / 2f;
+            p.setStyle(android.graphics.Paint.Style.FILL);
+            p.setColor(pressed ? accent : dark ? 0xFF000000 : 0xBFFFFFFF);
+            if (radio) c.drawCircle(cx, cy, half, p);
+            else c.drawRect(cx - half, cy - half, cx + half, cy + half, p);
+            p.setStyle(android.graphics.Paint.Style.STROKE);
+            p.setStrokeWidth(stroke);
+            p.setColor(dark ? 0xFFFFFFFF : 0xFF000000);
+            if (radio) c.drawCircle(cx, cy, in, p);
+            else c.drawRect(cx - in, cy - in, cx + in, cy + in, p);
+            if (!checked) return;
+            p.setStyle(android.graphics.Paint.Style.FILL);
+            p.setColor(dark ? 0xFFFFFFFF : 0xDE000000);
+            if (radio) {
+                c.drawCircle(cx, cy, half * 0.5f, p);   // 16px 점 / 32px 동그라미
+                return;
+            }
+            // CheckMark (x 0~300, y 0~250)를 24×18px(= 상자의 3/4 × 9/16)에 늘려 가운데에.
+            float w = half * 2 * 0.75f, h = half * 2 * 0.5625f, l = cx - w / 2f, t = cy - h / 2f;
+            float sx = w / 300f, sy = h / 250f;
+            mark.reset();
+            mark.moveTo(l, t + 119 * sy);
+            mark.lineTo(l + 31 * sx, t + 92 * sy);
+            mark.lineTo(l + 119 * sx, t + 185 * sy);
+            mark.lineTo(l + 267 * sx, t);
+            mark.lineTo(l + 300 * sx, t + 24 * sy);
+            mark.lineTo(l + 122 * sx, t + 250 * sy);
+            mark.close();
+            c.drawPath(mark, p);
+        }
+
+        @Override public int getIntrinsicWidth() { return size; }
+        @Override public int getIntrinsicHeight() { return size; }
+        @Override public boolean isStateful() { return true; }
+
+        @Override
+        protected boolean onStateChange(int[] state) {
+            boolean on = false, down = false;
+            for (int s : state) {
+                if (s == android.R.attr.state_checked) on = true;
+                if (s == android.R.attr.state_pressed) down = true;
+            }
+            if (on == checked && down == pressed) return false;
+            checked = on;
+            pressed = down;
+            invalidateSelf();
+            return true;
+        }
+
+        @Override
+        public void draw(android.graphics.Canvas c) {
+            android.graphics.Rect b = getBounds();
+            paint(c, b.exactCenterX(), b.exactCenterY(), box / 2f, stroke, radio, checked, pressed, p, mark);
+        }
+
+        @Override public void setAlpha(int alpha) { p.setAlpha(alpha); }
+        @Override public void setColorFilter(android.graphics.ColorFilter cf) { p.setColorFilter(cf); }
+        @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
     }
 }

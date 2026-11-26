@@ -56,7 +56,7 @@ public final class Ui {
         b.setSingleLine(true);
         b.setPadding(dp(c, 14), 0, dp(c, 14), 0);
         float r = chipRadius(c);
-        b.setBackground(ripple(tint(textColor), round(fill, r), r));
+        b.setBackground(keyPress(tint(textColor), round(fill, r), r));
         if (Metro.on) b.setTypeface(Metro.regular());
         android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(
                 android.view.ViewGroup.LayoutParams.WRAP_CONTENT, chipHeight(c, barHeight));
@@ -86,12 +86,22 @@ public final class Ui {
 
     /**
      * 눌렀을 때 물결 효과가 있는 배경. content가 null이면 투명 배경.
-     * Metro 모드에서는 물결 대신 누르는 동안 네모 바탕 전체를 pressColor로 덮는다 (Windows Phone의 눌림은 단색으로 바로 바뀐다).
+     * Metro 모드에서는 눌림 색이 없다: Windows Phone(Toolkit의 목록·메뉴 항목 템플릿)에는 Pressed 상태가 없고 누르면 틸트로만
+     * 반응하므로 content만 돌려준다. 틸트는 각 뷰가 Metro.tilt로 건다.
      */
     public static Drawable ripple(int pressColor, Drawable content, float radiusPx) {
-        if (Metro.on) return metroPressed(pressColor, content);
+        if (Metro.on) return content;
         GradientDrawable mask = round(0xFFFFFFFF, radiusPx);
         return new RippleDrawable(ColorStateList.valueOf(pressColor), content, mask);
+    }
+
+    /**
+     * 키보드(키·도구 막대·이모지·클립보드 창 등)의 누르는 바탕. 보통은 {@link #ripple}과 같고, Metro에서는 누르는 동안 네모 바탕 전체를
+     * pressColor(Metro 키보드에서는 강조색)로 바로 덮는다: WP8의 키보드와 앱 바 버튼은 누르는 동안 강조색으로 채워진다.
+     */
+    public static Drawable keyPress(int pressColor, Drawable content, float radiusPx) {
+        if (Metro.on) return metroPressed(pressColor, content);
+        return ripple(pressColor, content, radiusPx);
     }
 
     /** 누르는 동안 content 위에 pressColor를 덮는 바탕 (content가 null이면 평소에는 투명하다). */
@@ -269,6 +279,11 @@ public final class Ui {
      * 뷰를 높이와 투명도 애니메이션으로 펼치거나 접는다 (하위 설정, 입력창 등).
      * 아직 화면에 배치되기 전이면 애니메이션 없이 바로 바꾼다.
      */
+    /** v가 setVisibleAnimated로 펼치거나 접히는 중인지. */
+    public static boolean isAnimating(android.view.View v) {
+        return RUNNING.containsKey(v);
+    }
+
     public static void setVisibleAnimated(final android.view.View v, final boolean show) {
         setVisibleAnimated(v, show, null);
     }
@@ -292,6 +307,18 @@ public final class Ui {
         }
         final int from = visible ? v.getHeight() : 0;
         final float fromAlpha = visible ? v.getAlpha() : 0f;
+        // 보일 때만 쓰는 위·아래 바깥 여백(하위 묶음이 위 줄 쪽으로 당겨 붙는 음수 여백 등)도 숨은 상태의 0에서/으로 함께 움직인다.
+        // 함께 움직이지 않으면 펼치기 시작이나 접기 끝에 여백만큼 아래 줄들이 한 번에 튄다.
+        final Object shownTag = v.getTag(com.alternative_studios.newswipe.R.id.shown_margins);
+        final int[] shown = shownTag instanceof int[] && lp instanceof android.view.ViewGroup.MarginLayoutParams ? (int[]) shownTag : null;
+        final int fromTop, fromBottom;
+        if (shown != null) {
+            android.view.ViewGroup.MarginLayoutParams m = (android.view.ViewGroup.MarginLayoutParams) lp;
+            fromTop = visible ? m.topMargin : 0;
+            fromBottom = visible ? m.bottomMargin : 0;
+        } else {
+            fromTop = fromBottom = 0;
+        }
         final int to;
         if (show) {
             android.view.View pv = (android.view.View) parent;
@@ -306,6 +333,10 @@ public final class Ui {
                     android.view.View.MeasureSpec.makeMeasureSpec(0, android.view.View.MeasureSpec.UNSPECIFIED));
             to = v.getMeasuredHeight();
             lp.height = from;
+            if (shown != null) {   // 숨어 있던 뷰는 여백도 0에서 시작한다
+                ((android.view.ViewGroup.MarginLayoutParams) lp).topMargin = fromTop;
+                ((android.view.ViewGroup.MarginLayoutParams) lp).bottomMargin = fromBottom;
+            }
             v.setAlpha(fromAlpha);
             v.setVisibility(android.view.View.VISIBLE);
             v.setLayoutParams(lp);
@@ -324,6 +355,11 @@ public final class Ui {
             float f = (float) anim.getAnimatedValue();
             android.view.ViewGroup.LayoutParams l = v.getLayoutParams();
             l.height = Math.round(from + (to - from) * f);
+            if (shown != null) {
+                android.view.ViewGroup.MarginLayoutParams m = (android.view.ViewGroup.MarginLayoutParams) l;
+                m.topMargin = Math.round(fromTop + ((show ? shown[0] : 0) - fromTop) * f);
+                m.bottomMargin = Math.round(fromBottom + ((show ? shown[1] : 0) - fromBottom) * f);
+            }
             v.setLayoutParams(l);
             v.setAlpha(fromAlpha + (toAlpha - fromAlpha) * f);
             clip.set(0, 0, Math.max(v.getWidth(), 1), l.height);
@@ -344,6 +380,11 @@ public final class Ui {
                 v.setClipBounds(null);
                 android.view.ViewGroup.LayoutParams l = v.getLayoutParams();
                 l.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT;
+                if (shown != null) {
+                    // 숨기면 여백은 쓰이지 않으므로 보일 때의 값으로 돌려 둔다 (다음에 바로 보일 때 그대로).
+                    ((android.view.ViewGroup.MarginLayoutParams) l).topMargin = shown[0];
+                    ((android.view.ViewGroup.MarginLayoutParams) l).bottomMargin = shown[1];
+                }
                 v.setLayoutParams(l);
                 v.setAlpha(1f);
                 if (!show) v.setVisibility(android.view.View.GONE);

@@ -305,7 +305,12 @@ public final class NeuUi {
 
     /** 늘 안으로 들어가 있는 바탕 (입력란, 아이콘 홈). */
     public static void sunken(View v, float radiusPx) {
-        v.setBackground(new Face(v.getContext(), surface, radiusPx, SMALL, false, true));
+        v.setBackground(sunkenFace(v.getContext(), radiusPx));
+    }
+
+    /** 안으로 들어간 면 (뷰에 붙이지 않고 돌려준다: 눌린 상태 바탕 등으로 다른 바탕과 엮을 때). */
+    public static Drawable sunkenFace(Context c, float radiusPx) {
+        return new Face(c, surface, radiusPx, SMALL, false, true);
     }
 
     /** 솟아오르거나 들어간 면을 그리는 바탕. */

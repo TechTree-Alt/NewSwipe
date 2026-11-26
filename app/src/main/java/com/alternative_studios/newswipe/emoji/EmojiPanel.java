@@ -151,7 +151,7 @@ public final class EmojiPanel extends LinearLayout {
         searchRow.addView(topBack, new LayoutParams(Ui.dp(context, 44), ViewGroup.LayoutParams.MATCH_PARENT));
         LinearLayout search = new LinearLayout(context);
         search.setGravity(Gravity.CENTER_VERTICAL);
-        search.setBackground(Ui.ripple(Ui.tint(theme.text), Ui.round(theme.functionKey, Ui.chipRadius(context)),
+        search.setBackground(Ui.keyPress(Ui.tint(theme.text), Ui.round(theme.functionKey, Ui.chipRadius(context)),
                 Ui.chipRadius(context)));
         Neu.apply(search, theme, theme.functionKey, Ui.chipRadius(context));
         search.setPadding(Ui.dp(context, 10), 0, Ui.dp(context, 12), 0);
@@ -191,7 +191,7 @@ public final class EmojiPanel extends LinearLayout {
         back.setGravity(Gravity.CENTER);
         back.setTextColor(theme.text);
         back.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        back.setBackground(Ui.ripple(theme.keyPressed, Ui.round(theme.functionKey, Ui.dp(context, 7)),
+        back.setBackground(Ui.keyPress(theme.keyPressed, Ui.round(theme.functionKey, Ui.dp(context, 7)),
                 Ui.dp(context, 7)));
         Neu.apply(back, theme, theme.functionKey, Ui.dp(context, 7));
         back.setOnClickListener(v -> {
@@ -211,7 +211,7 @@ public final class EmojiPanel extends LinearLayout {
                 t.setGravity(Gravity.CENTER);
                 t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
                 t.setContentDescription(EmojiData.groupNames()[i]);
-                t.setBackground(Ui.ripple(theme.keyPressed, null, Ui.dp(context, 16)));
+                t.setBackground(Ui.keyPress(theme.keyPressed, null, Ui.dp(context, 16)));
                 tab = t;
             }
             final int index = i;
@@ -229,7 +229,7 @@ public final class EmojiPanel extends LinearLayout {
         tabsLp.rightMargin = Ui.dp(context, 6);
         bar.addView(tabRow, tabsLp);
         IconButton del = new IconButton(context, Icons.DELETE, theme.text, theme.keyPressed, L.t("지우기", "Delete"));
-        del.setBackground(Ui.ripple(theme.keyPressed, Ui.round(theme.functionKey, Ui.dp(context, 7)),
+        del.setBackground(Ui.keyPress(theme.keyPressed, Ui.round(theme.functionKey, Ui.dp(context, 7)),
                 Ui.dp(context, 7)));
         Neu.apply(del, theme, theme.functionKey, Ui.dp(context, 7));
         setRepeating(del);
@@ -368,7 +368,7 @@ public final class EmojiPanel extends LinearLayout {
             tabs[i].setBackground(sel
                     ? theme.neu ? Neu.sunken(tabs[i], theme, theme.functionKey, Ui.dp(getContext(), 16))
                     : Ui.round(theme.functionKey, Ui.dp(getContext(), 16))
-                    : Ui.ripple(theme.keyPressed, null, Ui.dp(getContext(), 16)));
+                    : Ui.keyPress(theme.keyPressed, null, Ui.dp(getContext(), 16)));
         }
     }
 
@@ -424,7 +424,7 @@ public final class EmojiPanel extends LinearLayout {
             t.setText(v);
             t.setTextSize(TypedValue.COMPLEX_UNIT_SP, TEXT_SP[sizeLevel]);
             t.setGravity(Gravity.CENTER);
-            t.setBackground(Ui.ripple(theme.keyPressed, null, Ui.dp(c, 8)));
+            t.setBackground(Ui.keyPress(theme.keyPressed, null, Ui.dp(c, 8)));
             t.setOnClickListener(x -> {
                 pw.dismiss();
                 listener.onEmojiKeyPress();
@@ -554,7 +554,7 @@ public final class EmojiPanel extends LinearLayout {
                 t.setGravity(Gravity.CENTER);
                 t.setTextSize(TypedValue.COMPLEX_UNIT_SP, TEXT_SP[sizeLevel]);
                 t.setLayoutParams(new GridView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, cellHeight()));
-                t.ripple = Ui.ripple(theme.keyPressed, null, Ui.dp(parent.getContext(), 10));
+                t.ripple = Ui.keyPress(theme.keyPressed, null, Ui.dp(parent.getContext(), 10));
                 t.setTextColor(theme.text);
             }
             String e = items.get(position);

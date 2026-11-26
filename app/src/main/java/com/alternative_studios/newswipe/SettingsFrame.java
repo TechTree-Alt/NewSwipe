@@ -67,6 +67,10 @@ final class SettingsFrame {
     }
 
     private boolean closeInputIfOpen() {
+        if (appBar != null && appBar.isOpen()) {   // Metro: 펼친 앱 바부터 접는다
+            appBar.setOpen(false);
+            return true;
+        }
         if (searchWanted) {
             toggleSearch();
             return true;
@@ -81,7 +85,7 @@ final class SettingsFrame {
     /** 입력창이 열려 있는 동안에만 Android 13+의 뒤로 가기 콜백을 등록하고, 닫히면 풀어서 평소 뒤로 가기가 그대로 되게 한다. */
     private void updateBackCallback() {
         if (android.os.Build.VERSION.SDK_INT < 33) return;
-        boolean needed = searchWanted || testBarWanted;
+        boolean needed = searchWanted || testBarWanted || (appBar != null && appBar.isOpen());
         android.window.OnBackInvokedDispatcher dispatcher = activity.getOnBackInvokedDispatcher();
         if (needed && backCallback == null) {
             android.window.OnBackInvokedCallback cb = this::closeInputIfOpen;
@@ -99,13 +103,46 @@ final class SettingsFrame {
     private View.OnClickListener actionListener;
     private ExpressiveIconButton actionButton;
 
-    /** 머리글의 '키보드 열기' 버튼 왼쪽에 버튼 하나를 더 둔다 (옅은 바탕에 강조색 아이콘). */
-    SettingsFrame withAction(int icon, String description, View.OnClickListener l) {
+    /** Metro 앱 바에서 그 버튼 아래에 보이는 짧은 이름. */
+    private String actionHint;
+
+    /**
+     * 머리글의 '키보드 열기' 버튼 왼쪽에 버튼 하나를 더 둔다 (옅은 바탕에 강조색 아이콘). Metro는 앱 바의 버튼이 되고,
+     * hint가 펼친 앱 바에서 버튼 아래에 보인다.
+     */
+    SettingsFrame withAction(int icon, String description, String hint, View.OnClickListener l) {
         actionIcon = icon;
         actionDescription = description;
+        actionHint = hint;
         actionListener = l;
         return this;
     }
+
+    /** Metro 앱 바의 메뉴 항목 {이름, 동작} (Metro가 아니면 쓰지 않는다). */
+    private final java.util.List<Object[]> menuItems = new java.util.ArrayList<>();
+
+    /**
+     * Metro UI: 앱 바 메뉴에 항목을 더한다 (점 세 개를 누르면 보이는 소문자 글 줄). 자주 쓰지 않는 동작을 둔다.
+     * Metro가 아니면 아무것도 하지 않는다 (그 동작은 부른 쪽이 화면 안에 따로 둔다).
+     */
+    SettingsFrame withMenuItem(String label, Runnable action) {
+        if (Metro.on) menuItems.add(new Object[]{label, action});
+        return this;
+    }
+
+    /**
+     * 앱 바의 키보드 버튼을 먼저 받아 볼 쪽 (처리했으면 true). 머리글을 덮는 설정 창이 열려 있으면 그 창의 입력 시험 창을 연다.
+     */
+    private java.util.function.BooleanSupplier keyboardOverride;
+
+    void setKeyboardOverride(java.util.function.BooleanSupplier handler) {
+        keyboardOverride = handler;
+    }
+
+    /** Metro 모드의 앱 바 (Metro가 아니면 null). */
+    private Metro.AppBar appBar;
+    /** 앱 바를 펼친 동안 화면 위에 깔아 바깥을 누르면 접히게 하는 막. */
+    private View appBarScrim;
 
     /** withAction으로 더한 버튼 (wrap 뒤에만 있다). */
     ExpressiveIconButton actionButton() {
@@ -175,12 +212,7 @@ final class SettingsFrame {
             collectFeather(content, items);
             return items;
         });
-        if (pivotNames != null) {
-            // 피벗: 가로로 밀면 지금 내용(목록과 아래 미리보기)이 손가락을 따라가고 옆 메뉴가 들어온다.
-            pivot = new Metro.Pivot(page, pivotHeader, content, new View[]{content, bottom}, pivotHost);
-        }
-        // 옆 메뉴에서 밀어서 넘어온 화면은 이미 제자리에 보이는 것처럼 이어지므로 들어오는 턴스타일을 틀지 않는다.
-        if (!arriving) page.playEnterOnFirstDraw();
+        page.playEnterOnFirstDraw();
         if (android.os.Build.VERSION.SDK_INT >= 33) {
             // 뒤로 가기도 턴스타일로 나간다. 검색창·입력창·설정 창이 열려 있으면 나중에 등록한 그쪽 콜백이 먼저 불린다.
             android.window.OnBackInvokedCallback cb = () -> metroBack(activity);
@@ -193,10 +225,6 @@ final class SettingsFrame {
     /** Metro 모드의 턴스타일 틀 (Metro 모드가 아니면 null). */
     private Metro.Page page;
 
-    /** 화면이 보이지 않게 되면 피벗의 옆 메뉴 내용(화면 두 개 분량)을 놓아 준다. 돌아오면 다시 만든다. */
-    void releaseHidden() {
-        if (page != null) page.releasePivot();
-    }
     private View header;
 
     /**
@@ -241,27 +269,31 @@ final class SettingsFrame {
         return true;
     }
 
-    /** Metro 피벗: 고리 차례의 메뉴 이름과 지금 메뉴의 차례, 넘기기를 맡는 쪽. 없으면 null. */
-    private String[] pivotNames;
-    private int pivotIndex;
-    private Metro.Pivot.Host pivotHost;
-    private Metro.PivotHeader pivotHeader;
+    /** Metro 머리글의 작은 제목과 큰 제목 (Metro가 아니면 null). 피벗을 놓으면 큰 제목 자리에 섹션 이름 줄이 들어간다. */
+    private TextView metroSmall, metroBig;
     private Metro.Pivot pivot;
-    private boolean arriving;
 
     /**
-     * Metro UI: 이 화면을 피벗의 한 칸으로 만든다. 머리글에 메뉴 이름들이 이어지고, 가로로 밀어 옆 메뉴로 넘어간다.
-     * @param arrived 옆 메뉴에서 밀어서 넘어온 화면이면 true (들어오는 턴스타일 없이 그대로 보인다)
+     * Metro UI: 이 화면의 섹션들을 Windows Phone 피벗으로 오가게 한다 (wrap 뒤에, 내용을 다 만든 다음 부른다).
+     * 머리글 첫 줄에는 메뉴 이름이 작게, 그 아래에는 큰 제목 대신 섹션 이름들이 이어지고, 가로로 밀거나 이름을 누르면 그 섹션으로 간다.
+     *
+     * @param pages 섹션마다 한 장 (같은 자리에 겹쳐 둔 뷰), names와 차례가 같다
      */
-    SettingsFrame withPivot(String[] names, int index, Metro.Pivot.Host host, boolean arrived) {
-        pivotNames = names;
-        pivotIndex = index;
-        pivotHost = host;
-        arriving = arrived;
-        return this;
+    Metro.Pivot installPivot(String[] names, View[] pages, int index, Metro.Pivot.Host host) {
+        if (page == null || metroBig == null) return null;
+        metroSmall.setText(Metro.upper(title));
+        Metro.PivotHeader names2 = new Metro.PivotHeader(activity, names, index);
+        names2.setPadding(0, Ui.dp(activity, 2), 0, Ui.dp(activity, 8));
+        ViewGroup parent = (ViewGroup) metroBig.getParent();
+        int at = parent.indexOfChild(metroBig);
+        parent.removeViewAt(at);
+        parent.addView(names2, at, matchWrap());
+        metroBig = null;
+        pivot = new Metro.Pivot(page, names2, pages, index, host);
+        return pivot;
     }
 
-    /** withPivot으로 만든 피벗 (Metro 모드가 아니거나 피벗이 아니면 null). */
+    /** installPivot으로 놓은 피벗 (없으면 null). */
     Metro.Pivot pivot() {
         return pivot;
     }
@@ -275,6 +307,8 @@ final class SettingsFrame {
         upper.setOrientation(LinearLayout.VERTICAL);
         header = Metro.on ? buildMetroHeader() : buildHeader();
         upper.addView(header, matchWrap());
+        // Metro: 검색·키보드 버튼은 앱 바에 있으므로, 그 버튼을 쓰는 검색창·입력창보다 먼저 만든다 (붙이는 자리는 아래).
+        if (Metro.on) appBar = buildAppBar(activity);
         if (onSearch != null) {
             buildSearchBar();
             upper.addView(searchBar, matchWrap());
@@ -287,6 +321,8 @@ final class SettingsFrame {
         overlayHost.addView(upper, new android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
         root.addView(overlayHost, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        // Windows Phone 앱 바: 화면 내용 아래, 미리보기(키보드처럼 화면 맨 아래에 붙는 것)가 있으면 그 위.
+        if (appBar != null) root.addView(appBar, matchWrap());
         if (bottom == null) {
             Ui.padForSystemBars(root, !keyboardOverlays);
             return root;
@@ -348,8 +384,9 @@ final class SettingsFrame {
     }
 
     /**
-     * Metro UI의 머리글 (Windows Phone 피벗): 첫 줄에 작은 대문자 앱 이름과 오른쪽의 동그란 앱 바 버튼, 그 아래에 화면 이름을
-     * 크고 가는 소문자로 쓰고, 그 오른쪽에 다음 화면 이름이 옅게 비치다 화면 끝에서 잘린다.
+     * Metro UI의 머리글 (Windows Phone 페이지 제목): 첫 줄에 작은 대문자 앱 이름, 그 아래에 화면 이름을 크고 가는 소문자로 쓴다
+     * (화면보다 길면 끝에서 잘린다). 섹션 피벗을 놓으면(installPivot) 첫 줄은 메뉴 이름, 큰 제목 자리는 섹션 이름 줄이 된다.
+     * 버튼은 화면 아래의 앱 바에 있다.
      */
     private View buildMetroHeader() {
         Context c = activity;
@@ -370,15 +407,11 @@ final class SettingsFrame {
         small.setSingleLine(true);
         small.setEllipsize(android.text.TextUtils.TruncateAt.END);
         top.addView(small, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        addHeaderButtons(c, top, Ui.dp(c, 44));
+        // 버튼은 머리글이 아니라 화면 아래의 앱 바에 둔다 (buildAppBar).
+        top.setMinimumHeight(Ui.dp(c, 32));
         header.addView(top, matchWrap());
+        metroSmall = small;
 
-        if (pivotNames != null) {
-            pivotHeader = new Metro.PivotHeader(c, pivotNames, pivotIndex);
-            pivotHeader.setPadding(0, Ui.dp(c, 2), 0, Ui.dp(c, 8));
-            header.addView(pivotHeader, matchWrap());
-            return header;
-        }
         TextView big = new TextView(c);
         String name = Metro.lower(main ? L.t("설정", "settings") : title);
         big.setText(name);
@@ -390,26 +423,52 @@ final class SettingsFrame {
         big.setIncludeFontPadding(false);
         big.setPadding(0, Ui.dp(c, 2), 0, Ui.dp(c, 8));
         header.addView(big, matchWrap());
+        metroBig = big;
         return header;
     }
 
-    /** 머리글 오른쪽 버튼들: 검색, 또는 (더한 버튼과) 키보드 열기. */
-    private void addHeaderButtons(Context c, LinearLayout header, int size) {
+    /**
+     * Metro UI의 앱 바: 검색, 또는 (더한 버튼과) 키보드 열기 버튼과 메뉴 항목. 펼친 동안은 머리글·목록 위에 막을 깔아
+     * 바깥을 누르면 접힌다 (뒤로 가기도 접는다).
+     */
+    private Metro.AppBar buildAppBar(Context c) {
+        Metro.AppBar bar = new Metro.AppBar(c);
         if (onSearch != null) {
             testButton = null;
-            searchButton = circleButton(c, Icons.SEARCH, searchName, v -> toggleSearch());
-            header.addView(searchButton, new LinearLayout.LayoutParams(size, size));
-            return;
+            searchButton = circleButton(c, Icons.SEARCH, searchName, v -> {
+                bar.setOpen(false);
+                toggleSearch();
+            });
+            bar.addButton(searchButton, L.t("검색", "search"));
+        } else {
+            if (actionListener != null) {
+                actionButton = circleButton(c, actionIcon, actionDescription, v -> {
+                    bar.setOpen(false);
+                    actionListener.onClick(v);
+                });
+                bar.addButton(actionButton, actionHint != null ? actionHint : actionDescription);
+            }
+            testButton = circleButton(c, Icons.MENU_KEYBOARD, L.t("키보드 열기", "Open keyboard"), v -> {
+                bar.setOpen(false);
+                if (keyboardOverride != null && keyboardOverride.getAsBoolean()) return;
+                toggleTestKeyboard();
+            });
+            bar.addButton(testButton, L.t("키보드", "keyboard"));
         }
-        if (actionListener != null) {
-            actionButton = circleButton(c, actionIcon, actionDescription, actionListener);
-            actionButton.setActive(true);
-            LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(size, size);
-            alp.rightMargin = Ui.dp(c, 8);
-            header.addView(actionButton, alp);
-        }
-        testButton = circleButton(c, Icons.MENU_KEYBOARD, L.t("키보드 열기", "Open keyboard"), v -> toggleTestKeyboard());
-        header.addView(testButton, new LinearLayout.LayoutParams(size, size));
+        for (Object[] item : menuItems) bar.addMenuItem((String) item[0], (Runnable) item[1]);
+        bar.setOnOpenChanged(() -> {
+            if (bar.isOpen()) {
+                appBarScrim = new View(c);
+                appBarScrim.setOnClickListener(v -> bar.setOpen(false));
+                overlayHost.addView(appBarScrim, new android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT));
+            } else if (appBarScrim != null) {
+                overlayHost.removeView(appBarScrim);
+                appBarScrim = null;
+            }
+            updateBackCallback();
+        });
+        return bar;
     }
 
     /** 강조색 동그라미 안에 아이콘 하나를 둔 버튼 (누르면 모양이 바뀌고 진동이 울린다). */
@@ -502,6 +561,7 @@ final class SettingsFrame {
 
     private void updateTestButton() {
         // 열려 있으면 옅은 바탕에 강조색 아이콘, 닫혀 있으면 강조색 바탕에 흰 아이콘.
+        if (testButton == null) return;
         testButton.setActive(testBarWanted);
         testButton.setContentDescription(testBarWanted ? L.t("키보드 닫기", "Close keyboard") : L.t("키보드 열기", "Open keyboard"));
     }

@@ -53,7 +53,7 @@ public final class BottomKeysEditorActivity extends Activity {
         onAccentColor = colors.onAccent;
 
         ScrollView scroll = new ScrollView(this);
-        scroll.setVerticalScrollBarEnabled(!com.alternative_studios.newswipe.ui.Metro.on);   // Metro에는 스크롤 막대가 없다
+        com.alternative_studios.newswipe.ui.Metro.scrollIndicator(scroll);   // Metro: WP8처럼 끄는 동안만 보이는 가는 표시
         scroll.setBackgroundColor(bg);
         scroll.setFillViewport(true);
         list = new LinearLayout(this);
@@ -241,7 +241,7 @@ public final class BottomKeysEditorActivity extends Activity {
             shortNames[i] = BottomKeys.symbolGlobeLabel(ids[i]);
         }
         return choiceButton(L.t("기호 자판에서는", "On the symbol keyboard"),
-                L.t("기호 자판에서는 다른 키로 바꾸기", "Change the key on the symbol keyboard"), ids, names, shortNames,
+                BottomKeys.symbolGlobeKey(null), ids, names, shortNames,
                 prefs::symbolGlobeKey, prefs::setSymbolGlobeKey);
     }
 
@@ -250,15 +250,15 @@ public final class BottomKeysEditorActivity extends Activity {
         String[] ids = BottomKeys.CURSOR_MODES;
         String[] names = new String[ids.length];
         for (int i = 0; i < ids.length; i++) names[i] = BottomKeys.cursorModeLabel(ids[i]);
-        return choiceButton(L.t("모드", "Mode"), L.t("커서 이동 키 모드", "Cursor key mode"), ids, names, names,
+        return choiceButton(L.t("모드", "Mode"), BottomKeys.cursorMode(null), ids, names, names,
                 prefs::cursorKeyMode, prefs::setCursorKeyMode);
     }
 
     /**
-     * 이름과 지금 고른 값을 한 줄에 보이고, 누르면 고르는 창이 뜨는 하위 항목 버튼 ('기호 자판에서는', 커서 이동 키 '모드').
-     * names는 고르는 창에, shortNames는 버튼에 보이는 이름이다.
+     * 이름과 지금 고른 값을 한 줄에 보이고, 누르면 버튼 아래에 드롭다운이 펼쳐지는 하위 항목 버튼 ('기호 자판에서는', 커서 이동 키 '모드').
+     * names는 드롭다운에, shortNames는 버튼에 보이는 이름이다. defaultId에는 '기본'이 붙는다.
      */
-    private View choiceButton(String titleText, String dialogTitle, String[] ids, String[] names, String[] shortNames,
+    private View choiceButton(String titleText, String defaultId, String[] ids, String[] names, String[] shortNames,
                               java.util.function.Supplier<String> now, java.util.function.Consumer<String> pick) {
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
@@ -317,16 +317,12 @@ public final class BottomKeysEditorActivity extends Activity {
         row.setFocusable(true);
         row.setOnClickListener(v -> {
             int checked = Math.max(0, java.util.Arrays.asList(ids).indexOf(now.get()));
-            AppTheme.dialogBuilder(this)
-                    .setTitle(dialogTitle)
-                    .setSingleChoiceItems(names, checked, (dlg, which) -> {
-                        pick.accept(ids[which]);
-                        current.setText(shortNames[which]);
-                        updatePreview();
-                        dlg.dismiss();
-                    })
-                    .setNegativeButton(L.t("취소", "Cancel"), null)
-                    .show();
+            // 항목이 몇 개뿐이라 대화상자 대신 버튼 아래에 펼친다.
+            DropdownMenu.of(v, names, checked).defaultIndex(java.util.Arrays.asList(ids).indexOf(defaultId)).show(which -> {
+                pick.accept(ids[which]);
+                current.setText(shortNames[which]);
+                updatePreview();
+            });
         });
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -376,27 +372,7 @@ public final class BottomKeysEditorActivity extends Activity {
     }
 
     private View subGroup(int leftMarginDp, View... children) {
-        LinearLayout group = new LinearLayout(this);
-        group.setOrientation(LinearLayout.HORIZONTAL);
-        LinearLayout.LayoutParams glp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        glp.leftMargin = Ui.dp(this, leftMarginDp);
-        group.setLayoutParams(glp);
-
-        View bar = new View(this);
-        bar.setBackground(Ui.round((accentColor & 0x00FFFFFF) | 0x66000000, Ui.dp(this, 2)));
-        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(Ui.dp(this, 3),
-                ViewGroup.LayoutParams.MATCH_PARENT);
-        blp.topMargin = Ui.dp(this, 6);
-        blp.bottomMargin = Ui.dp(this, 6);
-        group.addView(bar, blp);
-
-        LinearLayout column = new LinearLayout(this);
-        column.setOrientation(LinearLayout.VERTICAL);
-        column.setPadding(Ui.dp(this, 14), 0, 0, 0);
-        for (View child : children) column.addView(child);
-        group.addView(column, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        return group;
+        return SettingsWidgets.subGroup(this, accentColor, leftMarginDp, children);
     }
 
     /** fixedRow로 만든 줄을 쓸 수 없는 상태로: 글자를 흐리게 하고 스위치를 끈다. */

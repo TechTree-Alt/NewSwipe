@@ -1491,7 +1491,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
             t.setTextColor(theme.text);
             t.setPadding(Ui.dp(this, 6), 0, Ui.dp(this, 6), 0);
-            t.setBackground(Ui.ripple(theme.keyPressed, null, 0));
+            t.setBackground(Ui.keyPress(theme.keyPressed, null, 0));
             t.setOnClickListener(v -> {
                 feedback.onKey(null);
                 applySuggestion(index);
@@ -1703,7 +1703,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     private IconButton sideButton(int icon, String desc, View.OnClickListener l) {
         IconButton b = new IconButton(this, icon, theme.hint, theme.keyPressed, desc);
         int r = Ui.dp(this, 12);
-        b.setBackground(Ui.ripple(theme.keyPressed, Ui.round(theme.functionKey, r), r));
+        b.setBackground(Ui.keyPress(theme.keyPressed, Ui.round(theme.functionKey, r), r));
         b.setOnClickListener(v -> {
             feedback.onKey(null);
             l.onClick(v);
@@ -6209,7 +6209,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
             TextView t = new TextView(this);
             t.setTextSize(TypedValue.COMPLEX_UNIT_SP, EmojiPanel.textSp(prefs.emojiSize()));
             t.setGravity(Gravity.CENTER);
-            t.setBackground(Ui.ripple(theme.keyPressed, null, Ui.dp(this, 10)));
+            t.setBackground(Ui.keyPress(theme.keyPressed, null, Ui.dp(this, 10)));
             t.setOnClickListener(v -> {
                 feedback.onKey(null);
                 onEmoji(((TextView) v).getText().toString());

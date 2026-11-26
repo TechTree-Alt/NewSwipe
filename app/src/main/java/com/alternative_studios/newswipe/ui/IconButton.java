@@ -29,7 +29,7 @@ public final class IconButton extends View {
         setClickable(true);
         setFocusable(true);
         setContentDescription(description);
-        setBackground(Ui.ripple(pressColor, null, Ui.dp(context, 20)));
+        setBackground(Ui.keyPress(pressColor, null, Ui.dp(context, 20)));
     }
 
     /**

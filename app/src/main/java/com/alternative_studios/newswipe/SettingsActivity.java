@@ -127,20 +127,23 @@ public final class SettingsActivity extends Activity {
                 : LEARNED.equals(sectionId) || BLOCKED.equals(sectionId)
                 ? new SettingsFrame(this, sectionName, getString(R.string.app_name)).withSearch(this::onWordSearch, L.t("단어 검색", "Search words"))
                 : new SettingsFrame(this, sectionName, getString(R.string.app_name));
-        String[][] ring = pivotRing();
-        int ringIndex = -1;
-        for (int i = 0; i < ring.length; i++) if (ring[i][0].equals(sectionId)) ringIndex = i;
-        if (Metro.on && ringIndex >= 0) {
-            // Metro UI: 설정 메뉴들이 피벗의 칸이 된다. 머리글에 메뉴 이름이 이어지고, 가로로 밀거나 다음 이름을 누르면 옆 메뉴로 넘어간다.
-            String[] names = new String[ring.length];
-            for (int i = 0; i < ring.length; i++) names[i] = ring[i][1];
-            frame.withPivot(names, ringIndex, pivotHost(ring, ringIndex), getIntent().getBooleanExtra(EXTRA_PIVOT_ARRIVE, false));
-            pivotFrame = frame;
+        metroFrame = frame;
+        // Metro: 설정 창(시트)은 머리글을 덮으므로, 창이 열려 있는 동안 앱 바의 키보드 버튼은 창의 입력 시험 창을 연다.
+        frame.setKeyboardOverride(() -> {
+            if (sheet == null || !sheet.isOpen()) return false;
+            sheet.toggleTestInput();
+            return true;
+        });
+        pivotStart = savedInstanceState == null ? 0 : savedInstanceState.getInt(STATE_PIVOT, 0);
+        if (KEYBOARD.equals(sectionId)) frame.withAction(Icons.UNDO, L.t("마지막 변경 되돌리기", "Undo last change"), L.t("되돌리기", "undo"), v -> undoLast()).keyboardOverlays();
+        // Metro: '기본값으로 되돌리기'는 목록 맨 아래 버튼 대신 앱 바 메뉴 항목 (자주 쓰지 않는 동작).
+        if (sectionId != null && hasReset(sectionId) && !KEYBOARD.equals(sectionId)) {
+            String resetName = sectionTitle(sectionId);
+            frame.withMenuItem(L.t("기본값으로 되돌리기", "reset to defaults"), () -> ResetDialog.confirm(this, resetName, () -> reset(sectionId)));
         }
-        if (KEYBOARD.equals(sectionId)) frame.withAction(Icons.UNDO, L.t("마지막 변경 되돌리기", "Undo last change"), v -> undoLast()).keyboardOverlays();
         else if ("onehand".equals(sectionId)) frame.keyboardOverlays();   // 미리보기를 실제 키보드처럼 화면 아래에 붙인다
         ScrollView scroll = new ScrollView(this);
-        scroll.setVerticalScrollBarEnabled(!com.alternative_studios.newswipe.ui.Metro.on);   // Metro에는 스크롤 막대가 없다
+        com.alternative_studios.newswipe.ui.Metro.scrollIndicator(scroll);   // Metro: WP8처럼 끄는 동안만 보이는 가는 표시
         scrollView = scroll;
         scroll.setFillViewport(true);
         scroll.setId(0x5E771001);   // 화면 모드를 바꿔 다시 만들 때 스크롤 위치를 복원한다
@@ -165,7 +168,7 @@ public final class SettingsActivity extends Activity {
         fullHost = frame.fullHost();
         undoButton = frame.actionButton();
         build();
-        startPivot();
+        installSectionPivot(sectionId);
         // 검색 결과에서 들어왔으면 그 항목까지 스크롤하고 깜빡여 알려 준다.
         String highlight = getIntent().getStringExtra(EXTRA_HIGHLIGHT);
         String target = getIntent().getStringExtra(EXTRA_TARGET);
@@ -195,14 +198,12 @@ public final class SettingsActivity extends Activity {
     }
 
     /**
-     * 앱이 뒤로 갔거나 메모리가 모자라면 다시 만들 수 있는 것을 놓아 준다: 피벗의 옆 메뉴 내용(돌아오면 다시 만든다)과
-     * Neumorphism 그림자 조각(다음에 그릴 때 필요한 것만 다시 굽는다).
+     * 앱이 뒤로 갔거나 메모리가 모자라면 다시 만들 수 있는 것을 놓아 준다: Neumorphism 그림자 조각(다음에 그릴 때 필요한 것만 다시 굽는다).
      */
     @Override
     public void onTrimMemory(int level) {
         super.onTrimMemory(level);
         if (level >= TRIM_MEMORY_UI_HIDDEN) {
-            if (pivotFrame != null) pivotFrame.releaseHidden();
             NeuUi.trimCache();
         }
     }
@@ -254,7 +255,7 @@ public final class SettingsActivity extends Activity {
         return new String[][]{
             {LANGUAGES, L.t("입력 언어", "Input languages"), L.t("한국어·영어, 언어 전환 순서", "Korean, English, switching order")},
             {KEYBOARD, L.t("키보드 사용자화", "Customize keyboard"), L.t("자판 배열, 모양, 입력, 길게 누르기, 밀기", "Layout, look, input, long press, swipe")},
-            {"theme", L.t("테마", "Theme"), L.t("화면 모드, 강조 색", "Light/dark, accent color")},
+            {"theme", L.t("테마", "Theme"), L.t("모드, 라이트/다크 모드, 강조 색", "Mode, light/dark mode, accent color")},
             {"feedback", L.t("소리 및 진동", "Sound & vibration"), L.t("키를 누를 때의 진동과 소리", "Vibration and sound when you press keys")},
             {"words", L.t("추천, 학습 및 완성", "Suggestions, learning & autofill"), L.t("단어 추천, 학습, 단축어, 자동 완성", "Word suggestions, learning, text shortcuts, autofill")},
             {"clipemoji", L.t("클립보드 및 이모지", "Clipboard & emoji"), L.t("클립보드 기록, 편집 버튼, 이모지 크기·추천", "Clipboard history, edit buttons, emoji size and suggestions")},
@@ -297,8 +298,8 @@ public final class SettingsActivity extends Activity {
             return;
         }
         buildScreen(id);
-        // 키보드 사용자화는 목록 안에 따로 둔다.
-        if (hasReset(id) && !KEYBOARD.equals(id)) addResetButton(id);
+        // 키보드 사용자화는 목록 안에 따로 둔다. Metro는 앱 바 메뉴에 있다 (onCreate).
+        if (hasReset(id) && !KEYBOARD.equals(id) && !Metro.on) addResetButton(id);
     }
 
     /** 설정 화면 하나의 내용을 지금의 list에 만든다 (설정 검색이 화면 글자를 모을 때도 이것을 쓴다). */
@@ -404,22 +405,26 @@ public final class SettingsActivity extends Activity {
 
     // ---------------------------------------------------------------- Metro 피벗
 
-    /** 옆 메뉴에서 밀어서 넘어온 화면 (들어오는 턴스타일 없이 이어서 보인다). */
-    static final String EXTRA_PIVOT_ARRIVE = "pivot_arrive";
-    /** 피벗인 화면의 틀 (아니면 null). */
-    private SettingsFrame pivotFrame;
+    /** 이 화면의 틀 (Metro 피벗을 놓을 때 쓴다). */
+    private SettingsFrame metroFrame;
+    /** 화면을 다시 만들 때(테마 변경 등) 돌아갈 피벗 페이지. */
+    private static final String STATE_PIVOT = "pivot_page";
+    private int pivotStart;
+    /** Metro 피벗의 섹션 이름·페이지·스크롤 틀 (피벗이 없으면 null). */
+    private String[] pivotNames;
+    private LinearLayout[] pivotPages;
+    private ScrollView[] pivotScrolls;
+    private Metro.Pivot sectionPivot;
 
-    /** 피벗으로 오가는 설정 메뉴 {id, 머리글에 쓰는 짧은 이름}. 끝에서 밀면 처음으로 돈다. */
-    private static String[][] pivotRing() {
-        String[][] all = sections();
-        String[][] out = new String[all.length][];
-        for (int i = 0; i < all.length; i++) out[i] = new String[]{all[i][0], shortTitle(all[i][0])};
-        return out;
+    @Override
+    protected void onSaveInstanceState(Bundle out) {
+        super.onSaveInstanceState(out);
+        if (sectionPivot != null) out.putInt(STATE_PIVOT, sectionPivot.index());
     }
 
     /**
-     * Metro UI에서 메뉴에 들어갔을 때 위에 크게 뜨는 짧은 제목 (피벗 머리글에 이어지는 이름도 이것이다).
-     * 메인 화면의 메뉴 이름은 그대로 둔다. 짧은 이름이 따로 없는 화면은 null.
+     * Metro UI의 짧은 메뉴 이름 (피벗이 없는 화면의 큰 제목, 피벗 화면의 작은 제목). 메인 화면의 메뉴 이름은 그대로 둔다.
+     * 짧은 이름이 따로 없는 화면은 null.
      */
     static String shortTitle(String id) {
         switch (id) {
@@ -437,8 +442,97 @@ public final class SettingsActivity extends Activity {
         }
     }
 
-    private Metro.Pivot.Host pivotHost(String[][] ring, int index) {
-        return new Metro.Pivot.Host() {
+    /**
+     * Metro UI: 메뉴 안의 섹션들을 Windows Phone 피벗의 페이지로 나눈다 (공식 지침: 피벗은 한 영역 안의 관련된 보기들을 오가는 데 쓴다).
+     * 만든 목록을 섹션 소제목마다 끊어 페이지로 옮기고, 소제목은 피벗 머리글의 이름이 된다. 첫 소제목 앞의 내용은 첫 페이지 위에 둔다.
+     * 섹션이 하나뿐이면 피벗 없이 소제목만 뺀다 (화면 제목으로 충분하다). 키보드 사용자화·입력 언어는 아래 미리보기·편집 창과 얽혀 있어,
+     * 메뉴가 아닌 하위 화면(학습한 단어 등)은 목록을 다시 만들므로 그대로 둔다.
+     */
+    private void installSectionPivot(String id) {
+        if (!Metro.on || id == null || KEYBOARD.equals(id) || LANGUAGES.equals(id)) return;
+        // 메뉴 화면만 (학습한 단어처럼 검색할 때마다 목록을 다시 만드는 하위 화면은 그대로 둔다).
+        boolean menu = "app".equals(id);
+        for (String[] sec : sections()) if (sec[0].equals(id)) menu = true;
+        if (!menu) return;
+        // 목록을 섹션 조각으로 나눈다: {이름(소제목 글자), 소제목, 그 아래 뷰들}. 첫 소제목 앞의 내용은 lead.
+        java.util.List<View> lead = new java.util.ArrayList<>();
+        java.util.List<Object[]> segs = new java.util.ArrayList<>();
+        java.util.List<View> cur = lead;
+        for (int i = 0; i < list.getChildCount(); i++) {
+            View v = list.getChildAt(i);
+            if (SettingsWidgets.isSectionHeader(v)) {
+                cur = new java.util.ArrayList<>();
+                segs.add(new Object[]{String.valueOf(((TextView) v).getText()), v, cur});
+            } else {
+                cur.add(v);
+            }
+        }
+        if (segs.isEmpty()) return;
+        list.removeAllViews();
+        // 계획대로 섹션을 페이지로 묶는다 (계획이 없으면 섹션마다 한 페이지). 계획에 없는 섹션은 끝에 제 페이지로, 뺄 섹션은 버린다.
+        java.util.List<String> titles = new java.util.ArrayList<>();
+        java.util.List<java.util.List<Object[]>> groups = new java.util.ArrayList<>();
+        java.util.Set<Object[]> used = new java.util.HashSet<>();
+        String[][] plan = pivotPlan(id);
+        if (plan != null) {
+            for (String[] row : plan) {
+                java.util.List<Object[]> g = new java.util.ArrayList<>();
+                for (int k = 1; k < row.length; k++) {
+                    for (Object[] seg : segs) {
+                        if (!used.contains(seg) && seg[0].equals(Metro.lower(row[k]))) {
+                            g.add(seg);
+                            used.add(seg);
+                        }
+                    }
+                }
+                if (!g.isEmpty()) {
+                    titles.add(Metro.lower(row[0]));
+                    groups.add(g);
+                }
+            }
+        }
+        java.util.List<String> dropped = new java.util.ArrayList<>();
+        for (String d : pivotDropped(id)) dropped.add(Metro.lower(d));
+        for (Object[] seg : segs) {
+            if (used.contains(seg) || dropped.contains((String) seg[0])) continue;
+            titles.add((String) seg[0]);
+            java.util.List<Object[]> g = new java.util.ArrayList<>();
+            g.add(seg);
+            groups.add(g);
+        }
+        int n = groups.size();
+        if (n <= 1) {
+            // 페이지가 하나뿐이면 피벗 없이 한 목록으로 (화면 제목으로 충분하다).
+            fillPivotPage(list, lead, n == 0 ? new java.util.ArrayList<>() : groups.get(0), n == 0 ? "" : titles.get(0));
+            return;
+        }
+        pivotNames = titles.toArray(new String[0]);
+        pivotPages = new LinearLayout[n];
+        pivotScrolls = new ScrollView[n];
+        android.widget.FrameLayout pager = new android.widget.FrameLayout(this);
+        int pad = Ui.dp(this, 16);
+        for (int i = 0; i < n; i++) {
+            LinearLayout p = new LinearLayout(this);
+            p.setOrientation(LinearLayout.VERTICAL);
+            p.setPadding(pad, 0, pad, Ui.dp(this, 32));
+            ScrollView sv = new ScrollView(this);
+            Metro.scrollIndicator(sv);
+            sv.setFillViewport(true);
+            sv.setId(0x5E771001 + i);   // 화면을 다시 만들 때 페이지마다 스크롤 위치를 복원한다
+            sv.addView(p);
+            pager.addView(sv, new android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT));
+            pivotPages[i] = p;
+            pivotScrolls[i] = sv;
+            fillPivotPage(p, i == 0 ? lead : java.util.Collections.emptyList(), groups.get(i), titles.get(i));
+        }
+        middle.removeView(scrollView);
+        middle.addView(pager, 0, new android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+        int start = Math.max(0, Math.min(n - 1, pivotStart));
+        list = pivotPages[start];
+        scrollView = pivotScrolls[start];
+        sectionPivot = metroFrame.installPivot(pivotNames, pivotScrolls, start, new Metro.Pivot.Host() {
             @Override
             public boolean canPivot() {
                 return !panelOpen() && !isFinishing() && !isDestroyed();
@@ -451,68 +545,119 @@ public final class SettingsActivity extends Activity {
             }
 
             @Override
-            public View preview(int dir) {
-                return buildPivotPreview(ring[((index + dir) % ring.length + ring.length) % ring.length][0]);
+            public void onSelected(int index) {
+                list = pivotPages[index];
+                scrollView = pivotScrolls[index];
             }
-
-            @Override
-            public void go(int dir) {
-                String id = ring[((index + dir) % ring.length + ring.length) % ring.length][0];
-                Intent i = new Intent(SettingsActivity.this, SettingsActivity.class).putExtra(EXTRA_SECTION, id)
-                        .putExtra(EXTRA_PIVOT_ARRIVE, true);
-                SettingsActivity.super.startActivity(i, null);   // 턴스타일 없이 (지금 모습 그대로 이어진다)
-                Metro.finishQuietly(SettingsActivity.this);   // 피벗은 옆으로 넘길 뿐이라 뒤로 가면 첫 화면이다
-            }
-        };
+        });
     }
 
     /**
-     * 피벗의 옆 메뉴 내용을 만든다. 설정 검색처럼 기억할 것을 남기지 않는 방법으로 만들되(harvesting), 실제 화면과 같은 모양이다
-     * (previewing). 화면 아래의 미리보기(키보드·한 손 모드)는 넘어간 뒤에 실제 화면이 붙인다.
+     * 피벗 페이지 하나를 채운다: lead(첫 소제목 앞의 내용), 그리고 묶은 섹션들의 내용. 여러 섹션을 한 페이지에 묶었을 때 섹션 소제목은
+     * 페이지 이름과 같거나 바로 아래 첫 설정과 이름이 같으면 빼고, 아니면 묶음 머리글로 남긴다.
      */
-    private View buildPivotPreview(String id) {
-        LinearLayout savedList = list;
-        ExpressiveSwitch savedClipSwitch = clipImagesSwitch;
-        LinearLayout scratch = new LinearLayout(this);
-        scratch.setOrientation(LinearLayout.VERTICAL);
-        int pad = Ui.dp(this, 16);
-        scratch.setPadding(pad, 0, pad, Ui.dp(this, 32));
-        harvesting = true;
-        previewing = true;
-        list = scratch;
-        try {
-            buildScreen(id);
-            if (hasReset(id) && !KEYBOARD.equals(id)) scratch.addView(ResetDialog.button(this, sectionTitle(id), () -> { }));
-        } catch (RuntimeException ignored) {
-            // 일부만 만들어졌어도 미리보기로는 충분하다 (넘어가면 실제 화면이 다시 만든다).
-        } finally {
-            harvesting = false;
-            previewing = false;
-            list = savedList;
-            clipImagesSwitch = savedClipSwitch;
+    private void fillPivotPage(LinearLayout page, java.util.List<View> lead, java.util.List<Object[]> group, String title) {
+        for (View v : lead) page.addView(v);
+        for (Object[] seg : group) {
+            @SuppressWarnings("unchecked")
+            java.util.List<View> views = (java.util.List<View>) seg[2];
+            if (group.size() > 1 && !seg[0].equals(title) && !startsWithLabel(views, (String) seg[0])) {
+                // 바로 아래 첫 설정이 같은 이름이면 소제목은 되풀이일 뿐이라 뺀다. 아니면(안내·버튼뿐인 '한국어 사전' 등)
+                // 묶음 머리글(PhoneTextGroupHeaderStyle)로 남겨 그 아래가 무엇인지 알린다.
+                page.addView((View) seg[1]);
+            }
+            for (View v : views) page.addView(v);
         }
-        return scratch;
+        // 맨 위의 뷰는 머리글과 조금만 띄운다 (소제목 아래 카드는 위 여백이 0, 소제목은 위로 크게 띄워 두었다).
+        if (page.getChildCount() > 0) {
+            View first = page.getChildAt(0);
+            if (SettingsWidgets.isSectionHeader(first)) {
+                first.setPadding(first.getPaddingLeft(), Ui.dp(this, 4), first.getPaddingRight(), first.getPaddingBottom());
+            } else if (first.getLayoutParams() instanceof LinearLayout.LayoutParams) {
+                ((LinearLayout.LayoutParams) first.getLayoutParams()).topMargin = Ui.dp(this, 4);
+            }
+        }
     }
 
-    /** 피벗: 화면이 자리 잡은 뒤 옆 메뉴 내용을 미리 만들어 두고, 밀어서 넘어온 화면이면 아래 미리보기를 밀어 올린다. */
-    private void startPivot() {
-        if (pivotFrame == null || pivotFrame.pivot() == null) return;
-        boolean arrived = getIntent().getBooleanExtra(EXTRA_PIVOT_ARRIVE, false);
-        if (arrived && pinnedBottom.getVisibility() == View.VISIBLE) {
-            pinnedBottom.getViewTreeObserver().addOnPreDrawListener(new android.view.ViewTreeObserver.OnPreDrawListener() {
-                @Override
-                public boolean onPreDraw() {
-                    pinnedBottom.getViewTreeObserver().removeOnPreDrawListener(this);
-                    pinnedBottom.setTranslationY(pinnedBottom.getHeight());
-                    pinnedBottom.animate().translationY(0f).setDuration(Metro.IN_MS).setInterpolator(Metro.EASE_OUT).withLayer().start();
-                    return true;
-                }
-            });
+    /** views에서 처음 만나는 글자가 name인지 (대소문자 무시): 소제목과 바로 아래 설정의 이름이 같은지. */
+    private static boolean startsWithLabel(java.util.List<View> views, String name) {
+        for (View v : views) {
+            TextView t = firstLabel(v);
+            if (t != null) return t.getText().toString().trim().equalsIgnoreCase(name.trim());
         }
-        // 들어오는 움직임(턴스타일·깃털)이 끝난 뒤에 만든다 (만드는 동안 움직임이 끊기지 않게).
-        list.postDelayed(() -> {
-            if (!isFinishing() && !isDestroyed()) pivotFrame.pivot().prepare();
-        }, arrived ? 450 : 1100);
+        return false;
+    }
+
+    private static TextView firstLabel(View v) {
+        if (v.getVisibility() == View.GONE || SettingsWidgets.isBadge(v)) return null;
+        if (v instanceof TextView) return (TextView) v;
+        if (v instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) {
+                TextView t = firstLabel(g.getChildAt(i));
+                if (t != null) return t;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Metro 피벗의 페이지 계획 {페이지 이름, 묶을 섹션 이름…} (차례대로). 피벗은 네 페이지 이하가 권장이라 섹션이 많은 메뉴는 묶는다.
+     * null이면 섹션마다 한 페이지.
+     */
+    private static String[][] pivotPlan(String id) {
+        switch (id) {
+            case "theme":
+                return new String[][]{
+                        {L.t("모드", "Mode"), L.t("모드", "Mode")},   // 라이트/다크 모드는 Metro에서 소제목 없이 이 페이지에 붙는다
+                        {L.t("강조 색", "Accent color"), L.t("강조 색", "Accent color")},
+                        {L.t("키 색", "Key colors"), L.t("키 색", "Key colors")},
+                };
+            case "words":
+                return new String[][]{
+                        {L.t("추천 및 수정", "Suggestions & correction"), L.t("단어 추천", "Word suggestions"),
+                                L.t("자동 수정", "Autocorrect"), L.t("한국어 사전", "Korean dictionary")},
+                        {L.t("단어 학습", "Word learning"), L.t("입력한 단어 학습", "Learn typed words")},
+                        {L.t("단축어", "Text shortcuts"), L.t("단축어", "Text shortcuts")},
+                        {L.t("자동 완성", "Autofill"), L.t("자동 완성", "Autofill")},
+                };
+            case "lab":
+                return new String[][]{
+                        {L.t("밀기 방향 판정", "Swipe direction"), L.t("밀기 방향 판정", "Swipe direction")},
+                        {L.t("외국어 자판", "Other languages"), L.t("일본어 자판", "Japanese keyboard"), L.t("중국어 자판", "Chinese keyboard")},
+                        {L.t("외장 키보드", "Physical keyboard"), L.t("외장 키보드", "Physical keyboard")},
+                        {L.t("떠 있는 키보드", "Floating keyboard"), L.t("떠 있는 키보드", "Floating keyboard")},
+                };
+            default:
+                return null;
+        }
+    }
+
+    /** Metro 피벗에서 뺄 섹션 (안내문뿐인 섹션). */
+    private static String[] pivotDropped(String id) {
+        if ("words".equals(id)) return new String[]{L.t("개인 정보", "Privacy")};
+        return new String[0];
+    }
+
+    /**
+     * 피벗 화면에서 label(항목 이름 또는 섹션 이름)이 있는 페이지로 옮긴다. 옮겼거나 이미 그 페이지면 그 페이지의 스크롤 틀,
+     * 피벗이 없거나 못 찾으면 null.
+     */
+    private ScrollView pivotTo(String label) {
+        if (sectionPivot == null) return null;
+        for (int i = 0; i < pivotNames.length; i++) {
+            if (pivotNames[i].equalsIgnoreCase(label) || Metro.lower(pivotNames[i]).equals(Metro.lower(label))) {
+                sectionPivot.select(i);
+                return pivotScrolls[i];
+            }
+        }
+        for (int i = 0; i < pivotPages.length; i++) {
+            if (findLabel(pivotPages[i], label, false) != null) {
+                sectionPivot.select(i);
+                return pivotScrolls[i];
+            }
+        }
+        return null;
     }
 
     /** Metro UI: 이 앱의 다른 화면을 열 때는 지금 화면이 턴스타일로 돌아 나간 뒤에 연다. */
@@ -566,8 +711,8 @@ public final class SettingsActivity extends Activity {
             {KEYBOARD, L.t("숫자 줄 표시", "Show number row"), L.t("숫자 줄 1234567890 숫자열", "number row 1234567890 digits")},
             {KEYBOARD, L.t("기능키 순서·유무 사용자화", "Customize function keys"), L.t("맨 아래 줄 하단 키 쉼표 지구본 온점 엔터 언어 전환 키 기호 자판 이모지 키", "bottom row keys comma globe period enter language switch symbol keyboard emoji key")},
             {KEYBOARD, L.t("격자 정렬", "Grid alignment"), L.t("그리드 정렬 칸", "grid align columns")},
-            // 화면 모드·강조 색은 소제목뿐이라 검색 목록에 없다: 테마 화면 자체로 찾게 한다.
-            {"theme", L.t("테마", "Theme"), L.t("다크 라이트 어두운 밝은 야간 화면 모드 색상 컬러 포인트 강조 색 디자인 모드 뉴모피즘 Neumorphism 메트로 Metro 윈도우 폰 윈도우폰 타일 루미아",
+            // 모드·라이트/다크 모드·강조 색은 소제목뿐이라 검색 목록에 없다: 테마 화면 자체로 찾게 한다.
+            {"theme", L.t("테마", "Theme"), L.t("다크 라이트 어두운 밝은 야간 화면 모드 라이트/다크 모드 색상 컬러 포인트 강조 색 디자인 모드 뉴모피즘 Neumorphism 메트로 Metro 윈도우 폰 윈도우폰 타일 루미아",
                     "dark light night mode theme color accent design mode neumorphism metro windows phone wp7 wp8 tiles lumia")},
             {"theme", L.t("색 정렬", "Color alignment"), L.t("키 색", "Key colors")},
             {KEYBOARD, L.t("문자 길게 누르기 시간", "Character long-press delay"), L.t("롱프레스 길게 누르기 시간 지연 특수문자 반복 입력 연타 연속 입력", "long press delay time special characters repeat")},
@@ -740,11 +885,6 @@ public final class SettingsActivity extends Activity {
     private boolean harvestRunning;
     /** 화면을 검색용으로 만드는 중인지 (무거운 미리보기를 건너뛴다). */
     private boolean harvesting;
-    /**
-     * Metro 피벗의 옆 메뉴 미리보기를 만드는 중 (harvesting과 함께 켜진다). 기억할 것은 남기지 않되, 검색을 위해 접힌 항목을 펼치지 않고
-     * 실제 화면과 똑같이 만든다 (넘어갈 때 미리보기가 실제 화면으로 바뀌어도 튀지 않게).
-     */
-    private boolean previewing;
     private final android.os.Handler uiHandler = new android.os.Handler(android.os.Looper.getMainLooper());
 
     /** 검색 목록에 넣을 화면 (개인정보 처리방침 같은 안내문과 학습한 단어는 뺀다). */
@@ -1041,7 +1181,7 @@ public final class SettingsActivity extends Activity {
             if (!text.isEmpty()) {
                 float px = Metro.searchPx(t);   // Metro 모드에서 크기를 바꾼 글자는 원래 크기로 본다
                 boolean label = px >= spPx(15) - 0.5f && px <= spPx(18) + 0.5f;
-                boolean heading = !label && Math.abs(px - spPx(14)) < 0.5f && t.getCurrentTextColor() == accentColor;
+                boolean heading = !label && Math.abs(px - spPx(14)) < 0.5f && (t.getCurrentTextColor() == accentColor || SettingsWidgets.isSectionHeader(t));
                 if (heading) {
                     // 섹션 이름(소제목)은 검색에 넣지 않는다. 그 아래 항목들이 각자 검색된다.
                     last[0] = null;
@@ -1173,6 +1313,14 @@ public final class SettingsActivity extends Activity {
      * 항목이 다른 설정 아래에 접혀 있으면 그것을 접어 둔 설정(접힌 칸 바로 위의 보이는 줄)을 대신 깜빡여, 무엇을 켜야 하는지 알려 준다.
      */
     private void highlightItem(ScrollView scroll, String label) {
+        // Metro 피벗: 항목(또는 섹션)이 있는 페이지로 먼저 옮긴다. 섹션 이름이면 그 페이지를 보이는 것으로 충분하다.
+        if (sectionPivot != null) {
+            ScrollView page = pivotTo(label);
+            if (page != null) {
+                scroll = page;
+                for (String n : pivotNames) if (n.equalsIgnoreCase(label)) return;
+            }
+        }
         highlightItem(scroll, list, label);
     }
 
@@ -1267,7 +1415,7 @@ public final class SettingsActivity extends Activity {
             if (t.getText().toString().trim().isEmpty()) return 0;
             float px = Metro.searchPx(t);
             boolean label = px >= spPx(15) - 0.5f && px <= spPx(18) + 0.5f;
-            boolean heading = !label && Math.abs(px - spPx(14)) < 0.5f && t.getCurrentTextColor() == accentColor;
+            boolean heading = !label && Math.abs(px - spPx(14)) < 0.5f && (t.getCurrentTextColor() == accentColor || SettingsWidgets.isSectionHeader(t));
             return label || heading ? 1 : 0;
         }
         int n = 0;
@@ -1478,7 +1626,7 @@ public final class SettingsActivity extends Activity {
      * 설정 검색 목록을 모을 때는 붙이지 않는다.
      */
     private View own(View row) {
-        if (!harvesting || previewing) SettingsWidgets.badge(row, ownBadgeText(editorProfile()), accentColor);
+        if (!harvesting) SettingsWidgets.badge(row, ownBadgeText(editorProfile()), accentColor);
         return row;
     }
 
@@ -1589,7 +1737,7 @@ public final class SettingsActivity extends Activity {
             addLargeLayoutSection();
             buildLook();
             buildPad(-1);
-            if (!harvesting || previewing) list.addView(editorResetButton());
+            if (!harvesting) list.addView(editorResetButton());
         } finally {
             list = saved;
         }
@@ -1600,7 +1748,7 @@ public final class SettingsActivity extends Activity {
      * 열면 보인다. 화면마다 따로 정하는 값과 함께 쓰는 값, '세로만' 같은 표시의 뜻을 알린다.
      */
     private void addOrientationIntro() {
-        if (harvesting && !previewing) return;   // 안내문뿐이라 검색 목록에 넣지 않는다
+        if (harvesting) return;   // 안내문뿐이라 검색 목록에 넣지 않는다
         String p = editorProfile(), name = profileShortName(p);
         boolean land = Prefs.PROFILE_LANDSCAPE.equals(p) || Prefs.PROFILE_LARGE_LANDSCAPE.equals(p);
         String other = land ? "세로" : "가로";
@@ -1642,7 +1790,7 @@ public final class SettingsActivity extends Activity {
                         if (!isFinishing() && !isDestroyed() && editorProfileChanged()) recreate();
                     }, 350);
                 }));
-        largeGroup.setVisibility(prefs.largeLayout() || (harvesting && !previewing) ? View.VISIBLE : View.GONE);
+        largeGroup.setVisibility(prefs.largeLayout() || harvesting ? View.VISIBLE : View.GONE);
         large.addView(largeGroup);   // 접혀 있을 때 검색으로 판정 기준을 찾아 들어오면 바로 위의 스위치를 깜빡인다 (controllerOf)
     }
 
@@ -2450,10 +2598,10 @@ public final class SettingsActivity extends Activity {
                         80, 500, 10, "ms"),
                 note(L.t("두 번째 누르기가 이 시간 안에 들어와야 쌍자음이 됩니다. 값을 줄이면 '학교'가 '하꾜'로 바뀌는 일이 줄고, "
                         + "대신 쌍자음을 낼 때 더 빨리 눌러야 합니다.", "The second tap must come within this time to make a double consonant. Lower values make '학교' turn into '하꾜' less often, but you need to tap faster for double consonants.")));
-        doubleTapTime.setVisibility(prefs.consonantInputMode() != Prefs.INPUT_SWIPE || (harvesting && !previewing) ? View.VISIBLE : View.GONE);
+        doubleTapTime.setVisibility(prefs.consonantInputMode() != Prefs.INPUT_SWIPE || harvesting ? View.VISIBLE : View.GONE);
         SettingsWidgets.ValueRow[] consonant = new SettingsWidgets.ValueRow[1];
-        consonant[0] = widgets.valueRow(L.t("쌍자음 입력", "Double consonant input"), inputModes()[prefs.consonantInputMode()], v ->
-                pickInputMode(L.t("쌍자음 입력", "Double consonant input"), prefs.consonantInputMode(), Prefs.INPUT_SWIPE, mode -> {
+        consonant[0] = widgets.dropdownRow(L.t("쌍자음 입력", "Double consonant input"), inputModes()[prefs.consonantInputMode()], v ->
+                pickInputMode(v, prefs.consonantInputMode(), Prefs.INPUT_SWIPE, mode -> {
                     prefs.setConsonantInputMode(mode);
                     consonant[0].set(inputModes()[mode]);
                     Ui.setVisibleAnimated(doubleTapTime, mode != Prefs.INPUT_SWIPE);
@@ -2461,8 +2609,8 @@ public final class SettingsActivity extends Activity {
         input.addView(consonant[0].view);
         input.addView(doubleTapTime);
         SettingsWidgets.ValueRow[] vowel = new SettingsWidgets.ValueRow[1];
-        vowel[0] = widgets.valueRow(L.t("이중모음 입력", "Y-vowel input"), inputModes()[prefs.vowelInputMode()], v ->
-                pickInputMode(L.t("이중모음 입력", "Y-vowel input"), prefs.vowelInputMode(), Prefs.INPUT_BOTH, mode -> {
+        vowel[0] = widgets.dropdownRow(L.t("이중모음 입력", "Y-vowel input"), inputModes()[prefs.vowelInputMode()], v ->
+                pickInputMode(v, prefs.vowelInputMode(), Prefs.INPUT_BOTH, mode -> {
                     prefs.setVowelInputMode(mode);
                     vowel[0].set(inputModes()[mode]);
                 }));
@@ -2473,19 +2621,9 @@ public final class SettingsActivity extends Activity {
                 + "Swipe a vowel key down and hold still to keep typing its Y-vowel (ㅜ↓ → ㅠㅠㅠ).")));
     }
 
-    /** 쌍자음·이중모음 입력 방식을 고르는 창 (아래로 밀기·두 번 연속으로 누르기·둘 다). */
-    private void pickInputMode(String title, int current, int defaultMode, java.util.function.IntConsumer onPick) {
-        AppTheme.dialogBuilder(this)   // 다른 고르기 창(길게 누르기·밀기 기능)과 같은 모양: 목록, 기본값, 취소
-                .setTitle(title)
-                .setSingleChoiceItems(inputModes(), current, (d, which) -> {
-                    d.dismiss();
-                    if (which != current) onPick.accept(which);
-                })
-                .setNeutralButton(L.t("기본값", "Default"), (d, w) -> {
-                    if (current != defaultMode) onPick.accept(defaultMode);
-                })
-                .setNegativeButton(L.t("취소", "Cancel"), null)
-                .show();
+    /** 쌍자음·이중모음 입력 방식을 고르는 드롭다운 (아래로 밀기·두 번 연속으로 누르기·둘 다). 기본값에는 '기본'이 붙는다. */
+    private void pickInputMode(View anchor, int current, int defaultMode, java.util.function.IntConsumer onPick) {
+        DropdownMenu.of(anchor, inputModes(), current).defaultIndex(defaultMode).show(onPick);
     }
 
     /** 영어 글자 키의 입력 동작: 자동 대문자, 아래로 밀어 대문자, 이메일 입력란. */
@@ -2616,8 +2754,8 @@ public final class SettingsActivity extends Activity {
         View detailNoteBox = fold(detailNote);
         detailNoteBox.setVisibility(detailLayout() == Prefs.DETAIL_NONE ? View.GONE : View.VISIBLE);
         SettingsWidgets.ValueRow[] detail = new SettingsWidgets.ValueRow[1];
-        detail[0] = widgets.valueRow(L.t("상세 배열", "Advanced layout"), detailName(detailLayout()), v ->
-                pickDetailLayout(mode -> {
+        detail[0] = widgets.dropdownRow(L.t("상세 배열", "Advanced layout"), detailName(detailLayout()), v ->
+                pickDetailLayout(v, mode -> {
                     editorView().setDetailMode(board, mode);   // 상세 배열은 자판·키보드마다 따로
                     detail[0].set(detailName(mode));
                     showDetailNote(detailNoteBox, detailNote, mode, board);
@@ -2740,8 +2878,8 @@ public final class SettingsActivity extends Activity {
         return editorView().detailModeOf(letterBoard());
     }
 
-    /** 상세 배열을 고르는 창. 다른 고르기 창과 같은 모양: 목록, 기본값(한글 자판은 사용 안 함, 영어·기호 자판은 따라가기), 취소. */
-    private void pickDetailLayout(java.util.function.IntConsumer onPick) {
+    /** 상세 배열을 고르는 드롭다운. 기본값(한글 자판은 사용 안 함, 영어·기호 자판은 따라가기)에는 '기본'이 붙는다. */
+    private void pickDetailLayout(View anchor, java.util.function.IntConsumer onPick) {
         int[] modes = detailModes(letterBoard());
         String[] names = new String[modes.length];
         int current = detailLayout(), checked = 0;
@@ -2749,18 +2887,7 @@ public final class SettingsActivity extends Activity {
             names[i] = detailName(modes[i]);
             if (modes[i] == current) checked = i;
         }
-        int def = modes[0];
-        AppTheme.dialogBuilder(this)
-                .setTitle(L.t("상세 배열", "Advanced layout"))
-                .setSingleChoiceItems(names, checked, (d, which) -> {
-                    d.dismiss();
-                    if (modes[which] != current) onPick.accept(modes[which]);
-                })
-                .setNeutralButton(L.t("기본값", "Default"), (d, w) -> {
-                    if (current != def) onPick.accept(def);
-                })
-                .setNegativeButton(L.t("취소", "Cancel"), null)
-                .show();
+        DropdownMenu.of(anchor, names, checked).defaultIndex(0).show(i -> onPick.accept(modes[i]));
     }
 
     /** 고른 한글 배열의 설명. */
@@ -2906,10 +3033,9 @@ public final class SettingsActivity extends Activity {
             values[i].setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
             box.addView(button(L.t("기능키 자리: ", "Function key: ") + slots[i], values[i], v -> {
                 String order = prefs.jaFnOrder();
-                AppTheme.dialogBuilder(this)
-                        .setTitle(slots[slot])
-                        .setSingleChoiceItems(names, codes.indexOf(order.charAt(slot)), (d, which) -> {
-                            d.dismiss();
+                DropdownMenu.of(v, names, codes.indexOf(order.charAt(slot)))
+                        .defaultIndex(codes.indexOf(Prefs.JA_FN_ORDER_DEFAULT.charAt(slot)))
+                        .show(which -> {
                             char[] o = order.toCharArray();
                             int from = order.indexOf(codes.charAt(which));
                             char t = o[slot];
@@ -2917,13 +3043,7 @@ public final class SettingsActivity extends Activity {
                             o[from] = t;
                             prefs.raw().edit().putString(Prefs.CJK_JA_FN_ORDER, new String(o)).apply();
                             refresh.run();
-                        })
-                        .setNeutralButton(L.t("기본값", "Default"), (d, w) -> {
-                            prefs.raw().edit().putString(Prefs.CJK_JA_FN_ORDER, Prefs.JA_FN_ORDER_DEFAULT).apply();
-                            refresh.run();
-                        })
-                        .setNegativeButton(L.t("취소", "Cancel"), null)
-                        .show();
+                        });
             }));
         }
         refresh.run();
@@ -3253,7 +3373,7 @@ public final class SettingsActivity extends Activity {
      * 손잡이를 끌면 슬라이더도 따라 움직인다.
      */
     private void buildOneHand() {
-        if (harvesting && !previewing) {
+        if (harvesting) {
             // 설정 검색: 항목 이름은 방향과 상관없이 같다. 지금 방향의 것만 모아도 된다.
             addOneHandSize(prefs.profileView(prefs.profileFor(this)));
             return;
@@ -3298,7 +3418,7 @@ public final class SettingsActivity extends Activity {
 
     /** 한 손 모드 줄에 그 키보드(view의 프로필) 이름 표시를 붙인다 (설정 검색 목록을 모을 때는 붙이지 않는다). */
     private View oneHandOwn(Prefs view, View row) {
-        if (!harvesting || previewing) SettingsWidgets.badge(row, ownBadgeText(view.profile()), accentColor);
+        if (!harvesting) SettingsWidgets.badge(row, ownBadgeText(view.profile()), accentColor);
         return row;
     }
 
@@ -3327,7 +3447,16 @@ public final class SettingsActivity extends Activity {
     };
 
     private void buildTheme() {
-        LinearLayout mode = section(L.t("화면 모드", "Display mode"));
+        buildDesignMode();   // 화면 전체의 모양을 정하므로 맨 위에
+
+        // Metro: 라이트/다크 모드는 '모드' 페이지에 붙는 한 컨트롤이라 소제목 대신 '색 정렬'처럼 옅은 머리글을 단다.
+        LinearLayout mode;
+        if (Metro.on) {
+            mode = card();
+            widgets.fieldHeader(mode, L.t("라이트/다크 모드", "Light/dark mode"));
+        } else {
+            mode = section(L.t("라이트/다크 모드", "Light/dark mode"));
+        }
         String[] modeValues = {Prefs.THEME_SYSTEM, Prefs.THEME_LIGHT, Prefs.THEME_DARK};
         mode.addView(choiceRow(new String[]{L.t("시스템", "System"), L.t("라이트", "Light"), L.t("다크", "Dark")}, indexOf(modeValues, prefs.themeMode()), i -> {
             prefs.raw().edit().putString(Prefs.THEME_MODE, modeValues[i]).apply();
@@ -3369,15 +3498,13 @@ public final class SettingsActivity extends Activity {
         keyColors.addView(toggle(L.t("색 정렬", "Color alignment"),
                 L.t("Shift 키와 ⌫를 글자 키 색으로, 스페이스바는 다른 기능키 색으로 바꿉니다.", "Gives Shift and ⌫ the letter key color, and the space bar the other function key color."),
                 Prefs.GRID_COLORS, prefs.gridColors()));
-
-        buildDesignMode();
     }
 
     /** 디자인 모드: 기본, Neumorphism, Metro. 값은 예전처럼 두 스위치(NEUMORPHISM, METRO)에 저장하되 하나만 켜진다. */
     private static final int MODE_DEFAULT = 0, MODE_NEU = 1, MODE_METRO = 2;
 
     /**
-     * 테마 화면 맨 아래의 '모드': 앱 전체의 디자인을 고른다. 고르면 화면 전체의 모양이 바뀌므로 이 화면을 새 모양으로 다시 만든다.
+     * 테마 화면 맨 위의 '모드': 앱 전체의 디자인을 고른다. 고르면 화면 전체의 모양이 바뀌므로 이 화면을 새 모양으로 다시 만든다.
      * 고른 모드의 설명이 아래에 보인다.
      */
     private void buildDesignMode() {
@@ -3385,6 +3512,7 @@ public final class SettingsActivity extends Activity {
         // '키 소리'의 '모드' 링크로 들어오면 머리글만이 아니라 고르기와 설명을 함께 깜빡인다.
         int at = list.indexOfChild(box);
         if (at > 0 && list.getChildAt(at - 1) instanceof TextView) markItem((TextView) list.getChildAt(at - 1), box);
+        if (Metro.on) widgets.fieldHeader(box, L.t("모드", "Mode"));   // 소제목은 피벗 이름이 되므로 버튼 위에 옅은 머리글
         java.util.List<String> labels = new java.util.ArrayList<>();
         java.util.List<Integer> modes = new java.util.ArrayList<>();
         labels.add(L.t("기본", "Default"));
@@ -3403,16 +3531,11 @@ public final class SettingsActivity extends Activity {
         }));
         String desc;
         if (current == MODE_NEU) {
-            desc = L.t("키보드와 설정 화면의 키·버튼·카드가 바탕에서 부드럽게 솟아오르고, 누르거나 고르면 안으로 쑥 들어가는 모양으로 그립니다. "
-                    + "스위치·슬라이더·입력란은 바탕에 파인 홈처럼 보입니다. 키 그림자 대신 쓰입니다.",
-                    "Keys, buttons and cards on the keyboard and in settings rise softly from the background and sink in when pressed or "
-                    + "selected. Switches, sliders and text fields look carved into the background. Replaces key shadows.");
+            desc = L.t("빛의 표현으로 입체감을 살린 인터페이스입니다. 키를 누르는 감각이 좋아집니다.",
+                    "An interface that brings out depth through light. Pressing keys feels better.");
         } else if (current == MODE_METRO) {
-            desc = L.t("앱 전체의 디자인과 애니메이션을 Windows Phone 7·8의 Metro UI처럼 바꿉니다. 각진 타일과 큰 글자, 턴스타일 화면 전환과 "
-                    + "누른 자리로 기울어지는 틸트 효과를 쓰고, 설정 메뉴 사이를 가로로 밀어 오갑니다. 키 그림자와 키 곡률 대신 쓰입니다. 실험적인 기능입니다.",
-                    "Makes the whole app look and move like the Metro UI of Windows Phone 7 and 8: square tiles, big type, turnstile page "
-                            + "transitions and the tilt effect, and you swipe sideways between settings menus. Replaces key shadows and key corner "
-                            + "radius. Experimental.");
+            desc = L.t("Windows Phone의 디자인을 아름답게 계승한 인터페이스입니다.",
+                    "An interface that beautifully carries on the design of Windows Phone.");
         } else {
             desc = L.t("Material 3 Expressive에서 영감을 받은 NewSwipe의 기본 디자인입니다.",
                     "NewSwipe's default design, inspired by Material 3 Expressive.");
@@ -4058,29 +4181,17 @@ public final class SettingsActivity extends Activity {
     }
 
     /**
-     * 진동을 고르는 창 (길게 누르기·밀기 기능을 고르는 창처럼 목록, 기본값, 취소). 항목을 누르면 그 진동을 바로 울려 주고
-     * 창은 닫히지 않아 여러 개를 느껴 보고 비교할 수 있다. '확인'을 눌러야 저장한다.
+     * 진동을 고르는 드롭다운 (기본값에는 '기본'이 붙는다). 항목을 누르면 바로 그 진동으로 바꾸고 울려 주며, 목록은 닫히지 않아
+     * 여러 개를 느껴 보고 비교할 수 있다. 바깥을 누르면 닫힌다. Metro에서는 울려 주고 바로 닫힌다.
      *
-     * @param preview 항목을 눌렀을 때 그 진동을 울린다 (목록 뷰, 목록 차례)
-     * @param onPick  '확인'·'기본값'으로 바뀐 목록 차례를 알려 준다
+     * @param preview 항목을 눌렀을 때 그 진동을 울린다 (누른 항목 뷰, 목록 차례)
+     * @param onPick  바뀐 목록 차례를 알려 준다
      */
-    private void pickVibration(String title, String[] labels, int current, int defaultIndex,
+    private void pickVibration(View anchor, String[] labels, int current, int defaultIndex,
                                java.util.function.ObjIntConsumer<View> preview, java.util.function.IntConsumer onPick) {
-        int[] chosen = {current};
-        AppTheme.dialogBuilder(this)
-                .setTitle(title)
-                .setSingleChoiceItems(labels, current, (d, which) -> {
-                    chosen[0] = which;
-                    preview.accept(((AppDialog) d).getListView(), which);
-                })
-                .setPositiveButton(L.t("확인", "OK"), (d, w) -> {
-                    if (chosen[0] != current) onPick.accept(chosen[0]);
-                })
-                .setNeutralButton(L.t("기본값", "Default"), (d, w) -> {
-                    if (current != defaultIndex) onPick.accept(defaultIndex);
-                })
-                .setNegativeButton(L.t("취소", "Cancel"), null)
-                .show();
+        DropdownMenu m = DropdownMenu.of(anchor, labels, current).defaultIndex(defaultIndex).preview(preview);
+        if (!Metro.on) m.keepOpen();   // Metro: 키 소리처럼 고르면 울려 주고 바로 닫힌다
+        m.show(onPick);
     }
 
     /**
@@ -4119,8 +4230,8 @@ public final class SettingsActivity extends Activity {
             SettingsWidgets.ValueRow[] primRow = new SettingsWidgets.ValueRow[1];
             int[] nowPrim = {prim == Feedback.PRIMITIVE_TICK ? Feedback.PRIMITIVE_TICK : Feedback.PRIMITIVE_CLICK};
             String primTitle = L.t("진동 종류", "Vibration kind");
-            primRow[0] = widgets.valueRow(primTitle, primitiveLabels()[nowPrim[0]], v ->
-                    pickVibration(primTitle, primitiveLabels(), nowPrim[0], defaultPrim,
+            primRow[0] = widgets.dropdownRow(primTitle, primitiveLabels()[nowPrim[0]], v ->
+                    pickVibration(v, primitiveLabels(), nowPrim[0], defaultPrim,
                             (view, i) -> vibePreview().previewPrimitive(channel, i), i -> {
                                 nowPrim[0] = i;
                                 prefs.raw().edit().putInt(primKey, i).apply();
@@ -4168,10 +4279,10 @@ public final class SettingsActivity extends Activity {
                 && (extra.length > 0 || st == Feedback.STYLE_SYSTEM || (st == Feedback.STYLE_CUSTOM && customGroup != null));
         options.setVisibility(hasOptions.test(style0) ? View.VISIBLE : View.GONE);
         SettingsWidgets.ValueRow[] row = new SettingsWidgets.ValueRow[1];
-        row[0] = widgets.valueRow(title, styleLabel(style0), v -> {
+        row[0] = widgets.dropdownRow(title, styleLabel(style0), v -> {
             int style = current.getAsInt(), now = 0;
             for (int i = 0; i < order.length; i++) if (order[i] == style) now = i;
-            pickVibration(title, labels, now, defaultIdx,
+            pickVibration(v, labels, now, defaultIdx,
                     (view, i) -> {
                         if (order[i] != STYLE_NONE) vibePreview().previewStyle(channel, order[i], view);
                     }, i -> {
@@ -4238,21 +4349,25 @@ public final class SettingsActivity extends Activity {
             vib.addView(v);
         }
         LinearLayout snd = section(L.t("소리", "Sound"));
-        TextView followNote = soundFollowNote();
-        View soundVolume = subGroup(followNote,
-                slider(L.t("소리 크기", "Sound volume"), Prefs.SOUND_VOLUME, prefs.soundVolume(), 0, 100, 5, "%"));
+        // '모드 따라가기'의 설명은 하위 항목이 아니라 키 소리 줄 바로 밑의 설명이고, 그 아래에 하위 항목으로 소리 크기가 이어진다.
+        // 글에 위아래 여백이 있어 여백 없는 틀(fold)로 감싸 그 틀을 펼치고 접는다.
+        TextView followNoteText = soundFollowNote();
+        followNoteText.setPadding(0, 0, 0, followNoteText.getPaddingBottom());   // 키 소리 줄에 붙인다
+        View followNote = fold(followNoteText);
+        View soundVolume = subGroup(slider(L.t("소리 크기", "Sound volume"), Prefs.SOUND_VOLUME, prefs.soundVolume(), 0, 100, 5, "%"));
         int style0 = prefs.soundStyle();
         soundVolume.setVisibility(style0 != Prefs.SOUND_STYLE_NONE ? View.VISIBLE : View.GONE);
         followNote.setVisibility(style0 == Prefs.SOUND_STYLE_FOLLOW ? View.VISIBLE : View.GONE);
         SettingsWidgets.ValueRow[] row = new SettingsWidgets.ValueRow[1];
         String title = L.t("키 소리", "Key sound");
-        row[0] = widgets.valueRow(title, soundStyleLabels()[style0], v -> pickSoundStyle(title, picked -> {
+        row[0] = widgets.dropdownRow(title, soundStyleLabels()[style0], v -> pickSoundStyle(v, picked -> {
             prefs.raw().edit().putInt(Prefs.SOUND_STYLE, picked).apply();
             row[0].set(soundStyleLabels()[picked]);
             Ui.setVisibleAnimated(followNote, picked == Prefs.SOUND_STYLE_FOLLOW);
             Ui.setVisibleAnimated(soundVolume, picked != Prefs.SOUND_STYLE_NONE);
         }));
         snd.addView(row[0].view);
+        snd.addView(followNote);
         snd.addView(soundVolume);
     }
 
@@ -4288,27 +4403,24 @@ public final class SettingsActivity extends Activity {
     /** 키 소리 종류의 이름 (Prefs.SOUND_STYLE_* 차례). */
     private static String[] soundStyleLabels() {
         return new String[]{L.t("없음", "None"), L.t("모드 따라가기", "Follow design mode"),
-                L.t("NewSwipe (기본)", "NewSwipe (default)"), "Metro", "Neumorphism"};
+                "NewSwipe", "Metro", "Neumorphism"};
     }
 
-    /** 키 소리 종류를 고르는 창. 항목을 누르면 그 소리를 들려주고, 확인을 누르면 저장한다. */
-    private void pickSoundStyle(String title, java.util.function.IntConsumer onPick) {
-        int current = prefs.soundStyle();
-        int[] chosen = {current};
+    /** 미리 들려준 키음을 놓는 작업 (소리가 끝까지 나도록 목록이 닫히고 조금 뒤에 부른다). */
+    private final Runnable releaseSoundPreview = () -> {
+        if (vibePreview != null) vibePreview.release();
+    };
+
+    /** 키 소리 종류를 고르는 드롭다운. 항목을 누르면 그 소리를 들려주고 바로 고른 뒤 닫힌다. */
+    private void pickSoundStyle(View anchor, java.util.function.IntConsumer onPick) {
         Feedback preview = vibePreview();
+        anchor.removeCallbacks(releaseSoundPreview);   // 놓기 전에 다시 열었으면 놓지 않는다
         preview.prepareSynthSounds();
-        AppTheme.dialogBuilder(this)
-                .setTitle(title)
-                .setSingleChoiceItems(soundStyleLabels(), current, (d, which) -> {
-                    chosen[0] = which;
-                    preview.previewSound(which, prefs.metro(), prefs.neumorphism(), prefs.soundVolume());
-                })
-                .setPositiveButton(L.t("확인", "OK"), (d, w) -> {
-                    if (chosen[0] != current) onPick.accept(chosen[0]);
-                })
-                .setNegativeButton(L.t("취소", "Cancel"), null)
-                .setOnDismissListener(d -> preview.release())   // 다 들었으면 읽어 둔 소리를 놓는다
-                .show();
+        DropdownMenu.of(anchor, soundStyleLabels(), prefs.soundStyle()).defaultIndex(Prefs.SOUND_STYLE_FOLLOW)
+                .preview((view, which) -> preview.previewSound(which, prefs.metro(), prefs.neumorphism(), prefs.soundVolume()))
+                // 다 들었으면 읽어 둔 소리를 놓는다 (닫히자마자 놓으면 방금 고른 소리가 끊긴다).
+                .onDismiss(() -> anchor.postDelayed(releaseSoundPreview, 1500))
+                .show(onPick);
     }
 
     private void buildTools() {
@@ -4517,7 +4629,7 @@ public final class SettingsActivity extends Activity {
             // Neumorphism: 무지개 면이 다른 버튼처럼 솟아오르고, 누르는 동안 안으로 들어간다.
             NeuUi.button(row, RAINBOW, Ui.dp(this, 14));
         } else if (Metro.on) {
-            // Metro: 모서리 없는 무지개 타일. 다른 Metro 버튼처럼 굵지 않은 글자이고, 누르는 동안 강조색으로 채워진다.
+            // Metro: 모서리 없는 무지개 타일. 다른 Metro 버튼처럼 SemiBold 글자이고, 누르는 동안 강조색으로 채워진다.
             android.graphics.drawable.StateListDrawable bg = new android.graphics.drawable.StateListDrawable();
             bg.addState(new int[]{android.R.attr.state_pressed}, Ui.round(accentColor, 0));
             // Metro는 그라데이션을 쓰지 않는다 (디지털답게, 꾸밈 없이): 무지개를 단색 띠 여섯 개로 나눠 칠한다.
@@ -4539,7 +4651,7 @@ public final class SettingsActivity extends Activity {
                 @Override public int getOpacity() { return android.graphics.PixelFormat.OPAQUE; }
             });
             row.setBackground(bg);
-            t.setTypeface(Metro.regular());
+            t.setTypeface(Metro.semibold());
             t.setTextColor(new android.content.res.ColorStateList(new int[][]{{android.R.attr.state_pressed}, {}},
                     new int[]{onAccentColor, ink}));
         }
@@ -5089,10 +5201,7 @@ public final class SettingsActivity extends Activity {
 
     /** toggle()로 만든 줄을 회색으로 흐리게 하고 눌러도 바뀌지 않게 한다 (스위치는 지금 보이는 상태 그대로). */
     private static void disableToggle(View toggleRow) {
-        toggleRow.setEnabled(false);
-        toggleRow.setClickable(false);
-        switchOf(toggleRow).setEnabled(false);   // 스위치는 스스로 흐려진다
-        ((ViewGroup) toggleRow).getChildAt(0).setAlpha(0.38f);   // 이름·설명
+        SettingsWidgets.dimToggle(toggleRow);
     }
 
     private static ExpressiveSwitch switchOf(View toggleRow) {

@@ -133,7 +133,7 @@ final class InlineAutofill {
     private PageChevron arrow(KeyboardTheme theme, int dir, String description) {
         PageChevron b = new PageChevron(context, theme.hint, dir < 0);
         b.setContentDescription(description);
-        b.setBackground(Ui.ripple(theme.keyPressed, null, Ui.dp(context, 14)));
+        b.setBackground(Ui.keyPress(theme.keyPressed, null, Ui.dp(context, 14)));
         b.setVisibility(View.GONE);
         b.setOnClickListener(v -> {
             host.onAutofillChipClicked();

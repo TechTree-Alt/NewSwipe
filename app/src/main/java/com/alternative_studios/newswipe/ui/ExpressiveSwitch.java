@@ -50,10 +50,26 @@ public final class ExpressiveSwitch extends View {
         if (NeuUi.on) NeuUi.unclip(this, NeuUi.SMALL);   // 끝에 선 손잡이의 그림자가 잘리지 않게
     }
 
+    /** 켬·끔을 글로 보여 주는 칸 (Metro: Windows Phone ToggleSwitch의 'On'/'Off'). 없으면 null. */
+    private android.widget.TextView stateLabel;
+
+    /** 값이 바뀔 때마다(어떻게 바뀌든) label에 '켬'/'끔'을 쓴다. */
+    public void setStateLabel(android.widget.TextView label) {
+        stateLabel = label;
+        updateStateLabel();
+    }
+
+    private void updateStateLabel() {
+        if (stateLabel != null) {
+            stateLabel.setText(checked ? com.alternative_studios.newswipe.L.t("켬", "On") : com.alternative_studios.newswipe.L.t("끔", "Off"));
+        }
+    }
+
     /** 애니메이션 없이 값만 바꾼다 (초기 상태용). */
     public void setCheckedImmediately(boolean value) {
         checked = value;
         progress = value ? 1f : 0f;
+        updateStateLabel();
         invalidate();
     }
 
@@ -61,6 +77,7 @@ public final class ExpressiveSwitch extends View {
     public void setCheckedSilently(boolean value) {
         if (checked == value) return;
         checked = value;
+        updateStateLabel();
         animateProgress(value ? 1f : 0f);
     }
 
@@ -74,6 +91,7 @@ public final class ExpressiveSwitch extends View {
 
     public void toggle() {
         checked = !checked;
+        updateStateLabel();
         animateProgress(checked ? 1f : 0f);
         if (android.os.Build.VERSION.SDK_INT >= 30) {
             performHapticFeedback(checked ? android.view.HapticFeedbackConstants.CONFIRM
