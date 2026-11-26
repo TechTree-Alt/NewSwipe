@@ -737,6 +737,8 @@ public final class Metro {
      *     마지막 이름만 QuarticEase) 옮겨 간다.</li>
      * </ul>
      *
+     * <p>넘어갈 때 새 페이지의 줄들은 Toolkit의 SlideInEffect처럼 따로 늦게 들어온다 ({@link #slideIn}).
+     *
      * <p>가로로 끄는 뷰(슬라이더, 키보드 미리보기, 가로 스크롤) 위에서 시작한 손가락은 그 뷰가 쓴다.
      */
     public static final class Pivot {
@@ -790,6 +792,7 @@ public final class Metro {
         /** 움직임 없이 i번째 페이지로 바꾼다 (검색 결과로 들어왔을 때). */
         public void select(int i) {
             if (busy() || i == index) return;
+            stopSlideIn();
             show(i);
             header.setFirst(i);
             header.setSelected(i);
@@ -957,6 +960,7 @@ public final class Metro {
             float w = page.getWidth();
             page.setBusy(true);
             header.setSelected(target);   // 고른 이름은 바로 바뀐다
+            slideIn(pages[target], dir);   // SelectionChanged와 같은 때
 
             // 페이지: 남은 거리를 250ms 곧게 나간 뒤, 새 페이지가 반대쪽 끝에서 250ms QuarticEase로 들어온다.
             View out = pages[index];
@@ -1017,6 +1021,120 @@ public final class Metro {
             names = null;
             if (content == null) page.setBusy(false);
         }
+
+        // ------------------------------------------------ 줄마다 늦게 들어오기 (Toolkit SlideInEffect)
+
+        /** SlideInEffect: 줄 하나마다 늦어지는 거리 50px, 350ms까지 멈춰 있다가 420ms까지 10%를 곧게, 1050ms까지 나머지를 EaseOut 지수 5로. */
+        private static final float SLIDE_STEP_PX = 50, SLIDE_BEGIN = 350, SLIDE_BREAK = 420, SLIDE_END = 1050;
+        private static final Interpolator SLIDE_EASE = new Exp(5, true);
+        private ValueAnimator slide;
+        private final java.util.List<View> sliding = new java.util.ArrayList<>();
+
+        /**
+         * Toolkit의 SlideInEffect (WP8의 피플 허브·메일처럼 피벗을 넘기면 목록 항목의 줄들이 따로 늦게 들어오는 효과): 고른 섹션이
+         * 바뀌는 순간(SelectionChanged) 새 페이지의 줄마다 LineIndex × 50px를 들어오는 쪽에 더해 두고, 350ms까지 그대로, 420ms까지
+         * 10%를 곧게, 1050ms까지 나머지를 EaseOut 지수 5로 없앤다. 새 페이지는 250ms 뒤에야 나타나므로 이 거리가 튀어 보이지 않는다.
+         * LineIndex는 툴킷 예제처럼 항목 안의 첫 줄(이름) 0, 둘째 줄(값·켬/끔) 1, 셋째 줄(설명) 2. 화면에 보이는 줄만 움직인다.
+         *
+         * @param dir 1이면 오른쪽에서(다음 페이지), -1이면 왼쪽에서(앞 페이지) 들어온다
+         */
+        private void slideIn(View incoming, int dir) {
+            stopSlideIn();
+            java.util.List<View> lines = new java.util.ArrayList<>();
+            java.util.List<Integer> levels = new java.util.ArrayList<>();
+            collectLines(incoming, incoming, lines, levels);
+            if (lines.isEmpty()) return;
+            float step = px(page.getContext(), SLIDE_STEP_PX) * dir;
+            float[] from = new float[lines.size()];
+            for (int i = 0; i < from.length; i++) {
+                from[i] = levels.get(i) * step;
+                lines.get(i).setTranslationX(from[i]);
+            }
+            sliding.addAll(lines);
+            slide = ValueAnimator.ofFloat(0f, SLIDE_END);
+            slide.setDuration((long) SLIDE_END);
+            slide.setInterpolator(new LinearInterpolator());
+            slide.addUpdateListener(a -> {
+                float ms = (float) a.getAnimatedValue(), k;
+                if (ms <= SLIDE_BEGIN) k = 1f;
+                else if (ms <= SLIDE_BREAK) k = 1f - 0.1f * (ms - SLIDE_BEGIN) / (SLIDE_BREAK - SLIDE_BEGIN);
+                else k = 0.9f * (1f - SLIDE_EASE.getInterpolation((ms - SLIDE_BREAK) / (SLIDE_END - SLIDE_BREAK)));
+                for (int i = 0; i < from.length; i++) lines.get(i).setTranslationX(from[i] * k);
+            });
+            slide.addListener(new AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    for (View v : lines) v.setTranslationX(0f);
+                    if (slide == animation) {
+                        slide = null;
+                        sliding.clear();
+                    }
+                }
+            });
+            slide.start();
+        }
+
+        private void stopSlideIn() {
+            if (slide != null) slide.cancel();   // onAnimationEnd가 줄들을 제자리에 둔다
+            slide = null;
+            for (View v : sliding) v.setTranslationX(0f);
+            sliding.clear();
+        }
+
+        /**
+         * 페이지 안의 줄과 그 줄의 차례(0~2)를 위에서 아래로 모은다. 세로로 쌓는 틀(목록·묶음)은 속으로 들어가고, 하위 묶음(세로선 +
+         * 항목들)은 항목들로 들어간다. 누를 수 있는 세로 항목(토글·값 줄)은 그 안의 줄마다 차례를 매기고, 그 밖의 뷰는 첫 줄로 친다.
+         */
+        private static void collectLines(View root, View v, java.util.List<View> lines, java.util.List<Integer> levels) {
+            // 들어오는 페이지 자신은 아직 숨어 있을 수 있다 (이름을 눌러 넘길 때는 첫 프레임에 보인다).
+            if ((v != root && v.getVisibility() != View.VISIBLE) || v.getWidth() == 0 || v.getHeight() == 0) return;
+            if (v instanceof android.view.ViewGroup && !v.isClickable()
+                    && (v instanceof android.widget.ScrollView || v instanceof FrameLayout
+                    || (v instanceof LinearLayout && hasVerticalChild((LinearLayout) v)))) {
+                android.view.ViewGroup g = (android.view.ViewGroup) v;
+                for (int i = 0; i < g.getChildCount(); i++) collectLines(root, g.getChildAt(i), lines, levels);
+                return;
+            }
+            if (!onScreen(root, v)) return;
+            if (v instanceof LinearLayout && ((LinearLayout) v).getOrientation() == LinearLayout.VERTICAL) {
+                LinearLayout row = (LinearLayout) v;
+                int level = 0;
+                for (int i = 0; i < row.getChildCount(); i++) {
+                    View line = row.getChildAt(i);
+                    if (line.getVisibility() != View.VISIBLE) continue;
+                    lines.add(line);
+                    levels.add(Math.min(level++, 2));
+                }
+                return;
+            }
+            lines.add(v);
+            levels.add(0);
+        }
+
+        /** 세로로 쌓는 틀이거나, 세로 틀을 품은 가로 틀(하위 묶음)인지. */
+        private static boolean hasVerticalChild(LinearLayout l) {
+            if (l.getOrientation() == LinearLayout.VERTICAL) return true;
+            for (int i = 0; i < l.getChildCount(); i++) {
+                View c = l.getChildAt(i);
+                if (c instanceof LinearLayout && ((LinearLayout) c).getOrientation() == LinearLayout.VERTICAL && !c.isClickable()) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /**
+         * v가 페이지(root, 스크롤 틀)의 보이는 높이 안에 있는지. 들어오는 페이지는 아직 옆에 비켜 있어 화면 좌표로는 볼 수 없으므로
+         * 페이지 안의 세로 자리로만 본다.
+         */
+        private static boolean onScreen(View root, View v) {
+            if (!(root instanceof android.view.ViewGroup) || root == v) return true;
+            android.graphics.Rect r = new android.graphics.Rect(0, 0, v.getWidth(), v.getHeight());
+            ((android.view.ViewGroup) root).offsetDescendantRectToMyCoords(v, r);
+            int top = root.getScrollY();
+            return r.bottom > top && r.top < top + root.getHeight();
+        }
+
 
         /** ms 동안 0 → 1로 움직이며 step을 부르고, 끝나면 done을 부른다 (ease가 null이면 곧게). */
         private static ValueAnimator run(long ms, Interpolator ease, java.util.function.Consumer<Float> step, Runnable done) {
