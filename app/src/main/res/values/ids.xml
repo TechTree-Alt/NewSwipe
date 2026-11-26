@@ -4,4 +4,6 @@
     <item name="metro_search_px" type="id" />
     <!-- Neumorphism: 그림자가 잘리지 않게 부모의 자르기를 끄는 리스너를 이미 붙였는지 (같은 뷰에 거듭 붙지 않게, ui.NeuUi.unclip). -->
     <item name="neu_unclip" type="id" />
+    <!-- Metro UI: 아래에 항목 사이 여백을 이미 품은 줄(토글) 표시 (하위 묶음 뒤에 여백을 더할지 정한다, SettingsWidgets.subGroup). -->
+    <item name="metro_gap_end" type="id" />
 </resources>
