@@ -592,10 +592,25 @@ final class SettingsWidgets {
             group.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
                 @Override
                 public void onViewAttachedToWindow(View v) {
-                    View prev = previousRow(v);
-                    View above = prev == null ? null : gapRow(prev);
+                    View[] pair = previousRow(v);
+                    View above = pair == null ? null : gapRow(pair[0]);
                     // 위 줄의 원래 여백으로 정한다 (위 줄은 이 묶음이 숨어 있는 동안 마지막 줄이라 여백이 줄어 있을 수 있다).
                     int top = above == null ? 0 : -Math.max(0, naturalGap(above) - line6);
+                    // 당겨 올리는 여백은 위 줄 바로 아래에 붙은 뷰에 준다. 묶음이 다른 틀의 맨 앞에 있을 때 묶음 자신을 올리면 틀 밖으로
+                    // 나가 잘리고 눌리지도 않으므로, 그 틀을 올린다 (틀을 펼치고 접을 때 이 여백도 함께 움직인다).
+                    View holder = pair == null ? v : pair[1];
+                    if (holder != v && holder.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
+                        ViewGroup.MarginLayoutParams hlp = (ViewGroup.MarginLayoutParams) holder.getLayoutParams();
+                        Object t = holder.getTag(com.alternative_studios.newswipe.R.id.shown_margins);
+                        int[] hs = t instanceof int[] ? (int[]) t : new int[]{0, hlp.bottomMargin};
+                        hs[0] = top;
+                        holder.setTag(com.alternative_studios.newswipe.R.id.shown_margins, hs);
+                        if (hlp.topMargin != top) {
+                            hlp.topMargin = top;
+                            holder.setLayoutParams(hlp);
+                        }
+                        top = 0;
+                    }
                     shown[0] = top;
                     if (glp.topMargin != top) {
                         glp.topMargin = top;
@@ -655,15 +670,16 @@ final class SettingsWidgets {
     }
 
     /**
-     * v 바로 위에 보이는 항목 (같은 틀에 없으면 v를 담은 세로 틀의 위로 거슬러 올라간다: 하위 묶음이 다른 틀의 맨 앞에 있어도
-     * 위 줄을 찾는다). 하위 묶음 안의 첫 항목처럼 세로 틀 밖으로 나가야 하면 없다(null).
+     * v 바로 위에 보이는 항목과, 그 항목 바로 아래에 붙은 뷰 {위 항목, 아래 뷰}. 같은 틀에 위 항목이 없으면 v를 담은 세로 틀의 위로
+     * 거슬러 올라간다: 그때 아래 뷰는 v가 아니라 v를 맨 앞에 담은 틀이다 (예: 도구 막대 설정에서 '도구 막대 표시' 아래의, 하위 묶음을 맨
+     * 앞에 담은 틀). 하위 묶음 안의 첫 항목처럼 세로 틀 밖으로 나가야 하면 없다(null).
      */
-    private static View previousRow(View v) {
+    private static View[] previousRow(View v) {
         View cur = v;
         while (cur.getParent() instanceof ViewGroup) {
             ViewGroup p = (ViewGroup) cur.getParent();
             for (int i = p.indexOfChild(cur) - 1; i >= 0; i--) {
-                if (p.getChildAt(i).getVisibility() != View.GONE) return p.getChildAt(i);
+                if (p.getChildAt(i).getVisibility() != View.GONE) return new View[]{p.getChildAt(i), cur};
             }
             if (!(p instanceof LinearLayout) || ((LinearLayout) p).getOrientation() != LinearLayout.VERTICAL
                     || p.isClickable()) {
