@@ -211,6 +211,9 @@ final class SettingsFrame {
             // 아래 미리보기(키보드·한 손 모드)는 맨 앞 차례로 머리글과 함께 바로 들어온다. 목록 끝에 두면 위의 줄들이 다 들어올
             // 때까지(수백 ms) 보이지 않다가 늦게 나타난다 (다른 화면에서 돌아올 때 특히 눈에 띈다).
             if (bottom != null) items.add(bottom);
+            // 위에 띄운 설정 창이 열려 있으면 그 항목들도 함께 돈다 (창은 누르기를 막으려 clickable이라 통째로 돌지 않게 속을 모은다).
+            collectOverlayFeather(fullHost, items);
+            collectOverlayFeather(overlayHost, items);
             if (header != null) collectFeather(header, items);
             if (searchBar != null) collectFeather(searchBar, items);
             if (testBar != null) collectFeather(testBar, items);
@@ -265,6 +268,17 @@ final class SettingsFrame {
     private Metro.Page page;
 
     private View header;
+
+    /** host 위에 띄운 창(metro_feather_overlay 표시) 가운데 보이는 것의 항목들을 위에서 아래 차례로 모은다. */
+    private static void collectOverlayFeather(ViewGroup host, java.util.List<View> out) {
+        if (host == null) return;
+        for (int i = 0; i < host.getChildCount(); i++) {
+            View c = host.getChildAt(i);
+            if (c.getVisibility() != View.VISIBLE || c.getTag(R.id.metro_feather_overlay) == null || !(c instanceof ViewGroup)) continue;
+            ViewGroup g = (ViewGroup) c;
+            for (int k = 0; k < g.getChildCount(); k++) collectFeather(g.getChildAt(k), out);
+        }
+    }
 
     /**
      * 깃털처럼 돌아 들어올 항목을 위에서 아래 차례로 모은다: 세로로 쌓는 틀(카드·목록)은 속으로 들어가 줄마다 따로 돌고,

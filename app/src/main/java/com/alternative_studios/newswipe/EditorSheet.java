@@ -95,6 +95,8 @@ final class EditorSheet {
         sheet.setBackground(bg);
         sheet.setElevation(Metro.on ? 0f : Ui.dp(c, 12));   // Metro에는 그림자가 없다 (뒤의 막이 층을 나눈다)
         sheet.setClickable(true);   // 시트 위의 빈 곳을 눌러도 뒤의 막(닫기)으로 넘어가지 않게
+        // Metro: 창이 열린 채 다른 화면으로 넘어가면 창의 항목들도 미리보기처럼 턴스타일로 돌아 나간다 (SettingsFrame.wrap).
+        sheet.setTag(R.id.metro_feather_overlay, Boolean.TRUE);
         sheet.setVisibility(View.GONE);
         // 스프링이 목표를 살짝 넘어 올라갈 때 아래가 비어 보이지 않게 시트를 틀 아래로 조금 더 길게 둔다 (넘친 부분은 잘린다).
         overshoot = Ui.dp(c, 40);

@@ -15,4 +15,6 @@
     <item name="metro_button" type="id" />
     <!-- Metro UI: SettingsWidgets.note로 만든 설명 글 (버튼 바로 아래면 그 버튼의 설명으로 붙인다). -->
     <item name="metro_note" type="id" />
+    <!-- Metro UI: 화면 위에 겹쳐 띄운 창(설정 창 등) 표시. 열려 있으면 다른 화면으로 넘어갈 때 그 항목들도 턴스타일로 돈다 (SettingsFrame.wrap). -->
+    <item name="metro_feather_overlay" type="id" />
 </resources>
