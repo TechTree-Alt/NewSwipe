@@ -538,12 +538,13 @@ public final class AppDialog extends Dialog {
     }
 
     /**
-     * SwivelBackwardIn.xaml: 처음 200ms는 보이지 않다가(-45° → -30°), 나타나며 -30° → 0°로 150ms 동안 선다 (EaseOut 지수 6).
+     * SwivelBackwardIn.xaml: 처음 200ms는 보이지 않다가(-45° → -30°, 곧게), 나타나며 -30° → 0°로 150ms 동안 선다 (EaseOut 지수 6).
+     * 원본의 RotationX는 Android rotationX와 부호가 반대라 (원본 음수 = 위쪽이 뒤로 젖혀짐) 여기서는 +45° → +30° → 0°.
      * 막은 바로 깔려 누른 것에 곧바로 반응한다.
      */
     private void swivelIn() {
         box.setAlpha(0f);
-        box.setRotationX(-45f);
+        box.setRotationX(45f);
         box.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
             @Override
             public void onLayoutChange(View v, int l, int t, int r, int b, int ol, int ot, int or, int ob) {
@@ -561,10 +562,10 @@ public final class AppDialog extends Dialog {
             float ms = a.getAnimatedFraction() * 350f;
             if (ms < 200f) {
                 box.setAlpha(0f);
-                box.setRotationX(-45f + 15f * Metro.EASE_OUT.getInterpolation(ms / 200f));
+                box.setRotationX(45f - 15f * ms / 200f);
             } else {
                 box.setAlpha(1f);
-                box.setRotationX(-30f + 30f * Metro.EASE_OUT.getInterpolation((ms - 200f) / 150f));
+                box.setRotationX(30f - 30f * Metro.EASE_OUT.getInterpolation((ms - 200f) / 150f));
             }
         });
         anim.addListener(new AnimatorListenerAdapter() {
@@ -579,7 +580,7 @@ public final class AppDialog extends Dialog {
         anim.start();
     }
 
-    /** Metro: SwivelBackwardOut.xaml (0° → 60°, 250ms, EaseIn 지수 6, 끝에서 사라짐) 뒤에 닫는다. */
+    /** Metro: SwivelBackwardOut.xaml (0° → 60°, 250ms, EaseIn 지수 6, 끝에서 사라짐; Android rotationX로는 0° → -60°) 뒤에 닫는다. */
     @Override
     public void dismiss() {
         if (!metro || box == null || leaving || !isShowing() || !box.isAttachedToWindow() || ownerGone()) {
@@ -597,7 +598,7 @@ public final class AppDialog extends Dialog {
         anim.setInterpolator(new android.view.animation.LinearInterpolator());
         anim.addUpdateListener(a -> {
             float t = a.getAnimatedFraction();
-            box.setRotationX(from + (60f - from) * Metro.EASE_IN.getInterpolation(t));
+            box.setRotationX(from + (-60f - from) * Metro.EASE_IN.getInterpolation(t));
             box.setAlpha(t >= 0.96f ? 0f : 1f);
         });
         anim.addListener(new AnimatorListenerAdapter() {
