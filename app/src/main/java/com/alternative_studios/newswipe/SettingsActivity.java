@@ -3682,7 +3682,7 @@ public final class SettingsActivity extends Activity {
         suggest.addView(fullBar);
 
         LinearLayout shortcut = section(L.t("단축어", "Text shortcuts"));
-        View shortcutGroup = subGroup(button(L.t("단축어 사용자화", "Customize text shortcuts"), v -> startActivity(new Intent(this, ShortcutEditorActivity.class))));
+        View shortcutGroup = fold(button(L.t("단축어 사용자화", "Customize text shortcuts"), v -> startActivity(new Intent(this, ShortcutEditorActivity.class))));
         shortcut.addView(toggle(L.t("단축어 사용", "Use text shortcuts"), L.t("사용자가 정한 줄임말을 입력하면 정해 둔 문장을 추천란에 보여 줍니다 (예: ㅈㄱㅈ → 지금 가는 중)", "Type a shortcut you set to see its phrase in the suggestions (e.g. ㅈㄱㅈ → 지금 가는 중)"),
                 Prefs.SHORTCUTS_ENABLED, prefs.shortcutsEnabled(), shortcutGroup));
         shortcut.addView(shortcutGroup);
@@ -4349,12 +4349,13 @@ public final class SettingsActivity extends Activity {
             vib.addView(v);
         }
         LinearLayout snd = section(L.t("소리", "Sound"));
-        // '모드 따라가기'의 설명은 하위 항목이 아니라 키 소리 줄 바로 밑의 설명이고, 그 아래에 하위 항목으로 소리 크기가 이어진다.
+        // '모드 따라가기'의 설명은 키 소리 줄 바로 밑의 설명이고, 그 아래에 소리 크기가 보통 항목으로 이어진다 (키 소리를 끄면 숨는다).
         // 글에 위아래 여백이 있어 여백 없는 틀(fold)로 감싸 그 틀을 펼치고 접는다.
         TextView followNoteText = soundFollowNote();
-        followNoteText.setPadding(0, 0, 0, followNoteText.getPaddingBottom());   // 키 소리 줄에 붙인다
+        // 키 소리 줄에 붙인다. Metro는 그 아래 소리 크기와 항목 사이만큼 띄운다.
+        followNoteText.setPadding(0, 0, 0, Metro.on ? Ui.dp(this, SettingsWidgets.METRO_TOGGLE_GAP_DP - 9) : followNoteText.getPaddingBottom());
         View followNote = fold(followNoteText);
-        View soundVolume = subGroup(slider(L.t("소리 크기", "Sound volume"), Prefs.SOUND_VOLUME, prefs.soundVolume(), 0, 100, 5, "%"));
+        View soundVolume = fold(slider(L.t("소리 크기", "Sound volume"), Prefs.SOUND_VOLUME, prefs.soundVolume(), 0, 100, 5, "%"));
         int style0 = prefs.soundStyle();
         soundVolume.setVisibility(style0 != Prefs.SOUND_STYLE_NONE ? View.VISIBLE : View.GONE);
         followNote.setVisibility(style0 == Prefs.SOUND_STYLE_FOLLOW ? View.VISIBLE : View.GONE);
