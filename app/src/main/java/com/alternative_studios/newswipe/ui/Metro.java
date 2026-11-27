@@ -31,11 +31,11 @@ import com.alternative_studios.newswipe.R;
  *
  * <p>크기: WP8 화면은 480px 폭이고 Android 폰은 대개 360dp 폭이라, SDK의 px 값에 0.75를 곱해 dp(글자는 sp)로 쓴다 ({@link #px}).
  *
- * <p>움직임의 값은 Microsoft가 공개한 소스에서 옮겼다. 화면 전환(턴스타일·깃털)과 피벗은 WP8.1의 Windows.UI.Xaml.Phone을 이어받은
- * microsoft-ui-xaml(MIT)의 dxaml/phone/lib (ThemeTransitions.cpp, NavigateTransitionHelper.h, Pivot_Partial.cpp): 나갈 때
- * 0°→50° 128ms ExponentialEase EaseIn 6, 들어올 때 -80°→0° 428ms EaseOut 6, 뒤로 갈 때 0°→-80°, 돌아올 때 50°→0°, 축은
- * 요소 폭 10% 왼쪽 바깥·100px 뒤, 깃털은 항목마다 33ms씩 늦게. 틸트·스위블은 Windows Phone Toolkit(Ms-PL): Effects/TiltEffect.cs
- * (최대 0.3 rad, 가운데를 누르면 25px 들어감, 떼고 200ms 뒤 100ms 동안 로그 곡선으로 돌아옴), Swivel*.xaml.
+ * <p>움직임의 값은 Microsoft가 공개한 소스에서 옮겼다. 턴스타일·깃털·틸트·스위블은 Windows Phone Toolkit(Ms-PL):
+ * Turnstile*.xaml·Effects/TurnstileFeatherEffect.cs (들어올 때 -80°→0° 350ms ExponentialEase EaseOut 6, 나갈 때 0°→50° 250ms
+ * EaseIn 6, 뒤로 갈 때 0°→-80°, 돌아올 때 50°→0°, 축은 요소 폭 20% 왼쪽 바깥, 항목마다 40~50ms씩 늦게), Effects/TiltEffect.cs
+ * (최대 0.3 rad, 가운데를 누르면 25px 들어감, 떼고 200ms 뒤 100ms 동안 로그 곡선으로 돌아옴), Swivel*.xaml. 피벗은 WP8.1의
+ * Windows.UI.Xaml.Phone을 이어받은 microsoft-ui-xaml(MIT)의 dxaml/phone/lib/Pivot_Partial.cpp.
  * 원본의 PlaneProjection 회전은 Android의 rotationX·rotationY와 부호가 반대라 각도의 부호를 뒤집어 쓴다 ({@link #FORWARD_IN}).
  *
  * <p>{@link #on}과 색은 {@code AppTheme.of}가 부를 때마다 설정값에 맞춰진다 (설정 화면과 키보드가 같은 프로세스다). 메인 스레드에서만 쓴다.
@@ -329,13 +329,17 @@ public final class Metro {
     // ---------------------------------------------------------------- 턴스타일
 
     /*
-     * 턴스타일은 Windows Phone 8.1의 기본 화면 전환(CommonNavigationTransitionInfo)을 옮겼다. 값은 WP8.1의 Windows.UI.Xaml.Phone을
-     * 이어받은 Microsoft의 공개 소스(microsoft-ui-xaml의 dxaml/phone/lib/ThemeTransitions.cpp, NavigateTransitionHelper.h)에 있다:
+     * 턴스타일은 Windows Phone Toolkit(Ms-PL)의 TurnstileFeatherEffect.cs·Turnstile*.xaml 값을 옮겼다. Toolkit은 WP7·8 시스템
+     * 화면(설정, 시작 화면에서 앱 열기 등)의 움직임을 앱에서 똑같이 내려고 만든 것이고, WP8.1 실기기의 시스템 화면과 Silverlight 앱도
+     * 이 빠르기로 움직인다:
      *
-     *   나가기      0° → 50°(앞으로) / 0° → -80°(뒤로), 0~128ms, ExponentialEase EaseIn 6, 128ms에 사라진다
-     *   들어오기    -80° → 0°(앞으로) / 50° → 0°(뒤로), 128ms에 나타나 428ms 동안, ExponentialEase EaseOut 6
-     *   축          PlaneProjection.CenterOfRotationX -0.1 (요소 폭의 10% 왼쪽 바깥), CenterOfRotationZ -100 (요소 100px 뒤)
-     *   깃털        IsStaggerElement 항목마다 33ms씩 늦게, 항목 하나는 시간의 절반(나가기 64ms, 들어오기 64ms부터 214ms)
+     *   들어오기    -80° → 0°(앞으로) / 50° → 0°(뒤로), 350ms, ExponentialEase EaseOut 6, 항목마다 40ms(뒤로 50ms)씩 늦게
+     *   나가기      0° → 50°(앞으로) / 0° → -80°(뒤로), 250ms, ExponentialEase EaseIn 6, 항목마다 50ms(뒤로 40ms)씩 늦게,
+     *               제 차례가 끝나면 사라진다
+     *   축          PlaneProjection.CenterOfRotationX -0.2 (요소 폭의 20% 왼쪽 바깥)
+     *
+     * WP8.1 런타임(WinRT XAML) 앱의 CommonNavigationTransitionInfo(microsoft-ui-xaml의 dxaml/phone/lib/NavigateTransitionHelper.h)는
+     * 같은 각도를 나가기 128ms, 들어오기 428ms(깃털 항목은 214ms, 33ms 간격)로 훨씬 짧게 쓰지만, 시스템 화면과 맞지 않아 쓰지 않는다.
      *
      * 각도의 부호: Silverlight·WinRT의 PlaneProjection은 Android View와 회전 방향이 반대다. Toolkit의 TiltEffect는 오른쪽을 누르면
      * RotationY를 음수로, 아래쪽을 누르면 RotationX를 양수로 두어 누른 쪽을 들어가게 하는데, Android는 rotationY가 양수일 때
@@ -346,61 +350,45 @@ public final class Metro {
 
     /** 턴스타일 각도 (Android rotationY, 원본의 부호를 뒤집은 값). */
     public static final float FORWARD_IN = 80f, FORWARD_OUT = -50f, BACKWARD_IN = -50f, BACKWARD_OUT = 80f;
-    /** 나가는 시간(TURNSTILE_MID_TIME 128ms)과 들어오는 시간(TURNSTILE_END_TIME - MID_TIME = 428ms). */
-    public static final long OUT_MS = 128, IN_MS = 428;
-    /** 깃털: 항목 사이 33ms (TURNSTILE_FEATHER_OFFSET), 항목 하나의 시간은 전체의 절반 (TURNSTILE_FEATHER_SCALE 0.5). */
-    private static final long FEATHER_STEP = 33, FEATHER_IN_MS = IN_MS / 2, FEATHER_OUT_MS = OUT_MS / 2;
-    /**
-     * 들어오는 깃털 항목은 0.5 × 128 = 64ms부터 돌기 시작하지만 화면 전체는 128ms에야 나타난다. 그래서 첫 항목은 64ms, 둘째는 31ms
-     * 이미 돈 채로 보이고, 셋째부터 차례로 돌기 시작한다 (화면이 나타나는 때를 0으로 쳐서 항목 k는 33k - 64ms에 시작).
-     */
-    private static final long FEATHER_LEAD = OUT_MS - OUT_MS / 2;
-    /** 회전축: CenterOfRotationX -0.1 (요소 폭의 비율), CenterOfRotationZ -100 (WinRT 유효 픽셀, 요소 뒤쪽). */
-    private static final float AXIS_X = -0.1f, AXIS_Z = 100f;
-    /** 깃털 차례의 한도: 이보다 뒤의 항목은 마지막 차례와 함께 들어온다 (들어오는 시간이 너무 길어지지 않게). */
+    /** 들어오는 시간·나가는 시간 (항목 하나, 화면 전체 모두). */
+    public static final long IN_MS = 350, OUT_MS = 250;
+    /** 깃털 항목 사이의 늦춤: 앞으로 들어오기 40, 앞으로 나가기 50, 뒤로 들어오기 50, 뒤로 나가기 40 (ms). */
+    private static final long FORWARD_IN_STEP = 40, FORWARD_OUT_STEP = 50, BACKWARD_IN_STEP = 50, BACKWARD_OUT_STEP = 40;
+    /** 회전축: CenterOfRotationX -0.2 (요소 폭의 비율). */
+    private static final float AXIS_X = -0.2f;
+    /** 깃털 차례의 한도: 이보다 뒤의 항목은 마지막 차례와 함께 움직인다 (전환이 너무 길어지지 않게). */
     private static final int FEATHER_MAX = 16;
 
     /**
-     * v를 턴스타일로 from°에서 to°로 돌린다. 축은 v의 왼쪽 바깥(폭의 10%)이고 요소 뒤 100px에 있다: Android의 회전축은 화면 평면
-     * 위에만 둘 수 있으므로, 축이 뒤에 있어 생기는 차이(옆으로 100·sinθ 밀리고 100·(1 - cosθ) 멀어진다)를 가로 이동과 크기로 더한다.
-     * 들어올 때(out = false)는 시작할 때까지 보이지 않다가 나타나 빠르게 돌아 들어와 부드럽게 멈추고(EaseOut 6), 나갈 때는 천천히
-     * 시작해 빠르게 돌아 나간 뒤 사라진다(EaseIn 6, 끝나면 불투명도 0).
+     * v를 턴스타일로 from°에서 to°로 돌린다. 축은 v의 왼쪽 바깥(폭의 20%)이다. 들어올 때(out = false)는 시작할 때까지 보이지 않다가
+     * 나타나 빠르게 돌아 들어와 부드럽게 멈추고(EaseOut 6), 나갈 때는 천천히 시작해 빠르게 돌아 나간 뒤 사라진다(EaseIn 6, 끝나면
+     * 불투명도 0).
      *
-     * @param delay 시작을 늦출 시간 (ms). 음수면 그만큼 이미 돈 자리에서 시작한다.
+     * @param delay 시작을 늦출 시간 (ms)
      */
     public static ValueAnimator turn(View v, float from, float to, long ms, long delay, boolean out, Runnable onEnd) {
         Object old = v.getTag(R.id.metro_turn);
         if (old instanceof ValueAnimator) ((ValueAnimator) old).cancel();
         final float baseTx = v.getTranslationX();
-        final float zc = epx(v.getContext(), AXIS_Z);
-        final float cam = cameraPx(v);
         v.setPivotX(AXIS_X * v.getWidth());
         v.setPivotY(v.getHeight() / 2f);
         perspective(v);
-        java.util.function.Consumer<Float> pose = angle -> {
-            double r = Math.toRadians(angle);
-            v.setRotationY(angle);
-            v.setTranslationX(baseTx + (float) (zc * Math.sin(r)));
-            float s = (float) (cam / (cam + zc * (1 - Math.cos(r))));
-            v.setScaleX(s);
-            v.setScaleY(s);
-        };
-        pose.accept(from);
+        v.setRotationY(from);
         if (!out) v.setAlpha(0f);
         ValueAnimator a = ValueAnimator.ofFloat(0f, 1f);
         v.setTag(R.id.metro_turn, a);
         a.setDuration(ms);
-        a.setStartDelay(Math.max(0, delay));
+        a.setStartDelay(delay);
         a.setInterpolator(new LinearInterpolator());
         Interpolator curve = out ? EASE_IN : EASE_OUT;
         a.addUpdateListener(an -> {
-            pose.accept(from + (to - from) * curve.getInterpolation(an.getAnimatedFraction()));
+            v.setRotationY(from + (to - from) * curve.getInterpolation(an.getAnimatedFraction()));
             v.setAlpha(1f);
         });
         a.addListener(new AnimatorListenerAdapter() {
             private boolean canceled;
 
-            // 하드웨어 층은 쓰지 않는다: 회전·이동·크기는 그리기를 다시 하지 않는 속성이고 불투명도도 0/1로만 바뀌어 층이 필요 없다.
+            // 하드웨어 층은 쓰지 않는다: 회전은 그리기를 다시 하지 않는 속성이고 불투명도도 0/1로만 바뀌어 층이 필요 없다.
             // 깃털 효과는 항목 십수 개가 함께 돌아, 층을 쓰면 화면 전환마다 GPU 메모리를 십수 MB씩 잠깐 쓴다.
             @Override
             public void onAnimationCancel(Animator animation) {
@@ -425,7 +413,6 @@ public final class Metro {
             }
         });
         a.start();
-        if (delay < 0) a.setCurrentPlayTime(Math.min(ms, -delay));
         return a;
     }
 
@@ -439,11 +426,6 @@ public final class Metro {
         v.setScaleY(1f);
         v.setAlpha(1f);
         v.resetPivot();
-    }
-
-    /** {@link #perspective}가 두는 카메라 거리 (px). */
-    private static float cameraPx(View v) {
-        return Math.max(v.getResources().getDisplayMetrics().widthPixels, 1) * 2.2f;
     }
 
     /**
@@ -483,22 +465,20 @@ public final class Metro {
     }
 
     /**
-     * 화면의 항목들이 깃털처럼 차례로 돌아 들어온다 (CommonNavigationTransitionInfo, IsStaggeringEnabled). items는 위에서 아래
-     * 차례이고 화면 안에 보이는 것만 움직인다. 항목마다 자기 왼쪽 바깥을 축으로, 33ms씩 늦게, 214ms 동안 돈다.
+     * 화면의 항목들이 깃털처럼 차례로 돌아 들어온다 (TurnstileFeatherEffect). items는 위에서 아래 차례이고 화면 안에 보이는 것만
+     * 움직인다. 항목마다 자기 왼쪽 바깥을 축으로 350ms 동안 돈다.
      *
-     * @param forward true면 새 화면이 들어올 때(+80° → 0°), false면 앞 화면으로 돌아올 때(-50° → 0°)
-     * @return 마지막 항목이 다 들어오기까지의 시간 (ms, 움직인 항목이 없으면 0)
+     * @param forward true면 새 화면이 들어올 때(+80° → 0°, 40ms 간격), false면 앞 화면으로 돌아올 때(-50° → 0°, 50ms 간격)
+     * @return 움직인 항목 수
      */
-    public static long featherIn(java.util.List<View> items, boolean forward) {
+    public static int featherIn(java.util.List<View> items, boolean forward) {
         java.util.List<View> shown = visible(items);
-        long last = 0;
+        long step = forward ? FORWARD_IN_STEP : BACKWARD_IN_STEP;
         for (int n = 0; n < shown.size(); n++) {
             // 한도를 넘은 항목도 빼지 않고 마지막 차례와 함께 들어온다 (아래 미리보기처럼 끝에 있는 것이 그냥 생기지 않게).
-            long start = Math.min(n, FEATHER_MAX - 1) * FEATHER_STEP - FEATHER_LEAD;
-            turn(shown.get(n), forward ? FORWARD_IN : BACKWARD_IN, 0f, FEATHER_IN_MS, start, false, null);
-            last = Math.max(last, start + FEATHER_IN_MS);
+            turn(shown.get(n), forward ? FORWARD_IN : BACKWARD_IN, 0f, IN_MS, Math.min(n, FEATHER_MAX - 1) * step, false, null);
         }
-        return last;
+        return shown.size();
     }
 
     /**
@@ -604,7 +584,7 @@ public final class Metro {
         }
 
         /**
-         * 들어온다 (NavigatingTo / BackNavigatingTo). 항목이 있으면 깃털처럼 차례로, 없으면 화면 전체가 돈다.
+         * 들어온다. 항목이 있으면 깃털처럼 차례로, 없으면 화면 전체가 돈다.
          *
          * @param forward true면 새로 열린 화면(+80° → 0°), false면 뒤로 돌아온 화면(-50° → 0°)
          */
@@ -618,31 +598,34 @@ public final class Metro {
         }
 
         /**
-         * 나간다 (NavigatingAway / BackNavigatingAway): 보이는 항목이 위에서부터 33ms씩 늦게 64ms 동안 돌아 나가고, 128ms에 화면 전체가
-         * 사라진 뒤 then을 부른다 (늦게 시작한 항목은 다 돌기 전에 화면과 함께 사라진다). 항목이 없으면 화면 전체가 128ms 동안 돈다.
+         * 나간다: 보이는 항목이 위에서부터 차례로(앞으로 50ms, 뒤로 40ms 간격) 250ms 동안 돌아 나가 제 차례가 끝나면 사라지고, 마지막
+         * 항목까지 사라진 뒤 then을 부른다. 항목이 없으면 화면 전체가 돈다.
          */
-        private void leave(float to, Runnable then) {
+        private void leave(float to, long step, Runnable then) {
             java.util.List<View> list = items == null ? java.util.Collections.emptyList() : visible(items.get());
             if (list.isEmpty()) {
                 turn(content, 0f, to, OUT_MS, 0, true, then);
                 return;
             }
-            for (int k = 0; k < list.size() && k * FEATHER_STEP < OUT_MS; k++) {
+            long last = 0;
+            for (int k = 0; k < list.size(); k++) {
                 View v = list.get(k);
                 if (!turnedOut.containsKey(v)) turnedOut.put(v, v.getTranslationX());
-                turn(v, 0f, to, FEATHER_OUT_MS, k * FEATHER_STEP, true, null);
+                long delay = Math.min(k, FEATHER_MAX - 1) * step;
+                turn(v, 0f, to, OUT_MS, delay, true, null);
+                last = Math.max(last, delay);
             }
             postDelayed(() -> {
                 content.setAlpha(0f);
                 then.run();
-            }, OUT_MS);
+            }, last + OUT_MS);
         }
 
         /** 다른 화면으로 넘어간다: 이 화면이 돌아 나간 뒤(0° → 원본 50°) start를 부른다. */
         public void forward(Runnable start) {
             if (busy) return;
             block(-1);
-            leave(FORWARD_OUT, () -> {
+            leave(FORWARD_OUT, FORWARD_OUT_STEP, () -> {
                 busy = false;
                 start.run();
                 // 새 화면이 뜨지 않았으면(받는 앱이 없는 등) 1초 뒤에 이 화면을 다시 보여 준다 (돌아온 것처럼).
@@ -656,7 +639,7 @@ public final class Metro {
         public void back(Runnable finish) {
             if (busy) return;
             block(-1);
-            leave(BACKWARD_OUT, finish);
+            leave(BACKWARD_OUT, BACKWARD_OUT_STEP, finish);
         }
 
         public boolean busy() {
@@ -671,7 +654,7 @@ public final class Metro {
             } else if (hidden) {
                 hidden = false;
                 busy = false;
-                // 다른 화면에서 돌아왔다: WP8.1의 BackNavigatingTo (원본 50° → 0°, 이 앱의 각도로 -50° → 0°).
+                // 다른 화면에서 돌아왔다: TurnstileBackwardIn (원본 50° → 0°, 이 앱의 각도로 -50° → 0°).
                 enter(false);
             }
         }
