@@ -8,10 +8,11 @@ Windows Phone 7·8·8.1의 Metro UI처럼 바뀝니다. 이 문서는 무엇을 
 - **microsoft-ui-xaml** (Microsoft, MIT, `github.com/microsoft/microsoft-ui-xaml`): WP8.1(WinRT XAML)의 `Windows.UI.Xaml.Phone`을
   이어받은 소스. 피벗의 숫자는 여기서 옮겼습니다 (코드는 가져오지 않았습니다).
   - `dxaml/phone/lib/Pivot_Partial.cpp`(PivotAnimator), `dxaml/xcp/components/pivot/PivotStateMachine.cpp`: 피벗
+  - `dxaml/phone/lib/ThemeTransitions.cpp`, `NavigateTransitionHelper.h`(CommonNavigationTransitionInfo): 턴스타일·깃털의 시간
 - **Windows Phone Toolkit** (Microsoft, Ms-PL, `github.com/microsoftarchive/WindowsPhoneToolkit`):
   턴스타일·틸트·스위블의 숫자는 이 소스에서 그대로 옮겼습니다. 코드는 가져오지 않았습니다.
-  - `Transitions/Storyboards/Turnstile*.xaml`, `Effects/TurnstileFeatherEffect.cs`: 턴스타일 화면 전환과 깃털. Toolkit은 시스템 화면의
-    움직임을 앱에서 똑같이 내려고 만든 것이라, WP8.1 실기기의 설정·시스템 화면과 같은 빠르기입니다
+  - `Transitions/Storyboards/Turnstile*.xaml`, `Effects/TurnstileFeatherEffect.cs`: 턴스타일·깃털의 각도·곡선·축. 시간은 이 값이
+    실기기보다 느려 microsoft-ui-xaml의 OS 값을 씁니다 (아래 '움직임')
   - `Effects/TiltEffect.cs`: 누른 자리로 기울어지는 틸트 (WP8.1의 PointerDownThemeAnimation 값은 공개 소스에 없어 이것을 씁니다)
   - `Transitions/Storyboards/SwivelFullScreenIn.xaml`, `SlideUpFadeIn.xaml`
   - `Microsoft.Phone.Controls.Toolkit.WP8/Themes/Generic.xaml`: ToggleSwitch 템플릿
@@ -56,10 +57,10 @@ Windows Phone 7·8·8.1의 Metro UI처럼 바뀝니다. 이 문서는 무엇을 
 
 | 효과 | 값 | 쓰는 곳 |
 |---|---|---|
-| 턴스타일 (들어오기) | 원본 -80° → 0°, 350ms, ExponentialEase EaseOut 지수 6 / 뒤로 돌아올 때 원본 50° → 0° | 화면이 열릴 때 / 다른 화면에서 돌아올 때 |
-| 턴스타일 (나가기) | 원본 0° → 50°, 250ms, EaseIn 지수 6, 끝나면 사라짐 / 뒤로: 원본 0° → -80° | 다른 화면을 열 때 / 뒤로 갈 때 |
+| 턴스타일 (들어오기) | 원본 -80° → 0°, ExponentialEase EaseOut 지수 6, 화면 전체 428ms / 뒤로 돌아올 때 원본 50° → 0° | 화면이 열릴 때 / 다른 화면에서 돌아올 때 |
+| 턴스타일 (나가기) | 원본 0° → 50°, EaseIn 지수 6, 화면 전체 128ms 뒤 사라짐 / 뒤로: 원본 0° → -80° | 다른 화면을 열 때 / 뒤로 갈 때 |
 | 축 | PlaneProjection CenterOfRotationX -0.2 (요소 폭 20% 왼쪽 바깥) | 턴스타일·깃털의 모든 항목 |
-| 깃털 | 항목마다 늦게: 들어오기 40ms(돌아올 때 50ms), 나가기 50ms(뒤로 갈 때 40ms). 나갈 때는 항목마다 제 차례가 끝나면 사라지고, 마지막 항목이 사라진 뒤 다음 화면이 열린다 | 머리글·목록 줄·아래 미리보기 (실제로 보이는 것만, 16번째부터는 같은 차례) |
+| 깃털 | 항목마다 33ms씩 늦게. 나가기: 항목마다 64ms 돌고 사라지며, 128ms가 되면 남은 항목도 모두 사라지고 다음 화면이 열린다(그래서 실제로 도는 것은 위의 네 항목). 들어오기: 항목마다 150ms, OS 시간 64 + 33k ms에 시작하고 새 화면은 128ms에 나타나므로 맨 위 두 항목은 반쯤 돌아 온 채 보인다 | 머리글·목록 줄·아래 미리보기 (실제로 보이는 것만, 들어올 때 16번째부터는 같은 차례) |
 | 틸트 | 최대 0.3 rad, 가운데 25px 들어감(약 2.5%), 떼고 200ms 뒤 100ms 로그 곡선 | 메뉴 줄, 값 줄, 버튼, 선택 칸, 색 타일 |
 | 스위블 | 원본 RotationX -30° → 0° (위쪽 가장자리가 뒤로 젖혀졌다 선다), 350ms, EaseOut 6 | 키보드의 이모지·클립보드·텍스트 편집 창, 드롭다운 메뉴가 열릴 때 |
 | 슬라이드 | 350ms, EaseOut 6 (스프링 대신) | 키 편집 창(시트), 펼치고 접기 |
@@ -82,8 +83,15 @@ Windows Phone 7·8·8.1의 Metro UI처럼 바뀝니다. 이 문서는 무엇을 
   rotationX가 양수일 때 위쪽이 들어갑니다). 그래서 원본 각도의 부호를 뒤집어 씁니다: 새 화면은 오른쪽 끝이 멀리 물러난 채 돌아
   서고, 나가는 화면은 오른쪽 끝이 앞으로 나오며 돌아 나가고, 뒤로 갈 때는 오른쪽 끝이 멀리 물러나며 사라지고, 돌아온 화면은 앞으로
   나와 있던 오른쪽 끝이 제자리로 돌아갑니다. 스위블(대화상자·키보드 창)도 같은 이유로 부호를 뒤집습니다.
-- WP8.1 런타임(WinRT XAML) 앱의 기본 전환(`CommonNavigationTransitionInfo`, microsoft-ui-xaml의 `dxaml/phone/lib/NavigateTransitionHelper.h`)은
-  같은 각도를 나가기 128ms, 들어오기 428ms(깃털 항목은 214ms, 33ms 간격)로 씁니다. 실기기의 시스템 화면보다 눈에 띄게 빨라서 쓰지 않습니다.
+- 턴스타일의 시간: 처음에는 Toolkit 값(나가기 250ms·항목마다 50ms, 들어오기 350ms·항목마다 40ms, 나가기가 마지막 항목까지 끝나야
+  다음 화면)을 썼지만, 실기기의 시스템 화면보다 눈에 띄게 느렸습니다 (항목 열 개면 전환 한 번에 1.4초 남짓). Toolkit은 WP7 시절에
+  앱에서 시스템 움직임을 흉내 내려 만든 것이고, OS가 직접 그리는 전환(WP8.1 `Windows.UI.Xaml.Phone`의 `CommonNavigationTransitionInfo`,
+  microsoft-ui-xaml의 `dxaml/phone/lib/ThemeTransitions.cpp`·`NavigateTransitionHelper.h`)은 같은 각도를 나가기 128ms(그때 나가는 화면을
+  통째로 감춤), 들어오기 428ms(깃털 항목은 나가기 64ms·들어오기 150ms, 33ms 간격)로 씁니다. 이 값이면 같은 전환이 0.5초 남짓입니다.
+  공식 지침([Animations, motion, and output for Windows Phone](https://learn.microsoft.com/en-us/previous-versions/windows/apps/hh202871(v=vs.105)))도
+  "Each animation serves a purpose, and gets out of the way quickly"라고 합니다.
+  OS는 나가는 화면과 들어오는 화면의 전환을 함께 틀어 128ms에 넘기므로, 여기서는 나가기(128ms)가 끝나면 다음 화면을 열고 다음 화면은
+  그 넘기는 순간부터 틉니다 (`Metro.ENTER_SKIP_MS`). 축은 Toolkit의 -0.2를 그대로 씁니다 (OS는 -0.1에 CenterOfRotationZ -100).
 - 원근: 카메라를 화면 폭의 2.2배 거리에 둡니다. `View.setCameraDistance`는 72단위 인치를 쓰므로
   px 거리 × densityDpi / 72를 넘깁니다.
 
