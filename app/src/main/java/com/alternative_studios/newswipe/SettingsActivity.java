@@ -5094,11 +5094,12 @@ public final class SettingsActivity extends Activity {
         LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         ilp.rightMargin = Ui.dp(this, 14);
-        row.addView(new IconView(this, icon, accentColor, Metro.on ? 48 : 40, 22), ilp);
+        // Metro: Windows Phone 8 설정 목록처럼 왼쪽 아이콘 없이 글자만 둔다.
+        if (!Metro.on) row.addView(new IconView(this, icon, accentColor, 40, 22), ilp);
         LinearLayout texts = new LinearLayout(this);
         texts.setOrientation(LinearLayout.VERTICAL);
         TextView t = new TextView(this);
-        t.setText(title);
+        t.setText(Metro.on ? Metro.lower(title) : title);   // Metro: WP8처럼 영어 이름은 소문자
         t.setTextColor(textColor);
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
         texts.addView(t);
@@ -5109,7 +5110,7 @@ public final class SettingsActivity extends Activity {
         texts.addView(d);
         if (Metro.on) {
             // Windows Phone 설정 목록: 크고 가는 이름(PhoneTextExtraLargeStyle 42.667px) 아래 옅은 설명(PhoneTextSubtleStyle),
-            // 카드·구분선·화살표 없이 화면 왼쪽 선에 맞춘다. 왼쪽의 강조색 타일은 앱 목록처럼 둔다.
+            // 카드·구분선·화살표·아이콘 없이 화면 왼쪽 선에 맞춘다.
             Metro.text(t, Metro.sp(Metro.FONT_EXTRA_LARGE), Metro.light(), 16);
             Metro.text(d, Metro.sp(Metro.FONT_NORMAL), Metro.regular(), 13);   // PhoneTextSubtleStyle
             t.setSingleLine(true);
