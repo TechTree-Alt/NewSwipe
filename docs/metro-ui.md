@@ -77,7 +77,7 @@ Windows Phone 7·8의 Metro UI처럼 바뀝니다. 이 문서는 무엇을 참�
   지금 페이지만 보입니다 (화면을 바꾸지 않는다).
 - 움직임은 WP8.1 기준입니다. WP8.1(WinRT XAML)의 Pivot을 이어받은 Microsoft의 공개 소스
   ([microsoft-ui-xaml](https://github.com/microsoft/microsoft-ui-xaml)의 `dxaml/phone/lib/Pivot_Partial.cpp`,
-  `Pivot_SlideInEffect_Partial.cpp`, `dxaml/xcp/components/pivot/PivotStateMachine.cpp`)의 값을 옮겼습니다
+  `dxaml/xcp/components/pivot/PivotStateMachine.cpp`)의 값을 옮겼습니다
   (WinRT 크기 단위는 WP8.1 폰 폭 400을 360dp에 맞춰 0.9배). 공식 디자인 가이드라인 문서에는 움직임의 수치가 없습니다.
   - 미는 동안: 페이지들이 손가락을 그대로 따라가 옆 페이지가 붙어 들어오고(DirectManipulation 패닝), 이름 줄은 한 화면을 밀 때
     이름 하나만큼 따라갑니다.
@@ -87,11 +87,8 @@ Windows Phone 7·8의 Metro UI처럼 바뀝니다. 이 문서는 무엇을 참�
   - 머리글의 이름을 누르면 (PivotAnimator의 fly-out → fly-in): 지금 페이지가 83ms 동안 7px 밀려나며 67ms 만에 사라지고,
     새 페이지가 20px 옆에서 767ms 동안 KeySpline(0.1, 0.9, 0.2, 1)으로 들어오며 333ms 만에 나타납니다. 이름 줄은 850ms 동안
     같은 곡선으로 누른 이름까지 옮겨 갑니다.
-  - 줄마다 늦게 들어오기 (Pivot.SlideInAnimationGroup, WP8.1에서 컨트롤에 들어간 효과): 고른 섹션이 바뀌는 순간(밀어 넘기면
-    새 페이지가 자리에 닿아 멈춘 뒤, 이름을 누르면 fly-in을 시작할 때) 새 페이지의 줄마다
-    (묶음 번호 × 40)만큼 들어오는 쪽에 더해 두고 700ms 동안 없앱니다 (처음 350ms는 곧게 28.3%까지, 나머지는 ExponentialEase
-    EaseIn 지수 −2.3026). 공식 예제처럼 항목 안의 첫 줄(이름)이 GroupOne, 둘째 줄(값·켬/끔)이 GroupTwo, 셋째 줄(설명)이
-    GroupThree, 한 줄짜리(설명 글·묶음 머리글·버튼)는 GroupOne입니다. 화면에 보이는 줄만 움직이고, 다시 밀기 시작하면 제자리로 돌아갑니다.
+  - 머리글의 이름은 PivotHeadersControl처럼 이름마다 한 번씩만 씁니다 (섹션이 적어도 되풀이하지 않는다).
+  - 줄마다 따로 늦게 들어오는 효과(SlideInAnimationGroup)는 쓰지 않습니다.
 - 설정 검색 결과나 링크로 들어오면 그 항목(또는 섹션)이 있는 페이지로 옮긴 뒤 스크롤하고 깜빡입니다. 화면을 다시 만들면(테마 변경 등)
   보던 페이지로 돌아옵니다.
 - 슬라이더, 키보드·한 손 모드 미리보기, 가로 스크롤 위에서 시작한 손가락은 그 뷰가 씁니다. 설정 창(시트)이 열려 있으면 넘기지 않습니다.

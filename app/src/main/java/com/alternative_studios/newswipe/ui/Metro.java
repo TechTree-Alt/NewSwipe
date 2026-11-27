@@ -592,8 +592,8 @@ public final class Metro {
     // ---------------------------------------------------------------- 피벗
 
     /**
-     * 피벗 머리글: 섹션 이름들을 크고 가는 소문자로 한 줄에 이어 쓰고 화면 끝에서 자른다. 맨 왼쪽(첫 자리)의 이름부터 고리처럼 돌아가며
-     * 쓰고, 고른 이름만 글자 색, 나머지는 옅게 쓴다. 줄 전체의 가로 자리(offset)는 {@link Pivot}이 움직인다.
+     * 피벗 머리글: 섹션 이름들을 크고 가는 소문자로 한 줄에 이어 쓰고 화면 끝에서 자른다. 맨 왼쪽(첫 자리)의 이름부터 고리 차례로
+     * 이름마다 한 번씩 쓰고, 고른 이름만 글자 색, 나머지는 옅게 쓴다. 줄 전체의 가로 자리(offset)는 {@link Pivot}이 움직인다.
      * 이름은 직접 그려 프레임마다 글자를 다시 배치하지 않는다.
      *
      * <p>Microsoft.Phone의 Pivot 템플릿: PivotHeaderItem은 PhoneFontFamilySemiLight, PivotHeaderFontSize 72px, Padding 21,0,1,0
@@ -679,21 +679,21 @@ public final class Metro {
             float y = getPaddingTop() - fm.top;
             // 고르지 않은 이름: 다크는 흰색 40%, 라이트는 검정 87%(#DE000000)의 23.144% (= 검정 20%).
             int dim = dark ? 0x66FFFFFF : 0x33000000;
-            // 오른쪽으로: 첫 자리부터 고리처럼 돌아가며 화면 끝까지 (섹션이 적어도 오른쪽이 비지 않는다).
+            // 이름마다 한 번씩만 (PivotHeadersControl처럼): 첫 자리부터 고리 차례로 오른쪽에 쓰다가 화면 끝에서 자른다.
+            // 오른쪽으로 밀어 줄이 들어오면(offset > 0) 앞 이름(고리의 마지막)은 오른쪽 끝 대신 첫 자리 왼쪽에 온다.
+            int n = names.length;
+            boolean prevOnLeft = offset > 0 && n > 1;
             float x = offset;
-            for (int k = 0; x < getWidth() && k < 64; k++) {
+            for (int k = 0; k < (prevOnLeft ? n - 1 : n) && x < getWidth(); k++) {
                 int i = ring(first + k);
                 paint.setColor(i == selected ? fg : dim);
                 c.drawText(names[i], x, y, paint);
                 x += widths[i];
             }
-            // 왼쪽으로: 오른쪽으로 밀어 줄이 들어왔을 때 앞 이름들
-            x = offset;
-            for (int k = 1; x > 0 && k < 64; k++) {
-                int i = ring(first - k);
-                x -= widths[i];
+            if (prevOnLeft) {
+                int i = ring(first - 1);
                 paint.setColor(i == selected ? fg : dim);
-                c.drawText(names[i], x, y, paint);
+                c.drawText(names[i], offset - widths[i], y, paint);
             }
         }
 
@@ -704,7 +704,7 @@ public final class Metro {
                 // 누른 자리의 이름 (지금 이름은 0): Windows Phone 피벗처럼 머리글의 이름을 누르면 그 섹션으로 간다.
                 float x = offset + widths[ring(first)];
                 if (e.getX() <= x) return true;   // 지금 이름을 눌렀다
-                for (int k = 1; k < 64; k++) {
+                for (int k = 1; k < names.length; k++) {
                     x += widthOf(first + k);
                     if (e.getX() < x) {
                         if (ring(first + k) != selected) {
@@ -732,12 +732,13 @@ public final class Metro {
     /**
      * Windows Phone 8.1 피벗: 한 메뉴 안의 섹션(페이지)들을 가로로 밀어 오간다. 페이지는 모두 같은 자리에 겹쳐 두고 지금 페이지
      * (미는 동안에는 그 옆 페이지까지)만 보인다. 움직임은 WP8.1의 Pivot을 이어받은 Microsoft의 공개 소스(microsoft-ui-xaml의
-     * dxaml/phone/lib/Pivot_Partial.cpp, Pivot_SlideInEffect_Partial.cpp, dxaml/xcp/components/pivot/PivotStateMachine.cpp)를 따른다:
+     * dxaml/phone/lib/Pivot_Partial.cpp, dxaml/xcp/components/pivot/PivotStateMachine.cpp)를 따른다. 줄마다 따로 늦게 들어오는
+     * SlideInAnimationGroup 효과는 쓰지 않는다:
      * <ul>
      * <li>미는 동안 (DirectManipulation 패닝): 페이지들이 손가락을 그대로 따라가 옆 페이지가 붙어 들어온다. 이름 줄은 한 화면을 밀 때
      *     이름 하나만큼 따라간다.</li>
      * <li>손을 떼면 (관성 + 한 칸짜리 스냅 포인트, MandatorySingle): 튕긴 속도로 멈출 자리를 내다보고 가장 가까운 칸(최대 한 칸)으로
-     *     감속하며 붙는다. 다른 칸에 닿아 멈추면 그때 고른 이름이 바뀌고 새 페이지의 줄들이 따로 늦게 들어온다 ({@link #slideIn}).</li>
+     *     감속하며 붙는다. 다른 칸에 닿아 멈추면 그때 고른 이름이 바뀐다.</li>
      * <li>머리글의 이름을 누르면 (fly-out → fly-in): 지금 페이지가 83ms 동안 7px 밀려나며 67ms 만에 사라지고, 새 페이지가 20px 옆에서
      *     767ms 동안 KeySpline(0.1,0.9,0.2,1)으로 들어오며 333ms 만에 나타난다. 이름 줄은 850ms 동안 같은 곡선으로 옮겨 간다.</li>
      * </ul>
@@ -797,7 +798,6 @@ public final class Metro {
         /** 움직임 없이 i번째 페이지로 바꾼다 (검색 결과로 들어왔을 때). */
         public void select(int i) {
             if (busy() || i == index) return;
-            stopSlideIn();
             show(i);
             header.setFirst(i);
             header.setSelected(i);
@@ -903,7 +903,6 @@ public final class Metro {
                 dragging = true;
                 startX = e.getX() - Math.signum(e.getX() - downX) * slop * 0.5f;   // 문턱만큼 튀지 않게
                 page.getParent().requestDisallowInterceptTouchEvent(true);
-                stopSlideIn();   // 들어오던 줄들은 손가락을 따라 함께 움직이게 제자리로
                 return true;
             }
             if (ady > slop) blocked = true;   // 세로 스크롤이 시작됐다
@@ -965,13 +964,11 @@ public final class Metro {
                 content = null;
                 page.setBusy(false);
                 if (dir != 0) {
-                    // 페이지가 자리에 닿아 멈춘 때(InFinishTransition → Idle, PivotStateMachine): 그제야 고른 섹션이 바뀌어
-                    // 이름의 밝기가 바뀌고, 새 페이지의 줄들이 옆으로 비켜났다가 따로 들어온다(SetSelectedIndex → ApplySlideInAnimation).
+                    // 페이지가 자리에 닿아 멈춘 때(InFinishTransition → Idle, PivotStateMachine) 고른 섹션이 바뀌어 이름이 밝아진다.
                     int target = at(dir);
                     show(target);
                     header.setFirst(target);
                     header.setSelected(target);
-                    slideIn(pages[target], dir);
                 }
                 header.setOffset(0f);
                 for (View p : pages) if (p != pages[index]) p.setVisibility(View.INVISIBLE);
@@ -1003,10 +1000,9 @@ public final class Metro {
                 out.setTranslationX(-outPx * f);
                 out.setAlpha(Math.max(0f, 1f - f * FLY_OUT_MS / FLY_OUT_FADE_MS));
             }, () -> {
-                // fly-in: 고른 섹션이 바뀌고(SetSelectedIndex) 새 페이지의 줄들이 따로 들어오기 시작한다.
+                // fly-in: 고른 섹션이 바뀐다 (SetSelectedIndex).
                 show(target);
                 header.setSelected(target);
-                slideIn(pages[target], 1);
                 View in = pages[target];
                 in.setTranslationX(inPx);
                 in.setAlpha(0f);
@@ -1021,123 +1017,6 @@ public final class Metro {
                     in.setAlpha(1f);
                 });
             });
-        }
-
-        // ------------------------------------------------ 줄마다 늦게 들어오기 (Pivot.SlideInAnimationGroup)
-
-        /**
-         * Pivot_SlideInEffect_Partial.cpp (PivotSlideInThemeAnimation): 묶음마다 40px씩, 700ms. 처음 350ms는 곧게 28.3%까지,
-         * 나머지는 ExponentialEase(EaseIn, 지수 ln 0.1 = -2.3026)로 0까지.
-         */
-        private static final float SLIDE_GROUP_PX = 40, SLIDE_MS = 700, SLIDE_LINEAR_PART = 0.5f, SLIDE_LINEAR_TO = 0.28335052f;
-        private static final double SLIDE_EXPONENT = -2.302585093;
-        private ValueAnimator slide;
-        private final java.util.List<View> sliding = new java.util.ArrayList<>();
-
-        /** ExponentialEase EaseIn: (e^(a·t) - 1) / (e^a - 1). 지수가 음수라 처음에 빠르고 끝에서 느려진다. */
-        private static float slideEase(float t) {
-            return (float) ((Math.exp(SLIDE_EXPONENT * t) - 1) / (Math.exp(SLIDE_EXPONENT) - 1));
-        }
-
-        /**
-         * WP8.1 피벗의 SlideInAnimationGroup: 고른 섹션이 바뀌는 순간(밀어 넘기면 새 페이지가 자리에 닿아 멈춘 때, 이름을 누르면 fly-in을
-         * 시작할 때) 새 페이지의 줄마다 (묶음 번호 × 40px)를 들어오는 쪽에 더해 두고
-         * 700ms 동안 없앤다. 설정 줄은 공식 예제처럼 항목 안의 첫 줄(이름)이 GroupOne, 둘째 줄(값·켬/끔)이 GroupTwo, 셋째 줄(설명)이
-         * GroupThree이고, 한 줄짜리(설명 글·묶음 머리글·버튼)는 GroupOne이다. 화면에 보이는 줄만 움직인다.
-         *
-         * @param dir 1이면 오른쪽에서(다음 섹션), -1이면 왼쪽에서(앞 섹션) 들어온다
-         */
-        private void slideIn(View incoming, int dir) {
-            stopSlideIn();
-            java.util.List<View> lines = new java.util.ArrayList<>();
-            java.util.List<Integer> groups = new java.util.ArrayList<>();
-            collectLines(incoming, incoming, lines, groups);
-            if (lines.isEmpty()) return;
-            float step = epx(page.getContext(), SLIDE_GROUP_PX) * dir;
-            float[] from = new float[lines.size()];
-            for (int i = 0; i < from.length; i++) {
-                from[i] = groups.get(i) * step;
-                lines.get(i).setTranslationX(from[i]);
-            }
-            sliding.addAll(lines);
-            slide = ValueAnimator.ofFloat(0f, 1f);
-            slide.setDuration((long) SLIDE_MS);
-            slide.setInterpolator(new LinearInterpolator());
-            slide.addUpdateListener(a -> {
-                float t = a.getAnimatedFraction(), k;
-                if (t <= SLIDE_LINEAR_PART) k = 1f - (1f - SLIDE_LINEAR_TO) * t / SLIDE_LINEAR_PART;
-                else k = SLIDE_LINEAR_TO * (1f - slideEase((t - SLIDE_LINEAR_PART) / (1f - SLIDE_LINEAR_PART)));
-                for (int i = 0; i < from.length; i++) lines.get(i).setTranslationX(from[i] * k);
-            });
-            slide.addListener(new AnimatorListenerAdapter() {
-                @Override
-                public void onAnimationEnd(Animator animation) {
-                    for (View v : lines) v.setTranslationX(0f);
-                    if (slide == animation) {
-                        slide = null;
-                        sliding.clear();
-                    }
-                }
-            });
-            slide.start();
-        }
-
-        private void stopSlideIn() {
-            if (slide != null) slide.cancel();   // onAnimationEnd가 줄들을 제자리에 둔다
-            slide = null;
-            for (View v : sliding) v.setTranslationX(0f);
-            sliding.clear();
-        }
-
-        /**
-         * 페이지 안의 줄과 그 줄의 묶음 번호(1~3)를 위에서 아래로 모은다. 세로로 쌓는 틀(목록·묶음)은 속으로 들어가고, 하위 묶음(세로선 +
-         * 항목들)은 항목들로 들어간다. 누를 수 있는 세로 항목(토글·값 줄)은 그 안의 줄마다 1, 2, 3을 매기고, 그 밖의 뷰는 1이다.
-         */
-        private static void collectLines(View root, View v, java.util.List<View> lines, java.util.List<Integer> groups) {
-            // 들어오는 페이지 자신은 아직 숨어 있을 수 있다.
-            if ((v != root && v.getVisibility() != View.VISIBLE) || v.getWidth() == 0 || v.getHeight() == 0) return;
-            if (v instanceof android.view.ViewGroup && !v.isClickable()
-                    && (v instanceof android.widget.ScrollView || v instanceof FrameLayout
-                    || (v instanceof LinearLayout && hasVerticalChild((LinearLayout) v)))) {
-                android.view.ViewGroup g = (android.view.ViewGroup) v;
-                for (int i = 0; i < g.getChildCount(); i++) collectLines(root, g.getChildAt(i), lines, groups);
-                return;
-            }
-            if (!onScreen(root, v)) return;
-            if (v instanceof LinearLayout && ((LinearLayout) v).getOrientation() == LinearLayout.VERTICAL) {
-                LinearLayout row = (LinearLayout) v;
-                int group = 1;
-                for (int i = 0; i < row.getChildCount(); i++) {
-                    View line = row.getChildAt(i);
-                    if (line.getVisibility() != View.VISIBLE) continue;
-                    lines.add(line);
-                    groups.add(Math.min(group++, 3));
-                }
-                return;
-            }
-            lines.add(v);
-            groups.add(1);
-        }
-
-        /** 세로로 쌓는 틀이거나, 세로 틀을 품은 가로 틀(하위 묶음)인지. */
-        private static boolean hasVerticalChild(LinearLayout l) {
-            if (l.getOrientation() == LinearLayout.VERTICAL) return true;
-            for (int i = 0; i < l.getChildCount(); i++) {
-                View c = l.getChildAt(i);
-                if (c instanceof LinearLayout && ((LinearLayout) c).getOrientation() == LinearLayout.VERTICAL && !c.isClickable()) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        /** v가 페이지(root, 스크롤 틀)의 보이는 높이 안에 있는지 (들어오는 페이지는 옆에 비켜 있어 페이지 안의 세로 자리로만 본다). */
-        private static boolean onScreen(View root, View v) {
-            if (!(root instanceof android.view.ViewGroup) || root == v) return true;
-            android.graphics.Rect r = new android.graphics.Rect(0, 0, v.getWidth(), v.getHeight());
-            ((android.view.ViewGroup) root).offsetDescendantRectToMyCoords(v, r);
-            int top = root.getScrollY();
-            return r.bottom > top && r.top < top + root.getHeight();
         }
 
         /** ms 동안 0 → 1로 움직이며 step을 부르고, 끝나면 done을 부른다 (ease가 null이면 곧게). */
