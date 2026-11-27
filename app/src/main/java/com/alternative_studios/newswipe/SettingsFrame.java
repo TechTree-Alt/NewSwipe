@@ -316,26 +316,16 @@ final class SettingsFrame {
      */
     Metro.Pivot installPivot(String pivotTitle, String[] names, View[] pages, int index, Metro.Pivot.Host host) {
         if (page == null || metroBig == null) return null;
-        // WP8.1 Pivot 템플릿 (유효 픽셀): 제목은 PivotTitleContentControlStyle(SemiBold 18.14, 대문자로 쓴 글),
-        // PivotPortraitThemePadding 19,38,0,0. 머리글 이름은 PivotHeaderItemMargin 16,-6.5,0,0(화면 왼쪽에서 16, 제목보다 3 왼쪽)과
-        // 아래 Padding 6.5, 내용은 PivotItemMargin 19,22.5,19,0만큼 아래에서 시작한다. 제목과 이름 줄은 TextBlock 스타일이 아닌
-        // ContentControl이라 보통 줄 높이(글꼴의 위아래 끝까지)를 쓴다.
+        // Pivot 템플릿: 제목은 PivotTitleStyle(SemiBold 22.667px), Margin 24,17,0,-7. 머리글 이름은 PivotHeaderItem Padding 21
+        // (제목보다 3px 왼쪽), 내용은 PivotItemMargin 12,28,12,0만큼 아래에서 시작한다.
         // 피벗 제목은 메뉴의 원래 이름 (피벗이 없는 화면의 큰 제목은 짧은 이름, 작은 제목은 앱 이름).
         metroSmall.setText(Metro.upper(pivotTitle != null ? pivotTitle : title));
-        metroSmall.setIncludeFontPadding(true);
-        metroSmall.setLineSpacing(0f, 1f);
-        LinearLayout.LayoutParams slp = (LinearLayout.LayoutParams) metroSmall.getLayoutParams();
-        slp.topMargin = 0;
-        slp.bottomMargin = 0;
-        View head = (View) metroSmall.getParent();
-        head.setPadding(head.getPaddingLeft(), Metro.wp81(activity, 38), head.getPaddingRight(),
-                Metro.wp81(activity, 6.5f + 22.5f));
+        metroSmall.setTextSize(TypedValue.COMPLEX_UNIT_SP, Metro.sp(Metro.FONT_MEDIUM));
+        metroSmall.setTypeface(Metro.semibold());
         Metro.PivotHeader names2 = new Metro.PivotHeader(activity, names, index);
         ViewGroup parent = (ViewGroup) metroBig.getParent();
         int at = parent.indexOfChild(metroBig);
-        LinearLayout.LayoutParams lp = matchWrap();
-        lp.leftMargin = Metro.wp81(activity, 16) - head.getPaddingLeft();
-        lp.topMargin = Metro.wp81(activity, -6.5f);
+        ViewGroup.LayoutParams lp = metroBig.getLayoutParams();
         parent.removeViewAt(at);
         parent.addView(names2, at, lp);
         metroBig = null;
@@ -438,48 +428,41 @@ final class SettingsFrame {
     }
 
     /**
-     * Metro UI의 머리글: WP8.1 기본 페이지 템플릿 (유효 픽셀). 왼쪽 19, 첫 줄에 대문자 앱 이름(TitleTextBlockStyle SemiBold 18.14,
-     * 위 12), 그 아래에 화면 이름을 크고 가는 소문자(HeaderTextBlockStyle SemiLight 57.5, 자간 -25, Margin 0,-6.5,0,26.5)로 쓰고
-     * 화면보다 길면 끝에서 잘린다. 내용(ContentRoot)은 그 아래 9.5에서 시작한다. 두 스타일 모두 BaselineToBaseline 줄 상자라
-     * {@link Metro#baselineToBaseline}으로 맞춘다. 섹션 피벗을 놓으면({@link #installPivot}) Pivot 템플릿이 된다.
+     * Metro UI의 머리글: Windows Phone 8 SDK의 페이지 템플릿(TitlePanel). 첫 줄에 작은 대문자 앱 이름(ApplicationTitle,
+     * PhoneTextNormalStyle 20px), 그 아래에 화면 이름을 크고 가는 소문자(PageTitle, PhoneTextTitle1Style SemiLight 72px, 위로 7px 당김)로
+     * 쓰고 화면보다 길면 끝에서 잘린다. 아래로 28px 띄워 내용이 시작한다. 섹션 피벗을 놓으면({@link #installPivot}) Pivot 템플릿이 된다.
      * 버튼은 화면 아래의 앱 바에 있다.
      */
     private View buildMetroHeader() {
         Context c = activity;
         LinearLayout header = new LinearLayout(c);
         header.setOrientation(LinearLayout.VERTICAL);
-        int pad = Metro.pagePad(c, 16);   // 목록과 같은 왼쪽 선 (WP8.1: 19)
-        header.setPadding(pad, 0, pad, 0);
+        int pad = Metro.pagePad(c, 16);   // 목록과 같은 왼쪽 선 (WP: TitlePanel 12px + 글 12px = 24px)
+        header.setPadding(pad, Metro.px(c, 17), pad, Metro.px(c, 28));
         header.setClipChildren(true);
-        header.setClipToPadding(false);   // 왼쪽으로 당긴 피벗 이름이 잘리지 않고, 긴 제목은 화면 끝에서 잘린다
 
         boolean main = title.equals(activity.getString(R.string.app_name));
         TextView small = new TextView(c);
         small.setText(Metro.upper(main ? title : subtitle));
         small.setTextColor(colors.text);
-        small.setTextSize(TypedValue.COMPLEX_UNIT_SP, Metro.sp81(Metro.FONT81_TITLE));
-        small.setTypeface(Metro.semibold());
+        small.setTextSize(TypedValue.COMPLEX_UNIT_SP, Metro.sp(Metro.FONT_NORMAL));
+        small.setTypeface(Metro.regular());
         small.setSingleLine(true);
         small.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        int[] sb = Metro.baselineToBaseline(small, 21.5f);   // TitleTextBlockStyle LineHeight 21.5
-        LinearLayout.LayoutParams slp = matchWrap();
-        slp.topMargin = Metro.wp81(c, 12) + sb[0];
-        slp.bottomMargin = sb[1];
-        header.addView(small, slp);
+        header.addView(small, matchWrap());
         metroSmall = small;
 
         TextView big = new TextView(c);
         big.setText(Metro.lower(main ? L.t("설정", "settings") : title));
         big.setTextColor(colors.text);
-        big.setTextSize(TypedValue.COMPLEX_UNIT_SP, Metro.sp81(Metro.FONT81_HEADER));
+        big.setTextSize(TypedValue.COMPLEX_UNIT_SP, Metro.sp(Metro.FONT_EXTRA_EXTRA_LARGE));
         big.setTypeface(Metro.light());
-        big.setLetterSpacing(Metro.HEADER_LETTER_SPACING);
         big.setSingleLine(true);
         big.setHorizontallyScrolling(true);   // 화면보다 길면 줄이지 않고 화면 끝에서 잘린다
-        int[] bb = Metro.baselineToBaseline(big, 57.5f);   // HeaderTextBlockStyle LineHeight 57.5
+        // 글꼴의 위아래 끝까지 담는 줄 높이(includeFontPadding)는 Silverlight TextBlock의 줄 높이와 거의 같다.
         LinearLayout.LayoutParams blp = matchWrap();
-        blp.topMargin = Metro.wp81(c, -6.5f) + bb[0];
-        blp.bottomMargin = Metro.wp81(c, 26.5f + 9.5f) + bb[1];   // 제목 아래 26.5 + ContentRoot 위 9.5
+        blp.leftMargin = -Metro.px(c, 3);   // PageTitle Margin 9 (ApplicationTitle은 12)
+        blp.topMargin = -Metro.px(c, 7);
         header.addView(big, blp);
         metroBig = big;
         return header;
