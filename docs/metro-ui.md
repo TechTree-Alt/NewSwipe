@@ -83,11 +83,12 @@ Windows Phone 7·8의 Metro UI처럼 바뀝니다. 이 문서는 무엇을 참�
     이름 하나만큼 따라갑니다.
   - 손을 떼면: 관성으로 멈출 자리(지금 자리 + 속도 × 0.3초)에 가장 가까운 칸으로, 한 번에 한 칸까지(MandatorySingle 스냅 포인트)
     감속하며 붙습니다 (감속 곡선의 첫 속도가 손가락 속도와 이어지게 200~400ms, 최대 시간은 PivotStateMachine의 0.4초).
-    다른 칸으로 가면 그 순간 고른 이름이 바뀝니다.
+    다른 칸에 닿아 멈추면(PivotStateMachine의 InFinishTransition → Idle) 그때 고른 이름이 바뀝니다.
   - 머리글의 이름을 누르면 (PivotAnimator의 fly-out → fly-in): 지금 페이지가 83ms 동안 7px 밀려나며 67ms 만에 사라지고,
     새 페이지가 20px 옆에서 767ms 동안 KeySpline(0.1, 0.9, 0.2, 1)으로 들어오며 333ms 만에 나타납니다. 이름 줄은 850ms 동안
     같은 곡선으로 누른 이름까지 옮겨 갑니다.
-  - 줄마다 늦게 들어오기 (Pivot.SlideInAnimationGroup, WP8.1에서 컨트롤에 들어간 효과): 고른 섹션이 바뀌는 순간 새 페이지의 줄마다
+  - 줄마다 늦게 들어오기 (Pivot.SlideInAnimationGroup, WP8.1에서 컨트롤에 들어간 효과): 고른 섹션이 바뀌는 순간(밀어 넘기면
+    새 페이지가 자리에 닿아 멈춘 뒤, 이름을 누르면 fly-in을 시작할 때) 새 페이지의 줄마다
     (묶음 번호 × 40)만큼 들어오는 쪽에 더해 두고 700ms 동안 없앱니다 (처음 350ms는 곧게 28.3%까지, 나머지는 ExponentialEase
     EaseIn 지수 −2.3026). 공식 예제처럼 항목 안의 첫 줄(이름)이 GroupOne, 둘째 줄(값·켬/끔)이 GroupTwo, 셋째 줄(설명)이
     GroupThree, 한 줄짜리(설명 글·묶음 머리글·버튼)는 GroupOne입니다. 화면에 보이는 줄만 움직이고, 다시 밀기 시작하면 제자리로 돌아갑니다.

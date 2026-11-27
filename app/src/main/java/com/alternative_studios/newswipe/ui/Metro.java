@@ -737,7 +737,7 @@ public final class Metro {
      * <li>미는 동안 (DirectManipulation 패닝): 페이지들이 손가락을 그대로 따라가 옆 페이지가 붙어 들어온다. 이름 줄은 한 화면을 밀 때
      *     이름 하나만큼 따라간다.</li>
      * <li>손을 떼면 (관성 + 한 칸짜리 스냅 포인트, MandatorySingle): 튕긴 속도로 멈출 자리를 내다보고 가장 가까운 칸(최대 한 칸)으로
-     *     감속하며 붙는다. 다른 칸으로 가면 그 순간 고른 이름이 바뀌고 새 페이지의 줄들이 따로 늦게 들어온다 ({@link #slideIn}).</li>
+     *     감속하며 붙는다. 다른 칸에 닿아 멈추면 그때 고른 이름이 바뀌고 새 페이지의 줄들이 따로 늦게 들어온다 ({@link #slideIn}).</li>
      * <li>머리글의 이름을 누르면 (fly-out → fly-in): 지금 페이지가 83ms 동안 7px 밀려나며 67ms 만에 사라지고, 새 페이지가 20px 옆에서
      *     767ms 동안 KeySpline(0.1,0.9,0.2,1)으로 들어오며 333ms 만에 나타난다. 이름 줄은 850ms 동안 같은 곡선으로 옮겨 간다.</li>
      * </ul>
@@ -960,19 +960,18 @@ public final class Metro {
             // 감속(EaseOut cubic)의 첫 속도는 3 × 거리 / 시간이므로, 손가락 속도와 같아지는 시간을 쓴다.
             long ms = Math.abs(vx) > 1 ? Math.round(3000 * dist / Math.abs(vx)) : SNAP_MAX_MS;
             ms = Math.max(SNAP_MIN_MS, Math.min(SNAP_MAX_MS, ms));
-            if (dir != 0) {
-                // InFinishTransition: 고른 이름이 바로 바뀌고, 새 페이지의 줄들이 따로 들어오기 시작한다.
-                header.setSelected(at(dir));
-                slideIn(pages[at(dir)], dir);
-            }
             page.setBusy(dir != 0);
             content = run(ms, EASE_OUT_CUBIC, f -> pan(from + (to - from) * f), () -> {
                 content = null;
                 page.setBusy(false);
                 if (dir != 0) {
+                    // 페이지가 자리에 닿아 멈춘 때(InFinishTransition → Idle, PivotStateMachine): 그제야 고른 섹션이 바뀌어
+                    // 이름의 밝기가 바뀌고, 새 페이지의 줄들이 옆으로 비켜났다가 따로 들어온다(SetSelectedIndex → ApplySlideInAnimation).
                     int target = at(dir);
                     show(target);
                     header.setFirst(target);
+                    header.setSelected(target);
+                    slideIn(pages[target], dir);
                 }
                 header.setOffset(0f);
                 for (View p : pages) if (p != pages[index]) p.setVisibility(View.INVISIBLE);
@@ -1041,7 +1040,8 @@ public final class Metro {
         }
 
         /**
-         * WP8.1 피벗의 SlideInAnimationGroup: 고른 섹션이 바뀌는 순간 새 페이지의 줄마다 (묶음 번호 × 40px)를 들어오는 쪽에 더해 두고
+         * WP8.1 피벗의 SlideInAnimationGroup: 고른 섹션이 바뀌는 순간(밀어 넘기면 새 페이지가 자리에 닿아 멈춘 때, 이름을 누르면 fly-in을
+         * 시작할 때) 새 페이지의 줄마다 (묶음 번호 × 40px)를 들어오는 쪽에 더해 두고
          * 700ms 동안 없앤다. 설정 줄은 공식 예제처럼 항목 안의 첫 줄(이름)이 GroupOne, 둘째 줄(값·켬/끔)이 GroupTwo, 셋째 줄(설명)이
          * GroupThree이고, 한 줄짜리(설명 글·묶음 머리글·버튼)는 GroupOne이다. 화면에 보이는 줄만 움직인다.
          *
