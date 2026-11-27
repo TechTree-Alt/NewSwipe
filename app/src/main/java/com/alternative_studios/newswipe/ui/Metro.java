@@ -653,10 +653,45 @@ public final class Metro {
                 hidden = true;
             } else if (hidden) {
                 hidden = false;
-                busy = false;
                 // 다른 화면에서 돌아왔다: TurnstileBackwardIn (원본 50° → 0°, 이 앱의 각도로 -50° → 0°).
-                enter(false);
+                // 다시 보이게 된 직후에는 창을 다시 그릴 준비(표면·그리기 목록을 다시 만들기)로 첫 프레임이 수백 ms 늦게 나올 수 있다.
+                // 그때 바로 틀면 움직임의 시계만 먼저 가서, 첫 프레임에 차례가 지난 줄들이 한꺼번에 기운 채 나타났다가 제자리로 튄다.
+                // 그래서 화면을 숨긴 채 첫 프레임이 실제로 그려져 넘어간 뒤 다음 프레임부터 튼다.
+                busy = true;
+                removeCallbacks(unblock);
+                content.setAlpha(0f);
+                afterFirstFrame(() -> enter(false));
             }
+        }
+
+        /** 오래 걸려도 이만큼 기다린 뒤에는 튼다 (프레임 소식이 오지 않는 경우). */
+        private static final long FIRST_FRAME_WAIT_MS = 500;
+
+        /** 다음 프레임이 그려져 화면으로 넘어간 뒤, 그다음 프레임에 r을 한 번 부른다. */
+        private void afterFirstFrame(Runnable r) {
+            final boolean[] done = {false};
+            Runnable once = () -> {
+                if (done[0]) return;
+                done[0] = true;
+                r.run();
+            };
+            android.view.ViewTreeObserver vto = getViewTreeObserver();
+            if (android.os.Build.VERSION.SDK_INT >= 29) {
+                // 렌더 스레드가 프레임을 넘긴 때 (그리기가 실제로 끝난 때).
+                vto.registerFrameCommitCallback(() -> postOnAnimation(once));
+            } else {
+                vto.addOnPreDrawListener(new android.view.ViewTreeObserver.OnPreDrawListener() {
+                    @Override
+                    public boolean onPreDraw() {
+                        getViewTreeObserver().removeOnPreDrawListener(this);
+                        // 이 프레임이 다 그려진 다음 프레임에.
+                        post(() -> postOnAnimation(once));
+                        return true;
+                    }
+                });
+            }
+            invalidate();
+            postDelayed(once, FIRST_FRAME_WAIT_MS);
         }
 
         /** 가로로 밀어 옆 섹션으로 넘기는 피벗 (없으면 null). */
