@@ -138,8 +138,8 @@ final class LanguageOrderEditor {
             list.addView(more);
         }
 
-        // 인터페이스 언어: 앱 화면의 글 언어 (시스템을 따르거나 한국어·영어).
-        LinearLayout ui = widgets.section(list, L.t("인터페이스 언어", "Interface language"));
+        // 앱 언어: 앱 화면의 글 언어 (시스템을 따르거나 한국어·영어).
+        LinearLayout ui = widgets.section(list, L.t("앱 언어", "App language"));
         String[] tags = {"", "ko", "en"};
         String now = L.language(a);
         int sel = 0;
@@ -158,7 +158,7 @@ final class LanguageOrderEditor {
         uiNote.setPadding(0, Ui.dp(a, 8), 0, 0);
         ui.addView(uiNote);
 
-        // 맨 아래 '기본값으로 되돌리기': 언어 순서와 인터페이스 언어 (설정 화면이 품으면 그쪽이 맡는다: Metro는 앱 바 메뉴).
+        // 맨 아래 '기본값으로 되돌리기': 언어 순서와 앱 언어 (설정 화면이 품으면 그쪽이 맡는다: Metro는 앱 바 메뉴).
         if (!hosted) {
             list.addView(ResetDialog.button(a, L.t("언어", "Languages"), () -> {
                 boolean langChanged = reset(a);
@@ -168,7 +168,7 @@ final class LanguageOrderEditor {
         }
     }
 
-    /** 언어 화면의 값을 기본값으로: 언어 순서, 인터페이스 언어(시스템). 인터페이스 언어가 바뀌었으면 true. */
+    /** 언어 화면의 값을 기본값으로: 언어 순서, 앱 언어(시스템). 앱 언어가 바뀌었으면 true. */
     static boolean reset(Context c) {
         new Prefs(c).resetLanguageOrder();
         if (L.language(c).isEmpty()) return false;

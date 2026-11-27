@@ -289,12 +289,12 @@ public final class AppTheme {
     public static String signature(Context context) {
         Prefs p = new Prefs(context);
         return p.themeMode() + "/" + p.accentMode() + "/" + p.accentColor() + "/" + p.metro() + "/" + p.neumorphism()
-                + "/" + L.ko();   // 인터페이스 언어가 바뀌어도 뒤에 쌓인 화면을 다시 그린다
+                + "/" + L.ko();   // 앱 언어가 바뀌어도 뒤에 쌓인 화면을 다시 그린다
     }
 
     /** 활동의 리소스(night 값)도 고른 화면 모드를 따르도록 기준 설정을 덮어쓴다. attachBaseContext에서 쓴다. */
     public static Context wrap(Context base) {
-        L.init(base);   // 인터페이스 언어 (Android 12 이하)
+        L.init(base);   // 앱 언어 (Android 12 이하)
         Prefs prefs = new Prefs(base);
         String mode = prefs.themeMode();
         if (Prefs.THEME_SYSTEM.equals(mode)) return base;

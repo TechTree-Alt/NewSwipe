@@ -255,7 +255,7 @@ public final class SettingsActivity extends Activity {
     /** 하위 메뉴 정의: {id, 제목, 설명}. */
     private static String[][] sections() {
         return new String[][]{
-            {LANGUAGES, L.t("언어", "Languages"), L.t("입력 언어, 인터페이스 언어", "Input languages, interface language")},
+            {LANGUAGES, L.t("언어", "Languages"), L.t("입력 언어, 앱 언어", "Input languages, app language")},
             {KEYBOARD, L.t("키보드 사용자화", "Customize keyboard"), L.t("자판 배열, 모양, 입력, 길게 누르기, 밀기", "Layout, look, input, long press, swipe")},
             {"theme", L.t("테마", "Theme"), L.t("모드, 라이트/다크 모드, 강조 색", "Mode, light/dark mode, accent color")},
             {"feedback", L.t("소리 및 진동", "Sound & vibration"), L.t("키를 누를 때의 진동과 소리", "Vibration and sound when you press keys")},
@@ -338,7 +338,7 @@ public final class SettingsActivity extends Activity {
 
     /** 이 화면이 담당하는 값만 기본값으로 바꾼다 (확인은 ResetDialog가 이미 받았다). */
     private void reset(String id) {
-        if (LANGUAGES.equals(id)) LanguageOrderEditor.reset(this);   // 언어 순서와 인터페이스 언어
+        if (LANGUAGES.equals(id)) LanguageOrderEditor.reset(this);   // 언어 순서와 앱 언어
         else prefs.resetSection(id);
         importGeneration++;   // 뒤에 쌓인 설정 화면도 돌아오면 기본값으로 다시 그린다
         recreate();
@@ -743,7 +743,7 @@ public final class SettingsActivity extends Activity {
             {KEYBOARD, L.t("커서 이동 속도 좌우", "Cursor speed (horizontal)"), L.t("스페이스바 커서 키 트랙패드", "space bar cursor key trackpad")},
             {KEYBOARD, L.t("입력 언어", "Input languages"), L.t("지구본 언어 차례 순서 바꾸기 한국어 영어 일본어 중국어", "globe language order switch korean english japanese chinese")},
             {LANGUAGES, L.t("입력 언어", "Input languages"), L.t("지구본 언어 차례 순서 바꾸기 한국어 영어 일본어 중국어 자판 끄기 켜기", "globe language order switch korean english japanese chinese keyboard on off")},
-            {LANGUAGES, L.t("인터페이스 언어", "Interface language"), L.t("앱 언어 화면 언어 표시 언어 한국어 영어 English 시스템", "app language display language ui korean english system")},
+            {LANGUAGES, L.t("앱 언어", "App language"), L.t("인터페이스 언어 화면 언어 표시 언어 한국어 영어 English 시스템", "interface language display language ui korean english system")},
             {KEYBOARD, L.t("키보드 밀기 사용자화", "Customize keyboard swipes"), L.t("자판 스와이프 기능", "keyboard swipe actions gestures")},
             {KEYBOARD, L.t("위로 밀어서 추천 단어 입력", "Swipe up to pick suggestions"), L.t("추천 단어 스와이프 고르기 자판 위로", "suggestions swipe pick keyboard up")},
             {"words", L.t("도구 막대 전체를 쓰기", "Use full toolbar"), L.t("추천 툴바 전체", "suggestions toolbar full width")},
