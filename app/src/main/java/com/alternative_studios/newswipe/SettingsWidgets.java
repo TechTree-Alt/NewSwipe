@@ -695,7 +695,7 @@ final class SettingsWidgets {
             }
             if (ch.getTag(com.alternative_studios.newswipe.R.id.metro_button) != null
                     && ch.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
-                int top = ch == first ? 0 : Metro.px(ch.getContext(), 12);
+                int top = ch == first ? 0 : Metro.wp81(ch.getContext(), Metro.BUTTON_OVERHANG_EPX);
                 ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) ch.getLayoutParams();
                 if (lp.topMargin != top) lp.topMargin = top;
             }
@@ -770,13 +770,13 @@ final class SettingsWidgets {
         lp.bottomMargin = Ui.dp(c, NeuUi.on ? 10 : 6);
         row.setLayoutParams(lp);
         if (Metro.on) {
-            // 글 너비만큼, 바깥 여백은 Button 템플릿의 PhoneTouchTargetOverhang(12px → 9dp, 하위 묶음의 첫 버튼은 위 0). 버튼이 이어지면 그 사이는 그대로 두고,
+            // 글 너비만큼(최소 폭 109), 위아래 바깥 여백은 WP8.1 Button 템플릿의 PhoneTouchTargetOverhang(9.5 → 8.6dp, 하위 묶음의 첫 버튼은 위 0). 버튼이 이어지면 그 사이는 그대로 두고,
             // 버튼 다음에 다른 항목이 오면 아래에 일반 항목 사이만큼 띄운다 (다음 줄은 화면에 붙은 뒤에야 알 수 있다).
             lp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
-            lp.topMargin = Ui.dp(c, 9);
+            lp.topMargin = Metro.wp81(c, Metro.BUTTON_OVERHANG_EPX);
             row.setTag(com.alternative_studios.newswipe.R.id.metro_button, Boolean.TRUE);
             gapBelow(row, true, METRO_TOGGLE_GAP_DP - 9);
-            int stacked = Ui.dp(c, 9);   // 버튼마다 바깥 여백 12px: 이어진 버튼 사이는 24px (→ 18dp)
+            int stacked = Metro.wp81(c, Metro.BUTTON_OVERHANG_EPX);   // 버튼마다 위아래 9.5: 이어진 버튼 사이는 19 (→ 17.1dp)
             int apart = Ui.dp(c, METRO_TOGGLE_GAP_DP - 9);
             row.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
                 @Override

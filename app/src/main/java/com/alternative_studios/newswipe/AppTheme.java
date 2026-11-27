@@ -245,8 +245,9 @@ public final class AppTheme {
             cb.setButtonTintList(null);
             if (!(cb.getButtonDrawable() instanceof Metro.Check)) cb.setButtonDrawable(new Metro.Check(v.getContext(), v instanceof android.widget.RadioButton));
             cb.setBackground(null);   // 시스템 물결 없이 틸트로만 반응한다
-            // 상자와 글 사이: 템플릿의 ContentContainer Margin 12px. CompoundButton은 상자를 맨 앞에 두고 글을 안쪽 여백 뒤에 쓴다.
-            int gap = Metro.px(v.getContext(), 12);
+            // 상자와 글 사이: WP8.1 템플릿의 CheckBoxAndRadioButtonTextPaddingThickness 8 (유효 픽셀).
+            // CompoundButton은 상자를 맨 앞에 두고 글을 안쪽 여백 뒤에 쓴다.
+            int gap = Metro.wp81(v.getContext(), 8);
             if (cb.getPaddingStart() < gap) cb.setPaddingRelative(gap, cb.getPaddingTop(), cb.getPaddingEnd(), cb.getPaddingBottom());
             Metro.tilt(cb);
         } else if (v instanceof android.widget.CheckedTextView) {

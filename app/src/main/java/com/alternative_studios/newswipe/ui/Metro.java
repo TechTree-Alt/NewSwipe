@@ -131,12 +131,47 @@ public final class Metro {
     }
 
     /**
-     * 화면의 좌우 여백 (px). Metro: WP8 페이지 템플릿의 ContentPanel 12px + 글(PhoneHorizontalMargin) 12px = 24px → 18dp.
-     * WP8.1(WinRT) 템플릿의 ContentRoot·제목 Margin 19 유효 픽셀(→ 17.1dp)과도 거의 같고, 대화상자(CustomMessageBox)의 좌우
-     * 24px와 맞는다. 보통 모드는 normalDp.
+     * WP8.1(WinRT XAML)의 유효 픽셀을 이 기기의 px로: WP8.1 폰은 화면 폭이 400 유효 픽셀(4.7")이라 360dp 폭 기준으로 0.9를 곱한다.
+     * 페이지 머리글·피벗·버튼·체크 상자·대화상자의 여백은 WP8.1 템플릿 값을 이것으로 옮긴다.
+     */
+    public static int wp81(Context c, float epx) {
+        return Math.round(epx(c, epx));
+    }
+
+    /** WP8.1의 글꼴 크기(유효 픽셀)를 sp로. */
+    public static float sp81(float epx) {
+        return epx * 0.9f;
+    }
+
+    /**
+     * WP8.1 텍스트 크기 (유효 픽셀): TitleTextBlockStyle·버튼·체크 상자 18.14 (TextStyleLargeFontSize), 페이지 제목
+     * HeaderTextBlockStyle 57.5, 피벗 이름 57, 대화상자 제목 MessageDialogTitleStyle 25.5.
+     */
+    public static final float FONT81_TITLE = 18.14f, FONT81_HEADER = 57.5f, FONT81_PIVOT = 57f, FONT81_DIALOG_TITLE = 25.5f;
+    /** PivotHeaderItemCharacterSpacing -25 (1/1000 em): 페이지 제목·피벗 이름의 자간. */
+    public static final float HEADER_LETTER_SPACING = -0.025f;
+
+    /**
+     * WP8.1 텍스트 스타일의 줄 상자 (LineStackingStrategy BaselineToBaseline, LineHeight lineEpx)를 흉내 낸다. 줄 높이가 글자 크기와
+     * 거의 같아 Android의 줄 상자(글꼴의 위아래 끝까지)보다 훨씬 낮다. 첫 줄의 기준선을 줄 위에서 LineHeight의 81%(Segoe UI의
+     * ascent ÷ 줄 간격)에 두고, 줄 사이를 LineHeight로 맞춘다. includeFontPadding을 끄고 줄 간격을 바꾼 뒤,
+     * 위·아래에 더할 여백(px, 음수일 수 있다) {위, 아래}를 돌려준다: 부른 쪽이 바깥 여백에 더한다. 글자 크기와 글꼴을 정한 뒤 부른다.
+     */
+    public static int[] baselineToBaseline(TextView t, float lineEpx) {
+        float line = epx(t.getContext(), lineEpx);
+        t.setIncludeFontPadding(false);
+        android.graphics.Paint.FontMetrics fm = t.getPaint().getFontMetrics();
+        t.setLineSpacing(line - (fm.descent - fm.ascent), 1f);
+        float baseline = line * 0.81f;
+        return new int[]{Math.round(baseline + fm.ascent), Math.round(line - baseline - fm.descent)};
+    }
+
+    /**
+     * 화면의 좌우 여백 (px). Metro: WP8.1 페이지 템플릿의 머리글·ContentRoot Margin 19 유효 픽셀 → 17.1dp (WP8의 24px → 18dp와도
+     * 거의 같다). 머리글·피벗·목록·검색창·대화상자가 모두 이 선에 맞는다. 보통 모드는 normalDp.
      */
     public static int pagePad(Context c, float normalDp) {
-        return on ? px(c, 24) : Ui.dp(c, normalDp);
+        return on ? wp81(c, 19) : Ui.dp(c, normalDp);
     }
 
     /** WP의 글꼴 크기(px)를 sp로. */
@@ -732,14 +767,14 @@ public final class Metro {
      * 쓰되 멈춰 있을 때는 이름마다 한 번씩만, 움직이는 동안에는 화면 끝까지 이어 그린다. 고른 이름만 글자 색, 나머지는 옅게 쓴다. 줄 전체의 가로 자리(offset)는 {@link Pivot}이 움직인다.
      * 이름은 직접 그려 프레임마다 글자를 다시 배치하지 않는다.
      *
-     * <p>Microsoft.Phone의 Pivot 템플릿: PivotHeaderItem은 PhoneFontFamilySemiLight, PivotHeaderFontSize 72px, Padding 21,0,1,0
-     * (이름 사이 22px), 고르지 않은 이름은 PhonePivotUnselectedItemOpacity (다크 0.4, 라이트 0.23144).
+     * <p>WP8.1 Pivot: 이름은 SemiLight 57 유효 픽셀(→ 51.3sp), 자간 -25(PivotHeaderItemCharacterSpacing), 이름마다 왼쪽
+     * PivotHeaderItemMargin 16(이름 사이 16 → 14.4dp). 고르지 않은 이름은 PhonePivotUnselectedItemOpacity (다크 0.4, 라이트 0.23144).
      */
     public static final class PivotHeader extends View {
         private final android.text.TextPaint paint = new android.text.TextPaint(android.graphics.Paint.ANTI_ALIAS_FLAG);
         /** 섹션 이름 (소문자). */
         private final String[] names;
-        /** 이름의 폭 + 이름 사이 (PivotHeadersControl.GetItemWidth: 글자 폭 + Padding 21,1). 처음 한 번만 잰다. */
+        /** 이름의 폭 + 이름 사이 (PivotHeadersControl.GetItemWidth: 글자 폭 + PivotHeaderItemMargin 16). 처음 한 번만 잰다. */
         private final float[] widths;
         /** 맨 왼쪽에 오는 이름(VisualFirstIndex)과 고른 이름. 넘어가는 동안 둘이 잠시 다르다. */
         private int first, selected;
@@ -753,10 +788,11 @@ public final class Metro {
             this.names = new String[names.length];
             for (int i = 0; i < names.length; i++) this.names[i] = lower(names[i]);
             paint.setTypeface(light());
-            paint.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp(FONT_EXTRA_EXTRA_LARGE),
+            paint.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp81(FONT81_PIVOT),
                     c.getResources().getDisplayMetrics()));
+            paint.setLetterSpacing(HEADER_LETTER_SPACING);
             paint.getFontMetrics(fm);
-            float gap = px(c, 22);
+            float gap = epx(c, 16);
             widths = new float[names.length];
             for (int i = 0; i < names.length; i++) widths[i] = paint.measureText(this.names[i]) + gap;
             first = selected = index;
@@ -880,7 +916,7 @@ public final class Metro {
     /**
      * WinRT XAML(WP8.1)의 크기 단위(유효 픽셀): WP8.1 폰은 화면 폭이 400 유효 픽셀쯤이라 360dp 폭 기준으로 0.9를 곱한다.
      */
-    private static float epx(Context c, float v) {
+    public static float epx(Context c, float v) {
         return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v * 0.9f, c.getResources().getDisplayMetrics());
     }
 
@@ -1296,7 +1332,7 @@ public final class Metro {
             t.setVisibility(GONE);
             col.addView(t, new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT));
             hints.add(t);
-            buttons.addView(col, new LayoutParams(Ui.dp(c, 76), LayoutParams.WRAP_CONTENT));
+            buttons.addView(col, new LayoutParams(wp81(c, 73.75f), LayoutParams.WRAP_CONTENT));   // WP8.1 앱 바의 버튼 칸 (실측)
         }
 
         /** 메뉴 항목을 더한다 (소문자로 보인다, 다섯 개까지 권장). 누르면 앱 바를 접고 action을 부른다. */
@@ -1358,15 +1394,15 @@ public final class Metro {
 
     // ---------------------------------------------------------------- 버튼·스크롤 표시
 
-    /** 테두리 굵기 (dp): PhoneBorderThickness 3px. */
+    /** 테두리 굵기 (dp): WP8 PhoneBorderThickness 3px × 0.75 = WP8.1 2.5 유효 픽셀 × 0.9 = 2.25dp. */
     public static final float BORDER_DP = 3 * PX;
 
     /**
-     * 버튼 글자: SDK의 PhoneButtonBase처럼 PhoneFontFamilySemiBold, PhoneFontSizeMedium (22.667px → 17sp).
+     * 버튼 글자: WP8.1 Button처럼 SemiBold 18.14 유효 픽셀 (→ 16.3sp).
      * logicalSp는 설정 검색이 보는 원래 크기 ({@link #text} 참고).
      */
     public static void buttonText(TextView t, float logicalSp) {
-        text(t, sp(FONT_MEDIUM), semibold(), logicalSp);
+        text(t, sp81(FONT81_TITLE), semibold(), logicalSp);
     }
 
     /**
@@ -1392,11 +1428,29 @@ public final class Metro {
                 new int[]{disabled, onAccent, fg});
     }
 
-    /** 버튼의 안쪽 여백: 테두리 3px + Padding 10,5,10,6px. */
+    /**
+     * 버튼의 안쪽 여백과 최소 크기 (WP8.1 Button 템플릿): 테두리 PhoneBorderThickness 2.5 + PhoneButtonContentPadding 9.5,0,9.5,3.5,
+     * MinWidth 109, MinHeight 57.5에서 위아래 PhoneTouchTargetOverhang 9.5를 뺀 보이는 높이 38.5 (유효 픽셀). 글은 가운데에.
+     * 위아래 바깥 여백 9.5({@link #BUTTON_OVERHANG_EPX})는 부른 쪽이 둔다 (좌우 바깥 여백은 없다).
+     */
     public static void buttonPadding(View v) {
         Context c = v.getContext();
-        v.setPadding(px(c, 13), px(c, 8), px(c, 13), px(c, 9));
+        int border = Ui.dp(c, BORDER_DP), side = border + wp81(c, 9.5f);
+        v.setPadding(side, border, side, border + wp81(c, 3.5f));
+        int minW = wp81(c, 109), minH = wp81(c, 38.5f);
+        v.setMinimumWidth(minW);
+        v.setMinimumHeight(minH);
+        if (v instanceof TextView) {
+            ((TextView) v).setMinWidth(minW);     // Button 스타일의 minWidth·minHeight를 덮는다
+            ((TextView) v).setMinHeight(minH);
+            ((TextView) v).setGravity(android.view.Gravity.CENTER);
+        } else if (v instanceof LinearLayout) {
+            ((LinearLayout) v).setGravity(android.view.Gravity.CENTER);
+        }
     }
+
+    /** WP8.1 Button의 위아래 바깥 여백 PhoneTouchTargetOverhang 0,9.5 (유효 픽셀). */
+    public static final float BUTTON_OVERHANG_EPX = 9.5f;
 
     /**
      * 스크롤 틀의 세로 스크롤 표시. Metro: WP8의 ScrollViewer처럼 끄는 동안만 나타났다가 손을 떼고 곧 사라지는 5px(→ 4dp) 폭의
@@ -1446,7 +1500,7 @@ public final class Metro {
     /**
      * Windows Phone 8의 CheckBox·RadioButton 표시 (CompoundButton·CheckedTextView에 붙인다). WP8 SDK의 기본 템플릿을 따른다:
      * <ul>
-     * <li>상자 CheckBackground: 32×32px(→ 24dp), 테두리 PhoneBorderThickness 3px. 라디오는 같은 크기의 동그라미.</li>
+     * <li>상자: WP8.1 템플릿의 25.5 유효 픽셀(→ 23dp), 테두리 2.5(→ 2.25dp). 라디오는 같은 크기의 동그라미 (점은 12.5, 절반).</li>
      * <li>체크 CheckMark: Path "M0,123 L39,93 L124,164 L256,18 L295,49 L124,240 z"를 23×21px로 늘려(Stretch=Fill) 가운데에.
      *     라디오의 점은 16×16px 동그라미.</li>
      * <li>색 (WP8 ThemeResources): 상자 PhoneRadioCheckBoxBrush 투명, 테두리와 체크는 글자 색(PhoneForeground).</li>
@@ -1464,7 +1518,7 @@ public final class Metro {
 
         public Check(Context c, boolean radio) {
             this.radio = radio;
-            this.size = px(c, 32);
+            this.size = wp81(c, 25.5f);   // WP8.1 CheckBox·RadioButton: 25.5 유효 픽셀 (→ 23dp)
             this.stroke = Ui.dp(c, BORDER_DP);
         }
 

@@ -151,31 +151,39 @@ public final class AppDialog extends Dialog {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(Metro.chrome);
         root.setClickable(true);   // 상자를 눌러도 막에 닿지 않게
-        // Toolkit CustomMessageBox 템플릿: 글은 좌우 24px, 제목(Caption) PhoneFontSizeLarge SemiBold 위 8px, 글(Message)
-        // PhoneFontSizeMedium SemiLight 위 11px, 그 아래 18px, 버튼은 좌우·아래 24px(바깥 여백 12px + 버튼 템플릿의 12px).
-        int side = Metro.px(ui, 24);
-        root.setPadding(0, Metro.px(ui, 8), 0, Metro.px(ui, 24));
+        // WP8.1 ContentDialog (유효 픽셀): 좌우 19, 제목 MessageDialogTitleStyle(SemiBold 25.5, LineHeight 31.5) Margin 19,33.5,19,0,
+        // 내용 MessageDialogContentStyle(18.14, LineHeight 21.5) Margin 19,16.5,19,0, 버튼 칸 Padding 19,24,9.5,9.5 · 9.5,24,19,9.5
+        // (버튼 사이 19). 버튼은 위아래에 PhoneTouchTargetOverhang 9.5를 더 둔다.
+        int side = Metro.pagePad(ui, 24);
+        root.setPadding(0, 0, 0, Metro.wp81(ui, 9.5f));
+        int above = Metro.wp81(ui, 33.5f);   // 제목(없으면 내용) 위
         if (b.title != null) {
-            TextView t = text(b.title, Metro.sp(Metro.FONT_LARGE), Metro.fg);
+            TextView t = text(b.title, Metro.sp81(Metro.FONT81_DIALOG_TITLE), Metro.fg);
             t.setTypeface(Metro.semibold());
+            int[] line = Metro.baselineToBaseline(t, 31.5f);
             t.setPadding(side, 0, side, 0);
-            root.addView(t);
+            LinearLayout.LayoutParams tlp = SettingsWidgets.matchWrap();
+            tlp.topMargin = above + line[0];
+            tlp.bottomMargin = line[1];
+            root.addView(t, tlp);
+            above = Metro.wp81(ui, 16.5f);
         }
         if (b.message != null) {
-            TextView m = text(b.message, Metro.sp(Metro.FONT_MEDIUM), Metro.fg);
-            m.setTypeface(Metro.light());
-            m.setPadding(side, Metro.px(ui, 11), side, 0);
+            TextView m = text(b.message, Metro.sp81(Metro.FONT81_TITLE), Metro.fg);
+            m.setTypeface(Metro.regular());
+            int[] line = Metro.baselineToBaseline(m, 21.5f);
+            m.setPadding(side, Math.max(0, above + line[0]), side, Math.max(0, line[1]));
             addMessage(root, m);
+            above = Metro.wp81(ui, 16.5f);
         }
-        // 글 아래: 목록·직접 만든 뷰는 글(Message)처럼 11px 띄워 이어 붙이고, 글뿐이면 StackPanel의 아래 여백 18px.
+        // 목록·직접 만든 뷰는 내용처럼 제목·글 아래 16.5(둘 다 없으면 위 33.5)에 둔다. 글뿐이면 버튼 칸의 위 여백만.
         boolean middle = b.items != null || b.view != null;
-        if (b.title != null || b.message != null) {
-            root.addView(new View(ui), new LinearLayout.LayoutParams(1, Metro.px(ui, middle ? 11 : 18)));
-        }
+        if (middle) root.addView(new View(ui), new LinearLayout.LayoutParams(1, above));
         addMiddle(root, b);
-        // 버튼: 같은 폭으로 나란히 (Windows Phone은 확인이 왼쪽, 취소가 오른쪽), 사이 24px.
+        // 버튼: 같은 폭으로 나란히 (Windows Phone은 확인이 왼쪽, 취소가 오른쪽), 사이 19.
         LinearLayout bar = new LinearLayout(ui);
-        bar.setPadding(side - Metro.px(ui, 12), Metro.px(ui, 12), side - Metro.px(ui, 12), 0);   // 버튼 템플릿의 바깥 여백 12px
+        int half = Metro.wp81(ui, 9.5f);
+        bar.setPadding(side - half, Metro.wp81(ui, 24), side - half, 0);   // 버튼마다 좌우 9.5
         positive = button(b.positive, BUTTON_POSITIVE, b.positiveListener, bar);
         neutral = button(b.neutral, BUTTON_NEUTRAL, b.neutralListener, bar);
         negative = button(b.negative, BUTTON_NEGATIVE, b.negativeListener, bar);
@@ -258,9 +266,9 @@ public final class AppDialog extends Dialog {
     private View row(Builder b, int index, Mark[] marks) {
         LinearLayout row = new LinearLayout(ui);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        // Metro: CheckBox 템플릿의 높이 (상자 32px + PhoneTouchTargetLargeOverhang 위아래 20px = 72px).
-        row.setMinimumHeight(metro ? Metro.px(ui, 72) : Ui.dp(ui, 52));
-        int side = metro ? Metro.px(ui, 24) : Ui.dp(ui, 24);
+        // Metro: WP8.1 CheckBox 템플릿의 높이 (상자 25.5 + PhoneTouchTargetLargeOverhang 위아래 16 = 57.5 유효 픽셀).
+        row.setMinimumHeight(metro ? Metro.wp81(ui, 57.5f) : Ui.dp(ui, 52));
+        int side = metro ? Metro.pagePad(ui, 24) : Ui.dp(ui, 24);
         row.setPadding(side, Ui.dp(ui, 6), side, Ui.dp(ui, 6));
         TextView t = text(b.items[index], metro ? Metro.sp(Metro.FONT_MEDIUM_LARGE) : 16, metro ? Metro.fg : colors.text);
         if (metro) t.setTypeface(Metro.regular());   // ListPickerItem처럼 PhoneFontSizeMediumLarge, 보통 굵기
@@ -271,8 +279,10 @@ public final class AppDialog extends Dialog {
             mark = new Mark(ui, multi, metro);
             boolean on = multi ? b.checkedItems != null && b.checkedItems[index] : index == b.checkedItem;
             mark.setChecked(on);
-            LinearLayout.LayoutParams mlp = new LinearLayout.LayoutParams(Ui.dp(ui, 24), Ui.dp(ui, 24));
-            mlp.rightMargin = metro ? Metro.px(ui, 12) : Ui.dp(ui, 20);   // CheckBox 템플릿: 상자와 글 사이 12px
+            int ms = metro ? Metro.wp81(ui, 25.5f) : Ui.dp(ui, 24);   // WP8.1 상자 25.5
+            LinearLayout.LayoutParams mlp = new LinearLayout.LayoutParams(ms, ms);
+            // WP8.1 CheckBox 템플릿: 상자와 글 사이 CheckBoxAndRadioButtonTextPaddingThickness 8
+            mlp.rightMargin = metro ? Metro.wp81(ui, 8) : Ui.dp(ui, 20);
             row.addView(mark, mlp);
         }
         marks[index] = mark;
@@ -334,7 +344,8 @@ public final class AppDialog extends Dialog {
             b.setTextColor(Metro.buttonInk());
             Metro.buttonPadding(b);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-            lp.leftMargin = lp.rightMargin = Metro.px(ui, 12);
+            lp.leftMargin = lp.rightMargin = Metro.wp81(ui, 9.5f);
+            lp.topMargin = lp.bottomMargin = Metro.wp81(ui, Metro.BUTTON_OVERHANG_EPX);
             bar.addView(b, lp);
             Metro.tilt(b);
         } else {
