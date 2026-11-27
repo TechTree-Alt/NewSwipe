@@ -151,48 +151,19 @@ public final class Metro {
     /** PivotHeaderItemCharacterSpacing -25 (1/1000 em): 페이지 제목·피벗 이름의 자간. */
     public static final float HEADER_LETTER_SPACING = -0.025f;
 
-    /** Segoe WP의 ascent(2210/2048 em)와, 한 줄에서 descent가 차지하는 몫(514/2724). WP8.1 글자 줄의 자리를 셈한다. */
-    private static final float SEGOE_ASCENT = 1.0791f, SEGOE_DESCENT_SHARE = 0.18869f, SEGOE_LINE = 1.33f;
-
     /**
-     * WP8.1 텍스트 스타일의 줄 상자 (LineStackingStrategy BaselineToBaseline, LineHeight lineEpx)를 흉내 낸다. 에뮬레이터에서 잰
-     * WP8.1의 규칙: 첫 기준선은 글자 크기와 상관없이 위에서 Segoe WP의 ascent(1.0791 em), 한 줄의 높이는 거기에 0.18869 × LineHeight를
-     * 더한 것, 다음 줄들의 기준선은 LineHeight씩 아래 (예: HeaderTextBlockStyle 57.5는 기준선 62.05, 높이 72.9).
-     * Android의 줄(이 기기 글꼴의 ascent·descent)과의 차이를 위·아래에 더할 여백(px, 음수일 수 있다) {위, 아래}로 돌려준다:
-     * 부른 쪽이 바깥 여백에 더한다. 기준선이 이 기기의 글꼴과 상관없이 WP8.1과 같은 자리에 온다. 글자 크기와 글꼴을 정한 뒤 부른다.
+     * WP8.1 텍스트 스타일의 줄 상자 (LineStackingStrategy BaselineToBaseline, LineHeight lineEpx)를 흉내 낸다. 줄 높이가 글자 크기와
+     * 거의 같아 Android의 줄 상자(글꼴의 위아래 끝까지)보다 훨씬 낮다. 첫 줄의 기준선을 줄 위에서 LineHeight의 81%(Segoe UI의
+     * ascent ÷ 줄 간격)에 두고, 줄 사이를 LineHeight로 맞춘다. includeFontPadding을 끄고 줄 간격을 바꾼 뒤,
+     * 위·아래에 더할 여백(px, 음수일 수 있다) {위, 아래}를 돌려준다: 부른 쪽이 바깥 여백에 더한다. 글자 크기와 글꼴을 정한 뒤 부른다.
      */
     public static int[] baselineToBaseline(TextView t, float lineEpx) {
         float line = epx(t.getContext(), lineEpx);
-        return wpLine(t, SEGOE_ASCENT * t.getTextSize(), SEGOE_ASCENT * t.getTextSize() + SEGOE_DESCENT_SHARE * line, line);
-    }
-
-    /**
-     * WP8.1에서 TextBlock 스타일이 아닌 글(ContentControl의 글, 피벗 제목 등)의 보통 줄: 높이는 1.33 em, 기준선은 위에서 1.0791 em.
-     * {@link #baselineToBaseline}처럼 위·아래에 더할 여백을 돌려준다.
-     */
-    public static int[] normalLine(TextView t) {
-        float size = t.getTextSize();
-        return wpLine(t, SEGOE_ASCENT * size, SEGOE_LINE * size, SEGOE_LINE * size);
-    }
-
-    private static int[] wpLine(TextView t, float baseline, float height, float lineGap) {
         t.setIncludeFontPadding(false);
-        // 한글처럼 다른 글꼴로 그리는 글자가 줄을 키우지 않게 (Android 9 이상의 기본값): 줄은 이 글꼴의 ascent·descent만.
-        if (android.os.Build.VERSION.SDK_INT >= 28) t.setFallbackLineSpacing(false);
         android.graphics.Paint.FontMetrics fm = t.getPaint().getFontMetrics();
-        t.setLineSpacing(lineGap - (fm.descent - fm.ascent), 1f);
-        int top = Math.round(baseline + fm.ascent);                 // 기준선을 WP의 자리로
-        int bottom = Math.round(height - baseline - fm.descent);     // 한 줄의 아래 끝을 WP의 자리로
-        return new int[]{top, bottom};
-    }
-
-    /** 피벗 이름 줄처럼 직접 그리는 글의 자리: WP8.1 보통 줄의 높이(1.33 em)와 기준선(1.0791 em) (px). */
-    public static float normalLineHeight(float textPx) {
-        return SEGOE_LINE * textPx;
-    }
-
-    public static float normalBaseline(float textPx) {
-        return SEGOE_ASCENT * textPx;
+        t.setLineSpacing(line - (fm.descent - fm.ascent), 1f);
+        float baseline = line * 0.81f;
+        return new int[]{Math.round(baseline + fm.ascent), Math.round(line - baseline - fm.descent)};
     }
 
     /**
@@ -872,16 +843,16 @@ public final class Metro {
             invalidate();
         }
 
-        /** 글자 줄은 WP8.1의 보통 줄: 높이 1.33 em, 기준선은 위에서 1.0791 em (이 기기 글꼴과 상관없이 WP8.1과 같은 자리). */
+        /** 글자 줄의 높이는 글꼴의 위아래 끝(top·bottom)까지: Silverlight TextBlock의 줄 높이(글자 크기의 약 1.33배)와 같다. */
         @Override
         protected void onMeasure(int widthSpec, int heightSpec) {
-            int h = Math.round(normalLineHeight(paint.getTextSize())) + getPaddingTop() + getPaddingBottom();
+            int h = Math.round(fm.bottom - fm.top) + getPaddingTop() + getPaddingBottom();
             setMeasuredDimension(MeasureSpec.getSize(widthSpec), h);
         }
 
         @Override
         protected void onDraw(android.graphics.Canvas c) {
-            float y = getPaddingTop() + normalBaseline(paint.getTextSize());
+            float y = getPaddingTop() - fm.top;
             // 고르지 않은 이름: 다크는 흰색 40%, 라이트는 검정 87%(#DE000000)의 23.144% (= 검정 20%).
             int dim = dark ? 0x66FFFFFF : 0x33000000;
             // 멈춰 있을 때는 이름마다 한 번씩만 쓴다. 움직이는 동안에는 줄을 화면 끝까지 고리 차례로 이어 그려, 다음다음 이름이
@@ -1292,24 +1263,15 @@ public final class Metro {
     // ---------------------------------------------------------------- 앱 바
 
     /**
-     * Windows Phone 8.1의 앱 바 (공식 지침 "App bar for Windows Phone"과, 셸이 그린 WP8.1 앱 바를 에뮬레이터 화면에서 잰 값.
-     * 유효 픽셀, 막대 위에서부터):
+     * Windows Phone 8의 앱 바 (공식 지침 "App bar for Windows Phone", "Essential graphics ... App bar"):
      * <ul>
-     * <li>화면 맨 아래, 폭을 꽉 채운 높이 62.92의 크롬 색 막대. 불투명이라 화면 내용은 그 위까지만 쓴다.</li>
-     * <li>자주 쓰는 동작을 아이콘 버튼으로 최대 네 개, 가운데에 73.75 간격으로 모아 둔다. 버튼은 위 10.45에서 시작하는 지름 40.75의
-     *     동그라미 안의 아이콘(앱 바가 동그라미를 그린다).</li>
-     * <li>오른쪽 위의 점 세 개(지름 4.6, 간격 9.17, 오른쪽 끝에서 20.83, 가운데가 위 12.7)를 누르면(또는 막대를 위로 튕기면) 펼쳐져
-     *     버튼 아래에 짧은 이름(SemiBold 11.67, 기준선이 위 71.25)이, 그 아래에 메뉴 항목(SemiLight 27.92, 왼쪽 20.83, 첫 기준선이
-     *     위 125.83, 줄마다 59.17, 마지막 기준선 아래 100에서 막대가 끝난다)이 보인다. 메뉴 항목은 소문자, 다섯 개까지.
-     *     점·바깥·뒤로 가기·항목·버튼을 누르면 접힌다.</li>
+     * <li>화면 맨 아래, 폭을 꽉 채운 높이 72px(→ 54dp)의 크롬 색 막대. 불투명이라 화면 내용은 그 위까지만 쓴다.</li>
+     * <li>자주 쓰는 동작을 아이콘 버튼으로 최대 네 개, 가운데에 모아 둔다. 버튼은 48px(→ 36dp) 동그라미 안의 아이콘(앱 바가 동그라미를 그린다).</li>
+     * <li>오른쪽의 점 세 개를 누르면(또는 막대를 위로 튕기면) 펼쳐져 버튼 아래에 짧은 이름(text hint)이, 그 아래에 메뉴 항목이 보인다.
+     *     메뉴 항목은 소문자, 다섯 개까지. 점·바깥·뒤로 가기·항목·버튼을 누르면 접힌다.</li>
      * </ul>
      */
     public static final class AppBar extends LinearLayout {
-        /** 접힌 막대의 높이, 동그라미의 위·지름, 이름의 기준선, 메뉴의 첫 기준선·줄 간격·마지막 기준선 아래 (유효 픽셀). */
-        private static final float BAR = 62.92f, CIRCLE_TOP = 10.45f, CIRCLE = 40.75f, LABEL_BASELINE = 71.25f,
-                MENU_BASELINE = 125.83f, MENU_LINE = 59.17f, MENU_FOOT = 100f;
-        /** 메뉴 한 줄 안에서 기준선의 자리 (줄 위에서): 글자가 줄 가운데쯤에 오게. */
-        private static final float MENU_LINE_BASELINE = 40f;
         private final LinearLayout buttons, menu;
         private final java.util.List<TextView> hints = new java.util.ArrayList<>();
         private final View dots;
@@ -1331,10 +1293,10 @@ public final class Metro {
 
                 @Override
                 protected void onDraw(android.graphics.Canvas canvas) {
-                    // 오른쪽 위의 점 세 개: 지름 4.6, 간격 9.17, 맨 오른쪽 점의 오른쪽 끝이 화면 끝에서 20.83, 가운데가 위 12.7.
+                    // 오른쪽 위의 점 세 개 (4px → 3dp 지름, 간격 8px → 6dp)
                     p.setColor(fg);
-                    float r = epx(getContext(), 2.3f), gap = epx(getContext(), 9.17f);
-                    float cy = epx(getContext(), 12.7f), right = getWidth() - epx(getContext(), 20.83f) - r;
+                    float r = Ui.dp(getContext(), 1.5f), gap = Ui.dp(getContext(), 6);
+                    float cy = Ui.dp(getContext(), 10), right = getWidth() - Ui.dp(getContext(), 18);
                     for (int i = 0; i < 3; i++) canvas.drawCircle(right - i * gap, cy, r, p);
                 }
             };
@@ -1342,19 +1304,12 @@ public final class Metro {
             dots.setOnClickListener(v -> setOpen(!open));
             row.addView(dots, new FrameLayout.LayoutParams(Ui.dp(c, 64), Ui.dp(c, 40), android.view.Gravity.END | android.view.Gravity.TOP));
             addView(row, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
-            row.setMinimumHeight(wp81(c, BAR));
+            row.setMinimumHeight(Ui.dp(c, 54));
             menu = new LinearLayout(c);
             menu.setOrientation(VERTICAL);
-            // 마지막 기준선 아래 100에서 막대가 끝난다 (줄 하나가 기준선 아래 59.17 - 40을 이미 품고 있다).
-            menu.setPadding(0, 0, 0, wp81(c, MENU_FOOT - (MENU_LINE - MENU_LINE_BASELINE)));
+            menu.setPadding(0, Ui.dp(c, 4), 0, Ui.dp(c, 12));
             menu.setVisibility(GONE);
             addView(menu, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
-        }
-
-        /** 글자 줄을 글꼴의 ascent·descent만으로 잡는다 (위아래 여분과 대체 글꼴의 줄 높이 없이: 기준선 자리를 셈할 수 있게). */
-        private static void tightLine(TextView t) {
-            t.setIncludeFontPadding(false);
-            if (android.os.Build.VERSION.SDK_INT >= 28) t.setFallbackLineSpacing(false);
         }
 
         /** 아이콘 버튼을 더한다 (최대 네 개). hint는 펼쳤을 때 버튼 아래에 보이는 짧은 이름. */
@@ -1363,34 +1318,21 @@ public final class Metro {
             LinearLayout col = new LinearLayout(c);
             col.setOrientation(VERTICAL);
             col.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
-            // 버튼 뷰는 동그라미보다 사방 2dp 크다 (ExpressiveIconButton이 테두리 안쪽으로 동그라미를 그린다).
-            int inset = Ui.dp(c, 2), size = wp81(c, CIRCLE) + 2 * inset, top = wp81(c, CIRCLE_TOP) - inset;
-            int bar = wp81(c, BAR);
-            LayoutParams blp = new LayoutParams(size, size);
-            blp.topMargin = top;
-            blp.bottomMargin = bar - top - size;   // 접힌 막대의 높이에 맞춘다
+            LayoutParams blp = new LayoutParams(Ui.dp(c, 40), Ui.dp(c, 40));
+            blp.topMargin = Ui.dp(c, 7);
+            blp.bottomMargin = Ui.dp(c, 7);
             col.addView(button, blp);
             TextView t = new TextView(c);
             t.setText(lower(hint));
             t.setTextColor(fg);
-            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp81(11.67f));
-            t.setTypeface(semibold());
+            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+            t.setTypeface(regular());
             t.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
             t.setSingleLine(true);
-            tightLine(t);
             t.setVisibility(GONE);
-            // 기준선을 막대 위에서 71.25에, 그 아래는 메뉴의 첫 줄이 시작하는 자리(첫 기준선 125.83 - 40)까지.
-            android.graphics.Paint.FontMetrics fm = t.getPaint().getFontMetrics();
-            int labelTop = Math.round(epx(c, LABEL_BASELINE) + fm.ascent);
-            int labelBottom = Math.round(epx(c, LABEL_BASELINE) + fm.descent);
-            LayoutParams tlp = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
-            tlp.topMargin = labelTop - bar;
-            tlp.bottomMargin = wp81(c, MENU_BASELINE - MENU_LINE_BASELINE) - labelBottom;
-            // 보일 때만 쓰는 여백: 펼치고 접는 동안 높이와 함께 0에서/으로 움직인다 (Ui.setVisibleAnimated).
-            t.setTag(com.alternative_studios.newswipe.R.id.shown_margins, new int[]{tlp.topMargin, tlp.bottomMargin});
-            col.addView(t, tlp);
+            col.addView(t, new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT));
             hints.add(t);
-            buttons.addView(col, new LayoutParams(wp81(c, 73.75f), LayoutParams.WRAP_CONTENT));
+            buttons.addView(col, new LayoutParams(wp81(c, 73.75f), LayoutParams.WRAP_CONTENT));   // WP8.1 앱 바의 버튼 칸 (실측)
         }
 
         /** 메뉴 항목을 더한다 (소문자로 보인다, 다섯 개까지 권장). 누르면 앱 바를 접고 action을 부른다. */
@@ -1399,22 +1341,17 @@ public final class Metro {
             TextView t = new TextView(c);
             t.setText(lower(label));
             t.setTextColor(fg);
-            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp81(27.92f));
-            t.setTypeface(light());
-            t.setSingleLine(true);
-            t.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            tightLine(t);
-            // 한 줄 59.17, 기준선은 줄 위에서 40, 글은 왼쪽 20.83.
-            android.graphics.Paint.FontMetrics fm = t.getPaint().getFontMetrics();
-            int line = wp81(c, MENU_LINE);
-            int padTop = Math.round(epx(c, MENU_LINE_BASELINE) + fm.ascent);
-            t.setPadding(wp81(c, 20.83f), padTop, wp81(c, 20.83f), 0);
+            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
+            t.setTypeface(regular());
+            t.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            t.setMinHeight(Ui.dp(c, 48));
+            t.setPadding(Ui.dp(c, 18), 0, Ui.dp(c, 18), 0);
             t.setOnClickListener(v -> {
                 setOpen(false);
                 action.run();
             });
             tilt(t);
-            menu.addView(t, new LayoutParams(LayoutParams.MATCH_PARENT, line));
+            menu.addView(t, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
         }
 
         /** 펼쳐지거나 접힐 때 (바깥을 누르면 접히도록 부른 쪽이 막을 깔고 걷는 데 쓴다). */

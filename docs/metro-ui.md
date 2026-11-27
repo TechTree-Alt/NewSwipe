@@ -26,7 +26,7 @@ Windows Phone 7·8·8.1의 Metro UI처럼 바뀝니다. 이 문서는 무엇을 
 - Toolkit의 `CustomMessageBox`, `ListPicker`, `ExpanderView` 템플릿과 `Swivel*.xaml`
 - 크기: WP8 화면은 480px 폭이므로 SDK의 px 값에 0.75를 곱해 dp·sp로 옮깁니다 (360dp 폭 기준, `Metro.px`·`Metro.sp`).
   WP8.1(WinRT) 값은 400 유효 픽셀 폭 기준이라 0.9를 곱합니다 (`Metro.wp81`·`Metro.sp81`). 좌우 여백·머리글·피벗·버튼·체크 상자·대화상자·앱 바 버튼 칸은 WP8.1 값을,
-  토글·값 줄·슬라이더·입력란·드롭다운은 WP8(툴킷) 값을 씁니다 (토글 사이를 넉넉히 두려고). 테두리는 두 기준 모두 2.25dp (3px × 0.75 = 2.5 × 0.9). 참고: [WP8.1 디자인 지침 PDF](https://tilsgee.github.io/DesignGuidelinesArchive/uwp8.1.pdf), WP8.1 에뮬레이터에서 잰 자리·줄 높이([Cornflower](https://github.com/wdcossey/Cornflower)의 docs/controls: TextBlock, Pivot, CommandBar),
+  토글·값 줄·슬라이더·입력란·드롭다운은 WP8(툴킷) 값을 씁니다 (토글 사이를 넉넉히 두려고). 테두리는 두 기준 모두 2.25dp (3px × 0.75 = 2.5 × 0.9). 참고: [WP8.1 디자인 지침 PDF](https://tilsgee.github.io/DesignGuidelinesArchive/uwp8.1.pdf),
   microsoft-ui-xaml에 남은 WP8.1 테마 리소스·텍스트 스타일.
 - 첨부 이미지: Windows Phone 설정 화면(피벗 머리글), Windows 10 Mobile 키보드(다크)
 
@@ -37,7 +37,7 @@ Windows Phone 7·8·8.1의 Metro UI처럼 바뀝니다. 이 문서는 무엇을 
 | 순수한 검정·흰색 바탕, 강조색 | `AppTheme`: 바탕 `#000000`/`#FFFFFF`, 글자 `#FFFFFF`/`#212121`(검정 87%), 크롬 `#1F1F1F`/`#DDDDDD`, 옅은 글자 `#999999`. 강조색 위 글자는 흰색 (아주 밝은 색 제외) |
 | 둥근 모서리·그림자·물결 없음 | `Ui.round()`가 모서리 0, `Ui.ripple()`이 눌림 색 없는 바탕(목록·메뉴 줄은 틸트로 반응), `Ui.keyPress()`는 키보드 쪽에서 누르는 동안 강조색, `Ui.chipRadius()` 0. 이 세 곳을 쓰는 화면 대부분이 한꺼번에 바뀝니다 |
 | 글자 | SDK 글꼴 크기를 옮긴다 (`Metro.FONT_*`, WP8.1은 `FONT81_*`): 설정 줄의 머리글·설명 PhoneFontSizeNormal 20px → 15sp(옅은 글자), 값·입력란 MediumLarge 25.333px → 19sp, 토글의 켬/끔·묶음 머리글 Large 32px → 24sp. WP8.1: 버튼 SemiBold 18.14 → 16.3sp, 페이지 제목 57.5 → 51.75sp, 피벗 이름 57 → 51.3sp(둘 다 자간 -25). Segoe WP 대신 `sans-serif`(-light, -medium) |
-| 머리글 | WP8.1 기본 페이지 템플릿(유효 픽셀): 왼쪽 19, 위 12에 대문자 `NEWSWIPE`(TitleTextBlockStyle SemiBold 18.14), 그 아래 화면 이름(HeaderTextBlockStyle SemiLight 57.5, 자간 -25, Margin 0,-6.5,0,26.5), 내용은 그 아래 9.5부터. 줄 상자는 에뮬레이터에서 잰 WP8.1의 규칙을 따른다: BaselineToBaseline 스타일은 첫 기준선이 위에서 1.0791 em(Segoe WP의 ascent), 한 줄의 높이는 거기에 0.18869 × LineHeight를 더한 것(예: Header는 기준선 62.05, 높이 72.9), 보통 줄은 높이 1.33 em (`Metro.baselineToBaseline`·`normalLine`). 이 기기 글꼴의 줄 높이와 상관없이 기준선이 WP8.1의 자리에 온다 (한글처럼 대체 글꼴로 그리는 글자도 줄을 키우지 않는다). 섹션이 둘 이상인 메뉴는 WP8.1 Pivot 템플릿이 된다: 제목 SemiBold 18.14 위 38(PivotPortraitThemePadding), 이름 줄은 제목 줄 아래 -6.5·화면 왼쪽 16·이름 사이 16, 내용은 이름 줄 아래 6.5 + 22.5 (잰 자리: 제목 37.92, 이름 줄 55.42, 내용 160.42), 고르지 않은 이름은 다크 40%·라이트 23% (아래 '피벗'). 기본 페이지보다 피벗이 26쯤 아래에서 시작하는 것도 두 템플릿의 값 그대로다 |
+| 머리글 | WP8.1 기본 페이지 템플릿(유효 픽셀): 왼쪽 19, 위 12에 대문자 `NEWSWIPE`(TitleTextBlockStyle SemiBold 18.14), 그 아래 화면 이름(HeaderTextBlockStyle SemiLight 57.5, 자간 -25, Margin 0,-6.5,0,26.5), 내용은 그 아래 9.5부터. 두 스타일의 BaselineToBaseline 줄 상자(LineHeight 21.5·57.5, 기준선은 줄 위에서 81%)는 `Metro.baselineToBaseline`이 흉내 낸다. 섹션이 둘 이상인 메뉴는 WP8.1 Pivot 템플릿이 된다: 제목 SemiBold 18.14 위 38, 이름은 화면 왼쪽 16·제목 아래 -6.5·이름 사이 16, 내용은 이름 아래 6.5 + 22.5, 고르지 않은 이름은 다크 40%·라이트 23% (아래 '피벗') |
 | 스크롤 표시 | WP8 ScrollViewer처럼 끄는 동안만 나타났다가 0.5초 뒤 사라지는 5px(→ 4dp) 폭의 PhoneDisabled 네모(다크 #666666·라이트 #B3B3B3), 누를 수 없음 (`Metro.scrollIndicator`, 네모 모양은 Android 10 이상) |
 | 좌우 여백 | WP8.1 페이지 템플릿의 Margin 19 유효 픽셀 → 17.1dp. 머리글·피벗·목록·검색창·입력 시험 창·편집 화면·설정 창·대화상자가 모두 이 선에 맞는다 (`Metro.pagePad`) |
 | 카드 없음 | `SettingsWidgets.card()`가 바탕 없이, 구분선·화살표(`Chevron`) 숨김. 섹션 소제목은 피벗의 이름이 되어 목록에서 빠진다 |
@@ -51,7 +51,7 @@ Windows Phone 7·8·8.1의 Metro UI처럼 바뀝니다. 이 문서는 무엇을 
 | 값 줄 | Toolkit ListPicker 템플릿처럼 위에 옅은 머리글(아래 8px), 그 아래 글자 색 3px 테두리 네모 안에 지금 값(19sp, 항목의 Padding 8,10px). 드롭다운은 그 네모 자리에서 목록으로 펼쳐진다: 흰 바탕(PhoneTextBoxEditBackground)에 강조색 3px 테두리, 항목은 19sp 보통 굵기·Padding 8,10px라 접힌 네모의 글자 자리와 펼친 목록의 고른 항목이 정확히 겹친다. 고른 항목을 중심으로 위아래로 펼쳐지고(300ms EaseOut), 접힐 때는 고른 항목으로 오므라든다(220ms) (`metroPicker`, `DropdownMenu.PICKER_BOX`) |
 | 슬라이더 | SDK Slider 템플릿: 12px(→ 9dp) 높이의 크롬 색 막대 왼쪽을 강조색으로, 손잡이는 12×24px 글자 색 네모 |
 | 버튼 | WP8.1 Button: 글자 색 2.5(→ 2.25dp) 테두리 네모, 안쪽 여백 9.5,0,9.5,3.5, 최소 폭 109(→ 98dp)·보이는 최소 높이 38.5(→ 34.7dp), 글은 가운데, SemiBold 18.14(→ 16.3sp). 바깥 여백은 위아래 PhoneTouchTargetOverhang 9.5만(이어진 버튼 사이 19 → 17.1dp, 다른 항목 앞에서는 일반 항목 사이만큼, 바로 아래 설명 글은 그 버튼의 설명으로 붙이고 항목 사이 여백은 설명 아래로). 누르면 강조색으로 채워지고 꺼지면 테두리·글자가 PhoneDisabled. 글자만 담는다(가져오기·지우기 등 오른쪽 아이콘은 Metro에서 숨긴다). 하위 묶음의 첫 버튼은 위 여백 없이 세로선과 같은 높이에서 시작하고, 하위 묶음은 다른 틀의 맨 앞에 있어도 바로 위 줄(예: 도구 막대 표시)에 붙는다. 모든 Metro 버튼이 `Metro.buttonBackground`·`buttonInk`·`buttonPadding`을 같이 쓴다 |
-| 앱 바 | WP8.1 셸이 그린 앱 바를 에뮬레이터 화면에서 잰 값(유효 픽셀, 막대 위에서): 접힌 높이 62.92의 크롬 색 막대 (`Metro.AppBar`). 가운데에 73.75 간격으로 위 10.45에서 시작하는 지름 40.75 동그라미 아이콘 버튼(그림은 공식 지침대로 가운데 26×26px)(검색, 키보드, 되돌리기), 오른쪽 위 점 세 개(지름 4.6, 간격 9.17, 오른쪽 끝에서 20.83). 점을 누르거나 막대를 위로 튕기면 버튼 아래 짧은 이름(SemiBold 11.67, 기준선이 위 71.25)과 소문자 메뉴 항목(SemiLight 27.92, 왼쪽 20.83, 첫 기준선 125.83, 줄마다 59.17, 마지막 기준선 아래 100에서 막대 끝)이 밀려 올라온다. 바깥·점·뒤로 가기·항목·버튼을 누르면 접힌다. 버튼은 누르는 동안 강조색. 키보드 사용자화의 설정 창(시트)은 머리글을 덮지만 앱 바는 덮지 않으므로, 창 머리글에는 되돌리기·키보드 버튼을 두지 않고 앱 바의 키보드 버튼이 창의 입력 시험 창을 연다 |
+| 앱 바 | 화면 맨 아래 54dp(72px) 크롬 색 막대 (`Metro.AppBar`). 가운데에 36dp(48px) 동그라미 아이콘 버튼을 WP8.1 실측 칸 폭 73.75 유효 픽셀(→ 66dp)마다(그림은 공식 지침대로 가운데 26×26px)(검색, 키보드, 되돌리기), 오른쪽 위 점 세 개. 점을 누르거나 막대를 위로 튕기면 버튼 아래 짧은 이름과 소문자 메뉴 항목(기본값으로 되돌리기)이 밀려 올라온다. 바깥·점·뒤로 가기·항목·버튼을 누르면 접힌다. 버튼은 누르는 동안 강조색 (WP8). 키보드 사용자화의 설정 창(시트)은 머리글을 덮지만 앱 바는 덮지 않으므로, 창 머리글에는 되돌리기·키보드 버튼을 두지 않고 앱 바의 키보드 버튼이 창의 입력 시험 창을 연다 |
 
 ### 움직임
 
