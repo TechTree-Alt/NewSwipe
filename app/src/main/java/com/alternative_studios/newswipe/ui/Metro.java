@@ -642,6 +642,10 @@ public final class Metro {
             return widths[ring(i)];
         }
 
+        int selected() {
+            return selected;
+        }
+
         void setSelected(int i) {
             selected = i;
             setContentDescription(names[i]);
@@ -962,6 +966,9 @@ public final class Metro {
             }
             float item = d < 0 ? header.widthOf(index) : header.widthOf(index - 1);
             header.setOffset(d / w * item);
+            // 고른 이름은 페이지가 반 넘게 넘어가면 바로 옆 이름으로 밝아진다 (반 아래로 돌아오면 다시 지금 이름).
+            int lit = Math.abs(d) > w / 2f ? at(d < 0 ? 1 : -1) : index;
+            if (lit != header.selected()) header.setSelected(lit);
         }
 
         /**
@@ -982,7 +989,7 @@ public final class Metro {
                 content = null;
                 page.setBusy(false);
                 if (dir != 0) {
-                    // 페이지가 자리에 닿아 멈춘 때(InFinishTransition → Idle, PivotStateMachine) 고른 섹션이 바뀌어 이름이 밝아진다.
+                    // 페이지가 자리에 닿아 멈춘 때 고른 섹션이 바뀐다 (이름은 반 넘게 넘어갔을 때 이미 밝아졌다).
                     int target = at(dir);
                     show(target);
                     header.setFirst(target);
