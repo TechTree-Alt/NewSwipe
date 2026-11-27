@@ -42,7 +42,7 @@ public final class Icons {
     public static final int MENU_WORDS = 29;      // 단어 추천 (전구)
     public static final int MENU_SOUND = 30;      // 소리 및 진동
     public static final int MENU_INFO = 32;       // 정보
-    public static final int MENU_BACKUP = 33;     // 설정 가져오기 및 내보내기
+    public static final int MENU_BACKUP = 33;     // 백업 및 복원
     public static final int EXPORT = 35;          // 설정 내보내기 (받침 위로 나가는 화살표)
     public static final int IMPORT = 36;          // 설정 가져오기 (받침으로 들어오는 화살표)
     public static final int ONE_HAND = 38;        // 한 손 모드 (휴대폰 아래 한쪽에 몰린 자판)
@@ -419,7 +419,7 @@ public final class Icons {
                 break;
             case EXPORT:
             case IMPORT:
-                // 설정 가져오기 및 내보내기 메뉴 아이콘과 같은 받침에, 가운데 화살표 하나 (내보내기 = 위로, 가져오기 = 아래로).
+                // 백업 및 복원 메뉴 아이콘과 같은 받침에, 가운데 화살표 하나 (내보내기 = 위로, 가져오기 = 아래로).
                 path.moveTo(4, 15);
                 path.lineTo(4, 20);
                 path.lineTo(20, 20);

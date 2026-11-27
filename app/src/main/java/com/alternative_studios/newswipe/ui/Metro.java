@@ -512,14 +512,22 @@ public final class Metro {
          * 때까지 화면을 감춰 두었다가 튼다 (오래 걸리면 ENTER_IME_WAIT_MS 뒤에 그냥 튼다).
          */
         public void playEnterOnFirstDraw() {
+            playEnterOnFirstDraw(true);
+        }
+
+        /**
+         * {@link #playEnterOnFirstDraw()}와 같되, forward가 false면 돌아온 화면처럼 들어온다 (화면 모드를 바꾼 뒤 돌아와 앞 화면을
+         * 새 색으로 다시 만들었을 때).
+         */
+        public void playEnterOnFirstDraw(boolean forward) {
             getViewTreeObserver().addOnPreDrawListener(new android.view.ViewTreeObserver.OnPreDrawListener() {
                 @Override
                 public boolean onPreDraw() {
                     getViewTreeObserver().removeOnPreDrawListener(this);
                     if (imeCovering()) {
-                        enterAfterIme();
+                        enterAfterIme(forward);
                     } else {
-                        enter(true);
+                        enter(forward);
                     }
                     return true;
                 }
@@ -539,7 +547,7 @@ public final class Metro {
             return in.getSystemWindowInsetBottom() - in.getStableInsetBottom() > Math.round(80 * getResources().getDisplayMetrics().density);
         }
 
-        private void enterAfterIme() {
+        private void enterAfterIme(boolean forward) {
             content.setAlpha(0f);
             busy = true;
             final boolean[] done = {false};
@@ -553,7 +561,7 @@ public final class Metro {
                     @Override
                     public boolean onPreDraw() {
                         getViewTreeObserver().removeOnPreDrawListener(this);
-                        enter(true);
+                        enter(forward);
                         return true;
                     }
                 });

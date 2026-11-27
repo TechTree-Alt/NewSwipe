@@ -123,6 +123,8 @@ public final class SettingsActivity extends Activity {
         if (KEYBOARD.equals(sectionId)) sectionName = editorTitle(editorProfileId);
         // Metro UI: 메뉴에 들어갔을 때 위에 크게 뜨는 제목은 짧게 (메인 화면의 메뉴 이름은 그대로).
         if (Metro.on && sectionId != null && shortTitle(sectionId) != null) sectionName = shortTitle(sectionId);
+        // 모드 등을 바꾸고 돌아와 다시 만든 화면: 처음 열 때가 아니라 돌아온 화면처럼 들어온다.
+        boolean asReturn = savedInstanceState != null && savedInstanceState.getBoolean(STATE_RETURN, false);
         SettingsFrame frame = sectionName == null
                 ? new SettingsFrame(this, getString(R.string.app_name), L.t("밀어서 입력하고 조작하는 한국어 입력 시스템", "Swipe to type and control, in Korean and English"))
                         .withSearch(this::onSearchQuery)
@@ -130,6 +132,7 @@ public final class SettingsActivity extends Activity {
                 ? new SettingsFrame(this, sectionName, getString(R.string.app_name)).withSearch(this::onWordSearch, L.t("단어 검색", "Search words"))
                 : new SettingsFrame(this, sectionName, getString(R.string.app_name));
         metroFrame = frame;
+        if (asReturn) frame.enterAsReturn();
         // Metro: 설정 창(시트)은 머리글을 덮으므로, 창이 열려 있는 동안 앱 바의 키보드 버튼은 창의 입력 시험 창을 연다.
         frame.setKeyboardOverride(() -> {
             if (sheet == null || !sheet.isOpen()) return false;
@@ -190,7 +193,7 @@ public final class SettingsActivity extends Activity {
         super.onResume();
         // 다른 화면에서 화면 모드나 강조 색을 바꿨으면 이 화면도 새 색으로 다시 만든다.
         if (!themeSignature.equals(AppTheme.signature(this)) || builtGeneration != importGeneration || editorProfileChanged()) {
-            recreate();
+            recreateQuietly(true);
             return;
         }
         updateStatus();
@@ -262,7 +265,7 @@ public final class SettingsActivity extends Activity {
             {"words", L.t("추천, 학습 및 완성", "Suggestions, learning & autofill"), L.t("단어 추천, 학습, 단축어, 자동 완성", "Word suggestions, learning, text shortcuts, autofill")},
             {"clipemoji", L.t("클립보드 및 이모지", "Clipboard & emoji"), L.t("클립보드 기록, 편집 버튼, 이모지 크기·추천", "Clipboard history, edit buttons, emoji size and suggestions")},
             {"onehand", L.t("한 손 모드", "One-handed mode"), L.t("자판 폭·키 높이, 아래쪽 여백", "Keyboard width, key height, bottom padding")},
-            {"backup", L.t("설정 가져오기 및 내보내기", "Import & export settings"), L.t("모든 설정을 파일로 저장하거나 불러오기", "Save all settings to a file or load them")},
+            {"backup", L.t("백업 및 복원", "Backup & restore"), L.t("모든 설정을 파일로 저장하거나 불러오기", "Save all settings to a file or load them")},
             {"lab", L.t("실험실", "Labs"), L.t("외국어 자판, 외장 키보드, 떠 있는 키보드", "Other languages, physical keyboard, floating keyboard")},
     };
     }
@@ -325,7 +328,7 @@ public final class SettingsActivity extends Activity {
         }
     }
 
-    /** 기본값으로 되돌릴 설정이 있는 메뉴인지 (설정 메뉴. 정보·가져오기 및 내보내기·학습한 단어 등은 제외). */
+    /** 기본값으로 되돌릴 설정이 있는 메뉴인지 (설정 메뉴. 정보·백업 및 복원·학습한 단어 등은 제외). */
     private static boolean hasReset(String id) {
         for (String[] sec : sections()) if (sec[0].equals(id) && !"backup".equals(id)) return true;
         return false;
@@ -341,7 +344,7 @@ public final class SettingsActivity extends Activity {
         if (LANGUAGES.equals(id)) LanguageOrderEditor.reset(this);   // 언어 순서와 앱 언어
         else prefs.resetSection(id);
         importGeneration++;   // 뒤에 쌓인 설정 화면도 돌아오면 기본값으로 다시 그린다
-        recreate();
+        recreateQuietly(false);
         Toast.makeText(this, L.t("기본값으로 되돌렸습니다", "Restored defaults"), Toast.LENGTH_SHORT).show();
     }
 
@@ -420,6 +423,23 @@ public final class SettingsActivity extends Activity {
     protected void onSaveInstanceState(Bundle out) {
         super.onSaveInstanceState(out);
         if (sectionPivot != null) out.putInt(STATE_PIVOT, sectionPivot.index());
+        if (recreatingAsReturn) out.putBoolean(STATE_RETURN, true);
+    }
+
+    /** 다른 화면에서 돌아와 다시 만드는 중 (새 화면은 돌아온 화면의 턴스타일로 들어온다). */
+    private boolean recreatingAsReturn;
+    private static final String STATE_RETURN = "metro_return";
+
+    /**
+     * 새 설정(화면 모드·강조 색·디자인 모드 등)으로 화면을 다시 만든다. 다시 만들기 전에 창을 새 바탕색으로 칠하고 내용을 숨겨, 옛 색의
+     * 화면이 한 프레임 보였다가 바뀌는 깜빡임을 없앤다.
+     *
+     * @param returning 다른 화면에서 돌아와 다시 만드는지 (Metro: 새 화면이 돌아온 화면처럼 들어온다)
+     */
+    private void recreateQuietly(boolean returning) {
+        SettingsFrame.prepareRecreate(this, AppTheme.of(this));
+        recreatingAsReturn = returning;
+        recreate();
     }
 
     /**
@@ -435,7 +455,7 @@ public final class SettingsActivity extends Activity {
             case "words": return L.t("추천", "suggestions");
             case "clipemoji": return L.t("클립보드", "clipboard");
             case "onehand": return L.t("한 손 모드", "one-handed");
-            case "backup": return L.t("백업 & 복원", "backup");
+            case "backup": return L.t("백업 및 복원", "backup");
             case "lab": return L.t("실험실", "labs");
             case "app": return L.t("정보", "about");
             default: return null;
@@ -532,7 +552,7 @@ public final class SettingsActivity extends Activity {
         int start = Math.max(0, Math.min(n - 1, pivotStart));
         list = pivotPages[start];
         scrollView = pivotScrolls[start];
-        sectionPivot = metroFrame.installPivot(pivotNames, pivotScrolls, start, new Metro.Pivot.Host() {
+        sectionPivot = metroFrame.installPivot(sectionTitle(id), pivotNames, pivotScrolls, start, new Metro.Pivot.Host() {
             @Override
             public boolean canPivot() {
                 return !panelOpen() && !isFinishing() && !isDestroyed();
@@ -1772,7 +1792,7 @@ public final class SettingsActivity extends Activity {
         SettingsWidgets.Slider sl = sliderRow(L.t("폴더블 내부 화면 판정 기준", "Inner screen threshold"), Prefs.LARGE_SCREEN_DP, prefs.largeScreenDp(),
                 Prefs.LARGE_SCREEN_DP_MIN, Prefs.LARGE_SCREEN_DP_MAX, 20, "dp", null);
         if (!harvesting) sl.onRelease(() -> {
-            if (editorProfileChanged()) recreate();
+            if (editorProfileChanged()) recreateQuietly(false);
         });
         int nowDp = getResources().getConfiguration().smallestScreenWidthDp;
         View largeGroup = subGroup(sl.view,
@@ -1788,7 +1808,7 @@ public final class SettingsActivity extends Activity {
                     Ui.setVisibleAnimated(largeGroup, on);
                     // 지금 화면이 내부 화면이면 편집하는 키보드가 바뀐다: 스위치가 움직인 뒤 다시 만든다.
                     if (editorProfileChanged()) uiHandler.postDelayed(() -> {
-                        if (!isFinishing() && !isDestroyed() && editorProfileChanged()) recreate();
+                        if (!isFinishing() && !isDestroyed() && editorProfileChanged()) recreateQuietly(false);
                     }, 350);
                 }));
         largeGroup.setVisibility(prefs.largeLayout() || harvesting ? View.VISIBLE : View.GONE);
@@ -1851,7 +1871,7 @@ public final class SettingsActivity extends Activity {
         }
         if (editorPreview == null || editorProfileChanged()) {
             // 폴더블 내부 화면 별도 키보드·판정 기준을 되돌려 이 화면에서 쓰는 키보드가 바뀌었다: 그 키보드로 다시 만든다.
-            recreate();
+            recreateQuietly(false);
             return;
         }
         editorPreview.refresh();
@@ -2377,7 +2397,7 @@ public final class SettingsActivity extends Activity {
                         // 세로·가로가 따로 정하는 값은 지금 편집하는 방향의 값만 되돌린다.
                         for (int i = 0; i < checked.length; i++) if (checked[i]) editorView().resetEditorScopeInView(groups[i][0]);
                         importGeneration++;   // 뒤에 쌓인 설정 화면도 돌아오면 기본값으로 다시 그린다
-                        recreate();
+                        recreateQuietly(false);
                         Toast.makeText(this, L.t("기본값으로 되돌렸습니다", "Restored defaults"), Toast.LENGTH_SHORT).show();
                     })
                     .setNegativeButton(L.t("취소", "Cancel"), null)
@@ -3005,7 +3025,7 @@ public final class SettingsActivity extends Activity {
                     prefs.setCjkEnabled(lang, false);
                     com.alternative_studios.newswipe.cjk.CjkPack.remove(getFilesDir(), lang);
                     Toast.makeText(this, L.t("사전 팩을 지웠습니다", "Dictionary pack deleted"), Toast.LENGTH_SHORT).show();
-                    recreate();
+                    recreateQuietly(false);
                 })
                 .setNegativeButton(L.t("취소", "Cancel"), null)
                 .show()));
@@ -3078,7 +3098,7 @@ public final class SettingsActivity extends Activity {
             runOnUiThread(() -> {
                 if (done) prefs.setCjkEnabled(lang, true);
                 Toast.makeText(app, m, Toast.LENGTH_LONG).show();
-                if (done && !isFinishing()) recreate();
+                if (done && !isFinishing()) recreateQuietly(false);
             });
         }).start();
     }
@@ -3461,7 +3481,7 @@ public final class SettingsActivity extends Activity {
         String[] modeValues = {Prefs.THEME_SYSTEM, Prefs.THEME_LIGHT, Prefs.THEME_DARK};
         mode.addView(choiceRow(new String[]{L.t("시스템", "System"), L.t("라이트", "Light"), L.t("다크", "Dark")}, indexOf(modeValues, prefs.themeMode()), i -> {
             prefs.raw().edit().putString(Prefs.THEME_MODE, modeValues[i]).apply();
-            recreate();
+            recreateQuietly(false);
         }));
         mode.addView(note(L.t("시스템을 고르면 기기의 라이트/다크 설정을 따릅니다. 설정 화면과 키보드에 모두 적용됩니다.", "System follows your device's light/dark setting. Applies to both the settings and the keyboard.")));
 
@@ -3469,7 +3489,7 @@ public final class SettingsActivity extends Activity {
         String[] accentValues = {Prefs.ACCENT_SYSTEM, Prefs.ACCENT_CUSTOM};
         accent.addView(choiceRow(new String[]{L.t("시스템", "System"), L.t("지정 색상", "Custom color")}, indexOf(accentValues, prefs.accentMode()), i -> {
             prefs.raw().edit().putString(Prefs.ACCENT_MODE, accentValues[i]).apply();
-            recreate();
+            recreateQuietly(false);
         }));
         if (Build.VERSION.SDK_INT < 31) {
             accent.addView(note(L.t("시스템 색은 Android 12 이상에서 기기의 색을 따릅니다. 이전 버전에서는 지정 색상이 쓰입니다.", "System color follows your device colors on Android 12 and later. Earlier versions use the custom color.")));
@@ -3528,7 +3548,7 @@ public final class SettingsActivity extends Activity {
         box.addView(choiceRow(labels.toArray(new String[0]), Math.max(0, modes.indexOf(current)), i -> {
             int mode = modes.get(i);
             prefs.raw().edit().putBoolean(Prefs.NEUMORPHISM, mode == MODE_NEU).putBoolean(Prefs.METRO, mode == MODE_METRO).apply();
-            recreate();
+            recreateQuietly(false);
         }));
         String desc;
         if (current == MODE_NEU) {
@@ -3630,7 +3650,7 @@ public final class SettingsActivity extends Activity {
             sw.setContentDescription(String.format("#%06X", color & 0xFFFFFF));
             sw.setOnClickListener(v -> {
                 prefs.raw().edit().putInt(Prefs.ACCENT_COLOR, color).apply();
-                recreate();
+                recreateQuietly(false);
             });
             Metro.tilt(sw);
             row.addView(sw, new LinearLayout.LayoutParams(0, Ui.dp(this, square ? 64 : 48), 1f));
@@ -3658,7 +3678,7 @@ public final class SettingsActivity extends Activity {
                         int color = Color.parseColor(v) | 0xFF000000;
                         prefs.raw().edit().putInt(Prefs.ACCENT_COLOR, color).apply();
                         d.dismiss();   // 대화상자를 닫고 다시 만들어야 창이 남지 않는다
-                        recreate();
+                        recreateQuietly(false);
                     } catch (IllegalArgumentException e) {
                         Toast.makeText(this, L.t("색 코드를 읽을 수 없습니다", "Can't read the color code"), Toast.LENGTH_SHORT).show();
                     }
@@ -3772,7 +3792,7 @@ public final class SettingsActivity extends Activity {
                     .setPositiveButton(L.t("되돌리기", "Reset"), (d, w) -> {
                         DictionaryPack.remove(getFilesDir());
                         Toast.makeText(this, L.t("기본 사전으로 되돌렸습니다", "Restored the built-in dictionary"), Toast.LENGTH_SHORT).show();
-                        recreate();
+                        recreateQuietly(false);
                     })
                     .setNegativeButton(L.t("취소", "Cancel"), null)
                     .show()));
@@ -3801,7 +3821,7 @@ public final class SettingsActivity extends Activity {
             boolean done = ok;
             runOnUiThread(() -> {
                 Toast.makeText(app, m, Toast.LENGTH_LONG).show();
-                if (done && !isFinishing()) recreate();
+                if (done && !isFinishing()) recreateQuietly(false);
             });
         }).start();
     }
@@ -5043,7 +5063,7 @@ public final class SettingsActivity extends Activity {
         } else if (requestCode == REQ_IMPORT) {
             SettingsImport.onPicked(this, uri, () -> {
                 importGeneration++;
-                recreate();
+                recreateQuietly(false);
             });
         }
     }

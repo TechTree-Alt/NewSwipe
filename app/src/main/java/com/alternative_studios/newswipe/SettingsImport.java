@@ -13,7 +13,7 @@ import com.alternative_studios.newswipe.ui.Ui;
 
 /**
  * 설정 가져오기: 파일 고르기 → (암호화돼 있으면) 비밀번호 → 확인 → 적용.
- * 설정 화면의 '설정 가져오기 및 내보내기'와 첫 시작 가이드의 '설정 가져오기'가 같이 쓴다.
+ * 설정 화면의 '백업 및 복원'와 첫 시작 가이드의 '설정 가져오기'가 같이 쓴다.
  */
 final class SettingsImport {
     private SettingsImport() {
