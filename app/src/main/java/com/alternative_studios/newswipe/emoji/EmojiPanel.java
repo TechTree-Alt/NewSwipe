@@ -149,14 +149,30 @@ public final class EmojiPanel extends LinearLayout {
             listener.onEmojiBack();
         });
         searchRow.addView(topBack, new LayoutParams(Ui.dp(context, 44), ViewGroup.LayoutParams.MATCH_PARENT));
-        LinearLayout search = new LinearLayout(context);
+        // 검색창은 눌러도 모양이 바뀌지 않는다: 바탕(물결·Neumorphism 눌림)에 눌림 상태를 주지 않고,
+        // 안의 검색 아이콘에도 눌림을 넘기지 않는다 (넘기면 아이콘만 물결·강조색으로 빛난다).
+        LinearLayout search = new LinearLayout(context) {
+            @Override
+            protected void dispatchSetPressed(boolean pressed) {
+            }
+
+            @Override
+            protected int[] onCreateDrawableState(int extraSpace) {
+                int[] state = super.onCreateDrawableState(extraSpace);
+                int n = 0;
+                for (int s : state) if (s != android.R.attr.state_pressed) state[n++] = s;
+                for (int i = n; i < state.length; i++) state[i] = 0;
+                return state;
+            }
+        };
         search.setGravity(Gravity.CENTER_VERTICAL);
-        search.setBackground(Ui.keyPress(Ui.tint(theme.text), Ui.round(theme.functionKey, Ui.chipRadius(context)),
-                Ui.chipRadius(context)));
+        search.setBackground(Ui.round(theme.functionKey, Ui.chipRadius(context)));
         Neu.apply(search, theme, theme.functionKey, Ui.chipRadius(context));
         search.setPadding(Ui.dp(context, 10), 0, Ui.dp(context, 12), 0);
         IconButton icon = new IconButton(context, Icons.SEARCH, theme.hint, theme.keyPressed, null);
         icon.setClickable(false);
+        icon.setFocusable(false);
+        icon.setBackground(null);
         search.addView(icon, new LayoutParams(Ui.dp(context, 28), ViewGroup.LayoutParams.MATCH_PARENT));
         TextView hint = new TextView(context);
         hint.setText(L.t("이모지 검색 (한글·영어)", "Search emoji (Korean · English)"));

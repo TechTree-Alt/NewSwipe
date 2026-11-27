@@ -297,6 +297,9 @@ public final class Ui {
         return v.getVisibility() == android.view.View.GONE ? 0f : 1f;
     }
 
+    /** 펼치고 접는 중인 뷰의, 따로 정해 두지 않은 위·아래 바깥 여백의 보일 때 값. */
+    private static final java.util.WeakHashMap<android.view.View, int[]> AUTO_MARGINS = new java.util.WeakHashMap<>();
+
     public static void setVisibleAnimated(final android.view.View v, final boolean show) {
         setVisibleAnimated(v, show, null);
     }
@@ -323,7 +326,22 @@ public final class Ui {
         // 보일 때만 쓰는 위·아래 바깥 여백(하위 묶음이 위 줄 쪽으로 당겨 붙는 음수 여백 등)도 숨은 상태의 0에서/으로 함께 움직인다.
         // 함께 움직이지 않으면 펼치기 시작이나 접기 끝에 여백만큼 아래 줄들이 한 번에 튄다.
         final Object shownTag = v.getTag(com.alternative_studios.newswipe.R.id.shown_margins);
-        final int[] shown = shownTag instanceof int[] && lp instanceof android.view.ViewGroup.MarginLayoutParams ? (int[]) shownTag : null;
+        int[] shownMargins = shownTag instanceof int[] && lp instanceof android.view.ViewGroup.MarginLayoutParams ? (int[]) shownTag : null;
+        if (shownMargins == null && lp instanceof android.view.ViewGroup.MarginLayoutParams) {
+            // 따로 정해 두지 않은 뷰도 위·아래 바깥 여백(카드 사이 여백 등)이 있으면 함께 움직인다. 보일 때의 값은 이 움직임이 끝날
+            // 때까지 기억해 둔다 (도중에 뒤집혀도 같은 값으로 이어받는다). 움직이는 중이 아닐 때는 레이아웃 값이 곧 보일 때의 값이다.
+            int[] auto = old != null ? AUTO_MARGINS.get(v) : null;
+            if (auto == null) {
+                android.view.ViewGroup.MarginLayoutParams m = (android.view.ViewGroup.MarginLayoutParams) lp;
+                if (m.topMargin != 0 || m.bottomMargin != 0) auto = new int[]{m.topMargin, m.bottomMargin};
+            }
+            if (auto != null) AUTO_MARGINS.put(v, auto);
+            else AUTO_MARGINS.remove(v);
+            shownMargins = auto;
+        } else {
+            AUTO_MARGINS.remove(v);
+        }
+        final int[] shown = shownMargins;
         final int fromTop, fromBottom;
         if (shown != null) {
             android.view.ViewGroup.MarginLayoutParams m = (android.view.ViewGroup.MarginLayoutParams) lp;
@@ -364,6 +382,10 @@ public final class Ui {
         // 펼치고 접는 동안은 이 뷰 자신을 지금 높이로 자른다: Neumorphism에서는 그림자 때문에 부모들의 자르기를 꺼 두어,
         // 자르지 않으면 접히는 내용이 아래 줄 위로 삐져나온다.
         final android.graphics.Rect clip = new android.graphics.Rect();
+        // Neumorphism: 카드 그림자는 뷰 밖으로 번진다. 뷰 경계에서 자르면 접기 시작하자마자 그림자가 잘려 보이므로,
+        // 좌우·위는 그림자만큼 넓혀 자르고, 아래는 보이는 정도(투명도)만큼만 그림자 자리를 남긴다 (다 보일 때는 그림자 전체,
+        // 거의 사라질 때는 접히는 내용이 아래 줄 위로 삐져나오지 않게 경계 그대로).
+        final int shadow = NeuUi.on ? Math.round(NeuUi.spread(v.getContext(), NeuUi.LARGE)) : 0;
         a.addUpdateListener(anim -> {
             float f = (float) anim.getAnimatedValue();
             SHOWN.put(v, show ? f : 1f - f);
@@ -375,8 +397,9 @@ public final class Ui {
                 m.bottomMargin = Math.round(fromBottom + ((show ? shown[1] : 0) - fromBottom) * f);
             }
             v.setLayoutParams(l);
-            v.setAlpha(fromAlpha + (toAlpha - fromAlpha) * f);
-            clip.set(0, 0, Math.max(v.getWidth(), 1), l.height);
+            float alpha = fromAlpha + (toAlpha - fromAlpha) * f;
+            v.setAlpha(alpha);
+            clip.set(-shadow, -shadow, Math.max(v.getWidth(), 1) + shadow, l.height + Math.round(shadow * alpha));
             v.setClipBounds(clip);
         });
         a.addListener(new android.animation.AnimatorListenerAdapter() {
@@ -392,6 +415,7 @@ public final class Ui {
                 if (canceled) return;
                 RUNNING.remove(v);
                 SHOWN.remove(v);
+                AUTO_MARGINS.remove(v);
                 v.setClipBounds(null);
                 android.view.ViewGroup.LayoutParams l = v.getLayoutParams();
                 l.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT;
