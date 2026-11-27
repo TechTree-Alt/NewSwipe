@@ -219,7 +219,11 @@ public final class ClipboardPanel extends LinearLayout {
 
     /** 지금 보이는 페이지의 버튼만 강조색 칩으로 보인다. */
     private void updateTabs() {
-        boolean normal = pager.page() == 1;
+        updateTabs(pager.page());
+    }
+
+    private void updateTabs(int page) {
+        boolean normal = page == 1;
         styleTab(tabNormal, normal);
         styleTab(tabPinned, !normal);
     }
@@ -289,6 +293,9 @@ public final class ClipboardPanel extends LinearLayout {
             to.setVisibility(VISIBLE);
             to.setTranslationX(dir * getWidth());
             animating = true;
+            // Metro: 누른 버튼은 누르는 동안 강조색으로 덮이므로, 넘기기가 끝난 뒤에 강조색 칩으로 바꾸면 손을 뗄 때 덮개가
+            // 페이드아웃되었다가 다시 강조색이 나타난다. 누르자마자 바꿔 두면 강조색이 끊기지 않고 이어진다.
+            if (theme.metro) updateTabs(target);
             slide(-dir * getWidth(), 200, target);
         }
 
