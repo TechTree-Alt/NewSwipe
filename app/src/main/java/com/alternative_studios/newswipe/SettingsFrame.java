@@ -304,6 +304,10 @@ final class SettingsFrame {
 
     private View wrapPlain(View content, View bottom) {
         Ui.edgeToEdge(activity.getWindow(), colors.dark);
+        // 창 배경을 화면 바탕색과 같게: 테마의 windowBackground(settings_background)는 시스템의 다크/라이트를 따르고 Metro·
+        // Neumorphism 바탕과 색이 달라서, 화면 내용이 보이지 않는 순간(Metro 턴스타일이 다 돌아 나가 화면을 숨긴 뒤 닫히거나 다음
+        // 화면이 뜨기 전, 돌아와 다시 그리기 전)에 그 색이 깜빡였다.
+        activity.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(colors.bg));
         LinearLayout root = new LinearLayout(activity);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(colors.bg);
