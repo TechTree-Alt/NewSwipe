@@ -130,6 +130,15 @@ public final class Metro {
         return Ui.dp(c, wpPx * PX);
     }
 
+    /**
+     * 화면의 좌우 여백 (px). Metro: WP8 페이지 템플릿의 ContentPanel 12px + 글(PhoneHorizontalMargin) 12px = 24px → 18dp.
+     * WP8.1(WinRT) 템플릿의 ContentRoot·제목 Margin 19 유효 픽셀(→ 17.1dp)과도 거의 같고, 대화상자(CustomMessageBox)의 좌우
+     * 24px와 맞는다. 보통 모드는 normalDp.
+     */
+    public static int pagePad(Context c, float normalDp) {
+        return on ? px(c, 24) : Ui.dp(c, normalDp);
+    }
+
     /** WP의 글꼴 크기(px)를 sp로. */
     public static float sp(float wpPx) {
         return wpPx * PX;

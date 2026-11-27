@@ -58,7 +58,7 @@ public final class BottomKeysEditorActivity extends Activity {
         scroll.setFillViewport(true);
         list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
-        int pad = Ui.dp(this, 16);
+        int pad = Metro.pagePad(this, 16);
         list.setPadding(pad, 0, pad, Ui.dp(this, 32));
         scroll.addView(list);
         setContentView(new SettingsFrame(this, L.t("기능키 순서·유무 사용자화", "Customize function keys"), getString(R.string.app_name)).wrap(scroll));

@@ -153,7 +153,7 @@ final class EditorSheet {
         // 헤더 아래 입력 시험 창 (머리글의 것과 같은 모양). 키보드 열기를 누르면 펼친다.
         testRow = new LinearLayout(c);
         testRow.setVisibility(View.GONE);
-        int tp = Ui.dp(c, 16);
+        int tp = Metro.pagePad(c, 16);
         testRow.setPadding(tp, Ui.dp(c, 4), tp, Ui.dp(c, 8));
         testInput = new android.widget.EditText(c);
         testInput.setHint(L.t("여기에 입력해 보세요", "Type here"));
@@ -172,7 +172,7 @@ final class EditorSheet {
         scroll.setFillViewport(true);
         body = new LinearLayout(c);
         body.setOrientation(LinearLayout.VERTICAL);
-        int pad = Ui.dp(c, 16);
+        int pad = Metro.pagePad(c, 16);
         body.setPadding(pad, 0, pad, Ui.dp(c, 32));
         scroll.addView(body);
         sheet.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));

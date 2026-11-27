@@ -437,7 +437,7 @@ final class SettingsFrame {
         Context c = activity;
         LinearLayout header = new LinearLayout(c);
         header.setOrientation(LinearLayout.VERTICAL);
-        int pad = Ui.dp(c, 16);   // 목록과 같은 왼쪽 선 (WP: TitlePanel 12px + 글 12px)
+        int pad = Metro.pagePad(c, 16);   // 목록과 같은 왼쪽 선 (WP: TitlePanel 12px + 글 12px = 24px)
         header.setPadding(pad, Metro.px(c, 17), pad, Metro.px(c, 28));
         header.setClipChildren(true);
 
@@ -524,7 +524,7 @@ final class SettingsFrame {
         Context c = activity;
         searchBar = new LinearLayout(c);
         searchBar.setVisibility(View.GONE);
-        int pad = Ui.dp(c, 16);
+        int pad = Metro.pagePad(c, 16);
         searchBar.setPadding(pad, 0, pad, Ui.dp(c, 8));
         searchInput = new EditText(c);
         searchInput.setHint(searchName);
@@ -586,7 +586,7 @@ final class SettingsFrame {
         Context c = activity;
         testBar = new LinearLayout(c);
         testBar.setVisibility(View.GONE);
-        int pad = Ui.dp(c, 16);
+        int pad = Metro.pagePad(c, 16);
         testBar.setPadding(pad, 0, pad, Ui.dp(c, 8));
         testInput = new EditText(c);
         testInput.setHint(L.t("여기에 입력해 보세요", "Type here"));

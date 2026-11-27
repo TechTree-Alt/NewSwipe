@@ -156,7 +156,7 @@ public final class SettingsActivity extends Activity {
         scroll.setId(0x5E771001);   // 화면 모드를 바꿔 다시 만들 때 스크롤 위치를 복원한다
         list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
-        int pad = Ui.dp(this, 16);
+        int pad = Metro.pagePad(this, 16);
         list.setPadding(pad, 0, pad, Ui.dp(this, 32));
         scroll.addView(list);
         LinearLayout content = new LinearLayout(this);
@@ -532,7 +532,7 @@ public final class SettingsActivity extends Activity {
         pivotPages = new LinearLayout[n];
         pivotScrolls = new ScrollView[n];
         android.widget.FrameLayout pager = new android.widget.FrameLayout(this);
-        int pad = Ui.dp(this, 16);
+        int pad = Metro.pagePad(this, 16);
         for (int i = 0; i < n; i++) {
             LinearLayout p = new LinearLayout(this);
             p.setOrientation(LinearLayout.VERTICAL);

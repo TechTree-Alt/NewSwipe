@@ -25,6 +25,9 @@ Windows Phone 7·8·8.1의 Metro UI처럼 바뀝니다. 이 문서는 무엇을 
   [App bar icon buttons](https://learn.microsoft.com/en-us/previous-versions/windows/apps/ff431806(v=vs.105))
 - Toolkit의 `CustomMessageBox`, `ListPicker`, `ExpanderView` 템플릿과 `Swivel*.xaml`
 - 크기: WP8 화면은 480px 폭이므로 SDK의 px 값에 0.75를 곱해 dp·sp로 옮깁니다 (360dp 폭 기준, `Metro.px`·`Metro.sp`).
+  WP8.1(WinRT) 값은 400 유효 픽셀 폭 기준이라 0.9를 곱합니다. 두 기준은 대개 1dp 안쪽으로 같습니다 (예: 테두리 3px × 0.75 = 2.5 × 0.9 = 2.25dp,
+  좌우 여백 24px → 18dp, 19 → 17.1dp). 참고: [WP8.1 디자인 지침 PDF](https://tilsgee.github.io/DesignGuidelinesArchive/uwp8.1.pdf),
+  microsoft-ui-xaml에 남은 WP8.1 테마 리소스·텍스트 스타일.
 - 첨부 이미지: Windows Phone 설정 화면(피벗 머리글), Windows 10 Mobile 키보드(다크)
 
 ## 디자인 원칙과 구현
@@ -36,6 +39,7 @@ Windows Phone 7·8·8.1의 Metro UI처럼 바뀝니다. 이 문서는 무엇을 
 | 글자 | SDK 글꼴 크기를 그대로 옮긴다 (`Metro.FONT_*`): 설정 줄의 머리글·설명 PhoneFontSizeNormal 20px → 15sp(옅은 글자), 값·입력란 MediumLarge 25.333px → 19sp, 버튼 Medium 22.667px → 17sp SemiBold, 토글의 켬/끔·묶음 머리글 Large 32px → 24sp, 페이지 제목·피벗 이름 72px → 54sp. Segoe WP 대신 `sans-serif`(-light, -medium) |
 | 머리글 | SDK 페이지 템플릿(TitlePanel): 위 17px, 작은 대문자 `NEWSWIPE`(PhoneTextNormalStyle 20px), 그 아래 화면 이름(PhoneTextTitle1Style 72px, 위로 7px 당김·왼쪽 3px), 아래 28px. 섹션이 둘 이상인 메뉴는 Pivot 템플릿이 된다: 제목 PivotTitleStyle(SemiBold 22.667px), 이름 사이 22px, 고르지 않은 이름은 다크 40%·라이트 23% (아래 '피벗') |
 | 스크롤 표시 | WP8 ScrollViewer처럼 끄는 동안만 나타났다가 0.5초 뒤 사라지는 5px(→ 4dp) 폭의 PhoneDisabled 네모(다크 #666666·라이트 #B3B3B3), 누를 수 없음 (`Metro.scrollIndicator`, 네모 모양은 Android 10 이상) |
+| 좌우 여백 | WP8 페이지 템플릿: ContentPanel 12px + 글(PhoneHorizontalMargin) 12px = 24px → 18dp. 머리글·피벗·목록·검색창·입력 시험 창·편집 화면·설정 창이 모두 이 선에 맞고, 대화상자의 좌우 24px와도 같다. WP8.1(WinRT) 템플릿의 Margin 19 유효 픽셀(→ 17.1dp)과도 1dp 안쪽으로 맞는다 (`Metro.pagePad`) |
 | 카드 없음 | `SettingsWidgets.card()`가 바탕 없이, 구분선·화살표(`Chevron`) 숨김. 섹션 소제목은 피벗의 이름이 되어 목록에서 빠진다 |
 | 묶음 머리글 | 공식 텍스트 스타일 PhoneTextGroupHeaderStyle (설정 › about의 'phone information' 같은 제목): SemiLight 32px → 24sp, PhoneSubtleBrush의 옅은 회색 소문자. 피벗이 없는 화면(키보드 사용자화와 그 설정 창, 입력 언어)의 섹션 제목과, 묶은 피벗 페이지에 남는 제목('한국어 사전', '일본어 자판'·'중국어 자판') (`SettingsWidgets.section`) |
 | 하위 설정 묶음 | Toolkit ExpanderView의 Line처럼: 옅은 회색(PhoneSubtleBrush) 3px(→ 2.25dp) 직선이 하위 항목의 내용만큼만 이어진다. 위 줄의 설명 바로 아래(6dp)에서 시작해 마지막으로 보이는 하위 항목의 글 아래(6dp)에서 끝나고(하위 항목을 켜고 끌 때마다 다시 맞춘다. 마지막 하위 항목이 펼치거나 접히는 동안에는 그 위 줄의 여백도 진행에 맞춰 함께 움직여 끝에 튀지 않는다), 항목 사이 여백은 선 밖으로 옮긴다 (보일 때만 쓰는 여백이라 펼치고 접을 때 높이와 함께 움직인다). 22dp 들여 놓은 선 오른쪽 12dp에 항목 (`SettingsWidgets.subGroup`) |

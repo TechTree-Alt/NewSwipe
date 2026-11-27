@@ -62,7 +62,7 @@ public final class SwipeActionEditorActivity extends Activity {
         scroll.setFillViewport(true);
         list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
-        int pad = Ui.dp(this, 16);
+        int pad = com.alternative_studios.newswipe.ui.Metro.pagePad(this, 16);
         list.setPadding(pad, 0, pad, Ui.dp(this, 32));
         scroll.addView(list);
         setContentView(new SettingsFrame(this, title(), getString(R.string.app_name)).wrap(scroll));
