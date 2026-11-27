@@ -593,7 +593,7 @@ public final class Metro {
 
     /**
      * 피벗 머리글: 섹션 이름들을 크고 가는 소문자로 한 줄에 이어 쓰고 화면 끝에서 자른다. 맨 왼쪽(첫 자리)의 이름부터 고리 차례로
-     * 이름마다 한 번씩 쓰고, 고른 이름만 글자 색, 나머지는 옅게 쓴다. 줄 전체의 가로 자리(offset)는 {@link Pivot}이 움직인다.
+     * 쓰되 멈춰 있을 때는 이름마다 한 번씩만, 움직이는 동안에는 화면 끝까지 이어 그린다. 고른 이름만 글자 색, 나머지는 옅게 쓴다. 줄 전체의 가로 자리(offset)는 {@link Pivot}이 움직인다.
      * 이름은 직접 그려 프레임마다 글자를 다시 배치하지 않는다.
      *
      * <p>Microsoft.Phone의 Pivot 템플릿: PivotHeaderItem은 PhoneFontFamilySemiLight, PivotHeaderFontSize 72px, Padding 21,0,1,0
@@ -679,22 +679,40 @@ public final class Metro {
             float y = getPaddingTop() - fm.top;
             // 고르지 않은 이름: 다크는 흰색 40%, 라이트는 검정 87%(#DE000000)의 23.144% (= 검정 20%).
             int dim = dark ? 0x66FFFFFF : 0x33000000;
-            // 이름마다 한 번씩만 (PivotHeadersControl처럼): 첫 자리부터 고리 차례로 오른쪽에 쓰다가 화면 끝에서 자른다.
-            // 오른쪽으로 밀어 줄이 들어오면(offset > 0) 앞 이름(고리의 마지막)은 오른쪽 끝 대신 첫 자리 왼쪽에 온다.
+            // 멈춰 있을 때는 이름마다 한 번씩만 쓴다. 움직이는 동안에는 줄을 화면 끝까지 고리 차례로 이어 그려, 다음다음 이름이
+            // 넘기기가 끝날 때까지 비어 있지 않게 한다. 되풀이되는 이름(고리를 한 바퀴 넘은 이름, 오른쪽으로 밀 때 왼쪽에 들어오는
+            // 앞 이름)은 움직인 만큼 서서히 나타나고, 그 자리를 내주는 오른쪽 끝의 같은 이름은 서서히 사라진다
+            // (PivotHeadersControl.FadeInItemIfNeeded: 끝에 돌아 붙는 이름은 페이드 인).
             int n = names.length;
-            boolean prevOnLeft = offset > 0 && n > 1;
+            float move = offset < 0 ? Math.min(1f, -offset / widths[ring(first)])
+                    : offset > 0 ? Math.min(1f, offset / widths[ring(first - 1)]) : 0f;
             float x = offset;
-            for (int k = 0; k < (prevOnLeft ? n - 1 : n) && x < getWidth(); k++) {
+            // 왼쪽으로 밀 때 더 그리는 이름은 하나(고리를 한 바퀴 넘은 첫 이름)면 된다: 넘기기가 끝나 첫 자리가 바뀌면
+            // 그 이름이 고리의 마지막 이름이 되어 같은 자리에 그대로 남는다.
+            for (int k = 0; x < getWidth() && k <= n; k++) {
                 int i = ring(first + k);
-                paint.setColor(i == selected ? fg : dim);
-                c.drawText(names[i], x, y, paint);
+                float alpha = 1f;
+                if (k == n) alpha = offset < 0 ? move : 0f;                 // 한 바퀴 넘은 이름: 왼쪽으로 밀 때만
+                else if (k == n - 1 && offset > 0 && n > 1) alpha = 1f - move;   // 앞 이름이 왼쪽으로 옮겨 가는 중
+                if (alpha <= 0f) {
+                    x += widths[i];
+                    continue;
+                }
+                // 한 바퀴 넘은 이름은 지금 고른 이름이라도 되풀이된 자리이므로 옅게 (넘기기가 끝나면 그 자리는 고르지 않은 이름).
+                drawName(c, i, x, y, dim, alpha, k == n);
                 x += widths[i];
             }
-            if (prevOnLeft) {
+            if (offset > 0 && n > 1) {
                 int i = ring(first - 1);
-                paint.setColor(i == selected ? fg : dim);
-                c.drawText(names[i], offset - widths[i], y, paint);
+                drawName(c, i, offset - widths[i], y, dim, move, false);
             }
+        }
+
+        private void drawName(android.graphics.Canvas c, int i, float x, float y, int dim, float alpha, boolean repeat) {
+            int color = i == selected && !repeat ? fg : dim;
+            paint.setColor(color);
+            paint.setAlpha(Math.round((color >>> 24) * Math.max(0f, Math.min(1f, alpha))));
+            c.drawText(names[i], x, y, paint);
         }
 
         @Override
