@@ -1026,11 +1026,12 @@ public final class SettingsActivity extends Activity {
             clipImagesSwitch = savedClipSwitch;
             letterTab = savedTab;
         }
-        // 키 창의 '길게 누르면' 옆에 보이는 지금 기능 이름(없음·이모지 열기 등)과 되돌리기 버튼은 설정 이름이 아니다.
+        // 키 창의 '길게 누르면' 옆에 보이는 지금 방식·기능 이름(없음·이모지 열기 등)과 되돌리기 버튼은 설정 이름이 아니다.
         java.util.Set<String> values = new java.util.HashSet<>();
-        for (String id : com.alternative_studios.newswipe.keyboard.SwipeAction.idsForSpaceLongPress()) {
+        for (String id : com.alternative_studios.newswipe.keyboard.SwipeAction.idsForLongPress()) {
             values.add(com.alternative_studios.newswipe.keyboard.SwipeAction.label(id));
         }
+        values.addAll(java.util.Arrays.asList(KeyEditPanel.longPressModes()));
         values.add(L.t("기본값으로 되돌리기", "Reset to default"));
         values.addAll(java.util.Arrays.asList(inputModes()));   // 쌍자음·이중모음 입력 줄 옆의 지금 값
         values.add(detailName(Prefs.DETAIL_NONE));   // 상세 배열 줄 옆의 지금 값 (나머지는 설정 이름으로도 찾게 둔다)
@@ -3346,7 +3347,7 @@ public final class SettingsActivity extends Activity {
                 // 도구 막대처럼 네 방향마다 밀 때 실행할 기능을 정한다 (기본은 모두 '커서 자유 이동').
                 KeyEditPanel gapPanel = new KeyEditPanel(this, edit, null);
                 c.addView(gapPanel.standalonePress(com.alternative_studios.newswipe.keyboard.GapSwipes.SPEC,
-                        com.alternative_studios.newswipe.keyboard.GapSwipes.pressSlot(edit.gapSlot())));
+                        com.alternative_studios.newswipe.keyboard.GapSwipes.pressSlot(edit.gapSlot()), L.t("가운데 공간", "Center gap")));
                 c.addView(gapPanel.standalonePad(
                         com.alternative_studios.newswipe.keyboard.GapSwipes.SPEC, edit.gapSlot(), L.t("가운데 공간", "Center gap")));
                 c.addView(note(L.t("'없음'으로 둔 방향으로는 밀어도 아무 일도 하지 않습니다. "

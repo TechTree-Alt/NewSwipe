@@ -97,7 +97,8 @@ public class FunctionSwipesTest {
         java.util.Set<String> all = new java.util.LinkedHashSet<>();
         all.addAll(java.util.Arrays.asList(SwipeAction.idsForKeyboard(true)));
         all.addAll(java.util.Arrays.asList(SwipeAction.idsFor(FunctionSwipes.GLOBE)));
-        all.addAll(java.util.Arrays.asList(SwipeAction.idsForSpaceLongPress()));
+        all.addAll(java.util.Arrays.asList(SwipeAction.idsForLongPress()));
+        all.addAll(java.util.Arrays.asList(SwipeAction.idsForLongSwipe()));
         java.util.Set<String> seen = new java.util.HashSet<>();
         for (int c = 0; c < SwipeAction.categoryCount(); c++) {
             assertFalse(SwipeAction.categoryName(c).isEmpty());

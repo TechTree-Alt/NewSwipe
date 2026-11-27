@@ -70,6 +70,11 @@ public final class SwipeAction {
     public static final String SPACE_SELECT = "space_select";
     /** 길게 누르기 전용: 영어 자판에서 Caps Lock(대문자 고정) 켜기. */
     public static final String CAPS_LOCK = "caps_lock";
+    /**
+     * 길게 누르기 방식 표시: 길게 누른 뒤 손을 떼지 않고 위·아래·왼쪽·오른쪽으로 밀어, 그 방향에 정한 기능을 실행한다.
+     * 방향마다의 기능은 {@link LongSwipes}가 따로 저장한다. 기능 목록에는 보이지 않는다 (길게 누르기 방식 드롭다운에서 고른다).
+     */
+    public static final String LONG_SWIPE = "long_swipe";
 
     /** {ID, 목록에 보이는 이름, 편집 화면의 작은 칸에 보이는 짧은 이름}. 보이는 순서대로 적는다. */
     private static String[][] all() {
@@ -121,6 +126,7 @@ public final class SwipeAction {
             {DELETE_WORD_REPEAT, L.t("단어 지우기 (누르고 있는 동안)", "Delete words (while held)"), L.t("계속 단어 지우기", "Keep deleting words")},
             {SPACE_SELECT, L.t("길게 누른 뒤 밀어서 글자 선택", "Long press, then swipe to select text"), L.t("밀어서 선택", "Swipe to select")},
             {CAPS_LOCK, L.t("Caps Lock 켜기 (영어 대문자 고정)", "Caps Lock on (lock English capitals)"), "Caps Lock"},
+            {LONG_SWIPE, L.t("길게 누른 뒤 밀어 기능 실행", "Long press, then swipe to run an action"), L.t("밀어서 실행", "Swipe to run")},
     };
     }
 
@@ -133,7 +139,7 @@ public final class SwipeAction {
             {L.t("기능 없음", "No action"), NONE},
             {L.t("커서 이동", "Cursor"), FREE_CURSOR, CURSOR_MOVE, LINE_START, LINE_END, TEXT_START, TEXT_END,
                     CURSOR_LEFT, CURSOR_RIGHT, CURSOR_UP, CURSOR_DOWN, WORD_LEFT, WORD_RIGHT},
-            {L.t("선택·복사·붙여넣기", "Select · Copy · Paste"), SPACE_SELECT, SELECT_ALL, SELECT_ALL_COPY, COPY, CUT, PASTE,
+            {L.t("선택·복사·붙여넣기", "Select · Copy · Paste"), SELECT_ALL, SELECT_ALL_COPY, COPY, CUT, PASTE,
                     CLIPBOARD_OPEN, CLIPBOARD_PINNED},
             {L.t("지우기·실행 취소", "Delete · Undo"), BACKSPACE, DELETE_WORD, DELETE_LINE_START, DELETE_LINE,
                     DELETE_REPEAT, DELETE_WORD_REPEAT, UNDO, REDO},
@@ -171,7 +177,15 @@ public final class SwipeAction {
 
     /** 길게 누르기에서만 쓰는 기능 (밀기 목록에는 보이지 않는다). */
     private static boolean longPressOnly(String id) {
-        return holdRepeat(id) || CAPS_LOCK.equals(id) || SPACE_SELECT.equals(id);
+        return holdRepeat(id) || CAPS_LOCK.equals(id) || longPressMode(id);
+    }
+
+    /**
+     * 기능이 아니라 길게 누르기 방식을 뜻하는 값: '길게 누른 뒤 밀어 글자 선택'·'길게 누른 뒤 밀어 기능 실행'.
+     * 기능 목록에는 보이지 않고, 길게 누르기 칸마다 방식 드롭다운에서 고른다. 모든 길게 누르기 칸이 받아들인다.
+     */
+    public static boolean longPressMode(String id) {
+        return SPACE_SELECT.equals(id) || LONG_SWIPE.equals(id);
     }
 
     /** 누르고 있는 동안 되풀이하는 길게 누르기 기능 (계속 지우기·단어 지우기). 지우는 속도를 따로 정한다. */
@@ -184,21 +198,26 @@ public final class SwipeAction {
         return LANGUAGE_PICK.equals(id);
     }
 
-    /** 기능키 길게 누르기에서 고를 수 있는 ID들 (밀어야 하는 '커서 자유 이동'은 뺀다). */
+    /**
+     * '길게 눌러 기능 실행'에서 고를 수 있는 ID들 (밀어야 하는 '커서 자유 이동'과 길게 누르기 방식 값은 뺀다).
+     */
     public static String[] idsForLongPress() {
         java.util.List<String> ids = new java.util.ArrayList<>();
         for (String[] a : all()) {
-            if (!CURSOR_MOVE.equals(a[0]) && !FREE_CURSOR.equals(a[0]) && !globeUpOnly(a[0]) && !SPACE_SELECT.equals(a[0])) {
+            if (!CURSOR_MOVE.equals(a[0]) && !FREE_CURSOR.equals(a[0]) && !globeUpOnly(a[0]) && !longPressMode(a[0])) {
                 ids.add(a[0]);
             }
         }
         return ids.toArray(new String[0]);
     }
 
-    /** 스페이스바·커서 이동 키 길게 누르기에서 고를 수 있는 ID들: 기능키와 같은 목록에 '밀어서 선택'을 '없음' 바로 다음에 더한다. */
-    public static String[] idsForSpaceLongPress() {
-        java.util.List<String> ids = new java.util.ArrayList<>(java.util.Arrays.asList(idsForLongPress()));
-        ids.add(1, SPACE_SELECT);
+    /**
+     * '길게 누른 뒤 밀어 기능 실행'의 방향마다 고를 수 있는 ID들: 길게 눌러 실행하는 목록에서 누르고 있는 동안 되풀이하는 지우기는 뺀다
+     * (민 방향은 손을 뗄 때 한 번 실행한다).
+     */
+    public static String[] idsForLongSwipe() {
+        java.util.List<String> ids = new java.util.ArrayList<>();
+        for (String id : idsForLongPress()) if (!holdRepeat(id)) ids.add(id);
         return ids.toArray(new String[0]);
     }
 

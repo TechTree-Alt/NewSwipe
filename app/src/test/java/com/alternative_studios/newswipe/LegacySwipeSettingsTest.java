@@ -261,13 +261,33 @@ public class LegacySwipeSettingsTest {
         LegacySwipeSettings.migrateIfNeeded(p);
         assertEquals(SwipeAction.SPACE_SELECT, LongPressActions.SPEC.get(p, LongPressActions.SPACE, LongPressActions.DIR));
         assertEquals(SwipeAction.NONE, LongPressActions.SPEC.get(p, LongPressActions.ENTER, LongPressActions.DIR));
-        // 스페이스바·커서 이동 키 전용 기능은 다른 키에서 쓰지 않는다
+        // 길게 누르기 방식(밀어 글자 선택·밀어 기능 실행)은 모든 키에서 쓸 수 있다
         LongPressActions.SPEC.set(p, LongPressActions.ENTER, LongPressActions.DIR, SwipeAction.SPACE_SELECT);
+        assertEquals(SwipeAction.SPACE_SELECT, LongPressActions.SPEC.get(p, LongPressActions.ENTER, LongPressActions.DIR));
+        LongPressActions.SPEC.set(p, LongPressActions.CURSOR, LongPressActions.DIR, SwipeAction.LONG_SWIPE);
+        assertEquals(SwipeAction.LONG_SWIPE, LongPressActions.SPEC.get(p, LongPressActions.CURSOR, LongPressActions.DIR));
+        // 방식은 기능 목록에 보이지 않는다 (방식 드롭다운에서 고른다)
+        assertFalse(java.util.Arrays.asList(LongPressActions.SPEC.choices(LongPressActions.SPACE)).contains(SwipeAction.SPACE_SELECT));
+        assertFalse(java.util.Arrays.asList(LongPressActions.SPEC.choices(LongPressActions.SPACE)).contains(SwipeAction.LONG_SWIPE));
+    }
+
+    /** '길게 누른 뒤 밀어 기능 실행'의 방향마다의 기능: 길게 누르기와 같은 묶음에 저장되어 묶음 되돌리기가 함께 지운다. */
+    @Test
+    public void longSwipesAreStoredPerDirectionAndResetWithGroup() throws Exception {
+        MapSp sp = new MapSp();
+        sp.m.put(Prefs.ONBOARDING_DONE, true);
+        Prefs p = prefs(sp);
+        assertEquals(SwipeAction.NONE, LongPressActions.LONG_SWIPES.get(p, LongPressActions.ENTER, Key.SWIPE_UP));
+        LongPressActions.LONG_SWIPES.set(p, LongPressActions.ENTER, Key.SWIPE_UP, SwipeAction.COPY);
+        assertEquals(SwipeAction.COPY, LongPressActions.longSwipes(p)[LongPressActions.ENTER][Key.SWIPE_UP]);
+        assertEquals(SwipeAction.NONE, LongPressActions.longSwipes(p)[LongPressActions.ENTER][Key.SWIPE_DOWN]);
+        assertEquals(SwipeAction.NONE, LongPressActions.longSwipes(p)[LongPressActions.SPACE][Key.SWIPE_UP]);
+        // 길게 누르기 칸 자체는 그대로
         assertEquals(SwipeAction.NONE, LongPressActions.SPEC.get(p, LongPressActions.ENTER, LongPressActions.DIR));
-        // 커서 이동 키(조이스틱 포함)는 고를 수 있다
-        LongPressActions.SPEC.set(p, LongPressActions.CURSOR, LongPressActions.DIR, SwipeAction.SPACE_SELECT);
-        assertEquals(SwipeAction.SPACE_SELECT, LongPressActions.SPEC.get(p, LongPressActions.CURSOR, LongPressActions.DIR));
-        assertTrue(java.util.Arrays.asList(LongPressActions.SPEC.choices(LongPressActions.CURSOR)).contains(SwipeAction.SPACE_SELECT));
-        assertFalse(java.util.Arrays.asList(LongPressActions.SPEC.choices(LongPressActions.ENTER)).contains(SwipeAction.SPACE_SELECT));
+        // 누르고 있는 동안 되풀이하는 기능은 방향에 둘 수 없다
+        LongPressActions.LONG_SWIPES.set(p, LongPressActions.ENTER, Key.SWIPE_LEFT, SwipeAction.DELETE_REPEAT);
+        assertEquals(SwipeAction.NONE, LongPressActions.LONG_SWIPES.get(p, LongPressActions.ENTER, Key.SWIPE_LEFT));
+        p.resetSwipeActions(LongPressActions.SPEC.group);
+        assertEquals(SwipeAction.NONE, LongPressActions.LONG_SWIPES.get(p, LongPressActions.ENTER, Key.SWIPE_UP));
     }
 }

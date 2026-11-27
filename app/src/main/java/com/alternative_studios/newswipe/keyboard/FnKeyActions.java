@@ -27,6 +27,7 @@ public final class FnKeyActions {
         @Override
         public String resolve(String stored, int slot, int dir) {
             if (stored == null || !SwipeAction.isKnown(stored)) return defaultAction(slot, dir);
+            if (slot == PRESS && dir == LONG && SwipeAction.longPressMode(stored)) return stored;
             for (String id : choices(slot, dir)) if (id.equals(stored)) return stored;
             return SwipeAction.NONE;
         }
@@ -84,6 +85,9 @@ public final class FnKeyActions {
 
     /** {@link #actions}의 배열에서 누르기·길게 누르기 자리. 밀기는 2 + 방향(Key.SWIPE_*). */
     public static final int I_TAP = 0, I_LONG = 1, I_SWIPE = 2;
+
+    /** 길게 누르기를 '길게 누른 뒤 밀어 기능 실행'으로 두었을 때의 네 방향 기능 (칸 PRESS). */
+    public static final SwipeSpec LONG_SWIPES = LongSwipes.of(SPEC, LONG);
 
     private FnKeyActions() {
     }

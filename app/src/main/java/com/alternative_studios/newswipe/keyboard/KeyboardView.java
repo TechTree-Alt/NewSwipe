@@ -127,12 +127,14 @@ public final class KeyboardView extends View {
     private static final int FN_SWIPE = 8;
     /** 길게 눌러 연속 입력하는 글자 키를 누르고 있는 중 (손을 뗄 때까지 계속 입력한다). */
     private static final int CHAR_REPEAT = 10;
-    /** 스페이스바를 길게 누른 뒤 밀고 있는 중: 커서 이동처럼 움직이되 선택 영역을 넓힌다. */
+    /** 키를 길게 누른 뒤 밀고 있는 중 (밀어 글자 선택): 커서 이동처럼 움직이되 선택 영역을 넓힌다. */
     private static final int SELECT = 11;
     /** 문자 키를 위로 밀고 있는 중 (손을 떼면 밀기 시작한 자리의 추천 단어를 입력한다). */
     private static final int PICK_SWIPE = 12;
     /** 모음 키를 아래로 민 채 멈춰 ㅣ계 이중모음을 연속 입력하는 중 (손을 뗄 때까지 계속 입력한다). */
     private static final int SWIPE_REPEAT = 13;
+    /** 길게 누른 뒤 밀고 있는 중: 손을 떼면 민 방향에 정한 기능을 실행한다 ('길게 누른 뒤 밀어 기능 실행'). */
+    private static final int LONG_SWIPE = 14;
 
     private static final class Pointer {
         int id;
@@ -729,6 +731,32 @@ public final class KeyboardView extends View {
 
     public void setLongPressActions(String[] actions) {
         longPressActions = actions;
+    }
+
+    /** 기능키 '길게 누른 뒤 밀어 기능 실행': [칸][Key.SWIPE_*]마다 기능 ID (LongPressActions.longSwipes). */
+    private String[][] longPressSwipes;
+    /** Fn 키의 '길게 누른 뒤 밀어 기능 실행': Key.SWIPE_*마다 기능 ID. */
+    private String[] fnLongSwipes;
+
+    public void setLongPressSwipes(String[][] swipes) {
+        longPressSwipes = swipes;
+    }
+
+    public void setFnLongSwipes(String[] swipes) {
+        fnLongSwipes = swipes;
+    }
+
+    /** 이 키를 길게 누른 뒤 dir 쪽으로 밀었을 때 실행할 기능. 없음이면 null. */
+    private String longSwipeAction(Key k, int dir) {
+        String[] row = null;
+        if (k.type == Key.FUNCTION) row = fnLongSwipes;
+        else if (k.type == Key.SPACER) row = gapSwipes == null ? null : gapSwipes.longSwipes();
+        else if (longPressSwipes != null) {
+            int slot = LongPressActions.slotOf(k.type);
+            if (slot >= 0 && slot < longPressSwipes.length) row = longPressSwipes[slot];
+        }
+        if (row == null || dir < 0 || dir >= row.length) return null;
+        return SwipeAction.NONE.equals(row[dir]) ? null : row[dir];
     }
 
     /** Fn 키의 기능: {탭, 길게 누르기, 아래·위·왼쪽·오른쪽 밀기} (FnKeyActions.actions). */
@@ -1924,6 +1952,15 @@ public final class KeyboardView extends View {
                 }
                 break;
             }
+            case LONG_SWIPE: {
+                // 길게 누른 자리에서 가장 많이 민 방향이 문턱을 넘으면 그 방향의 기능을 고른다 (되돌리면 다시 아무것도 아니다).
+                float lx = x - p.cursorAnchorX, ly = y - p.cursorAnchorY;
+                int dir = Math.abs(lx) > Math.abs(ly) ? (lx > 0 ? Key.SWIPE_RIGHT : Key.SWIPE_LEFT)
+                        : (ly > 0 ? Key.SWIPE_DOWN : Key.SWIPE_UP);
+                p.fnAction = swipeDistance(dir, lx, ly) > fnSwipeThreshold ? longSwipeAction(p.key, dir) : null;
+                p.swipeDir = dir;
+                break;
+            }
             case FN_SWIPE:
                 // 한번 밀기로 들어가면 문턱의 절반까지 되돌려도 유지하고, 그보다 더 되돌리면 그냥 탭으로 돌아간다.
                 if (swipeDistance(p.swipeDir, dx, dy) < fnSwipeThreshold * 0.5f) {
@@ -2002,6 +2039,13 @@ public final class KeyboardView extends View {
                 listener.onPickSuggestion(p.pickSlot);
                 markChord();
                 break;
+            case LONG_SWIPE:
+                // 밀지 않았거나 '없음'인 방향으로 밀었으면 아무것도 하지 않는다.
+                if (p.fnAction != null) {
+                    listener.onGesture(p.key);
+                    listener.onKeyFunction(p.key, p.fnAction);
+                }
+                break;
             case REPEAT:
                 handler.removeCallbacks(repeatRunnable);
                 break;
@@ -2009,7 +2053,7 @@ public final class KeyboardView extends View {
                 stopCharRepeat();
                 break;
             case SELECT:
-                // 길게 누르기만 하고 밀지 않았으면 예전처럼 스페이스를 입력한다.
+                // 길게 누르기만 하고 밀지 않았으면 그 키를 누른 것으로 본다 (스페이스바면 띄어쓰기).
                 if (!p.selectMoved) {
                     if (p.key.type == Key.SPACER) {
                         // 가운데 공간은 띄어쓰기 대신 정해 둔 누르기 기능을 실행한다.
@@ -2018,7 +2062,12 @@ public final class KeyboardView extends View {
                             listener.onGesture(p.key);
                             listener.onKeyFunction(p.key, tap);
                         }
-                    } else {
+                    } else if (p.key.type == Key.FUNCTION) {
+                        // Fn 키는 정해 둔 누르기 기능을 실행한다.
+                        String tap = fnKeyAction(FnKeyActions.I_TAP);
+                        if (tap != null) listener.onKeyFunction(p.key, tap);
+                        markChord();
+                    } else if (p.key.type != Key.SHIFT) {   // Shift 키는 누르는 순간 이미 입력되었다
                         listener.onKeyTap(p.key);
                         markChord();
                     }
@@ -2125,6 +2174,13 @@ public final class KeyboardView extends View {
                 repeatCursor = 0;
                 repeatWord = SwipeAction.DELETE_WORD_REPEAT.equals(custom);
                 repeatRunnable.run();
+            } else if (SwipeAction.LONG_SWIPE.equals(custom)) {
+                // 밀어 기능 실행: 이제부터 민 방향(진동이 온 자리에서 잰다)의 기능을 손을 뗄 때 실행한다.
+                p.mode = LONG_SWIPE;
+                p.fnAction = null;
+                p.cursorAnchorX = p.lastX;
+                p.cursorAnchorY = p.lastY;
+                if (listener != null) listener.onGesture(p.key);
             } else if (SwipeAction.SPACE_SELECT.equals(custom)) {
                 // 선택 모드: 이제부터 밀면 커서 대신 선택 영역의 끝이 움직인다. 손가락이 지금 있는 자리에서 잰다.
                 p.mode = SELECT;
