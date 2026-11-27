@@ -299,6 +299,8 @@ public final class Ui {
 
     /** 펼치고 접는 중인 뷰의, 따로 정해 두지 않은 위·아래 바깥 여백의 보일 때 값. */
     private static final java.util.WeakHashMap<android.view.View, int[]> AUTO_MARGINS = new java.util.WeakHashMap<>();
+    /** Neumorphism: 펼치고 접는 중인 뷰를 줄어든 위 여백만큼 내려 그린 거리 (도중에 뒤집히면 원래 자리를 되찾는다). */
+    private static final java.util.WeakHashMap<android.view.View, Float> NEU_LIFT = new java.util.WeakHashMap<>();
 
     public static void setVisibleAnimated(final android.view.View v, final boolean show) {
         setVisibleAnimated(v, show, null);
@@ -308,6 +310,8 @@ public final class Ui {
     public static void setVisibleAnimated(final android.view.View v, final boolean show, final Runnable onEnd) {
         android.animation.ValueAnimator old = RUNNING.remove(v);
         if (old != null) old.cancel();
+        Float lifted = NEU_LIFT.remove(v);   // 내려 그리던 중에 멈췄으면 원래 자리로 (필요하면 아래에서 다시 내린다)
+        if (lifted != null) v.setTranslationY(v.getTranslationY() - lifted);
         android.view.ViewGroup.LayoutParams lp = v.getLayoutParams();
         android.view.ViewParent parent = v.getParent();
         boolean visible = v.getVisibility() == android.view.View.VISIBLE;
@@ -383,9 +387,18 @@ public final class Ui {
         // 자르지 않으면 접히는 내용이 아래 줄 위로 삐져나온다.
         final android.graphics.Rect clip = new android.graphics.Rect();
         // Neumorphism: 카드 그림자는 뷰 밖으로 번진다. 뷰 경계에서 자르면 접기 시작하자마자 그림자가 잘려 보이므로,
-        // 좌우·위는 그림자만큼 넓혀 자르고, 아래는 보이는 정도(투명도)만큼만 그림자 자리를 남긴다 (다 보일 때는 그림자 전체,
-        // 거의 사라질 때는 접히는 내용이 아래 줄 위로 삐져나오지 않게 경계 그대로).
+        // 좌우·위는 그림자만큼 넓혀 자른다. 아래는 펼칠 때 그림자 전체를 남기고, 접을 때는 보이는 정도(투명도)만큼만 남긴다
+        // (거의 사라질 때는 접히는 내용이 아래 줄 위로 삐져나오지 않게 경계 그대로).
         final int shadow = NeuUi.on ? Math.round(NeuUi.spread(v.getContext(), NeuUi.LARGE)) : 0;
+        // Neumorphism: 위 바깥 여백이 함께 줄어드는 동안에는 뷰를 그만큼 내려 그려, 카드가 보일 때와 같은 자리에 머문다.
+        // 여백을 따라 카드가 위의 자르는 경계(설정 창 스크롤 맨 위 등) 쪽으로 붙으면 위로 번진 그림자가 잘린 채 나타났다가
+        // 끝에 가서야 다 보인다. 아래 줄들은 여백과 높이의 합만큼 그대로 움직이고, 덜 접힌 몫은 다음 줄 밑에 가려진다.
+        final boolean lift = NeuUi.on && shown != null && shown[0] > 0;
+        final float baseTy = v.getTranslationY();
+        if (lift && shown[0] - fromTop != 0) {
+            NEU_LIFT.put(v, (float) (shown[0] - fromTop));
+            v.setTranslationY(baseTy + shown[0] - fromTop);
+        }
         a.addUpdateListener(anim -> {
             float f = (float) anim.getAnimatedValue();
             SHOWN.put(v, show ? f : 1f - f);
@@ -397,9 +410,14 @@ public final class Ui {
                 m.bottomMargin = Math.round(fromBottom + ((show ? shown[1] : 0) - fromBottom) * f);
             }
             v.setLayoutParams(l);
+            if (lift) {
+                float t = shown[0] - ((android.view.ViewGroup.MarginLayoutParams) l).topMargin;
+                NEU_LIFT.put(v, t);
+                v.setTranslationY(baseTy + t);
+            }
             float alpha = fromAlpha + (toAlpha - fromAlpha) * f;
             v.setAlpha(alpha);
-            clip.set(-shadow, -shadow, Math.max(v.getWidth(), 1) + shadow, l.height + Math.round(shadow * alpha));
+            clip.set(-shadow, -shadow, Math.max(v.getWidth(), 1) + shadow, l.height + (show ? shadow : Math.round(shadow * alpha)));
             v.setClipBounds(clip);
         });
         a.addListener(new android.animation.AnimatorListenerAdapter() {
@@ -417,6 +435,7 @@ public final class Ui {
                 SHOWN.remove(v);
                 AUTO_MARGINS.remove(v);
                 v.setClipBounds(null);
+                if (NEU_LIFT.remove(v) != null) v.setTranslationY(baseTy);
                 android.view.ViewGroup.LayoutParams l = v.getLayoutParams();
                 l.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT;
                 if (shown != null) {
