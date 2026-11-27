@@ -72,6 +72,6 @@ Android 13 이상에서는 시스템 설정 › 앱 › NewSwipe › 언어에�
 | 소리 및 진동 | Sound & vibration |
 | 추천, 학습 및 완성 | Suggestions, learning & autofill |
 | 클립보드 및 이모지 · 클립보드 기록 · 고정 | Clipboard & emoji · clipboard history · pin |
-| 설정 가져오기 및 내보내기 | Import & export settings |
+| 백업 및 복원 | Backup & restore |
 | 실험실 | Labs |
 | 정보 · 업데이트 확인하기 · 개인정보 처리방침 · 오픈소스 라이선스 · 문의 | About · Check for updates · Privacy policy · Open source licenses · Contact |

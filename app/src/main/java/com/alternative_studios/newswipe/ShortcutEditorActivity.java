@@ -65,7 +65,7 @@ public final class ShortcutEditorActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (!themeSignature.equals(AppTheme.signature(this))) recreate();
+        if (!themeSignature.equals(AppTheme.signature(this))) SettingsFrame.recreateQuietly(this);   // 옛 색이 한 프레임 보이지 않게
     }
 
     private TextView text(String s, int sp, int color) {

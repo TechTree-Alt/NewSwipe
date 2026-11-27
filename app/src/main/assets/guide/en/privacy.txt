@@ -21,7 +21,7 @@ On password and email fields, word suggestions, autocorrect and word learning ar
 · All information: System settings > Apps > NewSwipe > Storage > Clear data
 
 ## Backup files
-Files created with 'Import & export settings' are saved only where you choose. If you include learned words, emoji and clipboard history (text only, no images), the file contains personal content, so you can encrypt the whole file with a password when exporting (AES-256-GCM, with the key derived from the password by PBKDF2). If you forget the password, the file can't be opened. Be careful when sharing a file exported without a password.
+Files created with 'Backup & restore' are saved only where you choose. If you include learned words, emoji and clipboard history (text only, no images), the file contains personal content, so you can encrypt the whole file with a password when exporting (AES-256-GCM, with the key derived from the password by PBKDF2). If you forget the password, the file can't be opened. Be careful when sharing a file exported without a password.
 
 ## Voice input
 The voice input button on the toolbar switches to another voice input app installed on your device (e.g. Google voice typing). While you use voice input, that app's privacy policy applies.

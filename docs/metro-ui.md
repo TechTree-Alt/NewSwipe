@@ -1,15 +1,18 @@
 # Metro UI 모드 (실험적)
 
 설정 › 테마 맨 위의 **모드**에서 **Metro**를 고르면 (기본·Neumorphism·Metro 가운데 하나) 앱 전체(설정 화면과 키보드)의 모양과 움직임이
-Windows Phone 7·8의 Metro UI처럼 바뀝니다. 이 문서는 무엇을 참고했고 어떻게 구현했는지 정리합니다.
+Windows Phone 7·8·8.1의 Metro UI처럼 바뀝니다. 이 문서는 무엇을 참고했고 어떻게 구현했는지 정리합니다.
 
 ## 참고 자료
 
+- **microsoft-ui-xaml** (Microsoft, MIT, `github.com/microsoft/microsoft-ui-xaml`): WP8.1(WinRT XAML)의 `Windows.UI.Xaml.Phone`을
+  이어받은 소스. 피벗의 숫자는 여기서 옮겼습니다 (코드는 가져오지 않았습니다).
+  - `dxaml/phone/lib/Pivot_Partial.cpp`(PivotAnimator), `dxaml/xcp/components/pivot/PivotStateMachine.cpp`: 피벗
 - **Windows Phone Toolkit** (Microsoft, Ms-PL, `github.com/microsoftarchive/WindowsPhoneToolkit`):
-  움직임의 숫자는 이 소스에서 그대로 옮겼습니다. 코드는 가져오지 않았습니다.
-  - `Transitions/Storyboards/Turnstile*.xaml`: 턴스타일 화면 전환
-  - `Effects/TurnstileFeatherEffect.cs`: 목록이 깃털처럼 차례로 들어오는 효과
-  - `Effects/TiltEffect.cs`: 누른 자리로 기울어지는 틸트
+  턴스타일·틸트·스위블의 숫자는 이 소스에서 그대로 옮겼습니다. 코드는 가져오지 않았습니다.
+  - `Transitions/Storyboards/Turnstile*.xaml`, `Effects/TurnstileFeatherEffect.cs`: 턴스타일 화면 전환과 깃털. Toolkit은 시스템 화면의
+    움직임을 앱에서 똑같이 내려고 만든 것이라, WP8.1 실기기의 설정·시스템 화면과 같은 빠르기입니다
+  - `Effects/TiltEffect.cs`: 누른 자리로 기울어지는 틸트 (WP8.1의 PointerDownThemeAnimation 값은 공개 소스에 없어 이것을 씁니다)
   - `Transitions/Storyboards/SwivelFullScreenIn.xaml`, `SlideUpFadeIn.xaml`
   - `Microsoft.Phone.Controls.Toolkit.WP8/Themes/Generic.xaml`: ToggleSwitch 템플릿
 - **Windows Phone 8 SDK의 기본 리소스** (`C:\Program Files (x86)\Microsoft SDKs\Windows Phone\v8.0\Design`의 사본):
@@ -50,18 +53,34 @@ Windows Phone 7·8의 Metro UI처럼 바뀝니다. 이 문서는 무엇을 참�
 
 | 효과 | 값 | 쓰는 곳 |
 |---|---|---|
-| 턴스타일 (들어오기) | -80° → 0°, 350ms, ExponentialEase EaseOut 지수 6, 축은 왼쪽 가장자리 | 화면이 열릴 때·돌아올 때 (50° → 0°) |
-| 턴스타일 (나가기) | 0° → 50°, 250ms, EaseIn 지수 6 / 뒤로: 0° → -80° | 다른 화면을 열 때 / 뒤로 갈 때 |
-| 깃털 | 축이 화면 폭 20%만큼 왼쪽 바깥, 항목마다 40ms(돌아올 때 50ms) 늦게 | 머리글·목록 줄·아래 미리보기 (실제로 보이는 것만, 16번째부터는 같은 차례) |
+| 턴스타일 (들어오기) | 원본 -80° → 0°, 350ms, ExponentialEase EaseOut 지수 6 / 뒤로 돌아올 때 원본 50° → 0° | 화면이 열릴 때 / 다른 화면에서 돌아올 때 |
+| 턴스타일 (나가기) | 원본 0° → 50°, 250ms, EaseIn 지수 6, 끝나면 사라짐 / 뒤로: 원본 0° → -80° | 다른 화면을 열 때 / 뒤로 갈 때 |
+| 축 | PlaneProjection CenterOfRotationX -0.2 (요소 폭 20% 왼쪽 바깥) | 턴스타일·깃털의 모든 항목 |
+| 깃털 | 항목마다 늦게: 들어오기 40ms(돌아올 때 50ms), 나가기 50ms(뒤로 갈 때 40ms). 나갈 때는 항목마다 제 차례가 끝나면 사라지고, 마지막 항목이 사라진 뒤 다음 화면이 열린다 | 머리글·목록 줄·아래 미리보기 (실제로 보이는 것만, 16번째부터는 같은 차례) |
 | 틸트 | 최대 0.3 rad, 가운데 25px 들어감(약 2.5%), 떼고 200ms 뒤 100ms 로그 곡선 | 메뉴 줄, 값 줄, 버튼, 선택 칸, 색 타일 |
-| 스위블 | RotationX -30° → 0°, 350ms, EaseOut 6 | 키보드의 이모지·클립보드·텍스트 편집 창이 열릴 때 |
+| 스위블 | 원본 RotationX -30° → 0° (위쪽 가장자리가 뒤로 젖혀졌다 선다), 350ms, EaseOut 6 | 키보드의 이모지·클립보드·텍스트 편집 창, 드롭다운 메뉴가 열릴 때 |
 | 슬라이드 | 350ms, EaseOut 6 (스프링 대신) | 키 편집 창(시트), 펼치고 접기 |
 
 - 시스템 화면 전환은 끄고(`Metro.noSystemTransition`) 턴스타일을 직접 그립니다. 화면 전체를 `Metro.Page`가 감싸
   전환하는 동안 누르기를 막고, 다른 화면에서 돌아와 다시 보일 때 돌아오는 턴스타일을 틉니다.
+  깃털은 항목의 불투명도로 차례를 기다리는 항목을 숨기므로, 화면 코드는 목록 줄 자체에 불투명도를 치지 않습니다 (흐리게 막을
+  때는 줄 안의 내용에 겁니다). 턴스타일은 끝나면 항목을 돌기 전의 불투명도로 되돌립니다.
+  화면이 돌아 나갈 때는 항목만 숨기고 바탕과 앱 바는 그대로 둡니다: 다음 화면이 뜨거나 화면이 닫힐 때까지 창 배경이 드러나지
+  않고, 앱 바도 깜빡이지 않습니다 (WP의 앱 바도 화면과 함께 돌지 않습니다). 창 배경도 화면 바탕색으로 맞춰 둡니다
+  (테마의 windowBackground는 시스템의 다크/라이트를 따르는 다른 색입니다).
+  화면 모드·강조 색 등을 바꿔 화면을 다시 만들 때(recreate)는 창 배경만 새 색으로 바꾸고 내용은 그대로 두어 색이 바로 바뀝니다.
+  다만 Metro에서 다른 화면을 열어 돌아 나가 있던 화면이 돌아와 다시 만들어질 때는, 그 전에 한 번 더 그려지는 옛 화면(옛 색의
+  바탕·앱 바)이 깜빡이지 않게 내용을 숨기고, 다시 만든 화면은 돌아온 화면의 턴스타일로 들어옵니다.
 - 뒤로 가기: Android 13 이상은 `OnBackInvokedCallback`, 12 이하는 각 화면의 `onBackPressed`가
   `SettingsFrame.metroBack()`을 부릅니다. 펼친 앱 바·검색창·입력창·키 편집 창이 열려 있으면 그쪽이 먼저 닫힙니다.
   Metro 모드에서는 시스템의 예측형 뒤로 가기 미리보기 대신 턴스타일이 보입니다.
+- 각도의 부호: Silverlight·WinRT의 PlaneProjection은 Android View와 회전 방향이 반대입니다 (Toolkit의 TiltEffect는 오른쪽을 누르면
+  RotationY를 음수로, 아래쪽을 누르면 RotationX를 양수로 두어 누른 쪽을 들어가게 하고, Android는 rotationY가 양수일 때 오른쪽이,
+  rotationX가 양수일 때 위쪽이 들어갑니다). 그래서 원본 각도의 부호를 뒤집어 씁니다: 새 화면은 오른쪽 끝이 멀리 물러난 채 돌아
+  서고, 나가는 화면은 오른쪽 끝이 앞으로 나오며 돌아 나가고, 뒤로 갈 때는 오른쪽 끝이 멀리 물러나며 사라지고, 돌아온 화면은 앞으로
+  나와 있던 오른쪽 끝이 제자리로 돌아갑니다. 스위블(대화상자·키보드 창)도 같은 이유로 부호를 뒤집습니다.
+- WP8.1 런타임(WinRT XAML) 앱의 기본 전환(`CommonNavigationTransitionInfo`, microsoft-ui-xaml의 `dxaml/phone/lib/NavigateTransitionHelper.h`)은
+  같은 각도를 나가기 128ms, 들어오기 428ms(깃털 항목은 214ms, 33ms 간격)로 씁니다. 실기기의 시스템 화면보다 눈에 띄게 빨라서 쓰지 않습니다.
 - 원근: 카메라를 화면 폭의 2.2배 거리에 둡니다. `View.setCameraDistance`는 72단위 인치를 쓰므로
   px 거리 × densityDpi / 72를 넘깁니다.
 
@@ -71,7 +90,8 @@ Windows Phone 7·8의 Metro UI처럼 바뀝니다. 이 문서는 무엇을 참�
 서로 다른 작업 사이를 오가는 데는 쓰지 말라고 합니다. 그래서 피벗은 메뉴와 메뉴 사이가 아니라 **한 메뉴 안의 섹션 사이**를 오갑니다
 (`SettingsActivity.installSectionPivot`, `Metro.Pivot`).
 
-- 메뉴에 들어가면 머리글 첫 줄에 메뉴 이름이 작은 대문자로, 그 아래에 섹션 이름들이 크고 가는 소문자로 이어집니다. 섹션 소제목은
+- 메뉴에 들어가면 머리글 첫 줄에 메뉴의 원래 이름(예: 추천, 학습 및 완성)이 작은 대문자로, 그 아래에 섹션 이름들이 크고 가는 소문자로 이어집니다.
+  피벗이 없는 화면(정보, 키보드 사용자화 등)은 첫 줄에 NEWSWIPE, 그 아래에 짧은 메뉴 이름을 크게 씁니다. 섹션 소제목은
   목록에서 빠지고 피벗 이름이 됩니다. 섹션이 하나뿐인 메뉴는 피벗 없이 큰 제목만 쓰고 소제목을 뺍니다.
 - 가로로 밀거나 머리글의 이름을 누르면 그 섹션으로 갑니다. 끝에서 밀면 처음으로 돕니다. 모든 페이지는 한 화면 안에 겹쳐 있고
   지금 페이지만 보입니다 (화면을 바꾸지 않는다).
@@ -128,7 +148,8 @@ Windows Phone 7·8의 Metro UI처럼 바뀝니다. 이 문서는 무엇을 참�
   라디오는 같은 모양의 동그라미에 16px 점. 한 줄 높이 72px), 입력란은 WP TextBox(`Metro.textBox`: PhoneTextBoxBrush 네모 다크 #BFBFBF·라이트 #D9D9D9,
   입력 중에는 흰 바탕에 강조색 3px 테두리, 글자 다크 검정·라이트 검정 87%, 19sp, 커서는 글자 색). 설정 화면의 검색창·입력 시험 창도 같은 TextBox.
   글은 CustomMessageBox 템플릿대로 좌우 24px, 제목(Caption) 32px SemiBold, 글 22.667px SemiLight 위 11px, 버튼은 좌우·아래 24px·사이 24px.
-  SwivelBackwardIn(처음 200ms 숨었다가 -30° → 0°, 150ms)으로 들어오고 SwivelBackwardOut(0° → 60°, 250ms)으로 나갑니다.
+  SwivelBackwardIn(처음 200ms 숨었다가 원본 -30° → 0°, 150ms)으로 들어오고 SwivelBackwardOut(원본 0° → 60°, 250ms)으로 나갑니다
+  (Android rotationX는 부호가 반대라 +30° → 0°, 0° → -60°).
 - 성능: XML을 부풀리지 않고 뷰 몇 개를 코드로 만듭니다 (시스템 AlertDialog는 레이아웃 XML을 부풀립니다). 목록은 수십 개 이하라
   ListView 대신 줄을 바로 쌓습니다. 그림자·흐림을 쓰지 않고, Metro의 스위블만 하드웨어 층으로 그립니다.
 - AlertDialog처럼 입력란이 없는 창은 키보드를 가져가지 않습니다(FLAG_ALT_FOCUSABLE_IM): 열려 있던 키보드가 그대로 남습니다.

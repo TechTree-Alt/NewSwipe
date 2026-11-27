@@ -65,7 +65,7 @@ Build an input system that is truly your own, one that fits you perfectly.
 - **One-handed mode** · Shifts the keyboard to the left or right to make typing with one hand easier.
 - **Text editing** · A panel opened from the toolbar moves the cursor up, down, left, right or by word, and swipes send it to the line or text edge, and its selection mode lets you select, cut, copy and paste.
 - **Floating keyboard** · Place a floating keyboard anywhere you like for comfortable typing on large screens.
-- **Import & export settings** · Export all your settings to a file and import them back. When the file contains personal content, you can encrypt it with a password.
+- **Backup & restore** · Export all your settings to a file and import them back. When the file contains personal content, you can encrypt it with a password.
 
 ### ✨ Word suggestions, autocorrect & learning
 - **Suggestions that understand Korean** · Builds and suggests words based on what you type, even words that aren't in the dictionary. Supports initial-consonant search, words typed without spaces, ordering by the previous word, and next-word prediction.
@@ -82,7 +82,7 @@ Privacy and security are the core value of a sound input system. NewSwipe does n
 - Learned words and clipboard history (text and images) are kept only in the app's private storage and are not included in system backups (`allowBackup=false`).
   You can turn off saving or delete everything in Settings.
 - Words are not learned in password and email fields, or in fields that ask apps not to learn (such as incognito mode).
-- Learned words, emoji and clipboard history (text only) go into a backup file only if you choose to include them in 'Import & export settings',
+- Learned words, emoji and clipboard history (text only) go into a backup file only if you choose to include them in 'Backup & restore',
   and you can then encrypt the whole file with a password (AES-256-GCM, with the key derived using PBKDF2-HMAC-SHA256).
 <br />
 

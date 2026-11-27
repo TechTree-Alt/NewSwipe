@@ -212,7 +212,7 @@ final class SettingsFrame {
             collectFeather(content, items);
             return items;
         });
-        page.playEnterOnFirstDraw();
+        page.playEnterOnFirstDraw(!enterAsReturn);
         if (android.os.Build.VERSION.SDK_INT >= 33) {
             // 뒤로 가기도 턴스타일로 나간다. 검색창·입력창·설정 창이 열려 있으면 나중에 등록한 그쪽 콜백이 먼저 불린다.
             android.window.OnBackInvokedCallback cb = () -> metroBack(activity);
@@ -220,6 +220,41 @@ final class SettingsFrame {
                     android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, cb);
         }
         return page;
+    }
+
+    /** Metro: 이 화면이 처음 그려질 때 돌아온 화면처럼 들어온다 (wrap 전에 정한다). */
+    private boolean enterAsReturn;
+
+    /** Metro: 처음 그려질 때 새 화면 대신 돌아온 화면의 턴스타일로 들어온다 (돌아와 새 색으로 다시 만든 화면). wrap 전에 부른다. */
+    SettingsFrame enterAsReturn() {
+        enterAsReturn = true;
+        return this;
+    }
+
+    /**
+     * 화면을 다시 만들기(recreate) 직전에 부른다. 창 배경을 next의 바탕색으로 바꿔 둔다 (다시 만드는 사이에 창 배경이 드러나도
+     * 새 색이다). 화면 내용은 그대로 두어, 옛 화면이 새 색의 화면으로 바로 바뀐다.
+     *
+     * <p>예외: Metro에서 다른 화면을 열어 돌아 나가 있던(항목이 다 숨고 바탕·앱 바만 남은) 화면이 돌아올 때 다시 만들면, 다시 만들기
+     * 전에 한 번 더 그려지는 옛 화면은 옛 색의 바탕·앱 바뿐이다. 그 한 프레임이 옛 색으로 깜빡이지 않게 들어오는 움직임을 멈추고
+     * 내용을 숨겨 새 바탕색만 보이게 한다.
+     */
+    static void prepareRecreate(Activity activity, AppTheme next) {
+        android.view.Window w = activity.getWindow();
+        w.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(next.bg));
+        java.lang.ref.WeakReference<SettingsFrame> ref = FRAMES.get(activity);
+        SettingsFrame frame = ref == null ? null : ref.get();
+        if (frame == null || frame.page == null || !frame.page.away()) return;
+        frame.page.freeze();
+        Ui.edgeToEdge(w, next.dark);
+        View content = w.getDecorView().findViewById(android.R.id.content);
+        if (content != null) content.setVisibility(View.INVISIBLE);
+    }
+
+    /** {@link #prepareRecreate}를 거쳐 화면을 지금 설정의 색으로 다시 만든다. */
+    static void recreateQuietly(Activity activity) {
+        prepareRecreate(activity, AppTheme.of(activity));
+        activity.recreate();
     }
 
     /** Metro 모드의 턴스타일 틀 (Metro 모드가 아니면 null). */
@@ -279,11 +314,12 @@ final class SettingsFrame {
      *
      * @param pages 섹션마다 한 장 (같은 자리에 겹쳐 둔 뷰), names와 차례가 같다
      */
-    Metro.Pivot installPivot(String[] names, View[] pages, int index, Metro.Pivot.Host host) {
+    Metro.Pivot installPivot(String pivotTitle, String[] names, View[] pages, int index, Metro.Pivot.Host host) {
         if (page == null || metroBig == null) return null;
         // Pivot 템플릿: 제목은 PivotTitleStyle(SemiBold 22.667px), Margin 24,17,0,-7. 머리글 이름은 PivotHeaderItem Padding 21
         // (제목보다 3px 왼쪽), 내용은 PivotItemMargin 12,28,12,0만큼 아래에서 시작한다.
-        metroSmall.setText(Metro.upper(title));
+        // 피벗 제목은 메뉴의 원래 이름 (피벗이 없는 화면의 큰 제목은 짧은 이름, 작은 제목은 앱 이름).
+        metroSmall.setText(Metro.upper(pivotTitle != null ? pivotTitle : title));
         metroSmall.setTextSize(TypedValue.COMPLEX_UNIT_SP, Metro.sp(Metro.FONT_MEDIUM));
         metroSmall.setTypeface(Metro.semibold());
         Metro.PivotHeader names2 = new Metro.PivotHeader(activity, names, index);
@@ -304,6 +340,10 @@ final class SettingsFrame {
 
     private View wrapPlain(View content, View bottom) {
         Ui.edgeToEdge(activity.getWindow(), colors.dark);
+        // 창 배경을 화면 바탕색과 같게: 테마의 windowBackground(settings_background)는 시스템의 다크/라이트를 따르고 Metro·
+        // Neumorphism 바탕과 색이 달라서, 화면 내용이 보이지 않는 순간(Metro 턴스타일이 다 돌아 나가 화면을 숨긴 뒤 닫히거나 다음
+        // 화면이 뜨기 전, 돌아와 다시 그리기 전)에 그 색이 깜빡였다.
+        activity.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(colors.bg));
         LinearLayout root = new LinearLayout(activity);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(colors.bg);
