@@ -146,7 +146,9 @@ public final class SettingsActivity extends Activity {
             String resetName = sectionTitle(sectionId);
             frame.withMenuItem(L.t("기본값으로 되돌리기", "reset to defaults"), () -> ResetDialog.confirm(this, resetName, () -> reset(sectionId)));
         }
-        else if ("onehand".equals(sectionId)) frame.keyboardOverlays();   // 미리보기를 실제 키보드처럼 화면 아래에 붙인다
+        // 한 손 모드: 키보드 사용자화처럼 키보드가 화면 아래(미리보기)를 그대로 덮게 한다 (화면을 줄여 미리보기를 위로 밀지 않는다).
+        // 위의 되돌리기 메뉴 항목과는 따로 정한다 (한 손 모드에도 되돌리기가 있다).
+        if ("onehand".equals(sectionId)) frame.keyboardOverlays();
         ScrollView scroll = new ScrollView(this);
         com.alternative_studios.newswipe.ui.Metro.scrollIndicator(scroll);   // Metro: WP8처럼 끄는 동안만 보이는 가는 표시
         scrollView = scroll;
