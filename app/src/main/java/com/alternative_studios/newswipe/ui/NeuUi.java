@@ -245,6 +245,19 @@ public final class NeuUi {
         unclip(v, SMALL);
     }
 
+    /** v와 그 속 뷰들의 솟아오른 바탕(Face)이 그림자를 면 밖에만 그리게 하거나 되돌린다 ({@link Face#carve}). */
+    public static void carveShadows(View v, boolean on) {
+        android.graphics.drawable.Drawable bg = v.getBackground();
+        if (bg instanceof Face && ((Face) bg).carve != on) {
+            ((Face) bg).carve = on;
+            bg.invalidateSelf();
+        }
+        if (v instanceof android.view.ViewGroup) {
+            android.view.ViewGroup g = (android.view.ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) carveShadows(g.getChildAt(i), on);
+        }
+    }
+
     // ---------------------------------------------------------------- 그림자가 잘리지 않게
 
     /**
@@ -356,16 +369,36 @@ public final class NeuUi {
             float r = Math.min(radius, Math.min(face.width(), face.height()) / 2f);
             if (gradient != null) {
                 // 그라데이션 면: 솟아오르거나, 누르는 동안은 면 위에 안쪽 그림자만 얹는다 (투명한 면으로).
-                if (!pressed) drawRaised(ctx, c, face, r, size);
+                if (!pressed) drawRaisedAround(c, r);
                 paintFace(c, r);
                 if (pressed) drawInset(ctx, c, face, r, 0x00000000, fill);
             } else if (sunken || pressed) {
                 drawInset(ctx, c, face, r, pressed && color != surface ? Neu.blend(color, 0xFF000000, 0.08f) : color, fill);
             } else {
-                drawRaised(ctx, c, face, r, size);
+                drawRaisedAround(c, r);
                 fill.setColor(color);
                 c.drawRoundRect(face, r, r, fill);
             }
+        }
+
+        /**
+         * 면 밖에만 비치는 그림자가 필요한 동안(carve) 켠다. 그림자는 면 아래까지 깔리고 그 위를 면이 덮는데, 뷰를 층 없이 반투명하게
+         * 그리면(Ui.setVisibleAnimated) 반투명한 면 사이로 아래의 그림자가 비쳐 면이 거뭇해진다.
+         */
+        boolean carve;
+        private final Path carvePath = new Path();
+
+        private void drawRaisedAround(Canvas c, float r) {
+            if (!carve) {
+                drawRaised(ctx, c, face, r, size);
+                return;
+            }
+            c.save();
+            carvePath.reset();
+            carvePath.addRoundRect(face, r, r, Path.Direction.CW);
+            c.clipOutPath(carvePath);
+            drawRaised(ctx, c, face, r, size);
+            c.restore();
         }
 
         @Override

@@ -299,6 +299,16 @@ public final class Ui {
 
     /** 펼치고 접는 중인 뷰의, 따로 정해 두지 않은 위·아래 바깥 여백의 보일 때 값. */
     private static final java.util.WeakHashMap<android.view.View, int[]> AUTO_MARGINS = new java.util.WeakHashMap<>();
+    /** Neumorphism: 펼치고 접는 동안 겹쳐 그리기를 끈 뷰의 원래 값 (도중에 뒤집혀도 처음 값을 지킨다). */
+    private static final java.util.WeakHashMap<android.view.View, Boolean> OVERLAP = new java.util.WeakHashMap<>();
+
+    /** 펼치고 접는 동안 바꿔 둔 겹쳐 그리기와 그림자 모양을 원래대로 돌린다. */
+    private static void restoreOverlap(android.view.View v) {
+        Boolean overlap = OVERLAP.remove(v);
+        if (overlap == null) return;
+        v.forceHasOverlappingRendering(overlap);
+        NeuUi.carveShadows(v, false);
+    }
 
     public static void setVisibleAnimated(final android.view.View v, final boolean show) {
         setVisibleAnimated(v, show, null);
@@ -312,12 +322,14 @@ public final class Ui {
         android.view.ViewParent parent = v.getParent();
         boolean visible = v.getVisibility() == android.view.View.VISIBLE;
         if (!(parent instanceof android.view.View) || ((android.view.View) parent).getWidth() == 0 || lp == null) {
+            restoreOverlap(v);
             v.setVisibility(show ? android.view.View.VISIBLE : android.view.View.GONE);
             if (onEnd != null) v.post(onEnd);
             return;
         }
         // 진행 중이던 애니메이션이 없고 이미 원하는 상태면 할 일이 없다.
         if (show == visible && lp.height == android.view.ViewGroup.LayoutParams.WRAP_CONTENT && v.getAlpha() == 1f) {
+            restoreOverlap(v);
             if (onEnd != null) v.post(onEnd);
             return;
         }
@@ -382,6 +394,16 @@ public final class Ui {
         // 펼치고 접는 동안은 이 뷰 자신을 지금 높이로 자른다: Neumorphism에서는 그림자 때문에 부모들의 자르기를 꺼 두어,
         // 자르지 않으면 접히는 내용이 아래 줄 위로 삐져나온다.
         final android.graphics.Rect clip = new android.graphics.Rect();
+        // Neumorphism: 투명도가 1보다 작은 뷰는 렌더러(HWUI)가 뷰 크기만 한 화면 밖 층에 따로 그린 뒤 합친다
+        // (겹쳐 그리는 뷰의 기본 동작). 그 층은 뷰 경계 밖을 담지 못해, 뷰 밖으로 번지는 카드 그림자가 투명도가 바뀌는 동안
+        // 내내 잘렸다가 1이 되는 순간 다 보인다 (펼칠 때는 잘린 채 나타났다가 끝에 바뀌고, 접을 때는 잘린 뒤 사라진다).
+        // 움직이는 동안은 층 없이 그리는 것마다 투명도를 곱해 그리게 하고, 끝나면 원래대로 돌린다. 층 없이 그리면 면 아래에 깔린
+        // 그림자가 반투명한 면 사이로 비치므로, 그동안은 그림자를 면 밖에만 그린다.
+        if (NeuUi.on && !OVERLAP.containsKey(v)) {
+            OVERLAP.put(v, v.getHasOverlappingRendering());
+            v.forceHasOverlappingRendering(false);
+            NeuUi.carveShadows(v, true);
+        }
         // Neumorphism: 카드 그림자는 뷰 밖으로 번진다. 뷰 경계에서 자르면 접기 시작하자마자 그림자가 잘려 보이므로,
         // 좌우·위는 그림자만큼 넓혀 자르고, 아래는 보이는 정도(투명도)만큼만 그림자 자리를 남긴다 (다 보일 때는 그림자 전체,
         // 거의 사라질 때는 접히는 내용이 아래 줄 위로 삐져나오지 않게 경계 그대로).
@@ -417,6 +439,7 @@ public final class Ui {
                 SHOWN.remove(v);
                 AUTO_MARGINS.remove(v);
                 v.setClipBounds(null);
+                restoreOverlap(v);
                 android.view.ViewGroup.LayoutParams l = v.getLayoutParams();
                 l.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT;
                 if (shown != null) {
