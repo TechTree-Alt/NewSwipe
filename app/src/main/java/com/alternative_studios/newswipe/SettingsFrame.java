@@ -319,17 +319,16 @@ final class SettingsFrame {
         // WP8.1 Pivot 템플릿 (유효 픽셀): 제목은 PivotTitleContentControlStyle(SemiBold 18.14, 대문자로 쓴 글),
         // PivotPortraitThemePadding 19,38,0,0. 머리글 이름은 PivotHeaderItemMargin 16,-6.5,0,0(화면 왼쪽에서 16, 제목보다 3 왼쪽)과
         // 아래 Padding 6.5, 내용은 PivotItemMargin 19,22.5,19,0만큼 아래에서 시작한다. 제목과 이름 줄은 TextBlock 스타일이 아닌
-        // ContentControl이라 보통 줄 높이(글꼴의 위아래 끝까지)를 쓴다.
+        // ContentControl이라 WP8.1의 보통 줄(높이 1.33 em, 기준선 1.0791 em)을 쓴다. 에뮬레이터에서 잰 자리(유효 픽셀, 화면 내용의
+        // 위에서): 제목 글 37.92 (높이 24.17), 이름 줄 55.42 (높이 75.83), 내용 160.42.
         // 피벗 제목은 메뉴의 원래 이름 (피벗이 없는 화면의 큰 제목은 짧은 이름, 작은 제목은 앱 이름).
         metroSmall.setText(Metro.upper(pivotTitle != null ? pivotTitle : title));
-        metroSmall.setIncludeFontPadding(true);
-        metroSmall.setLineSpacing(0f, 1f);
+        int[] tl = Metro.normalLine(metroSmall);
         LinearLayout.LayoutParams slp = (LinearLayout.LayoutParams) metroSmall.getLayoutParams();
-        slp.topMargin = 0;
-        slp.bottomMargin = 0;
+        slp.topMargin = Metro.wp81(activity, 38) + tl[0];
+        slp.bottomMargin = tl[1];
         View head = (View) metroSmall.getParent();
-        head.setPadding(head.getPaddingLeft(), Metro.wp81(activity, 38), head.getPaddingRight(),
-                Metro.wp81(activity, 6.5f + 22.5f));
+        head.setPadding(head.getPaddingLeft(), 0, head.getPaddingRight(), Metro.wp81(activity, 6.5f + 22.5f));
         Metro.PivotHeader names2 = new Metro.PivotHeader(activity, names, index);
         ViewGroup parent = (ViewGroup) metroBig.getParent();
         int at = parent.indexOfChild(metroBig);
