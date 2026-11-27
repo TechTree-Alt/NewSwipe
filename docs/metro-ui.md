@@ -10,13 +10,13 @@ Windows Phone 7·8·8.1의 Metro UI처럼 바뀝니다. 이 문서는 무엇을 
   - `dxaml/phone/lib/Pivot_Partial.cpp`(PivotAnimator), `dxaml/xcp/components/pivot/PivotStateMachine.cpp`: 피벗
 - **Windows Phone Toolkit** (Microsoft, Ms-PL, `github.com/microsoftarchive/WindowsPhoneToolkit`):
   턴스타일·틸트·스위블의 숫자는 이 소스에서 그대로 옮겼습니다. 코드는 가져오지 않았습니다.
-  - `Transitions/Storyboards/Turnstile*.xaml`, `Effects/TurnstileFeatherEffect.cs`: 턴스타일·깃털의 각도와 축. 시간은 이 값이
-    실기기보다 느려 아래 WinJS의 값을 씁니다 (아래 '움직임')
+  - `Transitions/Storyboards/Turnstile*.xaml`, `Effects/TurnstileFeatherEffect.cs`: 턴스타일·깃털의 각도. 시간·축은 이 값이
+    실기기와 달라 아래 WinJS의 값을 씁니다 (아래 '움직임')
   - `Effects/TiltEffect.cs`: 누른 자리로 기울어지는 틸트 (WP8.1의 PointerDownThemeAnimation 값은 공개 소스에 없어 이것을 씁니다)
   - `Transitions/Storyboards/SwivelFullScreenIn.xaml`, `SlideUpFadeIn.xaml`
   - `Microsoft.Phone.Controls.Toolkit.WP8/Themes/Generic.xaml`: ToggleSwitch 템플릿
 - **WinJS** (Microsoft, MIT, `github.com/winjs/winjs`): WP8.1 HTML/JS 앱용 라이브러리. `src/js/WinJS/Animations.js`의
-  `turnstileForwardIn`·`turnstileForwardOut`·`turnstileBackwardIn`·`turnstileBackwardOut`에서 턴스타일·깃털의 시간과 곡선을 옮겼습니다
+  `turnstileForwardIn`·`turnstileForwardOut`·`turnstileBackwardIn`·`turnstileBackwardOut`에서 턴스타일·깃털의 시간·곡선·축을 옮겼습니다
 - **Windows Phone 8 SDK의 기본 리소스** (`C:\Program Files (x86)\Microsoft SDKs\Windows Phone\v8.0\Design`의 사본):
   - `ThemeResources.xaml` (Dark·Light): 테마 색, 글꼴 크기(PhoneFontSize*), 여백, PhonePivotUnselectedItemOpacity 등
   - `System.Windows.xaml`: Button(PhoneButtonBase)·ToggleButton·CheckBox·RadioButton·TextBox·Slider·ScrollViewer 템플릿
@@ -60,7 +60,7 @@ Windows Phone 7·8·8.1의 Metro UI처럼 바뀝니다. 이 문서는 무엇을 
 |---|---|---|
 | 턴스타일 (들어오기) | 원본 -80° → 0°, 300ms, cubic-bezier(0.01, 0.975, 0.4775, 0.9775), 시작하자마자 보임 / 뒤로 돌아올 때 원본 50° → 0° (WinJS) | 화면이 열릴 때 / 다른 화면에서 돌아올 때 |
 | 턴스타일 (나가기) | 원본 0° → 50°, 128ms, cubic-bezier(0.4925, 0.01, 0.7675, -0.01), 끝나면 사라짐 / 뒤로: 원본 0° → -80° (WinJS) | 다른 화면을 열 때 / 뒤로 갈 때 |
-| 축 | PlaneProjection CenterOfRotationX -0.2 (요소 폭 20% 왼쪽 바깥, Toolkit) | 턴스타일·깃털의 모든 항목 |
+| 축 | 화면 왼쪽 끝에서 40 유효 픽셀(→ 36dp) 바깥의 세로선, 원근의 중심은 화면 높이의 가운데 (WinJS `collectTurnstileTransformOrigins`). 모든 항목이 같은 축으로 돌고, 위·아래 항목은 화면 가운데에서 바라본 것처럼 기운다 | 턴스타일·깃털의 모든 항목 |
 | 깃털 | 항목마다 50ms씩 늦게 (한도 1000ms, WinJS `staggerDelay(0, 50, 1, 1000)`). 나갈 때는 항목마다 제 차례가 끝나면 사라지고, 마지막 항목이 사라진 뒤 다음 화면이 열린다 | 머리글·목록 줄·아래 미리보기 (실제로 보이는 것만) |
 | 틸트 | 최대 0.3 rad, 가운데 25px 들어감(약 2.5%), 떼고 200ms 뒤 100ms 로그 곡선 | 메뉴 줄, 값 줄, 버튼, 선택 칸, 색 타일 |
 | 스위블 | 원본 RotationX -30° → 0° (위쪽 가장자리가 뒤로 젖혀졌다 선다), 350ms, EaseOut 6 | 키보드의 이모지·클립보드·텍스트 편집 창, 드롭다운 메뉴가 열릴 때 |
