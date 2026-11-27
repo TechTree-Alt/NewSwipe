@@ -600,6 +600,7 @@ public final class Metro {
          * @param forward true면 새로 열린 화면(+80° → 0°), false면 뒤로 돌아온 화면(-50° → 0°)
          */
         private void enter(boolean forward) {
+            away = false;
             restore();
             java.util.List<View> list = items == null ? null : items.get();
             block(IN_MS / 2);   // 거의 다 들어오면 누를 수 있다
@@ -611,8 +612,12 @@ public final class Metro {
         /**
          * 나간다: 보이는 항목이 위에서부터 차례로(앞으로 50ms, 뒤로 40ms 간격) 250ms 동안 돌아 나가 제 차례가 끝나면 사라지고, 마지막
          * 항목까지 사라진 뒤 then을 부른다. 항목이 없으면 화면 전체가 돈다.
+         *
+         * <p>화면 전체는 숨기지 않는다: 바탕과 앱 바(깃털 항목이 아니다)는 그대로 남아, 다음 화면이 뜨거나 이 화면이 닫힐 때까지 창
+         * 배경이 드러나지 않고 앱 바도 깜빡이지 않는다 (Windows Phone의 앱 바도 화면과 함께 돌지 않는다).
          */
         private void leave(float to, long step, Runnable then) {
+            away = true;
             java.util.List<View> list = items == null ? java.util.Collections.emptyList() : visible(items.get());
             if (list.isEmpty()) {
                 turn(content, 0f, to, OUT_MS, 0, true, then);
@@ -626,10 +631,25 @@ public final class Metro {
                 turn(v, 0f, to, OUT_MS, delay, true, null);
                 last = Math.max(last, delay);
             }
-            postDelayed(() -> {
-                content.setAlpha(0f);
-                then.run();
-            }, last + OUT_MS);
+            postDelayed(then, last + OUT_MS);
+        }
+
+        /** 돌아 나가 항목이 숨은 채인지 (다시 들어오면 false). */
+        private boolean away;
+        /** 다시 만들 화면이라 다시 보여도 들어오지 않는다 ({@link #freeze}). */
+        private boolean frozen;
+
+        /**
+         * 이 화면을 곧 다시 만든다(recreate): 다시 보여도 들어오는 움직임을 틀지 않고 지금 모습(돌아 나가 비어 있는 화면)으로 둔다.
+         * 다시 만든 화면이 들어온다.
+         */
+        public void freeze() {
+            frozen = true;
+        }
+
+        /** 돌아 나가 항목이 숨은 채인지. */
+        public boolean away() {
+            return away;
         }
 
         /** 다른 화면으로 넘어간다: 이 화면이 돌아 나간 뒤(0° → 원본 50°) start를 부른다. */
@@ -641,7 +661,7 @@ public final class Metro {
                 start.run();
                 // 새 화면이 뜨지 않았으면(받는 앱이 없는 등) 1초 뒤에 이 화면을 다시 보여 준다 (돌아온 것처럼).
                 postDelayed(() -> {
-                    if (getWindowVisibility() == VISIBLE && hasWindowFocus() && content.getAlpha() == 0f) enter(false);
+                    if (getWindowVisibility() == VISIBLE && hasWindowFocus() && away && !frozen) enter(false);
                 }, 1000);
             });
         }
@@ -662,7 +682,7 @@ public final class Metro {
             super.onWindowVisibilityChanged(visibility);
             if (visibility != VISIBLE) {
                 hidden = true;
-            } else if (hidden) {
+            } else if (hidden && !frozen) {
                 hidden = false;
                 // 다른 화면에서 돌아왔다: TurnstileBackwardIn (원본 50° → 0°, 이 앱의 각도로 -50° → 0°).
                 busy = false;

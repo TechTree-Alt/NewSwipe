@@ -232,13 +232,20 @@ final class SettingsFrame {
     }
 
     /**
-     * 화면을 다시 만들기(recreate) 직전에 부른다: 창 배경과 시스템 바를 next의 색으로 바꾸고 내용을 숨긴다. 다시 만들기는 지금 화면이
-     * 한 번 더 그려진 뒤에 일어나므로, 그대로 두면 옛 색의 화면(화면 모드를 바꾸기 전 색)이 한 프레임 보였다가 새 색으로 바뀌어
-     * 깜빡인다. 새 화면의 첫 프레임도 바탕색만 보이고 항목이 차례로 들어오므로 이어진다.
+     * 화면을 다시 만들기(recreate) 직전에 부른다. 창 배경을 next의 바탕색으로 바꿔 둔다 (다시 만드는 사이에 창 배경이 드러나도
+     * 새 색이다). 화면 내용은 그대로 두어, 옛 화면이 새 색의 화면으로 바로 바뀐다.
+     *
+     * <p>예외: Metro에서 다른 화면을 열어 돌아 나가 있던(항목이 다 숨고 바탕·앱 바만 남은) 화면이 돌아올 때 다시 만들면, 다시 만들기
+     * 전에 한 번 더 그려지는 옛 화면은 옛 색의 바탕·앱 바뿐이다. 그 한 프레임이 옛 색으로 깜빡이지 않게 들어오는 움직임을 멈추고
+     * 내용을 숨겨 새 바탕색만 보이게 한다.
      */
     static void prepareRecreate(Activity activity, AppTheme next) {
         android.view.Window w = activity.getWindow();
         w.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(next.bg));
+        java.lang.ref.WeakReference<SettingsFrame> ref = FRAMES.get(activity);
+        SettingsFrame frame = ref == null ? null : ref.get();
+        if (frame == null || frame.page == null || !frame.page.away()) return;
+        frame.page.freeze();
         Ui.edgeToEdge(w, next.dark);
         View content = w.getDecorView().findViewById(android.R.id.content);
         if (content != null) content.setVisibility(View.INVISIBLE);
