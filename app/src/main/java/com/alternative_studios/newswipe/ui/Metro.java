@@ -348,10 +348,11 @@ public final class Metro {
     /**
      * {@link #turn(View, float, float, float, long, long, boolean, Runnable)}와 같되 원근 중심의 세로 자리(camY, v 기준)를 준다.
      *
-     * <p>Silverlight PlaneProjection은 회전축(CenterOfRotationX)과 원근의 중심(요소의 가운데)이 따로다. Toolkit의
-     * TurnstileFeatherEffect는 여기에 GlobalOffsetY와 같은 크기의 TranslateTransform을 짝지어 원근의 세로 중심을 화면 가운데로
-     * 옮긴다. Android의 rotationY는 원근의 중심이 회전축(pivot)과 같아서, 축을 화면 왼쪽 바깥에 두면 돌아간 줄이 그쪽으로 끌려가
-     * 찌부러져 보인다. 그래서 Android 10 이상에서는 축과 원근 중심을 따로 둔 3D 행렬을 직접 만들어 setAnimationMatrix로 건다.
+     * <p>Silverlight PlaneProjection은 회전축(CenterOfRotationX)과 카메라가 따로다: 카메라는 요소마다 그 요소의 가운데에 있고,
+     * 거리는 시야각 57°로 요소의 크기에 맞춘다 (크기 H를 거리 D = H / (2·tan 28.5°)에서 본다). 그래서 축이 요소 왼쪽 바깥이어도
+     * 줄의 왼쪽 끝은 제자리 가까이에 머물고 오른쪽만 멀어지는 문짝처럼 돈다. Android의 rotationY는 카메라가 회전축(pivot)에 있고
+     * 거리도 하나라서, 축을 왼쪽 바깥에 두면 줄이 그쪽으로 끌려가 찌부러져 보인다. 그래서 Android 10 이상에서는 축과 카메라를
+     * 따로 둔 3D 행렬을 직접 만들어 setAnimationMatrix로 건다.
      */
     public static ValueAnimator turn(View v, float pivotX, float camY, float from, float to, long ms, long delay,
                                      boolean out, Runnable onEnd) {
@@ -363,7 +364,17 @@ public final class Metro {
         final float camX = v.getWidth() / 2f;
         if (matrix) {
             android.util.DisplayMetrics dm = v.getResources().getDisplayMetrics();
-            camera.setLocation(0f, 0f, -Math.max(dm.widthPixels, 1) * PERSPECTIVE / 72f);   // perspective()와 같은 거리
+            // 요소 크기(긴 쪽)를 시야각 57°에 꼭 맞게 보는 거리. Camera의 단위는 1/72인치.
+            float size = Math.max(1, Math.max(v.getWidth(), v.getHeight()));
+            float dist = size / (2f * (float) Math.tan(Math.toRadians(FOV / 2)));
+            // 앞으로(음의 각도) 돌 때 축에서 먼 끝이 카메라 뒤로 넘어가면 그림이 뒤집혀 깨진다 (Silverlight는 앞 평면에서 잘라 낸다).
+            // 그 끝보다 조금 더 뒤에 카메라를 둔다.
+            float front = Math.min(0f, Math.min(from, to));
+            if (front < 0f) {
+                float near = (v.getWidth() - pivotX) * (float) Math.sin(Math.toRadians(-front));
+                dist = Math.max(dist, near * 1.15f);
+            }
+            camera.setLocation(0f, 0f, -dist / 72f);
         } else {
             v.setPivotX(pivotX);
             v.setPivotY(camY);
@@ -426,8 +437,10 @@ public final class Metro {
         return a;
     }
 
-    /** 원근: 카메라를 화면 폭의 이만큼 배 거리에 둔다 ({@link #perspective}). */
+    /** 원근: 카메라를 화면 폭의 이만큼 배 거리에 둔다 ({@link #perspective}, Android 9). */
     private static final float PERSPECTIVE = 2.2f;
+    /** Silverlight PlaneProjection의 고정 시야각 (도). */
+    private static final double FOV = 57.0;
 
     /** 턴스타일로 돌던 자세를 없앤다 (나간 화면이 다시 들어오기 전에). */
     static void resetTurn(View v) {
@@ -460,13 +473,11 @@ public final class Metro {
 
     /**
      * 화면의 항목들이 깃털처럼 차례로 돌아 들어온다 (TurnstileFeatherEffect). items는 위에서 아래 차례이고, 화면 안에 보이는 것만
-     * 움직인다. Toolkit처럼 항목마다 자기 왼쪽 바깥(폭의 20%)을 축으로 돌고, 원근은 모두 화면 가운데에서 본다.
+     * 움직인다. Toolkit처럼 항목마다 자기 왼쪽 바깥(폭의 20%)을 축으로 돌고, 원근은 항목마다 그 가운데에서 본다.
      *
      * @param forward true면 새 화면이 들어올 때(-80° → 0°, 40ms 간격), false면 앞 화면으로 돌아올 때(50° → 0°, 50ms 간격)
      */
     public static void featherIn(View page, java.util.List<View> items, boolean forward) {
-        int[] pl = new int[2], il = new int[2];
-        page.getLocationInWindow(pl);
         android.graphics.Rect seen = new android.graphics.Rect();
         int n = 0;
         for (View item : items) {
@@ -474,13 +485,11 @@ public final class Metro {
             // 실제로 보이는 것만: 스크롤 목록 밖으로 잘린 줄(아래 미리보기 뒤에 가려진 줄 등)은 세지 않는다.
             // 세면 한도가 그런 줄로 차서, 맨 끝의 아래 미리보기가 움직이지 않고 그냥 나타난다.
             if (!item.getGlobalVisibleRect(seen)) continue;
-            item.getLocationInWindow(il);
-            // TurnstileFeatherEffect: 축은 요소 폭의 -0.2 (CenterOfRotationX), 원근의 세로 중심은 화면 가운데.
+            // TurnstileFeatherEffect: 축은 요소 폭의 -0.2 (CenterOfRotationX), 카메라는 요소의 가운데 (PlaneProjection).
             float pivot = FEATHER_CENTER * item.getWidth();
-            float camY = pl[1] + page.getHeight() / 2f - il[1];
             // 한도를 넘은 항목도 빼지 않고 마지막 차례와 함께 들어온다 (아래 미리보기처럼 끝에 있는 것이 그냥 생기지 않게).
             int order = Math.min(n, FEATHER_MAX - 1);
-            turn(item, pivot, camY, forward ? FORWARD_IN : BACKWARD_IN, 0f, IN_MS,
+            turn(item, pivot, forward ? FORWARD_IN : BACKWARD_IN, 0f, IN_MS,
                     order * (forward ? FORWARD_IN_STEP : BACKWARD_IN_STEP), false, null);
             n++;
         }
