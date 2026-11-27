@@ -26,6 +26,11 @@ public final class ClipChip extends View {
      * 이만큼 왼쪽으로 당겨, 눈에 보이는 왼쪽 여백이 글 뒤의 오른쪽 여백(padH)과 같게 한다.
      */
     private final int iconBlank;
+    /**
+     * 글 앞에 아이콘이 차지하는 폭 (글 시작 위치 - padH). Metro는 Windows Phone 키보드의 추천 줄처럼 글만 보여, 글이 보일 때는
+     * 클립보드 아이콘을 그리지 않는다 (글이 없거나 들어갈 자리가 없을 때만 아이콘이 가운데에 보인다).
+     */
+    private final int lead;
     private String label = "";
     /** 지금 폭에 맞게 줄인 글 (그릴 자리가 없으면 빈 글). */
     private CharSequence fitted = "";
@@ -40,6 +45,7 @@ public final class ClipChip extends View {
         iconSize = Ui.dp(c, 18);
         gap = Ui.dp(c, 6);
         iconBlank = Math.round(iconSize * 3f / 24f);
+        lead = Metro.on ? 0 : iconSize + gap - iconBlank;
         minHeight = Ui.dp(c, 24);
         inset = Ui.dp(c, 4);   // Ui.chipHeight와 같게: 막대에서 위아래 4dp씩 남긴다
         float r = Ui.chipRadius(c);
@@ -89,7 +95,7 @@ public final class ClipChip extends View {
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         int want = label.isEmpty() ? padH + iconSize + padH
-                : padH - iconBlank + iconSize + gap + (int) Math.ceil(textPaint.measureText(label)) + padH;
+                : padH + lead + (int) Math.ceil(textPaint.measureText(label)) + padH;
         int w = resolveSize(want, widthMeasureSpec);
         // 도구 막대 높이에서 위아래로 조금씩 남긴다 (막대가 아주 낮으면 남기지 않는다).
         int specH = MeasureSpec.getSize(heightMeasureSpec);
@@ -111,7 +117,7 @@ public final class ClipChip extends View {
     }
 
     private void refit(int w) {
-        float avail = w - 2 * padH + iconBlank - iconSize - gap;
+        float avail = w - 2 * padH - lead;
         if (label.isEmpty()) {
             fitted = "";
         } else if (textPaint.measureText(label) <= avail + 0.5f) {
@@ -132,11 +138,11 @@ public final class ClipChip extends View {
         float iconX = text ? padH - iconBlank + iconSize / 2f : getWidth() / 2f;
         iconPaint.setColor(inkNow(iconColorNormal));
         textPaint.setColor(inkNow(textColorNormal));
-        Icons.draw(canvas, Icons.CLIPBOARD, iconX, cy, iconSize, iconPaint);
+        if (!text || lead > 0) Icons.draw(canvas, Icons.CLIPBOARD, iconX, cy, iconSize, iconPaint);
         if (text) {
             Paint.FontMetrics fm = textPaint.getFontMetrics();
             float baseline = cy - (fm.ascent + fm.descent) / 2f;
-            canvas.drawText(fitted, 0, fitted.length(), padH - iconBlank + iconSize + gap, baseline, textPaint);
+            canvas.drawText(fitted, 0, fitted.length(), padH + lead, baseline, textPaint);
         }
     }
 
