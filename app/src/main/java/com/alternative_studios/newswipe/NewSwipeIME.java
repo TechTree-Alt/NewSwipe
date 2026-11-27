@@ -295,6 +295,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     public void onCreate() {
         setTheme(R.style.Theme_NewSwipe_Ime);   // super.onCreate()보다 먼저 지정해야 키보드 창에 적용된다.
         super.onCreate();
+        L.init(this);   // 인터페이스 언어 (Android 12 이하)
         // 키보드 창을 하단 바 뒤까지 그린다 (applyNavigationBarStyle 참고). Android 15부터는 시스템이 강제하므로
         // (targetSdk 35 시험 빌드에서 테마로 빠진 경우도 그대로 둔다) Android 11~14에서만 지정한다.
         if (Build.VERSION.SDK_INT >= 30 && Build.VERSION.SDK_INT < 35

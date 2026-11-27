@@ -129,6 +129,14 @@ final class SettingsWidgets {
 
     /** parent에 소제목과 빈 카드를 더하고 카드를 돌려준다. */
     LinearLayout section(LinearLayout parent, String name) {
+        sectionHeader(parent, name);
+        LinearLayout box = card(parent);
+        ((LinearLayout.LayoutParams) box.getLayoutParams()).topMargin = 0;
+        return box;
+    }
+
+    /** parent에 소제목만 더한다 (카드를 따로 꾸미는 화면용). */
+    TextView sectionHeader(LinearLayout parent, String name) {
         TextView h = text(name, 14, accent);
         h.setPadding(Ui.dp(c, 4), Ui.dp(c, 20), 0, Ui.dp(c, 8));
         if (Metro.on) {
@@ -142,9 +150,7 @@ final class SettingsWidgets {
         }
         h.setTag(SECTION_HEADER);
         parent.addView(h);
-        LinearLayout box = card(parent);
-        ((LinearLayout.LayoutParams) box.getLayoutParams()).topMargin = 0;
-        return box;
+        return h;
     }
 
     /** parent에 빈 카드(둥근 바탕)를 더하고 돌려준다. */

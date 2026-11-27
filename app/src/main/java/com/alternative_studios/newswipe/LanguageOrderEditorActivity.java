@@ -19,7 +19,7 @@ public final class LanguageOrderEditorActivity extends Activity {
     private String themeSignature;
 
     private static String title() {
-        return L.t("입력 언어", "Input languages");
+        return L.t("언어", "Languages");
     }
 
     /** 입력 언어 화면을 여는 인텐트: Metro UI에서는 다른 설정 메뉴와 가로로 밀어 오갈 수 있게 설정 화면의 한 칸으로 연다. */

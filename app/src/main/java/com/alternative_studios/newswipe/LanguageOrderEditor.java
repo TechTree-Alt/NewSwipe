@@ -74,6 +74,8 @@ final class LanguageOrderEditor {
     /** 화면 내용을 (다시) 만든다. 이 편집기의 칸만 비우고 다시 채운다. */
     void render() {
         list.removeAllViews();
+        SettingsWidgets widgets = new SettingsWidgets(a, AppTheme.of(a), null);
+        widgets.sectionHeader(list, L.t("입력 언어", "Input languages"));
         TextView note = text(L.t("입력할 언어를 켜고, 오른쪽의 ≡를 잡고 끌어 순서를 바꿀 수 있습니다. 🌐︎을 누르면 켠 언어가 이 순서대로 바뀌고, "
                 + "위로 밀면 이 순서대로 위에서 아래로 언어가 놓입니다.",
                 "Turn on the languages you type in, and drag ≡ on the right to reorder. Tapping 🌐︎ switches between them in this order, "
@@ -138,6 +140,26 @@ final class LanguageOrderEditor {
             prefs.resetLanguageOrder();
             render();
         }));
+
+        // 인터페이스 언어: 앱 화면의 글 언어 (시스템을 따르거나 한국어·영어).
+        LinearLayout ui = widgets.section(list, L.t("인터페이스 언어", "Interface language"));
+        String[] tags = {"", "ko", "en"};
+        String now = L.language(a);
+        int sel = 0;
+        for (int i = 0; i < tags.length; i++) if (tags[i].equals(now)) sel = i;
+        ui.addView(Ui.choiceRow(a, new String[]{L.t("시스템", "System"), "한국어", "English"}, sel,
+                accentColor, onAccentColor, textColor, hintColor, i -> {
+                    if (tags[i].equals(L.language(a))) return;
+                    L.setLanguage(a, tags[i]);
+                    // Android 13 이상은 시스템이 앱 화면을 새 언어로 다시 만든다.
+                    if (android.os.Build.VERSION.SDK_INT < 33) a.recreate();
+                }));
+        TextView uiNote = text(L.t("설정 화면과 키보드에 보이는 글의 언어입니다. 시스템을 고르면 기기 언어가 한국어일 때 한국어로, 그 밖에는 영어로 보입니다.",
+                "The language of the text in settings and on the keyboard. With System, it's Korean when the device language is Korean, and English otherwise."),
+                13, hintColor);
+        if (Metro.on) Metro.text(uiNote, 14, Metro.regular(), 13);
+        uiNote.setPadding(0, Ui.dp(a, 8), 0, 0);
+        ui.addView(uiNote);
     }
 
     /** 한국어·영어를 켜고 끄는 스위치. 둘 다 끌 수는 없다 (일본어·중국어는 실험실에서 켜고 끈다). */
