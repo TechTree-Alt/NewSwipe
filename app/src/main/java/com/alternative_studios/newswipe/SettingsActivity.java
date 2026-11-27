@@ -839,7 +839,7 @@ public final class SettingsActivity extends Activity {
             View row = menuRow(menuIcon(section), title, isMenu ? e[4] : sectionTitle(section),
                     v -> openSection(section, isMenu ? null : title));
             if (!unlocked) {   // 시작하기를 마치기 전에는 설정 메뉴처럼 누를 수 없다
-                row.setAlpha(0.38f);
+                dimContents(row, true);
                 setEnabledDeep(row, false);
             }
             searchResults.addView(row);
@@ -5150,6 +5150,20 @@ public final class SettingsActivity extends Activity {
         }
     }
 
+    /**
+     * 줄을 흐리게(0.38) 하거나 되돌린다. 줄 자체가 아니라 그 안의 내용에 건다: 줄의 불투명도는 Metro 턴스타일이 차례를 기다리는 줄을
+     * 숨기는 데 쓰므로, 창 포커스를 얻을 때(updateStatus) 줄에 불투명도를 다시 치면 숨어 있던 줄이 시작 각도 그대로 보인다.
+     */
+    private static void dimContents(View row, boolean dim) {
+        float a = dim ? 0.38f : 1f;
+        if (!(row instanceof ViewGroup)) {
+            row.setAlpha(a);
+            return;
+        }
+        ViewGroup g = (ViewGroup) row;
+        for (int i = 0; i < g.getChildCount(); i++) g.getChildAt(i).setAlpha(a);
+    }
+
     private static void setEnabledDeep(View v, boolean enabled) {
         v.setEnabled(enabled);
         if (v instanceof ViewGroup) {
@@ -5166,7 +5180,7 @@ public final class SettingsActivity extends Activity {
         // 처음 쓸 때는 시작하기를 마칠 때까지 설정 메뉴를 흐리게 하고 누를 수 없게 한다 (한 번 마치면 다시 막지 않는다).
         boolean locked = !prefs.setupDone();
         for (View v : lockedRows) {
-            v.setAlpha(locked ? 0.38f : 1f);
+            dimContents(v, locked);
             setEnabledDeep(v, !locked);
         }
         int setupVisibility = selected ? View.GONE : View.VISIBLE;

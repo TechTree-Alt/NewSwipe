@@ -369,7 +369,8 @@ public final class Metro {
     public static ValueAnimator turn(View v, float from, float to, long ms, long delay, boolean out, Runnable onEnd) {
         Object old = v.getTag(R.id.metro_turn);
         if (old instanceof ValueAnimator) ((ValueAnimator) old).cancel();
-        final float baseTx = v.getTranslationX();
+        // 돌기 전의 가로 이동과 불투명도 (흐리게 막아 둔 줄은 0.38): 끝나면 이 값으로 되돌린다.
+        final float baseTx = v.getTranslationX(), baseAlpha = v.getAlpha();
         v.setPivotX(AXIS_X * v.getWidth());
         v.setPivotY(v.getHeight() / 2f);
         perspective(v);
@@ -383,7 +384,7 @@ public final class Metro {
         Interpolator curve = out ? EASE_IN : EASE_OUT;
         a.addUpdateListener(an -> {
             v.setRotationY(from + (to - from) * curve.getInterpolation(an.getAnimatedFraction()));
-            v.setAlpha(1f);
+            v.setAlpha(baseAlpha);
         });
         a.addListener(new AnimatorListenerAdapter() {
             private boolean canceled;
@@ -406,7 +407,7 @@ public final class Metro {
                     v.setTranslationX(baseTx);
                     v.setScaleX(1f);
                     v.setScaleY(1f);
-                    v.setAlpha(1f);
+                    v.setAlpha(baseAlpha);
                     v.resetPivot();
                 }
                 if (onEnd != null && !canceled) onEnd.run();
@@ -416,15 +417,15 @@ public final class Metro {
         return a;
     }
 
-    /** 턴스타일로 돌던(또는 돌아 나가 숨은) v를 제자리로 되돌린다. baseTx는 돌기 전의 가로 이동. */
-    private static void resetTurn(View v, float baseTx) {
+    /** 턴스타일로 돌던(또는 돌아 나가 숨은) v를 제자리로 되돌린다. baseTx·baseAlpha는 돌기 전의 가로 이동·불투명도. */
+    private static void resetTurn(View v, float baseTx, float baseAlpha) {
         Object old = v.getTag(R.id.metro_turn);
         if (old instanceof ValueAnimator) ((ValueAnimator) old).cancel();
         v.setRotationY(0f);
         v.setTranslationX(baseTx);
         v.setScaleX(1f);
         v.setScaleY(1f);
-        v.setAlpha(1f);
+        v.setAlpha(baseAlpha);
         v.resetPivot();
     }
 
@@ -565,8 +566,8 @@ public final class Metro {
             postDelayed(go, ENTER_IME_WAIT_MS);
         }
 
-        /** 나가며 돌린 항목과 돌기 전의 가로 이동 (다시 들어올 때 제자리로 되돌린다). */
-        private final java.util.Map<View, Float> turnedOut = new java.util.HashMap<>();
+        /** 나가며 돌린 항목과 돌기 전의 {가로 이동, 불투명도} (다시 들어올 때 제자리로 되돌린다). */
+        private final java.util.Map<View, float[]> turnedOut = new java.util.HashMap<>();
         private final Runnable unblock = () -> busy = false;
 
         /** 누르기를 ms 동안 막는다 (앞서 건 풀기는 지운다: 나가는 동안 앞의 풀기가 끼어들지 않게). */
@@ -578,9 +579,11 @@ public final class Metro {
 
         /** 나가며 돌려 숨긴 항목(과 화면 전체)을 제자리로 되돌린다. */
         private void restore() {
-            for (java.util.Map.Entry<View, Float> e : turnedOut.entrySet()) resetTurn(e.getKey(), e.getValue());
+            for (java.util.Map.Entry<View, float[]> e : turnedOut.entrySet()) {
+                resetTurn(e.getKey(), e.getValue()[0], e.getValue()[1]);
+            }
             turnedOut.clear();
-            resetTurn(content, 0f);
+            resetTurn(content, 0f, 1f);
         }
 
         /**
@@ -610,7 +613,7 @@ public final class Metro {
             long last = 0;
             for (int k = 0; k < list.size(); k++) {
                 View v = list.get(k);
-                if (!turnedOut.containsKey(v)) turnedOut.put(v, v.getTranslationX());
+                if (!turnedOut.containsKey(v)) turnedOut.put(v, new float[]{v.getTranslationX(), v.getAlpha()});
                 long delay = Math.min(k, FEATHER_MAX - 1) * step;
                 turn(v, 0f, to, OUT_MS, delay, true, null);
                 last = Math.max(last, delay);
@@ -654,44 +657,9 @@ public final class Metro {
             } else if (hidden) {
                 hidden = false;
                 // 다른 화면에서 돌아왔다: TurnstileBackwardIn (원본 50° → 0°, 이 앱의 각도로 -50° → 0°).
-                // 다시 보이게 된 직후에는 창을 다시 그릴 준비(표면·그리기 목록을 다시 만들기)로 첫 프레임이 수백 ms 늦게 나올 수 있다.
-                // 그때 바로 틀면 움직임의 시계만 먼저 가서, 첫 프레임에 차례가 지난 줄들이 한꺼번에 기운 채 나타났다가 제자리로 튄다.
-                // 그래서 화면을 숨긴 채 첫 프레임이 실제로 그려져 넘어간 뒤 다음 프레임부터 튼다.
-                busy = true;
-                removeCallbacks(unblock);
-                content.setAlpha(0f);
-                afterFirstFrame(() -> enter(false));
+                busy = false;
+                enter(false);
             }
-        }
-
-        /** 오래 걸려도 이만큼 기다린 뒤에는 튼다 (프레임 소식이 오지 않는 경우). */
-        private static final long FIRST_FRAME_WAIT_MS = 500;
-
-        /** 다음 프레임이 그려져 화면으로 넘어간 뒤, 그다음 프레임에 r을 한 번 부른다. */
-        private void afterFirstFrame(Runnable r) {
-            final boolean[] done = {false};
-            Runnable once = () -> {
-                if (done[0]) return;
-                done[0] = true;
-                r.run();
-            };
-            android.view.ViewTreeObserver vto = getViewTreeObserver();
-            if (android.os.Build.VERSION.SDK_INT >= 29) {
-                // 렌더 스레드가 프레임을 넘긴 때 (그리기가 실제로 끝난 때).
-                vto.registerFrameCommitCallback(() -> postOnAnimation(once));
-            } else {
-                vto.addOnPreDrawListener(new android.view.ViewTreeObserver.OnPreDrawListener() {
-                    @Override
-                    public boolean onPreDraw() {
-                        getViewTreeObserver().removeOnPreDrawListener(this);
-                        // 이 프레임이 다 그려진 다음 프레임에.
-                        post(() -> postOnAnimation(once));
-                        return true;
-                    }
-                });
-            }
-            invalidate();
-            postDelayed(once, FIRST_FRAME_WAIT_MS);
         }
 
         /** 가로로 밀어 옆 섹션으로 넘기는 피벗 (없으면 null). */
