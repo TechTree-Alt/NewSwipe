@@ -60,9 +60,14 @@ final class SettingsFrame {
      * 뒤로 가기: 검색창이나 키보드 시험 입력창이 열려 있으면 그것부터 닫는다. 닫았으면 true.
      * Android 12 이하에서는 화면(Activity)의 onBackPressed가 이것을 부르고, 13 이상은 입력창이 열려 있는 동안 등록한 콜백이 부른다.
      */
-    static boolean consumeBack(Activity activity) {
+    /** activity의 설정 틀 (없으면 null). */
+    private static SettingsFrame frameOf(Activity activity) {
         java.lang.ref.WeakReference<SettingsFrame> ref = FRAMES.get(activity);
-        SettingsFrame frame = ref == null ? null : ref.get();
+        return ref == null ? null : ref.get();
+    }
+
+    static boolean consumeBack(Activity activity) {
+        SettingsFrame frame = frameOf(activity);
         return frame != null && frame.closeInputIfOpen();
     }
 
@@ -242,8 +247,7 @@ final class SettingsFrame {
     static void prepareRecreate(Activity activity, AppTheme next) {
         android.view.Window w = activity.getWindow();
         w.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(next.bg));
-        java.lang.ref.WeakReference<SettingsFrame> ref = FRAMES.get(activity);
-        SettingsFrame frame = ref == null ? null : ref.get();
+        SettingsFrame frame = frameOf(activity);
         if (frame == null || frame.page == null || !frame.page.away()) return;
         frame.page.freeze();
         Ui.edgeToEdge(w, next.dark);
@@ -284,8 +288,7 @@ final class SettingsFrame {
      * 평소대로 닫는다). Android 12 이하에서는 화면의 onBackPressed가 super.onBackPressed() 대신 이것을 부른다.
      */
     static boolean metroBack(Activity activity) {
-        java.lang.ref.WeakReference<SettingsFrame> ref = FRAMES.get(activity);
-        SettingsFrame frame = ref == null ? null : ref.get();
+        SettingsFrame frame = frameOf(activity);
         if (frame == null || frame.page == null) return false;
         frame.page.back(() -> Metro.finishQuietly(activity));
         return true;
@@ -296,8 +299,7 @@ final class SettingsFrame {
      * (아니면 부른 쪽이 바로 연다). 다른 앱의 화면(시스템 설정, 브라우저)은 그 앱의 전환 효과를 쓰므로 여기서 다루지 않는다.
      */
     static boolean metroForward(Activity activity, android.content.Intent intent, Runnable start) {
-        java.lang.ref.WeakReference<SettingsFrame> ref = FRAMES.get(activity);
-        SettingsFrame frame = ref == null ? null : ref.get();
+        SettingsFrame frame = frameOf(activity);
         if (frame == null || frame.page == null || intent.getComponent() == null
                 || !activity.getPackageName().equals(intent.getComponent().getPackageName())) return false;
         frame.page.forward(start);

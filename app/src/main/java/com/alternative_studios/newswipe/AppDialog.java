@@ -232,7 +232,7 @@ public final class AppDialog extends Dialog {
         View middle = null;
         if (b.items != null) {
             ScrollView scroll = new ClipScroll(ui);
-            com.alternative_studios.newswipe.ui.Metro.scrollIndicator(scroll);   // Metro: WP8처럼 끄는 동안만 보이는 가는 표시
+            Metro.scrollIndicator(scroll);   // Metro: WP8처럼 끄는 동안만 보이는 가는 표시
             scroll.setVerticalFadingEdgeEnabled(true);
             rows = new LinearLayout(ui);
             rows.setOrientation(LinearLayout.VERTICAL);

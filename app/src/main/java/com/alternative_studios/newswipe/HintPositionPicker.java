@@ -8,6 +8,7 @@ import android.view.MotionEvent;
 import android.view.View;
 
 import com.alternative_studios.newswipe.keyboard.KeyboardTheme;
+import com.alternative_studios.newswipe.ui.Metro;
 
 /**
  * 글자 키 힌트의 자리를 고르는 그림: 키 하나를 크게 그리고 그 둘레 여덟 곳(Prefs.HINT_POS_*) 가운데 하나를 눌러 고른다.
@@ -92,7 +93,7 @@ final class HintPositionPicker extends View {
     @Override
     protected void onDraw(Canvas c) {
         fill.setColor(theme.background);
-        float outer = com.alternative_studios.newswipe.ui.Metro.on ? 0 : dp(20), inner = com.alternative_studios.newswipe.ui.Metro.on ? 0 : dp(14);
+        float outer = Metro.on ? 0 : dp(20), inner = Metro.on ? 0 : dp(14);
         c.drawRoundRect(key.left - dp(8), key.top - dp(8), key.right + dp(8), key.bottom + dp(8), outer, outer, fill);
         fill.setColor(theme.key);
         c.drawRoundRect(key, inner, inner, fill);

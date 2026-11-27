@@ -16,6 +16,7 @@ import com.alternative_studios.newswipe.keyboard.KeyboardTheme;
 import com.alternative_studios.newswipe.keyboard.SwipeAction;
 import com.alternative_studios.newswipe.keyboard.SwipeSpec;
 import com.alternative_studios.newswipe.ui.ExpressiveChoiceButton;
+import com.alternative_studios.newswipe.ui.Metro;
 import com.alternative_studios.newswipe.ui.Ui;
 
 /**
@@ -57,12 +58,12 @@ public final class SwipeActionEditorActivity extends Activity {
         hintColor = colors.hint;
 
         ScrollView scroll = new ScrollView(this);
-        com.alternative_studios.newswipe.ui.Metro.scrollIndicator(scroll);   // Metro: WP8처럼 끄는 동안만 보이는 가는 표시
+        Metro.scrollIndicator(scroll);   // Metro: WP8처럼 끄는 동안만 보이는 가는 표시
         scroll.setBackgroundColor(colors.bg);
         scroll.setFillViewport(true);
         list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
-        int pad = com.alternative_studios.newswipe.ui.Metro.pagePad(this, 16);
+        int pad = Metro.pagePad(this, 16);
         list.setPadding(pad, 0, pad, Ui.dp(this, 32));
         scroll.addView(list);
         setContentView(new SettingsFrame(this, title(), getString(R.string.app_name)).wrap(scroll));

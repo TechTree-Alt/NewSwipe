@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 
+import com.alternative_studios.newswipe.ui.Metro;
 import com.alternative_studios.newswipe.ui.Ui;
 
 /**
@@ -41,12 +42,12 @@ public final class LanguageOrderEditorActivity extends Activity {
         AppTheme colors = AppTheme.of(this);
         themeSignature = AppTheme.signature(this);
         ScrollView scroll = new ScrollView(this);
-        com.alternative_studios.newswipe.ui.Metro.scrollIndicator(scroll);   // Metro: WP8처럼 끄는 동안만 보이는 가는 표시
+        Metro.scrollIndicator(scroll);   // Metro: WP8처럼 끄는 동안만 보이는 가는 표시
         scroll.setBackgroundColor(colors.bg);
         scroll.setFillViewport(true);
         LinearLayout list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
-        int pad = com.alternative_studios.newswipe.ui.Metro.pagePad(this, 16);
+        int pad = Metro.pagePad(this, 16);
         list.setPadding(pad, 0, pad, Ui.dp(this, 32));
         scroll.addView(list);
         setContentView(new SettingsFrame(this, title(), getString(R.string.app_name)).wrap(scroll));

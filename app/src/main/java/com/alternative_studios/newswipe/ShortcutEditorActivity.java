@@ -17,6 +17,7 @@ import android.widget.Toast;
 
 import com.alternative_studios.newswipe.keyboard.Icons;
 import com.alternative_studios.newswipe.suggest.Shortcuts;
+import com.alternative_studios.newswipe.ui.Metro;
 import com.alternative_studios.newswipe.ui.NeuUi;
 import com.alternative_studios.newswipe.ui.Chevron;
 import com.alternative_studios.newswipe.ui.IconButton;
@@ -50,12 +51,12 @@ public final class ShortcutEditorActivity extends Activity {
         accentColor = colors.accent;
 
         ScrollView scroll = new ScrollView(this);
-        com.alternative_studios.newswipe.ui.Metro.scrollIndicator(scroll);   // Metro: WP8처럼 끄는 동안만 보이는 가는 표시
+        Metro.scrollIndicator(scroll);   // Metro: WP8처럼 끄는 동안만 보이는 가는 표시
         scroll.setBackgroundColor(bg);
         scroll.setFillViewport(true);
         list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
-        int pad = com.alternative_studios.newswipe.ui.Metro.pagePad(this, 16);
+        int pad = Metro.pagePad(this, 16);
         list.setPadding(pad, 0, pad, Ui.dp(this, 32));
         scroll.addView(list);
         setContentView(new SettingsFrame(this, L.t("단축어 사용자화", "Customize text shortcuts"), getString(R.string.app_name)).wrap(scroll));
@@ -83,7 +84,7 @@ public final class ShortcutEditorActivity extends Activity {
                 + "문장을 눌러 입력하면 줄임말이 그 문장으로 바뀝니다.", "Type a shortcut to see its phrase in the suggestions (e.g. 'ㅈㄱㅈ' → '지금 가는 중'). Shortcuts can only use Korean (including single consonants and vowels) or English letters, and English is not case-sensitive. Tap the phrase to replace the shortcut with it."), 13, hintColor);
         note.setLineSpacing(Ui.dp(this, 3), 1f);
         note.setPadding(Ui.dp(this, 4), 0, 0, Ui.dp(this, 8));
-        if (com.alternative_studios.newswipe.ui.Metro.on) note.setPadding(0, 0, 0, Ui.dp(this, 8));   // Metro: 다른 줄과 같은 왼쪽 선
+        if (Metro.on) note.setPadding(0, 0, 0, Ui.dp(this, 8));   // Metro: 다른 줄과 같은 왼쪽 선
         list.addView(note);
 
         list.addView(actionRow(L.t("단축어 추가", "Add text shortcut"), v -> edit(null)));
@@ -101,7 +102,7 @@ public final class ShortcutEditorActivity extends Activity {
         card.setBackground(Ui.round(cardColor, Ui.dp(this, 16)));
         if (NeuUi.on) NeuUi.card(card, Ui.dp(this, 16));   // Neumorphism: 솟아오른 카드
         card.setPadding(0, Ui.dp(this, 4), 0, Ui.dp(this, 4));
-        if (com.alternative_studios.newswipe.ui.Metro.on) {   // Metro에는 카드가 없다: 단축어 줄이 바탕 위에 바로 놓인다
+        if (Metro.on) {   // Metro에는 카드가 없다: 단축어 줄이 바탕 위에 바로 놓인다
             card.setBackground(null);
             card.setPadding(0, 0, 0, 0);
         }
@@ -163,7 +164,7 @@ public final class ShortcutEditorActivity extends Activity {
     private View divider() {
         View v = new View(this);
         v.setBackgroundColor(hintColor & 0x00FFFFFF | 0x26000000);
-        if (com.alternative_studios.newswipe.ui.Metro.on) v.setVisibility(View.GONE);   // Metro의 목록에는 구분선이 없다
+        if (Metro.on) v.setVisibility(View.GONE);   // Metro의 목록에는 구분선이 없다
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1);
         lp.leftMargin = Ui.dp(this, 16);
         lp.rightMargin = Ui.dp(this, 16);
@@ -187,12 +188,12 @@ public final class ShortcutEditorActivity extends Activity {
         p.setEllipsize(android.text.TextUtils.TruncateAt.END);
         texts.addView(p);
         row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        if (com.alternative_studios.newswipe.ui.Metro.on) {
+        if (Metro.on) {
             // Metro: 다른 목록처럼 왼쪽 선에 맞추고, 줄임말은 강조색의 가는 큰 글자, 문장은 그 아래. 누르면 기울어진다.
             row.setPadding(0, Ui.dp(this, 10), Ui.dp(this, 6), Ui.dp(this, 10));
-            com.alternative_studios.newswipe.ui.Metro.text(k, 22, com.alternative_studios.newswipe.ui.Metro.light(), 16);
-            com.alternative_studios.newswipe.ui.Metro.text(p, 16, com.alternative_studios.newswipe.ui.Metro.regular(), 14);
-            com.alternative_studios.newswipe.ui.Metro.tilt(row);
+            Metro.text(k, 22, Metro.light(), 16);
+            Metro.text(p, 16, Metro.regular(), 14);
+            Metro.tilt(row);
         }
         IconButton trash = new IconButton(this, Icons.TRASH, hintColor, hintColor & 0x00FFFFFF | 0x33000000,
                 L.t("'" + key + "' 단축어 지우기", "Delete shortcut '" + key + "'"));

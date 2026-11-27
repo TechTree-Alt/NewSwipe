@@ -150,7 +150,7 @@ public final class SettingsActivity extends Activity {
         // 위의 되돌리기 메뉴 항목과는 따로 정한다 (한 손 모드에도 되돌리기가 있다).
         if ("onehand".equals(sectionId)) frame.keyboardOverlays();
         ScrollView scroll = new ScrollView(this);
-        com.alternative_studios.newswipe.ui.Metro.scrollIndicator(scroll);   // Metro: WP8처럼 끄는 동안만 보이는 가는 표시
+        Metro.scrollIndicator(scroll);   // Metro: WP8처럼 끄는 동안만 보이는 가는 표시
         scrollView = scroll;
         scroll.setFillViewport(true);
         scroll.setId(0x5E771001);   // 화면 모드를 바꿔 다시 만들 때 스크롤 위치를 복원한다

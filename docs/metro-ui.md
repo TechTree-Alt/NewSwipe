@@ -25,9 +25,8 @@ Windows Phone 7·8·8.1의 Metro UI처럼 바뀝니다. 이 문서는 무엇을 
   [App bar icon buttons](https://learn.microsoft.com/en-us/previous-versions/windows/apps/ff431806(v=vs.105))
 - Toolkit의 `CustomMessageBox`, `ListPicker`, `ExpanderView` 템플릿과 `Swivel*.xaml`
 - 크기: WP8 화면은 480px 폭이므로 SDK의 px 값에 0.75를 곱해 dp·sp로 옮깁니다 (360dp 폭 기준, `Metro.px`·`Metro.sp`).
-  WP8.1(WinRT) 값은 400 유효 픽셀 폭 기준이라 0.9를 곱합니다. 두 기준은 대개 1dp 안쪽으로 같습니다 (예: 테두리 3px × 0.75 = 2.5 × 0.9 = 2.25dp,
-  좌우 여백 24px → 18dp, 19 → 17.1dp). 참고: [WP8.1 디자인 지침 PDF](https://tilsgee.github.io/DesignGuidelinesArchive/uwp8.1.pdf),
-  microsoft-ui-xaml에 남은 WP8.1 테마 리소스·텍스트 스타일.
+  여백·크기는 모두 WP8(Silverlight) 기준입니다. WP8.1(WinRT) 값은 피벗의 움직임(400 유효 픽셀 폭 기준이라 0.9를 곱한다)과,
+  WP8 문서에 수치가 없는 펼친 앱 바의 자리(WP8.1 셸을 잰 값을 WP8 px로 × 1.2)에만 씁니다.
 - 첨부 이미지: Windows Phone 설정 화면(피벗 머리글), Windows 10 Mobile 키보드(다크)
 
 ## 디자인 원칙과 구현
