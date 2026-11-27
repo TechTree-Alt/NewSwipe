@@ -66,7 +66,9 @@ public final class SettingsActivity extends Activity {
     private TextView status;
     private View setupCard, setupHeading, appCard;
     /** 첫 화면의 설정 메뉴 (제목과 카드). 시작하기를 처음 마치기 전에는 흐리게 하고 막는다. */
-    private View menuHeading, menuCard;
+    private View menuCard;
+    /** 시작하기를 마칠 때까지 막아 두는 메인 화면의 설정 메뉴 줄 (정보는 늘 열 수 있다). */
+    private final java.util.List<View> lockedRows = new java.util.ArrayList<>();
     private int textColor, hintColor, accentColor, cardColor, onAccentColor;
     /** 클립보드 '이미지 저장' 스위치 (끄기를 취소하면 되돌린다). */
     private ExpressiveSwitch clipImagesSwitch;
@@ -253,7 +255,7 @@ public final class SettingsActivity extends Activity {
     /** 하위 메뉴 정의: {id, 제목, 설명}. */
     private static String[][] sections() {
         return new String[][]{
-            {LANGUAGES, L.t("입력 언어", "Input languages"), L.t("한국어·영어, 언어 전환 순서", "Korean, English, switching order")},
+            {LANGUAGES, L.t("언어", "Languages"), L.t("입력 언어, 앱 언어", "Input languages, app language")},
             {KEYBOARD, L.t("키보드 사용자화", "Customize keyboard"), L.t("자판 배열, 모양, 입력, 길게 누르기, 밀기", "Layout, look, input, long press, swipe")},
             {"theme", L.t("테마", "Theme"), L.t("모드, 라이트/다크 모드, 강조 색", "Mode, light/dark mode, accent color")},
             {"feedback", L.t("소리 및 진동", "Sound & vibration"), L.t("키를 누를 때의 진동과 소리", "Vibration and sound when you press keys")},
@@ -306,7 +308,7 @@ public final class SettingsActivity extends Activity {
     private void buildScreen(String id) {
         switch (id) {
             case KEYBOARD: buildKeyboardEditor(); break;
-            case LANGUAGES: new LanguageOrderEditor(this, list).render(); break;
+            case LANGUAGES: new LanguageOrderEditor(this, list, true).render(); break;
             case "onehand": buildOneHand(); break;
             case "theme": buildTheme(); break;
             case "words": buildWords(); break;
@@ -325,8 +327,7 @@ public final class SettingsActivity extends Activity {
 
     /** 기본값으로 되돌릴 설정이 있는 메뉴인지 (설정 메뉴. 정보·가져오기 및 내보내기·학습한 단어 등은 제외). */
     private static boolean hasReset(String id) {
-        // 입력 언어는 화면 안에 '언어 순서' 되돌리기가 따로 있다.
-        for (String[] sec : sections()) if (sec[0].equals(id) && !"backup".equals(id) && !LANGUAGES.equals(id)) return true;
+        for (String[] sec : sections()) if (sec[0].equals(id) && !"backup".equals(id)) return true;
         return false;
     }
 
@@ -337,7 +338,8 @@ public final class SettingsActivity extends Activity {
 
     /** 이 화면이 담당하는 값만 기본값으로 바꾼다 (확인은 ResetDialog가 이미 받았다). */
     private void reset(String id) {
-        prefs.resetSection(id);
+        if (LANGUAGES.equals(id)) LanguageOrderEditor.reset(this);   // 언어 순서와 앱 언어
+        else prefs.resetSection(id);
         importGeneration++;   // 뒤에 쌓인 설정 화면도 돌아오면 기본값으로 다시 그린다
         recreate();
         Toast.makeText(this, L.t("기본값으로 되돌렸습니다", "Restored defaults"), Toast.LENGTH_SHORT).show();
@@ -360,18 +362,16 @@ public final class SettingsActivity extends Activity {
             if (imm != null) imm.showInputMethodPicker();
         }));
 
-        // 정보: 설정 메뉴와 따로 둔다.
-        LinearLayout app = menuCard(card());
-        appCard = app;
-        app.addView(menuRow(menuIcon(appEntry()[0]), appEntry()[1], appEntry()[2], v -> openSection(appEntry()[0])));
-
-        LinearLayout menu = menuCard(section(L.t("설정", "Settings")));
+        // 설정 메뉴: 소제목 없이 한 묶음에 정보를 맨 위에, 그 아래 설정 메뉴들을 둔다.
+        LinearLayout menu = menuCard(card());
+        appCard = menu;
         menuCard = menu;
-        menuHeading = list.getChildAt(list.indexOfChild(menu) - 1);
-        for (int i = 0; i < sections().length; i++) {
-            String[] sec = sections()[i];
-            if (i > 0) menu.addView(divider());
-            menu.addView(menuRow(menuIcon(sec[0]), sec[1], sec[2], v -> openSection(sec[0])));
+        menu.addView(menuRow(menuIcon(appEntry()[0]), appEntry()[1], appEntry()[2], v -> openSection(appEntry()[0])));
+        for (String[] sec : sections()) {
+            menu.addView(divider());
+            View row = menuRow(menuIcon(sec[0]), sec[1], sec[2], v -> openSection(sec[0]));
+            lockedRows.add(row);
+            menu.addView(row);
         }
 
         // 검색하는 동안에는 위 내용을 통째로 숨기고 검색 결과를 대신 보여 준다.
@@ -445,11 +445,11 @@ public final class SettingsActivity extends Activity {
     /**
      * Metro UI: 메뉴 안의 섹션들을 Windows Phone 피벗의 페이지로 나눈다 (공식 지침: 피벗은 한 영역 안의 관련된 보기들을 오가는 데 쓴다).
      * 만든 목록을 섹션 소제목마다 끊어 페이지로 옮기고, 소제목은 피벗 머리글의 이름이 된다. 첫 소제목 앞의 내용은 첫 페이지 위에 둔다.
-     * 섹션이 하나뿐이면 피벗 없이 소제목만 뺀다 (화면 제목으로 충분하다). 키보드 사용자화·입력 언어는 아래 미리보기·편집 창과 얽혀 있어,
+     * 섹션이 하나뿐이면 피벗 없이 소제목만 뺀다 (화면 제목으로 충분하다). 키보드 사용자화는 아래 미리보기·편집 창과 얽혀 있어 그대로 두고,
      * 메뉴가 아닌 하위 화면(학습한 단어 등)은 목록을 다시 만들므로 그대로 둔다.
      */
     private void installSectionPivot(String id) {
-        if (!Metro.on || id == null || KEYBOARD.equals(id) || LANGUAGES.equals(id)) return;
+        if (!Metro.on || id == null || KEYBOARD.equals(id)) return;
         // 메뉴 화면만 (학습한 단어처럼 검색할 때마다 목록을 다시 만드는 하위 화면은 그대로 둔다).
         boolean menu = "app".equals(id);
         for (String[] sec : sections()) if (sec[0].equals(id)) menu = true;
@@ -729,6 +729,7 @@ public final class SettingsActivity extends Activity {
             {KEYBOARD, L.t("커서 이동 속도 좌우", "Cursor speed (horizontal)"), L.t("스페이스바 커서 키 트랙패드", "space bar cursor key trackpad")},
             {KEYBOARD, L.t("입력 언어", "Input languages"), L.t("지구본 언어 차례 순서 바꾸기 한국어 영어 일본어 중국어", "globe language order switch korean english japanese chinese")},
             {LANGUAGES, L.t("입력 언어", "Input languages"), L.t("지구본 언어 차례 순서 바꾸기 한국어 영어 일본어 중국어 자판 끄기 켜기", "globe language order switch korean english japanese chinese keyboard on off")},
+            {LANGUAGES, L.t("앱 언어", "App language"), L.t("인터페이스 언어 화면 언어 표시 언어 한국어 영어 English 시스템", "interface language display language ui korean english system")},
             {KEYBOARD, L.t("키보드 밀기 사용자화", "Customize keyboard swipes"), L.t("자판 스와이프 기능", "keyboard swipe actions gestures")},
             {KEYBOARD, L.t("위로 밀어서 추천 단어 입력", "Swipe up to pick suggestions"), L.t("추천 단어 스와이프 고르기 자판 위로", "suggestions swipe pick keyboard up")},
             {"words", L.t("도구 막대 전체를 쓰기", "Use full toolbar"), L.t("추천 툴바 전체", "suggestions toolbar full width")},
@@ -5094,11 +5095,12 @@ public final class SettingsActivity extends Activity {
         LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         ilp.rightMargin = Ui.dp(this, 14);
-        row.addView(new IconView(this, icon, accentColor, Metro.on ? 48 : 40, 22), ilp);
+        // Metro: Windows Phone 8 설정 목록처럼 왼쪽 아이콘 없이 글자만 둔다.
+        if (!Metro.on) row.addView(new IconView(this, icon, accentColor, 40, 22), ilp);
         LinearLayout texts = new LinearLayout(this);
         texts.setOrientation(LinearLayout.VERTICAL);
         TextView t = new TextView(this);
-        t.setText(title);
+        t.setText(Metro.on ? Metro.lower(title) : title);   // Metro: WP8처럼 영어 이름은 소문자
         t.setTextColor(textColor);
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
         texts.addView(t);
@@ -5109,7 +5111,7 @@ public final class SettingsActivity extends Activity {
         texts.addView(d);
         if (Metro.on) {
             // Windows Phone 설정 목록: 크고 가는 이름(PhoneTextExtraLargeStyle 42.667px) 아래 옅은 설명(PhoneTextSubtleStyle),
-            // 카드·구분선·화살표 없이 화면 왼쪽 선에 맞춘다. 왼쪽의 강조색 타일은 앱 목록처럼 둔다.
+            // 카드·구분선·화살표·아이콘 없이 화면 왼쪽 선에 맞춘다.
             Metro.text(t, Metro.sp(Metro.FONT_EXTRA_LARGE), Metro.light(), 16);
             Metro.text(d, Metro.sp(Metro.FONT_NORMAL), Metro.regular(), 13);   // PhoneTextSubtleStyle
             t.setSingleLine(true);
@@ -5163,8 +5165,7 @@ public final class SettingsActivity extends Activity {
         if (selected && !prefs.setupDone()) prefs.raw().edit().putBoolean(Prefs.SETUP_DONE, true).apply();
         // 처음 쓸 때는 시작하기를 마칠 때까지 설정 메뉴를 흐리게 하고 누를 수 없게 한다 (한 번 마치면 다시 막지 않는다).
         boolean locked = !prefs.setupDone();
-        for (View v : new View[]{menuHeading, menuCard}) {
-            if (v == null) continue;
+        for (View v : lockedRows) {
             v.setAlpha(locked ? 0.38f : 1f);
             setEnabledDeep(v, !locked);
         }

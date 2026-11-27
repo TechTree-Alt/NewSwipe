@@ -129,6 +129,14 @@ final class SettingsWidgets {
 
     /** parent에 소제목과 빈 카드를 더하고 카드를 돌려준다. */
     LinearLayout section(LinearLayout parent, String name) {
+        sectionHeader(parent, name);
+        LinearLayout box = card(parent);
+        ((LinearLayout.LayoutParams) box.getLayoutParams()).topMargin = 0;
+        return box;
+    }
+
+    /** parent에 소제목만 더한다 (카드를 따로 꾸미는 화면용). */
+    TextView sectionHeader(LinearLayout parent, String name) {
         TextView h = text(name, 14, accent);
         h.setPadding(Ui.dp(c, 4), Ui.dp(c, 20), 0, Ui.dp(c, 8));
         if (Metro.on) {
@@ -142,9 +150,7 @@ final class SettingsWidgets {
         }
         h.setTag(SECTION_HEADER);
         parent.addView(h);
-        LinearLayout box = card(parent);
-        ((LinearLayout.LayoutParams) box.getLayoutParams()).topMargin = 0;
-        return box;
+        return h;
     }
 
     /** parent에 빈 카드(둥근 바탕)를 더하고 돌려준다. */
@@ -577,7 +583,11 @@ final class SettingsWidgets {
         };
         column.setOrientation(LinearLayout.VERTICAL);
         column.setPadding(Ui.dp(c, Metro.on ? 12 : 14), 0, 0, 0);
-        for (View child : children) column.addView(child);
+        for (View child : children) {
+            flattenNested(child);
+            column.addView(child);
+        }
+        group.setTag(com.alternative_studios.newswipe.R.id.sub_group_line, line);
         group.addView(column, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         if (Metro.on && children.length > 0) {
             // Toolkit ExpanderView처럼 세로선은 하위 항목의 내용만큼만: 위 줄 바로 아래에서 시작해 마지막 하위 항목의 글에서 끝난다.
@@ -624,6 +634,29 @@ final class SettingsWidgets {
             });
         }
         return group;
+    }
+
+    /**
+     * 하위 묶음 안에 든 하위 묶음은 이중 선 대신 바깥 선 하나만 보이게: 안쪽 묶음의 세로선과 들여쓰기를 없앤다
+     * (켜고 끄며 보였다 숨었다 하는 동작은 그대로).
+     */
+    private static void flattenNested(View v) {
+        Object line = v.getTag(com.alternative_studios.newswipe.R.id.sub_group_line);
+        if (line instanceof View && v instanceof ViewGroup) {
+            ((View) line).setVisibility(View.GONE);
+            if (v.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
+                ((ViewGroup.MarginLayoutParams) v.getLayoutParams()).leftMargin = 0;
+            }
+            ViewGroup g = (ViewGroup) v;
+            if (g.getChildCount() > 1) {
+                View column = g.getChildAt(1);
+                column.setPadding(0, column.getPaddingTop(), column.getPaddingRight(), column.getPaddingBottom());
+            }
+        }
+        if (v instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) flattenNested(g.getChildAt(i));
+        }
     }
 
     /**
