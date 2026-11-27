@@ -322,10 +322,16 @@ final class SettingsFrame {
         metroSmall.setText(Metro.upper(pivotTitle != null ? pivotTitle : title));
         metroSmall.setTextSize(TypedValue.COMPLEX_UNIT_SP, Metro.sp(Metro.FONT_MEDIUM));
         metroSmall.setTypeface(Metro.semibold());
-        Metro.PivotHeader names2 = new Metro.PivotHeader(activity, names, index);
+        int[] tl = Metro.segoeLine(metroSmall);   // 글자 크기가 바뀌었으니 줄을 다시 맞춘다
+        LinearLayout.LayoutParams slp = (LinearLayout.LayoutParams) metroSmall.getLayoutParams();
+        slp.topMargin = tl[0];
+        slp.bottomMargin = tl[1];
+        Metro.PivotHeader names2 = new Metro.PivotHeader(activity, names, index);   // 줄은 스스로 Segoe WP의 줄
         ViewGroup parent = (ViewGroup) metroBig.getParent();
         int at = parent.indexOfChild(metroBig);
-        ViewGroup.LayoutParams lp = metroBig.getLayoutParams();
+        LinearLayout.LayoutParams lp = matchWrap();
+        lp.leftMargin = -Metro.px(activity, 3);   // 이름은 제목보다 3px 왼쪽 (PivotHeaderItem Padding 21, 제목 24)
+        lp.topMargin = -Metro.px(activity, 7);    // 제목 Margin 아래 -7
         parent.removeViewAt(at);
         parent.addView(names2, at, lp);
         metroBig = null;
@@ -449,7 +455,12 @@ final class SettingsFrame {
         small.setTypeface(Metro.regular());
         small.setSingleLine(true);
         small.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        header.addView(small, matchWrap());
+        // 줄은 Silverlight TextBlock의 줄 (Segoe WP: 높이 1.33 em, 기준선 1.0791 em): 이 기기 글꼴과 한글 대체 글꼴에 흔들리지 않는다.
+        int[] sl = Metro.segoeLine(small);
+        LinearLayout.LayoutParams slp = matchWrap();
+        slp.topMargin = sl[0];
+        slp.bottomMargin = sl[1];
+        header.addView(small, slp);
         metroSmall = small;
 
         TextView big = new TextView(c);
@@ -459,10 +470,11 @@ final class SettingsFrame {
         big.setTypeface(Metro.light());
         big.setSingleLine(true);
         big.setHorizontallyScrolling(true);   // 화면보다 길면 줄이지 않고 화면 끝에서 잘린다
-        // 글꼴의 위아래 끝까지 담는 줄 높이(includeFontPadding)는 Silverlight TextBlock의 줄 높이와 거의 같다.
+        int[] bl = Metro.segoeLine(big);
         LinearLayout.LayoutParams blp = matchWrap();
         blp.leftMargin = -Metro.px(c, 3);   // PageTitle Margin 9 (ApplicationTitle은 12)
-        blp.topMargin = -Metro.px(c, 7);
+        blp.topMargin = -Metro.px(c, 7) + bl[0];
+        blp.bottomMargin = bl[1];
         header.addView(big, blp);
         metroBig = big;
         return header;
