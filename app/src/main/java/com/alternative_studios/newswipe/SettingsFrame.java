@@ -60,9 +60,14 @@ final class SettingsFrame {
      * 뒤로 가기: 검색창이나 키보드 시험 입력창이 열려 있으면 그것부터 닫는다. 닫았으면 true.
      * Android 12 이하에서는 화면(Activity)의 onBackPressed가 이것을 부르고, 13 이상은 입력창이 열려 있는 동안 등록한 콜백이 부른다.
      */
-    static boolean consumeBack(Activity activity) {
+    /** activity의 설정 틀 (없으면 null). */
+    private static SettingsFrame frameOf(Activity activity) {
         java.lang.ref.WeakReference<SettingsFrame> ref = FRAMES.get(activity);
-        SettingsFrame frame = ref == null ? null : ref.get();
+        return ref == null ? null : ref.get();
+    }
+
+    static boolean consumeBack(Activity activity) {
+        SettingsFrame frame = frameOf(activity);
         return frame != null && frame.closeInputIfOpen();
     }
 
@@ -242,8 +247,7 @@ final class SettingsFrame {
     static void prepareRecreate(Activity activity, AppTheme next) {
         android.view.Window w = activity.getWindow();
         w.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(next.bg));
-        java.lang.ref.WeakReference<SettingsFrame> ref = FRAMES.get(activity);
-        SettingsFrame frame = ref == null ? null : ref.get();
+        SettingsFrame frame = frameOf(activity);
         if (frame == null || frame.page == null || !frame.page.away()) return;
         frame.page.freeze();
         Ui.edgeToEdge(w, next.dark);
@@ -284,8 +288,7 @@ final class SettingsFrame {
      * 평소대로 닫는다). Android 12 이하에서는 화면의 onBackPressed가 super.onBackPressed() 대신 이것을 부른다.
      */
     static boolean metroBack(Activity activity) {
-        java.lang.ref.WeakReference<SettingsFrame> ref = FRAMES.get(activity);
-        SettingsFrame frame = ref == null ? null : ref.get();
+        SettingsFrame frame = frameOf(activity);
         if (frame == null || frame.page == null) return false;
         frame.page.back(() -> Metro.finishQuietly(activity));
         return true;
@@ -296,8 +299,7 @@ final class SettingsFrame {
      * (아니면 부른 쪽이 바로 연다). 다른 앱의 화면(시스템 설정, 브라우저)은 그 앱의 전환 효과를 쓰므로 여기서 다루지 않는다.
      */
     static boolean metroForward(Activity activity, android.content.Intent intent, Runnable start) {
-        java.lang.ref.WeakReference<SettingsFrame> ref = FRAMES.get(activity);
-        SettingsFrame frame = ref == null ? null : ref.get();
+        SettingsFrame frame = frameOf(activity);
         if (frame == null || frame.page == null || intent.getComponent() == null
                 || !activity.getPackageName().equals(intent.getComponent().getPackageName())) return false;
         frame.page.forward(start);
@@ -322,10 +324,16 @@ final class SettingsFrame {
         metroSmall.setText(Metro.upper(pivotTitle != null ? pivotTitle : title));
         metroSmall.setTextSize(TypedValue.COMPLEX_UNIT_SP, Metro.sp(Metro.FONT_MEDIUM));
         metroSmall.setTypeface(Metro.semibold());
-        Metro.PivotHeader names2 = new Metro.PivotHeader(activity, names, index);
+        int[] tl = Metro.segoeLine(metroSmall);   // 글자 크기가 바뀌었으니 줄을 다시 맞춘다
+        LinearLayout.LayoutParams slp = (LinearLayout.LayoutParams) metroSmall.getLayoutParams();
+        slp.topMargin = tl[0];
+        slp.bottomMargin = tl[1];
+        Metro.PivotHeader names2 = new Metro.PivotHeader(activity, names, index);   // 줄은 스스로 Segoe WP의 줄
         ViewGroup parent = (ViewGroup) metroBig.getParent();
         int at = parent.indexOfChild(metroBig);
-        ViewGroup.LayoutParams lp = metroBig.getLayoutParams();
+        LinearLayout.LayoutParams lp = matchWrap();
+        lp.leftMargin = -Metro.px(activity, 3);   // 이름은 제목보다 3px 왼쪽 (PivotHeaderItem Padding 21, 제목 24)
+        lp.topMargin = -Metro.px(activity, 7);    // 제목 Margin 아래 -7
         parent.removeViewAt(at);
         parent.addView(names2, at, lp);
         metroBig = null;
@@ -437,7 +445,7 @@ final class SettingsFrame {
         Context c = activity;
         LinearLayout header = new LinearLayout(c);
         header.setOrientation(LinearLayout.VERTICAL);
-        int pad = Ui.dp(c, 16);   // 목록과 같은 왼쪽 선 (WP: TitlePanel 12px + 글 12px)
+        int pad = Metro.pagePad(c, 16);   // 목록과 같은 왼쪽 선 (WP: TitlePanel 12px + 글 12px = 24px)
         header.setPadding(pad, Metro.px(c, 17), pad, Metro.px(c, 28));
         header.setClipChildren(true);
 
@@ -449,7 +457,12 @@ final class SettingsFrame {
         small.setTypeface(Metro.regular());
         small.setSingleLine(true);
         small.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        header.addView(small, matchWrap());
+        // 줄은 Silverlight TextBlock의 줄 (Segoe WP: 높이 1.33 em, 기준선 1.0791 em): 이 기기 글꼴과 한글 대체 글꼴에 흔들리지 않는다.
+        int[] sl = Metro.segoeLine(small);
+        LinearLayout.LayoutParams slp = matchWrap();
+        slp.topMargin = sl[0];
+        slp.bottomMargin = sl[1];
+        header.addView(small, slp);
         metroSmall = small;
 
         TextView big = new TextView(c);
@@ -459,10 +472,11 @@ final class SettingsFrame {
         big.setTypeface(Metro.light());
         big.setSingleLine(true);
         big.setHorizontallyScrolling(true);   // 화면보다 길면 줄이지 않고 화면 끝에서 잘린다
-        // 글꼴의 위아래 끝까지 담는 줄 높이(includeFontPadding)는 Silverlight TextBlock의 줄 높이와 거의 같다.
+        int[] bl = Metro.segoeLine(big);
         LinearLayout.LayoutParams blp = matchWrap();
         blp.leftMargin = -Metro.px(c, 3);   // PageTitle Margin 9 (ApplicationTitle은 12)
-        blp.topMargin = -Metro.px(c, 7);
+        blp.topMargin = -Metro.px(c, 7) + bl[0];
+        blp.bottomMargin = bl[1];
         header.addView(big, blp);
         metroBig = big;
         return header;
@@ -524,7 +538,7 @@ final class SettingsFrame {
         Context c = activity;
         searchBar = new LinearLayout(c);
         searchBar.setVisibility(View.GONE);
-        int pad = Ui.dp(c, 16);
+        int pad = Metro.pagePad(c, 16);
         searchBar.setPadding(pad, 0, pad, Ui.dp(c, 8));
         searchInput = new EditText(c);
         searchInput.setHint(searchName);
@@ -586,7 +600,7 @@ final class SettingsFrame {
         Context c = activity;
         testBar = new LinearLayout(c);
         testBar.setVisibility(View.GONE);
-        int pad = Ui.dp(c, 16);
+        int pad = Metro.pagePad(c, 16);
         testBar.setPadding(pad, 0, pad, Ui.dp(c, 8));
         testInput = new EditText(c);
         testInput.setHint(L.t("여기에 입력해 보세요", "Type here"));

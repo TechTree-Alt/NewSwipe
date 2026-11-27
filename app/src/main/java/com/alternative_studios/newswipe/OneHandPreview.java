@@ -20,6 +20,7 @@ import com.alternative_studios.newswipe.keyboard.KeyboardTheme;
 import com.alternative_studios.newswipe.keyboard.KeyboardView;
 import com.alternative_studios.newswipe.keyboard.ToolbarButtons;
 import com.alternative_studios.newswipe.ui.IconButton;
+import com.alternative_studios.newswipe.ui.Metro;
 import com.alternative_studios.newswipe.ui.Ui;
 
 /**
@@ -388,7 +389,7 @@ final class OneHandPreview extends FrameLayout {
             stroke.setStyle(Paint.Style.STROKE);
             label.setTextAlign(Paint.Align.CENTER);
             label.setTextSize(Ui.dp(c, 14));
-            label.setFakeBoldText(!com.alternative_studios.newswipe.ui.Metro.on);   // Metro에는 굵은 글자가 없다
+            label.setFakeBoldText(!Metro.on);   // Metro에는 굵은 글자가 없다
             setContentDescription(L.t("한 손 모드 미리보기. 자판 오른쪽 가장자리의 손잡이를 좌우로 끌면 자판 폭이, "
                     + "위 가장자리의 손잡이를 위·아래로 끌면 키 높이가, 아래 가장자리의 손잡이를 위·아래로 끌면 아래쪽 여백이 바뀝니다. "
                     + "아래 목록의 슬라이더로도 바꿀 수 있습니다.", "One-handed mode preview. Drag the handle on the right edge of the keyboard left or right to change the keyboard width, the handle on the top edge up or down to change the key height, and the handle on the bottom edge up or down to change the bottom padding. You can also use the sliders in the list below."));
@@ -403,7 +404,7 @@ final class OneHandPreview extends FrameLayout {
             stroke.setColor(theme.accent);
             // 모서리도 키 모서리를 따라 돈다.
             float rr = Math.max(0f, Ui.dp(ctx, prefs.keyRadiusDp()) + outlineOut(Ui.dp(ctx, prefs.keyGapXDp())));
-            com.alternative_studios.newswipe.ui.Metro.roundRect(c, tmp, rr, rr, stroke);
+            Metro.roundRect(c, tmp, rr, rr, stroke);
             // 손잡이: 강조색 알약에 바탕색 테두리 (키 위에서도 보이게). 끄는 중인 손잡이는 더 크게.
             for (Handle h : Handle.values()) {
                 if (!handleCenter(h, point)) continue;
@@ -413,9 +414,9 @@ final class OneHandPreview extends FrameLayout {
                 else tmp.set(point[0] - thickHalf, point[1] - lenHalf, point[0] + thickHalf, point[1] + lenHalf);
                 stroke.setStrokeWidth(Ui.dp(ctx, 2));
                 stroke.setColor(theme.background);
-                com.alternative_studios.newswipe.ui.Metro.roundRect(c, tmp, thickHalf, thickHalf, stroke);
+                Metro.roundRect(c, tmp, thickHalf, thickHalf, stroke);
                 fill.setColor(theme.accent);
-                com.alternative_studios.newswipe.ui.Metro.roundRect(c, tmp, thickHalf, thickHalf, fill);
+                Metro.roundRect(c, tmp, thickHalf, thickHalf, fill);
             }
             // 끄는 동안: 무엇을 얼마로 바꾸는지 자판 가운데에 크게 보여 준다.
             if (dragging && active != null) {
@@ -430,7 +431,7 @@ final class OneHandPreview extends FrameLayout {
                 cx = Math.max(halfW, Math.min(getWidth() - halfW, cx));
                 tmp.set(cx - halfW, cy - th / 2 - padV, cx + halfW, cy + th / 2 + padV);
                 fill.setColor(theme.accent);
-                com.alternative_studios.newswipe.ui.Metro.roundRect(c, tmp, tmp.height() / 2, tmp.height() / 2, fill);
+                Metro.roundRect(c, tmp, tmp.height() / 2, tmp.height() / 2, fill);
                 label.setColor(theme.onAccent);
                 c.drawText(text, cx, cy - (fm.ascent + fm.descent) / 2, label);
             }

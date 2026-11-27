@@ -56,12 +56,12 @@ public final class ToolbarButtonsEditorActivity extends Activity {
         onAccentColor = colors.onAccent;
 
         ScrollView scroll = new ScrollView(this);
-        com.alternative_studios.newswipe.ui.Metro.scrollIndicator(scroll);   // Metro: WP8처럼 끄는 동안만 보이는 가는 표시
+        Metro.scrollIndicator(scroll);   // Metro: WP8처럼 끄는 동안만 보이는 가는 표시
         scroll.setBackgroundColor(bg);
         scroll.setFillViewport(true);
         list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
-        int pad = Ui.dp(this, 16);
+        int pad = Metro.pagePad(this, 16);
         list.setPadding(pad, 0, pad, Ui.dp(this, 32));
         scroll.addView(list);
         setContentView(new SettingsFrame(this, L.t("도구 막대 버튼 사용자화", "Customize toolbar buttons"), getString(R.string.app_name)).wrap(scroll));
@@ -86,7 +86,7 @@ public final class ToolbarButtonsEditorActivity extends Activity {
         list.removeAllViews();
         TextView note = text(L.t("버튼을 켜고 끄거나, 오른쪽의 ≡를 잡고 끌어 순서를 바꿉니다.", "Turn buttons on or off, or drag ≡ on the right to reorder."), 13, hintColor);
         note.setPadding(Ui.dp(this, 4), 0, 0, Ui.dp(this, 4));
-        if (com.alternative_studios.newswipe.ui.Metro.on) note.setPadding(0, 0, 0, Ui.dp(this, 4));   // Metro: 다른 줄과 같은 왼쪽 선
+        if (Metro.on) note.setPadding(0, 0, 0, Ui.dp(this, 4));   // Metro: 다른 줄과 같은 왼쪽 선
         list.addView(note);
 
         // 미리보기: 키보드 색으로 그린 도구 막대. 눌러도 반응하지 않는다.
@@ -260,7 +260,7 @@ public final class ToolbarButtonsEditorActivity extends Activity {
                 dragFrom = dragTo = dragRows.indexOf(row);
                 dragDownY = ev.getRawY();
                 keyList.getParent().requestDisallowInterceptTouchEvent(true);   // 끄는 동안 화면이 스크롤되지 않게
-                row.animate().translationZ(com.alternative_studios.newswipe.ui.Metro.on ? 0 : Ui.dp(this, 8)).setDuration(120).start();   // Metro에는 그림자가 없다
+                row.animate().translationZ(Metro.on ? 0 : Ui.dp(this, 8)).setDuration(120).start();   // Metro에는 그림자가 없다
                 row.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
                 return true;
             case android.view.MotionEvent.ACTION_MOVE: {

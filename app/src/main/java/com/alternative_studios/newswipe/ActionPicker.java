@@ -13,6 +13,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import com.alternative_studios.newswipe.keyboard.SwipeAction;
+import com.alternative_studios.newswipe.ui.Metro;
 import com.alternative_studios.newswipe.ui.NeuUi;
 import com.alternative_studios.newswipe.ui.Ui;
 
@@ -48,7 +49,7 @@ final class ActionPicker {
         root.setOrientation(LinearLayout.VERTICAL);
 
         ScrollView scroll = new ScrollView(c);
-        com.alternative_studios.newswipe.ui.Metro.scrollIndicator(scroll);   // Metro: WP8처럼 끄는 동안만 보이는 가는 표시
+        Metro.scrollIndicator(scroll);   // Metro: WP8처럼 끄는 동안만 보이는 가는 표시
         scroll.setVerticalFadingEdgeEnabled(true);
         LinearLayout list = new LinearLayout(c);
         list.setOrientation(LinearLayout.VERTICAL);
@@ -222,14 +223,14 @@ final class ActionPicker {
         label.setText(pickerLabel(id));
         label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
         label.setTextColor(selected ? colors.accent : colors.text);
-        if (selected && !com.alternative_studios.newswipe.ui.Metro.on) label.setTypeface(Typeface.DEFAULT_BOLD);   // Metro: 고른 줄은 굵기 대신 강조색만
-        com.alternative_studios.newswipe.ui.Metro.tilt(row);   // Metro: 목록 줄은 누르면 기울어진다
+        if (selected && !Metro.on) label.setTypeface(Typeface.DEFAULT_BOLD);   // Metro: 고른 줄은 굵기 대신 강조색만
+        Metro.tilt(row);   // Metro: 목록 줄은 누르면 기울어진다
         row.addView(label, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         if (selected) {
             TextView check = new TextView(c);
             check.setText("✓");
             check.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
-            check.setTypeface(com.alternative_studios.newswipe.ui.Metro.on ? Typeface.DEFAULT : Typeface.DEFAULT_BOLD);
+            check.setTypeface(Metro.on ? Typeface.DEFAULT : Typeface.DEFAULT_BOLD);
             check.setTextColor(colors.accent);
             check.setPadding(Ui.dp(c, 8), 0, 0, 0);
             check.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
@@ -258,7 +259,7 @@ final class ActionPicker {
         float r = Ui.chipRadius(c);
         int fill = on ? colors.accent : Ui.tint(colors.text);
         chip.setTextColor(on ? colors.onAccent : colors.text);
-        chip.setTypeface(on && !com.alternative_studios.newswipe.ui.Metro.on ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
+        chip.setTypeface(on && !Metro.on ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
         chip.setBackground(Ui.ripple(Ui.tint(on ? colors.onAccent : colors.text), Ui.round(fill, r), r));
         if (NeuUi.on) {
             // Neumorphism: 갈래 칩은 솟아오르고, 지금 갈래는 안으로 들어가 강조색 글씨

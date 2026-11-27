@@ -53,12 +53,12 @@ public final class BottomKeysEditorActivity extends Activity {
         onAccentColor = colors.onAccent;
 
         ScrollView scroll = new ScrollView(this);
-        com.alternative_studios.newswipe.ui.Metro.scrollIndicator(scroll);   // Metro: WP8처럼 끄는 동안만 보이는 가는 표시
+        Metro.scrollIndicator(scroll);   // Metro: WP8처럼 끄는 동안만 보이는 가는 표시
         scroll.setBackgroundColor(bg);
         scroll.setFillViewport(true);
         list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
-        int pad = Ui.dp(this, 16);
+        int pad = Metro.pagePad(this, 16);
         list.setPadding(pad, 0, pad, Ui.dp(this, 32));
         scroll.addView(list);
         setContentView(new SettingsFrame(this, L.t("기능키 순서·유무 사용자화", "Customize function keys"), getString(R.string.app_name)).wrap(scroll));
@@ -85,7 +85,7 @@ public final class BottomKeysEditorActivity extends Activity {
                 + BottomKeys.MAX_SHOWN + "개까지 켤 수 있습니다.", "Drag ≡ on the right to reorder. Up to " + BottomKeys.MAX_SHOWN
                 + " keys can be on in the bottom row, including the space bar."), 13, hintColor);
         note.setPadding(Ui.dp(this, 4), 0, 0, Ui.dp(this, 4));
-        if (com.alternative_studios.newswipe.ui.Metro.on) note.setPadding(0, 0, 0, Ui.dp(this, 4));   // Metro: 다른 줄과 같은 왼쪽 선
+        if (Metro.on) note.setPadding(0, 0, 0, Ui.dp(this, 4));   // Metro: 다른 줄과 같은 왼쪽 선
         list.addView(note);
 
         // 미리보기: 실제 키보드 뷰에 아래 두 줄(Shift·⌫ 줄과 맨 아래 줄)만 넣어 그린다. 눌러도 반응하지 않는다.
@@ -551,7 +551,7 @@ public final class BottomKeysEditorActivity extends Activity {
                 dragDownY = ev.getRawY();
                 keyList.getParent().requestDisallowInterceptTouchEvent(true);   // 끄는 동안 화면이 스크롤되지 않게
                 // 크기는 그대로 두고 그림자만 띄워, 끌어 올린 줄의 좌우가 카드 밖으로 넘치지 않게 한다.
-                row.animate().translationZ(com.alternative_studios.newswipe.ui.Metro.on ? 0 : Ui.dp(this, 8)).setDuration(120).start();   // Metro에는 그림자가 없다
+                row.animate().translationZ(Metro.on ? 0 : Ui.dp(this, 8)).setDuration(120).start();   // Metro에는 그림자가 없다
                 row.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
                 return true;
             case android.view.MotionEvent.ACTION_MOVE: {

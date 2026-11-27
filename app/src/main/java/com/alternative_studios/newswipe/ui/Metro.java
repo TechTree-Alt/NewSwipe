@@ -116,6 +116,7 @@ public final class Metro {
     }
 
     public static final Interpolator EASE_OUT = new Exp(6, true);
+    private static final Interpolator LINEAR = new LinearInterpolator();
     public static final Interpolator EASE_IN = new Exp(6, false);
     /** 틸트가 돌아올 때의 곡선: ln(t + 1) / ln 2 (TiltEffect.LogarithmicEase). */
     public static final Interpolator LOG = t -> (float) (Math.log(t + 1) / Math.log(2));
@@ -130,13 +131,55 @@ public final class Metro {
         return Ui.dp(c, wpPx * PX);
     }
 
+    /**
+     * 화면의 좌우 여백 (px). Metro: WP8 페이지 템플릿의 ContentPanel 12px + 글(PhoneHorizontalMargin) 12px = 24px → 18dp.
+     * WP8.1(WinRT) 템플릿의 ContentRoot·제목 Margin 19 유효 픽셀(→ 17.1dp)과도 거의 같고, 대화상자(CustomMessageBox)의 좌우
+     * 24px와 맞는다. 보통 모드는 normalDp.
+     */
+    public static int pagePad(Context c, float normalDp) {
+        return on ? px(c, 24) : Ui.dp(c, normalDp);
+    }
+
+    /** Segoe WP의 ascent(2210/2048 em)와 줄 간격(1.33 em): Silverlight TextBlock의 한 줄은 이 높이이고 기준선은 위에서 ascent. */
+    private static final float SEGOE_ASCENT = 1.0791f, SEGOE_LINE = 1.33f;
+
+    /**
+     * 한 줄짜리 글을 Silverlight TextBlock의 줄(Segoe WP: 높이 1.33 em, 기준선은 위에서 1.0791 em)에 맞춘다. 이 기기 글꼴의 줄
+     * (Roboto는 위아래 여분을 넣으면 1.33 em이지만 기준선이 1.056 em, 한글은 대체 글꼴 때문에 줄이 더 커진다)과의 차이를 위·아래에 더할
+     * 여백(px, 음수일 수 있다) {위, 아래}로 돌려준다: 부른 쪽이 바깥 여백에 더한다. 글자 크기와 글꼴을 정한 뒤 부른다.
+     */
+    public static int[] segoeLine(TextView t) {
+        tightLine(t);
+        android.graphics.Paint.FontMetrics fm = t.getPaint().getFontMetrics();
+        float size = t.getTextSize(), baseline = SEGOE_ASCENT * size;
+        return new int[]{Math.round(baseline + fm.ascent), Math.round(SEGOE_LINE * size - baseline - fm.descent)};
+    }
+
+    /**
+     * 글자 줄을 이 글꼴의 ascent·descent만으로 잡는다: 위아래 여분(includeFontPadding)도, 한글처럼 다른 글꼴로 그리는 글자가 줄을
+     * 키우는 것(Android 9 이상의 기본값)도 없이. 기준선의 자리를 셈할 수 있게 한다.
+     */
+    static void tightLine(TextView t) {
+        t.setIncludeFontPadding(false);
+        if (android.os.Build.VERSION.SDK_INT >= 28) t.setFallbackLineSpacing(false);
+    }
+
+    /** 직접 그리는 글(피벗 이름 줄)의 Segoe WP 줄 높이와 기준선 (px). */
+    private static float segoeLineHeight(float textPx) {
+        return SEGOE_LINE * textPx;
+    }
+
+    private static float segoeBaseline(float textPx) {
+        return SEGOE_ASCENT * textPx;
+    }
+
     /** WP의 글꼴 크기(px)를 sp로. */
     public static float sp(float wpPx) {
         return wpPx * PX;
     }
 
     /** SDK의 글꼴 크기 (ThemeResources.xaml의 PhoneFontSize*, px). */
-    public static final float FONT_SMALL = 18.667f, FONT_NORMAL = 20f, FONT_MEDIUM = 22.667f, FONT_MEDIUM_LARGE = 25.333f,
+    public static final float FONT_NORMAL = 20f, FONT_MEDIUM = 22.667f, FONT_MEDIUM_LARGE = 25.333f,
             FONT_LARGE = 32f, FONT_EXTRA_LARGE = 42.667f, FONT_EXTRA_EXTRA_LARGE = 72f;
 
     private static Typeface light, semibold, regular;
@@ -349,9 +392,9 @@ public final class Metro {
      */
 
     /** 턴스타일 각도 (Android rotationY, 원본의 부호를 뒤집은 값). */
-    public static final float FORWARD_IN = 80f, FORWARD_OUT = -50f, BACKWARD_IN = -50f, BACKWARD_OUT = 80f;
+    private static final float FORWARD_IN = 80f, FORWARD_OUT = -50f, BACKWARD_IN = -50f, BACKWARD_OUT = 80f;
     /** 들어오는 시간·나가는 시간 (항목 하나, 화면 전체 모두). */
-    public static final long IN_MS = 350, OUT_MS = 250;
+    private static final long IN_MS = 350, OUT_MS = 250;
     /** 깃털 항목 사이의 늦춤: 앞으로 들어오기 40, 앞으로 나가기 50, 뒤로 들어오기 50, 뒤로 나가기 40 (ms). */
     private static final long FORWARD_IN_STEP = 40, FORWARD_OUT_STEP = 50, BACKWARD_IN_STEP = 50, BACKWARD_OUT_STEP = 40;
     /** 회전축: CenterOfRotationX -0.2 (요소 폭의 비율). */
@@ -366,7 +409,7 @@ public final class Metro {
      *
      * @param delay 시작을 늦출 시간 (ms)
      */
-    public static ValueAnimator turn(View v, float from, float to, long ms, long delay, boolean out, Runnable onEnd) {
+    private static ValueAnimator turn(View v, float from, float to, long ms, long delay, boolean out, Runnable onEnd) {
         Object old = v.getTag(R.id.metro_turn);
         if (old instanceof ValueAnimator) ((ValueAnimator) old).cancel();
         // 돌기 전의 가로 이동과 불투명도 (흐리게 막아 둔 줄은 0.38): 끝나면 이 값으로 되돌린다.
@@ -380,7 +423,7 @@ public final class Metro {
         v.setTag(R.id.metro_turn, a);
         a.setDuration(ms);
         a.setStartDelay(delay);
-        a.setInterpolator(new LinearInterpolator());
+        a.setInterpolator(LINEAR);
         Interpolator curve = out ? EASE_IN : EASE_OUT;
         a.addUpdateListener(an -> {
             v.setRotationY(from + (to - from) * curve.getInterpolation(an.getAnimatedFraction()));
@@ -402,13 +445,7 @@ public final class Metro {
                 if (out && !canceled) {
                     v.setAlpha(0f);   // TURNSTILE_MID_TIME + 1ms에 불투명도 0 (다시 들어올 때 resetTurn이 되돌린다)
                 } else {
-                    // 들어오기가 끝났거나 멈췄다: 제자리로 (멈춘 나가기도 다시 보이게 한다).
-                    v.setRotationY(0f);
-                    v.setTranslationX(baseTx);
-                    v.setScaleX(1f);
-                    v.setScaleY(1f);
-                    v.setAlpha(baseAlpha);
-                    v.resetPivot();
+                    settle(v, baseTx, baseAlpha);   // 들어오기가 끝났거나 멈췄다: 제자리로 (멈춘 나가기도 다시 보이게 한다)
                 }
                 if (onEnd != null && !canceled) onEnd.run();
             }
@@ -421,6 +458,11 @@ public final class Metro {
     private static void resetTurn(View v, float baseTx, float baseAlpha) {
         Object old = v.getTag(R.id.metro_turn);
         if (old instanceof ValueAnimator) ((ValueAnimator) old).cancel();
+        settle(v, baseTx, baseAlpha);
+    }
+
+    /** v를 돌지 않은 제자리에 둔다 (가로 이동·불투명도는 돌기 전의 값으로). */
+    private static void settle(View v, float baseTx, float baseAlpha) {
         v.setRotationY(0f);
         v.setTranslationX(baseTx);
         v.setScaleX(1f);
@@ -472,7 +514,7 @@ public final class Metro {
      * @param forward true면 새 화면이 들어올 때(+80° → 0°, 40ms 간격), false면 앞 화면으로 돌아올 때(-50° → 0°, 50ms 간격)
      * @return 움직인 항목 수
      */
-    public static int featherIn(java.util.List<View> items, boolean forward) {
+    private static int featherIn(java.util.List<View> items, boolean forward) {
         java.util.List<View> shown = visible(items);
         long step = forward ? FORWARD_IN_STEP : BACKWARD_IN_STEP;
         for (int n = 0; n < shown.size(); n++) {
@@ -737,7 +779,6 @@ public final class Metro {
         /** 이름 줄 전체의 가로 자리 (px). */
         private float offset;
         private java.util.function.IntConsumer onTap;
-        private final android.graphics.Paint.FontMetrics fm = new android.graphics.Paint.FontMetrics();
 
         public PivotHeader(Context c, String[] names, int index) {
             super(c);
@@ -746,7 +787,6 @@ public final class Metro {
             paint.setTypeface(light());
             paint.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp(FONT_EXTRA_EXTRA_LARGE),
                     c.getResources().getDisplayMetrics()));
-            paint.getFontMetrics(fm);
             float gap = px(c, 22);
             widths = new float[names.length];
             for (int i = 0; i < names.length; i++) widths[i] = paint.measureText(this.names[i]) + gap;
@@ -798,16 +838,16 @@ public final class Metro {
             invalidate();
         }
 
-        /** 글자 줄의 높이는 글꼴의 위아래 끝(top·bottom)까지: Silverlight TextBlock의 줄 높이(글자 크기의 약 1.33배)와 같다. */
+        /** 글자 줄은 Silverlight TextBlock의 줄: Segoe WP의 높이 1.33 em, 기준선은 위에서 1.0791 em ({@link #segoeLine}). */
         @Override
         protected void onMeasure(int widthSpec, int heightSpec) {
-            int h = Math.round(fm.bottom - fm.top) + getPaddingTop() + getPaddingBottom();
+            int h = Math.round(segoeLineHeight(paint.getTextSize())) + getPaddingTop() + getPaddingBottom();
             setMeasuredDimension(MeasureSpec.getSize(widthSpec), h);
         }
 
         @Override
         protected void onDraw(android.graphics.Canvas c) {
-            float y = getPaddingTop() - fm.top;
+            float y = getPaddingTop() + segoeBaseline(paint.getTextSize());
             // 고르지 않은 이름: 다크는 흰색 40%, 라이트는 검정 87%(#DE000000)의 23.144% (= 검정 20%).
             int dim = dark ? 0x66FFFFFF : 0x33000000;
             // 멈춰 있을 때는 이름마다 한 번씩만 쓴다. 움직이는 동안에는 줄을 화면 끝까지 고리 차례로 이어 그려, 다음다음 이름이
@@ -1172,11 +1212,16 @@ public final class Metro {
         }
 
         /** ms 동안 0 → 1로 움직이며 step을 부르고, 끝나면 done을 부른다 (ease가 null이면 곧게). */
-        private static ValueAnimator run(long ms, Interpolator ease, java.util.function.Consumer<Float> step, Runnable done) {
+        /** 움직임 한 프레임 (0 → 1, 박싱 없이). */
+        private interface Step {
+            void at(float f);
+        }
+
+        private static ValueAnimator run(long ms, Interpolator ease, Step step, Runnable done) {
             ValueAnimator a = ValueAnimator.ofFloat(0f, 1f);
             a.setDuration(ms);
-            a.setInterpolator(ease != null ? ease : new LinearInterpolator());
-            a.addUpdateListener(an -> step.accept((Float) an.getAnimatedValue()));
+            a.setInterpolator(ease != null ? ease : LINEAR);
+            a.addUpdateListener(an -> step.at((float) an.getAnimatedValue()));
             a.addListener(new AnimatorListenerAdapter() {
                 @Override
                 public void onAnimationEnd(Animator animation) {
@@ -1227,15 +1272,28 @@ public final class Metro {
      * </ul>
      */
     public static final class AppBar extends LinearLayout {
+        /**
+         * 펼친 앱 바의 자리 (WP8 px). WP8 문서에는 막대 높이(72px)와 아이콘(48px)만 있어서, 같은 셸 앱 바를 WP8.1 에뮬레이터에서 잰 값
+         * (유효 픽셀, Cornflower의 CommandBar 측정)을 WP8 px로(× 1.2) 옮겼다. 잰 동그라미 40.75 × 1.2 = 48.9px로 WP8의 48px와 맞는다:
+         * 이름 SemiBold 14px, 기준선은 동그라미 아래 24px; 메뉴 SemiLight 33.5px, 첫 기준선은 이름 기준선 아래 65.5px, 줄마다 71px,
+         * 마지막 기준선 아래 120px에서 막대가 끝난다.
+         */
+        private static final float LABEL_SIZE = 14f, LABEL_BELOW_CIRCLE = 24f, MENU_SIZE = 33.5f, MENU_BELOW_LABEL = 65.5f,
+                MENU_LINE = 71f, MENU_FOOT = 120f;
+        /** 메뉴 한 줄 안에서 기준선의 자리 (줄 위에서, px): 글자가 줄 가운데쯤에 오게. */
+        private static final float MENU_LINE_BASELINE = 48f;
         private final LinearLayout buttons, menu;
         private final java.util.List<TextView> hints = new java.util.ArrayList<>();
         private final View dots;
         private boolean open;
         private Runnable onOpenChanged;
         private float downY;
+        /** 막대를 위아래로 튕겼다고 보는 거리 (문턱의 두 배). */
+        private final float flickSlop;
 
         public AppBar(Context c) {
             super(c);
+            flickSlop = android.view.ViewConfiguration.get(c).getScaledTouchSlop() * 2f;
             setOrientation(VERTICAL);
             setBackgroundColor(chrome);
             setClickable(true);   // 막대를 눌러도 아래 화면으로 넘어가지 않는다
@@ -1243,15 +1301,15 @@ public final class Metro {
             buttons = new LinearLayout(c);
             buttons.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
             row.addView(buttons, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT));
+            // 오른쪽 위의 점 세 개 (4px → 3dp 지름, 간격 8px → 6dp)
+            final float r = Ui.dp(c, 1.5f), gap = Ui.dp(c, 6), cy = Ui.dp(c, 10), end = Ui.dp(c, 18);
             dots = new View(c) {
                 private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
 
                 @Override
                 protected void onDraw(android.graphics.Canvas canvas) {
-                    // 오른쪽 위의 점 세 개 (4px → 3dp 지름, 간격 8px → 6dp)
                     p.setColor(fg);
-                    float r = Ui.dp(getContext(), 1.5f), gap = Ui.dp(getContext(), 6);
-                    float cy = Ui.dp(getContext(), 10), right = getWidth() - Ui.dp(getContext(), 18);
+                    float right = getWidth() - end;
                     for (int i = 0; i < 3; i++) canvas.drawCircle(right - i * gap, cy, r, p);
                 }
             };
@@ -1262,7 +1320,8 @@ public final class Metro {
             row.setMinimumHeight(Ui.dp(c, 54));
             menu = new LinearLayout(c);
             menu.setOrientation(VERTICAL);
-            menu.setPadding(0, Ui.dp(c, 4), 0, Ui.dp(c, 12));
+            // 마지막 메뉴 기준선 아래 120px에서 막대가 끝난다 (줄 하나가 기준선 아래 MENU_LINE - MENU_LINE_BASELINE을 이미 품는다).
+            menu.setPadding(0, 0, 0, px(c, MENU_FOOT - (MENU_LINE - MENU_LINE_BASELINE)));
             menu.setVisibility(GONE);
             addView(menu, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
         }
@@ -1273,19 +1332,31 @@ public final class Metro {
             LinearLayout col = new LinearLayout(c);
             col.setOrientation(VERTICAL);
             col.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
-            LayoutParams blp = new LayoutParams(Ui.dp(c, 40), Ui.dp(c, 40));
-            blp.topMargin = Ui.dp(c, 7);
+            int top = Ui.dp(c, 7), size = Ui.dp(c, 40);
+            LayoutParams blp = new LayoutParams(size, size);
+            blp.topMargin = top;
             blp.bottomMargin = Ui.dp(c, 7);
             col.addView(button, blp);
             TextView t = new TextView(c);
             t.setText(lower(hint));
             t.setTextColor(fg);
-            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
-            t.setTypeface(regular());
+            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp(LABEL_SIZE));
+            t.setTypeface(semibold());
             t.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
             t.setSingleLine(true);
+            tightLine(t);
             t.setVisibility(GONE);
-            col.addView(t, new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT));
+            // 기준선을 동그라미 아래 24px에 (버튼 뷰는 동그라미보다 사방 2dp 크다), 그 아래는 메뉴 첫 기준선까지 65.5px가 되게.
+            android.graphics.Paint.FontMetrics fm = t.getPaint().getFontMetrics();
+            float baseline = top + size - Ui.dp(c, 2) + px(c, LABEL_BELOW_CIRCLE);
+            float menuTop = baseline + px(c, MENU_BELOW_LABEL - MENU_LINE_BASELINE);
+            int rowBottom = top + size + blp.bottomMargin;   // 이름이 숨었을 때 막대의 높이
+            LayoutParams tlp = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+            tlp.topMargin = Math.round(baseline + fm.ascent) - rowBottom;
+            tlp.bottomMargin = Math.round(menuTop - (baseline + fm.descent));
+            // 보일 때만 쓰는 여백: 펼치고 접는 동안 높이와 함께 0에서/으로 움직인다 (Ui.setVisibleAnimated).
+            t.setTag(com.alternative_studios.newswipe.R.id.shown_margins, new int[]{tlp.topMargin, tlp.bottomMargin});
+            col.addView(t, tlp);
             hints.add(t);
             buttons.addView(col, new LayoutParams(Ui.dp(c, 76), LayoutParams.WRAP_CONTENT));
         }
@@ -1296,11 +1367,15 @@ public final class Metro {
             TextView t = new TextView(c);
             t.setText(lower(label));
             t.setTextColor(fg);
-            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
-            t.setTypeface(regular());
-            t.setGravity(android.view.Gravity.CENTER_VERTICAL);
-            t.setMinHeight(Ui.dp(c, 48));
-            t.setPadding(Ui.dp(c, 18), 0, Ui.dp(c, 18), 0);
+            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp(MENU_SIZE));
+            t.setTypeface(light());
+            t.setSingleLine(true);
+            t.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            tightLine(t);
+            // 한 줄 71px, 기준선은 줄 위에서 48px, 글은 왼쪽 25px.
+            android.graphics.Paint.FontMetrics fm = t.getPaint().getFontMetrics();
+            t.setHeight(px(c, MENU_LINE));
+            t.setPadding(px(c, 25), Math.round(px(c, MENU_LINE_BASELINE) + fm.ascent), px(c, 25), 0);
             t.setOnClickListener(v -> {
                 setOpen(false);
                 action.run();
@@ -1332,7 +1407,7 @@ public final class Metro {
         public boolean onInterceptTouchEvent(MotionEvent e) {
             if (e.getActionMasked() == MotionEvent.ACTION_DOWN) downY = e.getY();
             if (e.getActionMasked() == MotionEvent.ACTION_MOVE) {
-                float d = e.getY() - downY, slop = android.view.ViewConfiguration.get(getContext()).getScaledTouchSlop() * 2;
+                float d = e.getY() - downY, slop = flickSlop;
                 if ((d < -slop && !open) || (d > slop && open)) {
                     setOpen(!open);
                     return true;
@@ -1524,10 +1599,25 @@ public final class Metro {
         @Override
         public void draw(android.graphics.Canvas c) {
             android.graphics.Rect b = getBounds();
+            // paint()가 색마다 불투명도까지 정하므로, Drawable의 불투명도는 층으로 건다.
+            int save = alpha < 255 ? c.saveLayerAlpha(b.left, b.top, b.right, b.bottom, alpha) : -1;
             paint(c, b.exactCenterX(), b.exactCenterY(), size / 2f, stroke, radio, checked, pressed, enabled, p, mark);
+            if (save >= 0) c.restoreToCount(save);
         }
 
-        @Override public void setAlpha(int alpha) { p.setAlpha(alpha); }
+        private int alpha = 255;
+
+        @Override
+        public void setAlpha(int alpha) {
+            if (this.alpha == alpha) return;
+            this.alpha = alpha;
+            invalidateSelf();
+        }
+
+        @Override
+        public int getAlpha() {
+            return alpha;
+        }
         @Override public void setColorFilter(android.graphics.ColorFilter cf) { p.setColorFilter(cf); }
         @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
     }
