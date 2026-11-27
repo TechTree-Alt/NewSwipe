@@ -111,7 +111,7 @@ final class SettingsWidgets {
     TextView note(String s) {
         TextView t = text(s, 13, hint);
         if (Metro.on) {
-            Metro.text(t, 15, Metro.regular(), 13);
+            Metro.text(t, Metro.sp(Metro.FONT_NORMAL), Metro.regular(), 13);
             t.setTag(com.alternative_studios.newswipe.R.id.metro_note, Boolean.TRUE);
         }
         t.setLineSpacing(Ui.dp(c, 3), 1f);
@@ -137,7 +137,7 @@ final class SettingsWidgets {
             // 위 항목이 아래에 항목 사이 여백을 품고 있어 위는 조금만 띄운다.
             h.setText(Metro.lower(name));
             h.setTextColor(hint);
-            Metro.text(h, 24, Metro.light(), 14);
+            Metro.text(h, Metro.sp(Metro.FONT_LARGE), Metro.light(), 14);
             h.setPadding(0, Ui.dp(c, 12), 0, Ui.dp(c, 2));
         }
         h.setTag(SECTION_HEADER);
@@ -172,7 +172,7 @@ final class SettingsWidgets {
      */
     TextView fieldHeader(LinearLayout box, String label) {
         TextView t = text(label, 16, hint);
-        Metro.text(t, 15, Metro.regular(), 16);   // 검색은 원래 크기(16sp)로 항목 이름을 찾는다
+        Metro.text(t, Metro.sp(Metro.FONT_NORMAL), Metro.regular(), 16);   // 검색은 원래 크기(16sp)로 항목 이름을 찾는다
         t.setPadding(0, Ui.dp(c, 6), 0, Ui.dp(c, 6));
         mark(t, box);
         box.addView(t);
@@ -249,14 +249,14 @@ final class SettingsWidgets {
         row.setPadding(0, Ui.dp(c, 4), 0, 0);
         gapBelow(row, false, METRO_TOGGLE_GAP_DP);
         TextView t = text(label, 16, hint);
-        Metro.text(t, 15, Metro.regular(), 16);   // 검색은 원래 크기(16sp)로 항목 이름을 찾는다
+        Metro.text(t, Metro.sp(Metro.FONT_NORMAL), Metro.regular(), 16);   // 검색은 원래 크기(16sp)로 항목 이름을 찾는다
         mark(t, row);
         row.addView(t);
         LinearLayout line = new LinearLayout(c);
         line.setGravity(Gravity.CENTER_VERTICAL);
         TextView state = new TextView(c);
         state.setTextColor(text);
-        state.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
+        state.setTextSize(TypedValue.COMPLEX_UNIT_SP, Metro.sp(Metro.FONT_LARGE));
         state.setTypeface(Metro.light());
         state.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);   // 스위치가 상태를 읽어 준다
         line.addView(state, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
@@ -268,13 +268,13 @@ final class SettingsWidgets {
         row.addView(line, matchWrap());
         if (desc != null) {
             TextView d = text(desc, 13, hint);
-            Metro.text(d, 15, Metro.regular(), 13);
+            Metro.text(d, Metro.sp(Metro.FONT_NORMAL), Metro.regular(), 13);
             d.setTag(DESC);
             d.setPadding(0, Ui.dp(c, 2), 0, 0);
             row.addView(d);
         }
         row.setOnClickListener(v -> sw.performClick());
-        Metro.tilt(row);
+        Metro.tilt(row, sw);   // WP는 스위치(ToggleSwitchButton)만 틸트한다
         return row;
     }
 
@@ -417,14 +417,14 @@ final class SettingsWidgets {
         // Metro: 토글·값 줄처럼 위에 옅은 머리글 (PhoneFontSizeNormal, PhoneSubtleBrush), 지금 값은 오른쪽에 글자 색으로.
         if (Metro.on) {
             t.setTextColor(hint);
-            Metro.text(t, 15, Metro.regular(), 16);
+            Metro.text(t, Metro.sp(Metro.FONT_NORMAL), Metro.regular(), 16);
         }
         mark(t, box);
         top.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         TextView v = text(value + unit, 14, hint);
         if (Metro.on) {
             v.setTextColor(text);
-            Metro.text(v, 15, Metro.regular(), 14);
+            Metro.text(v, Metro.sp(Metro.FONT_NORMAL), Metro.regular(), 14);
         }
         top.addView(v);
         box.addView(top);
@@ -477,7 +477,7 @@ final class SettingsWidgets {
         row.setPadding(0, Ui.dp(c, 9), 0, 0);
         gapBelow(row, false, METRO_TOGGLE_GAP_DP - 9);
         TextView t = text(label, 16, hint);
-        Metro.text(t, 15, Metro.regular(), 16);   // 검색은 원래 크기(16sp)로 항목 이름을 찾는다
+        Metro.text(t, Metro.sp(Metro.FONT_NORMAL), Metro.regular(), 16);   // 검색은 원래 크기(16sp)로 항목 이름을 찾는다
         mark(t, row);
         row.addView(t);
         LinearLayout box = new LinearLayout(c);
@@ -485,16 +485,16 @@ final class SettingsWidgets {
         android.graphics.drawable.GradientDrawable border = Ui.round(0, 0);
         border.setStroke(Ui.dp(c, Metro.BORDER_DP), text);
         box.setBackground(border);
-        box.setMinimumHeight(Ui.dp(c, 40));
-        box.setPadding(Ui.dp(c, 9), Ui.dp(c, 6), Ui.dp(c, 9), Ui.dp(c, 6));
+        // 테두리 3px + ListPickerItem의 Padding 8,10px: 펼친 목록의 한 줄과 같은 자리에 글자가 온다 (DropdownMenu).
+        box.setPadding(Metro.px(c, 11), Metro.px(c, 13), Metro.px(c, 11), Metro.px(c, 13));
         box.setTag(DropdownMenu.PICKER_BOX);
         TextView v = text(value, 16, text);
-        Metro.text(v, 19, Metro.regular(), 16);
+        Metro.text(v, Metro.sp(Metro.FONT_MEDIUM_LARGE), Metro.regular(), 16);
         v.setSingleLine(true);
         v.setEllipsize(android.text.TextUtils.TruncateAt.END);
         box.addView(v, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         LinearLayout.LayoutParams blp = matchWrap();
-        blp.topMargin = Ui.dp(c, 6);
+        blp.topMargin = Metro.px(c, 8);   // 머리글 아래 8px
         row.addView(box, blp);
         row.setClickable(true);
         row.setFocusable(true);
@@ -518,16 +518,8 @@ final class SettingsWidgets {
      */
     static void metroButton(View row) {
         if (!Metro.on) return;
-        Context c = row.getContext();
-        AppTheme t = AppTheme.of(c);
-        android.graphics.drawable.GradientDrawable idle = Ui.round(0, 0);
-        idle.setStroke(Ui.dp(c, Metro.BORDER_DP), t.text);
-        android.graphics.drawable.StateListDrawable bg = new android.graphics.drawable.StateListDrawable();
-        bg.addState(new int[]{android.R.attr.state_pressed}, Ui.round(t.accent, 0));
-        bg.addState(new int[0], idle);
-        row.setBackground(bg);
-        metroInk(row, new android.content.res.ColorStateList(new int[][]{{android.R.attr.state_pressed}, {}},
-                new int[]{t.onAccent, t.text}), true);
+        row.setBackground(Metro.buttonBackground(row.getContext()));
+        metroInk(row, Metro.buttonInk(), true);
         Metro.tilt(row);
     }
 
@@ -550,7 +542,7 @@ final class SettingsWidgets {
     /**
      * 하위 설정 묶음 (설정 화면과 편집 화면이 같이 쓴다): leftMarginDp만큼 들인 세로 안내선과 그 오른쪽의 항목들.
      * 보통은 옅은 강조색의 둥근 선(3dp)이 위아래를 조금 띄워 놓인다. Metro는 Windows Phone Toolkit의 ExpanderView처럼
-     * 옅은 회색(PhoneSubtleBrush)의 가는 직선(StrokeThickness 3px → 2dp)이 묶음 높이를 꽉 채운다.
+     * 옅은 회색(PhoneSubtleBrush)의 가는 직선(StrokeThickness 3px)이 하위 항목의 내용만큼 이어진다.
      */
     static View subGroup(Context c, int accent, int leftMarginDp, View... children) {
         LinearLayout group = new LinearLayout(c);
@@ -561,8 +553,8 @@ final class SettingsWidgets {
         View line = new View(c);
         LinearLayout.LayoutParams blp;
         if (Metro.on) {
-            line.setBackgroundColor(Metro.SUBTLE);
-            blp = new LinearLayout.LayoutParams(Ui.dp(c, 2), ViewGroup.LayoutParams.MATCH_PARENT);
+            line.setBackgroundColor(Metro.subtle);
+            blp = new LinearLayout.LayoutParams(Ui.dp(c, Metro.BORDER_DP), ViewGroup.LayoutParams.MATCH_PARENT);
         } else {
             line.setBackground(Ui.round((accent & 0x00FFFFFF) | 0x66000000, Ui.dp(c, 2)));
             blp = new LinearLayout.LayoutParams(Ui.dp(c, 3), ViewGroup.LayoutParams.MATCH_PARENT);
@@ -579,30 +571,7 @@ final class SettingsWidgets {
              */
             @Override
             protected void onMeasure(int widthSpec, int heightSpec) {
-                if (Metro.on) {
-                    View lastVisible = null;
-                    for (int i = getChildCount() - 1; i >= 0 && lastVisible == null; i--) {
-                        if (getChildAt(i).getVisibility() != View.GONE) lastVisible = getChildAt(i);
-                    }
-                    for (int i = 0; i < getChildCount(); i++) {
-                        View ch = getChildAt(i);
-                        boolean last = ch == lastVisible;
-                        View row = gapRow(ch);
-                        if (row != null) setTrailing(row, last ? line6 : naturalGap(row));
-                        Object m = ch.getTag(com.alternative_studios.newswipe.R.id.shown_margins);
-                        if (m instanceof int[] && ((int[]) m).length > 2) {
-                            int[] shown = (int[]) m;
-                            int want = last ? 0 : shown[2];
-                            if (shown[1] != want) {
-                                shown[1] = want;   // 펼치고 접는 움직임도 이 값을 쓴다
-                                if (ch.getVisibility() == View.VISIBLE && ch.getLayoutParams() instanceof MarginLayoutParams
-                                        && !Ui.isAnimating(ch)) {
-                                    ((MarginLayoutParams) ch.getLayoutParams()).bottomMargin = want;
-                                }
-                            }
-                        }
-                    }
-                }
+                if (Metro.on) fitTrailingGaps(this, line6);
                 super.onMeasure(widthSpec, heightSpec);
             }
         };
@@ -623,16 +592,25 @@ final class SettingsWidgets {
             group.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
                 @Override
                 public void onViewAttachedToWindow(View v) {
-                    if (!(v.getParent() instanceof ViewGroup)) return;
-                    ViewGroup parent = (ViewGroup) v.getParent();
-                    View prev = null;
-                    for (int i = parent.indexOfChild(v) - 1; i >= 0 && prev == null; i--) {
-                        View p = parent.getChildAt(i);
-                        if (p.getVisibility() != View.GONE) prev = p;
-                    }
-                    View above = prev == null ? null : gapRow(prev);
+                    View[] pair = previousRow(v);
+                    View above = pair == null ? null : gapRow(pair[0]);
                     // 위 줄의 원래 여백으로 정한다 (위 줄은 이 묶음이 숨어 있는 동안 마지막 줄이라 여백이 줄어 있을 수 있다).
                     int top = above == null ? 0 : -Math.max(0, naturalGap(above) - line6);
+                    // 당겨 올리는 여백은 위 줄 바로 아래에 붙은 뷰에 준다. 묶음이 다른 틀의 맨 앞에 있을 때 묶음 자신을 올리면 틀 밖으로
+                    // 나가 잘리고 눌리지도 않으므로, 그 틀을 올린다 (틀을 펼치고 접을 때 이 여백도 함께 움직인다).
+                    View holder = pair == null ? v : pair[1];
+                    if (holder != v && holder.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
+                        ViewGroup.MarginLayoutParams hlp = (ViewGroup.MarginLayoutParams) holder.getLayoutParams();
+                        Object t = holder.getTag(com.alternative_studios.newswipe.R.id.shown_margins);
+                        int[] hs = t instanceof int[] ? (int[]) t : new int[]{0, hlp.bottomMargin};
+                        hs[0] = top;
+                        holder.setTag(com.alternative_studios.newswipe.R.id.shown_margins, hs);
+                        if (hlp.topMargin != top) {
+                            hlp.topMargin = top;
+                            holder.setLayoutParams(hlp);
+                        }
+                        top = 0;
+                    }
                     shown[0] = top;
                     if (glp.topMargin != top) {
                         glp.topMargin = top;
@@ -646,6 +624,70 @@ final class SettingsWidgets {
             });
         }
         return group;
+    }
+
+    /**
+     * Metro 하위 묶음의 세로선이 마지막으로 보이는 하위 항목의 글에서 끝나도록, 마지막 줄의 항목 사이 여백은 line로 줄이고 나머지는
+     * 원래대로 둔다. 하위 항목은 켜고 끄며 보였다 숨었다 하므로 잴 때마다 맞춘다. 마지막 줄이 펼치거나 접히는 중이면 그 바로 위 줄의
+     * 여백을 진행에 맞춰 원래 여백과 line 사이에서 함께 움직인다 (접기 끝·펼치기 시작에 여백이 한 번에 튀지 않게).
+     * 맨 처음 줄이 버튼이면 위 바깥 여백을 없애 세로선이 버튼에서 시작한다.
+     */
+    private static void fitTrailingGaps(ViewGroup column, int line) {
+        View last = null, beforeLast = null, first = null;
+        for (int i = 0; i < column.getChildCount(); i++) {
+            View ch = column.getChildAt(i);
+            if (ch.getVisibility() == View.GONE) continue;
+            if (first == null) first = ch;
+            beforeLast = last;
+            last = ch;
+        }
+        float lastShown = last == null ? 1f : Ui.shownFraction(last);
+        for (int i = 0; i < column.getChildCount(); i++) {
+            View ch = column.getChildAt(i);
+            // 0이면 마지막 줄처럼 line만, 1이면 원래 여백 그대로.
+            float keep = ch == last ? 0f : ch == beforeLast ? lastShown : 1f;
+            View row = gapRow(ch);
+            if (row != null) setTrailing(row, Math.round(line + (naturalGap(row) - line) * keep));
+            Object m = ch.getTag(com.alternative_studios.newswipe.R.id.shown_margins);
+            if (m instanceof int[] && ((int[]) m).length > 2) {
+                int[] shown = (int[]) m;
+                int want = Math.round(shown[2] * keep);
+                if (shown[1] != want) {
+                    shown[1] = want;   // 펼치고 접는 움직임도 이 값을 쓴다
+                    if (ch.getVisibility() == View.VISIBLE && ch.getLayoutParams() instanceof ViewGroup.MarginLayoutParams
+                            && !Ui.isAnimating(ch)) {
+                        ((ViewGroup.MarginLayoutParams) ch.getLayoutParams()).bottomMargin = want;
+                    }
+                }
+            }
+            if (ch.getTag(com.alternative_studios.newswipe.R.id.metro_button) != null
+                    && ch.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
+                int top = ch == first ? 0 : Metro.px(ch.getContext(), 12);
+                ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) ch.getLayoutParams();
+                if (lp.topMargin != top) lp.topMargin = top;
+            }
+        }
+    }
+
+    /**
+     * v 바로 위에 보이는 항목과, 그 항목 바로 아래에 붙은 뷰 {위 항목, 아래 뷰}. 같은 틀에 위 항목이 없으면 v를 담은 세로 틀의 위로
+     * 거슬러 올라간다: 그때 아래 뷰는 v가 아니라 v를 맨 앞에 담은 틀이다 (예: 도구 막대 설정에서 '도구 막대 표시' 아래의, 하위 묶음을 맨
+     * 앞에 담은 틀). 하위 묶음 안의 첫 항목처럼 세로 틀 밖으로 나가야 하면 없다(null).
+     */
+    private static View[] previousRow(View v) {
+        View cur = v;
+        while (cur.getParent() instanceof ViewGroup) {
+            ViewGroup p = (ViewGroup) cur.getParent();
+            for (int i = p.indexOfChild(cur) - 1; i >= 0; i--) {
+                if (p.getChildAt(i).getVisibility() != View.GONE) return new View[]{p.getChildAt(i), cur};
+            }
+            if (!(p instanceof LinearLayout) || ((LinearLayout) p).getOrientation() != LinearLayout.VERTICAL
+                    || p.isClickable()) {
+                return null;
+            }
+            cur = p;
+        }
+        return null;
     }
 
     /** 눌러서 실행하는 항목: 옅은 강조색 바탕과 오른쪽 화살표. */
@@ -663,21 +705,13 @@ final class SettingsWidgets {
         row.setBackground(Ui.ripple(accent & 0x00FFFFFF | 0x33000000, Ui.round(tint, Ui.dp(c, 12)), Ui.dp(c, 12)));
         TextView t = text(label, 15, accent);
         if (Metro.on) {
-            // Windows Phone의 버튼: 글자 색 테두리만 있는 네모. 누르는 동안 강조색으로 채워지고 글자는 그 위의 색이 된다.
-            android.graphics.drawable.GradientDrawable idle = Ui.round(0, 0);
-            idle.setStroke(Ui.dp(c, Metro.BORDER_DP), text);
-            android.graphics.drawable.GradientDrawable down = Ui.round(accent, 0);
-            down.setStroke(Ui.dp(c, 2), accent);
-            android.graphics.drawable.StateListDrawable bg = new android.graphics.drawable.StateListDrawable();
-            bg.addState(new int[]{android.R.attr.state_pressed}, down);
-            bg.addState(new int[0], idle);
-            row.setBackground(bg);
+            // Windows Phone의 버튼 (PhoneButtonBase): 글자 색 테두리만 있는 네모, 글 너비만큼 (설정 › about의 'more info').
+            // 누르는 동안 강조색으로 채워지고 글자는 그 위의 색이 된다.
+            row.setBackground(Metro.buttonBackground(c));
             Metro.buttonText(t, 15);
-            t.setTextColor(new android.content.res.ColorStateList(
-                    new int[][]{{android.R.attr.state_pressed}, {}}, new int[]{onAccent, text}));
+            t.setTextColor(Metro.buttonInk());
             t.setDuplicateParentStateEnabled(true);
-            // Button 템플릿(PhoneButtonBase)의 Padding 10,3,10,5px + 테두리 3px: 글 둘레가 좁은 네모 (설정 › about의 'more info').
-            row.setPadding(Ui.dp(c, 10), Ui.dp(c, 5), Ui.dp(c, 10), Ui.dp(c, 6));
+            Metro.buttonPadding(row);
         }
         if (NeuUi.on) {
             // Neumorphism: 솟아오른 버튼, 누르는 동안 안으로 들어간다. 그림자 자리만큼 위아래를 띄운다.
@@ -686,14 +720,10 @@ final class SettingsWidgets {
         mark(t, row);
         if (Metro.on) {
             // 글 너비만큼의 버튼: 오른쪽 아이콘(가져오기·내보내기 등)은 글 바로 뒤에.
+            // WP8의 Button은 글자만 담는다 (아이콘은 앱 바의 몫): 오른쪽 아이콘(가져오기·지우기 등)은 두지 않는다.
             row.addView(t, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-            if (trailing.getVisibility() != View.GONE) {
-                LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-                tlp.leftMargin = Ui.dp(c, 12);
-                row.addView(trailing, tlp);
-            } else {
-                row.addView(trailing);
-            }
+            trailing.setVisibility(View.GONE);
+            row.addView(trailing);
         } else {
             row.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
             row.addView(trailing);
@@ -707,7 +737,7 @@ final class SettingsWidgets {
         lp.bottomMargin = Ui.dp(c, NeuUi.on ? 10 : 6);
         row.setLayoutParams(lp);
         if (Metro.on) {
-            // 글 너비만큼, 바깥 여백은 Button 템플릿의 PhoneTouchTargetOverhang(12px → 9dp). 버튼이 이어지면 그 사이는 그대로 두고,
+            // 글 너비만큼, 바깥 여백은 Button 템플릿의 PhoneTouchTargetOverhang(12px → 9dp, 하위 묶음의 첫 버튼은 위 0). 버튼이 이어지면 그 사이는 그대로 두고,
             // 버튼 다음에 다른 항목이 오면 아래에 일반 항목 사이만큼 띄운다 (다음 줄은 화면에 붙은 뒤에야 알 수 있다).
             lp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
             lp.topMargin = Ui.dp(c, 9);

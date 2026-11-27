@@ -8,6 +8,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.alternative_studios.newswipe.suggest.WordSuggester;
+import com.alternative_studios.newswipe.ui.Metro;
 import com.alternative_studios.newswipe.ui.NeuUi;
 import com.alternative_studios.newswipe.ui.Ui;
 
@@ -38,24 +39,17 @@ final class ResetDialog {
         reset.setBackground(Ui.ripple(accent & 0x00FFFFFF | 0x33000000,
                 Ui.round(accent & 0x00FFFFFF | 0x1F000000, Ui.dp(activity, 12)), Ui.dp(activity, 12)));
         if (NeuUi.on) NeuUi.button(reset, NeuUi.surface, Ui.dp(activity, 14));   // Neumorphism: 솟아오른 버튼
-        if (com.alternative_studios.newswipe.ui.Metro.on) {
-            // Metro: 다른 버튼처럼 글자 색 테두리의 네모, 누르면 강조색으로 채워진다.
-            AppTheme t = AppTheme.of(activity);
-            android.graphics.drawable.GradientDrawable idle = Ui.round(0, 0);
-            idle.setStroke(Ui.dp(activity, com.alternative_studios.newswipe.ui.Metro.BORDER_DP), t.text);
-            com.alternative_studios.newswipe.ui.Metro.buttonText(reset, 15);
-            android.graphics.drawable.GradientDrawable down = Ui.round(t.accent, 0);
-            android.graphics.drawable.StateListDrawable bg = new android.graphics.drawable.StateListDrawable();
-            bg.addState(new int[]{android.R.attr.state_pressed}, down);
-            bg.addState(new int[0], idle);
-            reset.setBackground(bg);
-            reset.setTextColor(new android.content.res.ColorStateList(
-                    new int[][]{{android.R.attr.state_pressed}, {}}, new int[]{t.onAccent, t.text}));
-            com.alternative_studios.newswipe.ui.Metro.tilt(reset);
+        if (Metro.on) {
+            // Metro: 다른 버튼처럼 글 너비만큼의 글자 색 테두리 네모, 누르면 강조색으로 채워진다.
+            reset.setBackground(Metro.buttonBackground(activity));
+            Metro.buttonText(reset, 15);
+            reset.setTextColor(Metro.buttonInk());
+            Metro.buttonPadding(reset);
+            Metro.tilt(reset);
         }
         reset.setOnClickListener(v -> confirm(activity, name, onReset));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(Metro.on ? ViewGroup.LayoutParams.WRAP_CONTENT
+                : ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         lp.topMargin = Ui.dp(activity, 24);
         reset.setLayoutParams(lp);
         return reset;

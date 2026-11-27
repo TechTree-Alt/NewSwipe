@@ -151,24 +151,31 @@ public final class AppDialog extends Dialog {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(Metro.chrome);
         root.setClickable(true);   // 상자를 눌러도 막에 닿지 않게
-        int side = Ui.dp(ui, 18);
-        root.setPadding(0, Ui.dp(ui, 12), 0, Ui.dp(ui, 9));
+        // Toolkit CustomMessageBox 템플릿: 글은 좌우 24px, 제목(Caption) PhoneFontSizeLarge SemiBold 위 8px, 글(Message)
+        // PhoneFontSizeMedium SemiLight 위 11px, 그 아래 18px, 버튼은 좌우·아래 24px(바깥 여백 12px + 버튼 템플릿의 12px).
+        int side = Metro.px(ui, 24);
+        root.setPadding(0, Metro.px(ui, 8), 0, Metro.px(ui, 24));
         if (b.title != null) {
-            TextView t = text(b.title, 24, Metro.fg);
+            TextView t = text(b.title, Metro.sp(Metro.FONT_LARGE), Metro.fg);
             t.setTypeface(Metro.semibold());
-            t.setPadding(side, Ui.dp(ui, 6), side, Ui.dp(ui, b.message != null ? 8 : 14));
+            t.setPadding(side, 0, side, 0);
             root.addView(t);
         }
         if (b.message != null) {
-            TextView m = text(b.message, 17, Metro.fg);
+            TextView m = text(b.message, Metro.sp(Metro.FONT_MEDIUM), Metro.fg);
             m.setTypeface(Metro.light());
-            m.setPadding(side, 0, side, Ui.dp(ui, 14));
+            m.setPadding(side, Metro.px(ui, 11), side, 0);
             addMessage(root, m);
         }
+        // 글 아래: 목록·직접 만든 뷰는 글(Message)처럼 11px 띄워 이어 붙이고, 글뿐이면 StackPanel의 아래 여백 18px.
+        boolean middle = b.items != null || b.view != null;
+        if (b.title != null || b.message != null) {
+            root.addView(new View(ui), new LinearLayout.LayoutParams(1, Metro.px(ui, middle ? 11 : 18)));
+        }
         addMiddle(root, b);
-        // 버튼: 같은 폭으로 나란히 (Windows Phone은 확인이 왼쪽, 취소가 오른쪽).
+        // 버튼: 같은 폭으로 나란히 (Windows Phone은 확인이 왼쪽, 취소가 오른쪽), 사이 24px.
         LinearLayout bar = new LinearLayout(ui);
-        bar.setPadding(Ui.dp(ui, 9), Ui.dp(ui, 12), Ui.dp(ui, 9), 0);
+        bar.setPadding(side - Metro.px(ui, 12), Metro.px(ui, 12), side - Metro.px(ui, 12), 0);   // 버튼 템플릿의 바깥 여백 12px
         positive = button(b.positive, BUTTON_POSITIVE, b.positiveListener, bar);
         neutral = button(b.neutral, BUTTON_NEUTRAL, b.neutralListener, bar);
         negative = button(b.negative, BUTTON_NEGATIVE, b.negativeListener, bar);
@@ -251,11 +258,12 @@ public final class AppDialog extends Dialog {
     private View row(Builder b, int index, Mark[] marks) {
         LinearLayout row = new LinearLayout(ui);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setMinimumHeight(Ui.dp(ui, metro ? 56 : 52));
-        int side = Ui.dp(ui, metro ? 18 : 24);
+        // Metro: CheckBox 템플릿의 높이 (상자 32px + PhoneTouchTargetLargeOverhang 위아래 20px = 72px).
+        row.setMinimumHeight(metro ? Metro.px(ui, 72) : Ui.dp(ui, 52));
+        int side = metro ? Metro.px(ui, 24) : Ui.dp(ui, 24);
         row.setPadding(side, Ui.dp(ui, 6), side, Ui.dp(ui, 6));
-        TextView t = text(b.items[index], metro ? 22 : 16, metro ? Metro.fg : colors.text);
-        if (metro) t.setTypeface(Metro.light());
+        TextView t = text(b.items[index], metro ? Metro.sp(Metro.FONT_MEDIUM_LARGE) : 16, metro ? Metro.fg : colors.text);
+        if (metro) t.setTypeface(Metro.regular());   // ListPickerItem처럼 PhoneFontSizeMediumLarge, 보통 굵기
         Mark mark = null;
         boolean single = b.choice == Builder.SINGLE, multi = b.choice == Builder.MULTI;
         // Metro의 한 개 고르기는 표시 없이 고른 항목의 글자가 강조색이다 (Windows Phone의 ListPicker).
@@ -264,7 +272,7 @@ public final class AppDialog extends Dialog {
             boolean on = multi ? b.checkedItems != null && b.checkedItems[index] : index == b.checkedItem;
             mark.setChecked(on);
             LinearLayout.LayoutParams mlp = new LinearLayout.LayoutParams(Ui.dp(ui, 24), Ui.dp(ui, 24));
-            mlp.rightMargin = Ui.dp(ui, metro ? 14 : 20);
+            mlp.rightMargin = metro ? Metro.px(ui, 12) : Ui.dp(ui, 20);   // CheckBox 템플릿: 상자와 글 사이 12px
             row.addView(mark, mlp);
         }
         marks[index] = mark;
@@ -320,20 +328,13 @@ public final class AppDialog extends Dialog {
         b.setSingleLine(true);
         b.setEllipsize(android.text.TextUtils.TruncateAt.END);
         if (metro) {
-            // Windows Phone의 버튼: 글자 색 3px 테두리, SemiBold 글자, 누르면 강조색으로 채워진다.
-            b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 19);
-            b.setTypeface(Metro.semibold());
-            android.graphics.drawable.GradientDrawable idle = Ui.round(0, 0);
-            idle.setStroke(Ui.dp(ui, Metro.BORDER_DP), Metro.fg);
-            android.graphics.drawable.GradientDrawable down = Ui.round(colors.accent, 0);
-            android.graphics.drawable.StateListDrawable bg = new android.graphics.drawable.StateListDrawable();
-            bg.addState(new int[]{android.R.attr.state_pressed}, down);
-            bg.addState(new int[0], idle);
-            b.setBackground(bg);
-            b.setTextColor(new android.content.res.ColorStateList(new int[][]{{android.R.attr.state_pressed}, {}},
-                    new int[]{colors.onAccent, Metro.fg}));
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, Ui.dp(ui, 54), 1f);
-            lp.leftMargin = lp.rightMargin = Ui.dp(ui, 4);
+            // Windows Phone의 버튼 (PhoneButtonBase): 글자 색 3px 테두리, SemiBold 글자, 누르면 강조색으로 채워진다.
+            Metro.buttonText(b, 14);
+            b.setBackground(Metro.buttonBackground(ui));
+            b.setTextColor(Metro.buttonInk());
+            Metro.buttonPadding(b);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+            lp.leftMargin = lp.rightMargin = Metro.px(ui, 12);
             bar.addView(b, lp);
             Metro.tilt(b);
         } else {
@@ -372,7 +373,7 @@ public final class AppDialog extends Dialog {
         @Override
         public void setEnabled(boolean enabled) {
             super.setEnabled(enabled);
-            setAlpha(enabled ? 1f : 0.38f);
+            if (!Metro.on) setAlpha(enabled ? 1f : 0.38f);   // Metro는 테두리·글자가 PhoneDisabled로 바뀐다
         }
     }
 
@@ -450,7 +451,8 @@ public final class AppDialog extends Dialog {
             float w = getWidth(), h = getHeight(), cx = w / 2f, cy = h / 2f;
             int on = colors.accent, off = colors.hint;
             if (square) {   // Windows Phone 체크 상자·라디오: 꽉 찬 상자에 표시
-                Metro.Check.paint(c, cx, cy, Math.min(w, h) / 2f, 2.25f * dp, !box, checked, isPressed(), p, check);
+                Metro.Check.paint(c, cx, cy, Math.min(w, h) / 2f, Ui.dp(getContext(), Metro.BORDER_DP), !box, checked,
+                        isPressed(), isEnabled(), p, check);
                 return;
             }
             p.setStrokeCap(Paint.Cap.ROUND);

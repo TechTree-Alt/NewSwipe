@@ -85,17 +85,16 @@ public final class ExpressiveSlider extends View {
     }
 
     /**
-     * Metro UI 모드: Windows Phone 8의 슬라이더. 두툼한 네모 막대의 왼쪽을 강조색으로 채우고, 나머지는 글자 색을 옅게 깔며,
-     * 지금 값 자리에 글자 색의 가는 네모 손잡이를 세운다.
+     * Metro UI 모드: Windows Phone 8의 Slider 템플릿. 높이 12px의 크롬 색(PhoneChromeBrush) 막대 왼쪽을 강조색으로 채우고,
+     * 지금 값 자리에 글자 색의 12×24px 손잡이(HorizontalCenterElement)를 세운다.
      */
     private void drawMetro(Canvas c) {
-        float dp = Ui.dp(getContext(), 1);
         float cy = getHeight() / 2f;
-        float th = 10 * dp, hw = 6 * dp, hh = 22 * dp;
+        float th = Metro.px(getContext(), 12), hw = Metro.px(getContext(), 12), hh = Metro.px(getContext(), 24);
         float hx = handleX();
         float left = trackLeft(), right = trackRight();
         paint.setStyle(Paint.Style.FILL);
-        paint.setColor((Metro.fg & 0x00FFFFFF) | 0x33000000);
+        paint.setColor(Metro.chrome);
         c.drawRect(left, cy - th / 2f, right, cy + th / 2f, paint);
         paint.setColor(accent);
         c.drawRect(left, cy - th / 2f, hx, cy + th / 2f, paint);

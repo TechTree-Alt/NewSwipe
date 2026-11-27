@@ -98,7 +98,8 @@ public final class ExpressiveIconButton extends View {
             paint.setStyle(Paint.Style.FILL);
         }
         paint.setColor(ink);
-        Icons.draw(canvas, icon, w / 2f, h / 2f, Math.min(Math.min(w, h) * 0.46f, Ui.dp(getContext(), 22)), paint);
+        // 공식 지침: 48×48px 동그라미 안의 그림은 가운데 26×26px.
+        Icons.draw(canvas, icon, w / 2f, h / 2f, Math.min(Math.min(w, h) * 0.54f, Metro.px(getContext(), 26)), paint);
     }
 
     /**

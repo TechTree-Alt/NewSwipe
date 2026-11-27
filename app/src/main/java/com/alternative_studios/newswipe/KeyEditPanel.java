@@ -811,12 +811,11 @@ final class KeyEditPanel {
         dependents.clear();
         header(null, L.t("도구 막대", "Toolbar"), null);   // 제목만 (설명 줄은 두지 않는다)
         LinearLayout look = section(L.t("모양", "Look"));
-        View toolButtons = subGroup(button(L.t("도구 막대 버튼 사용자화", "Customize toolbar buttons"), v -> open(new Intent(a, ToolbarButtonsEditorActivity.class))),
-                note(L.t("도구 막대 버튼의 유무와 순서를 바꿉니다.", "Shows, hides, and reorders toolbar buttons.")));
         // 도구 막대를 끄면 이 스위치만 남기고 나머지 설정과 설명을 모두 감춘다 (켜면 다시 보인다).
         LinearLayout rest = new LinearLayout(a);
         rest.setOrientation(LinearLayout.VERTICAL);
-        rest.addView(toolButtons);
+        rest.addView(button(L.t("도구 막대 버튼 사용자화", "Customize toolbar buttons"), v -> open(new Intent(a, ToolbarButtonsEditorActivity.class))));
+        rest.addView(note(L.t("도구 막대 버튼의 유무와 순서를 바꿉니다.", "Shows, hides, and reorders toolbar buttons.")));
         rest.addView(toggle(L.t("자판 아래에 두기", "Place below keyboard"), L.t("도구 막대를 자판 위가 아니라 아래에 놓습니다. ", "Puts the toolbar below the keyboard instead of above it. "), prefs.toolbarBottom(),
                 on -> put(Prefs.TOOLBAR_BOTTOM, on)));
         // 도구 막대 높이는 키보드(세로·가로·폴더블 내부 화면 세로·가로)마다 따로 정한다: 편집하는 키보드의 이름 표시를 붙인다.
