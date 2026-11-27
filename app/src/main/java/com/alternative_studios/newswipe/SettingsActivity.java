@@ -373,6 +373,19 @@ public final class SettingsActivity extends Activity {
             lockedRows.add(row);
             menu.addView(row);
         }
+        if (Metro.on) {
+            // Metro: 줄이 화면 왼쪽 바깥을 축으로 돌아 들어올 때(턴스타일 깃털) 줄의 왼쪽이 묶음·목록의 가장자리 밖으로 잠깐 나온다.
+            // 예전에는 그 자리에 아이콘이 있어 잘려도 티가 나지 않았지만, 아이콘이 없으면 이름의 앞부분이 잘려 줄이 중간부터 날아오는
+            // 것처럼 보인다. 그래서 묶음부터 스크롤 목록까지 자르지 않는다 (Metro 묶음은 바탕·둥근 모서리가 없어 자를 것도 없다).
+            menu.setClipToOutline(false);
+            menu.post(() -> {
+                for (android.view.ViewParent p = menu; p instanceof ViewGroup; p = p.getParent()) {
+                    ((ViewGroup) p).setClipChildren(false);
+                    ((ViewGroup) p).setClipToPadding(false);
+                    if (p instanceof android.widget.ScrollView) break;
+                }
+            });
+        }
 
         // 검색하는 동안에는 위 내용을 통째로 숨기고 검색 결과를 대신 보여 준다.
         mainWrap = new LinearLayout(this);
