@@ -308,7 +308,7 @@ public final class SettingsActivity extends Activity {
     private void buildScreen(String id) {
         switch (id) {
             case KEYBOARD: buildKeyboardEditor(); break;
-            case LANGUAGES: new LanguageOrderEditor(this, list).render(); break;
+            case LANGUAGES: new LanguageOrderEditor(this, list, true).render(); break;
             case "onehand": buildOneHand(); break;
             case "theme": buildTheme(); break;
             case "words": buildWords(); break;
@@ -327,8 +327,7 @@ public final class SettingsActivity extends Activity {
 
     /** 기본값으로 되돌릴 설정이 있는 메뉴인지 (설정 메뉴. 정보·가져오기 및 내보내기·학습한 단어 등은 제외). */
     private static boolean hasReset(String id) {
-        // 입력 언어는 화면 안에 '언어 순서' 되돌리기가 따로 있다.
-        for (String[] sec : sections()) if (sec[0].equals(id) && !"backup".equals(id) && !LANGUAGES.equals(id)) return true;
+        for (String[] sec : sections()) if (sec[0].equals(id) && !"backup".equals(id)) return true;
         return false;
     }
 
@@ -339,7 +338,8 @@ public final class SettingsActivity extends Activity {
 
     /** 이 화면이 담당하는 값만 기본값으로 바꾼다 (확인은 ResetDialog가 이미 받았다). */
     private void reset(String id) {
-        prefs.resetSection(id);
+        if (LANGUAGES.equals(id)) LanguageOrderEditor.reset(this);   // 언어 순서와 인터페이스 언어
+        else prefs.resetSection(id);
         importGeneration++;   // 뒤에 쌓인 설정 화면도 돌아오면 기본값으로 다시 그린다
         recreate();
         Toast.makeText(this, L.t("기본값으로 되돌렸습니다", "Restored defaults"), Toast.LENGTH_SHORT).show();
@@ -459,11 +459,11 @@ public final class SettingsActivity extends Activity {
     /**
      * Metro UI: 메뉴 안의 섹션들을 Windows Phone 피벗의 페이지로 나눈다 (공식 지침: 피벗은 한 영역 안의 관련된 보기들을 오가는 데 쓴다).
      * 만든 목록을 섹션 소제목마다 끊어 페이지로 옮기고, 소제목은 피벗 머리글의 이름이 된다. 첫 소제목 앞의 내용은 첫 페이지 위에 둔다.
-     * 섹션이 하나뿐이면 피벗 없이 소제목만 뺀다 (화면 제목으로 충분하다). 키보드 사용자화·입력 언어는 아래 미리보기·편집 창과 얽혀 있어,
+     * 섹션이 하나뿐이면 피벗 없이 소제목만 뺀다 (화면 제목으로 충분하다). 키보드 사용자화는 아래 미리보기·편집 창과 얽혀 있어 그대로 두고,
      * 메뉴가 아닌 하위 화면(학습한 단어 등)은 목록을 다시 만들므로 그대로 둔다.
      */
     private void installSectionPivot(String id) {
-        if (!Metro.on || id == null || KEYBOARD.equals(id) || LANGUAGES.equals(id)) return;
+        if (!Metro.on || id == null || KEYBOARD.equals(id)) return;
         // 메뉴 화면만 (학습한 단어처럼 검색할 때마다 목록을 다시 만드는 하위 화면은 그대로 둔다).
         boolean menu = "app".equals(id);
         for (String[] sec : sections()) if (sec[0].equals(id)) menu = true;
