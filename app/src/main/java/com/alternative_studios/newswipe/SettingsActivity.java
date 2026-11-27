@@ -2245,7 +2245,7 @@ public final class SettingsActivity extends Activity {
                 break;
             case KeyboardPreview.AREA_NUMBER: {
                 LinearLayout c = section(L.t("모양", "Look"));
-                // 숫자 줄을 끄면 나머지 항목은 쓸 일이 없어 감춘다.
+                // 숫자 줄을 끄면 나머지 항목과 맨 위 안내는 쓸 일이 없어 감춘다.
                 LinearLayout rest = new LinearLayout(this);
                 rest.setOrientation(LinearLayout.VERTICAL);
                 Prefs nv = editorView();   // 숫자 줄 높이는 세로·가로·폴더블 내부 화면 세로·가로가 따로 정한다
@@ -2255,13 +2255,15 @@ public final class SettingsActivity extends Activity {
                 // 여백 섹션도 숫자 줄을 켰을 때만 보인다.
                 LinearLayout padBox = new LinearLayout(this);
                 padBox.setOrientation(LinearLayout.VERTICAL);
-                c.addView(toggle(L.t("숫자 줄 표시", "Show number row"), L.t("자판 위에 1~0 숫자 줄을 보여 줍니다.", "Shows a 1–0 number row above the keyboard."), Prefs.NUMBER_ROW, prefs.numberRow(), rest, padBox));
+                c.addView(toggle(L.t("숫자 줄 표시", "Show number row"), L.t("자판 위에 1~0 숫자 줄을 보여 줍니다.", "Shows a 1–0 number row above the keyboard."), Prefs.NUMBER_ROW, prefs.numberRow(), rest, padBox, areaNoteBox));
                 c.addView(rest, matchWrap());
                 list.addView(padBox, matchWrap());
                 LinearLayout saved = list;
                 list = padBox;
                 try {
                     addKeyPageNote(L.t("숫자 줄 키", "Number row keys"), "키를");
+                    // 키 하나하나의 안내(설정 창 맨 위)도 숫자 줄을 껐을 때는 감춘다 (도구 막대와 같다).
+                    if (!prefs.numberRow()) areaNoteBox.setVisibility(View.GONE);
                     buildPad(areaId);
                 } finally {
                     list = saved;
