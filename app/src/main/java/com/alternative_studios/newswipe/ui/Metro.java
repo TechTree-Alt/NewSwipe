@@ -200,7 +200,7 @@ public final class Metro {
      */
     public static void perspective(View v) {
         android.util.DisplayMetrics m = v.getResources().getDisplayMetrics();
-        float px = Math.max(m.widthPixels, 1) * 2.2f;
+        float px = Math.max(m.widthPixels, 1) * PERSPECTIVE;
         v.setCameraDistance(px * m.densityDpi / 72f);
     }
 
@@ -330,7 +330,7 @@ public final class Metro {
     /** 턴스타일 값 (Turnstile*.xaml, TurnstileFeatherEffect.cs). */
     public static final float FORWARD_IN = -80f, FORWARD_OUT = 50f, BACKWARD_IN = 50f, BACKWARD_OUT = -80f;
     public static final long IN_MS = 350, OUT_MS = 250, FORWARD_IN_STEP = 40, BACKWARD_IN_STEP = 50;
-    /** 깃털 효과의 회전축: 화면 왼쪽 가장자리에서 화면 폭의 20%만큼 더 왼쪽. */
+    /** 깃털 효과의 회전축: 항목 왼쪽 가장자리에서 항목 폭의 20%만큼 더 왼쪽 (PlaneProjection.CenterOfRotationX = -0.2). */
     private static final float FEATHER_CENTER = -0.2f;
     /** 깃털 차례의 한도: 이보다 뒤의 항목은 마지막 차례와 함께 들어온다 (들어오는 시간이 너무 길어지지 않게). */
     private static final int FEATHER_MAX = 16;
@@ -338,23 +338,63 @@ public final class Metro {
     /**
      * v를 왼쪽 가장자리(pivotX)를 축으로 from°에서 to°로 돌린다. 들어올 때는 빠르게 들어와 부드럽게 멈추고(EaseOut),
      * 나갈 때는 천천히 시작해 빠르게 사라지며 끝에서 투명해진다(EaseIn, 마지막 4%에서 불투명도 1 → 0).
-     * 늦게 시작하는 항목(delay)은 차례가 올 때까지 보이지 않는다.
+     * 늦게 시작하는 항목(delay)은 차례가 올 때까지 보이지 않는다. 원근의 중심은 v의 가운데다.
      */
     public static ValueAnimator turn(View v, float pivotX, float from, float to, long ms, long delay, boolean out,
                                      Runnable onEnd) {
-        v.setPivotX(pivotX);
-        v.setPivotY(v.getHeight() / 2f);
-        perspective(v);
-        v.setRotationY(from);
+        return turn(v, pivotX, v.getHeight() / 2f, from, to, ms, delay, out, onEnd);
+    }
+
+    /**
+     * {@link #turn(View, float, float, float, long, long, boolean, Runnable)}와 같되 원근 중심의 세로 자리(camY, v 기준)를 준다.
+     *
+     * <p>Silverlight PlaneProjection은 회전축(CenterOfRotationX)과 원근의 중심(요소의 가운데)이 따로다. Toolkit의
+     * TurnstileFeatherEffect는 여기에 GlobalOffsetY와 같은 크기의 TranslateTransform을 짝지어 원근의 세로 중심을 화면 가운데로
+     * 옮긴다. Android의 rotationY는 원근의 중심이 회전축(pivot)과 같아서, 축을 화면 왼쪽 바깥에 두면 돌아간 줄이 그쪽으로 끌려가
+     * 찌부러져 보인다. 그래서 Android 10 이상에서는 축과 원근 중심을 따로 둔 3D 행렬을 직접 만들어 setAnimationMatrix로 건다.
+     */
+    public static ValueAnimator turn(View v, float pivotX, float camY, float from, float to, long ms, long delay,
+                                     boolean out, Runnable onEnd) {
+        Object old = v.getTag(R.id.metro_turn);
+        if (old instanceof ValueAnimator) ((ValueAnimator) old).cancel();
+        final boolean matrix = android.os.Build.VERSION.SDK_INT >= 29;
+        final android.graphics.Camera camera = matrix ? new android.graphics.Camera() : null;
+        final android.graphics.Matrix m = matrix ? new android.graphics.Matrix() : null;
+        final float camX = v.getWidth() / 2f;
+        if (matrix) {
+            android.util.DisplayMetrics dm = v.getResources().getDisplayMetrics();
+            camera.setLocation(0f, 0f, -Math.max(dm.widthPixels, 1) * PERSPECTIVE / 72f);   // perspective()와 같은 거리
+        } else {
+            v.setPivotX(pivotX);
+            v.setPivotY(camY);
+            perspective(v);
+        }
+        java.util.function.Consumer<Float> pose = angle -> {
+            if (!matrix) {
+                v.setRotationY(angle);
+                return;
+            }
+            // 축(pivotX)을 중심으로 돌린 뒤, 원근의 중심(camX, camY)에서 본다.
+            camera.save();
+            camera.translate(pivotX - camX, 0f, 0f);
+            camera.rotateY(angle);
+            camera.getMatrix(m);
+            camera.restore();
+            m.preTranslate(-pivotX, -camY);
+            m.postTranslate(camX, camY);
+            v.setAnimationMatrix(m);
+        };
+        pose.accept(from);
         if (!out) v.setAlpha(0f);
         ValueAnimator a = ValueAnimator.ofFloat(0f, 1f);
+        v.setTag(R.id.metro_turn, a);
         a.setDuration(ms);
         a.setStartDelay(delay);
         a.setInterpolator(new LinearInterpolator());
         Interpolator curve = out ? EASE_IN : EASE_OUT;
         a.addUpdateListener(an -> {
             float t = an.getAnimatedFraction();
-            v.setRotationY(from + (to - from) * curve.getInterpolation(t));
+            pose.accept(from + (to - from) * curve.getInterpolation(t));
             v.setAlpha(out ? (t >= 0.96f ? 0f : 1f) : 1f);
         });
         a.addListener(new AnimatorListenerAdapter() {
@@ -369,16 +409,33 @@ public final class Metro {
 
             @Override
             public void onAnimationEnd(Animator animation) {
+                if (v.getTag(R.id.metro_turn) == animation) v.setTag(R.id.metro_turn, null);
                 if (!out || canceled) {
-                    v.setRotationY(canceled && out ? 0f : to);
+                    if (matrix) {
+                        v.setAnimationMatrix(null);
+                    } else {
+                        v.setRotationY(canceled && out ? 0f : to);
+                        v.resetPivot();
+                    }
                     v.setAlpha(1f);
-                    v.resetPivot();
                 }
                 if (onEnd != null && !canceled) onEnd.run();
             }
         });
         a.start();
         return a;
+    }
+
+    /** 원근: 카메라를 화면 폭의 이만큼 배 거리에 둔다 ({@link #perspective}). */
+    private static final float PERSPECTIVE = 2.2f;
+
+    /** 턴스타일로 돌던 자세를 없앤다 (나간 화면이 다시 들어오기 전에). */
+    static void resetTurn(View v) {
+        Object old = v.getTag(R.id.metro_turn);
+        if (old instanceof ValueAnimator) ((ValueAnimator) old).cancel();
+        if (android.os.Build.VERSION.SDK_INT >= 29) v.setAnimationMatrix(null);
+        v.setRotationY(0f);
+        v.resetPivot();
     }
 
     /**
@@ -403,14 +460,13 @@ public final class Metro {
 
     /**
      * 화면의 항목들이 깃털처럼 차례로 돌아 들어온다 (TurnstileFeatherEffect). items는 위에서 아래 차례이고, 화면 안에 보이는 것만
-     * 움직인다. 모든 항목이 같은 축(화면 왼쪽 바깥)을 기준으로 돌아서 한 장의 문짝이 가지런히 열리듯 보인다.
+     * 움직인다. Toolkit처럼 항목마다 자기 왼쪽 바깥(폭의 20%)을 축으로 돌고, 원근은 모두 화면 가운데에서 본다.
      *
      * @param forward true면 새 화면이 들어올 때(-80° → 0°, 40ms 간격), false면 앞 화면으로 돌아올 때(50° → 0°, 50ms 간격)
      */
     public static void featherIn(View page, java.util.List<View> items, boolean forward) {
         int[] pl = new int[2], il = new int[2];
         page.getLocationInWindow(pl);
-        float pageW = page.getWidth();
         android.graphics.Rect seen = new android.graphics.Rect();
         int n = 0;
         for (View item : items) {
@@ -419,10 +475,12 @@ public final class Metro {
             // 세면 한도가 그런 줄로 차서, 맨 끝의 아래 미리보기가 움직이지 않고 그냥 나타난다.
             if (!item.getGlobalVisibleRect(seen)) continue;
             item.getLocationInWindow(il);
-            float pivot = -(il[0] - pl[0]) + FEATHER_CENTER * pageW;
+            // TurnstileFeatherEffect: 축은 요소 폭의 -0.2 (CenterOfRotationX), 원근의 세로 중심은 화면 가운데.
+            float pivot = FEATHER_CENTER * item.getWidth();
+            float camY = pl[1] + page.getHeight() / 2f - il[1];
             // 한도를 넘은 항목도 빼지 않고 마지막 차례와 함께 들어온다 (아래 미리보기처럼 끝에 있는 것이 그냥 생기지 않게).
             int order = Math.min(n, FEATHER_MAX - 1);
-            turn(item, pivot, forward ? FORWARD_IN : BACKWARD_IN, 0f, IN_MS,
+            turn(item, pivot, camY, forward ? FORWARD_IN : BACKWARD_IN, 0f, IN_MS,
                     order * (forward ? FORWARD_IN_STEP : BACKWARD_IN_STEP), false, null);
             n++;
         }
@@ -513,9 +571,8 @@ public final class Metro {
         }
 
         private void enter(boolean forward) {
-            content.setRotationY(0f);
+            resetTurn(content);
             content.setAlpha(1f);
-            content.resetPivot();
             java.util.List<View> list = items == null ? null : items.get();
             busy = true;
             postDelayed(() -> busy = false, IN_MS / 2);   // 거의 다 들어오면 누를 수 있다
