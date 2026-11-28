@@ -58,7 +58,8 @@ public final class EmojiRepository {
             EmojiData d = null;
             Paint paint = new Paint();
             try (InputStreamReader r = new InputStreamReader(
-                    new java.util.zip.InflaterInputStream(app.getAssets().open("emoji.bin")), StandardCharsets.UTF_8)) {
+                    com.alternative_studios.newswipe.suggest.WordDictionary.open(app.getAssets().open("emoji.bin")),
+                    StandardCharsets.UTF_8)) {
                 d = EmojiData.parse(r, paint::hasGlyph);
             } catch (IOException ignored) {
                 // 에셋이 없을 수 없지만, 실패해도 키보드는 계속 동작해야 한다.

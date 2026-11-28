@@ -114,29 +114,30 @@ public final class EmojiData {
     public static EmojiData parse(Reader reader, GlyphFilter filter) throws IOException {
         EmojiData d = new EmojiData();
         BufferedReader br = new BufferedReader(reader, 16 * 1024);
-        List<String[]> rows = new ArrayList<>();
         String line;
         while ((line = br.readLine()) != null) {
             if (line.startsWith("#columns ")) {
-                rows = columns(br, line.substring(9).trim());
+                for (String[] f : columns(br, line.substring(9).trim())) d.add(f, filter);
                 break;
             }
             if (line.isEmpty() || line.charAt(0) == '#') continue;
-            rows.add(line.split("\t", -1));
-        }
-        for (String[] f : rows) {
-            if (f.length < 5) continue;
-            int g = indexOf(GROUPS, f[0]);
-            if (g < 0) continue;
-            String value = f[1];
-            if (filter != null && !filter.canShow(value)) continue;
-            String[] variants = f[2].isEmpty() ? new String[0] : f[2].split(" ");
-            if (filter != null && variants.length > 0 && !filter.canShow(variants[0])) variants = new String[0];
-            Emoji e = new Emoji(value, variants, f[3], f[4]);
-            d.groups.get(g).add(e);
-            d.all.add(e);
+            d.add(line.split("\t", -1), filter);
         }
         return d;
+    }
+
+    /** 이모지 하나의 칸(그룹, 이모지, 변형, 한국어 검색어, 영어 검색어)을 더한다. 모르는 그룹·그릴 수 없는 이모지는 뺀다. */
+    private void add(String[] f, GlyphFilter filter) {
+        if (f.length < 5) return;
+        int g = indexOf(GROUPS, f[0]);
+        if (g < 0) return;
+        String value = f[1];
+        if (filter != null && !filter.canShow(value)) return;
+        String[] variants = f[2].isEmpty() ? new String[0] : f[2].split(" ");
+        if (filter != null && variants.length > 0 && !filter.canShow(variants[0])) variants = new String[0];
+        Emoji e = new Emoji(value, variants, f[3], f[4]);
+        groups.get(g).add(e);
+        all.add(e);
     }
 
     /** '#columns N' 다음의 열 다섯 개(열마다 N줄)를 이모지마다의 칸으로 되돌린다. */
