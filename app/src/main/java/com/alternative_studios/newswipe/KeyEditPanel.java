@@ -708,11 +708,12 @@ final class KeyEditPanel {
     private void longPressEditor(LinearLayout card, String label, SwipeSpec spec, int slot, int dir, String center,
                                  String releaseNote, Runnable done) {
         String pendingKey = spec.group + "/" + spec.slotName(slot) + "/" + dir;
-        String action = spec.get(prefs, slot, dir);
-        int stored = longPressMode(action);
+        int stored = longPressMode(spec.get(prefs, slot, dir));
         if (stored != LP_NONE) pendingAction.remove(pendingKey);
         int mode = pendingAction.contains(pendingKey) ? LP_ACTION : stored;
-        card.addView(longPressModeRow(label, mode, spec.defaultAction(slot, dir), done, i -> {
+        java.util.List<View> body = new java.util.ArrayList<>();
+        View[] modeRow = new View[1];
+        modeRow[0] = longPressModeRow(label, mode, spec.defaultAction(slot, dir), i -> {
             pendingAction.remove(pendingKey);
             if (i == LP_ACTION) {   // 같은 방식을 다시 고르면 불리지 않으므로, 여기 오면 다른 방식에서 바꾼 것이다
                 // 처음 기능이 정해진 키는 그 기능으로, 아니면 기능을 고를 때까지 '없음'인 채로 둔다.
@@ -726,7 +727,18 @@ final class KeyEditPanel {
                 return;
             }
             spec.set(prefs, slot, dir, i == LP_SELECT ? SwipeAction.SPACE_SELECT : i == LP_SWIPE ? SwipeAction.LONG_SWIPE : SwipeAction.NONE);
-        }));
+        }, i -> swapAnimated(card, modeRow[0], body,
+                longPressBody(i, spec, slot, dir, center, releaseNote, pendingKey, done)));
+        card.addView(modeRow[0]);
+        body.addAll(longPressBody(mode, spec, slot, dir, center, releaseNote, pendingKey, done));
+        for (View v : body) card.addView(v);
+    }
+
+    /** 길게 누르기 방식(mode) 아래에 놓이는 그 방식의 설정 줄들. */
+    private java.util.List<View> longPressBody(int mode, SwipeSpec spec, int slot, int dir, String center,
+                                               String releaseNote, String pendingKey, Runnable done) {
+        java.util.List<View> out = new java.util.ArrayList<>();
+        String action = spec.get(prefs, slot, dir);
         switch (mode) {
             case LP_ACTION: {
                 View pick = valueRow(L.t("실행할 기능", "Action"), SwipeAction.label(action),
@@ -735,17 +747,17 @@ final class KeyEditPanel {
                             done.run();
                         }));
                 View speed = holdRepeatSpeed(action);
-                card.addView(speed == null ? subGroup(pick) : subGroup(pick, speed));
+                out.add(speed == null ? subGroup(pick) : subGroup(pick, speed));
                 break;
             }
             case LP_SELECT:
-                card.addView(note(L.t("길게 눌러 진동이 오면, 손을 떼지 않고 좌우로 밀어 글자 단위로, 위아래로 밀어 줄 단위로 글자를 선택합니다.",
+                out.add(note(L.t("길게 눌러 진동이 오면, 손을 떼지 않고 좌우로 밀어 글자 단위로, 위아래로 밀어 줄 단위로 글자를 선택합니다.",
                         "Long press until it vibrates, then without lifting, swipe left or right to select by character, or up and down to select by line.")
                         + (releaseNote == null ? "" : " " + releaseNote)));
                 break;
             case LP_SWIPE:
-                card.addView(specPad(LongSwipes.of(spec, dir), slot, center, done));
-                card.addView(note(L.t("길게 눌러 진동이 오면, 손을 떼지 않고 밀었다가 떼면 그 방향에 정한 기능을 실행합니다. "
+                out.add(specPad(LongSwipes.of(spec, dir), slot, center, done));
+                out.add(note(L.t("길게 눌러 진동이 오면, 손을 떼지 않고 밀었다가 떼면 그 방향에 정한 기능을 실행합니다. "
                         + "밀지 않고 떼거나 '없음'으로 둔 방향으로 밀면 아무것도 하지 않습니다.",
                         "Long press until it vibrates, then without lifting, swipe and let go to run the action set for that direction. "
                         + "Lifting without swiping, or swiping toward a direction set to 'None', does nothing.")));
@@ -753,42 +765,71 @@ final class KeyEditPanel {
             default:
                 break;
         }
+        return out;
     }
 
     /**
-     * 길게 누르기 방식 드롭다운 줄. 고르면 줄의 값을 바로 바꾸고 onPick으로 저장한 뒤, 목록이 다 접히면 done으로 창을 다시 그린다.
-     * 고르자마자 다시 그리면 목록이 붙은 줄이 사라져 접히는 움직임 없이 없어지고, 줄의 값을 미리 바꿔 두지 않으면 접힌 뒤
-     * 다시 그리기 전까지 예전 값이 한 프레임 보인다.
+     * card 안 after 바로 아래의 줄들(old)을 next로 바꾼다: 예전 줄은 접히며 사라지고 새 줄은 펼쳐진다 (창 전체를 다시 그리면
+     * 움직임 없이 한 번에 바뀐다). 끝나면 old가 next를 담는다.
      */
-    private View longPressModeRow(String label, int mode, String defaultAction, Runnable done, java.util.function.IntConsumer onPick) {
+    private static void swapAnimated(LinearLayout card, View after, java.util.List<View> old, java.util.List<View> next) {
+        int at = card.indexOfChild(after) + 1;
+        for (View v : next) {
+            v.setVisibility(View.GONE);
+            card.addView(v, at++);
+        }
+        for (View v : old) {
+            Ui.setVisibleAnimated(v, false, () -> {
+                if (v.getVisibility() != View.VISIBLE && v.getParent() instanceof ViewGroup) {
+                    ((ViewGroup) v.getParent()).removeView(v);
+                }
+            });
+        }
+        for (View v : next) Ui.setVisibleAnimated(v, true);
+        old.clear();
+        old.addAll(next);
+    }
+
+    /**
+     * 길게 누르기 방식 드롭다운 줄. 고르면 줄의 값을 바로 바꾸고, 목록이 다 접힌 뒤에 onPick으로 저장하고 onChanged로 아래 줄들을
+     * 바꾼다. 접히는 동안 저장하면 미리보기를 다시 그리느라 접히는 움직임이 끊기고, 줄의 값을 미리 바꿔 두지 않으면 접힌 뒤
+     * 한 프레임 동안 예전 값이 보인다.
+     */
+    private View longPressModeRow(String label, int mode, String defaultAction, java.util.function.IntConsumer onPick,
+                                  java.util.function.IntConsumer onChanged) {
         String[] names = longPressModes();
-        // [0] 골랐다, [1] 목록이 닫혔다. 둘 다 되면 다시 그린다 (움직임 없이 먼저 닫히는 경우도 있어 어느 쪽이 먼저 오든).
-        boolean[] state = new boolean[2];
+        int[] current = {mode};
         SettingsWidgets.ValueRow[] row = new SettingsWidgets.ValueRow[1];
-        row[0] = widgets.dropdownRow(label, names[mode], v -> DropdownMenu.of(v, names, mode)
-                .defaultIndex(longPressMode(defaultAction))
-                .onDismiss(() -> {
-                    state[1] = true;
-                    if (state[0]) redrawAfterDropdown(row[0].view, done);
-                })
-                .show(i -> {
-                    row[0].set(names[i]);
-                    onPick.accept(i);
-                    state[0] = true;
-                    if (state[1]) redrawAfterDropdown(row[0].view, done);
-                }));
+        row[0] = widgets.dropdownRow(label, names[mode], v -> {
+            // [0] 고른 차례(없으면 -1), [1] 목록이 닫혔으면 1. 둘 다 되면 저장한다 (움직임 없이 먼저 닫히는 경우도 있어 어느 쪽이 먼저 오든).
+            int[] state = {-1, 0};
+            Runnable apply = () -> afterDropdown(row[0].view, state[0], onPick, onChanged);
+            DropdownMenu.of(v, names, current[0])
+                    .defaultIndex(longPressMode(defaultAction))
+                    .onDismiss(() -> {
+                        state[1] = 1;
+                        if (state[0] >= 0) apply.run();
+                    })
+                    .show(i -> {
+                        row[0].set(names[i]);
+                        current[0] = i;
+                        state[0] = i;
+                        if (state[1] == 1) apply.run();
+                    });
+        });
         return row[0].view;
     }
 
     /**
-     * 드롭다운이 닫힌 뒤 창을 다시 그린다. 바로 그리지 않고 다음 차례로 미룬다: 목록이 붙은 줄이 화면에서 떨어져 나가며
-     * (다른 키를 고르거나 창을 닫는 등) 목록이 닫힌 경우에는 이 일이 뷰를 떼어 내는 도중에 불리는데, 그 자리에서 다시 그리면
-     * (root.removeAllViews) 떼어 내던 자식 목록이 비어 앱이 멈춘다. 그사이 창이 이미 다른 내용으로 바뀌었으면(줄이 화면에
-     * 없으면) 다시 그리지 않는다. 고른 값은 그 전에 이미 저장되어 있다.
+     * 드롭다운이 닫힌 뒤 고른 방식(i)을 저장하고 아래 줄들을 바꾼다. 바로 하지 않고 다음 차례로 미룬다: 목록이 붙은 줄이 화면에서
+     * 떨어져 나가며 (다른 키를 고르거나 창을 닫는 등) 목록이 닫힌 경우에는 이 일이 뷰를 떼어 내는 도중에 불리는데, 그 자리에서
+     * 뷰를 더하고 빼면 떼어 내던 자식 목록이 흐트러져 앱이 멈춘다. 저장은 늘 하고, 줄이 이미 화면에 없으면 줄은 바꾸지 않는다.
      */
-    private static void redrawAfterDropdown(View row, Runnable done) {
+    private static void afterDropdown(View row, int i, java.util.function.IntConsumer onPick,
+                                      java.util.function.IntConsumer onChanged) {
         row.post(() -> {
-            if (row.isAttachedToWindow()) done.run();
+            onPick.accept(i);
+            if (row.isAttachedToWindow()) onChanged.accept(i);
         });
     }
 
