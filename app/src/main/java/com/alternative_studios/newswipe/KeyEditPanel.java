@@ -695,13 +695,16 @@ final class KeyEditPanel {
         // [0] 골랐다, [1] 목록이 닫혔다. 둘 다 되면 다시 그린다 (어느 쪽이 먼저 오든).
         boolean[] state = new boolean[2];
         Runnable redraw = () -> redrawAfterDropdown(card, done);
-        card.addView(widgets.dropdownRow(label, names[mode], v -> DropdownMenu.of(v, names, mode)
+        SettingsWidgets.ValueRow[] row = new SettingsWidgets.ValueRow[1];
+        row[0] = widgets.dropdownRow(label, names[mode], v -> DropdownMenu.of(v, names, mode)
                 .defaultIndex(longPressMode(defaultAction))
                 .onDismiss(() -> {
                     state[1] = true;
                     if (state[0]) redraw.run();
                 })
                 .show(i -> {
+                    // 줄의 값을 바로 바꿔 둔다: 목록이 접혀 줄로 돌아올 때 예전 값이 한 프레임 보이지 않게 (다시 그리기는 그다음).
+                    row[0].set(names[i]);
                     state[0] = true;
                     if (state[1]) redraw.run();
                     pendingAction.remove(pendingKey);
@@ -726,7 +729,8 @@ final class KeyEditPanel {
                             spec.set(prefs, slot, dir, SwipeAction.NONE);
                             break;
                     }
-                })).view);
+                }));
+        card.addView(row[0].view);
         switch (mode) {
             case LP_ACTION: {
                 View pick = valueRow(L.t("실행할 기능", "Action"), SwipeAction.label(action),
