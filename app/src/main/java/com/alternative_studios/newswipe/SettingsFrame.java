@@ -220,6 +220,7 @@ final class SettingsFrame {
             collectFeather(content, items);
             return items;
         });
+        if (bottom != null) page.setBottom(bottom);   // 나갈 때는 위 항목부터, 미리보기는 맨 마지막에
         page.playEnterOnFirstDraw(!enterAsReturn);
         if (android.os.Build.VERSION.SDK_INT >= 33) {
             // 뒤로 가기도 턴스타일로 나간다. 검색창·입력창·설정 창이 열려 있으면 나중에 등록한 그쪽 콜백이 먼저 불린다.

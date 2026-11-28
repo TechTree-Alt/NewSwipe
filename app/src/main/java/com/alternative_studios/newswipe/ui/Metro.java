@@ -696,9 +696,43 @@ public final class Metro {
             lastOut = v;
         }
 
+        /** 화면 아래에 붙어 그 뒤의 줄을 가리는 뷰 (키보드 미리보기). 없으면 null. */
+        private View bottom;
+
+        /**
+         * 화면 아래에 붙은 미리보기 b를 알린다. 나갈 때는 Windows Phone처럼 위의 항목부터 차례로 돌아 나가고, b에 다 가려 보이지
+         * 않는 줄은 건너뛰며, b는 맨 마지막에 돈다 (들어올 때는 늦게 나타나지 않게 맨 앞 차례 그대로).
+         */
+        public void setBottom(View b) {
+            bottom = b;
+        }
+
+        /** 나갈 차례: 미리보기에 다 가린 줄을 빼고, 미리보기를 맨 뒤로 보낸다. */
+        private java.util.List<View> leaveOrder(java.util.List<View> list) {
+            if (bottom == null || !list.remove(bottom)) return list;
+            android.graphics.Rect cover = new android.graphics.Rect(), seen = new android.graphics.Rect();
+            if (bottom.getGlobalVisibleRect(cover)) {
+                java.util.Iterator<View> it = list.iterator();
+                while (it.hasNext()) {
+                    View v = it.next();
+                    if (!inOverlay(v) && v.getGlobalVisibleRect(seen) && cover.contains(seen)) it.remove();
+                }
+            }
+            list.add(bottom);
+            return list;
+        }
+
+        /** v가 화면 위에 띄운 설정 창(metro_feather_overlay 표시) 안에 있는지: 그 창은 미리보기 위에 떠 있을 수 있어 가려지지 않는다. */
+        private static boolean inOverlay(View v) {
+            for (android.view.ViewParent p = v.getParent(); p instanceof View; p = p.getParent()) {
+                if (((View) p).getTag(com.alternative_studios.newswipe.R.id.metro_feather_overlay) != null) return true;
+            }
+            return false;
+        }
+
         private void leave(float to, Runnable then) {
             away = true;
-            java.util.List<View> list = items == null ? java.util.Collections.emptyList() : visible(items.get());
+            java.util.List<View> list = items == null ? java.util.Collections.emptyList() : leaveOrder(visible(items.get()));
             View tapped = lastOut;
             lastOut = null;
             if (tapped != null && list.remove(tapped)) list.add(tapped);
