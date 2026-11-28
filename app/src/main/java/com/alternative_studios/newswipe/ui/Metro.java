@@ -153,7 +153,15 @@ public final class Metro {
         tightLine(t);
         android.graphics.Paint.FontMetrics fm = t.getPaint().getFontMetrics();
         float size = t.getTextSize(), baseline = SEGOE_ASCENT * size;
-        return new int[]{Math.round(baseline + fm.ascent), Math.round(SEGOE_LINE * size - baseline - fm.descent)};
+        // TextView는 글을 자기 칸 안으로 잘라 그리고, 칸의 아래는 글꼴의 descent에서 끝난다. 기기 글꼴에 따라 g·y의 끝이 그보다
+        // 더 내려가 잘리므로 글자가 실제로 그려지는 가장 아래까지 아래 안쪽 여백으로 칸을 늘리고, 같은 길이를 바깥 여백에서 빼
+        // 줄의 자리는 그대로 둔다 (놓는 틀은 안쪽 여백에서 자르지 않는다: SettingsFrame.buildMetroHeader).
+        android.graphics.Rect ink = new android.graphics.Rect();
+        String s = (t.getText() != null ? t.getText().toString() : "") + "gjpqy";
+        t.getPaint().getTextBounds(s, 0, s.length(), ink);
+        int overhang = Math.max(0, (int) Math.ceil(Math.max(fm.bottom, ink.bottom) - fm.descent) + 1);
+        t.setPadding(t.getPaddingLeft(), t.getPaddingTop(), t.getPaddingRight(), overhang);
+        return new int[]{Math.round(baseline + fm.ascent), Math.round(SEGOE_LINE * size - baseline - fm.descent) - overhang};
     }
 
     /**
@@ -831,8 +839,19 @@ public final class Metro {
         /** 글자 줄은 Silverlight TextBlock의 줄: Segoe WP의 높이 1.33 em, 기준선은 위에서 1.0791 em ({@link #segoeLine}). */
         @Override
         protected void onMeasure(int widthSpec, int heightSpec) {
-            int h = Math.round(segoeLineHeight(paint.getTextSize())) + getPaddingTop() + getPaddingBottom();
+            int h = Math.round(segoeLineHeight(paint.getTextSize())) + getPaddingTop() + getPaddingBottom() + overhang();
             setMeasuredDimension(MeasureSpec.getSize(widthSpec), h);
+        }
+
+        /**
+         * 이름 줄 아래로 더 둔 길이 (px): Segoe WP의 줄은 기준선 아래가 0.25 em뿐이라 기기 글꼴의 g·y 끝이 그보다 내려가면 뷰 밖으로
+         * 나가 잘린다. 그만큼 뷰를 늘려 다 그리게 하고, 놓는 쪽이 같은 길이를 아래 바깥 여백에서 빼 줄의 자리는 그대로 둔다
+         * (놓는 틀은 안쪽 여백에서 자르지 않아야 한다).
+         */
+        public int overhang() {
+            android.graphics.Paint.FontMetrics fm = paint.getFontMetrics();
+            float below = segoeLineHeight(paint.getTextSize()) - segoeBaseline(paint.getTextSize());
+            return Math.max(0, (int) Math.ceil(Math.max(fm.bottom, fm.descent) - below));
         }
 
         @Override

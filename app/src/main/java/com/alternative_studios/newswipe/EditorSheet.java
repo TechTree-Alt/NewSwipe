@@ -136,8 +136,16 @@ final class EditorSheet {
         // 가운데(X와 오른쪽 버튼들 사이): 고른 것의 이름. 오른쪽 버튼이 더 넓어 왼쪽에 붙여 자리를 넉넉히 쓴다.
         title = new TextView(c);
         title.setTextColor(colors.text);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
-        title.setTypeface(Metro.on ? Metro.semibold() : android.graphics.Typeface.DEFAULT_BOLD);   // Metro에는 굵은 글자가 없다
+        if (Metro.on) {
+            // Metro: WP8의 제목 글(PhoneTextLargeStyle)처럼 가는 글꼴(Segoe WP SemiLight)에 PhoneFontSizeLarge(32px → 24sp).
+            // Metro에는 굵은 글자가 없다.
+            title.setTextSize(TypedValue.COMPLEX_UNIT_SP, Metro.sp(Metro.FONT_LARGE));
+            title.setTypeface(Metro.light());
+            title.setIncludeFontPadding(false);   // 큰 글자가 X 버튼 줄보다 높아지지 않게
+        } else {
+            title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
+            title.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        }
         title.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
         title.setSingleLine(true);
         title.setEllipsize(android.text.TextUtils.TruncateAt.END);
@@ -256,7 +264,8 @@ final class EditorSheet {
     }
 
     void setTitle(CharSequence t) {
-        title.setText(t);
+        // Metro: WP8의 제목처럼 영어 이름은 소문자 (앱의 다른 Metro 제목과 같다, 한국어는 그대로)
+        title.setText(Metro.on && t != null ? Metro.lower(t.toString()) : t);
     }
 
     /**

@@ -348,6 +348,7 @@ final class SettingsFrame {
         LinearLayout.LayoutParams lp = matchWrap();
         lp.leftMargin = -Metro.px(activity, 3);   // 이름은 제목보다 3px 왼쪽 (PivotHeaderItem Padding 21, 제목 24)
         lp.topMargin = -Metro.px(activity, 7);    // 제목 Margin 아래 -7
+        lp.bottomMargin = -names2.overhang();      // g·y 끝을 그리려고 늘린 만큼 (줄의 자리는 그대로)
         parent.removeViewAt(at);
         parent.addView(names2, at, lp);
         metroBig = null;
@@ -457,6 +458,9 @@ final class SettingsFrame {
         int pad = Metro.pagePad(c, 16);   // 목록과 같은 왼쪽 선 (WP: TitlePanel 12px + 글 12px = 24px)
         header.setPadding(pad, Metro.px(c, 17), pad, Metro.px(c, 28));
         header.setClipChildren(true);
+        // 큰 제목·피벗 이름은 Segoe WP의 줄(기준선 아래 0.25 em)에 맞추느라 아래 바깥 여백이 음수일 수 있어, g·y의 끝이 머리글의
+        // 아래 안쪽 여백(28px)으로 내려간다. 안쪽 여백에서 자르면 그 끝이 잘리므로 자르지 않는다 (글은 여전히 제 칸 안에서만 그린다).
+        header.setClipToPadding(false);
 
         boolean main = title.equals(activity.getString(R.string.app_name));
         TextView small = new TextView(c);
