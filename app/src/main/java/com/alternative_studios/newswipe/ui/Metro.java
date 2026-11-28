@@ -781,8 +781,19 @@ public final class Metro {
             } else if (hidden && !frozen) {
                 hidden = false;
                 // 다른 화면에서 돌아왔다: TurnstileBackwardIn (원본 50° → 0°, 이 앱의 각도로 -50° → 0°).
-                busy = false;
-                enter(false);
+                // 다음에 그리기 직전(배치가 끝난 뒤)에 튼다: 돌아오며(onResume) 다시 만든 줄(설정 창의 키 편집 항목 등)은 이 알림 때
+                // 아직 배치 전이라 크기가 0이어서 보이지 않는 것으로 빠져, 돌지 않고 그냥 나타났다. 그때까지는 숨은 채라 깜빡이지 않는다.
+                busy = true;
+                getViewTreeObserver().addOnPreDrawListener(new android.view.ViewTreeObserver.OnPreDrawListener() {
+                    @Override
+                    public boolean onPreDraw() {
+                        getViewTreeObserver().removeOnPreDrawListener(this);
+                        busy = false;
+                        if (!hidden && !frozen) enter(false);
+                        return true;
+                    }
+                });
+                invalidate();
             }
         }
 
