@@ -29,11 +29,11 @@ import com.alternative_studios.newswipe.ui.Ui;
 
 /**
  * 앱의 대화상자. 시스템 AlertDialog는 기기의 강조 색을 써서 설정에서 고른 강조 색과 달랐으므로, 같은 일을 하는 창을 직접 만든다.
- * {@link Builder}는 AlertDialog.Builder에서 앱이 쓰는 부분(제목, 글, 직접 만든 뷰, 목록·한 개 고르기·여러 개 고르기,
- * 확인·취소·중립 버튼)을 같은 이름과 같은 동작으로 갖고 있다.
+ * {@link Builder}는 AlertDialog.Builder에서 앱이 쓰는 부분(제목, 글, 직접 만든 뷰, 여러 개 고르기, 확인·취소·중립 버튼)을
+ * 같은 이름과 같은 동작으로 갖고 있다.
  *
  * <ul>
- *   <li>보통: 가운데에 뜨는 둥근 카드, 강조 색 글자 버튼, 강조 색 라디오·체크 표시. 열리고 닫히는 움직임은 시스템 대화상자 그대로다.</li>
+ *   <li>보통: 가운데에 뜨는 둥근 카드, 강조 색 글자 버튼, 강조 색 체크 표시. 열리고 닫히는 움직임은 시스템 대화상자 그대로다.</li>
  *   <li>Metro UI: Windows Phone Toolkit의 CustomMessageBox처럼 화면 맨 위에 폭을 꽉 채운 크롬 색 상자가 붙고, 나머지 화면은
  *       바탕색 60%로 덮인다. 버튼은 같은 폭의 테두리 버튼이 나란히 놓이고, 스위블로 들어오고(SwivelBackwardIn) 나간다(SwivelBackwardOut).</li>
  * </ul>
@@ -50,7 +50,6 @@ public final class AppDialog extends Dialog {
     private final boolean metro;
     private final Context ui;
     private Button positive, negative, neutral;
-    private LinearLayout rows;
     /** Metro: 화면 맨 위의 상자와 그 뒤를 덮는 막. */
     private View box, overlay;
     private boolean leaving;
@@ -64,8 +63,6 @@ public final class AppDialog extends Dialog {
         colors = b.colors;
         metro = colors.metro;
         requestWindowFeature(Window.FEATURE_NO_TITLE);
-        setCancelable(b.cancelable);
-        if (b.onCancel != null) setOnCancelListener(b.onCancel);
         if (b.onDismiss != null) setOnDismissListener(b.onDismiss);
         View content = metro ? buildMetro(b) : buildNormal(b);
         setContentView(content);
@@ -96,11 +93,6 @@ public final class AppDialog extends Dialog {
     /** 확인·취소·중립 버튼 (없으면 null). AlertDialog.getButton과 같다. */
     public TextView getButton(int which) {
         return which == BUTTON_POSITIVE ? positive : which == BUTTON_NEGATIVE ? negative : which == BUTTON_NEUTRAL ? neutral : null;
-    }
-
-    /** 목록(setItems·setSingleChoiceItems·setMultiChoiceItems)의 줄들을 담은 뷰 (목록이 없으면 null). */
-    public ViewGroup getListView() {
-        return rows;
     }
 
     // ---------------------------------------------------------------- 보통 모양
@@ -143,9 +135,7 @@ public final class AppDialog extends Dialog {
         // 막: Windows Phone의 CustomMessageBox는 바탕색(PhoneBackgroundColor)을 0x99로 깐다 (다크는 검정, 라이트는 흰색).
         overlay = new View(ui);
         overlay.setBackgroundColor((Metro.bg & 0x00FFFFFF) | 0x99000000);
-        overlay.setOnClickListener(v -> {
-            if (cancelableNow()) cancel();
-        });
+        overlay.setOnClickListener(v -> cancel());
         frame.addView(overlay, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         Column root = new Column(ui, Ui.dp(ui, 72));
         root.setOrientation(LinearLayout.VERTICAL);
@@ -199,19 +189,6 @@ public final class AppDialog extends Dialog {
         return frame;
     }
 
-    private boolean cancelableNow() {
-        // Dialog.mCancelable은 숨겨져 있으므로 만들 때 정한 값을 따로 기억한다.
-        return cancelable;
-    }
-
-    private boolean cancelable = true;
-
-    @Override
-    public void setCancelable(boolean flag) {
-        super.setCancelable(flag);
-        cancelable = flag;
-    }
-
     // ---------------------------------------------------------------- 가운데 (목록·직접 만든 뷰)
 
     /**
@@ -234,16 +211,10 @@ public final class AppDialog extends Dialog {
             ScrollView scroll = new ClipScroll(ui);
             Metro.scrollIndicator(scroll);   // Metro: WP8처럼 끄는 동안만 보이는 가는 표시
             scroll.setVerticalFadingEdgeEnabled(true);
-            rows = new LinearLayout(ui);
+            LinearLayout rows = new LinearLayout(ui);
             rows.setOrientation(LinearLayout.VERTICAL);
             scroll.addView(rows);
-            Mark[] marks = new Mark[b.items.length];
-            for (int i = 0; i < b.items.length; i++) rows.addView(row(b, i, marks));
-            if (b.choice == Builder.SINGLE && b.checkedItem >= 0 && b.checkedItem < b.items.length) {
-                View checked = rows.getChildAt(b.checkedItem);
-                // 고른 항목이 처음부터 보이게 (AlertDialog의 목록과 같다).
-                scroll.post(() -> scroll.scrollTo(0, Math.max(0, checked.getTop() - scroll.getHeight() / 3)));
-            }
+            for (int i = 0; i < b.items.length; i++) rows.addView(row(b, i));
             middle = scroll;
         } else if (b.view != null) {
             middle = b.view;
@@ -255,7 +226,8 @@ public final class AppDialog extends Dialog {
         }
     }
 
-    private View row(Builder b, int index, Mark[] marks) {
+    /** 여러 개 고르기 목록의 한 줄: 체크 표시와 글. 누르면 체크가 바뀌고 창은 열려 있다 (AlertDialog와 같다). */
+    private View row(Builder b, int index) {
         LinearLayout row = new LinearLayout(ui);
         row.setGravity(Gravity.CENTER_VERTICAL);
         // Metro: CheckBox 템플릿의 높이 (상자 32px + PhoneTouchTargetLargeOverhang 위아래 20px = 72px).
@@ -264,45 +236,20 @@ public final class AppDialog extends Dialog {
         row.setPadding(side, Ui.dp(ui, 6), side, Ui.dp(ui, 6));
         TextView t = text(b.items[index], metro ? Metro.sp(Metro.FONT_MEDIUM_LARGE) : 16, metro ? Metro.fg : colors.text);
         if (metro) t.setTypeface(Metro.regular());   // ListPickerItem처럼 PhoneFontSizeMediumLarge, 보통 굵기
-        Mark mark = null;
-        boolean single = b.choice == Builder.SINGLE, multi = b.choice == Builder.MULTI;
-        // Metro의 한 개 고르기는 표시 없이 고른 항목의 글자가 강조색이다 (Windows Phone의 ListPicker).
-        if (multi || (single && !metro)) {
-            mark = new Mark(ui, multi, metro);
-            boolean on = multi ? b.checkedItems != null && b.checkedItems[index] : index == b.checkedItem;
-            mark.setChecked(on);
-            LinearLayout.LayoutParams mlp = new LinearLayout.LayoutParams(Ui.dp(ui, 24), Ui.dp(ui, 24));
-            mlp.rightMargin = metro ? Metro.px(ui, 12) : Ui.dp(ui, 20);   // CheckBox 템플릿: 상자와 글 사이 12px
-            row.addView(mark, mlp);
-        }
-        marks[index] = mark;
-        if (single && metro && index == b.checkedItem) t.setTextColor(colors.accent);
+        Mark mark = new Mark(ui, metro);
+        mark.setChecked(b.checkedItems != null && b.checkedItems[index]);
+        LinearLayout.LayoutParams mlp = new LinearLayout.LayoutParams(Ui.dp(ui, 24), Ui.dp(ui, 24));
+        mlp.rightMargin = metro ? Metro.px(ui, 12) : Ui.dp(ui, 20);   // CheckBox 템플릿: 상자와 글 사이 12px
+        row.addView(mark, mlp);
         row.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         row.setBackground(metro ? null : Ui.ripple((colors.text & 0x00FFFFFF) | 0x1F000000, null, 0));
         row.setClickable(true);
         row.setFocusable(true);
-        final Mark m = mark;
         row.setOnClickListener(v -> {
-            if (multi) {
-                boolean on = !m.checked;
-                m.setChecked(on);
-                if (b.checkedItems != null) b.checkedItems[index] = on;
-                if (b.multiListener != null) b.multiListener.onClick(this, index, on);
-                return;
-            }
-            if (single) {
-                for (int i = 0; i < marks.length; i++) {
-                    if (marks[i] != null) marks[i].setChecked(i == index);
-                    if (metro) {
-                        TextView label = (TextView) ((ViewGroup) rows.getChildAt(i)).getChildAt(((ViewGroup) rows.getChildAt(i)).getChildCount() - 1);
-                        label.setTextColor(i == index ? colors.accent : Metro.fg);
-                    }
-                }
-                if (b.itemListener != null) b.itemListener.onClick(this, index);
-                return;   // AlertDialog처럼 한 개 고르기는 저절로 닫히지 않는다 (부른 쪽이 닫는다)
-            }
-            if (b.itemListener != null) b.itemListener.onClick(this, index);
-            dismiss();
+            boolean on = !mark.checked;
+            mark.setChecked(on);
+            if (b.checkedItems != null) b.checkedItems[index] = on;
+            if (b.multiListener != null) b.multiListener.onClick(this, index, on);
         });
         Metro.tilt(row);
         row.setContentDescription(b.items[index]);
@@ -415,19 +362,16 @@ public final class AppDialog extends Dialog {
         }
     }
 
-    /**
-     * 라디오·체크 표시. 보통은 강조색 동그라미·둥근 네모, Metro는 Windows Phone의 체크 상자 (Metro.Check와 같은 모양, 누르는 동안 강조색).
-     */
+    /** 체크 표시. 보통은 강조색 둥근 네모, Metro는 Windows Phone의 체크 상자 (Metro.Check와 같은 모양, 누르는 동안 강조색). */
     private final class Mark extends View {
-        private final boolean box, square;
+        private final boolean square;
         private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Path check = new Path();
         private final android.graphics.RectF tmp = new android.graphics.RectF();
         boolean checked;
 
-        Mark(Context c, boolean box, boolean metroLook) {
+        Mark(Context c, boolean metroLook) {
             super(c);
-            this.box = box;
             this.square = metroLook;
             setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
             if (metroLook) setDuplicateParentStateEnabled(true);   // 줄을 누르는 동안 상자를 강조색으로 채운다
@@ -450,24 +394,19 @@ public final class AppDialog extends Dialog {
             float dp = Ui.dp(getContext(), 1);
             float w = getWidth(), h = getHeight(), cx = w / 2f, cy = h / 2f;
             int on = colors.accent, off = colors.hint;
-            if (square) {   // Windows Phone 체크 상자·라디오: 꽉 찬 상자에 표시
-                Metro.Check.paint(c, cx, cy, Math.min(w, h) / 2f, Ui.dp(getContext(), Metro.BORDER_DP), !box, checked,
+            if (square) {   // Windows Phone 체크 상자: 꽉 찬 상자에 표시
+                Metro.Check.paint(c, cx, cy, Math.min(w, h) / 2f, Ui.dp(getContext(), Metro.BORDER_DP), false, checked,
                         isPressed(), isEnabled(), p, check);
                 return;
             }
             p.setStrokeCap(Paint.Cap.ROUND);
             p.setStrokeJoin(Paint.Join.ROUND);
-            if (NeuUi.on) {   // Neumorphism: 안으로 들어간 홈에 강조색 점·체크
+            if (NeuUi.on) {   // Neumorphism: 안으로 들어간 홈에 강조색 체크
                 float s = 10 * dp;
                 tmp.set(cx - s, cy - s, cx + s, cy + s);
-                NeuUi.drawInset(getContext(), c, tmp, box ? 5 * dp : s, NeuUi.surface, p);
+                NeuUi.drawInset(getContext(), c, tmp, 5 * dp, NeuUi.surface, p);
                 if (!checked) return;
-                p.setStyle(Paint.Style.FILL);
                 p.setColor(colors.accent);
-                if (!box) {
-                    c.drawCircle(cx, cy, 4.5f * dp, p);
-                    return;
-                }
                 float k = 6.5f * dp;
                 check.reset();
                 check.moveTo(cx - k * 0.5f, cy + k * 0.02f);
@@ -476,18 +415,6 @@ public final class AppDialog extends Dialog {
                 p.setStyle(Paint.Style.STROKE);
                 p.setStrokeWidth(2.2f * dp);
                 c.drawPath(check, p);
-                return;
-            }
-            if (!box) {   // 라디오
-                float r = 9 * dp;
-                p.setStyle(Paint.Style.STROKE);
-                p.setStrokeWidth(2 * dp);
-                p.setColor(checked ? on : off);
-                c.drawCircle(cx, cy, r, p);
-                if (checked) {
-                    p.setStyle(Paint.Style.FILL);
-                    c.drawCircle(cx, cy, 5 * dp, p);
-                }
                 return;
             }
             float s = 9 * dp;
@@ -637,28 +564,20 @@ public final class AppDialog extends Dialog {
 
     /** AlertDialog.Builder처럼 쓰는 만들기 도구. 부르는 쪽 코드는 AlertDialog일 때와 같다. */
     public static final class Builder {
-        static final int NONE = 0, SINGLE = 1, MULTI = 2;
         final Context context;
         final AppTheme colors;
         CharSequence title, message, positive, negative, neutral;
-        DialogInterface.OnClickListener positiveListener, negativeListener, neutralListener, itemListener;
+        DialogInterface.OnClickListener positiveListener, negativeListener, neutralListener;
         DialogInterface.OnMultiChoiceClickListener multiListener;
-        DialogInterface.OnCancelListener onCancel;
         DialogInterface.OnDismissListener onDismiss;
         View view;
         CharSequence[] items;
-        int choice = NONE, checkedItem = -1;
         boolean[] checkedItems;
-        boolean cancelable = true;
 
         /** @param themed 대화상자 안의 뷰를 만들 컨텍스트 (AppTheme.dialogContext로 감싼 화면) */
         public Builder(Context themed) {
             context = themed;
             colors = AppTheme.of(themed);
-        }
-
-        public Context getContext() {
-            return context;
         }
 
         public Builder setTitle(CharSequence t) {
@@ -676,24 +595,8 @@ public final class AppDialog extends Dialog {
             return this;
         }
 
-        public Builder setItems(CharSequence[] list, DialogInterface.OnClickListener l) {
-            items = list;
-            choice = NONE;
-            itemListener = l;
-            return this;
-        }
-
-        public Builder setSingleChoiceItems(CharSequence[] list, int checked, DialogInterface.OnClickListener l) {
-            items = list;
-            choice = SINGLE;
-            checkedItem = checked;
-            itemListener = l;
-            return this;
-        }
-
         public Builder setMultiChoiceItems(CharSequence[] list, boolean[] checked, DialogInterface.OnMultiChoiceClickListener l) {
             items = list;
-            choice = MULTI;
             checkedItems = checked;
             multiListener = l;
             return this;
@@ -714,16 +617,6 @@ public final class AppDialog extends Dialog {
         public Builder setNeutralButton(CharSequence label, DialogInterface.OnClickListener l) {
             neutral = label;
             neutralListener = l;
-            return this;
-        }
-
-        public Builder setCancelable(boolean c) {
-            cancelable = c;
-            return this;
-        }
-
-        public Builder setOnCancelListener(DialogInterface.OnCancelListener l) {
-            onCancel = l;
             return this;
         }
 

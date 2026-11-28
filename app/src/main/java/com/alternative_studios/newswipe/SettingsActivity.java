@@ -1455,13 +1455,9 @@ public final class SettingsActivity extends Activity {
      * 글자가 칸 가장자리에 붙어 보이지 않도록 항목보다 좌우·위아래로 조금 더 넓게 칠한다. 항목 안에서는 그릴 수 없는 바깥 여백이라
      * 항목이 아니라 항목을 담은 부모의 위에 그린다.
      */
-    /** 마지막으로 깜빡인 칸 (시험에서 강조가 항목 전체에 걸렸는지 확인한다). */
-    View lastFlashed;
-
     private void flash(View box, View root) {
         int w = box.getWidth(), h = box.getHeight();
         if (w == 0 || h == 0) return;
-        lastFlashed = box;
         // 줄(바탕 없음)은 글자가 가장자리에 붙지 않게 좌우로 넓게 칠한다. 버튼처럼 둥근 바탕이 있는 항목은
         // 그 모양을 사방으로 똑같이 조금 키운 모양으로 칠한다 (모서리도 바탕의 둥글기에 넓힌 만큼 더해 나란하게).
         float shapeRadius = shapeRadius(box.getBackground());

@@ -71,11 +71,6 @@ public final class EmojiData {
             return keywords;
         }
 
-        int koCount() {
-            keywords();
-            return koCount;
-        }
-
         /**
          * i번째 키워드가 이름인지. 각 언어의 첫 키워드가 이름이고, 나라 국기는 나라 이름·다른 이름('한국', '우리나라')부터
          * '깃발: 대한민국'까지가 모두 이름이다 (tools/generate_emoji_data.py의 flag_words). 이름으로 맞으면 먼저 보여 준다.

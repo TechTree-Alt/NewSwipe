@@ -181,11 +181,6 @@ final class KeyboardPreview extends FrameLayout {
             return this == B_LEFT_START || this == B_LEFT_END || this == B_LEFT_MOVE;
         }
 
-        /** 높이 손잡이인지 (도구 막대·숫자 줄·글자 키·기능키). */
-        boolean height() {
-            return this == TOOLBAR || this == NUMBER_ROW || this == HEIGHT || this == HEIGHT_RIGHT || this == FN_ROW;
-        }
-
         /** 값 뒤에 붙는 단위: 높이와 묶음 폭은 %, 여백은 dp, 묶음 가로 위치는 없음. */
         String unit() {
             if (knob()) return "";

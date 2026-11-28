@@ -355,11 +355,6 @@ final class SettingsFrame {
         return pivot;
     }
 
-    /** installPivot으로 놓은 피벗 (없으면 null). */
-    Metro.Pivot pivot() {
-        return pivot;
-    }
-
     private View wrapPlain(View content, View bottom) {
         Ui.edgeToEdge(activity.getWindow(), colors.dark);
         // 창 배경을 화면 바탕색과 같게: 테마의 windowBackground(settings_background)는 시스템의 다크/라이트를 따르고 Metro·

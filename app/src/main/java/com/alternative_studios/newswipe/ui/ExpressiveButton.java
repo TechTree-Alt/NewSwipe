@@ -62,24 +62,6 @@ public final class ExpressiveButton extends TextView {
         });
     }
 
-    /**
-     * 작은 알약 (미리보기 열기·닫기처럼 화면 위에 뜨는 보조 버튼): 높이 height에 맞게 글자를 줄이고 최소 크기를 없앤다.
-     * 누를 때의 모양·진동은 그대로다.
-     */
-    public ExpressiveButton compact(float textSp, int padStartPx, int padEndPx) {
-        setTextSize(TypedValue.COMPLEX_UNIT_SP, textSp);
-        setMinHeight(0);
-        setMinWidth(0);
-        setMinimumHeight(0);
-        setMinimumWidth(0);
-        // setSingleLine은 가로 스크롤을 켜서, 가운데 정렬이면 TextView가 캔버스를 멀리 스크롤해 아래 onDraw에서
-        // 직접 그리는 면·아이콘이 화면 밖으로 밀린다. 줄 수만 하나로 막는다.
-        setHorizontallyScrolling(false);
-        setMaxLines(1);
-        setPadding(padStartPx, 0, padEndPx, 0);
-        return this;
-    }
-
     private float radius(float h, float p) {
         if (Metro.on) return 0f;   // Metro: 모서리 없는 네모 (강조색 타일)
         float full = h / 2f;

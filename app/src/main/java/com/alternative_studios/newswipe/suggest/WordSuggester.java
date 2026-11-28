@@ -70,15 +70,8 @@ public final class WordSuggester {
 
     /**
      * 자동 수정에서 이웃한 키를 알 수 있게 지금 한글 자판의 글자 줄을 알려 준다. aspirateSwipe = ㅂ·ㅈ·ㄷ·ㄱ를 오른쪽으로 밀어
-     * ㅍ·ㅊ·ㅌ·ㅋ을 넣는 자판 (NewSwipe 단모음).
-     */
-    public void setKeyRows(String[][] rows, boolean aspirateSwipe) {
-        setKeyRows(rows, null, aspirateSwipe, false);
-    }
-
-    /**
-     * {@link #setKeyRows(String[][], boolean)}와 같되, 줄이 엇갈린 자판(두벌식)은 줄마다 시작 위치 offsets를, ㅑ·ㅕ·ㅛ·ㅠ 키가
-     * 따로 있으면 iotizedKeys를 준다 ({@link TypoModel#setRows(String[][], float[], boolean, boolean)}).
+     * ㅍ·ㅊ·ㅌ·ㅋ을 넣는 자판 (NewSwipe 단모음). 줄이 엇갈린 자판(두벌식)은 줄마다 시작 위치 offsets를(아니면 null),
+     * ㅑ·ㅕ·ㅛ·ㅠ 키가 따로 있으면 iotizedKeys를 준다 ({@link TypoModel#setRows(String[][], float[], boolean, boolean)}).
      */
     public void setKeyRows(String[][] rows, float[] offsets, boolean aspirateSwipe, boolean iotizedKeys) {
         // 입력란마다 불리지만 자판이 바뀔 때만 이웃 표를 다시 만든다 (줄은 KeyboardLayout의 고정 배열이라 같은지 바로 안다).
@@ -336,12 +329,10 @@ public final class WordSuggester {
         return true;
     }
 
-    /** 사전(과 사용자 사전)을 읽어 둔다. 백그라운드 스레드에서 부른다. */
-    public void warmUp(boolean korean) {
-        warmUp(korean, generation);
-    }
-
-    /** gen: 작업을 맡길 때의 generation(). 그사이 release()가 있었으면 읽지 않는다 (놓아 준 뒤 다시 올리지 않도록). */
+    /**
+     * 사전(과 사용자 사전)을 읽어 둔다. 백그라운드 스레드에서 부른다.
+     * gen: 작업을 맡길 때의 generation(). 그사이 release()가 있었으면 읽지 않는다 (놓아 준 뒤 다시 올리지 않도록).
+     */
     public void warmUp(boolean korean, int gen) {
         if (gen != generation) return;
         WordDictionary d = dictionary(korean);
@@ -383,12 +374,6 @@ public final class WordSuggester {
     /** 한국어 사전을 읽은 뒤 사전 팩을 가져오거나 지웠는지 (그러면 release()하고 다시 읽는다). */
     public boolean packChanged() {
         return (ko != null || koFailed) && koPackChanges != DictionaryPack.changes();
-    }
-
-    /** 지금 쓰는 한국어 사전에 다음 단어 정보가 있는지 (사전 팩을 가져왔을 때). */
-    public boolean hasNextWords() {
-        KoreanSuggest m = koModel;
-        return m != null && m.hasNextWords();
     }
 
     /** 기본 사전을 놓아 준다. 화면 스레드에서 불러도 기다리지 않는다. */

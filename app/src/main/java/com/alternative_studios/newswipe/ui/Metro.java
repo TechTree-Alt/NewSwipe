@@ -373,15 +373,8 @@ public final class Metro {
     // ---------------------------------------------------------------- 턴스타일
 
     /*
-     * 턴스타일. WP7 UI Design and Interaction Guide에 따르면 시스템의 화면 전환은 "system-reserved"라 수치가 공개되지 않았고,
-     * Microsoft가 앱용으로 다시 만든 구현이 셋 있다. 각도(들어오기 -80°→0° / 돌아오기 50°→0°, 나가기 0°→50° / 뒤로 0°→-80°)는
-     * 셋이 같고 시간이 다르다 (항목 열 개짜리 화면 기준 나가기 / 들어오기):
-     *
-     *   Windows Phone Toolkit (WP7·8 Silverlight)  항목 250ms·50ms 간격 / 350ms·40ms 간격        0.70초 / 0.71초
-     *   WinRT XAML (WP8.1, microsoft-ui-xaml)       항목 64ms·33ms 간격, 128ms에 통째로 감춤 / 150ms  0.13초 / 0.38초
-     *   WinJS (WP8.1, src/js/WinJS/Animations.js)   항목 128ms·50ms 간격 / 300ms·50ms 간격        0.58초 / 0.75초
-     *
-     * Toolkit은 실기기보다 사라지고 나타나는 것이 굼뜨고, WinRT는 지나치게 빨라, WinJS의 값을 그대로 쓴다:
+     * 턴스타일. 각도(들어오기 -80°→0° / 돌아오기 50°→0°, 나가기 0°→50° / 뒤로 0°→-80°)는 Microsoft의 앱용 구현
+     * (Windows Phone Toolkit, WinRT XAML, WinJS)이 모두 같고, 시간은 실기기에 가장 가까운 WinJS(Animations.js)의 값을 쓴다:
      *
      *   들어오기  300ms, cubic-bezier(0.01, 0.975, 0.4775, 0.9775) (아주 빨리 돌아 와 거의 서고 끝을 천천히 맞춘다),
      *             시작할 때 바로 보인다 (불투명도 곡선 cubic-bezier(0, 2, 0, 2)는 곧바로 1이 된다)
@@ -564,14 +557,7 @@ public final class Metro {
          * 키보드의 도구 막대에서 설정을 열면 처음 그릴 때 키보드가 아직 떠 있어 창이 키보드 높이만큼 줄어 있다. 그대로 틀면 그 아래의
          * 항목은 보이지 않는 것으로 쳐서 빠지고, 키보드가 내려간 뒤 움직이지 않고 그냥 나타난다. 그래서 키보드가 내려가 창이 다 펴질
          * 때까지 화면을 감춰 두었다가 튼다 (오래 걸리면 ENTER_IME_WAIT_MS 뒤에 그냥 튼다).
-         */
-        public void playEnterOnFirstDraw() {
-            playEnterOnFirstDraw(true);
-        }
-
-        /**
-         * {@link #playEnterOnFirstDraw()}와 같되, forward가 false면 돌아온 화면처럼 들어온다 (화면 모드를 바꾼 뒤 돌아와 앞 화면을
-         * 새 색으로 다시 만들었을 때).
+         * forward가 false면 돌아온 화면처럼 들어온다 (화면 모드를 바꾼 뒤 돌아와 앞 화면을 새 색으로 다시 만들었을 때).
          */
         public void playEnterOnFirstDraw(boolean forward) {
             getViewTreeObserver().addOnPreDrawListener(new android.view.ViewTreeObserver.OnPreDrawListener() {
@@ -727,10 +713,6 @@ public final class Metro {
             leave(BACKWARD_OUT, finish);
         }
 
-        public boolean busy() {
-            return busy;
-        }
-
         @Override
         protected void onWindowVisibilityChanged(int visibility) {
             super.onWindowVisibilityChanged(visibility);
@@ -838,10 +820,6 @@ public final class Metro {
 
         int first() {
             return first;
-        }
-
-        float offset() {
-            return offset;
         }
 
         void setOffset(float px) {

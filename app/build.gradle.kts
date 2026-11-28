@@ -54,6 +54,14 @@ android {
         unitTests.all { it.jvmArgs("-Duser.language=ko", "-Duser.country=KR") }
     }
 
+    // minSdk 28 이상이면 AGP는 classes.dex를 압축하지 않고 넣는다 (APK에서 바로 읽으려고). 이 앱은 dex가 APK의 절반이라
+    // 압축해 넣으면 APK가 400KB쯤 줄어든다. 설치할 때 기기가 dex를 한 번 풀어 두는 것 말고는 동작이 같다.
+    packaging {
+        dex {
+            useLegacyPackaging = true
+        }
+    }
+
     dependenciesInfo {
         includeInApk = false
         includeInBundle = false

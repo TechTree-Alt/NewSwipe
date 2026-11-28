@@ -64,12 +64,8 @@ final class EditorSheet {
     /**
      * @param parent         창과 막을 겹쳐 놓을 틀 (설정 목록이 든 곳)
      * @param onCloseRequest X나 막을 눌렀을 때 (닫기는 부르는 쪽이 close로 한다)
+     * @param onUndo         헤더의 되돌리기 버튼을 눌렀을 때 (null이면 버튼을 두지 않는다)
      */
-    EditorSheet(Context context, FrameLayout parent, Runnable onCloseRequest) {
-        this(context, parent, onCloseRequest, null);
-    }
-
-    /** @param onUndo 헤더의 되돌리기 버튼을 눌렀을 때 (null이면 버튼을 두지 않는다) */
     EditorSheet(Context context, FrameLayout parent, Runnable onCloseRequest, View.OnClickListener onUndo) {
         this.c = context;
         this.parent = parent;
@@ -221,11 +217,6 @@ final class EditorSheet {
         return scroll;
     }
 
-    /** 움직이는 창 자체 (시험에서 자리를 확인할 때). */
-    View view() {
-        return sheet;
-    }
-
     /** 헤더의 되돌리기 버튼 (onUndo 없이 만들었거나 Metro면 null). 되돌릴 것이 있는지에 따라 부르는 쪽이 켜고 끈다. */
     View undoButton() {
         return undoButton;
@@ -319,13 +310,7 @@ final class EditorSheet {
      * 창을 아래에서 위로 올린다: Material 3 Expressive 기본 공간 스프링 (SpringMotion, 강성 700·감쇠비 0.85).
      * 빠르게 올라와 아주 살짝 넘었다가 반 픽셀 안으로 들어올 때까지 매끄럽게 자리 잡는다.
      * 방금 만든 내용의 배치가 첫 프레임을 잡아먹어 움직임이 늦게 시작해 보이지 않도록, 배치가 끝난 다음 프레임에 시작한다.
-     */
-    void open() {
-        open(false);
-    }
-
-    /**
-     * open()과 같되, half면 창을 화면 왼쪽 절반에 위에서 아래까지 띄운다 (미리보기가 커서 그 위에 남는 높이가 낮을 때, 부르는 쪽이
+     * half면 창을 화면 왼쪽 절반에 위에서 아래까지 띄운다 (미리보기가 커서 그 위에 남는 높이가 낮을 때, 부르는 쪽이
      * 미리보기를 오른쪽 절반으로 줄인다). 화면 전체 틀이 없거나 아직 배치 전이면 보통처럼 띄운다.
      */
     void open(boolean half) {

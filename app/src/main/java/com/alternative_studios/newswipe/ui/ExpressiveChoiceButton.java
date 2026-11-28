@@ -29,7 +29,7 @@ public final class ExpressiveChoiceButton extends TextView {
     private final int accent, onAccent, text, hint;
     private int idle, overlay;
     private final float small, pressed;
-    private boolean first, last;
+    private final boolean first, last;
     private float sel;      // 0 = 고르지 않음, 1 = 고름 (스프링으로 1을 조금 넘을 수 있다)
     private float press;    // 0 = 놓음, 1 = 누름
     private ValueAnimator selAnim, pressAnim;
@@ -87,13 +87,6 @@ public final class ExpressiveChoiceButton extends TextView {
 
     /** 칸에 맞춰 줄이기 전의 글자 크기 (px). */
     private float baseSize = -1f;
-
-    /** 줄 안에서의 자리: 줄 양 끝 칸은 바깥 모서리가 알약이다. 한 칸씩 떨어진 칸은 둘 다 false. */
-    public void setPosition(boolean first, boolean last) {
-        this.first = first;
-        this.last = last;
-        invalidate();
-    }
 
     public void setSubLabel(String s) {
         setSubLabel(s, 8, 26);
