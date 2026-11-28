@@ -353,6 +353,7 @@ public final class Prefs {
     public static final String KEY_SHADOW_STRENGTH = "key_shadow_strength";   // %, 10~100
     public static final String NEUMORPHISM = "neumorphism";   // 키·버튼을 바탕에서 솟아오른 모양으로 그리고, 누르면 안으로 들어가게
     public static final String METRO = "metro_ui";   // 앱 전체를 Windows Phone의 Metro UI처럼 (실험적, Neumorphism 대신 쓰인다)
+    public static final String METRO_TILES = "metro_tiles";   // Metro UI: 메인 화면의 메뉴를 목록 대신 라이브 타일로
     public static final String TOOLBAR = "toolbar";
     public static final String TOOLBAR_BOTTOM = "toolbar_bottom";   // 도구 막대를 자판 아래에 둔다
     public static final String TOOLBAR_HEIGHT = "toolbar_height";   // %, 70~150 (100 = 40dp)
@@ -880,7 +881,7 @@ public final class Prefs {
     /** 메뉴별로 키 앞부분이 같은 값들 (배열·방향·칸마다 따로 저장하는 값). */
     private static final java.util.Map<String, String[]> MENU_PREFIXES = new java.util.HashMap<>();
     static {
-        MENU_KEYS.put("theme", keys(THEME_MODE, ACCENT_MODE, ACCENT_COLOR, GRID_COLORS, NEUMORPHISM, METRO));
+        MENU_KEYS.put("theme", keys(THEME_MODE, ACCENT_MODE, ACCENT_COLOR, GRID_COLORS, NEUMORPHISM, METRO, METRO_TILES));
         MENU_KEYS.put("feedback", keys(VIBRATE, VIBRATE_MS, VIBRATE_STYLE, VIBRATE_AMP, VIBRATE_PRIMITIVE, VIBRATE_PER_KEY,
                 VIBRATE_DELETE, VIBRATE_SPACE, VIBRATE_ENTER, VIBRATE_SHIFT, VIBRATE_SYMBOL, VIBRATE_LANGUAGE, VIBRATE_TOOLBAR,
                 VIBRATE_GESTURE_ON, VIBRATE_GESTURE_LEVEL, VIBRATE_GESTURE_STYLE, VIBRATE_GESTURE_PRIMITIVE, VIBRATE_GESTURE_AMP,
@@ -2152,6 +2153,8 @@ public final class Prefs {
     public boolean neumorphism() { return sp.getBoolean(NEUMORPHISM, false); }
     /** Metro UI 모드 (실험적). 켜져 있으면 Neumorphism·키 그림자·키 곡률은 쓰이지 않는다. */
     public boolean metro() { return sp.getBoolean(METRO, false); }
+    /** Metro UI에서 메인 화면의 메뉴를 Windows Phone 시작 화면처럼 타일로 보이는지 (Metro가 꺼져 있으면 쓰이지 않는다). */
+    public boolean metroTiles() { return sp.getBoolean(METRO_TILES, false); }
     public boolean suggestWords() { return sp.getBoolean(SUGGEST_WORDS, false); }
     /** 이모지 창을 열 때 커서 앞의 글에 맞는 이모지를 최근 탭 맨 위에 추천하는지. */
     public boolean emojiSuggest() { return sp.getBoolean(EMOJI_SUGGEST, true); }

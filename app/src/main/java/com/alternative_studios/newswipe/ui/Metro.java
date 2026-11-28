@@ -426,9 +426,17 @@ public final class Metro {
     private static ValueAnimator turn(View v, float from, float to, long ms, long delay, boolean out, Runnable onEnd) {
         Object old = v.getTag(R.id.metro_turn);
         if (old instanceof ValueAnimator) ((ValueAnimator) old).cancel();
+        // 틸트가 아직 돌아오는 중이면(방금 누른 타일·줄) 끝난 모습으로 두고 돈다: 둘이 같은 회전값을 번갈아 쓰지 않게.
+        ValueAnimator tiltBack = TILT_RETURN.remove(v);
+        if (tiltBack != null) {
+            tiltBack.cancel();
+            v.setRotationX(0f);
+            v.setScaleX(1f);
+            v.setScaleY(1f);
+        }
         // 돌기 전의 가로 이동과 불투명도 (흐리게 막아 둔 줄은 0.38): 끝나면 이 값으로 되돌린다.
         final float baseTx = v.getTranslationX(), baseAlpha = v.getAlpha();
-        v.setPivotX(AXIS_X * v.getWidth());
+        v.setPivotX(axisX(v));
         v.setPivotY(v.getHeight() / 2f);
         perspective(v);
         v.setRotationY(from);
@@ -466,6 +474,18 @@ public final class Metro {
         });
         a.start();
         return a;
+    }
+
+    /**
+     * v가 턴스타일로 돌 축의 가로 자리 (v 안의 좌표). 보통은 v 폭의 20% 왼쪽 바깥이다. 타일 판({@link MetroTiles})의 타일은 자기가
+     * 아니라 판 전체 폭의 20% 왼쪽 바깥을 축으로 삼아, 오른쪽 타일도 같은 문짝에 붙은 것처럼 판이 한 장으로 돈다 (목록의 줄과 같은 축).
+     */
+    private static float axisX(View v) {
+        if (v.getParent() instanceof MetroTiles) {
+            View grid = (View) v.getParent();
+            return AXIS_X * grid.getWidth() - v.getLeft();
+        }
+        return AXIS_X * v.getWidth();
     }
 
     /** 턴스타일로 돌던(또는 돌아 나가 숨은) v를 제자리로 되돌린다. baseTx·baseAlpha는 돌기 전의 가로 이동·불투명도. */
@@ -649,6 +669,7 @@ public final class Metro {
          */
         private void enter(boolean forward) {
             away = false;
+            lastOut = null;
             restore();
             java.util.List<View> list = items == null ? null : items.get();
             block(IN_MS / 2);   // 위의 항목들이 거의 자리를 잡으면 누를 수 있다
@@ -664,9 +685,23 @@ public final class Metro {
          * <p>화면 전체는 숨기지 않는다: 바탕과 앱 바(깃털 항목이 아니다)는 그대로 남아, 다음 화면이 뜨거나 이 화면이 닫힐 때까지 창
          * 배경이 드러나지 않고 앱 바도 깜빡이지 않는다 (Windows Phone의 앱 바도 화면과 함께 돌지 않는다).
          */
+        /** 다음에 나갈 때 맨 마지막에 돌아 나갈 항목 (누른 타일). 한 번 나가거나 다시 들어오면 지운다. */
+        private View lastOut;
+
+        /**
+         * 다음 화면 전환에서 v가 맨 마지막에 돌아 나가게 한다: Windows Phone 시작 화면은 누른 타일을 남겨 두고 다른 타일들이 먼저
+         * 돌아 나간 뒤 그 타일이 마지막으로 돈다. 화면이 넘어가지 않으면 다음에 들어올 때 지운다.
+         */
+        public void setLastOut(View v) {
+            lastOut = v;
+        }
+
         private void leave(float to, Runnable then) {
             away = true;
             java.util.List<View> list = items == null ? java.util.Collections.emptyList() : visible(items.get());
+            View tapped = lastOut;
+            lastOut = null;
+            if (tapped != null && list.remove(tapped)) list.add(tapped);
             if (list.isEmpty()) {
                 turn(content, 0f, to, OUT_MS, 0, true, then);
                 return;

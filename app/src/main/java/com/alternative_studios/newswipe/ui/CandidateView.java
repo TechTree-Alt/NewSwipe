@@ -267,7 +267,8 @@ public final class CandidateView extends View {
         fill.setColor(theme.text);
         fill.setStyle(Paint.Style.STROKE);
         fill.setStrokeWidth(Ui.dp(getContext(), 2));
-        fill.setStrokeCap(Paint.Cap.ROUND);
+        fill.setStrokeCap(Metro.on ? Paint.Cap.BUTT : Paint.Cap.ROUND);   // Metro: 끝을 자른 각진 꺾쇠
+        fill.setStrokeJoin(Metro.on ? Paint.Join.MITER : Paint.Join.ROUND);
         float hw = Ui.dp(getContext(), 6), hh = Ui.dp(getContext(), 3.5f) * (expanded ? -1 : 1);
         chevron.reset();
         chevron.moveTo(cxm - hw, cym - hh);
@@ -275,5 +276,6 @@ public final class CandidateView extends View {
         chevron.lineTo(cxm + hw, cym - hh);
         c.drawPath(chevron, fill);
         fill.setStyle(Paint.Style.FILL);
+        fill.setStrokeJoin(Paint.Join.MITER);
     }
 }

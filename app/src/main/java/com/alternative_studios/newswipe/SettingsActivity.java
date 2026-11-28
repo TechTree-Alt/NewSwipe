@@ -34,6 +34,7 @@ import com.alternative_studios.newswipe.ui.ExpressiveSwitch;
 import com.alternative_studios.newswipe.ui.IconView;
 import com.alternative_studios.newswipe.ui.IconButton;
 import com.alternative_studios.newswipe.ui.Metro;
+import com.alternative_studios.newswipe.ui.MetroTiles;
 import com.alternative_studios.newswipe.ui.Ui;
 
 import java.io.File;
@@ -73,6 +74,8 @@ public final class SettingsActivity extends Activity {
     /** 클립보드 '이미지 저장' 스위치 (끄기를 취소하면 되돌린다). */
     private ExpressiveSwitch clipImagesSwitch;
     private String themeSignature;
+    /** 메인 화면을 Metro 타일로 만들었는지 (테마에서 바꾸고 돌아오면 다시 만든다). */
+    private boolean builtTiles;
     /** 설정 화면의 공통 조각 (키 창과 같은 모양). */
     private SettingsWidgets widgets;
     /**
@@ -108,6 +111,7 @@ public final class SettingsActivity extends Activity {
         AppTheme colors = AppTheme.of(this);
         themeSignature = AppTheme.signature(this);
         builtGeneration = importGeneration;
+        builtTiles = mainTiles();
         int bg = colors.bg;
         cardColor = colors.card;
         textColor = colors.text;
@@ -194,7 +198,8 @@ public final class SettingsActivity extends Activity {
     protected void onResume() {
         super.onResume();
         // 다른 화면에서 화면 모드나 강조 색을 바꿨으면 이 화면도 새 색으로 다시 만든다.
-        if (!themeSignature.equals(AppTheme.signature(this)) || builtGeneration != importGeneration || editorProfileChanged()) {
+        if (!themeSignature.equals(AppTheme.signature(this)) || builtGeneration != importGeneration || editorProfileChanged()
+                || (getIntent().getStringExtra(EXTRA_SECTION) == null && builtTiles != mainTiles())) {
             recreateQuietly(true);
             return;
         }
@@ -367,7 +372,23 @@ public final class SettingsActivity extends Activity {
             if (imm != null) imm.showInputMethodPicker();
         }));
 
-        // 설정 메뉴: 소제목 없이 한 묶음에 정보를 맨 위에, 그 아래 설정 메뉴들을 둔다.
+        if (mainTiles()) {
+            buildMainTiles();
+        } else {
+            buildMainList();
+        }
+
+        // 검색하는 동안에는 위 내용을 통째로 숨기고 검색 결과를 대신 보여 준다.
+        wrapMainForSearch();
+    }
+
+    /** Metro UI에서 메인 화면의 메뉴를 타일로 보이는지 (Metro를 끄면 저장된 값과 상관없이 목록). */
+    private boolean mainTiles() {
+        return Metro.on && prefs.metroTiles();
+    }
+
+    /** 설정 메뉴: 소제목 없이 한 묶음에 정보를 맨 위에, 그 아래 설정 메뉴들을 둔다. */
+    private void buildMainList() {
         LinearLayout menu = menuCard(card());
         appCard = menu;
         menuCard = menu;
@@ -378,8 +399,49 @@ public final class SettingsActivity extends Activity {
             lockedRows.add(row);
             menu.addView(row);
         }
+    }
 
-        // 검색하는 동안에는 위 내용을 통째로 숨기고 검색 결과를 대신 보여 준다.
+    /**
+     * Metro UI: 설정 메뉴를 Windows Phone 8 시작 화면처럼 라이브 타일로 놓는다 ({@link MetroTiles}). 키보드 사용자화는 넓은 타일,
+     * 자주 여는 메뉴는 중간 타일, 나머지(한 손 모드·백업·실험실·정보)는 작은 타일 넷이 중간 타일 한 자리를 나눠 쓴다. 중간·넓은 타일의
+     * 뒷면에는 목록의 설명이 보인다.
+     */
+    private void buildMainTiles() {
+        MetroTiles tiles = new MetroTiles(this);
+        LinearLayout.LayoutParams lp = matchWrap();
+        list.addView(tiles, lp);
+        appCard = tiles;
+        menuCard = tiles;
+        for (String[] sec : sections()) {
+            View tile = addTile(tiles, sec[0], sec[1], sec[2]);
+            lockedRows.add(tile);
+        }
+        addTile(tiles, appEntry()[0], appEntry()[1], appEntry()[2]);   // 정보는 늘 열 수 있다
+    }
+
+    private View addTile(MetroTiles tiles, String id, String title, String desc) {
+        int size;
+        switch (id) {
+            case KEYBOARD: size = MetroTiles.WIDE; break;
+            case "onehand": case "backup": case "lab": case "app": size = MetroTiles.SMALL; break;
+            default: size = MetroTiles.MEDIUM; break;
+        }
+        String shortName = shortTitle(id);
+        // WP8 시작 화면의 타일 이름은 앱 이름 그대로 첫 글자가 대문자다 (Calendar, Music+Videos). 목록·제목의 소문자와 다르다.
+        return tiles.add(size, menuIcon(id), capitalize(shortName != null ? shortName : title), desc, title + ", " + desc, v -> {
+            SettingsFrame.metroLastOut(this, v);   // 누른 타일은 다른 타일들이 돌아 나간 뒤 마지막으로
+            openSection(id);
+        });
+    }
+
+    /** 첫 글자만 대문자로 (한국어는 그대로). */
+    private static String capitalize(String s) {
+        if (s == null || s.isEmpty()) return s;
+        int first = s.offsetByCodePoints(0, 1);
+        return s.substring(0, first).toUpperCase(java.util.Locale.ROOT) + s.substring(first);
+    }
+
+    private void wrapMainForSearch() {
         mainWrap = new LinearLayout(this);
         mainWrap.setOrientation(LinearLayout.VERTICAL);
         while (list.getChildCount() > 0) {
@@ -3564,6 +3626,15 @@ public final class SettingsActivity extends Activity {
                     "NewSwipe's default design, inspired by Material 3 Expressive.");
         }
         box.addView(note(desc));
+        if (current == MODE_METRO) {
+            View tilesToggle = toggle(L.t("메인 화면을 타일로 보기", "Show main screen as tiles"),
+                    L.t("설정 메뉴를 목록 대신 Windows Phone 시작 화면처럼 라이브 타일로 보여 줍니다.",
+                            "Shows the settings menus as live tiles, like the Windows Phone Start screen, instead of a list."),
+                    Prefs.METRO_TILES, prefs.metroTiles());
+            LinearLayout.LayoutParams tlp = matchWrap();
+            tlp.topMargin = Ui.dp(this, SettingsWidgets.METRO_TOGGLE_GAP_DP - 9);   // 위 설명과 항목 사이만큼 띄운다
+            box.addView(tilesToggle, tlp);
+        }
     }
 
     /**

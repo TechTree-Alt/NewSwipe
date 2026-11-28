@@ -603,6 +603,9 @@ final class DropdownMenu {
             if (!on) return;
             Rect b = getBounds();
             float s = b.width();
+            // Metro: Windows Phone의 체크 표시처럼 끝을 자르고 꺾인 곳을 뾰족하게.
+            p.setStrokeCap(Metro.on ? Paint.Cap.BUTT : Paint.Cap.ROUND);
+            p.setStrokeJoin(Metro.on ? Paint.Join.MITER : Paint.Join.ROUND);
             path.reset();
             path.moveTo(b.left + s * 0.2f, b.top + s * 0.52f);
             path.lineTo(b.left + s * 0.42f, b.top + s * 0.73f);
