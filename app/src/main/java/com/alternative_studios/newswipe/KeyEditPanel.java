@@ -691,8 +691,18 @@ final class KeyEditPanel {
         if (stored != LP_NONE) pendingAction.remove(pendingKey);
         String[] names = longPressModes();
         String defaultAction = spec.defaultAction(slot, dir);
+        // 고르면 바로 저장하되, 창은 목록이 다 접힌 뒤에 다시 그린다 (바로 다시 그리면 목록이 붙은 줄이 사라져 닫히는 움직임 없이 없어진다).
+        // [0] 골랐다, [1] 목록이 닫혔다 (움직임 없이 먼저 닫히는 경우에는 고른 뒤 바로 다시 그린다).
+        boolean[] state = new boolean[2];
         card.addView(widgets.dropdownRow(label, names[mode], v -> DropdownMenu.of(v, names, mode)
-                .defaultIndex(longPressMode(defaultAction)).show(i -> {
+                .defaultIndex(longPressMode(defaultAction))
+                .onDismiss(() -> {
+                    state[1] = true;
+                    if (state[0]) done.run();
+                })
+                .show(i -> {
+                    state[0] = true;
+                    if (state[1]) card.post(done);
                     pendingAction.remove(pendingKey);
                     switch (i) {
                         case LP_ACTION:
@@ -715,7 +725,6 @@ final class KeyEditPanel {
                             spec.set(prefs, slot, dir, SwipeAction.NONE);
                             break;
                     }
-                    done.run();
                 })).view);
         switch (mode) {
             case LP_ACTION: {
