@@ -306,6 +306,7 @@ public final class MetroTiles extends ViewGroup {
         private final int size, icon;
         private final String title, backContent;
         private final Paint iconPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint bgPaint = new Paint();
         private final TextPaint textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
         private boolean back;
         ValueAnimator flip;
@@ -377,7 +378,10 @@ public final class MetroTiles extends ViewGroup {
         @Override
         protected void onDraw(Canvas c) {
             int w = getWidth(), h = getHeight();
-            c.drawColor(Metro.accent);
+            // 바탕은 자기 영역에만 칠한다. drawColor는 캔버스의 클립 전체를 칠하는데, 판과 타일은 틸트·턴스타일로 튀어나온
+            // 가장자리를 자르지 않으려 자식을 자르지 않으므로(setClipChildren(false)) 클립이 목록 전체라 다른 타일까지 덮는다.
+            bgPaint.setColor(Metro.accent);
+            c.drawRect(0, 0, w, h, bgPaint);
             int ink = Metro.onAccent;
             float s = scale();
             float left = TEXT_LEFT_WP * s, font = FONT_WP * s;
