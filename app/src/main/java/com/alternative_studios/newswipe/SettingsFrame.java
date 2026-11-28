@@ -286,6 +286,10 @@ final class SettingsFrame {
      */
     private static void collectFeather(View v, java.util.List<View> out) {
         if (v.getVisibility() != View.VISIBLE) return;
+        if (v instanceof com.alternative_studios.newswipe.ui.MetroTiles) {   // 타일 판: 타일마다 놓인 자리 차례로
+            ((com.alternative_studios.newswipe.ui.MetroTiles) v).featherOrder(out);
+            return;
+        }
         boolean container = v instanceof android.widget.ScrollView
                 || (v instanceof LinearLayout && ((LinearLayout) v).getOrientation() == LinearLayout.VERTICAL && !v.isClickable())
                 || (v.getClass() == android.widget.FrameLayout.class && !v.isClickable());
@@ -306,6 +310,12 @@ final class SettingsFrame {
         if (frame == null || frame.page == null) return false;
         frame.page.back(() -> Metro.finishQuietly(activity));
         return true;
+    }
+
+    /** Metro: 다음 화면 전환에서 v(누른 타일)가 맨 마지막에 돌아 나가게 한다 (Metro가 아니면 아무것도 하지 않는다). */
+    static void metroLastOut(Activity activity, View v) {
+        SettingsFrame frame = frameOf(activity);
+        if (frame != null && frame.page != null) frame.page.setLastOut(v);
     }
 
     /**
