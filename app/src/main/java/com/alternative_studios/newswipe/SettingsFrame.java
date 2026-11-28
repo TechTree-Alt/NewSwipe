@@ -212,13 +212,18 @@ final class SettingsFrame {
             // 때까지(수백 ms) 보이지 않다가 늦게 나타난다 (다른 화면에서 돌아올 때 특히 눈에 띈다).
             if (bottom != null) items.add(bottom);
             // 위에 띄운 설정 창이 열려 있으면 그 항목들도 함께 돈다 (창은 누르기를 막으려 clickable이라 통째로 돌지 않게 속을 모은다).
+            int before = items.size();
             collectOverlayFeather(fullHost, items);
             collectOverlayFeather(overlayHost, items);
+            boolean sheetOpen = items.size() > before;
             if (header != null) collectFeather(header, items);
             if (searchBar != null) collectFeather(searchBar, items);
             if (testBar != null) collectFeather(testBar, items);
             collectFeather(content, items);
             dropCovered(items);
+            // 설정 창이 열려 있으면 창이 머리글·목록을 덮어 보이는 항목이 창 안의 줄뿐이다. 그때는 미리보기를 맨 뒤로 보내 창의
+            // 제목 → 내용 → 미리보기 차례로 든다 (나갈 때와 같은 차례).
+            if (sheetOpen && bottom != null && items.remove(bottom)) items.add(bottom);
             return items;
         });
         if (bottom != null) page.setBottom(bottom);   // 나갈 때는 위 항목부터, 미리보기는 맨 마지막에
