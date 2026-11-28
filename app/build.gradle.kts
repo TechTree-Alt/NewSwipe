@@ -17,8 +17,8 @@ android {
         applicationId = "com.alternative_studios.newswipe"
         minSdk = 28
         targetSdk = 36
-        versionCode = 27
-        versionName = "2.5.0"
+        versionCode = 28
+        versionName = "2.5.1"
     }
 
     signingConfigs {
