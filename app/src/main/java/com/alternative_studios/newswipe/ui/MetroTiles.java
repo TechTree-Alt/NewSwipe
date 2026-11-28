@@ -5,7 +5,9 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.Bitmap;
 import android.graphics.Paint;
+import android.graphics.RectF;
 import android.text.TextPaint;
 import android.view.View;
 import android.view.ViewGroup;
@@ -32,7 +34,12 @@ import com.alternative_studios.newswipe.keyboard.Icons;
  * <ul>
  *   <li>강조색 네모, 모서리·그림자 없음. 글자와 아이콘은 흰색 (WP8 강조색이 아닌 아주 밝은 색만 {@link Metro#onAccent}의 짙은 색).</li>
  *   <li>앞면: 가운데 흰 단색 아이콘, 왼쪽 아래에 첫 글자가 대문자인 제목 (중간 19자·넓은 39자쯤, 넘치면 말줄임 없이 타일 끝에서
- *       잘린다). 작은 타일은 제목도 뒷면도 없다 (작은 타일의 Title·BackTitle·BackContent는 NA).</li>
+ *       잘린다). 작은 타일은 제목도 뒷면도 없다 (작은 타일의 Title·BackTitle·BackContent는 NA).
+ *       아이콘은 Iconic 템플릿처럼 그림의 실제 높이로 맞춘다: 공식 Mail 타일(중간)의 그림은 타일의 세로 29%·가로 38%이고, 지침의
+ *       "best fit"은 336px 타일에 130px(39%)까지다. 작은 타일의 그림은 타일의 44~49% (공식 IE·음악 타일).</li>
+ *   <li>Iconic 템플릿의 숫자 ({@link Tile#setCount}): 그림 오른쪽에 그림과 세로 가운데를 맞춰 놓고, 그림과 숫자를 한 덩어리로
+ *       가로 가운데에 둔다 (공식 도식: 숫자 높이는 중간 타일의 21%·작은 타일의 18%, 그림과의 간격은 7%·11%).</li>
+ *   <li>사진 타일 ({@link Tile#setArt}): 앞면 전체를 그림으로 채우고 제목은 그 위에 그림에 맞는 색으로 쓴다 (People·사진 타일처럼).</li>
  *   <li>뒷면: 위쪽에 BackContent (중간은 13자씩 3줄, 넓은 타일은 27자씩 3줄쯤, 글은 저절로 줄바꿈되지 않으므로 직접 끊는다),
  *       왼쪽 아래에 BackTitle.</li>
  *   <li>타일은 정해지지 않은 간격으로 앞뒤가 뒤집힌다 (가로축을 중심으로 돈다). 한 번에 한 타일만, 화면이 보이는 동안만,
@@ -46,10 +53,17 @@ public final class MetroTiles extends ViewGroup {
 
     /** 480px 폭 화면 기준의 중간 타일 한 변과 타일 사이 간격 (px). */
     private static final float MEDIUM_WP = 210f, GAP_WP = 12f;
-    /** 타일 안의 글: 왼쪽 여백 12px, 제목의 아래 여백 6px, 글자 PhoneFontSizeNormal 20px (중간 타일 210px 기준, 타일 크기에 비례). */
-    private static final float TEXT_LEFT_WP = 12f, TITLE_BOTTOM_WP = 6f, BACK_TOP_WP = 6f, FONT_WP = 20f;
-    /** Segoe WP의 줄 높이·ascent (em). */
-    private static final float LINE_EM = 1.33f, ASCENT_EM = 1.0791f;
+    /**
+     * 타일 안의 글: 왼쪽 여백 12px, 제목의 아래 여백 6px (중간 타일 210px 기준, 타일 크기에 비례). 글자 크기는 공식 도식에서 잰 값:
+     * 제목의 대문자 높이가 타일의 5.2~6.0% (Mail·Contoso)라 17px, 뒷면 글은 대문자 높이 7.8%·줄 간격 11%라 23px에 줄 간격 1.05em.
+     */
+    private static final float TEXT_LEFT_WP = 12f, TITLE_BOTTOM_WP = 6f, BACK_TOP_WP = 6f, TITLE_FONT_WP = 17f, BACK_FONT_WP = 23f;
+    /** 제목 줄의 높이·ascent (em), 뒷면 글의 줄 간격 (em). */
+    private static final float LINE_EM = 1.33f, ASCENT_EM = 1.0791f, BACK_LINE_EM = 1.05f;
+    /** 숫자의 높이 (em, Roboto의 숫자·대문자 높이). */
+    private static final float DIGIT_EM = 0.711f;
+    /** 타일 아이콘의 선 굵기 (24칸 기준). 그림을 줄인 만큼 선이 가늘어 보이지 않게 기본(1.9)보다 조금 굵다: 공식 Mail 그림의 선은 그림 높이의 12%. */
+    private static final float ICON_STROKE = 2.2f;
 
     private final int gap;
     private final float mediumTarget;
@@ -318,6 +332,30 @@ public final class MetroTiles extends ViewGroup {
             face.flip();
         }
 
+        /** Iconic 템플릿의 숫자 (그림 오른쪽). 0 이하면 숫자 없이 그림만 가운데. 99를 넘으면 99. */
+        public void setCount(int count) {
+            int n = Math.max(0, Math.min(99, count));
+            if (face.count == n) return;
+            face.count = n;
+            face.invalidate();
+        }
+
+        /** 뒷면 글을 바꾼다. */
+        public void setBackContent(String text) {
+            String t = text == null ? "" : text;
+            if (t.equals(face.backContent)) return;
+            face.backContent = t;
+            face.linesWidth = -1;
+            face.invalidate();
+        }
+
+        /** 앞면을 그림으로 채운다 (사진 타일). ink는 그림 위에 쓰는 제목 색. null이면 다시 아이콘. */
+        public void setArt(Art art, int ink) {
+            face.art = art;
+            face.artInk = ink;
+            face.invalidate();
+        }
+
         @Override
         public CharSequence getAccessibilityClassName() {
             return android.widget.Button.class.getName();
@@ -332,13 +370,106 @@ public final class MetroTiles extends ViewGroup {
     private static final Interpolator FLIP_IN = new PathInterpolator(0.55f, 0f, 1f, 0.45f),
             FLIP_OUT = new PathInterpolator(0f, 0.55f, 0.45f, 1f);
 
+    /** 아이콘마다 그림이 실제로 차지하는 영역 (24칸 기준). 한 번 그려 보고 잰다. */
+    private static final android.util.SparseArray<RectF> GLYPHS = new android.util.SparseArray<>();
+
+    static RectF glyph(int icon) {
+        RectF r = GLYPHS.get(icon);
+        if (r != null) return r;
+        final int n = 96;
+        Bitmap b = Bitmap.createBitmap(n, n, Bitmap.Config.ARGB_8888);
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        p.setColor(0xFFFFFFFF);
+        Icons.draw(new Canvas(b), icon, n / 2f, n / 2f, n, p, ICON_STROKE);
+        int[] px = new int[n * n];
+        b.getPixels(px, 0, n, 0, 0, n, n);
+        b.recycle();
+        int l = n, t = n, rr = -1, bb = -1;
+        for (int y = 0; y < n; y++) {
+            for (int x = 0; x < n; x++) {
+                if ((px[y * n + x] >>> 24) < 64) continue;
+                if (x < l) l = x;
+                if (x > rr) rr = x;
+                if (y < t) t = y;
+                if (y > bb) bb = y;
+            }
+        }
+        float k = 24f / n;
+        r = rr < 0 ? new RectF(2, 2, 22, 22) : new RectF(l * k, t * k, (rr + 1) * k, (bb + 1) * k);
+        GLYPHS.put(icon, r);
+        return r;
+    }
+
+    /** 사진 타일의 앞면 그림. */
+    public interface Art {
+        void draw(Canvas c, int w, int h);
+    }
+
+    /**
+     * 키보드를 작게 그린 그림 (키보드 테마의 색): 네 줄의 키, 맨 아래 줄은 기능키·스페이스바·강조색 엔터. 제목이 들어갈 아래쪽은
+     * 비워 둔다. 그림은 파일 없이 그때그때 그린다.
+     */
+    public static final class KeyboardArt implements Art {
+        private final int background, key, functionKey, accent;
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+        public KeyboardArt(int background, int key, int functionKey, int accent) {
+            this.background = background;
+            this.key = key;
+            this.functionKey = functionKey;
+            this.accent = accent;
+        }
+
+        @Override
+        public void draw(Canvas c, int w, int h) {
+            paint.setColor(background);
+            c.drawRect(0, 0, w, h, paint);
+            float pad = 0.045f * h, gap = 0.03f * h, top = pad, bottom = 0.74f * h;
+            float rowH = (bottom - top - 3 * gap) / 4f, left = pad, width = w - 2 * pad;
+            float unit = (width - 9 * gap) / 10f;
+            // 1·2줄: 글자 키 10개, 9개 (둘째 줄은 반 칸 들여 놓는다).
+            for (int i = 0; i < 10; i++) key(c, left + i * (unit + gap), top, unit, rowH, key);
+            float y = top + rowH + gap;
+            for (int i = 0; i < 9; i++) key(c, left + (unit + gap) / 2f + i * (unit + gap), y, unit, rowH, key);
+            // 3줄: Shift, 글자 키 7개, 지우기.
+            y += rowH + gap;
+            float side = (width - 7 * unit - 8 * gap) / 2f;
+            key(c, left, y, side, rowH, functionKey);
+            for (int i = 0; i < 7; i++) key(c, left + side + gap + i * (unit + gap), y, unit, rowH, key);
+            key(c, left + width - side, y, side, rowH, functionKey);
+            // 4줄: 기호, 지구본, 스페이스바, 마침표, 엔터.
+            y += rowH + gap;
+            float wide = unit * 1.5f + gap / 2f, x = left;
+            key(c, x, y, wide, rowH, functionKey);
+            x += wide + gap;
+            key(c, x, y, unit, rowH, functionKey);
+            x += unit + gap;
+            float space = width - 2 * wide - 2 * unit - 4 * gap;
+            key(c, x, y, space, rowH, key);
+            x += space + gap;
+            key(c, x, y, unit, rowH, functionKey);
+            x += unit + gap;
+            key(c, x, y, wide, rowH, accent);
+        }
+
+        private void key(Canvas c, float x, float y, float w, float h, int color) {
+            paint.setColor(color);
+            c.drawRect(x, y, x + w, y + h, paint);
+        }
+    }
+
     /** 타일의 앞면·뒷면을 그리는 면. */
     private static final class Face extends View {
         private final int size, icon;
-        private final String title, backContent;
+        private final String title;
+        String backContent;
+        int count;
+        Art art;
+        int artInk;
         private final Paint iconPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint bgPaint = new Paint();
         private final TextPaint textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint countPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         /** 지금 그리는 면 (뒤집기의 반쯤에서 바뀐다). */
         private boolean back;
         /** 넘어갈(또는 이미 보이는) 면: 뒤집기를 시작할 때 바뀐다. */
@@ -346,7 +477,7 @@ public final class MetroTiles extends ViewGroup {
         ValueAnimator flip;
         /** 뒷면 글을 끊어 둔 줄 (폭이 바뀌면 다시 끊는다). */
         private String[] backLines;
-        private int linesWidth = -1;
+        int linesWidth = -1;
 
         Face(Context c, int size, int icon, String title, String backContent) {
             super(c);
@@ -355,6 +486,7 @@ public final class MetroTiles extends ViewGroup {
             this.title = title == null ? "" : title;
             this.backContent = backContent == null ? "" : backContent;
             textPaint.setTypeface(Metro.regular());
+            countPaint.setTypeface(Metro.regular());
             setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
         }
 
@@ -428,17 +560,29 @@ public final class MetroTiles extends ViewGroup {
         @Override
         protected void onDraw(Canvas c) {
             int w = getWidth(), h = getHeight();
+            float s = scale();
+            float left = TEXT_LEFT_WP * s, title = TITLE_FONT_WP * s;
+            if (art != null && !back) {
+                // 사진 타일의 앞면: 그림이 타일을 채우고 제목은 그 위에.
+                c.save();
+                c.clipRect(0, 0, w, h);
+                art.draw(c, w, h);
+                textPaint.setColor(artInk);
+                textPaint.setTextSize(title);
+                if (size != SMALL) drawTitle(c, h, s, left, title);
+                c.restore();
+                return;
+            }
             // 바탕은 자기 영역에만 칠한다. drawColor는 캔버스의 클립 전체를 칠하는데, 판과 타일은 틸트·턴스타일로 튀어나온
             // 가장자리를 자르지 않으려 자식을 자르지 않으므로(setClipChildren(false)) 클립이 목록 전체라 다른 타일까지 덮는다.
             bgPaint.setColor(Metro.accent);
             c.drawRect(0, 0, w, h, bgPaint);
             int ink = ink(Metro.accent);
-            float s = scale();
-            float left = TEXT_LEFT_WP * s, font = FONT_WP * s;
             textPaint.setColor(ink);
-            textPaint.setTextSize(font);
             if (back && hasBack()) {
                 // 뒷면: 위쪽에 BackContent 세 줄, 왼쪽 아래에 BackTitle.
+                float font = BACK_FONT_WP * s;
+                textPaint.setTextSize(font);
                 if (linesWidth != w) {
                     linesWidth = w;
                     backLines = wrap(backContent, w - 2 * left, 3);
@@ -449,21 +593,35 @@ public final class MetroTiles extends ViewGroup {
                 float y = BACK_TOP_WP * s + ASCENT_EM * font;
                 for (String line : backLines) {
                     c.drawText(line, left, y, textPaint);
-                    y += LINE_EM * font;
+                    y += BACK_LINE_EM * font;
                 }
-                drawTitle(c, h, s, left, font);
+                textPaint.setTextSize(title);
+                drawTitle(c, h, s, left, title);
                 c.restore();
                 return;
             }
-            // 앞면: 가운데에 흰 단색 아이콘. WP8 Iconic 템플릿처럼 그림이 중간 타일 높이의 40%쯤(작은 타일은 절반쯤)을 차지한다
-            // (이 앱의 아이콘은 24칸 안에 2칸씩 여백을 두고 그려져, 크기의 약 83%가 그림이다). 넓은 타일도 중간 타일과 같은 크기.
+            // 앞면: 흰 단색 아이콘을 그림의 실제 높이로 맞춰 가운데에 (넓은 타일도 중간 타일과 같은 크기). 숫자가 있으면 그림 오른쪽에.
+            boolean small = size == SMALL;
+            RectF g = glyph(icon);
+            float u = Math.min((small ? 0.44f : 0.30f) * h / g.height(), (small ? 0.58f : 0.40f) * h / g.width());
+            float glyphW = g.width() * u, cy = h / 2f, cx = w / 2f;
+            if (count > 0) {
+                String n = String.valueOf(count);
+                float digitH = (small ? 0.18f : 0.21f) * h;
+                countPaint.setColor(ink);
+                countPaint.setTextSize(digitH / DIGIT_EM);
+                float gap = (small ? 0.11f : 0.074f) * h, numW = countPaint.measureText(n);
+                float x0 = (w - (glyphW + gap + numW)) / 2f;
+                cx = x0 + glyphW / 2f;
+                c.drawText(n, x0 + glyphW + gap, cy + digitH / 2f, countPaint);
+            }
             iconPaint.setColor(ink);
-            float iconSize = size == SMALL ? h * 0.6f : h * 0.5f;
-            Icons.draw(c, icon, w / 2f, h / 2f, iconSize, iconPaint);
-            if (size != SMALL) {
+            Icons.draw(c, icon, cx - (g.centerX() - 12f) * u, cy - (g.centerY() - 12f) * u, 24f * u, iconPaint, ICON_STROKE);
+            if (!small) {
+                textPaint.setTextSize(title);
                 c.save();
                 c.clipRect(0, 0, w, h);
-                drawTitle(c, h, s, left, font);
+                drawTitle(c, h, s, left, title);
                 c.restore();
             }
         }
