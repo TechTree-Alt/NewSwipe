@@ -922,10 +922,20 @@ public final class KeyboardView extends View {
 
     /** ⌫(위·왼쪽)와 스페이스바(위쪽)의 터치 인식 범위에서 뺄 비율 (0이면 그대로). 키 모양은 바꾸지 않는다. */
     private float deleteShrink, spaceShrink;
+    /** 그 밖의 하단 기능키(BottomKeys ID)마다 위쪽 터치 인식 범위에서 뺄 비율. 없는 키는 그대로. */
+    private java.util.Map<String, Float> bottomShrink = java.util.Collections.emptyMap();
 
-    public void setHitShrink(float deleteFraction, float spaceFraction) {
+    public void setHitShrink(float deleteFraction, float spaceFraction, java.util.Map<String, Float> bottomFractions) {
         deleteShrink = deleteFraction;
         spaceShrink = spaceFraction;
+        bottomShrink = bottomFractions;
+    }
+
+    private float bottomShrinkOf(Key k) {
+        if (bottomShrink.isEmpty()) return 0f;
+        String id = BottomKeys.idOf(k);
+        Float f = id == null ? null : bottomShrink.get(id);
+        return f == null ? 0f : f;
     }
 
     private Key keyAt(float x, float y) {
@@ -942,9 +952,11 @@ public final class KeyboardView extends View {
         }
         Key k = keyInRow(layout.rows[ri], x);
         if (k == null) return null;
-        // 좁힌 범위 밖(⌫의 위·왼쪽·아래 끝, 스페이스바의 위쪽 끝)을 누르면 그쪽 이웃 키(윗줄·왼쪽·아랫줄 키)를
-        // 누른 것으로 본다. ㅣ·ㅡ 등을 누르려다 ⌫가, 윗줄 글자를 누르려다 스페이스바가 눌리는 일을 줄인다.
-        float shrink = k.type == Key.DELETE ? deleteShrink : k.type == Key.SPACE ? spaceShrink : 0f;
+        // 좁힌 범위 밖(⌫의 위·왼쪽·아래 끝, 스페이스바·하단 기능키의 위쪽 끝)을 누르면 그쪽 이웃 키(윗줄·왼쪽·아랫줄 키)를
+        // 누른 것으로 본다. ㅣ·ㅡ 등을 누르려다 ⌫가, 윗줄 글자를 누르려다 스페이스바·하단 기능키가 눌리는 일을 줄인다.
+        // 하단 기능키 설정은 맨 아래 줄에 있을 때만 쓴다 (쉼표·온점이 다른 줄에 있는 자판도 있다).
+        float shrink = k.type == Key.DELETE ? deleteShrink : k.type == Key.SPACE ? spaceShrink
+                : ri == layout.rows.length - 1 ? bottomShrinkOf(k) : 0f;
         if (shrink <= 0f) return k;
         boolean delete = k.type == Key.DELETE;
         float bandY = k.rect.height() * shrink, bandX = k.rect.width() * shrink;
