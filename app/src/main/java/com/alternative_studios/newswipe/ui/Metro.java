@@ -32,10 +32,10 @@ import com.alternative_studios.newswipe.R;
  * <p>크기: WP8 화면은 480px 폭이고 Android 폰은 대개 360dp 폭이라, SDK의 px 값에 0.75를 곱해 dp(글자는 sp)로 쓴다 ({@link #px}).
  *
  * <p>움직임의 값은 Microsoft가 공개한 소스에서 옮겼다. 턴스타일·깃털·틸트·스위블은 Windows Phone Toolkit(Ms-PL):
- * Turnstile*.xaml·Effects/TurnstileFeatherEffect.cs (각도: 들어올 때 -80°→0°, 나갈 때 0°→50°, 뒤로 갈 때 0°→-80°, 돌아올 때
- * 50°→0°), Effects/TiltEffect.cs (최대 0.3 rad, 가운데를 누르면 25px 들어감, 떼고 200ms 뒤 100ms 동안 로그 곡선으로 돌아옴),
- * Swivel*.xaml. 턴스타일의 시간·곡선·축은 WP8.1용 WinJS(MIT)의 src/js/WinJS/Animations.js (turnstileForwardIn 등: 들어오기 300ms,
- * 나가기 128ms, 항목마다 50ms씩 늦게, 축은 화면 왼쪽 끝에서 40px 바깥).
+ * Turnstile*.xaml·Effects/TurnstileFeatherEffect.cs (각도: 들어올 때 -80°→0° ExponentialEase EaseOut 6, 나갈 때 0°→50° EaseIn 6,
+ * 뒤로 갈 때 0°→-80°, 돌아올 때 50°→0°, 축은 요소 폭 20% 왼쪽 바깥), Effects/TiltEffect.cs
+ * (최대 0.3 rad, 가운데를 누르면 25px 들어감, 떼고 200ms 뒤 100ms 동안 로그 곡선으로 돌아옴), Swivel*.xaml. 턴스타일의 시간·곡선은
+ * WP8.1용 WinJS(MIT)의 src/js/WinJS/Animations.js (turnstileForwardIn 등: 들어오기 300ms, 나가기 128ms, 항목마다 50ms씩 늦게).
  * 피벗은 WP8.1의 Windows.UI.Xaml.Phone을 이어받은 microsoft-ui-xaml(MIT)의 dxaml/phone/lib/Pivot_Partial.cpp.
  * 원본의 PlaneProjection 회전은 Android의 rotationX·rotationY와 부호가 반대라 각도의 부호를 뒤집어 쓴다 ({@link #FORWARD_IN}).
  *
@@ -245,12 +245,8 @@ public final class Metro {
      */
     public static void perspective(View v) {
         android.util.DisplayMetrics m = v.getResources().getDisplayMetrics();
-        perspective(v, Math.max(m.widthPixels, 1) * 2.2f);
-    }
-
-    /** 카메라를 화면 px 거리 px에 둔다 ({@link #perspective(View)}의 환산). */
-    private static void perspective(View v, float px) {
-        v.setCameraDistance(px * v.getResources().getDisplayMetrics().densityDpi / 72f);
+        float px = Math.max(m.widthPixels, 1) * 2.2f;
+        v.setCameraDistance(px * m.densityDpi / 72f);
     }
 
     // ---------------------------------------------------------------- 틸트
@@ -393,10 +389,7 @@ public final class Metro {
      *             (불투명도 곡선 cubic-bezier(1, -0.42, 0.995, -0.425)는 끝까지 1에 머물다 0이 된다)
      *   깃털      항목 k가 50k ms 늦게 시작한다 (staggerDelay(0, 50, 1, 1000): 1000ms가 한도). 나갈 때는 모든 항목이 끝까지
      *             돌아 나간 뒤 다음 화면을 연다
-     *   축        화면 왼쪽 끝에서 40px 바깥의 세로선, 원근의 중심은 화면 높이의 가운데 (collectTurnstileTransformOrigins:
-     *             transform-origin이 요소 왼쪽에서 -(40 + left)px, 위에서 innerHeight / 2 - top). 그래서 모든 항목이 같은 축을
-     *             중심으로 돌고, 위·아래 항목은 화면 가운데에서 바라본 것처럼 기운다. 40px는 WP8.1의 유효 픽셀이다 ({@link #epx})
-     *   원근      perspective(600px), 뒤로 나갈 때만 perspective(800px) (유효 픽셀, 360dp 폭에서 540dp·720dp)
+     *   축        Toolkit의 PlaneProjection.CenterOfRotationX -0.2 (요소 폭의 20% 왼쪽 바깥). WinJS는 화면 왼쪽 끝에서 40px 바깥
      *
      * 각도의 부호: Silverlight·WinRT의 PlaneProjection은 Android View와 회전 방향이 반대다. Toolkit의 TiltEffect는 오른쪽을 누르면
      * RotationY를 음수로, 아래쪽을 누르면 RotationX를 양수로 두어 누른 쪽을 들어가게 하는데, Android는 rotationY가 양수일 때
@@ -414,10 +407,8 @@ public final class Metro {
     /** 들어오기·나가기의 회전 곡선 (WinJS turnstile*In·*Out의 cubic-bezier). */
     private static final Interpolator TURN_IN = new android.view.animation.PathInterpolator(0.01f, 0.975f, 0.4775f, 0.9775f),
             TURN_OUT = new android.view.animation.PathInterpolator(0.4925f, 0.01f, 0.7675f, -0.01f);
-    /** 회전축: 화면(창) 왼쪽 끝에서 바깥으로 40 유효 픽셀. */
-    private static final float AXIS_OUTSIDE = 40f;
-    /** 원근 거리 (유효 픽셀): 보통 600, 뒤로 나갈 때(turnstileBackwardOut) 800. */
-    private static final float DEPTH = 600f, DEPTH_BACKWARD_OUT = 800f;
+    /** 회전축: CenterOfRotationX -0.2 (요소 폭의 비율). */
+    private static final float AXIS_X = -0.2f;
 
     /** 깃털 차례 k의 늦춤 (ms). */
     private static long featherDelay(int k) {
@@ -425,7 +416,7 @@ public final class Metro {
     }
 
     /**
-     * v를 턴스타일로 from°에서 to°로 돌린다. 축은 창 왼쪽 끝에서 40 유효 픽셀 바깥, 원근의 중심은 창 높이의 가운데다. 들어올 때(out = false)는 시작할 때까지 보이지 않다가
+     * v를 턴스타일로 from°에서 to°로 돌린다. 축은 v의 왼쪽 바깥(폭의 20%)이다. 들어올 때(out = false)는 시작할 때까지 보이지 않다가
      * 나타나 빠르게 돌아 들어와 부드럽게 멈추고(EaseOut 6), 나갈 때는 천천히 시작해 빠르게 돌아 나간 뒤 사라진다(EaseIn 6, 끝나면
      * 불투명도 0).
      *
@@ -436,8 +427,9 @@ public final class Metro {
         if (old instanceof ValueAnimator) ((ValueAnimator) old).cancel();
         // 돌기 전의 가로 이동과 불투명도 (흐리게 막아 둔 줄은 0.38): 끝나면 이 값으로 되돌린다.
         final float baseTx = v.getTranslationX(), baseAlpha = v.getAlpha();
-        turnstileOrigin(v);
-        perspective(v, epx(v.getContext(), out && to == BACKWARD_OUT ? DEPTH_BACKWARD_OUT : DEPTH));
+        v.setPivotX(AXIS_X * v.getWidth());
+        v.setPivotY(v.getHeight() / 2f);
+        perspective(v);
         v.setRotationY(from);
         if (!out) v.setAlpha(0f);
         ValueAnimator a = ValueAnimator.ofFloat(0f, 1f);
@@ -473,18 +465,6 @@ public final class Metro {
         });
         a.start();
         return a;
-    }
-
-    /**
-     * 턴스타일의 축을 WinJS처럼 둔다 (collectTurnstileTransformOrigins): 가로는 창 왼쪽 끝에서 40 유효 픽셀 바깥, 세로는 창 높이의
-     * 가운데 (Android의 원근도 pivot을 중심으로 잡히므로 CSS의 transform-origin과 같다). 자리는 돌기 전의 창 안 위치로 잰다.
-     */
-    private static void turnstileOrigin(View v) {
-        int[] at = new int[2];
-        v.getLocationInWindow(at);
-        View root = v.getRootView();
-        v.setPivotX(-(epx(v.getContext(), AXIS_OUTSIDE) + at[0]));
-        v.setPivotY(root.getHeight() / 2f - at[1]);
     }
 
     /** 턴스타일로 돌던(또는 돌아 나가 숨은) v를 제자리로 되돌린다. baseTx·baseAlpha는 돌기 전의 가로 이동·불투명도. */
