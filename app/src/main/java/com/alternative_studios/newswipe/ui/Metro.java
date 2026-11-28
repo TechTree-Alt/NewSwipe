@@ -245,8 +245,12 @@ public final class Metro {
      */
     public static void perspective(View v) {
         android.util.DisplayMetrics m = v.getResources().getDisplayMetrics();
-        float px = Math.max(m.widthPixels, 1) * 2.2f;
-        v.setCameraDistance(px * m.densityDpi / 72f);
+        perspective(v, Math.max(m.widthPixels, 1) * 2.2f);
+    }
+
+    /** 카메라를 화면 px 거리 px에 둔다 ({@link #perspective(View)}의 환산). */
+    private static void perspective(View v, float px) {
+        v.setCameraDistance(px * v.getResources().getDisplayMetrics().densityDpi / 72f);
     }
 
     // ---------------------------------------------------------------- 틸트
@@ -392,6 +396,7 @@ public final class Metro {
      *   축        화면 왼쪽 끝에서 40px 바깥의 세로선, 원근의 중심은 화면 높이의 가운데 (collectTurnstileTransformOrigins:
      *             transform-origin이 요소 왼쪽에서 -(40 + left)px, 위에서 innerHeight / 2 - top). 그래서 모든 항목이 같은 축을
      *             중심으로 돌고, 위·아래 항목은 화면 가운데에서 바라본 것처럼 기운다. 40px는 WP8.1의 유효 픽셀이다 ({@link #epx})
+     *   원근      perspective(600px), 뒤로 나갈 때만 perspective(800px) (유효 픽셀, 360dp 폭에서 540dp·720dp)
      *
      * 각도의 부호: Silverlight·WinRT의 PlaneProjection은 Android View와 회전 방향이 반대다. Toolkit의 TiltEffect는 오른쪽을 누르면
      * RotationY를 음수로, 아래쪽을 누르면 RotationX를 양수로 두어 누른 쪽을 들어가게 하는데, Android는 rotationY가 양수일 때
@@ -411,6 +416,8 @@ public final class Metro {
             TURN_OUT = new android.view.animation.PathInterpolator(0.4925f, 0.01f, 0.7675f, -0.01f);
     /** 회전축: 화면(창) 왼쪽 끝에서 바깥으로 40 유효 픽셀. */
     private static final float AXIS_OUTSIDE = 40f;
+    /** 원근 거리 (유효 픽셀): 보통 600, 뒤로 나갈 때(turnstileBackwardOut) 800. */
+    private static final float DEPTH = 600f, DEPTH_BACKWARD_OUT = 800f;
 
     /** 깃털 차례 k의 늦춤 (ms). */
     private static long featherDelay(int k) {
@@ -430,7 +437,7 @@ public final class Metro {
         // 돌기 전의 가로 이동과 불투명도 (흐리게 막아 둔 줄은 0.38): 끝나면 이 값으로 되돌린다.
         final float baseTx = v.getTranslationX(), baseAlpha = v.getAlpha();
         turnstileOrigin(v);
-        perspective(v);
+        perspective(v, epx(v.getContext(), out && to == BACKWARD_OUT ? DEPTH_BACKWARD_OUT : DEPTH));
         v.setRotationY(from);
         if (!out) v.setAlpha(0f);
         ValueAnimator a = ValueAnimator.ofFloat(0f, 1f);

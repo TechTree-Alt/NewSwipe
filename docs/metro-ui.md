@@ -91,8 +91,10 @@ Windows Phone 7·8·8.1의 Metro UI처럼 바뀝니다. 이 문서는 무엇을 
   - WinRT XAML(`CommonNavigationTransitionInfo`, microsoft-ui-xaml의 `dxaml/phone/lib/ThemeTransitions.cpp`): 항목 64ms·33ms 간격에
     128ms가 되면 나가는 화면을 통째로 감추고, 들어오는 항목은 150ms → 0.13초 / 0.38초. 실기기보다 지나치게 빠릅니다
   - WinJS: 항목 128ms·50ms 간격 / 300ms·50ms 간격 → 0.58초 / 0.75초 (들어오는 항목은 처음 몇십 ms에 거의 자리를 잡습니다). 이것을 씁니다
-- 원근: 카메라를 화면 폭의 2.2배 거리에 둡니다. `View.setCameraDistance`는 72단위 인치를 쓰므로
-  px 거리 × densityDpi / 72를 넘깁니다.
+- 원근: 턴스타일은 WinJS처럼 perspective(600px), 뒤로 나갈 때만 800px (유효 픽셀 → 540dp·720dp). 틸트·스위블·대화상자는
+  카메라를 화면 폭의 2.2배 거리에 둡니다. `View.setCameraDistance`는 72단위 인치를 쓰므로 px 거리 × densityDpi / 72를 넘깁니다.
+- 불투명도: WinJS의 불투명도 곡선은 들어올 때 cubic-bezier(0, 2, 0, 2)(첫 프레임에 이미 1), 나갈 때 cubic-bezier(1, -0.42, 0.995,
+  -0.425)(끝까지 1이다가 128ms에 0)라, 시작하자마자 보이고 끝에 사라지는 것과 같습니다.
 
 ### 피벗 (가로로 밀어 한 메뉴의 섹션 사이 오가기)
 
