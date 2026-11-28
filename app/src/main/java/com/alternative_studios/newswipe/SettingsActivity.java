@@ -3347,7 +3347,8 @@ public final class SettingsActivity extends Activity {
                 // 도구 막대처럼 네 방향마다 밀 때 실행할 기능을 정한다 (기본은 모두 '커서 자유 이동').
                 KeyEditPanel gapPanel = new KeyEditPanel(this, edit, null);
                 c.addView(gapPanel.standalonePress(com.alternative_studios.newswipe.keyboard.GapSwipes.SPEC,
-                        com.alternative_studios.newswipe.keyboard.GapSwipes.pressSlot(edit.gapSlot()), L.t("가운데 공간", "Center gap")));
+                        com.alternative_studios.newswipe.keyboard.GapSwipes.pressSlot(edit.gapSlot()),
+                        com.alternative_studios.newswipe.keyboard.GapSwipes.LONG, L.t("가운데 공간", "Center gap")));
                 c.addView(gapPanel.standalonePad(
                         com.alternative_studios.newswipe.keyboard.GapSwipes.SPEC, edit.gapSlot(), L.t("가운데 공간", "Center gap")));
                 c.addView(note(L.t("'없음'으로 둔 방향으로는 밀어도 아무 일도 하지 않습니다. "

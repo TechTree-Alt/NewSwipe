@@ -139,7 +139,7 @@ public final class GapSwipes {
             return stored == null && legacyOff ? SwipeAction.NONE : stored;
         };
         String[][] t = SPEC.table(overrides);
-        return new GapSwipes(t[slot], t[pressSlot(slot)], LongSwipes.actions(prefs, SPEC, pressSlot(slot), LONG));
+        return new GapSwipes(t[slot], t[pressSlot(slot)], LONG_SWIPES.table(prefs)[pressSlot(slot)]);
     }
 
     public String action(int dir) {

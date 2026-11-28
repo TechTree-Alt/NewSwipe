@@ -606,9 +606,8 @@ final class KeyEditPanel {
             e.apply();
             if (lpSlot() >= 0) {
                 LongPressActions.SPEC.reset(prefs, lpSlot(), LongPressActions.DIR);
-                LongSwipes.reset(prefs, LongPressActions.SPEC, lpSlot(), LongPressActions.DIR);
+                LongPressActions.LONG_SWIPES.resetSlot(prefs, lpSlot());
             }
-            pendingAction.clear();
             if (fnSlot() >= 0) for (int dir : DIRS) FunctionSwipes.SPEC.reset(prefs, fnSlot(), dir);
             rebuild();
         });
@@ -687,50 +686,23 @@ final class KeyEditPanel {
         String pendingKey = spec.group + "/" + spec.slotName(slot) + "/" + dir;
         String action = spec.get(prefs, slot, dir);
         int stored = longPressMode(action);
-        int mode = stored == LP_NONE && pendingAction.contains(pendingKey) ? LP_ACTION : stored;
         if (stored != LP_NONE) pendingAction.remove(pendingKey);
-        String[] names = longPressModes();
-        String defaultAction = spec.defaultAction(slot, dir);
-        // 고르면 바로 저장하되, 창은 목록이 다 접힌 뒤에 다시 그린다 (바로 다시 그리면 목록이 붙은 줄이 사라져 닫히는 움직임 없이 없어진다).
-        // [0] 골랐다, [1] 목록이 닫혔다. 둘 다 되면 다시 그린다 (어느 쪽이 먼저 오든).
-        boolean[] state = new boolean[2];
-        Runnable redraw = () -> redrawAfterDropdown(card, done);
-        SettingsWidgets.ValueRow[] row = new SettingsWidgets.ValueRow[1];
-        row[0] = widgets.dropdownRow(label, names[mode], v -> DropdownMenu.of(v, names, mode)
-                .defaultIndex(longPressMode(defaultAction))
-                .onDismiss(() -> {
-                    state[1] = true;
-                    if (state[0]) redraw.run();
-                })
-                .show(i -> {
-                    // 줄의 값을 바로 바꿔 둔다: 목록이 접혀 줄로 돌아올 때 예전 값이 한 프레임 보이지 않게 (다시 그리기는 그다음).
-                    row[0].set(names[i]);
-                    state[0] = true;
-                    if (state[1]) redraw.run();
-                    pendingAction.remove(pendingKey);
-                    switch (i) {
-                        case LP_ACTION:
-                            if (stored == LP_ACTION) break;
-                            // 처음 기능이 정해진 키는 그 기능으로, 아니면 기능을 고를 때까지 '없음'인 채로 둔다.
-                            if (longPressMode(defaultAction) == LP_ACTION) {
-                                spec.set(prefs, slot, dir, defaultAction);
-                            } else {
-                                spec.set(prefs, slot, dir, SwipeAction.NONE);
-                                pendingAction.add(pendingKey);
-                            }
-                            break;
-                        case LP_SELECT:
-                            spec.set(prefs, slot, dir, SwipeAction.SPACE_SELECT);
-                            break;
-                        case LP_SWIPE:
-                            spec.set(prefs, slot, dir, SwipeAction.LONG_SWIPE);
-                            break;
-                        default:
-                            spec.set(prefs, slot, dir, SwipeAction.NONE);
-                            break;
-                    }
-                }));
-        card.addView(row[0].view);
+        int mode = pendingAction.contains(pendingKey) ? LP_ACTION : stored;
+        card.addView(longPressModeRow(label, mode, spec.defaultAction(slot, dir), done, i -> {
+            pendingAction.remove(pendingKey);
+            if (i == LP_ACTION) {   // 같은 방식을 다시 고르면 불리지 않으므로, 여기 오면 다른 방식에서 바꾼 것이다
+                // 처음 기능이 정해진 키는 그 기능으로, 아니면 기능을 고를 때까지 '없음'인 채로 둔다.
+                String def = spec.defaultAction(slot, dir);
+                if (longPressMode(def) == LP_ACTION) {
+                    spec.set(prefs, slot, dir, def);
+                } else {
+                    spec.set(prefs, slot, dir, SwipeAction.NONE);
+                    pendingAction.add(pendingKey);
+                }
+                return;
+            }
+            spec.set(prefs, slot, dir, i == LP_SELECT ? SwipeAction.SPACE_SELECT : i == LP_SWIPE ? SwipeAction.LONG_SWIPE : SwipeAction.NONE);
+        }));
         switch (mode) {
             case LP_ACTION: {
                 View pick = valueRow(L.t("실행할 기능", "Action"), SwipeAction.label(action),
@@ -747,25 +719,41 @@ final class KeyEditPanel {
                         "Long press until it vibrates, then without lifting, swipe left or right to select by character, or up and down to select by line.")
                         + (releaseNote == null ? "" : " " + releaseNote)));
                 break;
-            case LP_SWIPE: {
-                SwipeSpec swipes = LongSwipes.of(spec, dir);
-                String[] labels = new String[4];
-                boolean[] on = new boolean[4];
-                for (int d : DIRS) {
-                    String a = swipes.get(prefs, slot, d);
-                    on[d] = !SwipeAction.NONE.equals(a);
-                    labels[d] = SwipeAction.shortLabel(a);
-                }
-                card.addView(dpad(center, labels, on, d -> pickAction(swipes, slot, d, swipes.dialogTitle(slot, d), done)));
+            case LP_SWIPE:
+                card.addView(specPad(LongSwipes.of(spec, dir), slot, center, done));
                 card.addView(note(L.t("길게 눌러 진동이 오면, 손을 떼지 않고 밀었다가 떼면 그 방향에 정한 기능을 실행합니다. "
                         + "밀지 않고 떼거나 '없음'으로 둔 방향으로 밀면 아무것도 하지 않습니다.",
                         "Long press until it vibrates, then without lifting, swipe and let go to run the action set for that direction. "
                         + "Lifting without swiping, or swiping toward a direction set to 'None', does nothing.")));
                 break;
-            }
             default:
                 break;
         }
+    }
+
+    /**
+     * 길게 누르기 방식 드롭다운 줄. 고르면 줄의 값을 바로 바꾸고 onPick으로 저장한 뒤, 목록이 다 접히면 done으로 창을 다시 그린다.
+     * 고르자마자 다시 그리면 목록이 붙은 줄이 사라져 접히는 움직임 없이 없어지고, 줄의 값을 미리 바꿔 두지 않으면 접힌 뒤
+     * 다시 그리기 전까지 예전 값이 한 프레임 보인다.
+     */
+    private View longPressModeRow(String label, int mode, String defaultAction, Runnable done, java.util.function.IntConsumer onPick) {
+        String[] names = longPressModes();
+        // [0] 골랐다, [1] 목록이 닫혔다. 둘 다 되면 다시 그린다 (움직임 없이 먼저 닫히는 경우도 있어 어느 쪽이 먼저 오든).
+        boolean[] state = new boolean[2];
+        SettingsWidgets.ValueRow[] row = new SettingsWidgets.ValueRow[1];
+        row[0] = widgets.dropdownRow(label, names[mode], v -> DropdownMenu.of(v, names, mode)
+                .defaultIndex(longPressMode(defaultAction))
+                .onDismiss(() -> {
+                    state[1] = true;
+                    if (state[0]) redrawAfterDropdown(row[0].view, done);
+                })
+                .show(i -> {
+                    row[0].set(names[i]);
+                    onPick.accept(i);
+                    state[0] = true;
+                    if (state[1]) redrawAfterDropdown(row[0].view, done);
+                }));
+        return row[0].view;
     }
 
     /**
@@ -774,9 +762,9 @@ final class KeyEditPanel {
      * (root.removeAllViews) 떼어 내던 자식 목록이 비어 앱이 멈춘다. 그사이 창이 이미 다른 내용으로 바뀌었으면(줄이 화면에
      * 없으면) 다시 그리지 않는다. 고른 값은 그 전에 이미 저장되어 있다.
      */
-    private static void redrawAfterDropdown(View card, Runnable done) {
-        card.post(() -> {
-            if (card.isAttachedToWindow()) done.run();
+    private static void redrawAfterDropdown(View row, Runnable done) {
+        row.post(() -> {
+            if (row.isAttachedToWindow()) done.run();
         });
     }
 
@@ -896,22 +884,11 @@ final class KeyEditPanel {
     /** Fn 키: 누르기·길게 누르기·네 방향 밀기를 모두 직접 정한다. */
     private void buildFnKey() {
         LinearLayout press = section(L.t("누르기·길게 누르기", "Tap · Long press"));
-        for (int dir : FnKeyActions.SPEC.dirs(FnKeyActions.PRESS)) {
-            if (dir == FnKeyActions.LONG) {
-                longPressEditor(press, L.t("길게 누르면", "Long press"), FnKeyActions.SPEC, FnKeyActions.PRESS, dir, "Fn",
-                        L.t("밀지 않고 떼면 누르기 기능을 실행합니다.", "Lift without swiping to run the tap action."), this::rebuild);
-                continue;
-            }
-            String action = FnKeyActions.SPEC.get(prefs, FnKeyActions.PRESS, dir);
-            press.addView(valueRow(FnKeyActions.SPEC.dirLabel(FnKeyActions.PRESS, dir), SwipeAction.label(action),
-                    v -> pickAction(FnKeyActions.SPEC, FnKeyActions.PRESS, dir,
-                            FnKeyActions.SPEC.dialogTitle(FnKeyActions.PRESS, dir), this::rebuild)));
-        }
+        addPressRows(press, FnKeyActions.SPEC, FnKeyActions.PRESS, FnKeyActions.LONG, "Fn", this::rebuild);
         LinearLayout swipe = section(L.t("밀기", "Swipe"));
         swipe.addView(actionPad(FnKeyActions.SPEC, FnKeyActions.SWIPE, "Fn"));
         resetRow(L.t("Fn 키 설정", "Fn key settings"), () -> {
             prefs.resetSwipeActions(FnKeyActions.SPEC.group);
-            pendingAction.clear();
             rebuild();
         });
     }
@@ -932,9 +909,8 @@ final class KeyEditPanel {
             if (slot >= 0) {
                 for (int dir : DIRS) ToolbarSwipes.SPEC.reset(prefs, slot, dir);
                 ToolbarSwipes.LONG_PRESS.reset(prefs, slot, ToolbarSwipes.LONG);
-                LongSwipes.reset(prefs, ToolbarSwipes.LONG_PRESS, slot, ToolbarSwipes.LONG);
+                ToolbarSwipes.LONG_SWIPES.resetSlot(prefs, slot);
             }
-            pendingAction.clear();
             rebuild();
         });
     }
@@ -1112,7 +1088,10 @@ final class KeyEditPanel {
 
     /** 맨 아래 '기본값으로 되돌리기' (이 키·버튼의 값만). */
     private void resetRow(String name, Runnable onReset) {
-        root.addView(ResetDialog.button(a, name, onReset));
+        root.addView(ResetDialog.button(a, name, () -> {
+            pendingAction.clear();   // 되돌린 값을 그대로 보인다 (고르다 만 '기능 실행' 방식을 잊는다)
+            onReset.run();
+        }));
     }
 
     /**
@@ -1164,16 +1143,9 @@ final class KeyEditPanel {
 
     /** 기능 배치(spec)의 한 칸을 네 방향 판으로: 칸을 누르면 기능 목록에서 고른다. */
     private View actionPad(SwipeSpec spec, int slot, String center) {
-        String[] labels = new String[4];
-        boolean[] on = new boolean[4];
-        for (int dir : DIRS) {
-            String action = spec.get(prefs, slot, dir);
-            on[dir] = !SwipeAction.NONE.equals(action);
-            labels[dir] = SwipeAction.shortLabel(action);
-        }
         LinearLayout box = new LinearLayout(a);
         box.setOrientation(LinearLayout.VERTICAL);
-        box.addView(dpad(center, labels, on, dir -> pickAction(spec, slot, dir, spec.dialogTitle(slot, dir), this::rebuild)));
+        box.addView(specPad(spec, slot, center, this::rebuild));
         String hint = spec.cardHint(slot);
         if (hint != null && !hint.isEmpty() && spec != FunctionSwipes.SPEC) box.addView(note(hint));
         return box;
@@ -1188,42 +1160,52 @@ final class KeyEditPanel {
         Runnable[] redraw = new Runnable[1];
         redraw[0] = () -> {
             holder.removeAllViews();
-            String[] labels = new String[4];
-            boolean[] on = new boolean[4];
-            for (int dir : DIRS) {
-                String action = spec.get(prefs, slot, dir);
-                on[dir] = !SwipeAction.NONE.equals(action);
-                labels[dir] = SwipeAction.shortLabel(action);
-            }
-            holder.addView(dpad(center, labels, on,
-                    dir -> pickAction(spec, slot, dir, spec.dialogTitle(slot, dir), redraw[0])));
+            holder.addView(specPad(spec, slot, center, redraw[0]));
         };
         redraw[0].run();
         return holder;
     }
 
-    /** 키 편집 칸 밖(설정 화면)에서 쓰는 누르기·길게 누르기 줄들. 고르면 다시 그린다. */
-    View standalonePress(SwipeSpec spec, int slot, String center) {
+    /** 키 편집 칸 밖(설정 화면)에서 쓰는 누르기·길게 누르기 줄들 (addPressRows). 고르면 다시 그린다. */
+    View standalonePress(SwipeSpec spec, int slot, int longDir, String center) {
         LinearLayout holder = new LinearLayout(a);
         holder.setOrientation(LinearLayout.VERTICAL);
         Runnable[] redraw = new Runnable[1];
         redraw[0] = () -> {
             holder.removeAllViews();
-            int[] dirs = spec.dirs(slot);
-            for (int i = 0; i < dirs.length; i++) {
-                int dir = dirs[i];
-                if (i == 1) {   // 두 번째 자리가 길게 누르기다 (누르기·길게 누르기)
-                    longPressEditor(holder, L.t("길게 누르면", "Long press"), spec, slot, dir, center,
-                            L.t("밀지 않고 떼면 누르기 기능을 실행합니다.", "Lift without swiping to run the tap action."), redraw[0]);
-                    continue;
-                }
-                String action = spec.get(prefs, slot, dir);
-                holder.addView(valueRow(spec.dirLabel(slot, dir), SwipeAction.label(action),
-                        v -> pickAction(spec, slot, dir, spec.dialogTitle(slot, dir), redraw[0])));
-            }
+            addPressRows(holder, spec, slot, longDir, center, redraw[0]);
         };
         redraw[0].run();
         return holder;
+    }
+
+    /**
+     * 누르기·길게 누르기 칸(Fn 키·가운데 공간): 누르기는 기능을 고르는 줄, 길게 누르기(자리 longDir)는 방식 드롭다운과 그 설정.
+     * 길게 누른 뒤 밀지 않고 떼면 누르기 기능을 실행한다.
+     */
+    private void addPressRows(LinearLayout box, SwipeSpec spec, int slot, int longDir, String center, Runnable done) {
+        for (int dir : spec.dirs(slot)) {
+            if (dir == longDir) {
+                longPressEditor(box, L.t("길게 누르면", "Long press"), spec, slot, dir, center,
+                        L.t("밀지 않고 떼면 누르기 기능을 실행합니다.", "Lift without swiping to run the tap action."), done);
+                continue;
+            }
+            String action = spec.get(prefs, slot, dir);
+            box.addView(valueRow(spec.dirLabel(slot, dir), SwipeAction.label(action),
+                    v -> pickAction(spec, slot, dir, spec.dialogTitle(slot, dir), done)));
+        }
+    }
+
+    /** 기능 배치(spec)의 한 칸을 네 방향 판으로: 칸을 누르면 기능 목록에서 고르고 done으로 다시 그린다. */
+    private View specPad(SwipeSpec spec, int slot, String center, Runnable done) {
+        String[] labels = new String[4];
+        boolean[] on = new boolean[4];
+        for (int dir : DIRS) {
+            String action = spec.get(prefs, slot, dir);
+            on[dir] = !SwipeAction.NONE.equals(action);
+            labels[dir] = SwipeAction.shortLabel(action);
+        }
+        return dpad(center, labels, on, dir -> pickAction(spec, slot, dir, spec.dialogTitle(slot, dir), done));
     }
 
     private void pickAction(SwipeSpec spec, int slot, int dir, String title, Runnable done) {

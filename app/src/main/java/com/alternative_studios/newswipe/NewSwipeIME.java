@@ -1019,7 +1019,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
             @Override
             public void onLongDrag(float x, float y) {
-                moveToolbarSelect(x, y);
+                moveToolbarLongDrag(x, y);
             }
 
             @Override
@@ -1177,7 +1177,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
 
                     @Override
                     public void move(float x, float y) {
-                        moveToolbarSelect(x, y);
+                        moveToolbarLongDrag(x, y);
                     }
 
                     @Override
@@ -1242,60 +1242,61 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     /** 도구 막대 '길게 누른 뒤 밀어 기능 실행'의 칸마다 네 방향 기능 ([칸][Key.SWIPE_*]). */
     private String[][] toolLongSwipes = new String[0][];
 
-    /** '밀어서 선택'·'밀어 기능 실행'으로 도구 막대를 길게 누른 뒤 미는 중의 기준점. */
-    private float toolSelectX, toolSelectY;
-    /** 길게 누른 뒤 밀어 기능을 실행하는 중인 칸 (아니면 -1)과 지금 민 방향의 기능 (없으면 null). */
+    /** 도구 막대를 길게 누른 뒤 미는 중의 기준점 ('밀어서 선택'·'밀어 기능 실행'). */
+    private float toolLongX, toolLongY;
+    /** '밀어 기능 실행'으로 길게 누른 칸 (아니면 -1: 밀어서 선택이거나 미는 중이 아니다)과 지금 민 방향의 기능 (없으면 null). */
     private int toolLongSwipeSlot = -1;
     private String toolLongSwipeAction;
 
     /**
-     * 도구 막대 빈 공간이나 버튼을 길게 눌렀다: 정한 기능을 실행한다. '밀어서 선택'이면 스페이스바처럼 손을 떼지 않고 밀어
-     * 고르도록 true를 돌려준다 (밀지 않고 떼면 아무것도 하지 않는다).
+     * 도구 막대 빈 공간이나 버튼을 길게 눌렀다: 정한 기능을 실행한다. 밀어서 선택·밀어 기능 실행이면 손을 떼지 않고 밀도록
+     * true를 돌려준다 (그 뒤는 moveToolbarLongDrag·endToolbarLongDrag).
      */
     private boolean onToolbarLongPress(int slot, float x, float y) {
         if (panel != PANEL_KEYBOARD) return false;
         String action = toolbarLongPressAction(slot);
         if (SwipeAction.NONE.equals(action)) return false;
         feedback.onToolbar();
-        toolLongSwipeSlot = -1;
-        toolLongSwipeAction = null;
-        if (SwipeAction.SPACE_SELECT.equals(action) || SwipeAction.LONG_SWIPE.equals(action)) {
-            if (SwipeAction.SPACE_SELECT.equals(action)) onSelectStart();
-            else toolLongSwipeSlot = slot;
-            toolSelectX = x;
-            toolSelectY = y;
-            return true;
+        if (!SwipeAction.longPressMode(action)) {
+            onKeyFunction(null, action);
+            return false;
         }
-        onKeyFunction(null, action);
-        return false;
+        boolean swipe = SwipeAction.LONG_SWIPE.equals(action);
+        toolLongSwipeSlot = swipe ? slot : -1;
+        toolLongSwipeAction = null;
+        toolLongX = x;
+        toolLongY = y;
+        if (!swipe) onSelectStart();
+        return true;
     }
 
     /**
      * 도구 막대를 길게 누른 뒤 밀기. 밀어서 선택이면 스페이스바와 같은 거리로, 좌우는 글자·위아래는 줄 단위로 고른다.
      * 밀어 기능 실행이면 '기능키 미는 거리'를 넘게 민 방향의 기능을 골라 두고 손을 뗄 때 실행한다.
      */
-    private void moveToolbarSelect(float x, float y) {
+    private void moveToolbarLongDrag(float x, float y) {
+        float dx = x - toolLongX, dy = y - toolLongY;
         if (toolLongSwipeSlot >= 0) {
-            float dx = x - toolSelectX, dy = y - toolSelectY;
-            int dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? Key.SWIPE_RIGHT : Key.SWIPE_LEFT)
-                    : (dy > 0 ? Key.SWIPE_DOWN : Key.SWIPE_UP);
             String a = null;
-            if (Math.max(Math.abs(dx), Math.abs(dy)) > Ui.dp(this, prefs.fnSwipeThresholdDp()) && toolLongSwipeSlot < toolLongSwipes.length) {
+            if (Math.max(Math.abs(dx), Math.abs(dy)) > Ui.dp(this, prefs.fnSwipeThresholdDp())
+                    && toolLongSwipeSlot < toolLongSwipes.length) {
+                int dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? Key.SWIPE_RIGHT : Key.SWIPE_LEFT)
+                        : (dy > 0 ? Key.SWIPE_DOWN : Key.SWIPE_UP);
                 a = toolLongSwipes[toolLongSwipeSlot][dir];
             }
             toolLongSwipeAction = a == null || SwipeAction.NONE.equals(a) ? null : a;
             return;
         }
         float stepX = keyboard.cursorStepX(), stepY = keyboard.cursorStepY();
-        while (Math.abs(x - toolSelectX) >= stepX) {
-            int dir = x > toolSelectX ? 1 : -1;
+        while (Math.abs(x - toolLongX) >= stepX) {
+            int dir = x > toolLongX ? 1 : -1;
             onSelectMove(dir);
-            toolSelectX += dir * stepX;
+            toolLongX += dir * stepX;
         }
-        while (Math.abs(y - toolSelectY) >= stepY) {
-            int dir = y > toolSelectY ? 1 : -1;
+        while (Math.abs(y - toolLongY) >= stepY) {
+            int dir = y > toolLongY ? 1 : -1;
             onSelectMoveVertical(dir);
-            toolSelectY += dir * stepY;
+            toolLongY += dir * stepY;
         }
     }
 
@@ -1636,10 +1637,9 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         keyboard.setLongPressActions(com.alternative_studios.newswipe.keyboard.LongPressActions.actions(prefs));
         keyboard.setFunctionSwipes(FunctionSwipes.load(prefs));
         keyboard.setFnKeyActions(com.alternative_studios.newswipe.keyboard.FnKeyActions.actions(prefs));
-        keyboard.setLongPressSwipes(com.alternative_studios.newswipe.keyboard.LongPressActions.longSwipes(prefs));
-        keyboard.setFnLongSwipes(com.alternative_studios.newswipe.keyboard.LongSwipes.actions(prefs,
-                com.alternative_studios.newswipe.keyboard.FnKeyActions.SPEC, com.alternative_studios.newswipe.keyboard.FnKeyActions.PRESS,
-                com.alternative_studios.newswipe.keyboard.FnKeyActions.LONG));
+        keyboard.setLongPressSwipes(com.alternative_studios.newswipe.keyboard.LongPressActions.LONG_SWIPES.table(prefs));
+        keyboard.setFnLongSwipes(com.alternative_studios.newswipe.keyboard.FnKeyActions.LONG_SWIPES.table(prefs)
+                [com.alternative_studios.newswipe.keyboard.FnKeyActions.PRESS]);
         keyboard.setPopupHints(!prefs.popupHintHidden(), prefs.popupHintPosition());
         keyboard.setPopupHintStyle(prefs.popupHintKeyColor(), prefs.popupHintLarge());
         keyboard.setDubeolsikHint(prefs.dubeolsikHintShown());
@@ -1654,7 +1654,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         keyboard.setKeyboardSwipes(KeyboardSwipes.load(prefs));
         toolbarSwipes = ToolbarSwipes.load(prefs);
         toolLongPress = loadToolLongPress();
-        toolLongSwipes = com.alternative_studios.newswipe.keyboard.LongSwipes.table(prefs, ToolbarSwipes.LONG_PRESS, ToolbarSwipes.LONG);
+        toolLongSwipes = ToolbarSwipes.LONG_SWIPES.table(prefs);
         // 지우기 키를 밀어 단어를 지울 때와 같은 거리('기능키 미는 거리'의 1.5배)를 쓴다.
         if (toolbar != null) {
             toolbar.configure(!SwipeAction.NONE.equals(toolbarAction(Key.SWIPE_UP)),

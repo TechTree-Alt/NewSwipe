@@ -96,11 +96,6 @@ public final class LongPressActions {
     private LongPressActions() {
     }
 
-    /** 설정의 배치로 칸마다 '길게 누른 뒤 밀어 기능 실행'의 네 방향 기능 ([칸][Key.SWIPE_*]). */
-    public static String[][] longSwipes(com.alternative_studios.newswipe.Prefs prefs) {
-        return LongSwipes.table(prefs, SPEC, DIR);
-    }
-
     /** 키 종류에 해당하는 칸. 길게 누르기 사용자화의 대상이 아닌 키면 -1. */
     public static int slotOf(int keyType) {
         switch (keyType) {

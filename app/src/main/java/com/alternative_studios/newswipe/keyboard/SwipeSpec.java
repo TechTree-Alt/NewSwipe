@@ -75,6 +75,11 @@ public abstract class SwipeSpec {
         prefs.resetSwipeActionOverride(group, slotNames[slot], dirKey(slot, dir));
     }
 
+    /** 한 칸의 모든 방향({@link #dirs(int)})을 되돌린다. */
+    public final void resetSlot(Prefs prefs, int slot) {
+        for (int dir : dirs(slot)) reset(prefs, slot, dir);
+    }
+
     /** 설정 키에 쓰는 방향 이름. 방향 자리를 다른 뜻(탭·길게 누르기 등)으로 쓰는 배치는 바꿔 쓴다. */
     protected String dirKey(int slot, int dir) {
         return SwipeCustom.dirName(dir);

@@ -279,9 +279,9 @@ public class LegacySwipeSettingsTest {
         Prefs p = prefs(sp);
         assertEquals(SwipeAction.NONE, LongPressActions.LONG_SWIPES.get(p, LongPressActions.ENTER, Key.SWIPE_UP));
         LongPressActions.LONG_SWIPES.set(p, LongPressActions.ENTER, Key.SWIPE_UP, SwipeAction.COPY);
-        assertEquals(SwipeAction.COPY, LongPressActions.longSwipes(p)[LongPressActions.ENTER][Key.SWIPE_UP]);
-        assertEquals(SwipeAction.NONE, LongPressActions.longSwipes(p)[LongPressActions.ENTER][Key.SWIPE_DOWN]);
-        assertEquals(SwipeAction.NONE, LongPressActions.longSwipes(p)[LongPressActions.SPACE][Key.SWIPE_UP]);
+        assertEquals(SwipeAction.COPY, LongPressActions.LONG_SWIPES.table(p)[LongPressActions.ENTER][Key.SWIPE_UP]);
+        assertEquals(SwipeAction.NONE, LongPressActions.LONG_SWIPES.table(p)[LongPressActions.ENTER][Key.SWIPE_DOWN]);
+        assertEquals(SwipeAction.NONE, LongPressActions.LONG_SWIPES.table(p)[LongPressActions.SPACE][Key.SWIPE_UP]);
         // 길게 누르기 칸 자체는 그대로
         assertEquals(SwipeAction.NONE, LongPressActions.SPEC.get(p, LongPressActions.ENTER, LongPressActions.DIR));
         // 누르고 있는 동안 되풀이하는 기능은 방향에 둘 수 없다
