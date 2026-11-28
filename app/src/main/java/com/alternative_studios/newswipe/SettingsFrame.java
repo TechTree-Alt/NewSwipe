@@ -348,7 +348,6 @@ final class SettingsFrame {
         LinearLayout.LayoutParams lp = matchWrap();
         lp.leftMargin = -Metro.px(activity, 3);   // 이름은 제목보다 3px 왼쪽 (PivotHeaderItem Padding 21, 제목 24)
         lp.topMargin = -Metro.px(activity, 7);    // 제목 Margin 아래 -7
-        lp.bottomMargin = -names2.overhang();      // g·y 끝을 그리려고 늘린 만큼 (줄의 자리는 그대로)
         parent.removeViewAt(at);
         parent.addView(names2, at, lp);
         metroBig = null;

@@ -153,16 +153,7 @@ public final class Metro {
         tightLine(t);
         android.graphics.Paint.FontMetrics fm = t.getPaint().getFontMetrics();
         float size = t.getTextSize(), baseline = SEGOE_ASCENT * size;
-        // TextView는 글을 자기 칸 안으로 잘라 그리는데, 줄을 descent에서 끊으면 g·y처럼 그보다 더 내려가는 글자 끝이 잘린다
-        // (기기 글꼴에 따라 다르다). 글꼴이 그리는 가장 아래(bottom)까지 아래 여백으로 칸을 늘리고, 늘린 만큼 바깥 여백에서 빼 줄의 자리는 그대로 둔다.
-        int overhang = descenderOverhang(fm);
-        t.setPadding(t.getPaddingLeft(), t.getPaddingTop(), t.getPaddingRight(), overhang);
-        return new int[]{Math.round(baseline + fm.ascent), Math.round(SEGOE_LINE * size - baseline - fm.descent) - overhang};
-    }
-
-    /** 글꼴의 descent 아래로 글자가 더 내려갈 수 있는 길이 (px): descent와 bottom의 차이. */
-    private static int descenderOverhang(android.graphics.Paint.FontMetrics fm) {
-        return Math.max(0, (int) Math.ceil(fm.bottom - fm.descent));
+        return new int[]{Math.round(baseline + fm.ascent), Math.round(SEGOE_LINE * size - baseline - fm.descent)};
     }
 
     /**
@@ -840,18 +831,8 @@ public final class Metro {
         /** 글자 줄은 Silverlight TextBlock의 줄: Segoe WP의 높이 1.33 em, 기준선은 위에서 1.0791 em ({@link #segoeLine}). */
         @Override
         protected void onMeasure(int widthSpec, int heightSpec) {
-            int h = Math.round(segoeLineHeight(paint.getTextSize())) + getPaddingTop() + getPaddingBottom() + overhang();
+            int h = Math.round(segoeLineHeight(paint.getTextSize())) + getPaddingTop() + getPaddingBottom();
             setMeasuredDimension(MeasureSpec.getSize(widthSpec), h);
-        }
-
-        /**
-         * 이름 줄 아래로 더 둔 길이 (px): Segoe WP의 줄은 기준선 아래가 0.25 em뿐이라 기기 글꼴의 g·y 끝이 그보다 내려가면 뷰 밖으로
-         * 나가 잘린다. 그만큼 뷰를 늘려 다 그리게 하고, 놓는 쪽이 같은 길이를 아래 바깥 여백에서 빼 줄의 자리는 그대로 둔다.
-         */
-        public int overhang() {
-            android.graphics.Paint.FontMetrics fm = paint.getFontMetrics();
-            float below = segoeLineHeight(paint.getTextSize()) - segoeBaseline(paint.getTextSize());
-            return Math.max(0, (int) Math.ceil(fm.bottom - below));
         }
 
         @Override
