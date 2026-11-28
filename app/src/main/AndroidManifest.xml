@@ -66,12 +66,6 @@
             android:label="@string/app_name" />
 
         <activity
-            android:name=".SwipeActionEditorActivity"
-            android:screenOrientation="portrait"
-            android:exported="false"
-            android:label="@string/app_name" />
-
-        <activity
             android:name=".BottomKeysEditorActivity"
             android:screenOrientation="portrait"
             android:exported="false"

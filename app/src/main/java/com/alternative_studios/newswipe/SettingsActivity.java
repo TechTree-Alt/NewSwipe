@@ -846,12 +846,12 @@ public final class SettingsActivity extends Activity {
             {KEYBOARD, L.t("인식 범위 좁히기", "Shrink touch area"), L.t("지우기 백스페이스 시프트 Shift Fn 스페이스바 하단 기능키 엔터 기호 키 쉼표 온점 오타 오입력 터치 영역", "delete backspace shift Fn space bar bottom function keys enter symbol comma period typos mistaps touch area")},
             {KEYBOARD, L.t("미는 거리", "Swipe distance"), L.t("스와이프 거리 민감도 밀어서 쌍자음 겹받침 이중모음 ㄲ ㅆ ㅘ 쉼표 글자 입력", "swipe distance sensitivity double consonants final clusters ㄲ ㅆ ㅘ comma characters")},
             {KEYBOARD, L.t("기능키 미는 거리", "Function key swipe distance"), L.t("스와이프 기능 스페이스바 커서 이동 언어 전환 단어 삭제 이모지 도구 막대 밀기 복사 붙여넣기", "swipe actions space bar cursor language switch delete word emoji toolbar copy paste")},
-            {KEYBOARD, L.t("키보드 밀기 사용자화", "Customize keyboard swipes"), L.t("두 손가락 실행 취소 다시 실행 undo redo 트랙패드 커서 자유 이동 문자 키", "two fingers undo redo trackpad free cursor letter keys")},
+            {KEYBOARD, KeyboardSwipeCards.title(0), L.t("키보드 밀기 자판 스와이프 기능 트랙패드 커서 자유 이동 문자 키", "keyboard swipe actions gestures trackpad free cursor letter keys")},
+            {KEYBOARD, KeyboardSwipeCards.title(1), L.t("키보드 밀기 자판 스와이프 기능 실행 취소 다시 실행 undo redo", "keyboard swipe actions gestures undo redo")},
             {KEYBOARD, L.t("커서 이동 속도 좌우", "Cursor speed (horizontal)"), L.t("스페이스바 커서 키 트랙패드", "space bar cursor key trackpad")},
             {KEYBOARD, L.t("입력 언어", "Input languages"), L.t("지구본 언어 차례 순서 바꾸기 한국어 영어 일본어 중국어", "globe language order switch korean english japanese chinese")},
             {LANGUAGES, L.t("입력 언어", "Input languages"), L.t("지구본 언어 차례 순서 바꾸기 한국어 영어 일본어 중국어 자판 끄기 켜기", "globe language order switch korean english japanese chinese keyboard on off")},
             {LANGUAGES, L.t("앱 언어", "App language"), L.t("인터페이스 언어 화면 언어 표시 언어 한국어 영어 English 시스템", "interface language display language ui korean english system")},
-            {KEYBOARD, L.t("키보드 밀기 사용자화", "Customize keyboard swipes"), L.t("자판 스와이프 기능", "keyboard swipe actions gestures")},
             {KEYBOARD, L.t("위로 밀어서 추천 단어 입력", "Swipe up to pick suggestions"), L.t("추천 단어 스와이프 고르기 자판 위로", "suggestions swipe pick keyboard up")},
             {"words", L.t("도구 막대 전체를 쓰기", "Use full toolbar"), L.t("추천 툴바 전체", "suggestions toolbar full width")},
             {"words", L.t("추천 단어 뒤에 공백 포함", "Add space after suggestions"), L.t("띄어쓰기 스페이스", "space after word")},
@@ -2777,12 +2777,9 @@ public final class SettingsActivity extends Activity {
         return slider(L.t("기능키 미는 거리", "Function key swipe distance"), Prefs.FN_SWIPE_THRESHOLD, prefs.fnSwipeThresholdDp(), 12, 48, 2, "dp");
     }
 
-    /** 키보드 밀기 편집(한 손가락·두 손가락)과 위로 밀어서 추천 단어 입력. */
+    /** 키보드 밀기(한 손가락·두 손가락)와 위로 밀어서 추천 단어 입력. */
     private void addKeyboardSwipe(LinearLayout board) {
-        board.addView(button(L.t("키보드 밀기 사용자화", "Customize keyboard swipes"), v ->
-                startActivity(SwipeActionEditorActivity.intent(this))));
-        board.addView(note(L.t("자판을 한 손가락·두 손가락으로 위·아래·왼쪽·오른쪽으로 밀 때 실행할 기능을 정합니다. "
-                + "한 손가락은 그 방향에 밀어서 입력할 글자가 없을 때 쓰입니다.", "Sets what happens when you swipe the keyboard up, down, left, or right with one or two fingers. One-finger swipes apply only when there is no character to type in that direction.")));
+        board.addView(KeyboardSwipeCards.create(this, prefs, this::markItem));
         board.addView(toggle(L.t("위로 밀어서 추천 단어 입력", "Swipe up to pick suggestions"),
                 L.t("추천 단어가 떠 있을 때 자판의 왼쪽·가운데·오른쪽에서 위로 밀면 첫째·둘째·셋째 추천 단어를 입력합니다. ", "When suggestions are shown, swipe up from the left, center, or right of the keyboard to type the first, second, or third suggestion. "),
                 Prefs.SWIPE_PICK_SUGGESTION, prefs.swipePickSuggestion()));

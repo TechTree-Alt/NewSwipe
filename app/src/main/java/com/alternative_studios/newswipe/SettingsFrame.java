@@ -212,14 +212,21 @@ final class SettingsFrame {
             // 때까지(수백 ms) 보이지 않다가 늦게 나타난다 (다른 화면에서 돌아올 때 특히 눈에 띈다).
             if (bottom != null) items.add(bottom);
             // 위에 띄운 설정 창이 열려 있으면 그 항목들도 함께 돈다 (창은 누르기를 막으려 clickable이라 통째로 돌지 않게 속을 모은다).
+            int before = items.size();
             collectOverlayFeather(fullHost, items);
             collectOverlayFeather(overlayHost, items);
+            boolean sheetOpen = items.size() > before;
             if (header != null) collectFeather(header, items);
             if (searchBar != null) collectFeather(searchBar, items);
             if (testBar != null) collectFeather(testBar, items);
             collectFeather(content, items);
+            dropCovered(items);
+            // 설정 창이 열려 있으면 창이 머리글·목록을 덮어 보이는 항목이 창 안의 줄뿐이다. 그때는 미리보기를 맨 뒤로 보내 창의
+            // 제목 → 내용 → 미리보기 차례로 든다 (나갈 때와 같은 차례).
+            if (sheetOpen && bottom != null && items.remove(bottom)) items.add(bottom);
             return items;
         });
+        if (bottom != null) page.setBottom(bottom);   // 나갈 때는 위 항목부터, 미리보기는 맨 마지막에
         page.playEnterOnFirstDraw(!enterAsReturn);
         if (android.os.Build.VERSION.SDK_INT >= 33) {
             // 뒤로 가기도 턴스타일로 나간다. 검색창·입력창·설정 창이 열려 있으면 나중에 등록한 그쪽 콜백이 먼저 불린다.
@@ -268,6 +275,48 @@ final class SettingsFrame {
     private Metro.Page page;
 
     private View header;
+
+    /**
+     * 위에 띄운 설정 창(시트)에 다 가려 보이지 않는 항목을 뺀다. 창은 머리글과 목록을 위의 좁은 틈만 남기고 덮으므로, 그 아래의
+     * 머리글·목록 줄은 돌아도 보이지 않는다. 빼지 않으면 그 줄들이 깃털 차례(줄마다 50ms)를 차지해, 창의 마지막 줄이 사라진 뒤
+     * 미리보기가 돌기까지와 화면이 넘어가기까지 빈 시간이 생긴다. 조금이라도 보이는 줄(틈에 걸친 머리글 등)은 그대로 돈다.
+     */
+    private void dropCovered(java.util.List<View> items) {
+        java.util.List<android.graphics.Rect> covers = new java.util.ArrayList<>();
+        java.util.List<View> sheets = new java.util.ArrayList<>();
+        for (ViewGroup host : new ViewGroup[]{fullHost, overlayHost}) {
+            if (host == null) continue;
+            for (int i = 0; i < host.getChildCount(); i++) {
+                View c = host.getChildAt(i);
+                if (c.getVisibility() != View.VISIBLE || c.getTag(R.id.metro_feather_overlay) == null) continue;
+                android.graphics.Rect r = new android.graphics.Rect();
+                if (!c.getGlobalVisibleRect(r)) continue;
+                covers.add(r);
+                sheets.add(c);
+            }
+        }
+        if (covers.isEmpty()) return;
+        android.graphics.Rect seen = new android.graphics.Rect();
+        java.util.Iterator<View> it = items.iterator();
+        while (it.hasNext()) {
+            View v = it.next();
+            if (insideAny(v, sheets) || !v.getGlobalVisibleRect(seen)) continue;   // 창의 항목, 이미 보이지 않는 줄은 그대로 둔다
+            for (android.graphics.Rect cover : covers) {
+                if (cover.contains(seen)) {
+                    it.remove();
+                    break;
+                }
+            }
+        }
+    }
+
+    /** v가 parents 가운데 하나 안에 있는지. */
+    private static boolean insideAny(View v, java.util.List<View> parents) {
+        for (android.view.ViewParent p = v.getParent(); p instanceof View; p = p.getParent()) {
+            if (parents.contains(p)) return true;
+        }
+        return false;
+    }
 
     /** host 위에 띄운 창(metro_feather_overlay 표시) 가운데 보이는 것의 항목들을 위에서 아래 차례로 모은다. */
     private static void collectOverlayFeather(ViewGroup host, java.util.List<View> out) {

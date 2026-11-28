@@ -696,9 +696,26 @@ public final class Metro {
             lastOut = v;
         }
 
+        /** 화면 아래에 붙어 그 뒤의 줄을 가리는 뷰 (키보드 미리보기). 없으면 null. */
+        private View bottom;
+
+        /**
+         * 화면 아래에 붙은 미리보기 b를 알린다. 나갈 때는 Windows Phone처럼 위의 항목부터 차례로 돌아 나가고 b는 맨 마지막에
+         * 돈다 (들어올 때는 늦게 나타나지 않게 맨 앞 차례 그대로).
+         */
+        public void setBottom(View b) {
+            bottom = b;
+        }
+
+        /** 나갈 차례: 미리보기를 맨 뒤로 보낸다 (들어올 때는 맨 앞). */
+        private java.util.List<View> leaveOrder(java.util.List<View> list) {
+            if (bottom != null && list.remove(bottom)) list.add(bottom);
+            return list;
+        }
+
         private void leave(float to, Runnable then) {
             away = true;
-            java.util.List<View> list = items == null ? java.util.Collections.emptyList() : visible(items.get());
+            java.util.List<View> list = items == null ? java.util.Collections.emptyList() : leaveOrder(visible(items.get()));
             View tapped = lastOut;
             lastOut = null;
             if (tapped != null && list.remove(tapped)) list.add(tapped);
@@ -764,8 +781,19 @@ public final class Metro {
             } else if (hidden && !frozen) {
                 hidden = false;
                 // 다른 화면에서 돌아왔다: TurnstileBackwardIn (원본 50° → 0°, 이 앱의 각도로 -50° → 0°).
-                busy = false;
-                enter(false);
+                // 다음에 그리기 직전(배치가 끝난 뒤)에 튼다: 돌아오며(onResume) 다시 만든 줄(설정 창의 키 편집 항목 등)은 이 알림 때
+                // 아직 배치 전이라 크기가 0이어서 보이지 않는 것으로 빠져, 돌지 않고 그냥 나타났다. 그때까지는 숨은 채라 깜빡이지 않는다.
+                busy = true;
+                getViewTreeObserver().addOnPreDrawListener(new android.view.ViewTreeObserver.OnPreDrawListener() {
+                    @Override
+                    public boolean onPreDraw() {
+                        getViewTreeObserver().removeOnPreDrawListener(this);
+                        busy = false;
+                        if (!hidden && !frozen) enter(false);
+                        return true;
+                    }
+                });
+                invalidate();
             }
         }
 
