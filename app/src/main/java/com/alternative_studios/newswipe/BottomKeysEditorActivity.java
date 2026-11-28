@@ -372,7 +372,14 @@ public final class BottomKeysEditorActivity extends Activity {
     }
 
     private View subGroup(int leftMarginDp, View... children) {
-        return SettingsWidgets.subGroup(this, accentColor, leftMarginDp, children);
+        View group = SettingsWidgets.subGroup(this, accentColor, leftMarginDp, children);
+        if (Metro.on && group.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
+            // Metro 하위 묶음은 설정 화면의 항목 사이 여백(토글 아래 여백)을 아래에 품는다. 이 화면은 줄마다 위아래 안쪽 여백으로
+            // 항목 사이를 띄우므로, 그 여백까지 더하면 하위 항목이 있는 줄 아래만 더 벌어진다: 없앤다 (펼치고 접을 때도 0).
+            ((ViewGroup.MarginLayoutParams) group.getLayoutParams()).bottomMargin = 0;
+            group.setTag(R.id.shown_margins, new int[]{0, 0, 0});
+        }
+        return group;
     }
 
     /** fixedRow로 만든 줄을 쓸 수 없는 상태로: 글자를 흐리게 하고 스위치를 끈다. */
@@ -416,7 +423,35 @@ public final class BottomKeysEditorActivity extends Activity {
 
     /** 키 한 줄: 이름·설명, 켜고 끄기, 끌어서 옮기는 손잡이(≡). */
     private View keyRow(String id) {
-        LinearLayout row = new LinearLayout(this);
+        // parts: {이름·설명을 담은 틀, 하위 묶음, 스위치, 손잡이}
+        final View[] parts = new View[4];
+        LinearLayout row = new LinearLayout(this) {
+            /**
+             * Metro: 하위 항목이 있는 줄의 스위치·손잡이는 줄 전체가 아니라 항목의 글(이름의 위)부터 하위 버튼(바깥 여백 제외)까지의
+             * 가운데에 놓는다. 하위 묶음을 펼치고 접는 동안에도 그 높이를 따라 함께 움직인다.
+             */
+            @Override
+            protected void onLayout(boolean changed, int l, int t, int r, int b) {
+                super.onLayout(changed, l, t, r, b);
+                if (!Metro.on || parts[1] == null || parts[2] == null) return;
+                ViewGroup head = (ViewGroup) parts[0];
+                View texts = (View) head.getParent();
+                View group = parts[1];
+                View firstText = head.getChildAt(0), lastText = head.getChildAt(head.getChildCount() - 1);
+                int top = texts.getTop() + head.getTop() + firstText.getTop();
+                int bottom = texts.getTop() + head.getTop() + lastText.getBottom();
+                if (group.getVisibility() != GONE) {
+                    // 하위 버튼 아래의 바깥 여백은 줄 사이 여백이므로 뺀다 (펼친 정도만큼).
+                    int trail = Math.round(Ui.dp(getContext(), 6) * Ui.shownFraction(group));
+                    bottom = Math.max(bottom, texts.getTop() + group.getBottom() - trail);
+                }
+                int center = (top + bottom) / 2;
+                for (int i = 2; i < parts.length; i++) {
+                    View v = parts[i];
+                    if (v != null) v.offsetTopAndBottom(center - (v.getTop() + v.getBottom()) / 2);
+                }
+            }
+        };
         row.setTag(id);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(Ui.dp(this, 10), Ui.dp(this, 8), 0, Ui.dp(this, 8));
@@ -424,10 +459,23 @@ public final class BottomKeysEditorActivity extends Activity {
         LinearLayout texts = new LinearLayout(this);
         texts.setOrientation(LinearLayout.VERTICAL);
         TextView nameView = text(rowName(id), 16, textColor);
-        texts.addView(nameView);
         String hint = BottomKeys.hint(id);
         TextView hintView = hint == null ? null : text(hint, 12, hintColor);
-        if (hintView != null) texts.addView(hintView);
+        if (Metro.on) {
+            // Metro: 이름·설명은 스위치·손잡이 높이(44dp)의 틀 가운데에 둔다. 하위 항목이 있어도 이름이 하위 항목이 없는 줄과
+            // 같은 자리에 놓여, 위 항목과의 거리가 다른 항목 사이와 같다.
+            LinearLayout head = new LinearLayout(this);
+            head.setOrientation(LinearLayout.VERTICAL);
+            head.setGravity(Gravity.CENTER_VERTICAL);
+            head.setMinimumHeight(Ui.dp(this, 44));
+            head.addView(nameView);
+            if (hintView != null) head.addView(hintView);
+            texts.addView(head);
+            parts[0] = head;
+        } else {
+            texts.addView(nameView);
+            if (hintView != null) texts.addView(hintView);
+        }
         metroRow(row, nameView, hintView);
         // 쉼표·온점 키는 켜면 하위 항목으로 다른 글자로 바꾸는 버튼이 나온다 (설정 화면의 하위 항목과 같은 모양).
         View charGroup = null;
@@ -458,6 +506,7 @@ public final class BottomKeysEditorActivity extends Activity {
             texts.addView(charGroup);
         }
         row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        parts[1] = charGroup;
 
         ExpressiveSwitch sw = new ExpressiveSwitch(this, accentColor, onAccentColor, hintColor, card);
         sw.setCheckedImmediately(prefs.bottomKeyShown(id));
@@ -486,6 +535,7 @@ public final class BottomKeysEditorActivity extends Activity {
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         slp.leftMargin = Ui.dp(this, 8);
         row.addView(sw, slp);
+        parts[2] = sw;
 
         View handle = new DragHandle(this, hintColor);
         handle.setContentDescription(L.t(BottomKeys.label(id) + " 순서 바꾸기", "Reorder " + BottomKeys.label(id)));
@@ -509,6 +559,7 @@ public final class BottomKeysEditorActivity extends Activity {
             }
         });
         row.addView(handle, new LinearLayout.LayoutParams(Ui.dp(this, 44), Ui.dp(this, 44)));
+        parts[3] = handle;
         return row;
     }
 
