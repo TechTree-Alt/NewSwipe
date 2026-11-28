@@ -692,17 +692,18 @@ final class KeyEditPanel {
         String[] names = longPressModes();
         String defaultAction = spec.defaultAction(slot, dir);
         // 고르면 바로 저장하되, 창은 목록이 다 접힌 뒤에 다시 그린다 (바로 다시 그리면 목록이 붙은 줄이 사라져 닫히는 움직임 없이 없어진다).
-        // [0] 골랐다, [1] 목록이 닫혔다 (움직임 없이 먼저 닫히는 경우에는 고른 뒤 바로 다시 그린다).
+        // [0] 골랐다, [1] 목록이 닫혔다. 둘 다 되면 다시 그린다 (어느 쪽이 먼저 오든).
         boolean[] state = new boolean[2];
+        Runnable redraw = () -> redrawAfterDropdown(card, done);
         card.addView(widgets.dropdownRow(label, names[mode], v -> DropdownMenu.of(v, names, mode)
                 .defaultIndex(longPressMode(defaultAction))
                 .onDismiss(() -> {
                     state[1] = true;
-                    if (state[0]) done.run();
+                    if (state[0]) redraw.run();
                 })
                 .show(i -> {
                     state[0] = true;
-                    if (state[1]) card.post(done);
+                    if (state[1]) redraw.run();
                     pendingAction.remove(pendingKey);
                     switch (i) {
                         case LP_ACTION:
@@ -761,6 +762,18 @@ final class KeyEditPanel {
             default:
                 break;
         }
+    }
+
+    /**
+     * 드롭다운이 닫힌 뒤 창을 다시 그린다. 바로 그리지 않고 다음 차례로 미룬다: 목록이 붙은 줄이 화면에서 떨어져 나가며
+     * (다른 키를 고르거나 창을 닫는 등) 목록이 닫힌 경우에는 이 일이 뷰를 떼어 내는 도중에 불리는데, 그 자리에서 다시 그리면
+     * (root.removeAllViews) 떼어 내던 자식 목록이 비어 앱이 멈춘다. 그사이 창이 이미 다른 내용으로 바뀌었으면(줄이 화면에
+     * 없으면) 다시 그리지 않는다. 고른 값은 그 전에 이미 저장되어 있다.
+     */
+    private static void redrawAfterDropdown(View card, Runnable done) {
+        card.post(() -> {
+            if (card.isAttachedToWindow()) done.run();
+        });
     }
 
     /**
