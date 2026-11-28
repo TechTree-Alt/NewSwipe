@@ -204,7 +204,7 @@ public final class SettingsActivity extends Activity {
             return;
         }
         updateStatus();
-        refreshTiles();   // 다른 화면에서 언어를 켜고 끄거나 클립보드 기록이 바뀌었을 때
+        refreshTiles();   // 다른 화면에서 언어를 켜고 껐을 때
         refreshLayoutPreview();   // 기능키 순서·유무 화면에서 돌아왔을 때 미리보기에 바로 반영한다
         refreshOneHandPreview();
         refreshEditorPanel();   // 언어 순서·기능키 순서 화면 등에서 돌아왔을 때
@@ -425,8 +425,8 @@ public final class SettingsActivity extends Activity {
     private final java.util.Map<String, MetroTiles.Tile> liveTiles = new java.util.HashMap<>();
 
     /**
-     * 타일 앞면을 지금 상태로 맞춘다 (WP8 시작 화면처럼 타일마다 생김새가 다르게): 언어는 켠 입력 언어 수(뒷면은 그 이름들),
-     * 클립보드는 기록에 있는 항목 수를 Iconic 타일의 숫자로, 키보드 사용자화(넓은 타일)는 지금 키보드 색으로 그린 자판 그림을 보인다.
+     * 타일 앞면을 지금 상태로 맞춘다 (WP8 시작 화면처럼 타일마다 생김새가 다르게): 언어는 켠 입력 언어 수를 Iconic 타일의 숫자로
+     * (뒷면은 그 이름들), 키보드 사용자화(넓은 타일)는 지금 키보드 색으로 그린 자판 그림을 보인다.
      * 테마를 바꾸면 화면을 다시 만들므로 자판 그림은 만들 때 한 번이면 되고, 숫자는 다른 화면에서 돌아올 때마다 다시 센다.
      */
     private void refreshTiles() {
@@ -446,18 +446,6 @@ public final class SettingsActivity extends Activity {
             }
             t.setCount(names.size());
             if (!names.isEmpty()) t.setBackContent(String.join(", ", names));
-        }
-        t = liveTiles.get("clipemoji");
-        if (t != null) {
-            int n = 0;
-            if (prefs.clipboardHistory()) {
-                try {
-                    n = clipHistory().items(System.currentTimeMillis()).size();
-                } catch (RuntimeException ignored) {
-                    // 기록을 읽지 못하면 숫자 없이 둔다.
-                }
-            }
-            t.setCount(n);
         }
         t = liveTiles.get(KEYBOARD);
         if (t != null) {
@@ -479,7 +467,7 @@ public final class SettingsActivity extends Activity {
             SettingsFrame.metroLastOut(this, v);   // 누른 타일은 다른 타일들이 돌아 나간 뒤 마지막으로
             openSection(id);
         });
-        if (LANGUAGES.equals(id) || "clipemoji".equals(id) || KEYBOARD.equals(id)) liveTiles.put(id, tile);
+        if (LANGUAGES.equals(id) || KEYBOARD.equals(id)) liveTiles.put(id, tile);
         return tile;
     }
 

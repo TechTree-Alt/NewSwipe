@@ -646,23 +646,37 @@ public final class MetroTiles extends ViewGroup {
         }
 
         /**
-         * text를 폭 max에 맞춰 낱말 단위로 끊는다 (낱말이 너무 길면 글자 단위). Flip 타일의 글은 저절로 줄바꿈되지 않으므로 직접 끊고,
-         * 마지막 줄에 남는 글은 그대로 두어 타일 가장자리에서 잘리게 한다.
+         * text를 폭 max에 맞춰 낱말 단위로 끊는다 (낱말이 너무 길면 글자 단위). Flip 타일의 글은 저절로 줄바꿈되지 않으므로 직접 끊는다.
+         * maxLines줄에 다 들어가지 않으면 마지막 줄을 낱말이 끝나는 곳(쉼표로 나눈 목록이면 그 항목이 끝나는 곳)에서 끊고 말줄임표를
+         * 붙인다: 글자가 타일 가장자리에서 반쯤 잘려 보이지 않게.
          */
         private String[] wrap(String text, float max, int maxLines) {
             java.util.List<String> lines = new java.util.ArrayList<>();
             String rest = text.trim();
             while (!rest.isEmpty() && lines.size() < maxLines) {
-                if (lines.size() == maxLines - 1 || textPaint.measureText(rest) <= max) {
+                if (textPaint.measureText(rest) <= max) {
                     lines.add(rest);
                     break;
                 }
-                int fit = textPaint.breakText(rest, true, max, null);
+                boolean last = lines.size() == maxLines - 1;
+                String ellipsis = "\u2026";
+                float room = last ? max - textPaint.measureText(ellipsis) : max;
+                int fit = Math.max(1, textPaint.breakText(rest, true, room, null));
                 int cut = fit;
                 int space = rest.lastIndexOf(' ', fit);
                 if (space > 0) cut = space;
-                if (cut <= 0) cut = Math.max(1, fit);
-                lines.add(rest.substring(0, cut).trim());
+                String line = rest.substring(0, cut).trim();
+                if (last) {
+                    // 목록("가, 나, 다")은 반쯤 남은 항목 대신 마지막으로 다 들어간 항목까지.
+                    int comma = line.lastIndexOf(',');
+                    if (comma > 0) line = line.substring(0, comma);
+                    while (!line.isEmpty() && ",.;:\u00B7".indexOf(line.charAt(line.length() - 1)) >= 0) {
+                        line = line.substring(0, line.length() - 1).trim();
+                    }
+                    lines.add(line + ellipsis);
+                    break;
+                }
+                lines.add(line);
                 rest = rest.substring(cut).trim();
             }
             return lines.toArray(new String[0]);
