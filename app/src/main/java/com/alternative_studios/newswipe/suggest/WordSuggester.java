@@ -261,20 +261,33 @@ public final class WordSuggester {
         return false;
     }
 
-        /** word = 앞부분 + 조사이면 {앞부분, 조사}, 아니면 null. 받침에 맞는 조사만, 긴 것부터. 앞부분은 한글 한 글자 이상. */
+    /** word = 앞부분 + 조사이면 {앞부분, 조사}, 아니면 null. 받침에 맞는 조사만, 긴 것부터. 앞부분은 한글 한 글자 이상. */
     static String[] splitParticle(String word) {
+        String s = particleSuffix(word);
+        return s == null ? null : new String[]{word.substring(0, word.length() - s.length()), s};
+    }
+
+    /** {@link #splitParticle}이 떼어 낼 조사 (없으면 null). 글자열을 만들지 않는다 (사전 전체를 훑을 때 쓴다). */
+    static String particleSuffix(CharSequence word) {
+        int len = word.length();
         for (String[] p : LearnParticles.ALL) {
             String s = p[0];
-            if (word.length() <= s.length() || !word.endsWith(s)) continue;
-            String stem = word.substring(0, word.length() - s.length());
-            char last = stem.charAt(stem.length() - 1);
+            int n = s.length();
+            if (len <= n || !endsWith(word, s)) continue;
+            char last = word.charAt(len - n - 1);   // 앞부분의 마지막 글자
             if (last < '\uAC00' || last > '\uD7A3') continue;
             int fin = (last - 0xAC00) % 28;
             if (p[1].equals("F") && (fin == 0 || fin == 8 && s.startsWith("으로"))) continue;
             if (p[1].equals("V") && fin != 0 && !(fin == 8 && s.startsWith("로"))) continue;
-            return new String[]{stem, s};
+            return s;
         }
         return null;
+    }
+
+    private static boolean endsWith(CharSequence w, String s) {
+        int off = w.length() - s.length();
+        for (int k = 0; k < s.length(); k++) if (w.charAt(off + k) != s.charAt(k)) return false;
+        return true;
     }
 
     /** stem을 맨말로, 또는 word가 아닌 다른 조사와 함께 쓴 적이 있는지 (쓴 기록과 학습한 단어에서). */

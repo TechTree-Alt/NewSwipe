@@ -225,10 +225,27 @@ public final class WordDictionary {
         int k = 0, nj = 0;
         while (s + k < e && nj < cl) nj += TypoModel.syllableLength(chars[s + k++]);
         if (nj < cl || k == 0) return i;
-        char[] key = java.util.Arrays.copyOfRange(chars, s, s + k);
-        key[k - 1]++;   // 이 음절들로 시작하는 말 바로 뒤
-        int next = lowerBound(key, k);
-        return Math.max(i, Math.min(next, to) - 1);
+        // 이 음절들로 시작하는 말 바로 뒤: 열쇠는 chars[s .. s+k)의 마지막 글자를 하나 올린 것 (배열로 옮기지 않고 그 자리에서 비교한다,
+        // 추천 한 번에 수십 번 불린다)
+        char last = (char) (chars[s + k - 1] + 1);
+        int lo = 0, hi = count;
+        while (lo < hi) {
+            int mid = (lo + hi) >>> 1;
+            if (compareBlock(mid, s, k, last) < 0) lo = mid + 1;
+            else hi = mid;
+        }
+        return Math.max(i, Math.min(lo, to) - 1);
+    }
+
+    /** {@link #compare}와 같되 열쇠는 chars[ks .. ks+kl-1) 다음에 last. */
+    private int compareBlock(int i, int ks, int kl, char last) {
+        int s = offsets[i], e = offsets[i + 1];
+        int n = Math.min(e - s, kl);
+        for (int k = 0; k < n; k++) {
+            int c = chars[s + k] - (k == kl - 1 ? last : chars[ks + k]);
+            if (c != 0) return c;
+        }
+        return (e - s) - kl;
     }
 
     /** 단어 i를 자모로 풀어 out에 쓰고 길이를 돌려준다 (TypoModel.letters, 글자열을 만들지 않는다). */
@@ -247,6 +264,16 @@ public final class WordDictionary {
             else hi = mid;
         }
         return lo;
+    }
+
+    private int compare(int i, String key) {
+        int s = offsets[i], e = offsets[i + 1], keyLen = key.length();
+        int n = Math.min(e - s, keyLen);
+        for (int k = 0; k < n; k++) {
+            int c = chars[s + k] - key.charAt(k);
+            if (c != 0) return c;
+        }
+        return (e - s) - keyLen;
     }
 
     private int compare(int i, char[] key, int keyLen) {
@@ -383,9 +410,14 @@ public final class WordDictionary {
     /** 단어의 번호. 없으면 -1. */
     public int indexOf(String word) {
         if (word.isEmpty()) return -1;
-        char[] k = word.toCharArray();
-        int i = lowerBound(k, k.length);
-        return i < count && compare(i, k, k.length) == 0 ? i : -1;
+        // 글자를 배열로 옮기지 않고 찾는다 (글자를 칠 때마다 여러 번 불린다)
+        int lo = 0, hi = count;
+        while (lo < hi) {
+            int mid = (lo + hi) >>> 1;
+            if (compare(mid, word) < 0) lo = mid + 1;
+            else hi = mid;
+        }
+        return lo < count && compare(lo, word) == 0 ? lo : -1;
     }
 
     /** 단어 i의 길이 (UTF-16 단위). */
@@ -396,6 +428,66 @@ public final class WordDictionary {
     /** 단어 i의 마지막 글자. */
     public char lastChar(int i) {
         return chars[offsets[i + 1] - 1];
+    }
+
+    /**
+     * 단어를 글자열로 만들지 않고 읽기: 단어 i는 at(start(i)) .. at(end(i) - 1). 사전 전체를 훑는 모형을 만들 때 단어마다
+     * String을 만들면 7만 개(수 MB)의 쓰레기가 생긴다.
+     */
+    int start(int i) {
+        return offsets[i];
+    }
+
+    int end(int i) {
+        return offsets[i + 1];
+    }
+
+    char at(int k) {
+        return chars[k];
+    }
+
+    /** 단어 하나를 글자열로 만들지 않고 보는 창. {@link #of}로 다른 단어로 옮겨 가며 쓴다 (한 스레드에서만). */
+    final class WordView implements CharSequence {
+        private int s, e;
+
+        WordView of(int i) {
+            s = offsets[i];
+            e = offsets[i + 1];
+            return this;
+        }
+
+        @Override
+        public int length() {
+            return e - s;
+        }
+
+        @Override
+        public char charAt(int k) {
+            return chars[s + k];
+        }
+
+        @Override
+        public CharSequence subSequence(int from, int to) {
+            return new String(chars, s + from, to - from);
+        }
+
+        @Override
+        public String toString() {
+            return new String(chars, s, e - s);
+        }
+    }
+
+    /** 단어 i가 prefix로 시작하는지 (word(i).startsWith(prefix)와 같고 글자열을 만들지 않는다). */
+    boolean startsWith(int i, String prefix) {
+        int s = offsets[i], n = prefix.length();
+        if (offsets[i + 1] - s < n) return false;
+        for (int k = 0; k < n; k++) if (chars[s + k] != prefix.charAt(k)) return false;
+        return true;
+    }
+
+    /** 모든 단어의 글자 수를 더한 것. */
+    int textLength() {
+        return offsets[count];
     }
 
     // ---------------------------------------------------------------- 초성 검색

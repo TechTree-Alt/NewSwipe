@@ -18,16 +18,16 @@ final class SyllableModel {
     private final double total, symbols;
 
     SyllableModel(WordDictionary dict) {
-        int[] buf = new int[1 << 16];
+        // 이음은 단어마다 글자 수 + 1(끝)개를 넘지 않으므로 한 번에 잡는다 (늘려 가며 옮겨 담지 않는다).
+        // 단어도 String으로 만들지 않고 사전의 글자를 바로 읽는다.
+        int[] buf = new int[dict.textLength() + dict.size()];
         int n = 0;
         boolean[] seen = new boolean[SYMBOLS];
         for (int id = 0; id < dict.size(); id++) {
-            String w = dict.word(id);
             int prev = START;
-            for (int i = 0; i <= w.length(); i++) {
-                int cur = i == w.length() ? END : sym(w.charAt(i));
+            for (int k = dict.start(id), e = dict.end(id); k <= e; k++) {
+                int cur = k == e ? END : sym(dict.at(k));
                 if (cur < 0) break;   // 한글 음절이 아닌 말은 세지 않는다 (사전은 한글뿐이다)
-                if (n == buf.length) buf = Arrays.copyOf(buf, n * 2);
                 buf[n++] = prev * SYMBOLS + cur;
                 left[prev]++;
                 seen[prev] = seen[cur] = true;
@@ -85,11 +85,29 @@ final class SyllableModel {
         for (int i = 0; i <= w.length(); i++) {
             int cur = i == w.length() ? END : sym(w.charAt(i));
             if (cur < 0) return -1e3;
-            double pu = (left[cur] + 0.5) / (total + 0.5 * symbols);
-            int at = Arrays.binarySearch(keys, prev * SYMBOLS + cur);
-            lp += Math.log(((at >= 0 ? counts[at] : 0) + 2 * pu) / (left[prev] + 2));
+            lp += term(prev, cur);
             prev = cur;
         }
         return lp;
+    }
+
+    /** 사전 단어 id의 {@link #logProb(String)} (단어를 String으로 만들지 않는다). */
+    double logProb(WordDictionary dict, int id) {
+        double lp = 0;
+        int prev = START;
+        for (int k = dict.start(id), e = dict.end(id); k <= e; k++) {
+            int cur = k == e ? END : sym(dict.at(k));
+            if (cur < 0) return -1e3;
+            lp += term(prev, cur);
+            prev = cur;
+        }
+        return lp;
+    }
+
+    /** ln P(cur | prev). */
+    private double term(int prev, int cur) {
+        double pu = (left[cur] + 0.5) / (total + 0.5 * symbols);
+        int at = Arrays.binarySearch(keys, prev * SYMBOLS + cur);
+        return Math.log(((at >= 0 ? counts[at] : 0) + 2 * pu) / (left[prev] + 2));
     }
 }
