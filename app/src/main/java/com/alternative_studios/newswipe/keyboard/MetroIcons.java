@@ -285,13 +285,12 @@ final class MetroIcons {
                 for (int deg = 0; deg < 360; deg += 90) solidHead(c, p, 12, 12, deg, 9, 3.2f, 3.2f);
                 break;
             case Icons.MENU_WORDS:
-                // 전구: 원호 머리, 각진 목, 받침 줄 둘.
+                // 전구: 원호 머리와 각진 목을 끊김 없이 한 붓으로 (원호의 양 끝에서 바로 목이 이어진다), 그 아래 받침 줄.
                 rect.set(6, 3, 18, 15);
-                c.drawArc(rect, 130, 280, false, p);
-                path.moveTo(8.6f, 13.6f);
-                path.lineTo(9.5f, 16.5f);
-                path.lineTo(14.5f, 16.5f);
-                path.lineTo(15.4f, 13.6f);
+                path.arcTo(rect, 130, 280, true);   // (8.14, 13.6)에서 시계 방향으로 (15.86, 13.6)까지
+                path.lineTo(14.6f, 16.5f);
+                path.lineTo(9.4f, 16.5f);
+                path.close();                       // 원호의 시작점으로 돌아가 뾰족하게 잇는다
                 c.drawPath(path, p);
                 c.drawLine(9.5f, 19.5f, 14.5f, 19.5f, p);
                 break;
@@ -334,11 +333,12 @@ final class MetroIcons {
                 }
                 break;
             case Icons.MENU_BACKUP:
-                // 받침 위에 나란한 위·아래 화살표 (내보내기와 가져오기).
+                // 받침 위에 나란한 위·아래 화살표 (내보내기와 가져오기). 두 화살표는 y = 8.5를 중심으로 위아래가 정확히
+                // 뒤집힌 모양이라 같은 높이(4 ~ 13)를 차지한다: 위 화살표는 촉 끝이 4·꼬리가 13, 아래 화살표는 꼬리가 4·촉 끝이 13.
                 tray(c, p);
-                c.drawLine(8.5f, 13.5f, 8.5f, 5, p);
+                c.drawLine(8.5f, 13, 8.5f, 5, p);
                 arrowHead(c, p, 8.5f, 4, 270, 3.5f);
-                c.drawLine(15.5f, 3.5f, 15.5f, 12, p);
+                c.drawLine(15.5f, 4, 15.5f, 12, p);
                 arrowHead(c, p, 15.5f, 13, 90, 3.5f);
                 break;
             case Icons.MENU_LAB:
