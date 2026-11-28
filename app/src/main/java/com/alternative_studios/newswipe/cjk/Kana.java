@@ -87,22 +87,26 @@ public final class Kana {
                 {"g", "がぎぐげご"}, {"z", "ざじずぜぞ"}, {"d", "だぢづでど"}, {"b", "ばびぶべぼ"},
                 {"p", "ぱぴぷぺぽ"}, {"x", "ぁぃぅぇぉ"}, {"l", "ぁぃぅぇぉ"}};
         for (String[] r : rows) for (int i = 0; i < 5; i++) put(r[0] + vowels.charAt(i), String.valueOf(r[1].charAt(i)));
-        put("ya", "や"); put("yu", "ゆ"); put("yo", "よ"); put("ye", "いぇ"); put("yi", "い");
-        put("wa", "わ"); put("wo", "を"); put("wi", "うぃ"); put("we", "うぇ"); put("wu", "う");
-        put("shi", "し"); put("chi", "ち"); put("tsu", "つ"); put("fu", "ふ"); put("ji", "じ");
-        put("si", "し"); put("ti", "ち"); put("tu", "つ"); put("hu", "ふ"); put("zi", "じ"); put("di", "ぢ"); put("du", "づ");
-        put("n'", "ん"); put("xn", "ん"); put("-", "ー");   // nn은 아래 romaji()가 다음 글자를 보고 정한다
-        put("kwa", "くぁ"); put("gwa", "ぐぁ"); put("xka", "ゕ"); put("xke", "ゖ"); put("lka", "ゕ"); put("lke", "ゖ");
-        put("tha", "てゃ"); put("thu", "てゅ"); put("the", "てぇ"); put("tho", "てょ");
-        put("dha", "でゃ"); put("dhu", "でゅ"); put("dhe", "でぇ"); put("dho", "でょ");
-        put("wyi", "ゐ"); put("wye", "ゑ"); put("whi", "うぃ"); put("whe", "うぇ"); put("who", "うぉ");
-        put("xtu", "っ"); put("ltu", "っ"); put("xtsu", "っ"); put("xya", "ゃ"); put("xyu", "ゅ"); put("xyo", "ょ");
-        put("lya", "ゃ"); put("lyu", "ゅ"); put("lyo", "ょ"); put("xwa", "ゎ"); put("lwa", "ゎ");
-        put("fa", "ふぁ"); put("fi", "ふぃ"); put("fe", "ふぇ"); put("fo", "ふぉ");
-        put("va", "ゔぁ"); put("vi", "ゔぃ"); put("vu", "ゔ"); put("ve", "ゔぇ"); put("vo", "ゔぉ");
-        put("thi", "てぃ"); put("dhi", "でぃ"); put("twu", "とぅ"); put("dwu", "どぅ");
-        put("tsa", "つぁ"); put("tsi", "つぃ"); put("tse", "つぇ"); put("tso", "つぉ");
-        put("she", "しぇ"); put("che", "ちぇ"); put("je", "じぇ");
+        // 로마자와 가나를 빈칸으로 나눠 번갈아 적은 표 (put을 하나씩 부르는 것보다 APK가 작다).
+        // n' → ん, -: 장음. nn은 아래 romaji()가 다음 글자를 보고 정한다.
+        String[] table = (""
+                + "ya や yu ゆ yo よ ye いぇ yi い "
+                + "wa わ wo を wi うぃ we うぇ wu う "
+                + "shi し chi ち tsu つ fu ふ ji じ "
+                + "si し ti ち tu つ hu ふ zi じ di ぢ du づ "
+                + "n' ん xn ん - ー "
+                + "kwa くぁ gwa ぐぁ xka ゕ xke ゖ lka ゕ lke ゖ "
+                + "tha てゃ thu てゅ the てぇ tho てょ "
+                + "dha でゃ dhu でゅ dhe でぇ dho でょ "
+                + "wyi ゐ wye ゑ whi うぃ whe うぇ who うぉ "
+                + "xtu っ ltu っ xtsu っ xya ゃ xyu ゅ xyo ょ "
+                + "lya ゃ lyu ゅ lyo ょ xwa ゎ lwa ゎ "
+                + "fa ふぁ fi ふぃ fe ふぇ fo ふぉ "
+                + "va ゔぁ vi ゔぃ vu ゔ ve ゔぇ vo ゔぉ "
+                + "thi てぃ dhi でぃ twu とぅ dwu どぅ "
+                + "tsa つぁ tsi つぃ tse つぇ tso つぉ "
+                + "she しぇ che ちぇ je じぇ").split(" ");
+        for (int i = 0; i < table.length; i += 2) put(table[i], table[i + 1]);
         // 요음: きゃ … (자음 + y + 모음), sh/ch/j 계열
         String[][] yoon = {{"k", "き"}, {"s", "し"}, {"t", "ち"}, {"n", "に"}, {"h", "ひ"}, {"m", "み"}, {"r", "り"},
                 {"g", "ぎ"}, {"z", "じ"}, {"j", "じ"}, {"d", "ぢ"}, {"b", "び"}, {"p", "ぴ"}, {"c", "ち"}, {"f", "ふ"}};

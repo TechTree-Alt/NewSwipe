@@ -29,4 +29,13 @@ public class GuideTextTest {
         assertEquals(1, s.size());
         assertEquals("최대 30개", s.get(0).body);
     }
+
+    @Test
+    public void picksLanguageFromCombinedFile() {
+        String text = "## 출처\n원문\n~~~\nMIT\n%%en\n## Source\nOriginal\n~~~\nMIT\n";
+        assertEquals("## 출처\n원문\n~~~\nMIT\n", GuideText.pick(text, true));
+        assertEquals("## Source\nOriginal\n~~~\nMIT\n", GuideText.pick(text, false));
+        assertEquals("## Source\n", GuideText.pick("%%en\n## Source\n", false));
+        assertNull(GuideText.pick("## 출처\n100%%en 아님\n", true));   // 줄 전체가 표시일 때만 나눈다
+    }
 }

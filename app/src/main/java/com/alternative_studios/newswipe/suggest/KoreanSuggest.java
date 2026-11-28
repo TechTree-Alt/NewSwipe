@@ -311,11 +311,6 @@ final class KoreanSuggest {
         return dict;
     }
 
-    /** 단어 쌍이 하나라도 있는 다음 단어 사전을 쓰는지. */
-    boolean hasNextWords() {
-        return next != null && next.pairs() > 0;
-    }
-
     /** 빈도(100만 어절당)가 perMillion 이상인 가장 낮은 사전 점수. */
     int scoreFor(double perMillion) {
         for (int s = 1; s < 256; s++) if (uni[s] * 1e6 >= perMillion) return s;

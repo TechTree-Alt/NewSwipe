@@ -1455,13 +1455,9 @@ public final class SettingsActivity extends Activity {
      * 글자가 칸 가장자리에 붙어 보이지 않도록 항목보다 좌우·위아래로 조금 더 넓게 칠한다. 항목 안에서는 그릴 수 없는 바깥 여백이라
      * 항목이 아니라 항목을 담은 부모의 위에 그린다.
      */
-    /** 마지막으로 깜빡인 칸 (시험에서 강조가 항목 전체에 걸렸는지 확인한다). */
-    View lastFlashed;
-
     private void flash(View box, View root) {
         int w = box.getWidth(), h = box.getHeight();
         if (w == 0 || h == 0) return;
-        lastFlashed = box;
         // 줄(바탕 없음)은 글자가 가장자리에 붙지 않게 좌우로 넓게 칠한다. 버튼처럼 둥근 바탕이 있는 항목은
         // 그 모양을 사방으로 똑같이 조금 키운 모양으로 칠한다 (모서리도 바탕의 둥글기에 넓힌 만큼 더해 나란하게).
         float shapeRadius = shapeRadius(box.getBackground());
@@ -4879,13 +4875,12 @@ public final class SettingsActivity extends Activity {
         values.put("USAGE_PAIRS", String.valueOf(UsageHistory.MAX_PAIRS));
         values.put("ISSUES_URL", ISSUES_URL);
         String text;
-        // 영어 화면에서는 같은 이름의 영어 글(assets/guide/en/)을 쓴다.
-        if (!L.ko()) asset = asset.replace("guide/", "guide/en/");
-        try (java.io.InputStream in = getAssets().open(asset)) {
-            java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
-            byte[] buf = new byte[8192];
-            for (int n; (n = in.read(buf)) > 0; ) bytes.write(buf, 0, n);
-            text = new String(bytes.toByteArray(), java.nio.charset.StandardCharsets.UTF_8);
+        try {
+            // 두 언어가 한 파일에 들었으면 (%%en) 그 반을, 아니면 영어 화면에서는 같은 이름의 영어 글(assets/guide/en/)을 쓴다.
+            text = readAsset(asset);
+            String part = GuideText.pick(text, L.ko());
+            if (part != null) text = part;
+            else if (!L.ko()) text = readAsset(asset.replace("guide/", "guide/en/"));
         } catch (java.io.IOException e) {
             card().addView(note(L.t("안내를 불러오지 못했습니다.", "Couldn't load this page.")));
             return;
@@ -4894,6 +4889,15 @@ public final class SettingsActivity extends Activity {
             LinearLayout c = sec.title == null ? card() : section(sec.title);
             if (!sec.body.isEmpty()) c.addView(sec.title == null && noteIntro ? note(sec.body) : guide(sec.body));
             if (sec.small != null) c.addView(licenseText(sec.small));
+        }
+    }
+
+    private String readAsset(String asset) throws java.io.IOException {
+        try (java.io.InputStream in = getAssets().open(asset)) {
+            java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+            byte[] buf = new byte[8192];
+            for (int n; (n = in.read(buf)) > 0; ) bytes.write(buf, 0, n);
+            return new String(bytes.toByteArray(), java.nio.charset.StandardCharsets.UTF_8);
         }
     }
 

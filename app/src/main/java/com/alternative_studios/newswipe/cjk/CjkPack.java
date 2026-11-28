@@ -221,7 +221,7 @@ public final class CjkPack {
             byte[] buf = new byte[16 * 1024];
             for (int n; (n = in.read(buf)) > 0; ) md.update(buf, 0, n);
             StringBuilder sb = new StringBuilder();
-            for (byte b : md.digest()) sb.append(String.format("%02x", b & 0xFF));
+            for (byte b : md.digest()) sb.append(Character.forDigit((b >> 4) & 0xF, 16)).append(Character.forDigit(b & 0xF, 16));
             return sb.toString();
         } catch (java.security.NoSuchAlgorithmException e) {
             throw new IOException(e);

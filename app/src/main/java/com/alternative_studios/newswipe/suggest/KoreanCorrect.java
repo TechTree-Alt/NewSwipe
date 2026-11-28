@@ -26,7 +26,7 @@ final class KoreanCorrect {
         this.shape = new SyllableModel(dict);
         prior = new float[dict.size()];
         for (int id = 0; id < prior.length; id++) {
-            prior[id] = (float) (Math.log(morph.prob(dict.score(id)) * 1e6) + SHAPE_LM * shape.logProb(dict.word(id)));
+            prior[id] = (float) (Math.log(morph.prob(dict.score(id)) * 1e6) + SHAPE_LM * shape.logProb(dict, id));
         }
         dict.idsByLength(ks.scoreFor(SHAPE_SCAN_FREQ));   // 처음 고칠 때 기다리지 않게 미리 만든다
         particlePrior();                                   // 사전을 읽는 백그라운드에서 미리 잰다
@@ -298,13 +298,14 @@ final class KoreanCorrect {
         if (p != null) return p;
         p = new double[KoreanSuggest.PARTICLE_CLASS_COUNT];
         double sum = 0;
+        WordDictionary.WordView view = dict.new WordView();   // 단어마다 String을 만들지 않는다
         for (int id = 0; id < dict.size(); id++) {
             char last = dict.lastChar(id);
             if (KoreanSuggest.PARTICLE_CLASSES.indexOf(last) < 0 || dict.length(id) < 2) continue;
-            String[] sp = WordSuggester.splitParticle(dict.word(id));
-            if (sp == null || sp[1].length() != 1) continue;
+            String particle = WordSuggester.particleSuffix(view.of(id));
+            if (particle == null || particle.length() != 1) continue;
             double f = morph.prob(dict.score(id));
-            p[KoreanSuggest.particleClass(sp[1])] += f;
+            p[KoreanSuggest.particleClass(particle)] += f;
             sum += f;
         }
         if (sum > 0) for (int k = 0; k < p.length; k++) p[k] /= sum;
@@ -454,7 +455,7 @@ final class KoreanCorrect {
                 partial = prior[id] - SHAPE_LM * lmTyped;
                 double top = partial + SHAPE_CONTEXT - SHAPE_COST * (TypoModel.VARIANT - 0.6);
                 // endLog는 끝 글자만 다른 말에만 쓴다 (다른 말은 여느 기준으로 걸러 느려지지 않게)
-                if (top < scanLog && (top < endLog || len != syll || !dict.word(id).startsWith(head))) continue;
+                if (top < scanLog && (top < endLog || len != syll || !dict.startsWith(id, head))) continue;
                 if (pairs.has(id)) partial += SHAPE_CONTEXT;
             }
             // 풀기 전에 음절 표로 어림해 거른다 (대부분의 후보가 여기서 빠진다)

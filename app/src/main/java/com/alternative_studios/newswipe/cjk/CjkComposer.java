@@ -54,10 +54,6 @@ public final class CjkComposer {
         }
     }
 
-    public CjkLearning learning() {
-        return learning;
-    }
-
     public boolean chinese() {
         return pinyin != null;
     }

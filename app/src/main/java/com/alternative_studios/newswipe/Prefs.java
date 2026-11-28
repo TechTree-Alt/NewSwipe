@@ -758,8 +758,6 @@ public final class Prefs {
                 .putInt(floatKey(FLOAT_POS_LIFT, screen), clamp(liftDp, 0, FLOAT_POS_LIFT_MAX)).apply();
     }
 
-    public boolean oneHandOn() { return !ONE_HAND_OFF.equals(oneHand()); }
-
     /** 버튼으로 켤 때 쓰는 쪽. 처음에는 오른쪽. */
     public String oneHandLast() {
         return ONE_HAND_LEFT.equals(sp.getString(ONE_HAND_LAST, ONE_HAND_RIGHT)) ? ONE_HAND_LEFT : ONE_HAND_RIGHT;

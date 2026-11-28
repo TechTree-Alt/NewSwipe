@@ -70,15 +70,8 @@ public final class WordSuggester {
 
     /**
      * 자동 수정에서 이웃한 키를 알 수 있게 지금 한글 자판의 글자 줄을 알려 준다. aspirateSwipe = ㅂ·ㅈ·ㄷ·ㄱ를 오른쪽으로 밀어
-     * ㅍ·ㅊ·ㅌ·ㅋ을 넣는 자판 (NewSwipe 단모음).
-     */
-    public void setKeyRows(String[][] rows, boolean aspirateSwipe) {
-        setKeyRows(rows, null, aspirateSwipe, false);
-    }
-
-    /**
-     * {@link #setKeyRows(String[][], boolean)}와 같되, 줄이 엇갈린 자판(두벌식)은 줄마다 시작 위치 offsets를, ㅑ·ㅕ·ㅛ·ㅠ 키가
-     * 따로 있으면 iotizedKeys를 준다 ({@link TypoModel#setRows(String[][], float[], boolean, boolean)}).
+     * ㅍ·ㅊ·ㅌ·ㅋ을 넣는 자판 (NewSwipe 단모음). 줄이 엇갈린 자판(두벌식)은 줄마다 시작 위치 offsets를(아니면 null),
+     * ㅑ·ㅕ·ㅛ·ㅠ 키가 따로 있으면 iotizedKeys를 준다 ({@link TypoModel#setRows(String[][], float[], boolean, boolean)}).
      */
     public void setKeyRows(String[][] rows, float[] offsets, boolean aspirateSwipe, boolean iotizedKeys) {
         // 입력란마다 불리지만 자판이 바뀔 때만 이웃 표를 다시 만든다 (줄은 KeyboardLayout의 고정 배열이라 같은지 바로 안다).
@@ -268,20 +261,33 @@ public final class WordSuggester {
         return false;
     }
 
-        /** word = 앞부분 + 조사이면 {앞부분, 조사}, 아니면 null. 받침에 맞는 조사만, 긴 것부터. 앞부분은 한글 한 글자 이상. */
+    /** word = 앞부분 + 조사이면 {앞부분, 조사}, 아니면 null. 받침에 맞는 조사만, 긴 것부터. 앞부분은 한글 한 글자 이상. */
     static String[] splitParticle(String word) {
+        String s = particleSuffix(word);
+        return s == null ? null : new String[]{word.substring(0, word.length() - s.length()), s};
+    }
+
+    /** {@link #splitParticle}이 떼어 낼 조사 (없으면 null). 글자열을 만들지 않는다 (사전 전체를 훑을 때 쓴다). */
+    static String particleSuffix(CharSequence word) {
+        int len = word.length();
         for (String[] p : LearnParticles.ALL) {
             String s = p[0];
-            if (word.length() <= s.length() || !word.endsWith(s)) continue;
-            String stem = word.substring(0, word.length() - s.length());
-            char last = stem.charAt(stem.length() - 1);
+            int n = s.length();
+            if (len <= n || !endsWith(word, s)) continue;
+            char last = word.charAt(len - n - 1);   // 앞부분의 마지막 글자
             if (last < '\uAC00' || last > '\uD7A3') continue;
             int fin = (last - 0xAC00) % 28;
             if (p[1].equals("F") && (fin == 0 || fin == 8 && s.startsWith("으로"))) continue;
             if (p[1].equals("V") && fin != 0 && !(fin == 8 && s.startsWith("로"))) continue;
-            return new String[]{stem, s};
+            return s;
         }
         return null;
+    }
+
+    private static boolean endsWith(CharSequence w, String s) {
+        int off = w.length() - s.length();
+        for (int k = 0; k < s.length(); k++) if (w.charAt(off + k) != s.charAt(k)) return false;
+        return true;
     }
 
     /** stem을 맨말로, 또는 word가 아닌 다른 조사와 함께 쓴 적이 있는지 (쓴 기록과 학습한 단어에서). */
@@ -336,12 +342,10 @@ public final class WordSuggester {
         return true;
     }
 
-    /** 사전(과 사용자 사전)을 읽어 둔다. 백그라운드 스레드에서 부른다. */
-    public void warmUp(boolean korean) {
-        warmUp(korean, generation);
-    }
-
-    /** gen: 작업을 맡길 때의 generation(). 그사이 release()가 있었으면 읽지 않는다 (놓아 준 뒤 다시 올리지 않도록). */
+    /**
+     * 사전(과 사용자 사전)을 읽어 둔다. 백그라운드 스레드에서 부른다.
+     * gen: 작업을 맡길 때의 generation(). 그사이 release()가 있었으면 읽지 않는다 (놓아 준 뒤 다시 올리지 않도록).
+     */
     public void warmUp(boolean korean, int gen) {
         if (gen != generation) return;
         WordDictionary d = dictionary(korean);
@@ -383,12 +387,6 @@ public final class WordSuggester {
     /** 한국어 사전을 읽은 뒤 사전 팩을 가져오거나 지웠는지 (그러면 release()하고 다시 읽는다). */
     public boolean packChanged() {
         return (ko != null || koFailed) && koPackChanges != DictionaryPack.changes();
-    }
-
-    /** 지금 쓰는 한국어 사전에 다음 단어 정보가 있는지 (사전 팩을 가져왔을 때). */
-    public boolean hasNextWords() {
-        KoreanSuggest m = koModel;
-        return m != null && m.hasNextWords();
     }
 
     /** 기본 사전을 놓아 준다. 화면 스레드에서 불러도 기다리지 않는다. */

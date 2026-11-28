@@ -196,12 +196,6 @@ public final class TextMirror {
         return composing.isEmpty() ? text.toString() : text + composing;
     }
 
-    /** 커서 바로 앞 글자 (조합 중인 글자 포함). 기억이 없거나 비어 있으면 0. */
-    public char lastChar() {
-        if (!composing.isEmpty()) return composing.charAt(composing.length() - 1);
-        return valid && text.length() > 0 ? text.charAt(text.length() - 1) : 0;
-    }
-
     private void trim() {
         int over = text.length() - KEEP;
         if (over > 0) {

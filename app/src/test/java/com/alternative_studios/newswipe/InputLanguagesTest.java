@@ -96,12 +96,22 @@ public class InputLanguagesTest {
 
     @Test
     public void everyGuideHasAnEnglishVersion() {
-        // 영어 화면은 assets/guide/en/의 같은 이름 파일을 연다 (SettingsActivity.buildGuide).
+        // 영어 화면은 같은 파일의 %%en 뒤나 assets/guide/en/의 같은 이름 파일을 연다 (SettingsActivity.buildGuide).
         java.io.File dir = new java.io.File("src/main/assets/guide");
         if (!dir.isDirectory()) dir = new java.io.File("app/src/main/assets/guide");
         java.io.File[] files = dir.listFiles((d, n) -> n.endsWith(".txt"));
         assertTrue(files != null && files.length > 0);
-        for (java.io.File f : files) assertTrue(f.getName(), new java.io.File(dir, "en/" + f.getName()).isFile());
+        for (java.io.File f : files) {
+            String text;
+            try {
+                text = new String(java.nio.file.Files.readAllBytes(f.toPath()), java.nio.charset.StandardCharsets.UTF_8);
+            } catch (java.io.IOException e) {
+                throw new AssertionError(e);
+            }
+            String en = GuideText.pick(text, false);
+            assertTrue(f.getName(), en != null ? !en.trim().isEmpty() && !GuideText.pick(text, true).trim().isEmpty()
+                    : new java.io.File(dir, "en/" + f.getName()).isFile());
+        }
     }
 
     @Test

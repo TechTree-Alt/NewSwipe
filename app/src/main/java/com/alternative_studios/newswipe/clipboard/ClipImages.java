@@ -85,7 +85,7 @@ public final class ClipImages {
         if (total == 0) return null;
         byte[] hash = digest.digest();
         StringBuilder b = new StringBuilder(32);
-        for (int i = 0; i < 16; i++) b.append(String.format("%02x", hash[i] & 0xff));
+        for (int i = 0; i < 16; i++) b.append(Character.forDigit((hash[i] >> 4) & 0xF, 16)).append(Character.forDigit(hash[i] & 0xF, 16));
         return b.toString();
     }
 

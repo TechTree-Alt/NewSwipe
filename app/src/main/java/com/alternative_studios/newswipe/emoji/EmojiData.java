@@ -14,7 +14,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 이모지 목록과 검색. 데이터는 assets/emoji.tsv (tools/generate_emoji_data.py가 만듦).
+ * 이모지 목록과 검색. 데이터는 assets/emoji.bin (tools/generate_emoji_data.py가 만들어 zlib으로 압축한 글, {@link #parse}).
  * 안드로이드 의존성이 없어 단위 테스트할 수 있다.
  */
 public final class EmojiData {
@@ -71,11 +71,6 @@ public final class EmojiData {
             return keywords;
         }
 
-        int koCount() {
-            keywords();
-            return koCount;
-        }
-
         /**
          * i번째 키워드가 이름인지. 각 언어의 첫 키워드가 이름이고, 나라 국기는 나라 이름·다른 이름('한국', '우리나라')부터
          * '깃발: 대한민국'까지가 모두 이름이다 (tools/generate_emoji_data.py의 flag_words). 이름으로 맞으면 먼저 보여 준다.
@@ -112,25 +107,57 @@ public final class EmojiData {
         for (int i = 0; i < GROUPS.length; i++) groups.add(new ArrayList<>());
     }
 
+    /**
+     * 이모지 목록을 읽는다. 한 줄에 한 이모지(그룹 \t 이모지 \t 변형 \t 한국어 검색어 \t 영어 검색어)거나, '#columns N' 줄
+     * 다음에 열마다 N줄씩(그룹 N줄, 이모지 N줄, ...) 모은 것이다. 앱에 든 파일은 뒤의 것이다 (같은 값끼리 붙어 있어 더 잘 압축된다).
+     */
     public static EmojiData parse(Reader reader, GlyphFilter filter) throws IOException {
         EmojiData d = new EmojiData();
         BufferedReader br = new BufferedReader(reader, 16 * 1024);
         String line;
         while ((line = br.readLine()) != null) {
+            if (line.startsWith("#columns ")) {
+                for (String[] f : columns(br, line.substring(9).trim())) d.add(f, filter);
+                break;
+            }
             if (line.isEmpty() || line.charAt(0) == '#') continue;
-            String[] f = line.split("\t", -1);
-            if (f.length < 5) continue;
-            int g = indexOf(GROUPS, f[0]);
-            if (g < 0) continue;
-            String value = f[1];
-            if (filter != null && !filter.canShow(value)) continue;
-            String[] variants = f[2].isEmpty() ? new String[0] : f[2].split(" ");
-            if (filter != null && variants.length > 0 && !filter.canShow(variants[0])) variants = new String[0];
-            Emoji e = new Emoji(value, variants, f[3], f[4]);
-            d.groups.get(g).add(e);
-            d.all.add(e);
+            d.add(line.split("\t", -1), filter);
         }
         return d;
+    }
+
+    /** 이모지 하나의 칸(그룹, 이모지, 변형, 한국어 검색어, 영어 검색어)을 더한다. 모르는 그룹·그릴 수 없는 이모지는 뺀다. */
+    private void add(String[] f, GlyphFilter filter) {
+        if (f.length < 5) return;
+        int g = indexOf(GROUPS, f[0]);
+        if (g < 0) return;
+        String value = f[1];
+        if (filter != null && !filter.canShow(value)) return;
+        String[] variants = f[2].isEmpty() ? new String[0] : f[2].split(" ");
+        if (filter != null && variants.length > 0 && !filter.canShow(variants[0])) variants = new String[0];
+        Emoji e = new Emoji(value, variants, f[3], f[4]);
+        groups.get(g).add(e);
+        all.add(e);
+    }
+
+    /** '#columns N' 다음의 열 다섯 개(열마다 N줄)를 이모지마다의 칸으로 되돌린다. */
+    private static List<String[]> columns(BufferedReader br, String count) throws IOException {
+        int n;
+        try {
+            n = Integer.parseInt(count);
+        } catch (NumberFormatException e) {
+            throw new IOException("bad emoji columns");
+        }
+        if (n < 0 || n > 100_000) throw new IOException("bad emoji columns");
+        String[][] f = new String[n][5];
+        for (int col = 0; col < 5; col++) {
+            for (int i = 0; i < n; i++) {
+                String line = br.readLine();
+                if (line == null) throw new IOException("emoji columns cut short");
+                f[i][col] = line;
+            }
+        }
+        return java.util.Arrays.asList(f);
     }
 
     private static int indexOf(String[] a, String s) {

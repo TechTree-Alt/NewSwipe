@@ -57,7 +57,8 @@ public final class EmojiRepository {
         Runnable task = () -> {
             EmojiData d = null;
             Paint paint = new Paint();
-            try (InputStreamReader r = new InputStreamReader(app.getAssets().open("emoji.tsv"),
+            try (InputStreamReader r = new InputStreamReader(
+                    com.alternative_studios.newswipe.suggest.WordDictionary.open(app.getAssets().open("emoji.bin")),
                     StandardCharsets.UTF_8)) {
                 d = EmojiData.parse(r, paint::hasGlyph);
             } catch (IOException ignored) {

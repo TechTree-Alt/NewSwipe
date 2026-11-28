@@ -18,17 +18,6 @@ public final class SwipeVertical {
     private SwipeVertical() {
     }
 
-    /**
-     * 네 방향(위·아래·왼쪽·오른쪽) 밀기를 붙인다. 가로로 뚜렷하게 밀면 좌우로 본다.
-     *
-     * @param enabled     방향(Key.SWIPE_*)마다 동작이 있는지. false인 방향으로 밀면 아무 일도 하지 않는다
-     * @param thresholdPx 이만큼 밀면 실행한다 (enabled·thresholdPx는 터치할 때마다 읽으므로 설정이 바뀌면 바로 따른다)
-     * @param action      민 방향(Key.SWIPE_*)을 받아 실행한다
-     */
-    public static void attachFourWay(View v, IntPredicate enabled, IntSupplier thresholdPx, IntConsumer action) {
-        attachFourWay(v, enabled, thresholdPx, action, null);
-    }
-
     /** 손을 뗄 때까지 끌어 쓰는 기능(커서 자유 이동)을 위한 연결. */
     public interface Drag {
         /** 이 방향 밀기가 끌어 쓰는 기능인지. */
@@ -37,12 +26,6 @@ public final class SwipeVertical {
         void start(int dir, float x, float y);
 
         void move(float x, float y);
-    }
-
-    /** @param drag 끌어 쓰는 방향이면 action 대신 이것을 부른다 (null이면 쓰지 않는다) */
-    public static void attachFourWay(View v, IntPredicate enabled, IntSupplier thresholdPx, IntConsumer action,
-                                     Drag drag) {
-        attachFourWay(v, enabled, thresholdPx, action, drag, null);
     }
 
     /** 길게 누르기를 위한 연결. 손가락을 거의 움직이지 않고 정한 시간만큼 누르고 있으면 실행한다. */
@@ -60,7 +43,15 @@ public final class SwipeVertical {
         }
     }
 
-    /** @param hold 길게 누르기 (null이면 쓰지 않는다) */
+    /**
+     * 네 방향(위·아래·왼쪽·오른쪽) 밀기를 붙인다. 가로로 뚜렷하게 밀면 좌우로 본다.
+     *
+     * @param enabled     방향(Key.SWIPE_*)마다 동작이 있는지. false인 방향으로 밀면 아무 일도 하지 않는다
+     * @param thresholdPx 이만큼 밀면 실행한다 (enabled·thresholdPx는 터치할 때마다 읽으므로 설정이 바뀌면 바로 따른다)
+     * @param action      민 방향(Key.SWIPE_*)을 받아 실행한다
+     * @param drag        끌어 쓰는 방향이면 action 대신 이것을 부른다 (null이면 쓰지 않는다)
+     * @param hold        길게 누르기 (null이면 쓰지 않는다)
+     */
     @SuppressLint("ClickableViewAccessibility")
     public static void attachFourWay(View v, IntPredicate enabled, IntSupplier thresholdPx, IntConsumer action,
                                      Drag drag, Hold hold) {

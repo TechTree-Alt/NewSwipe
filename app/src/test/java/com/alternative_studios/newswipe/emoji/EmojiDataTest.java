@@ -15,10 +15,15 @@ import java.util.List;
 
 public class EmojiDataTest {
 
+    /** 앱에 든 목록 (assets/emoji.bin: zlib으로 압축한 열 형식). */
+    static Reader asset() throws IOException {
+        File f = new File("src/main/assets/emoji.bin");
+        if (!f.exists()) f = new File("app/src/main/assets/emoji.bin");
+        return new InputStreamReader(new java.util.zip.InflaterInputStream(new FileInputStream(f)), StandardCharsets.UTF_8);
+    }
+
     private static EmojiData load() throws IOException {
-        File f = new File("src/main/assets/emoji.tsv");
-        if (!f.exists()) f = new File("app/src/main/assets/emoji.tsv");
-        try (Reader r = new InputStreamReader(new FileInputStream(f), StandardCharsets.UTF_8)) {
+        try (Reader r = asset()) {
             return EmojiData.parse(r, null);
         }
     }
@@ -89,9 +94,7 @@ public class EmojiDataTest {
 
     @Test
     public void glyphFilterHidesUnsupported() throws IOException {
-        File f = new File("src/main/assets/emoji.tsv");
-        if (!f.exists()) f = new File("app/src/main/assets/emoji.tsv");
-        try (Reader r = new InputStreamReader(new FileInputStream(f), StandardCharsets.UTF_8)) {
+        try (Reader r = asset()) {
             EmojiData d = EmojiData.parse(r, e -> !e.equals("🫝"));
             assertTrue(d.search("pickle", 5).isEmpty() || !contains(d.search("pickle", 5), "🫝"));
         }
