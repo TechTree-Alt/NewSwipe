@@ -264,19 +264,8 @@ final class EditorSheet {
     }
 
     void setTitle(CharSequence t) {
-        title.setText(Metro.on ? lowerFirst(t) : t);
-    }
-
-    /**
-     * Metro: WP8의 제목처럼 첫 글자를 소문자로 ("Letter keys settings" → "letter keys settings"). 한국어는 그대로이고,
-     * 약어처럼 둘째 글자도 대문자이면 ("QWERTY …") 바꾸지 않는다.
-     */
-    private static CharSequence lowerFirst(CharSequence t) {
-        if (t == null || t.length() == 0) return t;
-        char first = t.charAt(0);
-        if (!Character.isUpperCase(first)) return t;
-        if (t.length() > 1 && Character.isUpperCase(t.charAt(1))) return t;
-        return Character.toLowerCase(first) + t.subSequence(1, t.length()).toString();
+        // Metro: WP8의 제목처럼 영어 이름은 소문자 (앱의 다른 Metro 제목과 같다, 한국어는 그대로)
+        title.setText(Metro.on && t != null ? Metro.lower(t.toString()) : t);
     }
 
     /**
