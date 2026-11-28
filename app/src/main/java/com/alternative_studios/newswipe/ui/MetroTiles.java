@@ -180,6 +180,11 @@ public final class MetroTiles extends ViewGroup {
      * 뒤집는다 (중간·넓은 타일 일곱 개면 한 타일은 20초 남짓에 한 번 앞뒤가 바뀐다).
      */
     private static final long FLIP_MIN_MS = 2500, FLIP_RANGE_MS = 2500;
+    /**
+     * 한꺼번에 뒷면을 보일 수 있는 타일 수. 이만큼 뒤집혀 있으면 그 가운데 하나가 앞면으로 돌아와야 다른 타일이 뒤집힌다
+     * (뒤집히는 중인 타일도 넘어갈 면으로 센다).
+     */
+    private static final int MAX_BACK = 2;
     private final java.util.Random random = new java.util.Random();
     private final Runnable flipTick = this::flipOne;
     private boolean ticking;
@@ -189,6 +194,13 @@ public final class MetroTiles extends ViewGroup {
         if (!mayFlip()) return;
         java.util.List<Tile> candidates = new java.util.ArrayList<>();
         android.graphics.Rect seen = new android.graphics.Rect();
+        int backs = 0;
+        for (int i = 0; i < getChildCount(); i++) {
+            View v = getChildAt(i);
+            if (v instanceof Tile && ((Tile) v).showsBack()) backs++;
+        }
+        // 뒷면이 MAX_BACK개면 뒷면인 타일만 (앞면으로 돌아온다) 고른다.
+        boolean onlyBacks = backs >= MAX_BACK;
         for (int i = 0; i < getChildCount(); i++) {
             View v = getChildAt(i);
             if (!(v instanceof Tile)) continue;
@@ -197,6 +209,7 @@ public final class MetroTiles extends ViewGroup {
             if (t.size == SMALL || !t.hasBack() || !t.isEnabled() || t.isPressed() || t.flipping()
                     || t.getRotationX() != 0f || t.getRotationY() != 0f || t.getAlpha() < 1f
                     || !t.getGlobalVisibleRect(seen) || seen.height() < t.getHeight()) continue;
+            if (onlyBacks && !t.showsBack()) continue;
             candidates.add(t);
         }
         if (!candidates.isEmpty()) candidates.get(random.nextInt(candidates.size())).flip();
@@ -226,7 +239,19 @@ public final class MetroTiles extends ViewGroup {
     protected void onDetachedFromWindow() {
         removeCallbacks(flipTick);
         ticking = false;
+        resetFaces();
         super.onDetachedFromWindow();
+    }
+
+    /**
+     * 모든 타일을 움직임 없이 앞면으로 되돌린다. 메인 화면을 벗어나면(다른 화면이 덮어 창이 가려지거나, 설정 검색으로 판이 숨으면)
+     * 부른다: 돌아오면 판은 처음 모습으로 들어온다. 화면이 가려진 뒤라 바뀌는 모습은 보이지 않는다.
+     */
+    private void resetFaces() {
+        for (int i = 0; i < getChildCount(); i++) {
+            View v = getChildAt(i);
+            if (v instanceof Tile) ((Tile) v).face.reset();
+        }
     }
 
     @Override
@@ -237,19 +262,21 @@ public final class MetroTiles extends ViewGroup {
         } else {
             removeCallbacks(flipTick);
             ticking = false;
+            resetFaces();
         }
     }
 
     @Override
     protected void onVisibilityChanged(View changed, int visibility) {
         super.onVisibilityChanged(changed, visibility);
-        // 설정 검색 중에는 판이 숨는다: 그동안 쉬고, 다시 보이면 이어 간다.
+        // 설정 검색 중에는 판이 숨는다: 그동안 쉬며 앞면으로 되돌리고, 다시 보이면 처음부터 이어 간다.
         if (!isAttachedToWindow()) return;
         if (isShown()) {
             if (!ticking) post(this::schedule);
         } else {
             removeCallbacks(flipTick);
             ticking = false;
+            resetFaces();
         }
     }
 
@@ -283,6 +310,11 @@ public final class MetroTiles extends ViewGroup {
             return face.flip != null;
         }
 
+        /** 뒷면을 보이고 있거나 뒷면으로 넘어가는 중인지. */
+        boolean showsBack() {
+            return face.target;
+        }
+
         void flip() {
             face.flip();
         }
@@ -308,7 +340,10 @@ public final class MetroTiles extends ViewGroup {
         private final Paint iconPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint bgPaint = new Paint();
         private final TextPaint textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+        /** 지금 그리는 면 (뒤집기의 반쯤에서 바뀐다). */
         private boolean back;
+        /** 넘어갈(또는 이미 보이는) 면: 뒤집기를 시작할 때 바뀐다. */
+        boolean target;
         ValueAnimator flip;
         /** 뒷면 글을 끊어 둔 줄 (폭이 바뀌면 다시 끊는다). */
         private String[] backLines;
@@ -336,6 +371,7 @@ public final class MetroTiles extends ViewGroup {
 
         void flip() {
             if (flip != null || getWidth() == 0) return;
+            target = !back;
             Metro.perspective(this);
             setPivotX(getWidth() / 2f);
             setPivotY(getHeight() / 2f);
@@ -359,7 +395,9 @@ public final class MetroTiles extends ViewGroup {
             a.addListener(new AnimatorListenerAdapter() {
                 @Override
                 public void onAnimationEnd(Animator animation) {
-                    // 끝났거나 멈췄다 (창에서 떨어짐): 바뀐 면은 그대로 두고 곧게 세운다.
+                    // 끝났거나 멈췄다: 지금 그리는 면으로 곧게 세운다 (반도 돌기 전에 멈췄으면 원래 면).
+                    if (flip != animation) return;   // reset이 이미 정리했다
+                    target = back;
                     setRotationX(0f);
                     resetPivot();
                     flip = null;
@@ -367,6 +405,19 @@ public final class MetroTiles extends ViewGroup {
             });
             flip = a;
             a.start();
+        }
+
+        /** 뒤집기를 멈추고 앞면으로 곧게 세운다. */
+        void reset() {
+            ValueAnimator a = flip;
+            flip = null;   // 먼저 지워 멈춘 움직임의 끝 처리가 끼어들지 않게
+            if (a != null) a.cancel();
+            boolean changed = back;
+            back = false;
+            target = false;
+            setRotationX(0f);
+            resetPivot();
+            if (changed) invalidate();
         }
 
         @Override
