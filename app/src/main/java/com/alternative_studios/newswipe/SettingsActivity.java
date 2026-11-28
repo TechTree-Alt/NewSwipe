@@ -427,10 +427,18 @@ public final class SettingsActivity extends Activity {
             default: size = MetroTiles.MEDIUM; break;
         }
         String shortName = shortTitle(id);
-        return tiles.add(size, menuIcon(id), Metro.lower(shortName != null ? shortName : title), desc, title + ", " + desc, v -> {
+        // WP8 시작 화면의 타일 이름은 앱 이름 그대로 첫 글자가 대문자다 (Calendar, Music+Videos). 목록·제목의 소문자와 다르다.
+        return tiles.add(size, menuIcon(id), capitalize(shortName != null ? shortName : title), desc, title + ", " + desc, v -> {
             SettingsFrame.metroLastOut(this, v);   // 누른 타일은 다른 타일들이 돌아 나간 뒤 마지막으로
             openSection(id);
         });
+    }
+
+    /** 첫 글자만 대문자로 (한국어는 그대로). */
+    private static String capitalize(String s) {
+        if (s == null || s.isEmpty()) return s;
+        int first = s.offsetByCodePoints(0, 1);
+        return s.substring(0, first).toUpperCase(java.util.Locale.ROOT) + s.substring(first);
     }
 
     private void wrapMainForSearch() {

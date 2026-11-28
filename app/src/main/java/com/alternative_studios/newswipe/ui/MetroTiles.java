@@ -7,7 +7,6 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.text.TextPaint;
-import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.Interpolator;
@@ -31,9 +30,9 @@ import com.alternative_studios.newswipe.keyboard.Icons;
  *
  * <p>모양과 움직임 (Flip Tile 템플릿, "Flip Tile template design guidelines"):
  * <ul>
- *   <li>강조색 네모, 모서리·그림자 없음. 글자와 아이콘은 흰색 (아주 밝은 강조색은 {@link Metro#onAccent}의 짙은 색).</li>
- *   <li>앞면: 아이콘, 왼쪽 아래에 제목 (중간 19자·넓은 39자쯤). 작은 타일은 제목도 뒷면도 없다 (작은 타일의 Title·BackTitle·
- *       BackContent는 NA).</li>
+ *   <li>강조색 네모, 모서리·그림자 없음. 글자와 아이콘은 흰색 (WP8 강조색이 아닌 아주 밝은 색만 {@link Metro#onAccent}의 짙은 색).</li>
+ *   <li>앞면: 가운데 흰 단색 아이콘, 왼쪽 아래에 첫 글자가 대문자인 제목 (중간 19자·넓은 39자쯤, 넘치면 말줄임 없이 타일 끝에서
+ *       잘린다). 작은 타일은 제목도 뒷면도 없다 (작은 타일의 Title·BackTitle·BackContent는 NA).</li>
  *   <li>뒷면: 위쪽에 BackContent (중간은 13자씩 3줄, 넓은 타일은 27자씩 3줄쯤, 글은 저절로 줄바꿈되지 않으므로 직접 끊는다),
  *       왼쪽 아래에 BackTitle.</li>
  *   <li>타일은 정해지지 않은 간격으로 앞뒤가 뒤집힌다 (가로축을 중심으로 돈다). 한 번에 한 타일만, 화면이 보이는 동안만,
@@ -433,7 +432,7 @@ public final class MetroTiles extends ViewGroup {
             // 가장자리를 자르지 않으려 자식을 자르지 않으므로(setClipChildren(false)) 클립이 목록 전체라 다른 타일까지 덮는다.
             bgPaint.setColor(Metro.accent);
             c.drawRect(0, 0, w, h, bgPaint);
-            int ink = Metro.onAccent;
+            int ink = ink(Metro.accent);
             float s = scale();
             float left = TEXT_LEFT_WP * s, font = FONT_WP * s;
             textPaint.setColor(ink);
@@ -444,36 +443,60 @@ public final class MetroTiles extends ViewGroup {
                     linesWidth = w;
                     backLines = wrap(backContent, w - 2 * left, 3);
                 }
+                // 글은 타일 밖으로 나가지 않게 타일 가장자리에서 자른다 (WP8 시작 화면처럼 말줄임표 없이 잘린다).
+                c.save();
+                c.clipRect(0, 0, w, h);
                 float y = BACK_TOP_WP * s + ASCENT_EM * font;
                 for (String line : backLines) {
                     c.drawText(line, left, y, textPaint);
                     y += LINE_EM * font;
                 }
-                drawTitle(c, w, h, s, left, font);
+                drawTitle(c, h, s, left, font);
+                c.restore();
                 return;
             }
-            // 앞면: 가운데 아이콘. 중간·넓은 타일은 중간 타일 크기에 맞춘 같은 크기, 작은 타일은 타일의 절반.
+            // 앞면: 가운데에 흰 단색 아이콘. WP8 Iconic 템플릿처럼 그림이 중간 타일 높이의 40%쯤(작은 타일은 절반쯤)을 차지한다
+            // (이 앱의 아이콘은 24칸 안에 2칸씩 여백을 두고 그려져, 크기의 약 83%가 그림이다). 넓은 타일도 중간 타일과 같은 크기.
             iconPaint.setColor(ink);
-            float iconSize = size == SMALL ? h * 0.5f : h * 0.36f;
-            Icons.draw(c, icon, w / 2f, h / 2f, iconSize, iconPaint, 1.6f);
-            if (size != SMALL) drawTitle(c, w, h, s, left, font);
+            float iconSize = size == SMALL ? h * 0.6f : h * 0.5f;
+            Icons.draw(c, icon, w / 2f, h / 2f, iconSize, iconPaint);
+            if (size != SMALL) {
+                c.save();
+                c.clipRect(0, 0, w, h);
+                drawTitle(c, h, s, left, font);
+                c.restore();
+            }
         }
 
-        /** 왼쪽 아래의 제목 (한 줄, 넘치면 말줄임). */
-        private void drawTitle(Canvas c, int w, int h, float s, float left, float font) {
+        /**
+         * 타일 위의 글자·아이콘 색. WP8 시작 화면은 강조색 20가지 모두(노랑·연두 포함)에 흰 글자를 썼으므로 그 색이면 늘 흰색,
+         * 직접 고른 다른 색이면 그 색에 맞춘 글자 색({@link Metro#onAccent}: 아주 밝은 색은 짙은 글자).
+         */
+        private static int ink(int accent) {
+            for (int a : Metro.ACCENTS) if ((a & 0xFFFFFF) == (accent & 0xFFFFFF)) return 0xFFFFFFFF;
+            return Metro.onAccent;
+        }
+
+        /**
+         * 왼쪽 아래의 제목 (한 줄). 넘치는 글은 말줄임하지 않고 타일 가장자리에서 잘린다 (WP8 시작 화면의 'Internet Explo'처럼).
+         * 부른 쪽이 타일 영역으로 잘라 둔다.
+         */
+        private void drawTitle(Canvas c, int h, float s, float left, float font) {
             if (title.isEmpty()) return;
-            CharSequence t = TextUtils.ellipsize(title, textPaint, w - 2 * left, TextUtils.TruncateAt.END);
             float baseline = h - TITLE_BOTTOM_WP * s - (LINE_EM - ASCENT_EM) * font;
-            c.drawText(t, 0, t.length(), left, baseline, textPaint);
+            c.drawText(title, left, baseline, textPaint);
         }
 
-        /** text를 폭 max에 맞춰 낱말 단위로 끊는다 (낱말이 너무 길면 글자 단위). 줄이 넘치면 마지막 줄을 말줄임한다. */
+        /**
+         * text를 폭 max에 맞춰 낱말 단위로 끊는다 (낱말이 너무 길면 글자 단위). Flip 타일의 글은 저절로 줄바꿈되지 않으므로 직접 끊고,
+         * 마지막 줄에 남는 글은 그대로 두어 타일 가장자리에서 잘리게 한다.
+         */
         private String[] wrap(String text, float max, int maxLines) {
             java.util.List<String> lines = new java.util.ArrayList<>();
             String rest = text.trim();
             while (!rest.isEmpty() && lines.size() < maxLines) {
                 if (lines.size() == maxLines - 1 || textPaint.measureText(rest) <= max) {
-                    lines.add(TextUtils.ellipsize(rest, textPaint, max, TextUtils.TruncateAt.END).toString());
+                    lines.add(rest);
                     break;
                 }
                 int fit = textPaint.breakText(rest, true, max, null);
