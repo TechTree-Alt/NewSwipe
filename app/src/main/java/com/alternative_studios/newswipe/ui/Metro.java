@@ -831,8 +831,19 @@ public final class Metro {
         /** 글자 줄은 Silverlight TextBlock의 줄: Segoe WP의 높이 1.33 em, 기준선은 위에서 1.0791 em ({@link #segoeLine}). */
         @Override
         protected void onMeasure(int widthSpec, int heightSpec) {
-            int h = Math.round(segoeLineHeight(paint.getTextSize())) + getPaddingTop() + getPaddingBottom();
+            int h = Math.round(segoeLineHeight(paint.getTextSize())) + getPaddingTop() + getPaddingBottom() + overhang();
             setMeasuredDimension(MeasureSpec.getSize(widthSpec), h);
+        }
+
+        /**
+         * 이름 줄 아래로 더 둔 길이 (px): Segoe WP의 줄은 기준선 아래가 0.25 em뿐이라 기기 글꼴의 g·y 끝이 그보다 내려가면 뷰 밖으로
+         * 나가 잘린다. 그만큼 뷰를 늘려 다 그리게 하고, 놓는 쪽이 같은 길이를 아래 바깥 여백에서 빼 줄의 자리는 그대로 둔다
+         * (놓는 틀은 안쪽 여백에서 자르지 않아야 한다).
+         */
+        public int overhang() {
+            android.graphics.Paint.FontMetrics fm = paint.getFontMetrics();
+            float below = segoeLineHeight(paint.getTextSize()) - segoeBaseline(paint.getTextSize());
+            return Math.max(0, (int) Math.ceil(Math.max(fm.bottom, fm.descent) - below));
         }
 
         @Override
