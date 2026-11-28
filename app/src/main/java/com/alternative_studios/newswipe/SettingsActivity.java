@@ -456,8 +456,8 @@ public final class SettingsActivity extends Activity {
             case "feedback": return L.t("소리 & 진동", "sound");
             case "words": return L.t("추천", "suggestions");
             case "clipemoji": return L.t("클립보드", "clipboard");
-            case "onehand": return L.t("한 손 모드", "one-handed");
-            case "backup": return L.t("백업 및 복원", "backup");
+            case "onehand": return L.t("한 손 모드", "one-handed mode");
+            case "backup": return L.t("백업 및 복원", "backup & restore");
             case "lab": return L.t("실험실", "labs");
             case "app": return L.t("정보", "about");
             default: return null;
