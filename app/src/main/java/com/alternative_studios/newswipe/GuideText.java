@@ -10,6 +10,8 @@ import java.util.Map;
  *   <li>"## 제목" 줄이 새 카드를 시작한다. 첫 "##" 앞의 글은 제목 없는 첫 카드다.</li>
  *   <li>카드 안의 "~~~" 줄 뒤는 작은 글자로 보이는 부분이다 (라이선스 원문).</li>
  *   <li>"{이름}"은 화면에서 실제 값으로 바뀐다 (예: {CLIP_MAX}).</li>
+ *   <li>영어 글은 guide/en/의 같은 이름 파일이거나, 같은 파일의 "%%en" 줄 뒤다 ({@link #pick}). 라이선스 원문처럼 두 언어에
+ *       같은 글이 길게 들어가면 한 파일에 두어 APK에서 한 번만 압축되게 한다.</li>
  * </ul>
  */
 final class GuideText {
@@ -25,6 +27,20 @@ final class GuideText {
     }
 
     private GuideText() {
+    }
+
+    /** 영어 글을 담은 파일에서 두 언어를 나누는 줄. */
+    static final String EN_MARK = "%%en";
+
+    /**
+     * 파일에 "%%en" 줄이 있으면 그 앞(한국어)이나 뒤(영어)를 돌려준다. 없으면 null (영어 글은 guide/en/의 따로 된 파일).
+     */
+    static String pick(String text, boolean ko) {
+        String t = text.replace("\r\n", "\n");
+        int at = t.startsWith(EN_MARK + "\n") ? 0 : t.indexOf("\n" + EN_MARK + "\n");
+        if (at < 0) return null;
+        if (ko) return t.substring(0, at == 0 ? 0 : at + 1);
+        return t.substring(at == 0 ? EN_MARK.length() + 1 : at + EN_MARK.length() + 2);
     }
 
     static List<Section> parse(String text, Map<String, String> values) {

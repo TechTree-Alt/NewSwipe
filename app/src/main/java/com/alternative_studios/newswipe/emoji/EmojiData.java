@@ -14,7 +14,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 이모지 목록과 검색. 데이터는 assets/emoji.tsv (tools/generate_emoji_data.py가 만듦).
+ * 이모지 목록과 검색. 데이터는 assets/emoji.bin (tools/generate_emoji_data.py가 만들어 zlib으로 압축한 글, {@link #parse}).
  * 안드로이드 의존성이 없어 단위 테스트할 수 있다.
  */
 public final class EmojiData {
@@ -107,13 +107,24 @@ public final class EmojiData {
         for (int i = 0; i < GROUPS.length; i++) groups.add(new ArrayList<>());
     }
 
+    /**
+     * 이모지 목록을 읽는다. 한 줄에 한 이모지(그룹 \t 이모지 \t 변형 \t 한국어 검색어 \t 영어 검색어)거나, '#columns N' 줄
+     * 다음에 열마다 N줄씩(그룹 N줄, 이모지 N줄, ...) 모은 것이다. 앱에 든 파일은 뒤의 것이다 (같은 값끼리 붙어 있어 더 잘 압축된다).
+     */
     public static EmojiData parse(Reader reader, GlyphFilter filter) throws IOException {
         EmojiData d = new EmojiData();
         BufferedReader br = new BufferedReader(reader, 16 * 1024);
+        List<String[]> rows = new ArrayList<>();
         String line;
         while ((line = br.readLine()) != null) {
+            if (line.startsWith("#columns ")) {
+                rows = columns(br, line.substring(9).trim());
+                break;
+            }
             if (line.isEmpty() || line.charAt(0) == '#') continue;
-            String[] f = line.split("\t", -1);
+            rows.add(line.split("\t", -1));
+        }
+        for (String[] f : rows) {
             if (f.length < 5) continue;
             int g = indexOf(GROUPS, f[0]);
             if (g < 0) continue;
@@ -126,6 +137,26 @@ public final class EmojiData {
             d.all.add(e);
         }
         return d;
+    }
+
+    /** '#columns N' 다음의 열 다섯 개(열마다 N줄)를 이모지마다의 칸으로 되돌린다. */
+    private static List<String[]> columns(BufferedReader br, String count) throws IOException {
+        int n;
+        try {
+            n = Integer.parseInt(count);
+        } catch (NumberFormatException e) {
+            throw new IOException("bad emoji columns");
+        }
+        if (n < 0 || n > 100_000) throw new IOException("bad emoji columns");
+        String[][] f = new String[n][5];
+        for (int col = 0; col < 5; col++) {
+            for (int i = 0; i < n; i++) {
+                String line = br.readLine();
+                if (line == null) throw new IOException("emoji columns cut short");
+                f[i][col] = line;
+            }
+        }
+        return java.util.Arrays.asList(f);
     }
 
     private static int indexOf(String[] a, String s) {

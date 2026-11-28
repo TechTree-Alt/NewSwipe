@@ -1,11 +1,12 @@
 # NewSwipe 사전
 
 단어 추천·자동 수정에 쓰는 사전을 만들고, 평가하고, 사전 팩으로 묶는 데 필요한 것을 모아 둔 폴더입니다.
-앱 빌드에는 쓰이지 않습니다. 앱에 들어가는 결과물은 `app/src/main/assets/dict_*.bin`뿐입니다.
+앱 빌드에는 쓰이지 않습니다. 앱에 들어가는 결과물은 `app/src/main/assets/dict_*.bin`뿐입니다 (`build/pack_assets.py`로 열마다 모아
+압축한 꼴이고, 사전 팩에는 압축하지 않은 예전 꼴을 넣습니다).
 
 | 폴더 | 내용 |
 |---|---|
-| `build/` | 사전을 만드는 도구. `build_ko_model.py`(한국어 단어 사전 + 다음 단어 사전), `build_ko_dict.py`(걸러 내기·저장 함수, 차단 목록), `build_en_dict.py`(영어), `gen_ko_conjugations.py`(용언 활용형 생성), `gen_ko_pack_forms.py`(표준 사전 팩에 넣는 넓은 활용형: 높임·과거·보조 용언 꼴, Kiwi로 검사), `count_ko_stems.py`·`select_ko_stems.py`(형태소 분석기 Kiwi로 말뭉치의 용언 어간 세기·고르기), `attested_ko_forms.py`(말뭉치에 나왔지만 만든 활용형에 들지 못한 활용형 고르기, Kiwi로 검사), `make_dict_pack.py`(사전 팩 zip 만들기) |
+| `build/` | 사전을 만드는 도구. `build_ko_model.py`(한국어 단어 사전 + 다음 단어 사전), `build_ko_dict.py`(걸러 내기·저장 함수, 차단 목록), `build_en_dict.py`(영어), `gen_ko_conjugations.py`(용언 활용형 생성), `gen_ko_pack_forms.py`(표준 사전 팩에 넣는 넓은 활용형: 높임·과거·보조 용언 꼴, Kiwi로 검사), `count_ko_stems.py`·`select_ko_stems.py`(형태소 분석기 Kiwi로 말뭉치의 용언 어간 세기·고르기), `attested_ko_forms.py`(말뭉치에 나왔지만 만든 활용형에 들지 못한 활용형 고르기, Kiwi로 검사), `make_dict_pack.py`(사전 팩 zip 만들기), `pack_assets.py`(앱에 넣을 꼴로 압축), `build_known_words.py`·`recover_known_words.py`(맞는 말 목록) |
 | `lists/` | 직접 고른 목록. 구어체 단어(`ko_colloquial.txt`, `en_colloquial.txt`), 용언 어간(`ko_stems.txt`)과 그것으로 만든 활용형(`ko_conjugated.txt`), 말뭉치에서 센 어간(`ko_stems_kiwi.txt`, 만든 목록), 구어체 문장(`ko_phrases.txt`), 말뭉치를 섞을 때 뺄 주제어(`ko_mix_exclude_nsmc.txt`), 맞는 말 목록에서 뺄 말(`ko_known_exclude.txt`), 말뭉치 활용형에서 뺄 틀린 꼴(`ko_attested_exclude.txt`) |
 | `eval/` | 평가 도구. 앱의 추천 코드로 한 키씩 쳐서 키 절약률·잘못 고침·오타 고침을 잰다 (`run_eval.sh`, `SuggestEval.java`), 두 설정을 같은 문장끼리 견준다 (`compare_ksr.py`), 공개 평가 말뭉치를 받아 dev·test로 나눈다 (`fetch_public_sets.sh`) |
 | `packs/` | 설정에서 가져오는 사전 팩. `ko-standard.zip`(표준 사전: 말뭉치 단어 8만 개 + 만든 활용형 30만 개 + 말뭉치 활용형 3만 개, 단어 쌍 40만 개, 약 2.4MB)과 그 라이선스, 폴더별 라이선스 안내(`README.md`) |
@@ -57,8 +58,9 @@ dict/eval/run_eval.sh app/src/main/assets dict/eval/data/chat_q_dev.txt --layout
 
 **맞는 말 목록 (`dict_ko_known.bin`, `build_known_words.py`)**: 사전에 없는 맞는 말을 잘못 고치는 일(공황 → 공항, 배탈이 →
 배달이, 명언 → 명은)은 대부분 말뭉치에는 있지만 빈도 상위에 들지 못한 단어였습니다. Leipzig 말뭉치에 100만 어절당 0.1번 이상 나온
-말을 블룸 필터(단어 하나에 14비트, 0.1%를 잘못 알아본다)로 담아 그런 말은 고치지 않고, 그만큼 기준을 3000에서 1200으로 낮춰 흔한
-말의 오타(자덩입니다 → 자동입니다)를 더 고칩니다. 리뷰(NSMC)는 맞춤법이 틀린 말이 많아 넣지 않습니다. 기본 사전용 770KB, 팩용 640KB.
+말을 binary fuse 필터(단어 하나에 11비트, 0.1%를 잘못 알아본다)로 담아 그런 말은 고치지 않고, 그만큼 기준을 3000에서 1200으로 낮춰
+흔한 말의 오타(자덩입니다 → 자동입니다)를 더 고칩니다. 리뷰(NSMC)는 맞춤법이 틀린 말이 많아 넣지 않습니다. 기본 사전용 580KB. 팩은
+예전 앱도 읽도록 블룸 필터(단어 하나에 14비트, 640KB)로 담습니다.
 더 느슨하게 두면 오타(이야기하보자, 키버드가)가 우연히 목록에 걸려 고치지 않는 일이 생깁니다. 말뭉치에 나오지만 대화에서는 거의 쓰지 않아 흔한 말의
 오타로 보는 편이 나은 말(배일 → 매일)은 `lists/ko_known_exclude.txt`에 적어 목록에서 뺍니다.
 

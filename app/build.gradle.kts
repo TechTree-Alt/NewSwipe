@@ -39,7 +39,9 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // 안드로이드 기본 규칙(proguard-android-optimize.txt)은 XML 레이아웃·onClick 속성을 위해 View의 set*/get*과
+            // 액티비티의 (View) 메서드를 모두 남긴다. 이 앱은 XML 레이아웃도 리플렉션도 쓰지 않으므로 필요한 규칙만 proguard-rules.pro에 둔다.
+            proguardFiles("proguard-rules.pro")
             signingConfig = signingConfigs.getByName(if (releaseKeystore != null) "release" else "debug")
         }
     }
@@ -54,12 +56,9 @@ android {
         unitTests.all { it.jvmArgs("-Duser.language=ko", "-Duser.country=KR") }
     }
 
-    // minSdk 28 이상이면 AGP는 classes.dex를 압축하지 않고 넣는다 (APK에서 바로 읽으려고). 이 앱은 dex가 APK의 절반이라
-    // 압축해 넣으면 APK가 400KB쯤 줄어든다. 설치할 때 기기가 dex를 한 번 풀어 두는 것 말고는 동작이 같다.
-    packaging {
-        dex {
-            useLegacyPackaging = true
-        }
+    // assets의 .bin은 이미 압축했거나(dict/build/pack_assets.py, zlib) 압축이 되지 않는 것(맞는 말 필터)이라 APK에서 다시 압축하지 않는다.
+    androidResources {
+        noCompress += "bin"
     }
 
     dependenciesInfo {

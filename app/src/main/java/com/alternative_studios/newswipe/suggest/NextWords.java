@@ -35,13 +35,21 @@ public final class NextWords implements WordGroups {
     }
 
     /**
+     * NSN1 (dict/build/build_ko_model.py)과 NSN2 (dict/build/pack_assets.py, 앱에 든 사전)를 읽는다. 머리는 같고, NSN2는 같은
+     * 값을 열마다 모아 둔다: 앞 단어 번호 차이 ×묶음 | 다음 단어 수 ×묶음 | λ ×묶음 | 묶음마다 첫 다음 단어 번호 ×묶음 |
+     * 나머지 다음 단어의 번호 차이 ×(쌍 - 묶음) | P ×쌍.
+     * 앱에 든 파일은 zlib으로 압축되어 있다 ({@link WordDictionary#open}).
+     *
      * @param dictSize 함께 쓸 단어 사전의 단어 수. 파일이 다른 사전으로 만들어졌으면 IOException.
      */
     public static NextWords load(InputStream in, int dictSize) throws IOException {
-        DataInputStream d = new DataInputStream(new java.io.BufferedInputStream(in, 16 * 1024));
+        DataInputStream d = new DataInputStream(WordDictionary.open(in));
         byte[] magic = new byte[4];
         d.readFully(magic);
-        if (magic[0] != 'N' || magic[1] != 'S' || magic[2] != 'N' || magic[3] != '1') throw new IOException("bad next");
+        if (magic[0] != 'N' || magic[1] != 'S' || magic[2] != 'N' || (magic[3] != '1' && magic[3] != '2')) {
+            throw new IOException("bad next");
+        }
+        boolean columns = magic[3] == '2';
         int words = Integer.reverseBytes(d.readInt());
         float top = Float.intBitsToFloat(Integer.reverseBytes(d.readInt()));
         float bottom = Float.intBitsToFloat(Integer.reverseBytes(d.readInt()));
@@ -60,22 +68,48 @@ public final class NextWords implements WordGroups {
             h += varint(d);
             if (h < 0 || h >= words || (g > 0 && h <= prev[g - 1])) throw new IOException("bad next");
             prev[g] = h;
+            if (columns) continue;
             lambda[g] = d.readByte();
-            int n = varint(d);
-            if (n <= 0 || k + n > pairs) throw new IOException("bad next");
-            start[g] = k;
-            int w = 0;
-            for (int i = 0; i < n; i++) {
-                w += varint(d);
-                if (w < 0 || w >= words || (i > 0 && w <= next[k - 1])) throw new IOException("bad next");
-                next[k++] = w;
+            k = readNext(d, next, k, varint(d), words, 0, false);
+            start[g + 1] = k;
+        }
+        if (columns) {
+            for (int g = 0; g < groups; g++) {
+                int n = varint(d);
+                if (n <= 0 || k + n > pairs) throw new IOException("bad next");
+                k += n;
+                start[g + 1] = k;
+            }
+            d.readFully(lambda);
+            for (int g = 0; g < groups; g++) {   // 묶음마다 첫 번호
+                int first = varint(d);
+                if (first < 0 || first >= words) throw new IOException("bad next");
+                next[start[g]] = first;
+            }
+            for (int g = 0; g < groups; g++) {   // 나머지는 첫 번호에서 이어지는 차이
+                readNext(d, next, start[g] + 1, start[g + 1] - start[g] - 1, words, next[start[g]], true);
             }
         }
         if (k != pairs) throw new IOException("bad next");
-        start[groups] = k;
         byte[] q = new byte[pairs];
         d.readFully(q);
         return new NextWords(prev, start, lambda, next, q, top, bottom);
+    }
+
+    /**
+     * 다음 단어 n개를 번호 차이로 읽어 next[k..]에 쓰고 끝 위치를 돌려준다 (번호는 오름차순). w는 앞 번호: 묶음의 처음부터면 0
+     * (afterFirst = false, n은 1 이상), 묶음의 첫 번호를 따로 읽었으면 그 번호 (afterFirst = true, n은 0일 수 있다).
+     */
+    private static int readNext(DataInputStream d, int[] next, int k, int n, int words, int w, boolean afterFirst)
+            throws IOException {
+        if (n < (afterFirst ? 0 : 1) || k + n > next.length) throw new IOException("bad next");
+        for (int i = 0; i < n; i++) {
+            int before = w;
+            w += varint(d);
+            if (w < 0 || w >= words || ((i > 0 || afterFirst) && w <= before)) throw new IOException("bad next");
+            next[k++] = w;
+        }
+        return k;
     }
 
     private static int varint(DataInputStream d) throws IOException {

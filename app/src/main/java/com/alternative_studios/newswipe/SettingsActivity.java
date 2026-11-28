@@ -4875,13 +4875,12 @@ public final class SettingsActivity extends Activity {
         values.put("USAGE_PAIRS", String.valueOf(UsageHistory.MAX_PAIRS));
         values.put("ISSUES_URL", ISSUES_URL);
         String text;
-        // 영어 화면에서는 같은 이름의 영어 글(assets/guide/en/)을 쓴다.
-        if (!L.ko()) asset = asset.replace("guide/", "guide/en/");
-        try (java.io.InputStream in = getAssets().open(asset)) {
-            java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
-            byte[] buf = new byte[8192];
-            for (int n; (n = in.read(buf)) > 0; ) bytes.write(buf, 0, n);
-            text = new String(bytes.toByteArray(), java.nio.charset.StandardCharsets.UTF_8);
+        try {
+            // 두 언어가 한 파일에 들었으면 (%%en) 그 반을, 아니면 영어 화면에서는 같은 이름의 영어 글(assets/guide/en/)을 쓴다.
+            text = readAsset(asset);
+            String part = GuideText.pick(text, L.ko());
+            if (part != null) text = part;
+            else if (!L.ko()) text = readAsset(asset.replace("guide/", "guide/en/"));
         } catch (java.io.IOException e) {
             card().addView(note(L.t("안내를 불러오지 못했습니다.", "Couldn't load this page.")));
             return;
@@ -4890,6 +4889,15 @@ public final class SettingsActivity extends Activity {
             LinearLayout c = sec.title == null ? card() : section(sec.title);
             if (!sec.body.isEmpty()) c.addView(sec.title == null && noteIntro ? note(sec.body) : guide(sec.body));
             if (sec.small != null) c.addView(licenseText(sec.small));
+        }
+    }
+
+    private String readAsset(String asset) throws java.io.IOException {
+        try (java.io.InputStream in = getAssets().open(asset)) {
+            java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+            byte[] buf = new byte[8192];
+            for (int n; (n = in.read(buf)) > 0; ) bytes.write(buf, 0, n);
+            return new String(bytes.toByteArray(), java.nio.charset.StandardCharsets.UTF_8);
         }
     }
 

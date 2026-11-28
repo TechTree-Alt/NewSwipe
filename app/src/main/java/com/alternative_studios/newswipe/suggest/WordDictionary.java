@@ -1,8 +1,10 @@
 package com.alternative_studios.newswipe.suggest;
 
+import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.zip.InflaterInputStream;
 
 /**
  * 단어 사전 (dict/build/build_*_dict.py가 만든 NSD1 파일).
@@ -73,43 +75,101 @@ public final class WordDictionary {
         this.count = scores.length;
     }
 
+    /**
+     * 사전 파일을 읽을 스트림. 앱에 든 사전은 dict/build/pack_assets.py가 zlib으로 미리 압축해 두었으므로, zlib 머리로
+     * 시작하면 풀어 읽는다 (사전 팩의 파일은 압축되어 있지 않다).
+     */
+    static InputStream open(InputStream in) throws IOException {
+        InputStream b = new BufferedInputStream(in, 16 * 1024);
+        b.mark(2);
+        int c0 = b.read(), c1 = b.read();
+        b.reset();
+        if (c0 == 0x78 && c1 >= 0 && ((c0 << 8) | c1) % 31 == 0) {
+            return new BufferedInputStream(new InflaterInputStream(b), 16 * 1024);
+        }
+        return b;
+    }
+
+    /**
+     * NSD1 (dict/build/build_*_dict.py): "NSD1" | u32 단어 수 | u32 본문 크기 | 단어마다 (u8 앞 단어와 같은 접두사 길이,
+     * u8 꼬리 길이, u8 점수, 꼬리 글자 UTF-16LE).
+     * NSD2 (dict/build/pack_assets.py, 앱에 든 사전): "NSD2" | u32 단어 수 n | u32 꼬리 글자 수 c | u8 글자 배치 |
+     * 접두사 길이 ×n | 꼬리 길이 ×n | 점수 ×n | 꼬리 글자 (배치 0: UTF-16LE, 1: 낮은 바이트 c개 다음 높은 바이트 c개).
+     * 같은 값을 열마다 모아 더 잘 압축된다.
+     */
     public static WordDictionary load(InputStream in) throws IOException {
-        DataInputStream d = new DataInputStream(new java.io.BufferedInputStream(in, 16 * 1024));
+        DataInputStream d = new DataInputStream(open(in));
         byte[] magic = new byte[4];
         d.readFully(magic);
-        if (magic[0] != 'N' || magic[1] != 'S' || magic[2] != 'D' || magic[3] != '1') {
+        if (magic[0] != 'N' || magic[1] != 'S' || magic[2] != 'D' || (magic[3] != '1' && magic[3] != '2')) {
             throw new IOException("bad dictionary");
         }
         int n = Integer.reverseBytes(d.readInt());
-        int blob = Integer.reverseBytes(d.readInt());
-        if (n < 0 || blob < 0 || blob > (16 << 20) || n > blob / 3) throw new IOException("bad dictionary");
-        byte[] raw = new byte[blob];
-        d.readFully(raw);
-
-        // 먼저 풀어 쓴 전체 길이를 세어 딱 맞는 배열을 한 번만 잡는다 (늘리고 다시 자르는 복사가 없다).
-        long total = 0;
-        for (int i = 0, q = 0; i < n; i++) {
-            if (q + 3 > blob) throw new IOException("bad dictionary");
-            int tail = raw[q + 1] & 0xFF;
-            total += (raw[q] & 0xFF) + tail;
-            q += 3 + 2 * tail;
-            if (q > blob) throw new IOException("bad dictionary");
+        int size = Integer.reverseBytes(d.readInt());   // NSD1: 본문 바이트, NSD2: 꼬리 글자 수
+        byte[] common = new byte[Math.max(n, 0)], tail, sc, chars;
+        if (magic[3] == '1') {
+            if (n < 0 || size < 0 || size > (16 << 20) || n > size / 3) throw new IOException("bad dictionary");
+            byte[] raw = new byte[size];
+            d.readFully(raw);
+            tail = new byte[n];
+            sc = new byte[n];
+            int tailBytes = 0;
+            for (int i = 0, q = 0; i < n; i++) {
+                if (q + 3 > size) throw new IOException("bad dictionary");
+                int t = raw[q + 1] & 0xFF;
+                q += 3 + 2 * t;
+                if (q > size) throw new IOException("bad dictionary");
+                tailBytes += 2 * t;
+            }
+            chars = new byte[tailBytes];
+            for (int i = 0, q = 0, c = 0; i < n; i++) {
+                common[i] = raw[q];
+                tail[i] = raw[q + 1];
+                sc[i] = raw[q + 2];
+                int t = 2 * (raw[q + 1] & 0xFF);
+                System.arraycopy(raw, q + 3, chars, c, t);
+                c += t;
+                q += 3 + t;
+            }
+        } else {
+            int layout = d.readUnsignedByte();
+            if (n < 0 || size < 0 || size > (8 << 20) || n > (16 << 20) / 3 || layout > 1) {
+                throw new IOException("bad dictionary");
+            }
+            tail = new byte[n];
+            sc = new byte[n];
+            chars = new byte[2 * size];
+            d.readFully(common);
+            d.readFully(tail);
+            d.readFully(sc);
+            d.readFully(chars);
+            if (layout == 1) {   // 낮은 바이트들, 높은 바이트들 → UTF-16LE
+                byte[] le = new byte[chars.length];
+                for (int i = 0; i < size; i++) {
+                    le[2 * i] = chars[i];
+                    le[2 * i + 1] = chars[size + i];
+                }
+                chars = le;
+            }
         }
-        if (total > (32 << 20)) throw new IOException("bad dictionary");
+        // 먼저 풀어 쓴 전체 길이를 세어 딱 맞는 배열을 한 번만 잡는다 (늘리고 다시 자르는 복사가 없다).
+        long total = 0, tailChars = 0;
+        for (int i = 0; i < n; i++) {
+            total += (common[i] & 0xFF) + (tail[i] & 0xFF);
+            tailChars += tail[i] & 0xFF;
+        }
+        if (total > (32 << 20) || 2 * tailChars != chars.length) throw new IOException("bad dictionary");
         char[] buf = new char[(int) total];
         int[] offs = new int[n + 1];
-        byte[] sc = new byte[n];
         int len = 0, p = 0, prevStart = 0, prevLen = 0;
         for (int i = 0; i < n; i++) {
-            int common = raw[p++] & 0xFF;
-            int tail = raw[p++] & 0xFF;
-            sc[i] = raw[p++];
-            if (common > prevLen) throw new IOException("bad dictionary");
+            int c = common[i] & 0xFF;
+            if (c > prevLen) throw new IOException("bad dictionary");
             offs[i] = len;
-            System.arraycopy(buf, prevStart, buf, len, common);
-            len += common;
-            for (int k = 0; k < tail; k++, p += 2) {
-                buf[len++] = (char) ((raw[p] & 0xFF) | ((raw[p + 1] & 0xFF) << 8));
+            System.arraycopy(buf, prevStart, buf, len, c);
+            len += c;
+            for (int k = tail[i] & 0xFF; k > 0; k--, p += 2) {
+                buf[len++] = (char) ((chars[p] & 0xFF) | ((chars[p + 1] & 0xFF) << 8));
             }
             prevStart = offs[i];
             prevLen = len - offs[i];
