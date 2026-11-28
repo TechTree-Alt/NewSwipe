@@ -16,8 +16,10 @@
 
     <!--
         키보드 창 테마. 키보드 창은 모든 Android 버전에서 하단 바(내비게이션 바) 뒤까지 그리고, 하단 바 영역은
-        키보드가 직접 배경색으로 채운다 (NewSwipeIME.applyNavigationBarStyle, refreshBottomInset). 그래서 하단 바 자체는 투명이다.
+        키보드가 직접 배경색으로 채운다 (NewSwipeIME.applyNavigationBarStyle, applySystemInsets). 그래서 하단 바 자체는 투명이다.
         Android 15에서 지원 중단된 Window.setNavigationBarColor로 색을 바꾸지 않는다.
+        edge-to-edge 강제에서 빠지는 설정(windowOptOutEdgeToEdgeEnforcement)은 두지 않는다: Android 15는 targetSdk와 상관없이
+        이 설정을 따르는데, 그러면 창 장식이 하단 바 높이만큼 스스로 여백을 두고 Android 16과 다르게 움직인다.
         밝은 배경에서는 아이콘을 어둡게 한다 (키보드 테마에 따라 applyNavigationBarStyle이 다시 정한다).
     -->
     <style name="Theme.NewSwipe.Ime" parent="android:Theme.DeviceDefault.InputMethod">
