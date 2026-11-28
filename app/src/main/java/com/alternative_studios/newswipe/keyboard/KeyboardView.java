@@ -920,14 +920,19 @@ public final class KeyboardView extends View {
         invalidate();
     }
 
-    /** ⌫(위·왼쪽)와 스페이스바(위쪽)의 터치 인식 범위에서 뺄 비율 (0이면 그대로). 키 모양은 바꾸지 않는다. */
-    private float deleteShrink, spaceShrink;
+    /**
+     * ⌫(위·왼쪽·아래), Shift·Fn(위·오른쪽·아래)와 스페이스바(위쪽)의 터치 인식 범위에서 뺄 비율 (0이면 그대로).
+     * 키 모양은 바꾸지 않는다.
+     */
+    private float deleteShrink, spaceShrink, shiftShrink;
     /** 그 밖의 하단 기능키(BottomKeys ID)마다 위쪽 터치 인식 범위에서 뺄 비율. 없는 키는 그대로. */
     private java.util.Map<String, Float> bottomShrink = java.util.Collections.emptyMap();
 
-    public void setHitShrink(float deleteFraction, float spaceFraction, java.util.Map<String, Float> bottomFractions) {
+    public void setHitShrink(float deleteFraction, float spaceFraction, float shiftFraction,
+                             java.util.Map<String, Float> bottomFractions) {
         deleteShrink = deleteFraction;
         spaceShrink = spaceFraction;
+        shiftShrink = shiftFraction;
         bottomShrink = bottomFractions;
     }
 
@@ -952,16 +957,17 @@ public final class KeyboardView extends View {
         }
         Key k = keyInRow(layout.rows[ri], x);
         if (k == null) return null;
-        // 좁힌 범위 밖(⌫의 위·왼쪽·아래 끝, 스페이스바·하단 기능키의 위쪽 끝)을 누르면 그쪽 이웃 키(윗줄·왼쪽·아랫줄 키)를
-        // 누른 것으로 본다. ㅣ·ㅡ 등을 누르려다 ⌫가, 윗줄 글자를 누르려다 스페이스바·하단 기능키가 눌리는 일을 줄인다.
+        // 좁힌 범위 밖(⌫의 위·왼쪽·아래 끝, Shift·Fn의 위·오른쪽·아래 끝, 스페이스바·하단 기능키의 위쪽 끝)을 누르면
+        // 그쪽 이웃 키(윗줄·옆·아랫줄 키)를 누른 것으로 본다. ㅣ·ㅡ 등을 누르려다 ⌫가, ㅋ·ㅁ 등을 누르려다 Shift가,
+        // 윗줄 글자를 누르려다 스페이스바·하단 기능키가 눌리는 일을 줄인다.
         // 하단 기능키 설정은 맨 아래 줄에 있을 때만 쓴다 (쉼표·온점이 다른 줄에 있는 자판도 있다).
-        float shrink = k.type == Key.DELETE ? deleteShrink : k.type == Key.SPACE ? spaceShrink
+        boolean delete = k.type == Key.DELETE, shift = k.type == Key.SHIFT || k.type == Key.FUNCTION;
+        float shrink = delete ? deleteShrink : shift ? shiftShrink : k.type == Key.SPACE ? spaceShrink
                 : ri == layout.rows.length - 1 ? bottomShrinkOf(k) : 0f;
         if (shrink <= 0f) return k;
-        boolean delete = k.type == Key.DELETE;
         float bandY = k.rect.height() * shrink, bandX = k.rect.width() * shrink;
         // 각 가장자리에서 얼마나 떨어져 있는지 (좁힌 범위 안이면 그 가장자리 쪽 이웃이 후보).
-        float fromTop = y - k.rect.top, fromLeft = x - k.rect.left, fromBottom = k.rect.bottom - y;
+        float fromTop = y - k.rect.top, fromLeft = x - k.rect.left, fromRight = k.rect.right - x, fromBottom = k.rect.bottom - y;
         Key best = null;
         float bestDist = Float.MAX_VALUE;
         if (fromTop < bandY && ri > 0) {
@@ -978,7 +984,14 @@ public final class KeyboardView extends View {
                 bestDist = fromLeft;
             }
         }
-        if (delete && fromBottom < bandY && fromBottom < bestDist && ri < layout.rows.length - 1) {
+        if (shift && fromRight < bandX && fromRight < bestDist) {
+            Key right = rightNeighbor(layout.rows[ri], k);
+            if (right != null) {
+                best = right;
+                bestDist = fromRight;
+            }
+        }
+        if ((delete || shift) && fromBottom < bandY && fromBottom < bestDist && ri < layout.rows.length - 1) {
             // 아래쪽은 글자 키일 때만 넘긴다 (맨 아래 기능키 줄의 엔터 등이 잘못 눌리지 않게).
             Key below = keyInRow(layout.rows[ri + 1], x);
             if (below != null && below.type == Key.CHAR && !below.isFunctional()) best = below;
@@ -993,6 +1006,16 @@ public final class KeyboardView extends View {
         for (Key other : row.keys) {
             if (other == k) return prev;
             if (other.type != Key.SPACER && other.type != Key.GAP && !other.isJoystick()) prev = other;
+        }
+        return null;
+    }
+
+    /** 줄에서 바로 오른쪽의 실제 키 (빈칸은 건너뛴다). 없으면 null. */
+    private static Key rightNeighbor(KeyboardLayout.Row row, Key k) {
+        boolean seen = false;
+        for (Key other : row.keys) {
+            if (other == k) seen = true;
+            else if (seen && other.type != Key.SPACER && other.type != Key.GAP && !other.isJoystick()) return other;
         }
         return null;
     }

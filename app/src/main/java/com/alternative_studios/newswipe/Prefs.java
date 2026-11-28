@@ -398,6 +398,8 @@ public final class Prefs {
     public static final String DELETE_HIT_SHRINK_PCT = "delete_hit_shrink_pct";   // %, 5~50
     public static final String SPACE_HIT_SHRINK = "space_hit_shrink";             // 스페이스바의 위쪽 터치 인식 범위 좁히기
     public static final String SPACE_HIT_SHRINK_PCT = "space_hit_shrink_pct";     // %, 5~50
+    public static final String SHIFT_HIT_SHRINK = "shift_hit_shrink";             // Shift(Fn)의 위·오른쪽·아래 터치 인식 범위 좁히기
+    public static final String SHIFT_HIT_SHRINK_PCT = "shift_hit_shrink_pct";     // %, 5~50
     /** 하단 기능키(BottomKeys ID, 스페이스바 제외)마다 위쪽 터치 인식 범위 좁히기: hit_shrink_<ID>, 줄이는 정도(%) hit_shrink_pct_<ID>. */
     public static final String HIT_SHRINK_PREFIX = "hit_shrink_";
     public static final String SETUP_DONE = "setup_done";   // 시작하기를 한 번 마쳤는지 (그전까지 설정 메뉴를 막는다)
@@ -980,7 +982,7 @@ public final class Prefs {
             new EditorScope("large", L.t("폴더블 내부 화면 별도 키보드·판정 기준", "Separate inner screen keyboard · threshold"), keys(LARGE_LAYOUT, LARGE_SCREEN_DP), NONE),
             new EditorScope("keys", L.t("키마다 정한 설정 (길게 누르기·밀기·키 창의 누르기 항목)", "Per-key settings (long press · swipe · tap options in key panels)"), keys(NUMBER_PAD_SYMBOLS,
                     DOUBLE_SPACE_PERIOD, SPACE_HIT_SHRINK, SPACE_HIT_SHRINK_PCT, SPACE_LANG_LABEL, SPACE_CURSOR_SPEED_H,
-                    SPACE_CURSOR_SPEED_V, CURSOR_STICK, CURSOR_STICK_SENSITIVITY, CURSOR_STICK_DEADZONE, CURSOR_KEY_SPEED_H, CURSOR_KEY_SPEED_V, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, DELETE_REPEAT_RATE, DELETE_WORD_REPEAT_RATE,
+                    SPACE_CURSOR_SPEED_V, CURSOR_STICK, CURSOR_STICK_SENSITIVITY, CURSOR_STICK_DEADZONE, CURSOR_KEY_SPEED_H, CURSOR_KEY_SPEED_V, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, SHIFT_HIT_SHRINK, SHIFT_HIT_SHRINK_PCT, DELETE_REPEAT_RATE, DELETE_WORD_REPEAT_RATE,
                     LANGUAGE_ORDER), keys("popup_", "popupkept_", "repeat_", "swipe_custom_", SYMBOL_CHAR_PREFIX, "swipe_final_", "swipe_vowel_",
                     "swipe_lp_", "swipe_fn_", "swipe_fk_", "swipe_toolbar_", HIT_SHRINK_PREFIX)),
             // 가로 모드·폴더블 내부 화면이 따로 정하는 값과 자·모음 균형 배열의 키 폭·위치: 목록의 되돌리기에는 보이지 않지만
@@ -1634,6 +1636,8 @@ public final class Prefs {
     public int deleteHitShrinkPct() { return sp.getInt(DELETE_HIT_SHRINK_PCT, 10); }
     public boolean spaceHitShrink() { return sp.getBoolean(SPACE_HIT_SHRINK, false); }
     public int spaceHitShrinkPct() { return sp.getInt(SPACE_HIT_SHRINK_PCT, 10); }
+    public boolean shiftHitShrink() { return sp.getBoolean(SHIFT_HIT_SHRINK, false); }
+    public int shiftHitShrinkPct() { return sp.getInt(SHIFT_HIT_SHRINK_PCT, 10); }
     public static String hitShrinkKey(String bottomKeyId) { return HIT_SHRINK_PREFIX + bottomKeyId; }
     public static String hitShrinkPctKey(String bottomKeyId) { return HIT_SHRINK_PREFIX + "pct_" + bottomKeyId; }
     public boolean hitShrink(String bottomKeyId) { return sp.getBoolean(hitShrinkKey(bottomKeyId), false); }

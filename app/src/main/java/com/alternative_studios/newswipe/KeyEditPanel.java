@@ -593,6 +593,8 @@ final class KeyEditPanel {
             buildSpacePress();
         } else if (key.type == Key.DELETE) {
             buildDeletePress();
+        } else if (key.type == Key.SHIFT) {
+            addShiftHitShrink(section(L.t("누르기", "Tap")));
         }
         if (bottomId != null) addBottomHitShrink(press != null ? press : section(L.t("누르기", "Tap")), bottomId);
 
@@ -636,6 +638,8 @@ final class KeyEditPanel {
                         Prefs.CURSOR_STICK_SENSITIVITY, Prefs.CURSOR_STICK_DEADZONE};
             case Key.DELETE:
                 return new String[]{Prefs.DELETE_HIT_SHRINK, Prefs.DELETE_HIT_SHRINK_PCT};
+            case Key.SHIFT:
+                return new String[]{Prefs.SHIFT_HIT_SHRINK, Prefs.SHIFT_HIT_SHRINK_PCT};
             default:
                 return new String[0];
         }
@@ -902,6 +906,22 @@ final class KeyEditPanel {
     }
 
     /**
+     * Shift·Fn 키의 '인식 범위 좁히기' (⌫와 같은 방식을 좌우만 뒤집어): 위·오른쪽·아래 가장자리를 누르면 그쪽 이웃 키를
+     * 누른 것으로 본다. Shift와 Fn(한글 자판의 Shift 자리)이 함께 쓴다.
+     */
+    private void addShiftHitShrink(LinearLayout press) {
+        View shrink = subGroup(slider(L.t("줄이는 정도", "Amount"), Prefs.SHIFT_HIT_SHRINK_PCT, prefs.shiftHitShrinkPct(), 5, 50, 5, "%"));
+        shrink.setVisibility(prefs.shiftHitShrink() ? View.VISIBLE : View.GONE);
+        press.addView(toggle(L.t("인식 범위 좁히기", "Shrink touch area"),
+                L.t("Shift(Fn)의 가장자리를 누르면 Shift 대신 이웃 키를 누른 것으로 간주해 Shift가 잘못 눌리는 일을 줄입니다. 아래쪽은 아랫줄이 글자 키일 때만 적용됩니다.", "Taps on the edges of Shift (Fn) count as the neighboring key, so you hit Shift by mistake less often. The bottom edge applies only when the row below has letter keys."),
+                prefs.shiftHitShrink(), on -> {
+                    put(Prefs.SHIFT_HIT_SHRINK, on);
+                    Ui.setVisibleAnimated(shrink, on);
+                }));
+        press.addView(shrink);
+    }
+
+    /**
      * 하단 기능키(스페이스바·Shift·⌫ 제외)의 '인식 범위 좁히기': 키의 위쪽 가장자리를 누르면 윗줄 키를 누른 것으로 본다.
      * 키마다 따로 저장한다 (BottomKeys ID). 맨 아래 줄에 있을 때만 적용된다.
      */
@@ -921,10 +941,12 @@ final class KeyEditPanel {
     private void buildFnKey() {
         LinearLayout press = section(L.t("누르기·길게 누르기", "Tap · Long press"));
         addPressRows(press, FnKeyActions.SPEC, FnKeyActions.PRESS, FnKeyActions.LONG, "Fn", this::rebuild);
+        addShiftHitShrink(press);
         LinearLayout swipe = section(L.t("밀기", "Swipe"));
         swipe.addView(actionPad(FnKeyActions.SPEC, FnKeyActions.SWIPE, "Fn"));
         resetRow(L.t("Fn 키 설정", "Fn key settings"), () -> {
             prefs.resetSwipeActions(FnKeyActions.SPEC.group);
+            prefs.raw().edit().remove(Prefs.SHIFT_HIT_SHRINK).remove(Prefs.SHIFT_HIT_SHRINK_PCT).apply();
             rebuild();
         });
     }
