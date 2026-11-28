@@ -683,6 +683,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         // 키보드 창은 하단 바(내비게이션 바·키보드 내비게이션 바·작업 표시줄) 뒤까지 그려지므로, 그 자리만큼 root에
         // 안쪽 여백을 두어 키를 그 위에 놓는다 (applySystemInsets). 여백 자리에는 root 배경(키보드 배경색)이 보인다.
         root.setOnApplyWindowInsetsListener((v, insets) -> {
+            refreshServerInsets();   // 비교할 창 관리자 값이 방금 온 인셋보다 오래되지 않게
             applySystemInsets();
             return insets;
         });
@@ -839,8 +840,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         refreshHwToolbar();
         main.removeCallbacks(releaseWhileHidden);
         applyNavigationBarStyle();
-        applySystemInsets();
-        if (root != null) root.requestApplyInsets();   // 창이 내려가 있는 동안 바뀐 인셋을 다시 받는다
+        recheckSystemInsets();
     }
 
     /**
@@ -856,9 +856,16 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
      * 3) 시스템이 키보드 창 위에 실제로 그린 키보드 내비게이션 바(NavigationBarFrame)보다는 항상 높이 띄운다 (인셋 값이 어긋나도).
      * 4) 창 장식 등 root의 부모가 이미 비운 만큼은 뺀다. 창 장식이 시스템 바 높이를 스스로 비우는 경우(Android 15에서
      *    edge-to-edge 강제가 꺼진 창 등)에도 여백이 두 겹이 되지 않는다.
+     * 5) 키보드 창이 받은 인셋이 탐색 방법을 바꾸기 전의 옛 값일 때가 있다: 시스템은 숨은 창에 인셋 변경을 보내지 않아,
+     *    내려가 있는 동안 탐색 방법을 바꾸면 다음에 올라올 때 옛 값으로 놓이고, 그 뒤로 새 값이 오지 않으면 그 한 번 동안
+     *    높이가 옛 탐색 방법대로 남는다 (닫았다 열면 맞는다). 그래서 창 관리자가 지금 계산하는 값(refreshServerInsets)과
+     *    탐색 방법(제스처인지)을 견주어, 다르면 키보드 창 인셋의 내비게이션 바 높이 대신 창 관리자 값을 쓴다.
+     *    키보드 창이 직접 정하는 키보드 내비게이션 바(captionBar)는 그대로 쓰고, 옛 인셋으로 높이를 정한
+     *    NavigationBarFrame은 이때 보지 않는다. 높이를 바꾸면 창 크기가 바뀌어 키보드 창도 새 인셋을 받아 다시 맞는다.
      * 옆쪽: 버튼 탐색의 가로 모드에서 옆에 붙은 내비게이션 바는 시스템이 창을 그 안쪽에 놓아 인셋이 0이고,
      * 카메라 구멍처럼 잘린 화면·휘어진 가장자리(waterfall)는 창이 그 위까지 놓일 수 있어 그만큼 안쪽으로 들인다.
-     * 부르는 때: 인셋이 올 때, 레이아웃이 끝날 때(값이 바뀐 경우만 다시 놓는다), 키보드가 올라올 때, 화면 설정이 바뀔 때.
+     * 부르는 때: 인셋이 올 때, 레이아웃이 끝날 때(값이 바뀐 경우만 다시 놓는다), 키보드가 올라올 때와 그 뒤 잠시 동안,
+     * 화면 설정이 바뀔 때와 그 뒤 잠시 동안 (recheckSystemInsets).
      */
     @SuppressWarnings("deprecation")   // Android 9~10에는 WindowInsets.Type이 없다
     private void applySystemInsets() {
@@ -866,12 +873,18 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         WindowInsets insets = root.getRootWindowInsets();   // 부모가 먼저 쓰기 전의, 키보드 창이 받은 그대로의 인셋
         if (insets == null) return;   // 아직 창에 붙지 않았다
         int left, right, bottom;
+        boolean stale = false;
         if (Build.VERSION.SDK_INT >= 30) {
             android.graphics.Insets bars = insets.getInsets(WindowInsets.Type.systemBars()
                     | WindowInsets.Type.tappableElement() | WindowInsets.Type.displayCutout());
             left = bars.left;
             right = bars.right;
             bottom = bars.bottom;
+            stale = serverNavBottom >= 0 && serverGesture != gestureNavigation(insets);
+            if (stale) {
+                bottom = Math.max(serverNavBottom, Math.max(insets.getInsets(WindowInsets.Type.captionBar()).bottom,
+                        insets.getInsets(WindowInsets.Type.displayCutout()).bottom));
+            }
         } else {
             left = insets.getSystemWindowInsetLeft();
             right = insets.getSystemWindowInsetRight();
@@ -885,8 +898,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         }
         View decor = getWindow() != null && getWindow().getWindow() != null
                 ? getWindow().getWindow().peekDecorView() : null;
-        int frame = imeNavBarFrameHeight(decor);
-        bottom = Math.max(bottom, frame);
+        if (!stale) bottom = Math.max(bottom, imeNavBarFrameHeight(decor));
         // 부모가 이미 비운 만큼 (안쪽 여백·바깥 여백)
         View child = root;
         android.view.ViewParent p = root.getParent();
@@ -914,6 +926,66 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         if (floatingApplied) applyOneHand();   // 띄울 수 있는 높이가 바뀌었다
     }
 
+    /** 창 관리자가 마지막으로 계산해 준 내비게이션 바·작업 표시줄 높이 (-1 = 모른다, Android 9~10)와 그때의 탐색 방법. */
+    private int serverNavBottom = -1;
+    private boolean serverGesture;
+
+    /**
+     * 창 관리자에게 지금의 시스템 바 상태를 새로 묻는다 (프로세스 사이 호출이라 인셋이 올 때·올라올 때 등에만 부른다).
+     * 이 값은 키보드 창 기준이 아니어서(키보드 내비게이션 바·키보드 창에만 붙는 영역이 빠진다) 높이로 바로 쓰지 않고,
+     * 키보드 창 인셋이 옛 탐색 방법의 값인지 가리는 데 쓴다 (applySystemInsets 5).
+     */
+    private void refreshServerInsets() {
+        serverNavBottom = -1;
+        if (Build.VERSION.SDK_INT < 30) return;
+        try {
+            android.view.WindowManager wm = getWindow() != null && getWindow().getWindow() != null
+                    ? getWindow().getWindow().getWindowManager() : null;
+            if (wm == null) wm = getSystemService(android.view.WindowManager.class);
+            if (wm == null) return;
+            WindowInsets w = wm.getCurrentWindowMetrics().getWindowInsets();
+            serverNavBottom = w.getInsets(WindowInsets.Type.navigationBars() | WindowInsets.Type.tappableElement()).bottom;
+            serverGesture = gestureNavigation(w);
+        } catch (RuntimeException e) {
+            serverNavBottom = -1;
+        }
+    }
+
+    /**
+     * 제스처 탐색인지: 제스처 탐색은 화면 왼쪽·오른쪽 가장자리에 뒤로 가기 손짓 영역이 있고, 버튼 탐색에는 없다.
+     * 키보드 창에만 붙는 하단 영역과 상관없이 탐색 방법만 보여 주는 신호다.
+     */
+    private static boolean gestureNavigation(WindowInsets insets) {
+        if (Build.VERSION.SDK_INT < 30) return false;
+        android.graphics.Insets g = insets.getInsets(WindowInsets.Type.systemGestures());
+        return g.left > 0 || g.right > 0;
+    }
+
+    /**
+     * 지금 바로, 그리고 잠시 뒤 몇 번 더 하단 바 자리를 다시 맞춘다. 탐색 방법·화면이 바뀐 직후에는 시스템 UI가
+     * 새 하단 바를 늦게 놓아, 키보드가 올라온 뒤에야 값이 바뀌기도 한다. 키보드가 내려가면 남은 확인은 버린다.
+     */
+    private void recheckSystemInsets() {
+        main.removeCallbacks(systemInsetsRecheck);
+        systemInsetsRechecks = 0;
+        systemInsetsRecheck.run();
+    }
+
+    private static final long[] SYSTEM_INSETS_RECHECK_MS = {150, 500, 1200};
+    private int systemInsetsRechecks;
+    private final Runnable systemInsetsRecheck = new Runnable() {
+        @Override
+        public void run() {
+            if (root == null) return;
+            refreshServerInsets();
+            applySystemInsets();
+            root.requestApplyInsets();   // 창이 받아 둔 최신 인셋을 다시 받는다
+            if (!windowHidden && systemInsetsRechecks < SYSTEM_INSETS_RECHECK_MS.length) {
+                main.postDelayed(this, SYSTEM_INSETS_RECHECK_MS[systemInsetsRechecks++]);
+            }
+        }
+    };
+
     /**
      * 시스템이 키보드 창 맨 아래에 직접 붙여 그리는 키보드 내비게이션 바(NavigationBarFrame)의 높이. 없거나 숨겨졌으면 0.
      * 이 뷰는 키보드 창 decor의 바로 아래 자식으로 붙고 id가 없어 클래스 이름으로 찾는다.
@@ -940,8 +1012,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
     public void onConfigurationChanged(android.content.res.Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         floatWindowPx = -1;   // 화면 크기·방향이 바뀌었을 수 있다
-        applySystemInsets();   // 폴더블을 접고 펴거나 화면을 돌리거나 탐색 방법을 바꾸면 하단 바·잘린 화면 자리가 달라진다
-        if (root != null) root.requestApplyInsets();
+        recheckSystemInsets();   // 폴더블을 접고 펴거나 화면을 돌리거나 탐색 방법을 바꾸면 하단 바·잘린 화면 자리가 달라진다
         hwKeyboardConnected = findHwKeyboard();   // 외장 키보드를 연결하거나 뺐다
         if (!hwKeyboardConnected) hwTyping = false;
         updateInputViewShown();
@@ -957,6 +1028,7 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         stopFloatAnimations();
         updateFloatBack();
         hwFullKeyboard = false;   // 다음에 올라올 때는 다시 도구 막대만 보인다
+        main.removeCallbacks(systemInsetsRecheck);
         main.removeCallbacks(suggestRunnable);
         main.removeCallbacks(releaseWhileHidden);
         main.postDelayed(releaseWhileHidden, RELEASE_DELAY_MS);
