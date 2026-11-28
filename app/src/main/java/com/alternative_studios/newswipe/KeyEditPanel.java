@@ -16,6 +16,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.alternative_studios.newswipe.hangul.HangulComposer;
+import com.alternative_studios.newswipe.keyboard.BottomKeys;
 import com.alternative_studios.newswipe.keyboard.FinalSwipes;
 import com.alternative_studios.newswipe.keyboard.FnKeyActions;
 import com.alternative_studios.newswipe.keyboard.FunctionSwipes;
@@ -187,6 +188,8 @@ final class KeyEditPanel {
                 press.addView(note(L.t("원래 기호는 '" + slot() + "'입니다. 길게 누르기·밀기 설정은 원래 기호 자리에 저장됩니다.",
                         "The original symbol is '" + slot() + "'. Long-press and swipe settings are saved for the original symbol.")));
             }
+            String bottomId = BottomKeys.idOf(key);   // 쉼표·온점 자리의 키
+            if (bottomId != null) addBottomHitShrink(press, bottomId);
         }
 
         // ---- 길게 누르기 (문자 입력 · 연속 입력 · 없음)
@@ -520,6 +523,8 @@ final class KeyEditPanel {
         // 쉼표·온점 자리의 '입력할 글자'도 이 창에 있다.
         if (",".equals(s)) prefs.raw().edit().remove(Prefs.COMMA_CHAR).apply();
         if (".".equals(s)) prefs.raw().edit().remove(Prefs.PERIOD_CHAR).apply();
+        String bottomId = BottomKeys.idOf(key);   // 쉼표·온점 자리의 '인식 범위 좁히기'도
+        if (bottomId != null) prefs.raw().edit().remove(Prefs.hitShrinkKey(bottomId)).remove(Prefs.hitShrinkPctKey(bottomId)).apply();
         if (symbolKey()) prefs.setKeyChar(s, s);   // 기호 키의 '입력할 글자'도
         rebuild();
     }
@@ -573,19 +578,25 @@ final class KeyEditPanel {
         if (key.type == Key.CURSOR_PAD) buildCursorMoveStyle();
 
         // ---- 누르기 (기능키의 순서·유무와 격자 정렬은 '기능키' 영역에 있다)
+        String bottomId = BottomKeys.idOf(key);
+        LinearLayout press = null;
         if (key.type == Key.TO_SYMBOLS || key.type == Key.TO_LETTERS) {
-            section(L.t("누르기", "Tap")).addView(toggle(L.t("기호 자판 대신 숫자 패드 사용", "Use number pad instead of symbols"),
+            press = section(L.t("누르기", "Tap"));
+            press.addView(toggle(L.t("기호 자판 대신 숫자 패드 사용", "Use number pad instead of symbols"),
                     L.t("기호 키(?123)를 누르면 기호 자판 대신 3×4 숫자 패드가 열립니다. 숫자 패드의 ?!@ 키로 기호 자판을, 가·ABC 키로 글자 자판을 엽니다.", "The symbol key (?123) opens a 3×4 number pad instead of the symbol keyboard. On the number pad, ?!@ opens the symbol keyboard and 가·ABC opens the letter keyboard."),
                     prefs.numberPadForSymbols(), on -> put(Prefs.NUMBER_PAD_SYMBOLS, on)));
         } else if (key.type == Key.LANGUAGE) {
-            LinearLayout press = section(L.t("누르기", "Tap"));
+            press = section(L.t("누르기", "Tap"));
             press.addView(button(L.t("입력 언어", "Input languages"), v -> open(LanguageOrderEditorActivity.intent(a))));
             press.addView(note(L.t("🌐︎로 바꿀 언어를 켜고 끄며, '언어 고르기' 말풍선의 차례를 정합니다.", "Turns on the languages 🌐︎ switches between and sets their order in the 'Pick language' popup.")));
         } else if (key.type == Key.SPACE) {
             buildSpacePress();
         } else if (key.type == Key.DELETE) {
             buildDeletePress();
+        } else if (key.type == Key.SHIFT) {
+            addShiftHitShrink(section(L.t("누르기", "Tap")));
         }
+        if (bottomId != null) addBottomHitShrink(press != null ? press : section(L.t("누르기", "Tap")), bottomId);
 
         // ---- 길게 누르기
         LinearLayout lp = section(L.t("길게 누르기", "Long press"));
@@ -597,7 +608,7 @@ final class KeyEditPanel {
         resetRow(name + L.t(" 설정", " settings"), () -> {
             // 이 창에 보이는 값 모두: 누르기 항목, 길게 누르기(와 그 지우는 속도), 밀기(와 커서 속도).
             android.content.SharedPreferences.Editor e = prefs.raw().edit();
-            for (String k : pressKeys()) e.remove(k);
+            for (String k : pressKeysWithShrink()) e.remove(k);
             if (lpSlot() >= 0) {
                 String action = LongPressActions.SPEC.get(prefs, lpSlot(), LongPressActions.DIR);
                 if (SwipeAction.DELETE_REPEAT.equals(action)) e.remove(Prefs.DELETE_REPEAT_RATE);
@@ -627,9 +638,22 @@ final class KeyEditPanel {
                         Prefs.CURSOR_STICK_SENSITIVITY, Prefs.CURSOR_STICK_DEADZONE};
             case Key.DELETE:
                 return new String[]{Prefs.DELETE_HIT_SHRINK, Prefs.DELETE_HIT_SHRINK_PCT};
+            case Key.SHIFT:
+                return new String[]{Prefs.SHIFT_HIT_SHRINK, Prefs.SHIFT_HIT_SHRINK_PCT};
             default:
                 return new String[0];
         }
+    }
+
+    /** 기능키 창의 '누르기' 칸에 보이는 키 하나짜리 설정들과 하단 기능키의 인식 범위 좁히기 (되돌리기가 함께 지운다). */
+    private String[] pressKeysWithShrink() {
+        String[] base = pressKeys();
+        String id = BottomKeys.idOf(key);
+        if (id == null) return base;
+        String[] out = java.util.Arrays.copyOf(base, base.length + 2);
+        out[base.length] = Prefs.hitShrinkKey(id);
+        out[base.length + 1] = Prefs.hitShrinkPctKey(id);
+        return out;
     }
 
     private void buildLongPressAction(LinearLayout card) {
@@ -881,14 +905,48 @@ final class KeyEditPanel {
         press.addView(shrink);
     }
 
+    /**
+     * Shift·Fn 키의 '인식 범위 좁히기' (⌫와 같은 방식을 좌우만 뒤집어): 위·오른쪽·아래 가장자리를 누르면 그쪽 이웃 키를
+     * 누른 것으로 본다. Shift와 Fn(한글 자판의 Shift 자리)이 함께 쓴다.
+     */
+    private void addShiftHitShrink(LinearLayout press) {
+        View shrink = subGroup(slider(L.t("줄이는 정도", "Amount"), Prefs.SHIFT_HIT_SHRINK_PCT, prefs.shiftHitShrinkPct(), 5, 50, 5, "%"));
+        shrink.setVisibility(prefs.shiftHitShrink() ? View.VISIBLE : View.GONE);
+        press.addView(toggle(L.t("인식 범위 좁히기", "Shrink touch area"),
+                L.t("Shift(Fn)의 가장자리를 누르면 Shift 대신 이웃 키를 누른 것으로 간주해 Shift가 잘못 눌리는 일을 줄입니다. 아래쪽은 아랫줄이 글자 키일 때만 적용됩니다.", "Taps on the edges of Shift (Fn) count as the neighboring key, so you hit Shift by mistake less often. The bottom edge applies only when the row below has letter keys."),
+                prefs.shiftHitShrink(), on -> {
+                    put(Prefs.SHIFT_HIT_SHRINK, on);
+                    Ui.setVisibleAnimated(shrink, on);
+                }));
+        press.addView(shrink);
+    }
+
+    /**
+     * 하단 기능키(스페이스바·Shift·⌫ 제외)의 '인식 범위 좁히기': 키의 위쪽 가장자리를 누르면 윗줄 키를 누른 것으로 본다.
+     * 키마다 따로 저장한다 (BottomKeys ID). 맨 아래 줄에 있을 때만 적용된다.
+     */
+    private void addBottomHitShrink(LinearLayout press, String id) {
+        View shrink = subGroup(slider(L.t("줄이는 정도", "Amount"), Prefs.hitShrinkPctKey(id), prefs.hitShrinkPct(id), 5, 50, 5, "%"));
+        shrink.setVisibility(prefs.hitShrink(id) ? View.VISIBLE : View.GONE);
+        press.addView(toggle(L.t("인식 범위 좁히기", "Shrink touch area"),
+                L.t("이 키의 위쪽 가장자리를 누르면 윗줄 키를 누른 것으로 간주해 이 키가 잘못 눌리는 일을 줄입니다.", "Taps on the top edge of this key count as the key above, so you hit this key by mistake less often."),
+                prefs.hitShrink(id), on -> {
+                    put(Prefs.hitShrinkKey(id), on);
+                    Ui.setVisibleAnimated(shrink, on);
+                }));
+        press.addView(shrink);
+    }
+
     /** Fn 키: 누르기·길게 누르기·네 방향 밀기를 모두 직접 정한다. */
     private void buildFnKey() {
         LinearLayout press = section(L.t("누르기·길게 누르기", "Tap · Long press"));
         addPressRows(press, FnKeyActions.SPEC, FnKeyActions.PRESS, FnKeyActions.LONG, "Fn", this::rebuild);
+        addShiftHitShrink(press);
         LinearLayout swipe = section(L.t("밀기", "Swipe"));
         swipe.addView(actionPad(FnKeyActions.SPEC, FnKeyActions.SWIPE, "Fn"));
         resetRow(L.t("Fn 키 설정", "Fn key settings"), () -> {
             prefs.resetSwipeActions(FnKeyActions.SPEC.group);
+            prefs.raw().edit().remove(Prefs.SHIFT_HIT_SHRINK).remove(Prefs.SHIFT_HIT_SHRINK_PCT).apply();
             rebuild();
         });
     }

@@ -398,6 +398,10 @@ public final class Prefs {
     public static final String DELETE_HIT_SHRINK_PCT = "delete_hit_shrink_pct";   // %, 5~50
     public static final String SPACE_HIT_SHRINK = "space_hit_shrink";             // 스페이스바의 위쪽 터치 인식 범위 좁히기
     public static final String SPACE_HIT_SHRINK_PCT = "space_hit_shrink_pct";     // %, 5~50
+    public static final String SHIFT_HIT_SHRINK = "shift_hit_shrink";             // Shift(Fn)의 위·오른쪽·아래 터치 인식 범위 좁히기
+    public static final String SHIFT_HIT_SHRINK_PCT = "shift_hit_shrink_pct";     // %, 5~50
+    /** 하단 기능키(BottomKeys ID, 스페이스바 제외)마다 위쪽 터치 인식 범위 좁히기: hit_shrink_<ID>, 줄이는 정도(%) hit_shrink_pct_<ID>. */
+    public static final String HIT_SHRINK_PREFIX = "hit_shrink_";
     public static final String SETUP_DONE = "setup_done";   // 시작하기를 한 번 마쳤는지 (그전까지 설정 메뉴를 막는다)
     public static final String ONBOARDING_DONE = "onboarding_done";   // 첫 시작 가이드를 끝까지 봤는지
     public static final String EMOJI_SUGGEST = "emoji_suggest";           // 이모지 창을 열 때 입력한 글에 맞는 이모지 추천
@@ -978,9 +982,9 @@ public final class Prefs {
             new EditorScope("large", L.t("폴더블 내부 화면 별도 키보드·판정 기준", "Separate inner screen keyboard · threshold"), keys(LARGE_LAYOUT, LARGE_SCREEN_DP), NONE),
             new EditorScope("keys", L.t("키마다 정한 설정 (길게 누르기·밀기·키 창의 누르기 항목)", "Per-key settings (long press · swipe · tap options in key panels)"), keys(NUMBER_PAD_SYMBOLS,
                     DOUBLE_SPACE_PERIOD, SPACE_HIT_SHRINK, SPACE_HIT_SHRINK_PCT, SPACE_LANG_LABEL, SPACE_CURSOR_SPEED_H,
-                    SPACE_CURSOR_SPEED_V, CURSOR_STICK, CURSOR_STICK_SENSITIVITY, CURSOR_STICK_DEADZONE, CURSOR_KEY_SPEED_H, CURSOR_KEY_SPEED_V, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, DELETE_REPEAT_RATE, DELETE_WORD_REPEAT_RATE,
+                    SPACE_CURSOR_SPEED_V, CURSOR_STICK, CURSOR_STICK_SENSITIVITY, CURSOR_STICK_DEADZONE, CURSOR_KEY_SPEED_H, CURSOR_KEY_SPEED_V, DELETE_HIT_SHRINK, DELETE_HIT_SHRINK_PCT, SHIFT_HIT_SHRINK, SHIFT_HIT_SHRINK_PCT, DELETE_REPEAT_RATE, DELETE_WORD_REPEAT_RATE,
                     LANGUAGE_ORDER), keys("popup_", "popupkept_", "repeat_", "swipe_custom_", SYMBOL_CHAR_PREFIX, "swipe_final_", "swipe_vowel_",
-                    "swipe_lp_", "swipe_fn_", "swipe_fk_", "swipe_toolbar_")),
+                    "swipe_lp_", "swipe_fn_", "swipe_fk_", "swipe_toolbar_", HIT_SHRINK_PREFIX)),
             // 가로 모드·폴더블 내부 화면이 따로 정하는 값과 자·모음 균형 배열의 키 폭·위치: 목록의 되돌리기에는 보이지 않지만
             // (가로 키보드 사용자화의 되돌리기는 resetEditorScopeInView가 위 범위를 가로 모드의 키로 바꿔 지운다),
             // 키보드 사용자화를 연 채 바꾸면 되돌리기 기록에는 남는다.
@@ -1632,6 +1636,21 @@ public final class Prefs {
     public int deleteHitShrinkPct() { return sp.getInt(DELETE_HIT_SHRINK_PCT, 10); }
     public boolean spaceHitShrink() { return sp.getBoolean(SPACE_HIT_SHRINK, false); }
     public int spaceHitShrinkPct() { return sp.getInt(SPACE_HIT_SHRINK_PCT, 10); }
+    public boolean shiftHitShrink() { return sp.getBoolean(SHIFT_HIT_SHRINK, false); }
+    public int shiftHitShrinkPct() { return sp.getInt(SHIFT_HIT_SHRINK_PCT, 10); }
+    public static String hitShrinkKey(String bottomKeyId) { return HIT_SHRINK_PREFIX + bottomKeyId; }
+    public static String hitShrinkPctKey(String bottomKeyId) { return HIT_SHRINK_PREFIX + "pct_" + bottomKeyId; }
+    public boolean hitShrink(String bottomKeyId) { return sp.getBoolean(hitShrinkKey(bottomKeyId), false); }
+    public int hitShrinkPct(String bottomKeyId) { return sp.getInt(hitShrinkPctKey(bottomKeyId), 10); }
+
+    /** 하단 기능키마다 위쪽 터치 인식 범위에서 뺄 비율 (켠 키만, BottomKeys ID → 0~1). */
+    public java.util.Map<String, Float> bottomHitShrinks() {
+        java.util.Map<String, Float> m = new java.util.HashMap<>();
+        for (String id : com.alternative_studios.newswipe.keyboard.BottomKeys.DEFAULT_ORDER) {
+            if (!com.alternative_studios.newswipe.keyboard.BottomKeys.SPACE.equals(id) && hitShrink(id)) m.put(id, hitShrinkPct(id) / 100f);
+        }
+        return m;
+    }
     public boolean setupDone() { return sp.getBoolean(SETUP_DONE, false); }
     /**
      * 첫 시작 가이드를 마쳤는지. 가이드가 생기기 전부터 쓰던 사람(값이 없고 시작하기를 이미 마침)은 가이드를 띄우지 않는다.

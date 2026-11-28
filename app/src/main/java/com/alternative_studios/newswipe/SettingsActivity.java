@@ -843,7 +843,7 @@ public final class SettingsActivity extends Activity {
             {KEYBOARD, L.t("이중모음 입력", "Y-vowel input"), L.t("ㅑ ㅛ ㅕ 모음 연속 탭 연속 누르기 두 번 아래로 밀기", "ㅑ ㅛ ㅕ vowels double tap swipe down")},
             {KEYBOARD, L.t("영어 자동 대문자", "English auto-capitalize"), L.t("대소문자 자동 대문자 shift 첫 글자", "capital letters uppercase shift first letter sentence")},
             {KEYBOARD, L.t("두 번 눌러 마침표", "Double-tap for period"), L.t("점 온점 더블 스페이스바", "period dot double tap space")},
-            {KEYBOARD, L.t("인식 범위 좁히기", "Shrink touch area"), L.t("지우기 백스페이스 스페이스바 오타 오입력 터치 영역", "delete backspace space bar typos mistaps touch area")},
+            {KEYBOARD, L.t("인식 범위 좁히기", "Shrink touch area"), L.t("지우기 백스페이스 시프트 Shift Fn 스페이스바 하단 기능키 엔터 기호 키 쉼표 온점 오타 오입력 터치 영역", "delete backspace shift Fn space bar bottom function keys enter symbol comma period typos mistaps touch area")},
             {KEYBOARD, L.t("미는 거리", "Swipe distance"), L.t("스와이프 거리 민감도 밀어서 쌍자음 겹받침 이중모음 ㄲ ㅆ ㅘ 쉼표 글자 입력", "swipe distance sensitivity double consonants final clusters ㄲ ㅆ ㅘ comma characters")},
             {KEYBOARD, L.t("기능키 미는 거리", "Function key swipe distance"), L.t("스와이프 기능 스페이스바 커서 이동 언어 전환 단어 삭제 이모지 도구 막대 밀기 복사 붙여넣기", "swipe actions space bar cursor language switch delete word emoji toolbar copy paste")},
             {KEYBOARD, L.t("키보드 밀기 사용자화", "Customize keyboard swipes"), L.t("두 손가락 실행 취소 다시 실행 undo redo 트랙패드 커서 자유 이동 문자 키", "two fingers undo redo trackpad free cursor letter keys")},

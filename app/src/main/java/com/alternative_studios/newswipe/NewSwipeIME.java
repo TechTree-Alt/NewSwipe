@@ -1699,7 +1699,8 @@ public final class NewSwipeIME extends InputMethodService implements KeyboardVie
         keyboard.setVowelSwipeHold(prefs.swipeDownVowel());   // ㅜ↓에서 멈추면 ㅠㅠㅠ
         applySuggestLead();
         keyboard.setHitShrink(prefs.deleteHitShrink() ? prefs.deleteHitShrinkPct() / 100f : 0f,
-                prefs.spaceHitShrink() ? prefs.spaceHitShrinkPct() / 100f : 0f);
+                prefs.spaceHitShrink() ? prefs.spaceHitShrinkPct() / 100f : 0f,
+                prefs.shiftHitShrink() ? prefs.shiftHitShrinkPct() / 100f : 0f, prefs.bottomHitShrinks());
         keyboard.setPickSwipe(prefs.swipePickSuggestion());
         keyboard.setKeyboardSwipes(KeyboardSwipes.load(prefs));
         toolbarSwipes = ToolbarSwipes.load(prefs);

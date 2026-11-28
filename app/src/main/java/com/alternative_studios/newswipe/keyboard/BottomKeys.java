@@ -133,6 +133,29 @@ public final class BottomKeys {
         return !COMMA.equals(id) && !EMOJI.equals(id) && !CLIPBOARD.equals(id) && !CURSOR.equals(id) && !VOICE.equals(id);
     }
 
+    /**
+     * 맨 아래 줄 키의 ID (스페이스바 제외: 스페이스바는 따로 설정한다). 해당하지 않는 키는 null.
+     * 기호 자판의 언어 전환 키 자리에 놓인 이모지 키(Key.EMOJI)는 길게 누르기처럼 언어 전환 키 자리의 설정을 따른다.
+     */
+    public static String idOf(Key k) {
+        switch (k.type) {
+            case Key.TO_SYMBOLS:
+            case Key.TO_LETTERS: return MODE;
+            case Key.LANGUAGE:
+            case Key.EMOJI: return GLOBE;
+            case Key.ENTER: return ENTER;
+            case Key.EMOJI_KEY: return EMOJI;
+            case Key.CLIPBOARD: return CLIPBOARD;
+            case Key.CURSOR_PAD: return k.isJoystick() ? null : CURSOR;
+            case Key.VOICE: return VOICE;
+            case Key.CHAR: {
+                String s = k.slot();
+                return ",".equals(s) ? COMMA : ".".equals(s) ? PERIOD : null;
+            }
+            default: return null;
+        }
+    }
+
     public static boolean isKnown(String id) {
         for (String k : DEFAULT_ORDER) if (k.equals(id)) return true;
         return false;
