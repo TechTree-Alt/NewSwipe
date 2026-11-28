@@ -532,13 +532,32 @@ public final class Metro {
     /** 실제로 화면에 보이는 항목만 위에서 아래 차례로 고른다 (스크롤 목록 밖으로 잘린 줄, 아래 미리보기 뒤에 가려진 줄은 뺀다). */
     private static java.util.List<View> visible(java.util.List<View> items) {
         java.util.List<View> out = new java.util.ArrayList<>();
-        android.graphics.Rect seen = new android.graphics.Rect();
         for (View item : items) {
             if (item.getVisibility() != View.VISIBLE || item.getWidth() == 0 || item.getHeight() == 0) continue;
-            if (!item.getGlobalVisibleRect(seen)) continue;
+            if (shownRect(item) == null) continue;
             out.add(item);
         }
         return out;
+    }
+
+    /**
+     * v가 화면에 보이는 영역 (화면 좌표, 보이지 않으면 null): v의 화면 위 영역을 모든 조상의 영역으로 잘라 낸다. getGlobalVisibleRect는 자식을 자르지
+     * 않게 해 둔 조상(setClipChildren(false): 끌어 옮기는 목록·그림자)에서는 영역을 자르지 않아, 스크롤 목록 아래로 밀려 미리보기
+     * 위쪽 경계 밖에 있는 줄도 보이는 것으로 쳤다. 그런 줄이 깃털 차례를 차지해 마지막 줄과 미리보기 사이가 비었다.
+     */
+    private static android.graphics.Rect shownRect(View v) {
+        int[] at = new int[2];
+        v.getLocationOnScreen(at);
+        android.graphics.Rect r = new android.graphics.Rect(at[0], at[1], at[0] + v.getWidth(), at[1] + v.getHeight());
+        android.graphics.Rect box = new android.graphics.Rect();
+        for (android.view.ViewParent p = v.getParent(); p instanceof View; p = p.getParent()) {
+            View g = (View) p;
+            if (g.getVisibility() != View.VISIBLE) return null;
+            g.getLocationOnScreen(at);
+            box.set(at[0], at[1], at[0] + g.getWidth(), at[1] + g.getHeight());
+            if (!r.intersect(box)) return null;
+        }
+        return r.isEmpty() ? null : r;
     }
 
     /**
@@ -710,12 +729,13 @@ public final class Metro {
         /** 나갈 차례: 미리보기에 다 가린 줄을 빼고, 미리보기를 맨 뒤로 보낸다. */
         private java.util.List<View> leaveOrder(java.util.List<View> list) {
             if (bottom == null || !list.remove(bottom)) return list;
-            android.graphics.Rect cover = new android.graphics.Rect(), seen = new android.graphics.Rect();
-            if (bottom.getGlobalVisibleRect(cover)) {
+            android.graphics.Rect cover = shownRect(bottom);
+            if (cover != null) {
                 java.util.Iterator<View> it = list.iterator();
                 while (it.hasNext()) {
                     View v = it.next();
-                    if (!inOverlay(v) && v.getGlobalVisibleRect(seen) && cover.contains(seen)) it.remove();
+                    android.graphics.Rect seen = inOverlay(v) ? null : shownRect(v);
+                    if (seen != null && cover.contains(seen)) it.remove();
                 }
             }
             list.add(bottom);
