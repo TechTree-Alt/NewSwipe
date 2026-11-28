@@ -48,6 +48,10 @@ public final class SwipeStrip extends LinearLayout {
         /** 길게 누른 뒤 손을 떼지 않고 미는 동안 손가락 위치가 바뀔 때마다. */
         default void onLongDrag(float x, float y) {
         }
+
+        /** {@link #onLongPress}가 true를 돌려준 뒤 손을 뗐다 (cancelled: 취소되었다). */
+        default void onLongEnd(boolean cancelled) {
+        }
     }
 
     private final int captureAt;
@@ -196,6 +200,7 @@ public final class SwipeStrip extends LinearLayout {
                 return true;
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
+                if (longDragging && listener != null) listener.onLongEnd(ev.getActionMasked() == MotionEvent.ACTION_CANCEL);
                 reset();
                 return true;
             default:
@@ -226,6 +231,7 @@ public final class SwipeStrip extends LinearLayout {
 
     @Override
     protected void onDetachedFromWindow() {
+        if (longDragging && listener != null) listener.onLongEnd(true);
         reset();   // 기다리던 길게 누르기를 거둔다 (키보드 화면을 다시 만들 때 등)
         super.onDetachedFromWindow();
     }

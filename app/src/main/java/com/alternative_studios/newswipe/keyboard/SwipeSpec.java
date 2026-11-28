@@ -27,6 +27,16 @@ public abstract class SwipeSpec {
         return slotNames[slot];
     }
 
+    /** 칸 이름들 (같은 칸을 쓰는 다른 배치를 만들 때: {@link LongSwipes}). */
+    final String[] slotNames() {
+        return slotNames.clone();
+    }
+
+    /** 이 칸·방향 자리의 저장 키에 쓰는 방향 이름 (같은 패키지의 다른 배치가 이어 붙여 쓴다). */
+    final String storedDirKey(int slot, int dir) {
+        return dirKey(slot, dir);
+    }
+
     /** 정하지 않았을 때의 기능. */
     public abstract String defaultAction(int slot, int dir);
 
@@ -63,6 +73,11 @@ public abstract class SwipeSpec {
 
     public final void reset(Prefs prefs, int slot, int dir) {
         prefs.resetSwipeActionOverride(group, slotNames[slot], dirKey(slot, dir));
+    }
+
+    /** 한 칸의 모든 방향({@link #dirs(int)})을 되돌린다. */
+    public final void resetSlot(Prefs prefs, int slot) {
+        for (int dir : dirs(slot)) reset(prefs, slot, dir);
     }
 
     /** 설정 키에 쓰는 방향 이름. 방향 자리를 다른 뜻(탭·길게 누르기 등)으로 쓰는 배치는 바꿔 쓴다. */

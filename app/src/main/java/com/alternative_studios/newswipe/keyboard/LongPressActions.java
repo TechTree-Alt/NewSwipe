@@ -8,6 +8,8 @@ import com.alternative_studios.newswipe.L;
  * 정하지 않은 키는 기본 동작을 따른다: 기호 키 = 이모지 열기, 언어 전환 키 = 입력 방법 전환 창, 지우기 키 = 계속 지우기,
  * 스페이스바 = 밀어서 선택, Shift 키·엔터 키 = 없음.
  * 밀어서 기능 편집과 같은 틀({@link SwipeSpec})을 쓰고, 방향 대신 '길게 누르기' 칸 하나({@link #DIR})만 둔다.
+ * 그 칸에는 기능 대신 길게 누르기 방식({@link SwipeAction#SPACE_SELECT}·{@link SwipeAction#LONG_SWIPE})도 둘 수 있다.
+ * '길게 누른 뒤 밀어 기능 실행'의 방향마다의 기능은 {@link #LONG_SWIPES}에 있다.
  */
 public final class LongPressActions {
     public static final int SHIFT = 0, MODE = 1, GLOBE = 2, ENTER = 3, DELETE = 4;
@@ -54,8 +56,7 @@ public final class LongPressActions {
         public String resolve(String stored, int slot, int dir) {
             if (stored == null || !SwipeAction.isKnown(stored)) return defaultAction(slot, dir);
             if (SwipeAction.CURSOR_MOVE.equals(stored) || SwipeAction.FREE_CURSOR.equals(stored)) return SwipeAction.NONE;
-            if (SwipeAction.SPACE_SELECT.equals(stored) && !selectable(slot)) return SwipeAction.NONE;   // 스페이스바·커서 이동 키 전용
-            return stored;
+            return stored;   // 길게 누르기 방식(밀어 글자 선택·밀어 기능 실행)은 모든 키가 받는다
         }
 
         @Override
@@ -80,7 +81,7 @@ public final class LongPressActions {
 
         @Override
         public String[] choices(int slot) {
-            return selectable(slot) ? SwipeAction.idsForSpaceLongPress() : SwipeAction.idsForLongPress();
+            return SwipeAction.idsForLongPress();
         }
 
         @Override
@@ -89,15 +90,10 @@ public final class LongPressActions {
         }
     };
 
-    private LongPressActions() {
-    }
+    /** '길게 누른 뒤 밀어 기능 실행'의 칸마다 네 방향 기능. */
+    public static final SwipeSpec LONG_SWIPES = LongSwipes.of(SPEC, DIR);
 
-    /**
-     * '길게 누른 뒤 밀어서 글자 선택'을 고를 수 있는 칸: 스페이스바와 커서 이동 키(조이스틱 포함). 둘 다 밀어서 커서를 옮기는 키라
-     * 길게 누른 뒤 밀면 같은 손짓으로 선택 영역을 넓힌다.
-     */
-    static boolean selectable(int slot) {
-        return slot == SPACE || slot == CURSOR;
+    private LongPressActions() {
     }
 
     /** 키 종류에 해당하는 칸. 길게 누르기 사용자화의 대상이 아닌 키면 -1. */

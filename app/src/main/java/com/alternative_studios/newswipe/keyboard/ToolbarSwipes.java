@@ -96,6 +96,7 @@ public final class ToolbarSwipes {
         @Override
         public String resolve(String stored, int slot, int dir) {
             if (stored == null) return SwipeAction.NONE;
+            if (SwipeAction.longPressMode(stored)) return stored;
             for (String id : choices(slot)) if (id.equals(stored)) return stored;
             return SwipeAction.NONE;
         }
@@ -125,11 +126,11 @@ public final class ToolbarSwipes {
             return L.t("길게 누르기", "Long press");
         }
 
-        /** 스페이스바 길게 누르기와 같은 목록 ('밀어서 선택' 포함). 누르고 있는 동안 되풀이하는 지우기는 뺀다. */
+        /** 기능키 길게 누르기와 같은 목록. 누르고 있는 동안 되풀이하는 지우기는 뺀다. */
         @Override
         public String[] choices(int slot) {
             java.util.List<String> ids = new java.util.ArrayList<>();
-            for (String id : SwipeAction.idsForSpaceLongPress()) if (!SwipeAction.holdRepeat(id)) ids.add(id);
+            for (String id : SwipeAction.idsForLongPress()) if (!SwipeAction.holdRepeat(id)) ids.add(id);
             return ids.toArray(new String[0]);
         }
 
@@ -139,6 +140,9 @@ public final class ToolbarSwipes {
                     : L.t("'" + SPEC.cardTitle(slot) + "' 길게 누르기", "Long press '" + SPEC.cardTitle(slot) + "'");
         }
     };
+
+    /** 길게 누르기를 '길게 누른 뒤 밀어 기능 실행'으로 두었을 때의 칸마다 네 방향 기능. */
+    public static final SwipeSpec LONG_SWIPES = LongSwipes.of(LONG_PRESS, LONG);
 
     private final String[][] table;
 

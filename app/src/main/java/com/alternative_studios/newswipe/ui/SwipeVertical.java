@@ -54,6 +54,10 @@ public final class SwipeVertical {
         boolean fire(float x, float y);
 
         void move(float x, float y);
+
+        /** {@link #fire}가 true를 돌려준 뒤 손을 뗐다 (cancelled: 취소되었다). */
+        default void end(boolean cancelled) {
+        }
     }
 
     /** @param hold 길게 누르기 (null이면 쓰지 않는다) */
@@ -139,6 +143,7 @@ public final class SwipeVertical {
                 case MotionEvent.ACTION_UP:
                 case MotionEvent.ACTION_CANCEL: {
                     boolean consumed = fired[0] || held[1];
+                    if (held[2]) hold.end(ev.getActionMasked() == MotionEvent.ACTION_CANCEL);
                     view.removeCallbacks(longPress);
                     held[0] = held[1] = held[2] = false;
                     fired[0] = false;

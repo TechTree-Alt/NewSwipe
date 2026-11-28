@@ -74,6 +74,7 @@ public final class GapSwipes {
         public String resolve(String stored, int slot, int dir) {
             if (isPress(slot)) {
                 if (stored == null || !SwipeAction.isKnown(stored)) return SwipeAction.NONE;
+                if (dir == LONG && SwipeAction.longPressMode(stored)) return stored;
                 for (String id : choices(slot, dir)) if (id.equals(stored)) return stored;
                 return SwipeAction.NONE;
             }
@@ -86,7 +87,7 @@ public final class GapSwipes {
 
         @Override
         public String cardTitle(int slot) {
-            return labels()[slot];
+            return labels()[slot % N];   // 누르기 칸은 같은 화면의 밀기 칸 이름을 쓴다
         }
 
         @Override
@@ -99,13 +100,13 @@ public final class GapSwipes {
             return SwipeAction.idsFor(-1);
         }
 
-        /** 누르기에는 끌어 쓰는 '커서 자유 이동'을 뺀다. 길게 누르기에는 '계속 지우기'와 '길게 누른 뒤 밀어서 글자 선택'도 고를 수 있다 (Caps Lock은 뺀다). */
+        /** 누르기에는 끌어 쓰는 '커서 자유 이동'을 뺀다. 길게 누르기에는 '계속 지우기'도 고를 수 있다 (Caps Lock은 뺀다). */
         @Override
         public String[] choices(int slot, int dir) {
             if (!isPress(slot)) return choices(slot);
             java.util.List<String> ids = new java.util.ArrayList<>();
             if (dir == LONG) {
-                for (String id : SwipeAction.idsForSpaceLongPress()) if (!SwipeAction.CAPS_LOCK.equals(id)) ids.add(id);
+                for (String id : SwipeAction.idsForLongPress()) if (!SwipeAction.CAPS_LOCK.equals(id)) ids.add(id);
             } else {
                 for (String id : choices(slot)) if (!SwipeAction.CURSOR_MOVE.equals(id)) ids.add(id);
             }
@@ -113,13 +114,18 @@ public final class GapSwipes {
         }
     };
 
+    /** 길게 누르기를 '길게 누른 뒤 밀어 기능 실행'으로 두었을 때의 네 방향 기능 (누르기 칸). */
+    public static final SwipeSpec LONG_SWIPES = LongSwipes.of(SPEC, LONG);
+
     private final String[] row;
     private final String tap, longPress;
+    private final String[] longSwipes;
 
-    private GapSwipes(String[] row, String[] press) {
+    private GapSwipes(String[] row, String[] press, String[] longSwipes) {
         this.row = row;
         this.tap = press[TAP];
         this.longPress = press[LONG];
+        this.longSwipes = longSwipes;
     }
 
     /**
@@ -133,7 +139,7 @@ public final class GapSwipes {
             return stored == null && legacyOff ? SwipeAction.NONE : stored;
         };
         String[][] t = SPEC.table(overrides);
-        return new GapSwipes(t[slot], t[pressSlot(slot)]);
+        return new GapSwipes(t[slot], t[pressSlot(slot)], LONG_SWIPES.table(prefs)[pressSlot(slot)]);
     }
 
     public String action(int dir) {
@@ -156,6 +162,11 @@ public final class GapSwipes {
     /** 길게 누르기 기능. 없음이면 null. */
     public String longPress() {
         return SwipeAction.NONE.equals(longPress) ? null : longPress;
+    }
+
+    /** '길게 누른 뒤 밀어 기능 실행'의 네 방향 기능 (Key.SWIPE_* 차례). */
+    public String[] longSwipes() {
+        return longSwipes;
     }
 
     /** 밀기·누르기·길게 누르기 중 정해 둔 기능이 있는지 (없으면 가운데 공간은 아무 일도 하지 않는다). */
