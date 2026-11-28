@@ -7,7 +7,7 @@ import android.graphics.RectF;
 
 /**
  * 키보드 아이콘을 코드로 그린다. 이미지 리소스를 쓰지 않아 앱이 가볍다.
- * 좌표는 24×24 칸 기준이다.
+ * 좌표는 24×24 칸 기준이다. Metro UI 모드에서는 같은 아이콘을 {@link MetroIcons}가 Windows Phone 글리프 모양으로 그린다.
  */
 public final class Icons {
     public static final int SHIFT = 1;
@@ -66,8 +66,8 @@ public final class Icons {
     public static final int REDO = 62;
     /** 탭 (막대를 향한 화살표 →|). */
     public static final int TAB = 63;
-    /** 위쪽을 향한 겹친 꺾쇠 (돌리기 전의 모양). 밖에서 쓰지 않는다. */
-    private static final int WORD_UP = 1001;
+    /** 위쪽을 향한 겹친 꺾쇠 (돌리기 전의 모양). 패키지 밖에서 쓰지 않는다 (MetroIcons도 그린다). */
+    static final int WORD_UP = 1001;
 
     private static final Path path = new Path();
     private static final RectF oval = new RectF();
@@ -128,7 +128,13 @@ public final class Icons {
         p.setStrokeJoin(Paint.Join.ROUND);
         p.setStyle(Paint.Style.STROKE);
         path.reset();
-        switch (shape(c, icon)) {
+        int base = shape(c, icon);
+        if (com.alternative_studios.newswipe.ui.Metro.on) {   // Metro UI: Windows Phone 글리프 모양 (MetroIcons)
+            MetroIcons.draw(c, base, icon, p);
+            c.restore();
+            return;
+        }
+        switch (base) {
             case SHIFT:
             case SHIFT_ON:
             case SHIFT_LOCK:

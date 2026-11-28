@@ -23,6 +23,7 @@ import android.widget.inline.InlineContentView;
 import android.widget.inline.InlinePresentationSpec;
 
 import com.alternative_studios.newswipe.keyboard.KeyboardTheme;
+import com.alternative_studios.newswipe.ui.Metro;
 import com.alternative_studios.newswipe.ui.Ui;
 
 import java.util.ArrayList;
@@ -154,8 +155,9 @@ final class InlineAutofill {
             paint.setColor(color);
             paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeWidth(Ui.dp(c, 2));
-            paint.setStrokeCap(Paint.Cap.ROUND);
-            paint.setStrokeJoin(Paint.Join.ROUND);
+            // Metro: 끝을 자르고 꺾인 곳이 뾰족한 꺾쇠 (Windows Phone 글리프처럼).
+            paint.setStrokeCap(Metro.on ? Paint.Cap.BUTT : Paint.Cap.ROUND);
+            paint.setStrokeJoin(Metro.on ? Paint.Join.MITER : Paint.Join.ROUND);
             setClickable(true);
         }
 
