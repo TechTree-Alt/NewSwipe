@@ -136,8 +136,16 @@ final class EditorSheet {
         // 가운데(X와 오른쪽 버튼들 사이): 고른 것의 이름. 오른쪽 버튼이 더 넓어 왼쪽에 붙여 자리를 넉넉히 쓴다.
         title = new TextView(c);
         title.setTextColor(colors.text);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
-        title.setTypeface(Metro.on ? Metro.semibold() : android.graphics.Typeface.DEFAULT_BOLD);   // Metro에는 굵은 글자가 없다
+        if (Metro.on) {
+            // Metro: WP8의 제목 글(PhoneTextLargeStyle)처럼 가는 글꼴(Segoe WP SemiLight)에 PhoneFontSizeLarge(32px → 24sp).
+            // Metro에는 굵은 글자가 없다.
+            title.setTextSize(TypedValue.COMPLEX_UNIT_SP, Metro.sp(Metro.FONT_LARGE));
+            title.setTypeface(Metro.light());
+            title.setIncludeFontPadding(false);   // 큰 글자가 X 버튼 줄보다 높아지지 않게
+        } else {
+            title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
+            title.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        }
         title.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
         title.setSingleLine(true);
         title.setEllipsize(android.text.TextUtils.TruncateAt.END);
@@ -256,7 +264,19 @@ final class EditorSheet {
     }
 
     void setTitle(CharSequence t) {
-        title.setText(t);
+        title.setText(Metro.on ? lowerFirst(t) : t);
+    }
+
+    /**
+     * Metro: WP8의 제목처럼 첫 글자를 소문자로 ("Letter keys settings" → "letter keys settings"). 한국어는 그대로이고,
+     * 약어처럼 둘째 글자도 대문자이면 ("QWERTY …") 바꾸지 않는다.
+     */
+    private static CharSequence lowerFirst(CharSequence t) {
+        if (t == null || t.length() == 0) return t;
+        char first = t.charAt(0);
+        if (!Character.isUpperCase(first)) return t;
+        if (t.length() > 1 && Character.isUpperCase(t.charAt(1))) return t;
+        return Character.toLowerCase(first) + t.subSequence(1, t.length()).toString();
     }
 
     /**
