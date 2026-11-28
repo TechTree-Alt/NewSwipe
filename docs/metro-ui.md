@@ -10,11 +10,13 @@ Windows Phone 7·8·8.1의 Metro UI처럼 바뀝니다. 이 문서는 무엇을 
   - `dxaml/phone/lib/Pivot_Partial.cpp`(PivotAnimator), `dxaml/xcp/components/pivot/PivotStateMachine.cpp`: 피벗
 - **Windows Phone Toolkit** (Microsoft, Ms-PL, `github.com/microsoftarchive/WindowsPhoneToolkit`):
   턴스타일·틸트·스위블의 숫자는 이 소스에서 그대로 옮겼습니다. 코드는 가져오지 않았습니다.
-  - `Transitions/Storyboards/Turnstile*.xaml`, `Effects/TurnstileFeatherEffect.cs`: 턴스타일 화면 전환과 깃털. Toolkit은 시스템 화면의
-    움직임을 앱에서 똑같이 내려고 만든 것이라, WP8.1 실기기의 설정·시스템 화면과 같은 빠르기입니다
+  - `Transitions/Storyboards/Turnstile*.xaml`, `Effects/TurnstileFeatherEffect.cs`: 턴스타일·깃털의 각도와 축. 시간은 이 값이
+    실기기보다 느려 아래 WinJS의 값을 씁니다 (아래 '움직임')
   - `Effects/TiltEffect.cs`: 누른 자리로 기울어지는 틸트 (WP8.1의 PointerDownThemeAnimation 값은 공개 소스에 없어 이것을 씁니다)
   - `Transitions/Storyboards/SwivelFullScreenIn.xaml`, `SlideUpFadeIn.xaml`
   - `Microsoft.Phone.Controls.Toolkit.WP8/Themes/Generic.xaml`: ToggleSwitch 템플릿
+- **WinJS** (Microsoft, MIT, `github.com/winjs/winjs`): WP8.1 HTML/JS 앱용 라이브러리. `src/js/WinJS/Animations.js`의
+  `turnstileForwardIn`·`turnstileForwardOut`·`turnstileBackwardIn`·`turnstileBackwardOut`에서 턴스타일·깃털의 시간과 곡선을 옮겼습니다
 - **Windows Phone 8 SDK의 기본 리소스** (`C:\Program Files (x86)\Microsoft SDKs\Windows Phone\v8.0\Design`의 사본):
   - `ThemeResources.xaml` (Dark·Light): 테마 색, 글꼴 크기(PhoneFontSize*), 여백, PhonePivotUnselectedItemOpacity 등
   - `System.Windows.xaml`: Button(PhoneButtonBase)·ToggleButton·CheckBox·RadioButton·TextBox·Slider·ScrollViewer 템플릿
@@ -56,10 +58,10 @@ Windows Phone 7·8·8.1의 Metro UI처럼 바뀝니다. 이 문서는 무엇을 
 
 | 효과 | 값 | 쓰는 곳 |
 |---|---|---|
-| 턴스타일 (들어오기) | 원본 -80° → 0°, 350ms, ExponentialEase EaseOut 지수 6 / 뒤로 돌아올 때 원본 50° → 0° | 화면이 열릴 때 / 다른 화면에서 돌아올 때 |
-| 턴스타일 (나가기) | 원본 0° → 50°, 250ms, EaseIn 지수 6, 끝나면 사라짐 / 뒤로: 원본 0° → -80° | 다른 화면을 열 때 / 뒤로 갈 때 |
-| 축 | PlaneProjection CenterOfRotationX -0.2 (요소 폭 20% 왼쪽 바깥) | 턴스타일·깃털의 모든 항목 |
-| 깃털 | 항목마다 늦게: 들어오기 40ms(돌아올 때 50ms), 나가기 50ms(뒤로 갈 때 40ms). 나갈 때는 항목마다 제 차례가 끝나면 사라지고, 마지막 항목이 사라진 뒤 다음 화면이 열린다 | 머리글·목록 줄·아래 미리보기 (실제로 보이는 것만, 16번째부터는 같은 차례) |
+| 턴스타일 (들어오기) | 원본 -80° → 0°, 300ms, cubic-bezier(0.01, 0.975, 0.4775, 0.9775), 시작하자마자 보임 / 뒤로 돌아올 때 원본 50° → 0° (WinJS) | 화면이 열릴 때 / 다른 화면에서 돌아올 때 |
+| 턴스타일 (나가기) | 원본 0° → 50°, 128ms, cubic-bezier(0.4925, 0.01, 0.7675, -0.01), 끝나면 사라짐 / 뒤로: 원본 0° → -80° (WinJS) | 다른 화면을 열 때 / 뒤로 갈 때 |
+| 축 | PlaneProjection CenterOfRotationX -0.2 (요소 폭 20% 왼쪽 바깥, Toolkit) | 턴스타일·깃털의 모든 항목 |
+| 깃털 | 항목마다 50ms씩 늦게 (한도 1000ms, WinJS `staggerDelay(0, 50, 1, 1000)`). 나갈 때는 항목마다 제 차례가 끝나면 사라지고, 마지막 항목이 사라진 뒤 다음 화면이 열린다 | 머리글·목록 줄·아래 미리보기 (실제로 보이는 것만) |
 | 틸트 | 최대 0.3 rad, 가운데 25px 들어감(약 2.5%), 떼고 200ms 뒤 100ms 로그 곡선 | 메뉴 줄, 값 줄, 버튼, 선택 칸, 색 타일 |
 | 스위블 | 원본 RotationX -30° → 0° (위쪽 가장자리가 뒤로 젖혀졌다 선다), 350ms, EaseOut 6 | 키보드의 이모지·클립보드·텍스트 편집 창, 드롭다운 메뉴가 열릴 때 |
 | 슬라이드 | 350ms, EaseOut 6 (스프링 대신) | 키 편집 창(시트), 펼치고 접기 |
@@ -82,8 +84,13 @@ Windows Phone 7·8·8.1의 Metro UI처럼 바뀝니다. 이 문서는 무엇을 
   rotationX가 양수일 때 위쪽이 들어갑니다). 그래서 원본 각도의 부호를 뒤집어 씁니다: 새 화면은 오른쪽 끝이 멀리 물러난 채 돌아
   서고, 나가는 화면은 오른쪽 끝이 앞으로 나오며 돌아 나가고, 뒤로 갈 때는 오른쪽 끝이 멀리 물러나며 사라지고, 돌아온 화면은 앞으로
   나와 있던 오른쪽 끝이 제자리로 돌아갑니다. 스위블(대화상자·키보드 창)도 같은 이유로 부호를 뒤집습니다.
-- WP8.1 런타임(WinRT XAML) 앱의 기본 전환(`CommonNavigationTransitionInfo`, microsoft-ui-xaml의 `dxaml/phone/lib/NavigateTransitionHelper.h`)은
-  같은 각도를 나가기 128ms, 들어오기 428ms(깃털 항목은 214ms, 33ms 간격)로 씁니다. 실기기의 시스템 화면보다 눈에 띄게 빨라서 쓰지 않습니다.
+- 턴스타일의 시간: WP7 UI Design and Interaction Guide(2.0)는 시스템의 화면 전환이 "system-reserved"라 앱이 흉내 낼 수만 있다고
+  하고 수치는 밝히지 않습니다. Microsoft가 앱용으로 다시 만든 구현이 셋 있고, 각도는 같지만 시간이 다릅니다 (항목 열 개짜리 화면에서
+  나가기 / 들어오기):
+  - Windows Phone Toolkit: 항목 250ms·50ms 간격 / 350ms·40ms 간격 → 0.70초 / 0.71초. 실기기보다 사라지고 나타나는 것이 굼뜹니다
+  - WinRT XAML(`CommonNavigationTransitionInfo`, microsoft-ui-xaml의 `dxaml/phone/lib/ThemeTransitions.cpp`): 항목 64ms·33ms 간격에
+    128ms가 되면 나가는 화면을 통째로 감추고, 들어오는 항목은 150ms → 0.13초 / 0.38초. 실기기보다 지나치게 빠릅니다
+  - WinJS: 항목 128ms·50ms 간격 / 300ms·50ms 간격 → 0.58초 / 0.75초 (들어오는 항목은 처음 몇십 ms에 거의 자리를 잡습니다). 이것을 씁니다
 - 원근: 카메라를 화면 폭의 2.2배 거리에 둡니다. `View.setCameraDistance`는 72단위 인치를 쓰므로
   px 거리 × densityDpi / 72를 넘깁니다.
 
