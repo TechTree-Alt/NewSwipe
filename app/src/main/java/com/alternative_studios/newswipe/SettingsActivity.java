@@ -4631,54 +4631,20 @@ public final class SettingsActivity extends Activity {
             {"수취인불명", R.drawable.hof_suchwiinbulmyeong},
     };
 
-    /** 명예의 전당 버튼 바탕과 프로필 사진 테두리에 쓰는 옅은 무지개 색. */
+    /** 명예의 전당 프로필 사진 테두리에 쓰는 옅은 무지개 색. */
     private static final int[] RAINBOW = {0xFFFFB3BA, 0xFFFFD8A8, 0xFFFFF3A6, 0xFFBDF2C4, 0xFFB5DEFF, 0xFFD5BEFF};
 
-    /** 정보 화면의 '명예의 전당' 버튼. 다른 버튼과 달리 무지개빛 그라데이션 바탕으로 돋보이게 한다. */
+    /** 명예의 전당 버튼 글자에 쓰는 선명한 무지개 색 (바탕은 다른 버튼과 같다). */
+    private static final int[] RAINBOW_TEXT = {0xFFFF3B47, 0xFFFF9500, 0xFFF5C400, 0xFF34C759, 0xFF2D9CFF, 0xFFA855F7};
+
+    /** 정보 화면의 '명예의 전당' 버튼. 다른 버튼과 같은 모양이되, 글자만 무지개색으로 돋보이게 한다. */
     private View hallOfFameButton() {
-        final int ink = 0xFF1F1B2E;   // 옅은 무지개 위에서는 화면 모드와 관계없이 짙은 글자가 잘 읽힌다
-        View row = button(L.t("명예의 전당", "Hall of fame"),
-                new Chevron(this, ink), v -> openSection(HALL_OF_FAME));
-        android.graphics.drawable.GradientDrawable rainbow = new android.graphics.drawable.GradientDrawable(
-                android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
-                RAINBOW);
-        float r = Ui.dp(this, 12);
-        rainbow.setCornerRadius(Metro.on ? 0 : r);   // Metro에는 둥근 모서리가 없다
-        row.setBackground(Ui.ripple(0x33000000, rainbow, r));
+        View row = button(L.t("명예의 전당", "Hall of fame"), v -> openSection(HALL_OF_FAME));
         TextView t = (TextView) ((ViewGroup) row).getChildAt(0);
-        t.setTextColor(ink);
-        t.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-        // 무지개는 살리되, 바탕을 덮어써 지워지는 모드별 버튼 모양은 되살린다.
-        if (NeuUi.on) {
-            // Neumorphism: 무지개 면이 다른 버튼처럼 솟아오르고, 누르는 동안 안으로 들어간다.
-            NeuUi.button(row, RAINBOW, Ui.dp(this, 14));
-        } else if (Metro.on) {
-            // Metro: 모서리 없는 무지개 타일. 다른 Metro 버튼처럼 SemiBold 글자이고, 누르는 동안 강조색으로 채워진다.
-            android.graphics.drawable.StateListDrawable bg = new android.graphics.drawable.StateListDrawable();
-            bg.addState(new int[]{android.R.attr.state_pressed}, Ui.round(accentColor, 0));
-            // Metro는 그라데이션을 쓰지 않는다 (디지털답게, 꾸밈 없이): 무지개를 단색 띠 여섯 개로 나눠 칠한다.
-            bg.addState(new int[0], new android.graphics.drawable.Drawable() {
-                private final android.graphics.Paint p = new android.graphics.Paint();
-
-                @Override
-                public void draw(android.graphics.Canvas c) {
-                    android.graphics.Rect b = getBounds();
-                    float w = b.width() / (float) RAINBOW.length;
-                    for (int i = 0; i < RAINBOW.length; i++) {
-                        p.setColor(RAINBOW[i]);
-                        c.drawRect(b.left + w * i, b.top, i == RAINBOW.length - 1 ? b.right : b.left + w * (i + 1), b.bottom, p);
-                    }
-                }
-
-                @Override public void setAlpha(int alpha) { }
-                @Override public void setColorFilter(android.graphics.ColorFilter cf) { }
-                @Override public int getOpacity() { return android.graphics.PixelFormat.OPAQUE; }
-            });
-            row.setBackground(bg);
-            t.setTypeface(Metro.semibold());
-            t.setTextColor(new android.content.res.ColorStateList(new int[][]{{android.R.attr.state_pressed}, {}},
-                    new int[]{onAccentColor, ink}));
-        }
+        t.setTypeface(Metro.on ? Metro.semibold() : android.graphics.Typeface.DEFAULT_BOLD);
+        float w = t.getPaint().measureText(t.getText().toString());
+        t.getPaint().setShader(new android.graphics.LinearGradient(0, 0, w, 0, RAINBOW_TEXT, null,
+                android.graphics.Shader.TileMode.CLAMP));
         return row;
     }
 
